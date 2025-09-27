@@ -4,6 +4,7 @@ import (
 	"math/bits"
 	"sync"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -20,16 +21,16 @@ func (s *costStats) add(cost costStats) {
 }
 
 // Returns the cost stats of a boarded expression
-func evaluateCostStat(expr *sym.Expression) (s costStats) {
+func evaluateCostStat[T zk.Element](expr *sym.Expression[T]) (s costStats) {
 	board := expr.Board()
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
 	for i := 1; i < len(board.Nodes); i++ {
 		wg.Add(1)
-		go func(nodes []sym.Node) {
+		go func(nodes []sym.Node[T]) {
 			defer wg.Done()
-			s_ := evaluateNodeCosts(nodes...)
+			s_ := evaluateNodeCosts[T](nodes...)
 			mu.Lock()
 			s.add(s_)
 			mu.Unlock()
@@ -41,10 +42,10 @@ func evaluateCostStat(expr *sym.Expression) (s costStats) {
 }
 
 // Returns the cost stats of a node
-func evaluateNodeCosts(nodes ...sym.Node) (s costStats) {
+func evaluateNodeCosts[T zk.Element](nodes ...sym.Node[T]) (s costStats) {
 	for _, node := range nodes {
 		switch op := node.Operator.(type) {
-		case sym.Product:
+		case sym.Product[T]:
 			for _, e := range op.Exponents {
 				if e == 0 {
 					continue
@@ -65,7 +66,7 @@ func evaluateNodeCosts(nodes ...sym.Node) (s costStats) {
 			// Compensate for the fact that that we don't need to multiply the
 			// initial term into the result
 			s.NumMul--
-		case sym.LinComb:
+		case sym.LinComb[T]:
 			for _, e := range op.Coeffs {
 				if e == 0 {
 					continue
@@ -93,7 +94,7 @@ func evaluateNodeCosts(nodes ...sym.Node) (s costStats) {
 			// Compensate for the fact that we don't need to add the initial
 			// term into the result
 			s.NumAdd--
-		case sym.PolyEval:
+		case sym.PolyEval[T]:
 			s.NumAdd += len(node.Children) - 1
 			s.NumMul += len(node.Children) - 1
 		}

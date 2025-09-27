@@ -6,14 +6,15 @@ import (
 	"math/big"
 	"reflect"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 // Note that the library does not support exponents with negative values and
 // such expressions would be treated as invalid and yield panic errors if the
 // package sees it.
-type Product struct {
+type Product[T zk.Element] struct {
 	// Exponents for each term in the multiplication
 	Exponents []int
 }
@@ -49,7 +50,7 @@ type Product struct {
 // If provided an empty list of items/exponents the function returns 1 as a
 // default value and if the lengths of the two parameters do not match, the
 // function panics.
-func NewProduct(items []*Expression, exponents []int) *Expression {
+func NewProduct[T zk.Element](items []*Expression[T], exponents []int) *Expression[T] {
 
 	if len(items) != len(exponents) {
 		panic("unmatching lengths")
@@ -63,11 +64,11 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 
 	for i := range items {
 		if items[i].ESHash.IsZero() && exponents[i] != 0 {
-			return NewConstant(0)
+			return NewConstant[T](0)
 		}
 	}
 
-	exponents, items = expandTerms(&Product{}, exponents, items)
+	exponents, items = expandTerms[T](&Product[T]{}, exponents, items)
 	exponents, items, constExponents, constVal := regroupTerms(exponents, items)
 
 	// This regroups all the constants into a global constant with a coefficient
@@ -81,21 +82,21 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 
 	if !c.IsOne() {
 		exponents = append(exponents, 1)
-		items = append(items, NewConstant(c))
+		items = append(items, NewConstant[T](c))
 	}
 
 	exponents, items = removeZeroCoeffs(exponents, items)
 
 	if len(items) == 0 {
-		return NewConstant(1)
+		return NewConstant[T](1)
 	}
 
 	if len(items) == 1 && exponents[0] == 1 {
 		return items[0]
 	}
 
-	e := &Expression{
-		Operator: Product{Exponents: exponents},
+	e := &Expression[T]{
+		Operator: Product[T]{Exponents: exponents},
 		Children: items,
 		ESHash:   fext.GenericFieldOne(),
 		IsBase:   computeIsBaseFromChildren(items),
@@ -129,7 +130,7 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 
 // Degree implements the [Operator] interface and returns the sum of the degree
 // of all the operands weighted by the exponents.
-func (prod Product) Degree(inputDegrees []int) int {
+func (prod Product[T]) Degree(inputDegrees []int) int {
 	res := 0
 	// Just the sum of all the degrees
 	for i, exp := range prod.Exponents {
@@ -139,12 +140,12 @@ func (prod Product) Degree(inputDegrees []int) int {
 }
 
 // Evaluate implements the [Operator] interface.
-func (prod Product) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+func (prod Product[T]) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 	return sv.Product(prod.Exponents, inputs)
 }
 
 // Validate implements the [Operator] interface.
-func (prod Product) Validate(expr *Expression) error {
+func (prod Product[T]) Validate(expr *Expression[T]) error {
 	if !reflect.DeepEqual(prod, expr.Operator) {
 		panic("expr.operator != prod")
 	}
@@ -163,9 +164,14 @@ func (prod Product) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [Operator] interface.
-func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (prod Product[T]) GnarkEval(api frontend.API, inputs []T) T {
 
-	res := frontend.Variable(1)
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := apiGen.ValueOf(1)
 
 	// There should be as many inputs as there are coeffs
 	if len(inputs) != len(prod.Exponents) {
@@ -175,18 +181,25 @@ func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) fron
 	/*
 		Accumulate the scalars
 	*/
+	var bExp big.Int
 	for i, input := range inputs {
-		term := gnarkutil.Exp(api, input, prod.Exponents[i])
-		res = api.Mul(res, term)
+		bExp.SetUint64(uint64(prod.Exponents[i]))
+		term := field.Exp(apiGen, input, &bExp)
+		res = apiGen.Mul(res, term)
 	}
 
-	return res
+	return *res
 }
 
 // GnarkEval implements the [Operator] interface.
-func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (prod Product[T]) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen[T]) gnarkfext.E4Gen[T] {
 
-	res := gnarkfext.NewFromBase(1)
+	e4Api, err := gnarkfext.NewExt4[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := e4Api.One()
 
 	// There should be as many inputs as there are coeffs
 	if len(inputs) != len(prod.Exponents) {
@@ -197,18 +210,21 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) g
 	/*
 		Accumulate the scalars
 	*/
+
+	var bExp big.Int
 	for i, input := range inputs {
-		term := gnarkfext.Exp(api, input, prod.Exponents[i])
-		res.Mul(api, res, term)
+		bExp.SetUint64(uint64(prod.Exponents[i]))
+		term := e4Api.Exp(&input, &bExp)
+		res = e4Api.Mul(res, term)
 	}
 
-	return res
+	return *res
 }
 
-func (prod Product) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
+func (prod Product[T]) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
 	return sv.ProductExt(prod.Exponents, inputs)
 }
 
-func (prod Product) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
+func (prod Product[T]) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
 	return smartvectors_mixed.ProductMixed(prod.Exponents, inputs)
 }

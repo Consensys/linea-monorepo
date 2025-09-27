@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -27,46 +28,46 @@ type Metadata interface {
 
 // Variable implements the [Operator] interface and implements a variable; i.e.
 // an abstract value that can be assigned in order to evaluate the expression.
-type Variable struct {
+type Variable[T zk.Element] struct {
 	Metadata Metadata
 }
 
 // Degree implements the [Operator] interface. Yet, this panics if this is called.
-func (Variable) Degree([]int) int {
+func (Variable[T]) Degree([]int) int {
 	panic("we never call it for a variable")
 }
 
 // Evaluate implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) Evaluate([]sv.SmartVector) sv.SmartVector {
+func (v Variable[T]) Evaluate([]sv.SmartVector) sv.SmartVector {
 	panic("we never call it for variables")
 }
 
 // EvaluateExt implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) EvaluateExt([]sv.SmartVector) sv.SmartVector {
+func (v Variable[T]) EvaluateExt([]sv.SmartVector) sv.SmartVector {
 	panic("we never call it for variables")
 }
 
-func (v Variable) EvaluateMixed([]sv.SmartVector) sv.SmartVector {
-	panic("we never call it for variables")
-}
-
-// GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (v Variable[T]) EvaluateMixed([]sv.SmartVector) sv.SmartVector {
 	panic("we never call it for variables")
 }
 
 // GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (v Variable[T]) GnarkEval(api frontend.API, inputs []T) T {
+	panic("we never call it for variables")
+}
+
+// GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
+func (v Variable[T]) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen[T]) gnarkfext.E4Gen[T] {
 	panic("we never call it for variables")
 }
 
 // NewVariable constructs a new variable object from a parameter implementing
 // the [Metadata] interface.
-func NewVariable(metadata Metadata) *Expression {
-	return &Expression{
-		Children: []*Expression{},
+func NewVariable[T zk.Element](metadata Metadata) *Expression[T] {
+	return &Expression[T]{
+		Children: []*Expression[T]{},
 		ESHash:   metadataToESH(metadata),
-		Operator: Variable{Metadata: metadata},
+		Operator: Variable[T]{Metadata: metadata},
 		IsBase:   metadata.IsBase(),
 	}
 }
@@ -90,8 +91,8 @@ StringVar is an implementation of [Metadata] aimed toward testing.
 */
 type StringVar string
 
-func NewDummyVar(s string) *Expression {
-	return NewVariable(StringVar(s))
+func NewDummyVar[T zk.Element](s string) *Expression[T] {
+	return NewVariable[T](StringVar(s))
 }
 
 func (s StringVar) String() string { return string(s) }
@@ -99,7 +100,7 @@ func (s StringVar) String() string { return string(s) }
 /*
 Validate implements the [Operator] interface.
 */
-func (v Variable) Validate(expr *Expression) error {
+func (v Variable[T]) Validate(expr *Expression[T]) error {
 	// This test that the variable is indeed the operator of the expression it is
 	// tested on.
 	if !reflect.DeepEqual(v, expr.Operator) {
@@ -124,8 +125,8 @@ StringVarExt will be over field extensions.
 */
 type StringVarExt string
 
-func NewDummyVarExt(s string) *Expression {
-	return NewVariable(StringVarExt(s))
+func NewDummyVarExt[T zk.Element](s string) *Expression[T] {
+	return NewVariable[T](StringVarExt(s))
 }
 
 func (s StringVarExt) String() string { return string(s) }

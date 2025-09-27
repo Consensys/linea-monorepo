@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 // regroupTerms takes a list of expressions and magnitudes and regroups the
@@ -14,9 +15,9 @@ import (
 // correctly. Without it will fall in undetermined behaviors. When, the function
 // encounters two children sharing the same ESH but not the same structure, it
 // keeps the first one in the list.
-func regroupTerms(magnitudes []int, children []*Expression) (
+func regroupTerms[T zk.Element](magnitudes []int, children []*Expression[T]) (
 	regroupedMagnitudes []int,
-	regroupedChildren []*Expression,
+	regroupedChildren []*Expression[T],
 	constantMagnitudes []int,
 	constantValues []fext.GenericFieldElem,
 ) {
@@ -27,7 +28,7 @@ func regroupTerms(magnitudes []int, children []*Expression) (
 
 	numChildren := len(children)
 	foundExpressions := make(map[fext.GenericFieldElem]int, numChildren)
-	regroupedChildren = make([]*Expression, 0, numChildren)
+	regroupedChildren = make([]*Expression[T], 0, numChildren)
 	regroupedMagnitudes = make([]int, 0, numChildren)
 	constantValues = make([]fext.GenericFieldElem, 0, numChildren)
 	constantMagnitudes = make([]int, 0, numChildren)
@@ -35,15 +36,15 @@ func regroupTerms(magnitudes []int, children []*Expression) (
 	for i := 0; i < numChildren; i++ {
 
 		var (
-			c       *Constant
+			c       *Constant[T]
 			isConst bool
 		)
 
 		switch o := children[i].Operator.(type) {
-		case Constant:
+		case Constant[T]:
 			c = &o
 			isConst = true
-		case *Constant:
+		case *Constant[T]:
 			c = o
 			isConst = true
 		}
@@ -80,7 +81,7 @@ func regroupTerms(magnitudes []int, children []*Expression) (
 // coefficient for LinComb or exponents for Product.
 //
 // The function takes ownership of the provided slices.
-func removeZeroCoeffs(magnitudes []int, children []*Expression) (cleanMagnitudes []int, cleanChildren []*Expression) {
+func removeZeroCoeffs[T zk.Element](magnitudes []int, children []*Expression[T]) (cleanMagnitudes []int, cleanChildren []*Expression[T]) {
 
 	if len(magnitudes) != len(children) {
 		panic("magnitudes and children don't have the same length")
@@ -93,7 +94,7 @@ func removeZeroCoeffs(magnitudes []int, children []*Expression) (cleanMagnitudes
 	for i, c := range magnitudes {
 
 		if c == 0 && cleanChildren == nil {
-			cleanChildren = make([]*Expression, i, len(children))
+			cleanChildren = make([]*Expression[T], i, len(children))
 			cleanMagnitudes = make([]int, i, len(children))
 			copy(cleanChildren, children[:i])
 			copy(cleanMagnitudes, magnitudes[:i])
@@ -123,9 +124,9 @@ func removeZeroCoeffs(magnitudes []int, children []*Expression) (cleanMagnitudes
 //
 // The caller passes a target operator which may be any value of type either
 // [LinComb] or [Product]. Any other type yields a panic error.
-func expandTerms(op Operator, magnitudes []int, children []*Expression) (
+func expandTerms[T zk.Element](op Operator[T], magnitudes []int, children []*Expression[T]) (
 	[]int,
-	[]*Expression,
+	[]*Expression[T],
 ) {
 
 	var (
@@ -137,9 +138,9 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 	)
 
 	switch op.(type) {
-	case LinComb, *LinComb:
+	case LinComb[T], *LinComb[T]:
 		opIsLinC = true
-	case Product, *Product:
+	case Product[T], *Product[T]:
 		opIsProd = true
 	}
 
@@ -156,13 +157,13 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 	for i, child := range children {
 
 		switch child.Operator.(type) {
-		case Product, *Product:
+		case Product[T], *Product[T]:
 			if opIsProd {
 				needExpand = true
 				totalReturnSize += len(children[i].Children)
 				continue
 			}
-		case LinComb, *LinComb:
+		case LinComb[T], *LinComb[T]:
 			if opIsLinC {
 				needExpand = true
 				totalReturnSize += len(children[i].Children)
@@ -178,30 +179,30 @@ func expandTerms(op Operator, magnitudes []int, children []*Expression) (
 	}
 
 	expandedMagnitudes := make([]int, 0, totalReturnSize)
-	expandedExpression := make([]*Expression, 0, totalReturnSize)
+	expandedExpression := make([]*Expression[T], 0, totalReturnSize)
 
 	for i := 0; i < numChildren; i++ {
 
 		var (
 			child     = children[i]
 			magnitude = magnitudes[i]
-			cProd     *Product
-			cLinC     *LinComb
+			cProd     *Product[T]
+			cLinC     *LinComb[T]
 			cIsProd   bool
 			cIsLinC   bool
 		)
 
 		switch o := child.Operator.(type) {
-		case Product:
+		case Product[T]:
 			cIsProd = true
 			cProd = &o
-		case *Product:
+		case *Product[T]:
 			cIsProd = true
 			cProd = o
-		case LinComb:
+		case LinComb[T]:
 			cIsLinC = true
 			cLinC = &o
-		case *LinComb:
+		case *LinComb[T]:
 			cIsLinC = true
 			cLinC = o
 		}

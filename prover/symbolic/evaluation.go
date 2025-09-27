@@ -4,13 +4,13 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-
-	"github.com/consensys/gnark/frontend"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 )
@@ -22,18 +22,18 @@ const (
 
 // evaluation is a helper to evaluate an expression board in chunks of
 // maxChunkSize rows at a time.
-type evaluation[T chunkValue] struct {
-	nodes   [][]evaluationNode[T]
+type evaluation[T chunkValue, V zk.Element] struct {
+	nodes   [][]evaluationNode[T, V]
 	scratch T
 }
 
 // evaluationNode is a node in the evaluation graph.
-type evaluationNode[T chunkValue] struct {
-	value      T        // value of the node after evaluation
-	inputs     []*T     // pointers to the inputs values
-	op         Operator // op(inputs) = value
-	hasValue   bool     // true if value is valid
-	isConstant bool     // true if the node is a constant
+type evaluationNode[T chunkValue, V zk.Element] struct {
+	value      T           // value of the node after evaluation
+	inputs     []*T        // pointers to the inputs values
+	op         Operator[V] // op(inputs) = value
+	hasValue   bool        // true if value is valid
+	isConstant bool        // true if the node is a constant
 }
 
 // chunkValue is a type constraint for the chunk evaluation.
@@ -46,7 +46,7 @@ type chunkExt [maxChunkSize]fext.Element
 type chunkBase [maxChunkSize]field.Element
 
 // Evaluate evaluates the expression board on the provided inputs.
-func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+func (b *ExpressionBoard[T]) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 	// essentially, we can see the inputs as "columns", and the chunks as "rows"
 	// the relations between the columns are defined by the expression board
 	// we evaluate the expression board chunk by chunk, in parallel.
@@ -149,11 +149,11 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 	return sv.NewRegularExt(res)
 }
 
-func newEvaluation[T chunkValue](b *ExpressionBoard) evaluation[T] {
-	solver := evaluation[T]{}
-	solver.nodes = make([][]evaluationNode[T], len(b.Nodes))
+func newEvaluation[T chunkValue, V zk.Element](b *ExpressionBoard[V]) evaluation[T, V] {
+	solver := evaluation[T, V]{}
+	solver.nodes = make([][]evaluationNode[T, V], len(b.Nodes))
 	for lvl := range solver.nodes {
-		solver.nodes[lvl] = make([]evaluationNode[T], len(b.Nodes[lvl]))
+		solver.nodes[lvl] = make([]evaluationNode[T, V], len(b.Nodes[lvl]))
 	}
 
 	// Init the constants and inputs.
@@ -167,7 +167,7 @@ func newEvaluation[T chunkValue](b *ExpressionBoard) evaluation[T] {
 			na.inputs = make([]*T, len(node.Children))
 
 			switch op := node.Operator.(type) {
-			case Constant:
+			case Constant[V]:
 				// The constants are identified to constant vectors
 				na.isConstant = true
 				na.hasValue = true
@@ -209,7 +209,7 @@ func fill[T chunkValue](dst *T, v fext.GenericFieldElem) {
 	}
 }
 
-func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int, b *ExpressionBoard) {
+func (e *evaluation[T, V]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int, b *ExpressionBoard[V]) {
 	inputCursor := 0
 	chunkLen := chunkStop - chunkStart // can be < MaxChunkSize
 
@@ -223,7 +223,7 @@ func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int
 
 			if i == 0 {
 				switch na.op.(type) {
-				case Variable:
+				case Variable[V]:
 					// leaves, we set the input.
 					// Sanity-check the input should have the correct length
 					sb := inputs[inputCursor].SubVector(chunkStart, chunkStop)
@@ -243,34 +243,34 @@ func (e *evaluation[T]) reset(inputs []sv.SmartVector, chunkStart, chunkStop int
 
 }
 
-func (e *evaluation[T]) evaluate() {
+func (e *evaluation[T, V]) evaluate() {
 	// Evaluate values level by level
 	switch casted := any(e).(type) {
-	case *evaluation[chunkBase]:
+	case *evaluation[chunkBase, V]:
 		evaluateBase(casted)
-	case *evaluation[chunkExt]:
+	case *evaluation[chunkExt, V]:
 		evaluateExt(casted)
 	default:
 		utils.Panic("unknown type %T", casted)
 	}
 }
 
-func evaluateBase(s *evaluation[chunkBase]) {
+func evaluateBase[T zk.Element](s *evaluation[chunkBase, T]) {
 	// level 0 are inputs/constants
 	// we start at level 1
 	for level := 1; level < len(s.nodes); level++ {
 		for pil := range s.nodes[level] {
-			evalNodeBase(s, &s.nodes[level][pil])
+			evalNodeBase[T](s, &s.nodes[level][pil])
 		}
 	}
 }
 
-func evaluateExt(s *evaluation[chunkExt]) {
+func evaluateExt[T zk.Element](s *evaluation[chunkExt, T]) {
 	// level 0 are inputs/constants
 	// we start at level 1
 	for level := 1; level < len(s.nodes); level++ {
 		for pil := range s.nodes[level] {
-			evalNodeExt(s, &s.nodes[level][pil])
+			evalNodeExt[T](s, &s.nodes[level][pil])
 		}
 	}
 }
@@ -278,7 +278,7 @@ func evaluateExt(s *evaluation[chunkExt]) {
 // evalNodeBase and evalNodeExt are specialized and identical; could use function operator
 // to make more generic.
 
-func evalNodeExt(solver *evaluation[chunkExt], na *evaluationNode[chunkExt]) {
+func evalNodeExt[T zk.Element](solver *evaluation[chunkExt, T], na *evaluationNode[chunkExt, T]) {
 	if na.hasValue {
 		return
 	}
@@ -287,7 +287,7 @@ func evalNodeExt(solver *evaluation[chunkExt], na *evaluationNode[chunkExt]) {
 	vTmp := extensions.Vector(solver.scratch[:])
 
 	switch op := na.op.(type) {
-	case Product:
+	case Product[T]:
 		for i := range na.inputs {
 			vInput := extensions.Vector(na.inputs[i][:])
 			if i == 0 {
@@ -297,7 +297,7 @@ func evalNodeExt(solver *evaluation[chunkExt], na *evaluationNode[chunkExt]) {
 				vRes.Mul(vRes, vTmp)
 			}
 		}
-	case LinComb:
+	case LinComb[T]:
 		var t0 extensions.E4
 		for i := range na.inputs {
 			vInput := extensions.Vector(na.inputs[i][:])
@@ -341,7 +341,7 @@ func evalNodeExt(solver *evaluation[chunkExt], na *evaluationNode[chunkExt]) {
 				vRes.Add(vRes, vTmp)
 			}
 		}
-	case PolyEval:
+	case PolyEval[T]:
 		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
 		// i.e., ∑_{i=0}^{n} input[i]·x^i
 		x := na.inputs[0][0] // we assume that the first input is always a constant
@@ -360,7 +360,7 @@ func evalNodeExt(solver *evaluation[chunkExt], na *evaluationNode[chunkExt]) {
 
 }
 
-func evalNodeBase(solver *evaluation[chunkBase], na *evaluationNode[chunkBase]) {
+func evalNodeBase[T zk.Element](solver *evaluation[chunkBase, T], na *evaluationNode[chunkBase, T]) {
 	if na.hasValue {
 		return
 	}
@@ -369,7 +369,7 @@ func evalNodeBase(solver *evaluation[chunkBase], na *evaluationNode[chunkBase]) 
 	vTmp := field.Vector(solver.scratch[:])
 
 	switch op := na.op.(type) {
-	case Product:
+	case Product[T]:
 		for i := range na.inputs {
 			vInput := field.Vector(na.inputs[i][:])
 			if i == 0 {
@@ -379,7 +379,7 @@ func evalNodeBase(solver *evaluation[chunkBase], na *evaluationNode[chunkBase]) 
 				vRes.Mul(vRes, vTmp)
 			}
 		}
-	case LinComb:
+	case LinComb[T]:
 		var t0 field.Element
 		for i := range na.inputs {
 			vInput := field.Vector(na.inputs[i][:])
@@ -423,7 +423,7 @@ func evalNodeBase(solver *evaluation[chunkBase], na *evaluationNode[chunkBase]) 
 				vRes.Add(vRes, vTmp)
 			}
 		}
-	case PolyEval:
+	case PolyEval[T]:
 		// result = input[0] + input[1]·x + input[2]·x² + input[3]·x³ + ...
 		// i.e., ∑_{i=0}^{n} input[i]·x^i
 		x := na.inputs[0][0] // we assume that the first input is always a constant
@@ -448,10 +448,10 @@ type GetDegree = func(m interface{}) int
 // into the board. Importantly, the order in which the metadata is returned
 // matches the order in which the assignments to the boarded expression must be
 // provided.
-func (b *ExpressionBoard) ListVariableMetadata() []Metadata {
+func (b *ExpressionBoard[T]) ListVariableMetadata() []Metadata {
 	res := []Metadata{}
 	for i := range b.Nodes[0] {
-		if vari, ok := b.Nodes[0][i].Operator.(Variable); ok {
+		if vari, ok := b.Nodes[0][i].Operator.(Variable[T]); ok {
 			res = append(res, vari.Metadata)
 		}
 	}
@@ -461,7 +461,7 @@ func (b *ExpressionBoard) ListVariableMetadata() []Metadata {
 // Degree returns the overall degree of the expression board. It admits a custom
 // function `getDeg` which is used to assign a degree to the [Variable] leaves
 // of the ExpressionBoard.
-func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
+func (b *ExpressionBoard[T]) Degree(getdeg GetDegree) int {
 
 	/*
 		First, build a buffer to store the intermediate results
@@ -478,9 +478,9 @@ func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
 
 	for i, node := range b.Nodes[0] {
 		switch v := node.Operator.(type) {
-		case Constant:
+		case Constant[T]:
 			intermediateRes[0][i] = 0
-		case Variable:
+		case Variable[T]:
 			intermediateRes[0][i] = getdeg(v.Metadata)
 			inputCursor++
 		}
@@ -521,14 +521,14 @@ func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
 /*
 GnarkEval evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (b *ExpressionBoard[T]) GnarkEval(api frontend.API, inputs []T) T {
 
 	/*
 		First, build a buffer to store the intermediate results
 	*/
-	intermediateRes := make([][]frontend.Variable, len(b.Nodes))
+	intermediateRes := make([][]T, len(b.Nodes))
 	for level := range b.Nodes {
-		intermediateRes[level] = make([]frontend.Variable, len(b.Nodes[level]))
+		intermediateRes[level] = make([]T, len(b.Nodes[level]))
 	}
 
 	/*
@@ -537,10 +537,11 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 	inputCursor := 0
 
 	for i := range b.Nodes[0] {
-		switch op := b.Nodes[0][i].Operator.(type) {
-		case Constant:
-			intermediateRes[0][i] = op.Val
-		case Variable:
+		// switch op := b.Nodes[0][i].Operator.(type) {
+		switch b.Nodes[0][i].Operator.(type) {
+		case Constant[T]:
+			//intermediateRes[0][i] = op.Val // TODO @thomas this would have failed in the first place, need to know which type it is
+		case Variable[T]:
 			intermediateRes[0][i] = inputs[inputCursor]
 			inputCursor++
 		}
@@ -554,7 +555,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 			/*
 				Collect the inputs of the current node from the intermediateRes
 			*/
-			nodeInputs := make([]frontend.Variable, len(node.Children))
+			nodeInputs := make([]T, len(node.Children))
 			for i, childID := range node.Children {
 				nodeInputs[i] = intermediateRes[childID.level()][childID.posInLevel()]
 			}
@@ -582,14 +583,14 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 /*
 GnarkEvalExt evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (b *ExpressionBoard[T]) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen[T]) gnarkfext.E4Gen[T] {
 
 	/*
 		First, build a buffer to store the intermediate results
 	*/
-	intermediateRes := make([][]gnarkfext.Element, len(b.Nodes))
+	intermediateRes := make([][]gnarkfext.E4Gen[T], len(b.Nodes))
 	for level := range b.Nodes {
-		intermediateRes[level] = make([]gnarkfext.Element, len(b.Nodes[level]))
+		intermediateRes[level] = make([]gnarkfext.E4Gen[T], len(b.Nodes[level]))
 	}
 
 	/*
@@ -597,11 +598,16 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Elem
 	*/
 	inputCursor := 0
 
+	e4Api, err := gnarkfext.NewExt4[T](api)
+	if err != nil {
+		panic(err)
+	}
+
 	for i := range b.Nodes[0] {
 		switch op := b.Nodes[0][i].Operator.(type) {
-		case Constant:
-			intermediateRes[0][i].Assign(op.Val.GetExt())
-		case Variable:
+		case Constant[T]:
+			intermediateRes[0][i] = *e4Api.NewFromExt(op.Val.GetExt())
+		case Variable[T]:
 			intermediateRes[0][i] = inputs[inputCursor]
 			inputCursor++
 		}
@@ -615,7 +621,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Elem
 			/*
 				Collect the inputs of the current node from the intermediateRes
 			*/
-			nodeInputs := make([]gnarkfext.Element, len(node.Children))
+			nodeInputs := make([]gnarkfext.E4Gen[T], len(node.Children))
 			for i, childID := range node.Children {
 				nodeInputs[i] = intermediateRes[childID.level()][childID.posInLevel()]
 			}
@@ -642,7 +648,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Elem
 
 // DumpToString is a debug utility which print out the expression in a readable
 // format.
-func (b *ExpressionBoard) DumpToString() string {
+func (b *ExpressionBoard[T]) DumpToString() string {
 	res := ""
 	for i := range b.Nodes {
 		res += fmt.Sprintf("LEVEL %v\n", i)
@@ -655,7 +661,7 @@ func (b *ExpressionBoard) DumpToString() string {
 
 // CountNodes returns the node count of the expression, without accounting for
 // the level zero.
-func (b *ExpressionBoard) CountNodes() int {
+func (b *ExpressionBoard[T]) CountNodes() int {
 	res := 0
 	for i := 1; i < len(b.Nodes); i++ {
 		res += len(b.Nodes[i])

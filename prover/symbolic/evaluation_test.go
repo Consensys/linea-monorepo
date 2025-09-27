@@ -5,14 +5,15 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSimpleAddition(t *testing.T) {
-	x := NewDummyVar("x")
-	y := NewDummyVar("y")
+	x := NewDummyVar[zk.NativeElement]("x")
+	y := NewDummyVar[zk.NativeElement]("y")
 
 	SIZE := 2048
 
@@ -59,8 +60,8 @@ func TestSimpleAddition(t *testing.T) {
 }
 
 func TestPythagoras(t *testing.T) {
-	x := NewDummyVar("x")
-	y := NewDummyVar("y")
+	x := NewDummyVar[zk.NativeElement]("x")
+	y := NewDummyVar[zk.NativeElement]("y")
 
 	// Pythagoras
 	expr := x.Square().Add(y.Square())
@@ -104,8 +105,8 @@ func TestPythagoras(t *testing.T) {
 }
 
 func TestMulAdd(t *testing.T) {
-	x := NewDummyVar("x")
-	y := NewDummyVar("y")
+	x := NewDummyVar[zk.NativeElement]("x")
+	y := NewDummyVar[zk.NativeElement]("y")
 	// (x + x)(y + y)
 	expr := x.Add(x).Mul(y.Add(y))
 	b := expr.Board()
@@ -149,9 +150,9 @@ func TestMulAdd(t *testing.T) {
 
 func TestBinaryConstraintWithLargeWindows(t *testing.T) {
 
-	v := NewDummyVar("v")
+	v := NewDummyVar[zk.NativeElement]("v")
 
-	expr2 := v.Mul(NewConstant("1").Sub(v))
+	expr2 := v.Mul(NewConstant[zk.NativeElement]("1").Sub(v))
 	boarded := expr2.Board()
 
 	res := boarded.Evaluate([]sv.SmartVector{
@@ -201,8 +202,8 @@ func TestExpressionsContainAllCases(t *testing.T) {
 }
 
 func TestDegree(t *testing.T) {
-	x := NewDummyVar("x")
-	y := NewDummyVar("y")
+	x := NewDummyVar[zk.NativeElement]("x")
+	y := NewDummyVar[zk.NativeElement]("y")
 
 	// Function that gives a degree 1024 to all variables
 	getdeg := func(interface{}) int { return 1024 }
@@ -238,16 +239,16 @@ func TestDegree(t *testing.T) {
 
 }
 
-func ExpressionContainingAllCases() *Expression {
+func ExpressionContainingAllCases() *Expression[zk.NativeElement] {
 
 	/*
 		Essentially, a will be a vector and b, a non-vector
 		And we create an expression that goes through all
 		possible combinations
 	*/
-	a := NewDummyVar("a")
-	b := NewDummyVar("b")
-	c := NewConstant(36)
+	a := NewDummyVar[zk.NativeElement]("a")
+	b := NewDummyVar[zk.NativeElement]("b")
+	c := NewConstant[zk.NativeElement](36)
 
 	// For the addition
 	expr := a.Add(a)

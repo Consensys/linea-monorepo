@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -12,11 +13,11 @@ can use the same board. Ideally, all expressions uses the same common board.
 Contrary to [Expression] the board maintains a topological ordering for the
 anchored expressions where the sub-expressions are de-duplicated.
 */
-type ExpressionBoard struct {
+type ExpressionBoard[T zk.Element] struct {
 	// Topologically sorted list of (deduplicated) nodes
 	// The nodes are sorted by level : e.g the first entry corresponds to
 	// the leaves and the last one (which should be unique). To the root.
-	Nodes [][]Node
+	Nodes [][]Node[T]
 	// Maps nodes to their level in the DAG structure. The 32 MSB bits
 	// of the ID indicates the level and the LSB bits indicates the position
 	// in the level.
@@ -24,15 +25,15 @@ type ExpressionBoard struct {
 }
 
 // emptyBoard initializes a board with no Node in it.
-func emptyBoard() ExpressionBoard {
-	return ExpressionBoard{
-		Nodes:         [][]Node{},
+func emptyBoard[T zk.Element]() ExpressionBoard[T] {
+	return ExpressionBoard[T]{
+		Nodes:         [][]Node[T]{},
 		ESHashesToPos: map[fext.GenericFieldElem]nodeID{},
 	}
 }
 
 // getNode returns a node from an ID
-func (b *ExpressionBoard) getNode(id nodeID) *Node {
+func (b *ExpressionBoard[T]) getNode(id nodeID) *Node[T] {
 	return &b.Nodes[id.level()][id.posInLevel()]
 }
 
@@ -51,23 +52,23 @@ Node consists of an operator and a list of operands and is meant to be stored
 in an [ExpressionBoard]. Additionally; it gather "DAG-wise" data such as the
 parents of the Node etc...
 */
-type Node struct {
+type Node[T zk.Element] struct {
 	// Indicates the IDs of the parents of the current node; corresponding to
 	// the nodes representing admitting this node as an input.
 	Parents  []nodeID
 	Children []nodeID
 	/*
-		ESHash (Expression Sensitive Hash) is a field.Element representing an expression.
+		ESHash (Expression[T] Sensitive Hash) is a field.Element representing an expression.
 		Two expression with the same ESHash are considered as equals. This helps expression
 		pruning.
 	*/
 	ESHash fext.GenericFieldElem
 	// Operator contains the logic to evaluate an expression
-	Operator Operator
+	Operator Operator[T]
 }
 
 // addParent appends a parent to the node
-func (n *Node) addParent(p nodeID) {
+func (n *Node[T]) addParent(p nodeID) {
 	n.Parents = append(n.Parents, p)
 }
 

@@ -3,6 +3,7 @@ package symbolic
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -16,7 +17,7 @@ import (
 // The function panics if no inputs are provided or if an unexpected type is
 // provided. @alex: it could make sense to return zero when no inputs are
 // provided actually.
-func Add(inputs ...any) *Expression {
+func Add[T zk.Element](inputs ...any) *Expression[T] {
 
 	if len(inputs) == 0 {
 		panic("No inputs were provided")
@@ -26,7 +27,7 @@ func Add(inputs ...any) *Expression {
 		return nil
 	}
 
-	exprInputs := intoExprSlice(inputs...)
+	exprInputs := intoExprSlice[T](inputs...)
 
 	magnitudes := make([]int, len(exprInputs))
 	for i := range exprInputs {
@@ -46,7 +47,7 @@ func Add(inputs ...any) *Expression {
 // The function panics if no inputs are provided or if an unexpected type is
 // provided. @alex: it could make sense to return 1 when no inputs are
 // provided actually.
-func Mul(inputs ...any) *Expression {
+func Mul[T zk.Element](inputs ...any) *Expression[T] {
 
 	if len(inputs) == 0 {
 		panic("No inputs were provided")
@@ -56,7 +57,7 @@ func Mul(inputs ...any) *Expression {
 		return nil
 	}
 
-	exprInputs := intoExprSlice(inputs...)
+	exprInputs := intoExprSlice[T](inputs...)
 
 	magnitudes := make([]int, len(exprInputs))
 	for i := range exprInputs {
@@ -76,16 +77,16 @@ func Mul(inputs ...any) *Expression {
 // If one of the provided inputs is `nil`, then the function will return `nil`.
 // The function panics if no inputs are provided or if an unexpected type is
 // provided. @alex: it could make sense to return 'a' when `bs` is empty.
-func Sub(a any, bs ...any) *Expression {
+func Sub[T zk.Element](a any, bs ...any) *Expression[T] {
 
 	if a == nil || doesContainNil(bs) {
 		return nil
 	}
 
 	var (
-		aExpr      = intoExpr(a)
-		bExpr      = intoExprSlice(bs...)
-		exprInputs = append([]*Expression{aExpr}, bExpr...)
+		aExpr      = intoExpr[T](a)
+		bExpr      = intoExprSlice[T](bs...)
+		exprInputs = append([]*Expression[T]{aExpr}, bExpr...)
 		magnitudes = make([]int, len(exprInputs))
 	)
 
@@ -102,13 +103,13 @@ func Sub(a any, bs ...any) *Expression {
 // will be converted into a [Variable] or a "field-like" object that will be
 // converted into a [Constant]. If the caller provides `nil`, the function also
 // returns nil. And any other case results in a panic.
-func Neg(x any) *Expression {
+func Neg[T zk.Element](x any) *Expression[T] {
 
 	if x == nil {
 		return nil
 	}
 
-	return intoExpr(x).Neg()
+	return intoExpr[T](x).Neg()
 }
 
 // Square returns an expression representing the squaring of an expression or of
@@ -116,13 +117,13 @@ func Neg(x any) *Expression {
 // will be converted into a [Variable] or a "field-like" object that will be
 // converted into a [Constant]. If the caller provides `nil`, the function also
 // returns nil. And any other case results in a panic.
-func Square(x any) *Expression {
+func Square[T zk.Element](x any) *Expression[T] {
 
 	if x == nil {
 		return nil
 	}
 
-	return NewProduct([]*Expression{intoExpr(x)}, []int{2})
+	return NewProduct[T]([]*Expression[T]{intoExpr[T](x)}, []int{2})
 }
 
 // Pow returns an expression representing the raising to the power "n" of an
@@ -135,7 +136,7 @@ func Square(x any) *Expression {
 // Additionally, the function requires that the provided power to be non-negative.
 // If the user, provides `0`, then the function returns 1 and if 1 is provided,
 // the function the input converted into an Expression.
-func Pow(x any, n int) *Expression {
+func Pow[T zk.Element](x any, n int) *Expression[T] {
 
 	if n < 0 {
 		utils.Panic("Pow cannot accept negative exponent")
@@ -145,7 +146,7 @@ func Pow(x any, n int) *Expression {
 		return nil
 	}
 
-	return intoExpr(x).Pow(n)
+	return intoExpr[T](x).Pow(n)
 
 }
 
@@ -157,29 +158,29 @@ func Pow(x any, n int) *Expression {
 // and converts it into an array of *Expression, by instantiating all the
 // [Variable] from the metadatas or a [Constant] if the input is field like.
 // It will panic if another type is found or if the conversion fails.
-func intoExprSlice(inputs ...any) []*Expression {
-	exprInputs := make([]*Expression, len(inputs))
+func intoExprSlice[T zk.Element](inputs ...any) []*Expression[T] {
+	exprInputs := make([]*Expression[T], len(inputs))
 	for i := range inputs {
-		exprInputs[i] = intoExpr(inputs[i])
+		exprInputs[i] = intoExpr[T](inputs[i])
 	}
 	return exprInputs
 }
 
-// This function takes either a *Expression or a Metadata or a field-like input.
+// This function takes either a *Expression[T] or a Metadata or a field-like input.
 // If it is an expression the original expression is returned, if it is a
 // Metadata, the function instantiates a [Variable] from the metadata or a
 // [Constant] if the input is field like. It will panic if another type is found
 // or if the conversion fails.
-func intoExpr(input any) *Expression {
+func intoExpr[T zk.Element](input any) *Expression[T] {
 	switch inp := input.(type) {
-	case *Expression:
+	case *Expression[T]:
 		return inp
 	case Metadata:
-		return NewVariable(inp)
+		return NewVariable[T](inp)
 	case int, uint, int64, uint64, int32, uint32, string, field.Element, fext.Element:
-		return NewConstant(inp)
+		return NewConstant[T](inp)
 	default:
-		utils.Panic("expected either a *Expression or a Metadata, but got %T", inp)
+		utils.Panic("expected either a *Expression[T] or a Metadata, but got %T", inp)
 	}
 
 	panic("unreachable")

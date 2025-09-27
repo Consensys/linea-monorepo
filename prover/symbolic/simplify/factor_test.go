@@ -2,8 +2,10 @@ package simplify
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/assert"
@@ -13,49 +15,49 @@ import (
 func TestIsFactored(t *testing.T) {
 
 	testcases := []struct {
-		Expr       *sym.Expression
-		By         *sym.Expression
+		Expr       *sym.Expression[zk.NativeElement]
+		By         *sym.Expression[zk.NativeElement]
 		IsFactored bool
-		Factor     *sym.Expression
+		Factor     *sym.Expression[zk.NativeElement]
 	}{
 		{
-			Expr:       sym.Mul(a, b, c),
-			By:         sym.Mul(a, b),
+			Expr:       sym.Mul[zk.NativeElement](a, b, c),
+			By:         sym.Mul[zk.NativeElement](a, b),
 			IsFactored: true,
 			Factor:     c,
 		},
 		{
-			Expr:       sym.Mul(a, b, c),
-			By:         sym.Mul(a, c),
+			Expr:       sym.Mul[zk.NativeElement](a, b, c),
+			By:         sym.Mul[zk.NativeElement](a, c),
 			IsFactored: true,
 			Factor:     b,
 		},
 		{
-			Expr:       sym.Mul(a, b, c),
-			By:         sym.Mul(a, d),
+			Expr:       sym.Mul[zk.NativeElement](a, b, c),
+			By:         sym.Mul[zk.NativeElement](a, d),
 			IsFactored: false,
 			Factor:     nil,
 		},
 		{
-			Expr:       sym.Add(a, b, c),
-			By:         sym.Add(a, d),
+			Expr:       sym.Add[zk.NativeElement](a, b, c),
+			By:         sym.Add[zk.NativeElement](a, d),
 			IsFactored: false,
 			Factor:     nil,
 		},
 		{
-			Expr:       sym.Add(a, b, c),
-			By:         sym.Add(a, b, b),
+			Expr:       sym.Add[zk.NativeElement](a, b, c),
+			By:         sym.Add[zk.NativeElement](a, b, b),
 			IsFactored: false,
 			Factor:     nil,
 		},
 		{
-			Expr:       sym.Mul(a, b),
-			By:         sym.Mul(a, b),
+			Expr:       sym.Mul[zk.NativeElement](a, b),
+			By:         sym.Mul[zk.NativeElement](a, b),
 			IsFactored: true,
-			Factor:     sym.NewConstant(1),
+			Factor:     sym.NewConstant[zk.NativeElement](1),
 		},
 		{
-			Expr:       sym.Mul(a, a),
+			Expr:       sym.Mul[zk.NativeElement](a, a),
 			By:         a,
 			IsFactored: true,
 			Factor:     a,
@@ -69,7 +71,7 @@ func TestIsFactored(t *testing.T) {
 			// the exponents it contains. Otherwise, we say this is a single
 			// term product with an exponent of 1.
 			groupedExp := map[fext.GenericFieldElem]int{}
-			if byProd, ok := tc.By.Operator.(sym.Product); ok {
+			if byProd, ok := tc.By.Operator.(sym.Product[zk.NativeElement]); ok {
 				for i, ex := range byProd.Exponents {
 					groupedExp[tc.By.Children[i].ESHash] = ex
 				}
@@ -90,59 +92,59 @@ func TestIsFactored(t *testing.T) {
 func TestFactorization(t *testing.T) {
 
 	var (
-		a = sym.NewDummyVar("a")
-		b = sym.NewDummyVar("b")
-		c = sym.NewDummyVar("c")
-		d = sym.NewDummyVar("d")
+		a = sym.NewDummyVar[zk.NativeElement]("a")
+		b = sym.NewDummyVar[zk.NativeElement]("b")
+		c = sym.NewDummyVar[zk.NativeElement]("c")
+		d = sym.NewDummyVar[zk.NativeElement]("d")
 	)
 
 	testCases := []struct {
-		Origin   *sym.Expression
-		Factored *sym.Expression
+		Origin   *sym.Expression[zk.NativeElement]
+		Factored *sym.Expression[zk.NativeElement]
 	}{
 		{
-			Origin: sym.Add(
-				sym.Mul(a, b),
-				sym.Mul(a, c),
-				sym.Mul(a, d),
+			Origin: sym.Add[zk.NativeElement](
+				sym.Mul[zk.NativeElement](a, b),
+				sym.Mul[zk.NativeElement](a, c),
+				sym.Mul[zk.NativeElement](a, d),
 			),
-			Factored: sym.Mul(
+			Factored: sym.Mul[zk.NativeElement](
 				a,
-				sym.Add(b, c, d),
+				sym.Add[zk.NativeElement](b, c, d),
 			),
 		},
 		{
-			Origin: sym.Add(
-				sym.Mul(a, b, b),
-				sym.Mul(a, b, c),
-				sym.Mul(a, b, d),
+			Origin: sym.Add[zk.NativeElement](
+				sym.Mul[zk.NativeElement](a, b, b),
+				sym.Mul[zk.NativeElement](a, b, c),
+				sym.Mul[zk.NativeElement](a, b, d),
 			),
-			Factored: sym.Mul(
-				a,
-				b,
-				sym.Add(b, c, d),
-			),
-		},
-		{
-			Origin: sym.Add(
-				sym.Mul(a, b),
-				sym.Mul(a, b, c),
-				sym.Mul(a, b, d),
-			),
-			Factored: sym.Mul(
+			Factored: sym.Mul[zk.NativeElement](
 				a,
 				b,
-				sym.Add(1, c, d),
+				sym.Add[zk.NativeElement](b, c, d),
 			),
 		},
 		{
-			Origin: sym.Add(
-				sym.Mul(a, b),
-				sym.Mul(a, c),
-				sym.Mul(d),
+			Origin: sym.Add[zk.NativeElement](
+				sym.Mul[zk.NativeElement](a, b),
+				sym.Mul[zk.NativeElement](a, b, c),
+				sym.Mul[zk.NativeElement](a, b, d),
 			),
-			Factored: sym.Add(
-				sym.Mul(a, sym.Add(b, c)),
+			Factored: sym.Mul[zk.NativeElement](
+				a,
+				b,
+				sym.Add[zk.NativeElement](1, c, d),
+			),
+		},
+		{
+			Origin: sym.Add[zk.NativeElement](
+				sym.Mul[zk.NativeElement](a, b),
+				sym.Mul[zk.NativeElement](a, c),
+				sym.Mul[zk.NativeElement](d),
+			),
+			Factored: sym.Add[zk.NativeElement](
+				sym.Mul[zk.NativeElement](a, sym.Add[zk.NativeElement](b, c)),
 				d,
 			),
 		},
@@ -150,7 +152,7 @@ func TestFactorization(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("test-case-%v", i), func(t *testing.T) {
-			factored := factorizeExpression(testCase.Origin, 10)
+			factored := factorizeExpression[zk.NativeElement](testCase.Origin, 10)
 			require.Equal(t, testCase.Origin.ESHash.String(), factored.ESHash.String())
 			require.NoError(t, factored.Validate())
 			assert.Equal(t, evaluateCostStat(testCase.Factored), evaluateCostStat(factored))
@@ -161,35 +163,35 @@ func TestFactorization(t *testing.T) {
 func TestFactorLinCompFromGroup(t *testing.T) {
 
 	testCases := []struct {
-		LinComb *sym.Expression
-		Group   []*sym.Expression
-		Res     *sym.Expression
+		LinComb *sym.Expression[zk.NativeElement]
+		Group   []*sym.Expression[zk.NativeElement]
+		Res     *sym.Expression[zk.NativeElement]
 	}{
 		{
-			LinComb: sym.Add(
-				sym.Mul(a, b),
-				sym.Mul(a, b, c),
-				sym.Mul(a, b, d),
+			LinComb: sym.Add[zk.NativeElement](
+				sym.Mul[zk.NativeElement](a, b),
+				sym.Mul[zk.NativeElement](a, b, c),
+				sym.Mul[zk.NativeElement](a, b, d),
 			),
-			Group: []*sym.Expression{a, b},
-			Res: sym.Mul(
+			Group: []*sym.Expression[zk.NativeElement]{a, b},
+			Res: sym.Mul[zk.NativeElement](
 				a,
 				b,
-				sym.Add(1, c, d),
+				sym.Add[zk.NativeElement](1, c, d),
 			),
 		},
 		{
-			LinComb: sym.Add(
-				sym.Mul(a, c),
-				sym.Mul(a, a, b),
+			LinComb: sym.Add[zk.NativeElement](
+				sym.Mul[zk.NativeElement](a, c),
+				sym.Mul[zk.NativeElement](a, a, b),
 				1,
 			),
-			Group: []*sym.Expression{a},
-			Res: sym.Add(
-				sym.Mul(
+			Group: []*sym.Expression[zk.NativeElement]{a},
+			Res: sym.Add[zk.NativeElement](
+				sym.Mul[zk.NativeElement](
 					a,
-					sym.Add(
-						sym.Mul(a, b),
+					sym.Add[zk.NativeElement](
+						sym.Mul[zk.NativeElement](a, b),
 						c,
 					),
 				),
@@ -201,7 +203,7 @@ func TestFactorLinCompFromGroup(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("test-case-%v", i), func(t *testing.T) {
 
-			group := map[fext.GenericFieldElem]*sym.Expression{}
+			group := map[fext.GenericFieldElem]*sym.Expression[zk.NativeElement]{}
 			for _, e := range testCase.Group {
 				group[e.ESHash] = e
 			}

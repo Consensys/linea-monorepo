@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -11,21 +12,21 @@ import (
 func TestRemoveZeroes(t *testing.T) {
 
 	var (
-		a = NewDummyVar("a")
-		b = NewDummyVar("b")
-		c = NewDummyVar("c")
+		a = NewDummyVar[zk.NativeElement]("a")
+		b = NewDummyVar[zk.NativeElement]("b")
+		c = NewDummyVar[zk.NativeElement]("c")
 	)
 
 	testCases := []struct {
-		InputVars  []*Expression
+		InputVars  []*Expression[zk.NativeElement]
 		InputMagn  []int
-		OutputVars []*Expression
+		OutputVars []*Expression[zk.NativeElement]
 		OutputMagn []int
 	}{
 		{
-			InputVars:  []*Expression{a, a, b, c, b},
+			InputVars:  []*Expression[zk.NativeElement]{a, a, b, c, b},
 			InputMagn:  []int{1, 0, 2, 0, 1},
-			OutputVars: []*Expression{a, b, b},
+			OutputVars: []*Expression[zk.NativeElement]{a, b, b},
 			OutputMagn: []int{1, 2, 1},
 		},
 	}
@@ -41,45 +42,45 @@ func TestRemoveZeroes(t *testing.T) {
 func TestExpandTerms(t *testing.T) {
 
 	var (
-		a = NewDummyVar("a")
-		b = NewDummyVar("b")
-		// c = NewDummyVar("c")
+		a = NewDummyVar[zk.NativeElement]("a")
+		b = NewDummyVar[zk.NativeElement]("b")
+		// c = NewDummyVar[zk.NativeElement]("c")
 	)
 
 	testCases := []struct {
-		InputVars  []*Expression
+		InputVars  []*Expression[zk.NativeElement]
 		InputMagn  []int
-		OutputVars []*Expression
+		OutputVars []*Expression[zk.NativeElement]
 		OutputMagn []int
-		Op         Operator
+		Op         Operator[zk.NativeElement]
 	}{
 		{
-			InputVars:  []*Expression{Add(a, b), Mul(a, b)},
+			InputVars:  []*Expression[zk.NativeElement]{Add[zk.NativeElement](a, b), Mul[zk.NativeElement](a, b)},
 			InputMagn:  []int{2, 2},
-			OutputVars: []*Expression{a, b, Mul(a, b)},
+			OutputVars: []*Expression[zk.NativeElement]{a, b, Mul[zk.NativeElement](a, b)},
 			OutputMagn: []int{2, 2, 2},
-			Op:         &LinComb{},
+			Op:         &LinComb[zk.NativeElement]{},
 		},
 		{
-			InputVars:  []*Expression{Add(a, b), Mul(a, b)},
+			InputVars:  []*Expression[zk.NativeElement]{Add[zk.NativeElement](a, b), Mul[zk.NativeElement](a, b)},
 			InputMagn:  []int{2, 2},
-			OutputVars: []*Expression{Add(a, b), a, b},
+			OutputVars: []*Expression[zk.NativeElement]{Add[zk.NativeElement](a, b), a, b},
 			OutputMagn: []int{2, 2, 2},
-			Op:         &Product{},
+			Op:         &Product[zk.NativeElement]{},
 		},
 		{
-			InputVars:  []*Expression{Add(a, b), Mul(a, b)},
+			InputVars:  []*Expression[zk.NativeElement]{Add[zk.NativeElement](a, b), Mul[zk.NativeElement](a, b)},
 			InputMagn:  []int{2, 2},
-			OutputVars: []*Expression{a, b, Mul(a, b)},
+			OutputVars: []*Expression[zk.NativeElement]{a, b, Mul[zk.NativeElement](a, b)},
 			OutputMagn: []int{2, 2, 2},
-			Op:         LinComb{},
+			Op:         LinComb[zk.NativeElement]{},
 		},
 		{
-			InputVars:  []*Expression{Add(a, b), Mul(a, b)},
+			InputVars:  []*Expression[zk.NativeElement]{Add[zk.NativeElement](a, b), Mul[zk.NativeElement](a, b)},
 			InputMagn:  []int{2, 2},
-			OutputVars: []*Expression{Add(a, b), a, b},
+			OutputVars: []*Expression[zk.NativeElement]{Add[zk.NativeElement](a, b), a, b},
 			OutputMagn: []int{2, 2, 2},
-			Op:         Product{},
+			Op:         Product[zk.NativeElement]{},
 		},
 	}
 
@@ -93,25 +94,25 @@ func TestExpandTerms(t *testing.T) {
 func TestRegroupTerms(t *testing.T) {
 
 	var (
-		a    = NewDummyVar("a")
-		b    = NewDummyVar("b")
-		c    = NewDummyVar("c")
-		zero = NewConstant(0)
+		a    = NewDummyVar[zk.NativeElement]("a")
+		b    = NewDummyVar[zk.NativeElement]("b")
+		c    = NewDummyVar[zk.NativeElement]("c")
+		zero = NewConstant[zk.NativeElement](0)
 	)
 
 	testCases := []struct {
-		InputVars  []*Expression
+		InputVars  []*Expression[zk.NativeElement]
 		InputMagn  []int
-		OutputVars []*Expression
+		OutputVars []*Expression[zk.NativeElement]
 		OutputMagn []int
 		ConstVars  []fext.GenericFieldElem
 		ConstMagn  []int
-		Op         Operator
+		Op         Operator[zk.NativeElement]
 	}{
 		{
-			InputVars:  []*Expression{a, b, c, b, a, c, zero},
+			InputVars:  []*Expression[zk.NativeElement]{a, b, c, b, a, c, zero},
 			InputMagn:  []int{1, 1, 1, 1, 1, 1, 1},
-			OutputVars: []*Expression{a, b, c},
+			OutputVars: []*Expression[zk.NativeElement]{a, b, c},
 			OutputMagn: []int{2, 2, 2},
 			ConstVars:  []fext.GenericFieldElem{fext.GenericFieldZero()},
 			ConstMagn:  []int{1},

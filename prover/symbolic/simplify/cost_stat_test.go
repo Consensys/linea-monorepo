@@ -3,24 +3,25 @@ package simplify
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/assert"
 )
 
 // Set of common dummy variables. Useful for testing
 var (
-	a = sym.NewDummyVar("a")
-	b = sym.NewDummyVar("b")
-	c = sym.NewDummyVar("c")
-	d = sym.NewDummyVar("d")
-	e = sym.NewDummyVar("e")
+	a = sym.NewDummyVar[zk.NativeElement]("a")
+	b = sym.NewDummyVar[zk.NativeElement]("b")
+	c = sym.NewDummyVar[zk.NativeElement]("c")
+	d = sym.NewDummyVar[zk.NativeElement]("d")
+	e = sym.NewDummyVar[zk.NativeElement]("e")
 )
 
 // Build expressions and checks that cost-stats works properly on them
 func TestCostStat(t *testing.T) {
 
 	testcases := []struct {
-		Expr      *sym.Expression
+		Expr      *sym.Expression[zk.NativeElement]
 		CostStats costStats
 	}{
 		{

@@ -3,11 +3,12 @@ package symbolic
 import (
 	"fmt"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -19,9 +20,9 @@ import (
 	Schwartz-Zippel lemma
 */
 
-type PolyEval struct{}
+type PolyEval[T zk.Element] struct{}
 
-func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
+func NewPolyEval[T zk.Element](x *Expression[T], coeffs []*Expression[T]) *Expression[T] {
 
 	/*
 		No coeff is unexpected. If this panics on a legit use-case,
@@ -45,10 +46,10 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 	}
 
 	esh := polyext.EvalUnivariateMixed(eshashes, x.ESHash)
-	children := append([]*Expression{x}, coeffs...)
+	children := append([]*Expression[T]{x}, coeffs...)
 
-	return &Expression{
-		Operator: PolyEval{},
+	return &Expression[T]{
+		Operator: PolyEval[T]{},
 		Children: children,
 		ESHash:   esh,
 	}
@@ -57,14 +58,14 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 /*
 Returns the degree of the operation given, as input, the degree of the children
 */
-func (PolyEval) Degree(inputDegrees []int) int {
+func (PolyEval[T]) Degree(inputDegrees []int) int {
 	return utils.Max(inputDegrees...)
 }
 
 /*
 Evaluates a polynomial evaluation
 */
-func (PolyEval) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+func (PolyEval[T]) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.
@@ -75,7 +76,7 @@ func (PolyEval) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 /*
 Validates that the LC is well-formed
 */
-func (PolyEval) Validate(expr *Expression) error {
+func (PolyEval[T]) Validate(expr *Expression[T]) error {
 	if len(expr.Children) < 2 {
 		return fmt.Errorf("poly eval of degree 0")
 	}
@@ -86,17 +87,22 @@ func (PolyEval) Validate(expr *Expression) error {
 Evaluate the expression in a gnark circuit
 Does not support vector evaluation
 */
-func (PolyEval) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (PolyEval[T]) GnarkEval(api frontend.API, inputs []T) T {
 	/*
 		We use the Horner method
 	*/
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
+
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
 
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res = api.Mul(res, x)
+		res = *apiGen.Mul(&res, &x)
 		c := inputs[i]
-		res = api.Add(res, c)
+		res = *apiGen.Add(&res, &c)
 	}
 
 	return res
@@ -106,25 +112,30 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend
 EvaluateExt the expression in a gnark circuit
 Does not support vector evaluation
 */
-func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (PolyEval[T]) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen[T]) gnarkfext.E4Gen[T] {
 	/*
 		We use the Horner method
 	*/
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
 
+	e4Api, err := gnarkfext.NewExt4[T](api)
+	if err != nil {
+
+	}
+
 	// outerApi := gnarkfext.NewExtApi(api)
 
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res.Mul(api, res, x)
+		res = *e4Api.Mul(&res, &x)
 		c := inputs[i]
-		res.Add(api, res, c)
+		res = *e4Api.Add(&res, &c)
 	}
 
 	return res
 }
 
-func (PolyEval) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
+func (PolyEval[T]) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.
@@ -132,10 +143,10 @@ func (PolyEval) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
 	return sv.LinearCombinationExt(inputs[1:], x)
 }
 
-func (PolyEval) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
+func (PolyEval[T]) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
 	if sv.AreAllBase(inputs) {
-		return PolyEval{}.Evaluate(inputs)
+		return PolyEval[T]{}.Evaluate(inputs)
 	} else {
-		return PolyEval{}.EvaluateExt(inputs)
+		return PolyEval[T]{}.EvaluateExt(inputs)
 	}
 }

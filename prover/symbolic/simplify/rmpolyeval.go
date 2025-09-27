@@ -1,15 +1,16 @@
 package simplify
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 // removePolyEval rewrites all the polyeval as an equivalent sums of products
-func removePolyEval(e *sym.Expression) *sym.Expression {
+func removePolyEval[T zk.Element](e *sym.Expression[T]) *sym.Expression[T] {
 
-	constructor := func(oldExpr *sym.Expression, newChildren []*sym.Expression) *sym.Expression {
+	constructor := func(oldExpr *sym.Expression[T], newChildren []*sym.Expression[T]) *sym.Expression[T] {
 
-		_, ok := oldExpr.Operator.(sym.PolyEval)
+		_, ok := oldExpr.Operator.(sym.PolyEval[T])
 		if !ok {
 			return oldExpr.SameWithNewChildren(newChildren)
 		}
@@ -28,10 +29,10 @@ func removePolyEval(e *sym.Expression) *sym.Expression {
 			// intermediate terms into a single term. The intermediates are useful because
 			// they tell the evaluator to reuse the intermediate terms instead of
 			// computing x^i for every term.
-			monomialTerms[i] = any(sym.NewProduct([]*sym.Expression{cs[i], x}, []int{1, i}))
+			monomialTerms[i] = any(sym.NewProduct([]*sym.Expression[T]{cs[i], x}, []int{1, i}))
 		}
 
-		acc := sym.Add(monomialTerms...)
+		acc := sym.Add[T](monomialTerms...)
 
 		if oldExpr.ESHash != acc.ESHash {
 			panic("ESH was altered")

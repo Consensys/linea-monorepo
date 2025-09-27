@@ -4,49 +4,50 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 )
 
 // Constant is an implementation of [Operator] which represents a constant value
-type Constant struct {
+type Constant[T zk.Element] struct {
 	Val fext.GenericFieldElem
 }
 
 // Degree implements the [Operator] interface
-func (Constant) Degree([]int) int {
+func (Constant[T]) Degree([]int) int {
 	panic("we never call it for a constant")
 }
 
 // Evaluates implements the [Operator] interface
-func (c Constant) Evaluate([]sv.SmartVector) sv.SmartVector {
+func (c Constant[T]) Evaluate([]sv.SmartVector) sv.SmartVector {
 	panic("we never call it for a constant")
 }
 
-func (c Constant) EvaluateExt([]sv.SmartVector) sv.SmartVector {
+func (c Constant[T]) EvaluateExt([]sv.SmartVector) sv.SmartVector {
 	panic("we never call EvaluateExt for a constant")
 }
 
-func (c Constant) EvaluateMixed([]sv.SmartVector) sv.SmartVector {
+func (c Constant[T]) EvaluateMixed([]sv.SmartVector) sv.SmartVector {
 	panic("we never call EvaluateMixed for a constant")
 }
 
 // GnarkEval implements the [Operator] interface.
-func (c Constant) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (c Constant[T]) GnarkEval(api frontend.API, inputs []T) T {
 	panic("we never call it for a constant")
 }
 
 // GnarkEvalExt implements the [Operator] interface.
-func (c Constant) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (c Constant[T]) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen[T]) gnarkfext.E4Gen[T] {
 	panic("we never call it for a constant")
 }
 
 // NewConstant creates a new [Constant]. The function admits any input types
 // that is either: field.Element, int, uint or decimal string.
-func NewConstant(val interface{}) *Expression {
+func NewConstant[T zk.Element](val interface{}) *Expression[T] {
 	var x fext.Element
 	if _, err := fext.SetInterface(&x, val); err != nil {
 		panic(err)
@@ -54,9 +55,9 @@ func NewConstant(val interface{}) *Expression {
 
 	newHash := fext.NewMinimalESHashFromExt(&x)
 	//Create the expression
-	res := &Expression{
-		Operator: Constant{Val: *newHash},
-		Children: []*Expression{},
+	res := &Expression[T]{
+		Operator: Constant[T]{Val: *newHash},
+		Children: []*Expression[T]{},
 		ESHash:   *new(fext.GenericFieldElem).Set(newHash),
 		IsBase:   fext.IsBase(&x),
 	}
@@ -66,7 +67,7 @@ func NewConstant(val interface{}) *Expression {
 /*
 Validate implements the [Operator] interface.
 */
-func (c Constant) Validate(expr *Expression) error {
+func (c Constant[T]) Validate(expr *Expression[T]) error {
 	if !reflect.DeepEqual(c, expr.Operator) {
 		panic("expr.operator != c")
 	}

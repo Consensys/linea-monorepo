@@ -4,18 +4,19 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExp(t *testing.T) {
 
 	getdeg := func(interface{}) int { return 1 }
-	x := NewDummyVar("x")
-	y := NewDummyVar("y")
+	x := NewDummyVar[zk.NativeElement]("x")
+	y := NewDummyVar[zk.NativeElement]("y")
 
 	t.Run("mul constant", func(t *testing.T) {
 		// x time y
-		expr := x.Mul(NewConstant(1))
+		expr := x.Mul(NewConstant[zk.NativeElement](1))
 		board := expr.Board()
 		deg := board.Degree(getdeg)
 		require.Equal(t, deg, 1)
@@ -73,7 +74,7 @@ func TestExp(t *testing.T) {
 		expr := x.Pow(5)
 		expr.AssertValid()
 		require.Lenf(t, expr.Children, 1, "for input %v\n", 5)
-		require.IsType(t, expr.Operator, Product{})
+		require.IsType(t, expr.Operator, Product[zk.NativeElement]{})
 		board := expr.Board()
 		deg := board.Degree(getdeg)
 		require.Equal(t, deg, 5)
@@ -84,7 +85,7 @@ func TestExp(t *testing.T) {
 			expr := x.Pow(i)
 			expr.AssertValid()
 			require.Lenf(t, expr.Children, 1, "for input %v\n", i)
-			require.IsType(t, expr.Operator, Product{})
+			require.IsType(t, expr.Operator, Product[zk.NativeElement]{})
 			board := expr.Board()
 			deg := board.Degree(getdeg)
 			require.Equal(t, deg, i)
@@ -92,8 +93,8 @@ func TestExp(t *testing.T) {
 	})
 
 	t.Run("prod with zero coeffs", func(t *testing.T) {
-		expr := NewProduct([]*Expression{x, y}, []int{0, 0})
-		require.Equal(t, NewConstant(1), expr)
+		expr := NewProduct([]*Expression[zk.NativeElement]{x, y}, []int{0, 0})
+		require.Equal(t, NewConstant[zk.NativeElement](1), expr)
 	})
 
 }

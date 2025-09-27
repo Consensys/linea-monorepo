@@ -6,7 +6,7 @@ package symbolic
 //
 // Deprecated: Use [Add] instead. In the future, we will make this function
 // completely internal.
-func (expr *Expression) Add(other *Expression) *Expression {
+func (expr *Expression[T]) Add(other *Expression[T]) *Expression[T] {
 
 	// This happens if the zkEVM returns a poisoned variable and
 	// this variable gets used in an expression in either a global
@@ -18,14 +18,14 @@ func (expr *Expression) Add(other *Expression) *Expression {
 		return nil
 	}
 
-	return NewLinComb([]*Expression{expr, other}, []int{1, 1})
+	return NewLinComb([]*Expression[T]{expr, other}, []int{1, 1})
 
 }
 
 // Get the expression obtained by multiplying two expressions together
 //
 // Deprecated: Use [Mul] instead as this function will be made private.
-func (expr *Expression) Mul(other *Expression) *Expression {
+func (expr *Expression[T]) Mul(other *Expression[T]) *Expression[T] {
 
 	// This happens if the zkEVM returns a poisoned variable and
 	// this variable gets used in an expression in either a global
@@ -37,13 +37,13 @@ func (expr *Expression) Mul(other *Expression) *Expression {
 		return nil
 	}
 
-	return NewProduct([]*Expression{expr, other}, []int{1, 1})
+	return NewProduct([]*Expression[T]{expr, other}, []int{1, 1})
 }
 
 // Returns a negation of expr
 //
 // Deprecated: Use [Neg] instead of this function as it will be made private.
-func (expr *Expression) Neg() *Expression {
+func (expr *Expression[T]) Neg() *Expression[T] {
 
 	// This happens if the zkEVM returns a poisoned variable and
 	// this variable gets used in an expression in either a global
@@ -56,7 +56,7 @@ func (expr *Expression) Neg() *Expression {
 	}
 
 	// Otherwise, wrap it in a singleTerm LC
-	return NewLinComb([]*Expression{expr}, []int{-1})
+	return NewLinComb([]*Expression[T]{expr}, []int{-1})
 }
 
 /*
@@ -64,7 +64,7 @@ Substract two expressions
 
 Deprecated: Use [Sub] instead of this function as it will be made private.
 */
-func (f *Expression) Sub(other *Expression) *Expression {
+func (f *Expression[T]) Sub(other *Expression[T]) *Expression[T] {
 
 	// This happens if the zkEVM returns a poisoned variable and
 	// this variable gets used in an expression in either a global
@@ -76,7 +76,7 @@ func (f *Expression) Sub(other *Expression) *Expression {
 		return nil
 	}
 
-	return NewLinComb([]*Expression{f, other}, []int{1, -1})
+	return NewLinComb([]*Expression[T]{f, other}, []int{1, -1})
 }
 
 /*
@@ -84,7 +84,7 @@ Square an expression
 
 Deprecated: Use [Square] instead of this function as it will be made private.
 */
-func (f *Expression) Square() *Expression {
+func (f *Expression[T]) Square() *Expression[T] {
 
 	// This happens if the zkEVM returns a poisoned variable and
 	// this variable gets used in an expression in either a global
@@ -96,7 +96,7 @@ func (f *Expression) Square() *Expression {
 		return nil
 	}
 
-	return NewProduct([]*Expression{f}, []int{2})
+	return NewProduct([]*Expression[T]{f}, []int{2})
 }
 
 /*
@@ -104,7 +104,7 @@ Square an expression
 
 // Deprecated: Use [Pow] instead of this function as it will be made private.
 */
-func (f *Expression) Pow(n int) *Expression {
+func (f *Expression[T]) Pow(n int) *Expression[T] {
 
 	if f == nil {
 		return nil
@@ -112,5 +112,5 @@ func (f *Expression) Pow(n int) *Expression {
 
 	f.AssertValid()
 
-	return NewProduct([]*Expression{f}, []int{n})
+	return NewProduct([]*Expression[T]{f}, []int{n})
 }

@@ -3,13 +3,14 @@ package symbolic
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBoarding(t *testing.T) {
 
-	x := NewDummyVar("x")
-	y := NewDummyVar("y")
+	x := NewDummyVar[zk.NativeElement]("x")
+	y := NewDummyVar[zk.NativeElement]("y")
 
 	{
 		// Simple case : x + y

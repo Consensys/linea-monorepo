@@ -2,19 +2,21 @@ package simplify
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math"
 	"sort"
 	"sync"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
-// factorizeExpression attempt to simplify the expression by identifying common
+// factorizeExpression[T] attempt to simplify the expression by identifying common
 // factors within sums and factor them into a single term.
-func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
+func factorizeExpression[T zk.Element](expr *sym.Expression[T], iteration int) *sym.Expression[T] {
 	res := expr
 	initEsh := expr.ESHash
 	alreadyWalked := sync.Map{}
@@ -26,14 +28,15 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 
 		scoreInit := evaluateCostStat(res)
 
-		res = res.ReconstructBottomUp(func(lincomb *sym.Expression, newChildren []*sym.Expression) *sym.Expression {
+		res = res.ReconstructBottomUp(func(lincomb *sym.Expression[T], newChildren []*sym.Expression[T]) *sym.Expression[T] {
+
 			// Time save, we reuse the results we got for that particular node.
 			if ret, ok := alreadyWalked.Load(lincomb.ESHash); ok {
-				return ret.(*sym.Expression)
+				return ret.(*sym.Expression[T])
 			}
 
 			// Incorporate the new children inside of the expression to account
-			// for them.
+			// 	// for them.
 			new := lincomb.SameWithNewChildren(newChildren)
 			// To ensure that it is not accessed anymore. Note that this does
 			// not mutate the input argument but makes it inaccessible to the
@@ -48,7 +51,7 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 			// The choice of 100 is purely heuristic and is not meant to be
 			// actually met.
 			for k := 0; k < 100; k++ {
-				_, ok := new.Operator.(sym.LinComb)
+				_, ok := new.Operator.(sym.LinComb[T])
 				if !ok {
 					return new
 				}
@@ -63,7 +66,7 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 				cacheKey := fmt.Sprintf("%v-%v", new.ESHash, group)
 
 				if cachedResult, ok := factorMemo.Load(cacheKey); ok {
-					new = cachedResult.(*sym.Expression)
+					new = cachedResult.(*sym.Expression[T])
 
 				} else {
 					new = factorLinCompFromGroup(new, group)
@@ -100,10 +103,10 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 //
 // The childrenSet is used as an exclusion set, the function shall not return
 // children that are already in the children set.
-func rankChildren(
-	parents []*sym.Expression,
-	childrenSet map[fext.GenericFieldElem]*sym.Expression,
-) []*sym.Expression {
+func rankChildren[T zk.Element](
+	parents []*sym.Expression[T],
+	childrenSet map[fext.GenericFieldElem]*sym.Expression[T],
+) []*sym.Expression[T] {
 
 	// List all the grand-children of the expression whose parents are
 	// products and counts the number of occurences by summing the exponents.
@@ -113,11 +116,11 @@ func rankChildren(
 	// at the end of the factorization routine. The preallocation value is
 	// purely heuristic to avoid successive allocations.
 	var relevantGdChildrenCnt map[fext.GenericFieldElem]int
-	var uniqueChildrenList []*sym.Expression
+	var uniqueChildrenList []*sym.Expression[T]
 
 	for _, p := range parents {
 
-		prod, ok := p.Operator.(sym.Product)
+		prod, ok := p.Operator.(sym.Product[T])
 		if !ok {
 			continue
 		}
@@ -137,7 +140,7 @@ func rankChildren(
 
 			if relevantGdChildrenCnt == nil {
 				relevantGdChildrenCnt = make(map[fext.GenericFieldElem]int, len(parents)+2)
-				uniqueChildrenList = make([]*sym.Expression, 0, len(parents)+2)
+				uniqueChildrenList = make([]*sym.Expression[T], 0, len(parents)+2)
 			}
 
 			if _, ok := relevantGdChildrenCnt[c.ESHash]; !ok {
@@ -164,10 +167,10 @@ func rankChildren(
 // than one parent. The finding is based on a greedy algorithm. We iteratively
 // add nodes in the group so that the number of common parents decreases as
 // slowly as possible.
-func findGdChildrenGroup(expr *sym.Expression) map[fext.GenericFieldElem]*sym.Expression {
+func findGdChildrenGroup[T zk.Element](expr *sym.Expression[T]) map[fext.GenericFieldElem]*sym.Expression[T] {
 
 	curParents := expr.Children
-	childrenSet := map[fext.GenericFieldElem]*sym.Expression{}
+	childrenSet := map[fext.GenericFieldElem]*sym.Expression[T]{}
 
 	ranked := rankChildren(curParents, childrenSet)
 
@@ -200,12 +203,12 @@ func findGdChildrenGroup(expr *sym.Expression) map[fext.GenericFieldElem]*sym.Ex
 // filterParentsWithChildren returns a filtered list of parents who have at
 // least one child with the given GenericFieldElem. The function allocates a new list
 // of parents and returns it without mutating he original list.
-func filterParentsWithChildren(
-	parents []*sym.Expression,
+func filterParentsWithChildren[T zk.Element](
+	parents []*sym.Expression[T],
 	childEsh fext.GenericFieldElem,
-) []*sym.Expression {
+) []*sym.Expression[T] {
 
-	res := make([]*sym.Expression, 0, len(parents))
+	res := make([]*sym.Expression[T], 0, len(parents))
 	for _, p := range parents {
 		for _, c := range p.Children {
 			if c.ESHash == childEsh {
@@ -220,27 +223,27 @@ func filterParentsWithChildren(
 
 // factorLinCompFromGroup rebuilds lincomb by factoring it using `group` to
 // determine the best common factor.
-func factorLinCompFromGroup(
-	lincom *sym.Expression,
-	group map[fext.GenericFieldElem]*sym.Expression,
-) *sym.Expression {
+func factorLinCompFromGroup[T zk.Element](
+	lincom *sym.Expression[T],
+	group map[fext.GenericFieldElem]*sym.Expression[T],
+) *sym.Expression[T] {
 
 	var (
 
 		// numTerms indicates the number of children in the linear-combination
 		numTerms = len(lincom.Children)
 
-		lcCoeffs = lincom.Operator.(sym.LinComb).Coeffs
+		lcCoeffs = lincom.Operator.(sym.LinComb[T]).Coeffs
 		// Build the common term by taking the max of the exponents
 		exponentsOfGroup, groupExpr = optimRegroupExponents(lincom.Children, group)
 
 		// Separate the non-factored terms
-		nonFactoredTerms  = make([]*sym.Expression, 0, numTerms)
+		nonFactoredTerms  = make([]*sym.Expression[T], 0, numTerms)
 		nonFactoredCoeffs = make([]int, 0, numTerms)
 
 		// The factored terms of the linear combination divided by the common
 		// group factor
-		factoredTerms  = make([]*sym.Expression, 0, numTerms)
+		factoredTerms  = make([]*sym.Expression[T], 0, numTerms)
 		factoredCoeffs = make([]int, 0, numTerms)
 	)
 
@@ -265,13 +268,13 @@ func factorLinCompFromGroup(
 	}
 
 	factoredExpr := sym.NewLinComb(factoredTerms, factoredCoeffs)
-	res := sym.Mul(factoredExpr, groupExpr)
+	res := sym.Mul[T](factoredExpr, groupExpr)
 
 	// This is a conditional because it might be that the linear combination is
 	// fully factorized by the found factor.
 	if len(nonFactoredTerms) > 0 {
 		nonFactoredExpr := sym.NewLinComb(nonFactoredTerms, nonFactoredCoeffs)
-		res = sym.Add(res, nonFactoredExpr)
+		res = sym.Add[T](res, nonFactoredExpr)
 	}
 
 	return res
@@ -286,12 +289,12 @@ func factorLinCompFromGroup(
 //
 // Fortunately, this is guaranteed if the expression was constructed via
 // [sym.NewLinComb] or [sym.NewProduct] which is almost mandatory.
-func isFactored(e *sym.Expression, exponentsOfGroup map[fext.GenericFieldElem]int) (
-	factored *sym.Expression,
+func isFactored[T zk.Element](e *sym.Expression[T], exponentsOfGroup map[fext.GenericFieldElem]int) (
+	factored *sym.Expression[T],
 	success bool,
 ) {
 
-	op, isProduct := e.Operator.(sym.Product)
+	op, isProduct := e.Operator.(sym.Product[T])
 	if !isProduct {
 		return nil, false
 	}
@@ -324,20 +327,20 @@ func isFactored(e *sym.Expression, exponentsOfGroup map[fext.GenericFieldElem]in
 // optimRegroupExponents returns an expression maximizing the exponents of an
 // other expression. Panics if one of the parent is not a product or does not
 // have the whole group as children.
-func optimRegroupExponents(
-	parents []*sym.Expression,
-	group map[fext.GenericFieldElem]*sym.Expression,
+func optimRegroupExponents[T zk.Element](
+	parents []*sym.Expression[T],
+	group map[fext.GenericFieldElem]*sym.Expression[T],
 ) (
 	exponentMap map[fext.GenericFieldElem]int,
-	groupedTerm *sym.Expression,
+	groupedTerm *sym.Expression[T],
 ) {
 
 	exponentMap = make(map[fext.GenericFieldElem]int, 16)
-	canonTermList := make([]*sym.Expression, 0, 16) // built in deterministic order
+	canonTermList := make([]*sym.Expression[T], 0, 16) // built in deterministic order
 
 	for _, p := range parents {
 
-		op, isProd := p.Operator.(sym.Product)
+		op, isProd := p.Operator.(sym.Product[T])
 		if !isProd {
 			continue
 		}

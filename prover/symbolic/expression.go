@@ -5,34 +5,35 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
-// anchoredExpression represents symbolic expression pinned into an overarching
+// anchoredExpression[T] represents symbolic expression pinned into an overarching
 // [ExpressionBoard] expression.
-type anchoredExpression struct {
-	Board  *ExpressionBoard
+type anchoredExpression[T zk.Element] struct {
+	Board  *ExpressionBoard[T]
 	ESHash fext.GenericFieldElem
 }
 
-// Expression represents a symbolic arithmetic expression. Expression can be
+// Expression[T] represents a symbolic arithmetic expression. Expression[T] can be
 // built using the [Add], [Mul], [Sub] etc... package. However, they can only
 // represent polynomial expressions: inversion is not supported.
 //
 // Expressions is structured like a tree where each node performs an elementary
 // operation.
 //
-// Expression cannot be directly evaluated with an assignment. To do that, the
+// Expression[T] cannot be directly evaluated with an assignment. To do that, the
 // expression must be first converted into a [BoardedExpression] using the
 // [Expression.Board] method.
-type Expression struct {
-	// ESHash stands for Expression Sensitive Hash and is an identifier for
+type Expression[T zk.Element] struct {
+	// ESHash stands for Expression[T] Sensitive Hash and is an identifier for
 	// the expression. Specifically, it represents what the expression computes
 	// rather than how the expression is structured.
 	//
@@ -47,17 +48,17 @@ type Expression struct {
 	// 		- ESHash(a: variable) = H(a.String())
 	ESHash fext.GenericFieldElem
 	// Children stores the list of all the sub-expressions the current
-	// Expression uses as operands.
-	Children []*Expression
+	// Expression[T] uses as operands.
+	Children []*Expression[T]
 	// Operator stores information relative to operation that the current
-	// Expression performs on its inputs.
-	Operator Operator
+	// Expression[T] performs on its inputs.
+	Operator Operator[T]
 	IsBase   bool
 }
 
 // Operator specifies an elementary operation a node of an [Expression] performs
 // (Add, Mul, Sub ...)
-type Operator interface {
+type Operator[T zk.Element] interface {
 	// Evaluate returns an evaluation of the operator from a list of assignments:
 	// one for each operand (children) of the expression.
 	Evaluate([]sv.SmartVector) sv.SmartVector
@@ -67,12 +68,12 @@ type Operator interface {
 	EvaluateMixed([]sv.SmartVector) sv.SmartVector
 	// Validate performs a sanity-check of the expression the Operator belongs
 	// to.
-	Validate(e *Expression) error
+	Validate(e *Expression[T]) error
 	// Returns the polynomial degree of the expression.
 	Degree([]int) int
 	// GnarkEval returns an evaluation of the operator in a gnark circuit.
-	GnarkEval(frontend.API, []frontend.Variable) frontend.Variable
-	GnarkEvalExt(frontend.API, []gnarkfext.Element) gnarkfext.Element
+	GnarkEval(frontend.API, []T) T
+	GnarkEvalExt(frontend.API, []gnarkfext.E4Gen[T]) gnarkfext.E4Gen[T]
 }
 
 type OperatorWithResult interface {
@@ -80,24 +81,24 @@ type OperatorWithResult interface {
 }
 
 // Board pins down the expression into an ExpressionBoard. This converts the
-// Expression into a DAG and runs a topological sorting algorithm over the
+// Expression[T] into a DAG and runs a topological sorting algorithm over the
 // nodes of the expression. This has the effect of removing the duplicates
 // nodes and making the expression more efficient to evaluate.
-func (f *Expression) Board() ExpressionBoard {
-	board := emptyBoard()
+func (f *Expression[T]) Board() ExpressionBoard[T] {
+	board := emptyBoard[T]()
 	f.anchor(&board)
 	return board
 }
 
-// anchor pins down the Expression onto an ExpressionBoard.
-func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
+// anchor pins down the Expression[T] onto an ExpressionBoard.
+func (f *Expression[T]) anchor(b *ExpressionBoard[T]) anchoredExpression[T] {
 
 	/*
 		Check if the expression is a duplicate of another expression bearing
 		the same GenericFieldElem and
 	*/
 	if _, ok := b.ESHashesToPos[f.ESHash]; ok {
-		return anchoredExpression{Board: b, ESHash: f.ESHash}
+		return anchoredExpression[T]{Board: b, ESHash: f.ESHash}
 	}
 
 	/*
@@ -127,11 +128,11 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 		We extend the outer-list of Nodes if necessary.
 	*/
 	if len(b.Nodes) <= newLevel {
-		b.Nodes = append(b.Nodes, []Node{})
+		b.Nodes = append(b.Nodes, []Node[T]{})
 	}
 	NewNodeID := newNodeID(newLevel, len(b.Nodes[newLevel]))
 
-	newNode := Node{
+	newNode := Node[T]{
 		ESHash:   f.ESHash,
 		Parents:  []nodeID{},
 		Children: childrenIDs,
@@ -153,7 +154,7 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 	/*
 		And returns the new Anchored expression
 	*/
-	return anchoredExpression{
+	return anchoredExpression[T]{
 		ESHash: f.ESHash,
 		Board:  b,
 	}
@@ -161,7 +162,7 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 
 // Validate operates a list of sanity-checks over the current expression to
 // assess its well-formedness. It returns an error if the check fails.
-func (e *Expression) Validate() error {
+func (e *Expression[T]) Validate() error {
 	if e.IsBase {
 		return e.ValidateBase()
 	} else {
@@ -169,7 +170,7 @@ func (e *Expression) Validate() error {
 	}
 }
 
-func (e *Expression) ValidateExt() error {
+func (e *Expression[T]) ValidateExt() error {
 
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
@@ -201,7 +202,7 @@ func (e *Expression) ValidateExt() error {
 	return nil
 }
 
-func (e *Expression) ValidateBase() error {
+func (e *Expression[T]) ValidateBase() error {
 
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
@@ -235,7 +236,7 @@ func (e *Expression) ValidateBase() error {
 }
 
 // Same as [Expression.Validate] but panics on error.
-func (e *Expression) AssertValid() {
+func (e *Expression[T]) AssertValid() {
 	if err := e.Validate(); err != nil {
 		panic(err)
 	}
@@ -243,35 +244,35 @@ func (e *Expression) AssertValid() {
 
 // Replay constructs an analogous expression. Replacing all the [Variable] by
 // those given in the translation map.
-func (e *Expression) Replay(translationMap collection.Mapping[string, *Expression]) (res *Expression) {
+func (e *Expression[T]) Replay(translationMap collection.Mapping[string, *Expression[T]]) (res *Expression[T]) {
 
 	switch op := e.Operator.(type) {
 	// Constant
-	case Constant:
-		return NewConstant(op.Val)
+	case Constant[T]:
+		return NewConstant[T](op.Val)
 	// Variable
-	case Variable:
+	case Variable[T]:
 		res := translationMap.MustGet(op.Metadata.String())
 		return res
 	// LinCombExt
-	case LinComb:
-		children := make([]*Expression, len(e.Children))
+	case LinComb[T]:
+		children := make([]*Expression[T], len(e.Children))
 		for i, c := range e.Children {
 			children[i] = c.Replay(translationMap)
 		}
 		res := NewLinComb(children, op.Coeffs)
 		return res
 	// ProductExt
-	case Product:
-		children := make([]*Expression, len(e.Children))
+	case Product[T]:
+		children := make([]*Expression[T], len(e.Children))
 		for i, c := range e.Children {
 			children[i] = c.Replay(translationMap)
 		}
 		res := NewProduct(children, op.Exponents)
 		return res
 	// LinearCombinationExt
-	case PolyEval:
-		children := make([]*Expression, len(e.Children))
+	case PolyEval[T]:
+		children := make([]*Expression[T], len(e.Children))
 		for i, c := range e.Children {
 			children[i] = c.Replay(translationMap)
 		}
@@ -286,24 +287,24 @@ func (e *Expression) Replay(translationMap collection.Mapping[string, *Expressio
 // `expr`. This is useful for symbolic expression simplication routines etc...
 // The constructor function must not modify the value of the input expression
 // nor it children.
-func (e *Expression) ReconstructBottomUp(
-	constructor func(e *Expression, children []*Expression) (new *Expression),
-) *Expression {
+func (e *Expression[T]) ReconstructBottomUp(
+	constructor func(e *Expression[T], children []*Expression[T]) (new *Expression[T]),
+) *Expression[T] {
 
 	switch e.Operator.(type) {
 	// Constant, indicating we reached the bottom of the expression. Thus it
 	// applies the mutator and returns.
-	case Constant, Variable:
-		return constructor(e, []*Expression{})
+	case Constant[T], Variable[T]:
+		return constructor(e, []*Expression[T]{})
 	// LinCombExt or ProductExt or LinearCombinationExt. This is an intermediate expression.
-	case LinComb, Product, PolyEval:
-		children := make([]*Expression, len(e.Children))
+	case LinComb[T], Product[T], PolyEval[T]:
+		children := make([]*Expression[T], len(e.Children))
 		// var wg sync.WaitGroup
 		// wg.Add(len(e.Children))
 
 		for i, c := range e.Children {
 			// TODO @gbotrel next fix that --> too many go routines.
-			// go func(i int, c *Expression) {
+			// go func(i int, c *Expression[T]){ {
 			// 	defer wg.Done()
 			children[i] = c.ReconstructBottomUp(constructor)
 			// }(i, c)
@@ -318,22 +319,22 @@ func (e *Expression) ReconstructBottomUp(
 
 // ReconstructBottomUpSingleThreaded is the same as [Expression.ReconstructBottomUp]
 // but it is single threaded.
-func (e *Expression) ReconstructBottomUpSingleThreaded(
-	constructor func(e *Expression, children []*Expression) (new *Expression),
-) *Expression {
+func (e *Expression[T]) ReconstructBottomUpSingleThreaded(
+	constructor func(e *Expression[T], children []*Expression[T]) (new *Expression[T]),
+) *Expression[T] {
 
 	switch e.Operator.(type) {
 	// Constant, indicating we reached the bottom of the expression. Thus it
 	// applies the mutator and returns.
-	case Constant, Variable:
-		x := constructor(e, []*Expression{})
+	case Constant[T], Variable[T]:
+		x := constructor(e, []*Expression[T]{})
 		if x == nil {
 			panic(x)
 		}
 		return x
 	// LinComb or Product or PolyEval. This is an intermediate expression.
-	case LinComb, Product, PolyEval:
-		children := make([]*Expression, len(e.Children))
+	case LinComb[T], Product[T], PolyEval[T]:
+		children := make([]*Expression[T], len(e.Children))
 		for i, c := range e.Children {
 			children[i] = c.ReconstructBottomUp(constructor)
 			if children[i] == nil {
@@ -354,20 +355,20 @@ func (e *Expression) ReconstructBottomUpSingleThreaded(
 // receiver expression but swapping the children with the new ones instead. It
 // is common for rebuilding expressions. If the expression is a variable or a
 // constant, it returns itself.
-func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression {
+func (e *Expression[T]) SameWithNewChildren(newChildren []*Expression[T]) *Expression[T] {
 
 	switch op := e.Operator.(type) {
 	// Constant
-	case Constant, Variable:
+	case Constant[T], Variable[T]:
 		return e
 	// LinCombExt
-	case LinComb:
+	case LinComb[T]:
 		return NewLinComb(newChildren, op.Coeffs)
 	// ProductExt
-	case Product:
+	case Product[T]:
 		return NewProduct(newChildren, op.Exponents)
 	// LinearCombinationExt
-	case PolyEval:
+	case PolyEval[T]:
 		return NewPolyEval(newChildren[0], newChildren[1:])
 	default:
 		panic("unexpected type: " + reflect.TypeOf(op).String())
@@ -376,7 +377,7 @@ func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression 
 
 // MarshalJSONString returns a JSON string returns a JSON string representation
 // of the expression.
-func (e *Expression) MarshalJSONString() string {
+func (e *Expression[T]) MarshalJSONString() string {
 	js, jsErr := json.MarshalIndent(e, "", "  ")
 	if jsErr != nil {
 		utils.Panic("failed to marshal expression: %v", jsErr)
@@ -386,7 +387,7 @@ func (e *Expression) MarshalJSONString() string {
 
 // computeIsBaseFromChildren determines if an expression is a base expression
 // based on its children.
-func computeIsBaseFromChildren(children []*Expression) bool {
+func computeIsBaseFromChildren[T zk.Element](children []*Expression[T]) bool {
 	for _, child := range children {
 		if !child.IsBase {
 			// at least one child is not a base expression, therefore the expression is itself not a base expression

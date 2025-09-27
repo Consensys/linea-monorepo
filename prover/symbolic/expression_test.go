@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -14,16 +15,16 @@ import (
 func TestReplayExpression(t *testing.T) {
 
 	// Original dummy variable
-	a, b, c, x := NewDummyVar("a"), NewDummyVar("b"), NewDummyVar("c"), NewDummyVar("x")
-	a_, b_, c_, x_ := NewDummyVar("a_"), NewDummyVar("b_"), NewDummyVar("c_"), NewDummyVar("x_")
+	a, b, c, x := NewDummyVar[zk.NativeElement]("a"), NewDummyVar[zk.NativeElement]("b"), NewDummyVar[zk.NativeElement]("c"), NewDummyVar[zk.NativeElement]("x")
+	a_, b_, c_, x_ := NewDummyVar[zk.NativeElement]("a_"), NewDummyVar[zk.NativeElement]("b_"), NewDummyVar[zk.NativeElement]("c_"), NewDummyVar[zk.NativeElement]("x_")
 
-	expressions := []*Expression{
+	expressions := []*Expression[zk.NativeElement]{
 		a.Add(b),
 		a.Add(a).Mul(b),
 		a.Neg().Add(b).Neg().Mul(c).Add(a),
 		a.Sub(b).Mul(c),
 		a.Mul(a).Mul(b).Mul(a).Mul(c).Mul(c),
-		a.Mul(NewPolyEval(x, []*Expression{a, b, a, a.Add(c)})),
+		a.Mul(NewPolyEval(x, []*Expression[zk.NativeElement]{a, b, a, a.Add(c)})),
 	}
 
 	// Random constants for the polyEvals
@@ -44,7 +45,7 @@ func TestReplayExpression(t *testing.T) {
 		"x_": witnesses["x"].SubVector(0, 4),
 	}
 
-	translationMap := collection.NewMapping[string, *Expression]()
+	translationMap := collection.NewMapping[string, *Expression[zk.NativeElement]]()
 	translationMap.InsertNew("a", a_)
 	translationMap.InsertNew("b", b_)
 	translationMap.InsertNew("c", c_)
@@ -95,8 +96,8 @@ func TestReplayExpression(t *testing.T) {
 
 func TestLCConstruction(t *testing.T) {
 
-	x := NewDummyVar("x")
-	y := NewDummyVar("y")
+	x := NewDummyVar[zk.NativeElement]("x")
+	y := NewDummyVar[zk.NativeElement]("y")
 
 	t.Run("simple-addition", func(t *testing.T) {
 		/*
@@ -107,9 +108,9 @@ func TestLCConstruction(t *testing.T) {
 		require.Equal(t, 2, len(expr1.Children))
 		require.Equal(t, expr1.Children[0], x)
 		require.Equal(t, expr1.Children[1], y)
-		require.Equal(t, 2, len(expr1.Operator.(LinComb).Coeffs))
-		require.Equal(t, expr1.Operator.(LinComb).Coeffs[0], 1)
-		require.Equal(t, expr1.Operator.(LinComb).Coeffs[1], 1)
+		require.Equal(t, 2, len(expr1.Operator.(LinComb[zk.NativeElement]).Coeffs))
+		require.Equal(t, expr1.Operator.(LinComb[zk.NativeElement]).Coeffs[0], 1)
+		require.Equal(t, expr1.Operator.(LinComb[zk.NativeElement]).Coeffs[1], 1)
 	})
 
 	t.Run("x-y-x", func(t *testing.T) {
@@ -132,8 +133,8 @@ func TestLCConstruction(t *testing.T) {
 
 func TestProductConstruction(t *testing.T) {
 
-	x := NewDummyVar("x")
-	y := NewDummyVar("y")
+	x := NewDummyVar[zk.NativeElement]("x")
+	y := NewDummyVar[zk.NativeElement]("y")
 
 	t.Run("x * y", func(t *testing.T) {
 		/*
@@ -144,9 +145,9 @@ func TestProductConstruction(t *testing.T) {
 		require.Equal(t, 2, len(expr1.Children))
 		require.Equal(t, expr1.Children[0], x)
 		require.Equal(t, expr1.Children[1], y)
-		require.Equal(t, 2, len(expr1.Operator.(Product).Exponents))
-		require.Equal(t, expr1.Operator.(Product).Exponents[0], 1)
-		require.Equal(t, expr1.Operator.(Product).Exponents[1], 1)
+		require.Equal(t, 2, len(expr1.Operator.(Product[zk.NativeElement]).Exponents))
+		require.Equal(t, expr1.Operator.(Product[zk.NativeElement]).Exponents[0], 1)
+		require.Equal(t, expr1.Operator.(Product[zk.NativeElement]).Exponents[1], 1)
 	})
 
 	t.Run("x * y * x", func(t *testing.T) {
@@ -157,9 +158,9 @@ func TestProductConstruction(t *testing.T) {
 		require.Equal(t, 2, len(expr1.Children))
 		require.Equal(t, expr1.Children[0], x)
 		require.Equal(t, expr1.Children[1], y)
-		require.Equal(t, 2, len(expr1.Operator.(Product).Exponents))
-		require.Equal(t, expr1.Operator.(Product).Exponents[0], 2)
-		require.Equal(t, expr1.Operator.(Product).Exponents[1], 1)
+		require.Equal(t, 2, len(expr1.Operator.(Product[zk.NativeElement]).Exponents))
+		require.Equal(t, expr1.Operator.(Product[zk.NativeElement]).Exponents[0], 2)
+		require.Equal(t, expr1.Operator.(Product[zk.NativeElement]).Exponents[1], 1)
 	})
 
 	t.Run("x^2", func(t *testing.T) {
@@ -169,8 +170,8 @@ func TestProductConstruction(t *testing.T) {
 		expr := x.Mul(x)
 		require.Equal(t, 1, len(expr.Children))
 		require.Equal(t, expr.Children[0], x)
-		require.Equal(t, 1, len(expr.Operator.(Product).Exponents))
-		require.Equal(t, expr.Operator.(Product).Exponents[0], 2)
+		require.Equal(t, 1, len(expr.Operator.(Product[zk.NativeElement]).Exponents))
+		require.Equal(t, expr.Operator.(Product[zk.NativeElement]).Exponents[0], 2)
 	})
 
 }

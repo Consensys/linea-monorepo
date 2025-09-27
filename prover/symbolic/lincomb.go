@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -20,7 +21,7 @@ import (
 // For expression building it is advised to use the constructors instead of this
 // directly. The exposition of this Operator is meant to allow implementing
 // symbolic expression optimizations.
-type LinComb struct {
+type LinComb[T zk.Element] struct {
 	// The Coeffs are typically small integers (1, -1)
 	Coeffs []int
 }
@@ -37,13 +38,13 @@ type LinComb struct {
 // Note: the function is not guaranteed to return a LinComb object, since the
 // optimization routine may detect that this simplifies into a single-term
 // expression or a constant expression.
-func NewLinComb(items []*Expression, coeffs []int) *Expression {
+func NewLinComb[T zk.Element](items []*Expression[T], coeffs []int) *Expression[T] {
 
 	if len(items) != len(coeffs) {
 		panic("unmatching lengths")
 	}
 
-	coeffs, items = expandTerms(&LinComb{}, coeffs, items)
+	coeffs, items = expandTerms[T](&LinComb[T]{}, coeffs, items)
 	coeffs, items, constCoeffs, constVal := regroupTerms(coeffs, items)
 
 	// This regroups all the constants into a global constant with a coefficient
@@ -58,13 +59,13 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 
 	if !c.IsZero() {
 		coeffs = append(coeffs, 1)
-		items = append(items, NewConstant(c))
+		items = append(items, NewConstant[T](c))
 	}
 
 	coeffs, items = removeZeroCoeffs(coeffs, items)
 
 	if len(items) == 0 {
-		return NewConstant(0)
+		return NewConstant[T](0)
 	}
 
 	// The LinCombExt is just a single-term: more efficient to unwrap it
@@ -72,8 +73,8 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 		return items[0]
 	}
 
-	e := &Expression{
-		Operator: LinComb{Coeffs: coeffs},
+	e := &Expression[T]{
+		Operator: LinComb[T]{Coeffs: coeffs},
 		Children: items,
 		IsBase:   computeIsBaseFromChildren(items),
 	}
@@ -97,25 +98,25 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 
 // Degree implements the [Operator] interface and returns the maximum degree of
 // the underlying expression.
-func (LinComb) Degree(inputDegrees []int) int {
+func (LinComb[T]) Degree(inputDegrees []int) int {
 	return utils.Max(inputDegrees...)
 }
 
 // Evaluate implements the [Operator] interface.
-func (lc LinComb) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+func (lc LinComb[T]) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
 	return sv.LinComb(lc.Coeffs, inputs)
 }
 
-func (lc LinComb) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
+func (lc LinComb[T]) EvaluateExt(inputs []sv.SmartVector) sv.SmartVector {
 	return sv.LinCombExt(lc.Coeffs, inputs)
 }
 
-func (lc LinComb) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
+func (lc LinComb[T]) EvaluateMixed(inputs []sv.SmartVector) sv.SmartVector {
 	return smartvectors_mixed.LinCombMixed(lc.Coeffs, inputs)
 }
 
 // Validate implements the [Operator] interface
-func (lc LinComb) Validate(expr *Expression) error {
+func (lc LinComb[T]) Validate(expr *Expression[T]) error {
 	if !reflect.DeepEqual(lc, expr.Operator) {
 		panic("expr.operator != lc")
 	}
@@ -128,9 +129,15 @@ func (lc LinComb) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [GnarkEval] interface
-func (lc LinComb) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (lc LinComb[T]) GnarkEval(api frontend.API, inputs []T) T {
 
-	res := frontend.Variable(0)
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	// res := frontend.Variable(0)
+	res := apiGen.ValueOf(0)
 
 	// There should be as many inputs as there are coeffs
 	if len(inputs) != len(lc.Coeffs) {
@@ -141,28 +148,33 @@ func (lc LinComb) GnarkEval(api frontend.API, inputs []frontend.Variable) fronte
 		Accumulate the scalars
 	*/
 	for i, input := range inputs {
-		coeff := frontend.Variable(lc.Coeffs[i])
-		res = api.Add(res, api.Mul(coeff, input))
+		coeff := apiGen.ValueOf(lc.Coeffs[i])
+		res = apiGen.Add(res, apiGen.Mul(coeff, &input))
 	}
 
-	return res
+	return *res
 }
 
 // GnarkEval implements the [GnarkEvalExt] interface
-func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (lc LinComb[T]) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen[T]) gnarkfext.E4Gen[T] {
 
-	res := gnarkfext.Zero()
+	e4Api, err := gnarkfext.NewExt4[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := e4Api.Zero()
 
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
-	var tmp gnarkfext.Element
+	var tmp gnarkfext.E4Gen[T]
 	for i, input := range inputs {
-		coeff := gnarkfext.NewFromBase(lc.Coeffs[i])
-		tmp.Mul(api, coeff, input)
-		res.Add(api, res, tmp)
+		coeff := e4Api.NewFromBase(lc.Coeffs[i])
+		tmp = *e4Api.Mul(coeff, &input)
+		res = e4Api.Add(res, &tmp)
 	}
 
-	return res
+	return *res
 }

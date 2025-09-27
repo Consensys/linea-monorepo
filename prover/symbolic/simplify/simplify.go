@@ -3,23 +3,22 @@
 package simplify
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-var (
-	autoFactorize = func(e *sym.Expression) *sym.Expression {
+// AutoSimplify automatically runs a handfull of automatic simplification
+// routines aiming a simplifying the input expression.
+func AutoSimplify[T zk.Element](expr *sym.Expression[T]) *sym.Expression[T] {
+
+	autoFactorize := func(e *sym.Expression[T]) *sym.Expression[T] {
 		// The choice of 16 is empirical
 		return factorizeExpression(e, 16)
 	}
-)
 
-// AutoSimplify automatically runs a handfull of automatic simplification
-// routines aiming a simplifying the input expression.
-func AutoSimplify(expr *sym.Expression) *sym.Expression {
-
-	steps := []func(*sym.Expression) *sym.Expression{
-		removePolyEval,
+	steps := []func(*sym.Expression[T]) *sym.Expression[T]{
+		removePolyEval[T],
 		autoFactorize,
 	}
 

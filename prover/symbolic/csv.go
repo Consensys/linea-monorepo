@@ -81,7 +81,7 @@ func ReadConstanthoodFromCsv(r io.ReadCloser) [][3]bool {
 	return res
 }
 
-func (b *ExpressionBoard) WriteStatsToCSV(w io.Writer) {
+func (b *ExpressionBoard[T]) WriteStatsToCSV(w io.Writer) {
 
 	fmt.Fprintf(w, "nodeCount, level, numInLevel, numChildren, numParent, operation, numCoeff1, numCoeff-1, numCoeff0, numCoeff2, numCoeff-2\n")
 
@@ -102,13 +102,13 @@ func (b *ExpressionBoard) WriteStatsToCSV(w io.Writer) {
 			)
 
 			switch op := node.Operator.(type) {
-			case LinComb:
+			case LinComb[T]:
 				operation = "lin-comb"
 				coeffs = op.Coeffs
-			case Product:
+			case Product[T]:
 				operation = "product"
 				coeffs = op.Exponents
-			case PolyEval:
+			case PolyEval[T]:
 				operation = "polyeval"
 			}
 

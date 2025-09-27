@@ -7,16 +7,16 @@ import (
 /*
 IsMul returns true if an expression is a mul at the top-level
 */
-func (f *Expression) IsMul() bool {
-	_, ok := f.Operator.(Product)
+func (f *Expression[T]) IsMul() bool {
+	_, ok := f.Operator.(Product[T])
 	return ok
 }
 
 /*
 IsConstant returns true if it is a constant and return its value if so
 */
-func (f *Expression) IsConstant() (bool, fext.GenericFieldElem) {
-	if cons, ok := f.Operator.(Constant); ok {
+func (f *Expression[T]) IsConstant() (bool, fext.GenericFieldElem) {
+	if cons, ok := f.Operator.(Constant[T]); ok {
 		return ok, cons.Val
 	}
 	return false, fext.GenericFieldZero()
@@ -25,15 +25,15 @@ func (f *Expression) IsConstant() (bool, fext.GenericFieldElem) {
 /*
 IsLC returns true if the expression is a LC
 */
-func (f *Expression) IsLC() bool {
-	_, ok := f.Operator.(LinComb)
+func (f *Expression[T]) IsLC() bool {
+	_, ok := f.Operator.(LinComb[T])
 	return ok
 }
 
 /*
 IsVariable returns true if the expression is a variable
 */
-func (f *Expression) IsVariable() bool {
-	_, ok := f.Operator.(Variable)
+func (f *Expression[T]) IsVariable() bool {
+	_, ok := f.Operator.(Variable[T])
 	return ok
 }
