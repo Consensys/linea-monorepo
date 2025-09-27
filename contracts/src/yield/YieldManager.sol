@@ -571,10 +571,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!ILineaNativeYieldExtension(l1MessageService()).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
     }
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    if ($$.isOssificationInitiated || $$.isOssified) {
-      revert MintLSTDisabledDuringOssification();
-    }
     _pauseStakingIfNotAlready(_yieldProvider);
     (bool success,) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.mintLST, (_amount, _recipient)
@@ -582,7 +578,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    $$.lstLiabilityPrincipal += _amount;
+    _getYieldProviderDataStorage(_yieldProvider).lstLiabilityPrincipal += _amount;
     emit LSTMinted(_yieldProvider, msg.sender, _recipient, _amount);
   }
 

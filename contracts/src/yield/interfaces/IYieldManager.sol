@@ -287,8 +287,6 @@ interface IYieldManager {
 
   error OssificationNotInitiated();
 
-  error MintLSTDisabledDuringOssification();
-
   error IllegalDonationAddress();
 
   error UnpauseStakingForbiddenWithCurrentLSTPrincipal();

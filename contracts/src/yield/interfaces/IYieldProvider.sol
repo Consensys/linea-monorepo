@@ -21,6 +21,7 @@ interface IYieldProvider {
   /// @notice Thrown when the registration yield provider type is not expected.
   error IncorrectYieldProviderType();
 
+  error MintLSTDisabledDuringOssification();
 
   /**
    * @notice Send ETH to the specified yield strategy.

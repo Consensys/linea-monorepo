@@ -322,4 +322,6 @@ interface IDashboard {
     ) external payable;
 
     function nodeOperatorDisbursableFee() external view returns (uint256);
+    
+    function disburseNodeOperatorFee() external;
 }
