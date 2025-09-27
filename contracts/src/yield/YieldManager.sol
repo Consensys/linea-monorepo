@@ -174,7 +174,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert DelegateCallFailed();
     }
     (uint256 repaymentAmount) = abi.decode(data, (uint256));
-    _getYieldProviderDataStorage(_yieldProvider).lstLiabilityPrincipal -= repaymentAmount;
     return repaymentAmount;
   }
 

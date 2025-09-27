@@ -42,66 +42,90 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
-  // @dev - we consider principal to be paid before interest. Reason being that Lido doesn't distinguish between the two, so we can choose which is more convenient for us as long as we remain consistent.
+  // Settle interest before principal
   function _payMaximumPossibleLSTLiability() internal {
     YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return;
-
-    uint256 vaultBalanceEth = DASHBOARD.totalValue();
-    uint256 vaultBalanceShares = STETH.getSharesByPooledEth(vaultBalanceEth);
+    // Assumption - this is maximum available for rebalance
+    uint256 availableRebalanceAmount = YIELD_PROVIDER.balance;
+    uint256 availableRebalanceShares = STETH.getSharesByPooledEth(availableRebalanceAmount);
     uint256 liabilityShares = DASHBOARD.liabilityShares();
-    // Do the payment
-    uint256 beforeVaultBalance = YIELD_PROVIDER.balance;
-    DASHBOARD.rebalanceVaultWithShares(Math256.min(liabilityShares, vaultBalanceShares));
-    uint256 afterVaultBalance = YIELD_PROVIDER.balance;
-    uint256 rebalanceAmountETH = beforeVaultBalance - afterVaultBalance;
-    // Adjust LST principal
-    // Break rule to handle $$ in YieldProvider, because LST liability being paid in ossification is a Lido-specific concept
-    uint256 lstLiabilityPrincipal = $$.lstLiabilityPrincipal;
-    $$.lstLiabilityPrincipal = Math256.safeSub(lstLiabilityPrincipal, rebalanceAmountETH);
+    uint256 rebalanceShares = Math256.min(liabilityShares, availableRebalanceShares);
+    if (rebalanceShares > 0) {
+      DASHBOARD.rebalanceVaultWithShares(rebalanceShares);
+      // Apply consistent accounting treatment that LST interest paid first, then LST principal
+      _syncExternalLiabilitySettlement();
+    }
   }
 
-  function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256) {
+  // @dev LST Principal reduction from discovered external sync, does not count as payment
+  function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256 lstPrincipalPayment) {
     return _payLSTPrincipal(_maxAvailableRepaymentETH);
   }
 
-  function _payLSTPrincipal(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
+  function _payLSTPrincipal(uint256 _maxAvailableRepaymentETH) internal returns (uint256 lstPrincipalPayment) {
     YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return 0;
-    uint256 lstLiabilityPrincipal = $$.lstLiabilityPrincipal;
-    if (lstLiabilityPrincipal == 0) return 0;
-    uint256 rebalanceAmount = Math256.min(lstLiabilityPrincipal, _maxAvailableRepaymentETH);
-    DASHBOARD.rebalanceVaultWithShares(rebalanceAmount);
-    return rebalanceAmount;
+    uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
+    if (lstLiabilityPrincipalCached == 0) return 0;
+    uint256 lstLiabilityPrincipalSynced = _syncExternalLiabilitySettlement();
+    uint256 rebalanceAmount = Math256.min(lstLiabilityPrincipalSynced, _maxAvailableRepaymentETH);
+    if (rebalanceAmount > 0) {
+      DASHBOARD.rebalanceVaultWithShares(rebalanceAmount);
+    }
+    $$.lstLiabilityPrincipal -= rebalanceAmount;
+    lstPrincipalPayment = rebalanceAmount;
+  }
+
+  // Check if lstPrincipal < ETH value of liabilityShares
+  // If true, this means obligations were accrued and settled - settleVaultObligations is permissionless so this could have been us or another entity.
+  // @dev May reduce $$.lstLiabilityPrincipal 
+  // @return New value of lstLiabilityPrincipal
+  function _syncExternalLiabilitySettlement() internal returns (uint256 lstLiabilityPrincipal) {
+    uint256 liabilityShares = DASHBOARD.liabilityShares();
+    uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(liabilityShares);
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
+    if (liabilityETH < lstLiabilityPrincipalCached) {
+      $$.lstLiabilityPrincipal = liabilityETH;
+      return liabilityETH;
+    } else {
+      return lstLiabilityPrincipalCached;
+    }
   }
 
   // Returns how much of _maxAvailableRepaymentETH available, after LST interest payment
   // @dev Redemption component of obligations, and liability - are decremented in tandem in Lido VaultHub
-  function _payLSTInterest(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
+  function _payLSTInterest(uint256 _maxAvailableRepaymentETH) internal returns (uint256 payment) {
     YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
     if ($$.isOssified) return _maxAvailableRepaymentETH;
     uint256 liabilityTotalShares = DASHBOARD.liabilityShares();
     if (liabilityTotalShares == 0) return _maxAvailableRepaymentETH;
-    uint256 liabilityInterestETH = STETH.getPooledEthBySharesRoundUp(liabilityTotalShares) - $$.lstLiabilityPrincipal;
+    uint256 lstLiabilityPrincipalSynced = _syncExternalLiabilitySettlement();
+    uint256 liabilityInterestETH = STETH.getPooledEthBySharesRoundUp(liabilityTotalShares) - lstLiabilityPrincipalSynced;
     uint256 lstInterestRepaymentETH = Math256.min(liabilityInterestETH, _maxAvailableRepaymentETH);
     // Do the payment
-    DASHBOARD.rebalanceVaultWithEther(lstInterestRepaymentETH);
-    return _maxAvailableRepaymentETH - lstInterestRepaymentETH;
+    if (lstInterestRepaymentETH > 0) {
+      DASHBOARD.rebalanceVaultWithEther(lstInterestRepaymentETH);
+    }
+    payment = lstInterestRepaymentETH;
   }
   
-  // @dev Must consider that this can pay redemptions
-  function _payObligations(uint256 _maxAvailableRepaymentETH) internal returns (uint256) {
+  // @dev Obligations can include redemptions, which gets reduced in tandem with liabilities
+  // @dev We will not eagerly track redemptions paid through this function, because redemptions can be paid permissionlessly
+  // @dev Therefore it is not possible for us to eagerly track all redemption changes
+  // @dev From a user funds POV, we isolate permissionless settlement by accounting it as negative yield
+  // @dev From an LST liability principal accounting POV, the main issue not eagerly tracking redemptions will cause
+  //     is that we will overpay an LST liability payment, and our rebalance() call will fail because the system thinks
+  //     it has more debt than it actually has. We handle this by checking if this has happened, and adjusting lstLiabilityPrincipal accordingly via _syncExternalLiabilitySettlement.
+  function _payObligations(uint256 _maxAvailableRepaymentETH) internal returns (uint256 obligationsPaid) {
     uint256 beforeVaultBalance = YIELD_PROVIDER.balance;
     // Unfortunately, there is no function on VaultHub to specify how much obligation we want to repay.
     VAULT_HUB.settleVaultObligations(YIELD_PROVIDER);
     uint256 afterVaultBalance = YIELD_PROVIDER.balance;
-    uint256 obligationsPaid = afterVaultBalance - beforeVaultBalance;
-
+    obligationsPaid = afterVaultBalance - beforeVaultBalance;
     if (obligationsPaid > _maxAvailableRepaymentETH) {
       _getYieldProviderDataStorage(YIELD_PROVIDER).currentNegativeYield += (obligationsPaid - _maxAvailableRepaymentETH);
-      return 0;
-    } else {
-      return _maxAvailableRepaymentETH - obligationsPaid;
     }
   }
 
@@ -159,8 +183,9 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
         positiveRemainingYield -= negativeYieldReduction;
       }
       // Then pay liability interest
-      positiveRemainingYield = _payLSTInterest(positiveRemainingYield);
-      positiveRemainingYield = _payObligations(positiveRemainingYield);
+      positiveRemainingYield -= _payLSTInterest(positiveRemainingYield);
+      // Then pay obligations
+      positiveRemainingYield -= _payObligations(positiveRemainingYield);
       $$.userFunds += positiveRemainingYield;
       $$.yieldReportedCumulative += positiveRemainingYield;
       return positiveRemainingYield;
