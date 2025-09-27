@@ -47,23 +47,20 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   uint256 constant MAX_BPS = 10000;
 
   /// @notice The L1MessageService address.
-  function l1MessageService() public view returns (address) {
-      YieldManagerStorage storage $ = _getYieldManagerStorage();
-      return $._l1MessageService;
+  function l1MessageService() public view returns (address l1MessageServiceAddress) {
+      l1MessageServiceAddress = _getYieldManagerStorage()._l1MessageService;
   }
 
   /// @notice Minimum withdrawal reserve percentage in bps.
   /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
   function minimumWithdrawalReservePercentageBps() public view returns (uint256) {
-      YieldManagerStorage storage $ = _getYieldManagerStorage();
-      return $._minimumWithdrawalReservePercentageBps;
+      return _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps;
   }
 
   /// @notice Minimum withdrawal reserve amount.
   /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
   function minimumWithdrawalReserveAmount() public view returns (uint256) {
-      YieldManagerStorage storage $ = _getYieldManagerStorage();
-      return $._minimumWithdrawalReserveAmount;
+      return _getYieldManagerStorage()._minimumWithdrawalReserveAmount;
   }
 
   /**
@@ -73,62 +70,65 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   modifier onlyKnownYieldProvider(address _yieldProvider) {
-      YieldManagerStorage storage $ = _getYieldManagerStorage();
-      if ($._yieldProviderData[_yieldProvider].yieldProviderIndex != 0) {
+      if (_getYieldManagerStorage()._yieldProviderData[_yieldProvider].yieldProviderIndex != 0) {
         revert UnknownYieldProvider();
       }
       _;
   }
 
- function getWithdrawalReserveBalance() public view returns (uint256) {
-    return _getYieldManagerStorage()._l1MessageService.balance;
+ function getWithdrawalReserveBalance() public view returns (uint256 withdrawalReserveBalance) {
+    withdrawalReserveBalance = l1MessageService().balance;
   }
 
   // TODO - Caching of l1MessageService.balance calls...
 
-  function getTotalSystemBalance() public view returns (uint256) {
+  function getTotalSystemBalance() public view returns (uint256 totalSystemBalance, uint256 cachedL1MessageServiceBalance) {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    return $._l1MessageService.balance + address(this).balance + $._userFundsInYieldProvidersTotal;
+    cachedL1MessageServiceBalance = $._l1MessageService.balance;
+    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $._userFundsInYieldProvidersTotal;
   }
 
-  function getMinimumWithdrawalReserveByPercentage() public view returns (uint256) {
-    return getTotalSystemBalance() * _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps / MAX_BPS;
+  function getMinimumWithdrawalReserveByPercentage() public view returns (uint256 minimumWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance) {
+    (uint256 totalSystemBalance, uint256 tmpCachedL1MessageServiceBalance) = getTotalSystemBalance();
+    cachedL1MessageServiceBalance = tmpCachedL1MessageServiceBalance;
+    minimumWithdrawalReserveByPercentage = totalSystemBalance * _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps / MAX_BPS;
   }
 
-  function getTargetWithdrawalReserveByPercentage() public view returns (uint256) {
-    return getTotalSystemBalance() * _getYieldManagerStorage()._targetWithdrawalReservePercentageBps / MAX_BPS;
+  function getTargetWithdrawalReserveByPercentage() public view returns (uint256 targetWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance) {
+    (uint256 totalSystemBalance, uint256 tmpCachedL1MessageServiceBalance) = getTotalSystemBalance();
+    cachedL1MessageServiceBalance = tmpCachedL1MessageServiceBalance;
+    targetWithdrawalReserveByPercentage = totalSystemBalance * _getYieldManagerStorage()._targetWithdrawalReservePercentageBps / MAX_BPS;
   }
 
   /// @notice Get effective minimum withdrawal reserve
   /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
-  function getEffectiveMinimumWithdrawalReserve() public view returns (uint256) {
-      uint256 minimumWithdrawalReserveAmountCached = _getYieldManagerStorage()._minimumWithdrawalReserveAmount;
-      uint256 minWithdrawalReserveByPercentage = getMinimumWithdrawalReserveByPercentage();
-      return Math256.min(minimumWithdrawalReserveAmountCached, minWithdrawalReserveByPercentage);
+  function getMinimumWithdrawalReserve() public view returns (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) {
+      (uint256 minimumWithdrawalReserveByPercentage, uint256 tmpCachedL1MessageServiceBalance) = getMinimumWithdrawalReserveByPercentage();
+      cachedL1MessageServiceBalance = tmpCachedL1MessageServiceBalance;
+      minimumWithdrawalReserve = Math256.min(minimumWithdrawalReserveByPercentage, _getYieldManagerStorage()._minimumWithdrawalReserveAmount);
   }
 
-  function getEffectiveTargetWithdrawalReserve() public view returns (uint256) {
-      uint256 targetWithdrawalReserveAmountCached = _getYieldManagerStorage()._targetWithdrawalReserveAmount;
-      uint256 targetWithdrawalReserveByPercentage = getTargetWithdrawalReserveByPercentage();
-      return Math256.min(targetWithdrawalReserveAmountCached, targetWithdrawalReserveByPercentage);
+  function getTargetWithdrawalReserve() public view returns (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) {
+      (uint256 targetWithdrawalReserveByPercentage, uint256 tmpCachedL1MessageServiceBalance) = getTargetWithdrawalReserveByPercentage();
+      cachedL1MessageServiceBalance = tmpCachedL1MessageServiceBalance;
+      targetWithdrawalReserve = Math256.min(targetWithdrawalReserveByPercentage, _getYieldManagerStorage()._targetWithdrawalReserveAmount);
   }
 
-  function getTargetReserveDeficit() public view returns (uint256) {
-    uint256 effectiveTargetWithdrawalReserve = getEffectiveTargetWithdrawalReserve();
-    uint256 l1MessageServiceBalance = l1MessageService().balance;
-    return Math256.safeSub(effectiveTargetWithdrawalReserve, l1MessageServiceBalance);
+  function getTargetReserveDeficit() public view returns (uint256 targetReserveDeficit) {
+    (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = getTargetWithdrawalReserve();
+    targetReserveDeficit = Math256.safeSub(targetWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
-  function getMinimumReserveDeficit() public view returns (uint256) {
-    uint256 effectiveMinimumWithdrawalReserve = getEffectiveMinimumWithdrawalReserve();
-    uint256 l1MessageServiceBalance = l1MessageService().balance;
-    return Math256.safeSub(effectiveMinimumWithdrawalReserve, l1MessageServiceBalance);
+  function getMinimumReserveDeficit() public view returns (uint256 minimumReserveDeficit) {
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = getMinimumWithdrawalReserve();
+    minimumReserveDeficit = Math256.safeSub(minimumWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
   /// @notice Returns true if withdrawal reserve balance is below effective required minimum.
   /// @dev We are doing duplicate BALANCE opcode call, but how to remove duplicate call while maintaining readability?
   function isWithdrawalReserveBelowEffectiveMinimum() public view returns (bool) {
-      return _getYieldManagerStorage()._l1MessageService.balance < getEffectiveMinimumWithdrawalReserve();
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = getMinimumWithdrawalReserve();
+    return cachedL1MessageServiceBalance < minimumWithdrawalReserve;
   }
 
   function _reducePendingPermissionlessUnstake(uint256 _amount) internal {
@@ -147,6 +147,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     _fundYieldProvider(_yieldProvider, _amount);
+    // Do LST repayment
     uint256 lstPrincipalRepayment = _payLSTPrincipal(_yieldProvider, _amount);
     uint256 amountRemaining = _amount - lstPrincipalRepayment;
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal += amountRemaining;
@@ -176,8 +177,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     (uint256 repaymentAmount) = abi.decode(data, (uint256));
     return repaymentAmount;
   }
-
-  
 
   /**
    * @notice Receive ETH from the withdrawal reserve.
@@ -223,8 +222,11 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert DelegateCallFailed();
     }
     (uint256 newYield) = abi.decode(data, (uint256));
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += newYield;
     ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(newYield);
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    $$.userFunds += newYield;
+    $$.yieldReportedCumulative += newYield;
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += newYield;
     emit NativeYieldReported(_yieldProvider, msg.sender, newYield);
   }
 
@@ -312,32 +314,32 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     uint256 targetDeficit = getTargetReserveDeficit();
+    // Withdraw from Vault -> YieldManager
     uint256 withdrawnFromProvider = _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(
       _yieldProvider,
       _amount,
       address(this),
       targetDeficit
     );
-    uint256 amountSentToReserve;
+    // Send funds to L1MessageService
     if (targetDeficit > 0) {
       ILineaNativeYieldExtension(l1MessageService()).fund{value: targetDeficit}();
-      amountSentToReserve = targetDeficit;
     }
-
     emit YieldProviderWithdrawal(
       _yieldProvider,
       msg.sender,
       _amount,
       withdrawnFromProvider,
-      amountSentToReserve
+      targetDeficit
     );
   }
 
   function _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetDeficit) internal returns (uint256) {
-    uint256 maxAvailableForRebalance = Math256.safeSub(_amount, _targetDeficit);
+    uint256 availableFundsForRebalance = Math256.safeSub(_amount, _targetDeficit);
     uint256 withdrawAmount = _amount;
-    if (maxAvailableForRebalance > 0) {
-      withdrawAmount -= _payLSTPrincipal(_yieldProvider, maxAvailableForRebalance);
+    if (availableFundsForRebalance > 0) {
+      withdrawAmount -= _payLSTPrincipal(_yieldProvider, availableFundsForRebalance);
+    // In target deficit, so pause staking
     } else {
       _pauseStakingIfNotAlready(_yieldProvider);
     }
@@ -366,22 +368,27 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     uint256 targetRebalanceAmount = _amount;
-    // Try to meet targetRebalanceAmount from yieldManager
+    address cachedL1MessageService = l1MessageService();
+    // Try to settle rebalance amount from yieldManager funds
     uint256 yieldManagerBalance = address(this).balance;
     uint256 fromYieldManager;
     if (yieldManagerBalance > 0) {
       uint256 transferAmount = Math256.min(yieldManagerBalance, targetRebalanceAmount);
-      ILineaNativeYieldExtension(l1MessageService()).fund{value: transferAmount}();
+      ILineaNativeYieldExtension(cachedL1MessageService).fund{value: transferAmount}();
       targetRebalanceAmount -= transferAmount;
       fromYieldManager = transferAmount;
     }
-    uint256 targetDeficit = getTargetReserveDeficit();
-    uint256 fromYieldProvider = _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(
-      _yieldProvider,
-      targetRebalanceAmount,
-      l1MessageService(),
-      targetDeficit
-    );
+    // Then meet settle from Vault withdrawal
+    uint256 fromYieldProvider;
+    if (targetRebalanceAmount > 0) {
+      uint256 targetDeficit = getTargetReserveDeficit();
+      fromYieldProvider = _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(
+        _yieldProvider,
+        targetRebalanceAmount,
+        cachedL1MessageService,
+        targetDeficit
+      );
+    }
     emit WithdrawalReserveAugmented(
       _yieldProvider,
       msg.sender,
@@ -394,6 +401,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   /**
    * @notice Permissionlessly rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev Only available when the withdrawal is in deficit.
+   * @dev Subtle differences from addToWithdrawalReserve
+   *      - permissionless
+   *      - does not accept an _amount param and instead routes maximum available funds. Thus not allowed to fail.
+   *      - No LST repayments
    * @dev Will rebalance to target
    * @param _yieldProvider          Yield provider address.
    */
@@ -402,13 +413,14 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert WithdrawalReserveNotInDeficit();
     }
     uint256 remainingTargetDeficit = getTargetReserveDeficit();
+    address cachedL1MessageService = l1MessageService();
     uint256 initialDeficit = remainingTargetDeficit;
     // Try to meet targetDeficit from yieldManager
     uint256 yieldManagerBalance = address(this).balance;
     uint256 fromYieldManager;
     if (yieldManagerBalance > 0) {
       uint256 transferAmount = Math256.min(yieldManagerBalance, remainingTargetDeficit);
-      ILineaNativeYieldExtension(l1MessageService()).fund{value: transferAmount}();
+      ILineaNativeYieldExtension(cachedL1MessageService).fund{value: transferAmount}();
       remainingTargetDeficit -= transferAmount;
       fromYieldManager = transferAmount;
     }
@@ -417,7 +429,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint256 fromYieldProvider;
     if (remainingTargetDeficit > 0 && availableYieldProviderWithdrawBalance > 0) {
       uint256 withdrawAmount = Math256.min(availableYieldProviderWithdrawBalance, remainingTargetDeficit);
-      _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, l1MessageService());
+      _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, cachedL1MessageService);
       remainingTargetDeficit -= withdrawAmount;
       fromYieldProvider = withdrawAmount;
     }
@@ -714,15 +726,36 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   // Will be reported as new yield for reportYield, so do not modify accounting variables in this fn
   function donate(address _yieldProvider, address _destination) external payable onlyKnownYieldProvider(_yieldProvider) {
     address l1MessageServiceCached = l1MessageService();
+    uint256 cachedMsgValue = msg.value;
     if (_destination == l1MessageServiceCached) {
-      ILineaNativeYieldExtension(l1MessageServiceCached).fund{value: msg.value}();
-    } else if (_destination == _yieldProvider) {
-      _fundYieldProvider(_yieldProvider, msg.value);
+      ILineaNativeYieldExtension(l1MessageServiceCached).fund{value: cachedMsgValue}();
+      _reportYieldForDonation(_yieldProvider, cachedMsgValue);
     } else if (_destination == address(this)) {
+      _reportYieldForDonation(_yieldProvider, cachedMsgValue);
+    // Will be counted as yield in next reportYield
+    } else if (_destination == _yieldProvider) {
+      _fundYieldProvider(_yieldProvider, cachedMsgValue);
     } else {
       revert IllegalDonationAddress();
     }
 
-    emit DonationProcessed(_yieldProvider, msg.sender, _destination, msg.value);
+    emit DonationProcessed(_yieldProvider, msg.sender, _destination, cachedMsgValue);
+  }
+
+  // TODO - Is it correct treat as yield? Or separate storage var as donation?
+  function _reportYieldForDonation(address _yieldProvider, uint256 _amount) internal {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    uint256 remainingDonation = _amount;
+    uint256 currentNegativeYield = $$.currentNegativeYield;
+    if (currentNegativeYield > 0) {
+      uint256 negativeYieldDecrement = Math256.min(currentNegativeYield, remainingDonation);
+      $$.currentNegativeYield -= negativeYieldDecrement;
+      remainingDonation -= negativeYieldDecrement;
+    }
+    if (remainingDonation > 0) {
+      $$.userFunds += remainingDonation;
+      $$.yieldReportedCumulative += remainingDonation;
+      _getYieldManagerStorage()._userFundsInYieldProvidersTotal += remainingDonation;
+    }
   }
 }

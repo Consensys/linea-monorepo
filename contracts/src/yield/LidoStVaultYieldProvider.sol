@@ -33,8 +33,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   }
 
   function _getEntrypointContract() private view returns (address) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
-    return $$.isOssified ? YIELD_PROVIDER : address(DASHBOARD);
+    return _getYieldProviderDataStorage(YIELD_PROVIDER).isOssified ? YIELD_PROVIDER : address(DASHBOARD);
   }
 
   function _getStakingVault() private view returns (address) {
@@ -211,8 +210,6 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
       positiveRemainingYield -= _payObligations(positiveRemainingYield);
       // Then pay node operator fee(s)
       positiveRemainingYield -= _payNodeOperatorFees(positiveRemainingYield);
-      $$.userFunds += positiveRemainingYield;
-      $$.yieldReportedCumulative += positiveRemainingYield;
       return positiveRemainingYield;
   }
 
@@ -307,7 +304,6 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   // @dev Requires fresh report
   function initiateOssification() external {
     _payMaximumPossibleLSTLiability();
-    
     // Lido implementation handles Lido fee payment, and revert on fresh report
     // This will fail if any existing liabilities or obligations
     DASHBOARD.voluntaryDisconnect();
