@@ -53,7 +53,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     if (rebalanceShares > 0) {
       DASHBOARD.rebalanceVaultWithShares(rebalanceShares);
       // Apply consistent accounting treatment that LST interest paid first, then LST principal
-      _syncExternalLiabilitySettlement();
+      _syncExternalLiabilitySettlement(DASHBOARD.liabilityShares(), $$.lstLiabilityPrincipal);
     }
   }
 
@@ -72,7 +72,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     if ($$.isOssified) return 0;
     uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
     if (lstLiabilityPrincipalCached == 0) return 0;
-    (uint256 lstLiabilityPrincipalSynced, ) = _syncExternalLiabilitySettlement();
+    (uint256 lstLiabilityPrincipalSynced, ) = _syncExternalLiabilitySettlement(DASHBOARD.liabilityShares(), lstLiabilityPrincipalCached);
     uint256 rebalanceAmount = Math256.min(lstLiabilityPrincipalSynced, _maxAvailableRepaymentETH);
     if (rebalanceAmount > 0) {
       DASHBOARD.rebalanceVaultWithShares(rebalanceAmount);
@@ -87,11 +87,11 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
   // This is a reasonable approach, because we actually cannot compute the principal/liability split without keeping track of the time that we accrued and reduced lstLiability.
   // @dev May reduce $$.lstLiabilityPrincipal 
   // @return New value of lstLiabilityPrincipal
-  function _syncExternalLiabilitySettlement() internal returns (uint256 lstLiabilityPrincipal, bool isLstLiabilityPrincipalChanged) {
-    uint256 liabilityShares = DASHBOARD.liabilityShares();
+  function _syncExternalLiabilitySettlement(uint256 liabilityShares, uint256 lstLiabilityPrincipalCached) internal returns (uint256 lstLiabilityPrincipal, bool isLstLiabilityPrincipalChanged) {
+    // uint256 liabilityShares = DASHBOARD.liabilityShares();
     uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(liabilityShares);
     YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
-    uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
+    // uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
     if (liabilityETH < lstLiabilityPrincipalCached) {
       $$.lstLiabilityPrincipal = liabilityETH;
       return (liabilityETH, true);
@@ -107,7 +107,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     if ($$.isOssified) return _maxAvailableRepaymentETH;
     uint256 liabilityTotalShares = DASHBOARD.liabilityShares();
     if (liabilityTotalShares == 0) return _maxAvailableRepaymentETH;
-    (uint256 lstLiabilityPrincipalSynced, bool isLstLiabilityPrincipalChanged) = _syncExternalLiabilitySettlement();
+    (uint256 lstLiabilityPrincipalSynced, bool isLstLiabilityPrincipalChanged) = _syncExternalLiabilitySettlement(liabilityTotalShares, $$.lstLiabilityPrincipal);
     // If lstLiabilityPrincipal was reduced by _syncExternalLiabilitySettlement(), it means all LST interest has been paid
     if (!isLstLiabilityPrincipalChanged) {
       return _maxAvailableRepaymentETH;
