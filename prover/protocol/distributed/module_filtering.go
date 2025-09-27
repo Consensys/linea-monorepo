@@ -18,6 +18,9 @@ import (
 // CompiledIOP and not the distributed ones.
 type FilteredModuleInputs struct {
 
+	// ModuleIndex is the integer index of the module
+	ModuleIndex int
+
 	// ModuleName is the name of the current module.
 	ModuleName ModuleName
 

@@ -20,15 +20,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-const (
-	ModuleGLReceiveGlobalKey  = "RECEIVE_GLOBAL"
-	ModuleGLSendGlobalKey     = "SEND_GLOBAL"
-	GlobalSenderPublicInput   = "GLOBAL_PROVIDER"
-	GlobalReceiverPublicInput = "GLOBAL_RECEIVER"
-	IsFirstPublicInput        = "IS_FIRST"
-	IsLastPublicInput         = "IS_LAST"
-)
-
 // ModuleGL is a compilation structure holding the central informations
 // of the GL part of a module.
 type ModuleGL struct {
@@ -41,16 +32,6 @@ type ModuleGL struct {
 	// DefinitionInput stores the [FilteredModuleInputs] that was used
 	// to generate the module.
 	DefinitionInput *FilteredModuleInputs
-
-	// IsFirst is a column of length one storing a binary value indicating
-	// if the current (vertical) instance of the module is the first one.
-	// This is used to activate/deactivate the local-constraints relating
-	// to the first rows of the module. The content of the column is part
-	// of the public inputs of the module.
-	IsFirst ifaces.Column
-
-	// IsLast is as [IsFirst] but for the last instance of the module.
-	IsLast ifaces.Column
 
 	// SentValuesGlobal is a list of local-openings pointing to the values
 	// nearing the end of the segment that are subjected to global-constraints
@@ -94,6 +75,9 @@ type ModuleGL struct {
 	// to check if a value has already been added to [SentValuesGlobal]. The
 	// key string are formatted as "<column-name>/<position>".
 	ReceivedValuesGlobalMap map[string]int
+
+	// PublicInputs contains the public inputs of the module.
+	PublicInputs LimitlessPublicInput[wizard.PublicInput]
 }
 
 // ModuleGLAssignSendReceiveGlobal is an implementation of the [wizard.ProverRuntime]
@@ -148,8 +132,6 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 			Disc: moduleInput.Disc,
 		},
 		DefinitionInput:         moduleInput,
-		IsFirst:                 builder.InsertProof(0, "GL_IS_FIRST", 1),
-		IsLast:                  builder.InsertProof(0, "GL_IS_LAST", 1),
 		SentValuesGlobalMap:     map[string]int{},
 		ReceivedValuesGlobalMap: map[string]int{},
 	}
@@ -804,4 +786,22 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 		y := newLo.Pol.GetColAssignmentAt(run, 0)
 		run.AssignLocalPoint(a.DefinitionInput.LocalOpenings[i].ID, y)
 	}
+}
+
+func (modGl *ModuleGL) DeclarePublicInput() {
+
+	var (
+		nbModules       = len(modGl.DefinitionInput.Disc.Modules)
+		segmentCountGl  = make([]field.Element, nbModules)
+		segmentCountLpp = make([]field.Element, nbModules)
+	)
+
+	segmentCountGl[modGl.Disc.IndexOf(modGl.DefinitionInput.ModuleName)] = field.One()
+
+	modGl.PublicInputs = &ModuleGLPublicInputs{
+		TargetNbSegments: declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, modGl.ModuleNumber),
+		SegmentCountGL:   declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
+		SegmentCountLPP:  declareListOfPiColumns(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
+	}
+
 }

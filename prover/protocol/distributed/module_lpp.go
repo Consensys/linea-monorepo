@@ -16,18 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-var (
-	LogDerivativeSumPublicInput  = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
-	GrandProductPublicInput      = "GRAND_PRODUCT_PUBLIC_INPUT"
-	HornerPublicInput            = "HORNER_FINAL_RES_PUBLIC_INPUT"
-	HornerN0HashPublicInput      = "HORNER_N0_HASH_PUBLIC_INPUT"
-	HornerN1HashPublicInput      = "HORNER_N1_HASH_PUBLIC_INPUT"
-	IsLppPublicInput             = "IS_LPP"
-	IsGlPublicInput              = "IS_GL"
-	NbActualLppPublicInput       = "NB_ACTUAL_LPP"
-	InitialRandomnessPublicInput = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
-)
-
 // ModuleLPP is a compilation structure holding the central informations
 // of the LPP part of a module.
 type ModuleLPP struct {
@@ -39,7 +27,7 @@ type ModuleLPP struct {
 
 	// DefinitionInputs stores the [FilteredModuleInputs] that was used
 	// to generate the module.
-	DefinitionInputs []FilteredModuleInputs
+	DefinitionInputs FilteredModuleInputs
 
 	// InitialFiatShamirState is the state at which to start the FiatShamir
 	// computation
@@ -90,7 +78,7 @@ type LppWitnessAssignment struct {
 // BuildModuleLPP builds a [ModuleLPP] from scratch from a [FilteredModuleInputs].
 // The function works by creating a define function that will call [NewModuleLPP]
 // / and then it calls [wizard.Compile] without passing compilers.
-func BuildModuleLPP(moduleInput []FilteredModuleInputs) *ModuleLPP {
+func BuildModuleLPP(moduleInput FilteredModuleInputs) *ModuleLPP {
 
 	var (
 		moduleLPP  *ModuleLPP
@@ -109,26 +97,22 @@ func BuildModuleLPP(moduleInput []FilteredModuleInputs) *ModuleLPP {
 // and a [FilteredModuleInput]. The function performs all the necessary
 // declarations to build the LPP part of the module and returns the constructed
 // module.
-func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) *ModuleLPP {
+func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *ModuleLPP {
 
 	moduleLPP := &ModuleLPP{
 		ModuleTranslator: ModuleTranslator{
 			Wiop: builder.CompiledIOP,
-			Disc: moduleInputs[0].Disc,
+			Disc: moduleInput.Disc,
 		},
-		DefinitionInputs:       moduleInputs,
+		DefinitionInputs:       moduleInput,
 		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
-
-	// The starting round is the round where we can add data other than the LPP
-	// columns.
-	var startingRound = len(moduleInputs)
 
 	// These are the "dummy" public inputs that are only here so that the
 	// moduleGL and moduleLPP have identical set of public inputs. The order
 	// of declaration is also important. Namely, these needs to be declared before
 	// the non-dummy ones.
-	for _, pi := range moduleInputs[0].PublicInputs {
+	for _, pi := range moduleInput.PublicInputs {
 		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
 	}
 
@@ -165,7 +149,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	if len(logDerivativeArgs) > 0 {
 
 		moduleLPP.LogDerivativeSum = moduleLPP.InsertLogDerivative(
-			startingRound,
+			1,
 			ifaces.QueryID("MAIN_LOGDERIVATIVE"),
 			logDerivativeArgs,
 		)
@@ -186,7 +170,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	if len(grandProductArgs) > 0 {
 
 		moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(
-			startingRound,
+			1,
 			ifaces.QueryID("MAIN_GRANDPRODUCT"),
 			grandProductArgs,
 		)
@@ -207,13 +191,13 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	if len(hornerArgs) > 0 {
 
 		moduleLPP.Horner = moduleLPP.InsertHorner(
-			startingRound,
+			1,
 			ifaces.QueryID("MAIN_HORNER"),
 			hornerArgs,
 		)
 
-		moduleLPP.N0Hash = builder.InsertProof(startingRound, "LPP_N0_HASH", 1)
-		moduleLPP.N1Hash = builder.InsertProof(startingRound, "LPP_N1_HASH", 1)
+		moduleLPP.N0Hash = builder.InsertProof(1, "LPP_N0_HASH", 1)
+		moduleLPP.N1Hash = builder.InsertProof(1, "LPP_N1_HASH", 1)
 
 		moduleLPP.Wiop.InsertPublicInput(
 			HornerPublicInput,
@@ -230,7 +214,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 			accessors.NewFromPublicColumn(moduleLPP.N1Hash, 0),
 		)
 
-		moduleLPP.Wiop.RegisterVerifierAction(startingRound, &CheckNxHash{ModuleLPP: *moduleLPP})
+		moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
 
 	} else {
 
@@ -257,38 +241,24 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	// In case the LPP part is empty, we have a scenario where the sub-proof to
 	// build has no registered coin. This creates errors in the compilation
 	// due to sanity-check firing up. We add a coin to remediate.
-	for i := 0; i < len(moduleInputs); i++ {
-		moduleLPP.InsertCoin(coin.Namef("LPP_DUMMY_COIN_%v", i+1), i+1)
-	}
+	moduleLPP.InsertCoin(coin.Namef("LPP_DUMMY_COIN_%v", 1), 1)
 
-	for round := 1; round < len(moduleInputs); round++ {
-		moduleLPP.Wiop.RegisterProverAction(round, LppWitnessAssignment{ModuleLPP: *moduleLPP, Round: round})
-	}
+	moduleLPP.Wiop.RegisterProverAction(0, LppWitnessAssignment{ModuleLPP: *moduleLPP, Round: 0})
 
-	moduleLPP.Wiop.RegisterProverAction(startingRound, &AssignLPPQueries{*moduleLPP})
+	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.FiatShamirHooksPreSampling.AppendToInner(1, &SetInitialFSHash{ModuleLPP: *moduleLPP})
 
 	return moduleLPP
 }
 
 // ModuleNames returns the list of the module names of the [ModuleLPP].
-func (m *ModuleLPP) ModuleNames() []ModuleName {
+func (m *ModuleLPP) ModuleNames() ModuleName {
 	res := make([]ModuleName, 0)
 	for _, definitionInput := range m.DefinitionInputs {
 		res = append(res, definitionInput.ModuleName)
 	}
 	return res
 }
-
-/*
-func (m *ModuleLPP) GetModuleTranslator() moduleTranslator {
-	return m.moduleTranslator
-}
-
-func (m *ModuleLPP) SetModuleTranslator(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) {
-	m.moduleTranslator.Wiop = comp
-	m.moduleTranslator.Disc = disc
-} */
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.

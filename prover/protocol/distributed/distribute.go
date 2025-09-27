@@ -21,11 +21,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// lppGroupingArity indicates how many GL modules an LPP module relates to. The
-// value is fixed to 1 not for efficiency concern but putting it to a higher
-// value creates edge-cases for the FS security that are not fully-addressed yet.
-const lppGroupingArity = 1
-
 // DistributedWizard represents a wizard protocol that has undergone a
 // distributed compilation process.
 type DistributedWizard struct {
@@ -53,11 +48,6 @@ type DistributedWizard struct {
 
 	// BlueprintLPPs is the list of the blueprints for each LPP module
 	BlueprintLPPs []ModuleSegmentationBlueprint
-
-	// DefaultModule is the module used for filling when the number of
-	// effective segment is smaller than the maximum number of segment to
-	// conglomerate.
-	DefaultModule *DefaultModule
 
 	// Bootstrapper is the original compiledIOP precompiled with a few
 	// preparation steps.
@@ -168,15 +158,13 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) 
 		nbLPP = len(distributedWizard.ModuleNames)
 	)
 
-	for i := 0; i < nbLPP; i += lppGroupingArity {
+	for i := 0; i < nbLPP; i++ {
 
-		stop := min(len(distributedWizard.ModuleNames), i+lppGroupingArity)
-
-		logrus.Infof("Compiling LPP modules [%d .. %d]", i, stop)
+		logrus.Infof("Compiling LPP modules %d", i)
 
 		var (
-			moduleLPP         = BuildModuleLPP(allFilteredModuleInputs[i:stop])
-			moduleLPPForDebug = BuildModuleLPP(allFilteredModuleInputs[i:stop])
+			moduleLPP         = BuildModuleLPP(allFilteredModuleInputs[i])
+			moduleLPPForDebug = BuildModuleLPP(allFilteredModuleInputs[i])
 		)
 
 		// This add sanity-checking the module initial assignment. Without
@@ -202,15 +190,12 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) 
 		)
 	}
 
-	distributedWizard.DefaultModule = BuildDefaultModule(&allFilteredModuleInputs[0])
-
 	return distributedWizard
 }
 
 // CompileModules applies the compilation steps to each modules identically.
 func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	logrus.Infoln("Compiling distributed wizard default module")
-	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
 
 	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))
 	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
@@ -290,8 +275,7 @@ func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDisco
 	// specialqueries.CompileFixedPermutations(comp)
 	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
 		&LPPSegmentBoundaryCalculator{
-			Disc:     disc,
-			LPPArity: lppGroupingArity,
+			Disc: disc,
 		},
 	)(comp)
 	permutation.CompileIntoGdProduct(comp)
