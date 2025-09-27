@@ -14,9 +14,13 @@ interface IYieldProvider {
       ReportYield
   }
 
+  /// @notice Thrown when an operation is forbidden while ossification is active.
+  /// @param operationType The attempted operation type.
+  error OperationNotSupportedDuringOssification(OperationType operationType);
+
+  /// @notice Thrown when the registration yield provider type is not expected.
   error IncorrectYieldProviderType();
 
-  error OperationNotSupportedDuringOssification(OperationType operationType);
 
   /**
    * @notice Send ETH to the specified yield strategy.
@@ -61,7 +65,8 @@ interface IYieldProvider {
    * @notice Withdraw ETH from a specified yield provider.
    * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
    * @dev If fund remaining, will settle any outstanding LST liabilities.
-   * @param _amount                 Amount to withdraw.
+   * @param _amount Amount to withdraw.
+   * @param _recipient Address that receives the withdrawn ETH.
    */
   function withdrawFromYieldProvider(uint256 _amount, address _recipient) external;
 
@@ -76,17 +81,40 @@ interface IYieldProvider {
    */
   function unpauseStaking() external;
 
+  /**
+   * @notice Validate the supplied registration before it is added to the yield manager.
+   * @param _yieldProviderRegistration Supplied registration data for the yield provider.
+   */
   function validateAdditionToYieldManager(IYieldManager.YieldProviderRegistration calldata _yieldProviderRegistration) external;
 
-  // Get current ETH balance on the YieldProvider available for withdraw
+  /**
+   * @notice Get the ETH balance held by the yield provider that can be withdrawn immediately.
+   * @return The available ETH balance that may be withdrawn.
+   */
   function getAvailableBalanceForWithdraw() external view returns (uint256);
 
+  /**
+   * @notice Mint LST to a recipient .
+   * @param _amount Amount of underlying to convert into LST.
+   * @param _recipient Address that receives the minted LST.
+   */
   function mintLST(uint256 _amount, address _recipient) external;
 
+  /**
+   * @notice Start the ossification process for the yield provider.
+   */
   function initiateOssification() external;
 
+  /**
+   * @notice Process a previously initiated ossification process.
+   * @return True if ossification is completed.
+   */
   function processPendingOssification() external returns (bool);
 
-  // Return LST liability payment made.
+  /**
+   * @notice Repay part or all of the outstanding LST principal liability.
+   * @param _maxAvailableRepaymentETH Maximum amount of ETH available to repay the liability.
+   * @return The amount of ETH used to reduce the liability.
+   */
   function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256);
 }
