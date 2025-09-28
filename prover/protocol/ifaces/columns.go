@@ -109,14 +109,14 @@ type Column[T zk.Element] interface {
 	// circuit. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
-	GetColAssignmentGnark(run GnarkRuntimeGen[T]) []T
-	GetColAssignmentGnarkBase(run GnarkRuntimeGen[T]) ([]T, error)
-	GetColAssignmentGnarkExt(run GnarkRuntimeGen[T]) []gnarkfext.E4Gen[T]
+	GetColAssignmentGnark(run GnarkRuntime[T]) []T
+	GetColAssignmentGnarkBase(run GnarkRuntime[T]) ([]T, error)
+	GetColAssignmentGnarkExt(run GnarkRuntime[T]) []gnarkfext.E4Gen[T]
 	// GetColAssignmentGnarkAt recovers the assignment of the column at a
 	// particular position. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
-	GetColAssignmentGnarkAt(run GnarkRuntimeGen[T], pos int) T
+	GetColAssignmentGnarkAt(run GnarkRuntime[T], pos int) T
 	// IsComposite states whether a column is constructed by deriving one or
 	// more columns. For instance [github.com/consensys/linea-monorepo/protocol/column.Natural] is not a composite column as
 	// it directly refers to a set of values provided to the Wizard by the user
@@ -124,8 +124,8 @@ type Column[T zk.Element] interface {
 	// column as it is derived from an underlying column (which may or may not
 	// be a composite column itself)
 	IsComposite() bool
-	GetColAssignmentGnarkAtBase(run GnarkRuntimeGen[T], pos int) (T, error)
-	GetColAssignmentGnarkAtExt(run GnarkRuntimeGen[T], pos int) gnarkfext.E4Gen[T]
+	GetColAssignmentGnarkAtBase(run GnarkRuntime[T], pos int) (T, error)
+	GetColAssignmentGnarkAtExt(run GnarkRuntime[T], pos int) gnarkfext.E4Gen[T]
 }
 
 // ColumnAsVariable instantiates a [symbolic.Variable] from a column. The [symbolic.Variable]

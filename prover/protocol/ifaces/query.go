@@ -79,7 +79,7 @@ type Query interface {
 
 type QueryGen[T zk.Element] interface {
 	Check(run Runtime) error
-	CheckGnark(api zk.APIGen[T], run GnarkRuntimeGen[T])
+	CheckGnark(api zk.APIGen[T], run GnarkRuntime[T])
 	Name() QueryID
 	// UUID returns a unique identifier for the query. It is stronger identifier
 	// than the name of the query because two compiled IOPs with queries with

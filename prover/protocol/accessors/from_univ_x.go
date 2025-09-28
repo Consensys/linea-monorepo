@@ -6,46 +6,46 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
-var _ ifaces.Accessor = &FromUnivXAccessor{}
+// var _ ifaces.Accessor = &FromUnivXAccessor{}
 
 // FromUnivXAccessor implements [ifaces.Accessor]. It represents the "X" of a
 // univariate evaluation query (see [query.UnivariateEval]).
-type FromUnivXAccessor struct {
+type FromUnivXAccessor[T zk.Element] struct {
 	// Q is the underlying univariate evaluation query
 	Q query.UnivariateEval
 	// Round is the declaration round of Q
 	QRound int
 }
 
-func (u *FromUnivXAccessor) IsBase() bool {
+func (u *FromUnivXAccessor[T]) IsBase() bool {
 	//TODO implement me
 	return u.Q.Pols[0].IsBase()
 
 }
 
-func (u *FromUnivXAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+func (u *FromUnivXAccessor[T]) GetValBase(run ifaces.Runtime) (field.Element, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+func (u *FromUnivXAccessor[T]) GetValExt(run ifaces.Runtime) fext.Element {
 	params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
 	return params.ExtX
 }
 
-func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (u *FromUnivXAccessor[T]) GetFrontendVariableBase(api zk.APIGen[T], c ifaces.GnarkRuntime[T]) (T, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+func (u *FromUnivXAccessor[T]) GetFrontendVariableExt(api zk.APIGen[T], c ifaces.GnarkRuntime[T]) gnarkfext.E4Gen[T] {
 	//TODO implement me
 	panic("implement me")
 }
@@ -53,41 +53,41 @@ func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.Gn
 // NewUnivariateX returns an [ifaces.Accessor] object symbolizing the evaluation
 // point (the "X" value) of a [query.UnivariateEval]. `qRound` is must be the
 // underlying declaration round of the query object.
-func NewUnivariateX(q query.UnivariateEval, qround int) ifaces.Accessor {
-	return &FromUnivXAccessor{
+func NewUnivariateX[T zk.Element](q query.UnivariateEval, qround int) ifaces.Accessor[T] {
+	return &FromUnivXAccessor[T]{
 		Q:      q,
 		QRound: qround,
 	}
 }
 
 // Name implements [ifaces.Accessor]
-func (u *FromUnivXAccessor) Name() string {
+func (u *FromUnivXAccessor[T]) Name() string {
 	return fmt.Sprintf("UNIV_X_ACCESSOR_%v", u.Q.QueryID)
 }
 
 // String implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
-func (u *FromUnivXAccessor) String() string {
+func (u *FromUnivXAccessor[T]) String() string {
 	return u.Name()
 }
 
 // GetVal implements [ifaces.Accessor]
-func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) field.Element {
+func (u *FromUnivXAccessor[T]) GetVal(run ifaces.Runtime) field.Element {
 	//TODO implement me
 	panic("implement me")
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (u *FromUnivXAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (u *FromUnivXAccessor[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
 	params := circ.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams)
 	return params.X
 }
 
 // AsVariable implements the [ifaces.Accessor] interface
-func (u *FromUnivXAccessor) AsVariable() *symbolic.Expression {
-	return symbolic.NewVariable(u)
+func (u *FromUnivXAccessor[T]) AsVariable() *symbolic.Expression[T] {
+	return symbolic.NewVariable[T](u)
 }
 
 // Round implements the [ifaces.Accessor] interface
-func (u *FromUnivXAccessor) Round() int {
+func (u *FromUnivXAccessor[T]) Round() int {
 	return u.QRound
 }

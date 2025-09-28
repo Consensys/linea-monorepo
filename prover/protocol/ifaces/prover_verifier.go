@@ -1,7 +1,6 @@
 package ifaces
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -29,27 +28,27 @@ type Runtime interface {
 }
 
 // Interface implemented by the [github.com/consensys/linea-monorepo/protocol/wizard.WizardVerifierCircuit]. The interface
-// exists to prevent circular dependencies internally.
-type GnarkRuntime interface {
-	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
-	GetColumn(ColID) []frontend.Variable
-	GetColumnBase(ColID) ([]frontend.Variable, error)
-	GetColumnExt(ColID) []gnarkfext.Element
-	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
-	GetColumnAt(ColID, int) frontend.Variable
-	GetColumnAtBase(ColID, int) (frontend.Variable, error)
-	GetColumnAtExt(ColID, int) gnarkfext.Element
-	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
-	GetRandomCoinField(name coin.Name) frontend.Variable
-	GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element
-	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
-	GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable
-	// GetParams is as [Runtime.GetParams] but in a gnark circuit
-	GetParams(id QueryID) GnarkQueryParams
-}
+// // exists to prevent circular dependencies internally.
+// type GnarkRuntime interface {
+// 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
+// 	GetColumn(ColID) []frontend.Variable
+// 	GetColumnBase(ColID) ([]frontend.Variable, error)
+// 	GetColumnExt(ColID) []gnarkfext.Element
+// 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
+// 	GetColumnAt(ColID, int) frontend.Variable
+// 	GetColumnAtBase(ColID, int) (frontend.Variable, error)
+// 	GetColumnAtExt(ColID, int) gnarkfext.Element
+// 	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
+// 	GetRandomCoinField(name coin.Name) frontend.Variable
+// 	GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element
+// 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
+// 	GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable
+// 	// GetParams is as [Runtime.GetParams] but in a gnark circuit
+// 	GetParams(id QueryID) GnarkQueryParams
+// }
 
 // TODO @thomas ??? interface redefined in protocol/wizard/gnark_verifier.go
-type GnarkRuntimeGen[T zk.Element] interface {
+type GnarkRuntime[T zk.Element] interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
 	GetColumn(ColID) []T
 	GetColumnBase(ColID) ([]T, error)

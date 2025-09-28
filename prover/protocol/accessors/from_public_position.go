@@ -23,7 +23,7 @@ type asFromAccessors[T zk.Element] interface {
 // FromPublicColumn refers to a position of a public column
 type FromPublicColumn[T zk.Element] struct {
 	// Info points to the underlying coin on which the accessor points to.
-	Col column.Natural
+	Col column.Natural[T]
 	// Pos indexes the pointed position in the coin.
 	Pos int
 }
@@ -72,9 +72,9 @@ func NewFromPublicColumn[T zk.Element](col ifaces.Column[T], pos int) ifaces.Acc
 		return accs[pos]
 	}
 
-	nat, isNat := col.(column.Natural)
+	nat, isNat := col.(column.Natural[T])
 	if !isNat {
-		utils.Panic("expected a [%T], got [%T]", column.Natural{}, col)
+		utils.Panic("expected a [%T], got [%T]", column.Natural[T]{}, col)
 	}
 
 	if !nat.Status().IsPublic() {
