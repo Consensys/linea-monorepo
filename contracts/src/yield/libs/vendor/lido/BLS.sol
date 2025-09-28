@@ -59,12 +59,11 @@ library BLS12_381 {
 
         /// @solidity memory-safe-assembly
         assembly {
-            // Dynamic data types such as bytes are stored at the specified offset.
-            let offset := mload(pubkey)
-            // Copy the pubkey to the scratch space.
-            mcopy(0x00, add(offset, 32), 48)
-            // Clear the last 16 bytes.
-            mcopy(48, 0x60, 16)
+            // write 32 bytes to 32-64 bytes of scratch space
+            // to ensure last 49-64 bytes of pubkey are zeroed
+            mstore(0x20, 0)
+            // Copy 48 bytes of `pubkey` to start of scratch space
+            mcopy(0x00, add(pubkey, 0x20), 48)
 
             // Call the SHA-256 precompile (0x02) with the 64-byte input
             if iszero(staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)) {
