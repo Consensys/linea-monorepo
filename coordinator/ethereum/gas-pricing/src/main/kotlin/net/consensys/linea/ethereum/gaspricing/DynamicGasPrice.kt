@@ -15,6 +15,10 @@ interface L2CalldataSizeAccumulator {
   fun getSumOfL2CalldataSize(): SafeFuture<BigInteger>
 }
 
+interface HistoricVariableCostProvider {
+  fun getLatestVariableCost(): SafeFuture<Double>
+}
+
 fun interface FeesCalculator {
   fun calculateFees(feeHistory: FeeHistory): Double
 }

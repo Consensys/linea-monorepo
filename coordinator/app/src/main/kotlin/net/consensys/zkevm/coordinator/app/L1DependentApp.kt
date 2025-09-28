@@ -571,6 +571,7 @@ class L1DependentApp(
       )
       L2NetworkGasPricingService(
         vertx = vertx,
+        metricsFacade = metricsFacade,
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
         l1Web3jClient = l1Web3jClient,
         l1Web3jService = Web3jBlobExtended(

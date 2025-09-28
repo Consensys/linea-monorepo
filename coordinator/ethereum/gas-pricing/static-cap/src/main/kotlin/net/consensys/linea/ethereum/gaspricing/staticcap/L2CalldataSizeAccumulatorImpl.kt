@@ -1,5 +1,6 @@
 package net.consensys.linea.ethereum.gaspricing.staticcap
 
+import linea.domain.BlockInterval
 import linea.kotlin.toBigInteger
 import linea.kotlin.toUInt
 import linea.web3j.ExtendedWeb3J
@@ -8,12 +9,15 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
+import java.util.concurrent.atomic.AtomicReference
 
 class L2CalldataSizeAccumulatorImpl(
   private val web3jClient: ExtendedWeb3J,
   private val config: Config,
 ) : L2CalldataSizeAccumulator {
   private val log: Logger = LogManager.getLogger(this::class.java)
+  private var lastCalldataSizeSum: AtomicReference<Pair<BigInteger, BigInteger>> =
+    AtomicReference(BigInteger.ZERO to BigInteger.ZERO)
 
   data class Config(
     val blockSizeNonCalldataOverhead: UInt,
@@ -29,24 +33,34 @@ class L2CalldataSizeAccumulatorImpl(
   private fun getRecentL2CalldataSize(): SafeFuture<BigInteger> {
     return web3jClient.ethBlockNumber()
       .thenCompose { currentBlockNumber ->
-        if (config.calldataSizeBlockCount > 0u && currentBlockNumber.toUInt() >= config.calldataSizeBlockCount) {
-          val futures =
-            ((currentBlockNumber.toUInt() - config.calldataSizeBlockCount + 1U)..currentBlockNumber.toUInt())
-              .map { blockNumber ->
-                web3jClient.ethGetBlockSizeByNumber(blockNumber.toLong())
-              }
+        if (lastCalldataSizeSum.get().first == currentBlockNumber) {
+          log.debug(
+            "Use cached lastCalldataSizeSum={} currentBlockNumber={}",
+            lastCalldataSizeSum.get().second,
+            currentBlockNumber,
+          )
+          SafeFuture.completedFuture(lastCalldataSizeSum.get().second)
+        } else if (config.calldataSizeBlockCount > 0u && currentBlockNumber.toUInt() >= config.calldataSizeBlockCount) {
+          val blockRange =
+            (currentBlockNumber.toUInt() - config.calldataSizeBlockCount + 1U)..currentBlockNumber.toUInt()
+          val futures = blockRange.map { blockNumber ->
+            web3jClient.ethGetBlockSizeByNumber(blockNumber.toLong())
+          }
           SafeFuture.collectAll(futures.stream())
             .thenApply { blockSizes ->
               blockSizes.sumOf {
                 it.minus(config.blockSizeNonCalldataOverhead.toULong().toBigInteger())
                   .coerceAtLeast(BigInteger.ZERO)
-              }.also {
+              }.also { calldataSizeSum ->
                 log.debug(
-                  "sumOfBlockSizes={} blockSizes={} blockSizeNonCalldataOverhead={}",
-                  it,
+                  "sumOfBlockSizes={} blockSizes={} blockRange={} blockSizeNonCalldataOverhead={}",
+                  calldataSizeSum,
                   blockSizes,
+                  BlockInterval.between(blockRange.start.toULong(), blockRange.last.toULong()).intervalString(),
                   config.blockSizeNonCalldataOverhead,
+
                 )
+                lastCalldataSizeSum.set(currentBlockNumber to calldataSizeSum)
               }
             }
         } else {

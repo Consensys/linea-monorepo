@@ -42,6 +42,36 @@ class L2CalldataSizeAccumulatorImplTest {
   }
 
   @Test
+  fun test_getSumOfL2CalldataSize_return_cached_sum_of_l2_calldata() {
+    val mockWeb3jClient = mock<ExtendedWeb3J> {
+      on { ethBlockNumber() } doReturn SafeFuture.completedFuture(100.toBigInteger())
+      on { ethGetBlockSizeByNumber(any()) } doReturn SafeFuture.completedFuture(10540.toBigInteger())
+    }
+    val l2CalldataSizeAccumulator = L2CalldataSizeAccumulatorImpl(
+      config = config,
+      web3jClient = mockWeb3jClient,
+    )
+
+    // initialize the cache
+    val sumOfL2CalldataSize = l2CalldataSizeAccumulator.getSumOfL2CalldataSize().get()
+    val expectedCalldataSize = (10540 - 540) * 5
+    assertThat(sumOfL2CalldataSize).isEqualTo(expectedCalldataSize.toBigInteger())
+
+    // subsequent calls with the same block #100 should return the same value by the cache
+    repeat(5) {
+      assertThat(
+        l2CalldataSizeAccumulator.getSumOfL2CalldataSize().get(),
+      ).isEqualTo(expectedCalldataSize)
+    }
+
+    // subsequent calls should not invoke ethGetBlockSizeByNumber
+    (0..4).forEach {
+      verify(mockWeb3jClient, times(1))
+        .ethGetBlockSizeByNumber(eq(100L - it))
+    }
+  }
+
+  @Test
   fun test_getSumOfL2CalldataSize_for_each_calldata_size_at_zero() {
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethBlockNumber() } doReturn SafeFuture.completedFuture(100.toBigInteger())

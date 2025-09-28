@@ -4,7 +4,6 @@ import io.vertx.core.Vertx
 import linea.web3j.ExtendedWeb3J
 import linea.web3j.Web3jBlobExtended
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
-import net.consensys.linea.ethereum.gaspricing.FeesCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
 import net.consensys.linea.ethereum.gaspricing.GasPriceUpdater
 import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1PricerService
@@ -12,6 +11,7 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1UpdaterImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.FeeHistoryFetcherImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.GasPriceUpdaterImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.GasUsageRatioWeightedAverageFeesCalculator
+import net.consensys.linea.ethereum.gaspricing.staticcap.HistoricVariableCostProviderImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.L2CalldataBasedVariableFeesCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.L2CalldataSizeAccumulatorImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.MinMineableFeesPricerService
@@ -19,6 +19,7 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1Calcula
 import net.consensys.linea.ethereum.gaspricing.staticcap.TransactionCostCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
+import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.LongRunningService
 import org.apache.logging.log4j.LogManager
 import org.web3j.protocol.Web3j
@@ -28,6 +29,7 @@ import kotlin.time.Duration
 
 class L2NetworkGasPricingService(
   vertx: Vertx,
+  metricsFacade: MetricsFacade,
   httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   l1Web3jClient: Web3j,
   l1Web3jService: Web3jBlobExtended,
@@ -62,28 +64,58 @@ class L2NetworkGasPricingService(
     config.feeHistoryFetcherConfig,
   )
 
-  private val boundedVariableCostCalculator = run {
-    val variableCostCalculator = VariableFeesCalculator(
-      config.variableFeesCalculatorConfig,
-    )
-    BoundableFeeCalculator(
-      config = config.variableFeesCalculatorBounds,
-      feesCalculator = variableCostCalculator,
-    )
+  private fun isL2CalldataBasedVariableFeesEnabled(config: Config): Boolean {
+    return config.l2CalldataBasedVariableFeesCalculatorConfig != null &&
+      config.l2CalldataSizeAccumulatorConfig != null &&
+      config.l2CalldataBasedVariableFeesCalculatorConfig.calldataSizeBlockCount > 0u
   }
 
-  private val legacyGasPricingCalculator: FeesCalculator = run {
+  private val variableCostCalculator = run {
+    val boundedVariableCostCalculator = run {
+      val variableCostCalculator = VariableFeesCalculator(
+        config.variableFeesCalculatorConfig,
+      )
+      BoundableFeeCalculator(
+        config = config.variableFeesCalculatorBounds,
+        feesCalculator = variableCostCalculator,
+      )
+    }
+
+    if (isL2CalldataBasedVariableFeesEnabled(config)) {
+      val l2CalldataSizeAccumulator = L2CalldataSizeAccumulatorImpl(
+        web3jClient = l2Web3jClient,
+        config = config.l2CalldataSizeAccumulatorConfig!!,
+      )
+      val historicVariableCostProvider = HistoricVariableCostProviderImpl(
+        web3jClient = l2Web3jClient,
+      )
+      L2CalldataBasedVariableFeesCalculator(
+        variableFeesCalculator = boundedVariableCostCalculator,
+        l2CalldataSizeAccumulator = l2CalldataSizeAccumulator,
+        historicVariableCostProvider = historicVariableCostProvider,
+        config = config.l2CalldataBasedVariableFeesCalculatorConfig!!,
+      )
+    } else {
+      boundedVariableCostCalculator
+    }
+  }
+
+  private val legacyGasPricingCalculator = run {
     val baseCalculator = if (config.legacy.transactionCostCalculatorConfig != null) {
-      TransactionCostCalculator(boundedVariableCostCalculator, config.legacy.transactionCostCalculatorConfig)
+      TransactionCostCalculator(variableCostCalculator, config.legacy.transactionCostCalculatorConfig)
     } else {
       GasUsageRatioWeightedAverageFeesCalculator(
         config.legacy.naiveGasPricingCalculatorConfig!!,
       )
     }
-    BoundableFeeCalculator(
-      config.legacy.legacyGasPricingCalculatorBounds,
-      baseCalculator,
-    )
+    if (isL2CalldataBasedVariableFeesEnabled(config)) {
+      baseCalculator
+    } else {
+      BoundableFeeCalculator(
+        config.legacy.legacyGasPricingCalculatorBounds,
+        baseCalculator,
+      )
+    }
   }
 
   private val minMineableFeesPricerService: MinMineableFeesPricerService? =
@@ -104,12 +136,6 @@ class L2NetworkGasPricingService(
       null
     }
 
-  private fun isL2CalldataBasedVariableFeesEnabled(config: Config): Boolean {
-    return config.l2CalldataBasedVariableFeesCalculatorConfig != null &&
-      config.l2CalldataSizeAccumulatorConfig != null &&
-      config.l2CalldataBasedVariableFeesCalculatorConfig.calldataSizeBlockCount > 0u
-  }
-
   private val extraDataPricerService: ExtraDataV1PricerService? = if (config.extraDataPricingPropagationEnabled) {
     ExtraDataV1PricerService(
       pollingInterval = config.extraDataUpdateInterval,
@@ -117,24 +143,14 @@ class L2NetworkGasPricingService(
       feesFetcher = gasPricingFeesFetcher,
       minerExtraDataCalculator = MinerExtraDataV1CalculatorImpl(
         config = config.extraDataCalculatorConfig,
-        variableFeesCalculator = if (isL2CalldataBasedVariableFeesEnabled(config)) {
-          L2CalldataBasedVariableFeesCalculator(
-            variableFeesCalculator = boundedVariableCostCalculator,
-            l2CalldataSizeAccumulator = L2CalldataSizeAccumulatorImpl(
-              web3jClient = l2Web3jClient,
-              config = config.l2CalldataSizeAccumulatorConfig!!,
-            ),
-            config = config.l2CalldataBasedVariableFeesCalculatorConfig!!,
-          )
-        } else {
-          boundedVariableCostCalculator
-        },
+        variableFeesCalculator = variableCostCalculator,
         legacyFeesCalculator = legacyGasPricingCalculator,
       ),
       extraDataUpdater = ExtraDataV1UpdaterImpl(
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
         config = config.extraDataUpdaterConfig,
       ),
+      metricsFacade = metricsFacade,
     )
   } else {
     null

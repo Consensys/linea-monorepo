@@ -2,9 +2,9 @@ package net.consensys.linea.ethereum.gaspricing.staticcap
 
 import linea.domain.FeeHistory
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
+import net.consensys.linea.ethereum.gaspricing.HistoricVariableCostProvider
 import net.consensys.linea.ethereum.gaspricing.L2CalldataSizeAccumulator
 import org.apache.logging.log4j.LogManager
-import java.util.concurrent.atomic.AtomicReference
 
 /*
   CALLDATA_BASED_FEE_CHANGE_DENOMINATOR = 32
@@ -21,6 +21,7 @@ class L2CalldataBasedVariableFeesCalculator(
   val config: Config,
   val variableFeesCalculator: FeesCalculator,
   val l2CalldataSizeAccumulator: L2CalldataSizeAccumulator,
+  val historicVariableCostProvider: HistoricVariableCostProvider,
 ) : FeesCalculator {
   data class Config(
     val feeChangeDenominator: UInt,
@@ -34,7 +35,6 @@ class L2CalldataBasedVariableFeesCalculator(
   }
 
   private val log = LogManager.getLogger(this::class.java)
-  private var lastVariableCost: AtomicReference<Double> = AtomicReference(0.0)
 
   override fun calculateFees(feeHistory: FeeHistory): Double {
     val variableFee = variableFeesCalculator.calculateFees(feeHistory)
@@ -60,12 +60,12 @@ class L2CalldataBasedVariableFeesCalculator(
       .coerceAtLeast(-1.0)
       .coerceAtMost(1.0)
 
+    val lastVariableCost = historicVariableCostProvider.getLatestVariableCost().get()
+
     val calldataBasedVariableFee =
-      lastVariableCost.get().times(1.0 + (delta.div(config.feeChangeDenominator.toDouble())))
+      lastVariableCost.times(1.0 + (delta.div(config.feeChangeDenominator.toDouble())))
 
     val finalVariableFee = variableFee.coerceAtLeast(calldataBasedVariableFee)
-
-    lastVariableCost.set(finalVariableFee)
 
     log.debug(
       "Calculated calldataBasedVariableFee={} wei variableFee={} wei finalVariableFee={} wei " +
