@@ -260,7 +260,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _yieldProvider      Yield provider address.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function unstake(address _yieldProvider, bytes memory _withdrawalParams) external onlyKnownYieldProvider(_yieldProvider) {
+  function unstake(address _yieldProvider, bytes memory _withdrawalParams) external payable onlyKnownYieldProvider(_yieldProvider) {
     (bool success,) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.unstake, (_withdrawalParams)
     ));
@@ -292,7 +292,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external onlyKnownYieldProvider(_yieldProvider) {
+  ) external payable onlyKnownYieldProvider(_yieldProvider) {
     if (!isWithdrawalReserveBelowEffectiveMinimum()) {
       revert WithdrawalReserveNotInDeficit();
     }

@@ -328,7 +328,7 @@ interface IYieldManager {
    * @param _yieldProvider      Yield provider address.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function unstake(address _yieldProvider, bytes memory _withdrawalParams) external;
+  function unstake(address _yieldProvider, bytes memory _withdrawalParams) payable external;
 
   /**
    * @notice Permissionlessly request beacon chain withdrawal from a specified yield provider.
@@ -351,7 +351,7 @@ interface IYieldManager {
     address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external;
+  ) external payable;
 
   /**
    * @notice Withdraw ETH from a specified yield provider.

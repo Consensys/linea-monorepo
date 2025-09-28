@@ -240,7 +240,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
    * @notice Request beacon chain withdrawal.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function unstake(bytes memory _withdrawalParams) external {
+  function unstake(bytes memory _withdrawalParams) external payable {
     (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
     _unstake(pubkeys, amounts, refundRecipient);
     // TODO - Emit event
@@ -265,18 +265,18 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   function unstakePermissionless(
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external returns (uint256) {
+  ) external payable returns (uint256) {
     (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
-    _validateUnstakePermissionless(pubkeys, amounts, _withdrawalParamsProof);
+    uint256 maxPossibleUnstakeAmount = _validateUnstakePermissionless(pubkeys, amounts, _withdrawalParamsProof);
     _unstake(pubkeys, amounts, refundRecipient);
 
     // TODO - Emit event
-    return 0;
+    return maxPossibleUnstakeAmount;
   }
 
   function _unstake(bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) internal {
     // Lido StakingVault.sol will handle the param validation
-    ICommonVaultOperations(_getEntrypointContract()).triggerValidatorWithdrawals(pubkeys, amounts, refundRecipient);
+    ICommonVaultOperations(_getEntrypointContract()).triggerValidatorWithdrawals{value: msg.value}(pubkeys, amounts, refundRecipient);
   }
 
   // @dev Checks guided by https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
