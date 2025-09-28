@@ -521,6 +521,82 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     _getYieldProviderDataStorage(_yieldProvider).isStakingPaused = false;
   }
 
+  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyKnownYieldProvider(_yieldProvider) {
+    if (!ILineaNativeYieldExtension(l1MessageService()).isWithdrawLSTAllowed()) {
+      revert LSTWithdrawalNotAllowed();
+    }
+    _pauseStakingIfNotAlready(_yieldProvider);
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.mintLST, (_amount, _recipient)
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    emit LSTMinted(_yieldProvider, msg.sender, _recipient, _amount);
+  }
+
+  // TODO - Role
+  function initiateOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if ($$.isOssified) {
+      revert AlreadyOssified();
+    }
+    (bool success,) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.initiateOssification, ()
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    $$.isOssificationInitiated = true;
+    emit YieldProviderOssificationInitiated(_yieldProvider, msg.sender);
+  }
+
+  // TODO - Role
+  function undoInitiateOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if (!$$.isOssificationInitiated) {
+      revert OssificationNotInitiated();
+    }
+    if ($$.isOssified) {
+      revert AlreadyOssified();
+    }
+    if (_getYieldProviderDataStorage(_yieldProvider).isStakingPaused) {
+      _unpauseStaking(_yieldProvider);
+    }
+    $$.isOssificationInitiated = false;
+    emit YieldProviderOssificationReverted(_yieldProvider, msg.sender);
+  }
+
+  function processPendingOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    if (!$$.isOssificationInitiated) {
+      revert OssificationNotInitiated();
+    }
+    if ($$.isOssified) {
+      revert AlreadyOssified();
+    }
+    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.processPendingOssification, ()
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    (bool isOssified) = abi.decode(data, (bool));
+    if (isOssified) {
+      $$.isOssificationInitiated = true;
+    }
+    emit YieldProviderOssificationProcessed(_yieldProvider, msg.sender, isOssified);
+  }
+
+  // Need donate function here, otherwise YieldManager is unable to assign donations for specific yield providers.
+  function donate(address _yieldProvider) external payable onlyKnownYieldProvider(_yieldProvider) {
+    address l1MessageServiceCached = l1MessageService();
+    uint256 cachedMsgValue = msg.value;
+    _decrementNegativeYieldAgainstDonation(_yieldProvider, cachedMsgValue);
+    ILineaNativeYieldExtension(l1MessageServiceCached).fund{value: cachedMsgValue}();
+    emit DonationProcessed(_yieldProvider, msg.sender, l1MessageServiceCached, cachedMsgValue);
+  }
+
   function addYieldProvider(address _yieldProvider, YieldProviderRegistration calldata _yieldProviderRegistration) external onlyRole(YIELD_PROVIDER_SETTER) {
     if (_yieldProvider == address(0)) {
       revert ZeroAddressNotAllowed();
@@ -593,18 +669,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     delete $._yieldProviderData[_yieldProvider];
   }
 
-  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyKnownYieldProvider(_yieldProvider) {
-    if (!ILineaNativeYieldExtension(l1MessageService()).isWithdrawLSTAllowed()) {
-      revert LSTWithdrawalNotAllowed();
+  // @dev It is not correct to count a donation to the L1MessageService as yield, because reported yield results in newly circulating L2 ETH.
+  function _decrementNegativeYieldAgainstDonation(address _yieldProvider, uint256 _amount) internal {
+    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    uint256 currentNegativeYield = $$.currentNegativeYield;
+    if (currentNegativeYield > 0) {
+      $$.currentNegativeYield -= Math256.min(currentNegativeYield, _amount);
     }
-    _pauseStakingIfNotAlready(_yieldProvider);
-    (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.mintLST, (_amount, _recipient)
-    ));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
-    emit LSTMinted(_yieldProvider, msg.sender, _recipient, _amount);
   }
 
   function setL1MessageService(address _l1MessageService) external {
@@ -617,35 +688,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     $._l1MessageService = _l1MessageService;
   }
 
-  function setTargetWithdrawalReservePercentageBps(uint256 _targetWithdrawalReservePercentageBps) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
-      if (_targetWithdrawalReservePercentageBps > MAX_BPS) {
-        revert BpsMoreThan10000();
-      }
-      YieldManagerStorage storage $ = _getYieldManagerStorage();
-      if (_targetWithdrawalReservePercentageBps < $._minimumWithdrawalReservePercentageBps) {
-        revert TargetReservePercentageMustBeAboveMinimum();
-      }
-      uint256 oldTargetWithdrawalReservePercentageBps = $._targetWithdrawalReservePercentageBps;
-      emit TargetWithdrawalReservePercentageBpsSet(
-        oldTargetWithdrawalReservePercentageBps,
-        _targetWithdrawalReservePercentageBps,
-        msg.sender
-      );
-      $._targetWithdrawalReservePercentageBps = _targetWithdrawalReservePercentageBps;
-  }
-
-  function setTargetWithdrawalReserveAmount(uint256 _targetWithdrawalReserveAmount) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
-      YieldManagerStorage storage $ = _getYieldManagerStorage();
-      if (_targetWithdrawalReserveAmount < $._minimumWithdrawalReserveAmount) {
-        revert TargetReserveAmountMustBeAboveMinimum();
-      }
-      uint256 oldTargetWithdrawalReserveAmount = $._targetWithdrawalReserveAmount;
-      emit TargetWithdrawalReserveAmountSet(
-        oldTargetWithdrawalReserveAmount,
-        _targetWithdrawalReserveAmount,
-        msg.sender
-      );
-      $._targetWithdrawalReserveAmount = _targetWithdrawalReserveAmount;
+  function setL2YieldRecipient(address _newL2YieldRecipient) external {
+    if (_newL2YieldRecipient == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    emit L2YieldRecipientSet($._l2YieldRecipient, _newL2YieldRecipient, msg.sender);
+    $._l2YieldRecipient = _newL2YieldRecipient;
   }
 
   /**
@@ -682,83 +731,34 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       $._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
   }
 
-  function setL2YieldRecipient(address _newL2YieldRecipient) external {
-    if (_newL2YieldRecipient == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    emit L2YieldRecipientSet($._l2YieldRecipient, _newL2YieldRecipient, msg.sender);
-    $._l2YieldRecipient = _newL2YieldRecipient;
+  function setTargetWithdrawalReservePercentageBps(uint256 _targetWithdrawalReservePercentageBps) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+      if (_targetWithdrawalReservePercentageBps > MAX_BPS) {
+        revert BpsMoreThan10000();
+      }
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      if (_targetWithdrawalReservePercentageBps < $._minimumWithdrawalReservePercentageBps) {
+        revert TargetReservePercentageMustBeAboveMinimum();
+      }
+      uint256 oldTargetWithdrawalReservePercentageBps = $._targetWithdrawalReservePercentageBps;
+      emit TargetWithdrawalReservePercentageBpsSet(
+        oldTargetWithdrawalReservePercentageBps,
+        _targetWithdrawalReservePercentageBps,
+        msg.sender
+      );
+      $._targetWithdrawalReservePercentageBps = _targetWithdrawalReservePercentageBps;
   }
 
-  // TODO - Role
-  function initiateOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    if ($$.isOssified) {
-      revert AlreadyOssified();
-    }
-    (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.initiateOssification, ()
-    ));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
-    $$.isOssificationInitiated = true;
-    emit YieldProviderOssificationInitiated(_yieldProvider, msg.sender);
-  }
-
-  // TODO - Role
-  function undoInitiateOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    if (!$$.isOssificationInitiated) {
-      revert OssificationNotInitiated();
-    }
-    if ($$.isOssified) {
-      revert AlreadyOssified();
-    }
-    if (_getYieldProviderDataStorage(_yieldProvider).isStakingPaused) {
-      _unpauseStaking(_yieldProvider);
-    }
-    $$.isOssificationInitiated = false;
-    emit YieldProviderOssificationReverted(_yieldProvider, msg.sender);
-  }
-
-  function processPendingOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    if (!$$.isOssificationInitiated) {
-      revert OssificationNotInitiated();
-    }
-    if ($$.isOssified) {
-      revert AlreadyOssified();
-    }
-    (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.processPendingOssification, ()
-    ));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
-    (bool isOssified) = abi.decode(data, (bool));
-    if (isOssified) {
-      $$.isOssificationInitiated = true;
-    }
-    emit YieldProviderOssificationProcessed(_yieldProvider, msg.sender, isOssified);
-  }
-
-  // Need donate function here, otherwise YieldManager is unable to assign donations for specific yield providers.
-  function donate(address _yieldProvider) external payable onlyKnownYieldProvider(_yieldProvider) {
-    address l1MessageServiceCached = l1MessageService();
-    uint256 cachedMsgValue = msg.value;
-    _decrementNegativeYieldAgainstDonation(_yieldProvider, cachedMsgValue);
-    ILineaNativeYieldExtension(l1MessageServiceCached).fund{value: cachedMsgValue}();
-    emit DonationProcessed(_yieldProvider, msg.sender, l1MessageServiceCached, cachedMsgValue);
-  }
-
-  // @dev It is not correct to count a donation to the L1MessageService as yield, because reported yield results in newly circulating L2 ETH.
-  function _decrementNegativeYieldAgainstDonation(address _yieldProvider, uint256 _amount) internal {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    uint256 currentNegativeYield = $$.currentNegativeYield;
-    if (currentNegativeYield > 0) {
-      $$.currentNegativeYield -= Math256.min(currentNegativeYield, _amount);
-    }
+  function setTargetWithdrawalReserveAmount(uint256 _targetWithdrawalReserveAmount) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+      YieldManagerStorage storage $ = _getYieldManagerStorage();
+      if (_targetWithdrawalReserveAmount < $._minimumWithdrawalReserveAmount) {
+        revert TargetReserveAmountMustBeAboveMinimum();
+      }
+      uint256 oldTargetWithdrawalReserveAmount = $._targetWithdrawalReserveAmount;
+      emit TargetWithdrawalReserveAmountSet(
+        oldTargetWithdrawalReserveAmount,
+        _targetWithdrawalReserveAmount,
+        msg.sender
+      );
+      $._targetWithdrawalReserveAmount = _targetWithdrawalReserveAmount;
   }
 }

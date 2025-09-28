@@ -419,6 +419,31 @@ interface IYieldManager {
    */
   function unpauseStaking(address _yieldProvider) external;
 
+  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external;
+
+  function initiateOssification(address _yieldProvider) external;
+
+  function undoInitiateOssification(address _yieldProvider) external;
+
+  function processPendingOssification(address _yieldProvider) external;
+
+  function donate(address _yieldProvider) external payable;
+
+  function setL1MessageService(address _l1MessageService) external;
+
+  function addYieldProvider(address _yieldProvider, YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration) external;
+
+  function removeYieldProvider(address _yieldProvider) external;
+
+  function emergencyRemoveYieldProvider(address _yieldProvider) external;
+
+  /**
+   * @notice Set l2YieldRecipient address.
+   * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
+   * @param _newL2YieldRecipient L2YieldRecipient address.
+   */
+  function setL2YieldRecipient(address _newL2YieldRecipient) external;
+
   /**
    * @notice Set minimum withdrawal reserve percentage.
    * @dev Units of bps.
@@ -436,18 +461,7 @@ interface IYieldManager {
    */
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external;
 
-  /**
-   * @notice Set l2YieldRecipient address.
-   * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
-   * @param _newL2YieldRecipient L2YieldRecipient address.
-   */
-  function setL2YieldRecipient(address _newL2YieldRecipient) external;
+  function setTargetWithdrawalReservePercentageBps(uint256 _targetWithdrawalReservePercentageBps) external;
 
-  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external;
-
-  function initiateOssification(address _yieldProvider) external;
-
-  function processPendingOssification(address _yieldProvider) external;
-
-  function donate(address _yieldProvider) external payable;
+  function setTargetWithdrawalReserveAmount(uint256 _targetWithdrawalReserveAmount) external;
 }
