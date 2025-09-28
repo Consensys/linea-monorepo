@@ -11,12 +11,13 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/google/uuid"
 )
 
-var _ ifaces.Query = &PlonkInWizard{}
+// var _ ifaces.Query = &PlonkInWizard{}
 
 // PlonkInWizard is a non-parametric query enforcing that a Plonk circuit
 // whose public inputs are provided in the input columns is satisfiable.
@@ -46,16 +47,16 @@ var _ ifaces.Query = &PlonkInWizard{}
 // first row of the Selector column for the corresponding instance. 0 indicates the
 // instance is not used and 1 indicates it is. The query does not enforce any
 // constraints on the Selector column.
-type PlonkInWizard struct {
+type PlonkInWizard[T zk.Element] struct {
 	// ID is the unique identifier of the query
 	ID ifaces.QueryID
 	// Data is the column storing the values to provide as the public inputs of
 	// the circuit instance.
-	Data ifaces.Column
+	Data ifaces.Column[T]
 	// Selector is the binary-decreasing column indicating which portion of the
 	// rows of [PlonkInWizard.Data] corresponds to actual public inputs to the
 	// circuit to satisfy.
-	Selector ifaces.Column
+	Selector ifaces.Column[T]
 	// Circuit is the circuit to satisfy. The circuit must have zero "secret" values
 	// meaning that it should be fully assignable just from the public inputs.
 	Circuit frontend.Circuit
@@ -75,15 +76,15 @@ type PlonkInWizard struct {
 	uuid                 uuid.UUID `serde:"omit"`
 }
 
-func NewPlonkInWizard(
+func NewPlonkInWizard[T zk.Element](
 	ID ifaces.QueryID,
-	Data ifaces.Column,
-	Selector ifaces.Column,
+	Data ifaces.Column[T],
+	Selector ifaces.Column[T],
 	Circuit frontend.Circuit,
 	PlonkOptions []PlonkOption,
-) *PlonkInWizard {
+) *PlonkInWizard[T] {
 
-	return &PlonkInWizard{
+	return &PlonkInWizard[T]{
 		ID:           ID,
 		Data:         Data,
 		Selector:     Selector,
@@ -114,12 +115,12 @@ func PlonkRangeCheckOption(nbBits, nbLimbs int, addGateForRangeCheck bool) Plonk
 }
 
 // Name implements the [ifaces.Query] interface
-func (piw *PlonkInWizard) Name() ifaces.QueryID {
+func (piw *PlonkInWizard[T]) Name() ifaces.QueryID {
 	return piw.ID
 }
 
 // Check implements the [ifaces.Query] interface
-func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
+func (piw *PlonkInWizard[T]) Check(run ifaces.Runtime) error {
 
 	var (
 		data                = piw.Data.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -221,13 +222,13 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 // CheckGnark implements the [ifaces.Query] interface and will panic in this
 // construction because we do not have a good way to check the query within a
 // circuit
-func (piw *PlonkInWizard) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (piw *PlonkInWizard[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 	utils.Panic("UNSUPPORTED : can't check a PlonkInWizard query directly into the circuit, query-name=%v", piw.Name())
 }
 
 // GetNbPublicInputs returns the number of public inputs of the circuit provided
 // by the query.
-func (piw *PlonkInWizard) GetNbPublicInputs() int {
+func (piw *PlonkInWizard[T]) GetNbPublicInputs() int {
 	// The lazy loading does not need to be thread-safe as (1) it is not
 	// meant to be run concurrently and (2) the initialization is idempotent
 	// anyway.
@@ -241,19 +242,19 @@ func (piw *PlonkInWizard) GetNbPublicInputs() int {
 
 // GetMaxNbCircuitInstances returns the maximum number of circuit instances
 // that can be covered by the query.
-func (piw *PlonkInWizard) GetMaxNbCircuitInstances() int {
+func (piw *PlonkInWizard[T]) GetMaxNbCircuitInstances() int {
 	return piw.Data.Size() / utils.NextPowerOfTwo(piw.GetNbPublicInputs())
 }
 
 // GetRound returns the round number at which both [PlonkInWizard.Data] and
 // [PlonkInWizard.Selector] are available.
-func (piw *PlonkInWizard) GetRound() int {
+func (piw *PlonkInWizard[T]) GetRound() int {
 	return max(piw.Data.Round(), piw.Selector.Round())
 }
 
 // CheckMask checks if the [PlonkInWizard.CircuitMask] is consistent with the
 // provided [PlonkInWizard.Circuit]. It returns an error if not.
-func (piw *PlonkInWizard) CheckMask(mask smartvectors.SmartVector) error {
+func (piw *PlonkInWizard[T]) CheckMask(mask smartvectors.SmartVector) error {
 
 	var (
 		size                 = piw.Data.Size()
@@ -279,6 +280,6 @@ func (piw *PlonkInWizard) CheckMask(mask smartvectors.SmartVector) error {
 	return nil
 }
 
-func (piw *PlonkInWizard) UUID() uuid.UUID {
+func (piw *PlonkInWizard[T]) UUID() uuid.UUID {
 	return piw.uuid
 }

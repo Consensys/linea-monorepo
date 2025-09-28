@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
@@ -20,19 +21,19 @@ import (
 // The GrandProduct query is obtained by processing all the permuation queries specific to a target module.
 // We store the randomised symbolic products of A and B of permuation queries combinedly
 // into the Numerators and the Denominators of the GrandProduct query
-type GrandProductInput struct {
+type GrandProductInput[T zk.Element] struct {
 	Size         int
-	Numerators   []*symbolic.Expression // stores A as multi-column
-	Denominators []*symbolic.Expression // stores B as multi-column
+	Numerators   []*symbolic.Expression[T] // stores A as multi-column
+	Denominators []*symbolic.Expression[T] // stores B as multi-column
 }
 
 // GrandProduct is a query for computing the grand-product of several vector expressions. The
 // query returns a unique field element result.
-type GrandProduct struct {
+type GrandProduct[T zk.Element] struct {
 	Round int
 	ID    ifaces.QueryID
 	// The list of the inputs of the query, grouped by sizes
-	Inputs map[int]*GrandProductInput
+	Inputs map[int]*GrandProductInput[T]
 	uuid   uuid.UUID `serde:"omit"`
 }
 
@@ -52,7 +53,7 @@ type GrandProductParams struct {
 //
 // Returns:
 // - A pointer to a new instance of GrandProduct.
-func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryID) GrandProduct {
+func NewGrandProduct[T zk.Element](round int, inp map[int]*GrandProductInput[T], id ifaces.QueryID) GrandProduct[T] {
 	// check the length consistency
 	for key := range inp {
 		for i, num := range inp[key].Numerators {
@@ -86,7 +87,7 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 		}
 	}
 
-	return GrandProduct{
+	return GrandProduct[T]{
 		Round:  round,
 		Inputs: inp,
 		ID:     id,
@@ -112,7 +113,7 @@ func NewGrandProductParamsExt(yExt fext.Element) GrandProductParams {
 }
 
 // Name returns the unique identifier of the GrandProduct query.
-func (g GrandProduct) Name() ifaces.QueryID {
+func (g GrandProduct[T]) Name() ifaces.QueryID {
 	return g.ID
 }
 
@@ -129,7 +130,7 @@ func (gp GrandProductParams) UpdateFSExt(fs hash.StateStorer) {
 // should be run by a runtime with access to the query columns. i.e
 // either by a [wizard.ProverRuntime] or a [wizard.VerifierRuntime]
 // but then the involved columns should all be public.
-func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
+func (g GrandProduct[T]) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 
 	result := fext.GenericFieldOne()
 
@@ -232,7 +233,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) fext.GenericFieldElem {
 //
 // Returns:
 // - An error if the grand product query is not satisfied, or nil if it is satisfied.
-func (g GrandProduct) Check(run ifaces.Runtime) error {
+func (g GrandProduct[T]) Check(run ifaces.Runtime) error {
 
 	var (
 		params     = run.GetParams(g.ID).(GrandProductParams)
@@ -258,10 +259,10 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 	return nil
 }
 
-func (g GrandProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (g GrandProduct[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 	utils.Panic("Unimplemented")
 }
 
-func (g GrandProduct) UUID() uuid.UUID {
+func (g GrandProduct[T]) UUID() uuid.UUID {
 	return g.uuid
 }

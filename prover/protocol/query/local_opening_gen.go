@@ -13,7 +13,7 @@ import (
 
 // Queries the opening of a handle at zero
 type LocalOpeningGen[T zk.Element] struct {
-	Pol  ifaces.ColumnGen[T]
+	Pol  ifaces.Column[T]
 	ID   ifaces.QueryID
 	uuid uuid.UUID `serde:"omit"`
 }
@@ -36,7 +36,7 @@ type LocalOpeningGen[T zk.Element] struct {
 // }
 
 // Constructs a new local opening query
-func NewLocalOpeningGen[T zk.Element](id ifaces.QueryID, pol ifaces.ColumnGen[T]) LocalOpeningGen[T] {
+func NewLocalOpeningGen[T zk.Element](id ifaces.QueryID, pol ifaces.Column[T]) LocalOpeningGen[T] {
 
 	if len(pol.GetColID()) == 0 {
 		utils.Panic("Assigned a polynomial name with an empty length")
@@ -99,14 +99,14 @@ func (r LocalOpeningGen[T]) Check(run ifaces.Runtime) error {
 }
 
 // Test that the polynomial evaluation holds
-func (r LocalOpeningGen[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntimeGen[T]) {
+func (r LocalOpeningGen[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 
 	e4Ext, err := gnarkfext.NewExt4[T](api)
 	if err != nil {
 		panic(err)
 	}
 
-	params := run.GetParams(r.ID).(GnarkLocalOpeningParamsGen[T])
+	params := run.GetParams(r.ID).(GnarkLocalOpeningParams[T])
 	if params.IsBase {
 		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
 		api.AssertIsEqual(params.BaseY, actualY)

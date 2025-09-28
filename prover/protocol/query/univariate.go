@@ -12,14 +12,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/google/uuid"
 )
 
 // Multiple polynomials, one point
-type UnivariateEval struct {
-	Pols    []ifaces.Column
+type UnivariateEval[T zk.Element] struct {
+	Pols    []ifaces.Column[T]
 	QueryID ifaces.QueryID
 	uuid    uuid.UUID `serde:"omit"`
 }
@@ -37,7 +38,7 @@ type UnivariateEvalParams struct {
 Constructor for univariate evaluation queries
 The list of polynomial must be deduplicated.
 */
-func NewUnivariateEval(id ifaces.QueryID, pols ...ifaces.Column) UnivariateEval {
+func NewUnivariateEval[T zk.Element](id ifaces.QueryID, pols ...ifaces.Column[T]) UnivariateEval[T] {
 	// Panics if there is a duplicate
 	polsSet := collection.NewSet[ifaces.ColID]()
 
@@ -56,11 +57,11 @@ func NewUnivariateEval(id ifaces.QueryID, pols ...ifaces.Column) UnivariateEval 
 		}
 	}
 
-	return UnivariateEval{QueryID: id, Pols: pols, uuid: uuid.New()}
+	return UnivariateEval[T]{QueryID: id, Pols: pols, uuid: uuid.New()}
 }
 
 // Name implements the [ifaces.Query] interface
-func (r UnivariateEval) Name() ifaces.QueryID {
+func (r UnivariateEval[T]) Name() ifaces.QueryID {
 	return r.QueryID
 }
 
@@ -92,7 +93,7 @@ func (p UnivariateEvalParams) UpdateFSExt(state hash.StateStorer) {
 }
 
 // Test that the polynomial evaluation holds
-func (r UnivariateEval) Check(run ifaces.Runtime) error {
+func (r UnivariateEval[T]) Check(run ifaces.Runtime) error {
 	params := run.GetParams(r.QueryID).(UnivariateEvalParams)
 	errMsg := "univariate query check failed\n"
 	anyErr := false
@@ -114,16 +115,16 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 }
 
 // Test that the polynomial evaluation holds
-func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	params := run.GetParams(r.QueryID).(GnarkUnivariateEvalParams)
+func (r UnivariateEval[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+	params := run.GetParams(r.QueryID).(GnarkUnivariateEvalParams[T])
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignmentGnark(run)
-		actualY := fastpoly.EvaluateLagrangeGnark(api, wit, params.X)
+		actualY := fastpoly.EvaluateLagrangeGnarkGen(api, wit, params.X)
 		api.AssertIsEqual(actualY, params.Ys[k])
 	}
 }
 
-func (r UnivariateEval) UUID() uuid.UUID {
+func (r UnivariateEval[T]) UUID() uuid.UUID {
 	return r.uuid
 }

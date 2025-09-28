@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
@@ -15,11 +16,11 @@ import (
 // up to a permutation. The tables can contain several columns and they can be
 // described in a fractioned way: the table is the union of the rows of several
 // tables.
-type Permutation struct {
+type Permutation[T zk.Element] struct {
 	// A and B represent the tables on both sides of the argument. The
 	// permutation can be fractionned (len(A) = len(B) > 1) and it can be
 	// multi-column (len(A[*]) = len(B[*]) > 1.
-	A, B [][]ifaces.Column
+	A, B [][]ifaces.Column[T]
 	// ID is the string indentifier of the query.
 	ID   ifaces.QueryID
 	uuid uuid.UUID `serde:"omit"`
@@ -27,14 +28,14 @@ type Permutation struct {
 
 // NewPermutation constructs a new permutation query and performs all the
 // well-formedness sanity-checks. In case of failure, it will panic.
-func NewPermutation(id ifaces.QueryID, a, b [][]ifaces.Column) Permutation {
+func NewPermutation[T zk.Element](id ifaces.QueryID, a, b [][]ifaces.Column[T]) Permutation[T] {
 
 	var (
 		nCol     = len(a[0])
 		totalRow = [2]int{}
 	)
 
-	for side, aOrB := range [2][][]ifaces.Column{a, b} {
+	for side, aOrB := range [2][][]ifaces.Column[T]{a, b} {
 		for frag := range aOrB {
 
 			if len(aOrB[frag]) != nCol {
@@ -46,7 +47,7 @@ func NewPermutation(id ifaces.QueryID, a, b [][]ifaces.Column) Permutation {
 			}
 
 			sizeFrag, err := utils.AllReturnEqual(
-				ifaces.Column.Size,
+				ifaces.Column[T].Size,
 				aOrB[frag],
 			)
 
@@ -62,11 +63,11 @@ func NewPermutation(id ifaces.QueryID, a, b [][]ifaces.Column) Permutation {
 		utils.Panic("a (numRows: %v, colId: %v) and b (numRows: %v, colId: %v) must have the same total number of rows, query id: %v", totalRow[0], a[0][0].GetColID(), totalRow[1], b[0][0].GetColID(), id)
 	}
 
-	return Permutation{A: a, B: b, ID: id, uuid: uuid.New()}
+	return Permutation[T]{A: a, B: b, ID: id, uuid: uuid.New()}
 }
 
 // Name implements the [ifaces.Query] interface
-func (r Permutation) Name() ifaces.QueryID {
+func (r Permutation[T]) Name() ifaces.QueryID {
 	return r.ID
 }
 
@@ -78,7 +79,7 @@ func (r Permutation) Name() ifaces.QueryID {
 // With overhelming probability, if the predicate is wrong then then the
 // products will be unequal and this will be equal if the predicate is
 // satisfied.
-func (r Permutation) Check(run ifaces.Runtime) error {
+func (r Permutation[T]) Check(run ifaces.Runtime) error {
 
 	var (
 		numCol    = len(r.A[0])
@@ -90,7 +91,7 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 	randGamma.SetRandom()
 	randAlpha.SetRandom()
 
-	for k, aOrB := range [2][][]ifaces.Column{r.A, r.B} {
+	for k, aOrB := range [2][][]ifaces.Column[T]{r.A, r.B} {
 		for frag := range aOrB {
 			var (
 				tab        = make([]ifaces.ColAssignment, numCol)
@@ -180,7 +181,7 @@ func CheckPermutation(a, b []ifaces.ColAssignment) error {
 
 // GnarkCheck will panic in this construction because we do not have a good way
 // to check the query within a circuit
-func (p Permutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (p Permutation[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 	panic("UNSUPPORTED : can't check an permutation query directly into the circuit")
 }
 
@@ -194,9 +195,9 @@ func (p Permutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 // this implementation without doing the corresponding changes in the
 // distributed package. Otherwise, this will silence the checks that we are
 // doing.
-func (p Permutation) GetShiftedRelatedColumns() []ifaces.Column {
+func (p Permutation[T]) GetShiftedRelatedColumns() []ifaces.Column[T] {
 
-	res := []ifaces.Column{}
+	res := []ifaces.Column[T]{}
 
 	for frag := range p.A {
 		for _, col := range p.A[frag] {
@@ -217,6 +218,6 @@ func (p Permutation) GetShiftedRelatedColumns() []ifaces.Column {
 	return res
 }
 
-func (p Permutation) UUID() uuid.UUID {
+func (p Permutation[T]) UUID() uuid.UUID {
 	return p.uuid
 }

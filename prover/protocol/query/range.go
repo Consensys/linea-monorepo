@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
@@ -16,10 +17,10 @@ be within range [0, B)
 
 Where B is a power of two
 */
-type Range struct {
+type Range[T zk.Element] struct {
 	ID ifaces.QueryID
 	// Maybe we should enforce that the handle is a natural one here
-	Handle ifaces.Column
+	Handle ifaces.Column[T]
 	// Upper-bound
 	B    int
 	uuid uuid.UUID `serde:"omit"`
@@ -28,8 +29,8 @@ type Range struct {
 /*
 Constructor for range constraints also makes the input validation
 */
-func NewRange(id ifaces.QueryID, h ifaces.Column, b int) Range {
-	return Range{
+func NewRange[T zk.Element](id ifaces.QueryID, h ifaces.Column[T], b int) Range[T] {
+	return Range[T]{
 		ID:     id,
 		B:      b,
 		Handle: h,
@@ -38,14 +39,14 @@ func NewRange(id ifaces.QueryID, h ifaces.Column, b int) Range {
 }
 
 // Name implements the [ifaces.Query] interface
-func (r Range) Name() ifaces.QueryID {
+func (r Range[T]) Name() ifaces.QueryID {
 	return r.ID
 }
 
 /*
 Test that the range checks hold
 */
-func (r Range) Check(run ifaces.Runtime) error {
+func (r Range[T]) Check(run ifaces.Runtime) error {
 
 	b := field.NewElement(uint64(r.B))
 
@@ -70,10 +71,10 @@ func (r Range) Check(run ifaces.Runtime) error {
 
 // CheckGnark will panic in this construction because we do not have a good way
 // to check the query within a circuit
-func (r Range) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (r Range[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
 
-func (r Range) UUID() uuid.UUID {
+func (r Range[T]) UUID() uuid.UUID {
 	return r.uuid
 }

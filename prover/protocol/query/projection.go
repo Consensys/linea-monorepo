@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
@@ -23,50 +24,50 @@ import (
 // And on top of that, the query can also "tables": the query look over vector
 // of values instead of just values. In that case, all parts of the two sides
 // of multi-ary projection must have the same number of columns.
-type Projection struct {
+type Projection[T zk.Element] struct {
 	Round int
 	ID    ifaces.QueryID
-	Inp   ProjectionMultiAryInput
+	Inp   ProjectionMultiAryInput[T]
 	uuid  uuid.UUID `serde:"omit"`
 }
 
 // ProjectionInput is a collection of parameters to provide to a [Projection]
 // query. It corresponds to the case where the projection query is "unary".
-type ProjectionInput struct {
+type ProjectionInput[T zk.Element] struct {
 	// ColumnA and ColumnB are the columns of the left and right side. Each
 	// entry of either corresponds to a column in the projected table.
-	ColumnA, ColumnB []ifaces.Column
+	ColumnA, ColumnB []ifaces.Column[T]
 	// FilterA and FilterB are the filters of the ColumnA and ColumnB
-	FilterA, FilterB ifaces.Column
+	FilterA, FilterB ifaces.Column[T]
 }
 
 // ProjectionMultiAryInput is a collection of parameters to provide to a
 // [Projection] query in the general case.
-type ProjectionMultiAryInput struct {
+type ProjectionMultiAryInput[T zk.Element] struct {
 	// ColumnsA and ColumnsB are the columns of the left and right side.
 	// The lists are structured as list of projected tables, each list
 	// is processed left-to-right then top-to-bottom.
-	ColumnsA, ColumnsB [][]ifaces.Column
+	ColumnsA, ColumnsB [][]ifaces.Column[T]
 	// FiltersA and FiltersB are the filters of the left-to-right side.
-	FiltersA, FiltersB []ifaces.Column
+	FiltersA, FiltersB []ifaces.Column[T]
 }
 
 // NewProjection constructs a projection. Will panic if it is mal-formed
-func NewProjection(round int, id ifaces.QueryID, inp ProjectionInput) Projection {
-	return NewProjectionMultiAry(round, id, ProjectionMultiAryInput{
-		ColumnsA: [][]ifaces.Column{inp.ColumnA},
-		ColumnsB: [][]ifaces.Column{inp.ColumnB},
-		FiltersA: []ifaces.Column{inp.FilterA},
-		FiltersB: []ifaces.Column{inp.FilterB},
+func NewProjection[T zk.Element](round int, id ifaces.QueryID, inp ProjectionInput[T]) Projection[T] {
+	return NewProjectionMultiAry(round, id, ProjectionMultiAryInput[T]{
+		ColumnsA: [][]ifaces.Column[T]{inp.ColumnA},
+		ColumnsB: [][]ifaces.Column[T]{inp.ColumnB},
+		FiltersA: []ifaces.Column[T]{inp.FilterA},
+		FiltersB: []ifaces.Column[T]{inp.FilterB},
 	})
 }
 
 // NewProjectionMultiAry returns a new [Projection] query object.
-func NewProjectionMultiAry(
+func NewProjectionMultiAry[T zk.Element](
 	round int,
 	id ifaces.QueryID,
-	inp ProjectionMultiAryInput,
-) Projection {
+	inp ProjectionMultiAryInput[T],
+) Projection[T] {
 
 	if len(inp.ColumnsA) == 0 || len(inp.ColumnsB) == 0 {
 		utils.Panic("A and B must have at least one table: len(A)=%v, len(B)=%v", len(inp.ColumnsA), len(inp.ColumnsB))
@@ -128,16 +129,16 @@ func NewProjectionMultiAry(
 		}
 	}
 
-	return Projection{Round: round, ID: id, Inp: inp, uuid: uuid.New()}
+	return Projection[T]{Round: round, ID: id, Inp: inp, uuid: uuid.New()}
 }
 
 // Name implements the [ifaces.Query] interface
-func (p Projection) Name() ifaces.QueryID {
+func (p Projection[T]) Name() ifaces.QueryID {
 	return p.ID
 }
 
 // Check implements the [ifaces.Query] interface
-func (p Projection) Check(run ifaces.Runtime) error {
+func (p Projection[T]) Check(run ifaces.Runtime) error {
 
 	// The function is implemented by creating two iterator functions and
 	// checking that they yield the same values.
@@ -241,7 +242,7 @@ func (p Projection) Check(run ifaces.Runtime) error {
 // GnarkCheck implements the [ifaces.Query] interface. It will panic in this
 // construction because we do not have a good way to check the query within a
 // circuit
-func (i Projection) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (i Projection[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 	panic("UNSUPPORTED : can't check an Projection query directly into the circuit")
 }
 
@@ -255,9 +256,9 @@ func (i Projection) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 // this implementation without doing the corresponding changes in the
 // distributed package. Otherwise, this will silence the checks that we are
 // doing.
-func (p Projection) GetShiftedRelatedColumns() []ifaces.Column {
+func (p Projection[T]) GetShiftedRelatedColumns() []ifaces.Column[T] {
 
-	res := []ifaces.Column{}
+	res := []ifaces.Column[T]{}
 
 	for _, f := range p.Inp.FiltersA {
 		if f.IsComposite() {
@@ -290,6 +291,6 @@ func (p Projection) GetShiftedRelatedColumns() []ifaces.Column {
 	return res
 }
 
-func (p Projection) UUID() uuid.UUID {
+func (p Projection[T]) UUID() uuid.UUID {
 	return p.uuid
 }

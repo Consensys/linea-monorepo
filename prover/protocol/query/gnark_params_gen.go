@@ -9,34 +9,34 @@ import (
 )
 
 // A gnark circuit version of the LocalOpeningResult
-type GnarkLocalOpeningParamsGen[T zk.Element] struct {
+type GnarkLocalOpeningParams[T zk.Element] struct {
 	BaseY  T
 	ExtY   gnarkfext.E4Gen[T]
 	IsBase bool
 }
 
-func (g *GnarkLocalOpeningParamsGen[T]) GnarkAssign(p LocalOpeningParams) {
+func (g *GnarkLocalOpeningParams[T]) GnarkAssign(p LocalOpeningParams) {
 	g.BaseY = *zk.ValueOf[T](p.BaseY)
 	g.ExtY = gnarkfext.NewE4Gen[T](p.ExtY)
 	g.IsBase = p.IsBase
 }
 
 // A gnark circuit version of LogDerivSumParams
-type GnarkLogDerivSumParamsGen[T zk.Element] struct {
+type GnarkLogDerivSumParams[T zk.Element] struct {
 	Sum T
 }
 
-func (g *GnarkLogDerivSumParamsGen[T]) GnarkAssign(p LogDerivSumParams) {
+func (g *GnarkLogDerivSumParams[T]) GnarkAssign(p LogDerivSumParams) {
 	g.Sum = *zk.ValueOf[T](p.Sum)
 }
 
 // A gnark circuit version of GrandProductParams
-type GnarkGrandProductParamsGen[T zk.Element] struct {
+type GnarkGrandProductParams[T zk.Element] struct {
 	Prod T
 }
 
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
-type HornerParamsPartGnarkGen[T zk.Element] struct {
+type HornerParamsPartGnark[T zk.Element] struct {
 	// N0 is an initial offset of the Horner query
 	N0 T
 	// N1 is the second offset of the Horner query
@@ -45,23 +45,23 @@ type HornerParamsPartGnarkGen[T zk.Element] struct {
 
 // GnarkHornerParams represents the parameters of the Horner evaluation query
 // in a gnark circuit.
-type GnarkHornerParamsGen[T zk.Element] struct {
+type GnarkHornerParams[T zk.Element] struct {
 	// Final result is the result of summing the Horner parts for every
 	// queries.
 	FinalResult T
 	// Parts are the parameters of the Horner parts
-	Parts []HornerParamsPartGnarkGen[T]
+	Parts []HornerParamsPartGnark[T]
 }
 
 // Allocate allocates a [GnarkHornerParams] with the right dimensions
-func (g *GnarkHornerParamsGen[T]) Allocate(p HornerParams) {
-	g.Parts = make([]HornerParamsPartGnarkGen[T], len(p.Parts))
+func (g *GnarkHornerParams[T]) Allocate(p HornerParams[T]) {
+	g.Parts = make([]HornerParamsPartGnark[T], len(p.Parts))
 }
 
-func (g *GnarkHornerParamsGen[T]) Assign(p HornerParams) {
-	g.Parts = make([]HornerParamsPartGnarkGen[T], len(p.Parts))
+func (g *GnarkHornerParams[T]) Assign(p HornerParams[T]) {
+	g.Parts = make([]HornerParamsPartGnark[T], len(p.Parts))
 	for i := 0; i < len(p.Parts); i++ {
-		g.Parts[i] = HornerParamsPartGnarkGen[T]{
+		g.Parts[i] = HornerParamsPartGnark[T]{
 			N0: *zk.ValueOf[T](p.Parts[i].N0),
 			N1: *zk.ValueOf[T](p.Parts[i].N1),
 		}
@@ -69,21 +69,21 @@ func (g *GnarkHornerParamsGen[T]) Assign(p HornerParams) {
 }
 
 // A gnark circuit version of InnerProductParams
-type GnarkInnerProductParamsGen[T zk.Element] struct {
+type GnarkInnerProductParams[T zk.Element] struct {
 	Ys []gnarkfext.E4Gen[T]
 }
 
 // Allocate allocates a [GnarkHornerParams] with the right dimensions
-func (g *GnarkInnerProductParamsGen[T]) Allocate(p InnerProduct) {
+func (g *GnarkInnerProductParams[T]) Allocate(p InnerProduct[T]) {
 	g.Ys = make([]gnarkfext.E4Gen[T], len(p.Bs))
 }
 
-func (g *GnarkInnerProductParamsGen[T]) Assign(p InnerProductParams) {
-	g.Ys = vectorext.IntoGnarkAssignmentGen[T](p.Ys)
+func (g *GnarkInnerProductParams[T]) Assign(p InnerProductParams) {
+	g.Ys = vectorext.IntoGnarkAssignment[T](p.Ys)
 }
 
 // A gnark circuit version of univariate eval params
-type GnarkUnivariateEvalParamsGen[T zk.Element] struct {
+type GnarkUnivariateEvalParams[T zk.Element] struct {
 	X      T
 	Ys     []T
 	ExtX   gnarkfext.E4Gen[T]
@@ -91,60 +91,60 @@ type GnarkUnivariateEvalParamsGen[T zk.Element] struct {
 	IsBase bool
 }
 
-func (p UnivariateEvalGen[T]) GnarkAllocate() GnarkUnivariateEvalParamsGen[T] {
+func (p UnivariateEval[T]) GnarkAllocate() GnarkUnivariateEvalParams[T] {
 	// no need to preallocate the x because its size is already known
-	return GnarkUnivariateEvalParamsGen[T]{
+	return GnarkUnivariateEvalParams[T]{
 		Ys:    make([]T, len(p.Pols)),
 		ExtYs: make([]gnarkfext.E4Gen[T], len(p.Pols)),
 	}
 }
 
 // Returns a gnark assignment for the present parameters
-func (g *GnarkUnivariateEvalParamsGen[T]) GnarkAssign(p UnivariateEvalParams) {
+func (g *GnarkUnivariateEvalParams[T]) GnarkAssign(p UnivariateEvalParams) {
 	if p.IsBase {
-		g.Ys = vector.IntoGnarkAssignmentGen[T](p.Ys)
+		g.Ys = vector.IntoGnarkAssignment[T](p.Ys)
 		g.X = *zk.ValueOf[T](p.X)
 	} else {
 		// extension query
 		g.Ys = nil
 		g.X = *zk.ValueOf[T](0)
 	}
-	g.ExtYs = vectorext.IntoGnarkAssignmentGen[T](p.ExtYs)
+	g.ExtYs = vectorext.IntoGnarkAssignment[T](p.ExtYs)
 	g.ExtX = gnarkfext.NewE4Gen[T](p.ExtX)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkInnerProductParamsGen[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkInnerProductParams[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	// TODO @thomas update FS gen
 	//fs.UpdateExt(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkLocalOpeningParamsGen[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkLocalOpeningParams[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	// TODO @thomas update FS gen
 	// fs.Update(p.BaseY)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkGrandProductParamsGen[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkGrandProductParams[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	// TODO @thomas update FS gen
 	// fs.Update(p.Prod)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkUnivariateEvalParamsGen[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkUnivariateEvalParams[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	// TODO @thomas update FS gen
 	// fs.Update(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present field extension parameters
-func (p GnarkUnivariateEvalParamsGen[T]) UpdateFSExt(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkUnivariateEvalParams[T]) UpdateFSExt(fs *fiatshamir.GnarkFiatShamir) {
 	// TODO @thomas update FS gen
 	// fs.UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkHornerParamsGen[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkHornerParams[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	// TODO @thomas update FS gen
 	// fs.Update(p.FinalResult)
 

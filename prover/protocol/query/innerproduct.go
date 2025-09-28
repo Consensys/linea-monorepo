@@ -12,15 +12,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/google/uuid"
 )
 
 // Represent a batch of inner-product <a, b0>, <a, b1>, <a, b2> ...
-type InnerProduct struct {
-	A    ifaces.Column
-	Bs   []ifaces.Column
+type InnerProduct[T zk.Element] struct {
+	A    ifaces.Column[T]
+	Bs   []ifaces.Column[T]
 	ID   ifaces.QueryID
 	uuid uuid.UUID `serde:"omit"`
 }
@@ -37,7 +38,7 @@ func (ipp InnerProductParams) UpdateFS(state hash.StateStorer) {
 
 // Constructor for inner-product.
 // The list of polynomial Bs must be deduplicated.
-func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) InnerProduct {
+func NewInnerProduct[T zk.Element](id ifaces.QueryID, a ifaces.Column[T], bs ...ifaces.Column[T]) InnerProduct[T] {
 	// Panics if there is a duplicate
 	bsSet := collection.NewSet[ifaces.ColID]()
 
@@ -64,7 +65,7 @@ func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) In
 		bsSet.Insert(b.GetColID())
 	}
 
-	return InnerProduct{ID: id, A: a, Bs: bs, uuid: uuid.New()}
+	return InnerProduct[T]{ID: id, A: a, Bs: bs, uuid: uuid.New()}
 }
 
 // Constructor for fixed point univariate evaluation query parameters
@@ -73,12 +74,12 @@ func NewInnerProductParams(ys ...fext.Element) InnerProductParams {
 }
 
 // Name implements the [ifaces.Query] interface
-func (r InnerProduct) Name() ifaces.QueryID {
+func (r InnerProduct[T]) Name() ifaces.QueryID {
 	return r.ID
 }
 
 // Check the inner-product manually
-func (r InnerProduct) Check(run ifaces.Runtime) error {
+func (r InnerProduct[T]) Check(run ifaces.Runtime) error {
 
 	expecteds := run.GetParams(r.ID).(InnerProductParams)
 	computed := r.Compute(run)
@@ -104,7 +105,7 @@ func (r InnerProduct) Check(run ifaces.Runtime) error {
 	return nil
 }
 
-func (r InnerProduct) Compute(run ifaces.Runtime) []fext.Element {
+func (r InnerProduct[T]) Compute(run ifaces.Runtime) []fext.Element {
 
 	res := make([]fext.Element, len(r.Bs))
 	a := r.A.GetColAssignment(run)
@@ -122,10 +123,10 @@ func (r InnerProduct) Compute(run ifaces.Runtime) []fext.Element {
 }
 
 // Check the inner-product manually
-func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (r InnerProduct[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 
 	wA := r.A.GetColAssignmentGnark(run)
-	expecteds := run.GetParams(r.ID).(GnarkInnerProductParams)
+	expecteds := run.GetParams(r.ID).(GnarkInnerProductParams[T])
 
 	for i, b := range r.Bs {
 		wB := b.GetColAssignmentGnark(run)
@@ -141,6 +142,6 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	}
 }
 
-func (r InnerProduct) UUID() uuid.UUID {
+func (r InnerProduct[T]) UUID() uuid.UUID {
 	return r.uuid
 }

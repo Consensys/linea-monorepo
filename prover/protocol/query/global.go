@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -25,12 +26,12 @@ A global constraint is an arithmetic constraint that is applied on several vecto
 For instance A[i - 1] * B[i] = A[i] for all i \in 0..1000. The expression can also
 use random coins as variables.
 */
-type GlobalConstraint struct {
+type GlobalConstraint[T zk.Element] struct {
 
 	/*
 		Symbolic expression representing the global constraint
 	*/
-	*symbolic.Expression
+	*symbolic.Expression[T]
 	/*
 		ifaces.QueryID of the coinstraint
 	*/
@@ -57,7 +58,7 @@ Constructor for global constraints
     circular dependencies. It used mainly for validating the constraint and
     computing the size of the domain on which the constraint applies.
 */
-func NewGlobalConstraint(id ifaces.QueryID, expr *symbolic.Expression, noBoundCancel ...bool) GlobalConstraint {
+func NewGlobalConstraint[T zk.Element](id ifaces.QueryID, expr *symbolic.Expression[T], noBoundCancel ...bool) GlobalConstraint[T] {
 
 	/*
 		Sanity-check : the querie's ifaces.QueryID cannot be empty or nil
@@ -68,7 +69,7 @@ func NewGlobalConstraint(id ifaces.QueryID, expr *symbolic.Expression, noBoundCa
 
 	expr.AssertValid()
 
-	res := GlobalConstraint{
+	res := GlobalConstraint[T]{
 		Expression: expr,
 		ID:         id,
 		uuid:       uuid.New(),
@@ -85,14 +86,14 @@ func NewGlobalConstraint(id ifaces.QueryID, expr *symbolic.Expression, noBoundCa
 }
 
 // Name implements the [ifaces.Query] interface
-func (cs GlobalConstraint) Name() ifaces.QueryID {
+func (cs GlobalConstraint[T]) Name() ifaces.QueryID {
 	return cs.ID
 }
 
 /*
 Test a polynomial identity relation
 */
-func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
+func (cs GlobalConstraint[T]) Check(run ifaces.Runtime) error {
 
 	logrus.Debugf("checking global : %v\n", cs.ID)
 
@@ -104,7 +105,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 		larger than end.
 	*/
 	for _, metadataInterface := range metadatas {
-		if handle, ok := metadataInterface.(ifaces.Column); ok {
+		if handle, ok := metadataInterface.(ifaces.Column[T]); ok {
 			witness := handle.GetColAssignment(run)
 			if witness.Len() != cs.DomainSize {
 				utils.Panic(
@@ -143,7 +144,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 	*/
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {
-		case ifaces.Column:
+		case ifaces.Column[T]:
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
@@ -152,11 +153,11 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 			} else {
 				evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(meta.Name), cs.DomainSize)
 			}
-		case variables.X:
+		case variables.X[T]:
 			evalInputs[k] = meta.EvalCoset(cs.DomainSize, 0, 1, false)
-		case variables.PeriodicSample:
+		case variables.PeriodicSample[T]:
 			evalInputs[k] = meta.EvalCoset(cs.DomainSize, 0, 1, false)
-		case ifaces.Accessor:
+		case ifaces.Accessor[T]:
 			if meta.IsBase() {
 				baseElem, _ := meta.GetValBase(run)
 				evalInputs[k] = sv.NewConstant(baseElem, cs.DomainSize)
@@ -172,7 +173,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 	// This panics if the global constraints doesn't use any commitment
 	res := boarded.Evaluate(evalInputs)
 
-	offsetRange := MinMaxOffset(cs.Expression)
+	offsetRange := MinMaxOffset[T](cs.Expression)
 
 	start, stop := 0, res.Len()
 	if !cs.NoBoundCancel {
@@ -222,17 +223,17 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 
 // validatedDomainSize scans the expression of the global constraints and more
 // specifically its inputs and looks for the followings:
-//   - the expression must use at least one [ifaces.Column] as input variable
-//   - all the ifaces.Column input variables must have the same Size
+//   - the expression must use at least one [ifaces.Column[T]] as input variable
+//   - all the ifaces.Column[T] input variables must have the same Size
 //
-// If all these checks passes the function returns the size of the [ifaces.Column]
+// If all these checks passes the function returns the size of the [ifaces.Column[T]]
 // inputs that it found.
-func (cs *GlobalConstraint) validatedDomainSize() int {
+func (cs *GlobalConstraint[T]) validatedDomainSize() int {
 
 	var (
 		boarded   = cs.Board()
 		metadatas = boarded.ListVariableMetadata()
-		// foundAny flags wether the expression has any [ifaces.Column] as input
+		// foundAny flags wether the expression has any [ifaces.Column[T]] as input
 		// variables. If there are None, this is invalid and the function will
 		// panic.
 		foundAny   = false
@@ -246,7 +247,7 @@ func (cs *GlobalConstraint) validatedDomainSize() int {
 
 	// From the min/max offset
 	for _, metadataInterface := range metadatas {
-		if handle, ok := metadataInterface.(ifaces.Column); ok {
+		if handle, ok := metadataInterface.(ifaces.Column[T]); ok {
 			// All domains should be the same length
 			if !foundAny {
 				foundAny = true
@@ -277,7 +278,7 @@ func (cs *GlobalConstraint) validatedDomainSize() int {
 }
 
 // Returns the min and max offset happening in the expression
-func MinMaxOffset(expr *symbolic.Expression) utils.Range {
+func MinMaxOffset[T zk.Element](expr *symbolic.Expression[T]) utils.Range {
 
 	minOffset := math.MaxInt
 	maxOffset := math.MinInt
@@ -291,7 +292,7 @@ func MinMaxOffset(expr *symbolic.Expression) utils.Range {
 	exprBoard := expr.Board()
 
 	for _, metadataUncasted := range exprBoard.ListVariableMetadata() {
-		if handle, ok := metadataUncasted.(ifaces.Column); ok {
+		if handle, ok := metadataUncasted.(ifaces.Column[T]); ok {
 			foundAny = true
 
 			offset := column.StackOffsets(handle)
@@ -312,7 +313,7 @@ func MinMaxOffset(expr *symbolic.Expression) utils.Range {
 /*
 Test a polynomial identity relation
 */
-func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (cs GlobalConstraint[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	boarded := cs.Board()
 	metadatas := boarded.ListVariableMetadata()
 
@@ -321,7 +322,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		larger than end.
 	*/
 	for _, metadataInterface := range metadatas {
-		if handle, ok := metadataInterface.(ifaces.Column); ok {
+		if handle, ok := metadataInterface.(ifaces.Column[T]); ok {
 			witness := handle.GetColAssignmentGnark(run)
 			if len(witness) != cs.DomainSize {
 				utils.Panic(
@@ -335,7 +336,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	/*
 		Collects the relevant datas into a slice for the evaluation
 	*/
-	evalInputs := make([][]frontend.Variable, len(metadatas))
+	evalInputs := make([][]T, len(metadatas))
 
 	/*
 		Omega is a root of unity which generates the domain of evaluation
@@ -360,17 +361,17 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	*/
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {
-		case ifaces.Column:
+		case ifaces.Column[T]:
 			w := meta.GetColAssignmentGnark(run)
 			evalInputs[k] = w
 		case coin.Info:
-			evalInputs[k] = gnarkutil.RepeatedVariable(run.GetRandomCoinField(meta.Name), cs.DomainSize)
-		case variables.X:
+			evalInputs[k] = gnarkutil.RepeatedVariableGen(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+		case variables.X[T]:
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
-		case variables.PeriodicSample:
+		case variables.PeriodicSample[T]:
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
-		case ifaces.Accessor:
-			evalInputs[k] = gnarkutil.RepeatedVariable(meta.GetFrontendVariable(api, run), cs.DomainSize)
+		case ifaces.Accessor[T]:
+			evalInputs[k] = gnarkutil.RepeatedVariableGen(meta.GetFrontendVariable(api, run), cs.DomainSize)
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), cs.ID)
 		}
@@ -386,18 +387,19 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 
 	for i := start; i < stop; i++ {
 		// This panics if the global constraints doesn't use any commitment
-		inputs := make([]frontend.Variable, len(evalInputs))
+		inputs := make([]T, len(evalInputs))
 		for j := range inputs {
 			inputs[j] = evalInputs[j][i]
 		}
-		res := boarded.GnarkEval(api, inputs)
-		api.AssertIsEqual(res, 0)
+		res := boarded.GnarkEval(api.GnarkAPI(), inputs)
+		zero := zk.ValueOf[T](0)
+		api.AssertIsEqual(&res, zero)
 	}
 
 	// Update the value of omega^i
 	omegaI.Mul(&omegaI, &omega)
 }
 
-func (cs GlobalConstraint) UUID() uuid.UUID {
+func (cs GlobalConstraint[T]) UUID() uuid.UUID {
 	return cs.uuid
 }

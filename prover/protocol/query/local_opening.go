@@ -4,19 +4,21 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
 
 // Queries the opening of a handle at zero
-type LocalOpening struct {
-	Pol  ifaces.Column
+type LocalOpening[T zk.Element] struct {
+	Pol  ifaces.Column[T]
 	ID   ifaces.QueryID
 	uuid uuid.UUID `serde:"omit"`
 }
@@ -39,22 +41,22 @@ func (lop LocalOpeningParams) UpdateFS(fs hash.StateStorer) {
 }
 
 // Constructs a new local opening query
-func NewLocalOpening(id ifaces.QueryID, pol ifaces.Column) LocalOpening {
+func NewLocalOpening[T zk.Element](id ifaces.QueryID, pol ifaces.Column[T]) LocalOpening[T] {
 
 	if len(pol.GetColID()) == 0 {
 		utils.Panic("Assigned a polynomial name with an empty length")
 	}
 
-	return LocalOpening{ID: id, Pol: pol, uuid: uuid.New()}
+	return LocalOpening[T]{ID: id, Pol: pol, uuid: uuid.New()}
 }
 
 // Name implements the [ifaces.Query] interface
-func (r LocalOpening) Name() ifaces.QueryID {
+func (r LocalOpening[T]) Name() ifaces.QueryID {
 	return r.ID
 }
 
 // IsBase returns if the column is a base-field column
-func (r LocalOpening) IsBase() bool {
+func (r LocalOpening[T]) IsBase() bool {
 	return r.Pol.IsBase()
 }
 
@@ -84,7 +86,7 @@ func (lop LocalOpeningParams) ToGenericGroupElement() fext.GenericFieldElem {
 }
 
 // Test that the polynomial evaluation holds
-func (r LocalOpening) Check(run ifaces.Runtime) error {
+func (r LocalOpening[T]) Check(run ifaces.Runtime) error {
 	params := run.GetParams(r.ID).(LocalOpeningParams)
 	if params.IsBase {
 		actualY := r.Pol.GetColAssignmentAt(run, 0)
@@ -102,17 +104,23 @@ func (r LocalOpening) Check(run ifaces.Runtime) error {
 }
 
 // Test that the polynomial evaluation holds
-func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	params := run.GetParams(r.ID).(GnarkLocalOpeningParams)
+func (r LocalOpening[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+
+	e4Api, err := gnarkfext.NewExt4[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	params := run.GetParams(r.ID).(GnarkLocalOpeningParams[T])
 	if params.IsBase {
 		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
 		api.AssertIsEqual(params.BaseY, actualY)
 	} else {
 		actualY := r.Pol.GetColAssignmentGnarkAtExt(run, 0)
-		params.ExtY.AssertIsEqual(api, actualY)
+		e4Api.AssertIsEqual(&actualY, &params.ExtY)
 	}
 }
 
-func (r LocalOpening) UUID() uuid.UUID {
+func (r LocalOpening[T]) UUID() uuid.UUID {
 	return r.uuid
 }

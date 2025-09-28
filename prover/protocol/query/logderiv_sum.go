@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -21,15 +22,15 @@ import (
 )
 
 // LogDerivativeSumInput stores the input to the query
-type LogDerivativeSumInput struct {
-	Parts []LogDerivativeSumPart
+type LogDerivativeSumInput[T zk.Element] struct {
+	Parts []LogDerivativeSumPart[T]
 }
 
 // LogDerivativeSumPart is a part of the LogDerivativeSum query.
-type LogDerivativeSumPart struct {
+type LogDerivativeSumPart[T zk.Element] struct {
 	Size int
-	Num  *sym.Expression
-	Den  *sym.Expression
+	Num  *sym.Expression[T]
+	Den  *sym.Expression[T]
 	Name string
 }
 
@@ -39,9 +40,9 @@ type LogDerivativeSumPart struct {
 // \sum_{i,j} N_{i,j}/D_{i,j} where
 // N_{i,j} is  the i-th element of the underlying column of  j-th Numerator
 // D_{i,j} is  the i-th element of the underlying column of  j-th Denominator
-type LogDerivativeSum struct {
+type LogDerivativeSum[T zk.Element] struct {
 	Round  int
-	Inputs LogDerivativeSumInput
+	Inputs LogDerivativeSumInput[T]
 	ID     ifaces.QueryID
 	uuid   uuid.UUID `serde:"omit"`
 }
@@ -57,7 +58,7 @@ func (l LogDerivSumParams) UpdateFS(fs hash.StateStorer) {
 }
 
 // NewLogDerivativeSum creates the new context LogDerivativeSum.
-func NewLogDerivativeSum(round int, inp LogDerivativeSumInput, id ifaces.QueryID) LogDerivativeSum {
+func NewLogDerivativeSum[T zk.Element](round int, inp LogDerivativeSumInput[T], id ifaces.QueryID) LogDerivativeSum[T] {
 
 	if len(inp.Parts) == 0 {
 		utils.Panic("LogDerivativeSum must have at least one part, name=%v", id)
@@ -93,7 +94,7 @@ func NewLogDerivativeSum(round int, inp LogDerivativeSumInput, id ifaces.QueryID
 		}
 	}
 
-	return LogDerivativeSum{
+	return LogDerivativeSum[T]{
 		Round:  round,
 		Inputs: inp,
 		ID:     id,
@@ -102,7 +103,7 @@ func NewLogDerivativeSum(round int, inp LogDerivativeSumInput, id ifaces.QueryID
 }
 
 // Name implements the [ifaces.Query] interface
-func (r LogDerivativeSum) Name() ifaces.QueryID {
+func (r LogDerivativeSum[T]) Name() ifaces.QueryID {
 	return r.ID
 }
 
@@ -115,7 +116,7 @@ func NewLogDerivSumParams(sum fext.GenericFieldElem) LogDerivSumParams {
 // should be run by a runtime with access to the query columns. i.e
 // either by a [wizard.ProverRuntime] or a [wizard.VerifierRuntime]
 // but then the involved columns should all be public.
-func (r LogDerivativeSum) Compute(run ifaces.Runtime) (fext.GenericFieldElem, error) {
+func (r LogDerivativeSum[T]) Compute(run ifaces.Runtime) (fext.GenericFieldElem, error) {
 
 	// compute the actual sum from the Numerator and Denominator
 	var (
@@ -161,7 +162,7 @@ func (r LogDerivativeSum) Compute(run ifaces.Runtime) (fext.GenericFieldElem, er
 }
 
 // Test that global sum is correct
-func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
+func (r LogDerivativeSum[T]) Check(run ifaces.Runtime) error {
 
 	var (
 		params         = run.GetParams(r.ID).(LogDerivSumParams)
@@ -180,13 +181,13 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 }
 
 // Test that global sum is correct
-func (r LogDerivativeSum) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (r LogDerivativeSum[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 	panic("unexpected call")
 }
 
 // computeLogDerivativeSumPair computes the log derivative sum for a couple
 // of numerator and denominator.
-func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, size int) (fext.GenericFieldElem, error) {
+func computeLogDerivativeSumPair[T zk.Element](run ifaces.Runtime, num, den *sym.Expression[T], size int) (fext.GenericFieldElem, error) {
 
 	var (
 		numBoard            = num.Board()
@@ -385,7 +386,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 	return fext.NewESHashFromExt(res), nil
 }
 
-func (q LogDerivativeSum) UUID() uuid.UUID {
+func (q LogDerivativeSum[T]) UUID() uuid.UUID {
 	return q.uuid
 }
 

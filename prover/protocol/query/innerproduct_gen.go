@@ -18,15 +18,15 @@ import (
 
 // Represent a batch of inner-product <a, b0>, <a, b1>, <a, b2> ...
 type InnerProductGen[T zk.Element] struct {
-	A    ifaces.ColumnGen[T]
-	Bs   []ifaces.ColumnGen[T]
+	A    ifaces.Column[T]
+	Bs   []ifaces.Column[T]
 	ID   ifaces.QueryID
 	uuid uuid.UUID `serde:"omit"`
 }
 
 // Constructor for inner-product.
 // The list of polynomial Bs must be deduplicated.
-func NewInnerProductGen[T zk.Element](id ifaces.QueryID, a ifaces.ColumnGen[T], bs ...ifaces.ColumnGen[T]) InnerProductGen[T] {
+func NewInnerProductGen[T zk.Element](id ifaces.QueryID, a ifaces.Column[T], bs ...ifaces.Column[T]) InnerProductGen[T] {
 	// Panics if there is a duplicate
 	bsSet := collection.NewSet[ifaces.ColID]()
 
@@ -106,7 +106,7 @@ func (r InnerProductGen[T]) Compute(run ifaces.Runtime) []fext.Element {
 }
 
 // Check the inner-product manually
-func (r InnerProductGen[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntimeGen[T]) {
+func (r InnerProductGen[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 
 	apiGen, err := zk.NewApi[T](api)
 	if err != nil {
@@ -132,7 +132,7 @@ func (r InnerProductGen[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime
 		}
 
 		var actualIPExt gnarkfext.E4Gen[T]
-		actualIPExt.B0.A0 = zk.ValueOf[T](actualIP)
+		actualIPExt.B0.A0 = *zk.ValueOf[T](actualIP)
 		apiFext.AssertIsEqual(&expected.Ys[i], &actualIPExt)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
@@ -16,11 +17,11 @@ import (
 // query can feature conditional “included" tables and conditional “including"
 // tables. The query can additionally feature an fragmented table meaning that
 // the including “table" to consider is the union of two tables.
-type Inclusion struct {
+type Inclusion[T zk.Element] struct {
 
 	// Included represents the table over which the constraint applies. The
 	// columns must be a non-zero collection of columns of the same size.
-	Included []ifaces.Column
+	Included []ifaces.Column[T]
 	// Including represents the reference table of the inclusion constraint. It
 	// stores all the values that the “including" table is required to store.
 	// The table must be a non-zero collection of columns of the same size.
@@ -28,32 +29,32 @@ type Inclusion struct {
 	// Including can also represent a fragmented table. In that case, the double
 	// slice is indexed as [fragment][column]. In the non-fragmented case, the
 	// slice is as if there is only a single fragment
-	Including [][]ifaces.Column
+	Including [][]ifaces.Column[T]
 	// ID stores the identifier string of the query
 	ID ifaces.QueryID
 	// IncludedFilter is (allegedly) a binary-assigned column specifying
 	// with a one whether the corresponding row of the “included" is subjected
 	// to the constraint and with a 0 whether the row is disregarded.
-	IncludedFilter ifaces.Column
+	IncludedFilter ifaces.Column[T]
 	// IncludingFilter is (allegedly) a binary-assigned column specifying
 	// with a one whether a row of the including “table" is allowed and with a
 	// 0 whether the corresponding row is forbidden.
 	//
 	// The slices is indexed per number of fragment, in the non-fragmented case,
 	// consider there is only a single segment.
-	IncludingFilter []ifaces.Column
+	IncludingFilter []ifaces.Column[T]
 
 	uuid uuid.UUID `serde:"omit"`
 }
 
 // NewInclusion constructs an inclusion. Will panic if it is mal-formed
-func NewInclusion(
+func NewInclusion[T zk.Element](
 	id ifaces.QueryID,
-	included []ifaces.Column,
-	including [][]ifaces.Column,
-	includedFilter ifaces.Column,
-	includingFilter []ifaces.Column,
-) Inclusion {
+	included []ifaces.Column[T],
+	including [][]ifaces.Column[T],
+	includedFilter ifaces.Column[T],
+	includingFilter []ifaces.Column[T],
+) Inclusion[T] {
 
 	if len(included) == 0 {
 		utils.Panic("the included table has no columns")
@@ -84,7 +85,7 @@ func NewInclusion(
 		}
 
 		// All columns of including must have the same MaxSize
-		if _, err := utils.AllReturnEqual(ifaces.Column.Size, including[frag]); err != nil {
+		if _, err := utils.AllReturnEqual(ifaces.Column[T].Size, including[frag]); err != nil {
 			utils.Panic(
 				"The fragment %v of the including table is malformed, all columns must have the same length: %v",
 				frag, err.Error(),
@@ -105,7 +106,7 @@ func NewInclusion(
 	}
 
 	// Same thing for included
-	if _, err := utils.AllReturnEqual(ifaces.Column.Size, included); err != nil {
+	if _, err := utils.AllReturnEqual(ifaces.Column[T].Size, included); err != nil {
 		utils.Panic("The included table is malformed, all columns must have the same length: %v", err.Error())
 	}
 
@@ -121,7 +122,7 @@ func NewInclusion(
 		}
 	}
 
-	return Inclusion{
+	return Inclusion[T]{
 		Included:        included,
 		Including:       including,
 		ID:              id,
@@ -132,24 +133,24 @@ func NewInclusion(
 }
 
 // Name implements the [ifaces.Query] interface
-func (r Inclusion) Name() ifaces.QueryID {
+func (r Inclusion[T]) Name() ifaces.QueryID {
 	return r.ID
 }
 
 // IsFilteredOnIncluding returns true if the table is filtered on the included
 // side of the table.
-func (r Inclusion) IsFilteredOnIncluding() bool {
+func (r Inclusion[T]) IsFilteredOnIncluding() bool {
 	return r.IncludingFilter != nil
 }
 
 // IsFilteredOnIncluded returns true if the table is filtered on the including
 // side of the table
-func (r Inclusion) IsFilteredOnIncluded() bool {
+func (r Inclusion[T]) IsFilteredOnIncluded() bool {
 	return r.IncludedFilter != nil
 }
 
 // Check implements the [ifaces.Query] interface
-func (r Inclusion) Check(run ifaces.Runtime) error {
+func (r Inclusion[T]) Check(run ifaces.Runtime) error {
 
 	including := make([][]ifaces.ColAssignment, len(r.Including))
 	included := make([]ifaces.ColAssignment, len(r.Included))
@@ -234,7 +235,7 @@ func (r Inclusion) Check(run ifaces.Runtime) error {
 // GnarkCheck implements the [ifaces.Query] interface. It will panic in this
 // construction because we do not have a good way to check the query within a
 // circuit
-func (i Inclusion) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (i Inclusion[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
 
@@ -248,9 +249,9 @@ func (i Inclusion) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 // this implementation without doing the corresponding changes in the
 // distributed package. Otherwise, this will silence the checks that we are
 // doing.
-func (i Inclusion) GetShiftedRelatedColumns() []ifaces.Column {
+func (i Inclusion[T]) GetShiftedRelatedColumns() []ifaces.Column[T] {
 
-	res := []ifaces.Column{}
+	res := []ifaces.Column[T]{}
 
 	if i.IncludedFilter != nil && i.IncludedFilter.IsComposite() {
 		res = append(res, i.IncludedFilter)
@@ -278,6 +279,6 @@ func (i Inclusion) GetShiftedRelatedColumns() []ifaces.Column {
 	return res
 }
 
-func (i Inclusion) UUID() uuid.UUID {
+func (i Inclusion[T]) UUID() uuid.UUID {
 	return i.uuid
 }

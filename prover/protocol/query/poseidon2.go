@@ -8,37 +8,38 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
 
-var _ ifaces.Query = Poseidon2{}
+// var _ ifaces.Query = Poseidon2{}
 
 /*
 A Poseidon2 query over a set of 3*8 columns (block, oldState, newState) enforces
 that newState is the result of applying the Poseidon2 compression function to
 block and oldState.
 */
-type Poseidon2 struct {
+type Poseidon2[T zk.Element] struct {
 
 	// The columns on which the query applies
-	Blocks, OldState, NewState [8]ifaces.Column
+	Blocks, OldState, NewState [8]ifaces.Column[T]
 	// Selector is an optional column that disables the query on rows where the selector is 0
-	Selector ifaces.Column
+	Selector ifaces.Column[T]
 	// The name of the query
 	ID   ifaces.QueryID
 	uuid uuid.UUID `serde:"omit"`
 }
 
 // Name implements the [ifaces.Query] interface
-func (p Poseidon2) Name() ifaces.QueryID {
+func (p Poseidon2[T]) Name() ifaces.QueryID {
 	return p.ID
 }
 
 /*
 Constructs a new Poseidon2 query
 */
-func NewPoseidon2(id ifaces.QueryID, block, oldState, newState [8]ifaces.Column, selector ifaces.Column) Poseidon2 {
+func NewPoseidon2[T zk.Element](id ifaces.QueryID, block, oldState, newState [8]ifaces.Column[T], selector ifaces.Column[T]) Poseidon2[T] {
 
 	/*
 		Sanity-check : the querie's ifaces.QueryID cannot be empty or nil
@@ -59,7 +60,7 @@ func NewPoseidon2(id ifaces.QueryID, block, oldState, newState [8]ifaces.Column,
 		}
 	}
 
-	return Poseidon2{
+	return Poseidon2[T]{
 		OldState: oldState,
 		NewState: newState,
 		Blocks:   block,
@@ -72,7 +73,7 @@ func NewPoseidon2(id ifaces.QueryID, block, oldState, newState [8]ifaces.Column,
 /*
 The verifier checks that the permutation was applied correctly
 */
-func (p Poseidon2) Check(run ifaces.Runtime) error {
+func (p Poseidon2[T]) Check(run ifaces.Runtime) error {
 
 	var blocks, oldStates, newStates [8]smartvectors.SmartVector
 	for i := 0; i < 8; i++ {
@@ -117,9 +118,9 @@ func (p Poseidon2) Check(run ifaces.Runtime) error {
 }
 
 // Check the mimc relation in a gnark circuit
-func (p Poseidon2) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (p Poseidon2[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 
-	var blocks, oldStates, newStates [8][]frontend.Variable
+	var blocks, oldStates, newStates [8][]T
 	for i := 0; i < 8; i++ {
 		blocks[i] = p.Blocks[i].GetColAssignmentGnark(run)
 		oldStates[i] = p.OldState[i].GetColAssignmentGnark(run)
@@ -140,6 +141,6 @@ func (p Poseidon2) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	}
 }
 
-func (p Poseidon2) UUID() uuid.UUID {
+func (p Poseidon2[T]) UUID() uuid.UUID {
 	return p.uuid
 }

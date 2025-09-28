@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/google/uuid"
 )
 
@@ -18,10 +19,10 @@ import (
 /* here vectors A_i,B_i are splitting of target vectors A*,B*
 where a fixed permutation is applied between target vectors
 i.e.,A* = A0||...||An, B* = B0||...||Bn and B* = s(A*) for the fixed permutation s */
-type FixedPermutation struct {
+type FixedPermutation[T zk.Element] struct {
 	ID ifaces.QueryID
 	//splittings
-	A, B []ifaces.Column
+	A, B []ifaces.Column[T]
 	/*
 		the permutation 's' also can be defined by a set of splittings s_i and s_{id,i} where
 		s(s_{id,i})=s_i. The columns s_{id,i} are called identity polynomials of permutation 's' and  are known by defult.
@@ -38,7 +39,7 @@ type FixedPermutation struct {
 /*
 Constructor for fixedPermutation constraints also makes the input validation
 */
-func NewFixedPermutation(id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifaces.Column) FixedPermutation {
+func NewFixedPermutation[T zk.Element](id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifaces.Column[T]) FixedPermutation[T] {
 
 	// recall that 'a' and 'b' have the same size
 	for i := range a {
@@ -49,7 +50,7 @@ func NewFixedPermutation(id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifa
 		b[i].MustExists()
 	}
 
-	return FixedPermutation{
+	return FixedPermutation[T]{
 		ID:   id,
 		A:    a,
 		B:    b,
@@ -59,12 +60,12 @@ func NewFixedPermutation(id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifa
 }
 
 // Name implements the [ifaces.Query] interface
-func (r FixedPermutation) Name() ifaces.QueryID {
+func (r FixedPermutation[T]) Name() ifaces.QueryID {
 	return r.ID
 }
 
 // Check implements the [ifaces.Query] interface
-func (r FixedPermutation) Check(run ifaces.Runtime) error {
+func (r FixedPermutation[T]) Check(run ifaces.Runtime) error {
 	/*
 		They should have the same size and it should be tested
 		prior to calling check
@@ -119,10 +120,10 @@ func checkFixedPermutation(a, b []ifaces.ColAssignment, s []ifaces.ColAssignment
 
 // GnarkCheck will panic in this construction because we do not have a good way
 // to check the query within a circuit
-func (f FixedPermutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (f FixedPermutation[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
 
-func (f FixedPermutation) UUID() uuid.UUID {
+func (f FixedPermutation[T]) UUID() uuid.UUID {
 	return f.uuid
 }
