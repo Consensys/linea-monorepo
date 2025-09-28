@@ -7,18 +7,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/stretchr/testify/require"
 )
 
 func TestVariableMetaData(t *testing.T) {
-	store := column.NewStore()
+	store := column.NewStore[zk.NativeElement]()
 	V := store.AddToRound(0, ifaces.ColIDf("V"), 4, column.Committed)
 	v := ifaces.ColumnAsVariable(V)
 	vBoard := v.Board()
 
 	// This will panic if the casting does not work
-	var _ ifaces.Column = vBoard.ListVariableMetadata()[0].(ifaces.Column)
+	var _ ifaces.Column[zk.NativeElement] = vBoard.ListVariableMetadata()[0].(ifaces.Column[zk.NativeElement])
 
 	require.True(t, v.IsVariable())
 
@@ -29,7 +30,7 @@ func TestVariableMetaData(t *testing.T) {
 
 func TestReprAndDerivation(t *testing.T) {
 
-	store := column.NewStore()
+	store := column.NewStore[zk.NativeElement]()
 	V := store.AddToRound(0, ifaces.ColID("V"), 4, column.Committed)
 	v := smartvectors.ForTest(1, 2, 3, 4)
 	x := fext.RandomElement()

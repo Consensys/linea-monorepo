@@ -1,7 +1,6 @@
 package verifiercol
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -9,74 +8,75 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 // compile check to enforce the struct to belong to the corresponding interface
-var _ VerifierCol = ExpandedVerifCol{}
+// var _ VerifierCol = ExpandedVerifCol{}
 
-type ExpandedVerifCol struct {
-	Verifiercol VerifierCol
+type ExpandedVerifCol[T zk.Element] struct {
+	Verifiercol VerifierCol[T]
 	Expansion   int
 }
 
-func (ex ExpandedVerifCol) IsBase() bool {
+func (ex ExpandedVerifCol[T]) IsBase() bool {
 	return ex.Verifiercol.IsBase()
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+func (ex ExpandedVerifCol[T]) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+func (ex ExpandedVerifCol[T]) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+func (ex ExpandedVerifCol[T]) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime[T]) ([]T, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+func (ex ExpandedVerifCol[T]) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime[T]) []gnarkfext.E4Gen[T] {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+func (ex ExpandedVerifCol[T]) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime[T], pos int) (T, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
+func (ex ExpandedVerifCol[T]) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime[T], pos int) gnarkfext.E4Gen[T] {
 	//TODO implement me
 	panic("implement me")
 }
 
-// Round returns the round ID of the column and implements the [ifaces.Column]
+// Round returns the round ID of the column and implements the [ifaces.Column[T]]
 // interface.
-func (ex ExpandedVerifCol) Round() int {
+func (ex ExpandedVerifCol[T]) Round() int {
 	return ex.Verifiercol.Round()
 }
 
 // GetColID returns the column ID
-func (ex ExpandedVerifCol) GetColID() ifaces.ColID {
+func (ex ExpandedVerifCol[T]) GetColID() ifaces.ColID {
 	return ifaces.ColIDf("Expanded_%v_%v", ex.Verifiercol.GetColID(), ex.Expansion)
 }
 
-// MustExists implements the [ifaces.Column] interface and always returns true.
-func (ex ExpandedVerifCol) MustExists() {
+// MustExists implements the [ifaces.Column[T]] interface and always returns true.
+func (ex ExpandedVerifCol[T]) MustExists() {
 	ex.Verifiercol.MustExists()
 }
 
-// Size returns the size of the colum and implements the [ifaces.Column]
+// Size returns the size of the colum and implements the [ifaces.Column[T]]
 // interface.
-func (ex ExpandedVerifCol) Size() int {
+func (ex ExpandedVerifCol[T]) Size() int {
 	return ex.Verifiercol.Size() * ex.Expansion
 }
 
 // GetColAssignment returns the assignment of the current column
-func (ex ExpandedVerifCol) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
+func (ex ExpandedVerifCol[T]) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	assi := ex.Verifiercol.GetColAssignment(run)
 	values := make([][]fext.Element, ex.Expansion)
 	for j := range values {
@@ -87,9 +87,9 @@ func (ex ExpandedVerifCol) GetColAssignment(run ifaces.Runtime) ifaces.ColAssign
 }
 
 // GetColAssignment returns a gnark assignment of the current column
-func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (ex ExpandedVerifCol[T]) GetColAssignmentGnark(run ifaces.GnarkRuntime[T]) []T {
 	assi := ex.Verifiercol.GetColAssignmentGnark(run)
-	res := make([]frontend.Variable, ex.Size())
+	res := make([]T, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		for j := 0; j < ex.Expansion; j++ {
 			res[j+i*ex.Expansion] = assi[i]
@@ -99,26 +99,26 @@ func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []fron
 }
 
 // GetColAssignmentAt returns a particular position of the column
-func (ex ExpandedVerifCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
+func (ex ExpandedVerifCol[T]) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
 	return ex.Verifiercol.GetColAssignmentAt(run, pos/ex.Expansion)
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (ex ExpandedVerifCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (ex ExpandedVerifCol[T]) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime[T], pos int) T {
 	return ex.Verifiercol.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
 }
 
-// IsComposite implements the [ifaces.Column] interface
-func (ex ExpandedVerifCol) IsComposite() bool {
+// IsComposite implements the [ifaces.Column[T]] interface
+func (ex ExpandedVerifCol[T]) IsComposite() bool {
 	return ex.Verifiercol.IsComposite()
 }
 
 // String implements the [symbolic.Metadata] interface
-func (ex ExpandedVerifCol) String() string {
+func (ex ExpandedVerifCol[T]) String() string {
 	return string(ex.GetColID())
 }
 
 // Split implements the [VerifierCol] interface
-func (ex ExpandedVerifCol) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column {
+func (ex ExpandedVerifCol[T]) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column[T] {
 	return ex.Verifiercol
 }

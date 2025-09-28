@@ -41,7 +41,7 @@ func TestConcatTinyColRange(t *testing.T) {
 					QUERY ifaces.QueryID = "QUERY"
 				)
 
-				cols := make([]ifaces.Column, tc.NumCols)
+				cols := make([]ifaces.Column[T], tc.NumCols)
 				define := func(b *wizard.Builder) {
 
 					// Registers the tiny columns
@@ -119,7 +119,7 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 					QUERY ifaces.QueryID = "QUERY"
 				)
 
-				cols := make([]ifaces.Column, tc.NumCols)
+				cols := make([]ifaces.Column[T], tc.NumCols)
 
 				define := func(b *wizard.Builder) {
 

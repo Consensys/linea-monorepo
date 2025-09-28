@@ -6,19 +6,20 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-type VerifierCol interface {
-	ifaces.Column
-	Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column
+type VerifierCol[T zk.Element] interface {
+	ifaces.Column[T]
+	Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column[T]
 }
 
 // AssertIsPublicCol returns true if the column is public
 // TODO @AlexandreBelling, this function seems at the wrong place in
 // this package. We should consider rework the package organization
 // to make it work in a cleaner manner.
-func AssertIsPublicCol(comp *wizard.CompiledIOP, col ifaces.Column) {
+func AssertIsPublicCol[T zk.Element](comp *wizard.CompiledIOP, col ifaces.Column[T]) {
 
 	// Sanity-check, the columns should be accessible to the verifier
 	grandpa := column.RootParents(col)
@@ -27,7 +28,7 @@ func AssertIsPublicCol(comp *wizard.CompiledIOP, col ifaces.Column) {
 	// in this case, this is OK because this corresponds to a public
 	// column but it will panic if we try to get its status so we need
 	// to check first.
-	if _, ok := grandpa.(VerifierCol); ok {
+	if _, ok := grandpa.(VerifierCol[T]); ok {
 		return
 	}
 
@@ -44,14 +45,14 @@ func AssertIsPublicCol(comp *wizard.CompiledIOP, col ifaces.Column) {
 
 // NewConcatTinyColumns creates a new ConcatTinyColumns. The columns must all
 // have a length of "1"
-func NewConcatTinyColumns(
+func NewConcatTinyColumns[T zk.Element](
 	comp *wizard.CompiledIOP,
 	paddedSize int,
 	paddingVal fext.Element,
-	cols ...ifaces.Column,
-) ifaces.Column {
+	cols ...ifaces.Column[T],
+) ifaces.Column[T] {
 
-	access := []ifaces.Accessor{}
+	access := []ifaces.Accessor[T]{}
 
 	// Check the length of the columns
 	for _, col := range cols {
@@ -61,12 +62,12 @@ func NewConcatTinyColumns(
 		// sanity check the publicity of the column
 		AssertIsPublicCol(comp, col)
 
-		if cc, isCC := col.(ConstCol); isCC {
+		if cc, isCC := col.(ConstCol[T]); isCC {
 			if cc.IsBase() {
-				access = append(access, accessors.NewConstant(cc.Base))
+				access = append(access, accessors.NewConstant[T](cc.Base))
 				continue
 			} else {
-				access = append(access, accessors.NewConstantExt(cc.Ext))
+				access = append(access, accessors.NewConstantExt[T](cc.Ext))
 				continue
 			}
 		}

@@ -3,10 +3,12 @@ package verifiercol
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -22,7 +24,7 @@ type fromIntVecCoinSettings struct {
 type FivcOp func(*fromIntVecCoinSettings)
 
 // Construct a new column from a `IntegerVec` coin
-func NewFromIntVecCoin(comp *wizard.CompiledIOP, info coin.Info, ops ...FivcOp) ifaces.Column {
+func NewFromIntVecCoin[T zk.Element](comp *wizard.CompiledIOP, info coin.Info, ops ...FivcOp) ifaces.Column[T] {
 
 	// Sanity-checks the coin to have the right type
 	if info.Type != coin.IntegerVec {
@@ -35,7 +37,7 @@ func NewFromIntVecCoin(comp *wizard.CompiledIOP, info coin.Info, ops ...FivcOp) 
 		op(settings)
 	}
 
-	access := []ifaces.Accessor{}
+	access := []ifaces.Accessor[T]{}
 
 	for i := 0; i < info.Size; i++ {
 		access = append(access, accessors.NewFromIntegerVecCoinPosition(info, i))

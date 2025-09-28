@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
@@ -27,8 +28,8 @@ import (
 //
 // @alex: we should completely refactor this function. As I am trying to retro-
 // engineer it, None of the name or comment in this function make sense to me.
-func DeriveEvaluationPoint(
-	h ifaces.Column,
+func DeriveEvaluationPoint[T zk.Element](
+	h ifaces.Column[T],
 	upstream string,
 	cachedXs collection.Mapping[string, fext.Element],
 	x fext.Element,
@@ -46,7 +47,7 @@ func DeriveEvaluationPoint(
 	}
 
 	switch inner := h.(type) {
-	case Shifted:
+	case Shifted[T]:
 		newUpstream := appendNodeToUpstream(upstream, inner)
 		var derivedX fext.Element
 		// Early return if the result is cached
@@ -71,8 +72,8 @@ func DeriveEvaluationPoint(
 	panic("unreachable")
 }
 
-func DeriveEvaluationPointExt(
-	h ifaces.Column,
+func DeriveEvaluationPointExt[T zk.Element](
+	h ifaces.Column[T],
 	upstream string,
 	cachedXs collection.Mapping[string, fext.Element],
 	x fext.Element,
@@ -90,7 +91,7 @@ func DeriveEvaluationPointExt(
 	}
 
 	switch inner := h.(type) {
-	case Shifted:
+	case Shifted[T]:
 		newUpstream := appendNodeToUpstream(upstream, inner)
 		var derivedX fext.Element
 		// Early return if the result is cached
@@ -125,8 +126,8 @@ VerifyYConsistency verifies that the claimed values for y
 @alex: we should completely refactor this function. As I am trying to retro-
 engineer it, None of the name or comment in this function make sense to me.
 */
-func VerifyYConsistency(
-	h ifaces.Column, upstream string,
+func VerifyYConsistency[T zk.Element](
+	h ifaces.Column[T], upstream string,
 	cachedXs collection.Mapping[string, fext.Element],
 	finalYs collection.Mapping[string, fext.Element],
 ) (y fext.Element) {
@@ -141,7 +142,7 @@ func VerifyYConsistency(
 
 	switch inner := h.(type) {
 
-	case Shifted:
+	case Shifted[T]:
 		newUpstream := appendNodeToUpstream(upstream, inner)
 		res := VerifyYConsistency(inner.Parent, newUpstream, cachedXs, finalYs)
 		// No need to test the error, because we would return it alonside the
@@ -156,14 +157,14 @@ func VerifyYConsistency(
 
 // Returns all subbranches starting from the current node (including the
 // current node). It counts as a list of unique identifiers for the derivation path.
-func DownStreamBranch(node ifaces.Column) string {
+func DownStreamBranch[T zk.Element](node ifaces.Column[T]) string {
 
 	if !node.IsComposite() {
 		return getNodeRepr(node)
 	}
 
 	switch inner := node.(type) {
-	case Shifted:
+	case Shifted[T]:
 		downStreams := DownStreamBranch(inner.Parent)
 		return prependNodeToDownstream(inner, downStreams)
 	default:
@@ -171,7 +172,7 @@ func DownStreamBranch(node ifaces.Column) string {
 	}
 }
 
-func appendNodeToUpstream(upstream string, node ifaces.Column) string {
+func appendNodeToUpstream[T zk.Element](upstream string, node ifaces.Column[T]) string {
 	// This happens when the function is called on the root node
 	// In this case, no need to prefix with a "_"
 	if len(upstream) == 0 {
@@ -180,12 +181,12 @@ func appendNodeToUpstream(upstream string, node ifaces.Column) string {
 	return fmt.Sprintf("%v_%v", upstream, getNodeRepr(node))
 }
 
-func prependNodeToDownstream(node ifaces.Column, downstream string) string {
+func prependNodeToDownstream[T zk.Element](node ifaces.Column[T], downstream string) string {
 	nodeRepr := getNodeRepr(node)
 	return fmt.Sprintf("%v_%v", nodeRepr, downstream)
 }
 
-func DerivedYRepr(upstream string, currNode ifaces.Column) string {
+func DerivedYRepr[T zk.Element](upstream string, currNode ifaces.Column[T]) string {
 	ifaces.AssertNotComposite(currNode)
 	// sanity-check
 	if !strings.HasSuffix(upstream, nonComposite) {
@@ -197,20 +198,20 @@ func DerivedYRepr(upstream string, currNode ifaces.Column) string {
 	)
 }
 
-func getNodeRepr(node ifaces.Column) string {
+func getNodeRepr[T zk.Element](node ifaces.Column[T]) string {
 
 	if !node.IsComposite() {
 		return nonComposite
 	}
 
 	switch inner := node.(type) {
-	case Shifted:
+	case Shifted[T]:
 		// In a shifted, the size matters because this tells us which root of
 		// unity to use to multiply `x`.
 		return fmt.Sprintf("%v_%v_%v", shift, utils.PositiveMod(inner.Offset, node.Size()), node.Size())
-	case ifaces.Column:
+	case ifaces.Column[T]:
 		// Common unexpectable case
-		panic("don't pass a ifaces.Column there, pass the inner directly")
+		panic("don't pass a ifaces.Column[T] there, pass the inner directly")
 	default:
 		utils.Panic("unexpected type %v\n", reflect.TypeOf(inner).String())
 	}

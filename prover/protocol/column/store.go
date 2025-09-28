@@ -2,6 +2,7 @@ package column
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/google/uuid"
@@ -12,7 +13,7 @@ import (
 // [github.com/consensys/linea-monorepo/prover/protocol/wizard.VerifierRuntime] to store the columns. The store keeps
 // tracks of the definition rounds of the columns and offers a handful of
 // methods to resolve all the columns that have a particular status.
-type Store struct {
+type Store[T zk.Element] struct {
 	// indicesByNames allows to resolve the position of the info of a column by
 	// supplying the name of the column.
 	indicesByNames collection.Mapping[ifaces.ColID, columnPosition]
@@ -21,8 +22,8 @@ type Store struct {
 }
 
 // NewStore constructs an empty Store object
-func NewStore() *Store {
-	return &Store{
+func NewStore[T zk.Element]() *Store[T] {
+	return &Store[T]{
 		indicesByNames: collection.NewMapping[ifaces.ColID, columnPosition](),
 		byRounds:       collection.NewVecVec[*storedColumnInfo](),
 	}
@@ -70,7 +71,7 @@ type storedColumnInfo struct {
 //   - name must not be an empty string
 //   - round must be provided
 //   - name must not have been registered already
-func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status) ifaces.Column {
+func (s *Store[T]) AddToRound(round int, name ifaces.ColID, size int, status Status) ifaces.Column[T] {
 
 	if len(name) == 0 {
 		utils.Panic("given an empty name")
@@ -87,7 +88,7 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 	}
 
 	// Constructing at the beginning does the validation early on
-	nat := newNatural(name, position, s)
+	nat := newNatural[T](name, position, s)
 	infos := &storedColumnInfo{Size: size, ID: name, Status: status, uuid: uuid.New(), Pragmas: make(map[string]interface{})}
 
 	// Panic if the entry already exist
@@ -99,7 +100,7 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 
 // GetSize returns the stored size of a [Natural] by its ID. This only works if
 // the requested column is a [Natural].
-func (s *Store) GetSize(n ifaces.ColID) int {
+func (s *Store[T]) GetSize(n ifaces.ColID) int {
 	if s == nil {
 		panic("column with a null pointer to the [Store]")
 	}
@@ -109,7 +110,7 @@ func (s *Store) GetSize(n ifaces.ColID) int {
 
 // AllKeysAt returns the list of all keys for a given round. The result follows
 // the insertion order of insertion) (=assignment order)
-func (r *Store) AllKeysAt(round int) []ifaces.ColID {
+func (r *Store[T]) AllKeysAt(round int) []ifaces.ColID {
 	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.ColID, len(rnd))
 	for i := range rnd {
@@ -120,7 +121,7 @@ func (r *Store) AllKeysAt(round int) []ifaces.ColID {
 
 // Returns the list of all the [ifaces.ColID] tagged with the [Committed] status so far
 // at a given round. The order of the returned slice follows the insertion order.
-func (r *Store) AllKeysCommittedAt(round int) []ifaces.ColID {
+func (r *Store[T]) AllKeysCommittedAt(round int) []ifaces.ColID {
 	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.ColID, 0, len(rnd))
 
@@ -136,9 +137,9 @@ func (r *Store) AllKeysCommittedAt(round int) []ifaces.ColID {
 
 // AllHandleCommittedAt returns the list of all the [Committed] columns so far
 // at a given round. The returned slice is ordered by order of insertion.
-func (r *Store) AllHandleCommittedAt(round int) []ifaces.Column {
+func (r *Store[T]) AllHandleCommittedAt(round int) []ifaces.Column[T] {
 	rnd := r.byRounds.GetOrEmpty(round)
-	res := make([]ifaces.Column, 0, len(rnd))
+	res := make([]ifaces.Column[T], 0, len(rnd))
 
 	for i, info := range rnd {
 		if info.Status != Committed {
@@ -152,7 +153,7 @@ func (r *Store) AllHandleCommittedAt(round int) []ifaces.Column {
 
 // AllKeysIgnoredAt returns the list of all the [Ignored] columns ids so far at a
 // given round. The returned slice is ordered by order of insertion.
-func (r *Store) AllKeysIgnoredAt(round int) []ifaces.ColID {
+func (r *Store[T]) AllKeysIgnoredAt(round int) []ifaces.ColID {
 	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.ColID, 0, len(rnd))
 
@@ -168,7 +169,7 @@ func (r *Store) AllKeysIgnoredAt(round int) []ifaces.ColID {
 
 // AllKeysProof returns the list of all the [Proof] column's IDs ordered by
 // round and then by order of insertion.
-func (r *Store) AllKeysProof() []ifaces.ColID {
+func (r *Store[T]) AllKeysProof() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
 	for round := 0; round < r.NumRounds(); round++ {
@@ -181,7 +182,7 @@ func (r *Store) AllKeysProof() []ifaces.ColID {
 
 // AllKeysCommitted returns the list of all the IDs of the all the [Committed]
 // columns ordered by rounds and then by IDs.
-func (r *Store) AllKeysCommitted() []ifaces.ColID {
+func (r *Store[T]) AllKeysCommitted() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
 	for round := 0; round < r.NumRounds(); round++ {
@@ -197,7 +198,7 @@ func (r *Store) AllKeysCommitted() []ifaces.ColID {
 }
 
 // Returns the list of all the ignored messages so far
-func (r *Store) AllKeysIgnored() []ifaces.ColID {
+func (r *Store[T]) AllKeysIgnored() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
 	for round := 0; round < r.NumRounds(); round++ {
@@ -214,7 +215,7 @@ func (r *Store) AllKeysIgnored() []ifaces.ColID {
 
 // AllKeysProofAt returns the list of all the IDs of the[Proof] messages at a
 // given round. The returned list is ordered by order of insertion.
-func (r *Store) AllKeysProofAt(round int) []ifaces.ColID {
+func (r *Store[T]) AllKeysProofAt(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := r.byRounds.GetOrEmpty(round)
 
@@ -230,7 +231,7 @@ func (r *Store) AllKeysProofAt(round int) []ifaces.ColID {
 
 // Returns the list of all the [Precomputed] columns' ID. The returned slice is
 // ordered by rounds and then by order of insertion.
-func (r *Store) AllPrecomputed() []ifaces.ColID {
+func (r *Store[T]) AllPrecomputed() []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := r.byRounds.MustGet(0) // precomputed are always at round zero
 
@@ -246,7 +247,7 @@ func (r *Store) AllPrecomputed() []ifaces.ColID {
 
 // AllVerifyingKey returns the list of all the IDs of the [VerifyingKey] columns
 // ordered by rounds and then by order of insertion.
-func (r *Store) AllVerifyingKey() []ifaces.ColID {
+func (r *Store[T]) AllVerifyingKey() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
 	// This supports the case where the compiled-IOP does not store any column.
@@ -268,19 +269,19 @@ func (r *Store) AllVerifyingKey() []ifaces.ColID {
 
 // Returns the status of a column by its ID. This will panic if the provided
 // column is not registered in the store.
-func (s *Store) Status(name ifaces.ColID) Status {
+func (s *Store[T]) Status(name ifaces.ColID) Status {
 	return s.info(name).Status
 }
 
 // Change the status of a commitment
-func (s *Store) SetStatus(name ifaces.ColID, status Status) {
+func (s *Store[T]) SetStatus(name ifaces.ColID, status Status) {
 	info := s.info(name)
 	assertCorrectStatusTransition(info.Status, status)
 	info.Status = status
 }
 
 // Get the info of a commitment by name, panic if not found
-func (s *Store) info(name ifaces.ColID) *storedColumnInfo {
+func (s *Store[T]) info(name ifaces.ColID) *storedColumnInfo {
 	pos := s.indicesByNames.MustGet(name)
 	return s.byRounds.MustGet(pos.round)[pos.posInRound]
 }
@@ -289,7 +290,7 @@ func (s *Store) info(name ifaces.ColID) *storedColumnInfo {
 Returns the list of all the keys ever. The result is returned in
 Deterministic order.
 */
-func (r *Store) AllKeys() []ifaces.ColID {
+func (r *Store[T]) AllKeys() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
 	for roundID := 0; roundID < r.NumRounds(); roundID++ {
@@ -303,7 +304,7 @@ func (r *Store) AllKeys() []ifaces.ColID {
 /*
 Returns the number of rounds
 */
-func (r *Store) NumRounds() int {
+func (r *Store[T]) NumRounds() int {
 	return r.byRounds.Len()
 }
 
@@ -312,7 +313,7 @@ Make sure enough rounds are allocated up to the given length
 No-op if enough rounds have been allocated, otherwise, will
 reserve as many as necessary.
 */
-func (r *Store) ReserveFor(newLen int) {
+func (r *Store[T]) ReserveFor(newLen int) {
 	if r.byRounds.Len() < newLen {
 		r.byRounds.Reserve(newLen)
 	}
@@ -321,11 +322,11 @@ func (r *Store) ReserveFor(newLen int) {
 /*
 Returns all handle stores at a given round
 */
-func (s *Store) AllHandlesAtRound(round int) []ifaces.Column {
+func (s *Store[T]) AllHandlesAtRound(round int) []ifaces.Column[T] {
 	roundInfos := s.byRounds.GetOrEmpty(round)
-	res := make([]ifaces.Column, len(roundInfos))
+	res := make([]ifaces.Column[T], len(roundInfos))
 	for posInRound, info := range roundInfos {
-		res[posInRound] = newNatural(
+		res[posInRound] = newNatural[T](
 			info.ID,
 			columnPosition{round: round, posInRound: posInRound},
 			s,
@@ -337,16 +338,16 @@ func (s *Store) AllHandlesAtRound(round int) []ifaces.Column {
 /*
 Returns all handle stores at a given round
 */
-func (s *Store) AllHandlesAtRoundUnignored(round int) []ifaces.Column {
+func (s *Store[T]) AllHandlesAtRoundUnignored(round int) []ifaces.Column[T] {
 	roundInfos := s.byRounds.GetOrEmpty(round)
-	res := make([]ifaces.Column, 0, len(roundInfos))
+	res := make([]ifaces.Column[T], 0, len(roundInfos))
 
 	for posInRound, info := range roundInfos {
 		if info.Status == Ignored {
 			continue
 		}
 
-		res = append(res, newNatural(
+		res = append(res, newNatural[T](
 			info.ID,
 			columnPosition{round: round, posInRound: posInRound},
 			s,
@@ -359,14 +360,14 @@ func (s *Store) AllHandlesAtRoundUnignored(round int) []ifaces.Column {
 Returns the handle corresponding to a given name.
 Panic if not found.
 */
-func (s *Store) GetHandle(name ifaces.ColID) ifaces.Column {
+func (s *Store[T]) GetHandle(name ifaces.ColID) ifaces.Column[T] {
 	// Note that this panics if the entry is not present
 	position := s.indicesByNames.MustGet(name)
-	return newNatural(name, position, s)
+	return newNatural[T](name, position, s)
 }
 
 // Panics if the store does not have the name registered
-func (s *Store) MustHaveName(name ifaces.ColID) {
+func (s *Store[T]) MustHaveName(name ifaces.ColID) {
 	if !s.indicesByNames.Exists(name) {
 		utils.Panic("don't have %v", name)
 	}
@@ -374,7 +375,7 @@ func (s *Store) MustHaveName(name ifaces.ColID) {
 
 // Panics if the commitment name is not registered or if
 // the round is the wrong one
-func (s *Store) MustBeInRound(name ifaces.ColID, round int) {
+func (s *Store[T]) MustBeInRound(name ifaces.ColID, round int) {
 
 	if !s.indicesByNames.Exists() {
 		utils.Panic("commitment %v not registered", name)
@@ -387,14 +388,14 @@ func (s *Store) MustBeInRound(name ifaces.ColID, round int) {
 }
 
 // Returns if the `name` exist in the commitment store
-func (s *Store) Exists(name ifaces.ColID) bool {
+func (s *Store[T]) Exists(name ifaces.ColID) bool {
 	return s.indicesByNames.Exists(name)
 }
 
 // Marks a commitment as ignored, this can happen during a
 // vector slicing operation. Panics, if the name was not
 // registered or if the commitment was already ignored.
-func (s *Store) MarkAsIgnored(name ifaces.ColID) {
+func (s *Store[T]) MarkAsIgnored(name ifaces.ColID) {
 	infos := s.info(name)
 	assertCorrectStatusTransition(infos.Status, Ignored)
 	infos.Status = Ignored
@@ -402,7 +403,7 @@ func (s *Store) MarkAsIgnored(name ifaces.ColID) {
 
 // IsIgnored returns true if the passed column ID relates to a column bearing
 // the [Ignored] status.
-func (s *Store) IsIgnored(name ifaces.ColID) (ignored bool) {
+func (s *Store[T]) IsIgnored(name ifaces.ColID) (ignored bool) {
 	return s.Status(name) == Ignored
 }
 
@@ -443,7 +444,7 @@ func assertCorrectStatusTransition(old, new Status) {
 // the column stays included in the FS transcript. This is used as part of
 // full-recursion where the commitments to an inner-proofs should not be sent to
 // the verifier but should still play a part in the FS transcript.
-func (s *Store) IgnoreButKeepInProverTranscript(colName ifaces.ColID) {
+func (s *Store[T]) IgnoreButKeepInProverTranscript(colName ifaces.ColID) {
 	in := s.info(colName)
 	in.Status = Ignored
 	in.IncludeInProverFS = true
@@ -453,7 +454,7 @@ func (s *Store) IgnoreButKeepInProverTranscript(colName ifaces.ColID) {
 // without changing its status. This is used as part of the conglomeration
 // where the imported columns take part in a separate FS transcript from the
 // canonical of the host wizard.
-func (s *Store) ExcludeFromProverFS(colName ifaces.ColID) {
+func (s *Store[T]) ExcludeFromProverFS(colName ifaces.ColID) {
 	in := s.info(colName)
 	in.ExcludeFromProverFS = true
 }
@@ -479,14 +480,14 @@ func (in *storedColumnInfo) isExcludedFromProverFS() bool {
 
 // IsExplicitlyExcludedFromProverFS returns true if the passed column ID relates to
 // a column explicitly marked as excluded from the FS transcript.
-func (s *Store) IsExplicitlyExcludedFromProverFS(colName ifaces.ColID) bool {
+func (s *Store[T]) IsExplicitlyExcludedFromProverFS(colName ifaces.ColID) bool {
 	info := s.info(colName)
 	return info.ExcludeFromProverFS
 }
 
 // AllKeysInProverTranscript returns the list of the columns to
 // be used as part of the FS transcript.
-func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
+func (s *Store[T]) AllKeysInProverTranscript(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := s.byRounds.GetOrEmpty(round) // precomputed are always at round zero
 
@@ -503,12 +504,12 @@ func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 }
 
 // SetPragma sets the pragma for a given column name.
-func (s *Store) SetPragma(name ifaces.ColID, pragma string, data any) {
+func (s *Store[T]) SetPragma(name ifaces.ColID, pragma string, data any) {
 	s.info(name).Pragmas[pragma] = data
 }
 
 // GetPragma returns the pragma for a given column name.
-func (s *Store) GetPragma(name ifaces.ColID, pragma string) (any, bool) {
+func (s *Store[T]) GetPragma(name ifaces.ColID, pragma string) (any, bool) {
 	res, ok := s.info(name).Pragmas[pragma]
 	return res, ok
 }
