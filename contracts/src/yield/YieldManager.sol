@@ -266,7 +266,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    // Event emitted by YieldProvider - only it knows how to parse _withdrawalParams
+    // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
   }
 
   /**
@@ -302,10 +302,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert DelegateCallFailed();
     }
     (uint256 amountUnstaked) = abi.decode(data, (uint256));
-    // Only know amountUnstaked at this point, so validate it here
    _validateUnstakePermissionlessAmount(_yieldProvider, amountUnstaked);
    _getYieldManagerStorage()._pendingPermissionlessUnstake += amountUnstaked;
-    // Emit by YieldProvider - only it knows how to parse _withdrawalParams
+    // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
   }
 
   function _validateUnstakePermissionlessAmount(address _yieldProvider, uint256 _amountUnstaked) internal {
@@ -327,13 +326,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyKnownYieldProvider(_yieldProvider) {
     uint256 targetDeficit = getTargetReserveDeficit();
     // Withdraw from Vault -> YieldManager
-    uint256 withdrawnFromProvider = _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(
+    uint256 withdrawnFromProvider = _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
       _yieldProvider,
       _amount,
       address(this),
       targetDeficit
     );
-    // Send funds to L1MessageService
+    // Send funds to L1MessageService if targetDeficit
     if (targetDeficit > 0) {
       ILineaNativeYieldExtension(l1MessageService()).fund{value: targetDeficit}();
     }
@@ -346,12 +345,12 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     );
   }
 
-  function _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetDeficit) internal returns (uint256) {
-    uint256 availableFundsForRebalance = Math256.safeSub(_amount, _targetDeficit);
+  function _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(address _yieldProvider, uint256 _amount, address _recipient, uint256 _targetDeficit) internal returns (uint256) {
+    uint256 availableFundsForLSTLiabilityPayment = Math256.safeSub(_amount, _targetDeficit);
     uint256 withdrawAmount = _amount;
-    if (availableFundsForRebalance > 0) {
-      withdrawAmount -= _payLSTPrincipal(_yieldProvider, availableFundsForRebalance);
-    // In target deficit, so pause staking
+    if (availableFundsForLSTLiabilityPayment > 0) {
+      withdrawAmount -= _payLSTPrincipal(_yieldProvider, availableFundsForLSTLiabilityPayment);
+    // Will remain in target deficit after withdrawal
     } else {
       _pauseStakingIfNotAlready(_yieldProvider);
     }
@@ -366,15 +365,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
     _getYieldProviderDataStorage(_yieldProvider).userFunds -= _amount;
-    _reducePendingPermissionlessUnstake(_amount);
-  }
-
-  function _reducePendingPermissionlessUnstake(uint256 _amount) internal {
-    uint256 pendingPermissionlessUnstake = _getYieldManagerStorage()._pendingPermissionlessUnstake;
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    $._userFundsInYieldProvidersTotal -= _amount;
+    // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
+    uint256 pendingPermissionlessUnstake = $._pendingPermissionlessUnstake;
     if (pendingPermissionlessUnstake == 0) return;
-    _getYieldManagerStorage()._pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
+    $._pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
   }
 
   /**
@@ -399,12 +396,11 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     // Then meet settle from Vault withdrawal
     uint256 fromYieldProvider;
     if (targetRebalanceAmount > 0) {
-      uint256 targetDeficit = getTargetReserveDeficit();
-      fromYieldProvider = _withdrawWithReserveDeficitPriorityAndLSTLiabilityPrincipalReduction(
+      fromYieldProvider = _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
         _yieldProvider,
         targetRebalanceAmount,
         cachedL1MessageService,
-        targetDeficit
+        getTargetReserveDeficit()
       );
     }
     emit WithdrawalReserveAugmented(
@@ -748,42 +744,21 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     emit YieldProviderOssificationProcessed(_yieldProvider, msg.sender, isOssified);
   }
 
-  // Need donate function here, otherwise YieldManager is unable to assign donations for specific yield providers
-  // Will be reported as new yield for reportYield, so do not modify accounting variables in this fn
-  function donate(address _yieldProvider, address _destination) external payable onlyKnownYieldProvider(_yieldProvider) {
+  // Need donate function here, otherwise YieldManager is unable to assign donations for specific yield providers.
+  function donate(address _yieldProvider) external payable onlyKnownYieldProvider(_yieldProvider) {
     address l1MessageServiceCached = l1MessageService();
     uint256 cachedMsgValue = msg.value;
-    if (_destination == l1MessageServiceCached) {
-      ILineaNativeYieldExtension(l1MessageServiceCached).fund{value: cachedMsgValue}();
-      _reportYieldForDonation(_yieldProvider, cachedMsgValue);
-    } else if (_destination == address(this)) {
-      _reportYieldForDonation(_yieldProvider, cachedMsgValue);
-    // More conservative to avoid counting donation as yield, to avoid new L2 circulating ETH.
-    } else if (_destination == _yieldProvider) {
-      _fundYieldProvider(_yieldProvider, cachedMsgValue);
-      _getYieldManagerStorage()._userFundsInYieldProvidersTotal += cachedMsgValue;
-      _getYieldProviderDataStorage(_yieldProvider).userFunds += cachedMsgValue;
-    } else {
-      revert IllegalDonationAddress();
-    }
-
-    emit DonationProcessed(_yieldProvider, msg.sender, _destination, cachedMsgValue);
+    _decrementNegativeYieldAgainstDonation(_yieldProvider, cachedMsgValue);
+    ILineaNativeYieldExtension(l1MessageServiceCached).fund{value: cachedMsgValue}();
+    emit DonationProcessed(_yieldProvider, msg.sender, l1MessageServiceCached, cachedMsgValue);
   }
 
-  // TODO - Is it correct treat as yield? Or separate storage var as donation?
-  function _reportYieldForDonation(address _yieldProvider, uint256 _amount) internal {
+  // @dev It is not correct to count a donation to the L1MessageService as yield, because reported yield results in newly circulating L2 ETH.
+  function _decrementNegativeYieldAgainstDonation(address _yieldProvider, uint256 _amount) internal {
     YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    uint256 remainingDonation = _amount;
     uint256 currentNegativeYield = $$.currentNegativeYield;
     if (currentNegativeYield > 0) {
-      uint256 negativeYieldDecrement = Math256.min(currentNegativeYield, remainingDonation);
-      $$.currentNegativeYield -= negativeYieldDecrement;
-      remainingDonation -= negativeYieldDecrement;
-    }
-    if (remainingDonation > 0) {
-      $$.userFunds += remainingDonation;
-      $$.yieldReportedCumulative += remainingDonation;
-      _getYieldManagerStorage()._userFundsInYieldProvidersTotal += remainingDonation;
+      $$.currentNegativeYield -= Math256.min(currentNegativeYield, _amount);
     }
   }
 }

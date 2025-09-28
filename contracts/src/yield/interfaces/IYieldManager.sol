@@ -294,8 +294,6 @@ interface IYieldManager {
 
   error OssificationNotInitiated();
 
-  error IllegalDonationAddress();
-
   error UnpauseStakingForbiddenWithCurrentLSTPrincipal();
 
   function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance);
@@ -451,5 +449,5 @@ interface IYieldManager {
 
   function processPendingOssification(address _yieldProvider) external;
 
-  function donate(address _yieldProvider, address _destination) external payable;
+  function donate(address _yieldProvider) external payable;
 }

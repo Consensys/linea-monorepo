@@ -43,13 +43,10 @@ abstract contract YieldManagerStorageLayout {
     bool isStakingPaused;
     bool isOssificationInitiated;
     bool isOssified;
-    // Incremented 1:1 with yieldReportedCumulative, because yieldReported becomes user funds
-    // Is only allowed to be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
-    uint256 userFunds;
-    uint256 yieldReportedCumulative;
+    uint256 userFunds; // Represents user funds in YieldProvider. Must only be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
+    uint256 yieldReportedCumulative; // Must increment 1:1 with userFunds
     // Timing of below operations is highly specific to the yield provider, so we will mutate their state in the YieldProvider contract
-    // Required to socialize losses if permanent
-    uint256 currentNegativeYield;
+    uint256 currentNegativeYield; // Required to socialize losses if permanent
     uint256 lstLiabilityPrincipal;
   }
 
