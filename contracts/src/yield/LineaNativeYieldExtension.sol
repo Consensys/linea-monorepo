@@ -22,15 +22,11 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
   /// @notice The role required to set the YieldManager address.
   bytes32 public constant YIELD_MANAGER_SETTER_ROLE = keccak256("YIELD_MANAGER_SETTER_ROLE");
 
-  /// @notice The role required to set the L2YieldRecipient address.
-  bytes32 public constant L2_YIELD_RECIPIENT_SETTER_ROLE = keccak256("L2_YIELD_RECIPIENT_SETTER_ROLE");
-
   bool transient IS_WITHDRAW_LST_ALLOWED;
 
   /// @custom:storage-location erc7201:linea.storage.LineaNativeYieldExtensionStorage
   struct LineaNativeYieldExtensionStorage {    
       address _yieldManager;
-      address _l2YieldRecipient;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.LineaNativeYieldExtensionStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -47,11 +43,6 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
       return _storage()._yieldManager;
   }
 
-  /// @notice The address of the L2YieldRecipient.
-  function l2YieldRecipient() public view returns (address) {
-      return _storage()._l2YieldRecipient;
-  }
-
   function isWithdrawLSTAllowed() external view returns (bool) {
     return IS_WITHDRAW_LST_ALLOWED;
   }
@@ -59,11 +50,9 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
   /**
    * @notice Initialises the LineaNativeYieldExtension.
    * @param _yieldManager YieldManager address.
-   * @param _l2YieldRecipient L2YieldRecipient address.
    */
-  function __LineaNativeYieldExtension_init(address _yieldManager, address _l2YieldRecipient) internal onlyInitializing {
+  function __LineaNativeYieldExtension_init(address _yieldManager) internal onlyInitializing {
     setYieldManager(_yieldManager);
-    setL2YieldRecipient(_l2YieldRecipient);
   }
 
   /**
@@ -96,19 +85,5 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
     LineaNativeYieldExtensionStorage storage $ = _storage();
     emit YieldManagerChanged($._yieldManager, _newYieldManager, msg.sender);
     $._yieldManager = _newYieldManager;
-  }
-
-  /**
-   * @notice Set l2YieldRecipient address.
-   * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
-   * @param _newL2YieldRecipient L2YieldRecipient address.
-   */
-  function setL2YieldRecipient(address _newL2YieldRecipient) public onlyRole(L2_YIELD_RECIPIENT_SETTER_ROLE) {
-    if (_newL2YieldRecipient == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-    LineaNativeYieldExtensionStorage storage $ = _storage();
-    emit L2YieldRecipientChanged($._l2YieldRecipient, _newL2YieldRecipient, msg.sender);
-    $._l2YieldRecipient = _newL2YieldRecipient;
   }
 }

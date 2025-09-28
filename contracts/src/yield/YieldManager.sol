@@ -247,8 +247,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
     $$.userFunds += reportedYield;
     $$.yieldReportedCumulative += reportedYield;
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += reportedYield;
-    ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(reportedYield);
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    $._userFundsInYieldProvidersTotal += reportedYield;
+    ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(reportedYield, $._l2YieldRecipient);
     emit NativeYieldReported(_yieldProvider, msg.sender, reportedYield);
   }
 
@@ -683,6 +684,15 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       }
       emit MinimumWithdrawalReserveAmountSet($._minimumWithdrawalReserveAmount, _minimumWithdrawalReserveAmount, msg.sender);
       $._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
+  }
+
+  function setL2YieldRecipient(address _newL2YieldRecipient) external {
+    if (_newL2YieldRecipient == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    emit L2YieldRecipientSet($._l2YieldRecipient, _newL2YieldRecipient, msg.sender);
+    $._l2YieldRecipient = _newL2YieldRecipient;
   }
 
   // TODO - Role

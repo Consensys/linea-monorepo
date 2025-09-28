@@ -12,6 +12,7 @@ abstract contract YieldManagerStorageLayout {
   struct YieldManagerStorage {
     // Should we struct pack this?
     address _l1MessageService;
+    address _l2YieldRecipient;
     uint256 _targetWithdrawalReservePercentageBps;
     uint256 _targetWithdrawalReserveAmount;
     uint256 _minimumWithdrawalReservePercentageBps; // Can be uint16, because max value of 10000

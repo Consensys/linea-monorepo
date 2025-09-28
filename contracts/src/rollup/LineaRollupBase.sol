@@ -120,7 +120,7 @@ abstract contract LineaRollupBase is
 
     __Permissions_init(_initializationData.roleAddresses);
 
-    __LineaNativeYieldExtension_init(_initializationData.initialYieldManager, _initializationData.initialL2YieldRecipient);
+    __LineaNativeYieldExtension_init(_initializationData.initialYieldManager);
 
     verifiers[0] = _initializationData.defaultVerifier;
 
@@ -736,18 +736,17 @@ abstract contract LineaRollupBase is
    * @dev Callable only by the registered YieldManager.
    * @param _amount The net earned yield.
    */
-  function reportNativeYield(uint256 _amount) external whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
+  function reportNativeYield(uint256 _amount, address _l2YieldRecipient) external whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
     if (msg.sender != yieldManager()) {
       revert CallerIsNotYieldManager();
     }
 
-    address l2YieldRecipient = l2YieldRecipient();
     uint256 messageNumber = nextMessageNumber++;
-    bytes32 messageHash = MessageHashing._hashMessageWithEmptyCalldata(address(this), l2YieldRecipient, 0, _amount, messageNumber);
+    bytes32 messageHash = MessageHashing._hashMessageWithEmptyCalldata(address(this), _l2YieldRecipient, 0, _amount, messageNumber);
     
     _addRollingHash(messageNumber, messageHash);
 
-    emit MessageSent(msg.sender, l2YieldRecipient, 0, _amount, messageNumber, hex"", messageHash);
+    emit MessageSent(msg.sender, _l2YieldRecipient, 0, _amount, messageNumber, hex"", messageHash);
   }
 
   // TODO - Do we need additional pause type here?
