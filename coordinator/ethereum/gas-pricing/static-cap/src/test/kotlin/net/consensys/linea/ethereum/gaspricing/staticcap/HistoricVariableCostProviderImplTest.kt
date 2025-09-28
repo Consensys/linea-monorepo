@@ -27,7 +27,7 @@ class HistoricVariableCostProviderImplTest {
   val targetBlockNumber = 100.toBigInteger()
   val mockWeb3jClient = mock<ExtendedWeb3J> {
     on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
-    on { ethGetBlock(eq(targetBlockNumber.toBlockParameter()), eq(true)) } doReturn
+    on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
       SafeFuture.completedFuture(mockEthBlock)
   }
 
@@ -62,17 +62,14 @@ class HistoricVariableCostProviderImplTest {
 
     // verified it only called ethGetBlock once
     verify(mockWeb3jClient, times(1))
-      .ethGetBlock(
-        eq(targetBlockNumber.toBlockParameter()),
-        eq(true),
-      )
+      .ethGetBlock(eq(targetBlockNumber.toBlockParameter()))
   }
 
   @Test
   fun test_getLatestVariableCost_throws_error_if_ethGetBlock_return_null() {
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
-      on { ethGetBlock(eq(targetBlockNumber.toBlockParameter()), eq(true)) } doReturn
+      on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
         SafeFuture.completedFuture(null)
     }
     val historicVariableCostProvider = HistoricVariableCostProviderImpl(
@@ -89,7 +86,7 @@ class HistoricVariableCostProviderImplTest {
     val expectedException = RuntimeException("Error from ethGetBlock")
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
-      on { ethGetBlock(eq(targetBlockNumber.toBlockParameter()), eq(true)) } doReturn
+      on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
         SafeFuture.failedFuture(expectedException)
     }
     val historicVariableCostProvider = HistoricVariableCostProviderImpl(
@@ -109,7 +106,7 @@ class HistoricVariableCostProviderImplTest {
     }
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
-      on { ethGetBlock(eq(targetBlockNumber.toBlockParameter()), eq(true)) } doReturn
+      on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
         SafeFuture.completedFuture(mockEthBlock)
     }
     val historicVariableCostProvider = HistoricVariableCostProviderImpl(
