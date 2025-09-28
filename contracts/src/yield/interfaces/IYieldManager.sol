@@ -291,6 +291,24 @@ interface IYieldManager {
 
   error UnpauseStakingForbiddenWithCurrentLSTPrincipal();
 
+  function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance);
+  
+  function getTotalSystemBalance() external view returns (uint256 totalSystemBalance);
+
+  function getMinimumWithdrawalReserveByPercentage() external view returns (uint256 minimumWithdrawalReserveByPercentage);
+
+  function getTargetWithdrawalReserveByPercentage() external view returns (uint256 targetWithdrawalReserveByPercentage);
+
+  function getMinimumWithdrawalReserve() external view returns (uint256 minimumWithdrawalReserve);
+
+  function getTargetWithdrawalReserve() external view returns (uint256 targetWithdrawalReserve);
+
+  function getMinimumReserveDeficit() external view returns (uint256 minimumReserveDeficit);
+
+  function getTargetReserveDeficit() external view returns (uint256 targetReserveDeficit);
+
+  function isWithdrawalReserveBelowMinimum() external view returns (bool);
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.

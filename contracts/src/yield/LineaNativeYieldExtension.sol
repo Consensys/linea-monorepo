@@ -36,7 +36,7 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
   // keccak256(abi.encode(uint256(keccak256("linea.storage.LineaNativeYieldExtensionStorage")) - 1)) & ~bytes32(uint256(0xff))
   bytes32 private constant LineaNativeYieldExtensionStorageLocation = 0x1ca1eef1e96a909fae6702b42f1bcde6999f4e0fc09e0e51d048b197a65a8f00;
 
-  function _getLineaNativeYieldExtensionStorage() private pure returns (LineaNativeYieldExtensionStorage storage $) {
+  function _storage() private pure returns (LineaNativeYieldExtensionStorage storage $) {
       assembly {
           $.slot := LineaNativeYieldExtensionStorageLocation
       }
@@ -44,14 +44,12 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
 
   /// @notice The address of the YieldManager.
   function yieldManager() public view returns (address) {
-      LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
-      return $._yieldManager;
+      return _storage()._yieldManager;
   }
 
   /// @notice The address of the L2YieldRecipient.
   function l2YieldRecipient() public view returns (address) {
-      LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
-      return $._l2YieldRecipient;
+      return _storage()._l2YieldRecipient;
   }
 
   function isWithdrawLSTAllowed() external view returns (bool) {
@@ -95,7 +93,7 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
     if (_newYieldManager == address(0)) {
       revert ZeroAddressNotAllowed();
     }
-    LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
+    LineaNativeYieldExtensionStorage storage $ = _storage();
     emit YieldManagerChanged($._yieldManager, _newYieldManager, msg.sender);
     $._yieldManager = _newYieldManager;
   }
@@ -109,7 +107,7 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
     if (_newL2YieldRecipient == address(0)) {
       revert ZeroAddressNotAllowed();
     }
-    LineaNativeYieldExtensionStorage storage $ = _getLineaNativeYieldExtensionStorage();
+    LineaNativeYieldExtensionStorage storage $ = _storage();
     emit L2YieldRecipientChanged($._l2YieldRecipient, _newL2YieldRecipient, msg.sender);
     $._l2YieldRecipient = _newL2YieldRecipient;
   }
