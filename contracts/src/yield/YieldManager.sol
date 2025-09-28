@@ -47,8 +47,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   uint256 constant MAX_BPS = 10000;
 
   /// @notice The L1MessageService address.
-  function l1MessageService() public view returns (address l1MessageServiceAddress) {
-      l1MessageServiceAddress = _getYieldManagerStorage()._l1MessageService;
+  function l1MessageService() public view returns (address) {
+      return _getYieldManagerStorage()._l1MessageService;
   }
 
   /// @notice Minimum withdrawal reserve percentage in bps.
@@ -149,6 +149,16 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     return cachedL1MessageServiceBalance < minimumWithdrawalReserve;
   }
 
+  function withdrawableValue(address _yieldProvider) public onlyKnownYieldProvider(_yieldProvider) returns (uint256) {
+    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+      abi.encodeCall(IYieldProvider.withdrawableValue, ()
+    ));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    return abi.decode(data, (uint256));
+  }
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
@@ -169,7 +179,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   function _fundYieldProvider(address _yieldProvider, uint256 _amount) internal {
     if (isWithdrawalReserveBelowMinimum()) {
-        revert InsufficientWithdrawalReserve();
+      revert InsufficientWithdrawalReserve();
     }
     (bool success,) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.fundYieldProvider, (_amount)
@@ -186,8 +196,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    (uint256 repaymentAmount) = abi.decode(data, (uint256));
-    return repaymentAmount;
+    (uint256 lstPrincipalRepayment) = abi.decode(data, (uint256));
+    return lstPrincipalRepayment;
   }
 
   /**
@@ -233,13 +243,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    (uint256 newYield) = abi.decode(data, (uint256));
-    ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(newYield);
+    (uint256 reportedYield) = abi.decode(data, (uint256));
     YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
-    $$.userFunds += newYield;
-    $$.yieldReportedCumulative += newYield;
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += newYield;
-    emit NativeYieldReported(_yieldProvider, msg.sender, newYield);
+    $$.userFunds += reportedYield;
+    $$.yieldReportedCumulative += reportedYield;
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += reportedYield;
+    ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(reportedYield);
+    emit NativeYieldReported(_yieldProvider, msg.sender, reportedYield);
   }
 
   /**
@@ -255,7 +265,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    // Emit by YieldProvider - only it knows how to parse _withdrawalParams
+    // Event emitted by YieldProvider - only it knows how to parse _withdrawalParams
   }
 
   /**
@@ -299,21 +309,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   function _validateUnstakePermissionlessAmount(address _yieldProvider, uint256 _amountUnstaked) internal {
     uint256 targetDeficit = getTargetReserveDeficit();
-    uint256 availableFundsToSettleTargetDeficit = address(this).balance + getAvailableBalanceForWithdraw(_yieldProvider) + _getYieldManagerStorage()._pendingPermissionlessUnstake;
+    uint256 availableFundsToSettleTargetDeficit = address(this).balance + withdrawableValue(_yieldProvider) + _getYieldManagerStorage()._pendingPermissionlessUnstake;
     if (availableFundsToSettleTargetDeficit + _amountUnstaked > targetDeficit) {
       revert UnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
     }
-  }
-
-  function getAvailableBalanceForWithdraw(address _yieldProvider) public onlyKnownYieldProvider(_yieldProvider) returns (uint256) {
-    (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.getAvailableBalanceForWithdraw, ()
-    ));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
-    (uint256 availableBalance) = abi.decode(data, (uint256));
-    return availableBalance;
   }
 
   /**
@@ -443,7 +442,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       fromYieldManager = transferAmount;
     }
     // Try to meet remaining targetDeficit by yieldProvider withdraw
-    uint256 availableYieldProviderWithdrawBalance = getAvailableBalanceForWithdraw(_yieldProvider);
+    uint256 availableYieldProviderWithdrawBalance = withdrawableValue(_yieldProvider);
     uint256 fromYieldProvider;
     if (remainingTargetDeficit > 0 && availableYieldProviderWithdrawBalance > 0) {
       uint256 withdrawAmount = Math256.min(availableYieldProviderWithdrawBalance, remainingTargetDeficit);
@@ -608,7 +607,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    _getYieldProviderDataStorage(_yieldProvider).lstLiabilityPrincipal += _amount;
     emit LSTMinted(_yieldProvider, msg.sender, _recipient, _amount);
   }
 
@@ -750,9 +748,11 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       _reportYieldForDonation(_yieldProvider, cachedMsgValue);
     } else if (_destination == address(this)) {
       _reportYieldForDonation(_yieldProvider, cachedMsgValue);
-    // Will be counted as yield in next reportYield
+    // More conservative to avoid counting donation as yield, to avoid new L2 circulating ETH.
     } else if (_destination == _yieldProvider) {
       _fundYieldProvider(_yieldProvider, cachedMsgValue);
+      _getYieldManagerStorage()._userFundsInYieldProvidersTotal += cachedMsgValue;
+      _getYieldProviderDataStorage(_yieldProvider).userFunds += cachedMsgValue;
     } else {
       revert IllegalDonationAddress();
     }

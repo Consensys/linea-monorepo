@@ -280,7 +280,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   }
 
   // @dev Checks guided by https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
-  function _validateUnstakePermissionless(bytes memory pubkeys, uint64[] memory amounts, bytes calldata _withdrawalParamsProof) internal returns (uint256 maxPossibleUnstake) {
+  function _validateUnstakePermissionless(bytes memory pubkeys, uint64[] memory amounts, bytes calldata _withdrawalParamsProof) internal view returns (uint256 maxPossibleUnstake) {
     // Length validator
     if (pubkeys.length != PUBLIC_KEY_LENGTH || amounts.length != 1 ) {
       revert SingleValidatorOnlyForUnstakePermissionless();
@@ -338,7 +338,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
     }
   }
 
-  function getAvailableBalanceForWithdraw() external view returns (uint256) {
+  function withdrawableValue() external view returns (uint256) {
     return _getYieldProviderDataStorage(YIELD_PROVIDER).isOssified ? YIELD_PROVIDER.balance : DASHBOARD.withdrawableValue();
   }
 
@@ -348,6 +348,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
       revert MintLSTDisabledDuringOssification();
     }
     DASHBOARD.mintStETH(_recipient, _amount);
+    $$.lstLiabilityPrincipal += _amount;
   }
 
   // TODO - Role

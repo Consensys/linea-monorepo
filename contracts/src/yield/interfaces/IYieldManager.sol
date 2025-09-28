@@ -309,6 +309,8 @@ interface IYieldManager {
 
   function isWithdrawalReserveBelowMinimum() external view returns (bool);
 
+  function withdrawableValue(address _yieldProvider) external returns (uint256);
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
@@ -428,8 +430,6 @@ interface IYieldManager {
    * @param _minimumWithdrawalReserveAmount Minimum withdrawal reserve amount.
    */
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external;
-
-  function getAvailableBalanceForWithdraw(address _yieldProvider) external returns (uint256);
 
   function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external;
 

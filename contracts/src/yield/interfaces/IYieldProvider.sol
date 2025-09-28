@@ -98,7 +98,7 @@ interface IYieldProvider {
    * @notice Get the ETH balance held by the yield provider that can be withdrawn immediately.
    * @return The available ETH balance that may be withdrawn.
    */
-  function getAvailableBalanceForWithdraw() external view returns (uint256);
+  function withdrawableValue() external view returns (uint256);
 
   /**
    * @notice Mint LST to a recipient .
