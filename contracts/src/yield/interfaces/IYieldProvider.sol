@@ -23,6 +23,12 @@ interface IYieldProvider {
 
   error MintLSTDisabledDuringOssification();
 
+  error SingleValidatorOnlyForUnstakePermissionless();
+
+  error NoValidatorExitForUnstakePermissionless();
+
+  error ValidatorNotActiveForLongEnough();
+
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev Will settle any outstanding liabilities to the YieldProvider.

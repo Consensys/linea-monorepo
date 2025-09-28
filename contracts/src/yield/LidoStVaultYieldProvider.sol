@@ -4,32 +4,55 @@ pragma solidity ^0.8.30;
 import { YieldManagerStorageLayout } from "./YieldManagerStorageLayout.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
-import { ICommonVaultOperations } from "./interfaces/vendor/lido-vault/ICommonVaultOperations.sol";
-import { IDashboard } from "./interfaces/vendor/lido-vault/IDashboard.sol";
-import { IStETH } from "./interfaces/vendor/lido-vault/IStETH.sol";
-import { IVaultHub } from "./interfaces/vendor/lido-vault/IVaultHub.sol";
-import { IStakingVault } from "./interfaces/vendor/lido-vault/IStakingVault.sol";
+import { ICommonVaultOperations } from "./interfaces/vendor/lido/ICommonVaultOperations.sol";
+import { IDashboard } from "./interfaces/vendor/lido/IDashboard.sol";
+import { IStETH } from "./interfaces/vendor/lido/IStETH.sol";
+import { IVaultHub } from "./interfaces/vendor/lido/IVaultHub.sol";
+import { IStakingVault } from "./interfaces/vendor/lido/IStakingVault.sol";
 import { Math256 } from "../libraries/Math256.sol";
+import { CLProofVerifier } from "./libs/CLProofVerifier.sol";
+import {GIndex} from "./libs/vendor/lido/GIndex.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, IGenericErrors {
+contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier, IYieldProvider, IGenericErrors {
   // yieldProvider = StakingVault
   address immutable YIELD_PROVIDER;
   IVaultHub immutable VAULT_HUB;
   IDashboard immutable DASHBOARD;
   IStETH immutable STETH;
+  bytes32 immutable WITHDRAWAL_CREDENTIALS;
+
+  uint256 private constant PUBLIC_KEY_LENGTH = 48;
+  uint256 private constant MIN_0X02_VALIDATOR_ACTIVATION_BALANCE = 32 ether;
+  // Validator must be active for this many epochs before it is eligible for withdrawals
+  uint256 private constant SHARD_COMMITTEE_PERIOD = 256;
+  uint256 private constant SLOTS_PER_EPOCH = 32;
 
   // @dev _yieldProvider = stakingVault address
-  constructor (address _yieldProvider, address _vaultHub, address _dashboard, address _steth) {
+  constructor (
+    address _yieldProvider, 
+    address _vaultHub, 
+    address _dashboard, 
+    address _steth,
+    GIndex _gIFirstValidator,
+    GIndex _gIFirstValidatorAfterChange,
+    uint64 _changeSlot
+  ) CLProofVerifier(_gIFirstValidator, _gIFirstValidatorAfterChange, _changeSlot) {
     // Do checks
     YIELD_PROVIDER = _yieldProvider;
     VAULT_HUB = IVaultHub(_vaultHub);
     DASHBOARD = IDashboard(_dashboard);
     STETH = IStETH(_steth);
+    // 0x02 withdrawal credential scheme
+    bytes32 withdrawalCredentials;
+    assembly {
+      withdrawalCredentials := or(shl(248, 0x2), _yieldProvider)
+    }
+    WITHDRAWAL_CREDENTIALS = withdrawalCredentials;
   }
 
   function _getEntrypointContract() private view returns (address) {
@@ -218,7 +241,8 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
   function unstake(bytes memory _withdrawalParams) external {
-    _unstake(_withdrawalParams);
+    (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
+    _unstake(pubkeys, amounts, refundRecipient);
     // TODO - Emit event
   }
 
@@ -242,25 +266,51 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, IYieldProvider, 
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external returns (uint256) {
-    // TODO - Verify _withdrawalParamsProof
-    uint256 amountUnstaked = _unstake(_withdrawalParams);
+    (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
+    _validateUnstakePermissionless(pubkeys, amounts, _withdrawalParamsProof);
+    _unstake(pubkeys, amounts, refundRecipient);
+
     // TODO - Emit event
-    return amountUnstaked;
+    return 0;
   }
 
-  /**
-   * @notice Request beacon chain withdrawal.
-   * @param _withdrawalParams   Provider-specific withdrawal parameters.
-   */
-  function _unstake(bytes memory _withdrawalParams) internal returns (uint256) {
-    (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(_withdrawalParams, (bytes, uint64[], address));
+  function _unstake(bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) internal {
     // Lido StakingVault.sol will handle the param validation
     ICommonVaultOperations(_getEntrypointContract()).triggerValidatorWithdrawals(pubkeys, amounts, refundRecipient);
-    uint256 amountUnstaked;
-    for (uint256 i = 0; i < amounts.length; i++) {
-      amountUnstaked += amounts[i];
+  }
+
+  // @dev Checks guided by https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
+  function _validateUnstakePermissionless(bytes memory pubkeys, uint64[] memory amounts, bytes calldata _withdrawalParamsProof) internal returns (uint256 maxPossibleUnstake) {
+    // Length validator
+    if (pubkeys.length != PUBLIC_KEY_LENGTH || amounts.length != 1 ) {
+      revert SingleValidatorOnlyForUnstakePermissionless();
     }
-    return amountUnstaked;
+    
+    uint256 amount = amounts[0];
+    if (amount == 0) {
+      revert NoValidatorExitForUnstakePermissionless();
+    }
+    
+    (ValidatorWitness memory witness) = abi.decode(_withdrawalParamsProof, (ValidatorWitness));
+    uint256 epoch = witness.slot / SLOTS_PER_EPOCH;
+    if (epoch < witness.activationEpoch + SHARD_COMMITTEE_PERIOD) {
+      revert ValidatorNotActiveForLongEnough();
+    }
+
+    _validateValidatorContainerForPermissionlessUnstake(witness, WITHDRAWAL_CREDENTIALS);
+
+    /** 
+      The consensus specs specify this as 
+    
+       to_withdraw = min(
+            state.balances[index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw,
+            amount
+        )    
+      
+      We will not keep track of 'pending_balance_to_withdraw'.
+      It is enough that $.pendingPermissionlessWithdrawal is decremented on every ETH transfer to L1MessageService.
+    */ 
+    maxPossibleUnstake = Math256.min(amount, witness.effectiveBalance - MIN_0X02_VALIDATOR_ACTIVATION_BALANCE);
   }
 
   function withdrawFromYieldProvider(uint256 _amount, address _recipient) external {
