@@ -80,54 +80,78 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     withdrawalReserveBalance = l1MessageService().balance;
   }
 
-  // TODO - Caching of l1MessageService.balance calls...
+  function getTotalSystemBalance() public view returns (uint256 totalSystemBalance) {
+    (uint256 totalSystemBalance,) = _getTotalSystemBalance();
+    return totalSystemBalance;
+  }
 
-  function getTotalSystemBalance() public view returns (uint256 totalSystemBalance, uint256 cachedL1MessageServiceBalance) {
+  function _getTotalSystemBalance() internal view returns (uint256 totalSystemBalance, uint256 cachedL1MessageServiceBalance) {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     cachedL1MessageServiceBalance = $._l1MessageService.balance;
     totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $._userFundsInYieldProvidersTotal;
   }
 
-  function getMinimumWithdrawalReserveByPercentage() public view returns (uint256 minimumWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance) {
-    (uint256 totalSystemBalance, uint256 tmpCachedL1MessageServiceBalance) = getTotalSystemBalance();
+  function getMinimumWithdrawalReserveByPercentage() external view returns (uint256 minimumWithdrawalReserveByPercentage) {
+    (uint256 minimumWithdrawalReserveByPercentage,) = _getMinimumWithdrawalReserveByPercentage();
+    return minimumWithdrawalReserveByPercentage;
+  }
+
+  function _getMinimumWithdrawalReserveByPercentage() internal view returns (uint256 minimumWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance) {
+    (uint256 totalSystemBalance, uint256 tmpCachedL1MessageServiceBalance) = _getTotalSystemBalance();
     cachedL1MessageServiceBalance = tmpCachedL1MessageServiceBalance;
     minimumWithdrawalReserveByPercentage = totalSystemBalance * _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps / MAX_BPS;
   }
 
-  function getTargetWithdrawalReserveByPercentage() public view returns (uint256 targetWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance) {
-    (uint256 totalSystemBalance, uint256 tmpCachedL1MessageServiceBalance) = getTotalSystemBalance();
+  function getTargetWithdrawalReserveByPercentage() external view returns (uint256 targetWithdrawalReserveByPercentage) {
+    (uint256 targetWithdrawalReserveByPercentage,) = _getTargetWithdrawalReserveByPercentage();
+    return targetWithdrawalReserveByPercentage;
+  }
+
+  function _getTargetWithdrawalReserveByPercentage() internal view returns (uint256 targetWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance) {
+    (uint256 totalSystemBalance, uint256 tmpCachedL1MessageServiceBalance) = _getTotalSystemBalance();
     cachedL1MessageServiceBalance = tmpCachedL1MessageServiceBalance;
     targetWithdrawalReserveByPercentage = totalSystemBalance * _getYieldManagerStorage()._targetWithdrawalReservePercentageBps / MAX_BPS;
   }
 
+  function getMinimumWithdrawalReserve() external view returns (uint256 minimumWithdrawalReserve) {
+    (uint256 minimumWithdrawalReserve,) = _getMinimumWithdrawalReserve();
+    return minimumWithdrawalReserve;
+  }
+
   /// @notice Get effective minimum withdrawal reserve
   /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
-  function getMinimumWithdrawalReserve() public view returns (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) {
-      (uint256 minimumWithdrawalReserveByPercentage, uint256 tmpCachedL1MessageServiceBalance) = getMinimumWithdrawalReserveByPercentage();
+  function _getMinimumWithdrawalReserve() internal view returns (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) {
+      (uint256 minimumWithdrawalReserveByPercentage, uint256 tmpCachedL1MessageServiceBalance) = _getMinimumWithdrawalReserveByPercentage();
       cachedL1MessageServiceBalance = tmpCachedL1MessageServiceBalance;
       minimumWithdrawalReserve = Math256.min(minimumWithdrawalReserveByPercentage, _getYieldManagerStorage()._minimumWithdrawalReserveAmount);
   }
 
-  function getTargetWithdrawalReserve() public view returns (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) {
-      (uint256 targetWithdrawalReserveByPercentage, uint256 tmpCachedL1MessageServiceBalance) = getTargetWithdrawalReserveByPercentage();
+  function getTargetWithdrawalReserve() external view returns (uint256 targetWithdrawalReserve) {
+    (uint256 targetWithdrawalReserve,) = _getTargetWithdrawalReserve();
+    return targetWithdrawalReserve;
+  }
+
+
+  function _getTargetWithdrawalReserve() internal view returns (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) {
+      (uint256 targetWithdrawalReserveByPercentage, uint256 tmpCachedL1MessageServiceBalance) = _getTargetWithdrawalReserveByPercentage();
       cachedL1MessageServiceBalance = tmpCachedL1MessageServiceBalance;
       targetWithdrawalReserve = Math256.min(targetWithdrawalReserveByPercentage, _getYieldManagerStorage()._targetWithdrawalReserveAmount);
   }
 
   function getTargetReserveDeficit() public view returns (uint256 targetReserveDeficit) {
-    (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = getTargetWithdrawalReserve();
+    (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getTargetWithdrawalReserve();
     targetReserveDeficit = Math256.safeSub(targetWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
   function getMinimumReserveDeficit() public view returns (uint256 minimumReserveDeficit) {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = getMinimumWithdrawalReserve();
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getMinimumWithdrawalReserve();
     minimumReserveDeficit = Math256.safeSub(minimumWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
   /// @notice Returns true if withdrawal reserve balance is below effective required minimum.
   /// @dev We are doing duplicate BALANCE opcode call, but how to remove duplicate call while maintaining readability?
   function isWithdrawalReserveBelowEffectiveMinimum() public view returns (bool) {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = getMinimumWithdrawalReserve();
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getMinimumWithdrawalReserve();
     return cachedL1MessageServiceBalance < minimumWithdrawalReserve;
   }
 
