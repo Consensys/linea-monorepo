@@ -6,39 +6,37 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-var _ ifaces.Accessor = &FromExprAccessor{}
-
-// FromExprAccessor symbolizes a value derived from others values via a
-// [symbolic.Expression] and implements [ifaces.Accessor].
-type FromExprAccessor struct {
+// FromExprAccessor[T] symbolizes a value derived from others values via a
+// [symbolic.Expression[T]] and implements [ifaces.Accessor[T]].
+type FromExprAccessor[T zk.Element] struct {
 	// The expression represented by the accessor
-	Expr *symbolic.Expression
+	Expr *symbolic.Expression[T]
 	// The boarded expression
-	Boarded symbolic.ExpressionBoard
+	Boarded symbolic.ExpressionBoard[T]
 	// An identifier to denote the expression. This will be used to evaluate
-	// [ifaces.Accessor.String]
+	// [ifaces.Accessor[T].String]
 	ExprName string
 	// The definition round of the expression
 	ExprRound int
 }
 
-// NewFromExpression returns an [ifaces.Accessor] symbolizing the evaluation of a
+// NewFromExpression[T] returns an [ifaces.Accessor[T]] symbolizing the evaluation of a
 // symbolic expression. The provided expression must be evaluable from verifier
 // inputs only meaning in may contain only (accessors or coins) otherwise, calling
-// [ifaces.Accessor.GetVal] may panic.
+// [ifaces.Accessor[T].GetVal] may panic.
 //
 // This can be used if we want to use, not the
-func NewFromExpression(expr *symbolic.Expression, exprName string) ifaces.Accessor {
+func NewFromExpression[T zk.Element](expr *symbolic.Expression[T], exprName string) ifaces.Accessor[T] {
 
 	// This sanity-checks the expression to detect if it is valid to be used
 	// as an accessor. We need to "board" the expression before we can access
@@ -52,10 +50,10 @@ func NewFromExpression(expr *symbolic.Expression, exprName string) ifaces.Access
 
 	for _, m := range metadata {
 		switch castedMetadata := m.(type) {
-		case variables.X, variables.PeriodicSample:
+		case variables.X[T], variables.PeriodicSample[T]:
 			// this is not supported
 			panic("variables are not supported")
-		case ifaces.Accessor:
+		case ifaces.Accessor[T]:
 			// this is always fine because all coins are public
 			exprRound = utils.Max(exprRound, castedMetadata.Round())
 		case coin.Info:
@@ -66,7 +64,7 @@ func NewFromExpression(expr *symbolic.Expression, exprName string) ifaces.Access
 		}
 	}
 
-	return &FromExprAccessor{
+	return &FromExprAccessor[T]{
 		Expr:      expr,
 		ExprName:  exprName,
 		Boarded:   board,
@@ -75,33 +73,33 @@ func NewFromExpression(expr *symbolic.Expression, exprName string) ifaces.Access
 }
 
 // NewExponent constructs an accessor for the exponentiation of a another
-// [ifaces.Accessor] by another constant `n`.
-func NewExponent(a symbolic.Metadata, n int) ifaces.Accessor {
-	return NewFromExpression(
-		symbolic.Pow(a, n),
+// [ifaces.Accessor[T]] by another constant `n`.
+func NewExponent[T zk.Element](a symbolic.Metadata, n int) ifaces.Accessor[T] {
+	return NewFromExpression[T](
+		symbolic.Pow[T](a, n),
 		fmt.Sprintf("EXP_%v_%v", a.String(), n),
 	)
 }
 
-// Name implements [ifaces.Accessor]
-func (e *FromExprAccessor) Name() string {
+// Name implements [ifaces.Accessor[T]]
+func (e *FromExprAccessor[T]) Name() string {
 	return fmt.Sprintf("EXPR_AS_ACCESSOR_%v", e.ExprName)
 }
 
 // String implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
-func (e *FromExprAccessor) String() string {
+func (e *FromExprAccessor[T]) String() string {
 	return e.Name()
 }
 
-// GetVal implements [ifaces.Accessor]
-func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
+// GetVal implements [ifaces.Accessor[T]]
+func (e *FromExprAccessor[T]) GetVal(run ifaces.Runtime) field.Element {
 
 	metadata := e.Boarded.ListVariableMetadata()
 	inputs := make([]smartvectors.SmartVector, len(metadata))
 
 	for i, m := range metadata {
 		switch castedMetadata := m.(type) {
-		case ifaces.Accessor:
+		case ifaces.Accessor[T]:
 			x := castedMetadata.GetVal(run)
 			inputs[i] = smartvectors.NewConstant(x, 1)
 		case coin.Info:
@@ -116,14 +114,14 @@ func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
 	return e.Boarded.Evaluate(inputs).Get(0)
 }
 
-func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+func (e *FromExprAccessor[T]) GetValBase(run ifaces.Runtime) (field.Element, error) {
 	if e.IsBase() {
 		metadata := e.Boarded.ListVariableMetadata()
 		inputs := make([]smartvectors.SmartVector, len(metadata))
 
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {
-			case ifaces.Accessor:
+			case ifaces.Accessor[T]:
 				x, _ := castedMetadata.GetValBase(run)
 				inputs[i] = smartvectors.NewConstant(x, 1)
 			case coin.Info:
@@ -142,7 +140,7 @@ func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error)
 	}
 }
 
-func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+func (e *FromExprAccessor[T]) GetValExt(run ifaces.Runtime) fext.Element {
 	if e.IsBase() {
 		res, _ := e.GetValBase(run)
 		return fext.Lift(res)
@@ -153,7 +151,7 @@ func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {
-			case ifaces.Accessor:
+			case ifaces.Accessor[T]:
 				x := castedMetadata.GetValExt(run)
 				inputs[i] = smartvectors.NewConstantExt(x, 1)
 			case coin.Info:
@@ -169,15 +167,15 @@ func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	}
 }
 
-// GetFrontendVariable implements [ifaces.Accessor]
-func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+// GetFrontendVariable implements [ifaces.Accessor[T]]
+func (e *FromExprAccessor[T]) GetFrontendVariable(api zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
 
 	metadata := e.Boarded.ListVariableMetadata()
-	inputs := make([]frontend.Variable, len(metadata))
+	inputs := make([]T, len(metadata))
 
 	for i, m := range metadata {
 		switch castedMetadata := m.(type) {
-		case ifaces.Accessor:
+		case ifaces.Accessor[T]:
 			inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
 		case coin.Info:
 			inputs[i] = circ.GetRandomCoinField(castedMetadata.Name)
@@ -186,17 +184,17 @@ func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.Gna
 		}
 	}
 
-	return e.Boarded.GnarkEval(api, inputs)
+	return e.Boarded.GnarkEval(api.GnarkAPI(), inputs)
 }
 
-func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (e *FromExprAccessor[T]) GetFrontendVariableBase(api zk.APIGen[T], circ ifaces.GnarkRuntime[T]) (T, error) {
 	if e.IsBase() {
 		metadata := e.Boarded.ListVariableMetadata()
-		inputs := make([]frontend.Variable, len(metadata))
+		inputs := make([]T, len(metadata))
 
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {
-			case ifaces.Accessor:
+			case ifaces.Accessor[T]:
 				inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
 			case coin.Info:
 				inputs[i] = circ.GetRandomCoinField(castedMetadata.Name)
@@ -205,23 +203,30 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 			}
 		}
 
-		return e.Boarded.GnarkEval(api, inputs), nil
+		return e.Boarded.GnarkEval(api.GnarkAPI(), inputs), nil
 	} else {
-		return nil, fmt.Errorf("requested a base element from a col over field extensions")
+		var a T
+		return a, fmt.Errorf("requested a base element from a col over field extensions")
 	}
 }
 
-func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+func (e *FromExprAccessor[T]) GetFrontendVariableExt(api zk.APIGen[T], circ ifaces.GnarkRuntime[T]) gnarkfext.E4Gen[T] {
+
+	e4Api, err := gnarkfext.NewExt4[T](api.GnarkAPI())
+	if err != nil {
+		panic(err)
+	}
+
 	if e.IsBase() {
 		baseElem, _ := e.GetFrontendVariableBase(api, circ)
-		return gnarkfext.NewFromBase(baseElem)
+		return *e4Api.NewFromBase(baseElem)
 	} else {
 		metadata := e.Boarded.ListVariableMetadata()
-		inputs := make([]gnarkfext.Element, len(metadata))
+		inputs := make([]gnarkfext.E4Gen[T], len(metadata))
 
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {
-			case ifaces.Accessor:
+			case ifaces.Accessor[T]:
 				inputs[i] = castedMetadata.GetFrontendVariableExt(api, circ)
 			case coin.Info:
 				inputs[i] = circ.GetRandomCoinFieldExt(castedMetadata.Name)
@@ -230,21 +235,21 @@ func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.
 			}
 		}
 
-		return e.Boarded.GnarkEvalExt(api, inputs)
+		return e.Boarded.GnarkEvalExt(api.GnarkAPI(), inputs)
 
 	}
 }
 
-// AsVariable implements the [ifaces.Accessor] interface
-func (e *FromExprAccessor) AsVariable() *symbolic.Expression {
-	return symbolic.NewVariable(e)
+// AsVariable implements the [ifaces.Accessor[T]] interface
+func (e *FromExprAccessor[T]) AsVariable() *symbolic.Expression[T] {
+	return symbolic.NewVariable[T](e)
 }
 
-// Round implements the [ifaces.Accessor] interface
-func (e *FromExprAccessor) Round() int {
+// Round implements the [ifaces.Accessor[T]] interface
+func (e *FromExprAccessor[T]) Round() int {
 	return e.ExprRound
 }
 
-func (e *FromExprAccessor) IsBase() bool {
+func (e *FromExprAccessor[T]) IsBase() bool {
 	return e.IsBase()
 }

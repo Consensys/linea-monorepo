@@ -6,21 +6,21 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-var _ ifaces.Accessor = &FromCoinAccessor{}
+// var _ ifaces.Accessor = &FromCoinAccessor{}
 
 // FromCoinAccessor implements [ifaces.Accessor] and represents the value of a
 // [coin.Info] of type [coin.Field]. It is sometime used to supply a coin to
 // a function requiring an accessor explicitly. For [github.com/consensys/linea-monorepo/prover/symbolic.Expression]
 // this should not be necessary as [coin.Info] already implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata].
-type FromCoinAccessor struct {
+type FromCoinAccessor[T zk.Element] struct {
 	// Info represents the underlying [coin.Info] being wrapped by the accessor.
 	Info coin.Info
 }
@@ -28,61 +28,61 @@ type FromCoinAccessor struct {
 // NewFromCoin returns an [ifaces.Accessor] object symbolizing a
 // [coin.Info]. The supplied [coin.Info] must be of type [coin.Field] or the
 // function panics.
-func NewFromCoin(info coin.Info) ifaces.Accessor {
+func NewFromCoin[T zk.Element](info coin.Info) ifaces.Accessor[T] {
 	if info.Type != coin.Field && info.Type != coin.FieldFromSeed && info.Type != coin.FieldExt {
 		utils.Panic("NewFromCoin expects a [coin.Field], a [coin.FieldFromSeed] or a [coin.FieldExt] `info`, got `%v`", info.Type)
 	}
-	return &FromCoinAccessor{
+	return &FromCoinAccessor[T]{
 		Info: info,
 	}
 }
 
 // Name implements [ifaces.Accessor]
-func (c *FromCoinAccessor) Name() string {
+func (c *FromCoinAccessor[T]) Name() string {
 	return fmt.Sprintf("COIN_AS_ACCESSOR_%v", c.Info.Name)
 }
 
 // String implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
-func (c *FromCoinAccessor) String() string {
+func (c *FromCoinAccessor[T]) String() string {
 	return c.Name()
 }
 
 // GetVal implements [ifaces.Accessor]
-func (c *FromCoinAccessor) GetVal(run ifaces.Runtime) field.Element {
+func (c *FromCoinAccessor[T]) GetVal(run ifaces.Runtime) field.Element {
 	return run.GetRandomCoinField(c.Info.Name)
 }
 
-func (c *FromCoinAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+func (c *FromCoinAccessor[T]) GetValBase(run ifaces.Runtime) (field.Element, error) {
 	return run.GetRandomCoinField(c.Info.Name), nil
 }
 
-func (c *FromCoinAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+func (c *FromCoinAccessor[T]) GetValExt(run ifaces.Runtime) fext.Element {
 	return run.GetRandomCoinFieldExt(c.Info.Name)
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (c *FromCoinAccessor[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
 	return circ.GetRandomCoinField(c.Info.Name)
 }
 
-func (c *FromCoinAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (c *FromCoinAccessor[T]) GetFrontendVariableBase(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) (T, error) {
 	return circ.GetRandomCoinField(c.Info.Name), nil
 }
 
-func (c *FromCoinAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+func (c *FromCoinAccessor[T]) GetFrontendVariableExt(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) gnarkfext.E4Gen[T] {
 	return circ.GetRandomCoinFieldExt(c.Info.Name)
 }
 
 // AsVariable implements the [ifaces.Accessor] interface
-func (c *FromCoinAccessor) AsVariable() *symbolic.Expression {
-	return symbolic.NewVariable(c)
+func (c *FromCoinAccessor[T]) AsVariable() *symbolic.Expression[T] {
+	return symbolic.NewVariable[T](c)
 }
 
 // Round implements the [ifaces.Accessor] interface
-func (c *FromCoinAccessor) Round() int {
+func (c *FromCoinAccessor[T]) Round() int {
 	return c.Info.Round
 }
 
-func (c *FromCoinAccessor) IsBase() bool {
+func (c *FromCoinAccessor[T]) IsBase() bool {
 	return false
 }

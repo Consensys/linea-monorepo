@@ -6,49 +6,49 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // asFromAccessors is an ad-hoc interface that serves to identify [verifiercol.FromAccessors]
 // without creating a cyclic dependency.
-type asFromAccessors interface {
-	GetFromAccessorsFields() (accs []ifaces.Accessor, padding field.Element)
+type asFromAccessors[T zk.Element] interface {
+	GetFromAccessorsFields() (accs []ifaces.Accessor[T], padding field.Element)
 }
 
 // FromPublicColumn refers to a position of a public column
-type FromPublicColumn struct {
+type FromPublicColumn[T zk.Element] struct {
 	// Info points to the underlying coin on which the accessor points to.
 	Col column.Natural
 	// Pos indexes the pointed position in the coin.
 	Pos int
 }
 
-func (c *FromPublicColumn) IsBase() bool {
+func (c *FromPublicColumn[T]) IsBase() bool {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *FromPublicColumn) GetValBase(run ifaces.Runtime) (field.Element, error) {
+func (c *FromPublicColumn[T]) GetValBase(run ifaces.Runtime) (field.Element, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *FromPublicColumn) GetValExt(run ifaces.Runtime) fext.Element {
+func (c *FromPublicColumn[T]) GetValExt(run ifaces.Runtime) fext.Element {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *FromPublicColumn) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (c *FromPublicColumn[T]) GetFrontendVariableBase(api zk.APIGen[T], circ ifaces.GnarkRuntime[T]) (T, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *FromPublicColumn) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+func (c *FromPublicColumn[T]) GetFrontendVariableExt(api zk.APIGen[T], circ ifaces.GnarkRuntime[T]) gnarkfext.E4Gen[T] {
 	//TODO implement me
 	panic("implement me")
 }
@@ -61,13 +61,13 @@ func (c *FromPublicColumn) GetFrontendVariableExt(api frontend.API, circ ifaces.
 //
 // The function accepts only Natural columns and panics if they are not of this
 // type.
-func NewFromPublicColumn(col ifaces.Column, pos int) ifaces.Accessor {
+func NewFromPublicColumn[T zk.Element](col ifaces.Column[T], pos int) ifaces.Accessor[T] {
 
-	if faccs, ok := col.(asFromAccessors); ok {
+	if faccs, ok := col.(asFromAccessors[T]); ok {
 		accs, pad := faccs.GetFromAccessorsFields()
 
 		if pos >= len(accs) {
-			return NewConstant(pad)
+			return NewConstant[T](pad)
 		}
 		return accs[pos]
 	}
@@ -83,38 +83,38 @@ func NewFromPublicColumn(col ifaces.Column, pos int) ifaces.Accessor {
 	if nat.Size() <= pos {
 		utils.Panic("the column has size %v, but requested position %v", nat.Size(), pos)
 	}
-	return &FromPublicColumn{
+	return &FromPublicColumn[T]{
 		Col: nat,
 		Pos: pos,
 	}
 }
 
 // Name implements [ifaces.Accessor]
-func (c *FromPublicColumn) Name() string {
+func (c *FromPublicColumn[T]) Name() string {
 	return fmt.Sprintf("FROM_COLUMN_POSITION_ACCESSOR_%v_%v", c.Col.ID, c.Pos)
 }
 
 // String implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
-func (c *FromPublicColumn) String() string {
+func (c *FromPublicColumn[T]) String() string {
 	return c.Name()
 }
 
 // GetVal implements [ifaces.Accessor]
-func (c *FromPublicColumn) GetVal(run ifaces.Runtime) field.Element {
+func (c *FromPublicColumn[T]) GetVal(run ifaces.Runtime) field.Element {
 	return run.GetColumnAt(c.Col.ID, c.Pos)
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (c *FromPublicColumn) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (c *FromPublicColumn[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
 	return circ.GetColumnAt(c.Col.ID, c.Pos)
 }
 
 // AsVariable implements the [ifaces.Accessor] interface
-func (c *FromPublicColumn) AsVariable() *symbolic.Expression {
-	return symbolic.NewVariable(c)
+func (c *FromPublicColumn[T]) AsVariable() *symbolic.Expression[T] {
+	return symbolic.NewVariable[T](c)
 }
 
 // Round implements the [ifaces.Accessor] interface
-func (c *FromPublicColumn) Round() int {
+func (c *FromPublicColumn[T]) Round() int {
 	return c.Col.Round()
 }
