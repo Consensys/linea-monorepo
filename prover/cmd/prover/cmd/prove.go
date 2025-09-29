@@ -47,6 +47,7 @@ func Prove(args ProverArgs) error {
 		// Limitless prover jobs
 		jobBootstrap      = strings.Contains(args.Input, "getZkProof") && strings.EqualFold(args.Phase, "bootstrap")
 		jobGL             = strings.Contains(args.Input, "wit.bin") && strings.EqualFold(args.Phase, "gl")
+		jobLPP            = strings.Contains(args.Input, "wit.bin") && strings.EqualFold(args.Phase, "lpp")
 		jobConglomeration = strings.Contains(args.Input, "metadata-getZkProof") && strings.EqualFold(args.Phase, "conglomeration")
 	)
 
@@ -56,6 +57,8 @@ func Prove(args ProverArgs) error {
 		return handleBootstrapJob(cfg, args)
 	case jobGL:
 		return handleGLJob(cfg, args)
+	case jobLPP:
+		return handleLPPJob(cfg, args)
 	case jobConglomeration:
 		return handleConglomerationJob(cfg, args)
 	case jobExecution:
@@ -111,12 +114,31 @@ func handleGLJob(cfg *config.Config, args ProverArgs) error {
 		return fmt.Errorf("unable to parse sb/eb/segID from %s: %w", args.Input, err)
 	}
 	req := &distributed.GLRequest{
-		WitnessGLPath: args.Input,
+		WitnessGLFile: args.Input,
 		StartBlock:    sb,
 		EndBlock:      eb,
 		SegID:         segID,
 	}
 	return distributed.RunGL(cfg, req)
+}
+
+func handleLPPJob(cfg *config.Config, args ProverArgs) error {
+
+	if cfg.Execution.ProverMode != config.ProverModeLimitless {
+		return fmt.Errorf("--phase flag can be invoked only in the %v mode", config.ProverModeLimitless)
+	}
+
+	sb, eb, segID, err := files.ParseWitnessFile(args.Input)
+	if err != nil {
+		return fmt.Errorf("unable to parse sb/eb/segID from %s: %w", args.Input, err)
+	}
+	req := &distributed.LPPRequest{
+		WitnessLPPFile: args.Input,
+		StartBlock:     sb,
+		EndBlock:       eb,
+		SegID:          segID,
+	}
+	return distributed.RunLPP(cfg, req)
 }
 
 func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
