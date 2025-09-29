@@ -24,14 +24,20 @@ type blsMapDataSource struct {
 }
 
 func newMapDataSource(comp *wizard.CompiledIOP, g group) *blsMapDataSource {
+	var mapString string
+	if g == G1 {
+		mapString = "MAP_FP_TO_G1"
+	} else {
+		mapString = "MAP_FP2_TO_G2"
+	}
 	return &blsMapDataSource{
-		ID:      comp.Columns.GetHandle("bls.ID"),
-		CsMap:   comp.Columns.GetHandle(ifaces.ColIDf("bls.CIRCUIT_SELECTOR_BLS_MAP_%s_TO_%s", g.StringMap(), g.String())),
-		Limb:    comp.Columns.GetHandle("bls.LIMB"),
-		Index:   comp.Columns.GetHandle("bls.INDEX"),
-		Counter: comp.Columns.GetHandle("bls.CT"),
-		IsData:  comp.Columns.GetHandle(ifaces.ColIDf("bls.DATA_BLS_MAP_%s_TO_%s", g.StringMap(), g.String())),
-		IsRes:   comp.Columns.GetHandle(ifaces.ColIDf("bls.RSLT_BLS_MAP_%s_TO_%s", g.StringMap(), g.String())),
+		ID:      comp.Columns.GetHandle(colNameFn("ID")),
+		CsMap:   comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_" + mapString)),
+		Index:   comp.Columns.GetHandle(colNameFn("INDEX")),
+		Counter: comp.Columns.GetHandle(colNameFn("CT")),
+		Limb:    comp.Columns.GetHandle(colNameFn("LIMB")),
+		IsData:  comp.Columns.GetHandle(colNameFn("DATA_BLS_" + mapString + "_FLAG")),
+		IsRes:   comp.Columns.GetHandle(colNameFn("RSLT_BLS_" + mapString + "_FLAG")),
 	}
 }
 

@@ -26,14 +26,14 @@ type blsAddDataSource struct {
 
 func newAddDataSource(comp *wizard.CompiledIOP, g group) *blsAddDataSource {
 	return &blsAddDataSource{
-		ID:                comp.Columns.GetHandle("bls.ID"),
-		CsAdd:             comp.Columns.GetHandle(ifaces.ColIDf("bls.CIRCUIT_SELECTOR_BLS_%s_ADD", g.String())),
-		CsCurveMembership: comp.Columns.GetHandle(ifaces.ColIDf("bls.CURVE_MEMBERSHIP_%s_ADD", g.StringCurve())),
-		Limb:              comp.Columns.GetHandle("bls.LIMB"),
-		Index:             comp.Columns.GetHandle("bls.INDEX"),
-		Counter:           comp.Columns.GetHandle("bls.CT"),
-		IsData:            comp.Columns.GetHandle(ifaces.ColIDf("bls.DATA_%s_ADD", g.String())),
-		IsRes:             comp.Columns.GetHandle(ifaces.ColIDf("bls.RSLT_%s_ADD", g.String())),
+		ID:                comp.Columns.GetHandle(colNameFn("ID")),
+		CsAdd:             comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_" + g.String() + "_ADD")),
+		Limb:              comp.Columns.GetHandle(colNameFn("LIMB")),
+		Index:             comp.Columns.GetHandle(colNameFn("INDEX")),
+		Counter:           comp.Columns.GetHandle(colNameFn("CT")),
+		CsCurveMembership: comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_" + g.StringCurve() + "_MEMBERSHIP")),
+		IsData:            comp.Columns.GetHandle(colNameFn("DATA_BLS_" + g.String() + "_ADD_FLAG")),
+		IsRes:             comp.Columns.GetHandle(colNameFn("RSLT_BLS_" + g.String() + "_ADD_FLAG")),
 	}
 }
 

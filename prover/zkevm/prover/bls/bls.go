@@ -1,8 +1,14 @@
 package bls
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+)
+
+const (
+	moduleName = "blsdata"
 )
 
 type group int
@@ -58,4 +64,8 @@ func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name 
 	return func(name string) ifaces.Column {
 		return comp.InsertCommit(ROUND_NR, ifaces.ColIDf("%s_%s", rootName, name), size)
 	}
+}
+
+func colNameFn(colName string) ifaces.ColID {
+	return ifaces.ColID(fmt.Sprintf("%s.%s", moduleName, colName))
 }

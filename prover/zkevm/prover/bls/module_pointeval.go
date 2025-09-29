@@ -24,14 +24,14 @@ type blsPointEvalDataSource struct {
 
 func newPointEvalDataSource(comp *wizard.CompiledIOP) *blsPointEvalDataSource {
 	return &blsPointEvalDataSource{
-		ID:                 comp.Columns.GetHandle("bls.ID"),
-		CsPointEval:        comp.Columns.GetHandle("bls.CIRCUIT_SELECTOR_POINT_EVALUATION"),
-		CsPointEvalInvalid: comp.Columns.GetHandle("bls.CIRCUIT_SELECTOR_POINT_EVALUATION_FAILURE"),
-		Limb:               comp.Columns.GetHandle("bls.LIMB"),
-		Index:              comp.Columns.GetHandle("bls.INDEX"),
-		Counter:            comp.Columns.GetHandle("bls.CT"),
-		IsData:             comp.Columns.GetHandle("bls.DATA_POINT_EVALUATION"),
-		IsRes:              comp.Columns.GetHandle("bls.RSLT_POINT_EVALUATION"),
+		ID:                 comp.Columns.GetHandle(colNameFn("ID")),
+		CsPointEval:        comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_POINT_EVALUATION")),
+		CsPointEvalInvalid: comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_POINT_EVALUATION_FAILURE")),
+		Limb:               comp.Columns.GetHandle(colNameFn("LIMB")),
+		Index:              comp.Columns.GetHandle(colNameFn("INDEX")),
+		Counter:            comp.Columns.GetHandle(colNameFn("CT")),
+		IsData:             comp.Columns.GetHandle(colNameFn("DATA_POINT_EVALUATION_FLAG")),
+		IsRes:              comp.Columns.GetHandle(colNameFn("RSLT_POINT_EVALUATION_FLAG")),
 	}
 }
 

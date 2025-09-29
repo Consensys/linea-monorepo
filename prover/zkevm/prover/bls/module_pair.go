@@ -34,16 +34,16 @@ type blsPairDataSource struct {
 
 func newPairDataSource(comp *wizard.CompiledIOP) *blsPairDataSource {
 	return &blsPairDataSource{
-		ID:             comp.Columns.GetHandle("bls.ID"),
-		CsPair:         comp.Columns.GetHandle("bls.CIRCUIT_SELECTOR_BLS_PAIRING_CHECK"),
-		CsG1Membership: comp.Columns.GetHandle("bls.CIRCUIT_SELECTOR_G1_MEMBERSHIP"),
-		CsG2Membership: comp.Columns.GetHandle("bls.CIRCUIT_SELECTOR_G2_MEMBERSHIP"),
-		IsData:         comp.Columns.GetHandle("bls.DATA_BLS_PAIRING_CHECK"),
-		IsRes:          comp.Columns.GetHandle("bls.RSLT_BLS_PAIRING_CHECK"),
-		Index:          comp.Columns.GetHandle("bls.INDEX"),
-		Counter:        comp.Columns.GetHandle("bls.CT"),
-		Limb:           comp.Columns.GetHandle("bls.LIMB"),
-		SuccessBit:     comp.Columns.GetHandle("bls.SUCCESS_BIT"),
+		ID:             comp.Columns.GetHandle(colNameFn("ID")),
+		CsPair:         comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_PAIRING_CHECK")),
+		CsG1Membership: comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_G1_MEMBERSHIP")),
+		CsG2Membership: comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_G2_MEMBERSHIP")),
+		Limb:           comp.Columns.GetHandle(colNameFn("LIMB")),
+		Index:          comp.Columns.GetHandle(colNameFn("INDEX")),
+		Counter:        comp.Columns.GetHandle(colNameFn("CT")),
+		IsData:         comp.Columns.GetHandle(colNameFn("DATA_BLS_PAIRING_CHECK_FLAG")),
+		IsRes:          comp.Columns.GetHandle(colNameFn("RSLT_BLS_PAIRING_CHECK_FLAG")),
+		SuccessBit:     comp.Columns.GetHandle(colNameFn("SUCCESS_BIT")),
 	}
 }
 

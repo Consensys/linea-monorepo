@@ -32,14 +32,14 @@ type blsMsmDataSource struct {
 
 func newMsmDataSource(comp *wizard.CompiledIOP, g group) *blsMsmDataSource {
 	return &blsMsmDataSource{
-		ID:           comp.Columns.GetHandle("bls.ID"),
-		CsMul:        comp.Columns.GetHandle(ifaces.ColIDf("bls.CIRCUIT_SELECTOR_%s_MSM", g.String())),
-		CsMembership: comp.Columns.GetHandle(ifaces.ColIDf("bls.CIRCUIT_SELECTOR_%s_MEMBERSHIP", g.String())),
-		Limb:         comp.Columns.GetHandle("bls.LIMB"),
-		Index:        comp.Columns.GetHandle("bls.INDEX"),
-		Counter:      comp.Columns.GetHandle("bls.CT"),
-		IsData:       comp.Columns.GetHandle(ifaces.ColIDf("bls.DATA_BLS_%s_MSM", g.String())),
-		IsRes:        comp.Columns.GetHandle(ifaces.ColIDf("bls.RSLT_BLS_%s_MSM", g.String())),
+		ID:           comp.Columns.GetHandle(colNameFn("ID")),
+		CsMul:        comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_BLS_" + g.String() + "_MSM")),
+		CsMembership: comp.Columns.GetHandle(colNameFn("CIRCUIT_SELECTOR_" + g.String() + "_MEMBERSHIP")),
+		Limb:         comp.Columns.GetHandle(colNameFn("LIMB")),
+		Index:        comp.Columns.GetHandle(colNameFn("INDEX")),
+		Counter:      comp.Columns.GetHandle(colNameFn("CT")),
+		IsData:       comp.Columns.GetHandle(colNameFn("DATA_BLS_" + g.String() + "_MSM_FLAG")),
+		IsRes:        comp.Columns.GetHandle(colNameFn("RSLT_BLS_" + g.String() + "_MSM_FLAG")),
 	}
 }
 
