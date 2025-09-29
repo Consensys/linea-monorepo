@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer.module.hub.section;
 
 import static net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragmentPurpose.SLOAD_DOING;
 import static net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragmentPurpose.SLOAD_UNDOING;
+import static net.consensys.linea.zktracer.module.hub.section.SstoreSection.NB_ROWS_HUB_STORAGE;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -50,11 +51,7 @@ public class SloadSection extends TraceSection implements PostRollbackDefer {
   public SloadSection(Hub hub, WorldView worldView) {
     // exceptional case:   1 (stack row) + 5 (non stack rows)
     // unexceptional case: 1 (stack row) + 4 (non stack rows)
-    super(
-        hub,
-        (short)
-            (hub.opCodeData().numberOfStackRows()
-                + (Exceptions.any(hub.pch().exceptions()) ? 5 : 4)));
+    super(hub, (short) (NB_ROWS_HUB_STORAGE + (Exceptions.any(hub.pch().exceptions()) ? 1 : 0)));
 
     world = worldView;
     hubStamp = hub.stamp();

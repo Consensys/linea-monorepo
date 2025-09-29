@@ -210,7 +210,7 @@ public class EcDataOperation extends ModuleOperation {
       final PrecompileScenarioFragment.PrecompileFlag precompileFlag,
       Bytes callData,
       Bytes returnData) {
-    EcDataOperation ecDataOperation =
+    final EcDataOperation ecDataOperation =
         new EcDataOperation(wcp, ext, id, precompileFlag, callData, returnData);
     switch (precompileFlag) {
       case PRC_ECRECOVER -> ecDataOperation.handleRecover();
@@ -369,13 +369,6 @@ public class EcDataOperation extends ModuleOperation {
     if (internalChecksPassed) {
       circuitSelectorEcrecover = true;
     }
-
-    // Very unlikely edge case: if the ext module is never used elsewhere, we need to insert a
-    // useless row, in order to trigger the construction of the first empty row, useful for the ext
-    // lookup.
-    // Because of the hashmap in the ext module, this useless row will only be inserted one time.
-    // Tested by TestEcRecoverWithEmptyExt
-    ext.callADDMOD(Bytes.EMPTY, Bytes.EMPTY, Bytes.EMPTY);
 
     // Set result rows
     EWord recoveredAddress = EWord.ZERO;

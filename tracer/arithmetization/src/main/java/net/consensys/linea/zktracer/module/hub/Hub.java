@@ -17,8 +17,9 @@ package net.consensys.linea.zktracer.module.hub;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT;
-import static net.consensys.linea.zktracer.Fork.isPostCancun;
+import static net.consensys.linea.zktracer.Fork.getGasCalculatorFromFork;
 import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___STACK_STAMP;
+import static net.consensys.linea.zktracer.module.ModuleName.*;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_FINL;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_INIT;
@@ -26,7 +27,6 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_WARM;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
-import static net.consensys.linea.zktracer.module.limits.CountingModuleName.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.RETURN;
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
@@ -77,7 +77,7 @@ import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.limits.BlockTransactions;
 import net.consensys.linea.zktracer.module.limits.Keccak;
-import net.consensys.linea.zktracer.module.limits.L1BlockSizeOld;
+import net.consensys.linea.zktracer.module.limits.L1BlockSize;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
 import net.consensys.linea.zktracer.module.limits.precompiles.RipemdBlocks;
 import net.consensys.linea.zktracer.module.limits.precompiles.Sha256Blocks;
@@ -98,7 +98,9 @@ import net.consensys.linea.zktracer.module.romlex.RomLex;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.stp.Stp;
+import net.consensys.linea.zktracer.module.tables.PowerRt;
 import net.consensys.linea.zktracer.module.tables.bin.BinRt;
+import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.*;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
@@ -142,7 +144,7 @@ public abstract class Hub implements Module {
   private final OpCodes opCodes;
 
   /** The {@link GasCalculator} used in this version of the arithmetization */
-  public final GasCalculator gasCalculator = setGasCalculator();
+  public final GasCalculator gasCalculator;
 
   public final GasProjector gasProjector;
 
@@ -175,7 +177,7 @@ public abstract class Hub implements Module {
 
   @Override
   public String moduleKey() {
-    return "HUB";
+    return HUB.toString();
   }
 
   @Override
@@ -206,19 +208,19 @@ public abstract class Hub implements Module {
   private final Bin bin = new Bin();
   private final Blockhash blockhash = new Blockhash(this, wcp);
   private final Euc euc = new Euc(wcp);
-  private final Ext ext = new Ext(this);
+  private final Ext ext = new Ext();
   private final Gas gas = new Gas();
-  private final Mul mul = new Mul(this);
+  private final Mul mul = new Mul();
   private final Mod mod = new Mod();
   private final Shf shf = new Shf();
-  private final Trm trm = new Trm(this, wcp);
+  private final Trm trm;
   private final Module rlpUtils = setRlpUtils(wcp);
 
   // other
   private final Blockdata blockdata;
   private final RomLex romLex = new RomLex(this);
   private final Rom rom = new Rom(romLex);
-  private final RlpTxn rlpTxn = setRlpTxn(this);
+  private final RlpTxn rlpTxn;
   private final Mmio mmio;
   private final TxnData<? extends TxnDataOperation> txnData = setTxnData();
   private final RlpTxnRcpt rlpTxnRcpt = new RlpTxnRcpt();
@@ -231,13 +233,13 @@ public abstract class Hub implements Module {
   private final Oob oob = new Oob(this, add, mod, wcp);
   private final Mmu mmu;
   private final Stp stp = new Stp();
-  private final Exp exp = new Exp(this, wcp);
+  private final Exp exp = new Exp();
 
   /*
    * Those modules are not traced, we just compute the number of calls to those
    * precompile to meet the prover limits
    */
-  private final BlockTransactions blockTransactions = new BlockTransactions(this);
+  private final BlockTransactions blockTransactions = new BlockTransactions();
   private final Keccak keccak;
   private final Sha256Blocks sha256Blocks = new Sha256Blocks();
 
@@ -258,6 +260,8 @@ public abstract class Hub implements Module {
   //  related to Modexp
   private final IncrementAndDetectModule modexpEffectiveCall =
       new IncrementAndDetectModule(PRECOMPILE_MODEXP_EFFECTIVE_CALLS);
+  private final IncrementingModule modexpLargeCall =
+      new IncrementingModule(PRECOMPILE_LARGE_MODEXP_EFFECTIVE_CALLS);
 
   // related to Rip
   private final RipemdBlocks ripemdBlocks = new RipemdBlocks();
@@ -314,6 +318,7 @@ public abstract class Hub implements Module {
         ecPairingMillerLoops,
         ecPairingFinalExponentiations,
         modexpEffectiveCall,
+        modexpLargeCall,
         ripemdBlocks,
         blakeEffectiveCall,
         blakeRounds,
@@ -343,7 +348,8 @@ public abstract class Hub implements Module {
    */
   private final ShakiraData shakiraData;
   private final BlakeModexpData blakeModexpData =
-      new BlakeModexpData(wcp, modexpEffectiveCall, blakeEffectiveCall, blakeRounds);
+      new BlakeModexpData(
+          wcp, modexpEffectiveCall, modexpLargeCall, blakeEffectiveCall, blakeRounds);
   public final EcData ecData =
       new EcData(
           wcp,
@@ -356,7 +362,7 @@ public abstract class Hub implements Module {
           ecPairingFinalExponentiations);
   final Module blsData = setBlsData(this);
 
-  private final L1BlockSizeOld l1BlockSize;
+  private final L1BlockSize l1BlockSize;
   private final IncrementingModule l2L1Logs;
 
   /** list of module than can be modified during execution */
@@ -369,7 +375,7 @@ public abstract class Hub implements Module {
    * The real modules, ie the ones that are traced and triggered during execution. It differs with
    * the moduleToTrace() as it contains module traced for some fork only.
    */
-  private List<Module> realModule() {
+  public List<Module> realModule() {
     return List.of(
         this,
         add,
@@ -412,34 +418,9 @@ public abstract class Hub implements Module {
     final List<Module> allModules =
         new ArrayList<>(Stream.concat(realModule().stream(), refTableModules.stream()).toList());
 
-    // All modules are in this list for the coordinator to have the same set of module whatever the
-    // fork. But we don't trace them.
-    final List<Module> appearsInCancun =
-        allModules.stream().filter(module -> module instanceof CountingOnlyModule).toList();
-    /*       LONDON CANCUN PRAGUE
-    rlpUtils CO     Inst.
-    powerRT  CO     Inst.
-    blsRT    CO     CO     Inst.
-    blsData  CO     Inst.
-    */
-    if (!isPostCancun(fork)) {
-      checkArgument(
-          appearsInCancun.size() == 4,
-          "rlpUtils, powerRT, blsRT, blsData expected to be CountingOnly");
-    }
-    if (fork == Fork.CANCUN) {
-      checkArgument(appearsInCancun.size() == 1, "blsRT expected to be CountingOnly");
-    }
-    if (fork == Fork.PRAGUE) {
-      checkArgument(appearsInCancun.isEmpty(), "no modules expected to be CountingOnly");
-    }
-    /*
-    if (!appearsInCancun.isEmpty()) {
-      checkArgument(!isPostCancun(fork), "No modules to remove after Cancun");
-      checkArgument(appearsInCancun.size() == 4 ); // blsData, rlpUtils, PowerRefTable, blsRefTable
-    }
-     */
-    return allModules.stream().filter(module -> !appearsInCancun.contains(module)).toList();
+    // The coordinator requires to have the same set of module in counting whatever the fork. But we
+    // don't trace them.
+    return allModules.stream().filter(module -> !(module instanceof CountingOnlyModule)).toList();
   }
 
   /**
@@ -449,14 +430,12 @@ public abstract class Hub implements Module {
    * @return the modules to count
    */
   public List<Module> getModulesToCount() {
-    return Stream.concat(
-            Stream.concat(realModule().stream(), refTableModules.stream()),
-            getTracelessModules().stream())
-        .toList();
+    return Stream.concat(realModule().stream(), getTracelessModules().stream()).toList();
   }
 
   public Hub(final ChainConfig chain) {
     fork = chain.fork;
+    gasCalculator = getGasCalculatorFromFork(fork);
     opCodes = OpCodes.load(fork);
     gasProjector = new GasProjector(fork, gasCalculator);
     checkState(chain.id.signum() >= 0);
@@ -469,15 +448,20 @@ public abstract class Hub implements Module {
     l2L1Logs = new IncrementingModule(BLOCK_L2_L1_LOGS);
     keccak = new Keccak(ecRecoverEffectiveCall, blockTransactions);
     l1BlockSize =
-        new L1BlockSizeOld(
+        new L1BlockSize(
             blockTransactions, keccak, l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
+    trm = new Trm(fork, wcp);
+    rlpTxn = setRlpTxn(this);
     rlpAddr = new RlpAddr(this, trm, keccak);
     blockdata = setBlockData(this, wcp, euc, chain);
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
 
-    refTableModules = List.of(new BinRt(), setBlsRt(), setInstructionDecoder(), setPower());
+    refTableModules =
+        Stream.of(new BinRt(), setBlsRt(), setInstructionDecoder(), setPower())
+            .filter(Objects::nonNull)
+            .toList();
 
     modules =
         Stream.concat(
@@ -1164,9 +1148,7 @@ public abstract class Hub implements Module {
 
   protected abstract Module setBlsData(Hub hub);
 
-  protected abstract Module setBlsRt();
-
-  protected abstract GasCalculator setGasCalculator();
+  protected abstract BlsRt setBlsRt();
 
   protected abstract TxnData<? extends TxnDataOperation> setTxnData();
 
@@ -1180,7 +1162,7 @@ public abstract class Hub implements Module {
 
   protected abstract InstructionDecoder setInstructionDecoder();
 
-  protected abstract Module setPower();
+  protected abstract PowerRt setPower();
 
   protected abstract void setSkipSection(
       Hub hub,

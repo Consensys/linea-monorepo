@@ -35,4 +35,8 @@ public class TransactionUtils {
           "Transaction type not supported: " + tx.getType());
     }
   }
+
+  public static boolean transactionHasEip1559GasSemantics(Transaction tx) {
+    return tx.getType().supports1559FeeMarket();
+  }
 }

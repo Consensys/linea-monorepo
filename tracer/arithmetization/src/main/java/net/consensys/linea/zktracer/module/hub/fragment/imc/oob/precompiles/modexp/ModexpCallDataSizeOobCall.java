@@ -40,6 +40,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModexpCallDataSizeOobCall extends OobCall {
+
+  public static final short NB_ROWS_OOB_MODEXP_CDS = CT_MAX_MODEXP_CDS + 1;
+
   // Inputs
   @EqualsAndHashCode.Include final ModexpMetadata modexpMetadata;
   @EqualsAndHashCode.Include EWord cds;

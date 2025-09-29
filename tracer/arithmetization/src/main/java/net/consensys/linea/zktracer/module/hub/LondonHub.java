@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import static net.consensys.linea.zktracer.module.limits.CountingModuleName.*;
+import static net.consensys.linea.zktracer.module.ModuleName.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
@@ -36,6 +36,8 @@ import net.consensys.linea.zktracer.module.mxp.module.LondonMxp;
 import net.consensys.linea.zktracer.module.mxp.module.Mxp;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxn.london.LondonRlpTxn;
+import net.consensys.linea.zktracer.module.tables.PowerRt;
+import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.LondonInstructionDecoder;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
@@ -44,8 +46,6 @@ import net.consensys.linea.zktracer.module.txndata.london.LondonTxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
@@ -61,14 +61,9 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected Module setBlsRt() {
+  protected BlsRt setBlsRt() {
     // BlsRt is not used in London
-    return new CountingOnlyModule(BLS_REFERENCE_TABLE);
-  }
-
-  @Override
-  protected GasCalculator setGasCalculator() {
-    return new LondonGasCalculator();
+    return null;
   }
 
   @Override
@@ -103,9 +98,9 @@ public class LondonHub extends Hub {
   }
 
   @Override
-  protected Module setPower() {
+  protected PowerRt setPower() {
     // PowerRt is not used in London, it is only used in Cancun
-    return new CountingOnlyModule(POWER_REFERENCE_TABLE);
+    return null;
   }
 
   @Override

@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.mmu;
 
 import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.module.ModuleName.MMU;
 
 import java.util.List;
 
@@ -42,7 +43,7 @@ public class Mmu implements OperationListModule<MmuOperation> {
 
   @Override
   public String moduleKey() {
-    return "MMU";
+    return MMU.toString();
   }
 
   @Override

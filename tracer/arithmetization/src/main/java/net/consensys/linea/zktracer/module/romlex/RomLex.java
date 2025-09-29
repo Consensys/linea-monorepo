@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.romlex;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.ModuleName.ROM_LEX;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
@@ -62,7 +63,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
 
   @Override
   public String moduleKey() {
-    return "ROM_LEX";
+    return ROM_LEX.toString();
   }
 
   public int getCodeFragmentIndexByMetadata(

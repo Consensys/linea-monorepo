@@ -24,11 +24,13 @@ import net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows.HubRowFor
 
 public class SysfNoopTransaction extends CancunTxnDataOperation {
 
+  public static final short NB_ROWS_TXN_DATA_SYSF_NOOP = 2;
+
   public final CancunTxnData txnData;
 
   @Override
   protected int ctMax() {
-    return 1;
+    return NB_ROWS_TXN_DATA_SYSF_NOOP - 1;
   }
 
   public SysfNoopTransaction(CancunTxnData txnData) {

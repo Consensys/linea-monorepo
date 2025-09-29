@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module.limits;
 
 import static com.google.common.base.Preconditions.checkState;
-import static net.consensys.linea.zktracer.module.limits.CountingModuleName.BLOCK_KECCAK;
+import static net.consensys.linea.zktracer.module.ModuleName.BLOCK_KECCAK;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -28,7 +28,7 @@ import net.consensys.linea.zktracer.container.module.IncrementingModule;
 public class Keccak extends CountingOnlyModule {
   private static final int PUBKEY_BYTES = 64;
   private static final int KECCAK_BIT_RATE = 1088;
-  private static final int KECCAK_BYTE_RATE = KECCAK_BIT_RATE / 8; // TODO: find correct name
+  private static final int KECCAK_BYTE_RATE = KECCAK_BIT_RATE / 8;
 
   private final IncrementingModule ecRecoverEffectiveCall;
   private final BlockTransactions blockTransactions;

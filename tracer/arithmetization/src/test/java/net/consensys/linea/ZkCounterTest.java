@@ -16,26 +16,21 @@
 package net.consensys.linea;
 
 import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT;
-import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Utils.call;
 import static net.consensys.linea.zktracer.Utils.delegateCall;
+import static net.consensys.linea.zktracer.module.ModuleName.*;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.*;
-import static net.consensys.linea.zktracer.module.limits.CountingModuleName.BLS;
-import static net.consensys.linea.zktracer.module.limits.CountingModuleName.POINT_EVAL;
-import static net.consensys.linea.zktracer.types.AddressUtils.BLS_PRECOMPILES;
-import static net.consensys.linea.zktracer.types.AddressUtils.isBlsPrecompileCall;
 import static org.hyperledger.besu.datatypes.Address.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
-import net.consensys.linea.zktracer.module.limits.CountingModuleName;
+import net.consensys.linea.zktracer.ZkCounter;
+import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -46,11 +41,40 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 public class ZkCounterTest extends TracerTestBase {
+
+  @Test
+  void checkedAndUncheckedAreExclusive() {
+    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration);
+    final List<Module> allModules = counter.getModulesToCount();
+    final List<Module> checked = counter.checkedModules();
+    final List<Module> unchecked = counter.uncheckedModules();
+
+    for (Module m : checked) {
+      assertFalse(
+          unchecked.contains(m),
+          "Module " + m.moduleKey() + " is in both checked and unchecked list");
+      assertTrue(
+          allModules.contains(m),
+          "Module " + m.moduleKey() + " is in checked but not in all modules list");
+    }
+
+    for (Module m : unchecked) {
+      assertFalse(
+          checked.contains(m),
+          "Module " + m.moduleKey() + " is in both checked and unchecked list");
+      assertTrue(
+          allModules.contains(m),
+          "Module " + m.moduleKey() + " is in checked but not in all modules list");
+    }
+
+    for (Module m : allModules) {
+      assertTrue(
+          checked.contains(m) || unchecked.contains(m),
+          "Module " + m.moduleKey() + " is in all modules but not in checked or unchecked list");
+    }
+  }
 
   @Test
   void twoSuccessfullL2l1Logs(TestInfo testInfo) {
@@ -108,17 +132,17 @@ public class ZkCounterTest extends TracerTestBase {
     final Map<String, Integer> lineCountMap = toyWorld.getZkCounter().getModulesLineCount();
 
     // We made two LOGs, one with 1 topic, and one with 4 topics and data
-    assertEquals(2, lineCountMap.get("BLOCK_L2_L1_LOGS"));
+    assertEquals(2, lineCountMap.get(BLOCK_L2_L1_LOGS.toString()));
 
     // no precompile call:
-    assertEquals(0, lineCountMap.get(CountingModuleName.MODEXP.toString()));
-    assertEquals(0, lineCountMap.get(CountingModuleName.RIP.toString()));
-    assertEquals(0, lineCountMap.get(CountingModuleName.BLAKE.toString()));
-    assertEquals(0, lineCountMap.get("POINT_EVAL"));
-    assertEquals(0, lineCountMap.get("BLS"));
+    assertEquals(0, lineCountMap.get(ModuleName.PRECOMPILE_MODEXP_EFFECTIVE_CALLS.toString()));
+    assertEquals(0, lineCountMap.get(PRECOMPILE_RIPEMD_BLOCKS.toString()));
+    assertEquals(0, lineCountMap.get(PRECOMPILE_BLAKE_EFFECTIVE_CALLS.toString()));
+    assertEquals(0, lineCountMap.get(POINT_EVAL.toString()));
+    assertEquals(0, lineCountMap.get(BLS.toString()));
 
     // L1 block size > 0
-    assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
+    assertTrue(lineCountMap.get(BLOCK_L1_SIZE.toString()) > 0);
   }
 
   @Test
@@ -206,265 +230,16 @@ public class ZkCounterTest extends TracerTestBase {
     final Map<String, Integer> lineCountMap = toyWorld.getZkCounter().getModulesLineCount();
 
     // We made a reverted LOG, LOG with wrong address, and LOG with TOPIC at the wrong place
-    assertEquals(0, lineCountMap.get("BLOCK_L2_L1_LOGS"));
+    assertEquals(0, lineCountMap.get(BLOCK_L2_L1_LOGS.toString()));
 
     // no precompile call:
-    assertEquals(0, lineCountMap.get(CountingModuleName.MODEXP.toString()));
-    assertEquals(0, lineCountMap.get(CountingModuleName.RIP.toString()));
-    assertEquals(0, lineCountMap.get(CountingModuleName.BLAKE.toString()));
+    assertEquals(0, lineCountMap.get(ModuleName.PRECOMPILE_MODEXP_EFFECTIVE_CALLS.toString()));
+    assertEquals(0, lineCountMap.get(PRECOMPILE_RIPEMD_BLOCKS.toString()));
+    assertEquals(0, lineCountMap.get(PRECOMPILE_BLAKE_EFFECTIVE_CALLS.toString()));
     assertEquals(0, lineCountMap.get(POINT_EVAL.toString()));
     assertEquals(0, lineCountMap.get(BLS.toString()));
 
     // L1 block size > 0
-    assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
-  }
-
-  @ParameterizedTest
-  @MethodSource("ripBlakeInput")
-  void ripBlakeCall(Address prc, boolean exceptional, boolean emptyCds, TestInfo testInfo) {
-    // sender account
-    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.fromEth(123)).nonce(12).address(senderAddress).build();
-
-    // receiver account: calls PRC
-    final ToyAccount callPRC =
-        ToyAccount.builder()
-            .balance(Wei.fromEth(1))
-            .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
-            .code(
-                BytecodeCompiler.newProgram(chainConfig)
-                    // populate memory with some data
-                    .push(56) // value
-                    .push(3) //  offset
-                    .op(OpCode.MSTORE8)
-                    // call the precompile
-                    .push(2) // return size
-                    .push(0) // return offset
-                    .push(emptyCds ? 0 : 213) // cds
-                    .push(0) // offset
-                    .push(0) // value
-                    .push(prc) // address
-                    .push(exceptional ? 0 : 30000) // gas
-                    .op(OpCode.CALL)
-                    .compile())
-            .build();
-
-    final Transaction tx =
-        ToyTransaction.builder()
-            .sender(senderAccount)
-            .to(callPRC)
-            .keyPair(senderKeyPair)
-            .gasLimit(300000L)
-            .value(Wei.of(1000))
-            .build();
-
-    final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-            .accounts(List.of(senderAccount, callPRC))
-            .transaction(tx)
-            .zkTracerValidator(zkTracer -> {})
-            .build();
-
-    toyWorld.runForCounting();
-
-    final Map<String, Integer> lineCountMap = toyWorld.getZkCounter().getModulesLineCount();
-
-    // no LOG
-    assertEquals(0, lineCountMap.get("BLOCK_L2_L1_LOGS"));
-
-    // no precompile call, but a PRC:
-    assertEquals(0, lineCountMap.get(CountingModuleName.MODEXP.toString()));
-    final int expectedRIP = prc.equals(RIPEMD160) ? Integer.MAX_VALUE : 0;
-    assertEquals(expectedRIP, lineCountMap.get(CountingModuleName.RIP.toString()));
-    final int expectedBlake = prc.equals(BLAKE2B_F_COMPRESSION) ? Integer.MAX_VALUE : 0;
-    assertEquals(expectedBlake, lineCountMap.get(CountingModuleName.BLAKE.toString()));
-    assertEquals(0, lineCountMap.get(POINT_EVAL.toString()));
-    assertEquals(0, lineCountMap.get(BLS.toString()));
-
-    // L1 block size > 0
-    assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
-  }
-
-  private static Stream<Arguments> ripBlakeInput() {
-    final List<Arguments> arguments = new ArrayList<>();
-    for (Address address : List.of(RIPEMD160, BLAKE2B_F_COMPRESSION)) {
-      for (int k = 0; k <= 1; k++) {
-        for (int j = 0; j <= 1; j++) {
-          arguments.add(Arguments.of(address, k == 1, j == 1));
-        }
-      }
-    }
-    return arguments.stream();
-  }
-
-  @ParameterizedTest
-  @MethodSource("modexpInput")
-  void modexpCall(boolean base, boolean exp, boolean mod, TestInfo testInfo) {
-    // sender account
-    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.fromEth(123)).nonce(12).address(senderAddress).build();
-
-    // receiver account: calls MODEXP
-    final ToyAccount callPRC =
-        ToyAccount.builder()
-            .balance(Wei.fromEth(1))
-            .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
-            .code(
-                BytecodeCompiler.newProgram(chainConfig)
-                    // populate memory with BBS
-                    .push(base ? 513 : 4) // value
-                    .push(BBS_MIN_OFFSET) //  offset
-                    .op(OpCode.MSTORE)
-                    // populate memory with EBS
-                    .push(exp ? 513 : 4) // value
-                    .push(EBS_MIN_OFFSET) //  offset
-                    .op(OpCode.MSTORE)
-                    // populate memory with MBS
-                    .push(mod ? 513 : 4) // value
-                    .push(MBS_MIN_OFFSET) //  offset
-                    .op(OpCode.MSTORE)
-                    // call the precompile
-                    .push(2) // return size
-                    .push(0) // return offset
-                    .push(2000) // cds
-                    .push(0) // offset
-                    .push(0) // value
-                    .push(Address.MODEXP) // address
-                    .push(10000000) // gas
-                    .op(OpCode.CALL)
-                    .compile())
-            .build();
-
-    final Transaction tx =
-        ToyTransaction.builder()
-            .sender(senderAccount)
-            .to(callPRC)
-            .keyPair(senderKeyPair)
-            .gasLimit(30000000L)
-            .value(Wei.of(10000000))
-            .build();
-
-    final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-            .accounts(List.of(senderAccount, callPRC))
-            .transaction(tx)
-            .zkTracerValidator(zkTracer -> {})
-            .build();
-
-    toyWorld.runForCounting();
-
-    final Map<String, Integer> lineCountMap = toyWorld.getZkCounter().getModulesLineCount();
-
-    // no LOG
-    assertEquals(0, lineCountMap.get("BLOCK_L2_L1_LOGS"));
-
-    // no precompile call, but a MODEXP:
-    assertEquals(
-        (!base && !exp && !mod) ? 0 : Integer.MAX_VALUE,
-        lineCountMap.get(CountingModuleName.MODEXP.toString()));
-    assertEquals(0, lineCountMap.get(CountingModuleName.RIP.toString()));
-    assertEquals(0, lineCountMap.get(CountingModuleName.BLAKE.toString()));
-    assertEquals(0, lineCountMap.get(POINT_EVAL.toString()));
-    assertEquals(0, lineCountMap.get(BLS.toString()));
-
-    // L1 block size > 0
-    assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
-  }
-
-  private static Stream<Arguments> modexpInput() {
-    final List<Arguments> arguments = new ArrayList<>();
-    for (int base = 1; base <= 1; base++) {
-      for (int exp = 1; exp <= 1; exp++) {
-        for (int mod = 1; mod <= 1; mod++) {
-          arguments.add(Arguments.of(base == 1, exp == 1, mod == 1));
-        }
-      }
-    }
-    return arguments.stream();
-  }
-
-  private static Stream<Arguments> blsAndKzgInput() {
-    final List<Arguments> arguments = new ArrayList<>();
-    for (Address address : BLS_PRECOMPILES) {
-      arguments.add(Arguments.of(address));
-    }
-    arguments.add(Arguments.of(KZG_POINT_EVAL));
-    return arguments.stream();
-  }
-
-  @ParameterizedTest
-  @MethodSource("blsAndKzgInput")
-  void blsAndKzg(Address prc, TestInfo testInfo) {
-    // sender account
-    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.fromEth(123)).nonce(12).address(senderAddress).build();
-
-    // receiver account: calls PRC
-    final ToyAccount callPRC =
-        ToyAccount.builder()
-            .balance(Wei.fromEth(1))
-            .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
-            .code(
-                BytecodeCompiler.newProgram(chainConfig)
-                    // populate memory with some data
-                    .push(56) // value
-                    .push(3) //  offset
-                    .op(OpCode.MSTORE8)
-                    // call the precompile
-                    .push(1) // return size
-                    .push(0) // return offset
-                    .push(0) // cds
-                    .push(0) // offset
-                    .push(0) // value
-                    .push(prc) // address
-                    .push(100000) // gas
-                    .op(OpCode.CALL)
-                    .compile())
-            .build();
-
-    final Transaction tx =
-        ToyTransaction.builder()
-            .sender(senderAccount)
-            .to(callPRC)
-            .keyPair(senderKeyPair)
-            .gasLimit(300000L)
-            .value(Wei.of(10000))
-            .build();
-
-    final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-            .accounts(List.of(senderAccount, callPRC))
-            .transaction(tx)
-            .zkTracerValidator(zkTracer -> {})
-            .build();
-
-    toyWorld.runForCounting();
-
-    final Map<String, Integer> lineCountMap = toyWorld.getZkCounter().getModulesLineCount();
-
-    // no LOG
-    assertEquals(0, lineCountMap.get("BLOCK_L2_L1_LOGS"));
-
-    final boolean isKzgCall = prc.equals(KZG_POINT_EVAL) && isPostCancun(chainConfig.fork);
-    final boolean isBlsCall = isBlsPrecompileCall(prc, chainConfig.fork);
-
-    // no precompile call, but a PRC:
-    assertEquals(0, lineCountMap.get(CountingModuleName.MODEXP.toString()));
-    assertEquals(0, lineCountMap.get(CountingModuleName.RIP.toString()));
-    assertEquals(0, lineCountMap.get(CountingModuleName.BLAKE.toString()));
-    assertEquals(isKzgCall ? Integer.MAX_VALUE : 0, lineCountMap.get(POINT_EVAL.toString()));
-    assertEquals(isBlsCall ? Integer.MAX_VALUE : 0, lineCountMap.get(BLS.toString()));
-
-    // L1 block size > 0
-    assertTrue(lineCountMap.get("BLOCK_L1_SIZE") > 0);
+    assertTrue(lineCountMap.get(BLOCK_L1_SIZE.toString()) > 0);
   }
 }

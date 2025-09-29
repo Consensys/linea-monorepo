@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.rlptxn;
 
+import static net.consensys.linea.zktracer.module.ModuleName.RLP_TXN;
+
 import java.util.List;
 
 import lombok.Getter;
@@ -32,7 +34,7 @@ public abstract class RlpTxn implements OperationListModule<RlpTxnOperation> {
 
   @Override
   public String moduleKey() {
-    return "RLP_TXN";
+    return RLP_TXN.toString();
   }
 
   @Override

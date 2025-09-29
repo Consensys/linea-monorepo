@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module.tables;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
-import static net.consensys.linea.zktracer.module.limits.CountingModuleName.POWER_REFERENCE_TABLE;
+import static net.consensys.linea.zktracer.module.ModuleName.POWER_REFERENCE_TABLE;
 
 import java.util.List;
 

@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.rom;
 
+import static net.consensys.linea.zktracer.module.ModuleName.ROM;
+
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
@@ -29,7 +31,7 @@ public class Rom implements Module {
 
   @Override
   public String moduleKey() {
-    return "ROM";
+    return ROM.toString();
   }
 
   @Override

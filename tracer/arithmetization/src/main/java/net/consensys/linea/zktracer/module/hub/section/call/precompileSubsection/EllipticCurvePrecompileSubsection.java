@@ -46,6 +46,9 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.apache.tuweni.bytes.Bytes;
 
 public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
+
+  public static final short NB_ROWS_HUB_PRC_ELLIPTIC_CURVE = 4;
+
   final CommonPrecompileOobCall oobCall;
 
   public EllipticCurvePrecompileSubsection(Hub hub, CallSection callSection) {
@@ -237,5 +240,13 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
         thirdImcFragment.callMmu(thirdMmuCall);
       }
     }
+  }
+
+  // 4 = 1 + 3 (scenario row + 3 miscellaneous fragments)
+  @Override
+  protected short maxNumberOfLines() {
+    return NB_ROWS_HUB_PRC_ELLIPTIC_CURVE;
+    // Note: we don't have the successBit available at the moment
+    // and can't provide the "real" value (2 in case of FKTH.)
   }
 }

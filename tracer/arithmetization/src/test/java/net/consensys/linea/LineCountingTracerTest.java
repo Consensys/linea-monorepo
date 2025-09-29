@@ -24,9 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ExecutionEnvironment;
+import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.container.module.Module;
@@ -43,11 +46,20 @@ public class LineCountingTracerTest extends TracerTestBase {
         tracer.getModulesToCount().stream().map(Module::moduleKey).toList();
     final List<String> tracedModules =
         tracer.getHub().getModulesToTrace().stream().map(Module::moduleKey).toList();
-    checkArgument(tracerToCount.containsAll(tracedModules), "Some traced modules are not counted");
+    final List<String> refTables =
+        tracer.getHub().refTableModules().stream().map(Module::moduleKey).toList();
+
+    // Check that all traced modules are counted or reference tables
+    checkArgument(
+        Stream.concat(tracerToCount.stream(), refTables.stream())
+            .toList()
+            .containsAll(tracedModules),
+        "Some traced modules are not counted");
+
+    // Search for duplicates
     checkArgument(
         tracerToCount.size() == tracerToCount.stream().distinct().toList().size(),
         "Duplicate has been found");
-
     final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration);
     final List<String> counterToCount =
         counter.getModulesToCount().stream().map(Module::moduleKey).toList();
@@ -58,70 +70,31 @@ public class LineCountingTracerTest extends TracerTestBase {
 
   @Test
   void sameModuleAcrossAllForkWithZkCounterAndTracer() {
+    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration);
+    final List<String> counterModules =
+        counter.getModulesToCount().stream().map(Module::moduleKey).toList();
 
-    final List<String> londonTracer =
-        new ZkTracer(MAINNET_TESTCONFIG(LONDON))
-            .getModulesToCount().stream().map(Module::moduleKey).toList();
-    final List<String> parisTracer =
-        new ZkTracer(MAINNET_TESTCONFIG(PARIS))
-            .getModulesToCount().stream().map(Module::moduleKey).toList();
-    final List<String> shanghaiTracer =
-        new ZkTracer(MAINNET_TESTCONFIG(SHANGHAI))
-            .getModulesToCount().stream().map(Module::moduleKey).toList();
-    final List<String> cancunTracer =
-        new ZkTracer(MAINNET_TESTCONFIG(CANCUN))
-            .getModulesToCount().stream().map(Module::moduleKey).toList();
-    final List<String> pragueTracer =
-        new ZkTracer(MAINNET_TESTCONFIG(PRAGUE))
-            .getModulesToCount().stream().map(Module::moduleKey).toList();
+    for (Fork fork : Fork.values()) {
+      if (forkNotSupported(fork)) {
+        continue;
+      }
+      final ChainConfig config = MAINNET_TESTCONFIG(fork);
+      final ZkTracer tracer = new ZkTracer(config);
+      final List<String> tracerModules =
+          tracer.getModulesToCount().stream().map(Module::moduleKey).toList();
 
-    // check that paris ⊆ london
-    for (String module : parisTracer) {
-      checkArgument(
-          londonTracer.contains(module), "Module " + module + " is in Paris but not in London");
-    }
-
-    // check that london ⊆ paris
-    for (String module : londonTracer) {
-      checkArgument(
-          parisTracer.contains(module), "Module " + module + " is in London but not in Paris");
-    }
-
-    // check that shanghai ⊆ london
-    for (String module : shanghaiTracer) {
-      checkArgument(
-          londonTracer.contains(module), "Module " + module + " is in Shanghai but not in London");
-    }
-
-    // check that london ⊆ Shanghai
-    for (String module : londonTracer) {
-      checkArgument(
-          shanghaiTracer.contains(module),
-          "Module " + module + " is in London but not in Shanghai");
-    }
-
-    // check that cancun ⊆ london
-    for (String module : cancunTracer) {
-      checkArgument(
-          londonTracer.contains(module), "Module " + module + " is in Cancun but not in London");
-    }
-
-    // check that london ⊆ cancun
-    for (String module : londonTracer) {
-      checkArgument(
-          cancunTracer.contains(module), "Module " + module + " is in London but not in Cancun");
-    }
-
-    // check that prague ⊆ london
-    for (String module : pragueTracer) {
-      checkArgument(
-          londonTracer.contains(module), "Module " + module + " is in Prague but not in London");
-    }
-
-    // check that london ⊆ prague
-    for (String module : londonTracer) {
-      checkArgument(
-          pragueTracer.contains(module), "Module " + module + " is in London but not in Prague");
+      // check that counter ⊆ tracer(fork)
+      for (String module : counterModules) {
+        checkArgument(
+            tracerModules.contains(module),
+            "Module " + module + " is missing in ZkTracer for fork " + fork);
+      }
+      // check that tracer(fork) ⊆ counter
+      for (String module : tracerModules) {
+        checkArgument(
+            counterModules.contains(module),
+            "Module " + module + " is missing in ZkCounter for fork " + fork);
+      }
     }
   }
 

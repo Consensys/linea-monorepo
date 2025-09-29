@@ -47,7 +47,7 @@ import org.hyperledger.besu.crypto.Hash;
 @Accessors(fluent = true)
 public class BlakeModexpDataOperation extends ModuleOperation {
   public static final int MODEXP_COMPONENT_BYTE_SIZE = LLARGE * (INDEX_MAX_MODEXP + 1);
-  private static final int MODEXP_COMPONENTS_LINE_COUNT =
+  public static final int NB_ROWS_BLAKEMODEXP_MODEXP =
       (INDEX_MAX_MODEXP_BASE + 1)
           + (INDEX_MAX_MODEXP_EXPONENT + 1)
           + (INDEX_MAX_MODEXP_MODULUS + 1)
@@ -78,9 +78,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return modexpMetaData.isPresent()
-        ? MODEXP_COMPONENTS_LINE_COUNT
-        : BLAKE2f_COMPONENTS_LINE_COUNT;
+    return modexpMetaData.isPresent() ? NB_ROWS_BLAKEMODEXP_MODEXP : BLAKE2f_COMPONENTS_LINE_COUNT;
   }
 
   void trace(Trace.Blake2fmodexpdata trace, final int stamp) {

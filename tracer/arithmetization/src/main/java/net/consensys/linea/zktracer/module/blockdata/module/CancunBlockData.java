@@ -32,6 +32,9 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 public class CancunBlockData extends ShanghaiBlockData {
+
+  public static final short NB_ROWS_BLOCK_DATA = nROWS_DEPTH;
+
   public CancunBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain) {
     super(hub, wcp, euc, chain);
   }
@@ -45,7 +48,7 @@ public class CancunBlockData extends ShanghaiBlockData {
 
   @Override
   protected int numberOfLinesPerBlock() {
-    return nROWS_DEPTH;
+    return NB_ROWS_BLOCK_DATA;
   }
 
   @Override

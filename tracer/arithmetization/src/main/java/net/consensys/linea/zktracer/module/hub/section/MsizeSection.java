@@ -19,8 +19,11 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 
 public class MsizeSection extends TraceSection {
+
+  public static final short NB_ROWS_HUB_MSIZE = 3;
+
   public MsizeSection(Hub hub) {
-    super(hub, (short) 3);
+    super(hub, NB_ROWS_HUB_MSIZE);
 
     final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     final ImcFragment imcFragment = ImcFragment.empty(hub).callMxp(mxpCall);

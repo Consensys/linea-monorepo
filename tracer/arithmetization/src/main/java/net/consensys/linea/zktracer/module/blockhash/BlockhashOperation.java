@@ -31,6 +31,9 @@ import org.apache.tuweni.bytes.Bytes32;
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class BlockhashOperation extends ModuleOperation {
+
+  public static final short NB_ROWS_BLOCKHASH = BLOCKHASH_DEPTH;
+
   @Getter @EqualsAndHashCode.Include private final short relBlock;
   @Getter @EqualsAndHashCode.Include private final Bytes32 blockhashArg;
   private final long absBlock;
@@ -86,7 +89,7 @@ public class BlockhashOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return BLOCKHASH_DEPTH;
+    return NB_ROWS_BLOCKHASH;
   }
 
   public void traceMacro(Trace.Blockhash trace, final Bytes32 blockhashVal) {

@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.Trace.CREATE2_SHIFT;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static org.hyperledger.besu.crypto.Hash.keccak256;
+import static org.hyperledger.besu.datatypes.Address.*;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.util.List;
@@ -40,13 +41,14 @@ import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class AddressUtils {
+
   private static final Bytes CREATE2_PREFIX = Bytes.minimalBytes(CREATE2_SHIFT);
 
   public static final List<Address> precompileAddressLondon =
       List.of(
-          Address.ECREC,
-          Address.SHA256,
-          Address.RIPEMD160,
+          ECREC,
+          SHA256,
+          RIPEMD160,
           Address.ID,
           Address.MODEXP,
           Address.ALTBN128_ADD,

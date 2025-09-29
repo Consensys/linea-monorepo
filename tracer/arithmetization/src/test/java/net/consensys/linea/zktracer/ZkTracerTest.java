@@ -15,7 +15,11 @@
 
 package net.consensys.linea.zktracer;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.ArrayList;
+import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -29,5 +33,34 @@ public class ZkTracerTest extends TracerTestBase {
   public void createNewTracer() {
     final ZkTracer zkTracer = new ZkTracer(chainConfig);
     assertThat(zkTracer.isExtendedTracing()).isTrue();
+  }
+
+  @Test
+  void tracedModuleForFork() {
+    final ZkTracer zkTracer = new ZkTracer(chainConfig);
+    final int totalNumberOfModules =
+        new ArrayList<>(
+                Stream.concat(
+                        zkTracer.getHub().realModule().stream(),
+                        zkTracer.getHub().refTableModules().stream())
+                    .toList())
+            .size();
+    final int numberOfTracedModules = zkTracer.getHub().getModulesToTrace().size();
+
+    switch (fork) {
+      case LONDON, PARIS, SHANGHAI -> {
+        checkArgument(
+            totalNumberOfModules == numberOfTracedModules + 2,
+            "rlpUtils, blsData expected to be missing before Cancun");
+      }
+      case CANCUN -> {
+        checkArgument(totalNumberOfModules == numberOfTracedModules, "no missing modules expected");
+        // note: when RLP_AUTH will be implemented, we'll expoect a difference of 1
+      }
+      case PRAGUE -> {
+        checkArgument(totalNumberOfModules == numberOfTracedModules, "no missing modules expected");
+      }
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
+    }
   }
 }

@@ -45,6 +45,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModexpLeadOobCall extends OobCall {
+
+  public static final short NB_ROWS_OOB_MODEXP_LEAD = CT_MAX_MODEXP_LEAD + 1;
+
   // Inputs
   @EqualsAndHashCode.Include final ModexpMetadata metadata;
   @EqualsAndHashCode.Include EWord cds;

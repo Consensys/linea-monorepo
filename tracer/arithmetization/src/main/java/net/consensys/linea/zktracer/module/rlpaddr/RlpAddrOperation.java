@@ -35,6 +35,14 @@ import org.hyperledger.besu.datatypes.Address;
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public final class RlpAddrOperation extends ModuleOperation {
+
+  public static final short NB_ROWS_RLPADDR_CREATE = MAX_CT_CREATE + 1;
+  public static final short NB_ROWS_RLPADDR_CREATE2 = MAX_CT_CREATE2 + 1;
+  public static final short MAX_SIZE_RLP_HASH_CREATE =
+      31; // We hash RLP (Address + nonce) which is at most 1 + (1+20) + (1+8) = 31 bytes
+  public static final short MAX_SIZE_RLP_HASH_CREATE2 =
+      85; // We hash (0xFF + Address + SALT + KECCAK256(initcode)) which is 1+20+32+32 = 85 bytes
+
   @EqualsAndHashCode.Include private final Bytes32 rawHash;
   private final OpCode opCode;
   @EqualsAndHashCode.Include private final BigInteger nonce;
@@ -46,8 +54,7 @@ public final class RlpAddrOperation extends ModuleOperation {
   public RlpAddrOperation(
       Keccak keccak, Bytes32 rawDepAddress, OpCode opCode, BigInteger nonce, Address address) {
     this(rawDepAddress, opCode, nonce, address, Bytes32.ZERO, Bytes32.ZERO);
-    // We hash RLP (Address + nonce) which is at most 1 + (1+20) + (1+8) = 31 bytes
-    keccak.updateTally(31);
+    keccak.updateTally(MAX_SIZE_RLP_HASH_CREATE);
   }
 
   // CREATE2 operation
@@ -60,12 +67,11 @@ public final class RlpAddrOperation extends ModuleOperation {
       Bytes32 kec,
       BigInteger nonce) {
     this(rawHash, opCode, nonce, address, salt, kec);
-    // We hash (0xFF + Address + SALT + KECCAK256(initcode)) which is 1+20+32+32 = 85 bytes
-    keccak.updateTally(85);
+    keccak.updateTally(MAX_SIZE_RLP_HASH_CREATE2);
   }
 
   @Override
   protected int computeLineCount() {
-    return this.opCode.equals(OpCode.CREATE) ? MAX_CT_CREATE + 1 : MAX_CT_CREATE2 + 1;
+    return this.opCode.equals(OpCode.CREATE) ? NB_ROWS_RLPADDR_CREATE : NB_ROWS_RLPADDR_CREATE2;
   }
 }

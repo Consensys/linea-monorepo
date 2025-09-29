@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer;
 
 import static net.consensys.linea.zktracer.ChainConfig.FORK_LINEA_CHAIN;
+import static net.consensys.linea.zktracer.Fork.getTraceFromFork;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -93,15 +94,7 @@ public class ZkTracer implements LineCountingTracer {
           case PRAGUE -> new PragueHub(chain);
           default -> throw new IllegalArgumentException("Unknown fork: " + chain.fork);
         };
-    this.trace =
-        switch (chain.fork) {
-          case LONDON -> new TraceLondon();
-          case PARIS -> new TraceParis();
-          case SHANGHAI -> new TraceShanghai();
-          case CANCUN -> new TraceCancun();
-          case PRAGUE -> new TracePrague();
-          default -> throw new IllegalArgumentException("Unknown fork: " + chain.fork);
-        };
+    this.trace = getTraceFromFork(chain.fork);
     final DebugMode.PinLevel debugLevel = new DebugMode.PinLevel();
     this.debugMode =
         debugLevel.none() ? Optional.empty() : Optional.of(new DebugMode(debugLevel, this.hub));

@@ -26,18 +26,11 @@ import net.consensys.linea.zktracer.module.txndata.TxnDataOperation;
 import net.consensys.linea.zktracer.module.txndata.shanghai.ShanghaiTxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-import org.hyperledger.besu.evm.gascalculator.ShanghaiGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class ShanghaiHub extends ParisHub {
   public ShanghaiHub(ChainConfig chain) {
     super(chain);
-  }
-
-  @Override
-  protected GasCalculator setGasCalculator() {
-    return new ShanghaiGasCalculator();
   }
 
   @Override

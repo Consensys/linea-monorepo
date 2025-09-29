@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_INT_LONG;
 import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_INT_SHORT;
 import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_LONG;
 import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_SHORT;
+import static net.consensys.linea.zktracer.module.ModuleName.RLP_TXN_RCPT;
 import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.outerRlpSize;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -61,7 +62,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
 
   @Override
   public String moduleKey() {
-    return "RLP_TXN_RCPT";
+    return RLP_TXN_RCPT.toString();
   }
 
   @Override
@@ -738,7 +739,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
   }
 
   // Gives the byte size of the RLP-isation of a log entry WITHOUT its RLP prefix.
-  private int logSize(Log log) {
+  private static int logSize(Log log) {
     // The size of RLP(Oa) is always 21.
     int logSize = 21;
 

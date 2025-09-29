@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.*;
 import net.consensys.linea.plugins.BesuServiceProvider;
 import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.HardforkId.MainnetHardforkId;
+import org.hyperledger.besu.evm.gascalculator.*;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 
@@ -36,7 +37,6 @@ public enum Fork {
   PRAGUE(EVM_PRAGUE),
   OSAKA(EVM_OSAKA) // not yet live on L1
 ;
-
   private final int releaseNumber;
 
   Fork(int releaseNumber) {
@@ -89,6 +89,18 @@ public enum Fork {
 
   public static boolean isPostPrague(Fork fork) {
     return forkIsAtLeast(fork, PRAGUE);
+  }
+
+  public static boolean isPostOsaka(Fork fork) {
+    return forkIsAtLeast(fork, OSAKA);
+  }
+
+  public static boolean forkSupported(Fork fork) {
+    return !forkNotSupported(fork);
+  }
+
+  public static boolean forkNotSupported(Fork fork) {
+    return isPostOsaka(fork);
   }
 
   /**
@@ -152,5 +164,26 @@ public enum Fork {
    */
   public static Fork getForkFromBesuBlockchainService(ServiceManager context, long blockNumber) {
     return getForkFromBesuBlockchainService(context, blockNumber, blockNumber);
+  }
+
+  public static Trace getTraceFromFork(Fork fork) {
+    return switch (fork) {
+      case LONDON -> new TraceLondon();
+      case PARIS -> new TraceParis();
+      case SHANGHAI -> new TraceShanghai();
+      case CANCUN -> new TraceCancun();
+      case PRAGUE -> new TracePrague();
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
+    };
+  }
+
+  public static GasCalculator getGasCalculatorFromFork(Fork fork) {
+    return switch (fork) {
+      case LONDON, PARIS -> new LondonGasCalculator();
+      case SHANGHAI -> new ShanghaiGasCalculator();
+      case CANCUN -> new CancunGasCalculator();
+      case PRAGUE -> new PragueGasCalculator();
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
+    };
   }
 }

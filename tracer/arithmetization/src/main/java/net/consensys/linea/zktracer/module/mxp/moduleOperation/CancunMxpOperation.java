@@ -40,13 +40,12 @@ public class CancunMxpOperation extends MxpOperation {
     this.cancunMxpCall = (CancunMxpCall) mxpCall;
   }
 
-  private int nRowsComputation() {
-    return cancunMxpCall.ctMax() + 1;
-  }
+  public static short MXP_FROM_CTMAX_TO_LINECOUNT =
+      4; // 3 for decoder, macro and scenario rows + 1 for computation row (from ctMax to nRow)
 
   @Override
   protected int computeLineCount() {
-    return nRowsComputation() + 3; // 3 for decoder, macro and scenario
+    return cancunMxpCall.ctMax() + MXP_FROM_CTMAX_TO_LINECOUNT;
   }
 
   @Override

@@ -43,6 +43,8 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  */
 public abstract class TxSkipSection extends TraceSection implements EndTransactionDefer {
 
+  public static final short NB_ROWS_HUB_SKIP = 4;
+
   final TransactionProcessingMetadata txMetadata;
 
   Address senderAddress;
@@ -62,7 +64,7 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
       WorldView world,
       TransactionProcessingMetadata transactionProcessingMetadata,
       Transients transients) {
-    super(hub, (short) 4);
+    super(hub, NB_ROWS_HUB_SKIP);
     hub.defers().scheduleForEndTransaction(this);
 
     txMetadata = transactionProcessingMetadata;

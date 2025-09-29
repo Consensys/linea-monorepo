@@ -39,6 +39,8 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class EIP2935HistoricalHash extends TraceSection {
 
+  public static final short NB_ROWS_HUB_SYSI_EIP2935 = 4;
+
   public static final Address EIP2935_HISTORY_STORAGE_ADDRESS =
       AddressUtils.addressFromBytes(
           Bytes.concatenate(
@@ -46,7 +48,7 @@ public class EIP2935HistoricalHash extends TraceSection {
               bigIntegerToBytes16(HISTORY_STORAGE_ADDRESS_LO)));
 
   public EIP2935HistoricalHash(final Hub hub, WorldView world, ProcessableBlockHeader blockHeader) {
-    super(hub, (short) 4);
+    super(hub, NB_ROWS_HUB_SYSI_EIP2935);
     final long blockNumber = blockHeader.getNumber();
     final boolean currentBlockIsGenesis = blockNumber == 0;
     final long previousBlockNumber = currentBlockIsGenesis ? 0 : blockNumber - 1;

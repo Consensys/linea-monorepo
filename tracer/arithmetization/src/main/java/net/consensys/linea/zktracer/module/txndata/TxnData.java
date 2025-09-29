@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.txndata;
 
+import static net.consensys.linea.zktracer.module.ModuleName.TXN_DATA;
+
 import java.util.List;
 
 import lombok.Getter;
@@ -41,7 +43,7 @@ public abstract class TxnData<T extends TxnDataOperation> implements OperationLi
 
   @Override
   public String moduleKey() {
-    return "TXN_DATA";
+    return TXN_DATA.toString();
   }
 
   @Override

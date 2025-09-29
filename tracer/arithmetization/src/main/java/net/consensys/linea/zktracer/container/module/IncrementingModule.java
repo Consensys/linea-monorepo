@@ -17,11 +17,11 @@ package net.consensys.linea.zktracer.container.module;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import net.consensys.linea.zktracer.module.limits.CountingModuleName;
+import net.consensys.linea.zktracer.module.ModuleName;
 
 public class IncrementingModule extends CountingOnlyModule {
 
-  public IncrementingModule(CountingModuleName moduleKey) {
+  public IncrementingModule(ModuleName moduleKey) {
     super(moduleKey);
   }
 
@@ -31,5 +31,11 @@ public class IncrementingModule extends CountingOnlyModule {
         numberEffectiveCall == 0 || numberEffectiveCall == 1,
         "Can only update the tally by one at the time.");
     counts.add(numberEffectiveCall);
+  }
+
+  public void updateTally(final boolean trigger) {
+    if (trigger) {
+      counts.add(1);
+    }
   }
 }

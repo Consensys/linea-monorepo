@@ -48,8 +48,6 @@ import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.CancunGasCalculator;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
@@ -76,11 +74,6 @@ public class CancunHub extends ShanghaiHub {
         blsC2MembershipCalls,
         blsG1MembershipCalls,
         blsG2MembershipCalls);
-  }
-
-  @Override
-  protected GasCalculator setGasCalculator() {
-    return new CancunGasCalculator();
   }
 
   @Override

@@ -40,6 +40,7 @@ public class ModexpMetadata {
   public static final int BASE_MIN_OFFSET = 0x60;
   public static BigInteger MODEXP_MAX_PROVABLE_INPUT_SIZE =
       BigInteger.valueOf(MODEXP_COMPONENT_BYTE_SIZE);
+  private static int MODEXP_LARGE_INPUT_BYTE_WIDTH = 32;
 
   private final MemoryRange callDataRange;
   @Setter private Bytes rawResult;
@@ -105,15 +106,15 @@ public class ModexpMetadata {
   }
 
   public int bbsInt() {
-    return (int) Words.clampedToLong(bbs());
+    return Words.clampedToInt(bbs());
   }
 
   public int ebsInt() {
-    return (int) Words.clampedToLong(ebs());
+    return Words.clampedToInt(ebs());
   }
 
   public int mbsInt() {
-    return (int) Words.clampedToLong(mbs());
+    return Words.clampedToInt(mbs());
   }
 
   public boolean loadRawLeadingWord() {
@@ -178,5 +179,12 @@ public class ModexpMetadata {
     return bbs().toUnsignedBigInteger().compareTo(MODEXP_MAX_PROVABLE_INPUT_SIZE) > 0
         || mbs().toUnsignedBigInteger().compareTo(MODEXP_MAX_PROVABLE_INPUT_SIZE) > 0
         || ebs().toUnsignedBigInteger().compareTo(MODEXP_MAX_PROVABLE_INPUT_SIZE) > 0;
+  }
+
+  /** This is to detect large (ie > 32 bytes = 216 bit) modexp for the prover */
+  public boolean largeModexp() {
+    return bbsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH
+        || ebsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH
+        || mbsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH;
   }
 }

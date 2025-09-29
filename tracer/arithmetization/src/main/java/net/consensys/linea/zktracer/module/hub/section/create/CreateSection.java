@@ -63,6 +63,8 @@ public abstract class CreateSection extends TraceSection
         ContextReEntryDefer,
         EndTransactionDefer {
 
+  public static final short NB_ROWS_HUB_CREATE = 11;
+
   private final Address creatorAddress;
   private final Address createeAddress;
 
@@ -410,7 +412,7 @@ public abstract class CreateSection extends TraceSection
     if (abort.any()) {
       return 7;
     }
-    return 11; // Note: could be lower for unreverted successful CREATE(s)
+    return NB_ROWS_HUB_CREATE; // Note: could be lower for unreverted successful CREATE(s)
   }
 
   private void traceAbort(final Hub hub) {

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.reporting.TracerTestBase.chainConfig;
 import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;

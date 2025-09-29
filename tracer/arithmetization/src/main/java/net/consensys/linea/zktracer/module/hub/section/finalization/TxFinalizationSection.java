@@ -36,6 +36,9 @@ import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public abstract class TxFinalizationSection extends TraceSection implements EndTransactionDefer {
+
+  public static final short NB_ROWS_HUB_FINL = 4;
+
   private final TransactionProcessingMetadata txMetadata;
 
   private AccountSnapshot senderGasRefund;
@@ -45,7 +48,7 @@ public abstract class TxFinalizationSection extends TraceSection implements EndT
   private AccountSnapshot coinbaseGasRefundNew;
 
   public TxFinalizationSection(Hub hub) {
-    super(hub, (short) 4);
+    super(hub, NB_ROWS_HUB_FINL);
     hub.defers().scheduleForEndTransaction(this);
     txMetadata = hub.txStack().current();
   }

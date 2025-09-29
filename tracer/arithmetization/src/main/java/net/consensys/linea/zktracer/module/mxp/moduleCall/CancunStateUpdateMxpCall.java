@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_MEMORY;
 import static net.consensys.linea.zktracer.TraceCancun.Mxp.CT_MAX_UPDT_B;
+import static net.consensys.linea.zktracer.module.mxp.moduleOperation.CancunMxpOperation.MXP_FROM_CTMAX_TO_LINECOUNT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
@@ -30,6 +31,9 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.internal.Words;
 
 public abstract class CancunStateUpdateMxpCall extends CancunNotMSizeNorTrivialMxpCall {
+
+  public static final short NB_ROWS_MXP_UPDT_B =
+      (short) (CT_MAX_UPDT_B + MXP_FROM_CTMAX_TO_LINECOUNT);
 
   public CancunStateUpdateMxpCall(Hub hub) {
     super(hub);

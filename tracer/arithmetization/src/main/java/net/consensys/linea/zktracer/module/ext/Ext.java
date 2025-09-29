@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.ext;
 
+import static net.consensys.linea.zktracer.module.ModuleName.EXT;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.util.List;
@@ -23,37 +24,33 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.module.OperationSetWithAdditionalRowsModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationAdder;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @RequiredArgsConstructor
+@Getter
 @Accessors(fluent = true)
-public class Ext implements OperationSetModule<ExtOperation> {
-  private final Hub hub;
+public class Ext implements OperationSetWithAdditionalRowsModule<ExtOperation> {
 
-  @Getter
   private final ModuleOperationStackedSet<ExtOperation> operations =
       new ModuleOperationStackedSet<>();
+  private final CountOnlyOperation additionalRows = new CountOnlyOperation();
 
   @Override
   public String moduleKey() {
-    return "EXT";
+    return EXT.toString();
   }
 
   @Override
   public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
     if (opcode == ADDMOD || opcode == MULMOD) {
-      operations.add(
-          new ExtOperation(
-              opcode,
-              Bytes32.leftPad(frame.getStackItem(0)),
-              Bytes32.leftPad(frame.getStackItem(1)),
-              Bytes32.leftPad(frame.getStackItem(2))));
+      call(opcode, frame.getStackItem(0), frame.getStackItem(1), frame.getStackItem(2));
     }
   }
 
@@ -62,17 +59,11 @@ public class Ext implements OperationSetModule<ExtOperation> {
     final Bytes32 arg2 = Bytes32.leftPad(_arg2);
     final Bytes32 arg3 = Bytes32.leftPad(_arg3);
     final ExtOperation op = new ExtOperation(opCode, arg1, arg2, arg3);
-    final Bytes result = op.compute();
-    operations.add(op);
-    return result;
-  }
-
-  public Bytes callADDMOD(Bytes _arg1, Bytes _arg2, Bytes _arg3) {
-    return this.call(OpCode.ADDMOD, _arg1, _arg2, _arg3);
-  }
-
-  public Bytes callMULMOD(Bytes _arg1, Bytes _arg2, Bytes _arg3) {
-    return this.call(OpCode.MULMOD, _arg1, _arg2, _arg3);
+    final ModuleOperationAdder addedOp = operations.addAndGet(op);
+    if (addedOp.isNew()) {
+      ((ExtOperation) addedOp.op()).computeResult();
+    }
+    return ((ExtOperation) addedOp.op()).resultUInt256();
   }
 
   @Override
@@ -87,6 +78,7 @@ public class Ext implements OperationSetModule<ExtOperation> {
 
   @Override
   public void commit(Trace trace) {
+    OperationSetWithAdditionalRowsModule.super.commit(trace);
     int stamp = 0;
     for (ExtOperation operation : operations.sortOperations(new ExtOperationComparator())) {
       operation.trace(trace.ext(), ++stamp);

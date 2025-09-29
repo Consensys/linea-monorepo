@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.mxp.module;
 
+import static net.consensys.linea.zktracer.module.ModuleName.MXP;
+
 import java.util.List;
 
 import lombok.Getter;
@@ -56,7 +58,7 @@ public abstract class Mxp implements OperationListModule<MxpOperation> {
 
   @Override
   public String moduleKey() {
-    return "MXP";
+    return MXP.toString();
   }
 
   public abstract void call(MxpCall mxpCall);

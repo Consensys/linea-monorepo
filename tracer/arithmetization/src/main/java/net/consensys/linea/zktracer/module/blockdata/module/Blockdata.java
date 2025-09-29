@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.blockdata.module;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.ModuleName.BLOCK_DATA;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.util.*;
@@ -51,7 +52,7 @@ public abstract class Blockdata implements Module {
 
   @Override
   public String moduleKey() {
-    return "BLOCK_DATA";
+    return BLOCK_DATA.toString();
   }
 
   @Override

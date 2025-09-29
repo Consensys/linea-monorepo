@@ -15,13 +15,16 @@
 
 package net.consensys.linea.zktracer.module.oob;
 
+import static net.consensys.linea.zktracer.module.ModuleName.OOB;
+
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.module.OperationSetWithAdditionalRowsModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationAdder;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.add.Add;
@@ -33,7 +36,7 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 /** Implementation of a {@link Module} for out of bounds. */
 @RequiredArgsConstructor
 @Accessors(fluent = true)
-public class Oob implements OperationSetModule<OobOperation> {
+public class Oob implements OperationSetWithAdditionalRowsModule<OobOperation> {
 
   private final Hub hub;
   private final Add add;
@@ -44,9 +47,11 @@ public class Oob implements OperationSetModule<OobOperation> {
   private final ModuleOperationStackedSet<OobOperation> operations =
       new ModuleOperationStackedSet<>();
 
+  @Getter private final CountOnlyOperation additionalRows = new CountOnlyOperation();
+
   @Override
   public String moduleKey() {
-    return "OOB";
+    return OOB.toString();
   }
 
   public OobCall call(OobCall oobCall) {
@@ -88,6 +93,7 @@ public class Oob implements OperationSetModule<OobOperation> {
 
   @Override
   public void commit(Trace trace) {
+    OperationSetWithAdditionalRowsModule.super.commit(trace);
     int stamp = 0;
     for (OobOperation op : operations.getAll()) {
       traceOperation(op, ++stamp, trace.oob());

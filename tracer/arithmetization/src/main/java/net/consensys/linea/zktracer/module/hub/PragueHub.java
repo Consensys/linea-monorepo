@@ -18,8 +18,6 @@ package net.consensys.linea.zktracer.module.hub;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash;
 import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-import org.hyperledger.besu.evm.gascalculator.PragueGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
@@ -31,11 +29,6 @@ public class PragueHub extends CancunHub {
   @Override
   protected BlsRt setBlsRt() {
     return new BlsRt();
-  }
-
-  @Override
-  protected GasCalculator setGasCalculator() {
-    return new PragueGasCalculator();
   }
 
   @Override

@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.gas;
 
+import static net.consensys.linea.zktracer.module.ModuleName.GAS;
+
 import java.math.BigInteger;
 import java.util.List;
 
@@ -45,7 +47,7 @@ public class Gas implements OperationSetModule<GasOperation>, PostOpcodeDefer {
 
   @Override
   public String moduleKey() {
-    return "GAS";
+    return GAS.toString();
   }
 
   public void call(GasParameters gasParameters, Hub hub, CommonFragmentValues commonValues) {

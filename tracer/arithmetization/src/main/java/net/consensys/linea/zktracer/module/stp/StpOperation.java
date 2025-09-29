@@ -30,6 +30,9 @@ import org.apache.tuweni.bytes.Bytes;
 @Getter
 @EqualsAndHashCode(callSuper = false)
 public final class StpOperation extends ModuleOperation {
+
+  public static final short NB_ROWS_STP = 1;
+
   private final StpCall stpCall;
 
   public StpOperation(StpCall stpCall) {
@@ -49,7 +52,7 @@ public final class StpOperation extends ModuleOperation {
     return this.getGDiff() - this.getGDiffOver64();
   }
 
-  void trace(Trace.Stp trace, int stamp) {
+  void trace(Trace.Stp trace) {
     long gasOopkt;
     // Determine out-of-pocket value
     if (stpCall.opCodeData().isCreate()) {
@@ -75,6 +78,6 @@ public final class StpOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return 1;
+    return NB_ROWS_STP;
   }
 }

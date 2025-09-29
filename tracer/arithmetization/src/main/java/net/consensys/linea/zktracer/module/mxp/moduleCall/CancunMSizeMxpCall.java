@@ -16,11 +16,15 @@
 package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
 import static net.consensys.linea.zktracer.TraceCancun.Mxp.CT_MAX_MSIZE;
+import static net.consensys.linea.zktracer.module.mxp.moduleOperation.CancunMxpOperation.MXP_FROM_CTMAX_TO_LINECOUNT;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.mxp.MxpExoCall;
 
 public class CancunMSizeMxpCall extends CancunMxpCall {
+
+  public static final short NB_ROWS_MXP_MSIZE =
+      (short) (CT_MAX_MSIZE + MXP_FROM_CTMAX_TO_LINECOUNT);
 
   public CancunMSizeMxpCall(Hub hub) {
     super(hub);

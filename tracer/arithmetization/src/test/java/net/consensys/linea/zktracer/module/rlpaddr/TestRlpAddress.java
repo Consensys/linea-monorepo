@@ -181,7 +181,7 @@ public class TestRlpAddress extends TracerTestBase {
     final BytecodeCompiler copyAndReturnSomeForeignContractsCode =
         BytecodeCompiler.newProgram(chainConfig);
     fullCopyOfForeignByteCode(copyAndReturnSomeForeignContractsCode, contractAddress);
-    appendReturn(copyAndReturnSomeForeignContractsCode, 0, 0);
+    appendReturn(copyAndReturnSomeForeignContractsCode, 0);
 
     final Transaction tx =
         ToyTransaction.builder()
@@ -212,7 +212,7 @@ public class TestRlpAddress extends TracerTestBase {
     ;
   }
 
-  public static void appendReturn(BytecodeCompiler program, int rdo, int rds) {
-    program.push(rds).push(rdo).op(OpCode.RETURN);
+  public static void appendReturn(BytecodeCompiler program, int rdo) {
+    program.op(OpCode.MSIZE).push(rdo).op(OpCode.RETURN);
   }
 }

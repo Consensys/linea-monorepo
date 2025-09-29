@@ -28,6 +28,9 @@ import net.consensys.linea.zktracer.container.ModuleOperation;
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class GasOperation extends ModuleOperation {
+
+  public static final short NB_ROWS_GAS = 1;
+
   @EqualsAndHashCode.Include @Getter GasParameters gasParameters;
 
   public GasOperation(GasParameters gasParameters) {
@@ -40,7 +43,7 @@ public class GasOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return 1;
+    return NB_ROWS_GAS;
   }
 
   public void trace(Trace.Gas trace) {
