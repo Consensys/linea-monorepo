@@ -186,4 +186,16 @@ public enum Fork {
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
+
+  public static String toPascalCase(Fork fork) {
+    return switch (fork) {
+      case LONDON -> "London";
+      case PARIS -> "Merge";
+      case SHANGHAI -> "Shanghai";
+      case CANCUN -> "Cancun";
+      case PRAGUE -> "Prague";
+      case OSAKA -> "Osaka";
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
+    };
+  }
 }
