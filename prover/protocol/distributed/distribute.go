@@ -171,7 +171,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) 
 		// this compilation, the module would not check anything.
 		wizard.ContinueCompilation(
 			moduleLPPForDebug.Wiop,
-			dummy.CompileAtProverLvl(dummy.WithMsg(fmt.Sprintf("LPP module (debug) [%d .. %d]", i, stop))),
+			dummy.CompileAtProverLvl(dummy.WithMsg(fmt.Sprintf("LPP module (debug) %d", i))),
 		)
 
 		distributedWizard.DebugLPPs = append(
@@ -212,7 +212,7 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 	for i := range dist.LPPs {
 		logrus.
-			WithField("module-name", dist.LPPs[i].ModuleNames()).
+			WithField("module-name", dist.LPPs[i].ModuleName()).
 			WithField("module-type", "LPP").
 			Info("compiling module")
 

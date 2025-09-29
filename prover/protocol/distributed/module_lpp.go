@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -25,9 +26,9 @@ type ModuleLPP struct {
 	// this module.
 	ModuleTranslator
 
-	// DefinitionInputs stores the [FilteredModuleInputs] that was used
+	// DefinitionInput stores the [FilteredModuleInputs] that was used
 	// to generate the module.
-	DefinitionInputs FilteredModuleInputs
+	DefinitionInput FilteredModuleInputs
 
 	// InitialFiatShamirState is the state at which to start the FiatShamir
 	// computation
@@ -47,6 +48,10 @@ type ModuleLPP struct {
 
 	// Horner is the translated horner query in the module
 	Horner query.Horner
+
+	// PublicInput contains the list of the public inputs for the current LPP
+	// module.
+	PublicInputs LimitlessPublicInput[wizard.PublicInput]
 }
 
 // SetInitialFSHash sets the initial FiatShamir state
@@ -104,47 +109,46 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 			Wiop: builder.CompiledIOP,
 			Disc: moduleInput.Disc,
 		},
-		DefinitionInputs:       moduleInput,
+		DefinitionInput:        moduleInput,
 		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
 
-	// These are the "dummy" public inputs that are only here so that the
-	// moduleGL and moduleLPP have identical set of public inputs. The order
-	// of declaration is also important. Namely, these needs to be declared before
-	// the non-dummy ones.
-	for _, pi := range moduleInput.PublicInputs {
-		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
-	}
+	// // These are the "dummy" public inputs that are only here so that the
+	// // moduleGL and moduleLPP have identical set of public inputs. The order
+	// // of declaration is also important. Namely, these needs to be declared before
+	// // the non-dummy ones.
+	// for _, pi := range moduleInput.PublicInputs {
+	// 	moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
+	// }
 
-	moduleLPP.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewFromPublicColumn(moduleLPP.InitialFiatShamirState, 0))
-	moduleLPP.Wiop.InsertPublicInput(IsFirstPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(IsLastPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
+	// moduleLPP.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewFromPublicColumn(moduleLPP.InitialFiatShamirState, 0))
+	// moduleLPP.Wiop.InsertPublicInput(IsFirstPublicInput, accessors.NewConstant(field.Zero()))
+	// moduleLPP.Wiop.InsertPublicInput(IsLastPublicInput, accessors.NewConstant(field.Zero()))
+	// moduleLPP.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
+	// moduleLPP.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 
-	for round, moduleInput := range moduleInputs {
-		for _, col := range moduleInput.Columns {
+	for _, col := range moduleInput.Columns {
 
-			if col.Round() != 0 {
-				utils.Panic("cannot translate a column with non-zero round %v", col.Round())
-			}
-
-			_, isLPP := moduleInput.ColumnsLPPSet[col.GetColID()]
-
-			if !isLPP {
-				continue
-			}
-
-			if data, isPrecomp := moduleInput.ColumnsPrecomputed[col.GetColID()]; isPrecomp {
-				moduleLPP.InsertPrecomputed(*col, data)
-				continue
-			}
-
-			moduleLPP.InsertColumn(*col, round)
+		if col.Round() != 0 {
+			utils.Panic("cannot translate a column with non-zero round %v", col.Round())
 		}
+
+		_, isLPP := moduleInput.ColumnsLPPSet[col.GetColID()]
+
+		if !isLPP {
+			continue
+		}
+
+		if data, isPrecomp := moduleInput.ColumnsPrecomputed[col.GetColID()]; isPrecomp {
+			moduleLPP.InsertPrecomputed(*col, data)
+			continue
+		}
+
+		moduleLPP.InsertColumn(*col, 0)
 	}
 
-	logDerivativeArgs, grandProductArgs, hornerArgs := getQueryArgs(moduleInputs)
+	logDerivativeArgs, grandProductArgs, hornerArgs := moduleInput.LogDerivativeArgs,
+		moduleInput.GrandProductArgs, moduleInput.HornerArgs
 
 	if len(logDerivativeArgs) > 0 {
 
@@ -154,17 +158,17 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 			logDerivativeArgs,
 		)
 
-		moduleLPP.Wiop.InsertPublicInput(
-			LogDerivativeSumPublicInput,
-			accessors.NewLogDerivSumAccessor(moduleLPP.LogDerivativeSum),
-		)
+		// moduleLPP.Wiop.InsertPublicInput(
+		// 	LogDerivativeSumPublicInput,
+		// 	accessors.NewLogDerivSumAccessor(moduleLPP.LogDerivativeSum),
+		// )
 
 	} else {
 
-		moduleLPP.Wiop.InsertPublicInput(
-			LogDerivativeSumPublicInput,
-			accessors.NewConstant(field.Zero()),
-		)
+		// moduleLPP.Wiop.InsertPublicInput(
+		// 	LogDerivativeSumPublicInput,
+		// 	accessors.NewConstant(field.Zero()),
+		// )
 	}
 
 	if len(grandProductArgs) > 0 {
@@ -175,17 +179,17 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 			grandProductArgs,
 		)
 
-		moduleLPP.Wiop.InsertPublicInput(
-			GrandProductPublicInput,
-			accessors.NewGrandProductAccessor(moduleLPP.GrandProduct),
-		)
+		// moduleLPP.Wiop.InsertPublicInput(
+		// 	GrandProductPublicInput,
+		// 	accessors.NewGrandProductAccessor(moduleLPP.GrandProduct),
+		// )
 
 	} else {
 
-		moduleLPP.Wiop.InsertPublicInput(
-			GrandProductPublicInput,
-			accessors.NewConstant(field.One()),
-		)
+		// moduleLPP.Wiop.InsertPublicInput(
+		// 	GrandProductPublicInput,
+		// 	accessors.NewConstant(field.One()),
+		// )
 	}
 
 	if len(hornerArgs) > 0 {
@@ -199,20 +203,20 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 		moduleLPP.N0Hash = builder.InsertProof(1, "LPP_N0_HASH", 1)
 		moduleLPP.N1Hash = builder.InsertProof(1, "LPP_N1_HASH", 1)
 
-		moduleLPP.Wiop.InsertPublicInput(
-			HornerPublicInput,
-			accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner),
-		)
+		// moduleLPP.Wiop.InsertPublicInput(
+		// 	HornerPublicInput,
+		// 	accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner),
+		// )
 
-		moduleLPP.Wiop.InsertPublicInput(
-			HornerN0HashPublicInput,
-			accessors.NewFromPublicColumn(moduleLPP.N0Hash, 0),
-		)
+		// moduleLPP.Wiop.InsertPublicInput(
+		// 	HornerN0HashPublicInput,
+		// 	accessors.NewFromPublicColumn(moduleLPP.N0Hash, 0),
+		// )
 
-		moduleLPP.Wiop.InsertPublicInput(
-			HornerN1HashPublicInput,
-			accessors.NewFromPublicColumn(moduleLPP.N1Hash, 0),
-		)
+		// moduleLPP.Wiop.InsertPublicInput(
+		// 	HornerN1HashPublicInput,
+		// 	accessors.NewFromPublicColumn(moduleLPP.N1Hash, 0),
+		// )
 
 		moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
 
@@ -223,20 +227,20 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 			accessors.NewConstant(field.Zero()),
 		)
 
-		moduleLPP.Wiop.InsertPublicInput(
-			HornerN0HashPublicInput,
-			accessors.NewConstant(field.Zero()),
-		)
+		// moduleLPP.Wiop.InsertPublicInput(
+		// 	HornerN0HashPublicInput,
+		// 	accessors.NewConstant(field.Zero()),
+		// )
 
-		moduleLPP.Wiop.InsertPublicInput(
-			HornerN1HashPublicInput,
-			accessors.NewConstant(field.Zero()),
-		)
+		// moduleLPP.Wiop.InsertPublicInput(
+		// 	HornerN1HashPublicInput,
+		// 	accessors.NewConstant(field.Zero()),
+		// )
 	}
 
-	moduleLPP.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.One()))
-	moduleLPP.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.NewElement(uint64(len(moduleInputs)))))
+	// moduleLPP.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.Zero()))
+	// moduleLPP.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.One()))
+	// moduleLPP.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.NewElement(uint64(len(moduleInputs)))))
 
 	// In case the LPP part is empty, we have a scenario where the sub-proof to
 	// build has no registered coin. This creates errors in the compilation
@@ -251,13 +255,9 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 	return moduleLPP
 }
 
-// ModuleNames returns the list of the module names of the [ModuleLPP].
-func (m *ModuleLPP) ModuleNames() ModuleName {
-	res := make([]ModuleName, 0)
-	for _, definitionInput := range m.DefinitionInputs {
-		res = append(res, definitionInput.ModuleName)
-	}
-	return res
+// ModuleName returns the module name of the [ModuleLPP].
+func (m *ModuleLPP) ModuleName() ModuleName {
+	return m.DefinitionInput.ModuleName
 }
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
@@ -291,53 +291,49 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP)
 func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 
 	var (
-		witness = run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
-		m       = a.ModuleLPP
-		round   = a.Round
+		witness         = run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
+		m               = a.ModuleLPP
+		round           = a.Round
+		definitionInput = m.DefinitionInput
 	)
 
-	// Note @alex: It should be fine to look only at m.definitionInputs[round]
-	// instead of scanning through all the definitionInputs.
-	for _, definitionInput := range m.DefinitionInputs {
+	// [definitionInput.Columns] stores the list of columns to assign.
+	// Though, it stores the columns as in the origin CompiledIOP so we
+	// cannot directly use them to refer to columns of the current IOP.
+	// Yet, the column share the same names.
+	for _, col := range definitionInput.Columns {
 
-		// [definitionInput.Columns] stores the list of columns to assign.
-		// Though, it stores the columns as in the origin CompiledIOP so we
-		// cannot directly use them to refer to columns of the current IOP.
-		// Yet, the column share the same names.
-		for _, col := range definitionInput.Columns {
+		colName := col.GetColID()
 
-			colName := col.GetColID()
-
-			// Skips the non-LPP columns
-			if _, ok := definitionInput.ColumnsLPPSet[colName]; !ok {
-				continue
-			}
-
-			newCol := m.Wiop.Columns.GetHandle(colName)
-
-			if newCol.Round() != round {
-				continue
-			}
-
-			if m.Wiop.Precomputed.Exists(colName) {
-				continue
-			}
-
-			colWitness, ok := witness.Columns[colName]
-			if !ok {
-				utils.Panic(
-					"witness of column %v was not found, module=%v witness-columns=%v module-columns=%v module-column-LPP=%v",
-					colName,
-					m.ModuleNames(),
-					utils.SortedKeysOf(witness.Columns, func(a, b ifaces.ColID) bool { return a < b }),
-					m.DefinitionInputs[0].Columns,
-					m.DefinitionInputs[0].ColumnsLPPSet,
-				)
-			}
-
-			run.AssignColumn(colName, colWitness)
-			delete(witness.Columns, colName)
+		// Skips the non-LPP columns
+		if _, ok := definitionInput.ColumnsLPPSet[colName]; !ok {
+			continue
 		}
+
+		newCol := m.Wiop.Columns.GetHandle(colName)
+
+		if newCol.Round() != round {
+			continue
+		}
+
+		if m.Wiop.Precomputed.Exists(colName) {
+			continue
+		}
+
+		colWitness, ok := witness.Columns[colName]
+		if !ok {
+			utils.Panic(
+				"witness of column %v was not found, module=%v witness-columns=%v module-columns=%v module-column-LPP=%v",
+				colName,
+				m.ModuleName(),
+				utils.SortedKeysOf(witness.Columns, func(a, b ifaces.ColID) bool { return a < b }),
+				m.DefinitionInput.Columns,
+				m.DefinitionInput.ColumnsLPPSet,
+			)
+		}
+
+		run.AssignColumn(colName, colWitness)
+		delete(witness.Columns, colName)
 	}
 }
 
@@ -391,7 +387,8 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 	moduleWitness := run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
 	run.State.Del(moduleWitnessKey)
 
-	logDerivativeArgs, grandProductArgs, hornerArgs := getQueryArgs(a.DefinitionInputs)
+	logDerivativeArgs, grandProductArgs, hornerArgs := a.DefinitionInput.LogDerivativeArgs,
+		a.DefinitionInput.GrandProductArgs, a.DefinitionInput.HornerArgs
 
 	if len(hornerArgs) > 0 {
 		hornerParams := a.getHornerParams(run, moduleWitness.N0Values)
@@ -541,17 +538,26 @@ func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x 
 	return hsh.Sum()
 }
 
-// getQueryArgs groups the args of the [FilteredModuleInputs] provided
-// by the caller.
-func getQueryArgs(moduleInputs []FilteredModuleInputs) (
-	logDerivativeArgs []query.LogDerivativeSumPart,
-	grandProductArgs [][2]*symbolic.Expression,
-	hornerArgs []query.HornerPart,
-) {
-	for _, moduleInput := range moduleInputs {
-		logDerivativeArgs = append(logDerivativeArgs, moduleInput.LogDerivativeArgs...)
-		grandProductArgs = append(grandProductArgs, moduleInput.GrandProductArgs...)
-		hornerArgs = append(hornerArgs, moduleInput.HornerArgs...)
+func (modLPP *ModuleLPP) declarePublicInput() {
+
+	var (
+		nbModules = len(modLPP.DefinitionInput.Disc.Modules)
+		// segmentCountGl is an array of zero.
+		segmentCountGl = make([]field.Element, nbModules)
+		// segmenCountLpp is an array of zero with a one at the position
+		// corresponding to the current module.
+		segmentCountLpp = make([]field.Element, nbModules)
+	)
+
+	segmentCountLpp[modLPP.Disc.IndexOf(modLPP.DefinitionInput.ModuleName)] = field.One()
+
+	modLPP.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
+		TargetNbSegments: declareListOfPiColumns(modLPP.Wiop, targetNbSegmentPublicInputBase, nbModules),
+		SegmentCountGL:   declareListOfConstantPi(modLPP.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
+		SegmentCountLPP:  declareListOfConstantPi(modLPP.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
 	}
-	return logDerivativeArgs, grandProductArgs, hornerArgs
+}
+
+func (modGL *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *ModuleWitnessLPP) {
+	assignListOfPiColumns(run, targetNbSegmentPublicInputBase, vector.ForTest(witness.TotalSegmentCount...))
 }
