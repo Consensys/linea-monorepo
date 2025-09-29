@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
@@ -79,7 +78,7 @@ func handleBootstrapJob(cfg *config.Config, args ProverArgs) error {
 	}
 
 	req := &execution.Request{}
-	if err := readRequest(args.Input, req); err != nil {
+	if err := files.ReadRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read input file (%v): %w", args.Input, err)
 	}
 
@@ -91,8 +90,9 @@ func handleBootstrapJob(cfg *config.Config, args ProverArgs) error {
 
 	// Build metadata from the request (example, you can adjust)
 	metadata := &distributed.Metadata{
-		StartBlock: sbr,
-		EndBlock:   ebr,
+		ExecutionRequestFile: args.Input,
+		StartBlock:           sbr,
+		EndBlock:             ebr,
 	}
 
 	metadata, err = distributed.RunBootstrapper(cfg, req, metadata)
@@ -147,7 +147,7 @@ func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
 	}
 
 	req := &distributed.Metadata{}
-	if err := readRequest(args.Input, req); err != nil {
+	if err := files.ReadRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
@@ -162,7 +162,7 @@ func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
 // handleExecutionJob processes an execution job
 func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 	req := &execution.Request{}
-	if err := readRequest(args.Input, req); err != nil {
+	if err := files.ReadRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
@@ -190,7 +190,7 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 // handleBlobDecompressionJob processes a blob decompression job
 func handleBlobDecompressionJob(cfg *config.Config, args ProverArgs) error {
 	req := &blobdecompression.Request{}
-	if err := readRequest(args.Input, req); err != nil {
+	if err := files.ReadRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
@@ -205,7 +205,7 @@ func handleBlobDecompressionJob(cfg *config.Config, args ProverArgs) error {
 // handleAggregationJob processes an aggregation job
 func handleAggregationJob(cfg *config.Config, args ProverArgs) error {
 	req := &aggregation.Request{}
-	if err := readRequest(args.Input, req); err != nil {
+	if err := files.ReadRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
@@ -215,21 +215,6 @@ func handleAggregationJob(cfg *config.Config, args ProverArgs) error {
 	}
 
 	return writeResponse(args.Output, resp)
-}
-
-// readRequest reads and decodes a request from a file
-func readRequest(path string, into any) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("could not open file: %w", err)
-	}
-	defer f.Close()
-
-	if err := json.NewDecoder(f).Decode(into); err != nil {
-		return fmt.Errorf("could not decode input file: %w", err)
-	}
-
-	return nil
 }
 
 // writeResponse encodes and writes a response to a file

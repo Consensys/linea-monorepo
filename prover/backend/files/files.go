@@ -3,6 +3,7 @@ package files
 import (
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -234,7 +235,7 @@ func WaitForAllFilesAtPath(ctx context.Context, files []string, reportMissing bo
 						logrus.Infof("found:%s", event.Name)
 						logrus.Infof("remaining files:%d", total-count)
 						if count == len(expected) {
-							logrus.Infof("All %d files have arrived", total)
+							logrus.Infof("All %d file(s) have arrived", total)
 							return
 						}
 					}
@@ -260,6 +261,21 @@ func WaitForAllFilesAtPath(ctx context.Context, files []string, reportMissing bo
 			}
 		}
 		return ctx.Err()
+	}
+
+	return nil
+}
+
+// ReadRequest reads and decodes a request from a file
+func ReadRequest(path string, into any) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("could not open file: %w", err)
+	}
+	defer f.Close()
+
+	if err := json.NewDecoder(f).Decode(into); err != nil {
+		return fmt.Errorf("could not decode input file: %w", err)
 	}
 
 	return nil
