@@ -20,8 +20,8 @@ subproofs_dir = "/tmp/exec-limitless/subproofs"
 commits_dir = "/tmp/exec-limitless/commits"
 shared_rnd_dir = "/tmp/exec-limitless/commit"
 gl_subproofs_timeout = 1200 # seconds
-lpp_subproofs_timeout = 120 # seconds  
-
+lpp_subproofs_timeout = 1200 # seconds  
+rnd_beacon_timeout = 1500 # seconds. SHOULD be greater than gl_subproofs_timeout
 
 [blob_decompression]
 prover_mode = "full"
