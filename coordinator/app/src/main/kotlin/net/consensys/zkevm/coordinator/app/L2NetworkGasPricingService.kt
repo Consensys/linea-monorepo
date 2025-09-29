@@ -90,6 +90,7 @@ class L2NetworkGasPricingService(
         web3jClient = l2Web3jClient,
       )
       L2CalldataBasedVariableFeesCalculator(
+        web3jClient = l2Web3jClient,
         variableFeesCalculator = boundedVariableCostCalculator,
         l2CalldataSizeAccumulator = l2CalldataSizeAccumulator,
         historicVariableCostProvider = historicVariableCostProvider,

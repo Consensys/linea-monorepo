@@ -1,6 +1,8 @@
 package net.consensys.linea.ethereum.gaspricing.staticcap
 
 import linea.domain.FeeHistory
+import linea.kotlin.toULong
+import linea.web3j.ExtendedWeb3J
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
 import net.consensys.linea.ethereum.gaspricing.HistoricVariableCostProvider
 import net.consensys.linea.ethereum.gaspricing.L2CalldataSizeAccumulator
@@ -19,6 +21,7 @@ import org.apache.logging.log4j.LogManager
 */
 class L2CalldataBasedVariableFeesCalculator(
   val config: Config,
+  val web3jClient: ExtendedWeb3J,
   val variableFeesCalculator: FeesCalculator,
   val l2CalldataSizeAccumulator: L2CalldataSizeAccumulator,
   val historicVariableCostProvider: HistoricVariableCostProvider,
@@ -51,19 +54,24 @@ class L2CalldataBasedVariableFeesCalculator(
       .times(config.calldataSizeBlockCount)
       .toDouble().div(2.0)
 
-    val delta = (
-      l2CalldataSizeAccumulator
-        .getSumOfL2CalldataSize().get().toDouble()
-        .minus(callDataTargetSize)
-      )
+    val (sumOfL2CalldataSize, latestVariableCost) = web3jClient.ethBlockNumber()
+      .thenCompose { latestBlockNumber ->
+        l2CalldataSizeAccumulator.getSumOfL2CalldataSize(latestBlockNumber.toULong())
+          .thenCombine(
+            historicVariableCostProvider.getVariableCost(latestBlockNumber.toULong()),
+          ) { sumOfL2CalldataSize, latestVariableCost ->
+            sumOfL2CalldataSize to latestVariableCost
+          }
+      }.get()
+
+    val delta = sumOfL2CalldataSize.toDouble()
+      .minus(callDataTargetSize)
       .div(callDataTargetSize)
       .coerceAtLeast(-1.0)
       .coerceAtMost(1.0)
 
-    val lastVariableCost = historicVariableCostProvider.getLatestVariableCost().get()
-
     val calldataBasedVariableFee =
-      lastVariableCost.times(1.0 + (delta.div(config.feeChangeDenominator.toDouble())))
+      latestVariableCost.times(1.0 + (delta.div(config.feeChangeDenominator.toDouble())))
 
     val finalVariableFee = variableFee.coerceAtLeast(calldataBasedVariableFee)
 

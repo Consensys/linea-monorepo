@@ -24,39 +24,40 @@ class HistoricVariableCostProviderImplTest {
       ethGasPriceInKWei = 12000U,
     ).encode().decodeHex()
   }
-  val targetBlockNumber = 100.toBigInteger()
+  val targetBlockNumber = 100UL
   val mockWeb3jClient = mock<ExtendedWeb3J> {
-    on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
     on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
       SafeFuture.completedFuture(mockEthBlock)
   }
 
   @Test
-  fun test_getLatestVariableCost() {
+  fun test_getVariableCost() {
     val historicVariableCostProvider = HistoricVariableCostProviderImpl(
       web3jClient = mockWeb3jClient,
     )
 
-    val latestVariableCost = historicVariableCostProvider.getLatestVariableCost().get()
+    val latestVariableCost = historicVariableCostProvider.getVariableCost(targetBlockNumber).get()
 
     val expectedVariableCost = 10000.0 * OneKWei
     assertThat(latestVariableCost).isEqualTo(expectedVariableCost)
   }
 
   @Test
-  fun test_getLatestVariableCost_return_cached_variable_cost() {
+  fun test_getVariableCost_return_cached_variable_cost() {
     val historicVariableCostProvider = HistoricVariableCostProviderImpl(
       web3jClient = mockWeb3jClient,
     )
 
     // initialize the cache
     val expectedVariableCost = 10000.0 * OneKWei
-    assertThat(historicVariableCostProvider.getLatestVariableCost().get()).isEqualTo(expectedVariableCost)
+    assertThat(
+      historicVariableCostProvider.getVariableCost(targetBlockNumber).get(),
+    ).isEqualTo(expectedVariableCost)
 
     // subsequent calls with the same block #100 should return the same value by the cache
     repeat(5) {
       assertThat(
-        historicVariableCostProvider.getLatestVariableCost().get(),
+        historicVariableCostProvider.getVariableCost(targetBlockNumber).get(),
       ).isEqualTo(expectedVariableCost)
     }
 
@@ -68,7 +69,6 @@ class HistoricVariableCostProviderImplTest {
   @Test
   fun test_getLatestVariableCost_throws_error_when_ethGetBlock_returns_null() {
     val mockWeb3jClient = mock<ExtendedWeb3J> {
-      on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
       on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
         SafeFuture.completedFuture(null)
     }
@@ -77,7 +77,7 @@ class HistoricVariableCostProviderImplTest {
     )
 
     assertThatThrownBy {
-      historicVariableCostProvider.getLatestVariableCost().get()
+      historicVariableCostProvider.getVariableCost(targetBlockNumber).get()
     }.hasCauseInstanceOf(NullPointerException::class.java)
   }
 
@@ -85,7 +85,6 @@ class HistoricVariableCostProviderImplTest {
   fun test_getLatestVariableCost_throws_error_when_ethGetBlock_throws_error() {
     val expectedException = RuntimeException("Error from ethGetBlock")
     val mockWeb3jClient = mock<ExtendedWeb3J> {
-      on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
       on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
         SafeFuture.failedFuture(expectedException)
     }
@@ -94,18 +93,17 @@ class HistoricVariableCostProviderImplTest {
     )
 
     assertThatThrownBy {
-      historicVariableCostProvider.getLatestVariableCost().get()
+      historicVariableCostProvider.getVariableCost(targetBlockNumber).get()
     }.hasCause(expectedException)
   }
 
   @Test
-  fun test_getLatestVariableCost_returns_zero_when_MinerExtraData_decode_throws_error() {
+  fun test_getVariableCost_returns_zero_when_MinerExtraData_decode_throws_error() {
     val mockEthBlock = mock<Block> {
       // extra data hex string with unsupported version 0xFF
       on { extraData } doReturn "0xff000003e80000271000002ee000000000000000000000000000000000000000".decodeHex()
     }
     val mockWeb3jClient = mock<ExtendedWeb3J> {
-      on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
       on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
         SafeFuture.completedFuture(mockEthBlock)
     }
@@ -114,7 +112,7 @@ class HistoricVariableCostProviderImplTest {
     )
 
     assertThat(
-      historicVariableCostProvider.getLatestVariableCost().get(),
+      historicVariableCostProvider.getVariableCost(targetBlockNumber).get(),
     ).isEqualTo(0.0)
   }
 }

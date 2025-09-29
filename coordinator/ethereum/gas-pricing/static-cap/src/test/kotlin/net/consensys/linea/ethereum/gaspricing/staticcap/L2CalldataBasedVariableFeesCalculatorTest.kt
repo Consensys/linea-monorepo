@@ -8,6 +8,8 @@ import net.consensys.linea.ethereum.gaspricing.L2CalldataSizeAccumulator
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
+import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
@@ -23,7 +25,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
       this.latestVariableCost = latestVariableCost
     }
 
-    override fun getLatestVariableCost(): SafeFuture<Double> {
+    override fun getVariableCost(latestBlockNumber: ULong): SafeFuture<Double> {
       return SafeFuture.completedFuture(latestVariableCost)
     }
   }
@@ -41,25 +43,35 @@ class L2CalldataBasedVariableFeesCalculatorTest {
     baseFeePerBlobGas = listOf(100UL),
     blobGasUsedRatio = listOf(0.25),
   )
+
+  // mocked VariableFeesCalculator
   private val variableFee = 15000.0
-  val mockVariableFeesCalculator = mock<FeesCalculator> {
+  private val mockVariableFeesCalculator = mock<FeesCalculator> {
     on { calculateFees(eq(feeHistory)) } doReturn variableFee
   }
 
+  // mocked L2 Web3jClient
+  private val mockWeb3jClient = mock<ExtendedWeb3J> {
+    on { ethBlockNumber() } doReturn SafeFuture.completedFuture(100.toBigInteger())
+  }
+
+  // mocked L2CalldataSizeAccumulator
+  private val sumOfCalldataSize = (109000 * 5).toBigInteger() // maxBlockCalldataSize * calldataSizeBlockCount
+  private val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
+    on { getSumOfL2CalldataSize(any()) } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
+  }
+
+  private val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
+
   @Test
   fun test_calculateFees_past_blocks_calldata_at_max_target() {
-    val sumOfCalldataSize = (109000 * 5).toBigInteger() // maxBlockCalldataSize * calldataSizeBlockCount
-    val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
-    }
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
-
     // delta would be 1.0
     val delta = 1.0
     val expectedVariableFees = 15000.0 * (1.0 + delta / 32.0)
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -79,9 +91,8 @@ class L2CalldataBasedVariableFeesCalculatorTest {
     // This could happen as the calldata from L2CalldataSizeAccumulator is just approximation
     val sumOfCalldataSize = (200000 * 5).toBigInteger()
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
+      on { getSumOfL2CalldataSize(any()) } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
     }
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
 
     // delta would be 1.0
     val delta = 1.0
@@ -89,6 +100,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -106,12 +118,12 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   @Test
   fun test_calculateFees_past_blocks_calldata_size_at_zero() {
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(BigInteger.ZERO)
+      on { getSumOfL2CalldataSize(any()) } doReturn SafeFuture.completedFuture(BigInteger.ZERO)
     }
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -130,9 +142,8 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   fun test_calculateFees_past_blocks_calldata_above_half_max() {
     val sumOfCalldataSize = (81750 * 5).toBigInteger()
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
+      on { getSumOfL2CalldataSize(any()) } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
     }
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
 
     // delta would be 0.5
     val delta = 0.5
@@ -140,6 +151,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -158,12 +170,12 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   fun test_calculateFees_past_blocks_calldata_below_half_max() {
     val sumOfCalldataSize = (27250 * 5).toBigInteger()
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
+      on { getSumOfL2CalldataSize(any()) } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
     }
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -180,14 +192,9 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
   @Test
   fun test_calculateFees_increase_to_more_than_double_when_past_blocks_calldata_at_max_target() {
-    val sumOfCalldataSize = (109000 * 5).toBigInteger() // maxBlockCalldataSize * calldataSizeBlockCount
-    val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
-    }
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
-
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -217,12 +224,12 @@ class L2CalldataBasedVariableFeesCalculatorTest {
       .thenReturn(variableFee, 0.0)
 
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(BigInteger.ZERO)
+      on { getSumOfL2CalldataSize(any()) } doReturn SafeFuture.completedFuture(BigInteger.ZERO)
     }
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -247,18 +254,13 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
   @Test
   fun test_calculateFees_when_block_count_is_zero() {
-    val sumOfCalldataSize = (109000 * 5).toBigInteger() // maxBlockCalldataSize * calldataSizeBlockCount
-    val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
-    }
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
-
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = L2CalldataBasedVariableFeesCalculator.Config(
         feeChangeDenominator = 32u,
         calldataSizeBlockCount = 0u, // set zero to disable calldata-based variable fees
         maxBlockCalldataSize = 109000u,
       ),
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -277,14 +279,9 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
   @Test
   fun test_calculateFees_would_not_change_when_latest_variable_cost_stays_same() {
-    val sumOfCalldataSize = (109000 * 5).toBigInteger() // maxBlockCalldataSize * calldataSizeBlockCount
-    val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
-    }
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
-
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -317,17 +314,16 @@ class L2CalldataBasedVariableFeesCalculatorTest {
       .thenReturn(SafeFuture.completedFuture(BigInteger.TWO)) // current block number is 2
 
     val fakeL2CalldataSizeAccumulator = L2CalldataSizeAccumulatorImpl(
-      web3jClient = mockExtendedWeb3J,
+      web3jClient = mock<ExtendedWeb3J>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
       config = L2CalldataSizeAccumulatorImpl.Config(
         blockSizeNonCalldataOverhead = 540U,
         calldataSizeBlockCount = 5U,
       ),
     )
 
-    val fakeHistoricVariableCostProvider = FakeHistoricVariableCostProviderImpl()
-
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockExtendedWeb3J,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = fakeL2CalldataSizeAccumulator,
       historicVariableCostProvider = fakeHistoricVariableCostProvider,
@@ -344,17 +340,14 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
   @Test
   fun test_calculateFees_would_throw_error_when_failed_to_get_calldata_size_sum() {
-    val mockVariableFeesCalculator = mock<FeesCalculator>()
-    whenever(mockVariableFeesCalculator.calculateFees(eq(feeHistory)))
-      .thenReturn(variableFee)
-
     val expectedException = RuntimeException("Error while getting calldata size sum")
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator>()
-    whenever(mockL2CalldataSizeAccumulator.getSumOfL2CalldataSize())
+    whenever(mockL2CalldataSizeAccumulator.getSumOfL2CalldataSize(any()))
       .thenThrow(expectedException)
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = FakeHistoricVariableCostProviderImpl(),
@@ -362,26 +355,19 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
     assertThatThrownBy {
       feesCalculator.calculateFees(feeHistory)
-    }.isEqualTo(expectedException)
+    }.hasCause(expectedException)
   }
 
   @Test
   fun test_calculateFees_would_throw_error_when_failed_to_get_latest_variable_cost() {
-    val mockVariableFeesCalculator = mock<FeesCalculator>()
-    whenever(mockVariableFeesCalculator.calculateFees(eq(feeHistory)))
-      .thenReturn(variableFee)
-
-    val sumOfCalldataSize = (109000 * 5).toBigInteger() // maxBlockCalldataSize * calldataSizeBlockCount
-    val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
-      on { getSumOfL2CalldataSize() } doReturn SafeFuture.completedFuture(sumOfCalldataSize)
-    }
     val expectedException = RuntimeException("Error while getting variable cost from latest block extra data")
     val mockHistoricVariableCostProvider = mock<HistoricVariableCostProvider>()
-    whenever(mockHistoricVariableCostProvider.getLatestVariableCost())
+    whenever(mockHistoricVariableCostProvider.getVariableCost(any()))
       .thenThrow(expectedException)
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
+      web3jClient = mockWeb3jClient,
       variableFeesCalculator = mockVariableFeesCalculator,
       l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
       historicVariableCostProvider = mockHistoricVariableCostProvider,
@@ -389,6 +375,6 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
     assertThatThrownBy {
       feesCalculator.calculateFees(feeHistory)
-    }.isEqualTo(expectedException)
+    }.hasCause(expectedException)
   }
 }

@@ -12,11 +12,11 @@ interface FeesFetcher {
 }
 
 interface L2CalldataSizeAccumulator {
-  fun getSumOfL2CalldataSize(): SafeFuture<BigInteger>
+  fun getSumOfL2CalldataSize(latestBlockNumber: ULong): SafeFuture<BigInteger>
 }
 
 interface HistoricVariableCostProvider {
-  fun getLatestVariableCost(): SafeFuture<Double>
+  fun getVariableCost(latestBlockNumber: ULong): SafeFuture<Double>
 }
 
 fun interface FeesCalculator {

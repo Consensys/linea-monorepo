@@ -10,15 +10,14 @@ import net.consensys.linea.ethereum.gaspricing.MinerExtraDataV1
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.math.BigInteger
 import java.util.concurrent.atomic.AtomicReference
 
 class HistoricVariableCostProviderImpl(
   private val web3jClient: ExtendedWeb3J,
 ) : HistoricVariableCostProvider {
   private val log: Logger = LogManager.getLogger(this::class.java)
-  private var lastVariableCost: AtomicReference<Pair<BigInteger, Double>> =
-    AtomicReference(BigInteger.ZERO to 0.0)
+  private var lastVariableCost: AtomicReference<Pair<ULong, Double>> =
+    AtomicReference(0UL to 0.0)
 
   private fun getHistoricVariableCostInWei(blockParameter: BlockParameter): SafeFuture<Double> {
     return web3jClient.ethGetBlock(blockParameter)
@@ -40,34 +39,32 @@ class HistoricVariableCostProviderImpl(
       }
   }
 
-  override fun getLatestVariableCost(): SafeFuture<Double> {
-    return web3jClient.ethBlockNumber()
-      .thenCompose { currentBlockNumber ->
-        if (lastVariableCost.get().first == currentBlockNumber) {
+  override fun getVariableCost(latestBlockNumber: ULong): SafeFuture<Double> {
+    val (cachedBlockNumber, cachedVariableCost) = lastVariableCost.get()
+    return if (cachedBlockNumber == latestBlockNumber) {
+      log.debug(
+        "Use cached lastVariableCost={} latestBlockNumber={}",
+        cachedVariableCost,
+        latestBlockNumber,
+      )
+      SafeFuture.completedFuture(cachedVariableCost)
+    } else {
+      getHistoricVariableCostInWei(latestBlockNumber.toBlockParameter())
+        .thenPeek { variableCost ->
           log.debug(
-            "Use cached lastVariableCost={} currentBlockNumber={}",
-            lastVariableCost.get().second,
-            currentBlockNumber,
+            "variableCost={} blockNumber={}",
+            variableCost,
+            latestBlockNumber,
           )
-          SafeFuture.completedFuture(lastVariableCost.get().second)
-        } else {
-          getHistoricVariableCostInWei(currentBlockNumber.toBlockParameter())
-            .thenPeek { variableCost ->
-              log.debug(
-                "variableCost={} blockNumber={}",
-                variableCost,
-                currentBlockNumber,
-              )
-              lastVariableCost.set(currentBlockNumber to variableCost)
-            }
-            .whenException { th ->
-              log.error(
-                "Get the variable cost from latest L2 block extra data failure: {}",
-                th.message,
-                th,
-              )
-            }
+          lastVariableCost.set(latestBlockNumber to variableCost)
         }
-      }
+        .whenException { th ->
+          log.error(
+            "Get the variable cost from latest L2 block extra data failure: {}",
+            th.message,
+            th,
+          )
+        }
+    }
   }
 }
