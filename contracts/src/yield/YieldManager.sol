@@ -597,6 +597,15 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     emit DonationProcessed(_yieldProvider, msg.sender, l1MessageServiceCached, cachedMsgValue);
   }
 
+  // @dev It is not correct to count a donation to the L1MessageService as yield, because reported yield results in newly circulating L2 ETH.
+  function _decrementNegativeYieldAgainstDonation(address _yieldProvider, uint256 _amount) internal {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    uint256 currentNegativeYield = $$.currentNegativeYield;
+    if (currentNegativeYield > 0) {
+      $$.currentNegativeYield -= Math256.min(currentNegativeYield, _amount);
+    }
+  }
+
   function addYieldProvider(address _yieldProvider, YieldProviderRegistration calldata _yieldProviderRegistration) external onlyRole(YIELD_PROVIDER_SETTER) {
     if (_yieldProvider == address(0)) {
       revert ZeroAddressNotAllowed();
@@ -612,16 +621,15 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     // Ensure no added yield provider has index 0
     uint96 yieldProviderIndex = uint96($._yieldProviders.length) + 1;
-    // TODO - ? Need to check for uint96 overflow
     $._yieldProviders.push(_yieldProvider);
     $._yieldProviderStorage[_yieldProvider] = YieldProviderStorage({
         yieldProviderType: _yieldProviderRegistration.yieldProviderType,
-        yieldProviderEntrypoint: _yieldProviderRegistration.yieldProviderEntrypoint,
-        yieldProviderOssificationEntrypoint: _yieldProviderRegistration.yieldProviderOssificationEntrypoint,
-        yieldProviderIndex: yieldProviderIndex,
         isStakingPaused: false,
         isOssificationInitiated: false,
         isOssified: false,
+        yieldProviderEntrypoint: _yieldProviderRegistration.yieldProviderEntrypoint,
+        yieldProviderOssificationEntrypoint: _yieldProviderRegistration.yieldProviderOssificationEntrypoint,
+        yieldProviderIndex: yieldProviderIndex,
         userFunds: 0,
         yieldReportedCumulative: 0,
         currentNegativeYield: 0,
@@ -651,7 +659,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   // @dev Removes the requirement that there is 0 userFunds remaining in the YieldProvder
   // @dev Otherwise newly reported yield can prevent removeYieldProvider
-  function emergencyRemoveYieldProvider(address _yieldProvider) external onlyRole(YIELD_PROVIDER_SETTER)  {
+  function emergencyRemoveYieldProvider(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_SETTER)  {
     if (_yieldProvider == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -670,15 +678,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
     // TODO - Does this actually wipe the whole struct, to delete the storage pointer?
     delete $._yieldProviderStorage[_yieldProvider];
-  }
-
-  // @dev It is not correct to count a donation to the L1MessageService as yield, because reported yield results in newly circulating L2 ETH.
-  function _decrementNegativeYieldAgainstDonation(address _yieldProvider, uint256 _amount) internal {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    uint256 currentNegativeYield = $$.currentNegativeYield;
-    if (currentNegativeYield > 0) {
-      $$.currentNegativeYield -= Math256.min(currentNegativeYield, _amount);
-    }
   }
 
   function setL1MessageService(address _l1MessageService) external {
