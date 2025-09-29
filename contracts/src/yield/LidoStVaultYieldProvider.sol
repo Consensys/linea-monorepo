@@ -320,7 +320,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
     ICommonVaultOperations(_getEntrypointContract()).resumeBeaconChainDeposits();
   }
 
-  function mintLST(uint256 _amount, address _recipient) external {
+  function withdrawLST(uint256 _amount, address _recipient) external {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(YIELD_PROVIDER);
     if ($$.isOssificationInitiated || $$.isOssified) {
       revert MintLSTDisabledDuringOssification();

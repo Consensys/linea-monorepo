@@ -419,7 +419,7 @@ interface IYieldManager {
    */
   function unpauseStaking(address _yieldProvider) external;
 
-  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external;
+  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external;
 
   function initiateOssification(address _yieldProvider) external;
 

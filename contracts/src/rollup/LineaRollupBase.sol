@@ -758,7 +758,7 @@ abstract contract LineaRollupBase is
     }
     bytes32 messageLeafHash = _validateAndConsumeMessageProof(_params);
     IS_WITHDRAW_LST_ALLOWED = true;
-    IYieldManager(yieldManager()).mintLST(_yieldProvider, _params.value, _params.to);
+    IYieldManager(yieldManager()).withdrawLST(_yieldProvider, _params.value, _params.to);
     IS_WITHDRAW_LST_ALLOWED = false;
     emit MessageClaimed(messageLeafHash);
   }

@@ -104,7 +104,7 @@ interface IYieldProvider {
    * @param _amount Amount of underlying to convert into LST.
    * @param _recipient Address that receives the minted LST.
    */
-  function mintLST(uint256 _amount, address _recipient) external;
+  function withdrawLST(uint256 _amount, address _recipient) external;
 
   /**
    * @notice Start the ossification process for the yield provider.

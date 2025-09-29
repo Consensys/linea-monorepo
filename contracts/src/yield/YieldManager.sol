@@ -521,13 +521,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     _getYieldProviderStorage(_yieldProvider).isStakingPaused = false;
   }
 
-  function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyKnownYieldProvider(_yieldProvider) {
+  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyKnownYieldProvider(_yieldProvider) {
     if (!ILineaNativeYieldExtension(l1MessageService()).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
     (bool success,) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.mintLST, (_amount, _recipient)
+      abi.encodeCall(IYieldProvider.withdrawLST, (_amount, _recipient)
     ));
     if (!success) {
       revert DelegateCallFailed();
