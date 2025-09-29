@@ -366,9 +366,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert DelegateCallFailed();
     }
     _getYieldProviderStorage(_yieldProvider).userFunds -= _amount;
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    $._userFundsInYieldProvidersTotal -= _amount;
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
     // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
+    _decrementPendingPermissionlessUnstake(_amount);
+  }
+
+  function _decrementPendingPermissionlessUnstake(uint256 _amount) internal {
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint256 pendingPermissionlessUnstake = $._pendingPermissionlessUnstake;
     if (pendingPermissionlessUnstake == 0) return;
     $._pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
@@ -536,6 +540,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   // TODO - Role
+  // @dev Will permanently block LST minting, if there is no undo function.
   function initiateOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if ($$.isOssified) {
@@ -547,6 +552,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
+    _pauseStakingIfNotAlready(_yieldProvider);
     $$.isOssificationInitiated = true;
     emit YieldProviderOssificationInitiated(_yieldProvider, msg.sender);
   }
@@ -591,10 +597,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   // Need donate function here, otherwise YieldManager is unable to assign donations for specific yield providers.
   function donate(address _yieldProvider) external payable onlyKnownYieldProvider(_yieldProvider) {
     address l1MessageServiceCached = l1MessageService();
-    uint256 cachedMsgValue = msg.value;
-    _decrementNegativeYieldAgainstDonation(_yieldProvider, cachedMsgValue);
-    ILineaNativeYieldExtension(l1MessageServiceCached).fund{value: cachedMsgValue}();
-    emit DonationProcessed(_yieldProvider, msg.sender, l1MessageServiceCached, cachedMsgValue);
+    _decrementNegativeYieldAgainstDonation(_yieldProvider, msg.value);
+    _decrementPendingPermissionlessUnstake(msg.value);
+    ILineaNativeYieldExtension(l1MessageServiceCached).fund{value: msg.value}();
+    emit DonationProcessed(_yieldProvider, msg.sender, l1MessageServiceCached, msg.value);
   }
 
   // @dev It is not correct to count a donation to the L1MessageService as yield, because reported yield results in newly circulating L2 ETH.

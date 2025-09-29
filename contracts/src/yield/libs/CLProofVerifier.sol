@@ -80,7 +80,7 @@ abstract contract CLProofVerifier {
         - EE = FAR_FUTURE_EPOCH = 2**64 - 1
         - WE = FAR_FUTURE_EPOCH = 2**64 - 1
     */
-    uint8 private constant VALIDATOR_CONTAINER_ROOT_DEPTH = 2;
+    uint8 private constant VALIDATOR_CONTAINER_ROOT_DEPTH = 0;
     uint256 private constant VALIDATOR_CONTAINER_ROOT_POSITION = 0;
 
     /// @notice GIndex of parent node for (Pubkey,WC) in validator container
