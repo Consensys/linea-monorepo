@@ -140,6 +140,48 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 
 }
 
+// Assign assigns the public inputs for the conglomeration proof
+func (c *ConglomerationHierarchical) Assign(
+	run *wizard.ProverRuntime,
+	proofs []recursion.Witness,
+) {
+
+	// This runs the recursion system. Expectedly, the filling input is never
+	// used because this is pairwise aggregation and we always pass exactly pass
+	// exactly 2 inputs.
+	c.Recursion.Assign(run, proofs, &proofs[0])
+
+	// Now, it remains to assign the public inputs for the conglomeration proof.
+	var (
+		collectedPIs = [aggregationArity]LimitlessPublicInput[field.Element]{}
+		sumCountGLs  = []field.Element{}
+		sumCountLPPs = []field.Element{}
+	)
+
+	for instance := 0; instance < c.ModuleNumber; instance++ {
+		collectedPIs[instance] = c.collectAllPublicInputsOfInstance(run, instance)
+	}
+
+	for k := 0; k < c.ModuleNumber; k++ {
+
+		var sumCountGL, sumCountLPP field.Element
+
+		for instance := 0; instance < aggregationArity; instance++ {
+			// This agglomerates the segment count for the GL and the LPPs modules. There
+			// is one GL and one LPP counter for each module that's why we do them in the
+			sumCountGL.Add(&sumCountGL, &collectedPIs[instance].SegmentCountGL[k])
+			sumCountLPP.Add(&sumCountLPP, &collectedPIs[instance].SegmentCountLPP[k])
+		}
+
+		sumCountGLs = append(sumCountGLs, sumCountGL)
+		sumCountLPPs = append(sumCountLPPs, sumCountLPP)
+	}
+
+	assignListOfPiColumns(run, targetNbSegmentPublicInputBase, collectedPIs[0].TargetNbSegments)
+	assignListOfPiColumns(run, segmentCountGLPublicInputBase, sumCountGLs)
+	assignListOfPiColumns(run, segmentCountLPPPublicInputBase, sumCountLPPs)
+}
+
 // Run implements the [wizard.VerifierAction] for the
 // ConglomerationHierarchicalVerifierAction.
 func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error {
@@ -178,7 +220,7 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 			sumCountLPP            = field.Element{}
 		)
 
-		for instance := 0; instance < c.ModuleNumber; instance++ {
+		for instance := 0; instance < aggregationArity; instance++ {
 
 			// This checks that the TargetNbSegments public inputs are the same for all
 			// the children instances and the current node.
