@@ -258,6 +258,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			ctx.Comp,
 			accessors.NewFromCoin(ctx.Coins.Collapse),
 			ctx.Columns.PreimagesSis,
+			fmt.Sprintf("PREIMAGE_SIS_COLLAPSE_%v", ctx.SelfRecursionCnt),
 		)
 	}
 
@@ -287,6 +288,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 				ctx.Comp,
 				accessors.NewFromCoin(ctx.Coins.Collapse),
 				ctx.Columns.WholePreimagesNonSis,
+				fmt.Sprintf("PREIMAGE_NONSIS_COLLAPSE_%v", ctx.SelfRecursionCnt),
 			)
 
 			preImageNonSisEval = functionals.CoeffEval(
