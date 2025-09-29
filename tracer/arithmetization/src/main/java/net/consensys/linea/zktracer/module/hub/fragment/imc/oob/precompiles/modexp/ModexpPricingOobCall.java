@@ -46,6 +46,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModexpPricingOobCall extends OobCall {
+
+  public static final short NB_ROWS_OOB_MODEXP_PRICING = CT_MAX_MODEXP_PRICING + 1;
+
   // Inputs
   @EqualsAndHashCode.Include final ModexpMetadata metadata;
   @EqualsAndHashCode.Include final Bytes callGas;

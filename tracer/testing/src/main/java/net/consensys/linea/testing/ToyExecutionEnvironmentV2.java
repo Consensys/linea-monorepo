@@ -16,10 +16,13 @@
 package net.consensys.linea.testing;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.reporting.TracerTestBase.chainConfig;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.Fork.LONDON;
+import static net.consensys.linea.zktracer.Fork.isPostCancun;
 import static net.consensys.linea.zktracer.Trace.LINEA_BASE_FEE;
 import static net.consensys.linea.zktracer.container.module.IncrementAndDetectModule.ERROR_MESSAGE_TRIED_TO_COMMIT_UNPROVABLE_TX;
+import static net.consensys.linea.zktracer.module.ModuleName.*;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -34,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.*;
@@ -79,7 +83,7 @@ public class ToyExecutionEnvironmentV2 {
 
   @Builder.Default private final Consumer<ZkTracer> zkTracerValidator = x -> {};
 
-  private ZkTracer tracer;
+  ZkTracer tracer;
   @Setter @Getter public ZkCounter zkCounter;
 
   public static ToyExecutionEnvironmentV2.ToyExecutionEnvironmentV2Builder builder(
@@ -108,7 +112,7 @@ public class ToyExecutionEnvironmentV2 {
       final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
           this.buildGeneralStateTestCaseSpec(protocolSpec);
 
-      // TODO: run it normally once we don't exclude BLS precompiles
+      // TODO: remove the try catch once we don't exclude BLS precompiles
       try {
         ToyExecutionTools.executeTest(
             generalStateTestCaseEipSpec,
@@ -117,6 +121,60 @@ public class ToyExecutionEnvironmentV2 {
             transactionProcessingResultValidator,
             zkTracerValidator,
             testInfo);
+
+        if (isPostCancun(tracer.getHub().fork)) {
+          // This is to check that the light counter is really counting more than the full tracer
+          final ZkTracer tracer = this.tracer;
+
+          final Map<String, Integer> tracerCount = tracer.getModulesLineCount();
+
+          final ToyExecutionEnvironmentV2 copyEnvironment =
+              ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+                  .transactionProcessingResultValidator(
+                      TransactionProcessingResultValidator.EMPTY_VALIDATOR)
+                  .accounts(accounts)
+                  .zkTracerValidator(zkTracerValidator)
+                  .transactions(transactions)
+                  .build();
+          copyEnvironment.runForCounting();
+          final Map<String, Integer> lightCounterCount =
+              copyEnvironment.zkCounter.getModulesLineCount();
+
+          final List<String> moduleToCheck =
+              copyEnvironment.zkCounter.checkedModules().stream().map(Module::moduleKey).toList();
+
+          // There is no point to check for conflation where an excluded PRC has been triggered:
+          if (lightCounterCount.get(POINT_EVAL.toString()) != 0
+              || lightCounterCount.get(BLS.toString()) != 0
+              || lightCounterCount.get(PRECOMPILE_RIPEMD_BLOCKS.toString()) != 0
+              || lightCounterCount.get(PRECOMPILE_BLAKE_EFFECTIVE_CALLS.toString()) != 0) {
+            return;
+          }
+
+          for (String module : moduleToCheck) {
+            checkArgument(
+                tracerCount.get(module) <= lightCounterCount.get(module),
+                "Module "
+                    + module
+                    + " has more lines in full tracer: "
+                    + tracerCount.get(module)
+                    + " than in light counter: "
+                    + lightCounterCount.get(module));
+
+            // TODO: how to make it smart ?
+
+            // Note: we compare to twice the (tracer count +1) to not get exceptions when tracer
+            // module is empty (GAS for SKIP tx for example)
+            // checkArgument(
+            //     lightCounterCount.get(module) <= 2 * (tracerCount.get(module) + 1),
+            //     "Module "
+            //         + module
+            //         + " has more than twice line counts in light tracer: "
+            //         + lightCounterCount.get(module)
+            //         + " than in full counter: "
+            //         + tracerCount.get(module));
+          }
+        }
       } catch (Exception e) {
         // Tmp: we ignore this error, as BLS precompiles are excluded in prod, but not in test
         checkArgument(

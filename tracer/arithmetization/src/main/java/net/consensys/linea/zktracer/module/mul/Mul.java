@@ -25,7 +25,6 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -33,7 +32,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 public class Mul implements OperationSetModule<MulOperation> {
-  private final Hub hub;
 
   @Getter
   private final ModuleOperationStackedSet<MulOperation> operations =
@@ -75,6 +73,7 @@ public class Mul implements OperationSetModule<MulOperation> {
     for (MulOperation op : operations.sortOperations(new MulOperationComparator())) {
       op.trace(trace.mul(), ++stamp);
     }
+    // Note: for constraint simplicity we want to finish with this row:
     (new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO)).trace(trace.mul(), stamp + 1);
   }
 }

@@ -35,6 +35,8 @@ import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
+  public static final short NB_ROWS_HUB_PRC_SHARIP = 4;
+
   final CommonPrecompileOobCall oobCall;
 
   public ShaTwoOrRipemdSubSection(Hub hub, CallSection callSection) {
@@ -103,7 +105,7 @@ public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
   // 4 = 1 + 3 (scenario row + up to 3 miscellaneous fragments)
   @Override
   protected short maxNumberOfLines() {
-    return 4;
+    return NB_ROWS_HUB_PRC_SHARIP;
     // Note: we don't have the callSuccess available at the moment
     // and can't provide the "real" value (2 in case of FKTH.)
   }

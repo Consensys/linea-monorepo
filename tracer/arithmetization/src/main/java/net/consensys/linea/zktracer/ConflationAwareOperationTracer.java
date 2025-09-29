@@ -151,7 +151,6 @@ public interface ConflationAwareOperationTracer extends BlockAwareOperationTrace
         long gasUsed,
         Set<Address> selfDestructs,
         long timeNs) {
-      String hash = tx.getHash().toHexString();
       this.tracers.forEach(
           tracer ->
               tracer.traceEndTransaction(

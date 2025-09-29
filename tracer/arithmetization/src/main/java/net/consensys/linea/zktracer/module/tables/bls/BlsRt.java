@@ -19,7 +19,7 @@ import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G1_MSM;
 import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G2_MSM;
 import static net.consensys.linea.zktracer.Trace.PRC_BLS_G1_MSM_MAX_DISCOUNT;
 import static net.consensys.linea.zktracer.Trace.PRC_BLS_G2_MSM_MAX_DISCOUNT;
-import static net.consensys.linea.zktracer.module.limits.CountingModuleName.BLS_REFERENCE_TABLE;
+import static net.consensys.linea.zktracer.module.ModuleName.BLS_REFERENCE_TABLE;
 
 import java.util.List;
 import java.util.Map;

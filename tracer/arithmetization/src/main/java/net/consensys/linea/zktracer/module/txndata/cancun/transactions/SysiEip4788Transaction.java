@@ -36,6 +36,8 @@ import org.apache.tuweni.bytes.Bytes32;
 
 public class SysiEip4788Transaction extends CancunTxnDataOperation {
 
+  public static final short NB_ROWS_TXN_DATA_SYSI_EIP4788 = 3;
+
   public SysiEip4788Transaction(final CancunTxnData txnData) {
     super(txnData, SYSI);
     checkState(isPostCancun(txnData.hub().fork));
@@ -78,6 +80,6 @@ public class SysiEip4788Transaction extends CancunTxnDataOperation {
 
   @Override
   protected int ctMax() {
-    return 2;
+    return NB_ROWS_TXN_DATA_SYSI_EIP4788 - 1;
   }
 }

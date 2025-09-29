@@ -28,6 +28,7 @@ import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_RAM_TRANSPLANT
 import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_RAM_TWO_SOURCE;
 import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_RAM_TWO_TARGET;
 import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_VANISHES;
+import static net.consensys.linea.zktracer.module.ModuleName.MMIO;
 import static net.consensys.linea.zktracer.module.mmio.MmioData.isFastOperation;
 import static net.consensys.linea.zktracer.module.mmio.MmioData.lineCountOfMmioInstruction;
 
@@ -50,7 +51,7 @@ public class Mmio implements Module {
 
   @Override
   public String moduleKey() {
-    return "MMIO";
+    return MMIO.toString();
   }
 
   @Override

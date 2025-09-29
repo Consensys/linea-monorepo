@@ -88,6 +88,8 @@ public class CallSection extends TraceSection
         PostRollbackDefer,
         EndTransactionDefer {
 
+  public static final short NB_ROWS_HUB_CALL = 11; // 2 stack + up to 9 for SMC failure will revert
+  // Note: in case of precompile call there could be more rows.
   private static final Map<Address, BiFunction<Hub, CallSection, PrecompileSubsection>>
       ADDRESS_TO_PRECOMPILE =
           Map.ofEntries(

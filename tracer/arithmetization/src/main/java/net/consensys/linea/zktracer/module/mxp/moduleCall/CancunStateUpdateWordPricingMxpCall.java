@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.mxp.moduleCall;
 
 import static net.consensys.linea.zktracer.TraceCancun.Mxp.CT_MAX_UPDT_W;
+import static net.consensys.linea.zktracer.module.mxp.moduleOperation.CancunMxpOperation.MXP_FROM_CTMAX_TO_LINECOUNT;
 import static net.consensys.linea.zktracer.types.Conversions.unsignedIntToBytes;
 
 import java.math.BigInteger;
@@ -26,6 +27,9 @@ import net.consensys.linea.zktracer.module.mxp.MxpExoCall;
 import org.apache.tuweni.bytes.Bytes;
 
 public class CancunStateUpdateWordPricingMxpCall extends CancunStateUpdateMxpCall {
+
+  public static final short NB_ROWS_MXP_UPDT_W =
+      (short) (CT_MAX_UPDT_W + MXP_FROM_CTMAX_TO_LINECOUNT);
 
   public CancunStateUpdateWordPricingMxpCall(Hub hub) {
     super(hub);

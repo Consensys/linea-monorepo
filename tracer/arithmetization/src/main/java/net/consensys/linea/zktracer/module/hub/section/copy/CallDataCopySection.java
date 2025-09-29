@@ -28,9 +28,10 @@ import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 
 public class CallDataCopySection extends TraceSection {
 
+  public static final short NB_ROWS_HUB_CALL_DATA_COPY = 3; // 3 = 1 + 2
+
   public CallDataCopySection(Hub hub) {
-    // 3 = 1 + 2
-    super(hub, maxNumberOfRows(hub));
+    super(hub, NB_ROWS_HUB_CALL_DATA_COPY);
 
     final ImcFragment imcFragment = ImcFragment.empty(hub);
     this.addStack(hub);
@@ -70,9 +71,5 @@ public class CallDataCopySection extends TraceSection {
       final MmuCall mmuCall = MmuCall.callDataCopy(hub);
       imcFragment.callMmu(mmuCall);
     }
-  }
-
-  private static short maxNumberOfRows(Hub hub) {
-    return (short) (hub.opCodeData().numberOfStackRows() + 2);
   }
 }

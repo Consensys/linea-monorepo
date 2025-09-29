@@ -17,6 +17,8 @@ package net.consensys.linea.zktracer.module.hub.section;
 
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import java.util.List;
+
 import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -27,7 +29,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -44,14 +45,22 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
   AccountSnapshot secondAccountSnapshotNew;
   int hubStamp;
 
+  // for SELF ACCOUNT: 1 stack + 1 CON + 1 ACC
+  // for EXT ACCOUNT: 1 stack + ACC + ACC (undo warmth if exception)
+  // + 1 CON for all in case of exceptions
+  public static final short NB_ROWS_HUB_ACCOUNT = 3;
+  private static final List<OpCode> SELF_ACCOUNT_OPCODES = List.of(SELFBALANCE, CODESIZE);
+  private static final List<OpCode> EXT_ACCOUNT_OPCODES =
+      List.of(BALANCE, EXTCODESIZE, EXTCODEHASH);
+
   public AccountSection(Hub hub) {
-    super(hub, maxNumberOfRows(hub));
+    super(hub, (short) (NB_ROWS_HUB_ACCOUNT + (Exceptions.any(hub.pch().exceptions()) ? 1 : 0)));
     hubStamp = hub.stamp();
     this.addStack(hub);
 
     final short exceptions = hub.pch().exceptions();
 
-    if (hub.opCode().isAnyOf(OpCode.SELFBALANCE, OpCode.CODESIZE)) {
+    if (SELF_ACCOUNT_OPCODES.contains(hub.opCode())) {
       if (Exceptions.any(exceptions)) {
         // the "squash parent return data" context row is all there is
         // The following is true since we do not enter here in case of a STACK_OVERFLOW_EXCEPTION
@@ -125,15 +134,5 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
                 secondAccountSnapshotNew,
                 undoingDomSubStamps,
                 TransactionProcessingType.USER));
-  }
-
-  private static short maxNumberOfRows(Hub hub) {
-    final OpCodeData opCode = hub.opCodeData();
-
-    if (opCode.mnemonic().isAnyOf(BALANCE, EXTCODESIZE, EXTCODEHASH)) {
-      return (short) (opCode.numberOfStackRows() + 3);
-    }
-
-    return (short) (opCode.numberOfStackRows() + (Exceptions.any(hub.pch().exceptions()) ? 1 : 2));
   }
 }

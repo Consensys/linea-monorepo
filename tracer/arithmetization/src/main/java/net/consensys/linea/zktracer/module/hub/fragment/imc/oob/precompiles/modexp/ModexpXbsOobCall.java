@@ -40,6 +40,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModexpXbsOobCall extends OobCall {
+
+  public static final short NB_ROWS_OOB_MODEXP_XBS = CT_MAX_MODEXP_XBS + 1;
+
   // Inputs
   @EqualsAndHashCode.Include final ModexpMetadata modexpMetadata;
   @EqualsAndHashCode.Include final ModexpXbsCase modexpXbsCase;

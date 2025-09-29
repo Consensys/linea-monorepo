@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.shakiradata;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
-import static net.consensys.linea.zktracer.Trace.LLARGEMO;
 import static net.consensys.linea.zktracer.Trace.PHASE_KECCAK_DATA;
 import static net.consensys.linea.zktracer.Trace.PHASE_KECCAK_RESULT;
 import static net.consensys.linea.zktracer.Trace.PHASE_RIPEMD_DATA;
@@ -30,6 +29,7 @@ import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.KECCA
 import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.RIPEMD;
 import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.SHA256;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToHex;
+import static net.consensys.linea.zktracer.types.Utils.fromDataSizeToLimbCtMax;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 import static org.hyperledger.besu.crypto.Hash.keccak256;
 
@@ -43,6 +43,8 @@ import org.apache.tuweni.bytes.Bytes32;
 
 @Accessors(fluent = true)
 public class ShakiraDataOperation extends ModuleOperation {
+
+  public static final short NB_ROWS_SHAKIRA_RESULT = INDEX_MAX_RESULT + 1;
 
   @Getter private final HashFunction hashType;
   private final Bytes hashInput;
@@ -64,8 +66,7 @@ public class ShakiraDataOperation extends ModuleOperation {
     hashInput = input;
     inputSize = input.size();
     lastNBytes = (short) (inputSize % LLARGE == 0 ? LLARGE : inputSize % LLARGE);
-    // this.indexMaxData = Math.ceilDiv(inputSize, LLARGE) - 1;
-    indexMaxData = (inputSize + LLARGEMO) / LLARGE - 1;
+    indexMaxData = fromDataSizeToLimbCtMax(inputSize);
     result = Bytes32.leftPad(hash);
   }
 
@@ -77,13 +78,13 @@ public class ShakiraDataOperation extends ModuleOperation {
     inputSize = input.size();
     lastNBytes = (short) (inputSize % LLARGE == 0 ? LLARGE : inputSize % LLARGE);
     // this.indexMaxData = Math.ceilDiv(inputSize, LLARGE) - 1;
-    indexMaxData = (inputSize + LLARGEMO) / LLARGE - 1;
+    indexMaxData = fromDataSizeToLimbCtMax(inputSize);
     result = Bytes32.leftPad(hash);
   }
 
   @Override
   protected int computeLineCount() {
-    return indexMaxData + 1 + INDEX_MAX_RESULT + 1;
+    return indexMaxData + 1 + NB_ROWS_SHAKIRA_RESULT;
   }
 
   void trace(Trace.Shakiradata trace, final int stamp) {

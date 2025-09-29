@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.rlpUtils;
 
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_LONG;
-import static net.consensys.linea.zktracer.module.limits.CountingModuleName.RLP_UTILS;
+import static net.consensys.linea.zktracer.module.ModuleName.RLP_UTILS;
 
 import java.util.List;
 

@@ -195,7 +195,7 @@ public class TransactionProcessingMetadata {
     this.relativeTransactionNumber = relativeTransactionNumber;
 
     isDeployment = transaction.getTo().isEmpty();
-    requiresEvmExecution = computeRequiresEvmExecution(world);
+    requiresEvmExecution = computeRequiresEvmExecution(world, besuTransaction);
     copyTransactionCallData = computeCopyCallData();
 
     initialBalance = getInitialBalance(world);
@@ -310,14 +310,14 @@ public class TransactionProcessingMetadata {
     return requiresEvmExecution && !isDeployment && !besuTransaction.getData().get().isEmpty();
   }
 
-  private boolean computeRequiresEvmExecution(WorldView world) {
-    if (!isDeployment) {
-      return Optional.ofNullable(world.get(this.besuTransaction.getTo().get()))
+  public static boolean computeRequiresEvmExecution(WorldView world, Transaction tx) {
+    if (!tx.isContractCreation()) {
+      return Optional.ofNullable(world.get(tx.getTo().get()))
           .map(a -> !a.getCode().isEmpty())
           .orElse(false);
     }
 
-    return !besuTransaction.getInit().get().isEmpty();
+    return !tx.getInit().get().isEmpty();
   }
 
   private BigInteger getInitialBalance(WorldView world) {

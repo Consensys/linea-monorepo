@@ -26,7 +26,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
-import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.module.OperationSetWithAdditionalRowsModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
@@ -36,14 +37,16 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
-public class Add implements OperationSetModule<AddOperation> {
+public class Add implements OperationSetWithAdditionalRowsModule<AddOperation> {
 
   protected final ModuleOperationStackedSet<AddOperation> operations =
       new ModuleOperationStackedSet<>();
 
+  private final CountOnlyOperation additionalRows = new CountOnlyOperation();
+
   @Override
   public String moduleKey() {
-    return "ADD";
+    return ADD.toString();
   }
 
   @Override
@@ -66,9 +69,9 @@ public class Add implements OperationSetModule<AddOperation> {
 
   @Override
   public void commit(Trace trace) {
-    int stamp = 0;
+    OperationSetWithAdditionalRowsModule.super.commit(trace);
     for (AddOperation op : sortOperations(new AddOperation.Comparator())) {
-      op.trace(++stamp, trace.add());
+      op.trace(trace.add());
     }
   }
 

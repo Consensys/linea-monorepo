@@ -30,27 +30,16 @@ public class TracerTestBase {
   public static void init() {
     // Configure chain information and fork before any tests are run, including any methods used as
     // MethodSource.
-    TracerTestBase.chainConfig =
-        switch (getForkOrDefault("LONDON")) {
-          case "LONDON" -> ChainConfig.MAINNET_TESTCONFIG(LONDON);
-          case "PARIS" -> ChainConfig.MAINNET_TESTCONFIG(PARIS);
-          case "SHANGHAI" -> ChainConfig.MAINNET_TESTCONFIG(SHANGHAI);
-          case "CANCUN" -> ChainConfig.MAINNET_TESTCONFIG(CANCUN);
-          case "PRAGUE" -> ChainConfig.MAINNET_TESTCONFIG(PRAGUE);
-          default -> throw new IllegalArgumentException(
-              "Unknown fork: " + System.getProperty("unit.replay.tests.fork"));
-        };
-
+    TracerTestBase.chainConfig = ChainConfig.MAINNET_TESTCONFIG(getForkOrDefault(LONDON));
     TracerTestBase.fork = TracerTestBase.chainConfig.fork;
     TracerTestBase.opcodes = OpCodes.load(fork);
   }
 
-  public static String getForkOrDefault(String defaultFork) {
-    String fork = System.getenv("ZKEVM_FORK");
+  public static Fork getForkOrDefault(Fork defaultFork) {
+    final String fork = System.getenv("ZKEVM_FORK");
     if (fork != null) {
-      return fork;
+      return fromString(fork);
     }
-    //
     return defaultFork;
   }
 }

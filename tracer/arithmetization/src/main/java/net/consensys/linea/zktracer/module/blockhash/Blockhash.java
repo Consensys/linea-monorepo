@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.blockhash;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.ModuleName.BLOCK_HASH;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.util.HashMap;
@@ -64,7 +65,7 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
 
   @Override
   public String moduleKey() {
-    return "BLOCK_HASH";
+    return BLOCK_HASH.toString();
   }
 
   @Override

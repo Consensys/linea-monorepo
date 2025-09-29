@@ -40,6 +40,9 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @Getter
 public class SstoreSection extends TraceSection implements PostRollbackDefer {
 
+  public static final short NB_ROWS_HUB_STORAGE = 5;
+  // 1 stack + 1 CON + 1 IMC + 1 STO + 1 STO (rollback) = 5 + potentially 1 CON if exception
+
   final WorldView world;
   final Address accountAddress;
   final int accountAddressDeploymentNumber;
@@ -51,11 +54,7 @@ public class SstoreSection extends TraceSection implements PostRollbackDefer {
   final int hubStamp;
 
   public SstoreSection(Hub hub, WorldView worldView) {
-    super(
-        hub,
-        (short)
-            (hub.opCodeData().numberOfStackRows()
-                + (Exceptions.any(hub.pch().exceptions()) ? 5 : 4)));
+    super(hub, (short) (NB_ROWS_HUB_STORAGE + (Exceptions.any(hub.pch().exceptions()) ? 1 : 0)));
 
     world = worldView;
     hubStamp = hub.stamp();

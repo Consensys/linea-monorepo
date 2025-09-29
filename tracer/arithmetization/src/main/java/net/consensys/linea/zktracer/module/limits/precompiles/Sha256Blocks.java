@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
-import static net.consensys.linea.zktracer.module.limits.CountingModuleName.PRECOMPILE_SHA2_BLOCKS;
+import static net.consensys.linea.zktracer.module.ModuleName.PRECOMPILE_SHA2_BLOCKS;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;

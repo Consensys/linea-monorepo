@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.Trace.RLP_ADDR_RECIPE_2;
 import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_SHORT;
 import static net.consensys.linea.zktracer.Trace.Rlpaddr.MAX_CT_CREATE;
 import static net.consensys.linea.zktracer.Trace.Rlpaddr.MAX_CT_CREATE2;
+import static net.consensys.linea.zktracer.module.ModuleName.RLP_ADDR;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES_PREFIX_SHORT_INT;
 import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2RawAddress;
@@ -72,7 +73,7 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
 
   @Override
   public String moduleKey() {
-    return "RLP_ADDR";
+    return RLP_ADDR.toString();
   }
 
   @Override

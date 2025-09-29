@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.shakiradata;
 
 import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.ModuleName.SHAKIRA_DATA;
 
 import java.util.List;
 
@@ -47,7 +48,7 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
 
   @Override
   public String moduleKey() {
-    return "SHAKIRA_DATA";
+    return SHAKIRA_DATA.toString();
   }
 
   @Override

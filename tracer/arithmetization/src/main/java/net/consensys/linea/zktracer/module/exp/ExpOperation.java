@@ -20,7 +20,7 @@ import static com.google.common.math.BigIntegerMath.log2;
 import static java.lang.Math.min;
 import static net.consensys.linea.zktracer.Trace.EXP_INST_EXPLOG;
 import static net.consensys.linea.zktracer.Trace.EXP_INST_MODEXPLOG;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_EXP_BYTE;
+import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
@@ -31,12 +31,10 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExplogExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ModexpLogExpCall;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -46,30 +44,25 @@ import org.apache.tuweni.bytes.Bytes;
 public class ExpOperation extends ModuleOperation {
   @EqualsAndHashCode.Include ExpCall expCall;
 
-  public ExpOperation(ExpCall expCall, Wcp wcp, Hub hub) {
+  public ExpOperation(ExpCall expCall) {
     this.expCall = expCall;
 
     switch (expCall.expInstruction()) {
       case EXP_INST_EXPLOG -> {
-        ExplogExpCall explogExpCall = (ExplogExpCall) expCall;
-        // Extract inputs
-        EWord exponent = EWord.of(hub.messageFrame().getStackItem(1));
-        long dynCost = (long) GAS_CONST_G_EXP_BYTE * exponent.byteLength();
-        // Fill expCall
-        explogExpCall.exponent(exponent);
-        explogExpCall.dynCost(dynCost);
+        // done in the constructor of ExpLogExpCall
       }
       case EXP_INST_MODEXPLOG -> {
-        ModexpLogExpCall modexplogExpCall = (ModexpLogExpCall) expCall;
+        final ModexpLogExpCall modexplogExpCall = (ModexpLogExpCall) expCall;
         // Extract inputs
         final ModexpMetadata modexpMetadata = modexplogExpCall.getModexpMetadata();
-        final int bbsInt = modexpMetadata.bbs().toUnsignedBigInteger().intValueExact();
-        final int ebsInt = modexpMetadata.ebs().toUnsignedBigInteger().intValueExact();
-        checkArgument(modexpMetadata.callData().size() - 96 - bbsInt >= 0);
-        EWord rawLead = modexpMetadata.rawLeadingWord();
-        int cdsCutoff = Math.min(modexpMetadata.callData().size() - 96 - bbsInt, 32);
-        int ebsCutoff = Math.min(ebsInt, 32);
-        BigInteger leadLog =
+        final int bbsInt = modexpMetadata.bbsInt();
+        final int ebsInt = modexpMetadata.ebsInt();
+        checkArgument(modexpMetadata.callData().size() - BASE_MIN_OFFSET - bbsInt >= 0);
+        final EWord rawLead = modexpMetadata.rawLeadingWord();
+        final int cdsCutoff =
+            Math.min(modexpMetadata.callData().size() - BASE_MIN_OFFSET - bbsInt, 32);
+        final int ebsCutoff = Math.min(ebsInt, 32);
+        final BigInteger leadLog =
             BigInteger.valueOf(LeadLogTrimLead.fromArgs(rawLead, cdsCutoff, ebsCutoff).leadLog());
         // Fill expCall
         modexplogExpCall.setRawLeadingWord(rawLead);
@@ -86,7 +79,7 @@ public class ExpOperation extends ModuleOperation {
     // Handle each case separately
     switch (expCall.expInstruction()) {
       case EXP_INST_EXPLOG -> {
-        ExplogExpCall call = (ExplogExpCall) expCall;
+        final ExplogExpCall call = (ExplogExpCall) expCall;
         trace
             .inst(EXP_INST_EXPLOG)
             .arg(call.exponent())
@@ -94,10 +87,9 @@ public class ExpOperation extends ModuleOperation {
             .ebs(0)
             .res(Bytes.ofUnsignedLong(call.dynCost()))
             .validateRow();
-        break;
       }
       case EXP_INST_MODEXPLOG -> {
-        ModexpLogExpCall call = (ModexpLogExpCall) expCall;
+        final ModexpLogExpCall call = (ModexpLogExpCall) expCall;
         trace
             .inst(EXP_INST_MODEXPLOG)
             .arg(call.getRawLeadingWord())
@@ -105,7 +97,6 @@ public class ExpOperation extends ModuleOperation {
             .ebs(call.getEbsCutoff())
             .res(bigIntegerToBytes(call.getLeadLog()))
             .validateRow();
-        break;
       }
       default -> throw new IllegalArgumentException(
           "invalid EXP instruction: " + expCall.expInstruction());

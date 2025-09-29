@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.ecdata;
 
+import static net.consensys.linea.zktracer.module.ModuleName.EC_DATA;
+
 import java.util.List;
 
 import lombok.Getter;
@@ -52,7 +54,7 @@ public class EcData implements OperationListModule<EcDataOperation> {
 
   @Override
   public String moduleKey() {
-    return "EC_DATA";
+    return EC_DATA.toString();
   }
 
   @Override
@@ -84,20 +86,20 @@ public class EcData implements OperationListModule<EcDataOperation> {
     operations.add(ecDataOperation);
 
     switch (ecDataOperation.precompileFlag()) {
-      case PRC_ECADD -> ecAddEffectiveCall.updateTally(
-          ecDataOperation.internalChecksPassed() ? 1 : 0);
-      case PRC_ECMUL -> ecMulEffectiveCall.updateTally(
-          ecDataOperation.internalChecksPassed() ? 1 : 0);
+      case PRC_ECADD -> ecAddEffectiveCall.updateTally(ecDataOperation.internalChecksPassed());
+      case PRC_ECMUL -> ecMulEffectiveCall.updateTally(ecDataOperation.internalChecksPassed());
       case PRC_ECRECOVER -> ecRecoverEffectiveCall.updateTally(
-          ecDataOperation.internalChecksPassed() ? 1 : 0);
+          ecDataOperation.internalChecksPassed());
       case PRC_ECPAIRING -> {
         // ecPairingG2MembershipCalls case
         // NOTE: the other precompile limits are managed below
         // NOTE: see EC_DATA specs Figure 3.5 for a graphical representation of this case analysis
-        if (!ecDataOperation.internalChecksPassed()) {
-          ecPairingG2MembershipCalls.updateTally(0);
-          // The circuit is never invoked in the case of internal checks failing
-        }
+
+        //  if (!ecDataOperation.internalChecksPassed()) {
+        //    // The circuit is never invoked in the case of internal checks failing
+        //    ecPairingG2MembershipCalls.updateTally(0);
+        //  }
+
         // NOTE: the && of the conditions may seem not necessary since in the specs
         // !internalChecksPassed => !notOnG2AccMax
         // however, in EcDataOperation implementation the notOnG2AccMax takes into consideration
@@ -109,12 +111,13 @@ public class EcData implements OperationListModule<EcDataOperation> {
           // The circuit is invoked only once if there is at least one point predicted to be not on
           // G2
         }
-        if (ecDataOperation.internalChecksPassed()
-            && !ecDataOperation.notOnG2AccMax()
-            && ecDataOperation.isOverallTrivialPairing()) {
-          ecPairingG2MembershipCalls.updateTally(0);
-          // The circuit is never invoked in the case of a trivial pairing
-        }
+        //   if (ecDataOperation.internalChecksPassed()
+        //       && !ecDataOperation.notOnG2AccMax()
+        //       && ecDataOperation.isOverallTrivialPairing()) {
+        //     // The circuit is never invoked in the case of a trivial pairing
+        //     // ecPairingG2MembershipCalls.updateTally(0);
+        //   }
+
         if (ecDataOperation.internalChecksPassed()
             && !ecDataOperation.notOnG2AccMax()
             && !ecDataOperation.isOverallTrivialPairing()) {
@@ -137,9 +140,8 @@ public class EcData implements OperationListModule<EcDataOperation> {
         // ecPairingFinalExponentiation case
         // NOTE: if at least one Miller Loop is computed, the final exponentiation is 1
         ecPairingFinalExponentiations.updateTally(
-            ecDataOperation.circuitSelectorEcPairingCounter() > 0
-                ? 1
-                : 0); // See https://eprint.iacr.org/2008/490.pdf
+            ecDataOperation.circuitSelectorEcPairingCounter()
+                > 0); // See https://eprint.iacr.org/2008/490.pdf
       }
       default -> throw new IllegalArgumentException("Operation not supported by EcData");
     }

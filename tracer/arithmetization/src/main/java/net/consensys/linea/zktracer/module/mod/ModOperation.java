@@ -40,6 +40,8 @@ import org.apache.tuweni.units.bigints.UInt64;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModOperation extends ModuleOperation {
 
+  public static final short NB_ROWS_MOD = MMEDIUM;
+
   @EqualsAndHashCode.Include @Getter private final OpCode opCode;
   @EqualsAndHashCode.Include @Getter private final Bytes32 rawArg1;
   @EqualsAndHashCode.Include @Getter private final Bytes32 rawArg2;
@@ -214,7 +216,7 @@ public class ModOperation extends ModuleOperation {
   }
 
   int numberOfRows() {
-    return oli ? 1 : MMEDIUM;
+    return oli ? 1 : NB_ROWS_MOD;
   }
 
   public void trace(Trace.Mod trace, int stamp) {

@@ -38,6 +38,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class JumpOobCall extends OobCall {
+
+  public static final short NB_ROWS_OOB_JUMP = CT_MAX_JUMP + 1;
+
   // Inputs
   @EqualsAndHashCode.Include EWord pcNew;
   @EqualsAndHashCode.Include Bytes codeSize;

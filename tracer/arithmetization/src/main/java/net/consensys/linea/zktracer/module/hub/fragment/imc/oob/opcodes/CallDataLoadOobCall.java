@@ -38,6 +38,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class CallDataLoadOobCall extends OobCall {
+
+  public static final short NB_ROWS_OOB_CDL = CT_MAX_CDL + 1;
+
   // Inputs
   @EqualsAndHashCode.Include EWord offset;
   @EqualsAndHashCode.Include Bytes cds;

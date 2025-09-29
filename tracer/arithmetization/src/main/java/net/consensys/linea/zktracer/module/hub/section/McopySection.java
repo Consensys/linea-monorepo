@@ -26,8 +26,11 @@ import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 public class McopySection extends TraceSection {
+
+  public static final short NB_ROWS_HUB_MCOPY = 3;
+
   public McopySection(Hub hub) {
-    super(hub, (short) 3);
+    super(hub, NB_ROWS_HUB_MCOPY);
 
     final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     final ImcFragment firstImcFragment = ImcFragment.empty(hub).callMxp(mxpCall);

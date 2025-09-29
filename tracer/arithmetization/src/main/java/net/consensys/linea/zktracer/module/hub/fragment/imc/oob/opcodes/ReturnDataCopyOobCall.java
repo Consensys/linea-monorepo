@@ -38,6 +38,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ReturnDataCopyOobCall extends OobCall {
+
+  public static final short NB_ROWS_OOB_RDC = CT_MAX_RDC + 1;
+
   // Inputs
   @EqualsAndHashCode.Include EWord offset;
   @EqualsAndHashCode.Include EWord size;

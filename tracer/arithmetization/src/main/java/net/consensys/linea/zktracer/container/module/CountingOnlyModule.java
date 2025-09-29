@@ -18,17 +18,26 @@ package net.consensys.linea.zktracer.container.module;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
-import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
-import net.consensys.linea.zktracer.module.limits.CountingModuleName;
+import net.consensys.linea.zktracer.module.ModuleName;
 
 /** A {@link CountingOnlyModule} is a {@link Module} that only counts certain outcomes. */
-@RequiredArgsConstructor
 public class CountingOnlyModule implements Module {
-  private final CountingModuleName moduleKey;
+  private final ModuleName moduleKey;
+  private final short spillage;
 
   protected final CountOnlyOperation counts = new CountOnlyOperation();
+
+  public CountingOnlyModule(ModuleName moduleKey, int spillage) {
+    this.moduleKey = moduleKey;
+    this.spillage = (short) spillage;
+  }
+
+  public CountingOnlyModule(ModuleName moduleKey) {
+    this.moduleKey = moduleKey;
+    this.spillage = 0;
+  }
 
   @Override
   public void commitTransactionBundle() {
@@ -52,7 +61,7 @@ public class CountingOnlyModule implements Module {
 
   @Override
   public int spillage(Trace trace) {
-    return 0;
+    return spillage;
   }
 
   public void updateTally(final int count) {

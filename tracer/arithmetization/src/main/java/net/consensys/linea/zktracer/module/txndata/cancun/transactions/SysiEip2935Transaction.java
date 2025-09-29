@@ -31,12 +31,11 @@ import org.apache.tuweni.bytes.Bytes;
 
 public class SysiEip2935Transaction extends CancunTxnDataOperation {
 
-  private final long nonsensePragueTimestamp =
-      0x13370000L; // Placeholder for the actual Prague fork timestamp
+  public static final short NB_ROWS_TXN_DATA_SYSI_EIP2935 = 3;
 
   @Override
   protected int ctMax() {
-    return 2;
+    return NB_ROWS_TXN_DATA_SYSI_EIP2935 - 1;
   }
 
   public SysiEip2935Transaction(final CancunTxnData txnData) {

@@ -39,6 +39,8 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class SstoreOobCall extends OobCall {
 
+  public static final short NB_ROWS_OOB_SSTORE = CT_MAX_SSTORE + 1;
+
   private static final Bytes GAS_CONST_G_CALL_STIPEND_BYTES =
       Bytes.minimalBytes(GAS_CONST_G_CALL_STIPEND);
 

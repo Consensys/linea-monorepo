@@ -41,6 +41,8 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public abstract class TxInitializationSection extends TraceSection implements EndTransactionDefer {
 
+  public static final short NB_ROWS_HUB_INIT = 9;
+
   @Getter private final int hubStamp;
   final AccountFragment.AccountFragmentFactory accountFragmentFactory;
 
@@ -72,7 +74,7 @@ public abstract class TxInitializationSection extends TraceSection implements En
   private int domSubOffset = 0;
 
   public TxInitializationSection(Hub hub, WorldView world) {
-    super(hub, (short) 9);
+    super(hub, NB_ROWS_HUB_INIT);
     hub.defers().scheduleForEndTransaction(this);
 
     hubStamp = hub.stamp();

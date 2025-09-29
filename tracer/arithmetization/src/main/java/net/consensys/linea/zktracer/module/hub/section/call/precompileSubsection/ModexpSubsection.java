@@ -47,6 +47,9 @@ import org.apache.tuweni.bytes.Bytes;
 
 public class ModexpSubsection extends PrecompileSubsection {
 
+  public static final short NB_ROWS_HUB_PRC_MODEXP =
+      13; // 13 = 1 + 12 (scenario row + up to 12 miscellaneous fragments)
+
   public final ModexpMetadata modexpMetaData;
   private ModexpPricingOobCall sixthOobCall;
   private ImcFragment seventhImcFragment;
@@ -169,7 +172,7 @@ public class ModexpSubsection extends PrecompileSubsection {
   // 13 = 1 + 12 (scenario row + up to 12 miscellaneous fragments)
   @Override
   protected short maxNumberOfLines() {
-    return 13;
+    return NB_ROWS_HUB_PRC_MODEXP;
     // Note: we don't have the successBit available at the moment
     // and can't provide the "real" value (8 in case of failure.)
   }
