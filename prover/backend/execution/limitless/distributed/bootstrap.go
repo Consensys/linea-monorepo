@@ -30,10 +30,11 @@ var (
 )
 
 type Metadata struct {
-	StartBlock string `json:"startBlock"`
-	EndBlock   string `json:"endBlock"`
-	NumGL      int    `json:"numGL"`
-	NumLPP     int    `json:"numLPP"`
+	ExecutionRequestFile string `json:"exectionRequestFile"`
+	StartBlock           string `json:"startBlock"`
+	EndBlock             string `json:"endBlock"`
+	NumGL                int    `json:"numGL"`
+	NumLPP               int    `json:"numLPP"`
 
 	GLProofFiles  []string `json:"glProofFiles"`
 	GLCommitFiles []string `json:"glCommitFiles"`
