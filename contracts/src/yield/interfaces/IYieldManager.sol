@@ -317,16 +317,6 @@ interface IYieldManager {
   function withdrawableValue(address _yieldProvider) external returns (uint256);
 
   /**
-   * @notice Send ETH to the specified yield strategy.
-   * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
-   * @dev Reverts if the withdrawal reserve is below the minimum threshold.
-   * @dev Will settle any outstanding liabilities to the YieldProvider.
-   * @param _yieldProvider The target yield provider contract.
-   * @param _amount        The amount of ETH to send.
-   */
-  function fundYieldProvider(address _yieldProvider, uint256 _amount) external;
-
-  /**
    * @notice Receive ETH from the withdrawal reserve.
    * @dev Only accepts calls from the withdrawal reserve.
    * @dev Reverts if, after transfer, the withdrawal reserve will be below the minimum threshold.
@@ -341,11 +331,21 @@ interface IYieldManager {
   function transferFundsToReserve(uint256 _amount) external;
 
   /**
+   * @notice Send ETH to the specified yield strategy.
+   * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
+   * @dev Reverts if the withdrawal reserve is below the minimum threshold.
+   * @dev Will settle any outstanding liabilities to the YieldProvider.
+   * @param _yieldProvider The target yield provider contract.
+   * @param _amount        The amount of ETH to send.
+   */
+  function fundYieldProvider(address _yieldProvider, uint256 _amount) external;
+
+  /**
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
    * @dev YIELD_REPORTER_ROLE is required to execute.
    * @param _yieldProvider      Yield provider address.
    */
-  function reportYield(address _yieldProvider) external;
+  function reportYield(address _yieldProvider) external returns (uint256 newReportedYield);
 
   /**
    * @notice Request beacon chain withdrawal from specified yield provider.
@@ -376,7 +376,7 @@ interface IYieldManager {
     address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable;
+  ) external payable returns (uint256 maxUnstakeAmount);
 
   /**
    * @notice Withdraw ETH from a specified yield provider.
@@ -425,17 +425,17 @@ interface IYieldManager {
 
   function undoInitiateOssification(address _yieldProvider) external;
 
-  function processPendingOssification(address _yieldProvider) external;
+  function processPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
 
   function donate(address _yieldProvider) external payable;
-
-  function setL1MessageService(address _l1MessageService) external;
 
   function addYieldProvider(address _yieldProvider, YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration) external;
 
   function removeYieldProvider(address _yieldProvider) external;
 
   function emergencyRemoveYieldProvider(address _yieldProvider) external;
+
+  function setL1MessageService(address _l1MessageService) external;
 
   /**
    * @notice Set l2YieldRecipient address.

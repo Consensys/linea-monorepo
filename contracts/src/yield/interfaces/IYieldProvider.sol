@@ -43,7 +43,14 @@ interface IYieldProvider {
   /**
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
    */
-  function reportYield() external returns (uint256);
+  function reportYield() external returns (uint256 newReportedYield);
+
+  /**
+   * @notice Repay part or all of the outstanding LST principal liability.
+   * @param _maxAvailableRepaymentETH Maximum amount of ETH available to repay the liability.
+   * @return lstPrincipalPaid The amount of ETH used to reduce the liability.
+   */
+  function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256 lstPrincipalPaid);
 
   /**
    * @notice Request beacon chain withdrawal.
@@ -70,7 +77,7 @@ interface IYieldProvider {
   function unstakePermissionless(
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable returns (uint256);
+  ) external payable returns (uint256 maxUnstakeAmount);
 
   /**
    * @notice Withdraw ETH from a specified yield provider.
@@ -93,12 +100,6 @@ interface IYieldProvider {
   function unpauseStaking() external;
 
   /**
-   * @notice Validate the supplied registration before it is added to the yield manager.
-   * @param _yieldProviderRegistration Supplied registration data for the yield provider.
-   */
-  function validateAdditionToYieldManager(YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration) external;
-
-  /**
    * @notice Mint LST to a recipient .
    * @param _amount Amount of underlying to convert into LST.
    * @param _recipient Address that receives the minted LST.
@@ -112,14 +113,13 @@ interface IYieldProvider {
 
   /**
    * @notice Process a previously initiated ossification process.
-   * @return True if ossification is completed.
+   * @return isOssificationComplete True if ossification is completed.
    */
-  function processPendingOssification() external returns (bool);
+  function processPendingOssification() external returns (bool isOssificationComplete);
 
   /**
-   * @notice Repay part or all of the outstanding LST principal liability.
-   * @param _maxAvailableRepaymentETH Maximum amount of ETH available to repay the liability.
-   * @return The amount of ETH used to reduce the liability.
+   * @notice Validate the supplied registration before it is added to the yield manager.
+   * @param _yieldProviderRegistration Supplied registration data for the yield provider.
    */
-  function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256);
+  function validateAdditionToYieldManager(YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration) external;
 }
