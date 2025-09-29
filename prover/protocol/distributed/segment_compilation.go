@@ -66,11 +66,10 @@ type RecursedSegmentCompilation struct {
 func CompileSegment(mod any) *RecursedSegmentCompilation {
 
 	var (
-		modIOP            *wizard.CompiledIOP
-		res               = &RecursedSegmentCompilation{}
-		numActualLppRound = 0
-		isLPP             bool
-		subscript         string
+		modIOP    *wizard.CompiledIOP
+		res       = &RecursedSegmentCompilation{}
+		isLPP     bool
+		subscript string
 	)
 
 	switch m := mod.(type) {
@@ -81,9 +80,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	case *ModuleLPP:
 		modIOP = m.Wiop
 		res.ModuleLPP = m
-		numActualLppRound = len(m.ModuleNames())
 		isLPP = true
-		subscript = fmt.Sprintf("%v", m.ModuleNames())
+		subscript = string(m.ModuleName())
 	case *ConglomerationHierarchical:
 		modIOP = m.Wiop
 		res.HierarchicalConglomeration = m
@@ -127,7 +125,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			compiler.WithoutMpts(),
 			// @alex: in principle, the value of 1 would be used only for the GL
 			// prover but AFAIK, the GL modules never have inner-products to compile.
-			compiler.WithInnerProductMinimalRound(max(1, numActualLppRound)),
+			compiler.WithInnerProductMinimalRound(1),
 		),
 		mpts.Compile(mpts.AddUnconstrainedColumns()),
 	)
@@ -148,9 +146,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			),
 		)
 
-		for i := 1; i < lppGroupingArity; i++ {
-			modIOP.InsertPublicInput(fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, i), accessors.NewConstant(field.Zero()))
-		}
+		modIOP.InsertPublicInput(lppMerkleRootPublicInput, accessors.NewConstant(field.Zero()))
 
 	} else {
 
@@ -159,14 +155,14 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				2,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
-				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, utils.RangeSlice(numActualLppRound, 0)),
+				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
 				vortex.WithOptionalSISHashingThreshold(64),
 			),
 		)
 
-		for i := numActualLppRound; i < lppGroupingArity; i++ {
-			modIOP.InsertPublicInput(fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, i), accessors.NewConstant(field.Zero()))
-		}
+		modIOP.InsertPublicInput(
+			lppMerkleRootPublicInput,
+			accessors.NewConstant(field.Zero()))
 	}
 
 	wizard.ContinueCompilation(modIOP,

@@ -60,7 +60,7 @@ type ConglomerationHierarchical struct {
 	// proof.
 	Recursion *recursion.Recursion
 	// PublicInputs stores the public inputs of the conglomeration proof.
-	PublicInputs LimitlessPublicInput[ifaces.Column]
+	PublicInputs LimitlessPublicInput[wizard.PublicInput]
 
 	// VerificationKeyMerkleProofs is the list of the verification keys proving
 	// the membership of the verifying keys of the instances inside the
@@ -289,10 +289,9 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 // declarePi declares a column with the requested name as proof column and length
 // one and also declare a public input from that column with the same provided
 // name.
-func declarePiColumn(comp *wizard.CompiledIOP, name string) ifaces.Column {
+func declarePiColumn(comp *wizard.CompiledIOP, name string) wizard.PublicInput {
 	col := comp.InsertProof(0, ifaces.ColID(name+"_PI_COLUMN"), 1)
-	comp.InsertPublicInput(name, accessors.NewFromPublicColumn(col, 0))
-	return col
+	return comp.InsertPublicInput(name, accessors.NewFromPublicColumn(col, 0))
 }
 
 // assignPiColumn assigns the column of a public input with the requested name
@@ -306,8 +305,8 @@ func assignPiColumn(run *wizard.ProverRuntime, name string, val field.Element) {
 
 // declareListOfPiColumns declares a list of columns with the requested name as
 // proof columns and length provided.
-func declareListOfPiColumns(comp *wizard.CompiledIOP, name string, length int) []ifaces.Column {
-	var cols []ifaces.Column
+func declareListOfPiColumns(comp *wizard.CompiledIOP, name string, length int) []wizard.PublicInput {
+	var cols []wizard.PublicInput
 	for i := 0; i < length; i++ {
 		cols = append(cols, declarePiColumn(comp, name+"_"+strconv.Itoa(i)))
 	}
@@ -317,10 +316,13 @@ func declareListOfPiColumns(comp *wizard.CompiledIOP, name string, length int) [
 // declareListOfConstantPi declares a list of public inputs as constant values.
 // This is useful to create dummy public inputs making the aggregation process
 // simpler.
-func declareListOfConstantPi(comp *wizard.CompiledIOP, name string, values []field.Element) {
+func declareListOfConstantPi(comp *wizard.CompiledIOP, name string, values []field.Element) []wizard.PublicInput {
+	res := make([]wizard.PublicInput, len(values))
 	for i, val := range values {
-		comp.InsertPublicInput(name+"_"+strconv.Itoa(i), accessors.NewConstant(val))
+		pub := comp.InsertPublicInput(name+"_"+strconv.Itoa(i), accessors.NewConstant(val))
+		res = append(res, pub)
 	}
+	return res
 }
 
 // assignListOfPiColumns assigns a list of columns with the requested name using

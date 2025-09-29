@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -32,6 +33,16 @@ type ModuleGL struct {
 	// DefinitionInput stores the [FilteredModuleInputs] that was used
 	// to generate the module.
 	DefinitionInput *FilteredModuleInputs
+
+	// IsFirst is a column of length one storing a binary value indicating
+	// if the current (vertical) instance of the module is the first one.
+	// This is used to activate/deactivate the local-constraints relating
+	// to the first rows of the module. The content of the column is part
+	// of the public inputs of the module.
+	IsFirst ifaces.Column
+
+	// IsLast is as [IsFirst] but for the last instance of the module.
+	IsLast ifaces.Column
 
 	// SentValuesGlobal is a list of local-openings pointing to the values
 	// nearing the end of the segment that are subjected to global-constraints
@@ -198,49 +209,49 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		moduleGL.CompleteGlobalCs(newGlobalCs)
 	}
 
-	for i := range moduleInput.PublicInputs {
+	moduleGL.declarePublicInput()
 
-		pubInputAcc := accessors.NewConstant(field.Zero())
+	// for i := range moduleInput.PublicInputs {
 
-		if moduleInput.PublicInputs[i].Acc != nil {
-			pubInputAcc = moduleGL.TranslateAccessor(moduleInput.PublicInputs[i].Acc)
-		}
+	// 	pubInputAcc := accessors.NewConstant(field.Zero())
 
-		moduleGL.Wiop.InsertPublicInput(
-			moduleInput.PublicInputs[i].Name,
-			pubInputAcc,
-		)
-	}
+	// 	if moduleInput.PublicInputs[i].Acc != nil {
+	// 		pubInputAcc = moduleGL.TranslateAccessor(moduleInput.PublicInputs[i].Acc)
+	// 	}
 
-	moduleGL.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(IsFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
-	moduleGL.Wiop.InsertPublicInput(IsLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
+	// 	moduleGL.Wiop.InsertPublicInput(
+	// 		moduleInput.PublicInputs[i].Name,
+	// 		pubInputAcc,
+	// 	)
+	// }
 
-	if len(moduleGL.ReceivedValuesGlobalMap) > 0 {
-		moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
-		moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
-	} else {
-		moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
-		moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
-	}
+	// moduleGL.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
 
-	// These public-inputs are the "dummy" ones and are only here so that the
-	// LPP and GL modules have exactly the same set of public inputs. The
-	// public-inputs are reordered a posteriori to ensure that the order
-	// match between GL and LPP.
-	moduleGL.Wiop.InsertPublicInput(LogDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(GrandProductPublicInput, accessors.NewConstant(field.One()))
-	moduleGL.Wiop.InsertPublicInput(HornerPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(HornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(HornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
+	// if len(moduleGL.ReceivedValuesGlobalMap) > 0 {
+	// 	moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
+	// 	moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
+	// } else {
+	// 	moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
+	// 	moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
+	// }
 
-	moduleGL.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.One()))
-	moduleGL.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.Zero()))
-	moduleGL.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.Zero()))
+	// // These public-inputs are the "dummy" ones and are only here so that the
+	// // LPP and GL modules have exactly the same set of public inputs. The
+	// // public-inputs are reordered a posteriori to ensure that the order
+	// // match between GL and LPP.
+	// moduleGL.Wiop.InsertPublicInput(LogDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
+	// moduleGL.Wiop.InsertPublicInput(GrandProductPublicInput, accessors.NewConstant(field.One()))
+	// moduleGL.Wiop.InsertPublicInput(HornerPublicInput, accessors.NewConstant(field.Zero()))
+	// moduleGL.Wiop.InsertPublicInput(HornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
+	// moduleGL.Wiop.InsertPublicInput(HornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
 
-	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignGL{ModuleGL: moduleGL})
-	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})
-	moduleGL.Wiop.RegisterVerifierAction(1, &ModuleGLCheckSendReceiveGlobal{ModuleGL: moduleGL})
+	// moduleGL.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.One()))
+	// moduleGL.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.Zero()))
+	// moduleGL.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.Zero()))
+
+	// moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignGL{ModuleGL: moduleGL})
+	// moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})
+	// moduleGL.Wiop.RegisterVerifierAction(1, &ModuleGLCheckSendReceiveGlobal{ModuleGL: moduleGL})
 
 	return moduleGL
 }
@@ -314,11 +325,11 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 
 	isFirst, isLast := field.Element{}, field.Element{}
 
-	if witness.IsFirst {
+	if witness.SegmentModuleIndex == 0 {
 		isFirst = field.One()
 	}
 
-	if witness.IsLast {
+	if witness.SegmentModuleIndex == witness.TotalSegmentCount[witness.ModuleIndex]-1 {
 		isLast = field.One()
 	}
 
@@ -483,6 +494,8 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 			},
 		)
 
+		// TODO @alex: we actually need a cancellator criterion for the local
+		// constraints.
 		localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
 		m.Wiop.InsertLocal(
 			newExprRound,
@@ -788,20 +801,26 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (modGl *ModuleGL) DeclarePublicInput() {
+func (modGl *ModuleGL) declarePublicInput() {
 
 	var (
-		nbModules       = len(modGl.DefinitionInput.Disc.Modules)
-		segmentCountGl  = make([]field.Element, nbModules)
+		nbModules = len(modGl.DefinitionInput.Disc.Modules)
+		// segmenCountGL is an array of zero with a one at the position
+		// corresponding to the current module.
+		segmentCountGl = make([]field.Element, nbModules)
+		// segmentCountLpp is an array of zero.
 		segmentCountLpp = make([]field.Element, nbModules)
 	)
 
 	segmentCountGl[modGl.Disc.IndexOf(modGl.DefinitionInput.ModuleName)] = field.One()
 
-	modGl.PublicInputs = &ModuleGLPublicInputs{
-		TargetNbSegments: declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, modGl.ModuleNumber),
+	modGl.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
+		TargetNbSegments: declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:   declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
-		SegmentCountLPP:  declareListOfPiColumns(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
+		SegmentCountLPP:  declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
 	}
+}
 
+func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
+	assignListOfPiColumns(run, targetNbSegmentPublicInputBase, vector.ForTest(witness.TotalSegmentCount...))
 }

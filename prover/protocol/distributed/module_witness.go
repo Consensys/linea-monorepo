@@ -468,7 +468,7 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 	numHornerPart := len(moduleLPP.Horner.Parts)
 
 	res := ModuleSegmentationBlueprint{
-		ModuleName:               moduleLPP.ModuleNames(),
+		ModuleName:               moduleLPP.ModuleName(),
 		NextN0SelectorRoots:      make([][]ifaces.ColID, numHornerPart),
 		NextN0SelectorIsConsts:   make([][]bool, numHornerPart),
 		NextN0SelectorConsts:     make([][]field.Element, numHornerPart),
@@ -476,9 +476,9 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 		LPPColumnSets:            []ifaces.ColID{},
 	}
 
-	res.LPPColumnSets = make([]ifaces.ColID, len(moduleLPP.DefinitionInputs.ColumnsLPP))
-	for j := range moduleLPP.DefinitionInputs.ColumnsLPP {
-		res.LPPColumnSets[j] = moduleLPP.DefinitionInputs.ColumnsLPP[j].GetColID()
+	res.LPPColumnSets = make([]ifaces.ColID, len(moduleLPP.DefinitionInput.ColumnsLPP))
+	for j := range moduleLPP.DefinitionInput.ColumnsLPP {
+		res.LPPColumnSets[j] = moduleLPP.DefinitionInput.ColumnsLPP[j].GetColID()
 	}
 
 	for i := range hornerParts {
