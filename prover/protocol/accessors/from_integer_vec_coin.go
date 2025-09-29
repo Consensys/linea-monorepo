@@ -24,28 +24,25 @@ type FromIntVecCoinPositionAccessor struct {
 }
 
 func (c *FromIntVecCoinPositionAccessor) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return true
 }
 
 func (c *FromIntVecCoinPositionAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	return field.NewElement(uint64(run.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos])), nil
 }
 
 func (c *FromIntVecCoinPositionAccessor) GetValExt(run ifaces.Runtime) fext.Element {
-	//TODO implement me
-	panic("implement me")
+	base := field.NewElement(uint64(run.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]))
+	return fext.Lift(base)
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
-	//TODO implement me
-	panic("implement me")
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+	return circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos], nil
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
-	//TODO implement me
-	panic("implement me")
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+	elem := circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]
+	return gnarkfext.NewFromBase(elem)
 }
 
 // NewFromIntegerVecCoinPosition constructs an [ifaces.Accessor] object refering

@@ -71,7 +71,16 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 		case variables.PeriodicSample:
 			evalInputs[k] = meta.EvalCoset(a.DomainSize(), 0, 1, false)
 		case ifaces.Accessor:
-			evalInputs[k] = sv.NewConstant(meta.GetVal(run), a.DomainSize())
+			if metadataInterface.IsBase() {
+				elem, errFetch := meta.GetValBase(run)
+				if errFetch != nil {
+					utils.Panic("failed to fetch base accessor %v for query %v: %v", meta.String(), a.HandleName, errFetch)
+				}
+				evalInputs[k] = sv.NewConstant(elem, a.DomainSize())
+			} else {
+				evalInputs[k] = sv.NewConstantExt(meta.GetValExt(run), a.DomainSize())
+			}
+
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), a.HandleName)
 		}
