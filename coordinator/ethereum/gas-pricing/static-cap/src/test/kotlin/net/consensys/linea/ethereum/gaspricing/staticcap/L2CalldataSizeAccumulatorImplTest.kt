@@ -4,6 +4,7 @@ import linea.web3j.ExtendedWeb3J
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.mockito.ArgumentMatchers
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
@@ -45,7 +46,13 @@ class L2CalldataSizeAccumulatorImplTest {
   fun test_getSumOfL2CalldataSize_return_cached_sum_of_l2_calldata() {
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethBlockNumber() } doReturn SafeFuture.completedFuture(100.toBigInteger())
-      on { ethGetBlockSizeByNumber(any()) } doReturn SafeFuture.completedFuture(10540.toBigInteger())
+      on {
+        ethGetBlockSizeByNumber(
+          ArgumentMatchers.longThat {
+            (96..100).contains(it)
+          },
+        )
+      } doReturn SafeFuture.completedFuture(10540.toBigInteger())
     }
     val l2CalldataSizeAccumulator = L2CalldataSizeAccumulatorImpl(
       config = config,
@@ -65,9 +72,9 @@ class L2CalldataSizeAccumulatorImplTest {
     }
 
     // subsequent calls should not invoke ethGetBlockSizeByNumber
-    (0..4).forEach {
+    (96..100).forEach { it ->
       verify(mockWeb3jClient, times(1))
-        .ethGetBlockSizeByNumber(eq(100L - it))
+        .ethGetBlockSizeByNumber(eq(it.toLong()))
     }
   }
 
@@ -126,7 +133,7 @@ class L2CalldataSizeAccumulatorImplTest {
   }
 
   @Test
-  fun test_getSumOfL2CalldataSize_if_calldataSizeBlockCount_is_zero() {
+  fun test_getSumOfL2CalldataSize_when_calldataSizeBlockCount_is_zero() {
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethBlockNumber() } doReturn SafeFuture.completedFuture(BigInteger.ONE)
       on { ethGetBlockSizeByNumber(any()) } doReturn SafeFuture.completedFuture(10540.toBigInteger())

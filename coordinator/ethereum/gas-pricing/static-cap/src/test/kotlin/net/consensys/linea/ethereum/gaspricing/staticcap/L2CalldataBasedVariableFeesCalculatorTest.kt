@@ -291,22 +291,23 @@ class L2CalldataBasedVariableFeesCalculatorTest {
     )
 
     // call calculateFees first to instantiate the lastVariableCost
+    var expectedVariableFees = 15000.0
     feesCalculator.calculateFees(feeHistory).let {
+      assertThat(it).isEqualTo(15000.0)
       fakeHistoricVariableCostProvider.setLatestVariableCost(it)
-    }
-
-    // we don't update the latest variable cost after each calculation
-    // to mimic block production halts after last 5 blocks with full calldata
-    var calculatedFee = 0.0
-    (0..10).forEach { _ ->
-      calculatedFee = feesCalculator.calculateFees(feeHistory)
     }
 
     // delta would be 1.0
     val delta = 1.0
-    val expectedVariableFees = 15000.0 * (1.0 + delta / 32.0)
-    // calculatedFee should be equal to the value returned from the first call to calculateFees
-    assertThat(calculatedFee).isEqualTo(expectedVariableFees)
+    expectedVariableFees = expectedVariableFees * (1.0 + delta / 32.0)
+
+    // we don't update the latest variable cost after each calculation
+    // to mimic block production halts after last 5 blocks with full calldata
+    (0..10).forEach { _ ->
+      val calculatedFee = feesCalculator.calculateFees(feeHistory)
+      // calculatedFee should be equal to the value returned from the first calculateFees call
+      assertThat(calculatedFee).isEqualTo(expectedVariableFees)
+    }
   }
 
   @Test
@@ -345,7 +346,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   fun test_calculateFees_would_throw_error_when_failed_to_get_calldata_size_sum() {
     val mockVariableFeesCalculator = mock<FeesCalculator>()
     whenever(mockVariableFeesCalculator.calculateFees(eq(feeHistory)))
-      .thenReturn(variableFee, 0.0)
+      .thenReturn(variableFee)
 
     val expectedException = RuntimeException("Error while getting calldata size sum")
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator>()
@@ -368,7 +369,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   fun test_calculateFees_would_throw_error_when_failed_to_get_latest_variable_cost() {
     val mockVariableFeesCalculator = mock<FeesCalculator>()
     whenever(mockVariableFeesCalculator.calculateFees(eq(feeHistory)))
-      .thenReturn(variableFee, 0.0)
+      .thenReturn(variableFee)
 
     val sumOfCalldataSize = (109000 * 5).toBigInteger() // maxBlockCalldataSize * calldataSizeBlockCount
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {

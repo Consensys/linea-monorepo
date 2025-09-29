@@ -54,7 +54,7 @@ class HistoricVariableCostProviderImplTest {
     assertThat(historicVariableCostProvider.getLatestVariableCost().get()).isEqualTo(expectedVariableCost)
 
     // subsequent calls with the same block #100 should return the same value by the cache
-    (0..4).forEach { _ ->
+    repeat(5) {
       assertThat(
         historicVariableCostProvider.getLatestVariableCost().get(),
       ).isEqualTo(expectedVariableCost)
@@ -66,7 +66,7 @@ class HistoricVariableCostProviderImplTest {
   }
 
   @Test
-  fun test_getLatestVariableCost_throws_error_if_ethGetBlock_return_null() {
+  fun test_getLatestVariableCost_throws_error_when_ethGetBlock_returns_null() {
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
       on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
@@ -82,7 +82,7 @@ class HistoricVariableCostProviderImplTest {
   }
 
   @Test
-  fun test_getLatestVariableCost_throws_error_if_ethGetBlock_throws_error() {
+  fun test_getLatestVariableCost_throws_error_when_ethGetBlock_throws_error() {
     val expectedException = RuntimeException("Error from ethGetBlock")
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethBlockNumber() } doReturn SafeFuture.completedFuture(targetBlockNumber)
@@ -99,7 +99,7 @@ class HistoricVariableCostProviderImplTest {
   }
 
   @Test
-  fun test_getLatestVariableCost_returns_zero_if_MinerExtraData_decode_throws_error() {
+  fun test_getLatestVariableCost_returns_zero_when_MinerExtraData_decode_throws_error() {
     val mockEthBlock = mock<Block> {
       // extra data hex string with unsupported version 0xFF
       on { extraData } doReturn "0xff000003e80000271000002ee000000000000000000000000000000000000000".decodeHex()
