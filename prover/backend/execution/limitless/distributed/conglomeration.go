@@ -3,6 +3,7 @@ package distributed
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"runtime/debug"
 	"time"
@@ -126,15 +127,8 @@ func runSharedRandomness(cfg *config.Config, req *Metadata) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.LimitlessParams.GLSubproofsTimeout)*time.Second)
 	defer cancel()
 
-	// Important: Though only GL commit files are required to generate shared randomness, we want to always
-	// ensure that both GL proof files and GL commit files always exist. This is for the conglomerator to verify atomicity.
-	// We dont want a case where GL proof files have arrived but commit files have not arrived due to a crash or vice-versa.
-	filesToWatch := make([]string, 0, 2*req.NumGL)
-	filesToWatch = append(filesToWatch, req.GLProofFiles...)
-	filesToWatch = append(filesToWatch, req.GLCommitFiles...)
-
-	msg := fmt.Sprintf("Scanning for %d GL proof files and %d LPP commitments from GL provers with configured timeout:%d sec to generate shared randomness", req.NumGL, req.NumGL, cfg.LimitlessParams.GLSubproofsTimeout)
-	err := files.WaitForAllFilesAtPath(ctx, filesToWatch, true, msg)
+	msg := fmt.Sprintf("Scanning for %d LPP commitments from GL provers with configured timeout:%d sec to generate shared randomness", req.NumGL, cfg.LimitlessParams.GLSubproofsTimeout)
+	err := files.WaitForAllFilesAtPath(ctx, req.GLCommitFiles, true, msg)
 	if err != nil {
 		return fmt.Errorf("error waiting for all GL workers: %w", err)
 	}
@@ -145,6 +139,9 @@ func runSharedRandomness(cfg *config.Config, req *Metadata) error {
 	for i, path := range req.GLCommitFiles {
 		lppCommitment := &field.Element{}
 		if err := serialization.LoadFromDisk(path, lppCommitment, true); err != nil {
+			if err == io.EOF {
+
+			}
 			return fmt.Errorf("could not load lpp-commitment: %w", err)
 		}
 		lppCommitments[i] = *lppCommitment
