@@ -2,6 +2,7 @@ package distributed
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,10 +11,16 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
@@ -62,7 +69,8 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 				return ctxGL.Err()
 			default:
 				proofGL := &recursion.Witness{}
-				if err := serialization.LoadFromDisk(req.GLProofFiles[i], proofGL, true); err != nil {
+				// GL proof loading
+				if err := deSerWithRetry(req.GLProofFiles[i], proofGL, true, 3, 500*time.Millisecond); err != nil {
 					return err
 				}
 
@@ -77,7 +85,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 		return nil, fmt.Errorf("could not deserialize GL-subproofs: %v", err)
 	}
 
-	logrus.Infoln("Deserialized all GL-subproofs and waiting for all LPP workers to finish")
+	logrus.Infoln("Deserialized all GL-subproofs and loaded into memory")
 
 	// Wait for all LPP sub-proofs files to arrive with specified timeout
 	if err = waitForAllLPPWorkers(cfg, req); err != nil {
@@ -97,7 +105,8 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 				return ctxLPP.Err()
 			default:
 				proofLPP := &recursion.Witness{}
-				if err := serialization.LoadFromDisk(req.LPPProofFiles[i], proofLPP, true); err != nil {
+				// LPP proof loading
+				if err := deSerWithRetry(req.LPPProofFiles[i], proofLPP, true, 3, 500*time.Millisecond); err != nil {
 					return err
 				}
 
@@ -112,10 +121,51 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 		return nil, fmt.Errorf("could not deserialize LPP-subproofs: %v", err)
 	}
 
-	logrus.Infoln("Finished deserialization of all LPP-subproofs.")
+	logrus.Infoln("Deserialized all LPP-subproofs and loaded into memory")
+
+	// Start loading the setup before starting the conglomeration so that it is
+	// ready when we need it.
+	execReq := &execution.Request{}
+	if err := files.ReadRequest(req.ExecutionRequestFile, execReq); err != nil {
+		return nil, fmt.Errorf("could not read the execution proof request file (%v): %w", req.ExecutionRequestFile, err)
+	}
+	var (
+		out         = execution.CraftProverOutput(cfg, execReq)
+		witness     = execution.NewWitness(cfg, execReq, &out)
+		setup       circuits.Setup
+		errSetup    error
+		chSetupDone = make(chan struct{})
+	)
+
+	// Schedule loading up circuits setup
+	go func() {
+		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
+		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
+		close(chSetupDone)
+	}()
 
 	logrus.Infof("Starting the conglomeration-prover for conflation request %s-%s", req.StartBlock, req.EndBlock)
-	return nil, nil
+
+	proofConglo, congloWIOP, err := runConglomeration(cfg, proofGLs, proofLPPs)
+	if err != nil {
+		return nil, fmt.Errorf("could not run conglomeration prover: %w", err)
+	}
+
+	<-chSetupDone
+	if errSetup != nil {
+		utils.Panic("could not load setup: %v", errSetup)
+	}
+
+	out.Proof = execCirc.MakeProof(
+		&cfg.TracesLimits,
+		setup,
+		congloWIOP,
+		proofConglo,
+		*witness.FuncInp,
+	)
+
+	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
+	return &out, nil
 }
 
 func runSharedRandomness(cfg *config.Config, req *Metadata) error {
@@ -138,12 +188,11 @@ func runSharedRandomness(cfg *config.Config, req *Metadata) error {
 	lppCommitments := make([]field.Element, len(req.GLCommitFiles))
 	for i, path := range req.GLCommitFiles {
 		lppCommitment := &field.Element{}
-		if err := serialization.LoadFromDisk(path, lppCommitment, true); err != nil {
-			if err == io.EOF {
-
-			}
+		// Shared randomness commitment loading
+		if err := deSerWithRetry(path, lppCommitment, true, 3, 500*time.Millisecond); err != nil {
 			return fmt.Errorf("could not load lpp-commitment: %w", err)
 		}
+
 		lppCommitments[i] = *lppCommitment
 	}
 
@@ -161,10 +210,59 @@ func waitForAllLPPWorkers(cfg *config.Config, req *Metadata) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.LimitlessParams.LPPSubproofsTimeout)*time.Second)
 	defer cancel()
 
-	msg := fmt.Sprintf("Scanning for %d proof files from LPP provers with configured timeout:%d seconds", req.NumLPP, cfg.LimitlessParams.LPPSubproofsTimeout)
+	msg := fmt.Sprintf("Waiting for %d proof files from LPP workers with configured timeout:%d seconds", req.NumLPP, cfg.LimitlessParams.LPPSubproofsTimeout)
 	err := files.WaitForAllFilesAtPath(ctx, req.LPPProofFiles, true, msg)
 	if err != nil {
 		return fmt.Errorf("error waiting for all LPP workers: %w", err)
 	}
 	return nil
+}
+
+// runConglomeration runs the conglomeration prover for the provided subproofs
+func runConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witness) (proof wizard.Proof, congloWIOP *wizard.CompiledIOP, err error) {
+
+	logrus.Infof("Running the conglomeration-prover")
+
+	// TODO: Implment mmap optimization here
+	cong, err := zkevm.LoadConglomeration(cfg)
+	if err != nil {
+		return wizard.Proof{}, nil, fmt.Errorf("could not load compiled conglomeration: %w", err)
+	}
+
+	logrus.Infof("Loaded the compiled conglomeration")
+
+	proof = cong.Prove(proofGLs, proofLPPs)
+
+	logrus.Infof("Finished running the conglomeration-prover")
+	run, err := wizard.VerifyWithRuntime(cong.Wiop, proof)
+	if err != nil {
+		zkevm.LogPublicInputs(run)
+		exit.OnUnsatisfiedConstraints(err)
+	}
+
+	logrus.Infof("Successfully sanity-checked the conglomerator")
+
+	return proof, cong.Wiop, nil
+}
+
+// deSerWithRetry: wraps LoadFromDisk with simple flat retries for io.EOF / io.ErrUnexpectedEOF
+func deSerWithRetry(path string, v any, compressed bool, retries int, delay time.Duration) error {
+	for attempt := 0; attempt <= retries; attempt++ {
+		err := serialization.LoadFromDisk(path, v, compressed)
+		if err == nil {
+			return nil
+		}
+
+		// Retry if the underlying cause is EOF-related
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			if attempt < retries {
+				logrus.Warnf("Retrying load for %s after %v due to %v (attempt %d/%d)", path, delay, err, attempt+1, retries)
+				time.Sleep(delay)
+				continue
+			}
+		}
+
+		return fmt.Errorf("could not deserialize %s: %w", path, err)
+	}
+	return fmt.Errorf("unreachable retry logic for %s", path)
 }
