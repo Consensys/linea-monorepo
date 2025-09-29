@@ -451,7 +451,7 @@ interface IYieldManager {
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
    * @param _minimumWithdrawalReservePercentageBps Minimum withdrawal reserve percentage in bps.
    */
-  function setMinimumWithdrawalReservePercentageBps(uint256 _minimumWithdrawalReservePercentageBps) external;
+  function setMinimumWithdrawalReservePercentageBps(uint16 _minimumWithdrawalReservePercentageBps) external;
 
   /**
    * @notice Set minimum withdrawal reserve.
@@ -461,7 +461,7 @@ interface IYieldManager {
    */
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external;
 
-  function setTargetWithdrawalReservePercentageBps(uint256 _targetWithdrawalReservePercentageBps) external;
+  function setTargetWithdrawalReservePercentageBps(uint16 _targetWithdrawalReservePercentageBps) external;
 
   function setTargetWithdrawalReserveAmount(uint256 _targetWithdrawalReserveAmount) external;
 }

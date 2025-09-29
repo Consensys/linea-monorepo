@@ -43,16 +43,16 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
       return _storage()._yieldManager;
   }
 
-  function isWithdrawLSTAllowed() external view returns (bool) {
-    return IS_WITHDRAW_LST_ALLOWED;
-  }
-
   /**
    * @notice Initialises the LineaNativeYieldExtension.
    * @param _yieldManager YieldManager address.
    */
   function __LineaNativeYieldExtension_init(address _yieldManager) internal onlyInitializing {
     setYieldManager(_yieldManager);
+  }
+
+  function isWithdrawLSTAllowed() external view returns (bool) {
+    return IS_WITHDRAW_LST_ALLOWED;
   }
 
   /**

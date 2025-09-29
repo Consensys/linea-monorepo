@@ -4,50 +4,47 @@ pragma solidity ^0.8.30;
 /**
  * @title Contract to handle shared storage of YieldManager and YieldProvider contracts
  * @author ConsenSys Software Inc.
- * @dev Pattern we abide by that YieldManager is single writer, and YieldProviders have read-only access. Unfortunately we don't have a succinct Solidity syntax to enforce this.
+ * @dev Generally we use the pattern that YieldManager is the single storage writer. However there are certain storage value updates that are intricately intertwined with the yield provider logic. We mark these out.
  * @custom:security-contact security-report@linea.build
  */
 abstract contract YieldManagerStorageLayout {
   /// @custom:storage-location erc7201:linea.storage.YieldManager
   struct YieldManagerStorage {
-    // Should we struct pack this?
     address _l1MessageService;
     address _l2YieldRecipient;
-    uint256 _targetWithdrawalReservePercentageBps;
-    uint256 _targetWithdrawalReserveAmount;
-    uint256 _minimumWithdrawalReservePercentageBps; // Can be uint16, because max value of 10000
+    uint16 _minimumWithdrawalReservePercentageBps;
+    uint16 _targetWithdrawalReservePercentageBps;
     uint256 _minimumWithdrawalReserveAmount;
-    address[] _yieldProviders;
+    uint256 _targetWithdrawalReserveAmount;
     uint256 _userFundsInYieldProvidersTotal;
     uint256 _pendingPermissionlessUnstake;
-    mapping(address yieldProvider => YieldProviderData) _yieldProviderData;
+    address[] _yieldProviders;
+    mapping(address yieldProvider => YieldProviderStorage) _yieldProviderStorage;
+  }
+
+  struct YieldProviderStorage {
+    YieldProviderType yieldProviderType;
+    bool isStakingPaused;
+    bool isOssificationInitiated;
+    bool isOssified;
+    address yieldProviderEntrypoint;
+    address yieldProviderOssificationEntrypoint;
+    uint96 yieldProviderIndex;
+    uint256 userFunds; // Represents user funds in YieldProvider. Must only be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
+    uint256 yieldReportedCumulative; // Must increment 1:1 with userFunds
+    // Timing of below operations is highly specific to the yield provider, so we will mutate their state in the YieldProvider contract
+    uint256 currentNegativeYield; // Required to socialize losses if permanent
+    uint256 lstLiabilityPrincipal;
   }
 
   enum YieldProviderType {
       LIDO_STVAULT
   }
 
-  /**
-   * @notice Supporting data for compressed calldata submission including compressed data.
-   * @dev finalStateRootHash is used to set state root at the end of the data.
-   */
   struct YieldProviderRegistration {
     YieldProviderType yieldProviderType;
     address yieldProviderEntrypoint;
     address yieldProviderOssificationEntrypoint;
-  }
-
-  struct YieldProviderData {
-    YieldProviderRegistration registration;
-    uint96 yieldProviderIndex;
-    bool isStakingPaused;
-    bool isOssificationInitiated;
-    bool isOssified;
-    uint256 userFunds; // Represents user funds in YieldProvider. Must only be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
-    uint256 yieldReportedCumulative; // Must increment 1:1 with userFunds
-    // Timing of below operations is highly specific to the yield provider, so we will mutate their state in the YieldProvider contract
-    uint256 currentNegativeYield; // Required to socialize losses if permanent
-    uint256 lstLiabilityPrincipal;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -59,8 +56,7 @@ abstract contract YieldManagerStorageLayout {
       }
   }
 
-  function _getYieldProviderDataStorage(address _yieldProvider) internal view returns (YieldProviderData storage) {
-    YieldManagerStorage storage $$ = _getYieldManagerStorage();
-    return $$._yieldProviderData[_yieldProvider];
+  function _getYieldProviderStorage(address _yieldProvider) internal view returns (YieldProviderStorage storage $$) {
+    $$ = _getYieldManagerStorage()._yieldProviderStorage[_yieldProvider];
   }
 }

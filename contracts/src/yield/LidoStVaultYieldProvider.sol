@@ -56,7 +56,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   }
 
   function _getEntrypointContract() private view returns (address) {
-    return _getYieldProviderDataStorage(YIELD_PROVIDER).isOssified ? YIELD_PROVIDER : address(DASHBOARD);
+    return _getYieldProviderStorage(YIELD_PROVIDER).isOssified ? YIELD_PROVIDER : address(DASHBOARD);
   }
 
   function _getStakingVault() private view returns (address) {
@@ -66,7 +66,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
   // Settle interest before principal
   function _payMaximumPossibleLSTLiability() internal {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(YIELD_PROVIDER);
     if ($$.isOssified) return;
     // Assumption - this is maximum available for rebalance
     uint256 availableRebalanceAmount = YIELD_PROVIDER.balance;
@@ -83,7 +83,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   // @dev LST Principal reduction from discovered external sync, does not count as payment
   // @dev Guard to validate against ossification is done on the YieldManager
   function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256 lstPrincipalPayment) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(YIELD_PROVIDER);
     if ($$.isOssificationInitiated || $$.isOssified) {
       return 0;
     }
@@ -91,7 +91,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   }
 
   function _payLSTPrincipal(uint256 _maxAvailableRepaymentETH) internal returns (uint256 lstPrincipalPayment) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(YIELD_PROVIDER);
     if ($$.isOssified) return 0;
     uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
     if (lstLiabilityPrincipalCached == 0) return 0;
@@ -113,7 +113,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   function _syncExternalLiabilitySettlement(uint256 liabilityShares, uint256 lstLiabilityPrincipalCached) internal returns (uint256 lstLiabilityPrincipal, bool isLstLiabilityPrincipalChanged) {
     // uint256 liabilityShares = DASHBOARD.liabilityShares();
     uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(liabilityShares);
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(YIELD_PROVIDER);
     // uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
     if (liabilityETH < lstLiabilityPrincipalCached) {
       $$.lstLiabilityPrincipal = liabilityETH;
@@ -126,7 +126,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   // Returns how much of _maxAvailableRepaymentETH available, after LST interest payment
   // @dev Redemption component of obligations, and liability - are decremented in tandem in Lido VaultHub
   function _payLSTInterest(uint256 _maxAvailableRepaymentETH) internal returns (uint256 payment) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(YIELD_PROVIDER);
     if ($$.isOssified) return _maxAvailableRepaymentETH;
     uint256 liabilityTotalShares = DASHBOARD.liabilityShares();
     if (liabilityTotalShares == 0) return _maxAvailableRepaymentETH;
@@ -158,7 +158,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
     uint256 afterVaultBalance = YIELD_PROVIDER.balance;
     obligationsPaid = afterVaultBalance - beforeVaultBalance;
     if (obligationsPaid > _maxAvailableRepaymentETH) {
-      _getYieldProviderDataStorage(YIELD_PROVIDER).currentNegativeYield += (obligationsPaid - _maxAvailableRepaymentETH);
+      _getYieldProviderStorage(YIELD_PROVIDER).currentNegativeYield += (obligationsPaid - _maxAvailableRepaymentETH);
     }
   }
 
@@ -170,7 +170,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
       DASHBOARD.disburseNodeOperatorFee();
       payment = currentFees;
       if (payment >= _availableAmount) {
-        _getYieldProviderDataStorage(YIELD_PROVIDER).currentNegativeYield += (payment - _availableAmount);
+        _getYieldProviderStorage(YIELD_PROVIDER).currentNegativeYield += (payment - _availableAmount);
       }
     }
   }
@@ -189,7 +189,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
    * @dev Both `redemptions` and `obligations` can both be reduced permissionlessly via VaultHub.settleObligations(). Then this is accounted within negative yield.
    */
   function reportYield() external returns (uint256 _newYield) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(YIELD_PROVIDER);
     if ($$.isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     }
@@ -218,7 +218,7 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   }
 
   function _handlePostiveYieldAccounting(uint256 positiveTotalYield) internal returns (uint256) {
-      YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+      YieldProviderStorage storage $$ = _getYieldProviderStorage(YIELD_PROVIDER);
       // First pay negative yield
       uint256 positiveRemainingYield = positiveTotalYield;
       uint256 currentNegativeYield = $$.currentNegativeYield;
@@ -339,11 +339,11 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
   }
 
   function withdrawableValue() external view returns (uint256) {
-    return _getYieldProviderDataStorage(YIELD_PROVIDER).isOssified ? YIELD_PROVIDER.balance : DASHBOARD.withdrawableValue();
+    return _getYieldProviderStorage(YIELD_PROVIDER).isOssified ? YIELD_PROVIDER.balance : DASHBOARD.withdrawableValue();
   }
 
   function mintLST(uint256 _amount, address _recipient) external {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(YIELD_PROVIDER);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(YIELD_PROVIDER);
     if ($$.isOssificationInitiated || $$.isOssified) {
       revert MintLSTDisabledDuringOssification();
     }

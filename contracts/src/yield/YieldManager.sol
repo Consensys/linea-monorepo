@@ -70,7 +70,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   modifier onlyKnownYieldProvider(address _yieldProvider) {
-      if (_getYieldManagerStorage()._yieldProviderData[_yieldProvider].yieldProviderIndex != 0) {
+      if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
         revert UnknownYieldProvider();
       }
       _;
@@ -173,7 +173,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint256 lstPrincipalRepayment = _payLSTPrincipal(_yieldProvider, _amount);
     uint256 amountRemaining = _amount - lstPrincipalRepayment;
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal += amountRemaining;
-    _getYieldProviderDataStorage(_yieldProvider).userFunds += amountRemaining;
+    _getYieldProviderStorage(_yieldProvider).userFunds += amountRemaining;
     emit YieldProviderFunded(_yieldProvider, msg.sender, _amount, lstPrincipalRepayment, amountRemaining);
   }
 
@@ -244,7 +244,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert DelegateCallFailed();
     }
     (uint256 reportedYield) = abi.decode(data, (uint256));
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     $$.userFunds += reportedYield;
     $$.yieldReportedCumulative += reportedYield;
     YieldManagerStorage storage $ = _getYieldManagerStorage();
@@ -365,7 +365,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    _getYieldProviderDataStorage(_yieldProvider).userFunds -= _amount;
+    _getYieldProviderStorage(_yieldProvider).userFunds -= _amount;
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     $._userFundsInYieldProvidersTotal -= _amount;
     // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
@@ -466,7 +466,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @param _yieldProvider          Yield provider address.
    */
   function pauseStaking(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    if (_getYieldProviderDataStorage(_yieldProvider).isStakingPaused) {
+    if (_getYieldProviderStorage(_yieldProvider).isStakingPaused) {
       revert StakingAlreadyPaused();
     }
     _pauseStaking(_yieldProvider);
@@ -480,11 +480,11 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    _getYieldProviderDataStorage(_yieldProvider).isStakingPaused = true;
+    _getYieldProviderStorage(_yieldProvider).isStakingPaused = true;
   }
 
   function _pauseStakingIfNotAlready(address _yieldProvider) internal {
-    if (!_getYieldProviderDataStorage(_yieldProvider).isStakingPaused) {
+    if (!_getYieldProviderStorage(_yieldProvider).isStakingPaused) {
       _pauseStaking(_yieldProvider);
     }
   }
@@ -497,7 +497,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    */
   function unpauseStaking(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
     // Other checks for unstaking
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if (!$$.isStakingPaused) {
       revert StakingAlreadyUnpaused();
     }
@@ -518,7 +518,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    _getYieldProviderDataStorage(_yieldProvider).isStakingPaused = false;
+    _getYieldProviderStorage(_yieldProvider).isStakingPaused = false;
   }
 
   function mintLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyKnownYieldProvider(_yieldProvider) {
@@ -537,7 +537,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   // TODO - Role
   function initiateOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
@@ -553,14 +553,14 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   // TODO - Role
   function undoInitiateOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if (!$$.isOssificationInitiated) {
       revert OssificationNotInitiated();
     }
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    if (_getYieldProviderDataStorage(_yieldProvider).isStakingPaused) {
+    if (_getYieldProviderStorage(_yieldProvider).isStakingPaused) {
       _unpauseStaking(_yieldProvider);
     }
     $$.isOssificationInitiated = false;
@@ -568,7 +568,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   function processPendingOssification(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if (!$$.isOssificationInitiated) {
       revert OssificationNotInitiated();
     }
@@ -607,15 +607,17 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_yieldProviderRegistration);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     
-    if ($._yieldProviderData[_yieldProvider].yieldProviderIndex != 0) {
+    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
       revert YieldProviderAlreadyAdded();
     }
     // Ensure no added yield provider has index 0
     uint96 yieldProviderIndex = uint96($._yieldProviders.length) + 1;
     // TODO - ? Need to check for uint96 overflow
     $._yieldProviders.push(_yieldProvider);
-    $._yieldProviderData[_yieldProvider] = YieldProviderData({
-        registration: _yieldProviderRegistration,
+    $._yieldProviderStorage[_yieldProvider] = YieldProviderStorage({
+        yieldProviderType: _yieldProviderRegistration.yieldProviderType,
+        yieldProviderEntrypoint: _yieldProviderRegistration.yieldProviderEntrypoint,
+        yieldProviderOssificationEntrypoint: _yieldProviderRegistration.yieldProviderOssificationEntrypoint,
         yieldProviderIndex: yieldProviderIndex,
         isStakingPaused: false,
         isOssificationInitiated: false,
@@ -639,9 +641,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert ZeroAddressNotAllowed();
     }
 
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
     // We assume that 'pendingPermissionlessUnstake' and 'currentNegativeYield' must be 0, before 'userFunds' can be 0.
-    if ($._yieldProviderData[_yieldProvider].userFunds != 0) {
+    if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
       revert YieldProviderHasRemainingFunds();
     }
     _removeYieldProvider(_yieldProvider);
@@ -660,18 +661,20 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   function _removeYieldProvider(address _yieldProvider) internal  {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    uint96 yieldProviderIndex = $._yieldProviderData[_yieldProvider].yieldProviderIndex;
+
+    uint96 yieldProviderIndex = _getYieldProviderStorage(_yieldProvider).yieldProviderIndex;
     address lastYieldProvider = $._yieldProviders[$._yieldProviders.length - 1];
-    $._yieldProviderData[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
+    $._yieldProviderStorage[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
     $._yieldProviders[yieldProviderIndex] = lastYieldProvider;
     $._yieldProviders.pop();
 
-    delete $._yieldProviderData[_yieldProvider];
+    // TODO - Does this actually wipe the whole struct, to delete the storage pointer?
+    delete $._yieldProviderStorage[_yieldProvider];
   }
 
   // @dev It is not correct to count a donation to the L1MessageService as yield, because reported yield results in newly circulating L2 ETH.
   function _decrementNegativeYieldAgainstDonation(address _yieldProvider, uint256 _amount) internal {
-    YieldProviderData storage $$ = _getYieldProviderDataStorage(_yieldProvider);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     uint256 currentNegativeYield = $$.currentNegativeYield;
     if (currentNegativeYield > 0) {
       $$.currentNegativeYield -= Math256.min(currentNegativeYield, _amount);
@@ -704,7 +707,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
    * @param _minimumWithdrawalReservePercentageBps Minimum withdrawal reserve percentage in bps.
    */
-  function setMinimumWithdrawalReservePercentageBps(uint256 _minimumWithdrawalReservePercentageBps) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+  function setMinimumWithdrawalReservePercentageBps(uint16 _minimumWithdrawalReservePercentageBps) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
       if (_minimumWithdrawalReservePercentageBps > MAX_BPS) {
         revert BpsMoreThan10000();
       }
@@ -731,7 +734,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       $._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
   }
 
-  function setTargetWithdrawalReservePercentageBps(uint256 _targetWithdrawalReservePercentageBps) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+  function setTargetWithdrawalReservePercentageBps(uint16 _targetWithdrawalReservePercentageBps) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
       if (_targetWithdrawalReservePercentageBps > MAX_BPS) {
         revert BpsMoreThan10000();
       }
@@ -739,7 +742,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       if (_targetWithdrawalReservePercentageBps < $._minimumWithdrawalReservePercentageBps) {
         revert TargetReservePercentageMustBeAboveMinimum();
       }
-      uint256 oldTargetWithdrawalReservePercentageBps = $._targetWithdrawalReservePercentageBps;
+      uint16 oldTargetWithdrawalReservePercentageBps = $._targetWithdrawalReservePercentageBps;
       emit TargetWithdrawalReservePercentageBpsSet(
         oldTargetWithdrawalReservePercentageBps,
         _targetWithdrawalReservePercentageBps,

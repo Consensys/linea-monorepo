@@ -54,6 +54,15 @@ interface ILineaNativeYieldExtension {
 
   error LSTWithdrawalRequiresDeficit();
 
+  /**
+   * @notice Report native yield earned for L2 distribution by emitting a synthetic `MessageSent` event.
+   * @dev Callable only by the registered YieldManager.
+   * @param _amount The net earned yield.
+   */
+  function reportNativeYield(uint256 _amount, address _l2YieldRecipient) external;
+
+  function claimMessageWithProofAndWithdrawLST(IL1MessageService.ClaimMessageWithProofParams calldata _params, address _yieldProvider) external;
+
   function isWithdrawLSTAllowed() external view returns (bool);
 
   /**
@@ -71,18 +80,9 @@ interface ILineaNativeYieldExtension {
   function fund() external payable;
 
   /**
-   * @notice Report native yield earned for L2 distribution by emitting a synthetic `MessageSent` event.
-   * @dev Callable only by the registered YieldManager.
-   * @param _amount The net earned yield.
-   */
-  function reportNativeYield(uint256 _amount, address _l2YieldRecipient) external;
-
-  /**
    * @notice Set YieldManager address.
    * @dev YIELD_MANAGER_SETTER_ROLE is required to execute.
    * @param _newYieldManager YieldManager address.
    */
   function setYieldManager(address _newYieldManager) external;
-
-  function claimMessageWithProofAndWithdrawLST(IL1MessageService.ClaimMessageWithProofParams calldata _params, address _yieldProvider) external;
 }
