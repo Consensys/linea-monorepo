@@ -85,6 +85,9 @@ func (r *RotatedExt) SubVector(start, stop int) SmartVector {
 	return r.subVector(start, stop, res)
 }
 
+// TODO @gbotrel WriteSubVectorInSliceExt should be in interface and available for regular too.
+// review smart vector naming scheme and make it more consistant with canonical golang slices.
+
 func (r *RotatedExt) WriteSubVectorInSliceExt(start, stop int, s []fext.Element) {
 	// sanity checks on start / stop / len(s)
 	if start < 0 || stop > r.Len() || stop <= start || len(s) != stop-start {
@@ -111,7 +114,7 @@ func (r *RotatedExt) subVector(start, stop int, res []fext.Element) SmartVector 
 
 	// NB: we may need to construct the res in several steps
 	// in case
-	copy(res, r.v[startWithOffsetClean:utils.Min(size, startWithOffsetClean+spanSize)])
+	copy(res, r.v[startWithOffsetClean:min(size, startWithOffsetClean+spanSize)])
 
 	// If this is negative of zero, it means the first copy already copied
 	// everything we needed to copy

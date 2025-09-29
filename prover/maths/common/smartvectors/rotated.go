@@ -82,10 +82,11 @@ func (r *Rotated) GetPtr(n int) *field.Element {
 	return &r.v[pos]
 }
 
-// Returns a particular element. The subvector is taken at indices
-// [Start, Stop). (Stop being excluded from the span)
-func (r *Rotated) SubVector(start, stop int) SmartVector {
+// TODO @gbotrel this SubVector APIs needs some cleaning
 
+// Returns a particular element. The subvector is taken at indices
+// [start, stop). (stop being excluded from the span)
+func (r *Rotated) SubVector(start, stop int) SmartVector {
 	if stop+r.offset < len(r.v) && start+r.offset > 0 {
 		res := Regular(r.v[start+r.offset : stop+r.offset])
 		return &res
@@ -95,18 +96,9 @@ func (r *Rotated) SubVector(start, stop int) SmartVector {
 	size := r.Len()
 	spanSize := stop - start
 
-	// checking
-	if stop <= start {
-		utils.Panic("the Start %v >= Stop %v", start, stop)
-	}
-
-	// boundary checks
-	if start < 0 {
-		utils.Panic("the Start value was negative %v", start)
-	}
-
-	if stop > size {
-		utils.Panic("the Stop is OOO : %v (the length is %v)", stop, size)
+	// compact boundary checks
+	if stop <= start || start < 0 || stop > size {
+		utils.Panic("invalid subvector range: start=%v, stop=%v, size=%v", start, stop, size)
 	}
 
 	// normalize the offset to something positive [0: size)
@@ -114,7 +106,7 @@ func (r *Rotated) SubVector(start, stop int) SmartVector {
 
 	// NB: we may need to construct the res in several steps
 	// in case
-	copy(res, r.v[startWithOffsetClean:utils.Min(size, startWithOffsetClean+spanSize)])
+	copy(res, r.v[startWithOffsetClean:min(size, startWithOffsetClean+spanSize)])
 
 	// If this is negative of zero, it means the first copy already copied
 	// everything we needed to copy
@@ -129,6 +121,49 @@ func (r *Rotated) SubVector(start, stop int) SmartVector {
 	copy(res[howManyAlreadyCopied:], r.v[:howManyElementLeftToCopy])
 	ret := Regular(res)
 	return &ret
+}
+
+func (r *Rotated) WriteSubVectorInSliceExt(start, stop int, s []fext.Element) {
+	// sanity checks on start / stop / len(s)
+	if start < 0 || stop > r.Len() || stop <= start || len(s) != stop-start {
+		utils.Panic("invalid start/stop/len(s): start=%v, stop=%v, len(s)=%v, vector len=%v", start, stop, len(s), r.Len())
+	}
+	if stop+r.offset < len(r.v) && start+r.offset > 0 {
+		for i := 0; i < stop-start; i++ {
+			fext.SetFromBase(&s[i], &r.v[start+r.offset+i])
+		}
+		return
+	}
+	size := r.Len()
+	spanSize := stop - start
+
+	// compact boundary checks
+	if stop <= start || start < 0 || stop > size {
+		utils.Panic("invalid subvector range: start=%v, stop=%v, size=%v", start, stop, size)
+	}
+
+	// normalize the offset to something positive [0: size)
+	startWithOffsetClean := utils.PositiveMod(start+r.offset, size)
+
+	// NB: we may need to construct the res in several steps
+	for i := 0; i < min(size-startWithOffsetClean, spanSize); i++ {
+		fext.SetFromBase(&s[i], &r.v[startWithOffsetClean+i])
+	}
+
+	// If this is negative of zero, it means the first copy already copied
+	// everything we needed to copy
+	howManyElementLeftToCopy := startWithOffsetClean + spanSize - size
+	howManyAlreadyCopied := spanSize - howManyElementLeftToCopy
+	if howManyElementLeftToCopy <= 0 {
+		return
+	}
+
+	// if necessary perform a second
+	// copy(res[howManyAlreadyCopied:], r.v[:howManyElementLeftToCopy])
+	for i := 0; i < howManyElementLeftToCopy; i++ {
+		fext.SetFromBase(&s[howManyAlreadyCopied+i], &r.v[i])
+	}
+	return
 }
 
 // Rotates the vector into a new one, a positive offset means a left cyclic shift

@@ -97,31 +97,14 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	e := &Expression{
 		Operator: Product{Exponents: exponents},
 		Children: items,
-		ESHash:   fext.GenericFieldOne(),
+		ESHash:   fext.One(),
 		IsBase:   computeIsBaseFromChildren(items),
 	}
 
+	var tmp fext.Element
 	for i := range e.Children {
-		tmp := fext.GenericFieldOne()
-		switch {
-		case exponents[i] == 1:
-			e.ESHash.Mul(&e.Children[i].ESHash)
-		case exponents[i] == 2:
-			tmp.Square(&e.Children[i].ESHash)
-			e.ESHash.Mul(&tmp)
-		case exponents[i] == 3:
-			tmp.Square(&e.Children[i].ESHash)
-			tmp.Mul(&e.Children[i].ESHash)
-			e.ESHash.Mul(&tmp)
-		case exponents[i] == 4:
-			tmp.Square(&e.Children[i].ESHash)
-			tmp.Square(&tmp)
-			e.ESHash.Mul(&tmp)
-		default:
-			exponent := big.NewInt(int64(exponents[i]))
-			tmp.Exp(&e.Children[i].ESHash, exponent)
-			e.ESHash.Mul(&tmp)
-		}
+		tmp.ExpInt64(e.Children[i].ESHash, int64(exponents[i]))
+		e.ESHash.Mul(&e.ESHash, &tmp)
 	}
 
 	return e

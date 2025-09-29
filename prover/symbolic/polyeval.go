@@ -3,8 +3,6 @@ package symbolic
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
@@ -39,12 +37,12 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 		return coeffs[0]
 	}
 
-	eshashes := []fext.GenericFieldElem{}
-	for i := range coeffs {
-		eshashes = append(eshashes, coeffs[i].ESHash)
+	esh := esHash{}
+	for i := len(coeffs) - 1; i >= 0; i-- {
+		esh.Mul(&esh, &x.ESHash)
+		esh.Add(&esh, &coeffs[i].ESHash)
 	}
 
-	esh := polyext.EvalUnivariateMixed(eshashes, x.ESHash)
 	children := append([]*Expression{x}, coeffs...)
 
 	return &Expression{

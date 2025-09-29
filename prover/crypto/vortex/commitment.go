@@ -4,6 +4,7 @@ import (
 	"hash"
 	"runtime"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
@@ -37,22 +38,12 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 			Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
 	}
 
-	chAlloc := make(chan struct{}, 1)
-	go func() {
-		// this is a large alloc, we start before doing the encoding.
-		// TODO @gbotrel not particularly efficient -- this still appears in the trace.
-		// we should investigate a way to pre-allocate that and re-use it, seems useful to keep mostly
-		// for self recursion, maybe in a context linked to that?
-		colHashes = make([]field.Element, p.NumEncodedCols()*p.Key.OutputSize())
-		close(chAlloc)
-	}()
-
 	timeEncoding := profiling.TimeIt(func() {
 		encodedMatrix = p.encodeRows(ps)
 	})
 	timeSisHashing := profiling.TimeIt(func() {
 		// colHashes stores concatenation of SIS hashes of the columns
-		<-chAlloc
+		colHashes = make([]field.Element, p.NumEncodedCols()*p.Key.OutputSize())
 		colHashes = p.Key.TransversalHash(encodedMatrix, colHashes)
 	})
 
@@ -164,6 +155,9 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 	leaves = make([]field.Octuplet, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
+
+		fCol := make([]byte, chunkSize*field.Bytes)
+
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 
@@ -173,11 +167,9 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 				hasher.Reset()
 
 				// Convert a colHashes chunk to a byte slice
-				fCol := make([]byte, chunkSize*field.Bytes)
 				for i := 0; i < chunkSize; i++ {
 					startIndex := i * field.Bytes
-					fbytes := colHashes[startChunk+i].Bytes()
-					copy(fCol[startIndex:], fbytes[:])
+					koalabear.BigEndian.PutElement((*[4]byte)(fCol[startIndex:]), colHashes[startChunk+i])
 				}
 				hasher.Write(fCol[:])
 
