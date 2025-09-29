@@ -258,6 +258,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			ctx.Comp,
 			accessors.NewFromCoin(ctx.Coins.Collapse),
 			ctx.Columns.PreimagesSis,
+			fmt.Sprintf("PREIMAGE_COLLAPSE_%v", ctx.SelfRecursionCnt),
 		)
 	}
 

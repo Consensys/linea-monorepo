@@ -75,20 +75,20 @@ type BackReference int
 // Serializer manages the serialization process, packing objects into a PackedObject.
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
-	PackedObject *PackedObject                 // The output structure containing serialized data.
-	typeMap      map[string]int                // Maps type names to indices in PackedObject.Types.
-	pointerMap   map[uintptr]int               // Maps pointer values to indices in PackedObject.Pointers.
-	coinMap      map[uuid.UUID]int             // Maps coin UUIDs to indices in PackedObject.Coins.
-	coinIdMap    map[string]int                // Maps coin IDs to indices in PackedObject.CoinIDs.
-	columnMap    map[uuid.UUID]int             // Maps column UUIDs to indices in PackedObject.Columns.
-	columnIdMap  map[string]int                // Maps column IDs to indices in PackedObject.ColumnIDs.
-	queryMap     map[uuid.UUID]int             // Maps query UUIDs to indices in PackedObject.Queries.
-	queryIDMap   map[string]int                // Maps query IDs to indices in PackedObject.QueryIDs.
-	compiledIOPs map[*wizard.CompiledIOP]int   // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
-	Stores       map[*column.Store]int         // Maps Store pointers to indices in PackedObject.Store.
-	circuitMap   map[*cs.SparseR1CS]int        // Maps circuit pointers to indices in PackedObject.Circuits.
-	ExprMap      map[fext.GenericFieldElem]int // Maps expression pointers to indices in PackedObject.Expressions
-	Warnings     []string                      // Collects warnings (e.g., unexported fields) for debugging.
+	PackedObject *PackedObject               // The output structure containing serialized data.
+	typeMap      map[string]int              // Maps type names to indices in PackedObject.Types.
+	pointerMap   map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
+	coinMap      map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
+	coinIdMap    map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
+	columnMap    map[uuid.UUID]int           // Maps column UUIDs to indices in PackedObject.Columns.
+	columnIdMap  map[string]int              // Maps column IDs to indices in PackedObject.ColumnIDs.
+	queryMap     map[uuid.UUID]int           // Maps query UUIDs to indices in PackedObject.Queries.
+	queryIDMap   map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
+	compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
+	Stores       map[*column.Store]int       // Maps Store pointers to indices in PackedObject.Store.
+	circuitMap   map[*cs.SparseR1CS]int      // Maps circuit pointers to indices in PackedObject.Circuits.
+	ExprMap      map[fext.Element]int        // Maps expression pointers to indices in PackedObject.Expressions
+	Warnings     []string                    // Collects warnings (e.g., unexported fields) for debugging.
 }
 
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
@@ -156,7 +156,7 @@ func NewSerializer() *Serializer {
 		compiledIOPs: map[*wizard.CompiledIOP]int{},
 		Stores:       map[*column.Store]int{},
 		circuitMap:   map[*cs.SparseR1CS]int{},
-		ExprMap:      map[fext.GenericFieldElem]int{},
+		ExprMap:      map[fext.Element]int{},
 	}
 }
 

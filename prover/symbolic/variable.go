@@ -9,7 +9,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/crypto/blake2b"
 )
@@ -73,16 +72,18 @@ func NewVariable(metadata Metadata) *Expression {
 
 // metadataToESH gets the ESH from a metadata. It is obtained by hashing
 // the string representation of the metadata.
-func metadataToESH(m Metadata) fext.GenericFieldElem {
+func metadataToESH(m Metadata) esHash {
 	// since we use bloack2b to hash the string, it is enough to do that on a base field element esh
-	var esh field.Element
 	sigSeed := []byte(m.String())
 	hasher, _ := blake2b.New256(nil)
 	hasher.Write(sigSeed)
-	sigBytes := hasher.Sum(nil)
-	esh.SetBytes(sigBytes)
-	// the base field element is then wrapped into an extension element
-	return fext.NewESHashFromBase(esh)
+	h := hasher.Sum(nil)
+	r := fext.Element{}
+	r.B0.A0.SetBytes(h[0:4])
+	r.B0.A1.SetBytes(h[4:8])
+	r.B1.A0.SetBytes(h[8:12])
+	r.B1.A1.SetBytes(h[12:16])
+	return r
 }
 
 /*

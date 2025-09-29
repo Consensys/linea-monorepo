@@ -128,8 +128,8 @@ func (b *ExpressionBoard) WriteStatsToCSV(w io.Writer) {
 			}
 
 			fmt.Fprintf(
-				w, "%v, %v, %v, %v, %v, %v, %v, %v, %v, %v, %v\n",
-				nodeCnt, lvl, posInLvl, len(node.Children), len(node.Parents),
+				w, "%v, %v, %v, %v, %v, %v, %v, %v, %v, %v\n",
+				nodeCnt, lvl, posInLvl, len(node.Children),
 				operation, cntCoeff1, cntCoeffMin1, cntCoeff0, cntCoeff2,
 				cntCoeffMin2,
 			)
