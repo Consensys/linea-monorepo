@@ -15,7 +15,7 @@ import (
 )
 
 type GLRequest struct {
-	WitnessGLPath string
+	WitnessGLFile string
 	StartBlock    string
 	EndBlock      string
 	SegID         int
@@ -23,31 +23,31 @@ type GLRequest struct {
 
 func RunGL(cfg *config.Config, req *GLRequest) error {
 
-	logrus.Infof("Starting GL-prover from witnessGL file path %v", req.WitnessGLPath)
+	logrus.Infof("Starting GL-prover from witnessGL file path %v", req.WitnessGLFile)
 
 	// Recover wrapper for panics
 	defer func() {
 		if r := recover(); r != nil {
-			logrus.Errorf("[PANIC] GL prover crashed for witness %s: %v\n%s", req.WitnessGLPath, r, debug.Stack())
+			logrus.Errorf("[PANIC] GL prover crashed for witness %s: %v\n%s", req.WitnessGLFile, r, debug.Stack())
 			return
 		}
 	}()
 
 	witnessGL := &distributed.ModuleWitnessGL{}
-	if err := serialization.LoadFromDisk(req.WitnessGLPath, witnessGL, true); err != nil {
+	if err := serialization.LoadFromDisk(req.WitnessGLFile, witnessGL, true); err != nil {
 		return fmt.Errorf("could not load witness: %w", err)
 	}
 
 	var (
-		glProofFile   = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
-		proofGLPath   = path.Join(cfg.LimitlessParams.SubproofsDir, "GL", string(witnessGL.ModuleName), glProofFile)
-		LPPCommitFile = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-lpp-commit.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
-		LPPCommitPath = path.Join(cfg.LimitlessParams.CommitsDir, string(witnessGL.ModuleName), LPPCommitFile)
+		glProofFileName   = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
+		proofGLFile       = path.Join(cfg.LimitlessParams.SubproofsDir, "GL", string(witnessGL.ModuleName), glProofFileName)
+		LPPCommitFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-lpp-commit.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
+		LPPCommitFile     = path.Join(cfg.LimitlessParams.CommitsDir, string(witnessGL.ModuleName), LPPCommitFileName)
 	)
 
 	// Incase the prev. process was interrupted, we clear the previous corrupted files (if it exists)
-	_ = os.Remove(proofGLPath)
-	_ = os.Remove(LPPCommitPath)
+	_ = os.Remove(proofGLFile)
+	_ = os.Remove(LPPCommitFile)
 
 	logrus.Infof("Running the GL-prover for witness module name=%s at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
@@ -64,15 +64,19 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 
 	logrus.Infof("Finished running the GL-prover for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
+	// It is important to write the GL proof files first and then the LPP commitments. This is because
+	// in the conglomeration prover, we have a watcher for all LPP commitments to get shared randomness and
+	// hence the presence of LPP commitment files signal that GL proof files also exist. We want to make sure to
+	// avoid partial writes - the case where only one file is written.
 	_proofGL := recursion.ExtractWitness(run)
-	if err := serialization.StoreToDisk(proofGLPath, _proofGL, true); err != nil {
+	if err := serialization.StoreToDisk(proofGLFile, _proofGL, true); err != nil {
 		return fmt.Errorf("could not store GL proof: %w", err)
 	}
 
 	logrus.Infof("Generated GL proof for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
 	_lppCommit := distributed.GetLppCommitmentFromRuntime(run)
-	if err := serialization.StoreToDisk(LPPCommitPath, _lppCommit, true); err != nil {
+	if err := serialization.StoreToDisk(LPPCommitFile, _lppCommit, true); err != nil {
 		return fmt.Errorf("could not store GL proof: %w", err)
 	}
 
