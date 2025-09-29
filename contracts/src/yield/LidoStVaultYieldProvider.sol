@@ -28,9 +28,6 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
 
   uint256 private constant PUBLIC_KEY_LENGTH = 48;
   uint256 private constant MIN_0X02_VALIDATOR_ACTIVATION_BALANCE = 32 ether;
-  // Validator must be active for this many epochs before it is eligible for withdrawals
-  uint256 private constant SHARD_COMMITTEE_PERIOD = 256;
-  uint256 private constant SLOTS_PER_EPOCH = 32;
 
   // @dev _yieldProvider = stakingVault address
   constructor (
@@ -55,12 +52,12 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
     WITHDRAWAL_CREDENTIALS = withdrawalCredentials;
   }
 
-  function _getEntrypointContract() private view returns (address) {
+  function _getEntrypointContract() internal view returns (address) {
     return _getYieldProviderStorage(YIELD_PROVIDER).isOssified ? YIELD_PROVIDER : address(DASHBOARD);
   }
 
-  function _getStakingVault() private view returns (address) {
-    return YIELD_PROVIDER;
+  function withdrawableValue() external view returns (uint256) {
+    return _getYieldProviderStorage(YIELD_PROVIDER).isOssified ? YIELD_PROVIDER.balance : DASHBOARD.withdrawableValue();
   }
 
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
@@ -292,10 +289,6 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
     }
     
     (ValidatorWitness memory witness) = abi.decode(_withdrawalParamsProof, (ValidatorWitness));
-    uint256 epoch = witness.slot / SLOTS_PER_EPOCH;
-    if (epoch < witness.activationEpoch + SHARD_COMMITTEE_PERIOD) {
-      revert ValidatorNotActiveForLongEnough();
-    }
 
     _validateValidatorContainerForPermissionlessUnstake(witness, WITHDRAWAL_CREDENTIALS);
 
@@ -336,10 +329,6 @@ contract LidoStVaultYieldProvider is YieldManagerStorageLayout, CLProofVerifier,
     if (_yieldProviderRegistration.yieldProviderType != YieldProviderType.LIDO_STVAULT) {
       revert IncorrectYieldProviderType();
     }
-  }
-
-  function withdrawableValue() external view returns (uint256) {
-    return _getYieldProviderStorage(YIELD_PROVIDER).isOssified ? YIELD_PROVIDER.balance : DASHBOARD.withdrawableValue();
   }
 
   function mintLST(uint256 _amount, address _recipient) external {

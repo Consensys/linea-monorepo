@@ -27,7 +27,11 @@ interface IYieldProvider {
 
   error NoValidatorExitForUnstakePermissionless();
 
-  error ValidatorNotActiveForLongEnough();
+  /**
+   * @notice Get the ETH balance held by the yield provider that can be withdrawn immediately.
+   * @return The available ETH balance that may be withdrawn.
+   */
+  function withdrawableValue() external view returns (uint256);
 
   /**
    * @notice Send ETH to the specified yield strategy.
@@ -93,12 +97,6 @@ interface IYieldProvider {
    * @param _yieldProviderRegistration Supplied registration data for the yield provider.
    */
   function validateAdditionToYieldManager(YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration) external;
-
-  /**
-   * @notice Get the ETH balance held by the yield provider that can be withdrawn immediately.
-   * @return The available ETH balance that may be withdrawn.
-   */
-  function withdrawableValue() external view returns (uint256);
 
   /**
    * @notice Mint LST to a recipient .

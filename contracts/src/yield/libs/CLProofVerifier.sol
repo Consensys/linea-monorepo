@@ -145,12 +145,15 @@ abstract contract CLProofVerifier {
     /// @notice location(from end) of parent node for (slot,proposerInd) in concatenated merkle proof
     uint256 private constant SLOT_PROPOSER_PARENT_PROOF_OFFSET = 2;
 
-
     /// @notice see `BEACON_ROOTS_ADDRESS` constant in the EIP-4788.
     address public constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
 
     // Sentinel value that a validator has no current exit scheduled 
     bytes32 FAR_FUTURE_EXIT_EPOCH_LITTLE_ENDIAN = SSZ.toLittleEndian(18446744073709551615);
+
+    // Validator must be active for this many epochs before it is eligible for withdrawals
+    uint256 private constant SHARD_COMMITTEE_PERIOD = 256;
+    uint256 private constant SLOTS_PER_EPOCH = 32;
 
     /**
      * @param _gIFirstValidatorPrev packed(general index | depth in Merkle tree, see GIndex.sol) GIndex of first validator in CL state tree
@@ -184,6 +187,7 @@ abstract contract CLProofVerifier {
         // verifies user provided slot against user provided proof
         // proof verification is done in `SSZ.verifyProof` and is not affected by slot
         _verifySlot(_witness);
+        _validationActivationEpoch(_witness);
 
         // parent node for first two leaves in validator container tree: pubkey & wc
         // we use 'leaf' instead of 'node' due to proving a subtree where this node is a leaf
@@ -231,6 +235,13 @@ abstract contract CLProofVerifier {
         }
     }
 
+    function _validationActivationEpoch(ValidatorWitness memory _witness) internal pure {
+        uint256 epoch = _witness.slot / SLOTS_PER_EPOCH;
+        if (epoch < _witness.activationEpoch + SHARD_COMMITTEE_PERIOD) {
+            revert ValidatorNotActiveForLongEnough();
+        }
+    }
+
     /**
      * @notice calculates general validator index in CL state tree by provided offset
      * @param _offset from first validator (Validator Index)
@@ -261,4 +272,5 @@ abstract contract CLProofVerifier {
     error InvalidTimestamp();
     error InvalidSlot();
     error RootNotFound();
+    error ValidatorNotActiveForLongEnough();
 }
