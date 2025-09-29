@@ -108,10 +108,10 @@ func (c g2ElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12
 	}
 
 	for i := range nbFpLimbs - 1 {
-		QXBlimbs[len(QXBlimbs)-(2*i+2)], QXBlimbs[len(QXBlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[i+1], 64, bitslice.WithNbDigits(128))
-		QXAlimbs[len(QXAlimbs)-(2*i+2)], QXAlimbs[len(QXAlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		QYBlimbs[len(QYBlimbs)-(2*i+2)], QYBlimbs[len(QYBlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[2*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
-		QYAlimbs[len(QYAlimbs)-(2*i+2)], QYAlimbs[len(QYAlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[3*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
+		QXAlimbs[len(QXAlimbs)-(2*i+2)], QXAlimbs[len(QXAlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[i+1], 64, bitslice.WithNbDigits(128))
+		QXBlimbs[len(QXBlimbs)-(2*i+2)], QXBlimbs[len(QXBlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
+		QYAlimbs[len(QYAlimbs)-(2*i+2)], QYAlimbs[len(QYAlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[2*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
+		QYBlimbs[len(QYBlimbs)-(2*i+2)], QYBlimbs[len(QYBlimbs)-(2*i+1)] = bitslice.Partition(api, c.Q[3*nbFpLimbs+i+1], 64, bitslice.WithNbDigits(128))
 	}
 	QXA := fp.NewElement(QXAlimbs)
 	QXB := fp.NewElement(QXBlimbs)

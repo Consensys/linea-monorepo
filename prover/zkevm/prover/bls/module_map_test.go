@@ -79,14 +79,14 @@ func TestBlsMapG1WithCircuit(t *testing.T) {
 
 func TestBlsMapG2NoCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG2MapToInputInstances: 4,
+		NbG2MapToInputInstances: 5,
 	}
 	testBlsMap(t, false, G2, "testdata/bls_g2_map_inputs.csv", limits)
 }
 
 func TestBlsMapG2WithCircuit(t *testing.T) {
 	limits := &Limits{
-		NbG2MapToInputInstances: 4,
+		NbG2MapToInputInstances: 5,
 	}
 	testBlsMap(t, true, G2, "testdata/bls_g2_map_inputs.csv", limits)
 }

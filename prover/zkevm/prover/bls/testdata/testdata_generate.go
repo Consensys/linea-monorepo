@@ -213,10 +213,10 @@ func splitG1ToLimbs(p bls12381.G1Affine) []string {
 
 func splitG2ToLimbs(q bls12381.G2Affine) []string {
 	limbs := slices.Concat(
-		splitBaseToLimbs(q.X.A1),
 		splitBaseToLimbs(q.X.A0),
-		splitBaseToLimbs(q.Y.A1),
+		splitBaseToLimbs(q.X.A1),
 		splitBaseToLimbs(q.Y.A0),
+		splitBaseToLimbs(q.Y.A1),
 	)
 	return limbs
 }
