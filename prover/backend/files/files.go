@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -279,4 +280,33 @@ func ReadRequest(path string, into any) error {
 	}
 
 	return nil
+}
+
+// OutcomeSuffix maps an error to a suffix used for marking files.
+// - nil -> ".success"
+// - context.DeadlineExceeded -> ".timeout"
+// - otherwise -> ".failure"
+func OutcomeSuffix(err error) string {
+	if err == nil {
+		return ".success"
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return ".timeout"
+	}
+	return ".failure"
+}
+
+// MarkFiles attempts to rename each path -> path+suffix.
+// Best-effort: log warnings on failure but do not return an error.
+func MarkFiles(paths []string, suffix string) {
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		if renameErr := os.Rename(p, p+suffix); renameErr != nil {
+			logrus.Warnf("could not mark %s with %s: %v", p, suffix, renameErr)
+		} else {
+			logrus.Infof("marked %s with %s", p, suffix)
+		}
+	}
 }

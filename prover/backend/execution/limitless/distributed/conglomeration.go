@@ -35,7 +35,7 @@ var (
 	numConcurrentReadingGoroutines = 12
 )
 
-func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, error) {
+func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Response, err error) {
 
 	logrus.Infof("Starting conglomerator for conflation request %s-%s", req.StartBlock, req.EndBlock)
 
@@ -47,8 +47,17 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 		}
 	}()
 
+	// Generic defer for marking files on exit
+	defer func() {
+		suf := files.OutcomeSuffix(err)
+		allFiles := append([]string{}, req.GLProofFiles...)
+		allFiles = append(allFiles, req.LPPProofFiles...)
+		allFiles = append(allFiles, req.SharedRndFile)
+		files.MarkFiles(allFiles, suf)
+	}()
+
 	// Launch the shared randomness proces first
-	err := runSharedRandomness(cfg, req)
+	err = runSharedRandomness(cfg, req)
 	if err != nil {
 		return nil, fmt.Errorf("error running shared randomness: %w", err)
 	}
@@ -129,9 +138,11 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 	if err := files.ReadRequest(req.ExecutionRequestFile, execReq); err != nil {
 		return nil, fmt.Errorf("could not read the execution proof request file (%v): %w", req.ExecutionRequestFile, err)
 	}
+
+	out := execution.CraftProverOutput(cfg, execReq)
+	execResp = &out
 	var (
-		out         = execution.CraftProverOutput(cfg, execReq)
-		witness     = execution.NewWitness(cfg, execReq, &out)
+		witness     = execution.NewWitness(cfg, execReq, execResp)
 		setup       circuits.Setup
 		errSetup    error
 		chSetupDone = make(chan struct{})
@@ -156,7 +167,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 		utils.Panic("could not load setup: %v", errSetup)
 	}
 
-	out.Proof = execCirc.MakeProof(
+	execResp.Proof = execCirc.MakeProof(
 		&cfg.TracesLimits,
 		setup,
 		congloWIOP,
@@ -164,45 +175,48 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (*execution.Response, e
 		*witness.FuncInp,
 	)
 
-	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
-	return &out, nil
+	execResp.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
+	return execResp, nil
 }
 
-func runSharedRandomness(cfg *config.Config, req *Metadata) error {
-
+func runSharedRandomness(cfg *config.Config, req *Metadata) (err error) {
 	// Incase the prev process was interrupted, rm any corrupted file if exists
 	_ = os.Remove(req.SharedRndFile)
+
+	// Add defer to mark outcome on all GLCommitFiles
+	defer func() {
+		suf := files.OutcomeSuffix(err)
+		files.MarkFiles(req.GLCommitFiles, suf)
+	}()
 
 	// Set timeout for all gl subproofs
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.LimitlessParams.GLSubproofsTimeout)*time.Second)
 	defer cancel()
 
 	msg := fmt.Sprintf("Scanning for %d LPP commitments from GL provers with configured timeout:%d sec to generate shared randomness", req.NumGL, cfg.LimitlessParams.GLSubproofsTimeout)
-	err := files.WaitForAllFilesAtPath(ctx, req.GLCommitFiles, true, msg)
-	if err != nil {
+	if err = files.WaitForAllFilesAtPath(ctx, req.GLCommitFiles, true, msg); err != nil {
 		return fmt.Errorf("error waiting for all GL workers: %w", err)
 	}
 
 	// Once all the gl-lpp-commit.bin files have arrived, we can start deserializing
-	// the lpp commitments and generate the shared random commitment for LPP workers
 	lppCommitments := make([]field.Element, len(req.GLCommitFiles))
 	for i, path := range req.GLCommitFiles {
 		lppCommitment := &field.Element{}
-		// Shared randomness commitment loading
-		if err := deSerWithRetry(path, lppCommitment, true, 3, 500*time.Millisecond); err != nil {
-			return fmt.Errorf("could not load lpp-commitment: %w", err)
+		if derr := deSerWithRetry(path, lppCommitment, true, 3, 500*time.Millisecond); derr != nil {
+			err = fmt.Errorf("could not load lpp-commitment: %w", derr)
+			return err
 		}
-
 		lppCommitments[i] = *lppCommitment
 	}
 
 	// Generate and store the shared randomness
 	sharedRandomness := distributed.GetSharedRandomness(lppCommitments)
-	if err := serialization.StoreToDisk(req.SharedRndFile, sharedRandomness, true); err != nil {
+	if err = serialization.StoreToDisk(req.SharedRndFile, sharedRandomness, true); err != nil {
 		return fmt.Errorf("could not save shared randomness: %w", err)
 	}
 
-	logrus.Infof("Generated shared randomness for conflation request %s-%s and stored to path %s", req.StartBlock, req.EndBlock, req.SharedRndFile)
+	logrus.Infof("Generated shared randomness for conflation request %s-%s and stored to path %s",
+		req.StartBlock, req.EndBlock, req.SharedRndFile)
 	return nil
 }
 
