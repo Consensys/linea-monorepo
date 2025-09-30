@@ -46,6 +46,7 @@ class QbftProtocolValidatorFactory(
   private val allowEmptyBlocks: Boolean,
   private val syncStatusProvider: SyncStatusProvider,
   private val forksSchedule: ForksSchedule,
+  private val payloadValidationEnabled: Boolean,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(forkSpec.configuration is QbftConsensusConfig) {
@@ -100,6 +101,7 @@ class QbftProtocolValidatorFactory(
         p2PNetwork = p2pNetwork,
         allowEmptyBlocks = allowEmptyBlocks,
         forksSchedule = forksSchedule,
+        payloadValidationEnabled = payloadValidationEnabled,
       )
     val qbftProtocol = qbftValidatorFactory.create(forkSpec)
     syncStatusProvider.onFullSyncComplete {

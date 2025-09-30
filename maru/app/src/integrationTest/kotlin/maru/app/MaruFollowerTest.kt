@@ -51,7 +51,10 @@ class MaruFollowerTest {
   private val log = LogManager.getLogger(this.javaClass)
   private val maruFactory = MaruFactory()
 
-  private fun setupMaruHelper(syncingConfig: SyncingConfig = MaruFactory.defaultSyncingConfig) {
+  private fun setupMaruHelper(
+    syncingConfig: SyncingConfig = MaruFactory.defaultSyncingConfig,
+    payloadValidationEnabled: Boolean = true,
+  ) {
     // Create and start validator Maru app first
     val validatorMaruApp =
       maruFactory.buildTestMaruValidatorWithP2pPeering(
@@ -74,6 +77,7 @@ class MaruFollowerTest {
         dataDir = followerStack.tmpDir,
         validatorPortForStaticPeering = validatorP2pPort,
         syncingConfig = syncingConfig,
+        enablePayloadValidation = payloadValidationEnabled,
       )
     followerStack.setMaruApp(followerMaruApp)
     followerStack.maruApp.start()
@@ -120,6 +124,24 @@ class MaruFollowerTest {
   @Test
   fun `Maru follower is able to import blocks`() {
     setupMaruHelper()
+
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    checkValidatorAndFollowerBlocks(blocksToProduce)
+  }
+
+  @Test
+  fun `Maru follower is able to import blocks with payload validation disabled`() {
+    setupMaruHelper(payloadValidationEnabled = false)
 
     val blocksToProduce = 5
     repeat(blocksToProduce) {

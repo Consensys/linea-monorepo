@@ -20,11 +20,13 @@ import linea.kotlin.assertIs20Bytes
 data class PayloadValidatorDto(
   val engineApiEndpoint: ApiEndpointDto,
   val ethApiEndpoint: ApiEndpointDto,
+  val payloadValidationEnabled: Boolean = true,
 ) {
   fun domainFriendly(): ValidatorElNode =
     ValidatorElNode(
       ethApiEndpoint = ethApiEndpoint.domainFriendly(endlessRetries = true),
       engineApiEndpoint = engineApiEndpoint.domainFriendly(endlessRetries = true),
+      payloadValidationEnabled = payloadValidationEnabled,
     )
 }
 
