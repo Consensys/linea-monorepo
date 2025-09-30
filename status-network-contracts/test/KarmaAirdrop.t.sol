@@ -40,13 +40,116 @@ contract SetMerkleRootTest is KarmaAirdropTest {
         airdrop.setMerkleRoot(merkleRoot);
     }
 
-    function test_Revert_When_UpdateMerkleRoot() public {
+    function test_Revert_When_UpdateMerkleRoot_WhenNotAllowed() public {
         bytes32 newMerkleRoot = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabb;
         vm.prank(owner);
         airdrop.setMerkleRoot(merkleRoot);
         vm.prank(owner);
         vm.expectRevert(KarmaAirdrop.KarmaAirdrop__MerkleRootAlreadySet.selector);
         airdrop.setMerkleRoot(newMerkleRoot);
+    }
+
+    function test_Revert_When_UpdateMerkleRoot_WhileNotPaused() public {
+        KarmaAirdrop updatableAirdrop = new KarmaAirdrop(address(rewardToken), owner, true);
+
+        bytes32 newMerkleRoot = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabb;
+
+        // Set initial merkle root (first time, no pause required)
+        vm.prank(owner);
+        updatableAirdrop.setMerkleRoot(merkleRoot);
+        assertEq(updatableAirdrop.merkleRoot(), merkleRoot);
+
+        // Try to update merkle root without pausing (should fail)
+        vm.prank(owner);
+        vm.expectRevert(KarmaAirdrop.KarmaAirdrop__MustBePausedToUpdate.selector);
+        updatableAirdrop.setMerkleRoot(newMerkleRoot);
+    }
+
+    function test_Success_When_UpdateMerkleRoot_WhenAllowed() public {
+        KarmaAirdrop updatableAirdrop = new KarmaAirdrop(address(rewardToken), owner, true);
+
+        bytes32 newMerkleRoot = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabb;
+
+        // Set initial merkle root (first time, no pause required)
+        vm.prank(owner);
+        updatableAirdrop.setMerkleRoot(merkleRoot);
+        assertEq(updatableAirdrop.merkleRoot(), merkleRoot);
+
+        // Pause the contract before updating
+        vm.prank(owner);
+        updatableAirdrop.pause();
+
+        // Update merkle root (should succeed when paused)
+        vm.prank(owner);
+        updatableAirdrop.setMerkleRoot(newMerkleRoot);
+        assertEq(updatableAirdrop.merkleRoot(), newMerkleRoot);
+    }
+
+    function test_Success_When_UpdateMerkleRoot_IncreasesEpoch() public {
+        KarmaAirdrop updatableAirdrop = new KarmaAirdrop(address(rewardToken), owner, true);
+
+        bytes32 newMerkleRoot = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabb;
+        bytes32 thirdMerkleRoot = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaacc;
+
+        // Initial epoch should be 0
+        assertEq(updatableAirdrop.epoch(), 0);
+
+        // Set initial merkle root (first time) - epoch should remain 0
+        vm.prank(owner);
+        updatableAirdrop.setMerkleRoot(merkleRoot);
+        assertEq(updatableAirdrop.epoch(), 0);
+
+        // Pause and update merkle root - epoch should increase to 1
+        vm.startPrank(owner);
+        updatableAirdrop.pause();
+        updatableAirdrop.setMerkleRoot(newMerkleRoot);
+        assertEq(updatableAirdrop.epoch(), 1);
+
+        // Update again - epoch should increase to 2
+        updatableAirdrop.setMerkleRoot(thirdMerkleRoot);
+        assertEq(updatableAirdrop.epoch(), 2);
+        vm.stopPrank();
+    }
+
+    function test_Success_When_UpdateMerkleRoot_ResetsClaimedBitmap() public {
+        KarmaAirdrop updatableAirdrop = new KarmaAirdrop(address(rewardToken), owner, true);
+
+        // Set up first merkle tree
+        uint256 index = 0;
+        address account = makeAddr("alice");
+        uint256 amount = 100e18;
+        bytes32 leaf = keccak256(abi.encodePacked(index, account, amount));
+        bytes32[] memory merkleProof = new bytes32[](0);
+
+        // Fund the airdrop contract
+        rewardToken.mint(address(updatableAirdrop), amount * 2);
+
+        // Set initial merkle root and claim
+        vm.prank(owner);
+        updatableAirdrop.setMerkleRoot(leaf);
+        updatableAirdrop.claim(index, account, amount, merkleProof);
+        assertTrue(updatableAirdrop.isClaimed(index));
+
+        // Pause before updating merkle root
+        vm.prank(owner);
+        updatableAirdrop.pause();
+
+        // Update merkle root - this should reset the bitmap
+        bytes32 newMerkleRoot = keccak256(abi.encodePacked(index, account, amount));
+        vm.prank(owner);
+        updatableAirdrop.setMerkleRoot(newMerkleRoot);
+
+        // Unpause to allow claims
+        vm.prank(owner);
+        updatableAirdrop.unpause();
+
+        // Verify the claim was reset
+        assertFalse(updatableAirdrop.isClaimed(index));
+
+        // Should be able to claim again with new merkle tree
+        updatableAirdrop.claim(index, account, amount, merkleProof);
+        assertTrue(updatableAirdrop.isClaimed(index));
+        assertEq(rewardToken.balanceOf(account), amount * 2);
     }
 
     function test_Success_When_SetMerkleRoot() public {

@@ -14,12 +14,17 @@ import { KarmaAirdrop } from "../src/KarmaAirdrop.sol";
  * The deploy function handles the deployment of the KarmaAirdrop contract.
  * The address of the Karma contract must be provided via the "KARMA_ADDRESS" environment variable.
  * The owner of the KarmaAirdrop contract must be provided via the "KARMA_AIRDROP_OWNER" environment variable.
+ * The allowMerkleRootUpdate flag can be optionally provided via the "ALLOW_MERKLE_ROOT_UPDATE" environment variable
+ * (defaults to false).
  */
 contract DeployKarmaAirdropScript is BaseScript {
     /**
      * @dev Deploys KarmaAirdrop contract and returns the instance.
      * The address of the Karma contract must be provided via the "KARMA_ADDRESS" environment variable.
      * The owner of the KarmaAirdrop contract must be provided via the "KARMA_AIRDROP_OWNER" environment variable.
+     * The allowMerkleRootUpdate flag can be optionally provided via the "ALLOW_MERKLE_ROOT_UPDATE" environment
+     * variable
+     * (defaults to false).
      * The deployer/owner of the KarmaAirdrop contract will be set to the address specified in "KARMA_AIRDROP_OWNER".
      * @return karmaAirdrop The deployed KarmaAirdrop contract instance.
      */
@@ -29,7 +34,9 @@ contract DeployKarmaAirdropScript is BaseScript {
 
         address ownerAddress = vm.envAddress("KARMA_AIRDROP_OWNER");
         require(ownerAddress != address(0), "KARMA_AIRDROP_OWNER is not set");
-        karmaAirdrop = _run(karmaAddress, ownerAddress);
+
+        bool allowMerkleRootUpdate = vm.envOr("ALLOW_MERKLE_ROOT_UPDATE", false);
+        karmaAirdrop = _run(karmaAddress, ownerAddress, allowMerkleRootUpdate);
     }
 
     /**
@@ -47,16 +54,45 @@ contract DeployKarmaAirdropScript is BaseScript {
         returns (KarmaAirdrop karmaAirdrop, DeploymentConfig deploymentConfig)
     {
         deploymentConfig = new DeploymentConfig(broadcaster);
-        karmaAirdrop = _run(karmaAddress, owner);
+        karmaAirdrop = _run(karmaAddress, owner, false);
+    }
+
+    /**
+     * @dev Deploys KarmaAirdrop contract for testing purposes with custom allowMerkleRootUpdate flag.
+     * @param karmaAddress The address of the Karma token contract.
+     * @param owner The address that will be set as the owner of the KarmaAirdrop contract.
+     * @param allowMerkleRootUpdate Whether to allow merkle root updates.
+     * @return karmaAirdrop The deployed KarmaAirdrop contract instance.
+     * @return deploymentConfig The DeploymentConfig instance for the current network.
+     */
+    function runForTest(
+        address karmaAddress,
+        address owner,
+        bool allowMerkleRootUpdate
+    )
+        public
+        returns (KarmaAirdrop karmaAirdrop, DeploymentConfig deploymentConfig)
+    {
+        deploymentConfig = new DeploymentConfig(broadcaster);
+        karmaAirdrop = _run(karmaAddress, owner, allowMerkleRootUpdate);
     }
 
     /**
      * @dev Deploys KarmaAirdrop contract within a broadcast context and returns the instance.
      * @param karmaAddress The address of the Karma token contract.
      * @param owner The address that will be set as the owner of the KarmaAirdrop contract.
+     * @param allowMerkleRootUpdate Whether to allow merkle root updates.
      * @return karmaAirdrop The deployed KarmaAirdrop contract instance.
      */
-    function _run(address karmaAddress, address owner) internal broadcast returns (KarmaAirdrop karmaAirdrop) {
-        karmaAirdrop = new KarmaAirdrop(karmaAddress, owner);
+    function _run(
+        address karmaAddress,
+        address owner,
+        bool allowMerkleRootUpdate
+    )
+        internal
+        broadcast
+        returns (KarmaAirdrop karmaAirdrop)
+    {
+        karmaAirdrop = new KarmaAirdrop(karmaAddress, owner, allowMerkleRootUpdate);
     }
 }
