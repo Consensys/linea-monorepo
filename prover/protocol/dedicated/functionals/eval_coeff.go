@@ -49,6 +49,36 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 	length := pol.Size()
 	maxRound := utils.Max(x.Round, pol.Round())
 
+	// When the length of the input is 1 (this can happen when meeting edge-cases
+	// ). Then the general purpose solution does not work due to the shift being
+	// incorrect. So instead, we simply make "P" to be a proof element and we
+	// return an accessor for it. The cost of making it public is essentially
+	// zero.
+	if length == 1 {
+
+		// When the column is precomputed, we can just return a constant accessor
+		// as the return value will be static anyway.
+		if comp.Precomputed.Exists(pol.GetColID()) {
+			val := comp.Precomputed.MustGet(pol.GetColID()).Get(0)
+			return accessors.NewConstant(val)
+		}
+
+		// Else, we promote the column to a proof column if it is not already
+		// one.
+		status := comp.Columns.Status(pol.GetColID())
+
+		switch status {
+		case column.Committed:
+			comp.Columns.SetStatus(pol.GetColID(), column.Proof)
+		case column.Proof:
+			// Do nothing
+		default:
+			panic("the column is neither committed nor proof; this is sort of an unexpected case and this indicates that one missing case has not been implemented.")
+		}
+
+		return accessors.NewFromPublicColumn(pol, 0)
+	}
+
 	hornerPoly := comp.InsertCommit(
 		maxRound,
 		ifaces.ColIDf("%v_%v", name, EVAL_COEFF_POLY),
