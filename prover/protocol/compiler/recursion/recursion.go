@@ -42,7 +42,7 @@ type Recursion[T zk.Element] struct {
 
 	// InputCompiledIOP is the input compiled-IOP whose proofs are to be
 	// recursed.
-	InputCompiledIOP *wizard.CompiledIOP[T]
+	InputCompiledIOP *wizard.CompiledIOP[T][T]
 
 	// Round is an optional parameter that allows the caller to specify
 	// which round of the input proof they want to use. If not specified,
@@ -136,7 +136,7 @@ type Parameters struct {
 // To assign the recursion, use [Assign] and make sure the input compiled
 // IOP is run using [wizard.RunProverUntil] passing the return value of
 // [GetStoppingRound].
-func DefineRecursionOf[T zk.Element](comp, inputComp *wizard.CompiledIOP, params Parameters) *Recursion[T] {
+func DefineRecursionOf[T zk.Element](comp, inputComp *wizard.CompiledIOP[T], params Parameters) *Recursion[T] {
 
 	plonkOpts := []plonkinternal.Option{}
 	if params.FixedNbRowPlonkCircuit > 0 {
@@ -211,7 +211,7 @@ func DefineRecursionOf[T zk.Element](comp, inputComp *wizard.CompiledIOP, params
 //
 // Filling is an optional parameter used if len(wit) < maxNumProof.
 func (r *Recursion[T]) GetMainProverStep(wit []Witness, filling *Witness) wizard.MainProverStep {
-	return func(run *wizard.ProverRuntime) {
+	return func(run *wizard.ProverRuntime[T]) {
 		r.Assign(run, wit, filling)
 	}
 }
@@ -219,7 +219,7 @@ func (r *Recursion[T]) GetMainProverStep(wit []Witness, filling *Witness) wizard
 // Assign assigns the items generated for the recursion of an item. As a first
 // steps, the function assigns the Plonk-in-Wizard context. Then, it assigns
 // the "merkle-roots" columns of the PCS.
-func (r *Recursion[T]) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *Witness) {
+func (r *Recursion[T]) Assign(run *wizard.ProverRuntime[T], _wit []Witness, _filling *Witness) {
 
 	var (
 		// wit is reallocated because we are going to append to it and it
@@ -317,14 +317,14 @@ func (rec *Recursion[T]) GetPublicInputOfInstanceGnark(api frontend.API, run wiz
 
 // GetPublicInputAccessorOfInstance returns the accessor of a public input
 // relative to one recursed module.
-func (rec *Recursion[T]) GetPublicInputAccessorOfInstance(comp *wizard.CompiledIOP, name string, inst int) ifaces.Accessor[T] {
+func (rec *Recursion[T]) GetPublicInputAccessorOfInstance(comp *wizard.CompiledIOP[T], name string, inst int) ifaces.Accessor[T] {
 	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
 	return comp.GetPublicInputAccessor(name)
 }
 
 // VortexQueryRound returns the round at which the last commitment
 // is made.
-func VortexQueryRound(comp *wizard.CompiledIOP) int {
+func VortexQueryRound(comp *wizard.CompiledIOP[T]) int {
 	vortexPCS := comp.PcsCtxs.(*vortex.Ctx)
 	query := vortexPCS.Query
 	return comp.QueriesParams.Round(query.QueryID)
@@ -334,7 +334,7 @@ func VortexQueryRound(comp *wizard.CompiledIOP) int {
 // comp. The mirror has all its commitments defined at the initial round
 // and the "vortex proof" columns are inserted starting at round 1 (after
 // vortex.alpha has been sampled).
-func createNewPcsCtx[T zk.Element](translator *compTranslator[T], srcComp *wizard.CompiledIOP[T]) *vortex.Ctx {
+func createNewPcsCtx[T zk.Element](translator *compTranslator[T], srcComp *wizard.CompiledIOP[T][T]) *vortex.Ctx {
 
 	srcVortexCtx := srcComp.PcsCtxs.(*vortex.Ctx)
 

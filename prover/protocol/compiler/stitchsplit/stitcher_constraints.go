@@ -259,12 +259,12 @@ func (a *QueryVerifierAction) Run(vr wizard.Runtime) error {
 	return a.Q.Check(vr)
 }
 
-func (a *QueryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+func (a *QueryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime[T]) {
 	a.Q.CheckGnark(api, wvc)
 }
 
 func insertVerifier(
-	comp *wizard.CompiledIOP,
+	comp *wizard.CompiledIOP[T],
 	q ifaces.Query,
 	round int,
 ) {

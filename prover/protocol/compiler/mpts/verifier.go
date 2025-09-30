@@ -94,7 +94,7 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
@@ -183,7 +183,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 }
 
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.Element {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime[T]) map[ifaces.ColID]gnarkfext.Element {
 
 	var (
 		evaluationMap = make(map[ifaces.ColID]gnarkfext.Element)
@@ -226,7 +226,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 
 /*TODO@yao: fix the gnarkfext version of this function
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api gnarkfext.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.Variable {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api gnarkfext.API, run wizard.GnarkRuntime[T]) map[ifaces.ColID]gnarkfext.Variable {
 
 	var (
 		evaluationMap = make(map[ifaces.ColID]gnarkfext.Variable)

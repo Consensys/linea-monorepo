@@ -15,7 +15,7 @@ import (
 
 type StitchingContext struct {
 	// The compiled IOP
-	Comp *wizard.CompiledIOP
+	Comp *wizard.CompiledIOP[T]
 	// All columns under the minSize are ignored.
 	// No stitching goes beyond MaxSize.
 	MinSize, MaxSize int
@@ -29,7 +29,7 @@ type StitchSubColumnsProverAction struct {
 	Stitchings []SummerizedAlliances
 }
 
-func (a *StitchSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *StitchSubColumnsProverAction) Run(run *wizard.ProverRuntime[T]) {
 	for round := range a.Stitchings {
 		// This loop is not in deterministic order but this does not matter
 		// as this is purely for cleaning up.
@@ -40,9 +40,9 @@ func (a *StitchSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 // Stitcher applies the stitching over the eligible sub columns and adjusts the constraints accordingly.
-func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
+func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP[T]) {
 
-	return func(comp *wizard.CompiledIOP) {
+	return func(comp *wizard.CompiledIOP[T]) {
 		// it creates stitchings from the eligible columns and commits to the them.
 		ctx := newStitcher(comp, minSize, maxSize)
 
@@ -57,7 +57,7 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 }
 
 // it commits to the stitchings of the eligible sub columns.
-func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) StitchingContext {
+func newStitcher(comp *wizard.CompiledIOP[T], minSize, maxSize int) StitchingContext {
 	numRounds := comp.NumRounds()
 	res := StitchingContext{
 		Comp:    comp,
@@ -76,7 +76,7 @@ type StitchColumnsProverAction struct {
 	Round int
 }
 
-func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime[T]) {
 	stopTimer := profiling.LogTimer("stitching compiler")
 	defer stopTimer()
 	var maxSizeGroup int

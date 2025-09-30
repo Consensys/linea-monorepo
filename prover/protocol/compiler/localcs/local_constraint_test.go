@@ -35,7 +35,7 @@ func testCaseFibonnaci() (wizard.DefineFunc, wizard.MainProverStep) {
 		build.LocalConstraint(Q, expr)
 	}
 
-	hLProver := func(assi *wizard.ProverRuntime) {
+	hLProver := func(assi *wizard.ProverRuntime[T]) {
 		p1 := sv.ForTest(1, 1, 2, 3, 5, 8, 13, 21)
 		p2 := sv.ForTest(2, 0, 4, 5, 5, 6, 8, 7)
 		assi.AssignColumn(P1, p1)

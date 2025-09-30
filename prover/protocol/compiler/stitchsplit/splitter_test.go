@@ -57,7 +57,7 @@ func fixedPointOpening() (wizard.DefineFunc, wizard.MainProverStep) {
 		_ = build.LocalOpening("O4", column.Shift(P1, -1))
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		p1_ := make([]field.Element, n)
 		for i := range p1_ {
 			p1_[i].SetUint64(uint64(i))
@@ -90,7 +90,7 @@ func singlePolyFibo(size int) func() (wizard.DefineFunc, wizard.MainProverStep) 
 			_ = build.LocalConstraint(LOCAL1, sym.Sub[T](P1, 1))
 		}
 
-		prover := func(run *wizard.ProverRuntime) {
+		prover := func(run *wizard.ProverRuntime[T]) {
 			x := make([]field.Element, size)
 			x[0].SetOne()
 			x[1].SetOne()
@@ -112,7 +112,7 @@ func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFun
 			_ = build.GlobalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.Column[T]AsVariable(P1)))
 		}
 
-		prover := func(run *wizard.ProverRuntime) {
+		prover := func(run *wizard.ProverRuntime[T]) {
 			v := vector.Repeat(field.One(), size)
 			for i := 0; i < size; i++ {
 				if i%period == offset {
@@ -134,7 +134,7 @@ func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc
 			_ = build.LocalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.Column[T]AsVariable(P1)))
 		}
 
-		prover := func(run *wizard.ProverRuntime) {
+		prover := func(run *wizard.ProverRuntime[T]) {
 			v := vector.Repeat(field.One(), size)
 			for i := 0; i < size; i++ {
 				if i%period == offset {
@@ -226,7 +226,7 @@ func TestLocalEvalWithStatus(t *testing.T) {
 	// manually compiles the comp
 	dummy.Compile(comp)
 
-	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
+	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime[T]) {
 		// Assigns all the columns
 		assi.AssignColumn(b.GetColID(), smartvectors.ForTest(2, 3, 4, 5))
 		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(6, 7, 8, 9, 10, 11, 12, 13))

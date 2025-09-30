@@ -10,8 +10,8 @@ import (
 /*
 Allocate a slice of field element
 */
-func AllocateSlice(n int) []frontend.Variable {
-	return make([]frontend.Variable, n)
+func AllocateSlice(n int) []T {
+	return make([]T, n)
 }
 
 /*
@@ -23,7 +23,7 @@ func AllocateSliceExt(n int) []gnarkfext.Element {
 
 // AsWitness converts a slice of field elements to a slice of witness variables
 // of the same length with only public inputs.
-func AsWitnessPublic(v []frontend.Variable) witness.Witness {
+func AsWitnessPublic(v []T) witness.Witness {
 
 	var (
 		wit, _  = witness.New(ecc.BLS12_377.ScalarField())

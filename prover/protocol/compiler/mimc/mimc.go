@@ -42,7 +42,7 @@ type MimcContext struct {
 // CompileMiMC compiles all the MiMC queries in the [comp] object. The compiler
 // works by creating its own module responsible for checking each unique MiMC
 // query statements, taking into account the padding.
-func CompileMiMC(comp *wizard.CompiledIOP) {
+func CompileMiMC(comp *wizard.CompiledIOP[T]) {
 	_ = defineContext(comp)
 }
 
@@ -58,7 +58,7 @@ func CompileMiMC(comp *wizard.CompiledIOP) {
 //     are used to stack all the unique triplets provided in the inputs.
 //   - declaring the [SumPow4s] and [RoundResults] for all MiMC rounds and the
 //     constraints enforcing their correctness.
-func defineContext(comp *wizard.CompiledIOP) *MimcContext {
+func defineContext(comp *wizard.CompiledIOP[T]) *MimcContext {
 
 	var (
 		ctx        = &MimcContext{}
@@ -166,7 +166,7 @@ func defineContext(comp *wizard.CompiledIOP) *MimcContext {
 // After, [StackedOldStates], [StackedBlocks] and [StackedNewStates] are assigned
 // to the corresponding columns. The function goes and computes the [SumPow4s] and
 // [RoundResults] columns.
-func (ctx *MimcContext) Run(run *wizard.ProverRuntime) {
+func (ctx *MimcContext) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		stackedOldStates = make([]field.Element, 0)
@@ -315,6 +315,6 @@ func (ctx *MimcContext) Run(run *wizard.ProverRuntime) {
 
 // uniqueID returns an integer helping to uniquely identify the items generated
 // by the compilation of a MiMC query.
-func uniqueID(comp *wizard.CompiledIOP) int {
+func uniqueID(comp *wizard.CompiledIOP[T]) int {
 	return len(comp.Columns.AllKeys())
 }

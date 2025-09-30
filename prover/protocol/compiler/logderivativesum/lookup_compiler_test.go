@@ -23,7 +23,7 @@ func TestLogDerivativeLookupSimple(t *testing.T) {
 		b.Inclusion("LOOKUP", []ifaces.Column[T]{cola}, []ifaces.Column[T]{colb})
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		// assign a and b
 		cola := smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 		colb := smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7)
@@ -40,7 +40,7 @@ func TestLogDerivativeLookupSimple(t *testing.T) {
 func TestLogDerivativeLookupSimple2(t *testing.T) {
 
 	var sizeA, sizeB int = 16, 4
-	var runtime *wizard.ProverRuntime
+	var runtime *wizard.ProverRuntime[T]
 
 	define := func(b *wizard.Builder) {
 		cola := b.RegisterCommit("S", sizeA)
@@ -48,7 +48,7 @@ func TestLogDerivativeLookupSimple2(t *testing.T) {
 		b.Inclusion("LOOKUP", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola})
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		runtime = run
 		// assign a and b
 		cola := smartvectors.ForTest(1, 1, 1, 2, 3, 0, 0, 1, 1, 1, 1, 2, 3, 0, 0, 1)
@@ -75,7 +75,7 @@ func TestLogDerivativeLookupSimple2(t *testing.T) {
 func TestLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 
 	var sizeA, sizeB int = 16, 4
-	var runtime *wizard.ProverRuntime
+	var runtime *wizard.ProverRuntime[T]
 
 	define := func(b *wizard.Builder) {
 		cola := b.RegisterCommit("S", sizeA)
@@ -87,7 +87,7 @@ func TestLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 		b.Inclusion("LOOKUP3", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola3})
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		runtime = run
 		// assign a and b
 		cola := smartvectors.ForTest(1, 1, 1, 2, 3, 0, 0, 1, 1, 1, 1, 2, 3, 0, 0, 1)
@@ -118,7 +118,7 @@ func TestLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 func TestLogDerivativeLookupOneXor(t *testing.T) {
 
 	var sizeTable, sizeCheckeds int = 16, 4
-	var runtime *wizard.ProverRuntime
+	var runtime *wizard.ProverRuntime[T]
 
 	// The test uses a lookup over a xor table
 
@@ -135,7 +135,7 @@ func TestLogDerivativeLookupOneXor(t *testing.T) {
 		b.Inclusion("LOOKUP", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{wX, wY, wXY})
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		runtime = run
 		// assign a and b
 		xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)
@@ -172,7 +172,7 @@ func TestLogDerivativeLookupOneXor(t *testing.T) {
 func TestLogDerivativeLookupMultiXor(t *testing.T) {
 
 	var sizeTable, sizeCheckeds, sizeCheckedLarger int = 16, 4, 8
-	var runtime *wizard.ProverRuntime
+	var runtime *wizard.ProverRuntime[T]
 
 	// The test uses a lookup over a xor table
 
@@ -194,7 +194,7 @@ func TestLogDerivativeLookupMultiXor(t *testing.T) {
 		b.Inclusion("LOOKUP2", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{w2X, w2Y, w2XY})
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		runtime = run
 		// assign a and b
 		xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)
@@ -258,7 +258,7 @@ func TestLogDerivativeLookupRandomLinComb(t *testing.T) {
 		b.Inclusion("LOOKUP", []ifaces.Column[T]{colI, uCol}, []ifaces.Column[T]{colQ, uChosen})
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		// assign a and b
 
 		coin := run.GetRandomCoinFieldExt("COIN")
@@ -313,7 +313,7 @@ func BenchmarkLogDeriveLookupMultiXor(b *testing.B) {
 			b.Inclusion("LOOKUP2", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{w2X, w2Y, w2XY})
 		}
 
-		prover := func(run *wizard.ProverRuntime) {
+		prover := func(run *wizard.ProverRuntime[T]) {
 
 			// assign a and b
 			xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)

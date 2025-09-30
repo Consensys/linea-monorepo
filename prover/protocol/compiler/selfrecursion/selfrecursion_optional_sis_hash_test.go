@@ -21,7 +21,7 @@ import (
 type testCase = struct {
 	Explainer string
 	Define    func(b *wizard.Builder)
-	Prove     func(pr *wizard.ProverRuntime)
+	Prove     func(pr *wizard.ProverRuntime[T])
 }
 
 func testCaseGenerator() []testCase {
@@ -53,7 +53,7 @@ func testCaseGenerator() []testCase {
 			}
 			b.UnivariateEval("EVAL", rows...)
 		},
-		Prove: func(pr *wizard.ProverRuntime) {
+		Prove: func(pr *wizard.ProverRuntime[T]) {
 			ys := make([]field.Element, len(rows))
 			x := field.NewElement(57) // the evaluation point
 
@@ -89,7 +89,7 @@ func testCaseGenerator() []testCase {
 
 			b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 		},
-		Prove: func(pr *wizard.ProverRuntime) {
+		Prove: func(pr *wizard.ProverRuntime[T]) {
 			// Count the total number of polynomials
 			numPolys := 0
 			for i := range nPolsMultiRound {
@@ -153,7 +153,7 @@ func testCaseGenerator() []testCase {
 
 			b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 		},
-		Prove: func(pr *wizard.ProverRuntime) {
+		Prove: func(pr *wizard.ProverRuntime[T]) {
 			// Count the total number of polynomials
 			numPolys := 0
 			for i := range nPolsMultiRound {
@@ -224,7 +224,7 @@ func testCaseGenerator() []testCase {
 
 			b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 		},
-		Prove: func(pr *wizard.ProverRuntime) {
+		Prove: func(pr *wizard.ProverRuntime[T]) {
 			// Count the total number of polynomials
 			numPolys := 0
 			for i := range nPolsMultiRound {
@@ -295,7 +295,7 @@ func testCaseGenerator() []testCase {
 
 			b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 		},
-		Prove: func(pr *wizard.ProverRuntime) {
+		Prove: func(pr *wizard.ProverRuntime[T]) {
 			// Count the total number of polynomials
 			numPolys := 0
 			for i := range nPolsMultiRoundNoSIS {
@@ -366,7 +366,7 @@ func testCaseGenerator() []testCase {
 
 			b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 		},
-		Prove: func(pr *wizard.ProverRuntime) {
+		Prove: func(pr *wizard.ProverRuntime[T]) {
 			// Count the total number of polynomials
 			numPolys := 0
 			for i := range nPolsMultiRoundSIS {
@@ -437,7 +437,7 @@ func testCaseGenerator() []testCase {
 
 			b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 		},
-		Prove: func(pr *wizard.ProverRuntime) {
+		Prove: func(pr *wizard.ProverRuntime[T]) {
 			// Count the total number of polynomials
 			numPolys := 0
 			for i := range nPolsMultiRoundEmpty {

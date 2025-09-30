@@ -45,7 +45,7 @@ func (v *VerifierCtx) Run(run wizard.Runtime) error {
 
 // Run implements the [wizard.VerifierAction] interface and is as
 // [VerifierCtx.Run] but in the context of a gnark circuit.
-func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	mustBeOne := T(1)
 
@@ -120,7 +120,7 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	var (
 		y = run.GetGrandProductParams(c.Query.ID).Prod
@@ -211,7 +211,7 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction]
-func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	claimedProd := run.GetGrandProductParams(f.GrandProductID).Prod
 

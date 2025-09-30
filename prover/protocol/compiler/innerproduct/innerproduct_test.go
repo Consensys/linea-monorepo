@@ -30,7 +30,7 @@ func TestInnerProduct(t *testing.T) {
 		}
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		for j, c := range testCases {
 			run.AssignColumn(c.aName, c.a)
 			for i, name := range c.bName {

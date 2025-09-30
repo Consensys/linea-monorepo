@@ -22,7 +22,7 @@ type ProverTaskAtRound []*ZCtx
 // a goroutine for each tasks and wait for all of them to finish. The approach
 // for parallelization can be justified if the number of go-routines stays low
 // (e.g. less than 1000s).
-func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
+func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime[T]) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(p))
 
@@ -41,7 +41,7 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 
 // run assigns all the Zs in parallel and set the parameters for their
 // corresponding last values openings.
-func (z *ZCtx) run(run *wizard.ProverRuntime) {
+func (z *ZCtx) run(run *wizard.ProverRuntime[T]) {
 	for i := range z.Zs {
 		var (
 			numerator   smartvectors.SmartVector
@@ -115,7 +115,7 @@ type AssignPermutationGrandProduct[T zk.Element] struct {
 	IsPartial bool
 }
 
-func (a AssignPermutationGrandProduct[T]) Run(run *wizard.ProverRuntime) {
+func (a AssignPermutationGrandProduct[T]) Run(run *wizard.ProverRuntime[T]) {
 	y := fext.GenericFieldOne()
 	if a.IsPartial {
 		res := a.Query.Compute(run)

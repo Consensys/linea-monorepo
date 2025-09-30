@@ -47,7 +47,7 @@ func (fc *FakeColumn) MustExists() {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnark(run ifaces.GnarkRuntime) []T {
+func (fc *FakeColumn) GetColAssignmentGnark(run ifaces.GnarkRuntime[T]) []T {
 	panic("unimplemented")
 }
 
@@ -71,11 +71,11 @@ func (fc *FakeColumn) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.El
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]T, error) {
+func (fc *FakeColumn) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime[T]) ([]T, error) {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+func (fc *FakeColumn) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime[T]) []gnarkfext.Element {
 	panic("unimplemented")
 }
 

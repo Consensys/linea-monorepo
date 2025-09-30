@@ -40,7 +40,7 @@ func TestPocNewGlobalTest(t *testing.T) {
 		dummy.Compile,
 	)
 
-	hLProver := func(assi *wizard.ProverRuntime) {
+	hLProver := func(assi *wizard.ProverRuntime[T]) {
 		x := smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21)
 		assi.AssignColumn(P, x)
 	}
@@ -74,7 +74,7 @@ func TestPocNewGlobalTestExt(t *testing.T) {
 		dummy.Compile,
 	)
 
-	hLProver := func(assi *wizard.ProverRuntime) {
+	hLProver := func(assi *wizard.ProverRuntime[T]) {
 		x := smartvectors.ForTestFromQuads(
 			1, 2, 5, 13,
 			1, 3, 8, 21,
@@ -113,7 +113,7 @@ func TestGlobalWithAccessor(t *testing.T) {
 		dummy.Compile,
 	)
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		run.AssignColumn("P", smartvectors.ForTest(1, 2, 4, 8, 16, 32, 64, 128))
 	}
 
@@ -138,7 +138,7 @@ func TestPeriodicSampleGlobalConstraint(t *testing.T) {
 		dummy.Compile,
 	)
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		run.AssignColumn("P", smartvectors.ForTest(1, 0, 4, 8, 16, 0, 64, 128))
 	}
 
@@ -164,7 +164,7 @@ func TestPeriodicSampleAsLagrange(t *testing.T) {
 		dummy.Compile,
 	)
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		run.AssignColumn("P", smartvectors.ForTest(0, 2, 4, 8, 16, 32, 64, 128))
 	}
 
@@ -192,7 +192,7 @@ func TestGlobalDegree3(t *testing.T) {
 		dummy.Compile,
 	)
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		run.AssignColumn("P", smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8))
 		run.AssignColumn("P3", smartvectors.ForTest(1, 8, 27, 64, 125, 216, 343, 512))
 	}

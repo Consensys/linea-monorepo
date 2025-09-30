@@ -45,7 +45,7 @@ type ZCtx[T zk.Element] struct {
 // and change T -> -M, S -> +Filter
 // S or T -> ({S,T} + X)
 // Compile should be called inside CompileGrandSum
-func (z *ZCtx[T]) Compile(comp *wizard.CompiledIOP[T]) {
+func (z *ZCtx[T]) Compile(comp *wizard.CompiledIOP[T][T]) {
 
 	var (
 		numZs = utils.DivCeil(

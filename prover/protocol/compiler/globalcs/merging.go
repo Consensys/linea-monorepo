@@ -55,7 +55,7 @@ type mergingCtx[T zk.Element] struct {
 // aggregate them into unified global constraints per "ratio".
 //
 // See [mergingCtx.Ratios] for an explanation for "ratio".
-func accumulateConstraints[T zk.Element](comp *wizard.CompiledIOP) (mergingCtx[T], bool) {
+func accumulateConstraints[T zk.Element](comp *wizard.CompiledIOP[T]) (mergingCtx[T], bool) {
 
 	ctx := mergingCtx[T]{
 		RatioBuckets: make(map[int][]*symbolic.Expression[T]),
@@ -97,7 +97,7 @@ func accumulateConstraints[T zk.Element](comp *wizard.CompiledIOP) (mergingCtx[T
 }
 
 // aggregateConstraints returns the list of the aggregated constraints
-func (ctx *mergingCtx[T]) aggregateConstraints(comp *wizard.CompiledIOP) []*symbolic.Expression[T] {
+func (ctx *mergingCtx[T]) aggregateConstraints(comp *wizard.CompiledIOP[T]) []*symbolic.Expression[T] {
 
 	var (
 		aggregateExpressions = make([]*symbolic.Expression[T], len(ctx.Ratios))

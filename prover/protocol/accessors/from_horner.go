@@ -15,11 +15,11 @@ import (
 // FromHornerAccessorFinalValue[T] implements [ifaces.Accessor] and accesses the
 // final value of a [Horner] computation.
 type FromHornerAccessorFinalValue[T zk.Element] struct {
-	Q *query.Horner
+	Q *query.Horner[T]
 }
 
 // NewFromHornerAccessorFinalValue[T] returns a new [FromHornerAccessorFinalValue[T]].
-func NewFromHornerAccessorFinalValue[T zk.Element](q *query.Horner) *FromHornerAccessorFinalValue[T] {
+func NewFromHornerAccessorFinalValue[T zk.Element](q *query.Horner[T]) *FromHornerAccessorFinalValue[T] {
 	return &FromHornerAccessorFinalValue[T]{Q: q}
 }
 
@@ -42,13 +42,13 @@ func (l *FromHornerAccessorFinalValue[T]) GetVal(run ifaces.Runtime) field.Eleme
 
 // GetVal implements [ifaces.Accessor]
 func (l *FromHornerAccessorFinalValue[T]) GetValExt(run ifaces.Runtime) fext.Element {
-	params := run.GetParams(l.Q.ID).(query.HornerParams)
+	params := run.GetParams(l.Q.ID).(query.HornerParams[T])
 	return params.FinalResult
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromHornerAccessorFinalValue[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
-	params := circ.GetParams(l.Q.ID).(query.GnarkHornerParams)
+	params := circ.GetParams(l.Q.ID).(query.GnarkHornerParams[T])
 	return params.FinalResult
 }
 

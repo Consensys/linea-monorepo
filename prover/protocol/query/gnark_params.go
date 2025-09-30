@@ -15,10 +15,12 @@ type GnarkLocalOpeningParams[T zk.Element] struct {
 	IsBase bool
 }
 
-func (g *GnarkLocalOpeningParams[T]) GnarkAssign(p LocalOpeningParams) {
-	g.BaseY = *zk.ValueOf[T](p.BaseY)
-	g.ExtY = gnarkfext.NewE4Gen[T](p.ExtY)
-	g.IsBase = p.IsBase
+func (p LocalOpeningParams[T]) GnarkAssign() GnarkLocalOpeningParams[T] {
+	return GnarkLocalOpeningParams[T]{
+		BaseY:  *zk.ValueOf[T](p.BaseY),
+		ExtY:   gnarkfext.NewE4Gen[T](p.ExtY),
+		IsBase: p.IsBase,
+	}
 }
 
 // A gnark circuit version of LogDerivSumParams
@@ -26,13 +28,13 @@ type GnarkLogDerivSumParams[T zk.Element] struct {
 	Sum T
 }
 
-func (g *GnarkLogDerivSumParams[T]) GnarkAssign(p LogDerivSumParams) {
+func (g *GnarkLogDerivSumParams[T]) GnarkAssign(p LogDerivSumParams[T]) {
 	g.Sum = *zk.ValueOf[T](p.Sum)
 }
 
 // A gnark circuit version of GrandProductParams
 type GnarkGrandProductParams[T zk.Element] struct {
-	Prod T
+	Prod gnarkfext.E4Gen[T]
 }
 
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
@@ -48,24 +50,39 @@ type HornerParamsPartGnark[T zk.Element] struct {
 type GnarkHornerParams[T zk.Element] struct {
 	// Final result is the result of summing the Horner parts for every
 	// queries.
-	FinalResult T
+	FinalResult gnarkfext.E4Gen[T]
 	// Parts are the parameters of the Horner parts
 	Parts []HornerParamsPartGnark[T]
 }
 
-// Allocate allocates a [GnarkHornerParams] with the right dimensions
-func (g *GnarkHornerParams[T]) Allocate(p HornerParams[T]) {
-	g.Parts = make([]HornerParamsPartGnark[T], len(p.Parts))
+// GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions
+func (p HornerParams[T]) GnarkAllocate() GnarkHornerParams[T] {
+	return GnarkHornerParams[T]{
+		Parts: make([]HornerParamsPartGnark[T], len(p.Parts)),
+	}
 }
 
-func (g *GnarkHornerParams[T]) Assign(p HornerParams[T]) {
-	g.Parts = make([]HornerParamsPartGnark[T], len(p.Parts))
-	for i := 0; i < len(p.Parts); i++ {
-		g.Parts[i] = HornerParamsPartGnark[T]{
-			N0: *zk.ValueOf[T](p.Parts[i].N0),
-			N1: *zk.ValueOf[T](p.Parts[i].N1),
+// GnarkAssign returns a gnark assignment for the present parameters.
+func (p HornerParams[T]) GnarkAssign() GnarkHornerParams[T] {
+
+	parts := make([]HornerParamsPartGnark[T], len(p.Parts))
+	for i, part := range p.Parts {
+		parts[i] = HornerParamsPartGnark[T]{
+			N0: *zk.ValueOf[T](part.N0),
+			N1: *zk.ValueOf[T](part.N1),
 		}
 	}
+
+	return GnarkHornerParams[T]{
+		FinalResult: gnarkfext.NewE4Gen[T](p.FinalResult),
+		Parts:       parts,
+	}
+}
+
+func (p LogDerivSumParams[T]) GnarkAssign() GnarkLogDerivSumParams[T] {
+	var tmp T
+	// return GnarkLogDerivSumParams[T]{Sum: p.Sum}
+	return GnarkLogDerivSumParams[T]{Sum: tmp} // TODO @thomas fixme
 }
 
 // A gnark circuit version of InnerProductParams
@@ -73,13 +90,12 @@ type GnarkInnerProductParams[T zk.Element] struct {
 	Ys []gnarkfext.E4Gen[T]
 }
 
-// Allocate allocates a [GnarkHornerParams] with the right dimensions
-func (g *GnarkInnerProductParams[T]) Allocate(p InnerProduct[T]) {
-	g.Ys = make([]gnarkfext.E4Gen[T], len(p.Bs))
+func (p InnerProduct[T]) GnarkAllocate() GnarkInnerProductParams[T] {
+	return GnarkInnerProductParams[T]{Ys: make([]gnarkfext.E4Gen[T], len(p.Bs))}
 }
 
-func (g *GnarkInnerProductParams[T]) Assign(p InnerProductParams) {
-	g.Ys = vectorext.IntoGnarkAssignment[T](p.Ys)
+func (p InnerProductParams[T]) GnarkAssign() GnarkInnerProductParams[T] {
+	return GnarkInnerProductParams[T]{Ys: vectorext.IntoGnarkAssignment[T](p.Ys)}
 }
 
 // A gnark circuit version of univariate eval params
@@ -100,7 +116,10 @@ func (p UnivariateEval[T]) GnarkAllocate() GnarkUnivariateEvalParams[T] {
 }
 
 // Returns a gnark assignment for the present parameters
-func (g *GnarkUnivariateEvalParams[T]) GnarkAssign(p UnivariateEvalParams) {
+func (p UnivariateEvalParams[T]) GnarkAssign() GnarkUnivariateEvalParams[T] {
+
+	var g GnarkUnivariateEvalParams[T]
+
 	if p.IsBase {
 		g.Ys = vector.IntoGnarkAssignment[T](p.Ys)
 		g.X = *zk.ValueOf[T](p.X)
@@ -111,6 +130,8 @@ func (g *GnarkUnivariateEvalParams[T]) GnarkAssign(p UnivariateEvalParams) {
 	}
 	g.ExtYs = vectorext.IntoGnarkAssignment[T](p.ExtYs)
 	g.ExtX = gnarkfext.NewE4Gen[T](p.ExtX)
+
+	return g
 }
 
 // Update the fiat-shamir state with the the present parameters
@@ -123,6 +144,11 @@ func (p GnarkInnerProductParams[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 func (p GnarkLocalOpeningParams[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	// TODO @thomas update FS gen
 	// fs.Update(p.BaseY)
+}
+
+// Update the fiat-shamir state with the the present parameters
+func (p GnarkLogDerivSumParams[T]) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+	fs.Update(p.Sum)
 }
 
 // Update the fiat-shamir state with the the present parameters

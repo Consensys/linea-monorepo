@@ -20,7 +20,7 @@ to manually check all associated queries against them.
 This utility is primarily intended for testing and debugging, allowing inspection of commitment-query
 consistency without automated verification.
 */
-func Compile(comp *wizard.CompiledIOP) {
+func Compile(comp *wizard.CompiledIOP[T]) {
 
 	comp.DummyCompiled = true
 
@@ -98,7 +98,7 @@ func Compile(comp *wizard.CompiledIOP) {
 // DummyVerifierAction is the action to verify queries in the dummy compiler.
 // It implements the [wizard.VerifierAction] interface.
 type DummyVerifierAction struct {
-	Comp                     *wizard.CompiledIOP
+	Comp                     *wizard.CompiledIOP[T]
 	QueriesParamsToCompile   []ifaces.QueryID
 	QueriesNoParamsToCompile []ifaces.QueryID
 }
@@ -155,6 +155,6 @@ func (a *DummyVerifierAction) Run(run wizard.Runtime) error {
 
 // RunGnark executes the verifier action in a Gnark circuit.
 // In this dummy implementation, no constraints are enforced.
-func (a *DummyVerifierAction) RunGnark(api frontend.API, gnarkRun wizard.GnarkRuntime) {
+func (a *DummyVerifierAction) RunGnark(api frontend.API, gnarkRun wizard.GnarkRuntime[T]) {
 	// No constraints are enforced in the dummy reduction, as per the original empty function
 }

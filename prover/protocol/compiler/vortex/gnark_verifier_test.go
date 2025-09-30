@@ -26,7 +26,7 @@ func (c *VortexTestCircuit) Define(api frontend.API) error {
 /*
 Returns an assignment from a wizard proof
 */
-func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTestCircuit {
+func assignTestCircuit(comp *wizard.CompiledIOP[T], proof wizard.Proof) *VortexTestCircuit {
 	return &VortexTestCircuit{
 		C: *wizard.AssignVerifierCircuit(comp, proof, 0),
 	}
@@ -68,7 +68,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 		b.UnivariateEval("EVAL", utils.Join(rows...)...)
 	}
 
-	prove := func(pr *wizard.ProverRuntime) {
+	prove := func(pr *wizard.ProverRuntime[T]) {
 		ys := make([]fext.Element, len(rows)*len(rows[0]))
 		x := fext.RandomElement() // the evaluation point
 

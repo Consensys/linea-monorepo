@@ -93,15 +93,15 @@ type MultipointToSinglepointCompilation[T zk.Element] struct {
 }
 
 // Compile applies the multipoint to singlepoint compilation pass over `comp`.
-func Compile[T zk.Element](options ...Option[T]) func(*wizard.CompiledIOP) {
-	return func(comp *wizard.CompiledIOP) {
+func Compile[T zk.Element](options ...Option[T]) func(*wizard.CompiledIOP[T]) {
+	return func(comp *wizard.CompiledIOP[T]) {
 		compileMultipointToSinglepoint[T](comp, options)
 	}
 }
 
 // compileMultipointToSinglepoint takes all the uncompiled multipoint to
 // singlepoint queries and compile them using a quotient accumulation technique.
-func compileMultipointToSinglepoint[T zk.Element](comp *wizard.CompiledIOP, options []Option[T]) *MultipointToSinglepointCompilation[T] {
+func compileMultipointToSinglepoint[T zk.Element](comp *wizard.CompiledIOP[T], options []Option[T]) *MultipointToSinglepointCompilation[T] {
 
 	ctx := &MultipointToSinglepointCompilation[T]{
 		Queries: getAndMarkAsCompiledQueries[T](comp),
@@ -227,7 +227,7 @@ func (ctx *MultipointToSinglepointCompilation[T]) getNumRow() int {
 // context.
 //
 // The function assumes that the number of queries to compile is not 0.
-func (ctx *MultipointToSinglepointCompilation[T]) getNumRound(comp *wizard.CompiledIOP) int {
+func (ctx *MultipointToSinglepointCompilation[T]) getNumRound(comp *wizard.CompiledIOP[T]) int {
 
 	maxRound := -1
 	for i := range ctx.Queries {
@@ -248,7 +248,7 @@ func (ctx *MultipointToSinglepointCompilation[T]) getNumRound(comp *wizard.Compi
 
 // getAndMarkAsCompiledQueries returns all the queries that are relevant
 // to the multipoint to singlepoint compilation and mark them as ignored.
-func getAndMarkAsCompiledQueries[T zk.Element](comp *wizard.CompiledIOP) []query.UnivariateEval[T] {
+func getAndMarkAsCompiledQueries[T zk.Element](comp *wizard.CompiledIOP[T]) []query.UnivariateEval[T] {
 
 	var (
 		selectedQueries = []query.UnivariateEval[T]{}
@@ -277,7 +277,7 @@ func getAndMarkAsCompiledQueries[T zk.Element](comp *wizard.CompiledIOP) []query
 // the beginning. addUnconstrainedColumn is a flag indicating whether to add
 // the unconstrained columns, it will only add the columns with the
 // [column.Committed] status.
-func sortPolynomialsByRoundAndName[T zk.Element](comp *wizard.CompiledIOP, queries []query.UnivariateEval[T], addUnconstrainedColumn bool) (compiledByRound [][]ifaces.Column[T], precomputed []ifaces.Column[T], direct []ifaces.Column[T]) {
+func sortPolynomialsByRoundAndName[T zk.Element](comp *wizard.CompiledIOP[T], queries []query.UnivariateEval[T], addUnconstrainedColumn bool) (compiledByRound [][]ifaces.Column[T], precomputed []ifaces.Column[T], direct []ifaces.Column[T]) {
 
 	compiledByRound = make([][]ifaces.Column[T], 0)
 	precomputed = make([]ifaces.Column[T], 0)
@@ -358,7 +358,7 @@ func sortPolynomialsByRoundAndName[T zk.Element](comp *wizard.CompiledIOP, queri
 // extendPWithShadowColumns adds shadow columns to the given list of polynomials
 // to match a given profile. The profile corresponds to a target number of columns
 // to meet in "p". The function will ignore the verifiercol from the count.
-func extendPWithShadowColumns[T zk.Element](comp *wizard.CompiledIOP, round int, numRow int, p []ifaces.Column[T], profile int, precomputed bool) ([]ifaces.Column[T], error) {
+func extendPWithShadowColumns[T zk.Element](comp *wizard.CompiledIOP[T], round int, numRow int, p []ifaces.Column[T], profile int, precomputed bool) ([]ifaces.Column[T], error) {
 
 	if len(p) > profile {
 		return nil, fmt.Errorf("the profile is too small for the given polynomials list, round=%v len(p)=%v profile=%v", round, len(p), profile)
@@ -396,7 +396,7 @@ func extendPWithShadowColumns[T zk.Element](comp *wizard.CompiledIOP, round int,
 //
 // The function will ignore the first round if it only contains precomputed
 // columns. The function also ignores [VerifierCol].
-func getStartingRound[T zk.Element](comp *wizard.CompiledIOP, s [][]ifaces.Column[T]) int {
+func getStartingRound[T zk.Element](comp *wizard.CompiledIOP[T], s [][]ifaces.Column[T]) int {
 
 	if len(s) == 0 {
 		panic("empty list")

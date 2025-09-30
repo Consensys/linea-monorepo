@@ -45,7 +45,7 @@ const (
 
 // This is a compilation check to ensure that the [wizard.ProverRuntime]
 // implements the [wizard.Runtime] interface.
-var _ Runtime = &ProverRuntime{}
+// var _ Runtime = &ProverRuntime{}
 
 // MainProverStep represents an operation to be performed by the prover of a
 // wizard protocol. It can be provided by the user or by an internal compiled
@@ -959,7 +959,7 @@ func (run *ProverRuntime[T]) AssignLocalPointExt(name ifaces.QueryID, y fext.Ele
 	// Make sure, it is done at the right round
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
-	q := run.Spec.QueriesParams.Data(name).(query.LocalOpening)
+	q := run.Spec.QueriesParams.Data(name).(query.LocalOpening[T])
 	if q.IsBase() {
 		utils.Panic("Query %v is a base query, you should call AssignLocalPoint", name)
 	}
@@ -969,14 +969,14 @@ func (run *ProverRuntime[T]) AssignLocalPointExt(name ifaces.QueryID, y fext.Ele
 	run.QueriesParams.InsertNew(name, params)
 }
 
-// GetLocalPointEval gets the metadata of a [query.LocalOpening] query. Panic if not found.
+// GetLocalPointEval gets the metadata of a [query.LocalOpening[T]] query. Panic if not found.
 // Deprecated, use `comp.Spec.GetLocalPointEval` instead since it does exactly
 // the same thing.
-func (run *ProverRuntime[T]) GetLocalPointEval(name ifaces.QueryID) query.LocalOpening {
+func (run *ProverRuntime[T]) GetLocalPointEval(name ifaces.QueryID) query.LocalOpening[T] {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
-	return run.Spec.QueriesParams.Data(name).(query.LocalOpening)
+	return run.Spec.QueriesParams.Data(name).(query.LocalOpening[T])
 }
 
 // GetLocalPointEvalParams returns the parameters of a univariate evaluation

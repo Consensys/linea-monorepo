@@ -33,7 +33,7 @@ func (c *CheckActivatorAndMask) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	for i := range c.SelOpenings {
 		var (
 			valOpened = run.GetLocalPointEvalParams(c.SelOpenings[i].ID).BaseY

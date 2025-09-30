@@ -47,7 +47,7 @@ type ContextForSize[T zk.Element] struct {
 // It returns the compilation context of the query
 // the round indicate the round of the last inner-product query, independent of its size.
 func compileForSize[T zk.Element](
-	comp *wizard.CompiledIOP,
+	comp *wizard.CompiledIOP[T],
 	round int,
 	queries []query.InnerProduct[T],
 ) *ContextForSize[T] {

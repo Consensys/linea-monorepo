@@ -114,7 +114,7 @@ func (m MiMC) Check(run ifaces.Runtime) error {
 }
 
 // Check the mimc relation in a gnark circuit
-func (m MiMC) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime) {
+func (m MiMC) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 
 	blocks := m.Blocks.GetColAssignmentGnark(run)
 	oldStates := m.OldState.GetColAssignmentGnark(run)

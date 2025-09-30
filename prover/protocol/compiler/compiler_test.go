@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var totalSuite = []func(comp *wizard.CompiledIOP){
+var totalSuite = []func(comp *wizard.CompiledIOP[T]){
 	poseidon2.CompilePoseidon2,
 
 	plonkinwizard.Compile,

@@ -87,7 +87,7 @@ var testcases_precomp []TestCase = []TestCase{
 }
 
 // generate a testcase protocol with given parameters
-func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wizard.ProverRuntime)) {
+func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wizard.ProverRuntime[T])) {
 
 	// the define function creates a dummy protocol
 	// with only univariate evaluations
@@ -136,7 +136,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 
 	// the prove function assignes the univariate evaluation
 	// and the columns with random values
-	prove = func(run *wizard.ProverRuntime) {
+	prove = func(run *wizard.ProverRuntime[T]) {
 		// the evaluation point
 		x := fext.RandomElement()
 		var ys []fext.Element
@@ -423,7 +423,7 @@ func TestSelfRecursionManyLayersWithSerde(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	comp2 := &wizard.CompiledIOP{}
+	comp2 := &wizard.CompiledIOP[T]{}
 	err = serialization.Deserialize(buf, &comp2)
 	if err != nil {
 		t.Fatal(err)

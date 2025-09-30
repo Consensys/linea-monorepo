@@ -9,7 +9,7 @@ import (
 )
 
 // Reduce the fixed permutations into a permutation query
-func CompileFixedPermutations(comp *wizard.CompiledIOP) {
+func CompileFixedPermutations(comp *wizard.CompiledIOP[T]) {
 
 	numRounds := comp.NumRounds()
 
@@ -32,7 +32,7 @@ func CompileFixedPermutations(comp *wizard.CompiledIOP) {
 
 // Reduce a permutation query. Follows the grand product argument
 // from PLONK paper: extended permutation part
-func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) {
+func reduceFixedPermutation(comp *wizard.CompiledIOP[T], q query.FixedPermutation) {
 	/*
 		Sanity checks : Mark the query as compiled and make sure that
 		it was not previously compiled.

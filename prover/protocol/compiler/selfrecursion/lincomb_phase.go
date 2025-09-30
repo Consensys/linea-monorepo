@@ -86,7 +86,7 @@ func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	ys := a.Ctx.Columns.Ys.GetColAssignmentGnark(run)
 	alpha := run.GetRandomCoinField(a.Ctx.Coins.Alpha.Name)
 	uAlphaX := a.InterpolateUalphaX.GetFrontendVariable(api, run)
@@ -110,7 +110,7 @@ func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *consistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *consistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	ys := a.ctx.Columns.Ys.GetColAssignmentGnark(run)
 	alpha := run.GetRandomCoinFieldExt(a.ctx.Coins.Alpha.Name)
 	uAlphaX := a.interpolateUalphaX.GetFrontendVariable(api, run)

@@ -17,7 +17,7 @@ Basically,
 
 P(g^5) + Q(g^-3) = 0 => L_1(x) [ P(g^-5 . x) + Q(g^3 . x) ] for x \in D
 */
-func ReduceLocalConstraint[T zk.Element](comp *wizard.CompiledIOP[T], q query.LocalConstraint[T], round int) {
+func ReduceLocalConstraint[T zk.Element](comp *wizard.CompiledIOP[T][T], q query.LocalConstraint[T], round int) {
 	/*
 		Compile down the query
 	*/

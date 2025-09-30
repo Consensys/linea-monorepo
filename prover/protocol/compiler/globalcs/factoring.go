@@ -11,7 +11,7 @@ import (
 )
 
 // factorExpressionList applies [factorExpression] over a list of expressions
-func factorExpressionList[T zk.Element](comp *wizard.CompiledIOP, exprList []*symbolic.Expression[T]) []*symbolic.Expression[T] {
+func factorExpressionList[T zk.Element](comp *wizard.CompiledIOP[T], exprList []*symbolic.Expression[T]) []*symbolic.Expression[T] {
 	res := make([]*symbolic.Expression[T], len(exprList))
 	var wg sync.WaitGroup
 
@@ -30,7 +30,7 @@ func factorExpressionList[T zk.Element](comp *wizard.CompiledIOP, exprList []*sy
 // factorExpression factors expr and returns the factored expression. The
 // resulting factored expression is cached in the file system as this is a
 // compute intensive operation.
-func factorExpression[T zk.Element](comp *wizard.CompiledIOP, expr *symbolic.Expression[T]) *symbolic.Expression[T] {
+func factorExpression[T zk.Element](comp *wizard.CompiledIOP[T], expr *symbolic.Expression[T]) *symbolic.Expression[T] {
 	flattenedExpr := flattenExpr(expr)
 	return simplify.AutoSimplify(flattenedExpr)
 }

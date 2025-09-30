@@ -40,17 +40,17 @@ type OptionSet struct {
 // column in plain-text to the verifier. The drawback is that since it happens
 // at prover level, the "errors" result in panics. This makes it not very
 // suitable for established unit-tests where we want to analyze the errors.
-func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP) {
+func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP[T]) {
 	os := &OptionSet{}
 	for _, opt := range opts {
 		opt(os)
 	}
-	return func(comp *wizard.CompiledIOP) {
+	return func(comp *wizard.CompiledIOP[T]) {
 		compileAtProverLvl(comp, os)
 	}
 }
 
-func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
+func compileAtProverLvl(comp *wizard.CompiledIOP[T], os *OptionSet) {
 
 	/*
 		Registers all declared commitments and query parameters
@@ -83,14 +83,14 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 // DummyProverAction is the action to verify queries at the prover level.
 // It implements the [wizard.ProverAction] interface.
 type DummyProverAction struct {
-	Comp                     *wizard.CompiledIOP
+	Comp                     *wizard.CompiledIOP[T]
 	QueriesParamsToCompile   []ifaces.QueryID
 	QueriesNoParamsToCompile []ifaces.QueryID
 	Os                       *OptionSet
 }
 
 // Run executes the dummy verification by checking all queries.
-func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
+func (a *DummyProverAction) Run(run *wizard.ProverRuntime[T]) {
 	logrus.Infof("started to run the dummy verifier")
 
 	var finalErr error

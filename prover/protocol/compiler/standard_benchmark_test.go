@@ -179,8 +179,8 @@ func (sbc *StdBenchmarkCase) Define(b *wizard.Builder) {
 
 // NewAssigner returns a function assigning the modules of the benchmark case. The
 // function also stops the timer during that time.
-func (sbc *StdBenchmarkCase) NewAssigner(b *testing.B) func(run *wizard.ProverRuntime) {
-	return func(run *wizard.ProverRuntime) {
+func (sbc *StdBenchmarkCase) NewAssigner(b *testing.B) func(run *wizard.ProverRuntime[T]) {
+	return func(run *wizard.ProverRuntime[T]) {
 
 		b.StopTimer()
 
@@ -205,7 +205,7 @@ func (sbc *StdBenchmarkCase) NewAssigner(b *testing.B) func(run *wizard.ProverRu
 }
 
 // defineLookupModule adds a lookup module to the benchmark case
-func defineLookupModule(comp *wizard.CompiledIOP, index int, params SubModuleParameters) {
+func defineLookupModule(comp *wizard.CompiledIOP[T], index int, params SubModuleParameters) {
 
 	// This is needed because both tables are assigned using [testtools.RandomFromSeed]
 	// and if NumRowAux was smaller, then S (parametrized with NumRow) would be
@@ -233,7 +233,7 @@ func defineLookupModule(comp *wizard.CompiledIOP, index int, params SubModulePar
 
 // assignLookupModule assigns random values to the columns of a lookup module using
 // [testtools.RandomFromSeed].
-func assignLookupModule(run *wizard.ProverRuntime, index int, params SubModuleParameters) {
+func assignLookupModule(run *wizard.ProverRuntime[T], index int, params SubModuleParameters) {
 
 	ti := testtools.RandomFromSeed(params.NumRowAux, int64(index))
 	si := testtools.RandomFromSeed(params.NumRow, int64(index))
@@ -246,7 +246,7 @@ func assignLookupModule(run *wizard.ProverRuntime, index int, params SubModulePa
 
 // definePermutationModule creates a permutation module with the requested number
 // rows and columns on each side of the permutation.
-func definePermutationModule(comp *wizard.CompiledIOP, index int, params SubModuleParameters) {
+func definePermutationModule(comp *wizard.CompiledIOP[T], index int, params SubModuleParameters) {
 
 	var (
 		a = []ifaces.Column[T]{}
@@ -266,7 +266,7 @@ func definePermutationModule(comp *wizard.CompiledIOP, index int, params SubModu
 
 // assignPermutationModule assigns random values to the columns of a permutation module using
 // [testtools.RandomFromSeed] for a and the same reverted vector for b.
-func assignPermutationModule(run *wizard.ProverRuntime, index int, params SubModuleParameters) {
+func assignPermutationModule(run *wizard.ProverRuntime[T], index int, params SubModuleParameters) {
 
 	ai := testtools.RandomFromSeed(params.NumRow, int64(index))
 	bi := testtools.Reverse(ai)
@@ -278,7 +278,7 @@ func assignPermutationModule(run *wizard.ProverRuntime, index int, params SubMod
 }
 
 // defineProjectionModule adds a projection module to the benchmark case.
-func defineProjectionModule(comp *wizard.CompiledIOP, index int, params SubModuleParameters) {
+func defineProjectionModule(comp *wizard.CompiledIOP[T], index int, params SubModuleParameters) {
 
 	var (
 		a       = []ifaces.Column[T]{}
@@ -308,7 +308,7 @@ func defineProjectionModule(comp *wizard.CompiledIOP, index int, params SubModul
 // assignProjectionModule assigns random values to the columns of a projection
 // using [testtools.RandomFromSeed]. The large side of the projection is zero-padded
 // to match the length of the small side and make the projection work.
-func assignProjectionModule(run *wizard.ProverRuntime, index int, params SubModuleParameters) {
+func assignProjectionModule(run *wizard.ProverRuntime[T], index int, params SubModuleParameters) {
 
 	var (
 		sizeSmall        = min(params.NumRow, params.NumRowAux)
@@ -344,7 +344,7 @@ func assignProjectionModule(run *wizard.ProverRuntime, index int, params SubModu
 
 // defineFibo creates a single column constrained to be the fibonacci sequence
 // starting at 1, 1
-func defineFiboModule(comp *wizard.CompiledIOP, index int, params SubModuleParameters) {
+func defineFiboModule(comp *wizard.CompiledIOP[T], index int, params SubModuleParameters) {
 
 	a := comp.InsertCommit(0, formatName[ifaces.ColID]("Fibo", index), params.NumRow)
 
@@ -367,7 +367,7 @@ func defineFiboModule(comp *wizard.CompiledIOP, index int, params SubModuleParam
 	)
 }
 
-func assignFiboModule(run *wizard.ProverRuntime, index int, params SubModuleParameters) {
+func assignFiboModule(run *wizard.ProverRuntime[T], index int, params SubModuleParameters) {
 
 	fibo := make([]field.Element, 0, params.NumRow)
 	fibo = append(fibo, field.One(), field.One())

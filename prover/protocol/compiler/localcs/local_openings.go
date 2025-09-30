@@ -8,7 +8,7 @@ import (
 )
 
 // Compile applies the local openings compilation pass over `comp`.
-func compileOpeningsToConstraints(comp *wizard.CompiledIOP) {
+func compileOpeningsToConstraints(comp *wizard.CompiledIOP[T]) {
 
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
 		q, ok := comp.QueriesParams.Data(qName).(query.LocalOpening)

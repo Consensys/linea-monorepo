@@ -15,14 +15,14 @@ import (
 // compiles them using the GrandProduct argument technique. All the queries are
 // compiled independently and the technique relies on computing a column Z
 // accumulating the fractions (A[i] + Beta) / (B[i] + Beta)
-func CompileViaGrandProduct[T zk.Element](comp *wizard.CompiledIOP[T]) {
+func CompileViaGrandProduct[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 	CompileIntoGdProduct[T](comp)
 	CompileGrandProduct(comp)
 }
 
 // CompileIntoGdProduct scans comp, looking for [query.Permutation] queries
 // and compile them into global [query.GrandProduct]. One for every-round.
-func CompileIntoGdProduct[T zk.Element](comp *wizard.CompiledIOP[T]) {
+func CompileIntoGdProduct[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 
 	var (
 		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
@@ -67,7 +67,7 @@ func CompileIntoGdProduct[T zk.Element](comp *wizard.CompiledIOP[T]) {
 // dispatchPermutation applies the grand product argument compilation over
 // a specific [query.Permutation]
 func dispatchPermutation[T zk.Element](
-	comp *wizard.CompiledIOP[T],
+	comp *wizard.CompiledIOP[T][T],
 	permutationInputs map[int]*query.GrandProductInput[T],
 	round int,
 	q query.Permutation[T],

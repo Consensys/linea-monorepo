@@ -153,7 +153,7 @@ func TestSplitextension(t *testing.T) {
 				b.InsertUnivariate(0, qName, toSplit)
 			}
 
-			genWitness := func(run *wizard.ProverRuntime) {
+			genWitness := func(run *wizard.ProverRuntime[T]) {
 				y := make([]fext.Element, numColumns)
 				for i := 0; i < numColumns; i++ {
 					curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)

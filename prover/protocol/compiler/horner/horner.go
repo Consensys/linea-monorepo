@@ -66,7 +66,7 @@ type CheckHornerResult[T zk.Element] struct {
 // CompileHoner compiles the [query.Horner] queries one by one by "transforming"
 // them into [query.InnerProduct], [query.LocalOpening], [query.Global] and
 // [query.Local].
-func CompileHorner(comp *wizard.CompiledIOP) {
+func CompileHorner(comp *wizard.CompiledIOP[T]) {
 
 	qNames := comp.QueriesParams.AllUnignoredKeys()
 
@@ -83,7 +83,7 @@ func CompileHorner(comp *wizard.CompiledIOP) {
 	}
 }
 
-func compileHornerQuery[T zk.Element](comp *wizard.CompiledIOP, q *query.Horner[T]) {
+func compileHornerQuery[T zk.Element](comp *wizard.CompiledIOP[T], q *query.Horner[T]) {
 
 	var (
 		round = q.Round
@@ -178,7 +178,7 @@ func compileHornerQuery[T zk.Element](comp *wizard.CompiledIOP, q *query.Horner[
 	comp.RegisterVerifierAction(q.Round, &CheckHornerResult[T]{HornerCtx: ctx})
 }
 
-func (a AssignHornerCtx[T]) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerCtx[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		params = run.GetHornerParams(a.Q.ID)
@@ -263,7 +263,7 @@ func (a AssignHornerCtx[T]) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (a AssignHornerIP[T]) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerIP[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	for i := range a.Q.Parts {
 
@@ -343,12 +343,12 @@ func (c *CheckHornerResult[T]) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckHornerResult[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckHornerResult[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	var (
 		hornerQuery  = c.Q
 		hornerParams = run.GetHornerParams(hornerQuery.ID)
-		res          = T(0)
+		res          = zk.ValueOf[T](0)
 	)
 
 	for i := range c.Q.Parts {
@@ -356,7 +356,7 @@ func (c *CheckHornerResult[T]) RunGnark(api frontend.API, run wizard.GnarkRuntim
 		var (
 			ipQuery  = c.CountingInnerProducts[i]
 			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-			ipCount  = T(0)
+			ipCount  = zk.ValueOf[T](0)
 		)
 
 		for k := range ipQuery.Bs {

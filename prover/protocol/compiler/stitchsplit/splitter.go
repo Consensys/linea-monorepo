@@ -13,7 +13,7 @@ type SplitProverAction struct {
 	Splittings []SummerizedAlliances
 }
 
-func (a *SplitProverAction) Run(run *wizard.ProverRuntime) {
+func (a *SplitProverAction) Run(run *wizard.ProverRuntime[T]) {
 	for round := range a.Splittings {
 		// This is an iteration over a map so the order is non-deterministic
 		// but this does not matter here.
@@ -23,8 +23,8 @@ func (a *SplitProverAction) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func Splitter(size int) func(*wizard.CompiledIOP) {
-	return func(comp *wizard.CompiledIOP) {
+func Splitter(size int) func(*wizard.CompiledIOP[T]) {
+	return func(comp *wizard.CompiledIOP[T]) {
 		ctx := newSplitter(comp, size)
 		ctx.constraints()
 		comp.RegisterProverAction(comp.NumRounds()-1, &SplitProverAction{
@@ -34,12 +34,12 @@ func Splitter(size int) func(*wizard.CompiledIOP) {
 }
 
 type SplitterContext struct {
-	Comp       *wizard.CompiledIOP
+	Comp       *wizard.CompiledIOP[T]
 	Size       int
 	Splittings []SummerizedAlliances
 }
 
-func newSplitter(comp *wizard.CompiledIOP, size int) SplitterContext {
+func newSplitter(comp *wizard.CompiledIOP[T], size int) SplitterContext {
 	numRound := comp.NumRounds()
 	ctx := SplitterContext{
 		Comp:       comp,
@@ -55,7 +55,7 @@ type ProveRoundProverAction struct {
 	Round int
 }
 
-func (a *ProveRoundProverAction) Run(run *wizard.ProverRuntime) {
+func (a *ProveRoundProverAction) Run(run *wizard.ProverRuntime[T]) {
 	stopTimer := profiling.LogTimer("splitter compiler")
 	defer stopTimer()
 

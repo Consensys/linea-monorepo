@@ -18,7 +18,7 @@ type ProverTask[T zk.Element] struct {
 }
 
 // Run implements the [wizard.ProverAction] interface.
-func (p ProverTask[T]) Run(run *wizard.ProverRuntime) {
+func (p ProverTask[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(p.Pt))
@@ -38,7 +38,7 @@ func (p ProverTask[T]) Run(run *wizard.ProverRuntime) {
 
 // run partially implements the prover runtime associated with the current
 // partial compilation context. Its role is to assign Summation and its opening.
-func (ctx *ContextForSize[T]) run(run *wizard.ProverRuntime) {
+func (ctx *ContextForSize[T]) run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		size      = ctx.Summation.Size()

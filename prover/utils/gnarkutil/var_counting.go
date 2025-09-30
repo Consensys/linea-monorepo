@@ -7,9 +7,9 @@ func CountVariables(circ any) (nbPublic, nbSecret int) {
 
 	panic("not implemented to support multiple fields especially koalabear")
 
-	// // tVar holds a reference to the reflect.Type of [frontend.Variable]
+	// // tVar holds a reference to the reflect.Type of [T]
 	// var (
-	// 	tVar = reflect.ValueOf(struct{ A frontend.Variable }{}).FieldByName("A").Type()
+	// 	tVar = reflect.ValueOf(struct{ A T }{}).FieldByName("A").Type()
 	// )
 
 	// s, err := schema.Walk(ecc.BN254.ScalarField(), circ, tVar, nil) //TODO@yao: check if we should plugin field to replace ecc.BN254.ScalarField()

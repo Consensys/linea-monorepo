@@ -9,7 +9,7 @@ import (
 // in comp using the [LogDerivativeSum] approach. First, the queries are
 // grouped into a big [LogDerivativeSum] query and then, the query is
 // compiled using global-constraints and local-constraints.
-func CompileLookups[T zk.Element](comp *wizard.CompiledIOP[T]) {
+func CompileLookups[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 	LookupIntoLogDerivativeSum[T](comp)
 	CompileLogDerivativeSum[T](comp)
 }

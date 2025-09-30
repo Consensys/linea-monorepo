@@ -26,12 +26,17 @@ type InnerProduct[T zk.Element] struct {
 }
 
 // Inner product params
-type InnerProductParams struct {
+type InnerProductParams[T zk.Element] struct {
 	Ys []fext.Element
 }
 
+// Constructor for fixed point univariate evaluation query parameters
+func NewInnerProductParams[T zk.Element](ys ...fext.Element) InnerProductParams[T] {
+	return InnerProductParams[T]{Ys: ys}
+}
+
 // Update the fiat-shamir state with inner-product params
-func (ipp InnerProductParams) UpdateFS(state hash.StateStorer) {
+func (ipp InnerProductParams[T]) UpdateFS(state hash.StateStorer) {
 	fiatshamir.UpdateVecExt(state, ipp.Ys)
 }
 
@@ -75,7 +80,7 @@ func (r InnerProduct[T]) Name() ifaces.QueryID {
 // Check the inner-product manually
 func (r InnerProduct[T]) Check(run ifaces.Runtime) error {
 
-	expecteds := run.GetParams(r.ID).(InnerProductParams)
+	expecteds := run.GetParams(r.ID).(InnerProductParams[T])
 	computed := r.Compute(run)
 
 	// Prepare a nice error message in case we need it

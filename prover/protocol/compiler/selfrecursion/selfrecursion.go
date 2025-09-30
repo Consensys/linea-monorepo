@@ -7,7 +7,7 @@ import (
 )
 
 // Apply the self-recursion transformation over a vortex compiled
-func SelfRecurse(comp *wizard.CompiledIOP) {
+func SelfRecurse(comp *wizard.CompiledIOP[T]) {
 
 	logrus.Trace("started self-recursion compiler")
 	defer logrus.Trace("finished self-recursion compiler")
@@ -22,7 +22,7 @@ func SelfRecurse(comp *wizard.CompiledIOP) {
 
 // RecurseOverCustomCtx applies the same compilation steps as [SelfRecurse]
 // over a specified vortex compilation context.
-func RecurseOverCustomCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix string) {
+func RecurseOverCustomCtx(comp *wizard.CompiledIOP[T], vortexCtx *vortex.Ctx, prefix string) {
 	ctx := NewRecursionCtx(comp, vortexCtx, prefix)
 	ctx.Precomputations()
 	ctx.RowLinearCombinationPhase()

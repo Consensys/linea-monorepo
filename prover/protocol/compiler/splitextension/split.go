@@ -63,7 +63,7 @@ type SplitCtx struct {
 	SplittedPolynomials []ifaces.Column[T]
 }
 
-func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
+func CompileSplitExtToBase(comp *wizard.CompiledIOP[T]) {
 
 	logrus.Trace("started naturalization compiler")
 	defer logrus.Trace("finished naturalization compiler")
@@ -155,7 +155,7 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 }
 
 // Run implements the [wizard.ProverAction] interface
-func (a *AssignSplitColumnProverAction) Run(runtime *wizard.ProverRuntime) {
+func (a *AssignSplitColumnProverAction) Run(runtime *wizard.ProverRuntime[T]) {
 
 	ctx := a.Ctx
 
@@ -178,7 +178,7 @@ func (a *AssignSplitColumnProverAction) Run(runtime *wizard.ProverRuntime) {
 }
 
 // Run implements ProverAction interface
-func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime) {
+func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime[T]) {
 
 	var (
 		ctx            = pctx.Ctx
@@ -261,7 +261,7 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	panic("RunGnark is unimplemented for split extension")
 }
 

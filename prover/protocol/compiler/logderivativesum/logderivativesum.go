@@ -19,7 +19,7 @@ import (
 )
 
 // compile [query.LogDerivativeSum] query
-func CompileLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T]) {
+func CompileLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 
 	// Collect all the logDerivativeSum queries
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
@@ -135,7 +135,7 @@ func (f *FinalEvaluationCheck[T]) Run(run wizard.Runtime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction]
-func (f *FinalEvaluationCheck[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (f *FinalEvaluationCheck[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried

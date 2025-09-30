@@ -22,7 +22,7 @@ const (
 type FromGrandProductAccessor[T zk.Element] struct {
 	// Q is the underlying query whose parameters are accessed by the current
 	// [ifaces.Accessor].
-	Q query.GrandProduct
+	Q query.GrandProduct[T]
 }
 
 // IsBase implements [ifaces.Accessor] and always returns false as grand-product
@@ -49,7 +49,7 @@ func (l *FromGrandProductAccessor[T]) GetFrontendVariableBase(api zk.APIGen[T], 
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromGrandProductAccessor[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
-	params := circ.GetParams(l.Q.ID).(query.GnarkGrandProductParams)
+	params := circ.GetParams(l.Q.ID).(query.GnarkGrandProductParams[T])
 	return params.Prod
 }
 
@@ -60,7 +60,7 @@ func (l *FromGrandProductAccessor[T]) GetFrontendVariableExt(api zk.APIGen[T], c
 
 // NewGrandProductAccessor creates an [ifaces.Accessor] returning the opening
 // point of a [query.GrandProduct].
-func NewGrandProductAccessor[T zk.Element](q query.GrandProduct) ifaces.Accessor[T] {
+func NewGrandProductAccessor[T zk.Element](q query.GrandProduct[T]) ifaces.Accessor[T] {
 	return &FromGrandProductAccessor[T]{Q: q}
 }
 

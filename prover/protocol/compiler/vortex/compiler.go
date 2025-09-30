@@ -51,7 +51,7 @@ There are the following requirements:
   - FOR ALL ROUNDS, all the polynomials must have the same size
   - The inbound wizard-IOP must be a single-point polynomial-IOP
 */
-func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
+func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP[T]) {
 
 	logrus.Trace("started vortex compiler")
 	defer logrus.Trace("finished vortex compiler")
@@ -60,7 +60,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		utils.Panic("expected a power of two but rho was %v", blowUpFactor)
 	}
 
-	return func(comp *wizard.CompiledIOP) {
+	return func(comp *wizard.CompiledIOP[T]) {
 
 		univQ, foundAny := extractTargetQuery(comp)
 		if !foundAny {
@@ -163,7 +163,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 // Placeholder for variable commonly used within the vortex compilation
 type Ctx struct {
 	// The underlying compiled IOP protocol
-	Comp *wizard.CompiledIOP
+	Comp *wizard.CompiledIOP[T]
 	// snapshot the self-recursion count immediately
 	// when the context is created
 	SelfRecursionCount int
@@ -282,7 +282,7 @@ type Ctx struct {
 }
 
 // Construct a new compilation context
-func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor int, options ...VortexOp) *Ctx {
+func newCtx(comp *wizard.CompiledIOP[T], univQ query.UnivariateEval, blowUpFactor int, options ...VortexOp) *Ctx {
 	ctx := &Ctx{
 		Comp:                         comp,
 		SelfRecursionCount:           comp.SelfRecursionCount,
@@ -476,7 +476,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 // asserts that the compiled IOP has only a single query and that this query
 // is a univariate evaluation. Also, mark the query as ignored when found.
-func extractTargetQuery(comp *wizard.CompiledIOP) (res query.UnivariateEval, foundAny bool) {
+func extractTargetQuery(comp *wizard.CompiledIOP[T]) (res query.UnivariateEval, foundAny bool) {
 
 	// Tracks the uncompiled queries. There should be only one at the end.
 	// Scans the other no params (we expect none)

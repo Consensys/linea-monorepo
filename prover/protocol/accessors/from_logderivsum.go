@@ -23,7 +23,7 @@ const (
 type FromLogDerivSumAccessor[T zk.Element] struct {
 	// Q is the underlying query whose parameters are accessed by the current
 	// [ifaces.Accessor].
-	Q query.LogDerivativeSum
+	Q query.LogDerivativeSum[T]
 }
 
 func (l *FromLogDerivSumAccessor[T]) IsBase() bool {
@@ -52,7 +52,7 @@ func (l *FromLogDerivSumAccessor[T]) GetFrontendVariableExt(api zk.APIGen[T], c 
 
 // NewLogDerivSumAccessor creates an [ifaces.Accessor] returning the opening
 // point of a [query.LogDerivativeSum].
-func NewLogDerivSumAccessor[T zk.Element](q query.LogDerivativeSum) ifaces.Accessor[T] {
+func NewLogDerivSumAccessor[T zk.Element](q query.LogDerivativeSum[T]) ifaces.Accessor[T] {
 	return &FromLogDerivSumAccessor[T]{Q: q}
 }
 
@@ -74,7 +74,7 @@ func (l *FromLogDerivSumAccessor[T]) GetVal(run ifaces.Runtime) field.Element {
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromLogDerivSumAccessor[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
-	params := circ.GetParams(l.Q.ID).(query.GnarkLogDerivSumParams)
+	params := circ.GetParams(l.Q.ID).(query.GnarkLogDerivSumParams[T])
 	return params.Sum
 }
 

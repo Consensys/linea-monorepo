@@ -160,7 +160,7 @@ type MIMCMetaData struct {
 type SelfRecursionCtx struct {
 
 	// Pointer to the compiled IOP
-	Comp *wizard.CompiledIOP
+	Comp *wizard.CompiledIOP[T]
 
 	// Context of the past vortex compiler that we are skipping
 	VortexCtx *vortex.Ctx
@@ -237,7 +237,7 @@ type SelfRecursionCtx struct {
 // NewRecursionCtx returns a new recursion context taking a specified
 // [vortex.Ctx] and SelfRecursionCount. It can be used for custom use
 // of the recursion wizard.
-func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix string) SelfRecursionCtx {
+func NewRecursionCtx(comp *wizard.CompiledIOP[T], vortexCtx *vortex.Ctx, prefix string) SelfRecursionCtx {
 
 	ctx := SelfRecursionCtx{
 		Comp:             comp,
@@ -349,14 +349,14 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 }
 
 // Initializes a context for the self recursion
-func NewSelfRecursionCxt(comp *wizard.CompiledIOP) SelfRecursionCtx {
+func NewSelfRecursionCxt(comp *wizard.CompiledIOP[T]) SelfRecursionCtx {
 	// Extract the vortex context from the compiledIOP though the "Pcs"
 	vortexCtx := assertVortexCompiled(comp)
 	return NewRecursionCtx(comp, vortexCtx, "")
 }
 
 // Asserts that the compiled IOP has the appropriate cryptographic context
-func assertVortexCompiled(comp *wizard.CompiledIOP) *vortex.Ctx {
+func assertVortexCompiled(comp *wizard.CompiledIOP[T]) *vortex.Ctx {
 	// When we compiled using Vortex, we annotated the compiledIOP
 	// that the current protocol was a result of the
 	ctx := comp.PcsCtxs

@@ -6,7 +6,7 @@ import (
 )
 
 // Simple compilation steps which frees ignored items
-func CleanUp(comp *wizard.CompiledIOP) {
+func CleanUp(comp *wizard.CompiledIOP[T]) {
 	// Gets the last round of the comp
 	lastRound := comp.NumRounds() - 1
 	// Get the list of all ignored columns
@@ -25,7 +25,7 @@ type CleanupProverAction struct {
 }
 
 // Run executes the cleanup by removing ignored columns from the runtime.
-func (a *CleanupProverAction) Run(run *wizard.ProverRuntime) {
+func (a *CleanupProverAction) Run(run *wizard.ProverRuntime[T]) {
 	// Remove all the ignored columns
 	for _, col := range a.ColumnsToRemove {
 		run.Columns.TryDel(col)

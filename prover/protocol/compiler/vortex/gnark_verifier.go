@@ -15,11 +15,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime[T]) {
 	a.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
 }
 
-func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime) {
+func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime[T]) {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -99,7 +99,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]T) {
+func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime[T]) (ys [][]T) {
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
@@ -174,7 +174,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]T) {
 
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
-func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRuntime) [][][]T {
+func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRuntime[T]) [][][]T {
 
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
@@ -224,7 +224,7 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 }
 
 // Evaluates explicitly the public polynomials (proof, vk, public inputs)
-func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkRuntime) {
+func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkRuntime[T]) {
 
 	var (
 		params     = vr.GetUnivariateParams(ctx.Query.QueryID)

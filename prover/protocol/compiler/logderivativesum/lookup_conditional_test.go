@@ -26,7 +26,7 @@ func TestConditionalLogDerivativeDebug(t *testing.T) {
 		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{cola}, []ifaces.Column[T]{colb}, filterA, filterB)
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		// assign a and b
 		cola := smartvectors.ForTest(0, 1)
 		colb := smartvectors.ForTest(0, 1)
@@ -59,7 +59,7 @@ func TestConditionalLogDerivativeLookupSimple(t *testing.T) {
 		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{cola}, []ifaces.Column[T]{colb}, filterA, filterB)
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		// assign a and b
 		cola := smartvectors.ForTest(0, 1, 2, 3)
 		colb := smartvectors.ForTest(0, 1)
@@ -82,7 +82,7 @@ func TestConditionalLogDerivativeLookupSimple(t *testing.T) {
 func TestConditionalLogDerivativeLookupSimple2(t *testing.T) {
 
 	var sizeA, sizeB int = 16, 4
-	var runtime *wizard.ProverRuntime
+	var runtime *wizard.ProverRuntime[T]
 
 	define := func(b *wizard.Builder) {
 		cola := b.RegisterCommit("S", sizeA)
@@ -92,7 +92,7 @@ func TestConditionalLogDerivativeLookupSimple2(t *testing.T) {
 		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola}, filterB, filterA)
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		runtime = run
 		// assign a and b
 		cola := smartvectors.ForTest(1, 1, 1, 2, 3, 3, 0, 1, 1, 1, 1, 2, 3, 0, 3, 1)
@@ -130,7 +130,7 @@ func TestConditionalLogDerivativeLookupSimple2(t *testing.T) {
 func TestConditionalLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 
 	var sizeA, sizeB int = 16, 4
-	var runtime *wizard.ProverRuntime
+	var runtime *wizard.ProverRuntime[T]
 
 	define := func(b *wizard.Builder) {
 		cola := b.RegisterCommit("S", sizeA)
@@ -142,7 +142,7 @@ func TestConditionalLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola}, filterT, filter1)
 		b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola2}, filterT, filter2)
 	}
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		runtime = run
 		// assign a and b
 		cola := smartvectors.ForTest(1, 1, 1, 2, 3, 0, 0, 1, 1, 1, 1, 2, 3, 0, 0, 1)
@@ -183,7 +183,7 @@ func TestConditionalLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 func TestConditionalLogDerivativeLookupOneXor(t *testing.T) {
 
 	var sizeTable, sizeCheckeds int = 16, 8
-	var runtime *wizard.ProverRuntime
+	var runtime *wizard.ProverRuntime[T]
 
 	// The test uses a lookup over a xor table
 
@@ -205,7 +205,7 @@ func TestConditionalLogDerivativeLookupOneXor(t *testing.T) {
 		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{wX, wY, wXY}, filterT, filterS)
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		runtime = run
 		// assign a and b
 		xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)
@@ -249,7 +249,7 @@ func TestConditionalLogDerivativeLookupOneXor(t *testing.T) {
 func TestConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 
 	var sizeTable, sizeCheckeds, sizeCheckedLarger int = 16, 4, 8
-	var runtime *wizard.ProverRuntime
+	var runtime *wizard.ProverRuntime[T]
 
 	// The test uses a lookup over a xor table
 
@@ -276,7 +276,7 @@ func TestConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		runtime = run
 		// assign a and b
 		xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)
@@ -332,7 +332,7 @@ the following test mixes different types of conditional and non-conditional look
 func TestMixedConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 
 	var sizeTable, sizeCheckeds, sizeCheckedLarger int = 16, 4, 8
-	var runtime *wizard.ProverRuntime
+	var runtime *wizard.ProverRuntime[T]
 
 	// The test uses a lookup over a xor table
 
@@ -372,7 +372,7 @@ func TestMixedConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 		b.InclusionConditionalOnIncluded("LOOKUP5", []ifaces.Column[T]{xorX, xorY, xorXY, filterT}, []ifaces.Column[T]{w4X, w4Y, w4XY, constantOne}, filterS4)
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		runtime = run
 		// assign a and b
 		xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)
@@ -454,7 +454,7 @@ func TestConditionalWithDummyCompilerOnly(t *testing.T) {
 		//b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola}, filterB, filterA)
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		// assign a and b
 		filterA := smartvectors.ForTest(1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 		filterB := smartvectors.ForTest(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1)

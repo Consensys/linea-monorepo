@@ -18,7 +18,7 @@ import (
 type FromLocalOpeningYAccessor[T zk.Element] struct {
 	// Q is the underlying query whose parameters are accessed by the current
 	// [ifaces.Accessor].
-	Q query.LocalOpening
+	Q query.LocalOpening[T]
 	// QRound is the declaration round of the query
 	QRound int
 }
@@ -49,7 +49,7 @@ func (l *FromLocalOpeningYAccessor[T]) GetFrontendVariableExt(api zk.APIGen[T], 
 
 // NewLocalOpeningAccessor creates an [ifaces.Accessor] returning the opening
 // point of a [query.LocalOpening].
-func NewLocalOpeningAccessor[T zk.Element](q query.LocalOpening, qRound int) ifaces.Accessor[T] {
+func NewLocalOpeningAccessor[T zk.Element](q query.LocalOpening[T], qRound int) ifaces.Accessor[T] {
 	return &FromLocalOpeningYAccessor[T]{Q: q, QRound: qRound}
 }
 
@@ -71,7 +71,7 @@ func (l *FromLocalOpeningYAccessor[T]) GetVal(run ifaces.Runtime) field.Element 
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromLocalOpeningYAccessor[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
-	params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
+	params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams[T])
 	return params.BaseY
 }
 

@@ -47,12 +47,12 @@ type LogDerivativeSum[T zk.Element] struct {
 }
 
 // the result of the global Sum
-type LogDerivSumParams struct {
+type LogDerivSumParams[T zk.Element] struct {
 	Sum fext.GenericFieldElem // the sum of all the ZOpenings from different [round,size].
 }
 
 // Updates a Fiat-Shamir state
-func (l LogDerivSumParams) UpdateFS(fs hash.StateStorer) {
+func (l LogDerivSumParams[T]) UpdateFS(fs hash.StateStorer) {
 	fiatshamir.UpdateGeneric(fs, l.Sum)
 }
 
@@ -107,9 +107,14 @@ func (r LogDerivativeSum[T]) Name() ifaces.QueryID {
 }
 
 // Constructor for the query parameters/result
-func NewLogDerivSumParams(sum fext.GenericFieldElem) LogDerivSumParams {
-	return LogDerivSumParams{Sum: sum}
+func NewLogDerivSumParams[T zk.Element](sum fext.GenericFieldElem) LogDerivSumParams[T] {
+	return LogDerivSumParams[T]{Sum: sum}
 }
+
+// // Updates a Fiat-Shamir state
+// func (l LogDerivSumParams[T]) UpdateFS(fs hash.StateStorer) {
+// 	fiatshamir.UpdateGeneric(fs, l.Sum)
+// }
 
 // Compute returns the result value of the [LogDerivativeSum] query. It
 // should be run by a runtime with access to the query columns. i.e
@@ -164,7 +169,7 @@ func (r LogDerivativeSum[T]) Compute(run ifaces.Runtime) (fext.GenericFieldElem,
 func (r LogDerivativeSum[T]) Check(run ifaces.Runtime) error {
 
 	var (
-		params         = run.GetParams(r.ID).(LogDerivSumParams)
+		params         = run.GetParams(r.ID).(LogDerivSumParams[T])
 		actualSum, err = r.Compute(run)
 	)
 

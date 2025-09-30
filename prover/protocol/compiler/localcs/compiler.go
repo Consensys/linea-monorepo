@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 /*
@@ -24,7 +25,7 @@ func deriveName[R ~string](context string, q ifaces.QueryID, name string) R {
 /*
 Compiles the local constraints
 */
-func Compile(comp *wizard.CompiledIOP) {
+func Compile[T zk.Element](comp *wizard.CompiledIOP[T]) {
 
 	compileOpeningsToConstraints(comp)
 

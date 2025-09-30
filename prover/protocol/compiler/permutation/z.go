@@ -78,7 +78,7 @@ func NewZCtxFromGrandProduct(gp query.GrandProduct) []*ZCtx {
 // compileZs declares the Z polynomials and constraint them. It assumes that the
 // current z context is partially filled with their Size, Round, NumeratorFactors
 // and DenominatorFactors (not the boarded one).
-func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
+func (z *ZCtx) Compile(comp *wizard.CompiledIOP[T]) {
 
 	var (
 		numZs = utils.Max(

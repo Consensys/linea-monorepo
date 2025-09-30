@@ -31,7 +31,7 @@ type RandomPointEvaluation[T zk.Element] struct {
 	*MultipointToSinglepointCompilation[T]
 }
 
-func (qa QuotientAccumulation[T]) Run(run *wizard.ProverRuntime) {
+func (qa QuotientAccumulation[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		rho = run.GetRandomCoinFieldExt(qa.LinCombCoeffRho.Name)
@@ -185,7 +185,7 @@ func (qa QuotientAccumulation[T]) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegularExt(quotient))
 }
 
-func (re RandomPointEvaluation[T]) Run(run *wizard.ProverRuntime) {
+func (re RandomPointEvaluation[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		r        = run.GetRandomCoinFieldExt(re.EvaluationPoint.Name)
@@ -202,7 +202,7 @@ func (re RandomPointEvaluation[T]) Run(run *wizard.ProverRuntime) {
 	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }
 
-func (qa QuotientAccumulation[T]) computeZetasExt(run *wizard.ProverRuntime) [][]fext.Element {
+func (qa QuotientAccumulation[T]) computeZetasExt(run *wizard.ProverRuntime[T]) [][]fext.Element {
 
 	var (
 		// powersOfOmega is the list of the powers of omega starting from 0.

@@ -13,8 +13,8 @@ import (
 
 // Log is a [wizard.Compiler] implementation which logs metadata and
 // stats about the wizard in its current step of compilation.
-func Log[T zk.Element](msg string) func(comp *wizard.CompiledIOP) {
-	return func(comp *wizard.CompiledIOP) {
+func Log[T zk.Element](msg string) func(comp *wizard.CompiledIOP[T]) {
+	return func(comp *wizard.CompiledIOP[T]) {
 		cellCount := GetWizardStats[T](comp)
 		logrus.Infof("[wizard.analytic] msg=%v cell-count=%+v", msg, cellCount)
 	}
@@ -59,7 +59,7 @@ type TranscriptStats struct {
 }
 
 // GetWizardStats counts the cells occuring in the provided wizard-IOP.
-func GetWizardStats[T zk.Element](comp *wizard.CompiledIOP[T]) *WizardStats {
+func GetWizardStats[T zk.Element](comp *wizard.CompiledIOP[T][T]) *WizardStats {
 
 	var (
 		listOfColumns = comp.Columns.AllKeys()

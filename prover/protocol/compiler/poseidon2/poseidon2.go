@@ -66,7 +66,7 @@ type Poseidon2Context[T zk.Element] struct {
 // CompilePoseidon2 compiles all the Poseidon2 queries in the [comp] object. The compiler
 // works by creating its own module responsible for checking each unique Poseidon2
 // query statements, taking into account the padding.
-func CompilePoseidon2[T zk.Element](comp *wizard.CompiledIOP[T]) {
+func CompilePoseidon2[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 	_ = defineContext[T](comp)
 }
 
@@ -82,7 +82,7 @@ func CompilePoseidon2[T zk.Element](comp *wizard.CompiledIOP[T]) {
 //     are used to stack all the unique triplets provided in the inputs.
 //   - declaring the intermediate computations for all Poseidon2 rounds and the
 //     constraints enforcing their correctness.
-func defineContext[T zk.Element](comp *wizard.CompiledIOP[T]) *Poseidon2Context[T] {
+func defineContext[T zk.Element](comp *wizard.CompiledIOP[T][T]) *Poseidon2Context[T] {
 
 	var (
 		ctx             = &Poseidon2Context[T]{}
@@ -191,7 +191,7 @@ func defineContext[T zk.Element](comp *wizard.CompiledIOP[T]) *Poseidon2Context[
 }
 
 // defineExternalRound defines constraints for a single external Poseidon2 round.
-func defineExternalRound(comp *wizard.CompiledIOP, ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
+func defineExternalRound(comp *wizard.CompiledIOP[T], ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
 	// Add Round Key
 	input = defineAddRoundKey(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
 	// S-Box
@@ -203,7 +203,7 @@ func defineExternalRound(comp *wizard.CompiledIOP, ctx *Poseidon2Context[T], pro
 }
 
 // defineInternalRound defines constraints for a single internal Poseidon2 round.
-func defineInternalRound[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
+func defineInternalRound[T zk.Element](comp *wizard.CompiledIOP[T], ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
 	// Add Round Key
 	input = defineAddRoundKey(comp, ctx, protocolRoundID, totalSize, input, poseidon2Round)
 	// S-Box (only on the first element)
@@ -215,7 +215,7 @@ func defineInternalRound[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2C
 }
 
 // External Matrix Multiplication
-func defineMatMulExternal[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
+func defineMatMulExternal[T zk.Element](comp *wizard.CompiledIOP[T], ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
 	matMulM4Tmp := [matMulM4TmpSize]ifaces.Column[T]{}
 	matMulM4 := [width]ifaces.Column[T]{}
 	t := [tSize]ifaces.Column[T]{}
@@ -262,7 +262,7 @@ func defineMatMulExternal[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2
 }
 
 // Internal Matrix Multiplication
-func defineMatMulInternal[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
+func defineMatMulInternal[T zk.Element](comp *wizard.CompiledIOP[T], ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
 	matMulInternal := [width]ifaces.Column[T]{}
 	sBoxSum := comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_SBoxSum_SelfRecursionCount_%v_ID_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp)), totalSize)
 	ctx.SBoxSum = append(ctx.SBoxSum, sBoxSum)
@@ -333,7 +333,7 @@ func defineMatMulInternal[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2
 }
 
 // Add Round Key
-func defineAddRoundKey[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
+func defineAddRoundKey[T zk.Element](comp *wizard.CompiledIOP[T], ctx *Poseidon2Context[T], protocolRoundID, totalSize int, input []ifaces.Column[T], poseidon2Round int) []ifaces.Column[T] {
 	addRoundKey := [width]ifaces.Column[T]{}
 
 	for block := 0; block < len(poseidon2.RoundKeys[poseidon2Round-1]); block++ {
@@ -354,7 +354,7 @@ func defineAddRoundKey[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2Con
 }
 
 // S-Box
-func defineSBox[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2Context[T], protocolRoundID, totalSize, index int, input []ifaces.Column[T], poseidon2Round int) ifaces.Column[T] {
+func defineSBox[T zk.Element](comp *wizard.CompiledIOP[T], ctx *Poseidon2Context[T], protocolRoundID, totalSize, index int, input []ifaces.Column[T], poseidon2Round int) ifaces.Column[T] {
 	sBox := comp.InsertCommit(protocolRoundID, ifaces.ColIDf("Poseidon2_ROUND_%v_SBox_SelfRecursionCount_%v_ID_%v_BLOCK_%v", poseidon2Round, comp.SelfRecursionCount, uniqueID(comp), index), totalSize)
 	ctx.SBox[index] = append(ctx.SBox[index], sBox)
 
@@ -377,7 +377,7 @@ func defineSBox[T zk.Element](comp *wizard.CompiledIOP, ctx *Poseidon2Context[T]
 //
 // After, [StackedOldStates], [StackedBlocks] and [StackedNewStates] are assigned
 // to the corresponding columns. The function goes and computes the poseidon2 intermediate values.
-func (ctx *Poseidon2Context[T]) Run(run *wizard.ProverRuntime) {
+func (ctx *Poseidon2Context[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		zeroBlock field.Octuplet
@@ -620,6 +620,6 @@ func (ctx *Poseidon2Context[T]) Run(run *wizard.ProverRuntime) {
 
 // uniqueID returns an integer helping to uniquely identify the items generated
 // by the compilation of a Poseidon2 query.
-func uniqueID(comp *wizard.CompiledIOP) int {
+func uniqueID(comp *wizard.CompiledIOP[T]) int {
 	return len(comp.Columns.AllKeys())
 }

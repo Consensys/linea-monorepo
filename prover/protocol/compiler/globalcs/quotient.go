@@ -100,8 +100,8 @@ type QuotientCtx[T zk.Element] struct {
 
 // createQuotientCtx constructs a [quotientCtx] from a list of ratios and aggregated
 // expressions. The function organizes the handles but does not declare anything
-// in the current wizard.CompiledIOP.
-func createQuotientCtx[T zk.Element](comp *wizard.CompiledIOP, ratios []int, aggregateExpressions []*symbolic.Expression[T]) QuotientCtx[T] {
+// in the current wizard.CompiledIOP[T].
+func createQuotientCtx[T zk.Element](comp *wizard.CompiledIOP[T], ratios []int, aggregateExpressions []*symbolic.Expression[T]) QuotientCtx[T] {
 
 	var (
 		allInvolvedHandlesIndex = map[ifaces.ColID]int{}
@@ -174,7 +174,7 @@ func createQuotientCtx[T zk.Element](comp *wizard.CompiledIOP, ratios []int, agg
 }
 
 // generateQuotientShares declares and returns the quotient share columns
-func generateQuotientShares[T zk.Element](comp *wizard.CompiledIOP, ratios []int, domainSize int) [][]ifaces.Column[T] {
+func generateQuotientShares[T zk.Element](comp *wizard.CompiledIOP[T], ratios []int, domainSize int) [][]ifaces.Column[T] {
 
 	var (
 		quotientShares = make([][]ifaces.Column[T], len(ratios))
@@ -197,7 +197,7 @@ func generateQuotientShares[T zk.Element](comp *wizard.CompiledIOP, ratios []int
 
 // Run implements the [wizard.ProverAction] interface and embeds the logic to
 // compute the quotient shares.
-func (ctx *QuotientCtx[T]) Run(run *wizard.ProverRuntime) {
+func (ctx *QuotientCtx[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	// Initial step is to compute the FFTs for all committed vectors
 	coeffs := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)

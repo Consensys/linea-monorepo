@@ -37,7 +37,7 @@ type ConsistencyCheck[T zk.Element] struct {
 }
 
 // ExtractWitness extracts a [Witness] from a prover runtime toward being conglomerated.
-func ExtractWitness(run *wizard.ProverRuntime) Witness {
+func ExtractWitness(run *wizard.ProverRuntime[T]) Witness {
 
 	var (
 		pcs               = run.Spec.PcsCtxs.(*vortex.Ctx)
@@ -97,7 +97,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 	}
 }
 
-func (pa AssignVortexUAlpha[T]) Run(run *wizard.ProverRuntime[T]) {
+func (pa AssignVortexUAlpha[T]) Run(run *wizard.ProverRuntime[T][T]) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.
@@ -105,7 +105,7 @@ func (pa AssignVortexUAlpha[T]) Run(run *wizard.ProverRuntime[T]) {
 	}
 }
 
-func (pa AssignVortexOpenedCols[T]) Run(run *wizard.ProverRuntime[T]) {
+func (pa AssignVortexOpenedCols[T]) Run(run *wizard.ProverRuntime[T][T]) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.

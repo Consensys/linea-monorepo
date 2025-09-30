@@ -8,7 +8,7 @@ import (
 
 // NormalizeGlobalOffset is a small compilation routine which shifts all the
 // global constraints expression so that their minimal offset is zero.
-func NormalizeGlobalOffset(comp *wizard.CompiledIOP) {
+func NormalizeGlobalOffset(comp *wizard.CompiledIOP[T]) {
 
 	queries := comp.QueriesNoParams.AllUnignoredKeys()
 

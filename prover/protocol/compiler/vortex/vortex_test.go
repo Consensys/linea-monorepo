@@ -37,7 +37,7 @@ func TestCompiler(t *testing.T) {
 	testCases := []struct {
 		Explainer string
 		Define    func(b *wizard.Builder)
-		Prove     func(pr *wizard.ProverRuntime)
+		Prove     func(pr *wizard.ProverRuntime[T])
 	}{
 		{
 			Explainer: "Vortex with a single round and not using SIS",
@@ -47,7 +47,7 @@ func TestCompiler(t *testing.T) {
 				}
 				b.UnivariateEval("EVAL", rows[:nPolsNoSIS]...)
 			},
-			Prove: func(pr *wizard.ProverRuntime) {
+			Prove: func(pr *wizard.ProverRuntime[T]) {
 				ys := make([]fext.Element, nPolsNoSIS)
 				x := fext.NewFromInt(57, 1, 2, 4) // the evaluation point
 
@@ -69,7 +69,7 @@ func TestCompiler(t *testing.T) {
 				}
 				b.UnivariateEval("EVAL", rows...)
 			},
-			Prove: func(pr *wizard.ProverRuntime) {
+			Prove: func(pr *wizard.ProverRuntime[T]) {
 				ys := make([]fext.Element, len(rows))
 				x := fext.NewFromInt(57, 1, 2, 4) // the evaluation point
 
@@ -101,7 +101,7 @@ func TestCompiler(t *testing.T) {
 
 				b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 			},
-			Prove: func(pr *wizard.ProverRuntime) {
+			Prove: func(pr *wizard.ProverRuntime[T]) {
 				// Count the total number of polynomials
 				numPolys := numRounds * nPols
 				ys := make([]fext.Element, numPolys)
@@ -150,7 +150,7 @@ func TestCompiler(t *testing.T) {
 
 				b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 			},
-			Prove: func(pr *wizard.ProverRuntime) {
+			Prove: func(pr *wizard.ProverRuntime[T]) {
 				// Count the total number of polynomials
 				numPolys := numRounds * nPols
 				ys := make([]fext.Element, numPolys)
@@ -198,7 +198,7 @@ func TestCompiler(t *testing.T) {
 
 				b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 			},
-			Prove: func(pr *wizard.ProverRuntime) {
+			Prove: func(pr *wizard.ProverRuntime[T]) {
 				// Count the total number of polynomials
 				numPolys := numRounds * nPolsNoSIS
 				ys := make([]fext.Element, numPolys)
@@ -247,7 +247,7 @@ func TestCompiler(t *testing.T) {
 
 				b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 			},
-			Prove: func(pr *wizard.ProverRuntime) {
+			Prove: func(pr *wizard.ProverRuntime[T]) {
 				// Count the total number of polynomials
 				numPolys := 0
 				for i := range nPolsMultiRound {
@@ -312,7 +312,7 @@ func TestCompiler(t *testing.T) {
 
 				b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 			},
-			Prove: func(pr *wizard.ProverRuntime) {
+			Prove: func(pr *wizard.ProverRuntime[T]) {
 				// Count the total number of polynomials
 				numPolys := 0
 				for i := range nPolsMultiRound {
@@ -384,7 +384,7 @@ func TestCompiler(t *testing.T) {
 
 				b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 			},
-			Prove: func(pr *wizard.ProverRuntime) {
+			Prove: func(pr *wizard.ProverRuntime[T]) {
 				// Count the total number of polynomials
 				numPolys := 0
 				for i := range nPolsMultiRound {
@@ -455,7 +455,7 @@ func TestCompiler(t *testing.T) {
 
 				b.UnivariateEval("EVAL", utils.Join(rowsMultiRound...)...)
 			},
-			Prove: func(pr *wizard.ProverRuntime) {
+			Prove: func(pr *wizard.ProverRuntime[T]) {
 				// Count the total number of polynomials
 				numPolys := 0
 				for i := range nPolsMultiRoundEmpty {

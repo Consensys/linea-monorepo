@@ -20,7 +20,7 @@ func TestRangWithLogDerivCompiler(t *testing.T) {
 		b.Range("RANG2", colb, 1<<4)
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 		// assign a and b
 		cola := smartvectors.ForTest(15, 0, 12, 14, 9, 6, 2, 1)
 

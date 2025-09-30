@@ -136,7 +136,7 @@ func (lc LinComb[T]) GnarkEval(api frontend.API, inputs []T) T {
 		panic(err)
 	}
 
-	// res := frontend.Variable(0)
+	// res := T(0)
 	res := apiGen.ValueOf(0)
 
 	// There should be as many inputs as there are coeffs

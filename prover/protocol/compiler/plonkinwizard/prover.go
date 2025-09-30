@@ -13,12 +13,12 @@ type CircAssignment struct{ *Context }
 // AssignSelOpening is the prover step responsible for assigning the selector opening
 type AssignSelOpening struct{ *Context }
 
-func (a *CircAssignment) Run(run *wizard.ProverRuntime) {
+func (a *CircAssignment) Run(run *wizard.ProverRuntime[T]) {
 	a.PlonkProverAction.Run(run, a.getWitnesses(run))
 	a.StackedCircuitData.Run(run)
 }
 
-func (a CircAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witness {
+func (a CircAssignment) getWitnesses(run *wizard.ProverRuntime[T]) []witness.Witness {
 
 	var (
 		data           = a.Q.Data.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -53,7 +53,7 @@ func (a CircAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witnes
 	return witnesses
 }
 
-func (a AssignSelOpening) Run(run *wizard.ProverRuntime) {
+func (a AssignSelOpening) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		maxNbInstances    = len(a.SelOpenings)

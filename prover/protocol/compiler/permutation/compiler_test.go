@@ -13,7 +13,7 @@ func TestPermutationPass(t *testing.T) {
 
 	testCases := []struct {
 		Define     func(*wizard.Builder)
-		Prove      func(*wizard.ProverRuntime)
+		Prove      func(*wizard.ProverRuntime[T])
 		Title      string
 		ShouldPass bool
 	}{
@@ -24,7 +24,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.Permutation("PERM", []ifaces.Column[T]{a}, []ifaces.Column[T]{b})
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A", smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
 				run.AssignColumn("B", smartvectors.ForTest(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
 			},
@@ -46,7 +46,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.Permutation("PERM", a, b)
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A1", smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
 				run.AssignColumn("A2", smartvectors.ForTest(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 110, 111, 112, 113, 114, 115))
 				run.AssignColumn("B1", smartvectors.ForTest(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
@@ -71,7 +71,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.Permutation("PERM2", a[1:], b[1:])
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A1", smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
 				run.AssignColumn("A2", smartvectors.ForTest(11, 10, 12, 13, 14, 15, 16, 17, 18, 19, 110, 111, 112, 113, 114, 115))
 				run.AssignColumn("B1", smartvectors.ForTest(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
@@ -101,7 +101,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.Permutation("PERM4", a[3:4], b[3:4])
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A1", smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
 				run.AssignColumn("A2", smartvectors.ForTest(11, 10, 12, 13, 14, 15, 16, 17, 18, 19, 110, 111, 112, 113, 114, 115))
 				run.AssignColumn("A3", smartvectors.ForTest(22, 20, 22, 23, 24, 25, 26, 27, 28, 29, 220, 222, 222, 223, 224, 225))
@@ -144,7 +144,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.Permutation("PERM4", a[6:], b[6:])
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A1", smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7))
 				run.AssignColumn("A2", smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8))
 				run.AssignColumn("A3", smartvectors.ForTest(2, 3, 4, 5, 6, 7, 8, 9))
@@ -195,7 +195,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.Permutation("PERM4", a[6:], b[6:])
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A1", smartvectors.ForTest(0, 1, 2, 3))
 				run.AssignColumn("A2", smartvectors.ForTest(1, 2, 3, 4))
 				run.AssignColumn("A3", smartvectors.ForTest(2, 3, 4, 5))
@@ -245,7 +245,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM2", [][]ifaces.Column[T]{a[4:6], a[6:8]}, [][]ifaces.Column[T]{b[4:6], b[6:8]})
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A1", smartvectors.ForTest(0, 1, 2, 3))
 				run.AssignColumn("A2", smartvectors.ForTest(1, 2, 3, 4))
 				run.AssignColumn("A3", smartvectors.ForTest(2, 3, 4, 5))
@@ -282,7 +282,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM1", a, b)
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A1", smartvectors.ForTest(0, 1, 2, 3))
 				run.AssignColumn("A2", smartvectors.ForTest(4, 5, 6, 7))
 				run.AssignColumn("A3", smartvectors.ForTest(8, 9, 10, 11))
@@ -303,7 +303,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.Permutation("PERM", []ifaces.Column[T]{a}, []ifaces.Column[T]{b})
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A", smartvectors.ForTest(0, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
 				run.AssignColumn("B", smartvectors.ForTest(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
 			},
@@ -337,7 +337,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM2", [][]ifaces.Column[T]{a[4:6], a[6:8]}, [][]ifaces.Column[T]{b[4:6], b[6:8]})
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A1", smartvectors.ForTest(0, 1, 2, 3))
 				run.AssignColumn("A2", smartvectors.ForTest(2, 2, 3, 4))
 				run.AssignColumn("A3", smartvectors.ForTest(2, 3, 4, 5))
@@ -375,7 +375,7 @@ func TestPermutationPass(t *testing.T) {
 				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM1", a, b)
 			},
 
-			Prove: func(run *wizard.ProverRuntime) {
+			Prove: func(run *wizard.ProverRuntime[T]) {
 				run.AssignColumn("A1", smartvectors.ForTest(1, 1, 2, 3))
 				run.AssignColumn("A2", smartvectors.ForTest(4, 5, 6, 7))
 				run.AssignColumn("A3", smartvectors.ForTest(8, 9, 10, 11))

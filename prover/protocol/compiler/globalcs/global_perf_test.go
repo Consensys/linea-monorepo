@@ -27,7 +27,7 @@ func BenchmarkGlobalConstraintWoArtefacts(b *testing.B) {
 	// partialSuite corresponds to the actual compilation suite of
 	// the full zk-evm down to the point where the global constraints
 	// are compiled.
-	partialSuite := []func(*wizard.CompiledIOP){
+	partialSuite := []func(*wizard.CompiledIOP[T]){
 		mimc.CompileMiMC,
 		specialqueries.RangeProof,
 		specialqueries.CompileFixedPermutations,

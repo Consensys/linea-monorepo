@@ -57,7 +57,7 @@ func TestLogDerivativeSum(t *testing.T) {
 
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 
 		run.AssignColumn("Num_0", smartvectors.ForTest(1, 1, 1, 1))
 		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3, 7, 9))
@@ -122,7 +122,7 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 
 		run.AssignColumn("Num_0", smartvectors.ForTest(1, 2, 3, 4))
 		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3, 7, 9))
@@ -185,7 +185,7 @@ func TestLogDerivativeSumMixed2(t *testing.T) {
 		comp.InsertLogDerivativeSum(0, "LogDerivSum_Test", zCat1)
 	}
 
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[T]) {
 
 		run.AssignColumn("Num_0", smartvectors.ForTest(1, 1, 1, 1))
 		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3, 7, 9))

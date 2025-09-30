@@ -31,7 +31,7 @@ func WithMinimalRound(minimalRound int) Option {
 // The inner-product queries are processed in groups relating to column of the
 // same size.
 func Compile[T zk.Element](options ...Option) func(*wizard.CompiledIOP[T]) {
-	return func(ci *wizard.CompiledIOP) {
+	return func(ci *wizard.CompiledIOP[T]) {
 		compile[T](ci, options...)
 	}
 }

@@ -324,14 +324,14 @@ type ShadowRowProverAction struct {
 }
 
 // Run assigns the column to a constant column of zeros, which is a shadow row.
-func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime) {
+func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime[T]) {
 	run.AssignColumn(a.Name, smartvectors.NewConstant(field.Zero(), a.Size))
 }
 
 // A shadow row is a row filled with zeroes that we **may** add at the end of
 // the rounds commitment. Its purpose is to ensure the number of "SIS limbs" in
 // a row divides the degree of the ring-SIS instance.
-func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces.Column[T] {
+func autoAssignedShadowRow(comp *wizard.CompiledIOP[T], size, round, id int) ifaces.Column[T] {
 
 	name := ifaces.ColIDf("VORTEX_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
 	col := comp.InsertCommit(round, name, size)

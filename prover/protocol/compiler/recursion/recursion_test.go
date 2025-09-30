@@ -38,12 +38,12 @@ func TestLookup(t *testing.T) {
 		bui.Inclusion("Q", []ifaces.Column[T]{a}, []ifaces.Column[T]{b})
 	}
 
-	prove1 := func(run *wizard.ProverRuntime) {
+	prove1 := func(run *wizard.ProverRuntime[T]) {
 		run.AssignColumn("A", smartvectors.NewConstant(field.Zero(), 1024))
 		run.AssignColumn("B", smartvectors.NewConstant(field.Zero(), 1024))
 	}
 
-	suites := [][]func(*wizard.CompiledIOP){
+	suites := [][]func(*wizard.CompiledIOP[T]){
 		{
 			logderivativesum.CompileLookups,
 			localcs.Compile,
@@ -106,7 +106,7 @@ func TestLookup(t *testing.T) {
 			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1)
 			witness1 := ExtractWitness(proverRuntime)
 
-			prove2 := func(run *wizard.ProverRuntime) {
+			prove2 := func(run *wizard.ProverRuntime[T]) {
 				recCtx.Assign(run, []Witness{witness1}, nil)
 			}
 

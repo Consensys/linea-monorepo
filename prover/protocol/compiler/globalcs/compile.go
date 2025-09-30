@@ -21,7 +21,7 @@ const (
 // Compile takes all the uncompiled global constraint found in comp and compile
 // them using Plonk's quotient technique. The compiler also applies symbolic
 // expression optimization and runtime memory optimizations for the prover.
-func Compile[T zk.Element](comp *wizard.CompiledIOP[T]) {
+func Compile[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 
 	logrus.Trace("started global constraint compiler")
 	defer logrus.Trace("finished global constraint compiler")
@@ -46,7 +46,7 @@ func Compile[T zk.Element](comp *wizard.CompiledIOP[T]) {
 
 }
 
-func deriveName(comp *wizard.CompiledIOP, s string, args ...any) string {
+func deriveName(comp *wizard.CompiledIOP[T], s string, args ...any) string {
 	fmts := fmt.Sprintf(s, args...)
 	return fmt.Sprintf("%v_%v_%v", GLOBAL_REDUCTION, comp.SelfRecursionCount, fmts)
 }

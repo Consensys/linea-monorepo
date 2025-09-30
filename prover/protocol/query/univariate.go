@@ -25,7 +25,7 @@ type UnivariateEval[T zk.Element] struct {
 }
 
 // Parameters for an univariate evaluation
-type UnivariateEvalParams struct {
+type UnivariateEvalParams[T zk.Element] struct {
 	X      field.Element
 	Ys     []field.Element
 	ExtX   fext.Element
@@ -65,15 +65,15 @@ func (r UnivariateEval[T]) Name() ifaces.QueryID {
 }
 
 // Constructor for non-fixed point univariate evaluation query parameters
-func NewUnivariateEvalParams(x field.Element, ys ...field.Element) UnivariateEvalParams {
-	return UnivariateEvalParams{
+func NewUnivariateEvalParams[T zk.Element](x field.Element, ys ...field.Element) UnivariateEvalParams[T] {
+	return UnivariateEvalParams[T]{
 		X:      x,
 		Ys:     ys,
 		IsBase: true,
 	}
 }
-func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEvalParams {
-	return UnivariateEvalParams{
+func NewUnivariateEvalParamsExt[T zk.Element](x fext.Element, ys ...fext.Element) UnivariateEvalParams[T] {
+	return UnivariateEvalParams[T]{
 		ExtX:   x,
 		ExtYs:  ys,
 		IsBase: false,
@@ -83,17 +83,17 @@ func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEv
 // Update the fiat-shamir state with the alleged evaluations. We assume that
 // the verifer always computes the values of X upfront on his own. Therefore
 // there is no need to include them in the FS.
-func (p UnivariateEvalParams) UpdateFS(state hash.StateStorer) {
+func (p UnivariateEvalParams[T]) UpdateFS(state hash.StateStorer) {
 	fiatshamir.Update(state, p.Ys...)
 }
 
-func (p UnivariateEvalParams) UpdateFSExt(state hash.StateStorer) {
+func (p UnivariateEvalParams[T]) UpdateFSExt(state hash.StateStorer) {
 	fiatshamir.UpdateExt(state, p.ExtYs...)
 }
 
 // Test that the polynomial evaluation holds
 func (r UnivariateEval[T]) Check(run ifaces.Runtime) error {
-	params := run.GetParams(r.QueryID).(UnivariateEvalParams)
+	params := run.GetParams(r.QueryID).(UnivariateEvalParams[T])
 	errMsg := "univariate query check failed\n"
 	anyErr := false
 

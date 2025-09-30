@@ -10,7 +10,7 @@ import (
 	"math/big"
 )
 
-func Copy[T any](dst []frontend.Variable, src []T) (n int) {
+func Copy[T any](dst []T, src []T) (n int) {
 	n = min(len(dst), len(src))
 
 	for i := 0; i < n; i++ {
@@ -20,8 +20,8 @@ func Copy[T any](dst []frontend.Variable, src []T) (n int) {
 	return
 }
 
-func ToBytes(api frontend.API, x frontend.Variable) [32]frontend.Variable {
-	var res [32]frontend.Variable
+func ToBytes(api frontend.API, x T) [32]T {
+	var res [32]T
 	d := decomposeIntoBytes(api, x, fr.Bits)
 	slack := 32 - len(d) // should be zero
 	copy(res[slack:], d)
@@ -31,7 +31,7 @@ func ToBytes(api frontend.API, x frontend.Variable) [32]frontend.Variable {
 	return res
 }
 
-func decomposeIntoBytes(api frontend.API, data frontend.Variable, nbBits int) []frontend.Variable {
+func decomposeIntoBytes(api frontend.API, data T, nbBits int) []T {
 	if nbBits == 0 {
 		nbBits = api.Compiler().FieldBitLen()
 	}
@@ -80,14 +80,14 @@ func RegisterHints() {
 }
 
 // ReduceBytes reduces given bytes modulo a given field. As a side effect, the "bytes" are range checked
-func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []frontend.Variable) []frontend.Variable {
+func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []T) []T {
 	f, err := emulated.NewField[T](api)
 	if err != nil {
 		panic(err)
 	}
 
 	bits := f.ToBits(NewElementFromBytes[T](api, bytes))
-	res := make([]frontend.Variable, (len(bits)+7)/8)
+	res := make([]T, (len(bits)+7)/8)
 	copy(bits[:], bits)
 	for i := len(bits); i < len(bits); i++ {
 		bits[i] = 0
@@ -105,8 +105,8 @@ func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []frontend.Vari
 }
 
 // NewElementFromBytes range checks the bytes and gives a reduced field element
-func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []frontend.Variable) *emulated.Element[T] {
-	bits := make([]frontend.Variable, 8*len(bytes))
+func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []T) *emulated.Element[T] {
+	bits := make([]T, 8*len(bytes))
 	for i := range bytes {
 		copy(bits[8*i:], api.ToBinary(bytes[len(bytes)-i-1], 8))
 	}

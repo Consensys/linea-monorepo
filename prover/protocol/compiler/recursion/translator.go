@@ -11,12 +11,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
-// compTranslator is a builder struct for building a target [wizard.CompiledIOP]
-// instances from another source [wizard.CompiledIOP]. All items in the built
+// compTranslator is a builder struct for building a target [wizard.CompiledIOP[T]]
+// instances from another source [wizard.CompiledIOP[T]]. All items in the built
 // compiled IOP are prefixed with an identifier.
 type compTranslator[T zk.Element] struct {
 	Prefix string
-	Target *wizard.CompiledIOP[T]
+	Target *wizard.CompiledIOP[T][T]
 }
 
 // addPrefixToID adds a prefix <prefix>.<message> to a string-like object message
@@ -27,7 +27,7 @@ func addPrefixToID[T ~string](prefix string, id T) T {
 // AddPrecomputedColumn inserts a precomputed column. The inserted column is not
 // a fake one and actually features a precomputed value. The inserted column retains
 // the same status as the original one.
-func (comp *compTranslator[T]) AddPrecomputed(srcComp *wizard.CompiledIOP, col ifaces.Column[T]) ifaces.Column[T] {
+func (comp *compTranslator[T]) AddPrecomputed(srcComp *wizard.CompiledIOP[T], col ifaces.Column[T]) ifaces.Column[T] {
 
 	var (
 		nat          = col.(column.Natural[T])

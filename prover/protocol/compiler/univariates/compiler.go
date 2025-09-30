@@ -5,12 +5,13 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 /*
 Derive a name for a a coin created during the compilation process
 */
-func deriveName[R ~string](comp *wizard.CompiledIOP, context string, q ifaces.QueryID, name string) R {
+func deriveName[R ~string, T zk.Element](comp *wizard.CompiledIOP[T], context string, q ifaces.QueryID, name string) R {
 	var res string
 	if q == "" {
 		res = fmt.Sprintf("%v_%v_%v", context, comp.SelfRecursionCount, name)

@@ -67,6 +67,13 @@ func (ext4 *Ext4[T]) One() *E4Gen[T] {
 	}
 }
 
+func NewFromBase[T zk.Element](val any) *E4Gen[T] {
+	return &E4Gen[T]{
+		B0: E2Gen[T]{A0: *zk.ValueOf[T](val), A1: *zk.ValueOf[T](0)},
+		B1: E2Gen[T]{A0: *zk.ValueOf[T](0), A1: *zk.ValueOf[T](0)},
+	}
+}
+
 // NewFromBase returns a real E4 elmt equal to val
 func (ext4 *Ext4[T]) NewFromBase(val any) *E4Gen[T] {
 	return &E4Gen[T]{

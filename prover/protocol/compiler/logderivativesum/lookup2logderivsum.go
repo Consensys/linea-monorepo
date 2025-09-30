@@ -35,7 +35,7 @@ type table[T zk.Element] struct {
 // to the compiler and run the analysis afterward. That way, the prover and verifier
 // steps can access the informations.
 type ColumnSegmenter[T zk.Element] interface {
-	SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural[T]) (int, int)
+	SegmentBoundaryOf(run *wizard.ProverRuntime[T], col column.Natural[T]) (int, int)
 }
 
 // LookupIntoLogDerivativeSum compiles  all the inclusion queries to a single
@@ -43,7 +43,7 @@ type ColumnSegmenter[T zk.Element] interface {
 // is used by the distributed wizard protocol feature as it allows to
 // prepare the lookup queries to be split across several wizard-IOP
 // in such a way that we can recombine them later.
-func LookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T]) {
+func LookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 	compileLookupIntoLogDerivativeSum[T](comp, nil)
 }
 
@@ -53,8 +53,8 @@ func LookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T]) {
 // action based on the information of the segmenter. The compiler analyses the
 // size and the density of each "S" column to determines which values ought to be
 // ignored.
-func LookupIntoLogDerivativeSumWithSegmenter[T zk.Element](seg ColumnSegmenter[T]) func(*wizard.CompiledIOP[T]) {
-	return func(comp *wizard.CompiledIOP[T]) {
+func LookupIntoLogDerivativeSumWithSegmenter[T zk.Element](seg ColumnSegmenter[T]) func(*wizard.CompiledIOP[T][T]) {
+	return func(comp *wizard.CompiledIOP[T][T]) {
 		compileLookupIntoLogDerivativeSum(comp, seg)
 	}
 }
@@ -62,7 +62,7 @@ func LookupIntoLogDerivativeSumWithSegmenter[T zk.Element](seg ColumnSegmenter[T
 // compileLookupIntoLogDerivativeSum is the main entry point of this compiler.
 // It is used both by the [LookupToLogDerivativeSum] and the [LookupToLogDerivativeSumWithSegmenter]
 // compilers implementation.
-func compileLookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP, seg ColumnSegmenter[T]) {
+func compileLookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T], seg ColumnSegmenter[T]) {
 
 	var (
 		mainLookupCtx = captureLookupTables(comp, seg)
@@ -144,7 +144,7 @@ type AssignLogDerivativeSumProverAction[T zk.Element] struct {
 }
 
 // Run executes the assignment of the log-derivative sum result.
-func (a *AssignLogDerivativeSumProverAction[T]) Run(run *wizard.ProverRuntime) {
+func (a *AssignLogDerivativeSumProverAction[T]) Run(run *wizard.ProverRuntime[T]) {
 	if a.Segmenter == nil {
 		run.AssignLogDerivSum(a.QName, fext.GenericFieldElem{})
 		return
@@ -212,7 +212,7 @@ func (c *CheckLogDerivativeSumMustBeZero[T]) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckLogDerivativeSumMustBeZero[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckLogDerivativeSumMustBeZero[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	y := run.GetLogDerivSumParams(c.Q.ID).Sum
 	api.AssertIsEqual(y, 0)
 }
@@ -237,7 +237,7 @@ func (c *CheckLogDerivativeSumMustBeZero[T]) IsSkipped() bool {
 // The function also implictly reduces the conditionals over the Including table
 // be appending a "one" column on the included side and the filter on the
 // including side.
-func captureLookupTables[T zk.Element](comp *wizard.CompiledIOP, seg ColumnSegmenter[T]) mainLookupCtx[T] {
+func captureLookupTables[T zk.Element](comp *wizard.CompiledIOP[T], seg ColumnSegmenter[T]) mainLookupCtx[T] {
 
 	ctx := mainLookupCtx[T]{
 		LookupTables:    [][]table[T]{},
@@ -321,7 +321,7 @@ func captureLookupTables[T zk.Element](comp *wizard.CompiledIOP, seg ColumnSegme
 
 // here we are looking up set of columns S in a single column T
 func compileLookupTable[T zk.Element](
-	comp *wizard.CompiledIOP,
+	comp *wizard.CompiledIOP[T],
 	round int,
 	lookupTable []table[T],
 	checkedTables []table[T],

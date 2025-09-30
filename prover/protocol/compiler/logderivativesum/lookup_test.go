@@ -15,7 +15,7 @@ import (
 
 // assignmentStrat is a function responsible for assigning a list of column in
 // a prover runtime. It is used to specify how the table should be assigned.
-type assignmentStrat func(run *wizard.ProverRuntime, cols ...ifaces.Column[T])
+type assignmentStrat func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T])
 
 // lookupTestCase represents a generic test case for the lookup compiler. It
 // can feature multiple different tables in the same test.
@@ -67,7 +67,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// only suitable for T
-		assignSmallNumbers = func(run *wizard.ProverRuntime, cols ...ifaces.Column[T]) {
+		assignSmallNumbers = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
 			if len(cols) != 1 {
 				panic("only works with 1 columns")
 			}
@@ -75,7 +75,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// only suitable for T
-		assignXorTable = func(run *wizard.ProverRuntime, cols ...ifaces.Column[T]) {
+		assignXorTable = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
 			if len(cols) != 3 {
 				panic("only works with 3 columns")
 			}
@@ -85,7 +85,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignZeroes = func(run *wizard.ProverRuntime, cols ...ifaces.Column[T]) {
+		assignZeroes = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
 			size := cols[0].Size()
 			for i := range cols {
 				run.AssignColumn(cols[i].GetColID(), smartvectors.NewConstant(field.Zero(), size))
@@ -93,7 +93,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignOnes = func(run *wizard.ProverRuntime, cols ...ifaces.Column[T]) {
+		assignOnes = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
 			size := cols[0].Size()
 			for i := range cols {
 				run.AssignColumn(cols[i].GetColID(), smartvectors.NewConstant(field.One(), size))
@@ -101,7 +101,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignRandoms = func(run *wizard.ProverRuntime, cols ...ifaces.Column[T]) {
+		assignRandoms = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
 			size := cols[0].Size()
 			for i := range cols {
 				run.AssignColumn(cols[i].GetColID(), smartvectors.PseudoRand(rng, size))
@@ -109,7 +109,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignRandom1Bit = func(run *wizard.ProverRuntime, cols ...ifaces.Column[T]) {
+		assignRandom1Bit = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
 			size := cols[0].Size()
 			for i := range cols {
 				vec := make([]int, size)
@@ -121,7 +121,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignRandom4Bit = func(run *wizard.ProverRuntime, cols ...ifaces.Column[T]) {
+		assignRandom4Bit = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
 			size := cols[0].Size()
 			for i := range cols {
 				vec := make([]int, size)
@@ -133,7 +133,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for tables of 3 columns
-		randomXor = func(run *wizard.ProverRuntime, cols ...ifaces.Column[T]) {
+		randomXor = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
 			if len(cols) != 3 {
 				panic("only works with 3 columns")
 			}
@@ -562,7 +562,7 @@ func TestExhaustive(t *testing.T) {
 					}()
 				}
 
-				proof := wizard.Prove(comp, func(_ *wizard.ProverRuntime) {})
+				proof := wizard.Prove(comp, func(_ *wizard.ProverRuntime[T]) {})
 
 				err := wizard.Verify(comp, proof)
 				if err != nil {
@@ -579,6 +579,6 @@ type AssignColumnsProverAction struct {
 }
 
 // Implement the Run method for the ProverAction interface
-func (a *AssignColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignColumnsProverAction) Run(run *wizard.ProverRuntime[T]) {
 	a.strat(run, a.cols...)
 }

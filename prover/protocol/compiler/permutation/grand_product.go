@@ -6,7 +6,7 @@ import (
 )
 
 // CompileGrandProduct compiles [query.GrandProduct] queries and
-func CompileGrandProduct(comp *wizard.CompiledIOP) {
+func CompileGrandProduct(comp *wizard.CompiledIOP[T]) {
 
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
 

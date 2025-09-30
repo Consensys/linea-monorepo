@@ -44,7 +44,7 @@ type Context struct {
 // Compile is the default compiler for PlonkInWizard queries. For 99% of the
 // use-cases, this will be the one you need. It works by instantiating Plonk
 // columns to represent the circuit within the current wizard.
-func Compile(comp *wizard.CompiledIOP) {
+func Compile(comp *wizard.CompiledIOP[T]) {
 	compile(comp, 0)
 }
 
@@ -56,13 +56,13 @@ func Compile(comp *wizard.CompiledIOP) {
 // commitment and it would prevent the LPP commitment mechanism from working.
 //
 // Passing zero yields the exact same result as [Compile].
-func CompileWithMinimalRound(minimalRound int) func(comp *wizard.CompiledIOP) {
-	return func(comp *wizard.CompiledIOP) {
+func CompileWithMinimalRound(minimalRound int) func(comp *wizard.CompiledIOP[T]) {
+	return func(comp *wizard.CompiledIOP[T]) {
 		compile(comp, minimalRound)
 	}
 }
 
-func compile(comp *wizard.CompiledIOP, minimalRound int) {
+func compile(comp *wizard.CompiledIOP[T], minimalRound int) {
 
 	qNames := comp.QueriesNoParams.AllKeys()
 	for i := range qNames {
@@ -85,7 +85,7 @@ func compile(comp *wizard.CompiledIOP, minimalRound int) {
 	}
 }
 
-func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard, minimalRound int) {
+func compileQuery(comp *wizard.CompiledIOP[T], q *query.PlonkInWizard, minimalRound int) {
 
 	plonkOptions := make([]plonkinternal.Option, len(q.PlonkOptions))
 	for i := range plonkOptions {
@@ -122,7 +122,7 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard, minimalRound
 
 // checkPublicInputs adds the constraints ensuring that the public inputs are
 // consistent with the one of the PlonkCtx.
-func checkPublicInputs(comp *wizard.CompiledIOP, ctx *Context) {
+func checkPublicInputs(comp *wizard.CompiledIOP[T], ctx *Context) {
 	comp.InsertGlobal(
 		max(ctx.MinimalRound, ctx.Q.GetRound()),
 		ifaces.QueryIDf("%v_PUBLIC_INPUTS", ctx.Q.ID),
@@ -132,7 +132,7 @@ func checkPublicInputs(comp *wizard.CompiledIOP, ctx *Context) {
 
 // checkActivators adds the constraints checking the activators are well-set w.r.t
 // to the circuit mask column. See [compilationCtx.Columns.Activators].
-func checkActivators(comp *wizard.CompiledIOP, ctx *Context) {
+func checkActivators(comp *wizard.CompiledIOP[T], ctx *Context) {
 
 	var (
 		openings   = make([]query.LocalOpening, ctx.Q.GetMaxNbCircuitInstances())

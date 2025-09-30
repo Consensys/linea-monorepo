@@ -84,7 +84,7 @@ type PreimageLimbsProverAction struct {
 	Limbs []ifaces.Column[T]
 }
 
-func (a *PreimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *PreimageLimbsProverAction) Run(run *wizard.ProverRuntime[T]) {
 	parallel.Execute(len(a.Limbs), func(start, end int) {
 		for i := start; i < end; i++ {
 			whole := a.Ctx.Columns.WholePreimagesSis[i].GetColAssignment(run)
@@ -101,7 +101,7 @@ type ColSelectionProverAction struct {
 	UAlphaQID ifaces.ColID
 }
 
-func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime) {
+func (a *ColSelectionProverAction) Run(run *wizard.ProverRuntime[T]) {
 	q := run.GetRandomCoinIntegerVec(a.Ctx.Coins.Q.Name)
 	uAlpha := smartvectors.IntoRegVec(run.GetColumn(a.Ctx.Columns.Ualpha.GetColID()))
 
@@ -164,7 +164,7 @@ type CollapsingProverAction struct {
 	SisKey  *ringsis.Key
 }
 
-func (a *CollapsingProverAction) Run(run *wizard.ProverRuntime) {
+func (a *CollapsingProverAction) Run(run *wizard.ProverRuntime[T]) {
 	collapsedPreimage := a.Ctx.Columns.PreimagesSisCollapse.GetColAssignment(run)
 	sisKey := a.SisKey
 
@@ -221,7 +221,7 @@ func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	api.AssertIsEqual(
 		a.UAlphaQEval.GetFrontendVariable(api, run),
 		a.PreImageEval.GetFrontendVariable(api, run),
@@ -438,7 +438,7 @@ type FoldPhaseProverAction struct {
 	IpQueryID ifaces.QueryID // Changed to ifaces.QueryID explicitly
 }
 
-func (a *FoldPhaseProverAction) Run(run *wizard.ProverRuntime) {
+func (a *FoldPhaseProverAction) Run(run *wizard.ProverRuntime[T]) {
 	foldedKey := a.Ctx.Columns.ACollapseFold.GetColAssignment(run)
 	foldedPreimage := a.Ctx.Columns.PreimageCollapseFold.GetColAssignment(run)
 	y := smartvectors.InnerProduct(foldedKey, foldedPreimage)
@@ -477,7 +477,7 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	edual := a.Ctx.Columns.Edual.GetColAssignmentGnark(run)
 	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
 	rfold := run.GetRandomCoinField(a.Ctx.Coins.Fold.Name)
@@ -503,7 +503,7 @@ type foldPhaseProverAction struct {
 	ipQueryID ifaces.QueryID // Changed to ifaces.QueryID explicitly
 }
 
-func (a *foldPhaseProverAction) Run(run *wizard.ProverRuntime) {
+func (a *foldPhaseProverAction) Run(run *wizard.ProverRuntime[T]) {
 	foldedKey := a.ctx.Columns.ACollapseFold.GetColAssignment(run)
 	foldedPreimage := a.ctx.Columns.PreimageCollapseFold.GetColAssignment(run)
 	y := smartvectors.InnerProductExt(foldedKey, foldedPreimage)
@@ -542,7 +542,7 @@ func (a *foldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *foldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *foldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	edual := a.ctx.Columns.Edual.GetColAssignmentGnark(run)
 	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
 	rfold := run.GetRandomCoinFieldExt(a.ctx.Coins.Fold.Name)

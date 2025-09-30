@@ -15,32 +15,32 @@ func TestCountVariables(t *testing.T) {
 	}{
 		{
 			Circ: struct {
-				A frontend.Variable `gnark:",public"`
-				B frontend.Variable `gnark:",secret"`
+				A T `gnark:",public"`
+				B T `gnark:",secret"`
 			}{},
 			NbPub: 1,
 			NbSec: 1,
 		},
 		{
 			Circ: struct {
-				A frontend.Variable `gnark:",secret"`
-				B frontend.Variable `gnark:",public"`
+				A T `gnark:",secret"`
+				B T `gnark:",public"`
 			}{},
 			NbPub: 1,
 			NbSec: 1,
 		},
 		{
 			Circ: struct {
-				A [3]frontend.Variable `gnark:",secret"`
-				B frontend.Variable    `gnark:",public"`
+				A [3]T `gnark:",secret"`
+				B T    `gnark:",public"`
 			}{},
 			NbPub: 1,
 			NbSec: 3,
 		},
 		{
 			Circ: struct {
-				A frontend.Variable    `gnark:",secret"`
-				B [3]frontend.Variable `gnark:",public"`
+				A T    `gnark:",secret"`
+				B [3]T `gnark:",public"`
 			}{},
 			NbPub: 3,
 			NbSec: 1,

@@ -40,7 +40,7 @@ func TestNaturalize(t *testing.T) {
 
 	require.Equal(t, len(comp.QueriesParams.AllKeysAt(0)), 3)
 
-	hLProver := func(assi *wizard.ProverRuntime) {
+	hLProver := func(assi *wizard.ProverRuntime[T]) {
 		p1 := smartvectors.ForTest(1, 2, 3, 4)
 		p2 := smartvectors.ForTest(3, 4, 1, 2)
 		p3 := smartvectors.ForTest(1, 2, 3, 4, 1, 2, 3, 4)

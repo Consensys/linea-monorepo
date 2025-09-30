@@ -249,8 +249,8 @@ func ToUint16[T ~int | ~uint](i T) uint16 {
 	return uint16(i) // #nosec G115 -- Checked for overflow
 }
 
-func ToVariableSlice[X any](s []X) []frontend.Variable {
-	res := make([]frontend.Variable, len(s))
+func ToVariableSlice[X any](s []X) []T {
+	res := make([]T, len(s))
 	Copy(res, s)
 	return res
 }

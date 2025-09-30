@@ -29,9 +29,9 @@ const (
 )
 
 // Dump the columns into a csv file
-func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP) {
+func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[T]) {
 
-	return func(comp *wizard.CompiledIOP) {
+	return func(comp *wizard.CompiledIOP[T]) {
 
 		io.WriteString(w, "name; size; status; round; type\n")
 

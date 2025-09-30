@@ -23,7 +23,7 @@ type ProjectionContext struct {
 }
 
 // AssignHornerQuery is a [wizard.ProverAction] that assigns the Horner query from
-// the [projectionContext] to the [wizard.ProverRuntime]. The final value is zero
+// the [projectionContext] to the [wizard.ProverRuntime[T]]. The final value is zero
 // and the N0 values are zero. The function additionally sanity-checks the values
 // of the Horner query.
 type AssignHornerQuery struct {
@@ -39,7 +39,7 @@ type CheckHornerQuery struct {
 
 // ProjectionToHorner is a compilation step that compiles [query.Projection] queries
 // into [query.Horner] queries.
-func ProjectionToHorner(comp *wizard.CompiledIOP) {
+func ProjectionToHorner(comp *wizard.CompiledIOP[T]) {
 
 	round := 0
 	parts := []query.HornerPart{}
@@ -127,7 +127,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 	comp.RegisterVerifierAction(round, &CheckHornerQuery{ProjectionContext: ctx})
 }
 
-func (a AssignHornerQuery) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerQuery) Run(run *wizard.ProverRuntime[T]) {
 
 	params := query.HornerParams{}
 
@@ -163,7 +163,7 @@ func (c *CheckHornerQuery) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	params := run.GetHornerParams(c.Query.ID)
 	api.AssertIsEqual(params.FinalResult, 0)
 

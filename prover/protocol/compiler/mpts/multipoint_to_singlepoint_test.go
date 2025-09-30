@@ -44,7 +44,7 @@ func TestWithProfile(t *testing.T) {
 
 	for _, tc := range testcases {
 
-		suite := []func(*wizard.CompiledIOP){
+		suite := []func(*wizard.CompiledIOP[T]){
 			Compile(WithNumColumnProfileOpt(tc.Profile, 0)),
 			dummy.Compile,
 		}
@@ -58,7 +58,7 @@ func TestWithProfile(t *testing.T) {
 
 func TestCompiler(t *testing.T) {
 
-	suite := []func(*wizard.CompiledIOP){
+	suite := []func(*wizard.CompiledIOP[T]){
 		Compile(),
 		dummy.Compile,
 	}
@@ -72,7 +72,7 @@ func TestCompiler(t *testing.T) {
 
 func TestCompilerWithGnark(t *testing.T) {
 
-	suite := []func(*wizard.CompiledIOP){
+	suite := []func(*wizard.CompiledIOP[T]){
 		Compile(),
 		dummy.Compile,
 	}
@@ -86,7 +86,7 @@ func TestCompilerWithGnark(t *testing.T) {
 
 func TestWithVerifierCol(t *testing.T) {
 
-	suite := []func(*wizard.CompiledIOP){
+	suite := []func(*wizard.CompiledIOP[T]){
 		Compile(),
 		dummy.Compile,
 	}
@@ -94,21 +94,21 @@ func TestWithVerifierCol(t *testing.T) {
 	testcases := []*testtools.AnonymousTestcase{
 		{
 			NameStr: "with-constant-col",
-			DefineFunc: func(comp *wizard.CompiledIOP) {
+			DefineFunc: func(comp *wizard.CompiledIOP[T]) {
 				u := verifiercol.NewConstantCol(field.Zero(), 8, "")
 				comp.InsertUnivariate(0, "U", []ifaces.Column[T]{u})
 			},
-			AssignFunc: func(run *wizard.ProverRuntime) {
+			AssignFunc: func(run *wizard.ProverRuntime[T]) {
 				run.AssignUnivariateExt("U", fext.Zero(), fext.Zero())
 			},
 		},
 		{
 			NameStr: "with-constant-col-2",
-			DefineFunc: func(comp *wizard.CompiledIOP) {
+			DefineFunc: func(comp *wizard.CompiledIOP[T]) {
 				u := verifiercol.NewConstantCol(field.NewElement(42), 4, "")
 				comp.InsertUnivariate(0, "U", []ifaces.Column[T]{u})
 			},
-			AssignFunc: func(run *wizard.ProverRuntime) {
+			AssignFunc: func(run *wizard.ProverRuntime[T]) {
 				run.AssignUnivariateExt("U", fext.Zero(), fext.NewFromUint(42, 0, 0, 0))
 			},
 		},

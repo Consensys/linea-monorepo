@@ -17,7 +17,7 @@ const (
 /*
 Reduce all range proofs
 */
-func RangeProof(comp *wizard.CompiledIOP) {
+func RangeProof(comp *wizard.CompiledIOP[T]) {
 
 	ctx := rangeCtx{
 		rangePoly: map[int]ifaces.Column[T]{},

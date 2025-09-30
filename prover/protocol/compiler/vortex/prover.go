@@ -36,7 +36,7 @@ type ReassignPrecomputedRootAction struct {
 	*Ctx
 }
 
-func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
+func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime[T]) {
 	run.AssignColumn(
 		r.Items.Precomputeds.MerkleRoot.GetColID(),
 		smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue, 1),
@@ -51,7 +51,7 @@ type ColumnAssignmentProverAction struct {
 }
 
 // Prover steps of Vortex that is run in place of committing to polynomials
-func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
+func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime[T]) {
 
 	round := ctx.Round
 
@@ -111,7 +111,7 @@ type LinearCombinationComputationProverAction struct {
 // We stack the No SIS round matrices before the SIS round matrices in the committed matrix stack.
 // For the precomputed matrix, we stack it on top of the SIS round matrices if SIS is used on it or
 // we stack it on top of the No SIS round matrices if SIS is not used on it.
-func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntime) {
+func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntime[T]) {
 	var (
 		committedSVSIS   = []smartvectors.SmartVector{}
 		committedSVNoSIS = []smartvectors.SmartVector{}
@@ -160,7 +160,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
 // the RS encoded matrix instead of using the basic one. It is slower than
 // the later but is recommended.
-func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
+func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime[T]) {
 
 	var (
 		committedSVSIS   = []smartvectors.SmartVector{}
@@ -212,7 +212,7 @@ type OpenSelectedColumnsProverAction struct {
 	*Ctx
 }
 
-func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		committedMatricesSIS   = []vortex.EncodedMatrix{}
@@ -310,7 +310,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 // returns the list of all committed smartvectors for the given round
 // so that we can commit to them
-func (ctx *Ctx) getPols(run *wizard.ProverRuntime, round int) (pols []smartvectors.SmartVector) {
+func (ctx *Ctx) getPols(run *wizard.ProverRuntime[T], round int) (pols []smartvectors.SmartVector) {
 	names := ctx.CommitmentsByRounds.MustGet(round)
 	pols = make([]smartvectors.SmartVector, len(names))
 	for i := range names {
@@ -426,7 +426,7 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 // assignOpenedColumns assign the opened columns for
 // both normal and self-recursion compilers
 func (ctx *Ctx) assignOpenedColumns(
-	pr *wizard.ProverRuntime,
+	pr *wizard.ProverRuntime[T],
 	entryList []int,
 	selectedCols [][][]field.Element,
 	mode commitmentMode) {
@@ -457,7 +457,7 @@ func (ctx *Ctx) assignOpenedColumns(
 // storeSelectedColumnsForNonSisRound stores the selected columns in the prover state
 // for the non SIS rounds which is to be used in the self-recursion compilers
 func (ctx *Ctx) storeSelectedColumnsForNonSisRounds(
-	pr *wizard.ProverRuntime,
+	pr *wizard.ProverRuntime[T],
 	selectedCols [][][]field.Element) {
 	numNonSisRound := ctx.NumCommittedRoundsNoSis()
 	if ctx.IsNonEmptyPrecomputed() && !ctx.IsSISAppliedToPrecomputed() {

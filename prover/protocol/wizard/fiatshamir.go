@@ -6,7 +6,7 @@ import (
 )
 
 // CompiledIOPSerializer is a function capable of serializing a Compiled-IOP
-type CompiledIOPSerializer = func(comp *CompiledIOP) ([]byte, error)
+// type CompiledIOPSerializer[T zk.Element] = func(comp *CompiledIOP[T]) ([]byte, error)
 
 // VersionMetadata collects generic information to use to bootstrap the FS
 // state of the already CompiledIOP.
@@ -19,7 +19,7 @@ type VersionMetadata struct {
 
 // BootstrapFiatShamir hashes the description of the struct to bootstrap the
 // initial Fiat-Shamir state.
-func (comp *CompiledIOP) BootstrapFiatShamir(vm VersionMetadata, ser CompiledIOPSerializer) *CompiledIOP {
+func (comp *CompiledIOP[T]) BootstrapFiatShamir(vm VersionMetadata, ser func(comp *CompiledIOP[T]) ([]byte, error)) *CompiledIOP[T] {
 
 	hasher := sha256.New()
 

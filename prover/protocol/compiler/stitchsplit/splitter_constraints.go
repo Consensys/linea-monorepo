@@ -25,7 +25,7 @@ type AssignLocalPointProverAction struct {
 	NewQ ifaces.QueryID
 }
 
-func (a *AssignLocalPointProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignLocalPointProverAction) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		oldQ    = run.Spec.QueriesParams.Data(a.QID).(query.LocalOpening)
@@ -122,7 +122,7 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 			for slot := 0; slot < numSlots; slot++ {
 
 				ctx.Comp.InsertGlobal(round,
-					ifaces.QueryIDf("%v_SPLITTER_GLOBALQ_SLOT_%v", q.ID, slot),
+					ifaces.QueryIDf("%v_SPLI[T]ER_GLOBALQ_SLOT_%v", q.ID, slot),
 					ctx.adjustExpressionForGlobal(q.Expression, slot),
 				)
 
@@ -246,7 +246,7 @@ func getSubColForGlobal(ctx SplitterContext, col ifaces.Column[T], posInCol int)
 }
 
 func queryNameSplitter(oldQ ifaces.QueryID) ifaces.QueryID {
-	return ifaces.QueryIDf("%v_SPLITTER", oldQ)
+	return ifaces.QueryIDf("%v_SPLI[T]ER", oldQ)
 }
 
 // it shift all the columns inside the expression by shift and then applies the local constraints.

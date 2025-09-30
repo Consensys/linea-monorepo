@@ -337,7 +337,7 @@ func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *li
 }
 
 // Run implements the prover action for the linear hash and merkle
-func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
+func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime[T]) {
 	openingIndices := run.GetRandomCoinIntegerVec(a.Ctx.Coins.Q.Name)
 	lmp := newLinearHashMerkleProverActionBuilder(a)
 
@@ -389,7 +389,7 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 func processPrecomputedRound(
 	a *LinearHashMerkleProverAction,
 	lmp *linearHashMerkleProverActionBuilder,
-	run *wizard.ProverRuntime,
+	run *wizard.ProverRuntime[T],
 	openingIndices []int,
 ) {
 	// The merkle root for the precomputed round
@@ -446,7 +446,7 @@ func processPrecomputedRound(
 func processRound(
 	a *LinearHashMerkleProverAction,
 	lmp *linearHashMerkleProverActionBuilder,
-	run *wizard.ProverRuntime,
+	run *wizard.ProverRuntime[T],
 	openingIndices []int,
 ) {
 	// If there are non SIS rounds, we need to fetch the

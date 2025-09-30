@@ -23,7 +23,7 @@ type NaturalizeProverAction struct {
 	Ctx NaturalizationCtx
 }
 
-func (a *NaturalizeProverAction) Run(run *wizard.ProverRuntime) {
+func (a *NaturalizeProverAction) Run(run *wizard.ProverRuntime[T]) {
 	a.Ctx.prove(run)
 }
 
@@ -35,7 +35,7 @@ func (a *NaturalizeVerifierAction) Run(run wizard.Runtime) error {
 	return a.Ctx.Verify(run)
 }
 
-func (a *NaturalizeVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+func (a *NaturalizeVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime[T]) {
 	a.Ctx.GnarkVerify(api, c)
 }
 
@@ -60,7 +60,7 @@ Interleaving:
 
 	I(X) = 1/2*P(X)(X^n - 1) - 1/2*P(-X)(X^n + 1)
 */
-func Naturalize(comp *wizard.CompiledIOP) {
+func Naturalize(comp *wizard.CompiledIOP[T]) {
 
 	logrus.Trace("started naturalization compiler")
 	defer logrus.Trace("finished naturalization compiler")
@@ -154,7 +154,7 @@ type NaturalizationCtx struct {
 /*
 Registers the new query
 */
-func (ctx *NaturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP) {
+func (ctx *NaturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP[T]) {
 
 	/*
 		Prevents including the same polynomial with the same repr in the
@@ -214,7 +214,7 @@ func (ctx *NaturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP) {
 /*
 Generates assignment for the new query
 */
-func (ctx *NaturalizationCtx) prove(run *wizard.ProverRuntime) {
+func (ctx *NaturalizationCtx) prove(run *wizard.ProverRuntime[T]) {
 
 	// At this time, the originalQuery query should be assigned already
 	originalQuery := run.GetUnivariateParams(ctx.Q.QueryID)
@@ -354,7 +354,7 @@ func (ctx NaturalizationCtx) Verify(run wizard.Runtime) error {
 
 }
 
-func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime) {
+func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime[T]) {
 
 	// Get the original query
 	originalQuery := c.GetUnivariateEval(ctx.Q.QueryID)

@@ -92,7 +92,7 @@ func GenCSVAfterExpansion(genCSVAfterExpansion string) ArcaneParams {
 
 // Arcane is a grouping of all compilers. It compiles
 // any wizard into a single-point polynomial-IOP
-func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
+func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP[T]) {
 
 	params := &arcaneParamSet{}
 	for _, op := range options {
@@ -103,7 +103,7 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 		params.minStickSize = 256
 	}
 
-	return func(comp *wizard.CompiledIOP) {
+	return func(comp *wizard.CompiledIOP[T]) {
 		if params.withLogs {
 			logdata.Log("initially")(comp)
 		}

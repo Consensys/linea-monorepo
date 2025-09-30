@@ -47,7 +47,7 @@ type ProverTaskAtRound[T zk.Element] struct {
 // a goroutine for each tasks and wait for all of them to finish. The approach
 // for parallelization can be justified if the number of go-routines stays low
 // (e.g. less than 1000s).
-func (p ProverTaskAtRound[T]) Run(run *wizard.ProverRuntime) {
+func (p ProverTaskAtRound[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(p.numTasks())
@@ -174,7 +174,7 @@ type MAssignmentTask[T zk.Element] struct {
 // In case one of the Ss contains an entry that does not appear in T, the
 // function panics. This aims at early detecting that the lookup query is not
 // satisfied.
-func (a MAssignmentTask[T]) Run(run *wizard.ProverRuntime) {
+func (a MAssignmentTask[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		// isMultiColumn flags whether the table have multiple column and
@@ -366,7 +366,7 @@ func (a MAssignmentTask[T]) Run(run *wizard.ProverRuntime) {
 // sigmaAssignment
 // type ZCtx ZCtx
 
-func (z ZCtx[T]) Run(run *wizard.ProverRuntime) {
+func (z ZCtx[T]) Run(run *wizard.ProverRuntime[T]) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
 		for frag := start; frag < stop; frag++ {
 
@@ -430,7 +430,7 @@ func (z ZCtx[T]) Run(run *wizard.ProverRuntime) {
 
 }
 
-func inspectWiop(run *wizard.ProverRuntime) {
+func inspectWiop(run *wizard.ProverRuntime[T]) {
 
 	if true {
 		return

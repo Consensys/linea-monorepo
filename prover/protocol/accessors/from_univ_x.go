@@ -19,7 +19,7 @@ import (
 // univariate evaluation query (see [query.UnivariateEval]).
 type FromUnivXAccessor[T zk.Element] struct {
 	// Q is the underlying univariate evaluation query
-	Q query.UnivariateEval
+	Q query.UnivariateEval[T]
 	// Round is the declaration round of Q
 	QRound int
 }
@@ -53,7 +53,7 @@ func (u *FromUnivXAccessor[T]) GetFrontendVariableExt(api zk.APIGen[T], c ifaces
 // NewUnivariateX returns an [ifaces.Accessor] object symbolizing the evaluation
 // point (the "X" value) of a [query.UnivariateEval]. `qRound` is must be the
 // underlying declaration round of the query object.
-func NewUnivariateX[T zk.Element](q query.UnivariateEval, qround int) ifaces.Accessor[T] {
+func NewUnivariateX[T zk.Element](q query.UnivariateEval[T], qround int) ifaces.Accessor[T] {
 	return &FromUnivXAccessor[T]{
 		Q:      q,
 		QRound: qround,
@@ -78,7 +78,7 @@ func (u *FromUnivXAccessor[T]) GetVal(run ifaces.Runtime) field.Element {
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (u *FromUnivXAccessor[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
-	params := circ.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams)
+	params := circ.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams[T])
 	return params.X
 }
 

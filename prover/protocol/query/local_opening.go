@@ -23,14 +23,14 @@ type LocalOpening[T zk.Element] struct {
 }
 
 // Contains the result of a local opening
-type LocalOpeningParams struct {
+type LocalOpeningParams[T zk.Element] struct {
 	BaseY  field.Element
 	ExtY   fext.Element
 	IsBase bool
 }
 
 // Updates a Fiat-Shamir state
-func (lop LocalOpeningParams) UpdateFS(fs hash.StateStorer) {
+func (lop LocalOpeningParams[T]) UpdateFS(fs hash.StateStorer) {
 	if lop.IsBase {
 		fiatshamir.Update(fs, lop.BaseY)
 	} else {
@@ -59,24 +59,24 @@ func (r LocalOpening[T]) IsBase() bool {
 	return r.Pol.IsBase()
 }
 
-// Constructor for [LocalOpeningParams] when y is a base field element.
-func NewLocalOpeningParams(y field.Element) LocalOpeningParams {
-	return LocalOpeningParams{
+// Constructor for [LocalOpeningParams[T]] when y is a base field element.
+func NewLocalOpeningParams[T zk.Element](y field.Element) LocalOpeningParams[T] {
+	return LocalOpeningParams[T]{
 		BaseY:  y,
 		ExtY:   fext.Lift(y),
 		IsBase: true,
 	}
 }
 
-// Constructor for [LocalOpeningParams] when y is a base field element.
-func NewLocalOpeningParamsExt(z fext.Element) LocalOpeningParams {
-	return LocalOpeningParams{
+// Constructor for [LocalOpeningParams[T]] when y is a base field element.
+func NewLocalOpeningParamsExt[T zk.Element](z fext.Element) LocalOpeningParams[T] {
+	return LocalOpeningParams[T]{
 		ExtY:   z,
 		IsBase: false,
 	}
 }
 
-func (lop LocalOpeningParams) ToGenericGroupElement() fext.GenericFieldElem {
+func (lop LocalOpeningParams[T]) ToGenericGroupElement() fext.GenericFieldElem {
 	if lop.IsBase {
 		return fext.NewESHashFromBase(lop.BaseY)
 	} else {
@@ -86,7 +86,7 @@ func (lop LocalOpeningParams) ToGenericGroupElement() fext.GenericFieldElem {
 
 // Test that the polynomial evaluation holds
 func (r LocalOpening[T]) Check(run ifaces.Runtime) error {
-	params := run.GetParams(r.ID).(LocalOpeningParams)
+	params := run.GetParams(r.ID).(LocalOpeningParams[T])
 	if params.IsBase {
 		actualY := r.Pol.GetColAssignmentAt(run, 0)
 		if actualY != params.BaseY {

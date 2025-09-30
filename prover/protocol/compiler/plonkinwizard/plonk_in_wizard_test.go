@@ -159,7 +159,7 @@ func TestPlonkWizardCompiler(t *testing.T) {
 						))
 					}
 
-					prover := func(run *wizard.ProverRuntime) {
+					prover := func(run *wizard.ProverRuntime[T]) {
 						data, sel := generateAssignment(tc.portions, size)
 						run.AssignColumn("DATA", data)
 						run.AssignColumn("SEL", sel)

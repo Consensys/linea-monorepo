@@ -50,7 +50,7 @@ type EvaluationVerifier[T zk.Element] struct {
 // point are in the same query. This is a req from the upcoming naturalization
 // compiler.
 func declareUnivariateQueries[T zk.Element](
-	comp *wizard.CompiledIOP,
+	comp *wizard.CompiledIOP[T],
 	qCtx QuotientCtx[T],
 ) EvaluationCtx[T] {
 
@@ -97,7 +97,7 @@ func declareUnivariateQueries[T zk.Element](
 
 // Run computes the evaluation of the univariate queries and implements the
 // [wizard.ProverAction] interface.
-func (pa EvaluationCtx[T]) Run(run *wizard.ProverRuntime) {
+func (pa EvaluationCtx[T]) Run(run *wizard.ProverRuntime[T]) {
 
 	var (
 		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
