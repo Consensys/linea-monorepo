@@ -34,7 +34,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
 		for i := 0; i < blockSize; i++ {
-			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID()) // len 1 smart vector
+			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
 			roots = append(roots, precompRootSv[0])
 		}
 	}
@@ -44,7 +44,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue // skip the dry rounds
 		}
-		for i := 0; i < len(field.Octuplet{}); i++ {
+		for i := 0; i < blockSize; i++ {
 			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i)) // len 1 smart vector
 			roots = append(roots, rootSv[0])
 		}
