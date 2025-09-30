@@ -355,7 +355,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
     assertThatThrownBy {
       feesCalculator.calculateFees(feeHistory)
-    }.hasCause(expectedException)
+    }.isEqualTo(expectedException)
   }
 
   @Test
@@ -375,6 +375,6 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
     assertThatThrownBy {
       feesCalculator.calculateFees(feeHistory)
-    }.hasCause(expectedException)
+    }.isEqualTo(expectedException)
   }
 }
