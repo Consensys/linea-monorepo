@@ -191,7 +191,7 @@ func (ext2 *Ext2[T]) AssertIsEqual(e, other *E2Gen[T]) {
 }
 
 // Select sets e to r1 if b=1, r2 otherwise
-func (ext2 *Ext2[T]) Select(b frontend.Variable, r1, r2 *E2Gen[T]) *E2Gen[T] {
+func (ext2 *Ext2[T]) Select(b T, r1, r2 *E2Gen[T]) *E2Gen[T] {
 	return &E2Gen[T]{
 		A0: *ext2.mixedAPI.Select(b, &r1.A0, &r2.A0),
 		A1: *ext2.mixedAPI.Select(b, &r1.A1, &r2.A1),

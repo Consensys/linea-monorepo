@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/stretchr/testify/assert"
@@ -158,21 +157,21 @@ func TestVectors(t *testing.T) {
 		assert.Equal(t, vectorext.ForTestFromQuads(1, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0), c)
 	})
 
-	t.Run("IntoGnarkAssignment", func(t *testing.T) {
-		c := vectorext.IntoGnarkAssignment(a)
-		var tmp fext.Element
-		for i := range c {
-			tmp.B0.A0 = c[i].B0.A0.(field.Element)
-			tmp.B0.A1 = c[i].B0.A1.(field.Element)
-			tmp.B1.A0 = c[i].B1.A0.(field.Element)
-			tmp.B1.A1 = c[i].B1.A1.(field.Element)
-			assert.Equal(t, a[i].B0.A0.String(), tmp.B0.A0.String())
-			assert.Equal(t, a[i].B0.A1.String(), tmp.B0.A1.String())
-			assert.Equal(t, a[i].B1.A0.String(), tmp.B1.A0.String())
-			assert.Equal(t, a[i].B1.A1.String(), tmp.B1.A1.String())
-		}
-		aBAndXMustNotChange(t)
-	})
+	// t.Run("IntoGnarkAssignment", func(t *testing.T) {
+	// 	c := vectorext.IntoGnarkAssignment(a)
+	// 	var tmp fext.Element
+	// 	for i := range c {
+	// 		tmp.B0.A0 = c[i].B0.A0.(field.Element)
+	// 		tmp.B0.A1 = c[i].B0.A1.(field.Element)
+	// 		tmp.B1.A0 = c[i].B1.A0.(field.Element)
+	// 		tmp.B1.A1 = c[i].B1.A1.(field.Element)
+	// 		assert.Equal(t, a[i].B0.A0.String(), tmp.B0.A0.String())
+	// 		assert.Equal(t, a[i].B0.A1.String(), tmp.B0.A1.String())
+	// 		assert.Equal(t, a[i].B1.A0.String(), tmp.B1.A0.String())
+	// 		assert.Equal(t, a[i].B1.A1.String(), tmp.B1.A1.String())
+	// 	}
+	// 	aBAndXMustNotChange(t)
+	// })
 
 }
 

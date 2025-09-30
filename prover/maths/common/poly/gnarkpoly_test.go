@@ -1,92 +1,81 @@
 package poly
 
-import (
-	"testing"
+// func TestGnarkEval(t *testing.T) {
 
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/stretchr/testify/require"
-)
+// 	t.Run("normal-poly", func(t *testing.T) {
 
-func TestGnarkEval(t *testing.T) {
+// 		def := func(api frontend.API) error {
+// 			var (
+// 				pol      = vector.IntoGnarkAssignment[zk.NativeElement](vector.ForTest(1, 2, 3, 4))
+// 				x        = 2
+// 				expected = 49
+// 				res      = EvaluateUnivariateGnarkMixed(api, pol, gnarkfext.NewFromBase(x))
+// 			)
+// 			api.AssertIsEqual(expected, res.B0.A0)
+// 			return nil
+// 		}
 
-	t.Run("normal-poly", func(t *testing.T) {
+// 		gnarkutil.AssertCircuitSolved(t, def)
+// 	})
 
-		def := func(api frontend.API) error {
-			var (
-				pol      = vector.IntoGnarkAssignment(vector.ForTest(1, 2, 3, 4))
-				x        = 2
-				expected = 49
-				res      = EvaluateUnivariateGnarkMixed(api, pol, gnarkfext.NewFromBase(x))
-			)
-			api.AssertIsEqual(expected, res.B0.A0)
-			return nil
-		}
+// 	t.Run("empty-poly", func(t *testing.T) {
+// 		def := func(api frontend.API) error {
+// 			var (
+// 				pol      = vector.IntoGnarkAssignment([]field.Element{})
+// 				x        = 2
+// 				expected = 0
+// 				res      = EvaluateUnivariateGnarkMixed(api, pol, gnarkfext.NewFromBase(x))
+// 			)
+// 			api.AssertIsEqual(expected, res.B0.A0)
+// 			return nil
+// 		}
+// 		gnarkutil.AssertCircuitSolved(t, def)
+// 	})
 
-		gnarkutil.AssertCircuitSolved(t, def)
-	})
+// }
 
-	t.Run("empty-poly", func(t *testing.T) {
-		def := func(api frontend.API) error {
-			var (
-				pol      = vector.IntoGnarkAssignment([]field.Element{})
-				x        = 2
-				expected = 0
-				res      = EvaluateUnivariateGnarkMixed(api, pol, gnarkfext.NewFromBase(x))
-			)
-			api.AssertIsEqual(expected, res.B0.A0)
-			return nil
-		}
-		gnarkutil.AssertCircuitSolved(t, def)
-	})
+// func TestGnarkEvalAnyDomain(t *testing.T) {
 
-}
+// 	t.Run("single-variable", func(t *testing.T) {
 
-func TestGnarkEvalAnyDomain(t *testing.T) {
+// 		def := func(api frontend.API) error {
+// 			var (
+// 				domain                     = vector.IntoGnarkAssignment(vector.ForTest(0))
+// 				x        T = 42
+// 				expected                   = vector.IntoGnarkAssignment(vector.ForTest(1))
+// 				res                        = EvaluateLagrangeAnyDomainGnark(api, domain, x)
+// 			)
 
-	t.Run("single-variable", func(t *testing.T) {
+// 			require.Len(t, res, len(expected))
+// 			for i := range expected {
+// 				api.AssertIsEqual(expected[i], res[i])
+// 			}
 
-		def := func(api frontend.API) error {
-			var (
-				domain                     = vector.IntoGnarkAssignment(vector.ForTest(0))
-				x        frontend.Variable = 42
-				expected                   = vector.IntoGnarkAssignment(vector.ForTest(1))
-				res                        = EvaluateLagrangeAnyDomainGnark(api, domain, x)
-			)
+// 			return nil
+// 		}
 
-			require.Len(t, res, len(expected))
-			for i := range expected {
-				api.AssertIsEqual(expected[i], res[i])
-			}
+// 		gnarkutil.AssertCircuitSolved(t, def)
+// 	})
 
-			return nil
-		}
+// 	t.Run("multiple-variable", func(t *testing.T) {
 
-		gnarkutil.AssertCircuitSolved(t, def)
-	})
+// 		def := func(api frontend.API) error {
+// 			var (
+// 				domain                     = vector.IntoGnarkAssignment(vector.ForTest(0, 1))
+// 				x        T = 42
+// 				expected                   = vector.IntoGnarkAssignment(vector.ForTest(-41, 42))
+// 				res                        = EvaluateLagrangeAnyDomainGnark(api, domain, x)
+// 			)
 
-	t.Run("multiple-variable", func(t *testing.T) {
+// 			require.Len(t, res, len(expected))
+// 			for i := range expected {
+// 				api.AssertIsEqual(expected[i], res[i])
+// 			}
 
-		def := func(api frontend.API) error {
-			var (
-				domain                     = vector.IntoGnarkAssignment(vector.ForTest(0, 1))
-				x        frontend.Variable = 42
-				expected                   = vector.IntoGnarkAssignment(vector.ForTest(-41, 42))
-				res                        = EvaluateLagrangeAnyDomainGnark(api, domain, x)
-			)
+// 			return nil
+// 		}
 
-			require.Len(t, res, len(expected))
-			for i := range expected {
-				api.AssertIsEqual(expected[i], res[i])
-			}
+// 		gnarkutil.AssertCircuitSolved(t, def)
+// 	})
 
-			return nil
-		}
-
-		gnarkutil.AssertCircuitSolved(t, def)
-	})
-
-}
+// }

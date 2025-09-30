@@ -20,6 +20,14 @@ func NewE4Gen[T zk.Element](v fext.Element) E4Gen[T] {
 	}
 }
 
+func (z *E4Gen[T]) FromExt(v fext.Element) *E4Gen[T] {
+	z.B0.A0 = *zk.ValueOf[T](v.B0.A0)
+	z.B0.A1 = *zk.ValueOf[T](v.B0.A1)
+	z.B1.A0 = *zk.ValueOf[T](v.B1.A0)
+	z.B1.A1 = *zk.ValueOf[T](v.B1.A1)
+	return z
+}
+
 // Ext4 contains  the ext4 koalabear operations
 type Ext4[T zk.Element] struct {
 	mixedAPI zk.APIGen[T]
@@ -39,6 +47,11 @@ func NewExt4[T zk.Element](api frontend.API) (*Ext4[T], error) {
 }
 
 // SetZero returns a newly allocated element equal to 0
+func (ext4 *Ext4[T]) GetMixedApi() zk.APIGen[T] {
+	return ext4.mixedAPI
+}
+
+// SetZero returns a newly allocated element equal to 0
 func (ext4 *Ext4[T]) Zero() *E4Gen[T] {
 	return &E4Gen[T]{
 		B0: *ext4.Ext2.Zero(),
@@ -51,6 +64,22 @@ func (ext4 *Ext4[T]) One() *E4Gen[T] {
 	return &E4Gen[T]{
 		B0: *ext4.Ext2.One(),
 		B1: *ext4.Ext2.Zero(),
+	}
+}
+
+// NewFromBase returns a real E4 elmt equal to val
+func (ext4 *Ext4[T]) NewFromBase(val any) *E4Gen[T] {
+	return &E4Gen[T]{
+		B0: E2Gen[T]{A0: *zk.ValueOf[T](val), A1: *zk.ValueOf[T](0)},
+		B1: E2Gen[T]{A0: *zk.ValueOf[T](0), A1: *zk.ValueOf[T](0)},
+	}
+}
+
+// NewFromBase returns a real E4 elmt equal to val
+func (ext4 *Ext4[T]) NewFromExt(val fext.Element) *E4Gen[T] {
+	return &E4Gen[T]{
+		B0: E2Gen[T]{A0: *zk.ValueOf[T](val.B0.A0), A1: *zk.ValueOf[T](val.B0.A1)},
+		B1: E2Gen[T]{A0: *zk.ValueOf[T](val.B1.A0), A1: *zk.ValueOf[T](val.B1.A1)},
 	}
 }
 
@@ -203,7 +232,7 @@ func (ext4 *Ext4[T]) Conjugate(e1 E4Gen[T]) *E4Gen[T] {
 }
 
 // Select sets e to r1 if b=1, r2 otherwise
-func (ext4 *Ext4[T]) Select(b frontend.Variable, r1, r2 *E4Gen[T]) *E4Gen[T] {
+func (ext4 *Ext4[T]) Select(b T, r1, r2 *E4Gen[T]) *E4Gen[T] {
 	return &E4Gen[T]{
 		B0: *ext4.Ext2.Select(b, &r1.B0, &r2.B0),
 		B1: *ext4.Ext2.Select(b, &r1.B1, &r2.B1),
