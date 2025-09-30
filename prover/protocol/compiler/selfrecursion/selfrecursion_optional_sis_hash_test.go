@@ -26,7 +26,7 @@ type testCase = struct {
 
 func testCaseGenerator() []testCase {
 	var (
-		numTests = 1
+		numTests = 7
 		polSize  = 1 << 4
 		nPols    = 1 << 4
 		rows     = make([]ifaces.Column, nPols)
