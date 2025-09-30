@@ -14,6 +14,7 @@ limitless_with_debug = false
 ignore_compatibility_check = true
 
 [limitless_params]
+modules = ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
 metadata_dir = "/tmp/exec-limitless/metadata"
 witness_dir = "/tmp/exec-limitless/witness"
 subproofs_dir = "/tmp/exec-limitless/subproofs"
