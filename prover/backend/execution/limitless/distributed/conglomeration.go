@@ -79,7 +79,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 			default:
 				proofGL := &recursion.Witness{}
 				// GL proof loading
-				if err := deSerWithRetry(req.GLProofFiles[i], proofGL, true, 3, 500*time.Millisecond); err != nil {
+				if err := retryDeser(req.GLProofFiles[i], proofGL, true, cfg.LimitlessParams.NumberOfRetries, time.Duration(cfg.LimitlessParams.RetryDelay)*time.Millisecond); err != nil {
 					return err
 				}
 
@@ -115,7 +115,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 			default:
 				proofLPP := &recursion.Witness{}
 				// LPP proof loading
-				if err := deSerWithRetry(req.LPPProofFiles[i], proofLPP, true, 3, 500*time.Millisecond); err != nil {
+				if err := retryDeser(req.LPPProofFiles[i], proofLPP, true, cfg.LimitlessParams.NumberOfRetries, time.Duration(cfg.LimitlessParams.RetryDelay)*time.Millisecond); err != nil {
 					return err
 				}
 
@@ -132,8 +132,6 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 
 	logrus.Infoln("Deserialized all LPP-subproofs and loaded into memory")
 
-	// Start loading the setup before starting the conglomeration so that it is
-	// ready when we need it.
 	execReq := &execution.Request{}
 	if err := files.ReadRequest(req.ExecutionRequestFile, execReq); err != nil {
 		return nil, fmt.Errorf("could not read the execution proof request file (%v): %w", req.ExecutionRequestFile, err)
@@ -148,7 +146,8 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 		chSetupDone = make(chan struct{})
 	)
 
-	// Schedule loading up circuits setup
+	// Start loading the setup before starting the conglomeration so that it is
+	// ready when we need it.
 	go func() {
 		logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
 		setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionLimitlessCircuitID)
@@ -202,7 +201,7 @@ func runSharedRandomness(cfg *config.Config, req *Metadata) (err error) {
 	lppCommitments := make([]field.Element, len(req.GLCommitFiles))
 	for i, path := range req.GLCommitFiles {
 		lppCommitment := &field.Element{}
-		if derr := deSerWithRetry(path, lppCommitment, true, 3, 500*time.Millisecond); derr != nil {
+		if derr := retryDeser(path, lppCommitment, true, cfg.LimitlessParams.NumberOfRetries, time.Duration(cfg.LimitlessParams.RetryDelay)*time.Millisecond); derr != nil {
 			err = fmt.Errorf("could not load lpp-commitment: %w", derr)
 			return err
 		}
@@ -259,8 +258,8 @@ func runConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witne
 	return proof, cong.Wiop, nil
 }
 
-// deSerWithRetry: wraps LoadFromDisk with simple flat retries for io.EOF / io.ErrUnexpectedEOF
-func deSerWithRetry(path string, v any, compressed bool, retries int, delay time.Duration) error {
+// retryDeser: wraps LoadFromDisk with simple flat retries for io.EOF / io.ErrUnexpectedEOF
+func retryDeser(path string, v any, compressed bool, retries int, delay time.Duration) error {
 	for attempt := 0; attempt <= retries; attempt++ {
 		err := serialization.LoadFromDisk(path, v, compressed)
 		if err == nil {
