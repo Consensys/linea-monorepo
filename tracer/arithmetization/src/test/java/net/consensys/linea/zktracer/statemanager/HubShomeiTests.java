@@ -18,7 +18,6 @@ package net.consensys.linea.zktracer.statemanager;
 import static net.consensys.linea.testing.BytecodeCompiler.newProgram;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,7 +39,6 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /** Those tests are intended to produce LT trace to test the HUB <-> Shomei lookups. */
@@ -143,7 +141,6 @@ public class HubShomeiTests extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("opcodeProvider")
   void uselessPrewarming(OpCode opcode, TestInfo testInfo) {
-
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
@@ -195,9 +192,7 @@ public class HubShomeiTests extends TracerTestBase {
     assert (storageSeen.get(DEFAULT).contains(key2));
   }
 
-  private static Stream<Arguments> opcodeProvider() {
-    List<Arguments> arguments = new ArrayList<>();
-    arguments.add(Arguments.of(OpCode.SSTORE, OpCode.SLOAD));
-    return arguments.stream();
+  private static Stream<OpCode> opcodeProvider() {
+    return Stream.of(OpCode.SSTORE, OpCode.SLOAD);
   }
 }
