@@ -135,6 +135,7 @@ const config: HardhatUserConfig = {
       "security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol",
       "tokens",
       "verifiers",
+      "yield", // TODO - Remove this when we are ready for PR
     ],
     pages: "files",
     outputDir: "docs/api/",
