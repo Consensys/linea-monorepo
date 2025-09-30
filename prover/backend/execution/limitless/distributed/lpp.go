@@ -55,7 +55,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 	// We wait for the shared randomness file to arrive
 	var (
 		sharedRandomnessFileName = fmt.Sprintf("%s-%s-commit.bin", req.StartBlock, req.EndBlock)
-		sharedRandomnessFile     = path.Join(cfg.LimitlessParams.SharedRandomnessDir, sharedRandomnessFileName)
+		sharedRandomnessFile     = path.Join(cfg.Limitless.SharedRandomnessDir, sharedRandomnessFileName)
 	)
 	req.SharedRandomnessFile = sharedRandomnessFile
 	err = waitForSharedRandomnessFile(cfg, req)
@@ -65,14 +65,14 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 
 	// Generate the shared randomness
 	sharedRandomness := &field.Element{}
-	if err := retryDeser(sharedRandomnessFile, sharedRandomness, true, cfg.LimitlessParams.NumberOfRetries, time.Duration(cfg.LimitlessParams.RetryDelay)*time.Millisecond); err != nil {
+	if err := retryDeser(sharedRandomnessFile, sharedRandomness, true, cfg.Limitless.NumberOfRetries, time.Duration(cfg.Limitless.RetryDelay)*time.Millisecond); err != nil {
 		return fmt.Errorf("could not load shared randomness: %w", err)
 	}
 	witnessLPP.InitialFiatShamirState = *sharedRandomness
 
 	var (
 		lppProofFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessLPP.ModuleIndex)
-		proofLPPFile     = path.Join(cfg.LimitlessParams.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), lppProofFileName)
+		proofLPPFile     = path.Join(cfg.Limitless.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), lppProofFileName)
 	)
 
 	// Incase the prev. process was interrupted, we clear the previous corrupted files (if it exists)
@@ -97,10 +97,10 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 func waitForSharedRandomnessFile(cfg *config.Config, req *LPPRequest) error {
 
 	// Set timeout for all randomness beacon timeout
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.LimitlessParams.RndBeconTimeout)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Limitless.RndBeconTimeout)*time.Second)
 	defer cancel()
 
-	msg := fmt.Sprintf("Waiting for shared randomness file with configured timeout:%d sec", cfg.LimitlessParams.RndBeconTimeout)
+	msg := fmt.Sprintf("Waiting for shared randomness file with configured timeout:%d sec", cfg.Limitless.RndBeconTimeout)
 	err := files.WaitForAllFilesAtPath(ctx, []string{req.SharedRandomnessFile}, true, msg)
 	if err != nil {
 		return fmt.Errorf("error waiting for shared randomness file: %w", err)

@@ -129,6 +129,7 @@ type Config struct {
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 	Debug                      Debug       `mapstructure:"debug"`
+	Limitless                  Limitless   `mapstructure:"limitless_params"`
 
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
@@ -146,8 +147,6 @@ type Config struct {
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
 	TracesLimitsLarge TracesLimits `mapstructure:"traces_limits_large" validate:"required"`
-
-	LimitlessParams LimitlessParams `mapstructure:"limitless_params"`
 }
 
 func (cfg *Config) Logger() *logrus.Logger {
@@ -214,7 +213,7 @@ type Prometheus struct {
 	Route string
 }
 
-type LimitlessParams struct {
+type Limitless struct {
 	MetadataDir         string `mapstructure:"metadata_dir"`
 	WitnessDir          string `mapstructure:"witness_dir"`
 	SubproofsDir        string `mapstructure:"subproofs_dir"`
