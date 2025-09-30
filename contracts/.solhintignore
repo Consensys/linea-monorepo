@@ -3,3 +3,9 @@ lib/forge-std
 test/foundry
 src/_testing
 src/proxies
+
+# TODO - Remove below when PR ready
+src/bridging/token/TokenBridgeBase.sol
+src/messaging/l2/v1/L2MessageServiceV1.sol
+src/_testing/unit/rollup/InheritingLineaRollup.sol
+src/_testing/unit/rollup/TestLineaRollup.sol

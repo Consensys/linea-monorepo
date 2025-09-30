@@ -76,6 +76,14 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       _;
   }
 
+  modifier onlyKnownL2YieldRecipient(address _l2YieldRecipient) {
+      if (!_getYieldManagerStorage()._isL2YieldRecipientKnown[_l2YieldRecipient]) {
+        revert UnknownL2YieldRecipient();
+      }
+      _;
+  }
+
+
  function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance) {
     withdrawalReserveBalance = l1MessageService().balance;
   }
@@ -235,8 +243,9 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
    * @dev YIELD_REPORTER_ROLE is required to execute.
    * @param _yieldProvider      Yield provider address.
+   * @param _l2YieldRecipient   L2 address that will receive the yield. Must be previously registered in the YieldManager.
    */
-  function reportYield(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) returns (uint256 newReportedYield) {
+  function reportYield(address _yieldProvider, address _l2YieldRecipient) external onlyKnownYieldProvider(_yieldProvider) onlyKnownL2YieldRecipient(_l2YieldRecipient) returns (uint256 newReportedYield) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
       abi.encodeCall(IYieldProvider.reportYield, ()
     ));
@@ -249,8 +258,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     $$.yieldReportedCumulative += newReportedYield;
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     $._userFundsInYieldProvidersTotal += newReportedYield;
-    ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(newReportedYield, $._l2YieldRecipient);
-    emit NativeYieldReported(_yieldProvider, msg.sender, newReportedYield);
+    ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(newReportedYield, _l2YieldRecipient);
+    emit NativeYieldReported(_yieldProvider, _l2YieldRecipient, msg.sender, newReportedYield);
   }
 
   /**
@@ -696,13 +705,25 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     $._l1MessageService = _l1MessageService;
   }
 
-  function setL2YieldRecipient(address _newL2YieldRecipient) external {
-    if (_newL2YieldRecipient == address(0)) {
+  function addL2YieldRecipient(address _l2YieldRecipient) external {
+    if (_l2YieldRecipient == address(0)) {
       revert ZeroAddressNotAllowed();
     }
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    emit L2YieldRecipientSet($._l2YieldRecipient, _newL2YieldRecipient, msg.sender);
-    $._l2YieldRecipient = _newL2YieldRecipient;
+    if ($._isL2YieldRecipientKnown[_l2YieldRecipient]) {
+      revert L2YieldRecipientAlreadyAdded();
+    }
+    emit L2YieldRecipientAdded(_l2YieldRecipient, msg.sender);
+    $._isL2YieldRecipientKnown[_l2YieldRecipient] = true;
+  }
+
+  function removeL2YieldRecipient(address _l2YieldRecipient) external onlyKnownL2YieldRecipient(_l2YieldRecipient) {
+    if (_l2YieldRecipient == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    emit L2YieldRecipientRemoved(_l2YieldRecipient, msg.sender);
+    $._isL2YieldRecipientKnown[_l2YieldRecipient] = false;
   }
 
   /**

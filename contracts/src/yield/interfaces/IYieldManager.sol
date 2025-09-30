@@ -58,10 +58,11 @@ interface IYieldManager {
   /**
    * @notice Emitted when new native yield is reported for a provider.
    * @param yieldProvider The provider that produced yield.
+   * @param l2YieldRecipient The L2 address receiving the yield.
    * @param caller Address that reported the yield.
    * @param yieldAmount Amount of yield accounted for users.
    */
-  event NativeYieldReported(address indexed yieldProvider, address indexed caller, uint256 yieldAmount);
+  event NativeYieldReported(address indexed yieldProvider, address indexed l2YieldRecipient, address indexed caller, uint256 yieldAmount);
 
   // TODO - Also parameter for lstPrincipalRepayment
   /**
@@ -183,10 +184,13 @@ interface IYieldManager {
     address indexed caller
   );
 
+  event L2YieldRecipientAdded(
+    address l2YieldRecipient,
+    address indexed caller
+  );
 
-  event L2YieldRecipientSet(
-    address oldL2YieldRecipient,
-    address newL2YieldRecipient,
+  event L2YieldRecipientRemoved(
+    address l2YieldRecipient,
     address indexed caller
   );
 
@@ -272,6 +276,8 @@ interface IYieldManager {
 
   error UnknownYieldProvider();
 
+  error UnknownL2YieldRecipient();
+
   error YieldProviderAlreadyAdded();
 
   error YieldProviderHasRemainingFunds();
@@ -295,6 +301,8 @@ interface IYieldManager {
   error OssificationNotInitiated();
 
   error UnpauseStakingForbiddenWithCurrentLSTPrincipal();
+
+  error L2YieldRecipientAlreadyAdded();
 
   function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance);
   
@@ -344,8 +352,9 @@ interface IYieldManager {
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
    * @dev YIELD_REPORTER_ROLE is required to execute.
    * @param _yieldProvider      Yield provider address.
+   * @param _l2YieldRecipient   L2 address that will receive the yield. Must be previously registered in the YieldManager.
    */
-  function reportYield(address _yieldProvider) external returns (uint256 newReportedYield);
+  function reportYield(address _yieldProvider, address _l2YieldRecipient) external returns (uint256 newReportedYield);
 
   /**
    * @notice Request beacon chain withdrawal from specified yield provider.
@@ -442,7 +451,9 @@ interface IYieldManager {
    * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
    * @param _newL2YieldRecipient L2YieldRecipient address.
    */
-  function setL2YieldRecipient(address _newL2YieldRecipient) external;
+  function addL2YieldRecipient(address _newL2YieldRecipient) external;
+
+  function removeL2YieldRecipient(address _newL2YieldRecipient) external;
 
   /**
    * @notice Set minimum withdrawal reserve percentage.

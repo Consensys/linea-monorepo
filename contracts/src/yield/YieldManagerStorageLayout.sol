@@ -11,7 +11,6 @@ abstract contract YieldManagerStorageLayout {
   /// @custom:storage-location erc7201:linea.storage.YieldManager
   struct YieldManagerStorage {
     address _l1MessageService;
-    address _l2YieldRecipient;
     uint16 _minimumWithdrawalReservePercentageBps;
     uint16 _targetWithdrawalReservePercentageBps;
     uint256 _minimumWithdrawalReserveAmount;
@@ -19,6 +18,7 @@ abstract contract YieldManagerStorageLayout {
     uint256 _userFundsInYieldProvidersTotal;
     uint256 _pendingPermissionlessUnstake;
     address[] _yieldProviders;
+    mapping(address l2YieldRecipient => bool) _isL2YieldRecipientKnown;
     mapping(address yieldProvider => YieldProviderStorage) _yieldProviderStorage;
   }
 
