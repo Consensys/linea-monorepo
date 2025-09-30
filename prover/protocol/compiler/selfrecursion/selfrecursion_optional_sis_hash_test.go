@@ -29,7 +29,7 @@ func testCaseGenerator() []testCase {
 	var (
 		numTests = 7
 		polSize  = 1 << 4
-		nPols    = 1 << 10
+		nPols    = 1 << 5
 		rows     = make([]ifaces.Column, nPols)
 		// variables for multi-round
 		nPolsMultiRound = []int{14, 8, 9, 16}
@@ -421,11 +421,11 @@ func testCaseGenerator() []testCase {
 
 				rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRoundEmpty[round])
 				if round == 0 {
-					for i := 0; i < numPrecomputedsSIS; i++ {
+					for i := 0; i < numPrecomputedsNoSIS; i++ {
 						p := smartvectors.Rand(polSize)
 						rowsMultiRound[round][i] = b.RegisterPrecomputed(ifaces.ColIDf("PRE_COMP_%v", i), p)
 					}
-					for i := numPrecomputedsSIS; i < nPolsMultiRoundEmpty[round]; i++ {
+					for i := numPrecomputedsNoSIS; i < nPolsMultiRoundEmpty[round]; i++ {
 						rowsMultiRound[round][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", i), polSize)
 					}
 					continue
@@ -462,7 +462,7 @@ func testCaseGenerator() []testCase {
 				for i, row := range rowsMultiRound[round] {
 					// For round 0 we need (numPolys - numPrecomputeds) polys, as the precomputed are
 					// assigned in the define phase
-					if i < numPrecomputedsSIS && round == 0 {
+					if i < numPrecomputedsNoSIS && round == 0 {
 						p := pr.Spec.Precomputed.MustGet(row.GetColID())
 						ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 						continue

@@ -126,26 +126,26 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		pcsMRoot := pcsCtx.Items.MerkleRoots
 
 		//TODO@yao: check all values
-		if circX[0] != params.ExtX.B0.A0 {
-			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX[0].String(), params.ExtX.B0.A0.String())
+		if circX[0] != params.ExtX.B0.A0 || circX[1] != params.ExtX.B0.A1 || circX[2] != params.ExtX.B1.A0 || circX[3] != params.ExtX.B1.A1 {
+			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX, params.ExtX)
 		}
 
 		if len(circYs) != 4*len(params.ExtYs) {
 			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
 		}
 
-		for i := range params.ExtYs {
-			if circYs[4*i] != params.ExtYs[i].B0.A0 {
-				return fmt.Errorf("proof no=%v, Y[%v] does not match; %v != %v", i, i, circYs[i].String(), params.Ys[i].String())
+		for j := range params.ExtYs {
+			if circYs[4*j] != params.ExtYs[j].B0.A0 || circYs[4*j+1] != params.ExtYs[j].B0.A1 || circYs[4*j+2] != params.ExtYs[j].B1.A0 || circYs[4*j+3] != params.ExtYs[j].B1.A1 {
+				return fmt.Errorf("proof no=%v, Y[%v] does not match; %v != %v", i, j, circYs[4*j:4*j+4], params.ExtYs[j])
 			}
 		}
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
 
-			for i := 0; i < blockSize; i++ {
-				com := pcsCtx.Items.Precomputeds.MerkleRoot[i].GetColAssignmentAt(run, 0)
+			for j := 0; j < blockSize; j++ {
+				com := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColAssignmentAt(run, 0)
 				if com != circMRoots[0] {
-					return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com.String(), circMRoots[0].String())
+					return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", j, com.String(), circMRoots[0].String())
 				}
 
 				circMRoots = circMRoots[1:]
@@ -186,14 +186,20 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			pcsMRoot                     = pcsCtx.Items.MerkleRoots
 		)
 
-		api.AssertIsEqual(circX, params.X)
+		api.AssertIsEqual(circX[0], params.ExtX.B0.A0)
+		api.AssertIsEqual(circX[1], params.ExtX.B0.A1)
+		api.AssertIsEqual(circX[2], params.ExtX.B1.A0)
+		api.AssertIsEqual(circX[3], params.ExtX.B1.A1)
 
 		if len(circYs) != len(params.Ys) {
 			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
 		}
 
-		for i := range circYs {
-			api.AssertIsEqual(circYs[i], params.Ys[i])
+		for j := range params.ExtYs {
+			api.AssertIsEqual(circYs[4*j], params.ExtYs[j].B0.A0)
+			api.AssertIsEqual(circYs[4*j+1], params.ExtYs[j].B0.A1)
+			api.AssertIsEqual(circYs[4*j+2], params.ExtYs[j].B1.A0)
+			api.AssertIsEqual(circYs[4*j+3], params.ExtYs[j].B1.A1)
 		}
 
 		if pcsCtx.IsNonEmptyPrecomputed() {

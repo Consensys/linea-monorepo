@@ -40,7 +40,7 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	// The fold phase is only needed if there are non-zero
 	// number of SIS rounds
 	if ctx.Columns.ConcatenatedDhQ != nil {
-		ctx.FoldPhase() // TODO@yao fix this for vortex with a single round
+		ctx.FoldPhase()
 	}
 }
 
@@ -51,12 +51,12 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
 	wholes := ctx.Columns.WholePreimagesSis
 	sisParams := ctx.VortexCtx.SisParams
+
 	limbs := make([]ifaces.Column, len(wholes))
 	round := wholes[0].Round()
 	limbSize := wholes[0].Size() * sisParams.NumLimbs()
 
 	for i := range limbs {
-
 		limbs[i] = ctx.Comp.InsertCommit(
 			round,
 			ctx.limbExpandedPreimageName(wholes[i].GetColID()),
@@ -166,6 +166,7 @@ type CollapsingProverAction struct {
 
 func (a *CollapsingProverAction) Run(run *wizard.ProverRuntime) {
 	collapsedPreimage := a.Ctx.Columns.PreimagesSisCollapse.GetColAssignment(run)
+
 	sisKey := a.SisKey
 
 	subDuals := []smartvectors.SmartVector{}

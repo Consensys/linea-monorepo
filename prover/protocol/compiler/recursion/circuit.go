@@ -63,8 +63,8 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
-		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)),
-		Commitments:        make([]frontend.Variable, len(merkleRoots)),
+		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)), //TODO@yao: check size
+		Commitments:        make([]frontend.Variable, 8*len(merkleRoots)),     //TODO@yao: check size
 		Ys:                 make([]gnarkfext.Element, len(polyQuery.Pols)),
 	}
 }
@@ -171,10 +171,10 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []
 	// The order below is based on the field declaration order for the
 	// circuit struct.
 	//
-	// X              frontend.Variable   `gnark:",public"`
-	// Ys             []frontend.Variable `gnark:",public"`
-	// Commitments    []frontend.Variable `gnark:",public"`
-	// Pubs           []frontend.Variable `gnark:",public"`
+	// X                          [4]frontend.Variable   `gnark:",public"`
+	// Ys                         [4*numYs]frontend.Variable `gnark:",public"`
+	// Commitments/merkleRoots    [8*numMRoots]frontend.Variable `gnark:",public"`
+	// Pubs                       []frontend.Variable `gnark:",public"`
 	//
 	x, allPubDrain = allPubDrain[:4], allPubDrain[4:]
 	ys, allPubDrain = allPubDrain[:4*numYs], allPubDrain[4*numYs:]
