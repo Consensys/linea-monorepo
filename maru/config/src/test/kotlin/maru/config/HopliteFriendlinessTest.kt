@@ -64,6 +64,7 @@ class HopliteFriendlinessTest {
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
     eth-api-endpoint = { endpoint = "http://localhost:8545" }
+    payload-validation-enabled = false
 
     [observability]
     port = 9090
@@ -160,6 +161,7 @@ class HopliteFriendlinessTest {
           endpoint = URI.create("http://localhost:8555").toURL(),
           jwtSecretPath = "/secret/path",
         ),
+      payloadValidationEnabled = false,
     )
   private val follower1 =
     ApiEndpointDto(
@@ -289,6 +291,7 @@ class HopliteFriendlinessTest {
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
+            payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
         followers = followersConfig,
@@ -313,6 +316,7 @@ class HopliteFriendlinessTest {
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
+            payloadValidationEnabled = false,
           ),
         followers = emptyFollowersConfig,
         observability = ObservabilityConfig(port = 9090u),
@@ -346,6 +350,33 @@ class HopliteFriendlinessTest {
         futureMessagesLimit = 100,
         feeRecipient = "0x0000000000000000000000000000000000000001".decodeHex(),
       ),
+    )
+  }
+
+  @Test
+  fun payloadValidationEnablementFlagIsParseableWhenTrue() {
+    val payloadValidatorToml =
+      """
+      engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
+      eth-api-endpoint = { endpoint = "http://localhost:8545" }
+      payload-validation-enabled = true
+      """.trimIndent()
+    val config = parseConfig<PayloadValidatorDto>(payloadValidatorToml)
+    assertThat(config).isEqualTo(
+      payloadValidator.copy(payloadValidationEnabled = true),
+    )
+  }
+
+  @Test
+  fun payloadValidationIsEnabledByDefault() {
+    val payloadValidatorToml =
+      """
+      engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
+      eth-api-endpoint = { endpoint = "http://localhost:8545" }
+      """.trimIndent()
+    val config = parseConfig<PayloadValidatorDto>(payloadValidatorToml)
+    assertThat(config).isEqualTo(
+      payloadValidator.copy(payloadValidationEnabled = true),
     )
   }
 
@@ -455,6 +486,7 @@ class HopliteFriendlinessTest {
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
+            payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
         followers = emptyFollowersConfig,
@@ -527,6 +559,7 @@ class HopliteFriendlinessTest {
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
             ethApiEndpoint = ethApiEndpoint,
+            payloadValidationEnabled = false,
           ),
         qbft = qbftOptions.toDomain(),
         followers = emptyFollowersConfig,

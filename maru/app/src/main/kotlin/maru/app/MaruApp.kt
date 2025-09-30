@@ -176,6 +176,7 @@ class MaruApp(
           allowEmptyBlocks = config.allowEmptyBlocks,
           syncStatusProvider = syncStatusProvider,
           forksSchedule = beaconGenesisConfig,
+          payloadValidationEnabled = config.validatorElNode.payloadValidationEnabled,
         )
       } else {
         QbftFollowerFactory(
@@ -186,6 +187,7 @@ class MaruApp(
           metricsFacade = metricsFacade,
           allowEmptyBlocks = config.allowEmptyBlocks,
           finalizationStateProvider = finalizationProvider,
+          payloadValidationEnabled = config.validatorElNode.payloadValidationEnabled,
         )
       }
     val forkTransitionSubscriptionManager = InOrderFanoutSubscriptionManager<ForkSpec>()

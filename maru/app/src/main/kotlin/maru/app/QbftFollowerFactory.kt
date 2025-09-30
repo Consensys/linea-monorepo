@@ -38,10 +38,11 @@ class QbftFollowerFactory(
   private val metricsFacade: MetricsFacade,
   private val allowEmptyBlocks: Boolean,
   private val finalizationStateProvider: FinalizationProvider,
+  private val payloadValidationEnabled: Boolean,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val qbftConsensusConfig = (forkSpec.configuration as QbftConsensusConfig)
-    val payloadValidatorExecutionLayerManager =
+    val executionLayerManager =
       Helpers.buildExecutionLayerManager(
         web3JEngineApiClient = validatorELNodeEngineApiWeb3JClient,
         elFork = qbftConsensusConfig.elFork,
@@ -49,7 +50,7 @@ class QbftFollowerFactory(
       )
     val elPayloadValidatorNewBlockHandler =
       FollowerBeaconBlockImporter.create(
-        executionLayerManager = payloadValidatorExecutionLayerManager,
+        executionLayerManager = executionLayerManager,
         finalizationStateProvider = finalizationStateProvider,
         importerName = "payload-validator",
       )
@@ -86,7 +87,7 @@ class QbftFollowerFactory(
         beaconChain = beaconChain,
         proposerSelector = ProposerSelectorImpl,
         stateTransition = stateTransition,
-        executionLayerManager = payloadValidatorExecutionLayerManager,
+        executionLayerManager = if (payloadValidationEnabled) executionLayerManager else null,
         allowEmptyBlocks = allowEmptyBlocks,
       )
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, SCEP256SealVerifier())

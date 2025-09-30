@@ -22,12 +22,15 @@ class BeaconBlockValidatorFactoryImpl(
   val beaconChain: BeaconChain,
   proposerSelector: ProposerSelector,
   stateTransition: StateTransition,
-  executionLayerManager: ExecutionLayerManager,
+  executionLayerManager: ExecutionLayerManager?,
   val allowEmptyBlocks: Boolean,
 ) : BeaconBlockValidatorFactory {
   private val stateRootValidator = StateRootValidator(stateTransition)
   private val bodyRootValidator = BodyRootValidator()
-  private val executionPayloadValidator = ExecutionPayloadValidator(executionLayerManager)
+  private val executionPayloadValidator =
+    if (executionLayerManager != null) ExecutionPayloadValidator(executionLayerManager) else null
+  private val emptyBlockValidator = if (!allowEmptyBlocks) EmptyBlockValidator else null
+
   private val proposerValidator = ProposerValidator(proposerSelector, beaconChain)
 
   override fun createValidatorForBlock(beaconBlockHeader: BeaconBlockHeader): BlockValidator {
@@ -47,7 +50,7 @@ class BeaconBlockValidatorFactoryImpl(
             ParentRootValidator(parentHeader),
             bodyRootValidator,
             executionPayloadValidator,
-            if (!allowEmptyBlocks) EmptyBlockValidator else null,
+            emptyBlockValidator,
           ),
       )
     }
