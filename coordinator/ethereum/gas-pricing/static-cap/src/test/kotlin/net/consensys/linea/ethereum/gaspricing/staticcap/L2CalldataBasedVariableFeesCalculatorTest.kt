@@ -253,31 +253,6 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   }
 
   @Test
-  fun test_calculateFees_when_block_count_is_zero() {
-    val feesCalculator = L2CalldataBasedVariableFeesCalculator(
-      config = L2CalldataBasedVariableFeesCalculator.Config(
-        feeChangeDenominator = 32u,
-        calldataSizeBlockCount = 0u, // set zero to disable calldata-based variable fees
-        maxBlockCalldataSize = 109000u,
-      ),
-      web3jClient = mockWeb3jClient,
-      variableFeesCalculator = mockVariableFeesCalculator,
-      l2CalldataSizeAccumulator = mockL2CalldataSizeAccumulator,
-      historicVariableCostProvider = fakeHistoricVariableCostProvider,
-    )
-
-    // call calculateFees first to instantiate the lastVariableCost
-    feesCalculator.calculateFees(feeHistory).let {
-      fakeHistoricVariableCostProvider.setLatestVariableCost(it)
-    }
-
-    // The returned variable fees should always be the original value 15000.0
-    // as calldata-based variable fees is disabled
-    assertThat(feesCalculator.calculateFees(feeHistory))
-      .isEqualTo(originalVariableFee)
-  }
-
-  @Test
   fun test_calculateFees_would_not_change_when_latest_variable_cost_stays_same() {
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,

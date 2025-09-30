@@ -34,6 +34,7 @@ class L2CalldataBasedVariableFeesCalculator(
     init {
       require(feeChangeDenominator > 0u) { "feeChangeDenominator=$feeChangeDenominator must be greater than 0" }
       require(maxBlockCalldataSize > 0u) { "maxBlockCalldataSize=$maxBlockCalldataSize must be greater than 0" }
+      require(calldataSizeBlockCount > 0u) { "calldataSizeBlockCount=$calldataSizeBlockCount must be greater than 0" }
     }
   }
 
