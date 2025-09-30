@@ -115,8 +115,6 @@ public class GenerateConflatedTracesV2 {
       // Retrieve fork from Besu plugin API with block number
       final Fork fork = getForkFromBesuBlockchainService(besuContext, fromBlock, toBlock);
 
-      log.debug("[TRACING] computing trace for {}-{} on fork {}", fromBlock, toBlock, fork);
-
       final ZkTracer tracer =
           new ZkTracer(
               fork,
@@ -132,7 +130,12 @@ public class GenerateConflatedTracesV2 {
           tracer::traceEndConflation,
           tracer);
 
-      log.info("[TRACING] trace for {}-{} computed in {}", fromBlock, toBlock, sw);
+      log.info(
+          "[TRACING] trace on fork {} for blocks {}-{} computed in {}",
+          fork,
+          fromBlock,
+          toBlock,
+          sw);
       sw.reset().start();
       // Generate trace file
       path =
