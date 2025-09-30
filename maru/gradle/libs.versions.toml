@@ -4,4 +4,4 @@ errorprone = { id = "net.ltgt.errorprone", version = "4.0.1" }
 spotless = { id = "com.diffplug.spotless", version = "7.0.2" }
 
 [libraries]
-kotlin-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version = "2.2.0" }
+kotlin-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version = "2.2.20" }
