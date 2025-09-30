@@ -65,7 +65,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 
 	// Generate the shared randomness
 	sharedRandomness := &field.Element{}
-	if err := deSerWithRetry(sharedRandomnessFile, sharedRandomness, true, 3, 500*time.Millisecond); err != nil {
+	if err := retryDeser(sharedRandomnessFile, sharedRandomness, true, cfg.LimitlessParams.NumberOfRetries, time.Duration(cfg.LimitlessParams.RetryDelay)*time.Millisecond); err != nil {
 		return fmt.Errorf("could not load shared randomness: %w", err)
 	}
 	witnessLPP.InitialFiatShamirState = *sharedRandomness

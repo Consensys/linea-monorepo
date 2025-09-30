@@ -19,9 +19,12 @@ witness_dir = "/tmp/exec-limitless/witness"
 subproofs_dir = "/tmp/exec-limitless/subproofs"
 commits_dir = "/tmp/exec-limitless/commits"
 shared_rnd_dir = "/tmp/exec-limitless/commit"
-gl_subproofs_timeout = 1200 # seconds
-lpp_subproofs_timeout = 1200 # seconds  
-rnd_beacon_timeout = 1500 # seconds. SHOULD be greater than gl_subproofs_timeout
+gl_subproofs_timeout = 1800 # seconds
+lpp_subproofs_timeout = 2400 # seconds  
+rnd_beacon_timeout = 1900 # seconds. SHOULD be greater than gl_subproofs_timeout
+
+number_retries = 3
+retry_delay = 100 # ms 
 
 [blob_decompression]
 prover_mode = "full"
