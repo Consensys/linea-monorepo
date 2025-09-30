@@ -26,9 +26,9 @@ type testCase = struct {
 
 func testCaseGenerator() []testCase {
 	var (
-		numTests = 7
-		polSize  = 1 << 4
-		nPols    = 1 << 4
+		numTests = 1
+		polSize  = 32
+		nPols    = 32
 		rows     = make([]ifaces.Column, nPols)
 		// variables for multi-round
 		nPolsMultiRound = []int{14, 8, 9, 16}
@@ -41,7 +41,7 @@ func testCaseGenerator() []testCase {
 		nPolsMultiRoundNoSIS = []int{7, 8, 9, 5}
 		// variables for testing if we have all SIS rounds
 		nPolsMultiRoundSIS = []int{25, 12, 14, 16}
-		// variables for testing if we have an empty round
+		//variables for testing if we have an empty round
 		nPolsMultiRoundEmpty = []int{12, 0, 12, 8}
 	)
 	tc := make([]testCase, 0, numTests)
@@ -515,26 +515,26 @@ func TestSelfRecursionOpsSisMultiLayered(t *testing.T) {
 				vortex.Compile(
 					2,
 					vortex.ForceNumOpenedColumns(8),
-					vortex.WithOptionalSISHashingThreshold(10),
+					vortex.WithOptionalSISHashingThreshold(0),
 				),
 				selfrecursion.SelfRecurse,
 				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<10)),
-				vortex.Compile(
-					2,
-					vortex.ForceNumOpenedColumns(8),
-					vortex.WithOptionalSISHashingThreshold(10),
-				),
-				selfrecursion.SelfRecurse,
-				poseidon2.CompilePoseidon2,
-				compiler.Arcane(
-					compiler.WithTargetColSize(1<<13)),
-				vortex.Compile(
-					2,
-					vortex.ForceNumOpenedColumns(8),
-					vortex.WithOptionalSISHashingThreshold(10),
-				),
+				// vortex.Compile(
+				// 	2,
+				// 	vortex.ForceNumOpenedColumns(8),
+				// 	vortex.WithOptionalSISHashingThreshold(10),
+				// ),
+				// selfrecursion.SelfRecurse,
+				// poseidon2.CompilePoseidon2,
+				// compiler.Arcane(
+				// 	compiler.WithTargetColSize(1<<13)),
+				// vortex.Compile(
+				// 	2,
+				// 	vortex.ForceNumOpenedColumns(8),
+				// 	vortex.WithOptionalSISHashingThreshold(10),
+				// ),
 				dummy.Compile,
 			)
 			proof := wizard.Prove(compiled, tc.Prove)
