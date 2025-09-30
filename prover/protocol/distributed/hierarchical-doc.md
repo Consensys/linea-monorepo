@@ -18,6 +18,7 @@ following properties.
 
 - All the segment proofs are from a list of whitelisted circuits
 - At the end of the process, all the segments have been verified
+    - This is done by a check on the public inputs by the outer-circuit
 - All the segments have the same view of the randomness generation and the
     randomness has been correctly generated.
 - The logderivative sum, grand product etc.. are holistically valid
@@ -27,3 +28,48 @@ following properties.
     the pair should have verification keys for the same module
 - The functional inputs are propagated up through the aggregation steps
 
+
+## Making it possible to detect that all the segments have been aggregated
+
+For each of the type of proofs (GL/LPP/AGG), we introduce the following public
+inputs.
+
+- SegmentCountGL: A list of inputs containing the count of all the proofs that have been aggregated so far by module (only for the LPP)
+- SegmentCountLPP: A list of inputs containing the count of all the proofs that have been aggregated so far by module (only for the GL)
+- TargetCount: A list of inputs containing the count of all the segments that are to be aggregated by module.
+
+When aggregating two proofs, we sum the "SegmentCountXXX" public input for the two sub-proofs and we also check that the two subproofs have the same "TargetCount" counts and we just propagate the same value upward.
+
+We know that a subproof has aggregated all the segments if the TargetCount is reached for both SegmentCountGL and SegmentCountLPP.
+
+## Proving the unicity of the segments
+
+We do so by allocating a multiset-hash public input. 
+
+
+* For an LPP proof, the multiset hash is the hash of the multiset:
+
+```
+{
+    [-1] ()
+    [+1] (moduleID, moduleSegmentID)
+}
+```
+
+* The multiset hashes of two proofs are aggregated by summation (which gives the hash of the "sum" multiset).
+
+## Proving the segments are from a list of whitelisted circuits
+
+Each segment comes with a pair of field element to represent the verifying key.
+The aggregation circuit checks if the segment has the right verifying key by
+comparing it with the entries of a Merkle tree.
+
+## Actions
+- [] Adding the segment counting public inputs
+    - [] GL
+    - [] LPP
+    - [] Hierarchical
+- [] Adding the segment target propagation
+    - [] GL
+    - [] LPP
+    - [] Hierarchicals

@@ -30,6 +30,11 @@ type ModuleLPP struct {
 	// to generate the module.
 	DefinitionInput FilteredModuleInputs
 
+	// SegmentModuleIndex is the index of the module in the segment. The value
+	// is used to assign a column and check that "isFirst" and "isLast" are
+	// right-fully computed.
+	SegmentModuleIndex ifaces.Column
+
 	// InitialFiatShamirState is the state at which to start the FiatShamir
 	// computation
 	InitialFiatShamirState ifaces.Column
@@ -552,12 +557,58 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	segmentCountLpp[modLPP.Disc.IndexOf(modLPP.DefinitionInput.ModuleName)] = field.One()
 
 	modLPP.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
-		TargetNbSegments: declareListOfPiColumns(modLPP.Wiop, targetNbSegmentPublicInputBase, nbModules),
-		SegmentCountGL:   declareListOfConstantPi(modLPP.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
-		SegmentCountLPP:  declareListOfConstantPi(modLPP.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
+		TargetNbSegments:    declareListOfPiColumns(modLPP.Wiop, targetNbSegmentPublicInputBase, nbModules),
+		SegmentCountGL:      declareListOfConstantPi(modLPP.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
+		SegmentCountLPP:     declareListOfConstantPi(modLPP.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
+		LppCommitmentMSetGL: declareListOfPiColumns(modLPP.Wiop, lppCommitmentMSetPublicInputBase, mimc.MSetHashSize),
 	}
 }
 
-func (modGL *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *ModuleWitnessLPP) {
+func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *ModuleWitnessLPP) {
+
+	// This assigns the segment module index proof column
+	run.AssignColumn(
+		modLPP.SegmentModuleIndex.GetColID(),
+		smartvectors.NewConstant(field.NewElement(uint64(witness.SegmentModuleIndex)), 1),
+	)
+
+	// This assigns the columns corresponding to the public input indicating
+	// the number of segments
 	assignListOfPiColumns(run, targetNbSegmentPublicInputBase, vector.ForTest(witness.TotalSegmentCount...))
+}
+
+// assignLPPCommitmentMSetGL assigns the LPP commitment MSet. It is meant to be
+// run as part of a prover action.
+func assignLPPCommitmentMSetLPP(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
+
+	var (
+		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput)
+		segmentIndex   = field.NewElement(uint64(witness.SegmentModuleIndex))
+		moduleIndex    = field.NewElement(uint64(witness.ModuleIndex))
+		mset           = mimc.MSetHash{}
+	)
+
+	mset.Remove(moduleIndex, segmentIndex, lppCommitments)
+	assignListOfPiColumns(run, lppCommitmentMSetPublicInputBase, mset[:])
+}
+
+// checkLPPCommitmentMSetGL checks that the LPP commitment MSet is correctly
+// assigned. It is meant to be run as part of a verifier action.
+func checkLPPCommitmentMSetLPP(run wizard.Runtime, segmentModuleIndexCol ifaces.Column, moduleIndexInt int) error {
+
+	var (
+		targetMSet     = getPublicInputList(run, lppCommitmentMSetPublicInputBase, 1)
+		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput)
+		segmentIndex   = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		moduleIndex    = field.NewElement(uint64(moduleIndexInt))
+		mset           = mimc.MSetHash{}
+	)
+
+	mset.Remove(moduleIndex, segmentIndex, lppCommitments)
+
+	if !vector.Equal(targetMSet, mset[:]) {
+		return fmt.Errorf("LPP commitment MSet mismatch, expected: %v, got: %v", targetMSet, mset[:])
+	}
+
+	return nil
 }

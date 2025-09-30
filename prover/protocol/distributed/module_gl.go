@@ -34,6 +34,11 @@ type ModuleGL struct {
 	// to generate the module.
 	DefinitionInput *FilteredModuleInputs
 
+	// SegmentModuleIndex is the index of the module in the segment. The value
+	// is used to assign a column and check that "isFirst" and "isLast" are
+	// right-fully computed.
+	SegmentModuleIndex ifaces.Column
+
 	// IsFirst is a column of length one storing a binary value indicating
 	// if the current (vertical) instance of the module is the first one.
 	// This is used to activate/deactivate the local-constraints relating
@@ -112,6 +117,10 @@ type ModuleGLCheckSendReceiveGlobal struct {
 type ModuleGLAssignGL struct {
 	*ModuleGL
 }
+
+const (
+	segmentModuleIndexColumn = "SEGMENT_MODULE_INDEX"
+)
 
 // BuildModuleGL builds a [ModuleGL] from scratch from a [FilteredModuleInputs].
 // The function works by creating a define function that will call [NewModuleGL]
@@ -812,15 +821,63 @@ func (modGl *ModuleGL) declarePublicInput() {
 		segmentCountLpp = make([]field.Element, nbModules)
 	)
 
+	modGl.SegmentModuleIndex = modGl.Wiop.InsertProof(0, "SEGMENT_MODULE_INDEX", 1)
+
 	segmentCountGl[modGl.Disc.IndexOf(modGl.DefinitionInput.ModuleName)] = field.One()
 
 	modGl.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
-		TargetNbSegments: declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, nbModules),
-		SegmentCountGL:   declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
-		SegmentCountLPP:  declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
+		TargetNbSegments:    declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, nbModules),
+		SegmentCountGL:      declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
+		SegmentCountLPP:     declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
+		LppCommitmentMSetGL: declareListOfPiColumns(modGl.Wiop, lppCommitmentMSetPublicInputBase, mimc.MSetHashSize),
 	}
 }
 
 func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
+
+	// This assigns the segment module index proof column
+	run.AssignColumn(
+		modGL.SegmentModuleIndex.GetColID(),
+		smartvectors.NewConstant(field.NewElement(uint64(witness.SegmentModuleIndex)), 1),
+	)
+
+	// This assigns the columns corresponding to the public input indicating
+	// the number of segments
 	assignListOfPiColumns(run, targetNbSegmentPublicInputBase, vector.ForTest(witness.TotalSegmentCount...))
+}
+
+// assignLPPCommitmentMSetGL assigns the LPP commitment MSet. It is meant to be
+// run as part of a prover action.
+func assignLPPCommitmentMSetGL(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
+
+	var (
+		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput)
+		segmentIndex   = field.NewElement(uint64(witness.SegmentModuleIndex))
+		moduleIndex    = field.NewElement(uint64(witness.ModuleIndex))
+		mset           = mimc.MSetHash{}
+	)
+
+	mset.Insert(moduleIndex, segmentIndex, lppCommitments)
+	assignListOfPiColumns(run, lppCommitmentMSetPublicInputBase, mset[:])
+}
+
+// checkLPPCommitmentMSetGL checks that the LPP commitment MSet is correctly
+// assigned. It is meant to be run as part of a verifier action.
+func checkLPPCommitmentMSetGL(run wizard.Runtime, segmentModuleIndexCol ifaces.Column, moduleIndexInt int) error {
+
+	var (
+		targetMSet     = getPublicInputList(run, lppCommitmentMSetPublicInputBase, 1)
+		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput)
+		segmentIndex   = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		moduleIndex    = field.NewElement(uint64(moduleIndexInt))
+		mset           = mimc.MSetHash{}
+	)
+
+	mset.Insert(moduleIndex, segmentIndex, lppCommitments)
+
+	if !vector.Equal(targetMSet, mset[:]) {
+		return fmt.Errorf("LPP commitment MSet mismatch, expected: %v, got: %v", targetMSet, mset[:])
+	}
+
+	return nil
 }
