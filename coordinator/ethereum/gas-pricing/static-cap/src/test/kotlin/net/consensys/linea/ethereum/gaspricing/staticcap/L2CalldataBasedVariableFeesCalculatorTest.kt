@@ -25,7 +25,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
       this.latestVariableCost = latestVariableCost
     }
 
-    override fun getVariableCost(latestBlockNumber: ULong): SafeFuture<Double> {
+    override fun getVariableCost(blockNumber: ULong): SafeFuture<Double> {
       return SafeFuture.completedFuture(latestVariableCost)
     }
   }

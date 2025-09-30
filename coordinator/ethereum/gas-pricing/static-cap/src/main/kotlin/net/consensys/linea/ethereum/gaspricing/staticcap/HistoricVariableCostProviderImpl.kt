@@ -39,24 +39,24 @@ class HistoricVariableCostProviderImpl(
       }
   }
 
-  override fun getVariableCost(latestBlockNumber: ULong): SafeFuture<Double> {
+  override fun getVariableCost(blockNumber: ULong): SafeFuture<Double> {
     val (cachedBlockNumber, cachedVariableCost) = lastVariableCost.get()
-    return if (cachedBlockNumber == latestBlockNumber) {
+    return if (cachedBlockNumber == blockNumber) {
       log.debug(
-        "Use cached lastVariableCost={} latestBlockNumber={}",
+        "Use cached lastVariableCost={} blockNumber={}",
         cachedVariableCost,
-        latestBlockNumber,
+        blockNumber,
       )
       SafeFuture.completedFuture(cachedVariableCost)
     } else {
-      getHistoricVariableCostInWei(latestBlockNumber.toBlockParameter())
+      getHistoricVariableCostInWei(blockNumber.toBlockParameter())
         .thenPeek { variableCost ->
           log.debug(
             "variableCost={} blockNumber={}",
             variableCost,
-            latestBlockNumber,
+            blockNumber,
           )
-          lastVariableCost.set(latestBlockNumber to variableCost)
+          lastVariableCost.set(blockNumber to variableCost)
         }
         .whenException { th ->
           log.error(

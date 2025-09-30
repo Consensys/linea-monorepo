@@ -16,7 +16,7 @@ interface L2CalldataSizeAccumulator {
 }
 
 interface HistoricVariableCostProvider {
-  fun getVariableCost(latestBlockNumber: ULong): SafeFuture<Double>
+  fun getVariableCost(blockNumber: ULong): SafeFuture<Double>
 }
 
 fun interface FeesCalculator {

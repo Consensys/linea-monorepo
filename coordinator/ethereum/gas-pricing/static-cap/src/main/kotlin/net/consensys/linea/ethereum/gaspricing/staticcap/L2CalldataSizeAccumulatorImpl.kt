@@ -29,11 +29,12 @@ class L2CalldataSizeAccumulatorImpl(
       }
     }
   }
-  private fun getRecentL2CalldataSize(latestBlockNumber: ULong): SafeFuture<BigInteger> {
+
+  override fun getSumOfL2CalldataSize(latestBlockNumber: ULong): SafeFuture<BigInteger> {
     val (cachedBlockNumber, cachedCalldataSizeSum) = lastCalldataSizeSum.get()
     return if (cachedBlockNumber == latestBlockNumber) {
       log.debug(
-        "Use cached lastCalldataSizeSum={} currentBlockNumber={}",
+        "Use cached lastCalldataSizeSum={} latestBlockNumber={}",
         cachedCalldataSizeSum,
         latestBlockNumber,
       )
@@ -63,10 +64,6 @@ class L2CalldataSizeAccumulatorImpl(
     } else {
       SafeFuture.completedFuture(BigInteger.ZERO)
     }
-  }
-
-  override fun getSumOfL2CalldataSize(latestBlockNumber: ULong): SafeFuture<BigInteger> {
-    return getRecentL2CalldataSize(latestBlockNumber)
       .whenException { th ->
         log.error(
           "Get the sum of L2 calldata size from the last {} blocks failure: {}",
