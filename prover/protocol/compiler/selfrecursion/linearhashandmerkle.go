@@ -44,14 +44,15 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	// CalculateSISParameters computes SIS-related parameters
 	sisLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundSis
 	sisLeavesSize := utils.NextPowerOfTwo(sisLeavesSizeUnpadded)
-	// sis hash, preimage of poseidon2 hash, poseidon2 hash takes every 8 elements as input at a time
+	// sis hash is also the preimage of poseidon2 hash, poseidon2 hash takes every 8 elements as input at a time
+	// sisHashColChunks stores the number of poseidon2 hashes computed for one sis hash column
 	sisHashColSize := ctx.VortexCtx.SisParams.OutputSize()
 	sisHashColChunks := (sisHashColSize + blockSize - 1) / blockSize
 	sisHashTotalChunksUnpadded := sisHashColChunks * sisLeavesSizeUnpadded
 	sisHashTotalChunks := utils.NextPowerOfTwo(sisHashTotalChunksUnpadded)
 	// concated sis hash
-	concatDhQSizeUnpadded := sisHashColSize * sisLeavesSizeUnpadded
-	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
+	concatSisHashQSizeUnpadded := sisHashColSize * sisLeavesSizeUnpadded
+	concatSisHashQSize := utils.NextPowerOfTwo(concatSisHashQSizeUnpadded)
 
 	// CalculateMerkleParameters computes Merkle tree parameters
 	// The leaves are computed for both SIS and non SIS rounds
@@ -59,7 +60,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
 
 	// The leaves size for non SIS rounds
-	nonSisLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundNonSis
+	nonSisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundNonSis
 
 	// Register Merkle-related columns
 	ctx.Columns.MerkleProofPositions = ctx.Comp.InsertCommit(roundQ, ctx.merklePositionsName(), leavesSize)
@@ -71,9 +72,9 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	// Register SIS-related columns if needed
 	// We commit to the below columns only if SIS is applied to any of the rounds including precomputed
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		ctx.Columns.ConcatenatedDhQ = ctx.Comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
+		ctx.Columns.ConcatenatedSisHashQ = ctx.Comp.InsertCommit(roundQ, ctx.ConcatenatedSisHashQ(), concatSisHashQSize)
 		for j := 0; j < blockSize; j++ {
-			ctx.Columns.SisHash[j] = ctx.Comp.InsertCommit(roundQ, ctx.sisHash(j), sisHashTotalChunks)
+			ctx.Columns.SisHashToHash[j] = ctx.Comp.InsertCommit(roundQ, ctx.SisHashToHash(j), sisHashTotalChunks)
 			ctx.Columns.SisRoundLeaves[j] = make([]ifaces.Column, 0, numRoundSis)
 			for i := 0; i < numRoundSis; i++ {
 				// Register the SIS round leaves
@@ -95,27 +96,27 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		for j := 0; j < blockSize; j++ {
 			ctx.NonSisMetaData.NonSisLeaves[j] = make([]ifaces.Column, 0, numRoundNonSis)
 		}
-		ctx.NonSisMetaData.ConcatenatedHashPreimages = make([][blockSize]ifaces.Column, 0, numRoundNonSis)
+		ctx.NonSisMetaData.NonHashPreimages = make([][blockSize]ifaces.Column, 0, numRoundNonSis)
 		ctx.NonSisMetaData.ColChunks = make([]int, 0, numRoundNonSis)
 		ctx.NonSisMetaData.ToHashSizes = make([]int, 0, numRoundNonSis)
-		nonSisLeavesColumnSize, nonSisPreimageColumnsSize = ctx.registerPoseidon2MetaDataForNonSisRounds(numRoundNonSis, roundQ)
+		nonSisLeavesColumnSize, nonSisPreimageColumnsSize = ctx.registerNonSisMetaDataForNonSisRounds(numRoundNonSis, roundQ)
 	}
 
 	ctx.Comp.RegisterProverAction(roundQ, &LinearHashMerkleProverAction{
-		Ctx:                            ctx,
-		ConcatDhQSize:                  concatDhQSize,
-		SisLeavesSize:                  sisLeavesSize,
-		SisPreimageTotalChunksUnpadded: sisHashTotalChunksUnpadded,
-		SisPreimageTotalChunks:         sisHashTotalChunks,
-		SisLeavesSizeUnpadded:          sisLeavesSizeUnpadded,
-		LeavesSize:                     leavesSize,
-		LeavesSizeUnpadded:             leavesSizeUnpadded,
-		NumOpenedCol:                   ctx.VortexCtx.NbColsToOpen(),
-		NonSisLeavesSizeUnpadded:       nonSisLeavesSizeUnpadded,
-		NumNonSisRound:                 numRoundNonSis,
-		NumSisRound:                    numRoundSis,
-		NonSisLeavesColumnSize:         nonSisLeavesColumnSize,
-		NonSisPreimageColumnsSize:      nonSisPreimageColumnsSize,
+		Ctx:                           ctx,
+		LeavesSize:                    leavesSize,
+		LeavesSizeUnpadded:            leavesSizeUnpadded,
+		ConcatSisHashQSize:            concatSisHashQSize,
+		SisLeavesSize:                 sisLeavesSize,
+		SisLeavesSizeUnpadded:         sisLeavesSizeUnpadded,
+		SisHashTotalChunksUnpadded:    sisHashTotalChunksUnpadded,
+		SisHashTotalChunks:            sisHashTotalChunks,
+		NumOpenedCol:                  ctx.VortexCtx.NbColsToOpen(),
+		NonSisRoundLeavesSizeUnpadded: nonSisRoundLeavesSizeUnpadded,
+		NumRoundNonSis:                numRoundNonSis,
+		NumRoundSis:                   numRoundSis,
+		NonSisLeavesColumnSize:        nonSisLeavesColumnSize,
+		NonSisPreimageColumnsSize:     nonSisPreimageColumnsSize,
 	})
 
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
@@ -146,22 +147,20 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 			expectedHash[j] = stackedSisLeaves[j].Column
 
 		}
-
-		poseidon2W.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), sisHashColChunks, ctx.Columns.SisHash,
+		// SisLeaves have the same size of preimages each rounds for linear hash (sisHashColSize), so we can concatenate them together and check once
+		poseidon2W.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), sisHashColChunks, ctx.Columns.SisHashToHash,
 			sisLeavesSizeUnpadded, expectedHash)
 	}
 
-	// sis have the same size of preimages each rounds for linear hash, so we can concatenate them together and check once
-	// nonsis may have different size of preimages each rounds for linear hash, so we need to check them round by round
-	//
 	// Register the linear hash verification for the non sis rounds
 	for i := 0; i < numRoundNonSis; i++ {
 		var expectedHash [blockSize]ifaces.Column
 		for j := 0; j < blockSize; j++ {
 			expectedHash[j] = ctx.NonSisMetaData.NonSisLeaves[j][i]
 		}
-		//map ctx.Poseidon2MetaData to chunks like above
-		poseidon2W.CheckLinearHash(ctx.Comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.NonSisMetaData.ColChunks[i], ctx.NonSisMetaData.ConcatenatedHashPreimages[i],
+
+		// NonSisLeaves may have different size of preimages each rounds for linear hash, so we need to check them round by round
+		poseidon2W.CheckLinearHash(ctx.Comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.NonSisMetaData.ColChunks[i], ctx.NonSisMetaData.NonHashPreimages[i],
 			ctx.VortexCtx.NbColsToOpen(), expectedHash)
 	}
 
@@ -170,24 +169,23 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	ctx.leafConsistency(roundQ)
 }
 
-// registerPoseidon2MetaDataForNonSisRounds registers the metadata for the
+// registerNonSisMetaDataForNonSisRounds registers the metadata for the
 // for linear hash verification for the non SIS rounds
-// and return the poseidon2HashColumnSize
+// and return the numLeavesColumnSize
 // and the preimage column sizes per non sis round
-func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
+func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 	numRoundNonSis int, round int) (int, []int) {
 	// Compute the concatenated hashes and preimages sizes
 	var (
-		numhash             = ctx.VortexCtx.NbColsToOpen()
-		numLeavesColumnSize = numhash //TODO@yao: check if this is correct , ctx.VortexCtx.NbColsToOpen() is already power of two
-		preimageSize        = make([]int, 0, numRoundNonSis)
+		numLeaves    = ctx.VortexCtx.NbColsToOpen()
+		preimageSize = make([]int, 0, numRoundNonSis)
 	)
 
 	// Consider the precomputed polynomials
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() && !ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		colSize := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
 		colChunks := (colSize + blockSize - 1) / blockSize
-		precompPreimageChunksSizeUnpadded := colChunks * numhash
+		precompPreimageChunksSizeUnpadded := colChunks * numLeaves
 		precompPreimageChunksSize := utils.NextPowerOfTwo(precompPreimageChunksSizeUnpadded)
 
 		// Leaves are the expected hashes
@@ -196,7 +194,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 				ctx.Comp.InsertCommit(
 					round,
 					ctx.nonSisPrecomputedLeaves(j),
-					numLeavesColumnSize,
+					numLeaves,
 				))
 		}
 
@@ -208,7 +206,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 				precompPreimageChunksSize,
 			)
 		}
-		ctx.NonSisMetaData.ConcatenatedHashPreimages = append(ctx.NonSisMetaData.ConcatenatedHashPreimages,
+		ctx.NonSisMetaData.NonHashPreimages = append(ctx.NonSisMetaData.NonHashPreimages,
 			hashPreimages)
 		preimageSize = append(preimageSize, precompPreimageChunksSize)
 		ctx.NonSisMetaData.ColChunks = append(ctx.NonSisMetaData.ColChunks, colChunks)
@@ -238,7 +236,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 		if ctx.VortexCtx.RoundStatus[i] == vortex.IsOnlyPoseidon2Applied {
 			colSize := ctx.VortexCtx.GetNumPolsForNonSisRounds(i)
 			colChunks := (colSize + blockSize - 1) / blockSize
-			preimageChunksSizeUnpadded := colChunks * numhash
+			preimageChunksSizeUnpadded := colChunks * numLeaves
 			preimageChunksSize := utils.NextPowerOfTwo(preimageChunksSizeUnpadded)
 
 			for j := 0; j < blockSize; j++ {
@@ -247,7 +245,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 					ctx.Comp.InsertCommit(
 						round,
 						ctx.nonSisLeaves(i-firstNonEmptyRound, j),
-						numLeavesColumnSize,
+						numLeaves,
 					))
 
 			}
@@ -260,7 +258,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 					preimageChunksSize,
 				)
 			}
-			ctx.NonSisMetaData.ConcatenatedHashPreimages = append(ctx.NonSisMetaData.ConcatenatedHashPreimages, hashPreimages)
+			ctx.NonSisMetaData.NonHashPreimages = append(ctx.NonSisMetaData.NonHashPreimages, hashPreimages)
 			ctx.NonSisMetaData.ColChunks = append(ctx.NonSisMetaData.ColChunks, colChunks)
 			ctx.NonSisMetaData.ToHashSizes = append(ctx.NonSisMetaData.ToHashSizes, colSize)
 
@@ -270,7 +268,7 @@ func (ctx *SelfRecursionCtx) registerPoseidon2MetaDataForNonSisRounds(
 		}
 	}
 
-	return numLeavesColumnSize, preimageSize
+	return numLeaves, preimageSize
 }
 
 func (ctx *SelfRecursionCtx) leafConsistency(round int) {
@@ -320,20 +318,20 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 
 // Implements the prover action interface
 type LinearHashMerkleProverAction struct {
-	Ctx                            *SelfRecursionCtx
-	ConcatDhQSize                  int
-	SisLeavesSize                  int
-	SisPreimageTotalChunksUnpadded int
-	LeavesSize                     int
-	LeavesSizeUnpadded             int
-	SisPreimageTotalChunks         int
-	SisLeavesSizeUnpadded          int
-	NumOpenedCol                   int
-	NonSisLeavesSizeUnpadded       int
-	NumNonSisRound                 int
-	NumSisRound                    int
-	NonSisLeavesColumnSize         int
-	NonSisPreimageColumnsSize      []int
+	Ctx                           *SelfRecursionCtx
+	ConcatSisHashQSize            int
+	SisLeavesSize                 int
+	SisHashTotalChunksUnpadded    int
+	LeavesSize                    int
+	LeavesSizeUnpadded            int
+	SisHashTotalChunks            int
+	SisLeavesSizeUnpadded         int
+	NumOpenedCol                  int
+	NonSisRoundLeavesSizeUnpadded int
+	NumRoundNonSis                int
+	NumRoundSis                   int
+	NonSisLeavesColumnSize        int
+	NonSisPreimageColumnsSize     []int
 }
 
 // linearHashMerkleProverActionBuilder builds the assignment parameters
@@ -341,36 +339,36 @@ type LinearHashMerkleProverAction struct {
 type linearHashMerkleProverActionBuilder struct {
 	// Contains the concatenated sis hashes of the selected columns
 	// for the sis round matrices
-	ConcatDhQ []field.Element
-
-	SisHash [blockSize][]field.Element
+	ConcatSisHashQ []field.Element
+	// The sis hash to be hashed by poseidon2, store in 8 columns as input of poseidon2
+	SisHashToHash [blockSize][]field.Element
 	// The leaves of the merkle tree (both sis and non sis)
-	MerkleLeaves [blockSize][]field.Element // extend to blockSize here
+	MerkleLeaves [blockSize][]field.Element
 	// The positions of the leaves in the merkle tree
 	MerklePositions []field.Element
 	// The roots of the merkle tree
-	MerkleRoots [blockSize][]field.Element // extend to blockSize here
+	MerkleRoots [blockSize][]field.Element
 	// The merkle proofs are aligned as (non sis, sis).
 	// Hence we need to align leaves, position and roots
 	// in the same way. Meaning we need to store them separately
 	// and append them later
-	MerkleSisLeaves    [blockSize][]field.Element // extend to blockSize here
+	MerkleSisLeaves    [blockSize][]field.Element
 	MerkleSisPositions []field.Element
-	MerkleSisRoots     [blockSize][]field.Element // extend to blockSize here
+	MerkleSisRoots     [blockSize][]field.Element
 	// Now the non sis round values
-	MerkleNonSisLeaves    [blockSize][]field.Element // extend to blockSize here
+	MerkleNonSisLeaves    [blockSize][]field.Element
 	MerkleNonSisPositions []field.Element
-	MerkleNonSisRoots     [blockSize][]field.Element // extend to blockSize here
+	MerkleNonSisRoots     [blockSize][]field.Element
 	// The leaves of the sis round matrices
-	SisLeaves [][blockSize][]field.Element // extend to blockSize here
+	SisLeaves [][blockSize][]field.Element
 	// The leaves of the non sis round matrices.
 	// NonSisLeaves[i][j] is leaf of the jth selected column
 	// for the ith non sis round matrix
-	NonSisLeaves [][blockSize][]field.Element // extend to blockSize here
+	NonSisLeaves [][blockSize][]field.Element
 	// The Poseidon2 hash pre images of the
 	// non sis round matrices, NonSisHashPreimages[i][j]
 	// is the jth selected column for the ith non sis round matrix
-	NonSisHashPreimages [][]field.Element // no need to extend to blockSize here
+	NonSisHashPreimages [][]field.Element
 	// the size of the sis hash digest
 	SisHashSize int
 	// the number of opened/selected columns
@@ -387,28 +385,28 @@ type linearHashMerkleProverActionBuilder struct {
 // linearHashMerkleProverActionBuilder
 func newLinearHashMerkleProverActionBuilder(a *LinearHashMerkleProverAction) *linearHashMerkleProverActionBuilder {
 	lmp := linearHashMerkleProverActionBuilder{}
-	lmp.ConcatDhQ = make([]field.Element, a.SisLeavesSizeUnpadded*a.Ctx.VortexCtx.SisParams.OutputSize())
+	lmp.ConcatSisHashQ = make([]field.Element, a.SisLeavesSizeUnpadded*a.Ctx.VortexCtx.SisParams.OutputSize())
 	lmp.MerklePositions = make([]field.Element, 0, a.LeavesSizeUnpadded)
 	lmp.MerkleSisPositions = make([]field.Element, 0, a.SisLeavesSizeUnpadded)
-	lmp.MerkleNonSisPositions = make([]field.Element, 0, a.NonSisLeavesSizeUnpadded)
-	lmp.NonSisHashPreimages = make([][]field.Element, 0, a.NumNonSisRound)
+	lmp.MerkleNonSisPositions = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
+	lmp.NonSisHashPreimages = make([][]field.Element, 0, a.NumRoundNonSis)
 	lmp.SisHashSize = a.Ctx.VortexCtx.SisParams.OutputSize()
 	lmp.NumOpenedCol = a.Ctx.VortexCtx.NbColsToOpen()
 	lmp.TotalNumRounds = a.Ctx.VortexCtx.MaxCommittedRound
 	lmp.CommittedRound = 0
-	lmp.SisTotalChunks = a.SisPreimageTotalChunksUnpadded
+	lmp.SisTotalChunks = a.SisHashTotalChunksUnpadded
 
 	for i := 0; i < blockSize; i++ {
-		lmp.SisHash[i] = make([]field.Element, a.SisPreimageTotalChunksUnpadded)
+		lmp.SisHashToHash[i] = make([]field.Element, a.SisHashTotalChunksUnpadded)
 		lmp.MerkleLeaves[i] = make([]field.Element, 0, a.LeavesSizeUnpadded)
 		lmp.MerkleRoots[i] = make([]field.Element, 0, a.LeavesSizeUnpadded)
 		lmp.MerkleSisLeaves[i] = make([]field.Element, 0, a.SisLeavesSizeUnpadded)
 		lmp.MerkleSisRoots[i] = make([]field.Element, 0, a.SisLeavesSizeUnpadded)
-		lmp.MerkleNonSisLeaves[i] = make([]field.Element, 0, a.NonSisLeavesSizeUnpadded)
-		lmp.MerkleNonSisRoots[i] = make([]field.Element, 0, a.NonSisLeavesSizeUnpadded)
+		lmp.MerkleNonSisLeaves[i] = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
+		lmp.MerkleNonSisRoots[i] = make([]field.Element, 0, a.NonSisRoundLeavesSizeUnpadded)
 	}
-	lmp.SisLeaves = make([][blockSize][]field.Element, 0, a.NumSisRound)
-	lmp.NonSisLeaves = make([][blockSize][]field.Element, 0, a.NumNonSisRound)
+	lmp.SisLeaves = make([][blockSize][]field.Element, 0, a.NumRoundSis)
+	lmp.NonSisLeaves = make([][blockSize][]field.Element, 0, a.NumRoundNonSis)
 	return &lmp
 }
 
@@ -450,20 +448,20 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 		// The below assignments are only done if SIS is applied to any of the rounds
 		if a.Ctx.VortexCtx.NumCommittedRoundsSis() > 0 || a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 			// Assign the concatenated SIS hashes
-			run.AssignColumn(a.Ctx.Columns.SisHash[i].GetColID(), smartvectors.RightZeroPadded(lmp.SisHash[i], a.SisPreimageTotalChunks))
-			for j := 0; j < a.NumSisRound; j++ {
+			run.AssignColumn(a.Ctx.Columns.SisHashToHash[i].GetColID(), smartvectors.RightZeroPadded(lmp.SisHashToHash[i], a.SisHashTotalChunks))
+			for j := 0; j < a.NumRoundSis; j++ {
 				// Assign the SIS round leaves
 				run.AssignColumn(a.Ctx.Columns.SisRoundLeaves[i][j].GetColID(), smartvectors.NewRegular(lmp.SisLeaves[j][i]))
 			}
 		}
 	}
 	if a.Ctx.VortexCtx.NumCommittedRoundsSis() > 0 || a.Ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		run.AssignColumn(a.Ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(lmp.ConcatDhQ, a.ConcatDhQSize))
+		run.AssignColumn(a.Ctx.Columns.ConcatenatedSisHashQ.GetColID(), smartvectors.RightZeroPadded(lmp.ConcatSisHashQ, a.ConcatSisHashQSize))
 
 	}
 
 	// Assign the hash values and preimages for the non SIS rounds
-	for i := 0; i < a.NumNonSisRound; i++ {
+	for i := 0; i < a.NumRoundNonSis; i++ {
 		var th [blockSize][]field.Element
 		colSize := len(lmp.NonSisHashPreimages[i]) / a.NumOpenedCol
 		colChunks := (colSize + blockSize - 1) / blockSize
@@ -478,7 +476,7 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 
 		for j := 0; j < blockSize; j++ {
 			run.AssignColumn(a.Ctx.NonSisMetaData.NonSisLeaves[j][i].GetColID(), smartvectors.RightZeroPadded(lmp.NonSisLeaves[i][j], a.NonSisLeavesColumnSize))
-			run.AssignColumn(a.Ctx.NonSisMetaData.ConcatenatedHashPreimages[i][j].GetColID(), smartvectors.RightZeroPadded(th[j], a.NonSisPreimageColumnsSize[i]))
+			run.AssignColumn(a.Ctx.NonSisMetaData.NonHashPreimages[i][j].GetColID(), smartvectors.RightZeroPadded(th[j], a.NonSisPreimageColumnsSize[i]))
 
 		}
 	}
@@ -512,8 +510,12 @@ func processPrecomputedRound(
 
 			chunks := (lmp.SisHashSize + blockSize - 1) / blockSize
 			preimageDestStart := i * chunks
-			lmp.SisHash = poseidon2W.PrepareToHashWitness(lmp.SisHash, sisHash, preimageDestStart)
-			copy(lmp.ConcatDhQ[destStart:destStart+lmp.SisHashSize], sisHash)
+			// SisHash is the hash of the SIS preimages and also the preimages to poseidon2 hash,
+			// We store them in two ways:
+			// - ConcatSisHashQ, concatenated as input of the linear combination verification
+			// - SisHashToHash, in block of 8 as input of the poseidon2 hash, for merkle proof verification
+			lmp.SisHashToHash = poseidon2W.PrepareToHashWitness(lmp.SisHashToHash, sisHash, preimageDestStart)
+			copy(lmp.ConcatSisHashQ[destStart:destStart+lmp.SisHashSize], sisHash)
 
 			leaf := poseidon2.Poseidon2Sponge(sisHash)
 			for j := 0; j < blockSize; j++ {
@@ -586,7 +588,7 @@ func processRound(
 		nonSisRoundCount     = 0
 		sisRoundCount        = 0
 	)
-	if a.NumNonSisRound > 0 {
+	if a.NumRoundNonSis > 0 {
 		nonSisOpenedColsName = a.Ctx.VortexCtx.SelectedColumnNonSISName()
 		nonSisOpenedColsSV, found := run.State.TryGet(nonSisOpenedColsName)
 		if !found {
@@ -639,11 +641,11 @@ func processRound(
 				srcStart := selectedCol * lmp.SisHashSize
 				sisHash := colSisHash[srcStart : srcStart+lmp.SisHashSize]
 				destStart := sisRoundCount*lmp.NumOpenedCol*lmp.SisHashSize + i*lmp.SisHashSize
-				copy(lmp.ConcatDhQ[destStart:destStart+lmp.SisHashSize], sisHash)
+				copy(lmp.ConcatSisHashQ[destStart:destStart+lmp.SisHashSize], sisHash)
 
 				chunks := (lmp.SisHashSize + blockSize - 1) / blockSize
 				tohashDestStart := sisRoundCount*lmp.NumOpenedCol*chunks + i*chunks
-				lmp.SisHash = poseidon2W.PrepareToHashWitness(lmp.SisHash, sisHash, tohashDestStart)
+				lmp.SisHashToHash = poseidon2W.PrepareToHashWitness(lmp.SisHashToHash, sisHash, tohashDestStart)
 
 				leaf := poseidon2.Poseidon2Sponge(sisHash)
 

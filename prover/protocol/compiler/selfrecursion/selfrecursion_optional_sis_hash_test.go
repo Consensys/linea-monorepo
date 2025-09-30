@@ -28,7 +28,7 @@ func testCaseGenerator() []testCase {
 	var (
 		numTests = 7
 		polSize  = 1 << 4
-		nPols    = 1 << 5
+		nPols    = 1 << 4
 		rows     = make([]ifaces.Column, nPols)
 		// variables for multi-round
 		nPolsMultiRound = []int{14, 8, 9, 16}

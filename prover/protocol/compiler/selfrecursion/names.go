@@ -91,15 +91,15 @@ func (ctx *SelfRecursionCtx) interpolateUAlphaX() string {
 	return maybePrefix(ctx, name)
 }
 
-// Name of the concatenation of the DhQs
-func (ctx *SelfRecursionCtx) sisHash(index int) ifaces.ColID {
+// Name of the SisHashToHash for each index
+func (ctx *SelfRecursionCtx) SisHashToHash(index int) ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_SIS_TOHASH_%v_%v", ctx.SelfRecursionCnt, index)
 	return maybePrefix(ctx, name)
 }
 
-// Name of the concatenation of the DhQs
-func (ctx *SelfRecursionCtx) concatenatedDhQ() ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_CONCAT_DHQ_%v", ctx.SelfRecursionCnt)
+// Name of the concatenation of the SisHashQ
+func (ctx *SelfRecursionCtx) ConcatenatedSisHashQ() ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_SIS_HASH_Q_%v", ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
 
