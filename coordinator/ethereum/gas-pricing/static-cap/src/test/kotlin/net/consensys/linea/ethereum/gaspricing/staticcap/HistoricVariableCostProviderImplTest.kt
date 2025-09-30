@@ -3,6 +3,7 @@ package net.consensys.linea.ethereum.gaspricing.staticcap
 import linea.OneKWei
 import linea.domain.Block
 import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.domain.createBlock
 import linea.kotlin.decodeHex
 import linea.web3j.ExtendedWeb3J
 import net.consensys.linea.ethereum.gaspricing.MinerExtraDataV1
@@ -17,17 +18,18 @@ import org.mockito.kotlin.verify
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class HistoricVariableCostProviderImplTest {
-  val mockEthBlock = mock<Block> {
-    on { extraData } doReturn MinerExtraDataV1(
+  val targetBlockNumber = 100UL
+  val fakeBlock = createBlock(
+    number = targetBlockNumber,
+    extraData = MinerExtraDataV1(
       fixedCostInKWei = 1000U,
       variableCostInKWei = 10000U,
       ethGasPriceInKWei = 12000U,
-    ).encode().decodeHex()
-  }
-  val targetBlockNumber = 100UL
+    ).encode().decodeHex(),
+  )
   val mockWeb3jClient = mock<ExtendedWeb3J> {
     on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
-      SafeFuture.completedFuture(mockEthBlock)
+      SafeFuture.completedFuture(fakeBlock)
   }
 
   @Test
@@ -78,7 +80,7 @@ class HistoricVariableCostProviderImplTest {
 
     assertThatThrownBy {
       historicVariableCostProvider.getVariableCost(targetBlockNumber).get()
-    }.hasCauseInstanceOf(NullPointerException::class.java)
+    }.hasCause(IllegalStateException("Block $targetBlockNumber not found"))
   }
 
   @Test

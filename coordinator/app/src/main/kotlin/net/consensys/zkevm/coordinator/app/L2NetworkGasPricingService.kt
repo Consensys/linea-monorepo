@@ -41,6 +41,10 @@ class L2NetworkGasPricingService(
     val naiveGasPricingCalculatorConfig: GasUsageRatioWeightedAverageFeesCalculator.Config?,
     val legacyGasPricingCalculatorBounds: BoundableFeeCalculator.Config,
   )
+  data class L2CalldataPricingConfig(
+    val l2CalldataSizeAccumulatorConfig: L2CalldataSizeAccumulatorImpl.Config,
+    val l2CalldataBasedVariableFeesCalculatorConfig: L2CalldataBasedVariableFeesCalculator.Config,
+  )
 
   data class Config(
     val feeHistoryFetcherConfig: FeeHistoryFetcherImpl.Config,
@@ -53,8 +57,7 @@ class L2NetworkGasPricingService(
     val variableFeesCalculatorBounds: BoundableFeeCalculator.Config,
     val extraDataCalculatorConfig: MinerExtraDataV1CalculatorImpl.Config,
     val extraDataUpdaterConfig: ExtraDataV1UpdaterImpl.Config,
-    val l2CalldataSizeAccumulatorConfig: L2CalldataSizeAccumulatorImpl.Config?,
-    val l2CalldataBasedVariableFeesCalculatorConfig: L2CalldataBasedVariableFeesCalculator.Config?,
+    val l2CalldataPricingCalculatorConfig: L2CalldataPricingConfig?,
   )
   private val log = LogManager.getLogger(this::class.java)
 
@@ -65,9 +68,7 @@ class L2NetworkGasPricingService(
   )
 
   private fun isL2CalldataBasedVariableFeesEnabled(config: Config): Boolean {
-    return config.l2CalldataBasedVariableFeesCalculatorConfig != null &&
-      config.l2CalldataSizeAccumulatorConfig != null &&
-      config.l2CalldataBasedVariableFeesCalculatorConfig.calldataSizeBlockCount > 0u
+    return config.l2CalldataPricingCalculatorConfig != null
   }
 
   private val variableCostCalculator = run {
@@ -84,7 +85,7 @@ class L2NetworkGasPricingService(
     if (isL2CalldataBasedVariableFeesEnabled(config)) {
       val l2CalldataSizeAccumulator = L2CalldataSizeAccumulatorImpl(
         web3jClient = l2Web3jClient,
-        config = config.l2CalldataSizeAccumulatorConfig!!,
+        config = config.l2CalldataPricingCalculatorConfig!!.l2CalldataSizeAccumulatorConfig,
       )
       val historicVariableCostProvider = HistoricVariableCostProviderImpl(
         web3jClient = l2Web3jClient,
@@ -94,7 +95,7 @@ class L2NetworkGasPricingService(
         variableFeesCalculator = boundedVariableCostCalculator,
         l2CalldataSizeAccumulator = l2CalldataSizeAccumulator,
         historicVariableCostProvider = historicVariableCostProvider,
-        config = config.l2CalldataBasedVariableFeesCalculatorConfig!!,
+        config = config.l2CalldataPricingCalculatorConfig.l2CalldataBasedVariableFeesCalculatorConfig,
       )
     } else {
       boundedVariableCostCalculator

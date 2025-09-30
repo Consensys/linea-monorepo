@@ -6,5 +6,5 @@ enum class LineaMetricsCategory : MetricsCategory {
   BLOB,
   CONFLATION,
   GAS_PRICE_CAP,
-  MINER_EXTRA_DATA,
+  L2_PRICING,
 }

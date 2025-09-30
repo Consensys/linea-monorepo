@@ -42,28 +42,25 @@ class L2CalldataBasedVariableFeesCalculator(
   override fun calculateFees(feeHistory: FeeHistory): Double {
     val variableFee = variableFeesCalculator.calculateFees(feeHistory)
 
-    if (config.calldataSizeBlockCount == 0u) {
-      log.debug(
-        "Calldata-based variable fee is disabled as calldataSizeBlockCount is set as 0: variableFee={} wei",
-        variableFee,
-      )
-      return variableFee
-    }
-
     val callDataTargetSize = config.maxBlockCalldataSize
       .times(config.calldataSizeBlockCount)
       .toDouble().div(2.0)
 
-    val latestBlockNumber = web3jClient.ethBlockNumber().get()
-    val delta = (
-      l2CalldataSizeAccumulator
-        .getSumOfL2CalldataSize(latestBlockNumber.toULong()).get().toDouble()
-        .minus(callDataTargetSize)
-      )
+    val (sumOfL2CalldataSize, latestVariableCost) = web3jClient.ethBlockNumber()
+      .thenCompose { latestBlockNumber ->
+        l2CalldataSizeAccumulator.getSumOfL2CalldataSize(latestBlockNumber.toULong())
+          .thenCombine(
+            historicVariableCostProvider.getVariableCost(latestBlockNumber.toULong()),
+          ) { sumOfL2CalldataSize, latestVariableCost ->
+            sumOfL2CalldataSize to latestVariableCost
+          }
+      }.get()
+
+    val delta = sumOfL2CalldataSize.toDouble()
+      .minus(callDataTargetSize)
       .div(callDataTargetSize)
       .coerceAtLeast(-1.0)
       .coerceAtMost(1.0)
-    val latestVariableCost = historicVariableCostProvider.getVariableCost(latestBlockNumber.toULong()).get()
 
     val calldataBasedVariableFee =
       latestVariableCost.times(1.0 + (delta.div(config.feeChangeDenominator.toDouble())))

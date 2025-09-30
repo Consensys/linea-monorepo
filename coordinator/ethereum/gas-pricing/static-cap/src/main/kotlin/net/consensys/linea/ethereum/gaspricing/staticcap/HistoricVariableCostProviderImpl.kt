@@ -22,18 +22,22 @@ class HistoricVariableCostProviderImpl(
   private fun getHistoricVariableCostInWei(blockParameter: BlockParameter): SafeFuture<Double> {
     return web3jClient.ethGetBlock(blockParameter)
       .thenApply { block ->
-        try {
-          MinerExtraDataV1.decodeV1(block!!.extraData.encodeHex())
-            .variableCostInKWei.toDouble() * OneKWei
-        } catch (th: Throwable) {
-          if (block != null) {
+        if (block == null) {
+          log.warn(
+            "Block {} not found, the requesting node could be out-of-sync",
+            blockParameter.getNumber(),
+          )
+          throw IllegalStateException("Block ${blockParameter.getNumber()} not found")
+        } else {
+          try {
+            MinerExtraDataV1.decodeV1(block!!.extraData.encodeHex())
+              .variableCostInKWei.toDouble() * OneKWei
+          } catch (th: Throwable) {
             log.debug(
               "Will return historic variable cost as zero due to failure in decoding extra data: {}",
               th.message,
             )
             0.0
-          } else {
-            throw th
           }
         }
       }

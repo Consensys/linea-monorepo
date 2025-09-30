@@ -33,13 +33,13 @@ class ExtraDataV1PricerService(
 
   init {
     metricsFacade.createGauge(
-      category = LineaMetricsCategory.MINER_EXTRA_DATA,
+      category = LineaMetricsCategory.L2_PRICING,
       name = "variablecost",
       description = "VariableCost in wei from the miner extra data",
       measurementSupplier = { lastExtraData.get()?.variableCostInKWei?.toLong()?.times(OneKWei) ?: 0 },
     )
     metricsFacade.createGauge(
-      category = LineaMetricsCategory.MINER_EXTRA_DATA,
+      category = LineaMetricsCategory.L2_PRICING,
       name = "ethgasprice",
       description = "EthGasPrice in wei from the miner extra data",
       measurementSupplier = { lastExtraData.get()?.ethGasPriceInKWei?.toLong()?.times(OneKWei) ?: 0 },

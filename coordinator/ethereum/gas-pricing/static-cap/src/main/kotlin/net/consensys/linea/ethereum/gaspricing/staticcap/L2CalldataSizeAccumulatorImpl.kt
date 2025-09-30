@@ -30,17 +30,17 @@ class L2CalldataSizeAccumulatorImpl(
     }
   }
 
-  override fun getSumOfL2CalldataSize(latestBlockNumber: ULong): SafeFuture<BigInteger> {
+  override fun getSumOfL2CalldataSize(blockNumber: ULong): SafeFuture<BigInteger> {
     val (cachedBlockNumber, cachedCalldataSizeSum) = lastCalldataSizeSum.get()
-    return if (cachedBlockNumber == latestBlockNumber) {
+    return if (cachedBlockNumber == blockNumber) {
       log.debug(
         "Use cached lastCalldataSizeSum={} latestBlockNumber={}",
         cachedCalldataSizeSum,
-        latestBlockNumber,
+        blockNumber,
       )
       SafeFuture.completedFuture(cachedCalldataSizeSum)
-    } else if (config.calldataSizeBlockCount > 0u && latestBlockNumber >= config.calldataSizeBlockCount.toULong()) {
-      val blockRange = (latestBlockNumber - config.calldataSizeBlockCount + 1U)..latestBlockNumber
+    } else if (config.calldataSizeBlockCount > 0u && blockNumber >= config.calldataSizeBlockCount.toULong()) {
+      val blockRange = (blockNumber - config.calldataSizeBlockCount + 1U)..blockNumber
       val futures = blockRange.map { blockNumber ->
         web3jClient.ethGetBlockSizeByNumber(blockNumber.toLong())
       }
@@ -58,7 +58,7 @@ class L2CalldataSizeAccumulatorImpl(
               config.blockSizeNonCalldataOverhead,
 
             )
-            lastCalldataSizeSum.set(latestBlockNumber to calldataSizeSum)
+            lastCalldataSizeSum.set(blockNumber to calldataSizeSum)
           }
         }
     } else {
