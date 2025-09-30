@@ -84,6 +84,8 @@ type ModuleWitnessLPP struct {
 	// SegmentCount counts the total number of segments for each modules and is
 	// used to populate the [targetNbSegment] public input.
 	TotalSegmentCount []int
+	// SegmentModuleIndex indicates the vertical split of the current module
+	SegmentModuleIndex int
 	// InitialFiatShamirState is the initial FiatShamir state to set at
 	// round 1.
 	InitialFiatShamirState field.Element
@@ -226,10 +228,11 @@ func segmentModuleLPP(
 	for segment := range witnessesLPPs {
 
 		moduleWitnessLPP := &ModuleWitnessLPP{
-			ModuleName:  moduleLPP.ModuleName,
-			ModuleIndex: segment,
-			Columns:     make(map[ifaces.ColID]smartvectors.SmartVector),
-			N0Values:    n0,
+			ModuleName:         moduleLPP.ModuleName,
+			ModuleIndex:        segment,
+			SegmentModuleIndex: segment,
+			Columns:            make(map[ifaces.ColID]smartvectors.SmartVector),
+			N0Values:           n0,
 		}
 
 		for _, col := range cols {
