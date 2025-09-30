@@ -104,6 +104,7 @@ func compileForSize(
 	}
 
 	// This constraints set the recurrent property of summation
+	// when Summation size == 1, no need for the recurrence relation
 	if ctx.Summation.Size() > 1 {
 		comp.InsertGlobal(
 			round,
