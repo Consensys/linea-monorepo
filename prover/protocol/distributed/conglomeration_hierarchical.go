@@ -7,6 +7,8 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -14,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 type ProofType int
@@ -188,7 +191,7 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 		topPIs       = c.collectAllPublicInputs(run)
 	)
 
-	for instance := 0; instance < c.ModuleNumber; instance++ {
+	for instance := 0; instance < aggregationArity; instance++ {
 		collectedPIs[instance] = c.collectAllPublicInputsOfInstance(run, instance)
 	}
 
@@ -198,7 +201,7 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 
 		summedUpValue := field.Element{}
 
-		for instance := 0; instance < c.ModuleNumber; instance++ {
+		for instance := 0; instance < aggregationArity; instance++ {
 			funcPI := collectedPIs[instance].Functionals[k]
 			summedUpValue.Add(&summedUpValue, &funcPI)
 		}
@@ -275,6 +278,9 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 		}
 	}
 
+	// The loop below "aggregate" the public inputs: log-derivative-sum, gd-product,
+	// and horner sum of the sub-instances. The aggregation is done by multiplying/summing
+	// the values. The results are then compared the top-level public inputs.
 	var (
 		accN0HashChecker = field.One()
 		accGrandProduct  = field.One()
@@ -282,7 +288,7 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 		accHornerSum     = field.Zero()
 	)
 
-	for instance := 0; instance < c.ModuleNumber; instance++ {
+	for instance := 0; instance < aggregationArity; instance++ {
 
 		// This agglomerates the horner N0 hash checker, the grand product, the
 		// log derivative sum and the horner sum.
@@ -314,6 +320,85 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 
 	if accHornerSum != topPIs.HornerSum {
 		err = errors.Join(err, fmt.Errorf("public input mismatch for HornerSum, %v != %v", accHornerSum.String(), topPIs.HornerSum.String()))
+	}
+
+	// This loop checks the VK membership in the tree. The merkle leaf position
+	// is deduced from the segment count public inputs in the following way;
+	//
+	// 	- If segment-count-sum of the GL position is one and LPP is zero, then
+	//  	the position is the position of the "count=1" GL input.
+	//
+	//  - If the segment segment-count-sum of the LPP positions is one and GL is
+	// 		zero, then the position is the position of the "count=1" LPP input +
+	// 		nb-module
+	//
+	// 	- Otherwise (the total sum is larger than 1), the position is 2*nb-module
+
+	for instance := 0; instance < aggregationArity; instance++ {
+
+		// This part of the loop is tasked with determining the "right" value
+		// for leafPosition (as described above).
+
+		var (
+			sumGL, sumLPP = 0, 0
+			leafPosition  = -1 // can't be -1 at the end of the "mod" loop.
+		)
+
+		for mod := 0; mod < c.ModuleNumber; mod++ {
+
+			var (
+				segmentCountGL  = collectedPIs[instance].SegmentCountGL[mod]
+				segmentCountLPP = collectedPIs[instance].SegmentCountLPP[mod]
+			)
+
+			sumGL += int(segmentCountGL.Uint64())
+			sumLPP += int(segmentCountLPP.Uint64())
+
+			if segmentCountGL.IsOne() || segmentCountLPP.IsOne() {
+				leafPosition = mod
+			}
+		}
+
+		switch {
+		// the instance is a conglomeration proof
+		case sumGL+sumLPP > 1:
+			leafPosition = 2 * c.ModuleNumber
+		case sumGL == 1 && sumLPP == 0:
+			leafPosition += c.ModuleNumber
+		case sumGL == 0 && sumLPP == 1:
+			// do nothing, it should already set to the right value
+		}
+
+		// This part of the loop checks the membership of the VK as a member of
+		// the tree using the leafPosition from above.
+
+		var (
+			root   types.Bytes32
+			mProof = smt.Proof{
+				Path:     leafPosition,
+				Siblings: make([]types.Bytes32, c.VKeyMTreeDepth()),
+			}
+			smtCfg = &smt.Config{HashFunc: hashtypes.MiMC, Depth: c.VKeyMTreeDepth()}
+			leafF  = mimc.HashVec(collectedPIs[instance].VerifyingKey[:])
+			leaf   = types.Bytes32{}
+		)
+
+		leaf.SetField(leafF)
+
+		for lvl := 0; lvl < c.VKeyMTreeDepth(); lvl++ {
+			sibling := c.VerificationKeyMerkleProofs[instance][lvl].GetColAssignmentAt(run, 0)
+			mProof.Siblings[lvl].SetField(sibling)
+		}
+
+		root.SetField(c.PublicInputs.VKeyMerkleRoot.Acc.GetVal(run))
+
+		if !mProof.Verify(smtCfg, leaf, root) {
+			err = errors.Join(err, fmt.Errorf("VK %d is not a member of the tree", instance))
+		}
+	}
+
+	if err != nil {
+		return err
 	}
 
 	return nil
