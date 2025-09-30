@@ -66,7 +66,7 @@ func Poseidon2SpongeElement(x []field.Element) (newState [blockSize]field.Elemen
 
 // GnarkBlockCompression applies the MiMC permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
-func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]frontend.Variable) (newState [blockSize]frontend.Variable) {
+func GnarkBlockCompressionMekle[T zk.Element](api frontend.API, oldState, block [blockSize]T) (newState [blockSize]T) {
 	panic("unimplemented")
 }
 

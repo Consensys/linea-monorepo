@@ -138,3 +138,7 @@ func (n *NativeAPI) Println(a ...*NativeElement) {
 	}
 	n.api.Println(args...)
 }
+
+func (n *NativeAPI) GnarkAPI() frontend.API {
+	return n.api
+}

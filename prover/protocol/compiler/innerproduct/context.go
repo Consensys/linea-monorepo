@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -13,27 +14,27 @@ import (
 // cryptographic compiler. In particular it stores the protocol items added to
 // the protocol by the compilation pass (coins, columns, queries etc...)
 // relating to a particular size of column.
-type ContextForSize struct {
+type ContextForSize[T zk.Element] struct {
 
 	// Collapsed contains the linear combination of the product pairs covered
 	// by the context. Says the compilation context compiles the inner-product
 	// of the pairs: (a_i, b_i) for i=0..n, then Collapsed is assigned as
 	//
 	// Collapsed = \sum_i a_i * b_i * BatchinCoin^i
-	Collapsed *symbolic.Expression
+	Collapsed *symbolic.Expression[T]
 
 	// CollapsedBoard is as Collapsed and stores the ExpressionBoard
 	// corresponding to the expression.
-	CollapsedBoard symbolic.ExpressionBoard
+	CollapsedBoard symbolic.ExpressionBoard[T]
 
 	// Summation column is built by accumulating the sum of all the sub-product
 	// terms.
-	Summation ifaces.Column
+	Summation ifaces.Column[T]
 
 	// SummationOpening stores the local opening query pointing to the last
 	// entry of [Summation]. It is compared to the alleged inner-product values
 	// by the verifier to finalize the compilation step.s
-	SummationOpening query.LocalOpening
+	SummationOpening query.LocalOpening[T]
 
 	//  Round after compilation
 	Round int
@@ -45,16 +46,16 @@ type ContextForSize struct {
 //
 // It returns the compilation context of the query
 // the round indicate the round of the last inner-product query, independent of its size.
-func compileForSize(
+func compileForSize[T zk.Element](
 	comp *wizard.CompiledIOP,
 	round int,
-	queries []query.InnerProduct,
-) *ContextForSize {
+	queries []query.InnerProduct[T],
+) *ContextForSize[T] {
 
 	var (
 		hasMoreThan1Pair = len(queries) > 1 || len(queries[0].Bs) > 1
 		size             = queries[0].A.Size()
-		ctx              = &ContextForSize{}
+		ctx              = &ContextForSize[T]{}
 		// batchingCoin is used to collapse all the inner-product queries
 		// into a batched inner-product query so that we only need to
 		// commit to a single `Summation` column for all theses.
@@ -76,7 +77,7 @@ func compileForSize(
 	if hasMoreThan1Pair {
 
 		var (
-			pairProduct = []*symbolic.Expression{}
+			pairProduct = []*symbolic.Expression[T]{}
 		)
 
 		batchingCoin = comp.InsertCoin(
@@ -87,7 +88,7 @@ func compileForSize(
 
 		for _, q := range queries {
 			for _, b := range q.Bs {
-				pairProduct = append(pairProduct, symbolic.Mul(q.A, b))
+				pairProduct = append(pairProduct, symbolic.Mul[T](q.A, b))
 			}
 		}
 
@@ -99,7 +100,7 @@ func compileForSize(
 	}
 
 	if !hasMoreThan1Pair {
-		ctx.Collapsed = symbolic.Mul(queries[0].A, queries[0].Bs[0])
+		ctx.Collapsed = symbolic.Mul[T](queries[0].A, queries[0].Bs[0])
 		ctx.CollapsedBoard = ctx.Collapsed.Board()
 	}
 
@@ -107,7 +108,7 @@ func compileForSize(
 	comp.InsertGlobal(
 		round,
 		deriveName[ifaces.QueryID]("SUMMATION_CONSISTENCY", size, comp.SelfRecursionCount),
-		symbolic.Sub(
+		symbolic.Sub[T](
 			ctx.Summation,
 			column.Shift(ctx.Summation, -1),
 			ctx.Collapsed,
@@ -118,7 +119,7 @@ func compileForSize(
 	comp.InsertLocal(
 		round,
 		deriveName[ifaces.QueryID]("SUMMATION_INIT", size, comp.SelfRecursionCount),
-		symbolic.Sub(ctx.Collapsed, ctx.Summation),
+		symbolic.Sub[T](ctx.Collapsed, ctx.Summation),
 	)
 
 	// The opening of the final position of ctx.Summation should be equal to

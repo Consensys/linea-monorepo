@@ -86,7 +86,7 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 				// constraints to work
 				metadatas := board.ListVariableMetadata()
 				for _, metadata := range metadatas {
-					if h, ok := metadata.(ifaces.Column); ok {
+					if h, ok := metadata.(ifaces.Column[T]); ok {
 						verifiercol.AssertIsPublicCol(ctx.Comp, h)
 					}
 				}
@@ -122,7 +122,7 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 				// constraints to work
 				metadatas := board.ListVariableMetadata()
 				for _, metadata := range metadatas {
-					if h, ok := metadata.(ifaces.Column); ok {
+					if h, ok := metadata.(ifaces.Column[T]); ok {
 						verifiercol.AssertIsPublicCol(ctx.Comp, h)
 					}
 				}
@@ -160,9 +160,9 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 // more detailed, such stitching column agrees with the the sub column up to a subsampling with offset zero.
 // the col should only be either verifiercol or eligible col.
 // option is always empty, and used only for the recursive calls over the shifted columns.
-func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifaces.Column {
+func getStitchingCol(ctx StitchingContext, col ifaces.Column[T], option ...int) ifaces.Column[T] {
 	var (
-		stitchingCol ifaces.Column
+		stitchingCol ifaces.Column[T]
 		newOffset    int
 		round        = col.Round()
 	)
@@ -227,10 +227,10 @@ func (ctx *StitchingContext) adjustExpression(
 
 	for i := range metadata {
 		switch m := metadata[i].(type) {
-		case ifaces.Column:
+		case ifaces.Column[T]:
 			// it's always a compiled column
 			stitchingCol := getStitchingCol(*ctx, m)
-			replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(stitchingCol))
+			replaceMap.InsertNew(m.String(), ifaces.Column[T]AsVariable(stitchingCol))
 		case coin.Info, ifaces.Accessor:
 			replaceMap.InsertNew(m.String(), symbolic.NewVariable(m))
 		case variables.X:

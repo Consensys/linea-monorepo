@@ -21,12 +21,12 @@ func TestCompiler(t *testing.T) {
 		polSize    = 1 << 4
 		nPols      = 16
 		nPolsNoSIS = 3
-		rows       = make([]ifaces.Column, nPols)
+		rows       = make([]ifaces.Column[T], nPols)
 		// variables for multi-round
 		// Threshold for SIS hashing is 10, so we have 2 rounds with SIS and 2 without
 		numRounds       = 4
 		nPolsMultiRound = []int{14, 8, 9, 16}
-		rowsMultiRound  = make([][]ifaces.Column, numRounds)
+		rowsMultiRound  = make([][]ifaces.Column[T], numRounds)
 		// variables for precomputed columns
 		numPrecomputedsNoSIS = 4
 		numPrecomputedsSIS   = 10
@@ -93,7 +93,7 @@ func TestCompiler(t *testing.T) {
 					}
 					// Compute the offsetIndex
 					offsetIndex := nPols * round
-					rowsMultiRound[round] = make([]ifaces.Column, nPols)
+					rowsMultiRound[round] = make([]ifaces.Column[T], nPols)
 					for i := 0; i < nPols; i++ {
 						rowsMultiRound[round][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
 					}
@@ -142,7 +142,7 @@ func TestCompiler(t *testing.T) {
 						offsetIndex += nPols
 					}
 
-					rowsMultiRound[round-2] = make([]ifaces.Column, nPols)
+					rowsMultiRound[round-2] = make([]ifaces.Column[T], nPols)
 					for i := 0; i < nPols; i++ {
 						rowsMultiRound[round-2][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
 					}
@@ -190,7 +190,7 @@ func TestCompiler(t *testing.T) {
 						}
 					}
 
-					rowsMultiRound[round] = make([]ifaces.Column, nPolsNoSIS)
+					rowsMultiRound[round] = make([]ifaces.Column[T], nPolsNoSIS)
 					for i := 0; i < nPolsNoSIS; i++ {
 						rowsMultiRound[round][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
 					}
@@ -239,7 +239,7 @@ func TestCompiler(t *testing.T) {
 						}
 					}
 
-					rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRound[round])
+					rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRound[round])
 					for i := range nPolsMultiRound[round] {
 						rowsMultiRound[round][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
 					}
@@ -294,7 +294,7 @@ func TestCompiler(t *testing.T) {
 						}
 					}
 
-					rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRound[round])
+					rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRound[round])
 					if round == 0 {
 						for i := 0; i < numPrecomputedsNoSIS; i++ {
 							p := smartvectors.PseudoRand(rng, polSize)
@@ -366,7 +366,7 @@ func TestCompiler(t *testing.T) {
 						}
 					}
 
-					rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRound[round])
+					rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRound[round])
 					if round == 0 {
 						for i := 0; i < numPrecomputedsSIS; i++ {
 							p := smartvectors.PseudoRand(rng, polSize)
@@ -437,7 +437,7 @@ func TestCompiler(t *testing.T) {
 						}
 					}
 
-					rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRoundEmpty[round])
+					rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRoundEmpty[round])
 					if round == 0 {
 						for i := 0; i < numPrecomputedsNoSIS; i++ {
 							p := smartvectors.PseudoRand(rng, polSize)

@@ -12,13 +12,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // mergingCtx collects all the compilation input, output and artefacts pertaining
 // the merging of the global constraints
-type mergingCtx struct {
+type mergingCtx[T zk.Element] struct {
 
 	// DomainSize corresponds to the shared domain size of all the uncompiled global
 	// constraints. The fact that all the global constraints share the same domain
@@ -39,7 +40,7 @@ type mergingCtx struct {
 	// The constraints that are stored here are modified w.r.t. the one initially
 	// present in the compiledIOP when the compiler starts because they are multiplied
 	// by X-1, X-\omega, X-\omega^2 to account for the bound cancellation.
-	RatioBuckets map[int][]*symbolic.Expression
+	RatioBuckets map[int][]*symbolic.Expression[T]
 
 	// Ratios stores the list of the "ratios" in the order in which they are
 	// encountered in the compiled IOP.
@@ -54,10 +55,10 @@ type mergingCtx struct {
 // aggregate them into unified global constraints per "ratio".
 //
 // See [mergingCtx.Ratios] for an explanation for "ratio".
-func accumulateConstraints(comp *wizard.CompiledIOP) (mergingCtx, bool) {
+func accumulateConstraints[T zk.Element](comp *wizard.CompiledIOP) (mergingCtx[T], bool) {
 
-	ctx := mergingCtx{
-		RatioBuckets: make(map[int][]*symbolic.Expression),
+	ctx := mergingCtx[T]{
+		RatioBuckets: make(map[int][]*symbolic.Expression[T]),
 	}
 
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
@@ -89,17 +90,17 @@ func accumulateConstraints(comp *wizard.CompiledIOP) (mergingCtx, bool) {
 
 	if ctx.DomainSize == 0 {
 		// There is no global constraint to compile
-		return mergingCtx{}, false
+		return mergingCtx[T]{}, false
 	}
 
 	return ctx, true
 }
 
 // aggregateConstraints returns the list of the aggregated constraints
-func (ctx *mergingCtx) aggregateConstraints(comp *wizard.CompiledIOP) []*symbolic.Expression {
+func (ctx *mergingCtx[T]) aggregateConstraints(comp *wizard.CompiledIOP) []*symbolic.Expression[T] {
 
 	var (
-		aggregateExpressions = make([]*symbolic.Expression, len(ctx.Ratios))
+		aggregateExpressions = make([]*symbolic.Expression[T], len(ctx.Ratios))
 		initialRound         = comp.NumRounds()
 		mergingCoin          = comp.InsertCoin(initialRound, coin.Name(deriveName(comp, DEGREE_RANDOMNESS)), coin.FieldExt)
 	)
@@ -113,7 +114,7 @@ func (ctx *mergingCtx) aggregateConstraints(comp *wizard.CompiledIOP) []*symboli
 
 // registerCs determines the ratio of a constraint and appends it to the corresponding
 // bucket.
-func (ctx *mergingCtx) registerCs(cs query.GlobalConstraint) {
+func (ctx *mergingCtx[T]) registerCs(cs query.GlobalConstraint[T]) {
 
 	var (
 		bndCancelledExpr = getBoundCancelledExpression(cs)
@@ -122,7 +123,7 @@ func (ctx *mergingCtx) registerCs(cs query.GlobalConstraint) {
 
 	// Initialize the outer-maps / slices if the entries are not already allocated
 	if _, ok := ctx.RatioBuckets[ratio]; !ok {
-		ctx.RatioBuckets[ratio] = []*symbolic.Expression{}
+		ctx.RatioBuckets[ratio] = []*symbolic.Expression[T]{}
 		ctx.Ratios = append(ctx.Ratios, ratio)
 	}
 
@@ -134,7 +135,7 @@ func (ctx *mergingCtx) registerCs(cs query.GlobalConstraint) {
 // form X-\omega^k to cancel the expression at position "k" if required. If the
 // constraint uses the "noBoundCancel" feature, then the constraint expression is
 // directly returned.
-func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression {
+func getBoundCancelledExpression[T zk.Element](cs query.GlobalConstraint[T]) *symbolic.Expression[T] {
 
 	if cs.NoBoundCancel {
 		return cs.Expression
@@ -144,13 +145,13 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 		cancelRange = query.MinMaxOffset(cs.Expression)
 		res         = cs.Expression
 		domainSize  = cs.DomainSize
-		x           = variables.NewXVar()
+		x           = variables.NewXVar[T]()
 		omega, _    = fft.Generator(uint64(domainSize))
 		// factors is a list of expression to multiply to obtain the return expression. It
 		// is initialized with "only" the initial expression and we iteratively add the
-		// terms (X-i) to it. At the end, we call [sym.Mul] a single time. This structure
-		// is important because it [sym.Mul] operates a sequence of optimization routines
-		// that are everytime we call it. In an earlier version, we were calling [sym.Mul]
+		// terms (X-i) to it. At the end, we call [sym.Mul[T]] a single time. This structure
+		// is important because it [sym.Mul[T]] operates a sequence of optimization routines
+		// that are everytime we call it. In an earlier version, we were calling [sym.Mul[T]]
 		// for every factor and this were making the function have a quadratic/cubic runtime.
 		factors = make([]any, 0, utils.Abs(cancelRange.Max)+utils.Abs(cancelRange.Min)+1)
 	)
@@ -161,7 +162,7 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 	appendFactor := func(i int) {
 		var root field.Element
 		root.Exp(omega, big.NewInt(int64(i)))
-		factors = append(factors, symbolic.Sub(x, root))
+		factors = append(factors, symbolic.Sub[T](x, root))
 	}
 
 	if cancelRange.Min < 0 {
@@ -181,21 +182,21 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 
 	// When factors is of length 1, it means the expression does not need to be
 	// bound-cancelled and we can directly return the original expression
-	// without calling [sym.Mul].
+	// without calling [sym.Mul[T]].
 	if len(factors) == 1 {
 		return res
 	}
 
-	return symbolic.Mul(factors...)
+	return symbolic.Mul[T](factors...)
 }
 
 // getExprRatio computes the ratio of the expression and ceil to the next power
 // of two. The input expression should be pre-bound-cancelled. The domainSize
-func getExprRatio(expr *symbolic.Expression) int {
+func getExprRatio[T zk.Element](expr *symbolic.Expression[T]) int {
 	var (
 		board        = expr.Board()
 		domainSize   = column.ExprIsOnSameLengthHandles(&board)
-		exprDegree   = board.Degree(GetDegree(domainSize))
+		exprDegree   = board.Degree(GetDegree[T](domainSize))
 		quotientSize = exprDegree - domainSize + 1
 		ratio        = utils.DivCeil(quotientSize, domainSize)
 	)
@@ -203,12 +204,12 @@ func getExprRatio(expr *symbolic.Expression) int {
 }
 
 // GetDegree is a generator returning a DegreeGetter that can be passed to
-// [symbolic.ExpressionBoard.Degree]. The generator takes the domain size as
+// [symbolic.Expression[T]Board.Degree]. The generator takes the domain size as
 // input.
-func GetDegree(size int) func(iface interface{}) int {
+func GetDegree[T zk.Element](size int) func(iface interface{}) int {
 	return func(iface interface{}) int {
 		switch v := iface.(type) {
-		case ifaces.Column:
+		case ifaces.Column[T]:
 			// Univariate polynomials is X. We pad them with zeroes so it is safe
 			// to return the domainSize directly.
 			if size != v.Size() {
@@ -217,13 +218,13 @@ func GetDegree(size int) func(iface interface{}) int {
 			// The size gives the number of coefficients , but we return the degree
 			// hence the - 1
 			return v.Size() - 1
-		case coin.Info, ifaces.Accessor:
+		case coin.Info, ifaces.Accessor[T]:
 			// Coins are treated
 			return 0
-		case variables.X:
+		case variables.X[T]:
 			return 1
-		case variables.PeriodicSample:
-			return size - size/v.T
+		case variables.PeriodicSample[T]:
+			return size - size/v.W
 		default:
 			utils.Panic("Unknown type %v\n", reflect.TypeOf(v))
 		}

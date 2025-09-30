@@ -310,15 +310,15 @@ func TestSerdeValue(t *testing.T) {
 		},
 		{
 			Name: "frontend-variables",
-			V:    frontend.Variable(0),
+			V:    T(0),
 		},
 		{
 			Name: "frontend-variables",
-			V:    frontend.Variable(12),
+			V:    T(12),
 		},
 		{
 			Name: "frontend-variables",
-			V:    frontend.Variable(-10),
+			V:    T(-10),
 		},
 		{
 			Name: "two-wiop-in-a-struct",

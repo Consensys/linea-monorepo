@@ -101,7 +101,7 @@ func (ctx *SplitterContext) ScanSplitCommit() {
 				continue
 			}
 			numSubSlices := col.Size() / ctx.Size
-			subSlices := make([]ifaces.Column, numSubSlices)
+			subSlices := make([]ifaces.Column[T], numSubSlices)
 			switch status {
 			case column.Precomputed, column.VerifyingKey:
 				precomp := comp.Precomputed.MustGet(col.GetColID())
@@ -146,6 +146,6 @@ func (ctx *SplitterContext) ScanSplitCommit() {
 	}
 }
 
-func nameHandleSlice(h ifaces.Column, num, numSlots int) ifaces.ColID {
+func nameHandleSlice(h ifaces.Column[T], num, numSlots int) ifaces.ColID {
 	return ifaces.ColIDf("%v_SUBSLICE_%v_OVER_%v", h.GetColID(), num, numSlots)
 }

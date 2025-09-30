@@ -3,7 +3,6 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -118,7 +117,7 @@ func (p Poseidon2[T]) Check(run ifaces.Runtime) error {
 }
 
 // Check the mimc relation in a gnark circuit
-func (p Poseidon2[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (p Poseidon2[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 
 	var blocks, oldStates, newStates [8][]T
 	for i := 0; i < 8; i++ {
@@ -128,16 +127,19 @@ func (p Poseidon2[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
 	}
 
 	for i := 0; i < len(newStates); i++ {
-		var block [8]frontend.Variable
-		var oldState [8]frontend.Variable
-		var newState [8]frontend.Variable
+		var block [8]T
+		var oldState [8]T
+		var newState [8]T
 		for j := 0; j < 8; j++ {
 			block[j] = blocks[j][i]
 			oldState[j] = oldStates[j][i]
 			newState[j] = newStates[j][i]
 		}
-		recomputed := poseidon2.GnarkBlockCompressionMekle(api, oldState, block)
-		api.AssertIsEqual(newState, recomputed)
+		recomputed := poseidon2.GnarkBlockCompressionMekle(api.GnarkAPI(), oldState, block)
+		// api.AssertIsEqual(newState, recomputed)
+		for i := 0; i < 8; i++ {
+			api.AssertIsEqual(&newState[i], recomputed[i])
+		}
 	}
 }
 

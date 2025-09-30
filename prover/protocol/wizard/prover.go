@@ -24,6 +24,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
@@ -63,7 +64,7 @@ var _ Runtime = &ProverRuntime{}
 // is a behavior that we intend to deprecate and it should not be used by the
 // prover as this tends to create convolutions in the runtime of the prover.
 
-type MainProverStep func(assi *ProverRuntime)
+type MainProverStep func(assi *ProverRuntime[T])
 
 // ProverRuntime collects the assignment of all the items with which the prover
 // interacts by the prover of the protocol. This includes the prover's
@@ -90,18 +91,18 @@ type MainProverStep func(assi *ProverRuntime)
 //	// named "A". If we want to concretely run our protocol, we also need
 //	// to provide a way to assign concrete values to the witness of the
 //	// protocol.
-//	func myProverFunction(run wizard.ProverRuntime) {
+//	func myProverFunction(run wizard.ProverRuntime[T]) {
 //		a := smartvector.ForTest(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
 //		run.AssignColumn("A", a)
 //	}
 //
 // ProverRuntime also bears the logic to track the current round of interaction
 // between the prover and the verifier.
-type ProverRuntime struct {
+type ProverRuntime[T zk.Element] struct {
 
 	// Spec is the underlying [CompiledIOP] of the underlying protocol the prover
 	// is running.
-	Spec *CompiledIOP
+	Spec *CompiledIOP[T]
 
 	// Columns stores all the column's ([ifaces.Column]) witnesses assigned so
 	// far by the ProverRuntime. Columns that are assigned using
@@ -187,7 +188,7 @@ type ProverRuntime struct {
 // auto-detection adds little value and adds a lot of convolution especially
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
-func Prove(c *CompiledIOP, highLevelprover MainProverStep) Proof {
+func Prove[T zk.Element](c *CompiledIOP[T], highLevelprover MainProverStep) Proof {
 	run := RunProver(c, highLevelprover)
 
 	// Write the performance logs to the csv file is the performance monitor is active
@@ -202,13 +203,13 @@ func Prove(c *CompiledIOP, highLevelprover MainProverStep) Proof {
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
-func RunProver(c *CompiledIOP, highLevelprover MainProverStep) *ProverRuntime {
+func RunProver[T zk.Element](c *CompiledIOP[T], highLevelprover MainProverStep) *ProverRuntime[T] {
 	return RunProverUntilRound(c, highLevelprover, c.NumRounds())
 }
 
 // RunProverUntilRound runs the prover until the specified round
 // We wrap highLevelProver with a struct that implements the prover action interface
-func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round int) *ProverRuntime {
+func RunProverUntilRound[T zk.Element](c *CompiledIOP[T], highLevelProver MainProverStep, round int) *ProverRuntime[T] {
 	runtime := c.createProver()
 	runtime.HighLevelProver = highLevelProver
 
@@ -232,7 +233,7 @@ func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round i
 // been obtained via a [RunProverUntilRound], then it may be the case that
 // some columns have not been assigned at all. Those won't be included in the
 // returned proof.
-func (run *ProverRuntime) ExtractProof() Proof {
+func (run *ProverRuntime[T]) ExtractProof() Proof {
 	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
 	for _, name := range run.Spec.Columns.AllKeysProof() {
 		cols := run.Spec.Columns.GetHandle(name)
@@ -260,7 +261,7 @@ func (run *ProverRuntime) ExtractProof() Proof {
 //
 // Deprecated: this method does not bring anything useful as its already easy
 // to get this value from the Spec
-func (run *ProverRuntime) NumRounds() int {
+func (run *ProverRuntime[T]) NumRounds() int {
 	/*
 		Getting it from the spec is the safest as it is already
 		tested. We could fit more assertions here nonetheless.
@@ -270,14 +271,14 @@ func (run *ProverRuntime) NumRounds() int {
 
 // createProver is the internal function that is used by the [Prove]
 // function to instantiate and fresh and new [ProverRuntime].
-func (c *CompiledIOP) createProver() ProverRuntime {
+func (c *CompiledIOP[T]) createProver() ProverRuntime[T] {
 
 	// Create a new fresh FS state and bootstrap it
 	fs := poseidon2.NewMerkleDamgardHasher()
 	fiatshamir.Update(fs, c.FiatShamirSetup)
 
-	// Instantiates an empty Assignment (but link it to the CompiledIOP)
-	runtime := ProverRuntime{
+	// Instantiates an empty Assignment (but link it to the CompiledIOP[T])
+	runtime := ProverRuntime[T]{
 		Spec:               c,
 		Columns:            collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
 		QueriesParams:      collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
@@ -327,7 +328,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 //     not explictly an assigned column.
 //   - `name` relates to a column that does exists but whose assignment is
 //     not readily available when the function is called.
-func (run ProverRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
+func (run ProverRuntime[T]) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 
 	// global prover's lock before accessing the witnesses
 	run.lock.Lock()
@@ -345,7 +346,7 @@ func (run ProverRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 
 // HasColumn returns whether the column is assigned. The function panics if the
 // provided column name does not exists
-func (run ProverRuntime) HasColumn(name ifaces.ColID) bool {
+func (run ProverRuntime[T]) HasColumn(name ifaces.ColID) bool {
 
 	// global prover's lock before accessing the witnesses
 	run.lock.Lock()
@@ -362,7 +363,7 @@ func (run ProverRuntime) HasColumn(name ifaces.ColID) bool {
 
 // CopyColumnInto implements `column.GetWitness`. Copies the witness into a slice
 // Deprecated: this is deadcode
-func (run ProverRuntime) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAssignment) {
+func (run ProverRuntime[T]) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAssignment) {
 
 	// global prover's lock before accessing the witnesses
 	run.lock.Lock()
@@ -390,7 +391,7 @@ func (run ProverRuntime) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAssig
 // The same cautiousness as for [ProverRuntime.AssignColumn] applies to this
 // function. Namely, this function will only work if the requested column is
 // explicitly an assigned column (meaning not a derive column).
-func (run ProverRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
+func (run ProverRuntime[T]) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 
 	// global prover's lock before accessing the witnesses
 	run.lock.Lock()
@@ -411,7 +412,7 @@ func (run ProverRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 	return wit.Get(pos)
 }
 
-func (run ProverRuntime) GetColumnAtBase(name ifaces.ColID, pos int) (field.Element, error) {
+func (run ProverRuntime[T]) GetColumnAtBase(name ifaces.ColID, pos int) (field.Element, error) {
 	// global prover's lock before accessing the witnesses
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -436,7 +437,7 @@ func (run ProverRuntime) GetColumnAtBase(name ifaces.ColID, pos int) (field.Elem
 
 }
 
-func (run ProverRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element {
+func (run ProverRuntime[T]) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element {
 	// global prover's lock before accessing the witnesses
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -458,7 +459,7 @@ func (run ProverRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element
 // appropriate.
 //
 // The coin must also be of type [coin.FieldFromSeed] or [coin.Field].
-func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
+func (run *ProverRuntime[T]) GetRandomCoinField(name coin.Name) field.Element {
 	mycoin := run.Spec.Coins.Data(name)
 	if mycoin.Type != coin.Field && mycoin.Type != coin.FieldFromSeed {
 		utils.Panic("coin %v is not a field randomness", name)
@@ -473,7 +474,7 @@ func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 // "goNextRound" logic if appropriate.
 //
 // The type must also be of type [coin.FieldExtFromSeed] or [coin.FieldExt].
-func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
+func (run *ProverRuntime[T]) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	mycoin := run.Spec.Coins.Data(name)
 	if mycoin.Type != coin.FieldExt && mycoin.Type != coin.FieldExtFromSeed {
 		utils.Panic("coin %v is not a field extension randomness", name)
@@ -486,7 +487,7 @@ func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 // can't be retrieved more than once. The coin should also have been registered
 // as an integer vec before doing this call. Will also trigger the
 // "goNextRound" logic if appropriate.
-func (run *ProverRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
+func (run *ProverRuntime[T]) GetRandomCoinIntegerVec(name coin.Name) []int {
 	return run.getRandomCoinGeneric(name, coin.IntegerVec).([]int)
 }
 
@@ -505,7 +506,7 @@ func (run *ProverRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 //   - the column assignment occurs at the wrong round. If this error happens,
 //     it is likely that the [ifaces.Column] was created in the wrong round to
 //     begin with.
-func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment, opts ...ProverRuntimeOption) {
+func (run *ProverRuntime[T]) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment, opts ...ProverRuntimeOption) {
 
 	var opts_ ProverRuntimeOption
 	for i := range opts {
@@ -531,7 +532,7 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	}
 
 	// Sanity-check: Make sure, it is done at the right round
-	handle := run.Spec.Columns.GetHandle(name).(column.Natural)
+	handle := run.Spec.Columns.GetHandle(name).(column.Natural[T])
 
 	// if round is empty, we expect it to assign the column at the current round,
 	// otherwise it assigns it in the round the column was declared.
@@ -646,7 +647,7 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 //
 // We plan on removing this "go-to-next-round" auto-detection logic in the
 // future as this convolutes the code for little benefits.
-func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coin.Type) interface{} {
+func (run *ProverRuntime[T]) getRandomCoinGeneric(name coin.Name, requestedType coin.Type) interface{} {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -706,7 +707,7 @@ func (run *ProverRuntime) getRandomCoinGeneric(name coin.Name, requestedType coi
 // the next round and sampling all the random coins for the new round with the
 // Fiat-Shamir state that we just obtained by appending all the columns and
 // parameters. This makes all the new coins available in the prover runtime.
-func (run *ProverRuntime) goNextRound() {
+func (run *ProverRuntime[T]) goNextRound() {
 
 	initialStateBytes := run.FS.State()
 	var initialState koalabear.Element
@@ -796,7 +797,7 @@ func (run *ProverRuntime) goNextRound() {
 
 // runProverSteps runs all the [ProverStep] specified in the underlying
 // [CompiledIOP] object for the current round.
-func (run *ProverRuntime) runProverSteps() {
+func (run *ProverRuntime[T]) runProverSteps() {
 	// Run all the assigners
 	subProverSteps := run.Spec.SubProvers.MustGet(run.currRound)
 	for idx, step := range subProverSteps {
@@ -809,7 +810,7 @@ func (run *ProverRuntime) runProverSteps() {
 
 // GetMessage gets a message sent to the verifier
 // Deprecated: use [ProverRuntime.GetColumn] instead
-func (run *ProverRuntime) GetMessage(name ifaces.ColID) ifaces.ColAssignment {
+func (run *ProverRuntime[T]) GetMessage(name ifaces.ColID) ifaces.ColAssignment {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -821,7 +822,7 @@ func (run *ProverRuntime) GetMessage(name ifaces.ColID) ifaces.ColAssignment {
 // GetInnerProduct returns an inner-product query from the underlying CompiledIOP.
 // Deprecated: directly use CompiledIOP.Spec.GetInnerProduct() instead, which
 // does exactly the same thing.
-func (run *ProverRuntime) GetInnerProduct(name ifaces.QueryID) query.InnerProduct {
+func (run *ProverRuntime[T]) GetInnerProduct(name ifaces.QueryID) query.InnerProduct[T] {
 	return run.Spec.GetInnerProduct(name)
 }
 
@@ -832,7 +833,7 @@ func (run *ProverRuntime) GetInnerProduct(name ifaces.QueryID) query.InnerProduc
 //
 // The function will panic of the parameters are not available or if the
 // parameters have the wrong type: not an [query.InnerProductParams].
-func (run *ProverRuntime) GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams {
+func (run *ProverRuntime[T]) GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams {
 	return run.QueriesParams.MustGet(name).(query.InnerProductParams)
 }
 
@@ -843,7 +844,7 @@ func (run *ProverRuntime) GetInnerProductParams(name ifaces.QueryID) query.Inner
 //   - no query with the name `name` are found in the [CompiledIOP] object.
 //   - parameters for this query have already been assigned
 //   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Element) query.InnerProductParams {
+func (run *ProverRuntime[T]) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Element) query.InnerProductParams {
 	q := run.GetInnerProduct(name)
 	if len(q.Bs) != len(ys) {
 		utils.Panic("Inner-product query %v has %v bs but assigned for %v", name, len(q.Bs), len(ys))
@@ -866,7 +867,7 @@ func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Ele
 //   - no query with the name `name` are found in the [CompiledIOP] object.
 //   - parameters for this query have already been assigned
 //   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element, ys ...field.Element) {
+func (run *ProverRuntime[T]) AssignUnivariate(name ifaces.QueryID, x field.Element, ys ...field.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -876,7 +877,7 @@ func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element,
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	// Check the length of ys
-	q := run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
+	q := run.Spec.QueriesParams.Data(name).(query.UnivariateEval[T])
 	if len(q.Pols) != len(ys) {
 		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
 	}
@@ -885,7 +886,7 @@ func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element,
 	run.QueriesParams.InsertNew(name, params)
 }
 
-func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
+func (run *ProverRuntime[T]) AssignUnivariateExt(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -895,7 +896,7 @@ func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Elemen
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	// Check the length of ys
-	q := run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
+	q := run.Spec.QueriesParams.Data(name).(query.UnivariateEval[T])
 	if len(q.Pols) != len(ys) {
 		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
 	}
@@ -907,18 +908,18 @@ func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Elemen
 // GetUnivariateEval get univariate eval metadata. Panic if not found.
 // Deprecated: fallback to run.Spec.GetUnivariateEval instead which does exactly
 // the same thing.
-func (run *ProverRuntime) GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval {
+func (run *ProverRuntime[T]) GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval[T] {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
-	return run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
+	return run.Spec.QueriesParams.Data(name).(query.UnivariateEval[T])
 }
 
 // GetUnivariateParams returns the parameters of a univariate evaluation (i.e:
 // x, the evaluation point) and y, the alleged polynomial opening. This is
 // intended to resolve parameters that have been already assigned in a previous
 // step of the prover runtime.
-func (run *ProverRuntime) GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams {
+func (run *ProverRuntime[T]) GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams {
 	// Global prover's lock for accessing params
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -930,7 +931,7 @@ func (run *ProverRuntime) GetUnivariateParams(name ifaces.QueryID) query.Univari
 //   - the parameters were already assigned
 //   - the specified query is not registered
 //   - the assignment round is incorrect
-func (run *ProverRuntime) AssignLocalPoint(name ifaces.QueryID, y field.Element) {
+func (run *ProverRuntime[T]) AssignLocalPoint(name ifaces.QueryID, y field.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -939,7 +940,7 @@ func (run *ProverRuntime) AssignLocalPoint(name ifaces.QueryID, y field.Element)
 	// Make sure, it is done at the right round
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
-	q := run.Spec.QueriesParams.Data(name).(query.LocalOpening)
+	q := run.Spec.QueriesParams.Data(name).(query.LocalOpening[T])
 	if !q.IsBase() {
 		utils.Panic("Query %v is not a base query, you should call AssignLocalPointExt", name)
 	}
@@ -949,7 +950,7 @@ func (run *ProverRuntime) AssignLocalPoint(name ifaces.QueryID, y field.Element)
 	run.QueriesParams.InsertNew(name, params)
 }
 
-func (run *ProverRuntime) AssignLocalPointExt(name ifaces.QueryID, y fext.Element) {
+func (run *ProverRuntime[T]) AssignLocalPointExt(name ifaces.QueryID, y fext.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -971,7 +972,7 @@ func (run *ProverRuntime) AssignLocalPointExt(name ifaces.QueryID, y fext.Elemen
 // GetLocalPointEval gets the metadata of a [query.LocalOpening] query. Panic if not found.
 // Deprecated, use `comp.Spec.GetLocalPointEval` instead since it does exactly
 // the same thing.
-func (run *ProverRuntime) GetLocalPointEval(name ifaces.QueryID) query.LocalOpening {
+func (run *ProverRuntime[T]) GetLocalPointEval(name ifaces.QueryID) query.LocalOpening {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -980,7 +981,7 @@ func (run *ProverRuntime) GetLocalPointEval(name ifaces.QueryID) query.LocalOpen
 
 // GetLocalPointEvalParams returns the parameters of a univariate evaluation
 // (i.e: x, the evaluation point) and y, the alleged polynomial opening.
-func (run *ProverRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams {
+func (run *ProverRuntime[T]) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams {
 
 	// Global prover's lock for accessing params
 	run.lock.Lock()
@@ -994,7 +995,7 @@ func (run *ProverRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.Loc
 //   - the parameters were already assigned
 //   - the specified query is not registered
 //   - the assignment round is incorrect
-func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y fext.GenericFieldElem) {
+func (run *ProverRuntime[T]) AssignLogDerivSum(name ifaces.QueryID, y fext.GenericFieldElem) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -1013,7 +1014,7 @@ func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y fext.GenericF
 //   - the parameters were already assigned
 //   - the specified query is not registered
 //   - the assignment round is incorrect
-func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Element) {
+func (run *ProverRuntime[T]) AssignGrandProduct(name ifaces.QueryID, y field.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -1027,7 +1028,7 @@ func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Elemen
 	run.QueriesParams.InsertNew(name, params)
 }
 
-func (run *ProverRuntime) AssignGrandProductExt(name ifaces.QueryID, y fext.Element) {
+func (run *ProverRuntime[T]) AssignGrandProductExt(name ifaces.QueryID, y fext.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
@@ -1042,7 +1043,7 @@ func (run *ProverRuntime) AssignGrandProductExt(name ifaces.QueryID, y fext.Elem
 }
 
 // GetLogDeriveSum gets the metadata of a [query.LogDerivativeSum] query. Panic if not found.
-func (run *ProverRuntime) GetLogDeriveSum(name ifaces.QueryID) query.LogDerivativeSum {
+func (run *ProverRuntime[T]) GetLogDeriveSum(name ifaces.QueryID) query.LogDerivativeSum {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -1050,7 +1051,7 @@ func (run *ProverRuntime) GetLogDeriveSum(name ifaces.QueryID) query.LogDerivati
 }
 
 // GetLogDerivSumParams returns the parameters of [query.LogDerivativeSum]
-func (run *ProverRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
+func (run *ProverRuntime[T]) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
 
 	// Global prover's lock for accessing params
 	run.lock.Lock()
@@ -1060,18 +1061,18 @@ func (run *ProverRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDer
 }
 
 // GetGrandProductParams returns the parameters of a [query.Honer] query.
-func (run *ProverRuntime) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
+func (run *ProverRuntime[T]) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
 	return run.QueriesParams.MustGet(name).(query.GrandProductParams)
 }
 
 // GetParams generically extracts the parameters of a query. Will panic if no
 // parameters are found
-func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
+func (run *ProverRuntime[T]) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
 }
 
 // AssignHornerParams assignes the parameters of a [query.Honer] query.
-func (run *ProverRuntime) AssignHornerParams(name ifaces.QueryID, params query.HornerParams) {
+func (run *ProverRuntime[T]) AssignHornerParams(name ifaces.QueryID, params query.HornerParams) {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -1084,7 +1085,7 @@ func (run *ProverRuntime) AssignHornerParams(name ifaces.QueryID, params query.H
 }
 
 // GetHornerParams returns the parameters of a [query.Honer] query.
-func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParams {
+func (run *ProverRuntime[T]) GetHornerParams(name ifaces.QueryID) query.HornerParams {
 	// Global prover's lock for accessing params
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -1092,17 +1093,17 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() hash.StateStorer {
+func (run *ProverRuntime[T]) Fs() hash.StateStorer {
 	return run.FS
 }
 
 // FsHistory returns the Fiat-Shamir state history
-func (run *ProverRuntime) FsHistory() [][2][]field.Element {
+func (run *ProverRuntime[T]) FsHistory() [][2][]field.Element {
 	return run.FiatShamirHistory
 }
 
 // GetPublicInputs return the value of a public-input from its name
-func (run *ProverRuntime) GetPublicInput(name string) field.Element {
+func (run *ProverRuntime[T]) GetPublicInput(name string) field.Element {
 	allPubs := run.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
@@ -1114,7 +1115,7 @@ func (run *ProverRuntime) GetPublicInput(name string) field.Element {
 }
 
 // GetQuery returns a query from its name
-func (run *ProverRuntime) GetQuery(name ifaces.QueryID) ifaces.Query {
+func (run *ProverRuntime[T]) GetQuery(name ifaces.QueryID) ifaces.Query {
 
 	if run.Spec.QueriesParams.Exists(name) {
 		return run.Spec.QueriesParams.Data(name)
@@ -1129,29 +1130,29 @@ func (run *ProverRuntime) GetQuery(name ifaces.QueryID) ifaces.Query {
 }
 
 // GetSpec returns the underlying compiled IOP
-func (run *ProverRuntime) GetSpec() *CompiledIOP {
+func (run *ProverRuntime[T]) GetSpec() *CompiledIOP {
 	return run.Spec
 }
 
 // GetState returns an arbitrary value stored in the runtime
-func (run *ProverRuntime) GetState(name string) (any, bool) {
+func (run *ProverRuntime[T]) GetState(name string) (any, bool) {
 	res, ok := run.State.TryGet(name)
 	return res, ok
 }
 
 // SetState sets an arbitrary value in the runtime
-func (run *ProverRuntime) SetState(name string, value any) {
+func (run *ProverRuntime[T]) SetState(name string, value any) {
 	run.State.InsertNew(name, value)
 }
 
 // InsertCoin is there so that [ProverRuntime] implements the [ifaces.Runtime]
 // but the function panicks if called.
-func (run *ProverRuntime) InsertCoin(name coin.Name, value any) {
+func (run *ProverRuntime[T]) InsertCoin(name coin.Name, value any) {
 	utils.Panic("InsertCoin is not implemented")
 }
 
 // exec: executes the `action` with the performance monitor if active
-func (runtime *ProverRuntime) exec(name string, action any) {
+func (runtime *ProverRuntime[T]) exec(name string, action any) {
 
 	// Define helper excute function
 	execute := func() {
@@ -1190,7 +1191,7 @@ func (runtime *ProverRuntime) exec(name string, action any) {
 }
 
 // profileAction profiles the given action and logs the performance metrics.
-func (runtime *ProverRuntime) profileAction(name string, action func()) {
+func (runtime *ProverRuntime[T]) profileAction(name string, action func()) {
 	profilingPath := path.Join(runtime.PerformanceMonitor.ProfileDir, name)
 	monitor, err := profiling.StartPerformanceMonitor(name, runtime.PerformanceMonitor.SampleDuration, profilingPath)
 	if err != nil {
@@ -1210,7 +1211,7 @@ func (runtime *ProverRuntime) profileAction(name string, action func()) {
 
 // writePerformanceLogsToCSV: Dumps all the performance logs inside prover runtime
 // to the csv file located at the specified path
-func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
+func (runtime *ProverRuntime[T]) writePerformanceLogsToCSV() error {
 	csvFilePath := path.Join(runtime.PerformanceMonitor.ProfileDir, "runtime_performance_logs.csv")
 	file, err := os.Create(csvFilePath)
 	if err != nil {

@@ -3,7 +3,6 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/zk"
@@ -99,9 +98,9 @@ func (r LocalOpeningGen[T]) Check(run ifaces.Runtime) error {
 }
 
 // Test that the polynomial evaluation holds
-func (r LocalOpeningGen[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (r LocalOpeningGen[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 
-	e4Ext, err := gnarkfext.NewExt4[T](api)
+	e4Ext, err := gnarkfext.NewExt4[T](api.GnarkAPI())
 	if err != nil {
 		panic(err)
 	}
@@ -109,7 +108,7 @@ func (r LocalOpeningGen[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime
 	params := run.GetParams(r.ID).(GnarkLocalOpeningParams[T])
 	if params.IsBase {
 		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
-		api.AssertIsEqual(params.BaseY, actualY)
+		api.AssertIsEqual(&params.BaseY, &actualY)
 	} else {
 		actualY := r.Pol.GetColAssignmentGnarkAtExt(run, 0)
 

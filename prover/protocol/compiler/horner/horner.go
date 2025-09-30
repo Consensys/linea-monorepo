@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -22,43 +23,43 @@ import (
 
 // HornerCtx is a compilation artefact generated during the execution of the
 // [CompileHorner] compiler.
-type HornerCtx struct {
+type HornerCtx[T zk.Element] struct {
 	// Column is the accumulating column used to check the computation of a
 	// horner value for one [HornerPart].
-	AccumulatingCols [][]ifaces.Column
+	AccumulatingCols [][]ifaces.Column[T]
 
 	// CountingInnerProduct is the inner-product query used to check the
 	// counting for each selector. Each entry of the inner-product query
 	// maps to a selector.
-	CountingInnerProducts []query.InnerProduct
+	CountingInnerProducts []query.InnerProduct[T]
 
 	// LocOpenings are the local openings used to check the first value of
 	// Columns[i]
-	LocOpenings []query.LocalOpening
+	LocOpenings []query.LocalOpening[T]
 
 	// Q is the Horner query
-	Q *query.Horner
+	Q *query.Horner[T]
 }
 
 // AssignHornerCtx is a [wizard.ProverAction] assigning the local openings of
 // the Horner accumulating columns and the accumulating columns themselves.
 // The function also sanity-checks the parameters assignment.
-type AssignHornerCtx struct {
-	HornerCtx
+type AssignHornerCtx[T zk.Element] struct {
+	HornerCtx[T]
 }
 
 // AssignHornerIP is a [wizard.ProverAction] assigning the inner-products of
 // the Horner compilation.
-type AssignHornerIP struct {
-	HornerCtx
+type AssignHornerIP[T zk.Element] struct {
+	HornerCtx[T]
 }
 
 // CheckHornerResult is [wizard.VerifierAction] responsible for checking that
 // the values of n1 are correct (by checking the consistency with the IP queries)
 // and checking that the final result is correctly computed by inspecting the
 // local openings.
-type CheckHornerResult struct {
-	HornerCtx
+type CheckHornerResult[T zk.Element] struct {
+	HornerCtx[T]
 	skipped bool `serde:"omit"`
 }
 
@@ -82,11 +83,11 @@ func CompileHorner(comp *wizard.CompiledIOP) {
 	}
 }
 
-func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
+func compileHornerQuery[T zk.Element](comp *wizard.CompiledIOP, q *query.Horner[T]) {
 
 	var (
 		round = q.Round
-		ctx   = HornerCtx{
+		ctx   = HornerCtx[T]{
 			Q: q,
 		}
 		iPRound = 0
@@ -96,7 +97,7 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 
 		var (
 			numList      = len(q.Parts[i].Coefficients)
-			accumulators = make([]ifaces.Column, numList)
+			accumulators = make([]ifaces.Column[T], numList)
 		)
 
 		for j := 0; j < numList; j++ {
@@ -118,9 +119,9 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 			comp.InsertGlobal(
 				round,
 				ifaces.QueryIDf("HORNER_%v_PART_%v_GLOBAL_%v", q.ID, i, j),
-				sym.Sub(
+				sym.Sub[T](
 					accumulators[j],
-					microAccumulate(
+					microAccumulate[T](
 						part.Selectors[j],
 						prevAcc,
 						part.X,
@@ -140,9 +141,9 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 		comp.InsertLocal(
 			round,
 			ifaces.QueryIDf("HORNER_%v_PART_%v_LOCAL", q.ID, i),
-			sym.Sub(
+			sym.Sub[T](
 				column.Shift(accumulators[0], -1),
-				sym.Mul(
+				sym.Mul[T](
 					column.Shift(q.Parts[i].Selectors[0], -1),
 					column.ShiftExpr(q.Parts[i].Coefficients[0], -1),
 				),
@@ -165,19 +166,19 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 		ip := comp.InsertInnerProduct(
 			iPRound,
 			ifaces.QueryIDf("HORNER_%v_COUNTING_%v_SRCNT_%v_%v", q.ID, size, comp.SelfRecursionCount, i),
-			verifiercol.NewConstantCol(field.One(), size, ""),
+			verifiercol.NewConstantCol[T](field.One(), size, ""),
 			ctx.Q.Parts[i].Selectors,
 		)
 
 		ctx.CountingInnerProducts = append(ctx.CountingInnerProducts, ip)
 	}
 
-	comp.RegisterProverAction(iPRound, AssignHornerIP{ctx})
-	comp.RegisterProverAction(q.Round, AssignHornerCtx{ctx})
-	comp.RegisterVerifierAction(q.Round, &CheckHornerResult{HornerCtx: ctx})
+	comp.RegisterProverAction(iPRound, AssignHornerIP[T]{ctx})
+	comp.RegisterProverAction(q.Round, AssignHornerCtx[T]{ctx})
+	comp.RegisterVerifierAction(q.Round, &CheckHornerResult[T]{HornerCtx: ctx})
 }
 
-func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerCtx[T]) Run(run *wizard.ProverRuntime) {
 
 	var (
 		params = run.GetHornerParams(a.Q.ID)
@@ -262,7 +263,7 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerIP[T]) Run(run *wizard.ProverRuntime) {
 
 	for i := range a.Q.Parts {
 
@@ -284,7 +285,7 @@ func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
 
 }
 
-func (c *CheckHornerResult) Run(run wizard.Runtime) error {
+func (c *CheckHornerResult[T]) Run(run wizard.Runtime) error {
 
 	var (
 		hornerQuery  = c.Q
@@ -342,12 +343,12 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckHornerResult[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		hornerQuery  = c.Q
 		hornerParams = run.GetHornerParams(hornerQuery.ID)
-		res          = frontend.Variable(0)
+		res          = T(0)
 	)
 
 	for i := range c.Q.Parts {
@@ -355,7 +356,7 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		var (
 			ipQuery  = c.CountingInnerProducts[i]
 			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-			ipCount  = frontend.Variable(0)
+			ipCount  = T(0)
 		)
 
 		for k := range ipQuery.Bs {
@@ -367,12 +368,16 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 	// This loop is responsible for checking that the final result is correctly
 	// computed by inspecting the local openings.
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
 	for i, lo := range c.LocOpenings {
 
 		var (
 			tmp = run.GetLocalPointEvalParams(lo.ID).BaseY
 			n0  = hornerParams.Parts[i].N0
-			x   = hornerQuery.Parts[i].X.GetFrontendVariable(api, run)
+			x   = hornerQuery.Parts[i].X.GetFrontendVariable(apiGen, run)
 		)
 
 		xN0 := gnarkutil.ExpVariableExponent(api, x, n0, 64)
@@ -388,11 +393,11 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	api.AssertIsEqual(res, hornerParams.FinalResult)
 }
 
-func (c *CheckHornerResult) Skip() {
+func (c *CheckHornerResult[T]) Skip() {
 	c.skipped = true
 }
 
-func (c *CheckHornerResult) IsSkipped() bool {
+func (c *CheckHornerResult[T]) IsSkipped() bool {
 	return c.skipped
 }
 
@@ -406,14 +411,14 @@ func (c *CheckHornerResult) IsSkipped() bool {
 //	sel == 0 => acc
 //
 // ```
-func microAccumulate(sel, acc, x, p any) *sym.Expression {
-	return sym.Add(
-		sym.Mul(
+func microAccumulate[T zk.Element](sel, acc, x, p any) *sym.Expression[T] {
+	return sym.Add[T](
+		sym.Mul[T](
 			sel,
-			sym.Add(p, sym.Mul(x, acc)),
+			sym.Add[T](p, sym.Mul[T](x, acc)),
 		),
-		sym.Mul(
-			sym.Sub(1, sel),
+		sym.Mul[T](
+			sym.Sub[T](1, sel),
 			acc,
 		),
 	)

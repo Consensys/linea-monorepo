@@ -4,9 +4,9 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -14,22 +14,22 @@ import (
 Refers to an abstract variable X over which all polynomials
 are defined.
 */
-type X struct{}
+type X[T zk.Element] struct{}
 
 // Construct a new variable for coin
-func NewXVar() *symbolic.Expression {
-	return symbolic.NewVariable(X{})
+func NewXVar[T zk.Element]() *symbolic.Expression {
+	return symbolic.NewVariable(X[T]{})
 }
 
 // to implement symbolic.Metadata
-func (x X) String() string {
+func (x X[T]) String() string {
 	// Double append/prepend to avoid confusion
 	return "__X__"
 }
 
 // Returns an evaluation of the X, possibly over a coset. Pass
 // `EvalCoset(size, 0, 0, false)` to directly evaluate over a coset
-func (x X) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVector {
+func (x X[T]) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVector {
 	omega, err := fft.Generator(uint64(size))
 	if err != nil {
 		panic(err)
@@ -57,15 +57,15 @@ func (x X) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVecto
 }
 
 // Evaluate the variable, but not over a coset
-func (x X) GnarkEvalNoCoset(size int) []frontend.Variable {
+func (x X[T]) GnarkEvalNoCoset(size int) []T {
 	res_ := x.EvalCoset(size, 0, 1, false)
-	res := make([]frontend.Variable, res_.Len())
+	res := make([]T, res_.Len())
 	for i := range res {
-		res[i] = res_.Get(i)
+		res[i] = *zk.ValueOf[T](res_.Get(i))
 	}
 	return res
 }
 
-func (x X) IsBase() bool {
+func (x X[T]) IsBase() bool {
 	return true
 }

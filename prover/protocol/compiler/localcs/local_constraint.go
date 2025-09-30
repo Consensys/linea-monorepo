@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -16,7 +17,7 @@ Basically,
 
 P(g^5) + Q(g^-3) = 0 => L_1(x) [ P(g^-5 . x) + Q(g^3 . x) ] for x \in D
 */
-func ReduceLocalConstraint(comp *wizard.CompiledIOP, q query.LocalConstraint, round int) {
+func ReduceLocalConstraint[T zk.Element](comp *wizard.CompiledIOP[T], q query.LocalConstraint[T], round int) {
 	/*
 		Compile down the query
 	*/
@@ -28,7 +29,7 @@ func ReduceLocalConstraint(comp *wizard.CompiledIOP, q query.LocalConstraint, ro
 	)
 
 	for _, metadataInterface := range board.ListVariableMetadata() {
-		if metadata, ok := metadataInterface.(ifaces.Column); ok {
+		if metadata, ok := metadataInterface.(ifaces.Column[T]); ok {
 			domainSize = metadata.Size()
 			break
 		}
@@ -36,8 +37,8 @@ func ReduceLocalConstraint(comp *wizard.CompiledIOP, q query.LocalConstraint, ro
 
 	var (
 		min      = query.MinMaxOffset(q.Expression).Min
-		lagrange = variables.Lagrange(domainSize, min)
-		newExpr  = symbolic.Mul(
+		lagrange = variables.Lagrange[T](domainSize, min)
+		newExpr  = symbolic.Mul[T](
 			column.ShiftExpr(q.Expression, -min),
 			lagrange,
 		)

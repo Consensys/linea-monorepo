@@ -73,16 +73,16 @@ type storeCommitBuilderGen[T zk.Element] interface {
 
 // // NewHasher returns an external MiMC hasher.
 // func (f *ExternalHasherFactory) NewHasher() ghash.StateStorer {
-// 	return &ExternalHasher{api: f.Api, state: frontend.Variable(0)}
+// 	return &ExternalHasher{api: f.Api, state: T(0)}
 // }
 
 // // Writes fields elements into the hasher; implements [hash.FieldHasher]
-// func (h *ExternalHasher) Write(data ...frontend.Variable) {
-// 	// sanity-check : it is a common bug that we may be []frontend.Variable
-// 	// as a frontend.Variable
+// func (h *ExternalHasher) Write(data ...T) {
+// 	// sanity-check : it is a common bug that we may be []T
+// 	// as a T
 // 	for i := range data {
-// 		if _, ok := data[i].([]frontend.Variable); ok {
-// 			utils.Panic("bug in define, got a []frontend.Variable")
+// 		if _, ok := data[i].([]T); ok {
+// 			utils.Panic("bug in define, got a []T")
 // 		}
 // 	}
 // 	h.data = append(h.data, data...)
@@ -97,7 +97,7 @@ type storeCommitBuilderGen[T zk.Element] interface {
 // // Sum returns the hash of what was appended to the hasher so far. Calling it
 // // multiple time without updating returns the same result. This function
 // // implements [hash.FieldHasher] interface.
-// func (h *ExternalHasher) Sum() frontend.Variable {
+// func (h *ExternalHasher) Sum() T {
 // 	// 1 - Call the compression function in a loop
 // 	curr := h.state
 // 	for _, stream := range h.data {
@@ -112,7 +112,7 @@ type storeCommitBuilderGen[T zk.Element] interface {
 // // SetState manually sets the state of the hasher to the provided value. In the
 // // case of MiMC only a single frontend variable is expected to represent the
 // // state.
-// func (h *ExternalHasher) SetState(newState []frontend.Variable) error {
+// func (h *ExternalHasher) SetState(newState []T) error {
 
 // 	if len(h.data) > 0 {
 // 		return errors.New("the hasher is not in an initial state")
@@ -128,15 +128,15 @@ type storeCommitBuilderGen[T zk.Element] interface {
 
 // // State returns the inner-state of the hasher. In the context of MiMC only a
 // // single field element is returned.
-// func (h *ExternalHasher) State() []frontend.Variable {
+// func (h *ExternalHasher) State() []T {
 // 	_ = h.Sum() // to flush the hasher
-// 	return []frontend.Variable{h.state}
+// 	return []T{h.state}
 // }
 
-// // compress calls returns a frontend.Variable holding the result of applying
+// // compress calls returns a T holding the result of applying
 // // the compression function of MiMC over state and block. The alleged returned
 // // result is pushed on the stack of all the claims to verify.
-// func (h *ExternalHasher) compress(state, block frontend.Variable) frontend.Variable {
+// func (h *ExternalHasher) compress(state, block T) T {
 
 // 	newState, err := h.api.Compiler().NewHint(MimcHintfunc, 1, state, block)
 // 	if err != nil {
@@ -181,8 +181,8 @@ type storeCommitBuilderGen[T zk.Element] interface {
 // }
 
 // // CheckHashExternally tags a MiMC hasher claim in the circuit
-// func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState frontend.Variable) {
-// 	f.claimTriplets = append(f.claimTriplets, [3]frontend.Variable{oldState, block, newState})
+// func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState T) {
+// 	f.claimTriplets = append(f.claimTriplets, [3]T{oldState, block, newState})
 // }
 
 // // Compile processes range checked variables and then calls Compile method of
@@ -192,7 +192,7 @@ type storeCommitBuilderGen[T zk.Element] interface {
 // 	// As [GetWireConstraints] requires a list of variables and can only be
 // 	// called once, we have to pack all the claims in a single slice and unpack
 // 	// the result.
-// 	allCheckedVariables := make([]frontend.Variable, 3*len(builder.claimTriplets))
+// 	allCheckedVariables := make([]T, 3*len(builder.claimTriplets))
 // 	for i := range builder.claimTriplets {
 // 		allCheckedVariables[3*i] = builder.claimTriplets[i][0]
 // 		allCheckedVariables[3*i+1] = builder.claimTriplets[i][1]

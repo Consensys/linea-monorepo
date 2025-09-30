@@ -136,7 +136,7 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 }
 
 // it checks if a column registered in the compiler has the proper size and state for splitting.
-func isColEligibleSplitting(splittings MultiSummary, col ifaces.Column) bool {
+func isColEligibleSplitting(splittings MultiSummary, col ifaces.Column[T]) bool {
 	natural := column.RootParents(col)
 	_, found := splittings[col.Round()].ByBigCol[natural.GetColID()]
 	return found
@@ -144,7 +144,7 @@ func isColEligibleSplitting(splittings MultiSummary, col ifaces.Column) bool {
 
 // It finds the subCol containing the first row of col,
 // it then shifts the subCol so that its first row equals with the first row of col.
-func getSubColForLocal(ctx SplitterContext, col ifaces.Column, posInCol int) ifaces.Column {
+func getSubColForLocal(ctx SplitterContext, col ifaces.Column[T], posInCol int) ifaces.Column[T] {
 	round := col.Round()
 	// Sanity-check : only for the edge-case h.Size() < ctx.size
 	if col.Size() < ctx.Size && posInCol != 0 {
@@ -188,7 +188,7 @@ func getSubColForLocal(ctx SplitterContext, col ifaces.Column, posInCol int) ifa
 // For the column 'col' and the given 'posInCol',
 // it returns the subColumn from the natural column located in position 'posInNatural'.
 // where the posInNatural is calculated via the offset in Col.
-func getSubColForGlobal(ctx SplitterContext, col ifaces.Column, posInCol int) ifaces.Column {
+func getSubColForGlobal(ctx SplitterContext, col ifaces.Column[T], posInCol int) ifaces.Column[T] {
 	// Sanity-check : only for the edge-case h.Size() < ctx.size
 	round := col.Round()
 	if col.Size() < ctx.Size {
@@ -262,9 +262,9 @@ func (ctx SplitterContext) adjustExpressionForLocal(
 		// Replace the expression by the one
 
 		switch m := metadata.(type) {
-		case ifaces.Column:
+		case ifaces.Column[T]:
 			subCol := getSubColForLocal(ctx, column.Shift(m, shift), 0)
-			translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subCol))
+			translationMap.InsertNew(m.String(), ifaces.Column[T]AsVariable(subCol))
 		// @Azam why we need these cases?
 		case coin.Info, ifaces.Accessor:
 			translationMap.InsertNew(m.String(), symbolic.NewVariable(m))
@@ -297,7 +297,7 @@ func (ctx SplitterContext) adjustExpressionForGlobal(
 		// by the appropriated column.
 
 		switch m := metadata.(type) {
-		case ifaces.Column:
+		case ifaces.Column[T]:
 			// Pass the same variable
 			subCol := getSubColForGlobal(ctx, m, slot)
 			// Sanity-check : the subHandle should have the target size
@@ -307,7 +307,7 @@ func (ctx SplitterContext) adjustExpressionForGlobal(
 					subCol.GetColID(), ctx.Size, subCol.Size(), m.GetColID(), m.Size(),
 				)
 			}
-			translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subCol))
+			translationMap.InsertNew(m.String(), ifaces.Column[T]AsVariable(subCol))
 		case variables.X:
 			utils.Panic("unsupported, the value of `x` in the unsplit query and the split would be different")
 		case variables.PeriodicSample:

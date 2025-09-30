@@ -9,6 +9,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/sirupsen/logrus"
@@ -55,7 +56,7 @@ const (
 )
 
 // QuotientCtx collects all the internal fields needed to compute the quotient
-type QuotientCtx struct {
+type QuotientCtx[T zk.Element] struct {
 
 	// DomainSize is the domain over which the global constraints are computed
 	DomainSize int
@@ -67,30 +68,30 @@ type QuotientCtx struct {
 
 	// ColumnsForRatio[k] stores all the columns involved in the aggregate
 	// expressions for ratio Ratios[k]
-	ColumnsForRatio [][]ifaces.Column
+	ColumnsForRatio [][]ifaces.Column[T]
 
 	// RootsPerRatio[k] stores all the root columns involved in the aggregate
 	// expressions for ration Ratios[k]. By root column we mean the underlying
 	// column that are actually committed to. For instance, if Shift(A, 1) is
 	// in ColumnsForRatio[k], we will have A in RootPerRatio[k]
-	RootsForRatio [][]ifaces.Column
+	RootsForRatio [][]ifaces.Column[T]
 
 	// AllInvolvedColumns stores the union of the ColumnForRatio[k] for all k
-	AllInvolvedColumns []ifaces.Column
+	AllInvolvedColumns []ifaces.Column[T]
 
 	// AllInvolvedRoots stores the union of the RootsForRatio[k] for all k
-	AllInvolvedRoots []ifaces.Column
+	AllInvolvedRoots []ifaces.Column[T]
 
 	// AggregateExpressions[k] stores the aggregate expression for Ratios[k]
-	AggregateExpressions []*symbolic.Expression
+	AggregateExpressions []*symbolic.Expression[T]
 
 	// AggregateExpressionsBoard[k] stores the topological sorting of
 	// AggregateExpressions[k]
-	AggregateExpressionsBoard []symbolic.ExpressionBoard
+	AggregateExpressionsBoard []symbolic.ExpressionBoard[T]
 
 	// QuotientShares[k] stores for each k, the list of the Ratios[k] shares
 	// of the quotient for the AggregateExpression[k]
-	QuotientShares [][]ifaces.Column
+	QuotientShares [][]ifaces.Column[T]
 
 	// MaxNbExprNode stores the largest number of node AggregateExpressionBoard[*]
 	// has. This is used to dimension the memory pool during the prover time.
@@ -100,22 +101,22 @@ type QuotientCtx struct {
 // createQuotientCtx constructs a [quotientCtx] from a list of ratios and aggregated
 // expressions. The function organizes the handles but does not declare anything
 // in the current wizard.CompiledIOP.
-func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressions []*symbolic.Expression) QuotientCtx {
+func createQuotientCtx[T zk.Element](comp *wizard.CompiledIOP, ratios []int, aggregateExpressions []*symbolic.Expression[T]) QuotientCtx[T] {
 
 	var (
 		allInvolvedHandlesIndex = map[ifaces.ColID]int{}
 		allInvolvedRootsSet     = collection.NewSet[ifaces.ColID]()
 		_, _, domainSize        = wizardutils.AsExpr(aggregateExpressions[0])
-		ctx                     = QuotientCtx{
+		ctx                     = QuotientCtx[T]{
 			DomainSize:                domainSize,
 			Ratios:                    ratios,
 			AggregateExpressions:      aggregateExpressions,
-			AggregateExpressionsBoard: make([]symbolic.ExpressionBoard, len(ratios)),
-			AllInvolvedColumns:        []ifaces.Column{},
-			AllInvolvedRoots:          []ifaces.Column{},
-			ColumnsForRatio:           make([][]ifaces.Column, len(ratios)),
-			RootsForRatio:             make([][]ifaces.Column, len(ratios)),
-			QuotientShares:            generateQuotientShares(comp, ratios, domainSize),
+			AggregateExpressionsBoard: make([]symbolic.ExpressionBoard[T], len(ratios)),
+			AllInvolvedColumns:        []ifaces.Column[T]{},
+			AllInvolvedRoots:          []ifaces.Column[T]{},
+			ColumnsForRatio:           make([][]ifaces.Column[T], len(ratios)),
+			RootsForRatio:             make([][]ifaces.Column[T], len(ratios)),
+			QuotientShares:            generateQuotientShares[T](comp, ratios, domainSize),
 		}
 	)
 
@@ -134,7 +135,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 		for _, metadata := range board.ListVariableMetadata() {
 
 			// Scan in column metadata only
-			col, ok := metadata.(ifaces.Column)
+			col, ok := metadata.(ifaces.Column[T])
 			if !ok {
 				continue
 			}
@@ -173,15 +174,15 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 }
 
 // generateQuotientShares declares and returns the quotient share columns
-func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize int) [][]ifaces.Column {
+func generateQuotientShares[T zk.Element](comp *wizard.CompiledIOP, ratios []int, domainSize int) [][]ifaces.Column[T] {
 
 	var (
-		quotientShares = make([][]ifaces.Column, len(ratios))
+		quotientShares = make([][]ifaces.Column[T], len(ratios))
 		currRound      = comp.NumRounds() - 1
 	)
 
 	for i, ratio := range ratios {
-		quotientShares[i] = make([]ifaces.Column, ratio)
+		quotientShares[i] = make([]ifaces.Column[T], ratio)
 		for k := range quotientShares[i] {
 			quotientShares[i][k] = comp.InsertCommit(
 				currRound,
@@ -196,7 +197,7 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 
 // Run implements the [wizard.ProverAction] interface and embeds the logic to
 // compute the quotient shares.
-func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
+func (ctx *QuotientCtx[T]) Run(run *wizard.ProverRuntime) {
 
 	// Initial step is to compute the FFTs for all committed vectors
 	coeffs := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
@@ -327,7 +328,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					return
 				}
 
-				if shifted, isShifted := pol.(column.Shifted); isShifted {
+				if shifted, isShifted := pol.(column.Shifted[T]); isShifted {
 					polName := pol.GetColID()
 					res := sv.SoftRotateExt(reevaledRoot.(sv.SmartVector), shifted.Offset)
 					computedReeval.Store(polName, res)
@@ -356,7 +357,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			for k, metadataInterface := range metadatas {
 
 				switch metadata := metadataInterface.(type) {
-				case ifaces.Column:
+				case ifaces.Column[T]:
 					value, ok := computedReeval.Load(metadata.GetColID())
 					if !ok {
 						utils.Panic("did not find the reevaluation of %v", metadata.GetColID())
@@ -369,11 +370,11 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					} else {
 						evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), ctx.DomainSize)
 					}
-				case variables.X:
+				case variables.X[T]:
 					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
-				case variables.PeriodicSample:
+				case variables.PeriodicSample[T]:
 					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
-				case ifaces.Accessor:
+				case ifaces.Accessor[T]:
 					if metadata.IsBase() {
 						evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
 					} else {

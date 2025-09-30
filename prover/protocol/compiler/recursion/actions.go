@@ -10,29 +10,30 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // AssignVortexUAlpha assigns the UAlpha column for all the subproofs. As
 // for [PreVortexVerifierStep], this step should be run after the corresponding
 // proofs have been added to the runtime states.
-type AssignVortexUAlpha struct {
-	Ctxs *Recursion
+type AssignVortexUAlpha[T zk.Element] struct {
+	Ctxs *Recursion[T]
 }
 
 // AssignVortexOpenedCols assigns the OpenedCols for all the subproofs. As
 // for [PreVortexVerifierStep], this step should be run after the corresponding
 // proofs have been added to the runtime states.
-type AssignVortexOpenedCols struct {
-	Ctxs *Recursion
+type AssignVortexOpenedCols[T zk.Element] struct {
+	Ctxs *Recursion[T]
 }
 
 // ConsistencyCheck checks that the Vortex statements are consistents with
 // the public-inputs of the plonk-in-wizard circuits.
-type ConsistencyCheck struct {
-	Ctx       *Recursion
+type ConsistencyCheck[T zk.Element] struct {
+	Ctx       *Recursion[T]
 	isSkipped bool `serde:"omit"`
-	PIs       []ifaces.Column
+	PIs       []ifaces.Column[T]
 }
 
 // ExtractWitness extracts a [Witness] from a prover runtime toward being conglomerated.
@@ -96,7 +97,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 	}
 }
 
-func (pa AssignVortexUAlpha) Run(run *wizard.ProverRuntime) {
+func (pa AssignVortexUAlpha[T]) Run(run *wizard.ProverRuntime[T]) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.
@@ -104,7 +105,7 @@ func (pa AssignVortexUAlpha) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (pa AssignVortexOpenedCols) Run(run *wizard.ProverRuntime) {
+func (pa AssignVortexOpenedCols[T]) Run(run *wizard.ProverRuntime[T]) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.
@@ -113,7 +114,7 @@ func (pa AssignVortexOpenedCols) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
+func (cc *ConsistencyCheck[T]) Run(run wizard.Runtime) error {
 
 	pis := cc.PIs
 
@@ -168,7 +169,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (cc *ConsistencyCheck[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	pis := cc.PIs
 
@@ -182,14 +183,19 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			pcsMRoot                     = pcsCtx.Items.MerkleRoots
 		)
 
-		api.AssertIsEqual(circX, params.X)
+		apiGen, err := zk.NewApi[T](api)
+		if err != nil {
+			panic(err)
+		}
+
+		apiGen.AssertIsEqual(&circX, params.X)
 
 		if len(circYs) != len(params.Ys) {
 			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
 		}
 
 		for i := range circYs {
-			api.AssertIsEqual(circYs[i], params.Ys[i])
+			apiGen.AssertIsEqual(&circYs[i], params.Ys[i])
 		}
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
@@ -225,10 +231,10 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	}
 }
 
-func (cc *ConsistencyCheck) Skip() {
+func (cc *ConsistencyCheck[T]) Skip() {
 	cc.isSkipped = true
 }
 
-func (cc *ConsistencyCheck) IsSkipped() bool {
+func (cc *ConsistencyCheck[T]) IsSkipped() bool {
 	return cc.isSkipped
 }

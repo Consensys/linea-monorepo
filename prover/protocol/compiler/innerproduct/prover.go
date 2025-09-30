@@ -7,25 +7,28 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 // ProverTask implements the [wizard.ProverAction] interface and as such
 // implements the prover work of the compilation step. It works by calling
 // in parallel the prover tasks of the sub-compilation steps.
-type ProverTask []*ContextForSize
+type ProverTask[T zk.Element] struct {
+	Pt []*ContextForSize[T]
+}
 
 // Run implements the [wizard.ProverAction] interface.
-func (p ProverTask) Run(run *wizard.ProverRuntime) {
+func (p ProverTask[T]) Run(run *wizard.ProverRuntime) {
 
 	wg := &sync.WaitGroup{}
-	wg.Add(len(p))
+	wg.Add(len(p.Pt))
 
-	for i := range p {
+	for i := range p.Pt {
 		// Passing the loop index ensures each go routine is storing the value
 		// of i in a different variable so that there is no race condition over
 		// i.
 		go func(i int) {
-			p[i].run(run)
+			p.Pt[i].run(run)
 			wg.Done()
 		}(i)
 	}
@@ -35,7 +38,7 @@ func (p ProverTask) Run(run *wizard.ProverRuntime) {
 
 // run partially implements the prover runtime associated with the current
 // partial compilation context. Its role is to assign Summation and its opening.
-func (ctx *ContextForSize) run(run *wizard.ProverRuntime) {
+func (ctx *ContextForSize[T]) run(run *wizard.ProverRuntime) {
 
 	var (
 		size      = ctx.Summation.Size()

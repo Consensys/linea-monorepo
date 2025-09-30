@@ -40,7 +40,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	nPols := 16
 	numRounds := 3
 	numPrecomputeds := 4
-	rows := make([][]ifaces.Column, numRounds)
+	rows := make([][]ifaces.Column[T], numRounds)
 
 	define := func(b *wizard.Builder) {
 		for round := 0; round < numRounds; round++ {
@@ -49,7 +49,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 				_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 			}
 
-			rows[round] = make([]ifaces.Column, nPols)
+			rows[round] = make([]ifaces.Column[T], nPols)
 			if round == 0 {
 				for i := 0; i < numPrecomputeds; i++ {
 					p := smartvectors.Rand(polSize)

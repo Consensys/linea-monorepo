@@ -7,15 +7,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 // compTranslator is a builder struct for building a target [wizard.CompiledIOP]
 // instances from another source [wizard.CompiledIOP]. All items in the built
 // compiled IOP are prefixed with an identifier.
-type compTranslator struct {
+type compTranslator[T zk.Element] struct {
 	Prefix string
-	Target *wizard.CompiledIOP
+	Target *wizard.CompiledIOP[T]
 }
 
 // addPrefixToID adds a prefix <prefix>.<message> to a string-like object message
@@ -26,10 +27,10 @@ func addPrefixToID[T ~string](prefix string, id T) T {
 // AddPrecomputedColumn inserts a precomputed column. The inserted column is not
 // a fake one and actually features a precomputed value. The inserted column retains
 // the same status as the original one.
-func (comp *compTranslator) AddPrecomputed(srcComp *wizard.CompiledIOP, col ifaces.Column) ifaces.Column {
+func (comp *compTranslator[T]) AddPrecomputed(srcComp *wizard.CompiledIOP, col ifaces.Column[T]) ifaces.Column[T] {
 
 	var (
-		nat          = col.(column.Natural)
+		nat          = col.(column.Natural[T])
 		prefixedName = addPrefixToID(comp.Prefix, col.GetColID())
 		ass          = srcComp.Precomputed.MustGet(nat.ID)
 		newCol       = comp.Target.InsertColumn(0, prefixedName, col.Size(), nat.Status())
@@ -43,9 +44,9 @@ func (comp *compTranslator) AddPrecomputed(srcComp *wizard.CompiledIOP, col ifac
 // prefixing their names. If the columns are already inserted then the function
 // returns the already inserted column. If fake is true, then the returned columns
 // are FakeColumns.
-func (comp *compTranslator) AddColumnList(cols []ifaces.Column, fake bool, round int) []ifaces.Column {
+func (comp *compTranslator[T]) AddColumnList(cols []ifaces.Column[T], fake bool, round int) []ifaces.Column[T] {
 
-	res := make([]ifaces.Column, len(cols))
+	res := make([]ifaces.Column[T], len(cols))
 
 	for i, col := range cols {
 
@@ -63,7 +64,7 @@ func (comp *compTranslator) AddColumnList(cols []ifaces.Column, fake bool, round
 // AddColumn inserts in the translator. If the column is already inserted, then the
 // function returns the already inserted column. If "fake" is true, the returned
 // column is a [FakeColumn].
-func (comp *compTranslator) AddColumnAtRound(col ifaces.Column, fake bool, round int) ifaces.Column {
+func (comp *compTranslator[T]) AddColumnAtRound(col ifaces.Column[T], fake bool, round int) ifaces.Column[T] {
 
 	if col == nil {
 		return nil
@@ -72,10 +73,10 @@ func (comp *compTranslator) AddColumnAtRound(col ifaces.Column, fake bool, round
 	prefixedName := addPrefixToID(comp.Prefix, col.GetColID())
 
 	if fake {
-		return &column.FakeColumn{ID: prefixedName}
+		return &column.FakeColumn[T]{ID: prefixedName}
 	}
 
-	if _, isVCol := col.(verifiercol.VerifierCol); isVCol {
+	if _, isVCol := col.(verifiercol.VerifierCol[T]); isVCol {
 		return col
 	}
 
@@ -83,11 +84,11 @@ func (comp *compTranslator) AddColumnAtRound(col ifaces.Column, fake bool, round
 		return comp.Target.Columns.GetHandle(prefixedName)
 	}
 
-	return comp.Target.InsertColumn(round, prefixedName, col.Size(), col.(column.Natural).Status())
+	return comp.Target.InsertColumn(round, prefixedName, col.Size(), col.(column.Natural[T]).Status())
 }
 
 // AddColumnVecVec translates a collection of columns
-func (comp *compTranslator) AddColumnVecVec(cols collection.VecVec[ifaces.ColID]) collection.VecVec[ifaces.ColID] {
+func (comp *compTranslator[T]) AddColumnVecVec(cols collection.VecVec[ifaces.ColID]) collection.VecVec[ifaces.ColID] {
 
 	res := collection.NewVecVec[ifaces.ColID]()
 
@@ -103,7 +104,7 @@ func (comp *compTranslator) AddColumnVecVec(cols collection.VecVec[ifaces.ColID]
 }
 
 // TranslateColumnSet translates a set of pre-inserted columns
-func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) map[ifaces.ColID]struct{} {
+func (comp *compTranslator[T]) TranslateColumnSet(cols map[ifaces.ColID]struct{}) map[ifaces.ColID]struct{} {
 
 	res := make(map[ifaces.ColID]struct{})
 
@@ -117,14 +118,14 @@ func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) m
 
 // AddUniEval returns a copied UnivariateEval query with fake columns
 // and names.
-func (comp *compTranslator) AddUniEval(round int, q query.UnivariateEval) query.UnivariateEval {
+func (comp *compTranslator[T]) AddUniEval(round int, q query.UnivariateEval[T]) query.UnivariateEval[T] {
 	queryID := addPrefixToID(comp.Prefix, q.QueryID)
 	pols := comp.AddColumnList(q.Pols, true, round)
 	return comp.Target.InsertUnivariate(round, queryID, pols)
 }
 
 // AddCoin adds a random coin with a prefixed name in the compiled IOP
-func (comp *compTranslator) AddCoinAtRound(info coin.Info, round int) coin.Info {
+func (comp *compTranslator[T]) AddCoinAtRound(info coin.Info, round int) coin.Info {
 	name := addPrefixToID(comp.Prefix, info.Name)
 	switch info.Type {
 	case coin.IntegerVec:

@@ -259,7 +259,7 @@ func (g GrandProduct[T]) Check(run ifaces.Runtime) error {
 	return nil
 }
 
-func (g GrandProduct[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (g GrandProduct[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	utils.Panic("Unimplemented")
 }
 

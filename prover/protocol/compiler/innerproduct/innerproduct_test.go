@@ -19,7 +19,7 @@ func TestInnerProduct(t *testing.T) {
 
 	define := func(b *wizard.Builder) {
 		for i, c := range testCases {
-			bs := make([]ifaces.Column, len(c.bName))
+			bs := make([]ifaces.Column[T], len(c.bName))
 			a := b.RegisterCommit(c.aName, c.size)
 			for i, name := range c.bName {
 				bs[i] = b.RegisterCommit(name, c.size)

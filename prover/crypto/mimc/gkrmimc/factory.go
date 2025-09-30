@@ -23,9 +23,9 @@ func NewHasherFactory(api frontend.API) *HasherFactory {
 	}
 
 	res := &HasherFactory{
-		initStates: []frontend.Variable{},
-		blocks:     []frontend.Variable{},
-		newStates:  []frontend.Variable{},
+		initStates: []T{},
+		blocks:     []T{},
+		newStates:  []T{},
 		api:        api,
 	}
 
@@ -41,15 +41,15 @@ func NewHasherFactory(api frontend.API) *HasherFactory {
 // bare claims whose truthfullness is backed by the verification of a GKR proof
 // in the same circuit. This deferred GKR verification is hidden from the user.
 type HasherFactory struct {
-	initStates []frontend.Variable
-	blocks     []frontend.Variable
-	newStates  []frontend.Variable
+	initStates []T
+	blocks     []T
+	newStates  []T
 	api        frontend.API
 }
 
-// pushTriplets pushes a claim-triplet of frontend.Variable to the list of triplet
+// pushTriplets pushes a claim-triplet of T to the list of triplet
 // to be verified by the GKR circuit at the end of the circuit.
-func (f *HasherFactory) pushTriplets(initstate, block, newstate frontend.Variable) {
+func (f *HasherFactory) pushTriplets(initstate, block, newstate T) {
 	f.initStates = append(f.initStates, initstate)
 	f.blocks = append(f.blocks, block)
 	f.newStates = append(f.newStates, newstate)
@@ -60,8 +60,8 @@ var _ hash.FieldHasher = &Hasher{}
 
 // Hasher that defers the hash verification to the factori
 type Hasher struct {
-	data    []frontend.Variable
-	state   frontend.Variable
+	data    []T
+	state   T
 	factory *HasherFactory
 }
 
@@ -72,16 +72,16 @@ type Hasher struct {
 //
 // However, the hasher should not be used in deferred gnark circuit execution.
 func (f *HasherFactory) NewHasher() hash.StateStorer {
-	return &Hasher{factory: f, state: frontend.Variable(0)}
+	return &Hasher{factory: f, state: T(0)}
 }
 
 // Writes fields elements into the hasher; implements [hash.FieldHasher]
-func (h *Hasher) Write(data ...frontend.Variable) {
-	// sanity-check : it is a common bug that we may be []frontend.Variable
-	// as a frontend.Variable
+func (h *Hasher) Write(data ...T) {
+	// sanity-check : it is a common bug that we may be []T
+	// as a T
 	for i := range data {
-		if _, ok := data[i].([]frontend.Variable); ok {
-			utils.Panic("bug in define, got a []frontend.Variable")
+		if _, ok := data[i].([]T); ok {
+			utils.Panic("bug in define, got a []T")
 		}
 	}
 	h.data = append(h.data, data...)
@@ -96,7 +96,7 @@ func (h *Hasher) Reset() {
 // Sum returns the hash of what was appended to the hasher so far. Calling it
 // multiple time without updating returns the same result. This function
 // implements [hash.FieldHasher] interface.
-func (h *Hasher) Sum() frontend.Variable {
+func (h *Hasher) Sum() T {
 	// 1 - Call the compression function in a loop
 	curr := h.state
 	for _, stream := range h.data {
@@ -111,7 +111,7 @@ func (h *Hasher) Sum() frontend.Variable {
 // SetState manually sets the state of the hasher to the provided value. In the
 // case of MiMC only a single frontend variable is expected to represent the
 // state.
-func (h *Hasher) SetState(newState []frontend.Variable) error {
+func (h *Hasher) SetState(newState []T) error {
 
 	if len(h.data) > 0 {
 		return errors.New("the hasher is not in an initial state")
@@ -127,15 +127,15 @@ func (h *Hasher) SetState(newState []frontend.Variable) error {
 
 // State returns the inner-state of the hasher. In the context of MiMC only a
 // single field element is returned.
-func (h *Hasher) State() []frontend.Variable {
+func (h *Hasher) State() []T {
 	_ = h.Sum() // to flush the hasher
-	return []frontend.Variable{h.state}
+	return []T{h.state}
 }
 
-// compress calls returns a frontend.Variable holding the result of applying
+// compress calls returns a T holding the result of applying
 // the compression function of MiMC over state and block. The alleged returned
 // result is pushed on the stack of all the claims to verify.
-func (h *Hasher) compress(state, block frontend.Variable) frontend.Variable {
+func (h *Hasher) compress(state, block T) T {
 
 	newState, err := h.factory.api.Compiler().NewHint(mimcHintfunc, 1, state, block)
 	if err != nil {

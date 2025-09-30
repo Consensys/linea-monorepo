@@ -24,19 +24,19 @@ type MimcContext struct {
 
 	// StackedOldState stores all the old states of the MiMC computation. For
 	// all unique triplets (oldState, blocks, newStates).
-	StackedOldStates ifaces.Column
+	StackedOldStates ifaces.Column[T]
 	// StackedBlocks stores all the blocks of the MiMC computation. For all
 	// unique triplets (oldState, blocks, newStates).
-	StackedBlocks ifaces.Column
+	StackedBlocks ifaces.Column[T]
 	// StackedNewStates stores all the new states of the MiMC computation. For
 	// all unique triplets (oldState, blocks, newStates).
-	StackedNewStates ifaces.Column
+	StackedNewStates ifaces.Column[T]
 	// SumPow4s stores the values of (prevRound + oldState + ark_i)^4 for all
 	// MiMC rounds "i".
-	SumPow4s []ifaces.Column
+	SumPow4s []ifaces.Column[T]
 	// RoundResult stores the values of (prevRound + oldState + ark_i)^4 for all
 	// MiMC rounds "i". The last value is set to [StackedNewStates].
-	RoundResults []ifaces.Column
+	RoundResults []ifaces.Column[T]
 }
 
 // CompileMiMC compiles all the MiMC queries in the [comp] object. The compiler
@@ -120,30 +120,30 @@ func defineContext(comp *wizard.CompiledIOP) *MimcContext {
 
 		comp.InsertGlobal(round,
 			ifaces.QueryIDf("MIMC_ROUND_%v_SUM_POW4_COMPUTATION_%v_%v", i, comp.SelfRecursionCount, uniqueID(comp)),
-			sym.Sub(sp4, sym.Pow(sym.Add(prev, ark, ctx.StackedOldStates), 4)))
+			sym.Sub[T](sp4, sym.Pow(sym.Add[T](prev, ark, ctx.StackedOldStates), 4)))
 
 		comp.InsertGlobal(round,
 			ifaces.QueryIDf("MIMC_ROUND_%v_RESULT_COMPUTATION_%v_%v", i, comp.SelfRecursionCount, uniqueID(comp)),
-			sym.Sub(rr, sym.Mul(sym.Pow(sp4, 4), sym.Add(prev, ark, ctx.StackedOldStates))))
+			sym.Sub[T](rr, sym.Mul[T](sym.Pow(sp4, 4), sym.Add[T](prev, ark, ctx.StackedOldStates))))
 	}
 
 	comp.InsertGlobal(round,
 		ifaces.QueryIDf("MIMC_STACKED_NEW_STATES_COMPUTATION_%v_%v", comp.SelfRecursionCount, uniqueID(comp)),
-		sym.Sub(ctx.StackedNewStates, ctx.StackedOldStates, ctx.StackedOldStates, ctx.StackedBlocks, ctx.RoundResults[len(mimc.Constants)-1]))
+		sym.Sub[T](ctx.StackedNewStates, ctx.StackedOldStates, ctx.StackedOldStates, ctx.StackedBlocks, ctx.RoundResults[len(mimc.Constants)-1]))
 
 	for i := range ctx.CompiledQueries {
 
 		comp.GenericFragmentedConditionalInclusion(
 			round,
 			ifaces.QueryIDf("MIMC_QUERY_%v_INCLUSION_%v_%v", i, comp.SelfRecursionCount, uniqueID(comp)),
-			[][]ifaces.Column{
+			[][]ifaces.Column[T]{
 				{
 					ctx.StackedBlocks,
 					ctx.StackedOldStates,
 					ctx.StackedNewStates,
 				},
 			},
-			[]ifaces.Column{
+			[]ifaces.Column[T]{
 				ctx.CompiledQueries[i].Blocks,
 				ctx.CompiledQueries[i].OldState,
 				ctx.CompiledQueries[i].NewState,

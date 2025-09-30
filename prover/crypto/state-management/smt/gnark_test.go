@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
@@ -40,13 +41,13 @@ func getMerkleProof(t *testing.T) ([]Proof, []Bytes32, Bytes32) {
 	return proofs, leafs, tree.Root
 }
 
-type MerkleProofCircuit struct {
-	Proofs []GnarkProof        `gnark:",public"`
-	Leafs  []frontend.Variable `gnark:",public"`
-	Root   frontend.Variable
+type MerkleProofCircuit[T zk.Element] struct {
+	Proofs []GnarkProof[T] `gnark:",public"`
+	Leafs  []T             `gnark:",public"`
+	Root   T
 }
 
-func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
+func (circuit *MerkleProofCircuit[T]) Define(api frontend.API) error {
 
 	h, err := gmimc.NewMiMC(api)
 	if err != nil {
@@ -63,29 +64,29 @@ func TestMerkleProofGnark(t *testing.T) {
 	// generate witness
 	proofs, leafs, root := getMerkleProof(t)
 	nbProofs := len(proofs)
-	var witness MerkleProofCircuit
-	witness.Proofs = make([]GnarkProof, nbProofs)
-	witness.Leafs = make([]frontend.Variable, nbProofs)
+	var witness MerkleProofCircuit[zk.NativeElement]
+	witness.Proofs = make([]GnarkProof[zk.NativeElement], nbProofs)
+	witness.Leafs = make([]zk.NativeElement, nbProofs)
 	var buf fr.Element
 	for i := 0; i < nbProofs; i++ {
-		witness.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
+		witness.Proofs[i].Siblings = make([]zk.NativeElement, len(proofs[i].Siblings))
 		for j := 0; j < len(proofs[i].Siblings); j++ {
 			buf.SetBytes(proofs[i].Siblings[j][:])
-			witness.Proofs[i].Siblings[j] = buf.String()
+			witness.Proofs[i].Siblings[j] = *zk.ValueOf[zk.NativeElement](buf)
 		}
-		witness.Proofs[i].Path = proofs[i].Path
+		witness.Proofs[i].Path = *zk.ValueOf[zk.NativeElement](proofs[i].Path)
 		buf.SetBytes(leafs[i][:])
-		witness.Leafs[i] = buf.String()
+		witness.Leafs[i] = *zk.ValueOf[zk.NativeElement](buf)
 	}
 	buf.SetBytes(root[:])
-	witness.Root = buf.String()
+	witness.Root = *zk.ValueOf[zk.NativeElement](buf)
 
 	// compile circuit
-	var circuit MerkleProofCircuit
-	circuit.Proofs = make([]GnarkProof, nbProofs)
-	circuit.Leafs = make([]frontend.Variable, nbProofs)
+	var circuit MerkleProofCircuit[zk.NativeElement]
+	circuit.Proofs = make([]GnarkProof[zk.NativeElement], nbProofs)
+	circuit.Leafs = make([]zk.NativeElement, nbProofs)
 	for i := 0; i < nbProofs; i++ {
-		circuit.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
+		circuit.Proofs[i].Siblings = make([]zk.NativeElement, len(proofs[i].Siblings))
 	}
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 	if err != nil {

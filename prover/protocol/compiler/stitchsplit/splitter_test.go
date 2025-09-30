@@ -80,14 +80,14 @@ func singlePolyFibo(size int) func() (wizard.DefineFunc, wizard.MainProverStep) 
 			P1 := build.RegisterCommit(P1, size) // overshadows P
 
 			// P(X) = P(X/w) + P(X/w^2)
-			expr := sym.Sub(
+			expr := sym.Sub[T](
 				P1,
 				column.Shift(P1, -1),
 				column.Shift(P1, -2),
 			)
 
 			_ = build.GlobalConstraint(GLOBAL1, expr)
-			_ = build.LocalConstraint(LOCAL1, sym.Sub(P1, 1))
+			_ = build.LocalConstraint(LOCAL1, sym.Sub[T](P1, 1))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
@@ -109,7 +109,7 @@ func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFun
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
-			_ = build.GlobalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+			_ = build.GlobalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.Column[T]AsVariable(P1)))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
@@ -131,7 +131,7 @@ func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
-			_ = build.LocalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+			_ = build.LocalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.Column[T]AsVariable(P1)))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
@@ -186,7 +186,7 @@ func testSplitter(t *testing.T, splitSize int, gen func() (wizard.DefineFunc, wi
 
 func TestLocalEvalWithStatus(t *testing.T) {
 
-	var b, c ifaces.Column
+	var b, c ifaces.Column[T]
 	var q2, q3, q6, q7, q10, q11 query.LocalOpening
 
 	define := func(builder *wizard.Builder) {

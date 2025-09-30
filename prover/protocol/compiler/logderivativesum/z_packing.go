@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -26,16 +27,16 @@ const (
 // T:       lookupTable,
 // SFilter: includedFilters,
 
-type ZCtx struct {
+type ZCtx[T zk.Element] struct {
 	Round, Size      int
-	SigmaNumerator   []*sym.Expression // T -> -M, S -> +Filter
-	SigmaDenominator []*sym.Expression // S or T -> ({S,T} + X)
+	SigmaNumerator   []*sym.Expression[T] // T -> -M, S -> +Filter
+	SigmaDenominator []*sym.Expression[T] // S or T -> ({S,T} + X)
 
-	ZNumeratorBoarded, ZDenominatorBoarded []sym.ExpressionBoard
+	ZNumeratorBoarded, ZDenominatorBoarded []sym.ExpressionBoard[T]
 
-	Zs []ifaces.Column
+	Zs []ifaces.Column[T]
 	// ZOpenings are the opening queries to the end of each Z.
-	ZOpenings []query.LocalOpening
+	ZOpenings []query.LocalOpening[T]
 	Name      string
 }
 
@@ -44,7 +45,7 @@ type ZCtx struct {
 // and change T -> -M, S -> +Filter
 // S or T -> ({S,T} + X)
 // Compile should be called inside CompileGrandSum
-func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
+func (z *ZCtx[T]) Compile(comp *wizard.CompiledIOP[T]) {
 
 	var (
 		numZs = utils.DivCeil(
@@ -53,10 +54,10 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 		)
 	)
 
-	z.Zs = make([]ifaces.Column, numZs)
-	z.ZOpenings = make([]query.LocalOpening, numZs)
-	z.ZNumeratorBoarded = make([]sym.ExpressionBoard, numZs)
-	z.ZDenominatorBoarded = make([]sym.ExpressionBoard, numZs)
+	z.Zs = make([]ifaces.Column[T], numZs)
+	z.ZOpenings = make([]query.LocalOpening[T], numZs)
+	z.ZNumeratorBoarded = make([]sym.ExpressionBoard[T], numZs)
+	z.ZDenominatorBoarded = make([]sym.ExpressionBoard[T], numZs)
 
 	for i := range z.Zs {
 
@@ -64,18 +65,18 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 			packedNum = safeAnySubSlice(z.SigmaNumerator, i*packingArity, (i+1)*packingArity)
 			packedDen = safeAnySubSlice(z.SigmaDenominator, i*packingArity, (i+1)*packingArity)
 
-			zNumerator   = sym.NewConstant(0)
-			zDenominator = sym.Mul(packedDen...)
+			zNumerator   = sym.NewConstant[T](0)
+			zDenominator = sym.Mul[T](packedDen...)
 		)
 
 		for j := range packedNum {
 			term := packedNum[j]
 			for k := range packedDen {
 				if k != j {
-					term = sym.Mul(term, packedDen[k])
+					term = sym.Mul[T](term, packedDen[k])
 				}
 			}
-			zNumerator = sym.Add(zNumerator, term)
+			zNumerator = sym.Add[T](zNumerator, term)
 		}
 
 		z.ZNumeratorBoarded[i] = zNumerator.Board()
@@ -91,9 +92,9 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 		comp.InsertLocal(
 			z.Round,
 			DeriveName[ifaces.QueryID]("Z_CONSISTENCY_START", comp.SelfRecursionCount, z.Round, z.Size, i),
-			sym.Sub(
+			sym.Sub[T](
 				zNumerator,
-				sym.Mul(
+				sym.Mul[T](
 					z.Zs[i],
 					zDenominator,
 				),
@@ -112,10 +113,10 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 			comp.InsertGlobal(
 				z.Round,
 				DeriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
-				sym.Sub(
+				sym.Sub[T](
 					zNumerator,
-					sym.Mul(
-						sym.Sub(z.Zs[i], column.Shift(z.Zs[i], -1)),
+					sym.Mul[T](
+						sym.Sub[T](z.Zs[i], column.Shift(z.Zs[i], -1)),
 						zDenominator,
 					),
 				),

@@ -350,7 +350,7 @@ func (cs GlobalConstraint[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRunti
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful
-	omegas := make([]frontend.Variable, cs.DomainSize)
+	omegas := make([]T, cs.DomainSize)
 	for i := 0; i < cs.DomainSize; i++ {
 		omegas[i] = omegaI
 		omegaI.Mul(&omegaI, &omega)

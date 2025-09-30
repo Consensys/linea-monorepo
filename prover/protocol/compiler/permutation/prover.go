@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 // ProverTaskAtRound implements the [wizard.ProverAction] interface and is
@@ -106,15 +107,15 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 }
 
 // AssignPermutationGranddProduct assigns the grand product query
-type AssignPermutationGrandProduct struct {
-	Query *query.GrandProduct
+type AssignPermutationGrandProduct[T zk.Element] struct {
+	Query *query.GrandProduct[T]
 	// IsPartial indicates that the permuation queries contains public
 	// terms to evaluate explictly by the verifier. In that case, the
 	// result of the query is not one and must be computed explicitly.
 	IsPartial bool
 }
 
-func (a AssignPermutationGrandProduct) Run(run *wizard.ProverRuntime) {
+func (a AssignPermutationGrandProduct[T]) Run(run *wizard.ProverRuntime) {
 	y := fext.GenericFieldOne()
 	if a.IsPartial {
 		res := a.Query.Compute(run)

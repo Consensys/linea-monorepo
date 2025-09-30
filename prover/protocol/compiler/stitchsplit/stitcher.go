@@ -156,8 +156,8 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 
 			var (
 				cols            = columnsBySize[size]
-				precomputedCols = make([]ifaces.Column, 0, len(cols))
-				committedCols   = make([]ifaces.Column, 0, len(cols))
+				precomputedCols = make([]ifaces.Column[T], 0, len(cols))
+				committedCols   = make([]ifaces.Column[T], 0, len(cols))
 			)
 
 			// collect the the columns with valid status; Precomputed, committed
@@ -225,8 +225,8 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 }
 
 // It scan the compiler trace for a given round and classifies the columns eligible to the stitching, by their size.
-func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]ifaces.Column {
-	columnsBySize := map[int][]ifaces.Column{}
+func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]ifaces.Column[T] {
+	columnsBySize := map[int][]ifaces.Column[T]{}
 
 	for _, colName := range ctx.Comp.Columns.AllKeysAt(round) {
 
@@ -258,7 +258,7 @@ func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]i
 
 		// Initialization clause of `sizes`
 		if _, ok := columnsBySize[col.Size()]; !ok {
-			columnsBySize[col.Size()] = []ifaces.Column{}
+			columnsBySize[col.Size()] = []ifaces.Column[T]{}
 		}
 
 		columnsBySize[col.Size()] = append(columnsBySize[col.Size()], col)
@@ -267,10 +267,10 @@ func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]i
 }
 
 // group the cols with the same size
-func groupCols(cols []ifaces.Column, numToStitch int) (groups [][]ifaces.Column) {
+func groupCols(cols []ifaces.Column[T], numToStitch int) (groups [][]ifaces.Column[T]) {
 
 	numGroups := utils.DivCeil(len(cols), numToStitch)
-	groups = make([][]ifaces.Column, numGroups)
+	groups = make([][]ifaces.Column[T], numGroups)
 
 	size := cols[0].Size()
 
@@ -287,7 +287,7 @@ func groupCols(cols []ifaces.Column, numToStitch int) (groups [][]ifaces.Column)
 	return groups
 }
 
-func groupedName(group []ifaces.Column) ifaces.ColID {
+func groupedName(group []ifaces.Column[T]) ifaces.ColID {
 	fmtted := make([]string, len(group))
 	for i := range fmtted {
 		fmtted[i] = group[i].String()
@@ -299,7 +299,7 @@ func groupedName(group []ifaces.Column) ifaces.ColID {
 func (ctx *StitchingContext) stitchGroup(s Alliance) {
 	var (
 		group        = s.SubCols
-		stitchingCol ifaces.Column
+		stitchingCol ifaces.Column[T]
 		status       = s.Status
 	)
 	// Declare the new columns
@@ -351,7 +351,7 @@ func (ctx *StitchingContext) stitchGroup(s Alliance) {
 }
 
 // it checks if the column belongs to a stitching.
-func isColEligibleStitching(stitchings MultiSummary, col ifaces.Column) bool {
+func isColEligibleStitching(stitchings MultiSummary, col ifaces.Column[T]) bool {
 	natural := column.RootParents(col)
 	_, found := stitchings[col.Round()].BySubCol[natural.GetColID()]
 	return found
@@ -359,7 +359,7 @@ func isColEligibleStitching(stitchings MultiSummary, col ifaces.Column) bool {
 
 // It makes the given colum public.
 // If the colum is Precomputed it becomes the VerifierKey, otherwise it becomes Proof.
-func (ctx StitchingContext) makeColumnPublic(col ifaces.Column, status column.Status) {
+func (ctx StitchingContext) makeColumnPublic(col ifaces.Column[T], status column.Status) {
 
 	switch status {
 	case column.Precomputed:

@@ -36,8 +36,8 @@ func evalPoly(p []field.Element, z field.Element) field.Element {
 
 type ComputeLagrangeCircuit struct {
 	Domain fft.Domain
-	Zeta   frontend.Variable   `gnark:",public"` // random variable
-	Li     []frontend.Variable // expected results
+	Zeta   T   `gnark:",public"` // random variable
+	Li     []T // expected results
 }
 
 func (circuit *ComputeLagrangeCircuit) Define(api frontend.API) error {
@@ -63,7 +63,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 	// prepare witness
 	var witness ComputeLagrangeCircuit
 	witness.Zeta = zeta.String()
-	witness.Li = make([]frontend.Variable, s)
+	witness.Li = make([]T, s)
 	for i := 0; i < s; i++ {
 		buf := make([]field.Element, s)
 		buf[i].SetOne()
@@ -75,7 +75,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 
 	var circuit ComputeLagrangeCircuit
 	circuit.Domain = *d
-	circuit.Li = make([]frontend.Variable, s)
+	circuit.Li = make([]T, s)
 
 	// compile...
 	builder := scs.NewBuilder[constraint.U32]
@@ -101,8 +101,8 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 
 type FFTInverseCircuit struct {
 	Domain fft.Domain
-	P      []frontend.Variable
-	R      []frontend.Variable
+	P      []T
+	R      []T
 }
 
 func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
@@ -134,8 +134,8 @@ func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
 // 	d.FFTInverse(r, fft.DIF)
 // 	fft.BitReverse(r)
 // 	var witness FFTInverseCircuit
-// 	witness.P = make([]frontend.Variable, s)
-// 	witness.R = make([]frontend.Variable, s)
+// 	witness.P = make([]T, s)
+// 	witness.R = make([]T, s)
 
 // 	for i := 0; i < s; i++ {
 // 		witness.P[i] = p[i].String()
@@ -143,8 +143,8 @@ func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
 // 	}
 
 // 	var circuit FFTInverseCircuit
-// 	circuit.P = make([]frontend.Variable, s)
-// 	circuit.R = make([]frontend.Variable, s)
+// 	circuit.P = make([]T, s)
+// 	circuit.R = make([]T, s)
 // 	circuit.Domain = *d
 
 // 	// compile...
@@ -172,7 +172,7 @@ func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
 type AssertIsCodeWordCircuit struct {
 	rate uint64
 	d    *fft.Domain
-	P    []frontend.Variable `gnark:",public"`
+	P    []T `gnark:",public"`
 }
 
 func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
@@ -195,7 +195,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 	fft.BitReverse(p)
 
 	var witness AssertIsCodeWordCircuit
-	witness.P = make([]frontend.Variable, size)
+	witness.P = make([]T, size)
 	witness.rate = uint64(rate)
 	witness.d = d
 	for i := 0; i < size; i++ {
@@ -204,7 +204,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 
 	// compile the circuit
 	var circuit AssertIsCodeWordCircuit
-	circuit.P = make([]frontend.Variable, size)
+	circuit.P = make([]T, size)
 	circuit.d = d
 	circuit.rate = uint64(rate)
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -228,9 +228,9 @@ func TestAssertIsCodeWord(t *testing.T) {
 // EvaluateLagrange
 
 type EvaluateLagrangeCircuit struct {
-	P []frontend.Variable
-	X frontend.Variable `gnark:",public"`
-	R frontend.Variable
+	P []T
+	X T `gnark:",public"`
+	R T
 	d *fft.Domain
 }
 
@@ -266,7 +266,7 @@ func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 // 	fft.BitReverse(p)
 
 // 	var witness EvaluateLagrangeCircuit
-// 	witness.P = make([]frontend.Variable, size)
+// 	witness.P = make([]T, size)
 // 	for i := 0; i < size; i++ {
 // 		witness.P[i] = p[i].String()
 // 	}
@@ -275,7 +275,7 @@ func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
 // 	// compile the circuit
 // 	var circuit EvaluateLagrangeCircuit
-// 	circuit.P = make([]frontend.Variable, size)
+// 	circuit.P = make([]T, size)
 // 	circuit.d = d
 // 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
 // 	if err != nil {
@@ -383,7 +383,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 
 // 	// compile the circuit
 // 	var circuit VerifyOpeningCircuitMerkleTree
-// 	circuit.Proof.LinearCombination = make([]frontend.Variable, rsSize)
+// 	circuit.Proof.LinearCombination = make([]T, rsSize)
 // 	circuit.Proof.Rate = uint64(blowUpFactor)
 // 	circuit.Proof.RsDomain = rsDomain
 // 	circuit.Params.HasherFunc = makeMimcHasherfunc

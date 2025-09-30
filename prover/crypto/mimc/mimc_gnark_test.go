@@ -14,9 +14,9 @@ import (
 
 // circuit
 type Circuit struct {
-	Block frontend.Variable
-	Old   frontend.Variable
-	New   frontend.Variable
+	Block T
+	Old   T
+	New   T
 }
 
 func (circuit *Circuit) Define(api frontend.API) error {

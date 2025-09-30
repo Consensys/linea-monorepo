@@ -3,7 +3,6 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/zk"
@@ -71,7 +70,7 @@ func (r Range[T]) Check(run ifaces.Runtime) error {
 
 // CheckGnark will panic in this construction because we do not have a good way
 // to check the query within a circuit
-func (r Range[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (r Range[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
 

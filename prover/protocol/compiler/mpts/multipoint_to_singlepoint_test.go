@@ -96,7 +96,7 @@ func TestWithVerifierCol(t *testing.T) {
 			NameStr: "with-constant-col",
 			DefineFunc: func(comp *wizard.CompiledIOP) {
 				u := verifiercol.NewConstantCol(field.Zero(), 8, "")
-				comp.InsertUnivariate(0, "U", []ifaces.Column{u})
+				comp.InsertUnivariate(0, "U", []ifaces.Column[T]{u})
 			},
 			AssignFunc: func(run *wizard.ProverRuntime) {
 				run.AssignUnivariateExt("U", fext.Zero(), fext.Zero())
@@ -106,7 +106,7 @@ func TestWithVerifierCol(t *testing.T) {
 			NameStr: "with-constant-col-2",
 			DefineFunc: func(comp *wizard.CompiledIOP) {
 				u := verifiercol.NewConstantCol(field.NewElement(42), 4, "")
-				comp.InsertUnivariate(0, "U", []ifaces.Column{u})
+				comp.InsertUnivariate(0, "U", []ifaces.Column[T]{u})
 			},
 			AssignFunc: func(run *wizard.ProverRuntime) {
 				run.AssignUnivariateExt("U", fext.Zero(), fext.NewFromUint(42, 0, 0, 0))

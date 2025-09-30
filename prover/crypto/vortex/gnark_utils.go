@@ -11,10 +11,11 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
-	"github.com/consensys/gnark/std/multicommit"
+	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -24,11 +25,27 @@ var (
 
 // Register fft inverse hint
 func init() {
-	solver.RegisterHint(FFTInverseKoalaBear)
+	solver.RegisterHint(fftInverseKoalaBearNative)
 }
 
-// FFTInverseKoalaBear hint for the inverse FFT on koalabear
-func FFTInverseKoalaBear(_ *big.Int, inputs []*big.Int, results []*big.Int) error {
+func FFTInverseKoalaBear[T zk.Element]() solver.Hint {
+	var t T
+	switch any(t).(type) {
+	case zk.EmulatedElement:
+		return fftInverseKoalaBearEmulated
+	case zk.NativeElement:
+		return fftInverseKoalaBearNative
+	default:
+		panic("unsupported requested API type")
+	}
+}
+
+func fftInverseKoalaBearEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
+	return emulated.UnwrapHint(inputs, output, fftInverseKoalaBearNative)
+}
+
+// fftInverseKoalaBearNative hint for the inverse FFT on koalabear
+func fftInverseKoalaBearNative(_ *big.Int, inputs []*big.Int, results []*big.Int) error {
 
 	// TODO store this somewhere (global variable or something, shouldn't regenerate it at each call)
 	d := fft.NewDomain(uint64(len(inputs)), fft.WithoutPrecompute())
@@ -50,66 +67,79 @@ func FFTInverseKoalaBear(_ *big.Int, inputs []*big.Int, results []*big.Int) erro
 
 // computes fft^-1(p) where the fft is done on <generator>, a set of size cardinality.
 // It is assumed that p is correctly sized.
-func FFTInverse(api frontend.API, p []frontend.Variable, genInv field.Element, cardinality uint64) ([]frontend.Variable, error) {
+func FFTInverse[T zk.Element](api frontend.API, p []*T, genInv field.Element, cardinality uint64) ([]*T, error) {
 
 	var cardInverse field.Element
 	cardInverse.SetUint64(cardinality).Inverse(&cardInverse)
 
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		return nil, err
+	}
+
 	// res of the fft inverse
-	res, err := api.Compiler().NewHint(FFTInverseKoalaBear, len(p), p...)
+	res, err := apiGen.NewHint(FFTInverseKoalaBear[T](), len(p), p...)
 	if err != nil {
 		return nil, err
 	}
 
 	// probabilistically check the result of the FFT
-	multicommit.WithCommitment(
-		api,
-		func(api frontend.API, x frontend.Variable) error {
-			// evaluation canonical
-			ec := gnarkEvalCanonical(api, res, x)
+	// multicommit.WithCommitment(
+	// 	api,
+	// 	func(api frontend.API, x T) error {
+	// 		// evaluation canonical
+	// 		ec := gnarkEvalCanonical(api, res, x)
 
-			// evaluation Lagrange
-			var gen field.Element
-			gen.Inverse(&genInv)
-			lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
-			var el frontend.Variable
-			el = 0
-			for i := 0; i < len(p); i++ {
-				tmp := api.Mul(p[i], lagranges[i])
-				el = api.Add(el, tmp)
-			}
+	// 		// evaluation Lagrange
+	// 		var gen field.Element
+	// 		gen.Inverse(&genInv)
+	// 		lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
+	// 		var el T
+	// 		el = 0
+	// 		for i := 0; i < len(p); i++ {
+	// 			tmp := api.Mul(p[i], lagranges[i])
+	// 			el = api.Add(el, tmp)
+	// 		}
 
-			api.AssertIsEqual(ec, el)
-			return nil
-		},
-		p...,
-	)
+	// 		api.AssertIsEqual(ec, el)
+	// 		return nil
+	// 	},
+	// 	p...,
+	// )
 
 	return res, nil
 }
 
 // gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
-func gnarkEvalCanonical(api frontend.API, p []frontend.Variable, z frontend.Variable) frontend.Variable {
+func gnarkEvalCanonical[T zk.Element](api frontend.API, p []*T, z *T) *T {
 
-	var res frontend.Variable
-	res = 0
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := zk.ValueOf[T](0)
 	s := len(p)
 	for i := 0; i < len(p); i++ {
-		res = api.Mul(res, z)
-		res = api.Add(res, p[s-1-i])
+		res = apiGen.Mul(res, z)
+		res = apiGen.Add(res, p[s-1-i])
 	}
 	return res
 }
 
-func gnarkEvaluateLagrange(api frontend.API, p []frontend.Variable, z frontend.Variable, gen field.Element, cardinality uint64) frontend.Variable {
+func gnarkEvaluateLagrange[T zk.Element](api frontend.API, p []*T, z T, gen field.Element, cardinality uint64) *T {
 
-	var res frontend.Variable
-	res = 0
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
 
-	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
+	res := zk.ValueOf[T](0)
+
+	lagranges := gnarkComputeLagrangeAtZ(api, &z, gen, cardinality)
 	for i := uint64(0); i < cardinality; i++ {
-		tmp := api.Mul(lagranges[i], p[i])
-		res = api.Add(res, tmp)
+		tmp := apiGen.Mul(lagranges[i], p[i])
+		res = apiGen.Add(res, tmp)
 	}
 
 	return res
@@ -118,38 +148,42 @@ func gnarkEvaluateLagrange(api frontend.API, p []frontend.Variable, z frontend.V
 // computeLagrange returns Lᵢ(ζ) for i=1..n
 // with lᵢ(ζ) = ωⁱ/n*(ζⁿ-1)/(ζ - ωⁱ)
 // (the g stands for gnark)
-func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen field.Element, cardinality uint64) []frontend.Variable {
+func gnarkComputeLagrangeAtZ[T zk.Element](api frontend.API, z *T, gen field.Element, cardinality uint64) []*T {
 
-	res := make([]frontend.Variable, cardinality)
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := make([]*T, cardinality)
 	tb := bits.TrailingZeros(uint(cardinality))
 
 	// ζⁿ-1
 	res[0] = z
 	for i := 0; i < tb; i++ {
-		res[0] = api.Mul(res[0], res[0])
+		res[0] = apiGen.Mul(res[0], res[0])
 	}
-	res[0] = api.Sub(res[0], 1)
+	res[0] = apiGen.Sub(res[0], zk.ValueOf[T](1))
 
 	// ζ-1
-	var accZetaMinusOmegai frontend.Variable
-	accZetaMinusOmegai = api.Sub(z, 1)
+	accZetaMinusOmegai := apiGen.Sub(z, zk.ValueOf[T](1))
 
 	// (ζⁿ-1)/(ζ-1)
-	res[0] = api.Div(res[0], accZetaMinusOmegai)
+	res[0] = apiGen.Div(res[0], accZetaMinusOmegai)
 
 	// 1/n*(ζⁿ-1)/(ζ-1)
-	res[0] = api.Div(res[0], cardinality)
+	res[0] = apiGen.Div(res[0], zk.ValueOf[T](cardinality))
 
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
 	var accOmega field.Element
 	accOmega.SetOne()
 
 	for i := uint64(1); i < cardinality; i++ {
-		res[i] = api.Mul(res[i-1], gen)              // res[i] <- ω * res[i-1]
-		res[i] = api.Mul(res[i], accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
-		accOmega.Mul(&accOmega, &gen)                // accOmega <- accOmega * ω
-		accZetaMinusOmegai = api.Sub(z, accOmega)    // accZetaMinusOmegai <- ζ-ωⁱ
-		res[i] = api.Div(res[i], accZetaMinusOmegai) // res[i]  <- res[i]/(ζ-ωⁱ)
+		res[i] = apiGen.Mul(res[i-1], zk.ValueOf[T](gen))           // res[i] <- ω * res[i-1]
+		res[i] = apiGen.Mul(res[i], accZetaMinusOmegai)             // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
+		accOmega.Mul(&accOmega, &gen)                               // accOmega <- accOmega * ω
+		accZetaMinusOmegai = apiGen.Sub(z, zk.ValueOf[T](accOmega)) // accZetaMinusOmegai <- ζ-ωⁱ
+		res[i] = apiGen.Div(res[i], accZetaMinusOmegai)             // res[i]  <- res[i]/(ζ-ωⁱ)
 	}
 
 	return res
@@ -159,7 +193,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen field.El
 // * p polynomial of size cardinality
 // * genInv inverse of the generator of the subgroup of size cardinality
 // * rate of the RS code
-func assertIsCodeWord(api frontend.API, p []frontend.Variable, genInv koalabear.Element, cardinality, rate uint64) error {
+func assertIsCodeWord[T zk.Element](api frontend.API, p []*T, genInv koalabear.Element, cardinality, rate uint64) error {
 
 	if uint64(len(p)) != cardinality {
 		return ErrPNotOfSizeCardinality
@@ -181,14 +215,14 @@ func assertIsCodeWord(api frontend.API, p []frontend.Variable, genInv koalabear.
 }
 
 // Opening proof without Merkle proofs
-type GProofWoMerkle struct {
+type GProofWoMerkle[T zk.Element] struct {
 
 	// columns on against which the linear combination is checked
 	// (the i-th entry is the EntryList[i]-th column). The columns may
 	// as well be dispatched in several matrices.
 	// Columns [i][j][k] returns the k-th entry of the j-th selected
 	// column of the i-th commitment
-	Columns [][][]frontend.Variable
+	Columns [][][]T
 
 	// domain of the RS code
 	RsDomain *fft.Domain
@@ -197,12 +231,12 @@ type GProofWoMerkle struct {
 	Rate uint64
 
 	// Linear combination of the rows of the polynomial P written as a square matrix
-	LinearCombination []frontend.Variable
+	LinearCombination []*T
 }
 
 // Opening proof with Merkle proofs
-type GProof struct {
-	GProofWoMerkle
+type GProof[T zk.Element] struct {
+	GProofWoMerkle[T]
 	MerkleProofs [][]smt.GnarkProof
 }
 
@@ -217,19 +251,19 @@ func (p *GParams) HasNoSisHasher() bool {
 	return p.NoSisHasher != nil
 }
 
-func GnarkVerifyCommon(
+func GnarkVerifyCommon[T zk.Element](
 	api frontend.API,
 	params GParams,
-	proof GProofWoMerkle,
-	x frontend.Variable,
-	ys [][]frontend.Variable,
-	randomCoin frontend.Variable,
-	entryList []frontend.Variable,
-) ([][]frontend.Variable, error) {
+	proof GProofWoMerkle[T],
+	x T,
+	ys [][]*T,
+	randomCoin T,
+	entryList []T,
+) ([][]T, error) {
 
 	// check the linear combination is a codeword
 	api.Compiler().Defer(func(api frontend.API) error {
-		return assertIsCodeWord(
+		return assertIsCodeWord[T](
 			api,
 			proof.LinearCombination,
 			proof.RsDomain.GeneratorInv,
@@ -240,19 +274,19 @@ func GnarkVerifyCommon(
 
 	// Check the consistency of Ys and proof.Linearcombination
 	yjoined := utils.Join(ys...)
-	alphaY := gnarkEvaluateLagrange(
+	alphaY := gnarkEvaluateLagrange[T](
 		api,
 		proof.LinearCombination,
 		x,
 		proof.RsDomain.Generator,
 		proof.RsDomain.Cardinality)
-	alphaYPrime := gnarkEvalCanonical(api, yjoined, randomCoin)
+	alphaYPrime := gnarkEvalCanonical[T](api, yjoined, &randomCoin)
 	api.AssertIsEqual(alphaY, alphaYPrime)
 
 	// Size of the hash of 1 column
 	numRounds := len(ys)
 
-	selectedColSisDigests := make([][]frontend.Variable, numRounds)
+	selectedColSisDigests := make([][]T, numRounds)
 	tbl := logderivlookup.New(api)
 	for i := range proof.LinearCombination {
 		tbl.Insert(proof.LinearCombination[i])
@@ -260,32 +294,37 @@ func GnarkVerifyCommon(
 	for j, selectedColID := range entryList {
 
 		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []frontend.Variable{}
+		fullCol := []*T{}
 
 		for i := range selectedColSisDigests {
 
 			if j == 0 {
-				selectedColSisDigests[i] = make([]frontend.Variable, len(entryList))
+				selectedColSisDigests[i] = make([]T, len(entryList))
 			}
 
 			// Entries of the selected columns #j contained in the commitment #i.
 			selectedSubCol := proof.Columns[i][j]
-			fullCol = append(fullCol, selectedSubCol...)
+			selectedSubColPtr := make([]*T, len(selectedSubCol))
+			for k := 0; k < len(selectedSubCol); k++ {
+				selectedSubColPtr[k] = &selectedSubCol[k]
+			}
+			fullCol = append(fullCol, selectedSubColPtr...)
 
 			// Check consistency between the opened column and the commitment
 			if !params.HasNoSisHasher() {
 				panic("the vortex verifier circuit only supports a no-SIS hasher")
 			}
 
-			hasher, _ := params.NoSisHasher(api)
-			hasher.Reset()
-			hasher.Write(selectedSubCol...)
-			digest := hasher.Sum()
-			selectedColSisDigests[i][j] = digest
+			// TODO @thomas fixme
+			// hasher, _ := params.NoSisHasher(api)
+			// hasher.Reset()
+			// hasher.Write(selectedSubCol...)
+			// digest := hasher.Sum()
+			// selectedColSisDigests[i][j] = digest
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := gnarkEvalCanonical(api, fullCol, randomCoin)
+		y := gnarkEvalCanonical(api, fullCol, &randomCoin)
 		v := tbl.Lookup(selectedColID)[0]
 		api.AssertIsEqual(y, v)
 

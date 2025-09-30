@@ -3,6 +3,7 @@ package innerproduct
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -29,13 +30,13 @@ func WithMinimalRound(minimalRound int) Option {
 //
 // The inner-product queries are processed in groups relating to column of the
 // same size.
-func Compile(options ...Option) func(*wizard.CompiledIOP) {
+func Compile[T zk.Element](options ...Option) func(*wizard.CompiledIOP[T]) {
 	return func(ci *wizard.CompiledIOP) {
-		compile(ci, options...)
+		compile[T](ci, options...)
 	}
 }
 
-func compile(comp *wizard.CompiledIOP, options ...Option) {
+func compile[T zk.Element](comp *wizard.CompiledIOP[T], options ...Option) {
 
 	var opts optionSet
 	for _, op := range options {
@@ -50,7 +51,7 @@ func compile(comp *wizard.CompiledIOP, options ...Option) {
 		round = -1
 		// queryMap organizes all the encountered queries by column size. These
 		// form groups that are independently compiled.
-		queryMap = map[int][]query.InnerProduct{}
+		queryMap = map[int][]query.InnerProduct[T]{}
 		// sizes lists all the column sizes that have been encountered by
 		// the compiler in chronological order. This is necessary this let us
 		// iterate over theses in deterministic order. If we only had `queryMap`
@@ -63,7 +64,7 @@ func compile(comp *wizard.CompiledIOP, options ...Option) {
 		// in the same order as `sizes`.
 		// proverTaskCollaps indicates when we have more than one pair of inner-product with the same size
 		// and thus collapsing all pairs to a single column is required.
-		proverTaskNoCollaps, proverTaskCollpas ProverTask
+		proverTaskNoCollaps, proverTaskCollpas ProverTask[T]
 	)
 
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
@@ -95,20 +96,20 @@ func compile(comp *wizard.CompiledIOP, options ...Option) {
 		ctx := compileForSize(comp, round, queryMap[size])
 		switch ctx.Round {
 		case round:
-			proverTaskNoCollaps = append(proverTaskNoCollaps, ctx)
+			proverTaskNoCollaps.Pt = append(proverTaskNoCollaps.Pt, ctx)
 		case round + 1:
-			proverTaskCollpas = append(proverTaskCollpas, ctx)
+			proverTaskCollpas.Pt = append(proverTaskCollpas.Pt, ctx)
 		default:
 			utils.Panic("round before compilation was  %v and after compilation %v", round, ctx.Round)
 		}
 
 	}
 	// run the prover of the relevant round
-	if len(proverTaskNoCollaps) >= 1 {
+	if len(proverTaskNoCollaps.Pt) >= 1 {
 		comp.RegisterProverAction(round, proverTaskNoCollaps)
 	}
 
-	if len(proverTaskCollpas) >= 1 {
+	if len(proverTaskCollpas.Pt) >= 1 {
 		comp.RegisterProverAction(round+1, proverTaskCollpas)
 	}
 

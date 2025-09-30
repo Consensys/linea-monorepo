@@ -29,11 +29,11 @@ func testCaseGenerator() []testCase {
 		numTests = 7
 		polSize  = 1 << 4
 		nPols    = 16
-		rows     = make([]ifaces.Column, nPols)
+		rows     = make([]ifaces.Column[T], nPols)
 		// variables for multi-round
 		nPolsMultiRound = []int{14, 8, 9, 16}
 		numRounds       = 4
-		rowsMultiRound  = make([][]ifaces.Column, numRounds)
+		rowsMultiRound  = make([][]ifaces.Column[T], numRounds)
 		// variables for precomputed columns
 		numPrecomputedsNoSIS = 4
 		numPrecomputedsSIS   = 10
@@ -81,7 +81,7 @@ func testCaseGenerator() []testCase {
 					}
 				}
 
-				rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRound[round])
+				rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRound[round])
 				for i := range nPolsMultiRound[round] {
 					rowsMultiRound[round][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
 				}
@@ -135,7 +135,7 @@ func testCaseGenerator() []testCase {
 					}
 				}
 
-				rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRound[round])
+				rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRound[round])
 				if round == 0 {
 					for i := 0; i < numPrecomputedsNoSIS; i++ {
 						p := smartvectors.Rand(polSize)
@@ -206,7 +206,7 @@ func testCaseGenerator() []testCase {
 					}
 				}
 
-				rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRound[round])
+				rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRound[round])
 				if round == 0 {
 					for i := 0; i < numPrecomputedsSIS; i++ {
 						p := smartvectors.Rand(polSize)
@@ -277,7 +277,7 @@ func testCaseGenerator() []testCase {
 					}
 				}
 
-				rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRoundNoSIS[round])
+				rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRoundNoSIS[round])
 				if round == 0 {
 					for i := 0; i < numPrecomputedsNoSIS; i++ {
 						p := smartvectors.Rand(polSize)
@@ -348,7 +348,7 @@ func testCaseGenerator() []testCase {
 					}
 				}
 
-				rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRoundSIS[round])
+				rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRoundSIS[round])
 				if round == 0 {
 					for i := 0; i < numPrecomputedsSIS; i++ {
 						p := smartvectors.Rand(polSize)
@@ -419,7 +419,7 @@ func testCaseGenerator() []testCase {
 					}
 				}
 
-				rowsMultiRound[round] = make([]ifaces.Column, nPolsMultiRoundEmpty[round])
+				rowsMultiRound[round] = make([]ifaces.Column[T], nPolsMultiRoundEmpty[round])
 				if round == 0 {
 					for i := 0; i < numPrecomputedsNoSIS; i++ {
 						p := smartvectors.Rand(polSize)

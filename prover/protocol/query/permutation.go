@@ -3,7 +3,6 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -181,7 +180,7 @@ func CheckPermutation(a, b []ifaces.ColAssignment) error {
 
 // GnarkCheck will panic in this construction because we do not have a good way
 // to check the query within a circuit
-func (p Permutation[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (p Permutation[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	panic("UNSUPPORTED : can't check an permutation query directly into the circuit")
 }
 

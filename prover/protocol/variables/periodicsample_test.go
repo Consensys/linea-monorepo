@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,7 @@ func TestPeriodicSampleGlobalConstraint(t *testing.T) {
 		P := build.RegisterCommit("P", n) // overshadows P
 
 		// P(X) = P(X/w) + P(X/w^2)
-		expr := ifaces.ColumnAsVariable(P).Mul(variables.NewPeriodicSample(4, 1))
+		expr := ifaces.ColumnAsVariable(P).Mul(variables.NewPeriodicSample[zk.NativeElement](4, 1))
 
 		_ = build.GlobalConstraint("Q", expr)
 	}
@@ -56,7 +57,7 @@ func TestPeriodicSampleAsLagrange(t *testing.T) {
 		P := build.RegisterCommit("P", n) // overshadows P
 
 		// P(X) = P(X/w) + P(X/w^2)
-		expr := ifaces.ColumnAsVariable(P).Mul(variables.NewPeriodicSample(8, 0))
+		expr := ifaces.ColumnAsVariable(P).Mul(variables.NewPeriodicSample[zk.NativeElement](8, 0))
 		_ = build.GlobalConstraint("Q", expr)
 	}
 
@@ -83,7 +84,7 @@ func TestPeriodicSampleShouldFail(t *testing.T) {
 		P := build.RegisterCommit("P", n) // overshadows P
 
 		// P(X) = P(X/w) + P(X/w^2)
-		expr := ifaces.ColumnAsVariable(P).Mul(variables.NewPeriodicSample(8, 0))
+		expr := ifaces.ColumnAsVariable(P).Mul(variables.NewPeriodicSample[zk.NativeElement](8, 0))
 
 		_ = build.GlobalConstraint("Q", expr)
 	}
@@ -110,12 +111,12 @@ func TestPeriodicSampleVanillaEval(t *testing.T) {
 	for _, domain := range domains {
 		for period := 2; period <= domain; period *= 2 {
 			for offset := 0; offset < period; offset++ {
-				// Since NewPeriodicSample returns a variable directly (it's the only use-case)
+				// Since NewPeriodicSample[zk.NativeElement] returns a variable directly (it's the only use-case)
 				// We need to do a bunch of unwrapping to get to the real PeriodicSampling that
 				// we want to test
-				sampling := variables.NewPeriodicSample(period, offset).
-					Operator.(symbolic.Variable).
-					Metadata.(variables.PeriodicSample)
+				sampling := variables.NewPeriodicSample[zk.NativeElement](period, offset).
+					Operator.(symbolic.Variable[zk.NativeElement]).
+					Metadata.(variables.PeriodicSample[zk.NativeElement])
 
 				vanillaEval := sampling.EvalCoset(domain, 0, 1, false)
 
@@ -144,12 +145,12 @@ func TestPeriodicSampleCoset(t *testing.T) {
 	for _, domain := range domains {
 		for period := 2; period <= domain; period *= 2 {
 			for offset := 0; offset < period; offset++ {
-				// Since NewPeriodicSample returns a variable directly (it's the only use-case)
+				// Since NewPeriodicSample[zk.NativeElement] returns a variable directly (it's the only use-case)
 				// We need to do a bunch of unwrapping to get to the real PeriodicSampling that
 				// we want to test
-				sampling := variables.NewPeriodicSample(period, offset).
-					Operator.(symbolic.Variable).
-					Metadata.(variables.PeriodicSample)
+				sampling := variables.NewPeriodicSample[zk.NativeElement](period, offset).
+					Operator.(symbolic.Variable[zk.NativeElement]).
+					Metadata.(variables.PeriodicSample[zk.NativeElement])
 
 				vanillaEval := sampling.EvalCoset(domain, 0, 1, false)
 
@@ -193,12 +194,12 @@ func TestPeriodicSampleEvalAtConsistentWithEval(t *testing.T) {
 	for _, domain := range domains {
 		for period := 2; period <= domain; period *= 2 {
 			for offset := 0; offset < period; offset++ {
-				// Since NewPeriodicSample returns a variable directly (it's the only use-case)
+				// Since NewPeriodicSample[zk.NativeElement] returns a variable directly (it's the only use-case)
 				// We need to do a bunch of unwrapping to get to the real PeriodicSampling that
 				// we want to test
-				sampling := variables.NewPeriodicSample(period, offset).
-					Operator.(symbolic.Variable).
-					Metadata.(variables.PeriodicSample)
+				sampling := variables.NewPeriodicSample[zk.NativeElement](period, offset).
+					Operator.(symbolic.Variable[zk.NativeElement]).
+					Metadata.(variables.PeriodicSample[zk.NativeElement])
 
 				vanillaEval := sampling.EvalCoset(domain, 0, 1, false)
 
@@ -219,12 +220,12 @@ func TestPeriodicSampleEvalAtOnDomain(t *testing.T) {
 	for _, domain := range domains {
 		for period := 2; period <= domain; period *= 2 {
 			for offset := 0; offset < period; offset++ {
-				// Since NewPeriodicSample returns a variable directly (it's the only use-case)
+				// Since NewPeriodicSample[zk.NativeElement] returns a variable directly (it's the only use-case)
 				// We need to do a bunch of unwrapping to get to the real PeriodicSampling that
 				// we want to test
-				sampling := variables.NewPeriodicSample(period, offset).
-					Operator.(symbolic.Variable).
-					Metadata.(variables.PeriodicSample)
+				sampling := variables.NewPeriodicSample[zk.NativeElement](period, offset).
+					Operator.(symbolic.Variable[zk.NativeElement]).
+					Metadata.(variables.PeriodicSample[zk.NativeElement])
 
 				for pos := 0; pos < period; pos++ {
 

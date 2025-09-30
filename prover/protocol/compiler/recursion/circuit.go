@@ -3,7 +3,6 @@ package recursion
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -12,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 // RecursionCircuit is a gnark-circuit doing the recursion of a
@@ -24,27 +24,27 @@ import (
 //
 // Alex: please don't change the ordering of the arguments as this
 // affects the parsing of the witness.
-type RecursionCircuit struct {
-	X                  gnarkfext.Element   `gnark:",public"`
-	Ys                 []gnarkfext.Element `gnark:",public"`
-	Commitments        []frontend.Variable `gnark:",public"`
-	Pubs               []frontend.Variable `gnark:",public"`
+type RecursionCircuit[T zk.Element] struct {
+	X                  gnarkfext.E4Gen[T]   `gnark:",public"`
+	Ys                 []gnarkfext.E4Gen[T] `gnark:",public"`
+	Commitments        []T                  `gnark:",public"`
+	Pubs               []T                  `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit
-	withoutGkr         bool                 `gnark:"-"`
-	withExternalHasher bool                 `gnark:"-"`
-	PolyQuery          query.UnivariateEval `gnark:"-"`
-	MerkleRoots        []ifaces.Column      `gnark:"-"`
+	withoutGkr         bool                    `gnark:"-"`
+	withExternalHasher bool                    `gnark:"-"`
+	PolyQuery          query.UnivariateEval[T] `gnark:"-"`
+	MerkleRoots        []ifaces.Column[T]      `gnark:"-"`
 }
 
 // AllocRecursionCircuit allocates a new RecursionCircuit with the
 // given parameters.
-func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExternalHasher bool) *RecursionCircuit {
+func AllocRecursionCircuit[T zk.Element](comp *wizard.CompiledIOP[T], withoutGkr bool, withExternalHasher bool) *RecursionCircuit[T] {
 
 	var (
 		pcsCtx      = comp.PcsCtxs.(*vortex.Ctx)
 		polyQuery   = pcsCtx.Query
 		numRound    = comp.QueriesParams.Round(polyQuery.QueryID) + 1
-		merkleRoots = []ifaces.Column{}
+		merkleRoots = []ifaces.Column[T]{}
 	)
 
 	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
@@ -57,20 +57,20 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		}
 	}
 
-	return &RecursionCircuit{
+	return &RecursionCircuit[T]{
 		withoutGkr:         withoutGkr,
 		withExternalHasher: withExternalHasher,
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
-		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)),
-		Commitments:        make([]frontend.Variable, len(merkleRoots)),
-		Ys:                 make([]gnarkfext.Element, len(polyQuery.Pols)),
+		Pubs:               make([]T, len(comp.PublicInputs)),
+		Commitments:        make([]T, len(merkleRoots)),
+		Ys:                 make([]gnarkfext.E4Gen[T], len(polyQuery.Pols)),
 	}
 }
 
 // Define implements the [frontend.Circuit] interface.
-func (r *RecursionCircuit) Define(api frontend.API) error {
+func (r *RecursionCircuit[T]) Define(api frontend.API) error {
 
 	w := r.WizardVerifier
 
@@ -80,9 +80,9 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
 	}
 
-	if r.withExternalHasher {
-		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api} // TODO: fix in crypto/mimc/factories.go
-	}
+	// if r.withExternalHasher {
+	// 	w.HasherFactory = &mimc.ExternalHasherFactory{Api: api} // TODO: fix in crypto/mimc/factories.go
+	// }
 
 	w.Verify(api)
 
@@ -107,7 +107,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 // AssignRecursionCircuit assigns a recursion based on a compiled-IOP
 // and a proof.
-func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs []field.Element, finalFsState field.Element) *RecursionCircuit {
+func AssignRecursionCircuit[T zk.Element](comp *wizard.CompiledIOP[T], proof wizard.Proof, pubs []field.Element, finalFsState field.Element) *RecursionCircuit[T] {
 
 	var (
 		pcsCtx         = comp.PcsCtxs.(*vortex.Ctx)
@@ -115,11 +115,11 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		numRound       = comp.QueriesParams.Round(polyQuery.QueryID) + 1
 		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound)
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
-		circuit        = &RecursionCircuit{
+		circuit        = &RecursionCircuit[T]{
 			WizardVerifier: wizard.AssignVerifierCircuit(comp, proof, numRound),
 			X:              params.ExtX,
 			Ys:             params.ExtYs,
-			Pubs:           vector.IntoGnarkAssignment(pubs),
+			Pubs:           vector.IntoGnarkAssignment[T](pubs),
 			PolyQuery:      polyQuery,
 		}
 	)
@@ -143,7 +143,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 
 // SplitPublicInputs parses a vector of field elements and returns the
 // parsed arguments.
-func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x T, ys, mRoots, pubs []T) {
+func SplitPublicInputs[R any, T zk.Element](r *Recursion[T], allPubs []R) (x R, ys, mRoots, pubs []R) {
 
 	var (
 		numPubs     = len(r.InputCompiledIOP.PublicInputs)
@@ -166,10 +166,10 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x T, ys, mRoots, pubs 
 	// The order below is based on the field declaration order for the
 	// circuit struct.
 	//
-	// X              frontend.Variable   `gnark:",public"`
-	// Ys             []frontend.Variable `gnark:",public"`
-	// Commitments    []frontend.Variable `gnark:",public"`
-	// Pubs           []frontend.Variable `gnark:",public"`
+	// X              T   `gnark:",public"`
+	// Ys             []T `gnark:",public"`
+	// Commitments    []T `gnark:",public"`
+	// Pubs           []T `gnark:",public"`
 	//
 	x, allPubDrain = allPubDrain[0], allPubDrain[1:]
 	ys, allPubDrain = allPubDrain[:numYs], allPubDrain[numYs:]

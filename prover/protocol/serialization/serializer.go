@@ -60,7 +60,7 @@ var (
 	TypeOfArrOfFieldElement  = reflect.TypeOf([]field.Element{})
 	TypeOfPlonkCirc          = reflect.TypeOf(&cs.SparseR1CS{})
 	TypeOfArithmetization    = reflect.TypeOf(arithmetization.Arithmetization{})
-	TypeOfFrontendVariable   = reflect.TypeOf((*frontend.Variable)(nil)).Elem()
+	TypeOfFrontendVariable   = reflect.TypeOf((*T)(nil)).Elem()
 	TypeOfHashFuncGenerator  = reflect.TypeOf(func() hash.Hash { return nil })
 	TypeOfHashTypeHasher     = reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} })
 	TypeOfRingSisKeyPtr      = reflect.TypeOf(&ringsis.Key{})

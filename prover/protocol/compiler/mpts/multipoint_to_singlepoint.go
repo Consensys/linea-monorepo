@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -18,11 +19,11 @@ import (
 // multipoint to singlepoint step. This step ensures that all the PIOP
 // evaluations are done at the same points for all the polynomials. This
 // ensures that Vortex can be applied on top.
-type MultipointToSinglepointCompilation struct {
+type MultipointToSinglepointCompilation[T zk.Element] struct {
 
 	// Queries lists all the compiled evaluation queries that are relevant
 	// to the compilation step.
-	Queries []query.UnivariateEval
+	Queries []query.UnivariateEval[T]
 
 	// Polys lists all the polynomials involved in the compilation. Meaning
 	// all the polynomials that are affetcted by one of the queries. The
@@ -33,13 +34,13 @@ type MultipointToSinglepointCompilation struct {
 	//
 	// The first round is a little special as the precomputed polynomials are
 	// considered in their own round, placed at the beginning.
-	Polys []ifaces.Column
+	Polys []ifaces.Column[T]
 
 	// ExplictlyEvaluated columns are columns that are explicitly evaluated
 	// in the compilation. This includes the non-committed or non-precomputed
 	// columns and all the verifier columns. They are not part of the generated
 	// query.
-	ExplicitlyEvaluated []ifaces.Column
+	ExplicitlyEvaluated []ifaces.Column[T]
 
 	// EvalPointOfPolys lists, for each entry in [Polys], the entries of
 	// [Queries] corresponding to evaluation points affected to the
@@ -76,11 +77,11 @@ type MultipointToSinglepointCompilation struct {
 	// NewQuery is the query that is produced by the compilation, also named
 	// the "Grail" query in the paper. The evaluation spans overall the
 	// polynomials found in polys and the quotient.
-	NewQuery query.UnivariateEval
+	NewQuery query.UnivariateEval[T]
 
 	// Quotient is the column constructed as the quotient of all the
 	// polynomials found in polys by their respective evaluation claims.
-	Quotient ifaces.Column
+	Quotient ifaces.Column[T]
 
 	// LinCombCoeffLambda is the linear combination coefficient that is used to
 	// accumulate the quotient.
@@ -92,18 +93,18 @@ type MultipointToSinglepointCompilation struct {
 }
 
 // Compile applies the multipoint to singlepoint compilation pass over `comp`.
-func Compile(options ...Option) func(*wizard.CompiledIOP) {
+func Compile[T zk.Element](options ...Option[T]) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
-		compileMultipointToSinglepoint(comp, options)
+		compileMultipointToSinglepoint[T](comp, options)
 	}
 }
 
 // compileMultipointToSinglepoint takes all the uncompiled multipoint to
 // singlepoint queries and compile them using a quotient accumulation technique.
-func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) *MultipointToSinglepointCompilation {
+func compileMultipointToSinglepoint[T zk.Element](comp *wizard.CompiledIOP, options []Option[T]) *MultipointToSinglepointCompilation[T] {
 
-	ctx := &MultipointToSinglepointCompilation{
-		Queries: getAndMarkAsCompiledQueries(comp),
+	ctx := &MultipointToSinglepointCompilation[T]{
+		Queries: getAndMarkAsCompiledQueries[T](comp),
 	}
 
 	for _, op := range options {
@@ -154,7 +155,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		panic(err)
 	}
 
-	ctx.Polys = slices.Concat(append([][]ifaces.Column{polyPrecomputed, direct}, polysByRound...)...)
+	ctx.Polys = slices.Concat(append([][]ifaces.Column[T]{polyPrecomputed, direct}, polysByRound...)...)
 	ctx.ExplicitlyEvaluated = direct
 
 	ctx.LinCombCoeffLambda = comp.InsertCoin(
@@ -184,13 +185,13 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.NewQuery = comp.InsertUnivariate(
 		ctx.getNumRound(comp)+1,
 		ifaces.QueryIDf("MPTS_NEW_QUERY_%v", comp.SelfRecursionCount),
-		append(slices.Concat(append([][]ifaces.Column{polyPrecomputed}, polysByRound...)...), ctx.Quotient),
+		append(slices.Concat(append([][]ifaces.Column[T]{polyPrecomputed}, polysByRound...)...), ctx.Quotient),
 	)
 
 	ctx.EvalPointOfPolys, ctx.PolysOfEvalPoint = indexPolysAndPoints(ctx.Polys, ctx.Queries)
 
-	comp.RegisterProverAction(ctx.getNumRound(comp), QuotientAccumulation{ctx})
-	comp.RegisterProverAction(ctx.getNumRound(comp)+1, RandomPointEvaluation{ctx})
+	comp.RegisterProverAction(ctx.getNumRound(comp), QuotientAccumulation[T]{ctx})
+	comp.RegisterProverAction(ctx.getNumRound(comp)+1, RandomPointEvaluation[T]{ctx})
 	comp.RegisterVerifierAction(ctx.getNumRound(comp)+1, VerifierAction{ctx})
 
 	return ctx
@@ -198,7 +199,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 
 // setMaxNumberOfRowsOf scans the list of columns and returns the largest size.
 // and set it in the context. The function returns an error if the list is empty.
-func (ctx *MultipointToSinglepointCompilation) setMaxNumberOfRowsOf(columns []ifaces.Column) int {
+func (ctx *MultipointToSinglepointCompilation[T]) setMaxNumberOfRowsOf(columns []ifaces.Column[T]) int {
 
 	if len(columns) == 0 {
 		return 0
@@ -214,7 +215,7 @@ func (ctx *MultipointToSinglepointCompilation) setMaxNumberOfRowsOf(columns []if
 
 // getNumRow returns the number of rows and panics if the field is not set
 // in the context.
-func (ctx *MultipointToSinglepointCompilation) getNumRow() int {
+func (ctx *MultipointToSinglepointCompilation[T]) getNumRow() int {
 	if ctx.NumRow == 0 {
 		utils.Panic("the number of rows is not set")
 	}
@@ -226,7 +227,7 @@ func (ctx *MultipointToSinglepointCompilation) getNumRow() int {
 // context.
 //
 // The function assumes that the number of queries to compile is not 0.
-func (ctx *MultipointToSinglepointCompilation) getNumRound(comp *wizard.CompiledIOP) int {
+func (ctx *MultipointToSinglepointCompilation[T]) getNumRound(comp *wizard.CompiledIOP) int {
 
 	maxRound := -1
 	for i := range ctx.Queries {
@@ -247,10 +248,10 @@ func (ctx *MultipointToSinglepointCompilation) getNumRound(comp *wizard.Compiled
 
 // getAndMarkAsCompiledQueries returns all the queries that are relevant
 // to the multipoint to singlepoint compilation and mark them as ignored.
-func getAndMarkAsCompiledQueries(comp *wizard.CompiledIOP) []query.UnivariateEval {
+func getAndMarkAsCompiledQueries[T zk.Element](comp *wizard.CompiledIOP) []query.UnivariateEval[T] {
 
 	var (
-		selectedQueries = []query.UnivariateEval{}
+		selectedQueries = []query.UnivariateEval[T]{}
 		allQueries      = comp.QueriesParams.AllUnignoredKeys()
 	)
 
@@ -276,25 +277,25 @@ func getAndMarkAsCompiledQueries(comp *wizard.CompiledIOP) []query.UnivariateEva
 // the beginning. addUnconstrainedColumn is a flag indicating whether to add
 // the unconstrained columns, it will only add the columns with the
 // [column.Committed] status.
-func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.UnivariateEval, addUnconstrainedColumn bool) (compiledByRound [][]ifaces.Column, precomputed []ifaces.Column, direct []ifaces.Column) {
+func sortPolynomialsByRoundAndName[T zk.Element](comp *wizard.CompiledIOP, queries []query.UnivariateEval[T], addUnconstrainedColumn bool) (compiledByRound [][]ifaces.Column[T], precomputed []ifaces.Column[T], direct []ifaces.Column[T]) {
 
-	compiledByRound = make([][]ifaces.Column, 0)
-	precomputed = make([]ifaces.Column, 0)
-	direct = make([]ifaces.Column, 0)
+	compiledByRound = make([][]ifaces.Column[T], 0)
+	precomputed = make([]ifaces.Column[T], 0)
+	direct = make([]ifaces.Column[T], 0)
 
 	for _, q := range queries {
 		for _, poly := range q.Pols {
 
-			if _, isShf := poly.(column.Shifted); isShf {
+			if _, isShf := poly.(column.Shifted[T]); isShf {
 				utils.Panic("shifted polys are not supported. Please, run the naturalization pass prior to calling the MPTS pass")
 			}
 
-			if _, isV := poly.(verifiercol.VerifierCol); isV {
+			if _, isV := poly.(verifiercol.VerifierCol[T]); isV {
 				direct = append(direct, poly)
 				continue
 			}
 
-			if poly.(column.Natural).Status().IsPublic() {
+			if poly.(column.Natural[T]).Status().IsPublic() {
 				direct = append(direct, poly)
 				continue
 			}
@@ -327,7 +328,7 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 
 	// cmpNames is a helper function returning a comparison between two columns
 	// by name in alphabetical order.
-	cmpNames := func(a, b ifaces.Column) int {
+	cmpNames := func(a, b ifaces.Column[T]) int {
 		if a.GetColID() < b.GetColID() {
 			return -1
 		}
@@ -339,9 +340,9 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 
 	// cleanSubList sorts and removes duplicates and empty entries from its
 	// input list. The input slice is mutated and should not be used anymore.
-	cleanSubList := func(s []ifaces.Column) []ifaces.Column {
+	cleanSubList := func(s []ifaces.Column[T]) []ifaces.Column[T] {
 		slices.SortFunc(s, cmpNames)
-		s = slices.CompactFunc(s, func(a, b ifaces.Column) bool { return a.GetColID() == b.GetColID() })
+		s = slices.CompactFunc(s, func(a, b ifaces.Column[T]) bool { return a.GetColID() == b.GetColID() })
 		s = slices.Clip(s)
 		return s
 	}
@@ -357,7 +358,7 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 // extendPWithShadowColumns adds shadow columns to the given list of polynomials
 // to match a given profile. The profile corresponds to a target number of columns
 // to meet in "p". The function will ignore the verifiercol from the count.
-func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p []ifaces.Column, profile int, precomputed bool) ([]ifaces.Column, error) {
+func extendPWithShadowColumns[T zk.Element](comp *wizard.CompiledIOP, round int, numRow int, p []ifaces.Column[T], profile int, precomputed bool) ([]ifaces.Column[T], error) {
 
 	if len(p) > profile {
 		return nil, fmt.Errorf("the profile is too small for the given polynomials list, round=%v len(p)=%v profile=%v", round, len(p), profile)
@@ -368,7 +369,7 @@ func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p
 	// This loop effective remove the verifiercol from consideration when evaluating
 	// how many shadow columns are needed.
 	for i := range p {
-		_, isVcol := p[i].(verifiercol.VerifierCol)
+		_, isVcol := p[i].(verifiercol.VerifierCol[T])
 		if isVcol {
 			numP--
 		}
@@ -376,11 +377,11 @@ func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p
 
 	for i := numP; i < profile; i++ {
 
-		var newShadowCol ifaces.Column
+		var newShadowCol ifaces.Column[T]
 		if precomputed {
-			newShadowCol = precomputedShadowRow(comp, numRow, i)
+			newShadowCol = precomputedShadowRow[T](comp, numRow, i)
 		} else {
-			newShadowCol = autoAssignedShadowRow(comp, numRow, round, i-numP)
+			newShadowCol = autoAssignedShadowRow[T](comp, numRow, round, i-numP)
 		}
 
 		p = append(p, newShadowCol)
@@ -395,7 +396,7 @@ func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p
 //
 // The function will ignore the first round if it only contains precomputed
 // columns. The function also ignores [VerifierCol].
-func getStartingRound(comp *wizard.CompiledIOP, s [][]ifaces.Column) int {
+func getStartingRound[T zk.Element](comp *wizard.CompiledIOP, s [][]ifaces.Column[T]) int {
 
 	if len(s) == 0 {
 		panic("empty list")
@@ -403,7 +404,7 @@ func getStartingRound(comp *wizard.CompiledIOP, s [][]ifaces.Column) int {
 
 	for j := range s[0] {
 
-		_, isVcol := s[0][j].(verifiercol.VerifierCol)
+		_, isVcol := s[0][j].(verifiercol.VerifierCol[T])
 		if isVcol {
 			continue
 		}
@@ -429,7 +430,7 @@ func getStartingRound(comp *wizard.CompiledIOP, s [][]ifaces.Column) int {
 //
 // The returns are two lists of lists of integers referencing the positions
 // in the inputs [polys] and [points].
-func indexPolysAndPoints(polys []ifaces.Column, points []query.UnivariateEval) (evalPointOfPolys, polysOfEvalPoint [][]int) {
+func indexPolysAndPoints[T zk.Element](polys []ifaces.Column[T], points []query.UnivariateEval[T]) (evalPointOfPolys, polysOfEvalPoint [][]int) {
 
 	evalPointOfPolys = make([][]int, len(polys))
 	polysOfEvalPoint = make([][]int, len(points))

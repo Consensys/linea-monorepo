@@ -7,6 +7,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 const (
@@ -28,19 +29,19 @@ const (
 // can always make sure to specify the table in the same order all the time.
 //
 // Importantly, the function allocates its own result.
-func GetTableCanonicalOrder(q query.Inclusion) ([]ifaces.Column, [][]ifaces.Column) {
+func GetTableCanonicalOrder[T zk.Element](q query.Inclusion[T]) ([]ifaces.Column[T], [][]ifaces.Column[T]) {
 
 	if len(q.Including) > 1 {
 		// The append here are performing a deep-copy of the slice within the
 		// query. This prevents side-effects from appearing later when appending
 		// conditional filter to theses.
-		return append([]ifaces.Column{}, q.Included...),
-			append([][]ifaces.Column{}, q.Including...)
+		return append([]ifaces.Column[T]{}, q.Included...),
+			append([][]ifaces.Column[T]{}, q.Including...)
 	}
 
 	var (
-		checked    = make([]ifaces.Column, len(q.Included))
-		table      = make([]ifaces.Column, len(q.Including[0]))
+		checked    = make([]ifaces.Column[T], len(q.Included))
+		table      = make([]ifaces.Column[T], len(q.Including[0]))
 		colNamesT  = make([]ifaces.ColID, len(checked))
 		sortingMap = make([]int, len(table))
 	)
@@ -64,7 +65,7 @@ func GetTableCanonicalOrder(q query.Inclusion) ([]ifaces.Column, [][]ifaces.Colu
 		}
 	}
 
-	return checked, [][]ifaces.Column{table}
+	return checked, [][]ifaces.Column[T]{table}
 }
 
 // DeriveName constructs a generic name
@@ -79,14 +80,14 @@ func DeriveName[R ~string](args ...any) R {
 // DeriveTableName constructs a name for the table `t`. The caller may provide
 // a context and a suffix to the name. If `t` is empty, the name is the
 // concatenation of `context` and `name` separated by an underscore.
-func DeriveTableName[R ~string](context string, t [][]ifaces.Column, name string) R {
+func DeriveTableName[R ~string, T zk.Element](context string, t []table[T], name string) R {
 	res := fmt.Sprintf("%v_%v_%v", NameTable(t), context, name)
 	return R(res)
 }
 
 // DeriveTableNameWithIndex is as [deriveTableName] but additionally allows
 // appending an integer index in the name.
-func DeriveTableNameWithIndex[R ~string](context string, t [][]ifaces.Column, index int, name string) R {
+func DeriveTableNameWithIndex[R ~string, T zk.Element](context string, t []table[T], index int, name string) R {
 	res := fmt.Sprintf("%v_%v_%v_%v", NameTable(t), index, context, name)
 	return R(res)
 }
@@ -94,22 +95,22 @@ func DeriveTableNameWithIndex[R ~string](context string, t [][]ifaces.Column, in
 // NameTable returns a unique name corresponding to the provided
 // sequence of columns `t`. The unique name is constructed by appending the
 // name of all the column separated by an underscore.
-func NameTable(t []table) string {
+func NameTable[T zk.Element](t []table[T]) string {
 	// This single fragment case is managed as a special case although it is
 	// not really one. This is for backwards compatibility.
 	if len(t) == 1 {
-		colNames := make([]string, len(t[0]))
-		for col := range t[0] {
-			colNames[col] = string(t[0][col].GetColID())
+		colNames := make([]string, len(t[0].t))
+		for col := range t[0].t {
+			colNames[col] = string(t[0].t[col].GetColID())
 		}
 		return fmt.Sprintf("TABLE_%v", strings.Join(colNames, ","))
 	}
 
 	fragNames := make([]string, len(t))
 	for frag := range t {
-		colNames := make([]string, len(t[frag]))
-		for col := range t[frag] {
-			colNames[col] = string(t[frag][col].GetColID())
+		colNames := make([]string, len(t[frag].t))
+		for col := range t[frag].t {
+			colNames[col] = string(t[frag].t[col].GetColID())
 		}
 		fragNames[frag] = fmt.Sprintf("(%v)", strings.Join(colNames, ", "))
 	}

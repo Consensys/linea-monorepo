@@ -121,7 +121,7 @@ func (info *Info) Sample(fs hash.StateStorer, seed field.Element) interface{} {
 
 // SampleGnark samples a random coin in a gnark circuit. The seed can optionally be
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
-func (info *Info) SampleGnark(fs *fiatshamir.GnarkFiatShamir, seed frontend.Variable) interface{} {
+func (info *Info) SampleGnark(fs *fiatshamir.GnarkFiatShamir, seed T) interface{} {
 	switch info.Type {
 	case Field:
 		return fs.RandomField()

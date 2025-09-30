@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/hash"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -292,7 +291,7 @@ func (h Horner[T]) Check(run ifaces.Runtime) error {
 // CheckGnark implements the [ifaces.Query] interface. It will panic
 // when called as this query is not intended to be explicitly verified
 // by the verifier in a gnark circuit.
-func (h *Horner[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (h *Horner[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	panic("Horner query is not intended to be explicitly verified by the verifier in a gnark circuit")
 }
 

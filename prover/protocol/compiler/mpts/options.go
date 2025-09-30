@@ -1,7 +1,9 @@
 package mpts
 
+import "github.com/consensys/linea-monorepo/prover/protocol/zk"
+
 // Option are options for the MultiPointToSinglePointCompilation
-type Option func(*MultipointToSinglepointCompilation)
+type Option[T zk.Element] func(*MultipointToSinglepointCompilation[T])
 
 // WithNumColumnProfileOpt tells the compiler to add shadow columns (columns
 // equal to zero everywhere to the comp). These columns are added so that
@@ -9,8 +11,8 @@ type Option func(*MultipointToSinglepointCompilation)
 // profile. The positions in the provided slices are understood as "starting
 // from the first non-empty" rounds that are compiled by the current
 // compilation context.
-func WithNumColumnProfileOpt(numColProfileOpt []int, numColPrecomputed int) Option {
-	return func(ctx *MultipointToSinglepointCompilation) {
+func WithNumColumnProfileOpt[T zk.Element](numColProfileOpt []int, numColPrecomputed int) Option[T] {
+	return func(ctx *MultipointToSinglepointCompilation[T]) {
 		ctx.NumColumnProfileOpt = numColProfileOpt
 		ctx.NumColumnProfilePrecomputed = numColPrecomputed
 	}
@@ -24,8 +26,8 @@ func WithNumColumnProfileOpt(numColProfileOpt []int, numColPrecomputed int) Opti
 //
 // When activated, the columns are added to the Grail query but the compiler
 // does not do anything else with the evaluation points.
-func AddUnconstrainedColumns() Option {
-	return func(ctx *MultipointToSinglepointCompilation) {
+func AddUnconstrainedColumns[T zk.Element]() Option[T] {
+	return func(ctx *MultipointToSinglepointCompilation[T]) {
 		ctx.AddUnconstrainedColumnsOpt = true
 	}
 }

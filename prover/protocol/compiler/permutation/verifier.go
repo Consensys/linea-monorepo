@@ -47,7 +47,7 @@ func (v *VerifierCtx) Run(run wizard.Runtime) error {
 // [VerifierCtx.Run] but in the context of a gnark circuit.
 func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	mustBeOne := frontend.Variable(1)
+	mustBeOne := T(1)
 
 	for _, zCtx := range v.Ctxs {
 		for _, opening := range zCtx.ZOpenings {
@@ -56,7 +56,7 @@ func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		}
 	}
 
-	api.AssertIsEqual(mustBeOne, frontend.Variable(1))
+	api.AssertIsEqual(mustBeOne, T(1))
 }
 
 func (v *VerifierCtx) Skip() {
@@ -124,14 +124,14 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 
 	var (
 		y = run.GetGrandProductParams(c.Query.ID).Prod
-		d = frontend.Variable(1)
+		d = T(1)
 	)
 
 	for _, e := range c.ExplicitNum {
 
 		var (
 			col = column.GnarkEvalExprColumn(api, run, e.Board())
-			tmp = frontend.Variable(1)
+			tmp = T(1)
 		)
 
 		for i := range col {
@@ -145,7 +145,7 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 
 		var (
 			col = column.GnarkEvalExprColumn(api, run, e.Board())
-			tmp = frontend.Variable(1)
+			tmp = T(1)
 		)
 
 		for i := range col {
@@ -157,7 +157,7 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 
 	y = api.Div(y, d)
 
-	api.AssertIsEqual(y, frontend.Variable(1))
+	api.AssertIsEqual(y, T(1))
 }
 
 func (c *CheckGrandProductIsOne) Skip() {
@@ -216,7 +216,7 @@ func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	claimedProd := run.GetGrandProductParams(f.GrandProductID).Prod
 
 	// zProd stores the product of the ending values of the z columns
-	zProd := frontend.Variable(field.One())
+	zProd := T(field.One())
 	for k := range f.ZOpenings {
 		utils.Panic("this should be expected to be extension fields")
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY

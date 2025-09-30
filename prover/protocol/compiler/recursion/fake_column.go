@@ -8,13 +8,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 )
 
-var _ ifaces.Column = (*FakeColumn)(nil)
+var _ ifaces.Column[T] = (*FakeColumn)(nil)
 
-// FakeColumn is a dummy implementation of the [ifaces.Column] interface
+// FakeColumn is a dummy implementation of the [ifaces.Column[T]] interface
 // it only implements the following methods:
 //
-//   - [ifaces.Column.GetColID]
-//   - [ifaces.Column.String]
+//   - [ifaces.Column[T].GetColID]
+//   - [ifaces.Column[T].String]
 type FakeColumn struct {
 	ID ifaces.ColID
 }
@@ -47,11 +47,11 @@ func (fc *FakeColumn) MustExists() {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (fc *FakeColumn) GetColAssignmentGnark(run ifaces.GnarkRuntime) []T {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (fc *FakeColumn) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) T {
 	panic("unimplemented")
 }
 
@@ -71,7 +71,7 @@ func (fc *FakeColumn) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.El
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+func (fc *FakeColumn) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]T, error) {
 	panic("unimplemented")
 }
 
@@ -79,7 +79,7 @@ func (fc *FakeColumn) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkf
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+func (fc *FakeColumn) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (T, error) {
 	panic("unimplemented")
 }
 

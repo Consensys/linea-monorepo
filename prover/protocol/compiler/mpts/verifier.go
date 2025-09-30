@@ -189,7 +189,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 		evaluationMap = make(map[ifaces.ColID]gnarkfext.Element)
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
 		x             = univParams.ExtX
-		polys         = make([][]frontend.Variable, 0)
+		polys         = make([][]T, 0)
 	)
 
 	for i := range ctx.NewQuery.Pols {
@@ -207,7 +207,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 			if err != nil {
 				utils.Panic("err=%v", err)
 			}
-			polys = append(polys, []frontend.Variable{x})
+			polys = append(polys, []T{x})
 			continue
 		}
 

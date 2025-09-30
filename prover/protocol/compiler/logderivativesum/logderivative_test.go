@@ -33,14 +33,14 @@ func TestLogDerivativeSum(t *testing.T) {
 
 		numerators := []*symbolic.Expression{
 			symbolic.Mul(p0, -1),
-			ifaces.ColumnAsVariable(p1),
+			ifaces.Column[T]AsVariable(p1),
 			symbolic.Mul(p2, p0, 2),
 		}
 
 		denominators := []*symbolic.Expression{
-			ifaces.ColumnAsVariable(q0),
-			ifaces.ColumnAsVariable(q1),
-			ifaces.ColumnAsVariable(q2),
+			ifaces.Column[T]AsVariable(q0),
+			ifaces.Column[T]AsVariable(q1),
+			ifaces.Column[T]AsVariable(q2),
 		}
 
 		size := 4
@@ -95,17 +95,17 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 		q3 := b.RegisterCommit("Den_3", 4)
 
 		numerators := []*symbolic.Expression{
-			ifaces.ColumnAsVariable(p0),
+			ifaces.Column[T]AsVariable(p0),
 			symbolic.Mul(p0, p1),
 			symbolic.Sub(p2, symbolic.Mul(p0, 4), symbolic.Mul(p0, p1)),
-			ifaces.ColumnAsVariable(p3),
+			ifaces.Column[T]AsVariable(p3),
 		}
 
 		denominators := []*symbolic.Expression{
-			ifaces.ColumnAsVariable(q0),
-			ifaces.ColumnAsVariable(q1),
-			ifaces.ColumnAsVariable(q2),
-			ifaces.ColumnAsVariable(q3),
+			ifaces.Column[T]AsVariable(q0),
+			ifaces.Column[T]AsVariable(q1),
+			ifaces.Column[T]AsVariable(q2),
+			ifaces.Column[T]AsVariable(q3),
 		}
 
 		size := 4
@@ -162,14 +162,14 @@ func TestLogDerivativeSumMixed2(t *testing.T) {
 
 		numerators := []*symbolic.Expression{
 			symbolic.Mul(p0, -1),
-			ifaces.ColumnAsVariable(p1),
+			ifaces.Column[T]AsVariable(p1),
 			symbolic.Mul(p2, p0, 2),
 		}
 
 		denominators := []*symbolic.Expression{
-			ifaces.ColumnAsVariable(q0),
-			ifaces.ColumnAsVariable(q1),
-			ifaces.ColumnAsVariable(q2),
+			ifaces.Column[T]AsVariable(q0),
+			ifaces.Column[T]AsVariable(q1),
+			ifaces.Column[T]AsVariable(q2),
 		}
 
 		size := 4

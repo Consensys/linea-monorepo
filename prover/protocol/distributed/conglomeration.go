@@ -347,14 +347,14 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
-		allGrandProduct           = frontend.Variable(1)
-		allLogDerivativeSum       = frontend.Variable(0)
-		allHornerSum              = frontend.Variable(0)
-		prevGlobalSent            = frontend.Variable(0)
-		prevHornerN1Hash          = frontend.Variable(0)
-		usedSharedRandomness      = frontend.Variable(0)
-		usedSharedRandomnessFound = frontend.Variable(0)
-		accumulativeLppHash       = frontend.Variable(0)
+		allGrandProduct           = T(1)
+		allLogDerivativeSum       = T(0)
+		allHornerSum              = T(0)
+		prevGlobalSent            = T(0)
+		prevHornerN1Hash          = T(0)
+		usedSharedRandomness      = T(0)
+		usedSharedRandomnessFound = T(0)
+		accumulativeLppHash       = T(0)
 	)
 
 	for i := 0; i < c.MaxNbProofs; i++ {
@@ -376,7 +376,7 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 			isLPP            = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLppPublicInput, i)
 			isGL             = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsGlPublicInput, i)
 
-			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext = frontend.Variable(0), frontend.Variable(0)
+			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext = T(0), T(0)
 		)
 
 		if i > 0 {

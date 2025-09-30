@@ -16,9 +16,9 @@ type Alliance struct {
 	// the  bigCol in the alliance;
 	// - for stitching, it is the result of stitching of the subColumns.
 	// - for splitting, it is split to the sub Columns.
-	BigCol ifaces.Column
+	BigCol ifaces.Column[T]
 	// sub columns allied with the bigCol
-	SubCols []ifaces.Column
+	SubCols []ifaces.Column[T]
 	// the Round in which the alliance is created.
 	Round int
 	// Status of the sub columns
@@ -30,7 +30,7 @@ type Alliance struct {
 // It summarizes the information about all the alliances in a single round of PIOP.
 type SummerizedAlliances struct {
 	// associate a group of the sub columns to their splitting
-	ByBigCol map[ifaces.ColID][]ifaces.Column
+	ByBigCol map[ifaces.ColID][]ifaces.Column[T]
 	// for a sub column, it indicates its splitting column and its position in the splitting.
 	BySubCol map[ifaces.ColID]struct {
 		NameBigCol  ifaces.ColID
@@ -64,7 +64,7 @@ func (summary MultiSummary) InsertNew(s Alliance) {
 
 	// Initialize ByBigCol if necessary
 	if summary[s.Round].ByBigCol == nil {
-		summary[s.Round].ByBigCol = make(map[ifaces.ColID][]ifaces.Column)
+		summary[s.Round].ByBigCol = make(map[ifaces.ColID][]ifaces.Column[T])
 	}
 	// populate ByBigCol
 	summary[s.Round].ByBigCol[s.BigCol.GetColID()] = s.SubCols
@@ -77,7 +77,7 @@ func (summary MultiSummary) InsertNew(s Alliance) {
 // If all the columns are verifierCol the expression is not eligible to the compilation.
 // This is an expected behavior, since the verifier checks such expression by itself.
 func IsExprEligible(
-	isColEligible func(MultiSummary, ifaces.Column) bool,
+	isColEligible func(MultiSummary, ifaces.Column[T]) bool,
 	stitchings MultiSummary,
 	board symbolic.ExpressionBoard,
 ) (isEligible bool, isUnsupported bool) {
@@ -93,8 +93,8 @@ func IsExprEligible(
 	for i := range metadata {
 		switch m := metadata[i].(type) {
 		// reminder: [verifiercol.VerifierCol] , [column.Natural] and [column.Shifted]
-		// all implement [ifaces.Column]
-		case ifaces.Column: // it is a Committed, Precomputed or verifierCol
+		// all implement [ifaces.Column[T]]
+		case ifaces.Column[T]: // it is a Committed, Precomputed or verifierCol
 			rootColumn := column.RootParents(m)
 
 			switch nat := rootColumn.(type) {

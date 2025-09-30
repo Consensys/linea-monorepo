@@ -43,11 +43,11 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 
 	var (
 		round  = comp.QueriesNoParams.Round(q.ID)
-		sid    = make([]ifaces.Column, len(q.A))
-		s      = make([]ifaces.Column, len(q.S))
+		sid    = make([]ifaces.Column[T], len(q.A))
+		s      = make([]ifaces.Column[T], len(q.S))
 		permID = q.Name() + "_FIXED_PERM"
-		permA  = [][]ifaces.Column{}
-		permB  = [][]ifaces.Column{}
+		permA  = [][]ifaces.Column[T]{}
+		permB  = [][]ifaces.Column[T]{}
 		cnt    = 0
 	)
 
@@ -56,7 +56,7 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 		if column.StatusOf(q.B[i]).IsPublic() {
 			comp.Columns.SetStatus(s[i].GetColID(), column.VerifyingKey)
 		}
-		permB = append(permB, []ifaces.Column{q.B[i], s[i]})
+		permB = append(permB, []ifaces.Column[T]{q.B[i], s[i]})
 	}
 
 	for i := range q.A {
@@ -65,7 +65,7 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 		if column.StatusOf(q.A[i]).IsPublic() {
 			comp.Columns.SetStatus(sid[i].GetColID(), column.VerifyingKey)
 		}
-		permA = append(permA, []ifaces.Column{q.A[i], sid[i]})
+		permA = append(permA, []ifaces.Column[T]{q.A[i], sid[i]})
 		cnt += size
 	}
 

@@ -35,7 +35,7 @@ func TestLookup(t *testing.T) {
 			b = bui.RegisterCommit("B", 1024)
 		)
 
-		bui.Inclusion("Q", []ifaces.Column{a}, []ifaces.Column{b})
+		bui.Inclusion("Q", []ifaces.Column[T]{a}, []ifaces.Column[T]{b})
 	}
 
 	prove1 := func(run *wizard.ProverRuntime) {

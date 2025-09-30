@@ -20,7 +20,7 @@ func TestNaturalize(t *testing.T) {
 		P3   ifaces.ColID   = "P3"
 		P4   ifaces.ColID   = "P4"
 		EVAL ifaces.QueryID = "EVAL"
-		P1S2 ifaces.Column
+		P1S2 ifaces.Column[T]
 	)
 
 	definer := func(build *wizard.Builder) {

@@ -53,14 +53,14 @@ type SplitCtx struct {
 
 	// ToSplitPolynomials polynomials to split
 	// i-th column goes to 4*i, 4*i+1, etc
-	ToSplitPolynomials []ifaces.Column
+	ToSplitPolynomials []ifaces.Column[T]
 
 	// AlreadyOnBasePolynomials is the list of columns that were already on
 	// the base field in the order in which they show up in QueryFext.
-	AlreadyOnBasePolynomials []ifaces.Column
+	AlreadyOnBasePolynomials []ifaces.Column[T]
 
 	// SplittedPolynomials splitted polynomials
-	SplittedPolynomials []ifaces.Column
+	SplittedPolynomials []ifaces.Column[T]
 }
 
 func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
@@ -97,8 +97,8 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 
 			ctx := SplitCtx{
 				QueryFext:           q,
-				ToSplitPolynomials:  make([]ifaces.Column, 0, len(q.Pols)),
-				SplittedPolynomials: make([]ifaces.Column, 0, 4*len(q.Pols)),
+				ToSplitPolynomials:  make([]ifaces.Column[T], 0, len(q.Pols)),
+				SplittedPolynomials: make([]ifaces.Column[T], 0, 4*len(q.Pols)),
 			}
 
 			for i, pol := range q.Pols {
@@ -127,7 +127,7 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 			// that it will do a deep-copy. Otherwise, it could have side-effects
 			// over [ctx.ToSplitPolynomials] potentially causing
 			// complex-to-diagnose issues in the future if the code came to evolve.
-			toEval := append([]ifaces.Column{}, ctx.SplittedPolynomials...)
+			toEval := append([]ifaces.Column[T]{}, ctx.SplittedPolynomials...)
 			toEval = append(toEval, ctx.AlreadyOnBasePolynomials...)
 
 			ctx.QueryBaseField = comp.InsertUnivariate(

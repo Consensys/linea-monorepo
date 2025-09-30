@@ -189,7 +189,7 @@ func (a *XYPow1MinNAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements the [ifaces.Accessor] interface.
-func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) frontend.Variable {
+func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) T {
 	x := a.X.GetFrontendVariable(api, run)
 	y := a.Y.GetFrontendVariable(api, run)
 	res := gnarkutil.Exp(api, x, 1-a.N)

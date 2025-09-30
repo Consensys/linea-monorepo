@@ -3,7 +3,6 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -242,7 +241,7 @@ func (p Projection[T]) Check(run ifaces.Runtime) error {
 // GnarkCheck implements the [ifaces.Query] interface. It will panic in this
 // construction because we do not have a good way to check the query within a
 // circuit
-func (i Projection[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (i Projection[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	panic("UNSUPPORTED : can't check an Projection query directly into the circuit")
 }
 

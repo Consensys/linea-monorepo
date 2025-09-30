@@ -70,11 +70,11 @@ type DummyAlignmentCircuit struct {
 }
 
 type DummyAlignmentCircuitInstance struct {
-	Vars [6]frontend.Variable `gnark:",public"` // non-power of two to test padding. public input for asserting inputs only
+	Vars [6]T `gnark:",public"` // non-power of two to test padding. public input for asserting inputs only
 }
 
 func (c *DummyAlignmentCircuit) Define(api frontend.API) error {
-	var counter frontend.Variable = 1
+	var counter T = 1
 	for i := range c.Instances {
 		for j := range c.Instances[i].Vars {
 			api.AssertIsEqual(c.Instances[i].Vars[j], counter)

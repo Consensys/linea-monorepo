@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -235,7 +234,7 @@ func (r Inclusion[T]) Check(run ifaces.Runtime) error {
 // GnarkCheck implements the [ifaces.Query] interface. It will panic in this
 // construction because we do not have a good way to check the query within a
 // circuit
-func (i Inclusion[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (i Inclusion[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
 

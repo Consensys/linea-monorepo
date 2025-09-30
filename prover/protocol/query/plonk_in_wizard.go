@@ -222,7 +222,7 @@ func (piw *PlonkInWizard[T]) Check(run ifaces.Runtime) error {
 // CheckGnark implements the [ifaces.Query] interface and will panic in this
 // construction because we do not have a good way to check the query within a
 // circuit
-func (piw *PlonkInWizard[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (piw *PlonkInWizard[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	utils.Panic("UNSUPPORTED : can't check a PlonkInWizard query directly into the circuit, query-name=%v", piw.Name())
 }
 

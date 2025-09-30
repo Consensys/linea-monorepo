@@ -58,7 +58,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	// We commit to the below columns only if SIS is applied to any of the rounds including precomputed
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		ctx.Columns.ConcatenatedDhQ = ctx.Comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
-		ctx.Columns.SisRoundLeaves = make([]ifaces.Column, 0, numRoundSis)
+		ctx.Columns.SisRoundLeaves = make([]ifaces.Column[T], 0, numRoundSis)
 		for i := 0; i < numRoundSis; i++ {
 			// Register the SIS round leaves
 			ctx.Columns.SisRoundLeaves = append(ctx.Columns.SisRoundLeaves, ctx.Comp.InsertCommit(
@@ -75,8 +75,8 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		// Register the linear hash columns for non sis rounds
 		// If SIS is not applied to the precomputed, we consider
 		// it to be the first non sis round
-		ctx.MIMCMetaData.NonSisLeaves = make([]ifaces.Column, 0, numRoundNonSis)
-		ctx.MIMCMetaData.ConcatenatedHashPreimages = make([]ifaces.Column, 0, numRoundNonSis)
+		ctx.MIMCMetaData.NonSisLeaves = make([]ifaces.Column[T], 0, numRoundNonSis)
+		ctx.MIMCMetaData.ConcatenatedHashPreimages = make([]ifaces.Column[T], 0, numRoundNonSis)
 		ctx.MIMCMetaData.ToHashSizes = make([]int, 0, numRoundNonSis)
 		mimcHashColumnSize, mimcPreimageColumnsSize = ctx.registerMiMCMetaDataForNonSisRounds(numRoundNonSis, roundQ)
 	}
@@ -103,7 +103,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 
 	// The below linear hash verification is for only sis rounds
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		cleanSisLeaves := make([]ifaces.Column, 0, numRoundSis)
+		cleanSisLeaves := make([]ifaces.Column[T], 0, numRoundSis)
 		for i := 0; i < numRoundSis; i++ {
 			cleanSisLeaves = append(cleanSisLeaves, ctx.Columns.SisRoundLeaves[i])
 		}
@@ -217,7 +217,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	// and the Merkle leaves
 	// cleanLeaves = (nonSisLeaves || sisLeaves) is checked to be identical to
 	// the Merkle leaves.
-	var cleanLeaves []ifaces.Column
+	var cleanLeaves []ifaces.Column[T]
 	if len(ctx.MIMCMetaData.NonSisLeaves) > 0 {
 		cleanLeaves = append(cleanLeaves, ctx.MIMCMetaData.NonSisLeaves...)
 	}
@@ -247,8 +247,8 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 		round,
 		ctx.leafConsistencyName(),
 		[]smartvectors.SmartVector{s_smart},
-		[]ifaces.Column{stackedCleanLeaves.Column},
-		[]ifaces.Column{ctx.Columns.MerkleProofsLeaves},
+		[]ifaces.Column[T]{stackedCleanLeaves.Column},
+		[]ifaces.Column[T]{ctx.Columns.MerkleProofsLeaves},
 	)
 
 }

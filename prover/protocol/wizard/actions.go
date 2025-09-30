@@ -10,18 +10,18 @@ import (
 // ProverAction represents an action to be performed by the prover.
 // They have to be registered in the [CompiledIOP] via the
 // [CompiledIOP.RegisterProverAction]
-type ProverAction interface {
+type ProverAction[T zk.interaction] interface {
 	// Run executes the ProverAction over a [ProverRuntime]
-	Run(*ProverRuntime)
+	Run(*ProverRuntime[T])
 }
 
 // mainProverStepWrapper adapts a  MainProverStep to the ProverAction interface.
 type mainProverStepWrapper struct {
-	step func(*ProverRuntime)
+	step func(*ProverRuntime[T])
 }
 
 // Run implements the ProverAction interface for MainProverStep.
-func (w mainProverStepWrapper) Run(run *ProverRuntime) {
+func (w mainProverStepWrapper) Run(run *ProverRuntime[T]) {
 	w.step(run)
 }
 
@@ -40,20 +40,20 @@ type VerifierAction interface {
 // PrintingProverAction is a ProverAction printing a column content. And an
 // additional message.
 type PrintingProverAction struct {
-	Column          ifaces.Column
+	Column          ifaces.Column[T]
 	Message         string
 	NameReplacement string
 }
 
 // PrintingVerifierAction is as PrintingProverAction but for the verifier.
 type PrintingVerifierAction struct {
-	Column          ifaces.Column
+	Column          ifaces.Column[T]
 	Message         string
 	NameReplacement string
 }
 
 // Run implements the ProverAction interface for PrintingProverAction.
-func (p PrintingProverAction) Run(run *ProverRuntime) {
+func (p PrintingProverAction) Run(run *ProverRuntime[T]) {
 
 	name := p.Column.GetColID()
 	if len(p.NameReplacement) > 0 {
@@ -87,5 +87,5 @@ func (p PrintingVerifierAction) RunGnark(api frontend.API, run GnarkRuntime) {
 
 	c := p.Column.GetColAssignmentGnark(run)
 	names := fmt.Sprintf("name=%v message=%v value=\n", name, p.Message)
-	api.Println(append([]frontend.Variable{names}, c...)...)
+	api.Println(append([]T{names}, c...)...)
 }

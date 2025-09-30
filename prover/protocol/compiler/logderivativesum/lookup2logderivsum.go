@@ -14,12 +14,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 // table is an alias for a list of column. We use it in the scope of the lookup
 // compiler as a shorthand to make the code more eye-parseable.
-type table = []ifaces.Column
+type table[T zk.Element] struct {
+	t []ifaces.Column[T]
+}
 
 // ColumnSegmenter is an interface reflecting the behavior of the
 // ["github.com/consensys/linea-monorepo/prover/protocol/distributed.StandardModuleDiscoverer"]
@@ -31,8 +34,8 @@ type table = []ifaces.Column
 // compilation phase. The modus operandi is to provide a pointer to the discoverer
 // to the compiler and run the analysis afterward. That way, the prover and verifier
 // steps can access the informations.
-type ColumnSegmenter interface {
-	SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int)
+type ColumnSegmenter[T zk.Element] interface {
+	SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural[T]) (int, int)
 }
 
 // LookupIntoLogDerivativeSum compiles  all the inclusion queries to a single
@@ -40,8 +43,8 @@ type ColumnSegmenter interface {
 // is used by the distributed wizard protocol feature as it allows to
 // prepare the lookup queries to be split across several wizard-IOP
 // in such a way that we can recombine them later.
-func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
-	compileLookupIntoLogDerivativeSum(comp, nil)
+func LookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T]) {
+	compileLookupIntoLogDerivativeSum[T](comp, nil)
 }
 
 // LookupIntoLogDerivativeSumWithSegmenter compiles all the inclusion queries to a single
@@ -50,8 +53,8 @@ func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 // action based on the information of the segmenter. The compiler analyses the
 // size and the density of each "S" column to determines which values ought to be
 // ignored.
-func LookupIntoLogDerivativeSumWithSegmenter(seg ColumnSegmenter) func(*wizard.CompiledIOP) {
-	return func(comp *wizard.CompiledIOP) {
+func LookupIntoLogDerivativeSumWithSegmenter[T zk.Element](seg ColumnSegmenter[T]) func(*wizard.CompiledIOP[T]) {
+	return func(comp *wizard.CompiledIOP[T]) {
 		compileLookupIntoLogDerivativeSum(comp, seg)
 	}
 }
@@ -59,7 +62,7 @@ func LookupIntoLogDerivativeSumWithSegmenter(seg ColumnSegmenter) func(*wizard.C
 // compileLookupIntoLogDerivativeSum is the main entry point of this compiler.
 // It is used both by the [LookupToLogDerivativeSum] and the [LookupToLogDerivativeSumWithSegmenter]
 // compilers implementation.
-func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegmenter) {
+func compileLookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP, seg ColumnSegmenter[T]) {
 
 	var (
 		mainLookupCtx = captureLookupTables(comp, seg)
@@ -67,7 +70,7 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 		// zCatalog stores a mapping (round, size) into query.LogDerivativeSumInput and helps finding
 		// which Z context should be used to handle a part of a given inclusion
 		// query.
-		zCatalog    = []query.LogDerivativeSumPart{}
+		zCatalog    = []query.LogDerivativeSumPart[T]{}
 		proverTasks = make([]ProverTaskAtRound, comp.NumRounds())
 	)
 
@@ -114,9 +117,9 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 
 	// insert a single LogDerivativeSum query for the global zCatalog.
 	qName := ifaces.QueryIDf("GlobalLogDerivativeSum_%v", comp.SelfRecursionCount)
-	q := comp.InsertLogDerivativeSum(lastRound+1, qName, query.LogDerivativeSumInput{Parts: zCatalog})
+	q := comp.InsertLogDerivativeSum(lastRound+1, qName, query.LogDerivativeSumInput[T]{Parts: zCatalog})
 
-	comp.RegisterProverAction(lastRound+1, &AssignLogDerivativeSumProverAction{
+	comp.RegisterProverAction(lastRound+1, &AssignLogDerivativeSumProverAction[T]{
 		QName:     qName,
 		Q:         q,
 		Segmenter: seg,
@@ -126,7 +129,7 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 		// This verifier action checks that the log-derivative sum result is zero.
 		// We cancel it in case the segmenter is used because it invalidates the
 		// result.
-		comp.RegisterVerifierAction(lastRound+1, &CheckLogDerivativeSumMustBeZero{
+		comp.RegisterVerifierAction(lastRound+1, &CheckLogDerivativeSumMustBeZero[T]{
 			Q: q,
 		})
 	}
@@ -134,14 +137,14 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 
 // assignLogDerivativeSumProverAction is the action to assign the log-derivative sum result.
 // It implements the [wizard.ProverAction] interface.
-type AssignLogDerivativeSumProverAction struct {
+type AssignLogDerivativeSumProverAction[T zk.Element] struct {
 	QName     ifaces.QueryID
-	Q         query.LogDerivativeSum
-	Segmenter ColumnSegmenter
+	Q         query.LogDerivativeSum[T]
+	Segmenter ColumnSegmenter[T]
 }
 
 // Run executes the assignment of the log-derivative sum result.
-func (a *AssignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignLogDerivativeSumProverAction[T]) Run(run *wizard.ProverRuntime) {
 	if a.Segmenter == nil {
 		run.AssignLogDerivSum(a.QName, fext.GenericFieldElem{})
 		return
@@ -157,16 +160,16 @@ func (a *AssignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
 
 // pushToZCatalog constructs the numerators and denominators for the collapsed S and T
 // into zCatalog, for their corresponding rounds and size.
-func pushToZCatalog(stc SingleTableCtx, zCatalog []query.LogDerivativeSumPart) []query.LogDerivativeSumPart {
+func pushToZCatalog[T zk.Element](stc SingleTableCtx[T], zCatalog []query.LogDerivativeSumPart[T]) []query.LogDerivativeSumPart[T] {
 
 	// tableCtx push to -> zCtx
 	// Process the T columns
 	for frag := range stc.T {
-		zCatalog = append(zCatalog, query.LogDerivativeSumPart{
+		zCatalog = append(zCatalog, query.LogDerivativeSumPart[T]{
 			Size: stc.M[frag].Size(),
 			Name: fmt.Sprintf("LogDerivativeSumPart_%v_T_%v", stc.TableName, frag),
-			Num:  symbolic.Neg(stc.M[frag]),
-			Den:  symbolic.Add(stc.Gamma, stc.T[frag]),
+			Num:  symbolic.Neg[T](stc.M[frag]),
+			Den:  symbolic.Add[T](stc.Gamma, stc.T[frag]),
 		})
 	}
 
@@ -174,18 +177,18 @@ func pushToZCatalog(stc SingleTableCtx, zCatalog []query.LogDerivativeSumPart) [
 	for table := range stc.S {
 		var (
 			_, _, size = wizardutils.AsExpr(stc.S[table])
-			sFilter    = symbolic.NewConstant(1)
+			sFilter    = symbolic.NewConstant[T](1)
 		)
 
 		if stc.SFilters[table] != nil {
-			sFilter = symbolic.NewVariable(stc.SFilters[table])
+			sFilter = symbolic.NewVariable[T](stc.SFilters[table])
 		}
 
-		zCatalog = append(zCatalog, query.LogDerivativeSumPart{
+		zCatalog = append(zCatalog, query.LogDerivativeSumPart[T]{
 			Size: size,
 			Name: fmt.Sprintf("LogDerivativeSumPart_%v_S_%v", stc.TableName, table),
 			Num:  sFilter,
-			Den:  symbolic.Add(stc.Gamma, stc.S[table]),
+			Den:  symbolic.Add[T](stc.Gamma, stc.S[table]),
 		})
 	}
 
@@ -194,12 +197,12 @@ func pushToZCatalog(stc SingleTableCtx, zCatalog []query.LogDerivativeSumPart) [
 
 // CheckLogDerivativeSumMustBeZero is an implementation of the [wizard.VerifierAction] interface.
 // It checks that the log-derivative sum result is zero.
-type CheckLogDerivativeSumMustBeZero struct {
-	Q       query.LogDerivativeSum
+type CheckLogDerivativeSumMustBeZero[T zk.Element] struct {
+	Q       query.LogDerivativeSum[T]
 	skipped bool `serde:"omit"`
 }
 
-func (c *CheckLogDerivativeSumMustBeZero) Run(run wizard.Runtime) error {
+func (c *CheckLogDerivativeSumMustBeZero[T]) Run(run wizard.Runtime) error {
 	y := run.GetLogDerivSumParams(c.Q.ID).Sum
 	if !y.IsZero() {
 		return fmt.Errorf("log-derivate sum; the final evaluation check failed for %v\n"+
@@ -209,16 +212,16 @@ func (c *CheckLogDerivativeSumMustBeZero) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckLogDerivativeSumMustBeZero) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckLogDerivativeSumMustBeZero[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	y := run.GetLogDerivSumParams(c.Q.ID).Sum
 	api.AssertIsEqual(y, 0)
 }
 
-func (c *CheckLogDerivativeSumMustBeZero) Skip() {
+func (c *CheckLogDerivativeSumMustBeZero[T]) Skip() {
 	c.skipped = true
 }
 
-func (c *CheckLogDerivativeSumMustBeZero) IsSkipped() bool {
+func (c *CheckLogDerivativeSumMustBeZero[T]) IsSkipped() bool {
 	return c.skipped
 }
 
@@ -234,12 +237,12 @@ func (c *CheckLogDerivativeSumMustBeZero) IsSkipped() bool {
 // The function also implictly reduces the conditionals over the Including table
 // be appending a "one" column on the included side and the filter on the
 // including side.
-func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLookupCtx {
+func captureLookupTables[T zk.Element](comp *wizard.CompiledIOP, seg ColumnSegmenter[T]) mainLookupCtx[T] {
 
-	ctx := mainLookupCtx{
-		LookupTables:    [][]table{},
-		CheckedTables:   map[string][]table{},
-		IncludedFilters: map[string][]ifaces.Column{},
+	ctx := mainLookupCtx[T]{
+		LookupTables:    [][]table[T]{},
+		CheckedTables:   map[string][]table[T]{},
+		IncludedFilters: map[string][]ifaces.Column[T]{},
 		Rounds:          map[string]int{},
 		Segmenter:       seg,
 	}
@@ -266,7 +269,7 @@ func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLook
 			// includedFilters stores the query.IncludedFilter parameter. If the
 			// query has no includedFilters on the Included side. Then this is
 			// left as nil.
-			includedFilter ifaces.Column
+			includedFilter ifaces.Column[T]
 		)
 
 		if lookup.IsFilteredOnIncluding() {
@@ -275,9 +278,9 @@ func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLook
 				ones       = verifiercol.NewConstantCol(field.One(), checkedLen, string(lookup.Name()))
 			)
 
-			checkedTable = append([]ifaces.Column{ones}, checkedTable...)
+			checkedTable = append([]ifaces.Column[T]{ones}, checkedTable...)
 			for frag := range lookupTable {
-				lookupTable[frag] = append([]ifaces.Column{lookup.IncludingFilter[frag]}, lookupTable[frag]...)
+				lookupTable[frag] = append([]ifaces.Column[T]{lookup.IncludingFilter[frag]}, lookupTable[frag]...)
 			}
 
 			tableName = NameTable(lookupTable)
@@ -290,8 +293,8 @@ func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLook
 		// In case this is the first iteration where we encounter the lookupTable
 		// we need to add entries in the registering maps.
 		if _, ok := ctx.CheckedTables[tableName]; !ok {
-			ctx.IncludedFilters[tableName] = []ifaces.Column{}
-			ctx.CheckedTables[tableName] = []table{}
+			ctx.IncludedFilters[tableName] = []ifaces.Column[T]{}
+			ctx.CheckedTables[tableName] = []table[T]{}
 			ctx.LookupTables = append(ctx.LookupTables, lookupTable)
 			ctx.Rounds[tableName] = 0
 		}
@@ -317,40 +320,40 @@ func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLook
 //   - (5) The verier makes a `Global` query : $\left((\Sigma_T)[i] - (\Sigma_T)[i-1]\right)(T_i + \gamma) = M_i$
 
 // here we are looking up set of columns S in a single column T
-func compileLookupTable(
+func compileLookupTable[T zk.Element](
 	comp *wizard.CompiledIOP,
 	round int,
-	lookupTable []table,
-	checkedTables []table,
-	includedFilters []ifaces.Column,
-) (ctx SingleTableCtx) {
+	lookupTable []table[T],
+	checkedTables []table[T],
+	includedFilters []ifaces.Column[T],
+) (ctx SingleTableCtx[T]) {
 
-	ctx = SingleTableCtx{
+	ctx = SingleTableCtx[T]{
 		TableName: NameTable(lookupTable),
-		S:         make([]*symbolic.Expression, len(checkedTables)),
+		S:         make([]*symbolic.Expression[T], len(checkedTables)),
 		SFilters:  includedFilters,
-		T:         make([]*symbolic.Expression, len(lookupTable)),
-		M:         make([]ifaces.Column, len(lookupTable)),
+		T:         make([]*symbolic.Expression[T], len(lookupTable)),
+		M:         make([]ifaces.Column[T], len(lookupTable)),
 	}
 
 	var (
 		// isMultiColumn indicates whether the lookup table (and thus the
 		// checked tables) have the same number of
-		isMultiColumn = len(lookupTable[0]) > 1
+		isMultiColumn = len(lookupTable[0].t) > 1
 	)
 
 	if !isMultiColumn {
 		for frag := range ctx.T {
-			ctx.T[frag] = symbolic.NewVariable(lookupTable[frag][0])
+			ctx.T[frag] = symbolic.NewVariable[T](lookupTable[frag].t[0])
 			ctx.M[frag] = comp.InsertCommit(
 				round,
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
-				lookupTable[frag][0].Size(),
+				lookupTable[frag].t[0].Size(),
 			)
 		}
 
 		for i := range ctx.S {
-			ctx.S[i] = symbolic.NewVariable(checkedTables[i][0])
+			ctx.S[i] = symbolic.NewVariable[T](checkedTables[i].t[0])
 		}
 	}
 
@@ -369,7 +372,7 @@ func compileLookupTable(
 			ctx.M[frag] = comp.InsertCommit(
 				round,
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
-				lookupTable[frag][0].Size(),
+				lookupTable[frag].t[0].Size(),
 			)
 
 			// This is to tell the limitless prover that the column should be extended

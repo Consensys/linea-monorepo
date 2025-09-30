@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/hash"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -115,13 +114,13 @@ func (r UnivariateEval[T]) Check(run ifaces.Runtime) error {
 }
 
 // Test that the polynomial evaluation holds
-func (r UnivariateEval[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (r UnivariateEval[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	params := run.GetParams(r.QueryID).(GnarkUnivariateEvalParams[T])
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignmentGnark(run)
-		actualY := fastpoly.EvaluateLagrangeGnarkGen(api, wit, params.X)
-		api.AssertIsEqual(actualY, params.Ys[k])
+		actualY := fastpoly.EvaluateLagrangeGnarkGen(api.GnarkAPI(), wit, params.X)
+		api.AssertIsEqual(actualY, &params.Ys[k])
 	}
 }
 

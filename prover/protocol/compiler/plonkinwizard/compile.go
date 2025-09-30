@@ -17,10 +17,10 @@ type Context struct {
 	Q *query.PlonkInWizard
 	// TinyPIs are the columns containing the public inputs of the plonk
 	// instances
-	TinyPIs []ifaces.Column
+	TinyPIs []ifaces.Column[T]
 	// Activators are the binary length-1 columns that are used to indicate the
 	// activation of a particular plonk instance.
-	Activators []ifaces.Column
+	Activators []ifaces.Column[T]
 	// PlonkProverAction is the prover action running the plonk circuit solver
 	PlonkProverAction plonkinternal.PlonkInWizardProverAction
 	// NbPublicVariable stores the number of public variables in the Plonk
@@ -33,7 +33,7 @@ type Context struct {
 	// the rows where [query.PlonkInWizard.Data] corresponds to "potentially" actual public
 	// inputs. It is used to ensure that the selector goes to zero on
 	// the right position.
-	CircuitMask ifaces.Column
+	CircuitMask ifaces.Column[T]
 	// StackedCircuitData is the column storing the concatenation of all the
 	// public inputs.
 	StackedCircuitData dedicated.StackedColumn
@@ -126,7 +126,7 @@ func checkPublicInputs(comp *wizard.CompiledIOP, ctx *Context) {
 	comp.InsertGlobal(
 		max(ctx.MinimalRound, ctx.Q.GetRound()),
 		ifaces.QueryIDf("%v_PUBLIC_INPUTS", ctx.Q.ID),
-		sym.Sub(ctx.Q.Data, ctx.StackedCircuitData.Column),
+		sym.Sub[T](ctx.Q.Data, ctx.StackedCircuitData.Column),
 	)
 }
 

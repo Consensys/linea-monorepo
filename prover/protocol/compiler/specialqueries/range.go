@@ -20,7 +20,7 @@ Reduce all range proofs
 func RangeProof(comp *wizard.CompiledIOP) {
 
 	ctx := rangeCtx{
-		rangePoly: map[int]ifaces.Column{},
+		rangePoly: map[int]ifaces.Column[T]{},
 		ranges:    []int{},
 	}
 	numRounds := comp.NumRounds()
@@ -59,8 +59,8 @@ func RangeProof(comp *wizard.CompiledIOP) {
 			comp.InsertInclusion(
 				roundID,
 				deriveName[ifaces.QueryID]("RANGE", q.ID, IN_POLY_RANGE),
-				[]ifaces.Column{rangePoly},
-				[]ifaces.Column{q.Handle},
+				[]ifaces.Column[T]{rangePoly},
+				[]ifaces.Column[T]{q.Handle},
 			)
 
 		}
@@ -74,7 +74,7 @@ range proofs.
 */
 type rangeCtx struct {
 	// The range polys for each requested range
-	rangePoly map[int]ifaces.Column
+	rangePoly map[int]ifaces.Column[T]
 	// List of the ranges tha
 	ranges []int
 }

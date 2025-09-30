@@ -23,7 +23,7 @@ func TestConditionalLogDerivativeDebug(t *testing.T) {
 		filterA := b.RegisterCommit("filterA", sizeA)
 		filterB := b.RegisterCommit("filterB", sizeB)
 		//check if colB filtered by filterB is included in colA filtered by filterA
-		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column{cola}, []ifaces.Column{colb}, filterA, filterB)
+		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{cola}, []ifaces.Column[T]{colb}, filterA, filterB)
 	}
 
 	prover := func(run *wizard.ProverRuntime) {
@@ -56,7 +56,7 @@ func TestConditionalLogDerivativeLookupSimple(t *testing.T) {
 		filterA := b.RegisterCommit("filterA", sizeA)
 		filterB := b.RegisterCommit("filterB", sizeB)
 		//check if colB filtered by filterB is included in colA filtered by filterA
-		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column{cola}, []ifaces.Column{colb}, filterA, filterB)
+		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{cola}, []ifaces.Column[T]{colb}, filterA, filterB)
 	}
 
 	prover := func(run *wizard.ProverRuntime) {
@@ -89,7 +89,7 @@ func TestConditionalLogDerivativeLookupSimple2(t *testing.T) {
 		colb := b.RegisterCommit("T", sizeB)
 		filterA := b.RegisterCommit("filterA", sizeA)
 		filterB := b.RegisterCommit("filterB", sizeB)
-		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column{colb}, []ifaces.Column{cola}, filterB, filterA)
+		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola}, filterB, filterA)
 	}
 
 	prover := func(run *wizard.ProverRuntime) {
@@ -139,8 +139,8 @@ func TestConditionalLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 		filter1 := b.RegisterCommit("filter1", sizeA)
 		filter2 := b.RegisterCommit("filter2", sizeA)
 		filterT := b.RegisterCommit("filterT", sizeB)
-		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column{colb}, []ifaces.Column{cola}, filterT, filter1)
-		b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column{colb}, []ifaces.Column{cola2}, filterT, filter2)
+		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola}, filterT, filter1)
+		b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola2}, filterT, filter2)
 	}
 	prover := func(run *wizard.ProverRuntime) {
 		runtime = run
@@ -202,7 +202,7 @@ func TestConditionalLogDerivativeLookupOneXor(t *testing.T) {
 
 		//check that witness is included in the XOR table
 		//all rows of the witness must be included int he rows of the larger matrix
-		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{wX, wY, wXY}, filterT, filterS)
+		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{wX, wY, wXY}, filterT, filterS)
 	}
 
 	prover := func(run *wizard.ProverRuntime) {
@@ -271,8 +271,8 @@ func TestConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 		filterS1 := b.RegisterCommit("FILTER_S1", sizeCheckeds)
 		filterS2 := b.RegisterCommit("FILTER_S2", sizeCheckedLarger)
 
-		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{wX, wY, wXY}, filterT, filterS1)
-		b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{w2X, w2Y, w2XY}, filterT, filterS2)
+		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{wX, wY, wXY}, filterT, filterS1)
+		b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{w2X, w2Y, w2XY}, filterT, filterS2)
 
 	}
 
@@ -363,13 +363,13 @@ func TestMixedConditionalLogDerivativeLookupMultiXor(t *testing.T) {
 		filterS2 := b.RegisterCommit("FILTER_S2", sizeCheckedLarger)
 		filterS4 := b.RegisterCommit("FILTER_S4", sizeCheckeds)
 
-		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{wX, wY, wXY}, filterT, filterS1)
-		b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{w2X, w2Y, w2XY}, filterT, filterS2)
-		b.InclusionConditionalOnIncluding("LOOKUP3", []ifaces.Column{xorX, xorY, xorXY}, []ifaces.Column{w3X, w3Y, w3XY}, filterT)
+		b.InclusionDoubleConditional("LOOKUP", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{wX, wY, wXY}, filterT, filterS1)
+		b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{w2X, w2Y, w2XY}, filterT, filterS2)
+		b.InclusionConditionalOnIncluding("LOOKUP3", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{w3X, w3Y, w3XY}, filterT)
 		constantOne := verifiercol.NewConstantCol(field.One(), sizeCheckeds, "")
-		b.Inclusion("LOOKUP4", []ifaces.Column{xorX, xorY, xorXY, filterT}, []ifaces.Column{w4X, w4Y, w4XY, constantOne})
+		b.Inclusion("LOOKUP4", []ifaces.Column[T]{xorX, xorY, xorXY, filterT}, []ifaces.Column[T]{w4X, w4Y, w4XY, constantOne})
 		// next query will use w4X, w4Y, w4XY again (to prevent the code from getting too verbose)
-		b.InclusionConditionalOnIncluded("LOOKUP5", []ifaces.Column{xorX, xorY, xorXY, filterT}, []ifaces.Column{w4X, w4Y, w4XY, constantOne}, filterS4)
+		b.InclusionConditionalOnIncluded("LOOKUP5", []ifaces.Column[T]{xorX, xorY, xorXY, filterT}, []ifaces.Column[T]{w4X, w4Y, w4XY, constantOne}, filterS4)
 	}
 
 	prover := func(run *wizard.ProverRuntime) {
@@ -450,8 +450,8 @@ func TestConditionalWithDummyCompilerOnly(t *testing.T) {
 		filterA := b.RegisterCommit("filterA", sizeA)
 		filterB := b.RegisterCommit("filterB", sizeB)
 		//check if colB filtered by filterB is included in colA filtered by filterA
-		b.InclusionDoubleConditional("LOOKUP1", []ifaces.Column{cola}, []ifaces.Column{colb}, filterA, filterB)
-		//b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column{colb}, []ifaces.Column{cola}, filterB, filterA)
+		b.InclusionDoubleConditional("LOOKUP1", []ifaces.Column[T]{cola}, []ifaces.Column[T]{colb}, filterA, filterB)
+		//b.InclusionDoubleConditional("LOOKUP2", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola}, filterB, filterA)
 	}
 
 	prover := func(run *wizard.ProverRuntime) {

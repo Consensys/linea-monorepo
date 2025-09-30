@@ -21,7 +21,7 @@ func TestPermutationPass(t *testing.T) {
 			Define: func(builder *wizard.Builder) {
 				a := builder.RegisterCommit("A", 16)
 				b := builder.RegisterCommit("B", 16)
-				builder.Permutation("PERM", []ifaces.Column{a}, []ifaces.Column{b})
+				builder.Permutation("PERM", []ifaces.Column[T]{a}, []ifaces.Column[T]{b})
 			},
 
 			Prove: func(run *wizard.ProverRuntime) {
@@ -34,11 +34,11 @@ func TestPermutationPass(t *testing.T) {
 		},
 		{
 			Define: func(builder *wizard.Builder) {
-				a := []ifaces.Column{
+				a := []ifaces.Column[T]{
 					builder.RegisterCommit("A1", 16),
 					builder.RegisterCommit("A2", 16),
 				}
-				b := []ifaces.Column{
+				b := []ifaces.Column[T]{
 					builder.RegisterCommit("B1", 16),
 					builder.RegisterCommit("B2", 16),
 				}
@@ -58,11 +58,11 @@ func TestPermutationPass(t *testing.T) {
 		},
 		{
 			Define: func(builder *wizard.Builder) {
-				a := []ifaces.Column{
+				a := []ifaces.Column[T]{
 					builder.RegisterCommit("A1", 16),
 					builder.RegisterCommit("A2", 16),
 				}
-				b := []ifaces.Column{
+				b := []ifaces.Column[T]{
 					builder.RegisterCommit("B1", 16),
 					builder.RegisterCommit("B2", 16),
 				}
@@ -83,13 +83,13 @@ func TestPermutationPass(t *testing.T) {
 		},
 		{
 			Define: func(builder *wizard.Builder) {
-				a := []ifaces.Column{
+				a := []ifaces.Column[T]{
 					builder.RegisterCommit("A1", 16),
 					builder.RegisterCommit("A2", 16),
 					builder.RegisterCommit("A3", 16),
 					builder.RegisterCommit("A4", 16),
 				}
-				b := []ifaces.Column{
+				b := []ifaces.Column[T]{
 					builder.RegisterCommit("B1", 16),
 					builder.RegisterCommit("B2", 16),
 					builder.RegisterCommit("B3", 16),
@@ -117,7 +117,7 @@ func TestPermutationPass(t *testing.T) {
 		},
 		{
 			Define: func(builder *wizard.Builder) {
-				a := []ifaces.Column{
+				a := []ifaces.Column[T]{
 					builder.RegisterCommit("A1", 8),
 					builder.RegisterCommit("A2", 8),
 					builder.RegisterCommit("A3", 8),
@@ -127,7 +127,7 @@ func TestPermutationPass(t *testing.T) {
 					builder.RegisterCommit("A7", 8),
 					builder.RegisterCommit("A8", 8),
 				}
-				b := []ifaces.Column{
+				b := []ifaces.Column[T]{
 					builder.RegisterCommit("B1", 8),
 					builder.RegisterCommit("B2", 8),
 					builder.RegisterCommit("B3", 8),
@@ -169,7 +169,7 @@ func TestPermutationPass(t *testing.T) {
 		},
 		{
 			Define: func(builder *wizard.Builder) {
-				a := []ifaces.Column{
+				a := []ifaces.Column[T]{
 					builder.RegisterCommit("A1", 4),
 					builder.RegisterCommit("A2", 4),
 					builder.RegisterCommit("A3", 4),
@@ -179,7 +179,7 @@ func TestPermutationPass(t *testing.T) {
 					builder.RegisterCommit("A7", 8),
 					builder.RegisterCommit("A8", 8),
 				}
-				b := []ifaces.Column{
+				b := []ifaces.Column[T]{
 					builder.RegisterCommit("B1", 4),
 					builder.RegisterCommit("B2", 4),
 					builder.RegisterCommit("B3", 4),
@@ -220,7 +220,7 @@ func TestPermutationPass(t *testing.T) {
 		},
 		{
 			Define: func(builder *wizard.Builder) {
-				a := []ifaces.Column{
+				a := []ifaces.Column[T]{
 					builder.RegisterCommit("A1", 4),
 					builder.RegisterCommit("A2", 4),
 					builder.RegisterCommit("A3", 4),
@@ -230,7 +230,7 @@ func TestPermutationPass(t *testing.T) {
 					builder.RegisterCommit("A7", 8),
 					builder.RegisterCommit("A8", 8),
 				}
-				b := []ifaces.Column{
+				b := []ifaces.Column[T]{
 					builder.RegisterCommit("B1", 4),
 					builder.RegisterCommit("B2", 4),
 					builder.RegisterCommit("B3", 4),
@@ -241,8 +241,8 @@ func TestPermutationPass(t *testing.T) {
 					builder.RegisterCommit("B8", 8),
 				}
 				// each fragment has its own permutation, but the permutation is the same for the columns from the same fragment.
-				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM1", [][]ifaces.Column{a[0:2], a[2:4]}, [][]ifaces.Column{b[0:2], b[2:4]})
-				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM2", [][]ifaces.Column{a[4:6], a[6:8]}, [][]ifaces.Column{b[4:6], b[6:8]})
+				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM1", [][]ifaces.Column[T]{a[0:2], a[2:4]}, [][]ifaces.Column[T]{b[0:2], b[2:4]})
+				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM2", [][]ifaces.Column[T]{a[4:6], a[6:8]}, [][]ifaces.Column[T]{b[4:6], b[6:8]})
 			},
 
 			Prove: func(run *wizard.ProverRuntime) {
@@ -270,13 +270,13 @@ func TestPermutationPass(t *testing.T) {
 		},
 		{
 			Define: func(builder *wizard.Builder) {
-				a := [][]ifaces.Column{
+				a := [][]ifaces.Column[T]{
 					{builder.RegisterCommit("A1", 4)},
 					{builder.RegisterCommit("A2", 4)},
 					{builder.RegisterCommit("A3", 4)},
 					{builder.RegisterCommit("A4", 4)},
 				}
-				b := [][]ifaces.Column{
+				b := [][]ifaces.Column[T]{
 					{builder.RegisterCommit("B1", 16)},
 				}
 				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM1", a, b)
@@ -300,7 +300,7 @@ func TestPermutationPass(t *testing.T) {
 			Define: func(builder *wizard.Builder) {
 				a := builder.RegisterCommit("A", 16)
 				b := builder.RegisterCommit("B", 16)
-				builder.Permutation("PERM", []ifaces.Column{a}, []ifaces.Column{b})
+				builder.Permutation("PERM", []ifaces.Column[T]{a}, []ifaces.Column[T]{b})
 			},
 
 			Prove: func(run *wizard.ProverRuntime) {
@@ -313,7 +313,7 @@ func TestPermutationPass(t *testing.T) {
 		},
 		{
 			Define: func(builder *wizard.Builder) {
-				a := []ifaces.Column{
+				a := []ifaces.Column[T]{
 					builder.RegisterCommit("A1", 4),
 					builder.RegisterCommit("A2", 4),
 					builder.RegisterCommit("A3", 4),
@@ -323,7 +323,7 @@ func TestPermutationPass(t *testing.T) {
 					builder.RegisterCommit("A7", 8),
 					builder.RegisterCommit("A8", 8),
 				}
-				b := []ifaces.Column{
+				b := []ifaces.Column[T]{
 					builder.RegisterCommit("B1", 4),
 					builder.RegisterCommit("B2", 4),
 					builder.RegisterCommit("B3", 4),
@@ -333,8 +333,8 @@ func TestPermutationPass(t *testing.T) {
 					builder.RegisterCommit("B7", 8),
 					builder.RegisterCommit("B8", 8),
 				}
-				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM1", [][]ifaces.Column{a[0:2], a[2:4]}, [][]ifaces.Column{b[0:2], b[2:4]})
-				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM2", [][]ifaces.Column{a[4:6], a[6:8]}, [][]ifaces.Column{b[4:6], b[6:8]})
+				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM1", [][]ifaces.Column[T]{a[0:2], a[2:4]}, [][]ifaces.Column[T]{b[0:2], b[2:4]})
+				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM2", [][]ifaces.Column[T]{a[4:6], a[6:8]}, [][]ifaces.Column[T]{b[4:6], b[6:8]})
 			},
 
 			Prove: func(run *wizard.ProverRuntime) {
@@ -363,13 +363,13 @@ func TestPermutationPass(t *testing.T) {
 
 		{
 			Define: func(builder *wizard.Builder) {
-				a := [][]ifaces.Column{
+				a := [][]ifaces.Column[T]{
 					{builder.RegisterCommit("A1", 4)},
 					{builder.RegisterCommit("A2", 4)},
 					{builder.RegisterCommit("A3", 4)},
 					{builder.RegisterCommit("A4", 4)},
 				}
-				b := [][]ifaces.Column{
+				b := [][]ifaces.Column[T]{
 					{builder.RegisterCommit("B1", 16)},
 				}
 				builder.CompiledIOP.InsertFragmentedPermutation(0, "PERM1", a, b)

@@ -14,23 +14,24 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // QuotientAccumulation is a [wizard.ProverAction] that accumulates the
 // quotient polynomial and assigns it.
-type QuotientAccumulation struct {
-	*MultipointToSinglepointCompilation
+type QuotientAccumulation[T zk.Element] struct {
+	*MultipointToSinglepointCompilation[T]
 }
 
 // RandomPointEvaluation is a [wizard.ProverAction] that evaluates the
 // polynomial at a random point.
-type RandomPointEvaluation struct {
-	*MultipointToSinglepointCompilation
+type RandomPointEvaluation[T zk.Element] struct {
+	*MultipointToSinglepointCompilation[T]
 }
 
-func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
+func (qa QuotientAccumulation[T]) Run(run *wizard.ProverRuntime) {
 
 	var (
 		rho = run.GetRandomCoinFieldExt(qa.LinCombCoeffRho.Name)
@@ -184,7 +185,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegularExt(quotient))
 }
 
-func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
+func (re RandomPointEvaluation[T]) Run(run *wizard.ProverRuntime) {
 
 	var (
 		r        = run.GetRandomCoinFieldExt(re.EvaluationPoint.Name)
@@ -201,7 +202,7 @@ func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }
 
-func (qa QuotientAccumulation) computeZetasExt(run *wizard.ProverRuntime) [][]fext.Element {
+func (qa QuotientAccumulation[T]) computeZetasExt(run *wizard.ProverRuntime) [][]fext.Element {
 
 	var (
 		// powersOfOmega is the list of the powers of omega starting from 0.
@@ -272,7 +273,7 @@ func _ldeOfExt(v []fext.Element, sizeSmall, sizeLarge int) {
 	gutils.BitReverse(v)
 }
 
-func getPositionOfPolyInQueryYs(q query.UnivariateEval, poly ifaces.Column) int {
+func getPositionOfPolyInQueryYs[T zk.Element](q query.UnivariateEval[T], poly ifaces.Column[T]) int {
 
 	for i, p := range q.Pols {
 		if p.GetColID() == poly.GetColID() {

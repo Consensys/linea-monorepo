@@ -11,7 +11,7 @@ import (
 
 type EmulatedElement = emulated.Element[emulated.KoalaBear]
 
-// EmulatedAPIGen struct implementing APIGen[T FType].
+// EmulatedAPIGen struct implementing APIGen[frontend.Variable Ffrontend.Variableype].
 // It is a wrapper around emulatedApi for koalabear.
 type EmulatedAPIGen struct {
 	api frontend.API
@@ -123,4 +123,8 @@ func (e *EmulatedAPIGen) Println(a ...*EmulatedElement) {
 	for i := 0; i < len(a); i++ {
 		e.api.Println(a[i].Limbs...)
 	}
+}
+
+func (e *EmulatedAPIGen) GnarkAPI() frontend.API {
+	return e.api
 }

@@ -40,7 +40,7 @@ var _ frontend.Rangechecker = &externalRangeChecker{}
 // into Wizard column which can be range checked.
 type externalRangeChecker struct {
 	storeCommitBuilder
-	checked              []frontend.Variable
+	checked              []T
 	rcCols               chan [][2]int
 	addGateForRangeCheck bool
 }
@@ -52,7 +52,7 @@ type storeCommitBuilder interface {
 	frontend.Committer
 	SetKeyValue(key, value any)
 	GetKeyValue(key any) (value any)
-	GetWireConstraints(wires []frontend.Variable, addMissing bool) ([][2]int, error)
+	GetWireConstraints(wires []T, addMissing bool) ([][2]int, error)
 }
 
 // newExternalRangeChecker takes compiled IOP and returns [frontend.NewBuilder].
@@ -97,7 +97,7 @@ func newExternalRangeChecker(addGateForRangeCheck bool) (frontend.NewBuilderU32,
 }
 
 // Check implements [frontend.RangeChecker]
-func (builder *externalRangeChecker) Check(v frontend.Variable, bits int) {
+func (builder *externalRangeChecker) Check(v T, bits int) {
 
 	// This applies specifically for the Sha2 circuit which generates range-
 	// checks for constants integers. When that happens, we skip the range-check:
@@ -265,7 +265,7 @@ func (ctx *GenericPlonkProverAction) assignRangeChecked(run *wizard.ProverRuntim
 
 // Returns true if v is a constant in bound, panics if it is a constant but not
 // in bound. Return false if not a constant.
-func checkIfConst(v frontend.Variable, bits int) (isConst bool) {
+func checkIfConst(v T, bits int) (isConst bool) {
 
 	switch vv := v.(type) {
 	default:

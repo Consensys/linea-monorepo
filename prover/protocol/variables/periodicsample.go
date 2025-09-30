@@ -4,28 +4,29 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 )
 
 // Refers to an abstract value that is 0 on every entries and one
 // on every entries i such that i % T == 0
-type PeriodicSample struct {
-	T      int
+type PeriodicSample[T zk.Element] struct {
+	W      int
 	Offset int // Should be < T
 }
 
 // Constructs a new PeriodicSample, will panic if the offset it larger
 // than T
-func NewPeriodicSample(period, offset int) *symbolic.Expression {
+func NewPeriodicSample[T zk.Element](period, offset int) *symbolic.Expression[T] {
 
 	offset = utils.PositiveMod(offset, period)
 
@@ -41,34 +42,34 @@ func NewPeriodicSample(period, offset int) *symbolic.Expression {
 		utils.Panic("The offset can't be larger than the period. offset = %v, period = %v", offset, period)
 	}
 
-	return symbolic.NewVariable(PeriodicSample{
-		T:      period,
+	return symbolic.NewVariable[T](PeriodicSample[T]{
+		W:      period,
 		Offset: offset,
 	})
 }
 
 // Lagrange returns a PeriodicSampling representing a Lagrange polynomial
-func Lagrange(n, pos int) *symbolic.Expression {
-	return NewPeriodicSample(n, pos)
+func Lagrange[T zk.Element](n, pos int) *symbolic.Expression[T] {
+	return NewPeriodicSample[T](n, pos)
 }
 
 // to implement symbolic.Metadata
-func (t PeriodicSample) String() string {
+func (t PeriodicSample[T]) String() string {
 	// Double append/prepend to avoid confusion
-	return fmt.Sprintf("__PERIODIC_SAMPLE_%v_OFFSET_%v__", t.T, t.Offset)
+	return fmt.Sprintf("__PERIODIC_SAMPLE_%v_OFFSET_%v__", t.W, t.Offset)
 }
 
-func (t PeriodicSample) EvalAtOnDomain(pos int) field.Element {
-	if pos%t.T == t.Offset {
+func (t PeriodicSample[T]) EvalAtOnDomain(pos int) field.Element {
+	if pos%t.W == t.Offset {
 		return field.One()
 	}
 	return field.Zero()
 }
 
 // Evaluates the expression outside of the domain
-func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Element {
+func (t PeriodicSample[T]) EvalAtOutOfDomain(size int, x field.Element) field.Element {
 	n := size
-	l := n / t.T
+	l := n / t.W
 	one := field.One()
 	lField := field.NewElement(uint64(l))
 	nField := field.NewElement(uint64(n))
@@ -99,8 +100,8 @@ func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Eleme
 }
 
 // Evaluates the expression outside of the domain
-func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Element {
-	l := size / t.T
+func (t PeriodicSample[T]) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Element {
+	l := size / t.W
 	one := fext.One()
 	var lField, nField fext.Element
 	nField.B0.A0.SetUint64(uint64(size))
@@ -131,16 +132,20 @@ func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Elem
 }
 
 // Evaluate a particular position on the domain
-func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) frontend.Variable {
-	return t.GnarkEvalNoCoset(t.T)[pos%t.T]
+func (t PeriodicSample[T]) GnarkEvalAtOnDomain(api frontend.API, pos int) T {
+	return t.GnarkEvalNoCoset(t.W)[pos%t.W]
 }
 
-func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x frontend.Variable) frontend.Variable {
+func (t PeriodicSample[T]) GnarkEvalAtOutOfDomain(api frontend.API, size int, x T) T {
 	n := size
-	l := n / t.T
-	one := field.One()
+	l := n / t.W
 	lField := field.NewElement(uint64(l))
 	nField := field.NewElement(uint64(n))
+
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
 
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
@@ -148,44 +153,48 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x fro
 		if err != nil {
 			panic(err)
 		}
-		x = api.Mul(x, gnarkutil.Exp(api, omegaN, -t.Offset))
+		//x = api.Mul(x, gnarkutil.Exp(api, omegaN, -t.Offset))
+		var negOmegaN koalabear.Element
+		negOmegaN.Neg(&omegaN)
+		tmp := field.Exp(apiGen, *zk.ValueOf[T](negOmegaN), big.NewInt(int64(t.Offset)))
+		x = *apiGen.Mul(&x, tmp)
 	}
 
-	denominator := gnarkutil.Exp(api, x, l)
-	denominator = api.Sub(denominator, one)
-	denominator = api.Mul(denominator, nField)
-	numerator := gnarkutil.Exp(api, x, n)
-	numerator = api.Sub(numerator, &one)
-	numerator = api.Mul(numerator, &lField)
+	denominator := field.Exp(apiGen, x, big.NewInt(int64(l)))
+	denominator = apiGen.Sub(denominator, zk.ValueOf[T](1))
+	denominator = apiGen.Mul(denominator, zk.ValueOf[T](nField))
+	numerator := field.Exp(apiGen, x, big.NewInt(int64(n)))
+	numerator = apiGen.Sub(numerator, zk.ValueOf[T](1))
+	numerator = apiGen.Mul(numerator, zk.ValueOf[T](lField))
 
-	return api.Div(numerator, denominator)
+	return *apiGen.Div(numerator, denominator)
 }
 
 // Returns the result in gnark form. This returns a vector of constant
-// on the form of frontend.Variables.
-func (t PeriodicSample) GnarkEvalNoCoset(size int) []frontend.Variable {
+// on the form of Ts.
+func (t PeriodicSample[T]) GnarkEvalNoCoset(size int) []T {
 	res_ := t.EvalCoset(size, 0, 1, false)
-	res := make([]frontend.Variable, res_.Len())
+	res := make([]T, res_.Len())
 	for i := range res {
-		res[i] = res_.Get(i)
+		res[i] = *zk.ValueOf[T](res_.Get(i))
 	}
 	return res
 }
 
 // Returns an evaluation of the periodic sample (possibly) over a coset.
 // To not push it over a coset : pass EvalCoset(size, 0, {0,1}, false)
-func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVector {
+func (t PeriodicSample[T]) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVector {
 	// The return value is T periodic so we only pay for `X^n - 1` on the coset
 	// https://hackmd.io/S78bJUa0Tk-T256iduE22g#Computing-the-evaluations-for-Z
 
 	// Computes the integers constant
 	n := size
-	l := n / t.T
+	l := n / t.W
 	one := field.One()
 
 	// sanity-check the evaluation domain is too small for this to make sense
-	if n < t.T {
-		utils.Panic("tried evaluation on a domain of size %v but the period is %v", n, t.T)
+	if n < t.W {
+		utils.Panic("tried evaluation on a domain of size %v but the period is %v", n, t.W)
 	}
 
 	// sanity-check : normally this code is never called for a coset if shiftGen is false
@@ -198,7 +207,7 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	if !shiftGen && cosetId == 0 {
 		res := make([]field.Element, size)
 		for i := range res {
-			if i%t.T == t.Offset {
+			if i%t.W == t.Offset {
 				res[i].SetOne()
 			}
 		}
@@ -235,21 +244,21 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	var al, an field.Element
 	al.Exp(a, big.NewInt(int64(l)))
 	an.Exp(a, big.NewInt(int64(n)))
-	omegal, err := fft.Generator(uint64(t.T)) // It's the canonical t-root of unity
+	omegal, err := fft.Generator(uint64(t.W)) // It's the canonical t-root of unity
 	if err != nil {
 		panic(err)
 	}
 
 	// Denominator
-	denominator := make([]field.Element, t.T)
+	denominator := make([]field.Element, t.W)
 	denominator[0] = al
 
-	for i := 1; i < t.T; i++ {
+	for i := 1; i < t.W; i++ {
 		denominator[i].Mul(&denominator[i-1], &omegal)
 		denominator[i-1].Sub(&denominator[i-1], &one)
 	}
 
-	denominator[t.T-1].Sub(&denominator[t.T-1], &one)
+	denominator[t.W-1].Sub(&denominator[t.W-1], &one)
 	denominator = field.BatchInvert(denominator)
 
 	/*
@@ -266,7 +275,7 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	vector.ScalarMul(denominator, denominator, constTerm)
 
 	// Now, we just need to repeat it "l" time and we can return
-	res := make([]field.Element, t.T, n)
+	res := make([]field.Element, t.W, n)
 	copy(res, denominator)
 	for len(res) < n {
 		res = append(res, res...)
@@ -275,7 +284,7 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	return sv.NewRegular(res)
 }
 
-func (t PeriodicSample) IsBase() bool {
+func (t PeriodicSample[T]) IsBase() bool {
 
 	return true
 }

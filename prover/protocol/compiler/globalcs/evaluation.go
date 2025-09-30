@@ -18,8 +18,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
@@ -27,21 +27,21 @@ import (
 
 // EvaluationCtx collects the compilation artefacts related to the evaluation
 // part of the Plonk quotient technique.
-type EvaluationCtx struct {
-	QuotientCtx
-	QuotientEvals []query.UnivariateEval
-	WitnessEval   query.UnivariateEval
+type EvaluationCtx[T zk.Element] struct {
+	QuotientCtx[T]
+	QuotientEvals []query.UnivariateEval[T]
+	WitnessEval   query.UnivariateEval[T]
 	EvalCoin      coin.Info
 }
 
 // EvaluationProver wraps [evaluationCtx] to implement the [wizard.ProverAction]
 // interface.
-type EvaluationProver EvaluationCtx
+// type EvaluationProver EvaluationCtx
 
 // EvaluationVerifier wraps [evaluationCtx] to implement the [wizard.VerifierAction]
 // interface.
-type EvaluationVerifier struct {
-	EvaluationCtx
+type EvaluationVerifier[T zk.Element] struct {
+	EvaluationCtx[T]
 	Skipped bool
 }
 
@@ -49,17 +49,17 @@ type EvaluationVerifier struct {
 // shares, making sure that the shares needing to be evaluated over the same
 // point are in the same query. This is a req from the upcoming naturalization
 // compiler.
-func declareUnivariateQueries(
+func declareUnivariateQueries[T zk.Element](
 	comp *wizard.CompiledIOP,
-	qCtx QuotientCtx,
-) EvaluationCtx {
+	qCtx QuotientCtx[T],
+) EvaluationCtx[T] {
 
 	var (
 		round       = qCtx.QuotientShares[0][0].Round()
 		ratios      = qCtx.Ratios
 		maxRatio    = utils.Max(ratios...)
-		queriesPols = make([][]ifaces.Column, maxRatio)
-		res         = EvaluationCtx{
+		queriesPols = make([][]ifaces.Column[T], maxRatio)
+		res         = EvaluationCtx[T]{
 			QuotientCtx: qCtx,
 			EvalCoin: comp.InsertCoin(
 				round+1,
@@ -71,7 +71,7 @@ func declareUnivariateQueries(
 				ifaces.QueryID(deriveName(comp, UNIVARIATE_EVAL_ALL_HANDLES)),
 				qCtx.AllInvolvedColumns,
 			),
-			QuotientEvals: make([]query.UnivariateEval, maxRatio),
+			QuotientEvals: make([]query.UnivariateEval[T], maxRatio),
 		}
 	)
 
@@ -97,7 +97,7 @@ func declareUnivariateQueries(
 
 // Run computes the evaluation of the univariate queries and implements the
 // [wizard.ProverAction] interface.
-func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
+func (pa EvaluationCtx[T]) Run(run *wizard.ProverRuntime) {
 
 	var (
 		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
@@ -167,7 +167,7 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 }
 
 // Run evaluate the constraint and checks that
-func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
+func (ctx *EvaluationVerifier[T]) Run(run wizard.Runtime) error {
 
 	var (
 		// Will be assigned to "X", the random point at which we check the constraint.
@@ -216,7 +216,7 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
-			case ifaces.Column:
+			case ifaces.Column[T]:
 				entry := mapYs[metadata.GetColID()]
 				if entry.IsBase {
 					elem, _ := entry.GetBase()
@@ -227,11 +227,11 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 				}
 			case coin.Info:
 				evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), 1)
-			case variables.X:
+			case variables.X[T]:
 				evalInputs[k] = sv.NewConstantExt(r, 1)
-			case variables.PeriodicSample:
+			case variables.PeriodicSample[T]:
 				evalInputs[k] = sv.NewConstantExt(metadata.EvalAtOutOfDomainExt(ctx.DomainSize, r), 1)
-			case ifaces.Accessor:
+			case ifaces.Accessor[T]:
 				evalInputs[k] = sv.NewConstantExt(metadata.GetValExt(run), 1)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
@@ -254,26 +254,37 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 }
 
 // Verifier step, evaluate the constraint and checks that
-func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+func (ctx *EvaluationVerifier[T]) RunGnark(api frontend.API, c wizard.GnarkRuntime[T]) {
 
 	// Will be assigned to "X", the random point at which we check the constraint.
-	r := c.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
-	annulator := gnarkutil.Exp(api, r, ctx.DomainSize)
-	quotientYs := ctx.recombineQuotientSharesEvaluationGnark(api, c, r)
+
+	e4Api, err := gnarkfext.NewExt4[T](api)
+	if err != nil {
+		panic(err)
+	}
+	r := e4Api.NewFromBase(2) // r := c.GetRandomCoinFieldExt(ctx.EvalCoin.Name) TODO @thomas fixme
+	annulator := e4Api.Exp(r, big.NewInt(int64(ctx.DomainSize)))
+
+	quotientYs := ctx.recombineQuotientSharesEvaluationGnark(api, c, *r)
 	params := c.GetUnivariateParams(ctx.WitnessEval.QueryID)
 	univQuery := c.GetUnivariateEval(ctx.WitnessEval.QueryID)
 
-	annulator = api.Sub(annulator, frontend.Variable(1))
+	// annulator = api.Sub(annulator, T(1))
 
 	// Get the parameters
 	api.AssertIsEqual(r, params.X) // check the evaluation is consistent with the other stuffs
 
 	// Map all the evaluations and checks the evaluations points
-	mapYs := make(map[ifaces.ColID]frontend.Variable)
+	mapYs := make(map[ifaces.ColID]T)
 
 	// Collect the evaluation points
 	for j, handle := range univQuery.Pols {
 		mapYs[handle.GetColID()] = params.Ys[j]
+	}
+
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
 	}
 
 	for i, ratio := range ctx.Ratios {
@@ -281,11 +292,11 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 		board := ctx.AggregateExpressionsBoard[i]
 		metadatas := board.ListVariableMetadata()
 
-		evalInputs := make([]frontend.Variable, len(metadatas))
+		evalInputs := make([]T, len(metadatas))
 
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
-			case ifaces.Column:
+			case ifaces.Column[T]:
 				evalInputs[k] = mapYs[metadata.GetColID()]
 			case coin.Info:
 				if metadata.IsBase() {
@@ -293,12 +304,12 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 				} else {
 					evalInputs[k] = c.GetRandomCoinFieldExt(metadata.Name)
 				}
-			case variables.X:
-				evalInputs[k] = r
-			case variables.PeriodicSample:
-				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
-			case ifaces.Accessor:
-				evalInputs[k] = metadata.GetFrontendVariable(api, c)
+			case variables.X[T]:
+				evalInputs[k] = r.B0.A0 // TODO @thomas should be extension fixme
+			case variables.PeriodicSample[T]:
+				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r.B0.A0) // TODO @thomas should be extension fixme
+			case ifaces.Accessor[T]:
+				evalInputs[k] = metadata.GetFrontendVariable(apiGen, c)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}
@@ -318,7 +329,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runtime, r fext.Element) ([]fext.Element, error) {
+func (ctx EvaluationVerifier[T]) recombineQuotientSharesEvaluation(run wizard.Runtime, r fext.Element) ([]fext.Element, error) {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
@@ -408,17 +419,17 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r gnarkfext.Element) []gnarkfext.Element {
+func (ctx EvaluationVerifier[T]) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime[T], r gnarkfext.E4Gen[T]) []gnarkfext.E4Gen[T] {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
 		// combination.
-		recombinedYs = make([]gnarkfext.Element, len(ctx.Ratios))
+		recombinedYs = make([]gnarkfext.E4Gen[T], len(ctx.Ratios))
 		// ys stores the values of the quotient shares ordered by ratio
-		qYs      = make([][]gnarkfext.Element, utils.Max(ctx.Ratios...))
+		qYs      = make([][]gnarkfext.E4Gen[T], utils.Max(ctx.Ratios...))
 		maxRatio = utils.Max(ctx.Ratios...)
 		// shiftedR = r / g where g is the generator of the multiplicative group
-		shiftedR gnarkfext.Element
+		shiftedR gnarkfext.E4Gen[T]
 		// mulGen is the generator of the multiplicative group
 		mulGenInv = fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
 		// omegaN is a root of unity generating the domain of size `domainSize
@@ -426,7 +437,18 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		omegaN, _ = fft.Generator(uint64(ctx.DomainSize * maxRatio))
 	)
 
-	shiftedR.MulByFp(api, r, mulGenInv)
+	e4Api, err := gnarkfext.NewExt4[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	// shiftedR.MulByFp(api, r, mulGenInv)
+	shiftedR = *e4Api.MulByFp(&r, zk.ValueOf[T](mulGenInv))
 
 	for i, q := range ctx.QuotientEvals {
 		params := run.GetUnivariateParams(q.Name())
@@ -434,17 +456,16 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 
 		// Check that the provided value for x is the right one
 		providedX := params.X
-		var expectedX frontend.Variable
-		expectedX = api.Inverse(omegaN)
-		expectedX = gnarkutil.Exp(api, expectedX, i)
-		expectedX = api.Mul(expectedX, shiftedR)
-		api.AssertIsEqual(providedX, expectedX)
+		_expectedX := apiGen.Inverse(zk.ValueOf[T](omegaN))
+		_expectedX = field.Exp[T](apiGen, *_expectedX, big.NewInt(int64(i)))
+		expectedX := e4Api.MulByFp(&shiftedR, _expectedX)
+		e4Api.AssertIsEqual(expectedX, providedX)
 	}
 
 	for i, ratio := range ctx.Ratios {
 		var (
 			jumpBy = maxRatio / ratio
-			ys     = make([]frontend.Variable, ratio)
+			ys     = make([]gnarkfext.E4Gen[T], ratio)
 		)
 
 		for j := range ctx.QuotientShares[i] {
@@ -457,14 +478,13 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			n             = ctx.DomainSize * ratio
 			omegaRatio, _ = fft.Generator(uint64(ratio))
 			// outerFactor stores m/n*(r^n - 1)
-			one           = field.One()
 			omegaRatioInv field.Element
-			res           gnarkfext.Element
+			res           gnarkfext.E4Gen[T]
 			ratioInvField = field.NewElement(uint64(ratio))
 		)
-		res.SetZero()
+		res = *e4Api.NewFromBase(0)
 
-		rPowM := gnarkutil.Exp(api, shiftedR, m)
+		rPowM := e4Api.Exp(&shiftedR, big.NewInt(int64(m)))
 		ratioInvField.Inverse(&ratioInvField)
 		omegaRatioInv.Inverse(&omegaRatio)
 
@@ -473,27 +493,26 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
 			var omegaInvPowK field.Element
 			omegaInvPowK.Exp(omegaRatioInv, big.NewInt(int64(k)))
-			tmp := api.Mul(omegaInvPowK, rPowM)
-			tmp = api.Sub(tmp, one)
-			tmp = api.Div(ys[k], tmp)
-
-			res.MulByFp(api, res, tmp)
+			tmp := e4Api.MulByFp(rPowM, zk.ValueOf[T](omegaInvPowK))
+			tmp = e4Api.Sub(tmp, e4Api.NewFromBase(1))
+			tmp = e4Api.Div(&ys[k], tmp)
+			res = *e4Api.Mul(&res, tmp)
 		}
 
-		outerFactor := gnarkutil.Exp(api, shiftedR, n)
-		outerFactor = api.Sub(outerFactor, one)
-		outerFactor = api.Mul(outerFactor, ratioInvField)
-		res.MulByFp(api, res, outerFactor)
+		outerFactor := e4Api.Exp(&shiftedR, big.NewInt(int64(n)))
+		outerFactor = e4Api.Sub(outerFactor, e4Api.NewFromBase(1))
+		outerFactor = e4Api.Mul(outerFactor, e4Api.NewFromBase(ratioInvField))
+		res = *e4Api.Mul(&res, outerFactor)
 		recombinedYs[i] = res
 	}
 
 	return recombinedYs
 }
 
-func (ctx *EvaluationVerifier) Skip() {
+func (ctx *EvaluationVerifier[T]) Skip() {
 	ctx.Skipped = true
 }
 
-func (ctx *EvaluationVerifier) IsSkipped() bool {
+func (ctx *EvaluationVerifier[T]) IsSkipped() bool {
 	return ctx.Skipped
 }

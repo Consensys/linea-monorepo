@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,12 +21,12 @@ const (
 // Compile takes all the uncompiled global constraint found in comp and compile
 // them using Plonk's quotient technique. The compiler also applies symbolic
 // expression optimization and runtime memory optimizations for the prover.
-func Compile(comp *wizard.CompiledIOP) {
+func Compile[T zk.Element](comp *wizard.CompiledIOP[T]) {
 
 	logrus.Trace("started global constraint compiler")
 	defer logrus.Trace("finished global constraint compiler")
 
-	merging, anyCs := accumulateConstraints(comp)
+	merging, anyCs := accumulateConstraints[T](comp)
 	if !anyCs {
 		return
 	}
@@ -41,7 +42,7 @@ func Compile(comp *wizard.CompiledIOP) {
 
 	comp.RegisterProverAction(quotientRound, &quotientCtx)
 	comp.RegisterProverAction(evaluationRound, EvaluationProver(evaluationCtx))
-	comp.RegisterVerifierAction(evaluationRound, &EvaluationVerifier{EvaluationCtx: evaluationCtx})
+	comp.RegisterVerifierAction(evaluationRound, &EvaluationVerifier[T]{EvaluationCtx: evaluationCtx})
 
 }
 

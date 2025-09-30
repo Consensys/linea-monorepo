@@ -52,7 +52,7 @@ func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
 	wholes := ctx.Columns.WholePreimagesSis
 	sisParams := ctx.VortexCtx.SisParams
 
-	limbs := make([]ifaces.Column, len(wholes))
+	limbs := make([]ifaces.Column[T], len(wholes))
 	round := wholes[0].Round()
 	limbSize := wholes[0].Size() * sisParams.NumLimbs()
 
@@ -81,7 +81,7 @@ func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
 
 type PreimageLimbsProverAction struct {
 	Ctx   *SelfRecursionCtx
-	Limbs []ifaces.Column
+	Limbs []ifaces.Column[T]
 }
 
 func (a *PreimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
@@ -147,11 +147,11 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 	ctx.Comp.InsertInclusion(
 		roundQ,
 		ctx.selectQInclusion(),
-		[]ifaces.Column{
+		[]ifaces.Column[T]{
 			ctx.Columns.I,
 			ctx.Columns.Ualpha,
 		},
-		[]ifaces.Column{
+		[]ifaces.Column[T]{
 			ctx.Columns.Q,
 			ctx.Columns.UalphaQ,
 		},
@@ -388,7 +388,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		// since some of the Ah and Dh can be nil, we compactify the slice by
 		// only retaining the non-nil elements before sending it to the
 		// linear combination operator.
-		nonNilAh := []ifaces.Column{}
+		nonNilAh := []ifaces.Column[T]{}
 		for _, ah := range ctx.Columns.Ah {
 			if ah != nil {
 				nonNilAh = append(nonNilAh, ah)
@@ -606,7 +606,7 @@ func (ctx *SelfRecursionCtx) FoldPhase() {
 	// Declare and assign the inner-product
 	ctx.Queries.LatticeInnerProd = ctx.Comp.InsertInnerProduct(
 		round, ctx.preimagesAndAmergeIP(), ctx.Columns.ACollapseFold,
-		[]ifaces.Column{ctx.Columns.PreimageCollapseFold})
+		[]ifaces.Column[T]{ctx.Columns.PreimageCollapseFold})
 
 	// Assignment part of the inner product
 	ctx.Comp.RegisterProverAction(round, &FoldPhaseProverAction{

@@ -222,9 +222,9 @@ type Ctx struct {
 		Precomputeds struct {
 			// List of the precomputeds columns that we are compiling if the
 			// the precomputed flag is set.
-			PrecomputedColums []ifaces.Column
+			PrecomputedColums []ifaces.Column[T]
 			// Merkle Root of the precomputeds columns
-			MerkleRoot ifaces.Column
+			MerkleRoot ifaces.Column[T]
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
@@ -235,21 +235,21 @@ type Ctx struct {
 		// Alpha is a random combination linear coin
 		Alpha coin.Info
 		// Linear combination of the row-encoded matrix
-		Ualpha ifaces.Column
+		Ualpha ifaces.Column[T]
 		// Random column selection
 		Q coin.Info
 		// Opened columns, to be used in the Vortex compilation
-		OpenedColumns []ifaces.Column
+		OpenedColumns []ifaces.Column[T]
 		// Opened SIS columns, to be used in the Self recursion compilation
-		OpenedSISColumns []ifaces.Column
+		OpenedSISColumns []ifaces.Column[T]
 		// Opened non-SIS columns, to be used in the Self recursion compilation
-		OpenedNonSISColumns []ifaces.Column
+		OpenedNonSISColumns []ifaces.Column[T]
 		// MerkleProofs
 		// We represents all the Merkle proof as specfied here:
-		MerkleProofs [8]ifaces.Column
+		MerkleProofs [8]ifaces.Column[T]
 		// The Merkle roots are represented by a size 1 column
 		// in the wizard.//TODO@yao: size 8?
-		MerkleRoots []ifaces.Column
+		MerkleRoots []ifaces.Column[T]
 	}
 
 	// IsSelfrecursed is a flag that tells the verifier Vortex to perform a
@@ -294,20 +294,20 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		SisParams: &ringsis.StdParams,
 		Items: struct {
 			Precomputeds struct {
-				PrecomputedColums []ifaces.Column
-				MerkleRoot        ifaces.Column
+				PrecomputedColums []ifaces.Column[T]
+				MerkleRoot        ifaces.Column[T]
 				CommittedMatrix   vortex.EncodedMatrix
 				Tree              *smt.Tree
 				DhWithMerkle      []field.Element
 			}
 			Alpha               coin.Info
-			Ualpha              ifaces.Column
+			Ualpha              ifaces.Column[T]
 			Q                   coin.Info
-			OpenedColumns       []ifaces.Column
-			OpenedSISColumns    []ifaces.Column
-			OpenedNonSISColumns []ifaces.Column
-			MerkleProofs        [8]ifaces.Column
-			MerkleRoots         []ifaces.Column
+			OpenedColumns       []ifaces.Column[T]
+			OpenedSISColumns    []ifaces.Column[T]
+			OpenedNonSISColumns []ifaces.Column[T]
+			MerkleProofs        [8]ifaces.Column[T]
+			MerkleRoots         []ifaces.Column[T]
 		}{},
 		// Declare the by rounds/sis rounds/non-sis rounds commitments
 		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
@@ -324,7 +324,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	}
 
 	// Preallocate all the merkle roots for all rounds
-	ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
+	ctx.Items.MerkleRoots = make([]ifaces.Column[T], comp.NumRounds())
 
 	// Declare the RoundStatus slice
 	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
@@ -710,7 +710,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	// proofs for the limitless prover.
 	precomputedColNames := ctx.commitmentsAtRoundFromQueryPrecomputed()
 	if len(precomputedColNames) == 0 {
-		ctx.Items.Precomputeds.PrecomputedColums = []ifaces.Column{}
+		ctx.Items.Precomputeds.PrecomputedColums = []ifaces.Column[T]{}
 		return
 	}
 
@@ -719,7 +719,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 
 	// Sanity-check. This should be enforced by the splitter compiler already.
 	ctx.assertPolynomialHaveSameLength(precomputedColNames)
-	precomputedCols := []ifaces.Column{}
+	precomputedCols := []ifaces.Column[T]{}
 
 	// If there are not enough columns, for a commitment to be meaningful,
 	// explicitly sends the column to the verifier so that he can check the

@@ -7,7 +7,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/hash"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -181,7 +180,7 @@ func (r LogDerivativeSum[T]) Check(run ifaces.Runtime) error {
 }
 
 // Test that global sum is correct
-func (r LogDerivativeSum[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (r LogDerivativeSum[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 	panic("unexpected call")
 }
 

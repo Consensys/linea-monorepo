@@ -68,7 +68,7 @@ func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		ys = []gnarkfext.Element{}
 		// expected stores the random linear combinations of the ys by batching
 		// coin
-		expected frontend.Variable
+		expected T
 		// actual stores the opening value of the last entry of Summation. The
 		// verifier checks the equality between it and `expected`.
 		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).ExtY

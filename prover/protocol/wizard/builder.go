@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -28,8 +29,8 @@ mechanism does not allow for a smooth way to decompose the user's protocol into
 sub-protocols that spans on multiple rounds efficiently as a new round will be
 created everytime the user declares a new Coin.
 */
-type Builder struct {
-	*CompiledIOP
+type Builder[T zk.Element] struct {
+	*CompiledIOP[T]
 	// Indicate the current round
 	currRound int
 	/*
@@ -44,20 +45,20 @@ type Builder struct {
 /*
 Function to specify the definition of an IOP
 */
-type DefineFunc func(build *Builder)
+type DefineFunc[T zk.Element] func(build *Builder[T])
 
 /*
 Compile an IOP from a protocol definition
 */
-func Compile(define DefineFunc, compilers ...func(*CompiledIOP)) *CompiledIOP {
-	builder := newBuilder()
+func Compile[T zk.Element](define DefineFunc[T], compilers ...func(*CompiledIOP[T])) *CompiledIOP[T] {
+	builder := newBuilder[T]()
 	define(&builder)
 	comp := builder.CompiledIOP
 	return ContinueCompilation(comp, compilers...)
 }
 
 // ContinueCompilation continues a set of compilation steps over a initial CompiledIOP object.
-func ContinueCompilation(rootComp *CompiledIOP, compilers ...func(*CompiledIOP)) *CompiledIOP {
+func ContinueCompilation[T zk.Element](rootComp *CompiledIOP[T], compilers ...func(*CompiledIOP[T])) *CompiledIOP[T] {
 	/*
 		For sanity, we need to ensure the protocol is well formed. All
 		registers should have the same number of rounds. The simplest to
@@ -85,11 +86,11 @@ func ContinueCompilation(rootComp *CompiledIOP, compilers ...func(*CompiledIOP))
 }
 
 // NewCompiledIOP initializes a CompiledIOP object.
-func NewCompiledIOP() *CompiledIOP {
-	CompiledIOP := &CompiledIOP{
-		Columns:         column.NewStore(),
-		QueriesParams:   NewRegister[ifaces.QueryID, ifaces.Query](),
-		QueriesNoParams: NewRegister[ifaces.QueryID, ifaces.Query](),
+func NewCompiledIOP[T zk.Element]() *CompiledIOP[T] {
+	CompiledIOP := &CompiledIOP[T]{
+		Columns:         column.NewStore[T](),
+		QueriesParams:   NewRegister[ifaces.QueryID, ifaces.Query[T]](),
+		QueriesNoParams: NewRegister[ifaces.QueryID, ifaces.Query[T]](),
 		Coins:           NewRegister[coin.Name, coin.Info](),
 		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
 		ExtraData:       make(map[string]interface{}),
@@ -100,9 +101,9 @@ func NewCompiledIOP() *CompiledIOP {
 /*
 Creates a new builder for a new IOP
 */
-func newBuilder() Builder {
-	return Builder{
-		CompiledIOP:    NewCompiledIOP(),
+func newBuilder[T zk.Element]() Builder[T] {
+	return Builder[T]{
+		CompiledIOP:    NewCompiledIOP[T](),
 		currRound:      0,
 		fsStateIsDirty: true,
 	}
@@ -111,7 +112,7 @@ func newBuilder() Builder {
 /*
 Registers a new column in the protocol
 */
-func (b *Builder) RegisterCommit(name ifaces.ColID, size int) ifaces.Column {
+func (b *Builder[T]) RegisterCommit(name ifaces.ColID, size int) ifaces.Column[T] {
 	b.fsStateIsDirty = true
 	return b.CompiledIOP.InsertCommit(b.currRound, name, size)
 }
@@ -119,7 +120,7 @@ func (b *Builder) RegisterCommit(name ifaces.ColID, size int) ifaces.Column {
 /*
 Registers a precomputed column in the protocol
 */
-func (b *Builder) RegisterPrecomputed(name ifaces.ColID, v smartvectors.SmartVector) ifaces.Column {
+func (b *Builder[T]) RegisterPrecomputed(name ifaces.ColID, v smartvectors.SmartVector) ifaces.Column[T] {
 	b.fsStateIsDirty = true
 	return b.CompiledIOP.InsertPrecomputed(name, v)
 }
@@ -131,7 +132,7 @@ Asserts there will be a Fiat-Shamir hash
 - size[0] contains the number of integers and
 - size[1] contains the upperBound.
 */
-func (b *Builder) RegisterRandomCoin(name coin.Name, type_ coin.Type, size ...int) coin.Info {
+func (b *Builder[T]) RegisterRandomCoin(name coin.Name, type_ coin.Type, size ...int) coin.Info {
 	/*
 		The fact that the fsStateIsDirty indicates that something
 		was sent to the verifier since the last message. Thus it
@@ -164,7 +165,7 @@ is already known, you should use `FixedPointUnivariateEval` instead. If you
 would like to do a multi-evaluation instead, you need to register several
 queries
 */
-func (b *Builder) UnivariateEval(name ifaces.QueryID, pols ...ifaces.Column) {
+func (b *Builder[T]) UnivariateEval(name ifaces.QueryID, pols ...ifaces.Column[T]) {
 	// Mark the state as dirty
 	b.fsStateIsDirty = true
 	b.InsertUnivariate(b.currRound, name, pols)
@@ -176,7 +177,7 @@ Creates an inclusion query. Here, `included` and `including` are viewed
 as a arrays and the query asserts that `included` contains only rows
 that are contained within `includings`, regardless of the multiplicity.
 */
-func (b *Builder) Inclusion(name ifaces.QueryID, including, included []ifaces.Column) {
+func (b *Builder[T]) Inclusion(name ifaces.QueryID, including, included []ifaces.Column[T]) {
 	b.InsertInclusion(b.currRound, name, including, included)
 }
 
@@ -184,7 +185,7 @@ func (b *Builder) Inclusion(name ifaces.QueryID, including, included []ifaces.Co
 An inclusion query that adds two filters on the including and included arrays
 The filters should be columns that contain only field elements for 0 and 1.
 */
-func (b *Builder) InclusionDoubleConditional(name ifaces.QueryID, including, included []ifaces.Column, includingFilter, includedFilter ifaces.Column) {
+func (b *Builder[T]) InclusionDoubleConditional(name ifaces.QueryID, including, included []ifaces.Column[T], includingFilter, includedFilter ifaces.Column[T]) {
 	b.InsertInclusionDoubleConditional(b.currRound, name, including, included, includingFilter, includedFilter)
 }
 
@@ -192,7 +193,7 @@ func (b *Builder) InclusionDoubleConditional(name ifaces.QueryID, including, inc
 An inclusion query that adds a filter on the including array
 The filter should be a column that contains only field elements for 0 and 1.
 */
-func (b *Builder) InclusionConditionalOnIncluding(name ifaces.QueryID, including, included []ifaces.Column, includingFilter ifaces.Column) {
+func (b *Builder[T]) InclusionConditionalOnIncluding(name ifaces.QueryID, including, included []ifaces.Column[T], includingFilter ifaces.Column[T]) {
 	b.InsertInclusionConditionalOnIncluding(b.currRound, name, including, included, includingFilter)
 }
 
@@ -200,7 +201,7 @@ func (b *Builder) InclusionConditionalOnIncluding(name ifaces.QueryID, including
 An inclusion query that adds a filter on the included array
 The filter should be a column that contains only field elements for 0 and 1.
 */
-func (b *Builder) InclusionConditionalOnIncluded(name ifaces.QueryID, including, included []ifaces.Column, includedFilter ifaces.Column) {
+func (b *Builder[T]) InclusionConditionalOnIncluded(name ifaces.QueryID, including, included []ifaces.Column[T], includedFilter ifaces.Column[T]) {
 	b.InsertInclusionConditionalOnIncluded(b.currRound, name, including, included, includedFilter)
 }
 
@@ -209,7 +210,7 @@ Creates an permutation query. The query views `a` and `b_` to be lists of
 columns and asserts that `a` and `b_` have the same rows (possibly in
 a different order) but with the same multiplicity.
 */
-func (b *Builder) Permutation(name ifaces.QueryID, a, b_ []ifaces.Column) {
+func (b *Builder[T]) Permutation(name ifaces.QueryID, a, b_ []ifaces.Column[T]) {
 	b.CompiledIOP.InsertPermutation(b.currRound, name, a, b_)
 }
 
@@ -217,14 +218,14 @@ func (b *Builder) Permutation(name ifaces.QueryID, a, b_ []ifaces.Column) {
 Creates a fixed-permutation query. Were 'a' is the fixedpermutation of 'b' for
 a given-permutation p: p(a)=b, p can be deifed only by 'b' over a defult vector 'a'.
 */
-func (b *Builder) FixedPermutation(name ifaces.QueryID, p []ifaces.ColAssignment, a, b_ []ifaces.Column) {
+func (b *Builder[T]) FixedPermutation(name ifaces.QueryID, p []ifaces.ColAssignment, a, b_ []ifaces.Column[T]) {
 	b.CompiledIOP.InsertFixedPermutation(b.currRound, name, p, a, b_)
 }
 
 /*
 Create an GlobalConstraint query, returns the global constraint
 */
-func (b *Builder) GlobalConstraint(name ifaces.QueryID, cs_ *symbolic.Expression) query.GlobalConstraint {
+func (b *Builder[T]) GlobalConstraint(name ifaces.QueryID, cs_ *symbolic.Expression[T]) query.GlobalConstraint[T] {
 	// Finally registers the query
 	// This will perform all the checks
 	cs_.AssertValid()
@@ -234,7 +235,7 @@ func (b *Builder) GlobalConstraint(name ifaces.QueryID, cs_ *symbolic.Expression
 /*
 Create an LocalConstraint query
 */
-func (b *Builder) LocalConstraint(name ifaces.QueryID, cs_ *symbolic.Expression) query.LocalConstraint {
+func (b *Builder[T]) LocalConstraint(name ifaces.QueryID, cs_ *symbolic.Expression[T]) query.LocalConstraint[T] {
 	// Finally registers the query
 	// This will perform all the checks
 	cs_.AssertValid()
@@ -244,21 +245,21 @@ func (b *Builder) LocalConstraint(name ifaces.QueryID, cs_ *symbolic.Expression)
 /*
 Create a Range query
 */
-func (b *Builder) Range(name ifaces.QueryID, h ifaces.Column, max int) {
+func (b *Builder[T]) Range(name ifaces.QueryID, h ifaces.Column[T], max int) {
 	b.InsertRange(b.currRound, name, h, max)
 }
 
 /*
 Create an inner-product query
 */
-func (b *Builder) InnerProduct(name ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) query.InnerProduct {
+func (b *Builder[T]) InnerProduct(name ifaces.QueryID, a ifaces.Column[T], bs ...ifaces.Column[T]) query.InnerProduct[T] {
 	return b.InsertInnerProduct(b.currRound, name, a, bs)
 }
 
 /*
 Create a local opening query
 */
-func (b *Builder) LocalOpening(name ifaces.QueryID, pol ifaces.Column) query.LocalOpening {
+func (b *Builder[T]) LocalOpening(name ifaces.QueryID, pol ifaces.Column[T]) query.LocalOpening[T] {
 	return b.InsertLocalOpening(b.currRound, name, pol)
 }
 
@@ -266,7 +267,7 @@ func (b *Builder) LocalOpening(name ifaces.QueryID, pol ifaces.Column) query.Loc
 Equalizes the length of all the structure so that they all have the same
 numbers of rounds
 */
-func (comp *CompiledIOP) EqualizeRounds(numRounds int) {
+func (comp *CompiledIOP[T]) EqualizeRounds(numRounds int) {
 
 	helpMsg := "If you are seeing this message it's probably because you insert queries one round too late."
 

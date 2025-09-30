@@ -111,7 +111,7 @@ func Naturalize(comp *wizard.CompiledIOP) {
 				Q:                q,
 				RoundID:          roundID,
 				SubQueriesNames:  []ifaces.QueryID{},
-				PolsPerSubQuery:  [][]ifaces.Column{},
+				PolsPerSubQuery:  [][]ifaces.Column[T]{},
 				ReprToSubQueryID: make(map[string]int),
 			}
 
@@ -147,7 +147,7 @@ type NaturalizationCtx struct {
 	*/
 	DeduplicatedReprs []string
 	SubQueriesNames   []ifaces.QueryID
-	PolsPerSubQuery   [][]ifaces.Column
+	PolsPerSubQuery   [][]ifaces.Column[T]
 	ReprToSubQueryID  map[string]int
 }
 
@@ -178,7 +178,7 @@ func (ctx *NaturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP) {
 			newQueryName := deriveName[ifaces.QueryID](comp, NATURALIZE, ctx.Q.QueryID, repr)
 			ctx.DeduplicatedReprs = append(ctx.DeduplicatedReprs, repr)
 			ctx.SubQueriesNames = append(ctx.SubQueriesNames, newQueryName)
-			ctx.PolsPerSubQuery = append(ctx.PolsPerSubQuery, []ifaces.Column{})
+			ctx.PolsPerSubQuery = append(ctx.PolsPerSubQuery, []ifaces.Column[T]{})
 		}
 
 		alreadySeen[repr+rootName] = struct{}{}
@@ -363,7 +363,7 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 	// Collect the subqueries and the collection in finalYs evaluations
 	subQueries := []query.UnivariateEval{}
 	subQueriesParams := []query.GnarkUnivariateEvalParams{}
-	finalYs := collection.NewMapping[string, frontend.Variable]()
+	finalYs := collection.NewMapping[string, T]()
 
 	for qID, qName := range ctx.SubQueriesNames {
 		subQueries = append(subQueries, c.GetUnivariateEval(qName))
@@ -375,7 +375,7 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 	}
 
 	// For each subqueries verifies the values for xs
-	cachedXs := collection.NewMapping[string, frontend.Variable]()
+	cachedXs := collection.NewMapping[string, T]()
 	cachedXs.InsertNew("", originalQueryParams.X)
 	alreadyCheckedReprs := collection.NewSet[string]()
 

@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -31,22 +32,22 @@ import (
 // and their respective LocalOpening for the tables compiled at round N-1.
 //
 // All these actions are performed in parallel.
-type ProverTaskAtRound struct {
+type ProverTaskAtRound[T zk.Element] struct {
 
 	// MAssignmentTasks lists all the tasks consisting of assigning the column
 	// M related to table that are scheduled in the current interaction round.
-	MAssignmentTasks []MAssignmentTask
+	MAssignmentTasks []MAssignmentTask[T]
 
-	// ZAssignmentTasks lists all the tasks consisting of assigning the
+	// ZCtxs lists all the tasks consisting of assigning the
 	// columns SigmaS and SigmaT for the given round.
-	ZAssignmentTasks []ZAssignmentTask
+	ZCtxs []ZCtx[T]
 }
 
 // Run implements the [wizard.ProverAction interface]. The tasks will spawn
 // a goroutine for each tasks and wait for all of them to finish. The approach
 // for parallelization can be justified if the number of go-routines stays low
 // (e.g. less than 1000s).
-func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
+func (p ProverTaskAtRound[T]) Run(run *wizard.ProverRuntime) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(p.numTasks())
@@ -83,7 +84,7 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 		}(i)
 	}
 
-	for i := range p.ZAssignmentTasks {
+	for i := range p.ZCtxs {
 		// the passing of the index `i` is there to ensure that the go-routine
 		// is running over a local copy of `i` which is not incremented every
 		// time the loop goes to the next iteration.
@@ -103,7 +104,7 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 				wg.Done()
 			}()
 
-			p.ZAssignmentTasks[i].Run(run)
+			p.ZCtxs[i].Run(run)
 		}(i)
 	}
 
@@ -115,42 +116,42 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 }
 
 // pushMAssignment appends an [mAssignmentTask] to the list of tasks
-func (p *ProverTaskAtRound) pushMAssignment(m MAssignmentTask) {
+func (p *ProverTaskAtRound[T]) pushMAssignment(m MAssignmentTask[T]) {
 	p.MAssignmentTasks = append(p.MAssignmentTasks, m)
 }
 
 // pushZAssignment appends an [sigmaAssignmentTask] to the list of tasks
-func (p *ProverTaskAtRound) pushZAssignment(s ZAssignmentTask) {
-	p.ZAssignmentTasks = append(p.ZAssignmentTasks, s)
+func (p *ProverTaskAtRound[T]) pushZAssignment(s ZCtx[T]) {
+	p.ZCtxs = append(p.ZCtxs, s)
 }
 
 // numTasks returns the total number of tasks that are scheduled in the
 // [proverTaskAtRound].
-func (p *ProverTaskAtRound) numTasks() int {
-	return len(p.MAssignmentTasks) + len(p.ZAssignmentTasks)
+func (p *ProverTaskAtRound[T]) numTasks() int {
+	return len(p.MAssignmentTasks) + len(p.ZCtxs)
 }
 
 // mAssignmentWork specifically represent the prover task of computing and
 // assigning the [singleTableCtx.M] for a particular table. M is computing the
 // appearance of the rows of T in the rows of S.
-type MAssignmentTask struct {
+type MAssignmentTask[T zk.Element] struct {
 
 	// M is the column that the assignMWork
-	M []ifaces.Column
+	M []ifaces.Column[T]
 
 	// T the lookup table to which the task is related
-	T []table
+	T []table[T]
 
 	// S is the list of checked tables for which inclusion within T is enforced
 	// by a compiled query.
-	S []table
+	S []table[T]
 
 	// SFilter stores the filters that are applied for each table S.
-	SFilter []ifaces.Column
+	SFilter []ifaces.Column[T]
 
 	// Segmenter is the segmenter that will be used to omit some of the values
 	// from the "S" column.
-	Segmenter ColumnSegmenter
+	Segmenter ColumnSegmenter[T]
 }
 
 // Run executes the task represented by the receiver of the method. Namely, it
@@ -173,12 +174,12 @@ type MAssignmentTask struct {
 // In case one of the Ss contains an entry that does not appear in T, the
 // function panics. This aims at early detecting that the lookup query is not
 // satisfied.
-func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
+func (a MAssignmentTask[T]) Run(run *wizard.ProverRuntime) {
 
 	var (
 		// isMultiColumn flags whether the table have multiple column and
 		// whether the "collapsing" trick is needed.
-		isMultiColumn = len(a.T[0]) > 1
+		isMultiColumn = len(a.T[0].t) > 1
 
 		// tCollapsed contains either the assignment of T if the table is a
 		// single column (e.g. isMultiColumn=false) or its collapsed version
@@ -197,12 +198,12 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 	if !isMultiColumn {
 		for frag := range a.T {
-			tCollapsed[frag] = a.T[frag][0].GetColAssignment(run)
-			fragmentUnionSize += a.T[frag][0].Size()
+			tCollapsed[frag] = a.T[frag].t[0].GetColAssignment(run)
+			fragmentUnionSize += a.T[frag].t[0].Size()
 		}
 
 		for i := range a.S {
-			sCollapsed[i] = a.S[i][0].GetColAssignment(run)
+			sCollapsed[i] = a.S[i].t[0].GetColAssignment(run)
 		}
 	}
 
@@ -253,7 +254,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		// 0. In the latter case, we only index the segmented part of T[frag]
 		// (implictly, the remaining part of T[frag] are all padding).
 		if a.Segmenter != nil {
-			root, ok := column.RootsOf(a.T[frag], true)[0].(column.Natural)
+			root, ok := column.RootsOf(a.T[frag].t, true)[0].(column.Natural[T])
 			if !ok {
 				utils.Panic("col %v should be a column.Natural %++v", root.ID, root)
 			}
@@ -280,7 +281,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		)
 
 		if a.Segmenter != nil {
-			sCol := column.RootsOf(a.S[i], true)[0].(column.Natural)
+			sCol := column.RootsOf(a.S[i].t, true)[0].(column.Natural[T])
 			start, stop = a.Segmenter.SegmentBoundaryOf(run, sCol)
 		}
 
@@ -319,14 +320,14 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 			)
 
 			if !ok {
-				tableRow := make([]fext.Element, len(a.S[i]))
+				tableRow := make([]fext.Element, len(a.S[i].t))
 				for j := range tableRow {
-					tableRow[j] = a.S[i][j].GetColAssignmentAtExt(run, k)
+					tableRow[j] = a.S[i].t[j].GetColAssignmentAtExt(run, k)
 				}
 
 				err := fmt.Errorf(
 					"entry %v of the table %v is not included in the table. tableRow=%v T-mapSize=%v T-name=%v",
-					k, NameTable([][]ifaces.Column{a.S[i]}), vectorext.Prettify(tableRow), len(mapM), NameTable(a.T),
+					k, NameTable([]table[T]{a.S[i]}), vectorext.Prettify(tableRow), len(mapM), NameTable(a.T),
 				)
 
 				exit.OnUnsatisfiedConstraints(err)
@@ -360,12 +361,12 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 }
 
-// ZAssignmentTask represents a prover task of assignming the columns
+// ZCtx represents a prover task of assignming the columns
 // SigmaS and SigmaT for a specific lookup table.
 // sigmaAssignment
-type ZAssignmentTask ZCtx
+// type ZCtx ZCtx
 
-func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
+func (z ZCtx[T]) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
 		for frag := start; frag < stop; frag++ {
 

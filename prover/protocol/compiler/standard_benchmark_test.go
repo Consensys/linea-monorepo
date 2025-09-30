@@ -216,8 +216,8 @@ func defineLookupModule(comp *wizard.CompiledIOP, index int, params SubModulePar
 	}
 
 	var (
-		s = []ifaces.Column{}
-		t = []ifaces.Column{}
+		s = []ifaces.Column[T]{}
+		t = []ifaces.Column[T]{}
 	)
 
 	for i := 0; i < params.NumCol; i++ {
@@ -249,8 +249,8 @@ func assignLookupModule(run *wizard.ProverRuntime, index int, params SubModulePa
 func definePermutationModule(comp *wizard.CompiledIOP, index int, params SubModuleParameters) {
 
 	var (
-		a = []ifaces.Column{}
-		b = []ifaces.Column{}
+		a = []ifaces.Column[T]{}
+		b = []ifaces.Column[T]{}
 	)
 
 	for i := 0; i < params.NumCol; i++ {
@@ -281,8 +281,8 @@ func assignPermutationModule(run *wizard.ProverRuntime, index int, params SubMod
 func defineProjectionModule(comp *wizard.CompiledIOP, index int, params SubModuleParameters) {
 
 	var (
-		a       = []ifaces.Column{}
-		b       = []ifaces.Column{}
+		a       = []ifaces.Column[T]{}
+		b       = []ifaces.Column[T]{}
 		aFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "AFilter"), params.NumRow)
 		bFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "BFilter"), params.NumRowAux)
 	)
@@ -348,7 +348,7 @@ func defineFiboModule(comp *wizard.CompiledIOP, index int, params SubModuleParam
 
 	a := comp.InsertCommit(0, formatName[ifaces.ColID]("Fibo", index), params.NumRow)
 
-	comp.InsertGlobal(0, formatName[ifaces.QueryID]("Fibo", index, "Global"), sym.Sub(
+	comp.InsertGlobal(0, formatName[ifaces.QueryID]("Fibo", index, "Global"), sym.Sub[T](
 		a,
 		column.Shift(a, -1),
 		column.Shift(a, -2),
@@ -357,13 +357,13 @@ func defineFiboModule(comp *wizard.CompiledIOP, index int, params SubModuleParam
 	comp.InsertLocal(
 		0,
 		formatName[ifaces.QueryID]("Fibo", index, "Local_0"),
-		sym.Sub(a, 1),
+		sym.Sub[T](a, 1),
 	)
 
 	comp.InsertLocal(
 		0,
 		formatName[ifaces.QueryID]("Fibo", index, "Local_1"),
-		sym.Sub(column.Shift(a, 1), 1),
+		sym.Sub[T](column.Shift(a, 1), 1),
 	)
 }
 

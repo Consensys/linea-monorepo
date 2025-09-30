@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -14,22 +15,22 @@ import (
 // compiles them using the GrandProduct argument technique. All the queries are
 // compiled independently and the technique relies on computing a column Z
 // accumulating the fractions (A[i] + Beta) / (B[i] + Beta)
-func CompileViaGrandProduct(comp *wizard.CompiledIOP) {
-	CompileIntoGdProduct(comp)
+func CompileViaGrandProduct[T zk.Element](comp *wizard.CompiledIOP[T]) {
+	CompileIntoGdProduct[T](comp)
 	CompileGrandProduct(comp)
 }
 
 // CompileIntoGdProduct scans comp, looking for [query.Permutation] queries
 // and compile them into global [query.GrandProduct]. One for every-round.
-func CompileIntoGdProduct(comp *wizard.CompiledIOP) {
+func CompileIntoGdProduct[T zk.Element](comp *wizard.CompiledIOP[T]) {
 
 	var (
 		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
 		// which Z context should be used to handle a part of a given permutation
 		// query.
-		gdProductInputs = map[int]*query.GrandProductInput{}
-		numPub          = []*symbolic.Expression{}
-		denPub          = []*symbolic.Expression{}
+		gdProductInputs = map[int]*query.GrandProductInput[T]{}
+		numPub          = []*symbolic.Expression[T]{}
+		denPub          = []*symbolic.Expression[T]{}
 		maxRound        = 0
 	)
 
@@ -59,18 +60,18 @@ func CompileIntoGdProduct(comp *wizard.CompiledIOP) {
 	}
 
 	query := comp.InsertGrandProduct(maxRound+1, ifaces.QueryIDf("PERMUTATION_GD_PRODUCT_%v", comp.SelfRecursionCount), gdProductInputs)
-	comp.RegisterProverAction(query.Round, &AssignPermutationGrandProduct{Query: &query, IsPartial: len(numPub)+len(denPub) > 0})
+	comp.RegisterProverAction(query.Round, &AssignPermutationGrandProduct[T]{Query: &query, IsPartial: len(numPub)+len(denPub) > 0})
 	comp.RegisterVerifierAction(query.Round, &CheckGrandProductIsOne{Query: &query, ExplicitNum: numPub, ExplicitDen: denPub})
 }
 
 // dispatchPermutation applies the grand product argument compilation over
 // a specific [query.Permutation]
-func dispatchPermutation(
-	comp *wizard.CompiledIOP,
-	permutationInputs map[int]*query.GrandProductInput,
+func dispatchPermutation[T zk.Element](
+	comp *wizard.CompiledIOP[T],
+	permutationInputs map[int]*query.GrandProductInput[T],
 	round int,
-	q query.Permutation,
-) (numPub, denPub []*symbolic.Expression) {
+	q query.Permutation[T],
+) (numPub, denPub []*symbolic.Expression[T]) {
 
 	var (
 		isMultiColumn = len(q.A[0]) > 1
@@ -82,11 +83,11 @@ func dispatchPermutation(
 		alpha = comp.InsertCoin(round+1, deriveName[coin.Name](q, "ALPHA"), coin.FieldExt)
 	}
 
-	for k, aOrB := range [2][][]ifaces.Column{q.A, q.B} {
+	for k, aOrB := range [2][][]ifaces.Column[T]{q.A, q.B} {
 		for frag := range aOrB {
 			var (
 				numRow = aOrB[frag][0].Size()
-				factor = symbolic.NewVariable(aOrB[frag][0])
+				factor = symbolic.NewVariable[T](aOrB[frag][0])
 			)
 
 			if isMultiColumn {
@@ -96,7 +97,7 @@ func dispatchPermutation(
 			factor = symbolic.Add(factor, beta)
 
 			if _, ok := permutationInputs[numRow]; !ok {
-				permutationInputs[numRow] = &query.GrandProductInput{
+				permutationInputs[numRow] = &query.GrandProductInput[T]{
 					Size: numRow,
 				}
 			}

@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
 	"github.com/consensys/gnark-crypto/hash"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -104,9 +103,9 @@ func (r LocalOpening[T]) Check(run ifaces.Runtime) error {
 }
 
 // Test that the polynomial evaluation holds
-func (r LocalOpening[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]) {
+func (r LocalOpening[T]) CheckGnark(api zk.APIGen[T], run ifaces.GnarkRuntime[T]) {
 
-	e4Api, err := gnarkfext.NewExt4[T](api)
+	e4Api, err := gnarkfext.NewExt4[T](api.GnarkAPI())
 	if err != nil {
 		panic(err)
 	}
@@ -114,7 +113,7 @@ func (r LocalOpening[T]) CheckGnark(api frontend.API, run ifaces.GnarkRuntime[T]
 	params := run.GetParams(r.ID).(GnarkLocalOpeningParams[T])
 	if params.IsBase {
 		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
-		api.AssertIsEqual(params.BaseY, actualY)
+		api.AssertIsEqual(&params.BaseY, &actualY)
 	} else {
 		actualY := r.Pol.GetColAssignmentGnarkAtExt(run, 0)
 		e4Api.AssertIsEqual(&actualY, &params.ExtY)

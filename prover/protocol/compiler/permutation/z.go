@@ -44,7 +44,7 @@ type ZCtx struct {
 	NumeratorFactorsBoarded, DenominatorFactorsBoarded []symbolic.ExpressionBoard
 
 	// Zs is the list of the packed Zs
-	Zs []ifaces.Column
+	Zs []ifaces.Column[T]
 
 	// ZOpenings are the opening queries to the end of each Z.
 	ZOpenings []query.LocalOpening
@@ -87,7 +87,7 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 		)
 	)
 
-	z.Zs = make([]ifaces.Column, numZs)
+	z.Zs = make([]ifaces.Column[T], numZs)
 	z.ZOpenings = make([]query.LocalOpening, numZs)
 	z.NumeratorFactorsBoarded = make([]symbolic.ExpressionBoard, numZs)
 	z.DenominatorFactorsBoarded = make([]symbolic.ExpressionBoard, numZs)

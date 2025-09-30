@@ -14,11 +14,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // compile [query.LogDerivativeSum] query
-func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
+func CompileLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T]) {
 
 	// Collect all the logDerivativeSum queries
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
@@ -36,14 +37,14 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 
 		var (
 			zEntries = logDeriv.Inputs
-			va       = FinalEvaluationCheck{
+			va       = FinalEvaluationCheck[T]{
 				LogDerivSumID: qName,
 			}
 			lastRound   = logDeriv.Round
-			proverTasks = make([]ProverTaskAtRound, lastRound+1)
+			proverTasks = make([]ProverTaskAtRound[T], lastRound+1)
 		)
 
-		sizes := utils.MapFunc(zEntries.Parts, func(part query.LogDerivativeSumPart) int {
+		sizes := utils.MapFunc(zEntries.Parts, func(part query.LogDerivativeSumPart[T]) int {
 			return part.Size
 		})
 
@@ -58,7 +59,7 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 			}
 
 			// get the Numerator and Denominator from the input and prepare their compilation.
-			zC := ZCtx{
+			zC := ZCtx[T]{
 				Round: lastRound,
 				Size:  size,
 			}
@@ -75,7 +76,7 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 			zC.Compile(comp)
 
 			// prover step; Z assignments
-			zAssignmentTask := ZAssignmentTask(zC)
+			zAssignmentTask := ZCtx[T](zC)
 			proverTasks[zC.Round].pushZAssignment(zAssignmentTask)
 
 			// collect all the zOpening for all the z columns
@@ -94,9 +95,9 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 
 }
 
-type FinalEvaluationCheck struct {
+type FinalEvaluationCheck[T zk.Element] struct {
 	// ZOpenings lists all the openings of all the zCtx
-	ZOpenings []query.LocalOpening
+	ZOpenings []query.LocalOpening[T]
 	// query ID
 	LogDerivSumID ifaces.QueryID
 	// skip verifier action
@@ -104,7 +105,7 @@ type FinalEvaluationCheck struct {
 }
 
 // Run implements the [wizard.VerifierAction]
-func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
+func (f *FinalEvaluationCheck[T]) Run(run wizard.Runtime) error {
 
 	tmps := make([]fext.GenericFieldElem, 0)
 
@@ -134,12 +135,12 @@ func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction]
-func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (f *FinalEvaluationCheck[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried
 	// in the protocol via the
-	zSum := frontend.Variable(field.Zero())
+	zSum := T(field.Zero())
 	for k := range f.ZOpenings {
 		// not using panic so that the compiler does not ask us to comment out
 		// the remainder of the loop
@@ -151,10 +152,10 @@ func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntim
 	api.AssertIsEqual(zSum, claimedSum)
 }
 
-func (f *FinalEvaluationCheck) Skip() {
+func (f *FinalEvaluationCheck[T]) Skip() {
 	f.skipped = true
 }
 
-func (f *FinalEvaluationCheck) IsSkipped() bool {
+func (f *FinalEvaluationCheck[T]) IsSkipped() bool {
 	return f.skipped
 }

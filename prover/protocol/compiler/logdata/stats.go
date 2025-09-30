@@ -6,15 +6,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
 // Log is a [wizard.Compiler] implementation which logs metadata and
 // stats about the wizard in its current step of compilation.
-func Log(msg string) func(comp *wizard.CompiledIOP) {
+func Log[T zk.Element](msg string) func(comp *wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
-		cellCount := GetWizardStats(comp)
+		cellCount := GetWizardStats[T](comp)
 		logrus.Infof("[wizard.analytic] msg=%v cell-count=%+v", msg, cellCount)
 	}
 }
@@ -58,7 +59,7 @@ type TranscriptStats struct {
 }
 
 // GetWizardStats counts the cells occuring in the provided wizard-IOP.
-func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
+func GetWizardStats[T zk.Element](comp *wizard.CompiledIOP[T]) *WizardStats {
 
 	var (
 		listOfColumns = comp.Columns.AllKeys()
@@ -95,22 +96,22 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 		q := comp.QueriesParams.Data(qName)
 
 		switch qParams := q.(type) {
-		case query.UnivariateEval:
+		case query.UnivariateEval[T]:
 			cellCount.NumQueriesUnivariate++
 			cellCount.NumResultUnivariate += len(qParams.Pols)
-		case query.InnerProduct:
+		case query.InnerProduct[T]:
 			cellCount.NumQueriesInnerProduct++
 			cellCount.NumResultsInnerProduct += len(qParams.Bs)
-		case query.LocalOpening:
+		case query.LocalOpening[T]:
 			cellCount.NumQueriesLocalOpening++
 			cellCount.NumResultLocalOpening++
-		case query.LogDerivativeSum:
+		case query.LogDerivativeSum[T]:
 			cellCount.NumQueriesLogDerivativeSum++
 			cellCount.NumResultLogDerivativeSum++
-		case query.GrandProduct:
+		case query.GrandProduct[T]:
 			cellCount.NumQueriesGrandProduct++
 			cellCount.NumResultGrandProduct++
-		case *query.Horner:
+		case *query.Horner[T]:
 			cellCount.NumQueriesHorner++
 			cellCount.NumResultHorner += 1 + 2*len(qParams.Parts)
 		}
@@ -150,23 +151,23 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 			q_ := comp.QueriesParams.Data(qName)
 
 			switch q := q_.(type) {
-			case query.UnivariateEval:
+			case query.UnivariateEval[T]:
 				tr.NumFieldWritten += len(q.Pols)
 				tr.WeightUnivariate += len(q.Pols)
-			case query.InnerProduct:
+			case query.InnerProduct[T]:
 				tr.NumFieldWritten += len(q.Bs)
 				tr.WeightInnerProduct += len(q.Bs)
-			case *query.Horner:
+			case *query.Horner[T]:
 				w := 1 + 2*len(q.Parts)
 				tr.NumFieldWritten += w
 				tr.WeightHorner += w
-			case query.LocalOpening:
+			case query.LocalOpening[T]:
 				tr.NumFieldWritten++
 				tr.WeightLocalOpenings++
-			case query.LogDerivativeSum:
+			case query.LogDerivativeSum[T]:
 				tr.NumFieldWritten++
 				tr.WeightLogDerivativeSum++
-			case query.GrandProduct:
+			case query.GrandProduct[T]:
 				tr.NumFieldWritten++
 				tr.WeightGrandProduct++
 			}

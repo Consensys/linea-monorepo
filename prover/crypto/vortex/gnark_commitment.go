@@ -5,36 +5,38 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Final circuit - commitment using Merkle trees
-type VerifyOpeningCircuitMerkleTree struct {
-	Proof      GProof                `gnark:",public"`
-	Roots      []frontend.Variable   `gnark:",public"`
-	X          frontend.Variable     `gnark:",public"`
-	RandomCoin frontend.Variable     `gnark:",public"`
-	Ys         [][]frontend.Variable `gnark:",public"`
-	EntryList  []frontend.Variable   `gnark:",public"`
+type VerifyOpeningCircuitMerkleTree[T zk.Element] struct {
+	Proof      GProof[T]              `gnark:",public"`
+	Roots      []T                    `gnark:",public"`
+	X          T                      `gnark:",public"`
+	RandomCoin T                      `gnark:",public"`
+	Ys         [][]gnarkfext.E4Gen[T] `gnark:",public"`
+	EntryList  []T                    `gnark:",public"`
 	Params     GParams
 }
 
 // allocate the variables for the verification circuit with Merkle trees
-func AllocateCircuitVariablesWithMerkleTree(
-	verifyCircuit *VerifyOpeningCircuitMerkleTree,
+func AllocateCircuitVariablesWithMerkleTree[T zk.Element](
+	verifyCircuit *VerifyOpeningCircuitMerkleTree[T],
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
 	roots []types.Bytes32) {
 
-	verifyCircuit.Proof.LinearCombination = make([]frontend.Variable, proof.LinearCombination.Len())
+	verifyCircuit.Proof.LinearCombination = make([]*T, proof.LinearCombination.Len())
 
-	verifyCircuit.Proof.Columns = make([][][]frontend.Variable, len(proof.Columns))
+	verifyCircuit.Proof.Columns = make([][][]T, len(proof.Columns))
 	for i := 0; i < len(proof.Columns); i++ {
-		verifyCircuit.Proof.Columns[i] = make([][]frontend.Variable, len(proof.Columns[i]))
+		verifyCircuit.Proof.Columns[i] = make([][]T, len(proof.Columns[i]))
 		for j := 0; j < len(proof.Columns[i]); j++ {
-			verifyCircuit.Proof.Columns[i][j] = make([]frontend.Variable, len(proof.Columns[i][j]))
+			verifyCircuit.Proof.Columns[i][j] = make([]T, len(proof.Columns[i][j]))
 		}
 	}
 
@@ -42,24 +44,24 @@ func AllocateCircuitVariablesWithMerkleTree(
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		verifyCircuit.Proof.MerkleProofs[i] = make([]smt.GnarkProof, len(proof.MerkleProofs[i]))
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]frontend.Variable, len(proof.MerkleProofs[i][j].Siblings))
+			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]T, len(proof.MerkleProofs[i][j].Siblings))
 		}
 	}
 
-	verifyCircuit.EntryList = make([]frontend.Variable, len(entryList))
+	verifyCircuit.EntryList = make([]T, len(entryList))
 
-	verifyCircuit.Ys = make([][]frontend.Variable, len(ys))
+	verifyCircuit.Ys = make([][]gnarkfext.E4Gen[T], len(ys))
 	for i := 0; i < len(ys); i++ {
-		verifyCircuit.Ys[i] = make([]frontend.Variable, len(ys[i]))
+		verifyCircuit.Ys[i] = make([]gnarkfext.E4Gen[T], len(ys[i]))
 	}
 
-	verifyCircuit.Roots = make([]frontend.Variable, len(roots))
+	verifyCircuit.Roots = make([]T, len(roots))
 
 }
 
 // AssignCicuitVariablesWithMerkleTree assign the variables for the verification circuit with Merkle trees
-func AssignCicuitVariablesWithMerkleTree(
-	verifyCircuit *VerifyOpeningCircuitMerkleTree,
+func AssignCicuitVariablesWithMerkleTree[T zk.Element](
+	verifyCircuit *VerifyOpeningCircuitMerkleTree[T],
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
@@ -68,13 +70,13 @@ func AssignCicuitVariablesWithMerkleTree(
 	frLinComb := make([]field.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSlice(frLinComb)
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		verifyCircuit.Proof.LinearCombination[i] = frLinComb[i].String()
+		verifyCircuit.Proof.LinearCombination[i] = zk.ValueOf[T](frLinComb[i])
 	}
 
 	for i := 0; i < len(proof.Columns); i++ {
 		for j := 0; j < len(proof.Columns[i]); j++ {
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
-				verifyCircuit.Proof.Columns[i][j][k] = proof.Columns[i][j][k].String()
+				verifyCircuit.Proof.Columns[i][j][k] = *zk.ValueOf[T](proof.Columns[i][j][k])
 			}
 		}
 	}
@@ -91,26 +93,26 @@ func AssignCicuitVariablesWithMerkleTree(
 	}
 
 	for i := 0; i < len(entryList); i++ {
-		verifyCircuit.EntryList[i] = entryList[i]
+		verifyCircuit.EntryList[i] = *zk.ValueOf[T](entryList[i])
 	}
 
 	for i := 0; i < len(ys); i++ {
 		for j := 0; j < len(ys[i]); j++ {
-			verifyCircuit.Ys[i][j] = ys[i][j].String()
+			verifyCircuit.Ys[i][j] = gnarkfext.NewE4Gen[T](ys[i][j])
 		}
 	}
 
 	for i := 0; i < len(roots); i++ {
 		buf.SetBytes(roots[i][:])
-		verifyCircuit.Roots[i] = buf.String()
+		verifyCircuit.Roots[i] = *zk.ValueOf[T](buf)
 	}
 
 }
 
-func (circuit *VerifyOpeningCircuitMerkleTree) Define(api frontend.API) error {
+func (circuit *VerifyOpeningCircuitMerkleTree[T]) Define(api frontend.API) error {
 
 	// Generic checks
-	err := GnarkVerifyOpeningWithMerkleProof(
+	err := GnarkVerifyOpeningWithMerkleProof[T](
 		api,
 		circuit.Params,
 		circuit.Roots,
@@ -123,15 +125,15 @@ func (circuit *VerifyOpeningCircuitMerkleTree) Define(api frontend.API) error {
 	return err
 }
 
-func GnarkVerifyOpeningWithMerkleProof(
+func GnarkVerifyOpeningWithMerkleProof[T zk.Element](
 	api frontend.API,
 	params GParams,
-	roots []frontend.Variable,
+	roots []T,
 	proof GProof,
-	x frontend.Variable,
-	ys [][]frontend.Variable,
-	randomCoin frontend.Variable,
-	entryList []frontend.Variable,
+	x T,
+	ys [][]gnarkfext.E4Gen[T],
+	randomCoin T,
+	entryList []T,
 ) error {
 
 	if !params.HasNoSisHasher() {

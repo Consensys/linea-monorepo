@@ -144,7 +144,7 @@ func TestSplitextension(t *testing.T) {
 			numColumns := len(testCase.Columns)
 
 			define := func(b *wizard.Builder) {
-				toSplit := make([]ifaces.Column, numColumns)
+				toSplit := make([]ifaces.Column[T], numColumns)
 				for i := 0; i < len(testCase.Columns); i++ {
 					curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)
 					toSplit[i] = b.RegisterCommit(ifaces.ColID(curName), testCase.Columns[i].Len())

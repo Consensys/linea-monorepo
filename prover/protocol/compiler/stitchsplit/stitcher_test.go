@@ -60,7 +60,7 @@ func TestLocalEvalWithStatus(t *testing.T) {
 	// Set log level to Info to capture detailed logs during the test
 	logrus.SetLevel(logrus.DebugLevel)
 
-	var a, b, c, d ifaces.Column
+	var a, b, c, d ifaces.Column[T]
 	var q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12 query.LocalOpening
 
 	define := func(builder *wizard.Builder) {
@@ -263,17 +263,17 @@ func singlePolyFibo(size int) func() (wizard.DefineFunc, wizard.MainProverStep) 
 			P2 := build.RegisterCommit(P2, size)
 
 			// P(X) = P(X/w) + P(X/w^2)
-			expr1 := sym.Sub(
-				sym.Add(column.Shift(P1, 1), P1),
+			expr1 := sym.Sub[T](
+				sym.Add[T](column.Shift(P1, 1), P1),
 				column.Shift(P1, 2))
 
-			expr2 := sym.Sub(
-				sym.Add(column.Shift(P2, 1), P2),
+			expr2 := sym.Sub[T](
+				sym.Add[T](column.Shift(P2, 1), P2),
 				column.Shift(P2, 2))
 
 			_ = build.GlobalConstraint(GLOBAL1, expr1)
 			_ = build.GlobalConstraint(GLOBAL2, expr2)
-			// 	_ = build.LocalConstraint(LOCAL1, sym.Sub(P1, 1))
+			// 	_ = build.LocalConstraint(LOCAL1, sym.Sub[T](P1, 1))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
@@ -296,7 +296,7 @@ func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFun
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
-			_ = build.GlobalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+			_ = build.GlobalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.Column[T]AsVariable(P1)))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
@@ -318,7 +318,7 @@ func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
-			_ = build.LocalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.ColumnAsVariable(P1)))
+			_ = build.LocalConstraint(GLOBAL1, variables.NewPeriodicSample(period, offset).Mul(ifaces.Column[T]AsVariable(P1)))
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
@@ -343,13 +343,13 @@ func globalWithVerifColAndPeriodic(size, period, offset int) func() (wizard.Defi
 			verifcol1 := verifiercol.NewFromAccessors(genAccessors(0, size), fext.Zero(), size)
 			verifcol2 := verifiercol.NewFromAccessors(genAccessors(2, size), fext.Zero(), size)
 			_ = build.GlobalConstraint(LOCAL1,
-				sym.Sub(
+				sym.Sub[T](
 
-					sym.Mul(sym.Sub(1, P1),
+					sym.Mul[T](sym.Sub[T](1, P1),
 						verifcol2),
 
-					sym.Mul(variables.NewPeriodicSample(period, offset),
-						sym.Add(2, verifcol1))),
+					sym.Mul[T](variables.NewPeriodicSample(period, offset),
+						sym.Add[T](2, verifcol1))),
 			)
 		}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -33,19 +34,19 @@ import (
 // should instead implicitly construct it via the [Compile] function and access
 // it via the Builder.CompiledIOP object. Namely, the zero value of the
 // CompiledIOP does not implement anything useful.
-type CompiledIOP struct {
+type CompiledIOP[T zk.Element] struct {
 
 	// Columns registers and stores the Columns (ie: messages for the oracle)
 	// of the protocol. This includes the committed vectors, the proof messages,
 	// the preprocessed commitments that intervene in the protocol.
-	Columns *column.Store
+	Columns *column.Store[T]
 
 	// QueriesParams registers and stores all the parametrizable queries of the
 	// specified protocol. By "parametrizable", we mean the queries for which
 	// the prover is required to assign runtime parameters. For instance, for
 	// a univariate evaluation query : the prover is required to assign an
 	// evaluation point X and and at least one evaluation claim.
-	QueriesParams ByRoundRegister[ifaces.QueryID, ifaces.Query]
+	QueriesParams ByRoundRegister[ifaces.QueryID, ifaces.Query[T]]
 
 	// QueriesNoParams registers and stores all queries without parameters.
 	// Namely, this is storing the queries for which the prover does not need
@@ -53,7 +54,7 @@ type CompiledIOP struct {
 	// which ensures that an arithmetic expression vanishes over its domain. In
 	// this case, as long as the arithmetic expression is defined, there is
 	// nothing to add.
-	QueriesNoParams ByRoundRegister[ifaces.QueryID, ifaces.Query]
+	QueriesNoParams ByRoundRegister[ifaces.QueryID, ifaces.Query[T]]
 
 	// Coins registers and stores all the verifier's random challenge that are
 	// specified in the protocol. A challenge can be either a single field
@@ -137,7 +138,7 @@ type CompiledIOP struct {
 // NumRounds returns the total number of prover interactions with the verifier
 // that are registered in the protocol. If the protocol is non-interactive it
 // will return "1"; "2" if one batch of random coins is registered, etc...
-func (c *CompiledIOP) NumRounds() int {
+func (c *CompiledIOP[T]) NumRounds() int {
 	// If there are no coins, we should still return 1 (at least)
 	return utils.Max(1, c.Coins.NumRounds())
 }
@@ -147,20 +148,20 @@ func (c *CompiledIOP) NumRounds() int {
 // then by chronological order of declaration.
 //
 // @alex: this should be renamed ListColumns
-func (c *CompiledIOP) ListCommitments() []ifaces.ColID {
+func (c *CompiledIOP[T]) ListCommitments() []ifaces.ColID {
 	return c.Columns.AllKeys()
 }
 
 // InsertCommit registers a new column (as committed) in the protocol at a given
-// round and returns the corresponding [ifaces.Column] object which summarizes
+// round and returns the corresponding [ifaces.Column[T]] object which summarizes
 // the metadata of the column. The user should provide a unique identifier `name`
 // and specify a size for the column.
-func (c *CompiledIOP) InsertCommit(round int, name ifaces.ColID, size int) ifaces.Column {
+func (c *CompiledIOP[T]) InsertCommit(round int, name ifaces.ColID, size int) ifaces.Column[T] {
 	return c.InsertColumn(round, name, size, column.Committed)
 }
 
 // InsertColumn registers a new column in the protocol at a given
-// round and returns the corresponding [ifaces.Column] object which summarizes the
+// round and returns the corresponding [ifaces.Column[T]] object which summarizes the
 // metadata of the column. Compared to [CompiledIOP.InsertCommit], the user can additionally
 // provide a custom Status to the column. See [column.Status] for more details.
 // Importantly, if the user wants to register either a verifying key column
@@ -175,7 +176,7 @@ func (c *CompiledIOP) InsertCommit(round int, name ifaces.ColID, size int) iface
 //   - if the name is the empty string
 //   - if the size of the column is not a power of 2
 //   - if a column using the same name has already been registered
-func (c *CompiledIOP) InsertColumn(round int, name ifaces.ColID, size int, status column.Status) ifaces.Column {
+func (c *CompiledIOP[T]) InsertColumn(round int, name ifaces.ColID, size int, status column.Status) ifaces.Column[T] {
 	// Panic if the size is not a power of 2
 	if !utils.IsPowerOfTwo(size) {
 		utils.Panic("Registering column %v with a non power of two size = %v", name, size)
@@ -206,7 +207,7 @@ Registers a new coin at a given rounds. Returns a [coin.Info] object.
 
 	_ = c.InsertCoin(<round of sampling>, <stringID of the coin>, coin.IntegerVec, <#Size of the vec>, <#Bound on the integers>)
 */
-func (c *CompiledIOP) InsertCoin(round int, name coin.Name, type_ coin.Type, size ...int) coin.Info {
+func (c *CompiledIOP[T]) InsertCoin(round int, name coin.Name, type_ coin.Type, size ...int) coin.Info {
 	// Short-hand to access the compiled object
 	info := coin.NewInfo(name, type_, round, size...)
 	c.Coins.AddToRound(round, name, info)
@@ -229,24 +230,24 @@ func (c *CompiledIOP) InsertCoin(round int, name coin.Name, type_ coin.Type, siz
 //     to build such invalid expressions)
 //   - a constraint with the same name already exists
 //   - the definition round is inconsistent with the expression
-func (c *CompiledIOP) InsertGlobal(round int, name ifaces.QueryID, expr *symbolic.Expression, noBoundCancel ...bool) query.GlobalConstraint {
+func (c *CompiledIOP[T]) InsertGlobal(round int, name ifaces.QueryID, expr *symbolic.Expression[T], noBoundCancel ...bool) query.GlobalConstraint[T] {
 
 	c.checkExpressionInStore(expr)
 
 	// The constructor of the global constraint is assumed to perform all the
 	// well-formation checks of the constraint.
-	cs := query.NewGlobalConstraint(name, expr, noBoundCancel...)
+	cs := query.NewGlobalConstraint[T](name, expr, noBoundCancel...)
 	boarded := cs.Board()
 	metadatas := boarded.ListVariableMetadata()
 
 	// Test the existence of all variable in the instance
 	for _, metadataInterface := range metadatas {
 		switch metadata := metadataInterface.(type) {
-		case ifaces.Column:
+		case ifaces.Column[T]:
 			// The handle mecanism prevents this.
 		case coin.Info:
 			c.Coins.MustExists(metadata.Name)
-		case variables.X, variables.PeriodicSample, ifaces.Accessor:
+		case variables.X[T], variables.PeriodicSample[T], ifaces.Accessor[T]:
 			// Pass
 		default:
 			utils.Panic("Not a variable type %T in query %v", metadataInterface, cs.ID)
@@ -259,7 +260,7 @@ func (c *CompiledIOP) InsertGlobal(round int, name ifaces.QueryID, expr *symboli
 	return cs
 }
 
-// InsertLocal registers a global constraint (see [query.LocalConstraint])
+// InsertLocal registers a global constraint (see [query.LocalConstraint[T]])
 // inside of the protocol. The provided name is used as unique identifier for
 // the constraint and allows the caller to provide context so that it is easier
 // to understand where the column comes from later on.
@@ -273,7 +274,7 @@ func (c *CompiledIOP) InsertGlobal(round int, name ifaces.QueryID, expr *symboli
 //     to build such invalid expressions)
 //   - a constraint with the same name already exists
 //   - the definition round is inconsistent with the expression
-func (c *CompiledIOP) InsertLocal(round int, name ifaces.QueryID, cs_ *symbolic.Expression) query.LocalConstraint {
+func (c *CompiledIOP[T]) InsertLocal(round int, name ifaces.QueryID, cs_ *symbolic.Expression[T]) query.LocalConstraint[T] {
 
 	c.checkExpressionInStore(cs_)
 
@@ -284,11 +285,11 @@ func (c *CompiledIOP) InsertLocal(round int, name ifaces.QueryID, cs_ *symbolic.
 	// Test the existence of all variable in the instance
 	for _, metadataInterface := range metadatas {
 		switch metadata := metadataInterface.(type) {
-		case ifaces.Column:
+		case ifaces.Column[T]:
 			// Existence is guaranteed already
 		case coin.Info:
 			c.Coins.MustExists(metadata.Name)
-		case variables.X, variables.PeriodicSample, ifaces.Accessor:
+		case variables.X[T], variables.PeriodicSample[T], ifaces.Accessor[T]:
 			// Pass
 		default:
 			utils.Panic("Not a variable type %T in query %v", metadataInterface, cs.ID)
@@ -310,12 +311,12 @@ func (c *CompiledIOP) InsertLocal(round int, name ifaces.QueryID, cs_ *symbolic.
 // - any of the columns in both `a` and `b` do not have the same size
 // - any column in `a` or `b“ is a not registered columns
 // - a constraint with the same name already exists in the CompiledIOP
-func (c *CompiledIOP) InsertPermutation(round int, name ifaces.QueryID, a, b []ifaces.Column) query.Permutation {
+func (c *CompiledIOP[T]) InsertPermutation(round int, name ifaces.QueryID, a, b []ifaces.Column[T]) query.Permutation[T] {
 
 	c.checkAnyInStore(a)
 	c.checkAnyInStore(b)
 
-	query_ := query.NewPermutation(name, [][]ifaces.Column{a}, [][]ifaces.Column{b})
+	query_ := query.NewPermutation(name, [][]ifaces.Column[T]{a}, [][]ifaces.Column[T]{b})
 	c.QueriesNoParams.AddToRound(round, name, query_)
 	return query_
 }
@@ -323,13 +324,13 @@ func (c *CompiledIOP) InsertPermutation(round int, name ifaces.QueryID, a, b []i
 // InsertFragmentedPermutation is as [CompiledIOP.InsertPermutation] but for
 // fragmented tables. Meanining that permutation operates over the union of
 // the rows of multiple tables.
-func (c *CompiledIOP) InsertFragmentedPermutation(round int, name ifaces.QueryID, a, b [][]ifaces.Column) query.Permutation {
+func (c *CompiledIOP[T]) InsertFragmentedPermutation(round int, name ifaces.QueryID, a, b [][]ifaces.Column[T]) query.Permutation[T] {
 	query_ := query.NewPermutation(name, a, b)
 	c.QueriesNoParams.AddToRound(round, name, query_)
 	return query_
 }
 
-// InsertFixedPermutation registers a new [query.FixedPermutation] constraint
+// InsertFixedPermutation registers a new [query.FixedPermutation[T]] constraint
 // in the CompiledIOP. The caller can provide a name to uniquely identify the
 // registered constraint and provide some context regarding its role in the
 // currently specified protocol.
@@ -338,7 +339,7 @@ func (c *CompiledIOP) InsertFragmentedPermutation(round int, name ifaces.QueryID
 // - any of the columns in both `a` and `b` do not have the same size
 // - any column in `a` or `b“ is a not registered columns
 // - a constraint with the same name already exists in the CompiledIOP
-func (c *CompiledIOP) InsertFixedPermutation(round int, name ifaces.QueryID, p []ifaces.ColAssignment, a, b []ifaces.Column) query.FixedPermutation {
+func (c *CompiledIOP[T]) InsertFixedPermutation(round int, name ifaces.QueryID, p []ifaces.ColAssignment, a, b []ifaces.Column[T]) query.FixedPermutation[T] {
 
 	c.checkAnyInStore(a)
 	c.checkAnyInStore(b)
@@ -359,12 +360,12 @@ func (c *CompiledIOP) InsertFixedPermutation(round int, name ifaces.QueryID, p [
 // - the columns in `including` do not all have the same size
 // - the columns in `included` do not all have the same size
 // - a constraint with the same name already exists in the CompiledIOP
-func (c *CompiledIOP) InsertInclusion(round int, name ifaces.QueryID, including, included []ifaces.Column) {
+func (c *CompiledIOP[T]) InsertInclusion(round int, name ifaces.QueryID, including, included []ifaces.Column[T]) {
 
 	c.checkAnyInStore(including)
 	c.checkAnyInStore(included)
 
-	query := query.NewInclusion(name, included, [][]ifaces.Column{including}, nil, nil)
+	query := query.NewInclusion(name, included, [][]ifaces.Column[T]{including}, nil, nil)
 	c.QueriesNoParams.AddToRound(round, name, query)
 }
 
@@ -372,14 +373,14 @@ func (c *CompiledIOP) InsertInclusion(round int, name ifaces.QueryID, including,
 Creates an inclusion query. Both the including and the included tables are filtered
 the filters should be columns containing only field elements for 0 and 1
 */
-func (c *CompiledIOP) InsertInclusionDoubleConditional(round int, name ifaces.QueryID, including, included []ifaces.Column, includingFilter, includedFilter ifaces.Column) {
+func (c *CompiledIOP[T]) InsertInclusionDoubleConditional(round int, name ifaces.QueryID, including, included []ifaces.Column[T], includingFilter, includedFilter ifaces.Column[T]) {
 
 	c.checkAnyInStore(including)
 	c.checkAnyInStore(included)
 	c.checkColumnInStore(includingFilter)
 	c.checkColumnInStore(includedFilter)
 
-	query := query.NewInclusion(name, included, [][]ifaces.Column{including}, includedFilter, []ifaces.Column{includingFilter})
+	query := query.NewInclusion(name, included, [][]ifaces.Column[T]{including}, includedFilter, []ifaces.Column[T]{includingFilter})
 	c.QueriesNoParams.AddToRound(round, name, query)
 }
 
@@ -387,13 +388,13 @@ func (c *CompiledIOP) InsertInclusionDoubleConditional(round int, name ifaces.Qu
 Creates an inclusion query. Only the including table is filtered
 the filters should be columns containing only field elements for 0 and 1
 */
-func (c *CompiledIOP) InsertInclusionConditionalOnIncluding(round int, name ifaces.QueryID, including, included []ifaces.Column, includingFilter ifaces.Column) {
+func (c *CompiledIOP[T]) InsertInclusionConditionalOnIncluding(round int, name ifaces.QueryID, including, included []ifaces.Column[T], includingFilter ifaces.Column[T]) {
 
 	c.checkAnyInStore(including)
 	c.checkAnyInStore(included)
 	c.checkColumnInStore(includingFilter)
 
-	query := query.NewInclusion(name, included, [][]ifaces.Column{including}, nil, []ifaces.Column{includingFilter})
+	query := query.NewInclusion(name, included, [][]ifaces.Column[T]{including}, nil, []ifaces.Column[T]{includingFilter})
 	c.QueriesNoParams.AddToRound(round, name, query)
 }
 
@@ -401,13 +402,13 @@ func (c *CompiledIOP) InsertInclusionConditionalOnIncluding(round int, name ifac
 Creates an inclusion query. Only the included table is filtered
 the filters should be columns containing only field elements for 0 and 1
 */
-func (c *CompiledIOP) InsertInclusionConditionalOnIncluded(round int, name ifaces.QueryID, including, included []ifaces.Column, includedFilter ifaces.Column) {
+func (c *CompiledIOP[T]) InsertInclusionConditionalOnIncluded(round int, name ifaces.QueryID, including, included []ifaces.Column[T], includedFilter ifaces.Column[T]) {
 
 	c.checkAnyInStore(including)
 	c.checkAnyInStore(included)
 	c.checkColumnInStore(includedFilter)
 
-	query := query.NewInclusion(name, included, [][]ifaces.Column{including}, includedFilter, nil)
+	query := query.NewInclusion(name, included, [][]ifaces.Column[T]{including}, includedFilter, nil)
 	c.QueriesNoParams.AddToRound(round, name, query)
 }
 
@@ -419,13 +420,13 @@ func (c *CompiledIOP) InsertInclusionConditionalOnIncluded(round int, name iface
 //
 // In all cases, the provided parameters must be consistent in their length to
 // represent a well-formed inclusion query or the function panics.
-func (c *CompiledIOP) GenericFragmentedConditionalInclusion(
+func (c *CompiledIOP[T]) GenericFragmentedConditionalInclusion(
 	round int,
 	name ifaces.QueryID,
-	including [][]ifaces.Column,
-	included []ifaces.Column,
-	includingFilter []ifaces.Column,
-	includedFilter ifaces.Column,
+	including [][]ifaces.Column[T],
+	included []ifaces.Column[T],
+	includingFilter []ifaces.Column[T],
+	includedFilter ifaces.Column[T],
 ) {
 
 	c.checkAnyInStore(including)
@@ -446,7 +447,7 @@ func (c *CompiledIOP) GenericFragmentedConditionalInclusion(
 // The caller must provide a uniquely identifying string name which can be used
 // to provide context about the purpose of the column. The caller should also
 // provide an explicit assignment to the column.
-func (c *CompiledIOP) InsertPrecomputed(name ifaces.ColID, v smartvectors.SmartVector) (msg ifaces.Column) {
+func (c *CompiledIOP[T]) InsertPrecomputed(name ifaces.ColID, v smartvectors.SmartVector) (msg ifaces.Column[T]) {
 
 	// Common : No zero length
 	if v.Len() == 0 {
@@ -475,7 +476,7 @@ func (c *CompiledIOP) InsertPrecomputed(name ifaces.ColID, v smartvectors.SmartV
 // end of the current prover's round.
 //
 // The name must be non-empty and unique and the size must be a power of 2.
-func (c *CompiledIOP) InsertProof(round int, name ifaces.ColID, size int) (msg ifaces.Column) {
+func (c *CompiledIOP[T]) InsertProof(round int, name ifaces.ColID, size int) (msg ifaces.Column[T]) {
 
 	// Common : No zero length
 	if size == 0 {
@@ -495,7 +496,7 @@ func (c *CompiledIOP) InsertProof(round int, name ifaces.ColID, size int) (msg i
 // - the range is not a power of 2
 // - the name is the empty string
 // - a query with the same name has already been registered in the Wizard.
-func (c *CompiledIOP) InsertRange(round int, name ifaces.QueryID, h ifaces.Column, max int) {
+func (c *CompiledIOP[T]) InsertRange(round int, name ifaces.QueryID, h ifaces.Column[T], max int) {
 
 	c.checkColumnInStore(h)
 
@@ -520,7 +521,7 @@ func (c *CompiledIOP) InsertRange(round int, name ifaces.QueryID, h ifaces.Colum
 }
 
 // InsertInnerProduct registers a (batch) inner-product query
-// ([query.InnerProduct]) between a common vector `a` and multiple vectors `bs`,
+// ([query.InnerProduct[T]]) between a common vector `a` and multiple vectors `bs`,
 // meaning it generates an evaluation query for the inner-products <a, bs[i]>
 // all at once. The caller must provide a non-empty uniquely-identifying name to
 // the column. The name should provide some context to help recognizing where the
@@ -530,7 +531,7 @@ func (c *CompiledIOP) InsertRange(round int, name ifaces.QueryID, h ifaces.Colum
 // - the name is the empty string
 // - a query with the same name has already been registered in the Wizard
 // - the provided columns `a` and `bs` do not all have the same size
-func (c *CompiledIOP) InsertInnerProduct(round int, name ifaces.QueryID, a ifaces.Column, bs []ifaces.Column) query.InnerProduct {
+func (c *CompiledIOP[T]) InsertInnerProduct(round int, name ifaces.QueryID, a ifaces.Column[T], bs []ifaces.Column[T]) query.InnerProduct[T] {
 
 	c.checkColumnInStore(a)
 	c.checkAnyInStore(bs)
@@ -553,11 +554,11 @@ func (c *CompiledIOP) InsertInnerProduct(round int, name ifaces.QueryID, a iface
 // Get an Inner-product query
 //
 // Deprecated: the user should directly grab it from the `Data` section.
-func (run *CompiledIOP) GetInnerProduct(name ifaces.QueryID) query.InnerProduct {
-	return run.QueriesParams.Data(name).(query.InnerProduct)
+func (run *CompiledIOP[T]) GetInnerProduct(name ifaces.QueryID) query.InnerProduct[T] {
+	return run.QueriesParams.Data(name).(query.InnerProduct[T])
 }
 
-// InsertUnivariate declares a new univariate evaluation query [query.UnivariateEval]
+// InsertUnivariate declares a new univariate evaluation query [query.UnivariateEval[T]]
 // in the current CompiledIOP object. A univariate evaluation query is used to
 // get an oracle-evaluation of a set of columns (seen as a polynomial in Lagrange
 // basis) on a common evaluation point. The point may be assigned during the
@@ -566,7 +567,7 @@ func (run *CompiledIOP) GetInnerProduct(name ifaces.QueryID) query.InnerProduct 
 // The function panics if:
 // - the name is the empty string
 // - a query with the same name has already been registered in the Wizard
-func (c *CompiledIOP) InsertUnivariate(round int, name ifaces.QueryID, pols []ifaces.Column) query.UnivariateEval {
+func (c *CompiledIOP[T]) InsertUnivariate(round int, name ifaces.QueryID, pols []ifaces.Column[T]) query.UnivariateEval[T] {
 
 	c.checkAnyInStore(pols)
 
@@ -576,10 +577,10 @@ func (c *CompiledIOP) InsertUnivariate(round int, name ifaces.QueryID, pols []if
 	return q
 }
 
-// InsertLocalOpening registers a new local opening query [query.LocalOpening]
+// InsertLocalOpening registers a new local opening query [query.LocalOpening[T]]
 // in the current CompiledIOP. A local opening query requires the prover of the
 // protocol to "open" the first position of the vector.
-func (c *CompiledIOP) InsertLocalOpening(round int, name ifaces.QueryID, pol ifaces.Column) query.LocalOpening {
+func (c *CompiledIOP[T]) InsertLocalOpening(round int, name ifaces.QueryID, pol ifaces.Column[T]) query.LocalOpening[T] {
 
 	c.checkColumnInStore(pol)
 
@@ -592,7 +593,7 @@ func (c *CompiledIOP) InsertLocalOpening(round int, name ifaces.QueryID, pol ifa
 // InsertLogDerivativeSum registers a new LogDerivativeSum query [query.LogDerivativeSum].
 // It generates a single global summation for many Sigma Columns from Lookup compilation.
 // The sigma columns are categorized by [round,size].
-func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, in query.LogDerivativeSumInput) query.LogDerivativeSum {
+func (c *CompiledIOP[T]) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, in query.LogDerivativeSumInput[T]) query.LogDerivativeSum[T] {
 
 	c.checkAnyInStore(in)
 
@@ -613,7 +614,7 @@ func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, i
 //
 // The caller may provide a (potentially nil) column as a selector. The selector
 // disables the query on rows where the selector is 0.
-func (c *CompiledIOP) InsertMiMC(round int, id ifaces.QueryID, block, old, new ifaces.Column, selector ifaces.Column) query.MiMC {
+func (c *CompiledIOP[T]) InsertMiMC(round int, id ifaces.QueryID, block, old, new ifaces.Column[T], selector ifaces.Column[T]) query.MiMC {
 
 	c.checkColumnInStore(block)
 	c.checkColumnInStore(old)
@@ -628,7 +629,7 @@ func (c *CompiledIOP) InsertMiMC(round int, id ifaces.QueryID, block, old, new i
 	return q
 }
 
-func (c *CompiledIOP) InsertPoseidon2(round int, id ifaces.QueryID, block, old, new [8]ifaces.Column, selector ifaces.Column) query.Poseidon2 {
+func (c *CompiledIOP[T]) InsertPoseidon2(round int, id ifaces.QueryID, block, old, new [8]ifaces.Column[T], selector ifaces.Column[T]) query.Poseidon2[T] {
 
 	for i := 0; i < 8; i++ {
 		c.checkColumnInStore(block[i])
@@ -648,7 +649,7 @@ func (c *CompiledIOP) InsertPoseidon2(round int, id ifaces.QueryID, block, old, 
 // RegistersVerifyingKey registers a column as part of the verifying key of the
 // protocol; meaning a column whose assignment is static and which is visible
 // to the verifier.
-func (c *CompiledIOP) RegisterVerifyingKey(name ifaces.ColID, witness ifaces.ColAssignment) ifaces.Column {
+func (c *CompiledIOP[T]) RegisterVerifyingKey(name ifaces.ColID, witness ifaces.ColAssignment) ifaces.Column[T] {
 	size := witness.Len()
 	if size == 0 {
 		utils.Panic("when registering %v, VecType with length zero", name)
@@ -659,7 +660,7 @@ func (c *CompiledIOP) RegisterVerifyingKey(name ifaces.ColID, witness ifaces.Col
 
 // RegisterProverAction registers an action to be accomplished by the prover
 // of the protocol at a given round.
-func (c *CompiledIOP) RegisterProverAction(round int, action ProverAction) {
+func (c *CompiledIOP[T]) RegisterProverAction(round int, action ProverAction) {
 	// This is purely to not break the current provers in the middle of the
 	// switch.
 	c.SubProvers.AppendToInner(round, action)
@@ -667,14 +668,14 @@ func (c *CompiledIOP) RegisterProverAction(round int, action ProverAction) {
 
 // RegisterVerifierAction registers an action to be accomplished by the verifier
 // of the protocol at a given round
-func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
+func (c *CompiledIOP[T]) RegisterVerifierAction(round int, action VerifierAction) {
 	// This is purely to not break the current provers in the middle of the
 	// switch.
 	c.SubVerifiers.AppendToInner(round, action)
 }
 
 // Register a GrandProduct query
-func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, in map[int]*query.GrandProductInput) query.GrandProduct {
+func (c *CompiledIOP[T]) InsertGrandProduct(round int, id ifaces.QueryID, in map[int]*query.GrandProductInput[T]) query.GrandProduct[T] {
 
 	if in == nil {
 		panic("passed a nil set of inputs")
@@ -712,15 +713,15 @@ Note that the query imposes that:
 The "in" argument can be either a [query.ProjectionInput] or a
 [query.ProjectionMultiAryInput].
 */
-func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in any) query.Projection {
+func (c *CompiledIOP[T]) InsertProjection(id ifaces.QueryID, in any) query.Projection[T] {
 
 	c.checkAnyInStore(in)
 
-	var q query.Projection
+	var q query.Projection[T]
 
 	switch in := in.(type) {
 
-	case query.ProjectionInput:
+	case query.ProjectionInput[T]:
 		round := max(
 			column.MaxRound(in.ColumnA...),
 			column.MaxRound(in.ColumnB...),
@@ -728,7 +729,7 @@ func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in any) query.Projecti
 			in.FilterB.Round())
 		q = query.NewProjection(round, id, in)
 
-	case query.ProjectionMultiAryInput:
+	case query.ProjectionMultiAryInput[T]:
 		round := max(
 			column.MaxRound(slices.Concat(in.ColumnsA...)...),
 			column.MaxRound(slices.Concat(in.ColumnsB...)...),
@@ -747,7 +748,7 @@ func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in any) query.Projecti
 
 // AddPublicInput inserts a public-input in the compiled-IOP. The function
 // panics if the public-input already exists.
-func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) PublicInput {
+func (c *CompiledIOP[T]) InsertPublicInput(name string, acc ifaces.Accessor[T]) PublicInput {
 
 	c.checkAnyInStore(acc)
 
@@ -769,7 +770,7 @@ func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) Public
 // GetPublicInputAccessor attempts to find a public input with the provided name
 // and panic if it fails to do so. The method returns the accessor in case of
 // success.
-func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
+func (c *CompiledIOP[T]) GetPublicInputAccessor(name string) ifaces.Accessor[T] {
 	for _, pi := range c.PublicInputs {
 		if pi.Name == name {
 			return pi.Acc
@@ -791,7 +792,7 @@ func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
 //   - the nb of public inputs of the circuit is larger than the size of Data and Selector
 //   - data and selector do not have the same size
 //   - the number of public inputs is a power of two (for technical reasons)
-func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
+func (c *CompiledIOP[T]) InsertPlonkInWizard(q *query.PlonkInWizard[T]) {
 
 	c.checkAnyInStore(q)
 
@@ -817,7 +818,7 @@ func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 
 // InsertHornerQuery inserts a [query.Horner] in the current compilation
 // context.
-func (c *CompiledIOP) InsertHornerQuery(round int, id ifaces.QueryID, parts []query.HornerPart) query.Horner {
+func (c *CompiledIOP[T]) InsertHornerQuery(round int, id ifaces.QueryID, parts []query.HornerPart[T]) query.Horner[T] {
 
 	c.checkAnyInStore(parts)
 
@@ -827,6 +828,6 @@ func (c *CompiledIOP) InsertHornerQuery(round int, id ifaces.QueryID, parts []qu
 	return q
 }
 
-func (c *CompiledIOP) GetSubVerifiers() collection.VecVec[VerifierAction] {
+func (c *CompiledIOP[T]) GetSubVerifiers() collection.VecVec[VerifierAction] {
 	return c.SubVerifiers
 }

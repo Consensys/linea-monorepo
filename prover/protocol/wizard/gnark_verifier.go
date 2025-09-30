@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -22,29 +23,29 @@ import (
 
 // GnarkRuntime is the interface implemented by the struct [VerifierCircuit]
 // and is used to interact with the GnarkVerifierStep.
-type GnarkRuntime interface {
-	ifaces.GnarkRuntime
-	GetSpec() *CompiledIOP
-	GetPublicInput(api frontend.API, name string) frontend.Variable
-	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams
-	GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams
-	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams
-	GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams
-	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
-	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
-	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
-	Fs() *fiatshamir.GnarkFiatShamir
+type GnarkRuntime[T zk.Element] interface {
+	ifaces.GnarkRuntime[T]
+	GetSpec() *CompiledIOP[T]
+	GetPublicInput(api frontend.API, name string) T
+	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams[T]
+	GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams[T]
+	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams[T]
+	GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams[T]
+	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams[T]
+	GetUnivariateEval(name ifaces.QueryID) query.GnarkUnivariateEvalParams[T]
+	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams[T]
+	Fs() *fiatshamir.GnarkFiatShamir // TODO @thomas make it gen
 	GetHasherFactory() mimc.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
-	GetQuery(name ifaces.QueryID) ifaces.Query
+	GetQuery(name ifaces.QueryID) ifaces.Query[T]
 }
 
 // GnarkVerifierStep functions that can be registered in the CompiledIOP by the
 // successive compilation steps. They correspond to "precompiled" verification
 // steps.
-type GnarkVerifierStep func(frontend.API, GnarkRuntime)
+type GnarkVerifierStepGen[T zk.Element] func(frontend.API, GnarkRuntime[T])
 
 // VerifierCircuitAnalytic collects analytic datas on a verifier circuit
 type VerifierCircuitAnalytic struct {
@@ -67,16 +68,17 @@ type VerifierCircuitAnalytic struct {
 //
 // The sub-circuit employs GKR for MiMC in order to improve the performances
 // of the MiMC hashes that occurs during the verifier runtime.
-type VerifierCircuit struct {
+// implements GnarkRuntime[T zk.Element] interface
+type VerifierCircuit[T zk.Element] struct {
 
 	// Spec points to the inner CompiledIOP and carries all the static
 	// informations related to the circuit.
-	Spec *CompiledIOP `gnark:"-"`
+	Spec *CompiledIOP[T] `gnark:"-"`
 
 	// Maps a query's name to a position in the arrays below. The reason we
 	// use this data-structure is because the [VerifierRuntime] offers
 	// key-value access to the internal parameters of the struct and we
-	// cannot have maps of [frontend.Variable] in a gnark circuit (because we
+	// cannot have maps of [T] in a gnark circuit (because we
 	// need a deterministic storage so that we are sure that the wires stay at
 	// the same position). The way we solve the problem is by storing the
 	// columns and parameters in slices and keeping track of their positions
@@ -100,30 +102,31 @@ type VerifierCircuit struct {
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
-	Columns    [][]frontend.Variable `gnark:",secret"`
-	ColumnsExt [][]gnarkfext.Element `gnark:",secret"`
+	Columns    [][]T                  `gnark:",secret"`
+	ColumnsExt [][]gnarkfext.E4Gen[T] `gnark:",secret"`
 	// UnivariateParams stores an assignment for each [query.UnivariateParams]
 	// from the proof. This is part of the witness of the gnark circuit.
-	UnivariateParams []query.GnarkUnivariateEvalParams `gnark:",secret"`
+	UnivariateParams []query.GnarkUnivariateEvalParams[T] `gnark:",secret"`
 	// InnerProductParams stores an assignment for each [query.InnerProductParams]
 	// from the proof. It is part of the witness of the gnark circuit.
-	InnerProductParams []query.GnarkInnerProductParams `gnark:",secret"`
+	InnerProductParams []query.GnarkInnerProductParams[T] `gnark:",secret"`
 	// LocalOpeningParams stores an assignment for each [query.LocalOpeningParams]
 	// from the proof. It is part of the witness of the gnark circuit.
-	LocalOpeningParams []query.GnarkLocalOpeningParams `gnark:",secret"`
+	LocalOpeningParams []query.GnarkLocalOpeningParams[T] `gnark:",secret"`
 	// LogDerivSumParams stores an assignment for each [query.LogDerivSumParams]
 	// from the proof. It is part of the witness of the gnark circuit.
-	LogDerivSumParams []query.GnarkLogDerivSumParams `gnark:",secret"`
+	LogDerivSumParams []query.GnarkLogDerivSumParams[T] `gnark:",secret"`
 	// GrandProductParams stores an assignment for each [query.GrandProductParams]
 	// from the proof. It is part of the witness of the gnark circuit.
-	GrandProductParams []query.GnarkGrandProductParams `gnark:",secret"`
+	GrandProductParams []query.GnarkGrandProductParams[T] `gnark:",secret"`
 	// HornerParams stores an assignment for each [query.Horner] from
 	// the proof. It is part of the witness of the gnark circuit.
-	HornerParams []query.GnarkHornerParams `gnark:",secret"`
+	HornerParams []query.GnarkHornerParams[T] `gnark:",secret"`
 
 	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
 	// possible.
+	// TODO make it gen
 	FS *fiatshamir.GnarkFiatShamir `gnark:"-"`
 
 	// Coins stores all the coins sampled by the verifier circuit. It is not
@@ -136,6 +139,7 @@ type VerifierCircuit struct {
 	// in the circuit. It is used for efficiently computing the Fiat-Shamir
 	// hashes but also the MiMC Vortex column hashes that we use for the
 	// last round of the self-recursion.
+	// TODO @thomas replace this with poseidon2 ?
 	HasherFactory mimc.HasherFactory `gnark:"-"`
 
 	// State is a generic-purpose data store that the verifier steps can use to
@@ -148,9 +152,9 @@ type VerifierCircuit struct {
 
 // NewVerifierCircuit creates an empty wizard verifier circuit.
 // Initializes the underlying structs and collections.
-func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
+func NewVerifierCircuit[T zk.Element](comp *CompiledIOP[T], numRound int) *VerifierCircuit[T] {
 
-	return &VerifierCircuit{
+	return &VerifierCircuit[T]{
 		Spec: comp,
 
 		ColumnsIDs:          collection.NewMapping[ifaces.ColID, int](),
@@ -162,13 +166,13 @@ func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 		GrandProductIDs:     collection.NewMapping[ifaces.QueryID, int](),
 		HornerIDs:           collection.NewMapping[ifaces.QueryID, int](),
 
-		Columns:            [][]frontend.Variable{},
-		ColumnsExt:         [][]gnarkfext.Element{},
-		UnivariateParams:   make([]query.GnarkUnivariateEvalParams, 0),
-		InnerProductParams: make([]query.GnarkInnerProductParams, 0),
-		LocalOpeningParams: make([]query.GnarkLocalOpeningParams, 0),
-		LogDerivSumParams:  make([]query.GnarkLogDerivSumParams, 0),
-		HornerParams:       make([]query.GnarkHornerParams, 0),
+		// Columns:            [][]T,
+		// ColumnsExt:         [][]gnarkfext.E4Gen[T],
+		UnivariateParams:   make([]query.GnarkUnivariateEvalParams[T], 0),
+		InnerProductParams: make([]query.GnarkInnerProductParams[T], 0),
+		LocalOpeningParams: make([]query.GnarkLocalOpeningParams[T], 0),
+		LogDerivSumParams:  make([]query.GnarkLogDerivSumParams[T], 0),
+		HornerParams:       make([]query.GnarkHornerParams[T], 0),
 		Coins:              collection.NewMapping[coin.Name, interface{}](),
 
 		NumRound: numRound,
@@ -180,13 +184,13 @@ func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 // calling the [frontend.Compile] function as this will pre-allocate all
 // the witness fields of the circuit and will allow the gnark compiler to
 // understand how big is the witness of the circuit.
-func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
+func AllocateWizardCircuit[T zk.Element](comp *CompiledIOP[T], numRound int) *VerifierCircuit[T] {
 
 	if numRound == 0 {
 		numRound = comp.NumRounds()
 	}
 
-	res := NewVerifierCircuit(comp, numRound)
+	res := NewVerifierCircuit[T](comp, numRound)
 
 	for _, colName := range comp.Columns.AllKeys() {
 
@@ -236,17 +240,17 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 		}
 
 		switch qInfo := qInfoIface.(type) {
-		case query.UnivariateEval:
+		case query.UnivariateEval[T]:
 			res.AllocUnivariateEval(qName, qInfo)
-		case query.InnerProduct:
+		case query.InnerProduct[T]:
 			res.AllocInnerProduct(qName, qInfo)
-		case query.LocalOpening:
+		case query.LocalOpening[T]:
 			res.AllocLocalOpening(qName, qInfo)
-		case query.LogDerivativeSum:
+		case query.LogDerivativeSum[T]:
 			res.AllocLogDerivativeSum(qName, qInfo)
-		case query.GrandProduct:
+		case query.GrandProduct[T]:
 			res.AllocGrandProduct(qName, qInfo)
-		case *query.Horner:
+		case *query.Horner[T]:
 			res.AllocHorner(qName, qInfo)
 		}
 	}
@@ -257,7 +261,7 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 // AssignVerifierCircuit assigns values to the wizard verifier
 // circuit from a proof. The result of this function can be used to construct a
 // gnark assignment circuit involving the verification of Wizard proof.
-func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *VerifierCircuit {
+func AssignVerifierCircuit[T zk.Element](comp *CompiledIOP[T], proof Proof, numRound int) *VerifierCircuit[T] {
 
 	if numRound == 0 {
 		numRound = comp.NumRounds()
@@ -292,7 +296,7 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 		msgDataIFace := proof.Messages.MustGet(colName)
 		msgData := msgDataIFace
 
-		// Perform the conversion to frontend.Variable, element by element
+		// Perform the conversion to T, element by element
 		if _, err := msgData.GetBase(0); err == nil {
 			// the assignment consists of base elements
 			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
@@ -331,7 +335,7 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 			res.AssignLogDerivativeSum(qName, params)
 		case query.GrandProductParams:
 			res.AssignGrandProduct(qName, params)
-		case query.HornerParams:
+		case query.HornerParams[T]:
 			res.AssignHorner(qName, params)
 		default:
 			utils.Panic("unknow type %T", params)
@@ -344,12 +348,12 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 // Verify generates the constraints to assess the correctness of a wizard
 // transcript. This function has to be called in the context of a
 // [frontend.Define] function. Its work mirrors the [Verify] function.
-func (c *VerifierCircuit) Verify(api frontend.API) {
+func (c *VerifierCircuit[T]) VerifyGen(api frontend.API) {
 
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
-	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
+	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory) // TODO @thomas make it gen
 	c.FS.Update(c.Spec.FiatShamirSetup)
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
@@ -369,7 +373,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 // GenerateCoinsForRound runs the FS coin generator for round=currRound,
 // it will update the FS state with the assets of currRound-1 and then
 // it generates all the coins for the request round.
-func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int) {
+func (c *VerifierCircuit[T]) GenerateCoinsForRoundGen(api frontend.API, currRound int) {
 
 	if currRound > 0 && !c.Spec.DummyCompiled {
 
@@ -425,9 +429,9 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 }
 
 // GetRandomCoinField returns the preassigned value of a random coin as
-// [frontend.Variable]. The implementation implicitly checks that the field
+// [T]. The implementation implicitly checks that the field
 // element is of the right type. It mirrors [VerifierRuntime.GetRandomCoinField]
-func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) frontend.Variable {
+func (c *VerifierCircuit[T]) GetRandomCoinFieldGen(name coin.Name) T {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -437,14 +441,14 @@ func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) frontend.Variable {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.Field)
 	}
 	// If this panics, it means we generate the coins wrongly
-	return c.Coins.MustGet(name).(frontend.Variable)
+	return c.Coins.MustGet(name).(T)
 }
 
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin as an
-// array of [frontend.Variable]. The implementation implicitly checks that the
+// array of [T]. The implementation implicitly checks that the
 // requested coin does indeed have the type [coin.IntegerVec] and panics if not.
 // The function mirror [VerifierRuntime.GetRandomCoinIntegerVec].
-func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable {
+func (c *VerifierCircuit[T]) GetRandomCoinIntegerVecGen(name coin.Name) []T {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -454,14 +458,14 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []frontend.Var
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.IntegerVec)
 	}
 	// If this panics, it means we generates the coins wrongly
-	return c.Coins.MustGet(name).([]frontend.Variable)
+	return c.Coins.MustGet(name).([]T)
 }
 
 // GetRandomCoinFieldExt returns a field extension randomness. The coin should
 // be issued at the same round as it was registered. The same coin can't be
 // retrieved more than once. The coin should also have been registered as a
 // field extension randomness.
-func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element {
+func (c *VerifierCircuit[T]) GetRandomCoinFieldExtGen(name coin.Name) gnarkfext.E4Gen[T] {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -470,7 +474,7 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Elemen
 
 	// intermediary use case, should be removed when all coins become field extensions
 	if infos.Type == coin.Field || infos.Type == coin.FieldFromSeed || infos.Type == coin.FieldExt {
-		res := c.Coins.MustGet(name).(frontend.Variable)
+		res := c.Coins.MustGet(name).(T)
 		return gnarkfext.NewFromBase(res)
 	}
 
@@ -478,13 +482,13 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Elemen
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
 	}
 	// If this panics, it means we generate the coins wrongly
-	return c.Coins.MustGet(name).(gnarkfext.Element)
+	return c.Coins.MustGet(name).(gnarkfext.E4Gen[T])
 }
 
 // GetUnivariateParams returns the parameters of a univariate evaluation (i.e:
 // x, the evaluation point) and y, the alleged polynomial opening. It mirrors
 // [VerifierRuntime.GetUnivariateParams].
-func (c *VerifierCircuit) GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams {
+func (c *VerifierCircuit[T]) GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams[T] {
 	qID := c.UnivariateParamsIDs.MustGet(name)
 	params := c.UnivariateParams[qID]
 
@@ -498,14 +502,14 @@ func (c *VerifierCircuit) GetUnivariateParams(name ifaces.QueryID) query.GnarkUn
 
 // GetUnivariateEval univariate eval metadata of the requested query. Panic if
 // not found.
-func (c *VerifierCircuit) GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval {
+func (c *VerifierCircuit[T]) GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval {
 	return c.Spec.QueriesParams.Data(name).(query.UnivariateEval)
 }
 
 // GetInnerProductParams returns pre-assigned parameters for the requested
 // [query.InnerProduct] query from the proof. It mirrors the work of
 // [VerifierRuntime.GetInnerProductParams]
-func (c *VerifierCircuit) GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams {
+func (c *VerifierCircuit[T]) GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams {
 	qID := c.InnerProductIDs.MustGet(name)
 	params := c.InnerProductParams[qID]
 
@@ -520,7 +524,7 @@ func (c *VerifierCircuit) GetInnerProductParams(name ifaces.QueryID) query.Gnark
 // GetLocalPointEvalParams returns the parameters for the requested
 // [query.LocalPointOpening] query. Its work mirrors the function
 // [VerifierRuntime.GetLocalOpeningParams]
-func (c *VerifierCircuit) GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams {
+func (c *VerifierCircuit[T]) GetLocalPointEvalParams(name ifaces.QueryID) query.GnarkLocalOpeningParams {
 	qID := c.LocalOpeningIDs.MustGet(name)
 	return c.LocalOpeningParams[qID]
 }
@@ -528,7 +532,7 @@ func (c *VerifierCircuit) GetLocalPointEvalParams(name ifaces.QueryID) query.Gna
 // GetLogDerivSumParams returns the parameters for the requested
 // [query.LogDerivativeSum] query. Its work mirrors the function
 // [VerifierRuntime.GetLogDerivSumParams]
-func (c *VerifierCircuit) GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams {
+func (c *VerifierCircuit[T]) GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams {
 	qID := c.LogDerivSumIDs.MustGet(name)
 	return c.LogDerivSumParams[qID]
 }
@@ -536,26 +540,26 @@ func (c *VerifierCircuit) GetLogDerivSumParams(name ifaces.QueryID) query.GnarkL
 // GetGrandProductParams returns the parameters for the requested
 // [query.GrandProduct] query. Its work mirrors the function
 // [VerifierRuntime.GetGrandProductParams]
-func (c *VerifierCircuit) GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams {
+func (c *VerifierCircuit[T]) GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams {
 	qID := c.GrandProductIDs.MustGet(name)
 	return c.GrandProductParams[qID]
 }
 
 // GetHornerPArams returns the parameters for the requested
 // [query.Horner] query. Its work mirrors the function [VerifierRuntime.GetHornerParams]
-func (c *VerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams {
+func (c *VerifierCircuit[T]) GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams {
 	qID := c.HornerIDs.MustGet(name)
 	return c.HornerParams[qID]
 }
 
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It
 // mirrors the function [VerifierRuntime.GetColumn]
-func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []frontend.Variable {
+func (c *VerifierCircuit[T]) GetColumn(name ifaces.ColID) []T {
 
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
 		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		res := make([]frontend.Variable, len(val))
+		res := make([]T, len(val))
 		// Return the column as an array of constants
 		for i := range val {
 			res[i] = val[i].String()
@@ -574,7 +578,7 @@ func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []frontend.Variable {
 	return wrappedMsg
 }
 
-func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable, error) {
+func (c *VerifierCircuit[T]) GetColumnBaseGen(name ifaces.ColID) ([]T, error) {
 
 	// for when the column is part of the verifying key
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
@@ -603,7 +607,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable,
 	return wrappedMsg, nil
 }
 
-func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Element {
+func (c *VerifierCircuit[T]) GetColumnExtGen(name ifaces.ColID) []gnarkfext.E4Gen[T] {
 
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
@@ -630,11 +634,11 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Element {
 
 // GetColumnAt returns the gnark assignment of a column at a requested point in
 // a gnark circuit. It mirrors the function [VerifierRuntime.GetColumnAt]
-func (c *VerifierCircuit) GetColumnAt(name ifaces.ColID, pos int) frontend.Variable {
+func (c *VerifierCircuit[T]) GetColumnAtGen(name ifaces.ColID, pos int) T {
 	return c.GetColumn(name)[pos]
 }
 
-func (c *VerifierCircuit) GetColumnAtBase(name ifaces.ColID, pos int) (frontend.Variable, error) {
+func (c *VerifierCircuit[T]) GetColumnAtBaseGen(name ifaces.ColID, pos int) (T, error) {
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
 		return field.Zero(), fmt.Errorf("requested base element from underlying field extension")
 	}
@@ -643,7 +647,7 @@ func (c *VerifierCircuit) GetColumnAtBase(name ifaces.ColID, pos int) (frontend.
 	return retrievedCol[pos], nil
 }
 
-func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) gnarkfext.Element {
+func (c *VerifierCircuit[T]) GetColumnAtExGen(name ifaces.ColID, pos int) gnarkfext.E4Gen[T] {
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
 		return c.GetColumnExt(name)[pos]
 	}
@@ -653,7 +657,7 @@ func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) gnarkfext.E
 }
 
 // GetParams returns a query parameters as a generic interface
-func (c *VerifierCircuit) GetParams(id ifaces.QueryID) ifaces.GnarkQueryParams {
+func (c *VerifierCircuit[T]) GetParams(id ifaces.QueryID) ifaces.GnarkQueryParams {
 	switch t := c.Spec.QueriesParams.Data(id).(type) {
 	case query.UnivariateEval:
 		return c.GetUnivariateParams(id)
@@ -677,15 +681,15 @@ func (c *VerifierCircuit) GetParams(id ifaces.QueryID) ifaces.GnarkQueryParams {
 
 // AllocColumn inserts a column in the Wizard verifier circuit and is meant
 // to be called at allocation time.
-func (c *VerifierCircuit) AllocColumn(id ifaces.ColID, size int) []frontend.Variable {
-	column := make([]frontend.Variable, size)
+func (c *VerifierCircuit[T]) AllocColumn(id ifaces.ColID, size int) []T {
+	column := make([]T, size)
 	c.ColumnsIDs.InsertNew(id, len(c.Columns))
 	c.Columns = append(c.Columns, column)
 	return column
 }
 
-func (c *VerifierCircuit) AllocColumnExt(id ifaces.ColID, size int) []gnarkfext.Element {
-	column := make([]gnarkfext.Element, size)
+func (c *VerifierCircuit[T]) AllocColumnExt(id ifaces.ColID, size int) []gnarkfext.E4Gen[T] {
+	column := make([]gnarkfext.E4Gen[T], size)
 	columnIndex := len(c.ColumnsExt)
 	c.ColumnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)
@@ -693,13 +697,13 @@ func (c *VerifierCircuit) AllocColumnExt(id ifaces.ColID, size int) []gnarkfext.
 }
 
 // AssignColumn assigns a column in the Wizard verifier circuit
-func (c *VerifierCircuit) AssignColumn(id ifaces.ColID, sv smartvectors.SmartVector) {
+func (c *VerifierCircuit[T]) AssignColumn(id ifaces.ColID, sv smartvectors.SmartVector) {
 	column := smartvectors.IntoGnarkAssignment(sv)
 	c.ColumnsIDs.InsertNew(id, len(c.Columns))
 	c.Columns = append(c.Columns, column)
 }
 
-func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.SmartVector) {
+func (c *VerifierCircuit[T]) AssignColumnExtGen(id ifaces.ColID, sv smartvectors.SmartVector) {
 	column := smartvectors.IntoGnarkAssignmentExt(sv)
 	columnIndex := len(c.ColumnsExt)
 	c.ColumnsExtIDs.InsertNew(id, columnIndex)
@@ -708,45 +712,45 @@ func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.Smart
 
 // AllocUnivariableEval inserts a slot for a univariate query opening in the
 // witness of the verifier circuit.
-func (c *VerifierCircuit) AllocUnivariateEval(qName ifaces.QueryID, qInfo query.UnivariateEval) {
-	// Note that nil is the default value for frontend.Variable
+func (c *VerifierCircuit[T]) AllocUnivariateEval(qName ifaces.QueryID, qInfo query.UnivariateEval[T]) {
+	// Note that nil is the default value for T
 	c.UnivariateParamsIDs.InsertNew(qName, len(c.UnivariateParams))
 	c.UnivariateParams = append(c.UnivariateParams, qInfo.GnarkAllocate())
 }
 
 // AllocInnerProduct inserts a slot for an inner-product query opening in the
 // witness of the verifier circuit.
-func (c *VerifierCircuit) AllocInnerProduct(qName ifaces.QueryID, qInfo query.InnerProduct) {
-	// Note that nil is the default value for frontend.Variable
+func (c *VerifierCircuit[T]) AllocInnerProductGen(qName ifaces.QueryID, qInfo query.InnerProduct[T]) {
+	// Note that nil is the default value for T
 	c.InnerProductIDs.InsertNew(qName, len(c.InnerProductParams))
 	c.InnerProductParams = append(c.InnerProductParams, qInfo.GnarkAllocate())
 }
 
 // AllocLocalOpening inserts a slot for a local position opening in the witness
 // of the verifier circuit.
-func (c *VerifierCircuit) AllocLocalOpening(qName ifaces.QueryID, qInfo query.LocalOpening) {
-	// Note that nil is the default value for frontend.Variable
+func (c *VerifierCircuit[T]) AllocLocalOpeningGen(qName ifaces.QueryID, qInfo query.LocalOpening) {
+	// Note that nil is the default value for T
 	c.LocalOpeningIDs.InsertNew(qName, len(c.LocalOpeningParams))
 	c.LocalOpeningParams = append(c.LocalOpeningParams, query.GnarkLocalOpeningParams{})
 }
 
 // AllocLogDerivativeSum inserts a slot for a log-derivative sum in the witness
 // of the verifier circuit.
-func (c *VerifierCircuit) AllocLogDerivativeSum(qName ifaces.QueryID, qInfo query.LogDerivativeSum) {
+func (c *VerifierCircuit[T]) AllocLogDerivativeSumGen(qName ifaces.QueryID, qInfo query.LogDerivativeSum) {
 	c.LogDerivSumIDs.InsertNew(qName, len(c.LogDerivSumParams))
 	c.LogDerivSumParams = append(c.LogDerivSumParams, query.GnarkLogDerivSumParams{})
 }
 
 // AllocGrandProduct inserts a slot for a log-derivative sum in the witness
 // of the verifier circuit.
-func (c *VerifierCircuit) AllocGrandProduct(qName ifaces.QueryID, qInfo query.GrandProduct) {
+func (c *VerifierCircuit[T]) AllocGrandProductGen(qName ifaces.QueryID, qInfo query.GrandProduct) {
 	c.GrandProductIDs.InsertNew(qName, len(c.GrandProductParams))
 	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{})
 }
 
 // AllocHorner inserts a slot for a log-derivative sum in the witness
 // of the verifier circuit.
-func (c *VerifierCircuit) AllocHorner(qName ifaces.QueryID, qInfo *query.Horner) {
+func (c *VerifierCircuit[T]) AllocHornerGen(qName ifaces.QueryID, qInfo *query.Horner) {
 	c.HornerIDs.InsertNew(qName, len(c.HornerParams))
 	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{
 		Parts: make([]query.HornerParamsPartGnark, len(qInfo.Parts)),
@@ -755,48 +759,48 @@ func (c *VerifierCircuit) AllocHorner(qName ifaces.QueryID, qInfo *query.Horner)
 
 // AssignUnivariableEval assigns the parameters of a [query.UnivariateEval]
 // in the witness of the verifier circuit.
-func (c *VerifierCircuit) AssignUnivariateEval(qName ifaces.QueryID, params query.UnivariateEvalParams) {
-	// Note that nil is the default value for frontend.Variable
+func (c *VerifierCircuit[T]) AssignUnivariateEval(qName ifaces.QueryID, params query.UnivariateEvalParams) {
+	// Note that nil is the default value for T
 	c.UnivariateParamsIDs.InsertNew(qName, len(c.UnivariateParams))
 	c.UnivariateParams = append(c.UnivariateParams, params.GnarkAssign())
 }
 
 // AssignInnerProduct assigns the parameters of an [query.InnerProduct]
 // in the the witnesss of the verifier circuit.
-func (c *VerifierCircuit) AssignInnerProduct(qName ifaces.QueryID, params query.InnerProductParams) {
-	// Note that nil is the default value for frontend.Variable
+func (c *VerifierCircuit[T]) AssignInnerProductGen(qName ifaces.QueryID, params query.InnerProductParams) {
+	// Note that nil is the default value for T
 	c.InnerProductIDs.InsertNew(qName, len(c.InnerProductParams))
 	c.InnerProductParams = append(c.InnerProductParams, params.GnarkAssign())
 }
 
 // AssignLocalOpening assigns the parameters of a [query.LocalOpening] into
 // the witness of the verifier circuit.
-func (c *VerifierCircuit) AssignLocalOpening(qName ifaces.QueryID, params query.LocalOpeningParams) {
-	// Note that nil is the default value for frontend.Variable
+func (c *VerifierCircuit[T]) AssignLocalOpeningGen(qName ifaces.QueryID, params query.LocalOpeningParams) {
+	// Note that nil is the default value for T
 	c.LocalOpeningIDs.InsertNew(qName, len(c.LocalOpeningParams))
 	c.LocalOpeningParams = append(c.LocalOpeningParams, params.GnarkAssign())
 }
 
 // AssignLogDerivativeSum assigns the parameters of a [query.LogDerivativeSum]
 // into the witness of the verifier circuit.
-func (c *VerifierCircuit) AssignLogDerivativeSum(qName ifaces.QueryID, params query.LogDerivSumParams) {
-	// Note that nil is the default value for frontend.Variable
+func (c *VerifierCircuit[T]) AssignLogDerivativeSumGen(qName ifaces.QueryID, params query.LogDerivSumParams) {
+	// Note that nil is the default value for T
 	c.LogDerivSumIDs.InsertNew(qName, len(c.LogDerivSumParams))
 	c.LogDerivSumParams = append(c.LogDerivSumParams, query.GnarkLogDerivSumParams{Sum: params.GnarkAssign().Sum})
 }
 
 // AssignGrandProduct assigns the parameters of a [query.GrandProduct]
 // into the witness of the verifier circuit.
-func (c *VerifierCircuit) AssignGrandProduct(qName ifaces.QueryID, params query.GrandProductParams) {
-	// Note that nil is the default value for frontend.Variable
+func (c *VerifierCircuit[T]) AssignGrandProductGen(qName ifaces.QueryID, params query.GrandProductParams) {
+	// Note that nil is the default value for T
 	c.GrandProductIDs.InsertNew(qName, len(c.GrandProductParams))
 	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: params.ExtY})
 }
 
 // AssignHorner assigns the parameters of a [query.Horner] into the witness
 // of the verifier circuit.
-func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.HornerParams) {
-	// Note that nil is the default value for frontend.Variable
+func (c *VerifierCircuit[T]) AssignHornerGen(qName ifaces.QueryID, params query.HornerParams) {
+	// Note that nil is the default value for T
 	c.HornerIDs.InsertNew(qName, len(c.HornerParams))
 	parts := make([]query.HornerParamsPartGnark, len(params.Parts))
 	for i := range params.Parts {
@@ -810,7 +814,7 @@ func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.Horner
 }
 
 // GetPublicInput returns a public input value from its name
-func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) frontend.Variable {
+func (c *VerifierCircuit[T]) GetPublicInputGen(api frontend.API, name string) T {
 	allPubs := c.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
@@ -822,50 +826,50 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) frontend
 }
 
 // Fs returns the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFiatShamir {
+func (c *VerifierCircuit[T]) FsGen() *fiatshamir.GnarkFiatShamir {
 	return c.FS
 }
 
 // SetFs sets the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) SetFs(fs *fiatshamir.GnarkFiatShamir) {
+func (c *VerifierCircuit[T]) SetFsGen(fs *fiatshamir.GnarkFiatShamir) {
 	c.FS = fs
 }
 
 // GetHasherFactory returns the hasher factory of the verifier circuit; nil
 // if none is set.
-func (c *VerifierCircuit) GetHasherFactory() mimc.HasherFactory {
+func (c *VerifierCircuit[T]) GetHasherFactoryGen() mimc.HasherFactory {
 	return c.HasherFactory
 }
 
 // SetHasherFactory sets the hasher factory of the verifier circuit
-func (c *VerifierCircuit) SetHasherFactory(hf mimc.HasherFactory) {
+func (c *VerifierCircuit[T]) SetHasherFactoryGen(hf mimc.HasherFactory) {
 	c.HasherFactory = hf
 }
 
 // GetSpec returns the compiled IOP of the verifier circuit
-func (c *VerifierCircuit) GetSpec() *CompiledIOP {
+func (c *VerifierCircuit[T]) GetSpecGen() *CompiledIOP {
 	return c.Spec
 }
 
 // InsertCoin inserts a coin in the verifier circuit. This has
 // a use for implementing recursive application.
-func (c *VerifierCircuit) InsertCoin(name coin.Name, value interface{}) {
+func (c *VerifierCircuit[T]) InsertCoinGen(name coin.Name, value interface{}) {
 	c.Coins.InsertNew(name, value)
 }
 
 // GetState returns the value of a state variable in the verifier circuit
-func (c *VerifierCircuit) GetState(name string) (any, bool) {
+func (c *VerifierCircuit[T]) GetStateGen(name string) (any, bool) {
 	res, ok := c.State[name]
 	return res, ok
 }
 
 // SetState sets the value of a state variable in the verifier circuit
-func (c *VerifierCircuit) SetState(name string, value any) {
+func (c *VerifierCircuit[T]) SetStateGen(name string, value any) {
 	c.State[name] = value
 }
 
 // GetQuery returns a query from its name
-func (c *VerifierCircuit) GetQuery(name ifaces.QueryID) ifaces.Query {
+func (c *VerifierCircuit[T]) GetQuery(name ifaces.QueryID) ifaces.Query {
 	if c.Spec.QueriesParams.Exists(name) {
 		return c.Spec.QueriesParams.Data(name)
 	}
@@ -877,7 +881,7 @@ func (c *VerifierCircuit) GetQuery(name ifaces.QueryID) ifaces.Query {
 }
 
 // Analyze returns a cell count for each type of query and/or column
-func (c *VerifierCircuit) Analyze() *VerifierCircuitAnalytic {
+func (c *VerifierCircuit[T]) AnalyzeGen() *VerifierCircuitAnalytic {
 
 	res := &VerifierCircuitAnalytic{}
 
@@ -910,7 +914,7 @@ func (c *VerifierCircuit) Analyze() *VerifierCircuitAnalytic {
 
 // WithDetails adds details for every column into the verifier analytic. The
 // function returns a pointer to the receiver of the call.
-func (a *VerifierCircuitAnalytic) WithDetails(c *VerifierCircuit) *VerifierCircuitAnalytic {
+func (a *VerifierCircuitAnalytic) WithDetailsGen(c *VerifierCircuit[T]) *VerifierCircuitAnalytic {
 
 	comp := c.GetSpec()
 
@@ -980,11 +984,11 @@ func (a *VerifierCircuitAnalytic) WithDetails(c *VerifierCircuit) *VerifierCircu
 }
 
 // addDetail adds a detail to the verifier analytic
-func (a *VerifierCircuitAnalytic) addDetail(detail string) {
+func (a *VerifierCircuitAnalytic) addDetailGen(detail string) {
 	a.Details = append(a.Details, detail)
 }
 
-func (a *VerifierCircuitAnalytic) JsonString() string {
+func (a *VerifierCircuitAnalytic) JsonStringGen() string {
 	b, e := json.Marshal(a)
 	if e != nil {
 		panic(e)

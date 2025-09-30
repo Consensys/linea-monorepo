@@ -17,9 +17,9 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	// Get the list of the root hashes (without the non-appended ones)
 	// Insert precomputed roots
 	var (
-		rootHashSis     []ifaces.Column
-		rootHashNonsis  []ifaces.Column
-		rootHashesClean []ifaces.Column
+		rootHashSis     []ifaces.Column[T]
+		rootHashNonsis  []ifaces.Column[T]
+		rootHashesClean []ifaces.Column[T]
 	)
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		precompRoots := ctx.Columns.PrecompRoot
@@ -137,11 +137,11 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 			smartvectors.NewRegular(s[:totalRoots]),
 			smartvectors.NewRegular(s[totalRoots:]),
 		},
-		[]ifaces.Column{
+		[]ifaces.Column[T]{
 			rootHashVec,
 			ctx.Columns.MerkleRoots,
 		},
-		[]ifaces.Column{
+		[]ifaces.Column[T]{
 			rootHashVec,
 			ctx.Columns.MerkleRoots,
 		},
@@ -230,11 +230,11 @@ func (ctx SelfRecursionCtx) GluePositions() {
 			smartvectors.NewRegular(s[:totalSize]),
 			smartvectors.NewRegular(s[totalSize:]),
 		},
-		[]ifaces.Column{
+		[]ifaces.Column[T]{
 			positionVec,
 			ctx.Columns.MerkleProofPositions,
 		},
-		[]ifaces.Column{
+		[]ifaces.Column[T]{
 			positionVec,
 			ctx.Columns.MerkleProofPositions,
 		},

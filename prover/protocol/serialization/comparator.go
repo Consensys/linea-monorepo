@@ -58,7 +58,7 @@ func compareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect
 	switch a.Type() {
 	case reflect.TypeFor[*symbolic.Expression]():
 		return compareSymbolicExpressions(a, b, path)
-	case reflect.TypeFor[frontend.Variable]():
+	case reflect.TypeFor[T]():
 		return true
 	}
 

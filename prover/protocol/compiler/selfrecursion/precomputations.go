@@ -55,7 +55,7 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() && ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		ahLength += 1
 	}
-	ah := make([]ifaces.Column, 0, ahLength)
+	ah := make([]ifaces.Column[T], 0, ahLength)
 
 	// Tracks the number of rows already committed with SIS as we arrive in this
 	// round

@@ -92,11 +92,11 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 	// the define function creates a dummy protocol
 	// with only univariate evaluations
 	define = func(b *wizard.Builder) {
-		var cols []ifaces.Column
+		var cols []ifaces.Column[T]
 		if tc.IsCommitPrecomp {
-			cols = make([]ifaces.Column, (tc.Numpoly + tc.NumPrecomp))
+			cols = make([]ifaces.Column[T], (tc.Numpoly + tc.NumPrecomp))
 		} else {
-			cols = make([]ifaces.Column, tc.Numpoly)
+			cols = make([]ifaces.Column[T], tc.Numpoly)
 		}
 		numColPerRound := tc.Numpoly / tc.NumRound
 		// register the precomputed polynomials at the beginning of cols

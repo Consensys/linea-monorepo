@@ -50,7 +50,7 @@ type APIGen[T Element] interface {
 
 	Println(a ...*T)
 
-	// GnarkAPI() frontend.API
+	GnarkAPI() frontend.API
 }
 
 func NewApi[T Element](api frontend.API) (APIGen[T], error) {
