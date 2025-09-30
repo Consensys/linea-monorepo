@@ -45,9 +45,9 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   )
 
   // mocked VariableFeesCalculator
-  private val variableFee = 15000.0
+  private val originalVariableFee = 15000.0
   private val mockVariableFeesCalculator = mock<FeesCalculator> {
-    on { calculateFees(eq(feeHistory)) } doReturn variableFee
+    on { calculateFees(eq(feeHistory)) } doReturn originalVariableFee
   }
 
   // mocked L2 Web3jClient
@@ -67,7 +67,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   fun test_calculateFees_past_blocks_calldata_at_max_target() {
     // delta would be 1.0
     val delta = 1.0
-    val expectedVariableFees = 15000.0 * (1.0 + delta / 32.0)
+    val expectedVariableFees = originalVariableFee * (1.0 + delta / 32.0)
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
@@ -96,7 +96,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
     // delta would be 1.0
     val delta = 1.0
-    val expectedVariableFees = 15000.0 * (1.0 + delta / 32.0)
+    val expectedVariableFees = originalVariableFee * (1.0 + delta / 32.0)
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
@@ -116,7 +116,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
   }
 
   @Test
-  fun test_calculateFees_past_blocks_calldata_size_at_zero() {
+  fun test_calculateFees_when_past_blocks_sum_of_calldata_size_is_zero() {
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
       on { getSumOfL2CalldataSize(any()) } doReturn SafeFuture.completedFuture(BigInteger.ZERO)
     }
@@ -135,7 +135,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
     }
 
     assertThat(feesCalculator.calculateFees(feeHistory))
-      .isEqualTo(15000.0)
+      .isEqualTo(originalVariableFee)
   }
 
   @Test
@@ -147,7 +147,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
 
     // delta would be 0.5
     val delta = 0.5
-    val expectedVariableFees = 15000.0 * (1.0 + delta / 32.0)
+    val expectedVariableFees = originalVariableFee * (1.0 + delta / 32.0)
 
     val feesCalculator = L2CalldataBasedVariableFeesCalculator(
       config = config,
@@ -187,7 +187,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
     }
 
     assertThat(feesCalculator.calculateFees(feeHistory))
-      .isEqualTo(15000.0)
+      .isEqualTo(originalVariableFee)
   }
 
   @Test
@@ -214,14 +214,14 @@ class L2CalldataBasedVariableFeesCalculatorTest {
       }
     }
 
-    assertThat(calculatedFee).isGreaterThan(15000.0 * 2.0)
+    assertThat(calculatedFee).isGreaterThan(originalVariableFee * 2.0)
   }
 
   @Test
   fun test_calculateFees_decrease_to_less_than_half_when_past_blocks_calldata_at_zero() {
     val mockVariableFeesCalculator = mock<FeesCalculator>()
     whenever(mockVariableFeesCalculator.calculateFees(eq(feeHistory)))
-      .thenReturn(variableFee, 0.0)
+      .thenReturn(originalVariableFee, 0.0)
 
     val mockL2CalldataSizeAccumulator = mock<L2CalldataSizeAccumulator> {
       on { getSumOfL2CalldataSize(any()) } doReturn SafeFuture.completedFuture(BigInteger.ZERO)
@@ -249,7 +249,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
       }
     }
 
-    assertThat(calculatedFee).isLessThan(15000.0 / 2.0)
+    assertThat(calculatedFee).isLessThan(originalVariableFee / 2.0)
   }
 
   @Test
@@ -271,10 +271,10 @@ class L2CalldataBasedVariableFeesCalculatorTest {
       fakeHistoricVariableCostProvider.setLatestVariableCost(it)
     }
 
-    // The returned variable fees should always be 15000.0
+    // The returned variable fees should always be the original value 15000.0
     // as calldata-based variable fees is disabled
     assertThat(feesCalculator.calculateFees(feeHistory))
-      .isEqualTo(15000.0)
+      .isEqualTo(originalVariableFee)
   }
 
   @Test
@@ -288,19 +288,18 @@ class L2CalldataBasedVariableFeesCalculatorTest {
     )
 
     // call calculateFees first to instantiate the lastVariableCost
-    var expectedVariableFees = 15000.0
     feesCalculator.calculateFees(feeHistory).let {
-      assertThat(it).isEqualTo(15000.0)
+      assertThat(it).isEqualTo(originalVariableFee)
       fakeHistoricVariableCostProvider.setLatestVariableCost(it)
     }
 
     // delta would be 1.0
     val delta = 1.0
-    expectedVariableFees = expectedVariableFees * (1.0 + delta / 32.0)
+    val expectedVariableFees = originalVariableFee * (1.0 + delta / 32.0)
 
     // we don't update the latest variable cost after each calculation
     // to mimic block production halts after last 5 blocks with full calldata
-    (0..10).forEach { _ ->
+    repeat(10) {
       val calculatedFee = feesCalculator.calculateFees(feeHistory)
       // calculatedFee should be equal to the value returned from the first calculateFees call
       assertThat(calculatedFee).isEqualTo(expectedVariableFees)
@@ -335,7 +334,7 @@ class L2CalldataBasedVariableFeesCalculatorTest {
     }
 
     assertThat(feesCalculator.calculateFees(feeHistory))
-      .isEqualTo(15000.0)
+      .isEqualTo(originalVariableFee)
   }
 
   @Test
