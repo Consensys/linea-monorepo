@@ -38,7 +38,7 @@ abstract contract YieldManagerStorageLayout {
   }
 
   enum YieldProviderType {
-      LIDO_STVAULT
+    LIDO_STVAULT
   }
 
   struct YieldProviderRegistration {
@@ -48,12 +48,13 @@ abstract contract YieldManagerStorageLayout {
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))
-  bytes32 private constant YieldManagerStorageLocation = 0xdc1272075efdca0b85fb2d76cbb5f26d954dc18e040d6d0b67071bd5cbd04300;
+  bytes32 private constant YieldManagerStorageLocation =
+    0xdc1272075efdca0b85fb2d76cbb5f26d954dc18e040d6d0b67071bd5cbd04300;
 
   function _getYieldManagerStorage() internal pure returns (YieldManagerStorage storage $) {
-      assembly {
-          $.slot := YieldManagerStorageLocation
-      }
+    assembly {
+      $.slot := YieldManagerStorageLocation
+    }
   }
 
   function _getYieldProviderStorage(address _yieldProvider) internal view returns (YieldProviderStorage storage $$) {

@@ -62,7 +62,12 @@ interface IYieldManager {
    * @param caller Address that reported the yield.
    * @param yieldAmount Amount of yield accounted for users.
    */
-  event NativeYieldReported(address indexed yieldProvider, address indexed l2YieldRecipient, address indexed caller, uint256 yieldAmount);
+  event NativeYieldReported(
+    address indexed yieldProvider,
+    address indexed l2YieldRecipient,
+    address indexed caller,
+    uint256 yieldAmount
+  );
 
   // TODO - Also parameter for lstPrincipalRepayment
   /**
@@ -184,15 +189,9 @@ interface IYieldManager {
     address indexed caller
   );
 
-  event L2YieldRecipientAdded(
-    address l2YieldRecipient,
-    address indexed caller
-  );
+  event L2YieldRecipientAdded(address l2YieldRecipient, address indexed caller);
 
-  event L2YieldRecipientRemoved(
-    address l2YieldRecipient,
-    address indexed caller
-  );
+  event L2YieldRecipientRemoved(address l2YieldRecipient, address indexed caller);
 
   /**
    * @notice Emitted when staking is paused for a provider.
@@ -237,7 +236,12 @@ interface IYieldManager {
    * @param destination Chosen destination for the forwarded ETH.
    * @param amount Amount donated.
    */
-  event DonationProcessed(address indexed yieldProvider, address indexed caller, address indexed destination, uint256 amount);
+  event DonationProcessed(
+    address indexed yieldProvider,
+    address indexed caller,
+    address indexed destination,
+    uint256 amount
+  );
 
   /**
    * @notice Emitted when externally settled LST principal is reconciled.
@@ -304,11 +308,16 @@ interface IYieldManager {
 
   error L2YieldRecipientAlreadyAdded();
 
+  error NotL1MessageService();
+
   function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance);
-  
+
   function getTotalSystemBalance() external view returns (uint256 totalSystemBalance);
 
-  function getMinimumWithdrawalReserveByPercentage() external view returns (uint256 minimumWithdrawalReserveByPercentage);
+  function getMinimumWithdrawalReserveByPercentage()
+    external
+    view
+    returns (uint256 minimumWithdrawalReserveByPercentage);
 
   function getTargetWithdrawalReserveByPercentage() external view returns (uint256 targetWithdrawalReserveByPercentage);
 
@@ -366,8 +375,8 @@ interface IYieldManager {
 
   /**
    * @notice Permissionlessly request beacon chain withdrawal from a specified yield provider.
-   * @dev    Callable only when the withdrawal reserve is in deficit. 
-   * @dev    The permissionless unstake amount is capped to the remaining reserve deficit that 
+   * @dev    Callable only when the withdrawal reserve is in deficit.
+   * @dev    The permissionless unstake amount is capped to the remaining reserve deficit that
    *         cannot be covered by other liquidity sources:
    *
    *         PERMISSIONLESS_UNSTAKE_AMOUNT ≤
@@ -438,7 +447,10 @@ interface IYieldManager {
 
   function donate(address _yieldProvider) external payable;
 
-  function addYieldProvider(address _yieldProvider, YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration) external;
+  function addYieldProvider(
+    address _yieldProvider,
+    YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration
+  ) external;
 
   function removeYieldProvider(address _yieldProvider) external;
 

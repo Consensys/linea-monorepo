@@ -61,7 +61,10 @@ interface ILineaNativeYieldExtension {
    */
   function reportNativeYield(uint256 _amount, address _l2YieldRecipient) external;
 
-  function claimMessageWithProofAndWithdrawLST(IL1MessageService.ClaimMessageWithProofParams calldata _params, address _yieldProvider) external;
+  function claimMessageWithProofAndWithdrawLST(
+    IL1MessageService.ClaimMessageWithProofParams calldata _params,
+    address _yieldProvider
+  ) external;
 
   function isWithdrawLSTAllowed() external view returns (bool);
 

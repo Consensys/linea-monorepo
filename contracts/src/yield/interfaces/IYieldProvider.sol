@@ -11,7 +11,7 @@ import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
  */
 interface IYieldProvider {
   enum OperationType {
-      ReportYield
+    ReportYield
   }
 
   /// @notice Thrown when an operation is forbidden while ossification is active.
@@ -26,6 +26,8 @@ interface IYieldProvider {
   error SingleValidatorOnlyForUnstakePermissionless();
 
   error NoValidatorExitForUnstakePermissionless();
+
+  error ContextIsNotYieldManager();
 
   /**
    * @notice Get the ETH balance held by the yield provider that can be withdrawn immediately.
@@ -60,8 +62,8 @@ interface IYieldProvider {
 
   /**
    * @notice Permissionlessly request beacon chain withdrawal.
-   * @dev    Callable only when the withdrawal reserve is in deficit. 
-   * @dev    The permissionless unstake amount is capped to the remaining reserve deficit that 
+   * @dev    Callable only when the withdrawal reserve is in deficit.
+   * @dev    The permissionless unstake amount is capped to the remaining reserve deficit that
    *         cannot be covered by other liquidity sources:
    *
    *         PERMISSIONLESS_UNSTAKE_AMOUNT ≤
@@ -121,5 +123,7 @@ interface IYieldProvider {
    * @notice Validate the supplied registration before it is added to the yield manager.
    * @param _yieldProviderRegistration Supplied registration data for the yield provider.
    */
-  function validateAdditionToYieldManager(YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration) external;
+  function validateAdditionToYieldManager(
+    YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration
+  ) external;
 }

@@ -12,7 +12,12 @@ import { LineaRollupPauseManager } from "../security/pausing/LineaRollupPauseMan
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNativeYieldExtension, IMessageService, IGenericErrors {
+abstract contract LineaNativeYieldExtension is
+  LineaRollupPauseManager,
+  ILineaNativeYieldExtension,
+  IMessageService,
+  IGenericErrors
+{
   /// @notice The role required to send ETH to the YieldManager.
   bytes32 public constant RESERVE_OPERATOR_ROLE = keccak256("RESERVE_OPERATOR_ROLE");
 
@@ -25,22 +30,23 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
   bool transient IS_WITHDRAW_LST_ALLOWED;
 
   /// @custom:storage-location erc7201:linea.storage.LineaNativeYieldExtensionStorage
-  struct LineaNativeYieldExtensionStorage {    
-      address _yieldManager;
+  struct LineaNativeYieldExtensionStorage {
+    address _yieldManager;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.LineaNativeYieldExtensionStorage")) - 1)) & ~bytes32(uint256(0xff))
-  bytes32 private constant LineaNativeYieldExtensionStorageLocation = 0x1ca1eef1e96a909fae6702b42f1bcde6999f4e0fc09e0e51d048b197a65a8f00;
+  bytes32 private constant LineaNativeYieldExtensionStorageLocation =
+    0x1ca1eef1e96a909fae6702b42f1bcde6999f4e0fc09e0e51d048b197a65a8f00;
 
   function _storage() private pure returns (LineaNativeYieldExtensionStorage storage $) {
-      assembly {
-          $.slot := LineaNativeYieldExtensionStorageLocation
-      }
+    assembly {
+      $.slot := LineaNativeYieldExtensionStorageLocation
+    }
   }
 
   /// @notice The address of the YieldManager.
   function yieldManager() public view returns (address) {
-      return _storage()._yieldManager;
+    return _storage()._yieldManager;
   }
 
   /**
@@ -61,7 +67,9 @@ abstract contract LineaNativeYieldExtension is LineaRollupPauseManager, ILineaNa
    * @dev Enforces that, after transfer, the L1MessageService balance remains ≥ the configured effective minimum reserve.
    * @param _amount Amount of ETH to transfer.
    */
-  function transferFundsForNativeYield(uint256 _amount) external whenTypeAndGeneralNotPaused(PauseType.L1_YIELDMANAGER) onlyRole(RESERVE_OPERATOR_ROLE) {
+  function transferFundsForNativeYield(
+    uint256 _amount
+  ) external whenTypeAndGeneralNotPaused(PauseType.L1_YIELDMANAGER) onlyRole(RESERVE_OPERATOR_ROLE) {
     IYieldManager(yieldManager()).receiveFundsFromReserve{ value: _amount }();
   }
 
