@@ -42,7 +42,7 @@ type FoldVerifierAction struct {
 }
 
 func (a *FoldVerifierAction) Run(run wizard.Runtime) error {
-	if a.FoldedEvalAcc.GetVal(run) != a.HEvalAcc.GetVal(run) {
+	if a.FoldedEvalAcc.GetValExt(run) != a.HEvalAcc.GetValExt(run) {
 		return fmt.Errorf("verifier of folding failed %v", a.FoldedName)
 	}
 	return nil
