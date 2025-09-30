@@ -1521,7 +1521,7 @@ contract UnstakeTest is StakeTest {
                 totalStaked: stakeAmount,
                 totalMPStaked: (stakeAmount + expectedBonusMP) + stakeAmount,
                 totalMPAccrued: (stakeAmount + expectedBonusMP) + stakeAmount, // we do `+ stakeAmount` we've accrued
-                    // `stakeAmount` after 1 year
+                // `stakeAmount` after 1 year
                 totalMaxMP: _maxTotalMP(stakeAmount, lockUpPeriod),
                 stakingBalance: 10e18,
                 rewardBalance: 0,
@@ -3646,5 +3646,68 @@ contract FuzzTests is StakeManagerTest {
         assertEq(streamer.totalRewardsSupply(), expectedReward, "Total rewards supply mismatch");
         assertApproxEqAbs(karma.balanceOf(alice), expectedReward, tolerance, "Reward balance mismatch");
         assertEq(karma.balanceOfRewardDistributor(address(streamer)), streamerKarmaBalanceBefore - redeemed);
+    }
+}
+
+contract VotesTest is StakeManagerTest {
+    uint256 public rewardAmount;
+
+    function setUp() public virtual override {
+        super.setUp();
+
+        rewardAmount = 10e18;
+        uint256 stakeAmount = 50e18;
+        uint256 rewardPeriod = 1 weeks;
+
+        assertEq(karma.balanceOf(alice), 0);
+        assertEq(karma.getVotes(alice), 0);
+
+        _stake(alice, stakeAmount, 0);
+        _setRewards(rewardAmount, rewardPeriod);
+        vm.warp(vm.getBlockTimestamp() + rewardPeriod);
+
+        assertEq(karma.balanceOf(alice), rewardAmount);
+        assertEq(karma.getVotes(alice), 0);
+    }
+
+    function test_delegateBeforeRedeemingCreatesCheckpointsWithoutVotes() public {
+        vm.prank(alice);
+        karma.delegate(alice);
+
+        assertEq(karma.balanceOf(alice), rewardAmount);
+        // Alice delegated to herself but she only has virtual Karma, which is not counted for votes.
+        assertEq(karma.getVotes(alice), 0);
+
+        vm.prank(alice);
+        streamer.redeemRewards(alice);
+
+        assertEq(karma.balanceOf(alice), rewardAmount);
+        assertEq(karma.getVotes(alice), rewardAmount);
+
+        // there's nothing more to delegate
+        vm.prank(alice);
+        karma.delegate(alice);
+
+        assertEq(karma.balanceOf(alice), rewardAmount);
+        assertEq(karma.getVotes(alice), rewardAmount);
+    }
+
+    function test_redeemWithoutDelegatingBeforeDoesntCreateCheckpoints() public {
+        assertEq(karma.balanceOf(alice), rewardAmount);
+        assertEq(karma.getVotes(alice), 0);
+
+        vm.prank(alice);
+        streamer.redeemRewards(alice);
+
+        assertEq(karma.balanceOf(alice), rewardAmount);
+        // karma has been redeemed but votes have not been delegated
+        assertEq(karma.getVotes(alice), 0);
+
+        vm.prank(alice);
+        // now votes are properly delegated
+        karma.delegate(alice);
+
+        assertEq(karma.balanceOf(alice), rewardAmount);
+        assertEq(karma.getVotes(alice), rewardAmount);
     }
 }
