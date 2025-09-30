@@ -29,22 +29,20 @@ const (
 	aggregationArity = 2
 
 	// name of the public inputs
-	targetNbSegmentPublicInputBase      = "TARGET_NB_SEGMENTS"
-	segmentCountLPPPublicInputBase      = "GL_SEGMENT_COUNT"
-	segmentCountGLPublicInputBase       = "LPP_SEGMENT_COUNT"
-	lppCommitmentMSetPublicInputGLBase  = "LPP_COMMITMENT_SET_GL"
-	lppCommitmentMSetPublicInputLPPBase = "LPP_COMMITMENT_SET_LPP"
-	segmentIndexCheckerPublicInput      = "SEGMENT_INDEX_CHECKER"
-	hornerN0HashCheckerPublicInput      = "HORNER_N0_HASH_CHECKER"
-	GlobalSentReceivedMSetPublicInput   = "GLOBAL_SENT_RECEIVED_MSET"
-	VkMerkleProofBase                   = "VK_MERKLE_PROOF"
-	InitialRandomnessPublicInput        = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
-	LogDerivativeSumPublicInput         = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
-	GrandProductPublicInput             = "GRAND_PRODUCT_PUBLIC_INPUT"
-	HornerPublicInput                   = "HORNER_FINAL_RES_PUBLIC_INPUT"
-	verifyingKeyPublicInput             = "VERIFYING_KEY"
-	verifyingKey2PublicInput            = "VERIFYING_KEY_2"
-	lppMerkleRootPublicInput            = "LPP_COLUMNS_MERKLE_ROOTS"
+	targetNbSegmentPublicInputBase    = "TARGET_NB_SEGMENTS"
+	segmentCountLPPPublicInputBase    = "GL_SEGMENT_COUNT"
+	segmentCountGLPublicInputBase     = "LPP_SEGMENT_COUNT"
+	lppCommitmentMSetPublicInputBase  = "LPP_COMMITMENT_SET"
+	hornerN0HashCheckerPublicInput    = "HORNER_N0_HASH_CHECKER"
+	GlobalSentReceivedMSetPublicInput = "GLOBAL_SENT_RECEIVED_MSET"
+	VkMerkleProofBase                 = "VK_MERKLE_PROOF"
+	InitialRandomnessPublicInput      = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
+	LogDerivativeSumPublicInput       = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
+	GrandProductPublicInput           = "GRAND_PRODUCT_PUBLIC_INPUT"
+	HornerPublicInput                 = "HORNER_FINAL_RES_PUBLIC_INPUT"
+	verifyingKeyPublicInput           = "VERIFYING_KEY"
+	verifyingKey2PublicInput          = "VERIFYING_KEY_2"
+	lppMerkleRootPublicInput          = "LPP_COLUMNS_MERKLE_ROOTS"
 )
 
 // ConglomerationCompilation holds the compilation context of the hierarchical
@@ -116,9 +114,7 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 	c.PublicInputs.TargetNbSegments = declareListOfPiColumns(c.Wiop, targetNbSegmentPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountGL = declareListOfPiColumns(c.Wiop, segmentCountGLPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, segmentCountLPPPublicInputBase, c.ModuleNumber)
-	c.PublicInputs.LppCommitmentMSetGL = declareListOfPiColumns(c.Wiop, lppCommitmentMSetPublicInputGLBase, mimc.MSetHashSize)
-	c.PublicInputs.LppCommitmentMSetLPP = declareListOfPiColumns(c.Wiop, lppCommitmentMSetPublicInputLPPBase, mimc.MSetHashSize)
-	c.PublicInputs.SegmentIndexChecker = declareListOfPiColumns(c.Wiop, segmentIndexCheckerPublicInput, c.ModuleNumber)
+	c.PublicInputs.LppCommitmentMSetGL = declareListOfPiColumns(c.Wiop, lppCommitmentMSetPublicInputBase, mimc.MSetHashSize)
 	c.PublicInputs.VerifyingKey[0] = declarePiColumn(c.Wiop, verifyingKeyPublicInput)
 	c.PublicInputs.VerifyingKey[1] = declarePiColumn(c.Wiop, verifyingKey2PublicInput)
 	c.PublicInputs.LogDerivativeSum = declarePiColumn(c.Wiop, LogDerivativeSumPublicInput)
@@ -400,12 +396,10 @@ func getPublicInputList(run wizard.Runtime, name string, nb int) []field.Element
 func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.Runtime, instance int) LimitlessPublicInput[field.Element] {
 
 	res := LimitlessPublicInput[field.Element]{
-		TargetNbSegments:     getPublicInputListOfInstance(c.Recursion, run, targetNbSegmentPublicInputBase, instance, c.ModuleNumber),
-		SegmentCountGL:       getPublicInputListOfInstance(c.Recursion, run, segmentCountGLPublicInputBase, instance, c.ModuleNumber),
-		SegmentCountLPP:      getPublicInputListOfInstance(c.Recursion, run, segmentCountLPPPublicInputBase, instance, c.ModuleNumber),
-		LppCommitmentMSetGL:  getPublicInputListOfInstance(c.Recursion, run, lppCommitmentMSetPublicInputGLBase, instance, mimc.MSetHashSize),
-		LppCommitmentMSetLPP: getPublicInputListOfInstance(c.Recursion, run, lppCommitmentMSetPublicInputLPPBase, instance, mimc.MSetHashSize),
-		SegmentIndexChecker:  getPublicInputListOfInstance(c.Recursion, run, segmentIndexCheckerPublicInput, instance, c.ModuleNumber),
+		TargetNbSegments:    getPublicInputListOfInstance(c.Recursion, run, targetNbSegmentPublicInputBase, instance, c.ModuleNumber),
+		SegmentCountGL:      getPublicInputListOfInstance(c.Recursion, run, segmentCountGLPublicInputBase, instance, c.ModuleNumber),
+		SegmentCountLPP:     getPublicInputListOfInstance(c.Recursion, run, segmentCountLPPPublicInputBase, instance, c.ModuleNumber),
+		LppCommitmentMSetGL: getPublicInputListOfInstance(c.Recursion, run, lppCommitmentMSetPublicInputBase, instance, mimc.MSetHashSize),
 		VerifyingKey: [2]field.Element{
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKeyPublicInput, instance),
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, instance),
@@ -430,12 +424,10 @@ func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.
 func (c ConglomerationHierarchical) collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Element] {
 
 	res := LimitlessPublicInput[field.Element]{
-		TargetNbSegments:     getPublicInputList(run, targetNbSegmentPublicInputBase, c.ModuleNumber),
-		SegmentCountGL:       getPublicInputList(run, segmentCountGLPublicInputBase, c.ModuleNumber),
-		SegmentCountLPP:      getPublicInputList(run, segmentCountLPPPublicInputBase, c.ModuleNumber),
-		LppCommitmentMSetGL:  getPublicInputList(run, lppCommitmentMSetPublicInputGLBase, mimc.MSetHashSize),
-		LppCommitmentMSetLPP: getPublicInputList(run, lppCommitmentMSetPublicInputLPPBase, mimc.MSetHashSize),
-		SegmentIndexChecker:  getPublicInputList(run, segmentIndexCheckerPublicInput, c.ModuleNumber),
+		TargetNbSegments:    getPublicInputList(run, targetNbSegmentPublicInputBase, c.ModuleNumber),
+		SegmentCountGL:      getPublicInputList(run, segmentCountGLPublicInputBase, c.ModuleNumber),
+		SegmentCountLPP:     getPublicInputList(run, segmentCountLPPPublicInputBase, c.ModuleNumber),
+		LppCommitmentMSetGL: getPublicInputList(run, lppCommitmentMSetPublicInputBase, mimc.MSetHashSize),
 		VerifyingKey: [2]field.Element{
 			run.GetPublicInput(verifyingKeyPublicInput),
 			run.GetPublicInput(verifyingKey2PublicInput),
