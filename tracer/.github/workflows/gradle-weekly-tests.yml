@@ -30,14 +30,44 @@ jobs:
     with:
       zkevm_fork: SHANGHAI
 
+  weekly-unit-tests-cancun:
+    uses: ./.github/workflows/reusable-weekly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: CANCUN
+
+  weekly-unit-tests-prague:
+    uses: ./.github/workflows/reusable-weekly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: PRAGUE
+
   weekly-prc-call-tests-london:
     uses: ./.github/workflows/reusable-weekly-prc-tests.yml
     secrets: inherit
     with:
       zkevm_fork: LONDON
 
+  weekly-prc-call-tests-paris:
+    uses: ./.github/workflows/reusable-weekly-prc-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: PARIS
+
   weekly-prc-call-tests-shanghai:
     uses: ./.github/workflows/reusable-weekly-prc-tests.yml
     secrets: inherit
     with:
       zkevm_fork: SHANGHAI
+
+  weekly-prc-call-tests-cancun:
+    uses: ./.github/workflows/reusable-weekly-prc-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: CANCUN
+
+  weekly-prc-call-tests-prague:
+    uses: ./.github/workflows/reusable-weekly-prc-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: PRAGUE
