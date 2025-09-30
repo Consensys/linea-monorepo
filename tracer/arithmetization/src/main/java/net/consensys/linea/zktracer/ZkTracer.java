@@ -98,6 +98,8 @@ public class ZkTracer implements LineCountingTracer {
     final DebugMode.PinLevel debugLevel = new DebugMode.PinLevel();
     this.debugMode =
         debugLevel.none() ? Optional.empty() : Optional.of(new DebugMode(debugLevel, this.hub));
+
+    log.info("[ZkTracer] Created ZkTracer for fork {}", chain.fork);
   }
 
   public void writeToFile(final Path filename, long startBlock, long endBlock) {

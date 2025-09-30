@@ -88,6 +88,7 @@ import static org.hyperledger.besu.evm.frame.MessageFrame.State.COMPLETED_SUCCES
 import java.util.*;
 import java.util.stream.Stream;
 
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 import net.consensys.linea.zktracer.container.module.IncrementAndDetectModule;
@@ -130,6 +131,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
+@Slf4j
 public class ZkCounter implements LineCountingTracer {
 
   public static final Fork FORK_TO_USE_FOR_ZK_COUNTER = PRAGUE;
@@ -366,6 +368,8 @@ public class ZkCounter implements LineCountingTracer {
             bridgeConfiguration.contract(),
             LogTopic.of(bridgeConfiguration.topic()));
     moduleToCount = Stream.concat(checkedModules().stream(), uncheckedModules().stream()).toList();
+
+    log.info("[ZkCounter] Created ZkCounter");
   }
 
   @Override
