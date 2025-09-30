@@ -69,7 +69,7 @@ class HistoricVariableCostProviderImplTest {
   }
 
   @Test
-  fun test_getLatestVariableCost_throws_error_when_ethGetBlock_returns_null() {
+  fun test_getVariableCost_throws_error_when_ethGetBlock_returns_null() {
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
         SafeFuture.completedFuture(null)
@@ -84,7 +84,7 @@ class HistoricVariableCostProviderImplTest {
   }
 
   @Test
-  fun test_getLatestVariableCost_throws_error_when_ethGetBlock_throws_error() {
+  fun test_getVariableCost_throws_error_when_ethGetBlock_throws_error() {
     val expectedException = RuntimeException("Error from ethGetBlock")
     val mockWeb3jClient = mock<ExtendedWeb3J> {
       on { ethGetBlock(eq(targetBlockNumber.toBlockParameter())) } doReturn
