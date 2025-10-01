@@ -560,7 +560,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 		TargetNbSegments:    declareListOfPiColumns(modLPP.Wiop, targetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:      declareListOfConstantPi(modLPP.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:     declareListOfConstantPi(modLPP.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
-		LppCommitmentMSetGL: declareListOfPiColumns(modLPP.Wiop, lppCommitmentMSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash: declareListOfPiColumns(modLPP.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
 	}
 }
 
@@ -589,7 +589,7 @@ func assignLPPCommitmentMSetLPP(run *wizard.ProverRuntime, witness *ModuleWitnes
 	)
 
 	mset.Remove(moduleIndex, segmentIndex, lppCommitments)
-	assignListOfPiColumns(run, lppCommitmentMSetPublicInputBase, mset[:])
+	assignListOfPiColumns(run, generalMultiSetPublicInputBase, mset[:])
 }
 
 // checkLPPCommitmentMSetGL checks that the LPP commitment MSet is correctly
@@ -597,7 +597,7 @@ func assignLPPCommitmentMSetLPP(run *wizard.ProverRuntime, witness *ModuleWitnes
 func checkLPPCommitmentMSetLPP(run wizard.Runtime, segmentModuleIndexCol ifaces.Column, moduleIndexInt int) error {
 
 	var (
-		targetMSet     = getPublicInputList(run, lppCommitmentMSetPublicInputBase, 1)
+		targetMSet     = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
 		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput)
 		segmentIndex   = run.GetColumnAt(segmentModuleIndexColumn, 0)
 		moduleIndex    = field.NewElement(uint64(moduleIndexInt))

@@ -32,20 +32,20 @@ const (
 	aggregationArity = 2
 
 	// name of the public inputs
-	targetNbSegmentPublicInputBase    = "TARGET_NB_SEGMENTS"
-	segmentCountLPPPublicInputBase    = "GL_SEGMENT_COUNT"
-	segmentCountGLPublicInputBase     = "LPP_SEGMENT_COUNT"
-	lppCommitmentMSetPublicInputBase  = "LPP_COMMITMENT_SET"
-	hornerN0HashCheckerPublicInput    = "HORNER_N0_HASH_CHECKER"
-	GlobalSentReceivedMSetPublicInput = "GLOBAL_SENT_RECEIVED_MSET"
-	VkMerkleProofBase                 = "VK_MERKLE_PROOF"
-	InitialRandomnessPublicInput      = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
-	LogDerivativeSumPublicInput       = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
-	GrandProductPublicInput           = "GRAND_PRODUCT_PUBLIC_INPUT"
-	HornerPublicInput                 = "HORNER_FINAL_RES_PUBLIC_INPUT"
-	verifyingKeyPublicInput           = "VERIFYING_KEY"
-	verifyingKey2PublicInput          = "VERIFYING_KEY_2"
-	lppMerkleRootPublicInput          = "LPP_COLUMNS_MERKLE_ROOTS"
+	targetNbSegmentPublicInputBase = "TARGET_NB_SEGMENTS"
+	segmentCountLPPPublicInputBase = "GL_SEGMENT_COUNT"
+	segmentCountGLPublicInputBase  = "LPP_SEGMENT_COUNT"
+	generalMultiSetPublicInputBase = "GENERAL_MULTI_SET"
+	VkMerkleProofBase              = "VK_MERKLE_PROOF"
+	InitialRandomnessPublicInput   = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
+	LogDerivativeSumPublicInput    = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
+	GrandProductPublicInput        = "GRAND_PRODUCT_PUBLIC_INPUT"
+	HornerPublicInput              = "HORNER_FINAL_RES_PUBLIC_INPUT"
+	globalHashSentPublicInput      = "GLOBAL_HASH_SENT"
+	globalHashReceivedPublicInput  = "GLOBAL_HASH_RECEIVED"
+	verifyingKeyPublicInput        = "VERIFYING_KEY"
+	verifyingKey2PublicInput       = "VERIFYING_KEY_2"
+	lppMerkleRootPublicInput       = "LPP_COLUMNS_MERKLE_ROOTS"
 )
 
 // ConglomerationCompilation holds the compilation context of the hierarchical
@@ -62,7 +62,6 @@ type ConglomerationHierarchical struct {
 	Recursion *recursion.Recursion
 	// PublicInputs stores the public inputs of the conglomeration proof.
 	PublicInputs LimitlessPublicInput[wizard.PublicInput]
-
 	// VerificationKeyMerkleProofs is the list of the verification keys proving
 	// the membership of the verifying keys of the instances inside the
 	// VerificationKeyMerkleTree. Each merkle proof is structured as a list of
@@ -84,7 +83,7 @@ type LimitlessPublicInput[T any] struct {
 	TargetNbSegments       []T
 	SegmentCountGL         []T
 	SegmentCountLPP        []T
-	LppCommitmentMSetGL    []T
+	GeneralMultiSetHash    []T
 	LppCommitmentMSetLPP   []T
 	SegmentIndexChecker    []T
 	VKeyMerkleRoot         T
@@ -117,7 +116,7 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 	c.PublicInputs.TargetNbSegments = declareListOfPiColumns(c.Wiop, targetNbSegmentPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountGL = declareListOfPiColumns(c.Wiop, segmentCountGLPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, segmentCountLPPPublicInputBase, c.ModuleNumber)
-	c.PublicInputs.LppCommitmentMSetGL = declareListOfPiColumns(c.Wiop, lppCommitmentMSetPublicInputBase, mimc.MSetHashSize)
+	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize)
 	c.PublicInputs.VerifyingKey[0] = declarePiColumn(c.Wiop, verifyingKeyPublicInput)
 	c.PublicInputs.VerifyingKey[1] = declarePiColumn(c.Wiop, verifyingKey2PublicInput)
 	c.PublicInputs.LogDerivativeSum = declarePiColumn(c.Wiop, LogDerivativeSumPublicInput)
@@ -260,12 +259,12 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 		)
 
 		for instance := 0; instance < c.ModuleNumber; instance++ {
-			sumHashGL.Add(&sumHashGL, &collectedPIs[instance].LppCommitmentMSetGL[k])
+			sumHashGL.Add(&sumHashGL, &collectedPIs[instance].GeneralMultiSetHash[k])
 			sumHashLPP.Add(&sumHashLPP, &collectedPIs[instance].LppCommitmentMSetLPP[k])
 			sumGlobal.Add(&sumGlobal, &collectedPIs[instance].GlobalSentReceivedMSet[k])
 		}
 
-		if sumHashGL != topPIs.LppCommitmentMSetGL[k] {
+		if sumHashGL != topPIs.GeneralMultiSetHash[k] {
 			err = errors.Join(err, fmt.Errorf("public input mismatch for LppCommitmentMSetGL for index %d", k))
 		}
 
@@ -484,7 +483,7 @@ func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.
 		TargetNbSegments:    getPublicInputListOfInstance(c.Recursion, run, targetNbSegmentPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountGL:      getPublicInputListOfInstance(c.Recursion, run, segmentCountGLPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountLPP:     getPublicInputListOfInstance(c.Recursion, run, segmentCountLPPPublicInputBase, instance, c.ModuleNumber),
-		LppCommitmentMSetGL: getPublicInputListOfInstance(c.Recursion, run, lppCommitmentMSetPublicInputBase, instance, mimc.MSetHashSize),
+		GeneralMultiSetHash: getPublicInputListOfInstance(c.Recursion, run, generalMultiSetPublicInputBase, instance, mimc.MSetHashSize),
 		VerifyingKey: [2]field.Element{
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKeyPublicInput, instance),
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, instance),
@@ -512,7 +511,7 @@ func (c ConglomerationHierarchical) collectAllPublicInputs(run wizard.Runtime) L
 		TargetNbSegments:    getPublicInputList(run, targetNbSegmentPublicInputBase, c.ModuleNumber),
 		SegmentCountGL:      getPublicInputList(run, segmentCountGLPublicInputBase, c.ModuleNumber),
 		SegmentCountLPP:     getPublicInputList(run, segmentCountLPPPublicInputBase, c.ModuleNumber),
-		LppCommitmentMSetGL: getPublicInputList(run, lppCommitmentMSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash: getPublicInputList(run, generalMultiSetPublicInputBase, mimc.MSetHashSize),
 		VerifyingKey: [2]field.Element{
 			run.GetPublicInput(verifyingKeyPublicInput),
 			run.GetPublicInput(verifyingKey2PublicInput),
