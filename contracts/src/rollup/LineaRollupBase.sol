@@ -749,10 +749,9 @@ abstract contract LineaRollupBase is
     emit MessageSent(msg.sender, _l2YieldRecipient, 0, _amount, messageNumber, hex"", messageHash);
   }
 
-  // TODO - Do we need additional pause type here?
-  // Any calldata is ignored, we don't have the ETH to do call.value...
-  function claimMessageWithProofAndWithdrawLST(ClaimMessageWithProofParams calldata _params, address _yieldProvider) external nonReentrant distributeFees(_params.fee, _params.to, _params.data, _params.feeRecipient) {
-    // TODO - Consider what pause type
+  // @dev Any calldata is ignored, we don't have the ETH to do call.value...
+  // @dev No refund here, message service is in ETH deficit
+  function claimMessageWithProofAndWithdrawLST(ClaimMessageWithProofParams calldata _params, address _yieldProvider) external nonReentrant {
     if (_params.value < address(this).balance) {
       revert LSTWithdrawalRequiresDeficit();
     }

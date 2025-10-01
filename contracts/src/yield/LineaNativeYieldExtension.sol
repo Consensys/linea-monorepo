@@ -69,7 +69,7 @@ abstract contract LineaNativeYieldExtension is
    */
   function transferFundsForNativeYield(
     uint256 _amount
-  ) external whenTypeAndGeneralNotPaused(PauseType.L1_YIELDMANAGER) onlyRole(RESERVE_OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_STAKING) onlyRole(RESERVE_OPERATOR_ROLE) {
     IYieldManager(yieldManager()).receiveFundsFromReserve{ value: _amount }();
   }
 
@@ -77,7 +77,7 @@ abstract contract LineaNativeYieldExtension is
    * @notice Send ETH to this contract.
    * @dev FUNDER_ROLE is required to execute.
    */
-  function fund() external payable whenTypeAndGeneralNotPaused(PauseType.FUNDING) onlyRole(FUNDER_ROLE) {
+  function fund() external payable onlyRole(FUNDER_ROLE) {
     emit FundingReceived(msg.sender, msg.value);
   }
 

@@ -248,7 +248,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
    * @dev RESERVE_OPERATOR_ROLE or YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
    * @param _amount        The amount of ETH to send.
    */
-  function transferFundsToReserve(uint256 _amount) external {
+  function transferFundsToReserve(uint256 _amount) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_RESERVE_FUNDING) {
     if (!hasRole(RESERVE_OPERATOR_ROLE, msg.sender) && !hasRole(YIELD_PROVIDER_FUNDER_ROLE, msg.sender)) {
       revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_FUNDER_ROLE);
     }
@@ -267,7 +267,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function fundYieldProvider(
     address _yieldProvider,
     uint256 _amount
-  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_FUNDER_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_STAKING) onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_FUNDER_ROLE) {
     _fundYieldProvider(_yieldProvider, _amount);
     // Do LST repayment
     uint256 lstPrincipalRepayment = _payLSTPrincipal(_yieldProvider, _amount);
@@ -309,6 +309,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     address _l2YieldRecipient
   )
     external
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_REPORTING)
     onlyKnownYieldProvider(_yieldProvider)
     onlyKnownL2YieldRecipient(_l2YieldRecipient)
     onlyRole(YIELD_REPORTER_ROLE)
@@ -337,7 +338,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function unstake(
     address _yieldProvider,
     bytes memory _withdrawalParams
-  ) external payable onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE) {
+  ) external payable whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING) onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE) {
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstake, (_yieldProvider, _withdrawalParams))
@@ -367,7 +368,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable onlyKnownYieldProvider(_yieldProvider) returns (uint256 maxUnstakeAmount) {
+  ) external payable whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_UNSTAKING) onlyKnownYieldProvider(_yieldProvider) returns (uint256 maxUnstakeAmount) {
     if (!isWithdrawalReserveBelowMinimum()) {
       revert WithdrawalReserveNotInDeficit();
     }
@@ -465,7 +466,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function addToWithdrawalReserve(
     address _yieldProvider,
     uint256 _amount
-  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(RESERVE_OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_RESERVE_FUNDING) onlyKnownYieldProvider(_yieldProvider) onlyRole(RESERVE_OPERATOR_ROLE) {
     // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance > _amount) {
@@ -509,7 +510,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
    * @dev Will rebalance to target
    * @param _yieldProvider          Yield provider address.
    */
-  function replenishWithdrawalReserve(address _yieldProvider) external onlyKnownYieldProvider(_yieldProvider) {
+  function replenishWithdrawalReserve(address _yieldProvider) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_REBALANCE) onlyKnownYieldProvider(_yieldProvider) {
     if (!isWithdrawalReserveBelowMinimum()) {
       revert WithdrawalReserveNotInDeficit();
     }
@@ -617,7 +618,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     address _yieldProvider,
     uint256 _amount,
     address _recipient
-  ) external onlyKnownYieldProvider(_yieldProvider) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.LST_WITHDRAWAL) onlyKnownYieldProvider(_yieldProvider) {
     if (msg.sender != _getYieldManagerStorage()._l1MessageService) {
       revert NotL1MessageService();
     }
@@ -694,7 +695,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   }
 
   // Need donate function here, otherwise YieldManager is unable to assign donations for specific yield providers.
-  function donate(address _yieldProvider) external payable onlyKnownYieldProvider(_yieldProvider) {
+  function donate(address _yieldProvider) external payable whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_RESERVE_FUNDING) onlyKnownYieldProvider(_yieldProvider) {
     _decrementNegativeYieldAgainstDonation(_yieldProvider, msg.value);
     _decrementPendingPermissionlessUnstake(msg.value);
     _fundReserve(msg.value);

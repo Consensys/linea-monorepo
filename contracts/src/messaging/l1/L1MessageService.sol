@@ -103,8 +103,6 @@ abstract contract L1MessageService is
    * @param _params Collection of claim data with proof and supporting data.
    */
   function _claimMessageWithProof(ClaimMessageWithProofParams calldata _params) internal virtual {
-    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
-
     bytes32 messageLeafHash = _validateAndConsumeMessageProof(_params);
 
     TRANSIENT_MESSAGE_SENDER = _params.from;
@@ -127,6 +125,8 @@ abstract contract L1MessageService is
   }
 
   function _validateAndConsumeMessageProof(ClaimMessageWithProofParams calldata _params) internal virtual returns (bytes32 messageLeafHash) {
+    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
+
     uint256 merkleDepth = l2MerkleRootsDepths[_params.merkleRoot];
 
     if (merkleDepth == 0) {
