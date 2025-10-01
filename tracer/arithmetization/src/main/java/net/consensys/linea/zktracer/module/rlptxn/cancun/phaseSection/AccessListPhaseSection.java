@@ -49,7 +49,8 @@ public class AccessListPhaseSection extends PhaseSection {
   private static final short RLP_ADDRESS_BYTE_SIZE = 1 + Address.SIZE;
 
   public AccessListPhaseSection(RlpUtils rlpUtils, Trm trm, TransactionProcessingMetadata tx) {
-    final List<AccessListEntry> accessList = tx.getBesuTransaction().getAccessList().get();
+    final List<AccessListEntry> accessList =
+        tx.getBesuTransaction().getAccessList().orElse(List.of());
 
     final List<Short> accessListTupleSizes = new ArrayList<>(accessList.size());
     for (AccessListEntry entry : accessList) {
