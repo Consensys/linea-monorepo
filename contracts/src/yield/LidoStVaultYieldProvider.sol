@@ -55,6 +55,14 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     entrypointContract = $$.isOssified ? $$.ossifiedEntrypoint : $$.primaryEntrypoint;
   }
 
+  function _getDashboard(YieldProviderStorage storage $$) internal view returns (IDashboard dashboard) {
+    dashboard = IDashboard($$.primaryEntrypoint);
+  }
+
+  function _getVault(YieldProviderStorage storage $$) internal view returns (IStakingVault vault) {
+    vault = IStakingVault($$.ossifiedEntrypoint);
+  }
+
   function withdrawableValue(address _yieldProvider) external view onlyDelegateCall returns (uint256) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     return $$.isOssified ? $$.ossifiedEntrypoint.balance : IDashboard($$.primaryEntrypoint).withdrawableValue();
@@ -80,7 +88,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     }
     // First compute the total yield
     uint256 lastUserFunds = $$.userFunds;
-    uint256 totalVaultFunds = IDashboard($$.primaryEntrypoint).totalValue();
+    uint256 totalVaultFunds = _getDashboard($$).totalValue();
     uint256 negativeTotalYield;
     uint256 positiveTotalYield;
     if (totalVaultFunds > lastUserFunds) {
@@ -90,7 +98,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     }
 
     if (positiveTotalYield > 0) {
-      positiveTotalYield = _handlePostiveYieldAccounting(_yieldProvider, positiveTotalYield);
+      positiveTotalYield = _handlePostiveYieldAccounting($$, positiveTotalYield);
       // emit event
       return positiveTotalYield;
     } else if (negativeTotalYield > 0) {
@@ -101,8 +109,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     }
   }
 
-  function _handlePostiveYieldAccounting(address _yieldProvider, uint256 positiveTotalYield) internal returns (uint256 newReportedYield) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+  function _handlePostiveYieldAccounting(YieldProviderStorage storage $$, uint256 positiveTotalYield) internal returns (uint256 newReportedYield) {
     // First pay negative yield
     newReportedYield = positiveTotalYield;
     uint256 currentNegativeYield = $$.currentNegativeYield;
@@ -112,23 +119,22 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       newReportedYield -= negativeYieldReduction;
     }
     // Then pay liability interest
-    newReportedYield -= _payLSTInterest(_yieldProvider, newReportedYield);
+    newReportedYield -= _payLSTInterest($$, newReportedYield);
     // Then pay obligations
-    newReportedYield -= _payObligations(_yieldProvider, newReportedYield);
+    newReportedYield -= _payObligations($$, newReportedYield);
     // Then pay node operator fee(s)
-    newReportedYield -= _payNodeOperatorFees(_yieldProvider, newReportedYield);
+    newReportedYield -= _payNodeOperatorFees($$, newReportedYield);
   }
 
   // Returns how much of _maxAvailableRepaymentETH available, after LST interest payment
   // @dev Redemption component of obligations, and liability - are decremented in tandem in Lido VaultHub
-  function _payLSTInterest(address _yieldProvider, uint256 _maxAvailableRepaymentETH) internal returns (uint256 lstInterestPaid) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+  function _payLSTInterest(YieldProviderStorage storage $$, uint256 _maxAvailableRepaymentETH) internal returns (uint256 lstInterestPaid) {
     if ($$.isOssified) return _maxAvailableRepaymentETH;
-    IDashboard dashboard = IDashboard($$.primaryEntrypoint);
+    IDashboard dashboard = _getDashboard($$);
     uint256 liabilityTotalShares = dashboard.liabilityShares();
     if (liabilityTotalShares == 0) return _maxAvailableRepaymentETH;
     (uint256 lstLiabilityPrincipalSynced, bool isLstLiabilityPrincipalChanged) = _syncExternalLiabilitySettlement(
-      _yieldProvider,
+      $$,
       liabilityTotalShares,
       $$.lstLiabilityPrincipal
     );
@@ -152,12 +158,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   // @dev May reduce $$.lstLiabilityPrincipal
   // @return New value of lstLiabilityPrincipal
   function _syncExternalLiabilitySettlement(
-    address _yieldProvider,
+    YieldProviderStorage storage $$,
     uint256 _liabilityShares,
     uint256 _lstLiabilityPrincipalCached
   ) internal returns (uint256 lstLiabilityPrincipalSynced, bool isLstLiabilityPrincipalChanged) {
     uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(_liabilityShares);
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if (liabilityETH < _lstLiabilityPrincipalCached) {
       $$.lstLiabilityPrincipal = liabilityETH;
       return (liabilityETH, true);
@@ -173,8 +178,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   // @dev From an LST liability principal accounting POV, the main issue not eagerly tracking redemptions will cause
   //     is that we will overpay an LST liability payment, and our rebalance() call will fail because the system thinks
   //     it has more debt than it actually has. We handle this by checking if this has happened, and adjusting lstLiabilityPrincipal accordingly via _syncExternalLiabilitySettlement.
-  function _payObligations(address _yieldProvider, uint256 _maxAvailableRepaymentETH) internal returns (uint256 obligationsPaid) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+  function _payObligations(YieldProviderStorage storage $$, uint256 _maxAvailableRepaymentETH) internal returns (uint256 obligationsPaid) {
     address vault = $$.ossifiedEntrypoint;
     uint256 beforeVaultBalance = vault.balance;
     // Unfortunately, there is no function on VaultHub to specify how much obligation we want to repay.
@@ -182,16 +186,15 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     uint256 afterVaultBalance = vault.balance;
     obligationsPaid = afterVaultBalance - beforeVaultBalance;
     if (obligationsPaid > _maxAvailableRepaymentETH) {
-      _getYieldProviderStorage(vault).currentNegativeYield += (obligationsPaid - _maxAvailableRepaymentETH);
+      $$.currentNegativeYield += (obligationsPaid - _maxAvailableRepaymentETH);
     }
   }
 
-  function _payNodeOperatorFees(address _yieldProvider, uint256 _availableAmount) internal returns (uint256 nodeOperatorFeesPaid) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    IDashboard dashboard = IDashboard($$.primaryEntrypoint);
-    address vault = $$.ossifiedEntrypoint;
+  function _payNodeOperatorFees(YieldProviderStorage storage $$, uint256 _availableAmount) internal returns (uint256 nodeOperatorFeesPaid) {
+    IDashboard dashboard = _getDashboard($$);
+    IStakingVault vault = _getVault($$);
     uint256 currentFees = dashboard.nodeOperatorDisbursableFee();
-    uint256 vaultBalance = vault.balance;
+    uint256 vaultBalance = address(vault).balance;
     // Does not allow partial payment of node operator fees, unlike settleVaultObligations
     if (vaultBalance > currentFees) {
       dashboard.disburseNodeOperatorFee();
@@ -212,17 +215,16 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     if ($$.isOssificationInitiated || $$.isOssified) {
       return 0;
     }
-    lstPrincipalPaid = _payLSTPrincipal(_yieldProvider, _maxAvailableRepaymentETH);
+    lstPrincipalPaid = _payLSTPrincipal($$, _maxAvailableRepaymentETH);
   }
 
-  function _payLSTPrincipal(address _yieldProvider, uint256 _maxAvailableRepaymentETH) internal returns (uint256 lstPrincipalPaid) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+  function _payLSTPrincipal(YieldProviderStorage storage $$, uint256 _maxAvailableRepaymentETH) internal returns (uint256 lstPrincipalPaid) {
     if ($$.isOssified) return 0;
     uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
     if (lstLiabilityPrincipalCached == 0) return 0;
-    IDashboard dashboard = IDashboard($$.primaryEntrypoint);
+    IDashboard dashboard = _getDashboard($$);
     (uint256 lstLiabilityPrincipalSynced, ) = _syncExternalLiabilitySettlement(
-      _yieldProvider,
+      $$,
       dashboard.liabilityShares(),
       lstLiabilityPrincipalCached
     );
@@ -367,7 +369,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   // TODO - Role
   // @dev Requires fresh report
   function initiateOssification(address _yieldProvider) external onlyDelegateCall {
-    _payMaximumPossibleLSTLiability(_yieldProvider);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    _payMaximumPossibleLSTLiability($$);
     // Lido implementation handles Lido fee payment, and revert on fresh report
     // This will fail if any existing liabilities or obligations
     IDashboard(_getYieldProviderStorage(_yieldProvider).primaryEntrypoint).voluntaryDisconnect();
@@ -375,8 +378,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
 
   // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
   // Settle interest before principal
-  function _payMaximumPossibleLSTLiability(address _yieldProvider) internal {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+  function _payMaximumPossibleLSTLiability(YieldProviderStorage storage $$) internal {
     if ($$.isOssified) return;
     IDashboard dashboard = IDashboard($$.primaryEntrypoint);
     address vault = $$.ossifiedEntrypoint;
@@ -388,7 +390,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     if (rebalanceShares > 0) {
       dashboard.rebalanceVaultWithShares(rebalanceShares);
       // Apply consistent accounting treatment that LST interest paid first, then LST principal
-      _syncExternalLiabilitySettlement(_yieldProvider, dashboard.liabilityShares(), $$.lstLiabilityPrincipal);
+      _syncExternalLiabilitySettlement($$, dashboard.liabilityShares(), $$.lstLiabilityPrincipal);
     }
   }
 
