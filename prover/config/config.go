@@ -73,6 +73,27 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse worker_cmd_large template: %w", err)
 	}
 
+	// Ensure prover phase commands are parsed
+	cfg.Controller.ProverPhaseCmd.BootstrapCmdTmpl, err = template.New("bootstrap_cmd").Parse(cfg.Controller.ProverPhaseCmd.BootstrapCmd)
+	if withValidation && err != nil {
+		return nil, fmt.Errorf("failed to parse bootstrap_cmd template: %w", err)
+	}
+
+	cfg.Controller.ProverPhaseCmd.GLCmdTmpl, err = template.New("gl_cmd").Parse(cfg.Controller.ProverPhaseCmd.GLCmd)
+	if withValidation && err != nil {
+		return nil, fmt.Errorf("failed to parse gl_cmd template: %w", err)
+	}
+
+	cfg.Controller.ProverPhaseCmd.LPPCmdTmpl, err = template.New("lpp_cmd").Parse(cfg.Controller.ProverPhaseCmd.LPPCmd)
+	if withValidation && err != nil {
+		return nil, fmt.Errorf("failed to parse lpp_cmd template: %w", err)
+	}
+
+	cfg.Controller.ProverPhaseCmd.ConglomerationCmdTmpl, err = template.New("conglomeration_cmd").Parse(cfg.Controller.ProverPhaseCmd.ConglomerationCmd)
+	if withValidation && err != nil {
+		return nil, fmt.Errorf("failed to parse conglomeration_cmd template: %w", err)
+	}
+
 	// Set the logging level
 	logrus.SetLevel(logrus.Level(cfg.LogLevel)) // #nosec G115 -- overflow not possible (uint8 -> uint32)
 
