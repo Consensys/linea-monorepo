@@ -829,7 +829,7 @@ func (modGl *ModuleGL) declarePublicInput() {
 		TargetNbSegments:    declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:      declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:     declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
-		LppCommitmentMSetGL: declareListOfPiColumns(modGl.Wiop, lppCommitmentMSetPublicInputBase, mimc.MSetHashSize),
+		LppCommitmentMSetGL: declareListOfPiColumns(modGl.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
 	}
 }
 
@@ -847,33 +847,89 @@ func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *Mod
 }
 
 // assignLPPCommitmentMSetGL assigns the LPP commitment MSet. It is meant to be
-// run as part of a prover action.
-func assignLPPCommitmentMSetGL(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
+// run as part of a prover action. It also adds the "sent" and "received" values
+// to the MSet.
+func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 
 	var (
-		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex   = field.NewElement(uint64(witness.SegmentModuleIndex))
-		moduleIndex    = field.NewElement(uint64(witness.ModuleIndex))
-		mset           = mimc.MSetHash{}
+		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
+		segmentIndex           = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		typeOfProof            = field.NewElement(uint64(proofTypeGL))
+		globalSentHash         = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
+		globalRcvdHash         = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
+		mset                   = mimc.MSetHash{}
+		defInp                 = modGL.DefinitionInput
+		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
+		numModule              = len(defInp.Disc.Modules)
+		segmentIndexInt        = segmentIndex.Uint64()
+		numSegmentOfLastModule = modGL.PublicInputs.TargetNbSegments[numModule-1].Acc.GetVal(run)
 	)
 
 	mset.Insert(moduleIndex, segmentIndex, lppCommitments)
-	assignListOfPiColumns(run, lppCommitmentMSetPublicInputBase, mset[:])
+
+	// If the segment is not the last one of its module we add the "sent" value
+	// in the multiset.
+	if segmentIndexInt < numSegmentOfLastModule.Uint64()-1 {
+		// This is a local module
+		mset.Insert(moduleIndex, segmentIndex, typeOfProof, globalSentHash)
+	}
+
+	// If the segment is not the first one of its module, we add the received
+	// value in the multiset
+	if !segmentIndex.IsZero() {
+
+		var (
+			prevSegmentIndex field.Element
+			one              = field.One()
+		)
+
+		prevSegmentIndex.Sub(&segmentIndex, &one)
+		mset.Remove(moduleIndex, prevSegmentIndex, typeOfProof, globalRcvdHash)
+	}
+
+	assignListOfPiColumns(run, generalMultiSetPublicInputBase, mset[:])
 }
 
-// checkLPPCommitmentMSetGL checks that the LPP commitment MSet is correctly
+// checkMultiSetHash checks that the LPP commitment MSet is correctly
 // assigned. It is meant to be run as part of a verifier action.
-func checkLPPCommitmentMSetGL(run wizard.Runtime, segmentModuleIndexCol ifaces.Column, moduleIndexInt int) error {
+func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
-		targetMSet     = getPublicInputList(run, lppCommitmentMSetPublicInputBase, 1)
-		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex   = run.GetColumnAt(segmentModuleIndexColumn, 0)
-		moduleIndex    = field.NewElement(uint64(moduleIndexInt))
-		mset           = mimc.MSetHash{}
+		targetMSet             = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
+		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
+		segmentIndex           = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		typeOfProof            = field.NewElement(uint64(proofTypeGL))
+		globalSentHash         = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
+		globalRcvdHash         = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
+		mset                   = mimc.MSetHash{}
+		defInp                 = modGL.DefinitionInput
+		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
+		numModule              = len(defInp.Disc.Modules)
+		segmentIndexInt        = segmentIndex.Uint64()
+		numSegmentOfLastModule = modGL.PublicInputs.TargetNbSegments[numModule-1].Acc.GetVal(run)
 	)
 
 	mset.Insert(moduleIndex, segmentIndex, lppCommitments)
+
+	// If the segment is not the last one of its module we add the "sent" value
+	// in the multiset.
+	if segmentIndexInt < numSegmentOfLastModule.Uint64()-1 {
+		// This is a local module
+		mset.Insert(moduleIndex, segmentIndex, typeOfProof, globalSentHash)
+	}
+
+	// If the segment is not the first one of its module, we add the received
+	// value in the multiset
+	if !segmentIndex.IsZero() {
+
+		var (
+			prevSegmentIndex field.Element
+			one              = field.One()
+		)
+
+		prevSegmentIndex.Sub(&segmentIndex, &one)
+		mset.Remove(moduleIndex, prevSegmentIndex, typeOfProof, globalRcvdHash)
+	}
 
 	if !vector.Equal(targetMSet, mset[:]) {
 		return fmt.Errorf("LPP commitment MSet mismatch, expected: %v, got: %v", targetMSet, mset[:])
