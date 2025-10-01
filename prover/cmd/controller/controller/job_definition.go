@@ -28,10 +28,15 @@ type JobDefinition struct {
 	Name string
 
 	// Parameters for the job definition provided by the user
-	RequestsRootDir string
+	RequestRootDir string
 
 	// The regexp to use to match input files.
 	InputFileRegexp *regexp2.Regexp
+
+	// Response root directory. If it is not set, it will be the value returned by .dirTo
+	// For example: Its not set for execution, compression, or aggregation jobs
+	// It is set explicitly only for the limitless prover jobs
+	ResponseRootDir string
 
 	// Template to use to generate the output file. May be empty for jobs that
 	// have no output (e.g., GL/LPP that use /dev/null).
@@ -63,13 +68,10 @@ func ExecutionDefinition(conf *config.Config) JobDefinition {
 		config.FailSuffix,
 	)
 
-	return newJobDefinition(
-		conf.Execution.RequestsRootDir,
-		jobNameExecution,
-		inputPattern,
-		"{{.Start}}-{{.End}}-getZkProof.json",
-		0,
-		paramsExecution(),
+	return newJobDefinition(jobNameExecution,
+		conf.Execution.RequestsRootDir, inputPattern,
+		"", "{{.Start}}-{{.End}}-getZkProof.json",
+		0, paramsExecution(),
 	)
 }
 
@@ -80,13 +82,10 @@ func CompressionDefinition(conf *config.Config) JobDefinition {
 		config.FailSuffix,
 	)
 
-	return newJobDefinition(
-		conf.BlobDecompression.RequestsRootDir,
-		jobNameBlobDecompression,
-		inputPattern,
-		"{{.Start}}-{{.End}}-{{.ContentHash}}getZkBlobCompressionProof.json",
-		1,
-		paramsCompression(),
+	return newJobDefinition(jobNameBlobDecompression,
+		conf.BlobDecompression.RequestsRootDir, inputPattern,
+		"", "{{.Start}}-{{.End}}-{{.ContentHash}}getZkBlobCompressionProof.json",
+		1, paramsCompression(),
 	)
 }
 
@@ -97,11 +96,9 @@ func AggregatedDefinition(conf *config.Config) JobDefinition {
 		config.FailSuffix,
 	)
 
-	return newJobDefinition(
-		conf.Aggregation.RequestsRootDir,
-		jobNameAggregation,
-		inputPattern,
-		"{{.Start}}-{{.End}}-{{.ContentHash}}-getZkAggregatedProof.json",
+	return newJobDefinition(jobNameAggregation,
+		conf.Aggregation.RequestsRootDir, inputPattern,
+		"", "{{.Start}}-{{.End}}-{{.ContentHash}}-getZkAggregatedProof.json",
 		2,
 		paramsAggregation(),
 	)
@@ -150,14 +147,15 @@ func paramsAggregation() ParamRegexps {
 
 // Create a new JobDefinition with consistent defaults
 func newJobDefinition(
-	rootDir, name, inputPattern, outputTmpl string,
-	priority int,
-	params ParamRegexps,
+	name, reqRootDir, inputPattern,
+	respRootDir, outputTmpl string,
+	priority int, params ParamRegexps,
 ) JobDefinition {
 	return JobDefinition{
-		RequestsRootDir: rootDir,
 		Name:            name,
+		RequestRootDir:  reqRootDir,
 		InputFileRegexp: regexp2.MustCompile(inputPattern, regexp2.None),
+		ResponseRootDir: respRootDir,
 		OutputFileTmpl:  tmplMustCompile(name+"-output-file", outputTmpl),
 		Priority:        priority,
 		ParamsRegexp:    params,
@@ -184,13 +182,18 @@ func tmplMustCompile(name, tmpl string) *template.Template {
 // -------------------- Directory Helpers --------------------
 
 func (jd *JobDefinition) dirFrom() string {
-	return filepath.Join(jd.RequestsRootDir, config.RequestsFromSubDir)
+	return filepath.Join(jd.RequestRootDir, config.RequestsFromSubDir)
 }
 
 func (jd *JobDefinition) dirDone() string {
-	return filepath.Join(jd.RequestsRootDir, config.RequestsDoneSubDir)
+	return filepath.Join(jd.RequestRootDir, config.RequestsDoneSubDir)
 }
 
 func (jd *JobDefinition) dirTo() string {
-	return filepath.Join(jd.RequestsRootDir, config.RequestsToSubDir)
+
+	if jd.ResponseRootDir != "" {
+		return jd.ResponseRootDir
+	}
+
+	return filepath.Join(jd.RequestRootDir, config.RequestsToSubDir)
 }
