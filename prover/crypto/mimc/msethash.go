@@ -101,9 +101,37 @@ func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs []frontend.Varia
 	}
 }
 
-// Add combines two multisets in a gnark library
+// Insert adds the given messages to the multisets hash. The message can be an
+// array of field elements of any size. The function panics if given an empty
+// msg.
+func (m *MSetHashGnark) Insert(api frontend.API, msgs ...frontend.Variable) {
+	m.update(api, false, msgs)
+}
+
+// Remove removes the given messages from the multisets hash. The message can be
+// an array of field elements of any size. The function panics if given an empty
+// msg.
+func (m *MSetHashGnark) Remove(api frontend.API, msgs ...frontend.Variable) {
+	m.update(api, true, msgs)
+}
+
+// Add combines the two multisets hashes into a single multisets hash.
 func (m *MSetHashGnark) Add(api frontend.API, other MSetHashGnark) {
 	for i := 0; i < MSetHashSize; i++ {
 		m[i] = api.Add(m[i], other[i])
 	}
+}
+
+// Sub substracts the multiset "other" from "m"
+func (m *MSetHashGnark) Sub(api frontend.API, other MSetHashGnark) {
+	for i := 0; i < MSetHashSize; i++ {
+		m[i] = api.Sub(m[i], other[i])
+	}
+}
+
+// MsetOfSingletonGnark returns the multiset vector of an entry
+func MsetOfSingletonGnark(api frontend.API, msg ...frontend.Variable) MSetHashGnark {
+	m := MSetHashGnark{}
+	m.update(api, false, msg)
+	return m
 }
