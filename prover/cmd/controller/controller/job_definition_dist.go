@@ -92,8 +92,8 @@ func GLDefinitionForModule(conf *config.Config, module string) JobDefinition {
 		ParamRegexps{
 			Start: reStart,
 			End:   reEnd,
-			Seg:   regexp2.MustCompile(`(?<=-seg-)[0-9]+`, regexp2.None),
-			Mod:   regexp2.MustCompile(`(?<=-mod-)[0-9]+`, regexp2.None),
+			SegID: regexp2.MustCompile(`(?<=-seg-)[0-9]+`, regexp2.None),
+			ModID: regexp2.MustCompile(`(?<=-mod-)[0-9]+`, regexp2.None),
 		},
 	)
 }
@@ -124,8 +124,8 @@ func LPPDefinitionForModule(conf *config.Config, module string) JobDefinition {
 		ParamRegexps{
 			Start: reStart,
 			End:   reEnd,
-			Seg:   regexp2.MustCompile(`(?<=-seg-)[0-9]+`, regexp2.None),
-			Mod:   regexp2.MustCompile(`(?<=-mod-)[0-9]+`, regexp2.None),
+			SegID: regexp2.MustCompile(`(?<=-seg-)[0-9]+`, regexp2.None),
+			ModID: regexp2.MustCompile(`(?<=-mod-)[0-9]+`, regexp2.None),
 		},
 	)
 }

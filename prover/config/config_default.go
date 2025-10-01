@@ -43,10 +43,10 @@ func setDefaultProverPhaseCmds() {
 
 	// Set default cmds for limitless prover invoking the --phase flag
 	var (
-		bootstrapCmd      = "prover prove -phase=bootstrap --config {{.Config}} --in {{.Input}} --out {{.Output}}"
-		glCmd             = "prover prove -phase=gl --config {{.Config}} --in {{.Input}} --out /dev/null"
-		lppCmd            = "prover prove -phase=lpp --config {{.Config}} --in {{.Input}} --out /dev/null"
-		conglomerationCmd = "prover prove -phase=conglomeration --config {{.Config}} --in {{.Input}} --out {{.Output}}"
+		bootstrapCmd      = "prover prove -phase=bootstrap --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}"
+		glCmd             = "prover prove -phase=gl --config {{.ConfFile}} --in {{.InFile}} --out /dev/null"
+		lppCmd            = "prover prove -phase=lpp --config {{.ConfFile}} --in {{.InFile}} --out /dev/null"
+		conglomerationCmd = "prover prove -phase=conglomeration --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}"
 	)
 
 	viper.SetDefault("controller.prover_phase.bootstrap_cmd", bootstrapCmd)

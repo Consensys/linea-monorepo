@@ -28,9 +28,11 @@ type Job struct {
 	VersionExecutionTracer string
 	VersionStateManager    string
 	VersionCompressor      string
+	ContentHash            string // The hex string of the content hash
 
-	// The hex string of the content hash
-	ContentHash string
+	// Add-ons for limitless prover
+	SegID int
+	ModID int
 }
 
 // OutputFileResource collects all the data needed to fill the output template
@@ -65,6 +67,10 @@ func NewJob(jdef *JobDefinition, filename string) (j *Job, err error) {
 	j.VersionExecutionTracer = stringIfRegexpNotNil(regs.Etv, filename)
 	j.VersionStateManager = stringIfRegexpNotNil(regs.Stv, filename)
 	j.ContentHash = stringIfRegexpNotNil(regs.ContentHash, filename)
+
+	// Limitless prover add-ons
+	j.SegID = intIfRegexpNotNil(regs.SegID, filename)
+	j.ModID = intIfRegexpNotNil(regs.ModID, filename)
 
 	return j, nil
 }
