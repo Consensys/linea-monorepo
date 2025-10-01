@@ -68,12 +68,16 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     return _getYieldManagerStorage()._minimumWithdrawalReserveAmount;
   }
 
-  function _callYieldProvider(address _yieldProvider, bytes memory _callData) internal returns (bytes memory) {
+  function _delegatecallYieldProvider(address _yieldProvider, bytes memory _callData) internal returns (bytes memory) {
     (bool success, bytes memory returnData) = _yieldProvider.delegatecall(_callData);
     if (!success) {
       revert DelegateCallFailed();
     }
     return returnData;
+  }
+
+  function _fundReserve(uint256 _amount) internal {
+    ILineaNativeYieldExtension(l1MessageService()).fund{ value: _amount }();
   }
 
   /**
@@ -207,7 +211,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   }
 
   function withdrawableValue(address _yieldProvider) public onlyKnownYieldProvider(_yieldProvider) returns (uint256) {
-    bytes memory data = _callYieldProvider(
+    bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
     );
@@ -241,7 +245,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     if (!hasRole(RESERVE_OPERATOR_ROLE, msg.sender) && !hasRole(YIELD_PROVIDER_FUNDER_ROLE, msg.sender)) {
       revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_FUNDER_ROLE);
     }
-    ILineaNativeYieldExtension(l1MessageService()).fund{ value: _amount }();
+    _fundReserve(_amount);
     // Destination will emit the event.
   }
 
@@ -270,7 +274,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     if (isWithdrawalReserveBelowMinimum()) {
       revert InsufficientWithdrawalReserve();
     }
-    _callYieldProvider(
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount))
     );
@@ -280,7 +284,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     address _yieldProvider,
     uint256 _maxAvailableRepaymentETH
   ) internal returns (uint256 lstPrincipalPaid) {
-    bytes memory data = _callYieldProvider(
+    bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _maxAvailableRepaymentETH))
     );
@@ -303,7 +307,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     onlyRole(YIELD_REPORTER_ROLE)
     returns (uint256 newReportedYield)
   {
-    bytes memory data = _callYieldProvider(
+    bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.reportYield, (_yieldProvider))
     );
@@ -327,7 +331,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     address _yieldProvider,
     bytes memory _withdrawalParams
   ) external payable onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE) {
-    _callYieldProvider(
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstake, (_yieldProvider, _withdrawalParams))
     );
@@ -360,7 +364,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     if (!isWithdrawalReserveBelowMinimum()) {
       revert WithdrawalReserveNotInDeficit();
     }
-    bytes memory data = _callYieldProvider(
+    bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
     );
@@ -401,7 +405,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     );
     // Send funds to L1MessageService if targetDeficit
     if (targetDeficit > 0) {
-      ILineaNativeYieldExtension(l1MessageService()).fund{ value: targetDeficit }();
+      _fundReserve(targetDeficit);
     }
     emit YieldProviderWithdrawal(_yieldProvider, _amount, withdrawnFromProvider, targetDeficit);
   }
@@ -426,7 +430,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     TRANSIENT_RECEIVE_CALLER = $$.receiveCaller;
-    _callYieldProvider(
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount))
     );
@@ -455,12 +459,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     address _yieldProvider,
     uint256 _amount
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(RESERVE_OPERATOR_ROLE) {
-    address cachedL1MessageService = l1MessageService();
-
     // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance > _amount) {
-      ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: _amount }();
+      _fundReserve(_amount);
       emit WithdrawalReserveAugmented(
         _yieldProvider,
         _amount,
@@ -479,7 +481,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
       withdrawRequestAmount,
       getTargetReserveDeficit()
     );
-    ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: yieldManagerBalance + withdrawAmount }();
+    _fundReserve(yieldManagerBalance + withdrawAmount);
     emit WithdrawalReserveAugmented(
       _yieldProvider,
       _amount,
@@ -505,12 +507,11 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
       revert WithdrawalReserveNotInDeficit();
     }
     uint256 targetDeficit = getTargetReserveDeficit();
-    address cachedL1MessageService = l1MessageService();
 
     // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance > targetDeficit) {
-      ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: targetDeficit }();
+      _fundReserve(targetDeficit);
       emit WithdrawalReserveReplenished(
         _yieldProvider,
         targetDeficit,
@@ -528,7 +529,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
       _yieldProvider,
       withdrawAmount
     );
-    ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: yieldManagerBalance + withdrawAmount }();
+    _fundReserve(yieldManagerBalance + withdrawAmount);
 
     // Pause staking if remaining target deficit
     if (targetDeficit - yieldManagerBalance > yieldProviderBalance) {
@@ -560,7 +561,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   }
 
   function _pauseStaking(address _yieldProvider) internal {
-    _callYieldProvider(
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider))
     );
@@ -598,7 +599,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   }
 
   function _unpauseStaking(address _yieldProvider) internal {
-    _callYieldProvider(
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider))
     );
@@ -617,7 +618,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
       revert LSTWithdrawalNotAllowed();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
-    _callYieldProvider(
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawLST, (_yieldProvider, _amount, _recipient))
     );
@@ -633,7 +634,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    _callYieldProvider(
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider))
     );
@@ -657,7 +658,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
       _unpauseStaking(_yieldProvider);
     }
     $$.isOssificationInitiated = false;
-    _callYieldProvider(
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.undoInitiateOssification, (_yieldProvider))
     );
@@ -674,7 +675,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    bytes memory data = _callYieldProvider(
+    bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.processPendingOssification, (_yieldProvider))
     );
@@ -689,7 +690,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function donate(address _yieldProvider) external payable onlyKnownYieldProvider(_yieldProvider) {
     _decrementNegativeYieldAgainstDonation(_yieldProvider, msg.value);
     _decrementPendingPermissionlessUnstake(msg.value);
-    ILineaNativeYieldExtension(l1MessageService()).fund{ value: msg.value }();
+    _fundReserve(msg.value);
     emit DonationProcessed(_yieldProvider, msg.value);
   }
 
