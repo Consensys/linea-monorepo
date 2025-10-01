@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -101,9 +100,8 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	// And assign the 1-sized column to contain the root
-	var root = types.Bytes32ToHash(tree.Root)
 	for i := 0; i < blockSize; i++ {
-		run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(root[i], 1))
+		run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(tree.Root[i], 1))
 	}
 }
 

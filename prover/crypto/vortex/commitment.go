@@ -133,8 +133,6 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 
 	parallel.Execute(numChunks, func(start, stop int) {
 
-		fCol := make([]byte, chunkSize*field.Bytes)
-
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 

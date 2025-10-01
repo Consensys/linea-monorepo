@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
@@ -280,17 +279,17 @@ func BuildComplete(leaves []field.Octuplet) *Tree {
 	currLevels := leaves
 
 	for i := 0; i < depth-1; i++ {
-		nextLevel := make([]types.Bytes32, len(currLevels)/2)
+		nextLevel := make([]field.Octuplet, len(currLevels)/2)
 		// TODO @gbotrel revisit parallelization here
 		if len(nextLevel) >= 64 {
 			parallel.Execute(len(nextLevel), func(start, end int) {
 				for k := start; k < end; k++ {
-					nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
+					nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
 				}
 			})
 		} else {
 			for k := range nextLevel {
-				nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
+				nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
 			}
 		}
 
