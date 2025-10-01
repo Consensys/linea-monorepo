@@ -220,47 +220,9 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 
 	moduleGL.declarePublicInput()
 
-	// for i := range moduleInput.PublicInputs {
-
-	// 	pubInputAcc := accessors.NewConstant(field.Zero())
-
-	// 	if moduleInput.PublicInputs[i].Acc != nil {
-	// 		pubInputAcc = moduleGL.TranslateAccessor(moduleInput.PublicInputs[i].Acc)
-	// 	}
-
-	// 	moduleGL.Wiop.InsertPublicInput(
-	// 		moduleInput.PublicInputs[i].Name,
-	// 		pubInputAcc,
-	// 	)
-	// }
-
-	// moduleGL.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
-
-	// if len(moduleGL.ReceivedValuesGlobalMap) > 0 {
-	// 	moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
-	// 	moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
-	// } else {
-	// 	moduleGL.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
-	// 	moduleGL.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
-	// }
-
-	// // These public-inputs are the "dummy" ones and are only here so that the
-	// // LPP and GL modules have exactly the same set of public inputs. The
-	// // public-inputs are reordered a posteriori to ensure that the order
-	// // match between GL and LPP.
-	// moduleGL.Wiop.InsertPublicInput(LogDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
-	// moduleGL.Wiop.InsertPublicInput(GrandProductPublicInput, accessors.NewConstant(field.One()))
-	// moduleGL.Wiop.InsertPublicInput(HornerPublicInput, accessors.NewConstant(field.Zero()))
-	// moduleGL.Wiop.InsertPublicInput(HornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
-	// moduleGL.Wiop.InsertPublicInput(HornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
-
-	// moduleGL.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.One()))
-	// moduleGL.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.Zero()))
-	// moduleGL.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.Zero()))
-
-	// moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignGL{ModuleGL: moduleGL})
-	// moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})
-	// moduleGL.Wiop.RegisterVerifierAction(1, &ModuleGLCheckSendReceiveGlobal{ModuleGL: moduleGL})
+	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignGL{ModuleGL: moduleGL})
+	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})
+	moduleGL.Wiop.RegisterVerifierAction(1, &ModuleGLCheckSendReceiveGlobal{ModuleGL: moduleGL})
 
 	return moduleGL
 }
@@ -344,6 +306,8 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 
 	run.AssignColumn(m.IsFirst.GetColID(), smartvectors.NewConstant(isFirst, 1))
 	run.AssignColumn(m.IsLast.GetColID(), smartvectors.NewConstant(isLast, 1))
+
+	m.assignPublicInput(run, witness)
 }
 
 // InsertGlobal inserts a global constraint in the target compiled IOP and
@@ -656,6 +620,8 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 		a.ReceivedValuesGlobalHash.GetColID(),
 		smartvectors.NewConstant(hashRcv, 1),
 	)
+
+	a.ModuleGL.assignMultiSetHash(run)
 }
 
 // Run implements the [wizard.VerifierAction] interface and recomputes and
@@ -713,6 +679,8 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 		)
 	}
 
+	a.ModuleGL.checkMultiSetHash(run)
+
 	return nil
 }
 
@@ -752,6 +720,8 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	}
 
 	api.AssertIsEqual(hsh.Sum(), rcvGlobalHash)
+
+	a.ModuleGL.checkGnarkMultiSetHash(api, run)
 }
 
 func (a *ModuleGLCheckSendReceiveGlobal) Skip() {
