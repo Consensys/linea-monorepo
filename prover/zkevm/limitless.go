@@ -189,16 +189,6 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 16384, Cluster: "ARITH-OPS", Column: "TABLE_exp.ARG'0,exp.ARG'1,exp.CDS,exp.EBS,exp.INST,exp.RES_0_LOGDERIVATIVE_M"},
 	{BaseSize: 131072, Cluster: "ARITH-OPS", Column: "TABLE_shf.ARG_1'0,shf.ARG_1'1,shf.ARG_2'0,shf.ARG_2'1,shf.INST,shf.RES'0,shf.RES'1_0_LOGDERIVATIVE_M"},
 
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte_shl256.n,byte_shl256.res'0,byte_shl256.res'1,byte_shl256.word'0,byte_shl256.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte_shr256.n,byte_shr256.res'0,byte_shr256.res'1,byte_shr256.word'0,byte_shr256.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte_sar256.n,byte_sar256.res'0,byte_sar256.res'1,byte_sar256.word'0,byte_sar256.word'1_0_LOGDERIVATIVE_M"},
-
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256.n,bit_shl256.res'0,bit_shl256.res'1,bit_shl256.word'0,bit_shl256.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256.n,bit_shr256.res'0,bit_shr256.res'1,bit_shr256.word'0,bit_shr256.word'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256.n,bit_sar256.res'0,bit_sar256.res'1,bit_sar256.word'0,bit_sar256.word'1_0_LOGDERIVATIVE_M"},
-
-	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_fill_bytes_from.offset,fill_bytes_from.res'0,fill_bytes_from.res'1,fill_bytes_from.value,fill_bytes_from.word'0,fill_bytes_from.word'1_0_LOGDERIVATIVE_M"},
-
 	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_log2.arg'0,log2.arg'1,log2.res_0_LOGDERIVATIVE_M"},
 	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_log2_u128.arg,log2_u128.res_0_LOGDERIVATIVE_M"},
 	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_log2_u64.arg,log2_u64.res_0_LOGDERIVATIVE_M"},
