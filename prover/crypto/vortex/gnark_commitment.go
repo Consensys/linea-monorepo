@@ -40,9 +40,9 @@ func AllocateCircuitVariablesWithMerkleTree[T zk.Element](
 		}
 	}
 
-	verifyCircuit.Proof.MerkleProofs = make([][]smt.GnarkProof, len(proof.MerkleProofs))
+	verifyCircuit.Proof.MerkleProofs = make([][]smt.GnarkProof[T], len(proof.MerkleProofs))
 	for i := 0; i < len(proof.MerkleProofs); i++ {
-		verifyCircuit.Proof.MerkleProofs[i] = make([]smt.GnarkProof, len(proof.MerkleProofs[i]))
+		verifyCircuit.Proof.MerkleProofs[i] = make([]smt.GnarkProof[T], len(proof.MerkleProofs[i]))
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
 			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]T, len(proof.MerkleProofs[i][j].Siblings))
 		}
@@ -84,10 +84,10 @@ func AssignCicuitVariablesWithMerkleTree[T zk.Element](
 	var buf field.Element
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path
+			verifyCircuit.Proof.MerkleProofs[i][j].Path = *zk.ValueOf[T](proof.MerkleProofs[i][j].Path)
 			for k := 0; k < len(proof.MerkleProofs[i][j].Siblings); k++ {
 				buf.SetBytes(proof.MerkleProofs[i][j].Siblings[k][:])
-				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = buf.String()
+				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = *zk.ValueOf[T](buf)
 			}
 		}
 	}
@@ -129,7 +129,7 @@ func GnarkVerifyOpeningWithMerkleProof[T zk.Element](
 	api frontend.API,
 	params GParams,
 	roots []T,
-	proof GProof,
+	proof GProof[T],
 	x T,
 	ys [][]gnarkfext.E4Gen[T],
 	randomCoin T,

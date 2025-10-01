@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -111,7 +112,7 @@ func FFTInverse[T zk.Element](api frontend.API, p []*T, genInv field.Element, ca
 }
 
 // gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
-func gnarkEvalCanonical[T zk.Element](api frontend.API, p []*T, z *T) *T {
+func gnarkEvalCanonicalBase[T zk.Element](api frontend.API, p []*T, z *T) *T {
 
 	apiGen, err := zk.NewApi[T](api)
 	if err != nil {
@@ -125,6 +126,40 @@ func gnarkEvalCanonical[T zk.Element](api frontend.API, p []*T, z *T) *T {
 		res = apiGen.Add(res, p[s-1-i])
 	}
 	return res
+}
+
+// gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
+func gnarkEvalCanonicalMixed[T zk.Element](api frontend.API, p []*T, z gnarkfext.E4Gen[T]) gnarkfext.E4Gen[T] {
+
+	e4Api, err := gnarkfext.NewExt4[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := gnarkfext.NewFromBase[T](0)
+	s := len(p)
+	for i := 0; i < len(p); i++ {
+		res = e4Api.Mul(res, &z)
+		res = e4Api.AddByBase(res, p[s-1-i])
+	}
+	return *res
+}
+
+// gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
+func gnarkEvalCanonicaExt[T zk.Element](api frontend.API, p []gnarkfext.E4Gen[T], z gnarkfext.E4Gen[T]) gnarkfext.E4Gen[T] {
+
+	e4Api, err := gnarkfext.NewExt4[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := gnarkfext.NewFromBase[T](0)
+	s := len(p)
+	for i := 0; i < len(p); i++ {
+		res = e4Api.Mul(res, &z)
+		res = e4Api.Add(res, &p[s-1-i])
+	}
+	return *res
 }
 
 func gnarkEvaluateLagrange[T zk.Element](api frontend.API, p []*T, z T, gen field.Element, cardinality uint64) *T {
@@ -237,7 +272,7 @@ type GProofWoMerkle[T zk.Element] struct {
 // Opening proof with Merkle proofs
 type GProof[T zk.Element] struct {
 	GProofWoMerkle[T]
-	MerkleProofs [][]smt.GnarkProof
+	MerkleProofs [][]smt.GnarkProof[T]
 }
 
 // Gnark params
@@ -256,7 +291,7 @@ func GnarkVerifyCommon[T zk.Element](
 	params GParams,
 	proof GProofWoMerkle[T],
 	x T,
-	ys [][]*T,
+	ys [][]gnarkfext.E4Gen[T],
 	randomCoin T,
 	entryList []T,
 ) ([][]T, error) {
@@ -280,7 +315,9 @@ func GnarkVerifyCommon[T zk.Element](
 		x,
 		proof.RsDomain.Generator,
 		proof.RsDomain.Cardinality)
-	alphaYPrime := gnarkEvalCanonical[T](api, yjoined, &randomCoin)
+
+	randomCoinLifted := gnarkfext.Lift[T](&randomCoin)
+	alphaYPrime := gnarkEvalCanonicaExt[T](api, yjoined, *randomCoinLifted)
 	api.AssertIsEqual(alphaY, alphaYPrime)
 
 	// Size of the hash of 1 column
@@ -324,7 +361,7 @@ func GnarkVerifyCommon[T zk.Element](
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := gnarkEvalCanonical(api, fullCol, &randomCoin)
+		y := gnarkEvalCanonicalBase(api, fullCol, &randomCoin)
 		v := tbl.Lookup(selectedColID)[0]
 		api.AssertIsEqual(y, v)
 

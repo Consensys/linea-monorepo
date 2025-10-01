@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
@@ -34,17 +35,17 @@ func evalPoly(p []field.Element, z field.Element) field.Element {
 	return res
 }
 
-type ComputeLagrangeCircuit struct {
+type ComputeLagrangeCircuit[T zk.Element] struct {
 	Domain fft.Domain
 	Zeta   T   `gnark:",public"` // random variable
 	Li     []T // expected results
 }
 
-func (circuit *ComputeLagrangeCircuit) Define(api frontend.API) error {
+func (circuit *ComputeLagrangeCircuit[T]) Define(api frontend.API) error {
 
 	n := circuit.Domain.Cardinality
 	gen := circuit.Domain.Generator
-	r := gnarkComputeLagrangeAtZ(api, circuit.Zeta, gen, n)
+	r := gnarkComputeLagrangeAtZ(api, &circuit.Zeta, gen, n)
 
 	for i := 0; i < len(r); i++ {
 		api.AssertIsEqual(r[i], circuit.Li[i])
@@ -61,21 +62,21 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 	zeta.SetRandom()
 
 	// prepare witness
-	var witness ComputeLagrangeCircuit
-	witness.Zeta = zeta.String()
-	witness.Li = make([]T, s)
+	var witness ComputeLagrangeCircuit[zk.NativeElement]
+	witness.Zeta = *zk.ValueOf[zk.NativeElement](zeta.String())
+	witness.Li = make([]zk.NativeElement, s)
 	for i := 0; i < s; i++ {
 		buf := make([]field.Element, s)
 		buf[i].SetOne()
 		d.FFTInverse(buf, fft.DIF)
 		fft.BitReverse(buf)
 		li := evalPoly(buf, zeta)
-		witness.Li[i] = li.String()
+		witness.Li[i] = *zk.ValueOf[zk.NativeElement](li.String())
 	}
 
-	var circuit ComputeLagrangeCircuit
+	var circuit ComputeLagrangeCircuit[zk.NativeElement]
 	circuit.Domain = *d
-	circuit.Li = make([]T, s)
+	circuit.Li = make([]zk.NativeElement, s)
 
 	// compile...
 	builder := scs.NewBuilder[constraint.U32]
@@ -99,15 +100,20 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 // ------------------------------------------------------------
 // test FFT inverse
 
-type FFTInverseCircuit struct {
+type FFTInverseCircuit[T zk.Element] struct {
 	Domain fft.Domain
 	P      []T
 	R      []T
 }
 
-func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
+func (circuit *FFTInverseCircuit[T]) Define(api frontend.API) error {
 
-	f, err := FFTInverse(api, circuit.P, circuit.Domain.GeneratorInv, circuit.Domain.Cardinality)
+	pPtr := make([]*T, len(circuit.P))
+	for i := 0; i < len(circuit.P); i++ {
+		pPtr[i] = &circuit.P[i]
+	}
+
+	f, err := FFTInverse(api, pPtr, circuit.Domain.GeneratorInv, circuit.Domain.Cardinality)
 	if err != nil {
 		return err
 	}
@@ -169,14 +175,18 @@ func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
 // ------------------------------------------------------------
 // test AssertIsCodeWord
 
-type AssertIsCodeWordCircuit struct {
+type AssertIsCodeWordCircuit[T zk.Element] struct {
 	rate uint64
 	d    *fft.Domain
 	P    []T `gnark:",public"`
 }
 
-func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
-	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
+func (circuit *AssertIsCodeWordCircuit[T]) Define(api frontend.API) error {
+	pPtr := make([]*T, len(circuit.P))
+	for i := 0; i < len(circuit.P); i++ {
+		pPtr[i] = &circuit.P[i]
+	}
+	return assertIsCodeWord(api, pPtr, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
 
 }
 
@@ -227,16 +237,20 @@ func TestAssertIsCodeWord(t *testing.T) {
 // ------------------------------------------------------------
 // EvaluateLagrange
 
-type EvaluateLagrangeCircuit struct {
+type EvaluateLagrangeCircuit[T zk.Element] struct {
 	P []T
 	X T `gnark:",public"`
 	R T
 	d *fft.Domain
 }
 
-func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
+func (circuit *EvaluateLagrangeCircuit[T]) Define(api frontend.API) error {
 
-	res := gnarkEvaluateLagrange(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
+	pPtr := make([]*T, len(circuit.P))
+	for i := 0; i < len(circuit.P); i++ {
+		pPtr[i] = &circuit.P[i]
+	}
+	res := gnarkEvaluateLagrange(api, pPtr, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
 
 	api.AssertIsEqual(res, circuit.R)
 
