@@ -87,9 +87,8 @@ interface IYieldProvider {
    * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
    * @dev If fund remaining, will settle any outstanding LST liabilities.
    * @param _amount Amount to withdraw.
-   * @param _recipient Address that receives the withdrawn ETH.
    */
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) external;
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.

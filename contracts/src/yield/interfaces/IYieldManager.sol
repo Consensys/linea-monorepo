@@ -89,35 +89,35 @@ interface IYieldManager {
   /**
    * @notice Emitted when the withdrawal reserve is augmented by an operator.
    * @param yieldProvider The provider supplying additional liquidity.
-   * @param caller Address performing the rebalance.
    * @param requestedAmount The targeted increase of the reserve.
+   * @param reserveIncrementAmount h
    * @param fromYieldManager Amount provided by current YieldManager balance.
    * @param fromYieldProvider Amount withdrawn from the provider.
+   * @param lstPrincipalPaid h
    */
   event WithdrawalReserveAugmented(
     address indexed yieldProvider,
-    address indexed caller,
     uint256 requestedAmount,
+    uint256 reserveIncrementAmount,
     uint256 fromYieldManager,
-    uint256 fromYieldProvider
+    uint256 fromYieldProvider,
+    uint256 lstPrincipalPaid
   );
 
   /**
    * @notice Emitted when the withdrawal reserve is replenished permissionlessly.
    * @param yieldProvider The provider tapped for liquidity.
-   * @param caller Address initiating the permissionless replenish.
-   * @param fromYieldManager Amount provided by the YieldManager balance.
-   * @param fromYieldProvider Amount withdrawn from the provider.
-   * @param deficitBefore Initial target deficit.
-   * @param deficitAfter Remaining deficit after the operation.
+   * @param targetDeficit a
+   * @param reserveIncrementAmount a
+   * @param fromYieldManager a
+   * @param fromYieldProvider a
    */
   event WithdrawalReserveReplenished(
     address indexed yieldProvider,
-    address indexed caller,
+    uint256 targetDeficit,
+    uint256 reserveIncrementAmount,
     uint256 fromYieldManager,
-    uint256 fromYieldProvider,
-    uint256 deficitBefore,
-    uint256 deficitAfter
+    uint256 fromYieldProvider
   );
 
   /**

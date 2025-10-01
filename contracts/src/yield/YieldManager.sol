@@ -395,7 +395,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     (uint256 withdrawnFromProvider, ) = _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
       _yieldProvider,
       _amount,
-      address(this),
       targetDeficit
     );
     // Send funds to L1MessageService if targetDeficit
@@ -408,7 +407,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   function _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
     address _yieldProvider,
     uint256 _amount,
-    address _recipient,
     uint256 _targetDeficit
   ) internal returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
     uint256 availableFundsForLSTLiabilityPayment = Math256.safeSub(_amount, _targetDeficit);
@@ -420,14 +418,14 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     } else {
       _pauseStakingIfNotAlready(_yieldProvider);
     }
-    _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, _recipient);
+    _withdrawFromYieldProvider(_yieldProvider, withdrawAmount);
   }
 
-  function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) internal {
+  function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     TRANSIENT_RECEIVE_CALLER = $$.receiveCaller;
     (bool success, ) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount, _recipient))
+      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount))
     );
     if (!success) {
       revert DelegateCallFailed();
@@ -459,26 +457,38 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(RESERVE_OPERATOR_ROLE) {
     uint256 targetRebalanceAmount = _amount;
     address cachedL1MessageService = l1MessageService();
-    // Try to settle rebalance amount from yieldManager funds
+
+    // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
-    uint256 fromYieldManager;
-    if (yieldManagerBalance > 0) {
-      uint256 transferAmount = Math256.min(yieldManagerBalance, targetRebalanceAmount);
-      ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: transferAmount }();
-      targetRebalanceAmount -= transferAmount;
-      fromYieldManager = transferAmount;
-    }
-    // Then meet settle from Vault withdrawal
-    uint256 fromYieldProvider;
-    if (targetRebalanceAmount > 0) {
-      (fromYieldProvider, ) = _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
+    if (yieldManagerBalance > _amount) {
+      ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: _amount }();
+      emit WithdrawalReserveAugmented(
         _yieldProvider,
-        targetRebalanceAmount,
-        cachedL1MessageService,
-        getTargetReserveDeficit()
+        _amount,
+        _amount,
+        _amount,
+        0,
+        0
       );
+      return;
     }
-    emit WithdrawalReserveAugmented(_yieldProvider, msg.sender, _amount, fromYieldManager, fromYieldProvider);
+
+    // Insufficient balance on YieldManager, must withdraw from YieldProvider
+    uint256 withdrawRequestAmount = _amount - yieldManagerBalance;
+    (uint256 withdrawAmount, uint256 lstPrincipalPayment) = _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
+      _yieldProvider,
+      withdrawRequestAmount,
+      getTargetReserveDeficit()
+    );
+    ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: yieldManagerBalance + withdrawAmount }();
+    emit WithdrawalReserveAugmented(
+      _yieldProvider,
+      _amount,
+      yieldManagerBalance + withdrawAmount,
+      yieldManagerBalance,
+      withdrawAmount,
+      lstPrincipalPayment
+    );
   }
 
   /**
@@ -495,37 +505,43 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!isWithdrawalReserveBelowMinimum()) {
       revert WithdrawalReserveNotInDeficit();
     }
-    uint256 remainingTargetDeficit = getTargetReserveDeficit();
+    uint256 targetDeficit = getTargetReserveDeficit();
     address cachedL1MessageService = l1MessageService();
-    uint256 initialDeficit = remainingTargetDeficit;
-    // Try to meet targetDeficit from yieldManager
+
+    // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
-    uint256 fromYieldManager;
-    if (yieldManagerBalance > 0) {
-      uint256 transferAmount = Math256.min(yieldManagerBalance, remainingTargetDeficit);
-      ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: transferAmount }();
-      remainingTargetDeficit -= transferAmount;
-      fromYieldManager = transferAmount;
+    if (yieldManagerBalance > targetDeficit) {
+      ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: targetDeficit }();
+      emit WithdrawalReserveReplenished(
+        _yieldProvider,
+        targetDeficit,
+        targetDeficit,
+        targetDeficit,
+        0
+      );
+      return;
     }
-    // Try to meet remaining targetDeficit by yieldProvider withdraw
-    uint256 availableYieldProviderWithdrawBalance = withdrawableValue(_yieldProvider);
-    uint256 fromYieldProvider;
-    if (remainingTargetDeficit > 0 && availableYieldProviderWithdrawBalance > 0) {
-      uint256 withdrawAmount = Math256.min(availableYieldProviderWithdrawBalance, remainingTargetDeficit);
-      _withdrawFromYieldProvider(_yieldProvider, withdrawAmount, cachedL1MessageService);
-      remainingTargetDeficit -= withdrawAmount;
-      fromYieldProvider = withdrawAmount;
-    }
-    if (remainingTargetDeficit > 0) {
+
+    // Insufficient balance on YieldManager, must withdraw from YieldProvider
+    uint256 yieldProviderBalance = withdrawableValue(_yieldProvider);
+    uint256 withdrawAmount = Math256.min(yieldProviderBalance, targetDeficit - yieldManagerBalance);
+    _withdrawFromYieldProvider(
+      _yieldProvider,
+      withdrawAmount
+    );
+    ILineaNativeYieldExtension(cachedL1MessageService).fund{ value: yieldManagerBalance + withdrawAmount }();
+
+    // Pause staking if remaining target deficit
+    if (targetDeficit - yieldManagerBalance > yieldProviderBalance) {
       _pauseStakingIfNotAlready(_yieldProvider);
     }
+
     emit WithdrawalReserveReplenished(
       _yieldProvider,
-      msg.sender,
-      fromYieldManager,
-      fromYieldProvider,
-      initialDeficit,
-      remainingTargetDeficit
+      targetDeficit,
+      yieldManagerBalance + withdrawAmount,
+      yieldManagerBalance,
+      withdrawAmount
     );
   }
 
