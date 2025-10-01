@@ -129,7 +129,7 @@ func TestRangeCheckIncompleteSucceeds(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]frontend.Variable{1, 1, 1, 1, 1, 1, 1, 1, 1, 1})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{1, 1, 1, 1, 1, 1, 1, 1, 1, 1})})
 	})
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func TestRangeCheckNegative(t *testing.T) {
 
 	circuit := &testRangeCheckingCircuitIncomplete{}
 
-	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{
+	assignment := gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{
 		// 0x10000000000000000000000000 = 2^100
 		field.NewFromString("0x10000000000000000000000000"),
 		field.NewFromString("0x10000000000000000000000000"),
@@ -191,7 +191,7 @@ func TestRangeCheckCompleteSucceeds(t *testing.T) {
 
 	circuit := &testRangeCheckingCircuitComplete{}
 
-	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{
+	assignment := gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{
 		field.NewElement(1),
 		field.NewElement(1),
 		field.NewElement(1),
@@ -276,7 +276,7 @@ func (c *rangeCheckWithPublic) Define(api frontend.API) error {
 func TestErrorCase(t *testing.T) {
 	circuit := &rangeCheckWithPublic{}
 
-	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{1 << 20, 2})
+	assignment := gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{1 << 20, 2})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -319,7 +319,7 @@ func (c *testRangeCheckLRSyncCircuit) Define(api frontend.API) error {
 func TestRangeCheckLRSync(t *testing.T) {
 	circuit := &testRangeCheckLRSyncCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{1, 1})
+	assignment := gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{1, 1})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -362,7 +362,7 @@ func (c *testRangeCheckOCircuit) Define(api frontend.API) error {
 func TestRangeCheckO(t *testing.T) {
 	circuit := &testRangeCheckOCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{1, 1})
+	assignment := gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{1, 1})
 
 	var pa plonk.PlonkInWizardProverAction
 
@@ -394,7 +394,7 @@ func TestRangeCheckO(t *testing.T) {
 func TestRangeCheckWithFixedNbRows(t *testing.T) {
 	circuit := &testRangeCheckLRSyncCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{1, 1})
+	assignment := gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{1, 1})
 
 	var pa plonk.PlonkInWizardProverAction
 

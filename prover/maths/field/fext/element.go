@@ -15,6 +15,8 @@ import (
 
 const ExtensionDegree int = 4
 
+var montConstantInv = field.NewFromString("1057030144")
+
 // Embedding
 type Element = extensions.E4
 
@@ -157,7 +159,7 @@ func SetInterface(z *Element, i1 interface{}) (*Element, error) {
 		z := SetBytes(c1)
 		return &z, nil
 	default:
-		return nil, errors.New("can't set fr.Element from type " + reflect.TypeOf(i1).String())
+		return nil, errors.New("can't set fext.Element from type " + reflect.TypeOf(i1).String())
 	}
 }
 
@@ -186,5 +188,12 @@ func ParBatchInvert(a []Element, numCPU int) []Element {
 		copy(res[start:stop], subRes)
 	}, numCPU)
 
+	return res
+}
+
+// MulRInv multiplies the field element by R^-1, where R is the Montgommery constant
+func MulRInv(x Element) Element {
+	var res Element
+	res.MulByElement(&x, &montConstantInv)
 	return res
 }

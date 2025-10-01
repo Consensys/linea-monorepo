@@ -246,5 +246,5 @@ func (e *FromExprAccessor) Round() int {
 }
 
 func (e *FromExprAccessor) IsBase() bool {
-	return e.IsBase()
+	return e.Expr.IsBase
 }

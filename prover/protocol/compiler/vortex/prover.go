@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -36,10 +37,12 @@ type ReassignPrecomputedRootAction struct {
 }
 
 func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
-	run.AssignColumn(
-		r.Items.Precomputeds.MerkleRoot.GetColID(),
-		smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue, 1),
-	)
+	for i := 0; i < blockSize; i++ {
+		run.AssignColumn(
+			r.Items.Precomputeds.MerkleRoot[i].GetColID(),
+			smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[i], 1),
+		)
+	}
 }
 
 // ColumnAssignmentProverAction is a [wizard.ProverAction] that assigns the
@@ -98,8 +101,10 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	// And assign the 1-sized column to contain the root
-	var root = tree.Root
-	run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewRegular(root[:]))
+	var root = types.Bytes32ToHash(tree.Root)
+	for i := 0; i < blockSize; i++ {
+		run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(root[i], 1))
+	}
 }
 
 type LinearCombinationComputationProverAction struct {

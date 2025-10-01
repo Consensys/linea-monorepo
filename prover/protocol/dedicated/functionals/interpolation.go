@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -30,8 +31,8 @@ type InterpolationProverAction struct {
 }
 
 func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
-	aVal := a.A.GetVal(assi)
-	one := field.One()
+	aVal := a.A.GetValExt(assi)
+	one := fext.One()
 	p := a.P.GetColAssignment(assi)
 
 	omegaInv, err := fft.Generator(uint64(a.N))
@@ -40,12 +41,12 @@ func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
 	}
 	omegaInv.Inverse(&omegaInv)
 
-	witi := make([]field.Element, a.N)
+	witi := make([]fext.Element, a.N)
 	witi[0] = aVal
 
 	aRootOfUnityFlag := false
 	for i := 1; i < a.N; i++ {
-		witi[i].Mul(&witi[i-1], &omegaInv)
+		witi[i].MulByElement(&witi[i-1], &omegaInv)
 		witi[i-1].Sub(&witi[i-1], &one)
 		if witi[i-1].IsZero() {
 			aRootOfUnityFlag = true
@@ -57,18 +58,18 @@ func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
 		utils.Panic("detected that a is a root of unity")
 	}
 
-	witi = field.BatchInvert(witi)
+	witi = fext.BatchInvert(witi)
 
 	for i := range witi {
-		pi := p.Get(i)
+		pi := p.GetExt(i)
 		witi[i].Mul(&pi, &witi[i])
 		if i > 0 {
 			witi[i].Add(&witi[i], &witi[i-1])
 		}
 	}
 
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, INTERPOLATION_POLY), smartvectors.NewRegular(witi))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.Name, INTERPOLATION_OPEN_END), witi[a.N-1])
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, INTERPOLATION_POLY), smartvectors.NewRegularExt(witi))
+	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.Name, INTERPOLATION_OPEN_END), witi[a.N-1])
 }
 
 // See the explainer here : https://hackmd.io/S78bJUa0Tk-T256iduE22g#Evaluate-in-Lagrange-form
@@ -164,6 +165,7 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a ifaces.Accessor, p i
 	nInv := field.NewElement(uint64(p.Size()))
 	nInv.Inverse(&nInv)
 
+	// Finally we return the accessor that will read the interpolation result
 	return accessors.NewFromExpression(
 		symbolic.Mul(
 			symbolic.Sub(

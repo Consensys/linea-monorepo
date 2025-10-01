@@ -167,13 +167,13 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 			// The second step is to multiply and accumulate the result by zetaI
 			// and sumRhoKYik. This part "comsumes" the value of zetaI.
-			vectorext.ScalarMul(zetaI, zetaI, sumRhoKYik)
+			zetaI.ScalarMul(zetaI, &sumRhoKYik)
 
 			if len(localResult) != len(zetaI) {
 				utils.Panic("len(localResult) = %v len(zetaI) = %v", len(localResult), len(zetaI))
 			}
 
-			vectorext.Add(localResult, localResult, zetaI)
+			localResult.Add(localResult, zetaI)
 		}
 
 		quotientLock.Lock()
@@ -201,12 +201,12 @@ func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 	run.AssignUnivariateExt(re.NewQuery.QueryID, r, ys...)
 }
 
-func (qa QuotientAccumulation) computeZetasExt(run *wizard.ProverRuntime) [][]fext.Element {
+func (qa QuotientAccumulation) computeZetasExt(run *wizard.ProverRuntime) []vectorext.Vector {
 
 	var (
 		// powersOfOmega is the list of the powers of omega starting from 0.
 		powersOfOmega = getPowersOfOmegaExt(qa.getNumRow())
-		zetaI         = make([][]fext.Element, len(qa.Queries))
+		zetaI         = make([]vectorext.Vector, len(qa.Queries))
 		lambda        = run.GetRandomCoinFieldExt(qa.LinCombCoeffLambda.Name)
 		// powersOfLambda are precomputed outside of the loop to allow for
 		// parallization.
@@ -266,9 +266,9 @@ func _ldeOfExt(v []fext.Element, sizeSmall, sizeLarge int) {
 	domainSmall := fft.NewDomain(uint64(sizeSmall), fft.WithCache())
 	domainLarge := fft.NewDomain(uint64(sizeLarge), fft.WithCache())
 
-	domainSmall.FFTInverseExt(v[:sizeSmall], fft.DIF)
+	domainSmall.FFTInverseExt(v[:sizeSmall], fft.DIF, fft.WithNbTasks(1))
 	gutils.BitReverse(v[:sizeSmall])
-	domainLarge.FFTExt(v, fft.DIF)
+	domainLarge.FFTExt(v, fft.DIF, fft.WithNbTasks(1))
 	gutils.BitReverse(v)
 }
 

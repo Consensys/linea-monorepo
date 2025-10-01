@@ -307,3 +307,19 @@ func (z *GenericFieldElem) Inverse(x *GenericFieldElem) *GenericFieldElem {
 	}
 	return z
 }
+
+func PrettifyGeneric(a []GenericFieldElem) string {
+	res := "["
+
+	for i := range a {
+		// Discards the case first element when adding a comma
+		if i > 0 {
+			res += ", "
+		}
+
+		res += fmt.Sprintf("%v", a[i].String())
+	}
+	res += "]"
+
+	return res
+}

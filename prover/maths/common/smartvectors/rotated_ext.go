@@ -76,28 +76,37 @@ func (r *RotatedExt) Get(n int) field.Element {
 // Returns a particular element. The subvector is taken at indices
 // [start, stop). (stop being excluded from the span)
 func (r *RotatedExt) SubVector(start, stop int) SmartVector {
-
 	if stop+r.offset < len(r.v) && start+r.offset > 0 {
 		res := RegularExt(r.v[start+r.offset : stop+r.offset])
 		return &res
 	}
 
 	res := make([]fext.Element, stop-start)
+	return r.subVector(start, stop, res)
+}
+
+// TODO @gbotrel WriteSubVectorInSliceExt should be in interface and available for regular too.
+// review smart vector naming scheme and make it more consistant with canonical golang slices.
+
+func (r *RotatedExt) WriteSubVectorInSliceExt(start, stop int, s []fext.Element) {
+	// sanity checks on start / stop / len(s)
+	if start < 0 || stop > r.Len() || stop <= start || len(s) != stop-start {
+		utils.Panic("invalid start/stop/len(s): start=%v, stop=%v, len(s)=%v, vector len=%v", start, stop, len(s), r.Len())
+	}
+	if stop+r.offset < len(r.v) && start+r.offset > 0 {
+		copy(s, r.v[start+r.offset:stop+r.offset])
+		return
+	}
+	r.subVector(start, stop, s)
+}
+
+func (r *RotatedExt) subVector(start, stop int, res []fext.Element) SmartVector {
 	size := r.Len()
 	spanSize := stop - start
 
-	// checking
-	if stop <= start {
-		utils.Panic("the start %v >= stop %v", start, stop)
-	}
-
-	// boundary checks
-	if start < 0 {
-		utils.Panic("the start value was negative %v", start)
-	}
-
-	if stop > size {
-		utils.Panic("the stop is OOO : %v (the length is %v)", stop, size)
+	// compact boundary checks
+	if stop <= start || start < 0 || stop > size {
+		utils.Panic("invalid subvector range: start=%v, stop=%v, size=%v", start, stop, size)
 	}
 
 	// normalize the offset to something positive [0: size)
@@ -105,7 +114,7 @@ func (r *RotatedExt) SubVector(start, stop int) SmartVector {
 
 	// NB: we may need to construct the res in several steps
 	// in case
-	copy(res, r.v[startWithOffsetClean:utils.Min(size, startWithOffsetClean+spanSize)])
+	copy(res, r.v[startWithOffsetClean:min(size, startWithOffsetClean+spanSize)])
 
 	// If this is negative of zero, it means the first copy already copied
 	// everything we needed to copy

@@ -119,7 +119,7 @@ type CompiledIOP struct {
 	// a description of all the columns and all the queries etc...
 	//
 	// For efficiency reasons, the FiatShamirSetup is derived using SHA2.
-	FiatShamirSetup field.Element
+	FiatShamirSetup field.Element //TODO@yao: just 1 element?
 
 	// FunctionalPublic inputs lists the queries representing a public inputs
 	// and their identifiers

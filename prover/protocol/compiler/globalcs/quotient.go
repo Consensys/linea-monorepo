@@ -5,17 +5,16 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
-	"sync/atomic"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
-	"golang.org/x/sync/singleflight"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -27,31 +26,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
-)
-
-const (
-	/*
-		Explanation for Manual Garbage Collection Thresholds
-	*/
-	// These two thresholds work well for the real-world traces at the moment of writing and a 340GiB memory limit,
-	// but this approach can be generalized and further improved.
-
-	// When ctx.domainSize>=524288, proverEvaluationQueries() experiences a heavy workload,
-	// consistently hitting the GOMEMLIMIT of 340GiB.
-	// This results in numerous auto GCs during CPU-intensive small tasks, significantly degrading performance.
-	// In the benchmark input files, GC_DOMAIN_SIZE >= 524288 means only the first call of proverEvaluationQueries().
-	// With ctx.domainSize<=262144, manual GC is not necessary as auto GCs triggered by GOMEMLIMIT suffice.
-	GC_DOMAIN_SIZE int = 524288
-
-	// Auto GCs are triggered during ReEvaluate and Batch evaluation
-	// when len(handles) exceeds approximately 4000, causing performance degradation.
-	// This threshold is set to perform manual GCs before ReEvaluate and Batch evaluation
-	// only when len(handles) reaches a size substantial enough to trigger auto GC during ReEvaluate and Batch evaluation.
-	// Note that the value of GC_HANDLES_SIZE 4000 is derived from experience and analytics on the benchmark input files.
-	GC_HANDLES_SIZE int = 4000
 )
 
 // QuotientCtx collects all the internal fields needed to compute the quotient
@@ -65,9 +42,9 @@ type QuotientCtx struct {
 	// See [mergingCtx.Ratios]
 	Ratios []int
 
-	// ColumnsForRatio[k] stores all the columns involved in the aggregate
+	// ShiftedColumnsForRatio[k] stores all the columns involved in the aggregate
 	// expressions for ratio Ratios[k]
-	ColumnsForRatio [][]ifaces.Column
+	ShiftedColumnsForRatio [][]ifaces.Column
 
 	// RootsPerRatio[k] stores all the root columns involved in the aggregate
 	// expressions for ration Ratios[k]. By root column we mean the underlying
@@ -91,10 +68,6 @@ type QuotientCtx struct {
 	// QuotientShares[k] stores for each k, the list of the Ratios[k] shares
 	// of the quotient for the AggregateExpression[k]
 	QuotientShares [][]ifaces.Column
-
-	// MaxNbExprNode stores the largest number of node AggregateExpressionBoard[*]
-	// has. This is used to dimension the memory pool during the prover time.
-	MaxNbExprNode int
 }
 
 // createQuotientCtx constructs a [quotientCtx] from a list of ratios and aggregated
@@ -103,7 +76,7 @@ type QuotientCtx struct {
 func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressions []*symbolic.Expression) QuotientCtx {
 
 	var (
-		allInvolvedHandlesIndex = map[ifaces.ColID]int{}
+		allInvolvedHandlesIndex = map[ifaces.ColID]struct{}{}
 		allInvolvedRootsSet     = collection.NewSet[ifaces.ColID]()
 		_, _, domainSize        = wizardutils.AsExpr(aggregateExpressions[0])
 		ctx                     = QuotientCtx{
@@ -113,7 +86,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 			AggregateExpressionsBoard: make([]symbolic.ExpressionBoard, len(ratios)),
 			AllInvolvedColumns:        []ifaces.Column{},
 			AllInvolvedRoots:          []ifaces.Column{},
-			ColumnsForRatio:           make([][]ifaces.Column, len(ratios)),
+			ShiftedColumnsForRatio:    make([][]ifaces.Column, len(ratios)),
 			RootsForRatio:             make([][]ifaces.Column, len(ratios)),
 			QuotientShares:            generateQuotientShares(comp, ratios, domainSize),
 		}
@@ -127,7 +100,6 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 		)
 
 		ctx.AggregateExpressionsBoard[k] = board
-		ctx.MaxNbExprNode = max(ctx.MaxNbExprNode, board.CountNodes())
 
 		// This loop scans the metadata looking for columns with the goal of
 		// populating the collections composing quotientCtx.
@@ -147,10 +119,14 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 			// within a constraint). This works because the symbolic package has
 			// automatic simplification routines that ensure that an expression
 			// does not refer to duplicates of the same variable.
-			ctx.ColumnsForRatio[k] = append(ctx.ColumnsForRatio[k], col)
+			if _, isShifted := col.(column.Shifted); isShifted {
+				// TODO @gbotrel confirm we only get shifted and natural columns.
+				ctx.ShiftedColumnsForRatio[k] = append(ctx.ShiftedColumnsForRatio[k], col)
+			}
 
 			if !uniqueRootsForRatio.Exists(rootCol.GetColID()) {
 				ctx.RootsForRatio[k] = append(ctx.RootsForRatio[k], rootCol)
+				uniqueRootsForRatio.Insert(rootCol.GetColID())
 			}
 
 			// Get the name of the
@@ -158,7 +134,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 				continue
 			}
 
-			allInvolvedHandlesIndex[col.GetColID()] = len(ctx.AllInvolvedColumns)
+			allInvolvedHandlesIndex[col.GetColID()] = struct{}{}
 			ctx.AllInvolvedColumns = append(ctx.AllInvolvedColumns, col)
 
 			// If the handle is simply a shift or a natural columns tracks its root
@@ -168,6 +144,9 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 			}
 		}
 	}
+
+	// TODO @gbotrel this context preparation should compute the exact memory needed for the arenas
+	// in Run and prepare them here.
 
 	return ctx
 }
@@ -194,7 +173,6 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 	return quotientShares
 }
 
-// Run implements the [wizard.ProverAction] interface and embeds the logic to
 // compute the quotient shares.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
@@ -204,6 +182,9 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	// Compute once the FFT of the natural columns
 
 	domain0 := fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache())
+
+	arenaBase := arena.NewVectorArena[field.Element](ctx.DomainSize * len(ctx.AllInvolvedRoots))
+
 	parallel.Execute(len(ctx.AllInvolvedRoots), func(start, stop int) {
 
 		for k := start; k < stop; k++ {
@@ -221,7 +202,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			}
 
 			if smartvectors.IsBase(witness) {
-				res := make([]field.Element, witness.Len())
+				res := arena.Get[field.Element](arenaBase, ctx.DomainSize)
 				witness.WriteInSlice(res)
 				domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(1))
 				coeffs.Store(name, smartvectors.NewRegular(res))
@@ -249,19 +230,17 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		The first value is ignored because it correspond to the case where w^N = 1
 		(i.e. w is in the smaller subgroup)
 	*/
-	annulatorInvVals := fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
-	annulatorInvVals = fext.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
+	var onceAnnulatorExt, onceAnnulatorBase sync.Once
+	var annulatorInvValsExt []fext.Element
+	var annulatorInvVals []field.Element
 
-	// this space we allocate, always to avoid relying on a pool with syncs, and fragmented memory
-	// or too many allocs.
-	scratch := make([]fext.Element, len(ctx.AllInvolvedRoots)*ctx.DomainSize)
+	arenaExt := arena.NewVectorArena[fext.Element](ctx.DomainSize * len(ctx.AllInvolvedRoots))
 
 	for i := 0; i < maxRatio; i++ {
-		// we use Atomic add on this to determine the next free slot in our scratch space
-		var scratchOffset int64
+		// reset the scratch offset for this round
+		arenaExt.Reset(0)
 
 		// use sync map to store the coset evaluated polynomials
-		var group singleflight.Group
 		computedReeval := sync.Map{} // (ifaces.ColID <=> sv.SmartVector)
 
 		for j, ratio := range ctx.Ratios {
@@ -276,9 +255,9 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			// With the above example, if we are in the ratio = 2 and maxRatio = 8
 			// and i = 1 (it can only be 0 <= i < ratio).
 			var (
-				share   = i * ratio / maxRatio
-				handles = ctx.ColumnsForRatio[j]
-				// roots     = ctx.RootsForRatio[j]
+				share     = i * ratio / maxRatio
+				handles   = ctx.ShiftedColumnsForRatio[j]
+				roots     = ctx.RootsForRatio[j]
 				board     = ctx.AggregateExpressionsBoard[j]
 				metadatas = board.ListVariableMetadata()
 			)
@@ -286,69 +265,57 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			shift := computeShift(uint64(ctx.DomainSize), ratio, share)
 			domain := fft.NewDomain(uint64(ctx.DomainSize), fft.WithShift(shift), fft.WithCache())
 
-			computeRoot := func(name ifaces.ColID) (any, error) {
-				_v, _ := coeffs.Load(name)
-				v := _v.(sv.SmartVector)
-				n := atomic.AddInt64(&scratchOffset, 1)
-				start := (n - 1) * int64(ctx.DomainSize)
-				end := n * int64(ctx.DomainSize)
-				var reevaledRoot []fext.Element
-				if end > int64(len(scratch)) {
-					reevaledRoot = make([]fext.Element, ctx.DomainSize)
-				} else {
-					reevaledRoot = scratch[start:end]
+			parallel.Execute(len(roots), func(start, stop int) {
+				for k := start; k < stop; k++ {
+					root := roots[k]
+					rootName := root.GetColID()
+
+					// load the coeff
+					_v, _ := coeffs.Load(rootName)
+					vCoeffs := _v.(sv.SmartVector)
+
+					// most of the coeffs are regular, so we optimize for that case
+					// and do a fft on the base field.
+					if vr, ok := vCoeffs.(*sv.Regular); ok {
+						reevaledRoot := arena.Get[field.Element](arenaExt, ctx.DomainSize)
+						copy(reevaledRoot, *vr)
+						domain.FFT(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+
+						res := smartvectors.NewRegular(reevaledRoot)
+						computedReeval.Store(rootName, res)
+						continue
+					}
+
+					reevaledRoot := arena.Get[fext.Element](arenaExt, ctx.DomainSize)
+					vCoeffs.WriteInSliceExt(reevaledRoot)
+					domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+
+					res := smartvectors.NewRegularExt(reevaledRoot)
+					computedReeval.Store(rootName, res)
 				}
+			})
 
-				// TODO @gbotrel coeffs are mostly base vectors;
-				// but the code in eval somewhere can't mix well ext and base,
-				// we could save additional memory here.
-				v.WriteInSliceExt(reevaledRoot)
-				domain.FFTExt(reevaledRoot, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
-
-				res := smartvectors.NewRegularExt(reevaledRoot)
-				computedReeval.Store(name, res)
-
-				return res, nil
-			}
-
-			ppool.ExecutePoolChunky(len(handles), func(k int) {
-
-				pol := handles[k]
-				// short-path, the column is a purely Shifted(Natural) or a Natural
-				// (this excludes repeats and/or interleaved columns)
+			for _, pol := range handles {
 				root := column.RootParents(pol)
 				rootName := root.GetColID()
 
-				reevaledRoot, _, _ := group.Do(string(rootName), func() (interface{}, error) { return computeRoot(rootName) })
-
-				// Now, we can reuse a soft-rotation of the smart-vector to save memory
-				if !pol.IsComposite() {
-					// in this case, the right vector was the root so we are done
-					return
-				}
+				reevaledRoot, _ := computedReeval.Load(rootName)
 
 				if shifted, isShifted := pol.(column.Shifted); isShifted {
 					polName := pol.GetColID()
-					res := sv.SoftRotateExt(reevaledRoot.(sv.SmartVector), shifted.Offset)
+					var res sv.SmartVector
+					switch ssv := reevaledRoot.(sv.SmartVector).(type) {
+					case *sv.Regular:
+						res = sv.SoftRotate(ssv, shifted.Offset)
+					case *sv.RegularExt:
+						res = sv.SoftRotateExt(ssv, shifted.Offset)
+					}
 					computedReeval.Store(polName, res)
-					return
+					continue
 				}
-
-				polName := pol.GetColID()
-				group.Do(string(polName), func() (interface{}, error) {
-					v, _ := coeffs.Load(polName)
-
-					n := uint64(v.(sv.SmartVector).Len())
-
-					res := make([]field.Element, n)
-					v.(sv.SmartVector).WriteInSlice(res)
-					domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
-
-					// res := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, fft.WithNbTasks(2))
-					computedReeval.Store(polName, smartvectors.NewRegular(res))
-					return nil, nil
-				})
-			})
+				panic("never called")
+				// TODO @gbotrel confirm we only get shifted and natural columns.
+			}
 
 			// Evaluates the constraint expression on the coset
 			evalInputs := make([]sv.SmartVector, len(metadatas))
@@ -386,21 +353,33 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 			// Note that this will panic if the expression contains "no commitment"
 			// This should be caught already by the constructor of the constraint.
-			quotientShare := ctx.AggregateExpressionsBoard[j].Evaluate(evalInputs)
-			if re, ok := quotientShare.(*sv.RegularExt); ok {
-				vq := extensions.Vector(*re)
+			quotientShare := board.Evaluate(evalInputs)
+			switch quotientShare := quotientShare.(type) {
+			case *sv.Regular:
+				onceAnnulatorBase.Do(func() {
+					annulatorInvVals = fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+					annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
+				})
+
+				vq := field.Vector(*quotientShare)
 				vq.ScalarMul(vq, &annulatorInvVals[i])
-			} else {
-				quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
+			case *sv.RegularExt:
+				onceAnnulatorExt.Do(func() {
+					annulatorInvValsExt = fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+					annulatorInvValsExt = fext.ParBatchInvert(annulatorInvValsExt, runtime.GOMAXPROCS(0))
+				})
+				vq := extensions.Vector(*quotientShare)
+				vq.ScalarMul(vq, &annulatorInvValsExt[i])
+			default:
+				// quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
+				utils.Panic("unexpected type %T", quotientShare)
 			}
 
 			run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
-
 		}
 
 		// Forcefully clean the memory for the computed reevals
 		computedReeval = sync.Map{}
-		group = singleflight.Group{}
 	}
 
 	logrus.Infof("[global-constraint] msg=\"computed the quotient\"")

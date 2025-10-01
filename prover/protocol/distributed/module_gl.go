@@ -621,7 +621,7 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 	for i := range a.SentValuesGlobal {
 		lo := a.SentValuesGlobal[i]
 		v := lo.Pol.GetColAssignmentAt(run, 0)
-		run.AssignLocalPoint(lo.ID, v)
+		run.AssignLocalPoint(lo.ID, v) //TODO@yao:fix, v=field.Oct
 		hashSend = mimc.BlockCompression(hashSend, v)
 	}
 

@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
@@ -124,7 +125,7 @@ func CheckPermutation(a, b []ifaces.ColAssignment) error {
 		Sample a random element alpha, usefull for multivalued inclusion checks
 		It allows to reference multiple number through a linear combination
 	*/
-	var alpha, beta field.Element
+	var alpha, beta fext.Element
 	_, err := alpha.SetRandom()
 	_, err2 := beta.SetRandom()
 	if err != nil || err2 != nil {
@@ -155,8 +156,8 @@ func CheckPermutation(a, b []ifaces.ColAssignment) error {
 		return fmt.Errorf("a and b do not have the same length : %v != %v", a[0].Len(), b[0].Len())
 	}
 
-	prodA := field.One()
-	prodB := field.One()
+	prodA := fext.One()
+	prodB := fext.One()
 
 	for i := 0; i < nRow; i++ {
 		// The product for a

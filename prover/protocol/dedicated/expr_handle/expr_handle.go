@@ -1,7 +1,6 @@
 package expr_handle
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -65,14 +64,28 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
-			x := run.GetRandomCoinField(meta.Name)
-			evalInputs[k] = sv.NewConstant(x, a.DomainSize())
+			if meta.IsBase() {
+				x := run.GetRandomCoinField(meta.Name)
+				evalInputs[k] = sv.NewConstant(x, a.DomainSize())
+			} else {
+				x := run.GetRandomCoinFieldExt(meta.Name)
+				evalInputs[k] = sv.NewConstantExt(x, a.DomainSize())
+			}
 		case variables.X:
 			evalInputs[k] = meta.EvalCoset(a.DomainSize(), 0, 1, false)
 		case variables.PeriodicSample:
 			evalInputs[k] = meta.EvalCoset(a.DomainSize(), 0, 1, false)
 		case ifaces.Accessor:
-			evalInputs[k] = sv.NewConstant(meta.GetVal(run), a.DomainSize())
+			if metadataInterface.IsBase() {
+				elem, errFetch := meta.GetValBase(run)
+				if errFetch != nil {
+					utils.Panic("failed to fetch base accessor %v for query %v: %v", meta.String(), a.HandleName, errFetch)
+				}
+				evalInputs[k] = sv.NewConstant(elem, a.DomainSize())
+			} else {
+				evalInputs[k] = sv.NewConstantExt(meta.GetValExt(run), a.DomainSize())
+			}
+
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), a.HandleName)
 		}
@@ -82,21 +95,14 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.HandleName, resWitness)
 }
 
-// Create a handle from an expression. The name is
-// optional, if not set a generic name will be derived
-// from the ESH of the expression.
-func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...string) ifaces.Column {
+// Create a handle from an expression.
+func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, handleName string) ifaces.Column {
 
 	var (
-		boarded    = expr.Board()
-		maxRound   = wizardutils.LastRoundToEval(expr)
-		length     = column.ExprIsOnSameLengthHandles(&boarded)
-		handleName = fmt.Sprintf("SYMBOLIC_%v", expr.ESHash.String())
+		boarded  = expr.Board()
+		maxRound = wizardutils.LastRoundToEval(expr)
+		length   = column.ExprIsOnSameLengthHandles(&boarded)
 	)
-
-	if len(name) > 0 {
-		handleName = name[0]
-	}
 
 	res := comp.InsertCommit(maxRound, ifaces.ColID(handleName), length)
 	comp.InsertGlobal(maxRound, ifaces.QueryID(handleName), expr.Sub(ifaces.ColumnAsVariable(res)))

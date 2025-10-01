@@ -3,7 +3,9 @@ package query
 import (
 	"fmt"
 	"math/big"
+	"sync"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/hash"
 
 	"github.com/consensys/gnark/frontend"
@@ -15,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/google/uuid"
 )
 
@@ -201,46 +204,64 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 // returns the result of the evaluation and the selector count.
 func getResultOfParts(run ifaces.Runtime, q *HornerPart) (fext.Element, int) {
 
-	var (
-		datas     = []smartvectors.SmartVector{}
-		selectors = []smartvectors.SmartVector{}
-		count     = 0
-		size      = 0
-	)
+	datas := make([]smartvectors.SmartVector, len(q.Coefficients))
+	selectors := make([]smartvectors.SmartVector, len(q.Coefficients))
 
-	for coor := range q.Coefficients {
+	for i := 0; i < len(q.Coefficients); i++ {
+		selector := q.Selectors[i].GetColAssignment(run)
 
-		var (
-			board    = q.Coefficients[coor].Board()
-			data     = column.EvalExprColumn(run, board)
-			selector = q.Selectors[coor].GetColAssignment(run)
-		)
+		board := q.Coefficients[i].Board()
+		data := column.EvalExprColumn(run, board)
 
-		datas = append(datas, data)
-		selectors = append(selectors, selector)
+		datas[i] = data
+		selectors[i] = selector
 
-		if coor == 0 {
-			size = data.Len()
-		}
+	}
 
-		if size != data.Len() {
-			// Note, this is already check at the constructor level.
-			utils.Panic("All data must have the same size, part=%v", q.Name)
+	// fast path when there is only one coefficient and the selector is all-ones
+	// TODO @gbotrel not sure we should keep that, makes code not readable and gain is about 5%
+	if len(datas) == 1 {
+		if _, ok := selectors[0].(*smartvectors.Constant); ok && selectors[0].GetPtr(0).IsOne() {
+			if d, ok := datas[0].(*smartvectors.RegularExt); ok {
+
+				size := datas[0].Len()
+				count := size
+				acc := fext.Zero()
+				x := q.X.GetValExt(run)
+				vx := make(extensions.Vector, size)
+				var lock sync.Mutex
+				parallel.Execute(size, func(start, stop int) {
+					vxl := vx[start:stop]
+					vxl[0].ExpInt64(x, int64(start))
+					for i := 1; i < (stop - start); i++ {
+						vxl[i].Mul(&vxl[i-1], &x)
+					}
+					vd := extensions.Vector((*d)[start:stop])
+					localAcc := vxl.InnerProduct(vd)
+					lock.Lock()
+					acc.Add(&acc, &localAcc)
+					lock.Unlock()
+				})
+
+				return acc, count
+			}
 		}
 	}
 
+	size := datas[0].Len()
+	count := 0
 	acc := fext.Zero()
 	x := q.X.GetValExt(run)
 	for row := size - 1; row >= 0; row-- {
-		for coor := 0; coor < len(datas); coor++ {
+		for i := 0; i < len(datas); i++ {
 
-			if selectors[coor].GetPtr(row).IsZero() {
+			if selectors[i].GetPtr(row).IsZero() {
 				continue
 			}
 
 			count++
 			acc.Mul(&acc, &x)
-			other := datas[coor].GetExt(row)
+			other := datas[i].GetExt(row)
 			acc.Add(&acc, &other)
 		}
 	}

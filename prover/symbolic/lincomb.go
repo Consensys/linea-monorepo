@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 
@@ -79,17 +80,13 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 	}
 
 	// Now we need to assign the ESH
-	eshashes := make([]sv.SmartVector, len(e.Children))
-	for i := range e.Children {
-		eshashes[i] = sv.ToConstantSmartvector(&e.Children[i].ESHash, 1)
-	}
+	var esh esHash
+	var coeff field.Element
 
-	if len(items) > 0 {
-		// The cast back to sv.Constant is not functionally important but is an easy
-		// sanity check.
-		evalResult := e.Operator.EvaluateMixed(eshashes)
-		tmp := sv.GetGenericElemOfSmartvector(evalResult, 0)
-		e.ESHash.Set(&tmp)
+	for i := range e.Children {
+		coeff.SetInt64(int64(coeffs[i]))
+		esh.MulByElement(&e.Children[i].ESHash, &coeff)
+		e.ESHash.Add(&e.ESHash, &esh)
 	}
 
 	return e

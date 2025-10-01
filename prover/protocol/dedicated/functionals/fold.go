@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -24,15 +24,15 @@ type FoldProverAction struct {
 
 func (a *FoldProverAction) Run(assi *wizard.ProverRuntime) {
 	h := a.H.GetColAssignment(assi)
-	x := a.X.GetVal(assi)
+	x := a.X.GetValExt(assi)
 
-	foldedVal := make([]field.Element, a.FoldedSize)
+	foldedVal := make([]fext.Element, a.FoldedSize)
 	for i := range foldedVal {
 		subH := h.SubVector(i*a.InnerDegree, (i+1)*a.InnerDegree)
-		foldedVal[i] = smartvectors.EvalCoeff(subH, x)
+		foldedVal[i] = smartvectors.EvalCoeffExt(subH, x)
 	}
 
-	assi.AssignColumn(a.FoldedName, smartvectors.NewRegular(foldedVal))
+	assi.AssignColumn(a.FoldedName, smartvectors.NewRegularExt(foldedVal))
 }
 
 type FoldVerifierAction struct {
@@ -42,7 +42,7 @@ type FoldVerifierAction struct {
 }
 
 func (a *FoldVerifierAction) Run(run wizard.Runtime) error {
-	if a.FoldedEvalAcc.GetVal(run) != a.HEvalAcc.GetVal(run) {
+	if a.FoldedEvalAcc.GetValExt(run) != a.HEvalAcc.GetValExt(run) {
 		return fmt.Errorf("verifier of folding failed %v", a.FoldedName)
 	}
 	return nil
