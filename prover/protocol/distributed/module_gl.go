@@ -819,6 +819,7 @@ func (modGl *ModuleGL) declarePublicInput() {
 		segmentCountGl = make([]field.Element, nbModules)
 		// segmentCountLpp is an array of zero.
 		segmentCountLpp = make([]field.Element, nbModules)
+		defInp          = modGl.DefinitionInput
 	)
 
 	modGl.SegmentModuleIndex = modGl.Wiop.InsertProof(0, "SEGMENT_MODULE_INDEX", 1)
@@ -830,6 +831,26 @@ func (modGl *ModuleGL) declarePublicInput() {
 		SegmentCountGL:      declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:     declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
 		GeneralMultiSetHash: declareListOfPiColumns(modGl.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+	}
+
+	// This adds the functional inputs by multiplying them with the value of
+	// isFirst.
+	for i := range defInp.PublicInputs {
+
+		pubInputAcc := accessors.NewConstant(field.Zero())
+
+		if defInp.PublicInputs[i].Acc != nil {
+			pubInputAcc = modGl.TranslateAccessor(defInp.PublicInputs[i].Acc)
+			pubInputAcc = accessors.NewFromExpression(sym.Mul(
+				pubInputAcc,
+				accessors.NewFromPublicColumn(modGl.IsFirst, 0),
+			), "IS_FIRST_MULT_"+defInp.PublicInputs[i].Name)
+		}
+
+		modGl.Wiop.InsertPublicInput(
+			defInp.PublicInputs[i].Name,
+			pubInputAcc,
+		)
 	}
 }
 
@@ -956,8 +977,4 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 	}
 
 	return nil
-}
-
-func isBinaryField(f field.Element) bool {
-	return f.IsZero() || f.IsOne()
 }
