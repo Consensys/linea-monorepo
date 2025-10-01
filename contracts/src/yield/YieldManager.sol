@@ -834,18 +834,11 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function setMinimumWithdrawalReservePercentageBps(
     uint16 _minimumWithdrawalReservePercentageBps
   ) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
-    if (_minimumWithdrawalReservePercentageBps > MAX_BPS) {
-      revert BpsMoreThan10000();
-    }
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if ($._targetWithdrawalReservePercentageBps < _minimumWithdrawalReservePercentageBps) {
-      revert TargetReservePercentageMustBeAboveMinimum();
-    }
-    emit MinimumWithdrawalReservePercentageBpsSet(
-      $._minimumWithdrawalReservePercentageBps,
+    uint256 oldValue = _updateReserveConfig(
+      UpdateReserveConfig({ isPercentage: true, isMinimum: true }),
       _minimumWithdrawalReservePercentageBps
     );
-    $._minimumWithdrawalReservePercentageBps = _minimumWithdrawalReservePercentageBps;
+    emit MinimumWithdrawalReservePercentageBpsSet(oldValue, _minimumWithdrawalReservePercentageBps);
   }
 
   /**
@@ -857,44 +850,74 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function setMinimumWithdrawalReserveAmount(
     uint256 _minimumWithdrawalReserveAmount
   ) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if ($._targetWithdrawalReserveAmount < _minimumWithdrawalReserveAmount) {
-      revert TargetReserveAmountMustBeAboveMinimum();
-    }
-    emit MinimumWithdrawalReserveAmountSet(
-      $._minimumWithdrawalReserveAmount,
+    uint256 oldValue = _updateReserveConfig(
+      UpdateReserveConfig({ isPercentage: false, isMinimum: true }),
       _minimumWithdrawalReserveAmount
     );
-    $._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
+    emit MinimumWithdrawalReserveAmountSet(oldValue, _minimumWithdrawalReserveAmount);
   }
 
   function setTargetWithdrawalReservePercentageBps(
     uint16 _targetWithdrawalReservePercentageBps
   ) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
-    if (_targetWithdrawalReservePercentageBps > MAX_BPS) {
-      revert BpsMoreThan10000();
-    }
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if (_targetWithdrawalReservePercentageBps < $._minimumWithdrawalReservePercentageBps) {
-      revert TargetReservePercentageMustBeAboveMinimum();
-    }
-    uint16 oldTargetWithdrawalReservePercentageBps = $._targetWithdrawalReservePercentageBps;
-    emit TargetWithdrawalReservePercentageBpsSet(
-      oldTargetWithdrawalReservePercentageBps,
+    uint256 oldValue = _updateReserveConfig(
+      UpdateReserveConfig({ isPercentage: true, isMinimum: false }),
       _targetWithdrawalReservePercentageBps
     );
-    $._targetWithdrawalReservePercentageBps = _targetWithdrawalReservePercentageBps;
+    emit TargetWithdrawalReservePercentageBpsSet(oldValue, _targetWithdrawalReservePercentageBps);
   }
 
   function setTargetWithdrawalReserveAmount(
     uint256 _targetWithdrawalReserveAmount
   ) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+    uint256 oldValue = _updateReserveConfig(
+      UpdateReserveConfig({ isPercentage: false, isMinimum: false }),
+      _targetWithdrawalReserveAmount
+    );
+    emit TargetWithdrawalReserveAmountSet(oldValue, _targetWithdrawalReserveAmount);
+  }
+
+  function _updateReserveConfig(UpdateReserveConfig memory _config, uint256 _newValue)
+    internal
+    returns (uint256 oldValue)
+  {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if (_targetWithdrawalReserveAmount < $._minimumWithdrawalReserveAmount) {
-      revert TargetReserveAmountMustBeAboveMinimum();
+
+    if (_config.isPercentage) {
+      if (_newValue > MAX_BPS) {
+        revert BpsMoreThan10000();
+      }
+      // Update minimumPercentage
+      if (_config.isMinimum) {
+        if ($._targetWithdrawalReservePercentageBps < _newValue) {
+          revert TargetReservePercentageMustBeAboveMinimum();
+        }
+        oldValue = $._minimumWithdrawalReservePercentageBps;
+        $._minimumWithdrawalReservePercentageBps = uint16(_newValue);
+      // Update targetPercentage
+      } else {
+        if (_newValue < $._minimumWithdrawalReservePercentageBps) {
+          revert TargetReservePercentageMustBeAboveMinimum();
+        }
+        oldValue = $._targetWithdrawalReservePercentageBps;
+        $._targetWithdrawalReservePercentageBps = uint16(_newValue);
+      }
+    } else {
+      // Update minimumAmount
+      if (_config.isMinimum) {
+        if ($._targetWithdrawalReserveAmount < _newValue) {
+          revert TargetReserveAmountMustBeAboveMinimum();
+        }
+        oldValue = $._minimumWithdrawalReserveAmount;
+        $._minimumWithdrawalReserveAmount = _newValue;
+      // Update targetAmount
+      } else {
+        if (_newValue < $._minimumWithdrawalReserveAmount) {
+          revert TargetReserveAmountMustBeAboveMinimum();
+        }
+        oldValue = $._targetWithdrawalReserveAmount;
+        $._targetWithdrawalReserveAmount = _newValue;
+      }
     }
-    uint256 oldTargetWithdrawalReserveAmount = $._targetWithdrawalReserveAmount;
-    emit TargetWithdrawalReserveAmountSet(oldTargetWithdrawalReserveAmount, _targetWithdrawalReserveAmount);
-    $._targetWithdrawalReserveAmount = _targetWithdrawalReserveAmount;
   }
 }

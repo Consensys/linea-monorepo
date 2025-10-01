@@ -9,6 +9,11 @@ import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldManager {
+  struct UpdateReserveConfig {
+    bool isPercentage;
+    bool isMinimum;
+  }
+
   /**
    * @notice Emitted when minimumWithdrawalReservePercentageBps is set.
    * @param oldMinimumWithdrawalReservePercentageBps The previous minimumWithdrawalReservePercentageBps.
