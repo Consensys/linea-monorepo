@@ -22,7 +22,7 @@ func TestRetryWithLarge(t *testing.T) {
 			template.New("output-file").
 				Parse("output-fill-constant"),
 		),
-		RequestsRootDir: "./testdata",
+		RequestRootDir: "./testdata",
 	}
 
 	jobs := []struct {
@@ -110,7 +110,7 @@ func TestEarlyExitOnSpotInstanceMode(t *testing.T) {
 			template.New("output-file").
 				Parse("output-fill-constant"),
 		),
-		RequestsRootDir: "./testdata",
+		RequestRootDir: "./testdata",
 	}
 
 	e := NewExecutor(&config.Config{
