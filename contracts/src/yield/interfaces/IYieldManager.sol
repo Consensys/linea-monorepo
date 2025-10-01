@@ -17,6 +17,7 @@ interface IYieldManager {
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
     IPermissionsManager.RoleAddress[] roleAddresses;
     address[] initialL2YieldRecipients;
+    address defaultAdmin;
     uint16 initialMinimumWithdrawalReservePercentageBps;
     uint16 initialTargetWithdrawalReservePercentageBps;
     uint256 initialMinimumWithdrawalReserveAmount;

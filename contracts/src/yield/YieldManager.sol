@@ -4,14 +4,12 @@ pragma solidity ^0.8.30;
 import { YieldManagerStorageLayout } from "./YieldManagerStorageLayout.sol";
 import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
-import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { ILineaNativeYieldExtension } from "./interfaces/ILineaNativeYieldExtension.sol";
 import { YieldManagerPauseManager } from "../security/pausing/YieldManagerPauseManager.sol";
 import { Math256 } from "../libraries/Math256.sol";
 import { ErrorUtils } from "../libraries/ErrorUtils.sol";
-// import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-// import { PermissionsManager } from "../security/access/PermissionsManager.sol";
-
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -19,7 +17,7 @@ import { ErrorUtils } from "../libraries/ErrorUtils.sol";
  * @dev Sole writer to YieldManagerStorageLayout.
  * @custom:security-contact security-report@linea.build
  */
-contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IYieldManager, IGenericErrors {
+contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, PermissionsManager, YieldManagerStorageLayout, IYieldManager {
   /// @notice The role required to send ETH to a yield provider.
   bytes32 public constant YIELD_PROVIDER_FUNDER_ROLE = keccak256("YIELD_PROVIDER_FUNDER_ROLE");
 
@@ -90,10 +88,8 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
    */
   function initialize(YieldManagerInitializationData calldata _initializationData) external initializer {
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
-
-    // _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
-
-    // __Permissions_init(_initializationData.roleAddresses);
+    _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
+    __Permissions_init(_initializationData.roleAddresses);
 
     _updateReserveConfig(
       UpdateReserveConfig({ isPercentage: true, isMinimum: false }),
