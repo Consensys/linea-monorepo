@@ -18,12 +18,7 @@ const (
 
 // ParamRegexps groups together common regexps used by JobDefinitions
 type ParamRegexps struct {
-	Start       *regexp2.Regexp
-	End         *regexp2.Regexp
-	Stv         *regexp2.Regexp
-	Etv         *regexp2.Regexp
-	Cv          *regexp2.Regexp
-	ContentHash *regexp2.Regexp
+	Start, End, Stv, Etv, Cv, ContentHash, Seg, Mod *regexp2.Regexp
 }
 
 // JobDefinition represents a collection of static parameters allowing to define
@@ -47,7 +42,7 @@ func ExecutionDefinition(conf *config.Config) JobDefinition {
 		inpFileExt = fmt.Sprintf(`\.%v`, config.LargeSuffix)
 	}
 
-	pattern := fmt.Sprintf(
+	inputPattern := fmt.Sprintf(
 		`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json%v(\.failure\.%v_[0-9]+)*$`,
 		inpFileExt,
 		config.FailSuffix,
@@ -56,7 +51,7 @@ func ExecutionDefinition(conf *config.Config) JobDefinition {
 	return newJobDefinition(
 		conf.Execution.RequestsRootDir,
 		jobNameExecution,
-		pattern,
+		inputPattern,
 		"{{.Start}}-{{.End}}-getZkProof.json",
 		0,
 		paramsExecution(),
@@ -65,7 +60,7 @@ func ExecutionDefinition(conf *config.Config) JobDefinition {
 
 // CompressionDefinition defines a compression prover job.
 func CompressionDefinition(conf *config.Config) JobDefinition {
-	pattern := fmt.Sprintf(
+	inputPattern := fmt.Sprintf(
 		`^[0-9]+-[0-9]+(-bcv[0-9\.]+)?(-ccv[0-9\.]+)?-((0x)?[0-9a-zA-Z]*-)?getZkBlobCompressionProof\.json(\.failure\.%v_[0-9]+)*$`,
 		config.FailSuffix,
 	)
@@ -73,7 +68,7 @@ func CompressionDefinition(conf *config.Config) JobDefinition {
 	return newJobDefinition(
 		conf.BlobDecompression.RequestsRootDir,
 		jobNameBlobDecompression,
-		pattern,
+		inputPattern,
 		"{{.Start}}-{{.End}}-{{.ContentHash}}getZkBlobCompressionProof.json",
 		1,
 		paramsCompression(),
@@ -82,7 +77,7 @@ func CompressionDefinition(conf *config.Config) JobDefinition {
 
 // AggregatedDefinition defines an aggregation prover job.
 func AggregatedDefinition(conf *config.Config) JobDefinition {
-	pattern := fmt.Sprintf(
+	inputPattern := fmt.Sprintf(
 		`^[0-9]+-[0-9]+(-[a-fA-F0-9]+)?-getZkAggregatedProof\.json(\.failure\.%v_[0-9]+)*$`,
 		config.FailSuffix,
 	)
@@ -90,7 +85,7 @@ func AggregatedDefinition(conf *config.Config) JobDefinition {
 	return newJobDefinition(
 		conf.Aggregation.RequestsRootDir,
 		jobNameAggregation,
-		pattern,
+		inputPattern,
 		"{{.Start}}-{{.End}}-{{.ContentHash}}-getZkAggregatedProof.json",
 		2,
 		paramsAggregation(),
