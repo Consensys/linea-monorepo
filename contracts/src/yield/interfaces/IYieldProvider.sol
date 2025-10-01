@@ -19,7 +19,7 @@ interface IYieldProvider {
   error OperationNotSupportedDuringOssification(OperationType operationType);
 
   /// @notice Thrown when the registration yield provider type is not expected.
-  error IncorrectYieldProviderType();
+  error UnknownYieldProviderVendor();
 
   error MintLSTDisabledDuringOssification();
 
@@ -33,32 +33,32 @@ interface IYieldProvider {
    * @notice Get the ETH balance held by the yield provider that can be withdrawn immediately.
    * @return The available ETH balance that may be withdrawn.
    */
-  function withdrawableValue() external view returns (uint256);
+  function withdrawableValue(address _yieldProvider) external view returns (uint256);
 
   /**
    * @notice Send ETH to the specified yield strategy.
    * @dev Will settle any outstanding liabilities to the YieldProvider.
    * @param _amount        The amount of ETH to send.
    */
-  function fundYieldProvider(uint256 _amount) external;
+  function fundYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
    */
-  function reportYield() external returns (uint256 newReportedYield);
+  function reportYield(address _yieldProvider) external returns (uint256 newReportedYield);
 
   /**
    * @notice Repay part or all of the outstanding LST principal liability.
    * @param _maxAvailableRepaymentETH Maximum amount of ETH available to repay the liability.
    * @return lstPrincipalPaid The amount of ETH used to reduce the liability.
    */
-  function payLSTPrincipal(uint256 _maxAvailableRepaymentETH) external returns (uint256 lstPrincipalPaid);
+  function payLSTPrincipal(address _yieldProvider, uint256 _maxAvailableRepaymentETH) external returns (uint256 lstPrincipalPaid);
 
   /**
    * @notice Request beacon chain withdrawal.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
-  function unstake(bytes memory _withdrawalParams) external payable;
+  function unstake(address _yieldProvider, bytes memory _withdrawalParams) external payable;
 
   /**
    * @notice Permissionlessly request beacon chain withdrawal.
@@ -77,6 +77,7 @@ interface IYieldProvider {
    * @param _withdrawalParamsProof  Merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
    */
   function unstakePermissionless(
+    address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external payable returns (uint256 maxUnstakeAmount);
@@ -88,42 +89,47 @@ interface IYieldProvider {
    * @param _amount Amount to withdraw.
    * @param _recipient Address that receives the withdrawn ETH.
    */
-  function withdrawFromYieldProvider(uint256 _amount, address _recipient) external;
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) external;
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.
    */
-  function pauseStaking() external;
+  function pauseStaking(address _yieldProvider) external;
 
   /**
    * @notice Unpauses beacon chain deposits for specified yield provier.
    * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
    */
-  function unpauseStaking() external;
+  function unpauseStaking(address _yieldProvider) external;
 
   /**
    * @notice Mint LST to a recipient .
    * @param _amount Amount of underlying to convert into LST.
    * @param _recipient Address that receives the minted LST.
    */
-  function withdrawLST(uint256 _amount, address _recipient) external;
+  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external;
 
   /**
    * @notice Start the ossification process for the yield provider.
    */
-  function initiateOssification() external;
+  function initiateOssification(address _yieldProvider) external;
+
+  /**
+   * @notice Start the ossification process for the yield provider.
+   */
+  function undoInitiateOssification(address _yieldProvider) external;
 
   /**
    * @notice Process a previously initiated ossification process.
    * @return isOssificationComplete True if ossification is completed.
    */
-  function processPendingOssification() external returns (bool isOssificationComplete);
+  function processPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
 
   /**
    * @notice Validate the supplied registration before it is added to the yield manager.
-   * @param _yieldProviderRegistration Supplied registration data for the yield provider.
+   * @param _registration Supplied registration data for the yield provider.
    */
   function validateAdditionToYieldManager(
-    YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration
+    YieldManagerStorageLayout.YieldProviderRegistration calldata _registration
   ) external;
 }

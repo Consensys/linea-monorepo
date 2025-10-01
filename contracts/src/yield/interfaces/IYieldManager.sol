@@ -124,16 +124,19 @@ interface IYieldManager {
    * @notice Emitted when a yield provider is added.
    * @param yieldProvider The provider address added to the manager.
    * @param caller Address performing the addition.
-   * @param yieldProviderType Provider type identifier.
-   * @param yieldProviderEntrypoint Entrypoint used for delegatecalls.
-   * @param yieldProviderOssificationEntrypoint Entrypoint used once ossified.
+   * @param yieldProviderVendor Provider type identifier.
+   * @param primaryEntrypoint Entrypoint when not ossified.
+   * @param ossifiedEntrypoint Entrypoint used once ossified.
+   * @param receiveCaller Address that will send ETH to YieldManager on withdraw.
+
    */
   event YieldProviderAdded(
     address indexed yieldProvider,
     address indexed caller,
-    YieldManagerStorageLayout.YieldProviderType yieldProviderType,
-    address yieldProviderEntrypoint,
-    address yieldProviderOssificationEntrypoint
+    YieldManagerStorageLayout.YieldProviderVendor yieldProviderVendor,
+    address primaryEntrypoint,
+    address ossifiedEntrypoint,
+    address receiveCaller
   );
 
   /**
@@ -309,6 +312,8 @@ interface IYieldManager {
   error L2YieldRecipientAlreadyAdded();
 
   error NotL1MessageService();
+
+  error UnexpectedReceiveCaller();
 
   function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance);
 

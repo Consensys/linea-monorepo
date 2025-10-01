@@ -23,12 +23,13 @@ abstract contract YieldManagerStorageLayout {
   }
 
   struct YieldProviderStorage {
-    YieldProviderType yieldProviderType;
+    YieldProviderVendor yieldProviderVendor;
     bool isStakingPaused;
     bool isOssificationInitiated;
     bool isOssified;
-    address yieldProviderEntrypoint;
-    address yieldProviderOssificationEntrypoint;
+    address primaryEntrypoint;
+    address ossifiedEntrypoint;
+    address receiveCaller;
     uint96 yieldProviderIndex;
     uint256 userFunds; // Represents user funds in YieldProvider. Must only be decremented by withdraw operations. Any other reduction of vault totalValue must be reported as negativeYield.
     uint256 yieldReportedCumulative; // Must increment 1:1 with userFunds
@@ -37,14 +38,15 @@ abstract contract YieldManagerStorageLayout {
     uint256 lstLiabilityPrincipal;
   }
 
-  enum YieldProviderType {
+  enum YieldProviderVendor {
     LIDO_STVAULT
   }
 
   struct YieldProviderRegistration {
-    YieldProviderType yieldProviderType;
-    address yieldProviderEntrypoint;
-    address yieldProviderOssificationEntrypoint;
+    YieldProviderVendor yieldProviderVendor;
+    address primaryEntrypoint;
+    address ossifiedEntrypoint;
+    address receiveCaller;
   }
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))

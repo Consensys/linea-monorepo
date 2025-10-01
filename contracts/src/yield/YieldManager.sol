@@ -49,6 +49,8 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   /// @notice 100% in BPS.
   uint256 constant MAX_BPS = 10000;
 
+  address transient TRANSIENT_RECEIVE_CALLER;
+  
   /// @notice The L1MessageService address.
   function l1MessageService() public view returns (address) {
     return _getYieldManagerStorage()._l1MessageService;
@@ -198,7 +200,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   function withdrawableValue(address _yieldProvider) public onlyKnownYieldProvider(_yieldProvider) returns (uint256) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawableValue, ())
+      abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
     );
     if (!success) {
       revert DelegateCallFailed();
@@ -262,7 +264,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (isWithdrawalReserveBelowMinimum()) {
       revert InsufficientWithdrawalReserve();
     }
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.fundYieldProvider, (_amount)));
+    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount)));
     if (!success) {
       revert DelegateCallFailed();
     }
@@ -273,7 +275,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint256 _maxAvailableRepaymentETH
   ) internal returns (uint256 lstPrincipalPaid) {
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.payLSTPrincipal, (_maxAvailableRepaymentETH))
+      abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _maxAvailableRepaymentETH))
     );
     if (!success) {
       revert DelegateCallFailed();
@@ -297,7 +299,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     onlyRole(YIELD_REPORTER_ROLE)
     returns (uint256 newReportedYield)
   {
-    (bool success, bytes memory data) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.reportYield, ()));
+    (bool success, bytes memory data) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.reportYield, (_yieldProvider)));
     if (!success) {
       revert DelegateCallFailed();
     }
@@ -321,7 +323,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     address _yieldProvider,
     bytes memory _withdrawalParams
   ) external payable onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE) {
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.unstake, (_withdrawalParams)));
+    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.unstake, (_yieldProvider, _withdrawalParams)));
     if (!success) {
       revert DelegateCallFailed();
     }
@@ -355,7 +357,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert WithdrawalReserveNotInDeficit();
     }
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.unstakePermissionless, (_withdrawalParams, _withdrawalParamsProof))
+      abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
     );
     if (!success) {
       revert DelegateCallFailed();
@@ -422,13 +424,16 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount, address _recipient) internal {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    TRANSIENT_RECEIVE_CALLER = $$.receiveCaller;
     (bool success, ) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_amount, _recipient))
+      abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount, _recipient))
     );
     if (!success) {
       revert DelegateCallFailed();
     }
-    _getYieldProviderStorage(_yieldProvider).userFunds -= _amount;
+    TRANSIENT_RECEIVE_CALLER = address(0);
+    $$.userFunds -= _amount;
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
     // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
     _decrementPendingPermissionlessUnstake(_amount);
@@ -540,7 +545,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   function _pauseStaking(address _yieldProvider) internal {
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.pauseStaking, ()));
+    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)));
     if (!success) {
       revert DelegateCallFailed();
     }
@@ -578,7 +583,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   }
 
   function _unpauseStaking(address _yieldProvider) internal {
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.pauseStaking, ()));
+    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)));
     if (!success) {
       revert DelegateCallFailed();
     }
@@ -597,7 +602,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert LSTWithdrawalNotAllowed();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.withdrawLST, (_amount, _recipient)));
+    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.withdrawLST, (_yieldProvider, _amount, _recipient)));
     if (!success) {
       revert DelegateCallFailed();
     }
@@ -613,7 +618,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.initiateOssification, ()));
+    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider)));
     if (!success) {
       revert DelegateCallFailed();
     }
@@ -637,6 +642,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       _unpauseStaking(_yieldProvider);
     }
     $$.isOssificationInitiated = false;
+    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.undoInitiateOssification, (_yieldProvider)));
+    if (!success) {
+      revert DelegateCallFailed();
+    }
     emit YieldProviderOssificationReverted(_yieldProvider, msg.sender);
   }
 
@@ -651,7 +660,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert AlreadyOssified();
     }
     (bool success, bytes memory data) = _yieldProvider.delegatecall(
-      abi.encodeCall(IYieldProvider.processPendingOssification, ())
+      abi.encodeCall(IYieldProvider.processPendingOssification, (_yieldProvider))
     );
     if (!success) {
       revert DelegateCallFailed();
@@ -672,6 +681,12 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     emit DonationProcessed(_yieldProvider, msg.sender, l1MessageServiceCached, msg.value);
   }
 
+  receive() external payable {
+    if (TRANSIENT_RECEIVE_CALLER != msg.sender) {
+      revert UnexpectedReceiveCaller();
+    }
+  }
+
   // @dev It is not correct to count a donation to the L1MessageService as yield, because reported yield results in newly circulating L2 ETH.
   function _decrementNegativeYieldAgainstDonation(address _yieldProvider, uint256 _amount) internal {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
@@ -683,15 +698,15 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
 
   function addYieldProvider(
     address _yieldProvider,
-    YieldProviderRegistration calldata _yieldProviderRegistration
+    YieldProviderRegistration calldata _registration
   ) external onlyRole(YIELD_PROVIDER_SETTER) {
     if (_yieldProvider == address(0)) {
       revert ZeroAddressNotAllowed();
     }
-    if (_yieldProviderRegistration.yieldProviderEntrypoint == address(0)) {
+    if (_registration.primaryEntrypoint == address(0) || _registration.ossifiedEntrypoint == address(0) || _registration.receiveCaller == address(0)) {
       revert ZeroAddressNotAllowed();
     }
-    IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_yieldProviderRegistration);
+    IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_registration);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
 
     if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
@@ -701,12 +716,13 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint96 yieldProviderIndex = uint96($._yieldProviders.length) + 1;
     $._yieldProviders.push(_yieldProvider);
     $._yieldProviderStorage[_yieldProvider] = YieldProviderStorage({
-      yieldProviderType: _yieldProviderRegistration.yieldProviderType,
+      yieldProviderVendor: _registration.yieldProviderVendor,
       isStakingPaused: false,
       isOssificationInitiated: false,
       isOssified: false,
-      yieldProviderEntrypoint: _yieldProviderRegistration.yieldProviderEntrypoint,
-      yieldProviderOssificationEntrypoint: _yieldProviderRegistration.yieldProviderOssificationEntrypoint,
+      primaryEntrypoint: _registration.primaryEntrypoint,
+      ossifiedEntrypoint: _registration.ossifiedEntrypoint,
+      receiveCaller: _registration.receiveCaller,
       yieldProviderIndex: yieldProviderIndex,
       userFunds: 0,
       yieldReportedCumulative: 0,
@@ -716,9 +732,10 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     emit YieldProviderAdded(
       _yieldProvider,
       msg.sender,
-      _yieldProviderRegistration.yieldProviderType,
-      _yieldProviderRegistration.yieldProviderEntrypoint,
-      _yieldProviderRegistration.yieldProviderOssificationEntrypoint
+      _registration.yieldProviderVendor,
+      _registration.primaryEntrypoint,
+      _registration.ossifiedEntrypoint,
+      _registration.receiveCaller
     );
   }
 
