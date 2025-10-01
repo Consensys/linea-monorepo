@@ -21,12 +21,15 @@ const (
 
 // BootstrapDefinition defines a bootstrap job.
 func BootstrapDefinition(conf *config.Config) JobDefinition {
-	inputPattern := fmt.Sprintf(
-		`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json(\.failure\.%v_[0-9]+)*$`,
-		config.FailSuffix,
-	)
 
-	outputTmpl := "{{.Start}}-{{.End}}-metadata-getZkProof.json"
+	var (
+		inputPattern = fmt.Sprintf(
+			`^[0-9]+-[0-9]+(-etv[0-9\.]+)?(-stv[0-9\.]+)?-getZkProof\.json(\.failure\.%v_[0-9]+)*$`,
+			config.FailSuffix,
+		)
+
+		outputTmpl = "{{.Start}}-{{.End}}-metadata-getZkProof.json"
+	)
 
 	return newJobDefinition(
 		conf.Execution.RequestsRootDir,
@@ -35,6 +38,31 @@ func BootstrapDefinition(conf *config.Config) JobDefinition {
 		outputTmpl,
 		0,
 		paramsExecution(), // reuse Execution params (start, end, etv, stv)
+	)
+}
+
+// ConglomerationDefinition defines a conglomeration job.
+func ConglomerationDefinition(conf *config.Config) JobDefinition {
+
+	var (
+		inputPattern = fmt.Sprintf(
+			`^[0-9]+-[0-9]+-metadata-getZkProof\.json(\.failure\.%v_[0-9]+)*$`,
+			config.FailSuffix,
+		)
+
+		outputTmpl = "{{.Start}}-{{.End}}-getZkProof.json"
+	)
+
+	return newJobDefinition(
+		conf.Limitless.MetadataDir,
+		jobNameConglomeration,
+		inputPattern,
+		outputTmpl,
+		2,
+		ParamRegexps{
+			Start: reStart,
+			End:   reEnd,
+		},
 	)
 }
 
@@ -47,7 +75,10 @@ func GLDefinitionForModule(conf *config.Config, module string) JobDefinition {
 			`^[0-9]+-[0-9]+-seg-[0-9]+-mod-[0-9]+-gl-wit\.bin(\.failure\.%v_[0-9]+)*$`,
 			config.FailSuffix,
 		)
-		outputTmpl = "{{.Start}}-{{.End}}-seg-{{.Seg}}-mod-{{.Mod}}-gl-wit.bin"
+
+		// GL jobs don't produce an output artifact, only /dev/null.
+		// So outputTmpl is set empty.
+		outputTmpl = ""
 
 		rootDir = filepath.Join(conf.Limitless.WitnessDir, "GL", module)
 	)
@@ -57,10 +88,10 @@ func GLDefinitionForModule(conf *config.Config, module string) JobDefinition {
 		jobNameGL,
 		inputPattern,
 		outputTmpl,
-		0, // priority set to default value now and will be overwritten later when the file arrives
+		1, // priority set to default value now and will be overwritten later when the file arrives
 		ParamRegexps{
-			Start: regexp2.MustCompile(`^[0-9]+`, regexp2.None),
-			End:   regexp2.MustCompile(`(?<=^[0-9]+-)[0-9]+`, regexp2.None),
+			Start: reStart,
+			End:   reEnd,
 			Seg:   regexp2.MustCompile(`(?<=-seg-)[0-9]+`, regexp2.None),
 			Mod:   regexp2.MustCompile(`(?<=-mod-)[0-9]+`, regexp2.None),
 		},
@@ -77,7 +108,9 @@ func LPPDefinitionForModule(conf *config.Config, module string) JobDefinition {
 			config.FailSuffix,
 		)
 
-		outputTmpl = "{{.Start}}-{{.End}}-seg-{{.Seg}}-mod-{{.Mod}}-lpp-wit.bin"
+		// LPP jobs don't produce an output artifact, only /dev/null.
+		// So outputTmpl is set empty.
+		outputTmpl = ""
 
 		rootDir = filepath.Join(conf.Limitless.WitnessDir, "LPP", module)
 	)
@@ -87,10 +120,10 @@ func LPPDefinitionForModule(conf *config.Config, module string) JobDefinition {
 		jobNameLPP,
 		inputPattern,
 		outputTmpl,
-		0, //  priority set to default value now and will be overwritten later when the file arrives
+		3, //  priority set to default value now and will be overwritten later when the file arrives
 		ParamRegexps{
-			Start: regexp2.MustCompile(`^[0-9]+`, regexp2.None),
-			End:   regexp2.MustCompile(`(?<=^[0-9]+-)[0-9]+`, regexp2.None),
+			Start: reStart,
+			End:   reEnd,
 			Seg:   regexp2.MustCompile(`(?<=-seg-)[0-9]+`, regexp2.None),
 			Mod:   regexp2.MustCompile(`(?<=-mod-)[0-9]+`, regexp2.None),
 		},
