@@ -27,7 +27,7 @@ class HistoricVariableCostProviderImpl(
             "Block {} not found, the requesting node could be out-of-sync",
             blockParameter.getNumber(),
           )
-          throw IllegalStateException("Block ${blockParameter.getNumber()} not found")
+          throw IllegalStateException("Block $blockParameter not found")
         } else {
           try {
             MinerExtraDataV1.decodeV1(block!!.extraData.encodeHex())
