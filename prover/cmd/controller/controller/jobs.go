@@ -217,7 +217,7 @@ func stringIfRegexpNotNil(r *regexp2.Regexp, s string) (res string) {
 func intIfRegexpNotNil(r *regexp2.Regexp, s string) int {
 	// Map the result as an integer
 	match := stringIfRegexpNotNil(r, s)
-	if len(s) == 0 {
+	if len(s) == 0 || len(match) == 0 {
 		return 0
 	}
 
