@@ -164,12 +164,12 @@ type TracesLimits struct {
 	PrecompileBlsC2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS"`
 	PrecompileBlsG1MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS"`
 	PrecompileBlsG2MembershipCalls                 int `mapstructure:"PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS"`
-	Bls                                            int `mapstructure:"BLS"`
-	PointEval                                      int `mapstructure:"POINT_EVAL"`
-	BlsData                                        int `mapstructure:"BLS_DATA"`
-	RlpUtils                                       int `mapstructure:"RLP_UTILS"`
-	PowerReferenceTable                            int `mapstructure:"POWER_REFERENCE_TABLE"`
-	BlsReferenceTable                              int `mapstructure:"BLS_REFERENCE_TABLE"`
+	Bls                                            int `mapstructure:"BLS" corset:"bls"`
+	PointEval                                      int `mapstructure:"POINT_EVAL" corset:"pointeval"`
+	BlsData                                        int `mapstructure:"BLS_DATA" validate:"power_of_2" corset:"blsdata"`
+	RlpUtils                                       int `mapstructure:"RLP_UTILS" validate:"power_of_2" corset:"rlputils"`
+	PowerReferenceTable                            int `mapstructure:"POWER_REFERENCE_TABLE" validate:"power_of_2" corset:"power"`
+	BlsReferenceTable                              int `mapstructure:"BLS_REFERENCE_TABLE" validate:"power_of_2" corset:"blsreferencetable"`
 }
 
 func (tl *TracesLimits) Checksum() string {
