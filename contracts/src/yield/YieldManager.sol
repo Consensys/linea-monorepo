@@ -257,7 +257,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint256 amountRemaining = _amount - lstPrincipalRepayment;
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal += amountRemaining;
     _getYieldProviderStorage(_yieldProvider).userFunds += amountRemaining;
-    emit YieldProviderFunded(_yieldProvider, msg.sender, _amount, lstPrincipalRepayment, amountRemaining);
+    emit YieldProviderFunded(_yieldProvider, _amount, lstPrincipalRepayment, amountRemaining);
   }
 
   function _fundYieldProvider(address _yieldProvider, uint256 _amount) internal {
@@ -310,7 +310,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     $._userFundsInYieldProvidersTotal += newReportedYield;
     ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(newReportedYield, _l2YieldRecipient);
-    emit NativeYieldReported(_yieldProvider, _l2YieldRecipient, msg.sender, newReportedYield);
+    emit NativeYieldReported(_yieldProvider, _l2YieldRecipient, newReportedYield);
   }
 
   /**
@@ -401,7 +401,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (targetDeficit > 0) {
       ILineaNativeYieldExtension(l1MessageService()).fund{ value: targetDeficit }();
     }
-    emit YieldProviderWithdrawal(_yieldProvider, msg.sender, _amount, withdrawnFromProvider, targetDeficit);
+    emit YieldProviderWithdrawal(_yieldProvider, _amount, withdrawnFromProvider, targetDeficit);
   }
 
   function _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
@@ -455,7 +455,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     address _yieldProvider,
     uint256 _amount
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(RESERVE_OPERATOR_ROLE) {
-    uint256 targetRebalanceAmount = _amount;
     address cachedL1MessageService = l1MessageService();
 
     // First see if we can fully settle from YieldManager
@@ -557,7 +556,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert StakingAlreadyPaused();
     }
     _pauseStaking(_yieldProvider);
-    emit YieldProviderStakingPaused(_yieldProvider, msg.sender);
+    emit YieldProviderStakingPaused(_yieldProvider);
   }
 
   function _pauseStaking(address _yieldProvider) internal {
@@ -595,7 +594,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert UnpauseStakingForbiddenWithCurrentLSTPrincipal();
     }
     _unpauseStaking(_yieldProvider);
-    emit YieldProviderStakingUnpaused(_yieldProvider, msg.sender);
+    emit YieldProviderStakingUnpaused(_yieldProvider);
   }
 
   function _unpauseStaking(address _yieldProvider) internal {
@@ -622,7 +621,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    emit LSTMinted(_yieldProvider, msg.sender, _recipient, _amount);
+    emit LSTMinted(_yieldProvider, _recipient, _amount);
   }
 
   // TODO - Role
@@ -640,7 +639,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     _pauseStakingIfNotAlready(_yieldProvider);
     $$.isOssificationInitiated = true;
-    emit YieldProviderOssificationInitiated(_yieldProvider, msg.sender);
+    emit YieldProviderOssificationInitiated(_yieldProvider);
   }
 
   // TODO - Role
@@ -662,7 +661,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (!success) {
       revert DelegateCallFailed();
     }
-    emit YieldProviderOssificationReverted(_yieldProvider, msg.sender);
+    emit YieldProviderOssificationReverted(_yieldProvider);
   }
 
   function processPendingOssification(
@@ -685,16 +684,15 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if (isOssificationComplete) {
       $$.isOssificationInitiated = true;
     }
-    emit YieldProviderOssificationProcessed(_yieldProvider, msg.sender, isOssificationComplete);
+    emit YieldProviderOssificationProcessed(_yieldProvider, isOssificationComplete);
   }
 
   // Need donate function here, otherwise YieldManager is unable to assign donations for specific yield providers.
   function donate(address _yieldProvider) external payable onlyKnownYieldProvider(_yieldProvider) {
-    address l1MessageServiceCached = l1MessageService();
     _decrementNegativeYieldAgainstDonation(_yieldProvider, msg.value);
     _decrementPendingPermissionlessUnstake(msg.value);
-    ILineaNativeYieldExtension(l1MessageServiceCached).fund{ value: msg.value }();
-    emit DonationProcessed(_yieldProvider, msg.sender, l1MessageServiceCached, msg.value);
+    ILineaNativeYieldExtension(l1MessageService()).fund{ value: msg.value }();
+    emit DonationProcessed(_yieldProvider, msg.value);
   }
 
   receive() external payable {
@@ -747,7 +745,6 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     });
     emit YieldProviderAdded(
       _yieldProvider,
-      msg.sender,
       _registration.yieldProviderVendor,
       _registration.primaryEntrypoint,
       _registration.ossifiedEntrypoint,
@@ -767,7 +764,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert YieldProviderHasRemainingFunds();
     }
     _removeYieldProvider(_yieldProvider);
-    emit YieldProviderRemoved(_yieldProvider, msg.sender, false);
+    emit YieldProviderRemoved(_yieldProvider, false);
   }
 
   // @dev Removes the requirement that there is 0 userFunds remaining in the YieldProvder
@@ -779,7 +776,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert ZeroAddressNotAllowed();
     }
     _removeYieldProvider(_yieldProvider);
-    emit YieldProviderRemoved(_yieldProvider, msg.sender, true);
+    emit YieldProviderRemoved(_yieldProvider, true);
   }
 
   function _removeYieldProvider(address _yieldProvider) internal {
@@ -801,7 +798,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     address oldL1MessageService = $._l1MessageService;
-    emit L1MessageServiceUpdated(oldL1MessageService, _l1MessageService, msg.sender);
+    emit L1MessageServiceUpdated(oldL1MessageService, _l1MessageService);
     $._l1MessageService = _l1MessageService;
   }
 
@@ -813,7 +810,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     if ($._isL2YieldRecipientKnown[_l2YieldRecipient]) {
       revert L2YieldRecipientAlreadyAdded();
     }
-    emit L2YieldRecipientAdded(_l2YieldRecipient, msg.sender);
+    emit L2YieldRecipientAdded(_l2YieldRecipient);
     $._isL2YieldRecipientKnown[_l2YieldRecipient] = true;
   }
 
@@ -824,7 +821,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert ZeroAddressNotAllowed();
     }
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    emit L2YieldRecipientRemoved(_l2YieldRecipient, msg.sender);
+    emit L2YieldRecipientRemoved(_l2YieldRecipient);
     $._isL2YieldRecipientKnown[_l2YieldRecipient] = false;
   }
 
@@ -847,8 +844,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     emit MinimumWithdrawalReservePercentageBpsSet(
       $._minimumWithdrawalReservePercentageBps,
-      _minimumWithdrawalReservePercentageBps,
-      msg.sender
+      _minimumWithdrawalReservePercentageBps
     );
     $._minimumWithdrawalReservePercentageBps = _minimumWithdrawalReservePercentageBps;
   }
@@ -868,8 +864,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     }
     emit MinimumWithdrawalReserveAmountSet(
       $._minimumWithdrawalReserveAmount,
-      _minimumWithdrawalReserveAmount,
-      msg.sender
+      _minimumWithdrawalReserveAmount
     );
     $._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
   }
@@ -887,8 +882,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
     uint16 oldTargetWithdrawalReservePercentageBps = $._targetWithdrawalReservePercentageBps;
     emit TargetWithdrawalReservePercentageBpsSet(
       oldTargetWithdrawalReservePercentageBps,
-      _targetWithdrawalReservePercentageBps,
-      msg.sender
+      _targetWithdrawalReservePercentageBps
     );
     $._targetWithdrawalReservePercentageBps = _targetWithdrawalReservePercentageBps;
   }
@@ -901,7 +895,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
       revert TargetReserveAmountMustBeAboveMinimum();
     }
     uint256 oldTargetWithdrawalReserveAmount = $._targetWithdrawalReserveAmount;
-    emit TargetWithdrawalReserveAmountSet(oldTargetWithdrawalReserveAmount, _targetWithdrawalReserveAmount, msg.sender);
+    emit TargetWithdrawalReserveAmountSet(oldTargetWithdrawalReserveAmount, _targetWithdrawalReserveAmount);
     $._targetWithdrawalReserveAmount = _targetWithdrawalReserveAmount;
   }
 }

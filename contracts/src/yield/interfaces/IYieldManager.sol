@@ -13,37 +13,31 @@ interface IYieldManager {
    * @notice Emitted when minimumWithdrawalReservePercentageBps is set.
    * @param oldMinimumWithdrawalReservePercentageBps The previous minimumWithdrawalReservePercentageBps.
    * @param newMinimumWithdrawalReservePercentageBps The new minimumWithdrawalReservePercentageBps.
-   * @param caller Address which set minimumWithdrawalReservePercentageBps.
    */
   event MinimumWithdrawalReservePercentageBpsSet(
     uint256 oldMinimumWithdrawalReservePercentageBps,
-    uint256 newMinimumWithdrawalReservePercentageBps,
-    address indexed caller
+    uint256 newMinimumWithdrawalReservePercentageBps
   );
 
   /**
    * @notice Emitted when minimumWithdrawalReserveAmountSet is set.
    * @param oldMinimumWithdrawalReserveAmount The previous minimumWithdrawalReserveAmountSet.
    * @param newMinimumWithdrawalReserveAmount The new minimumWithdrawalReserveAmountSet.
-   * @param caller Address which set minimumWithdrawalReserveAmountSet.
    */
   event MinimumWithdrawalReserveAmountSet(
     uint256 oldMinimumWithdrawalReserveAmount,
-    uint256 newMinimumWithdrawalReserveAmount,
-    address indexed caller
+    uint256 newMinimumWithdrawalReserveAmount
   );
 
   /**
    * @notice Emitted when funds are sent to a yield provider.
    * @param yieldProvider The yield provider that received funds.
-   * @param caller Address that initiated the funding operation.
    * @param amount Total amount forwarded to the provider.
    * @param lstPrincipalRepaid Portion of the amount used to repay LST principal liabilities.
    * @param userFundsIncreased Portion of the amount remaining in the yield provider.
    */
   event YieldProviderFunded(
     address indexed yieldProvider,
-    address indexed caller,
     uint256 amount,
     uint256 lstPrincipalRepaid,
     uint256 userFundsIncreased
@@ -59,13 +53,11 @@ interface IYieldManager {
    * @notice Emitted when new native yield is reported for a provider.
    * @param yieldProvider The provider that produced yield.
    * @param l2YieldRecipient The L2 address receiving the yield.
-   * @param caller Address that reported the yield.
    * @param yieldAmount Amount of yield accounted for users.
    */
   event NativeYieldReported(
     address indexed yieldProvider,
     address indexed l2YieldRecipient,
-    address indexed caller,
     uint256 yieldAmount
   );
 
@@ -73,14 +65,12 @@ interface IYieldManager {
   /**
    * @notice Emitted when funds are withdrawn from a yield provider.
    * @param yieldProvider The provider that processed the withdrawal.
-   * @param caller Address initiating the withdrawal.
    * @param amountRequested Total amount requested to withdraw.
    * @param amountWithdrawn Amount actually withdrawn from the provider.
    * @param amountSentToReserve Portion sent directly to the withdrawal reserve.
    */
   event YieldProviderWithdrawal(
     address indexed yieldProvider,
-    address indexed caller,
     uint256 amountRequested,
     uint256 amountWithdrawn,
     uint256 amountSentToReserve
@@ -123,7 +113,6 @@ interface IYieldManager {
   /**
    * @notice Emitted when a yield provider is added.
    * @param yieldProvider The provider address added to the manager.
-   * @param caller Address performing the addition.
    * @param yieldProviderVendor Provider type identifier.
    * @param primaryEntrypoint Entrypoint when not ossified.
    * @param ossifiedEntrypoint Entrypoint used once ossified.
@@ -132,7 +121,6 @@ interface IYieldManager {
    */
   event YieldProviderAdded(
     address indexed yieldProvider,
-    address indexed caller,
     YieldManagerStorageLayout.YieldProviderVendor yieldProviderVendor,
     address primaryEntrypoint,
     address ossifiedEntrypoint,
@@ -142,117 +130,99 @@ interface IYieldManager {
   /**
    * @notice Emitted when a yield provider is removed.
    * @param yieldProvider The provider being removed.
-   * @param caller Address performing the removal.
    * @param emergencyRemoval True if removal bypassed remaining funds checks.
    */
-  event YieldProviderRemoved(address indexed yieldProvider, address indexed caller, bool emergencyRemoval);
+  event YieldProviderRemoved(address indexed yieldProvider, bool emergencyRemoval);
 
   /**
    * @notice Emitted when LST principal is minted for a provider.
    * @param yieldProvider The provider on whose behalf LST was minted.
-   * @param caller Address initiating the mint.
    * @param recipient LST recipient address.
    * @param amount Amount of LST minted.
    */
-  event LSTMinted(address indexed yieldProvider, address indexed caller, address indexed recipient, uint256 amount);
+  event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amount);
 
   /**
    * @notice Emitted when the L1 message service address is updated.
    * @param oldL1MessageService Previous address.
    * @param newL1MessageService New address.
-   * @param caller Address performing the update.
    */
   event L1MessageServiceUpdated(
     address indexed oldL1MessageService,
-    address indexed newL1MessageService,
-    address indexed caller
+    address indexed newL1MessageService
   );
 
   /**
    * @notice Emitted when the target withdrawal reserve percentage is updated.
    * @param oldTargetWithdrawalReservePercentageBps Previous target in basis points.
    * @param newTargetWithdrawalReservePercentageBps New target in basis points.
-   * @param caller Address performing the update.
    */
   event TargetWithdrawalReservePercentageBpsSet(
     uint256 oldTargetWithdrawalReservePercentageBps,
-    uint256 newTargetWithdrawalReservePercentageBps,
-    address indexed caller
+    uint256 newTargetWithdrawalReservePercentageBps
   );
 
   /**
    * @notice Emitted when the target withdrawal reserve amount is updated.
    * @param oldTargetWithdrawalReserveAmount Previous target amount.
    * @param newTargetWithdrawalReserveAmount New target amount.
-   * @param caller Address performing the update.
    */
   event TargetWithdrawalReserveAmountSet(
     uint256 oldTargetWithdrawalReserveAmount,
-    uint256 newTargetWithdrawalReserveAmount,
-    address indexed caller
+    uint256 newTargetWithdrawalReserveAmount
   );
 
-  event L2YieldRecipientAdded(address l2YieldRecipient, address indexed caller);
+  event L2YieldRecipientAdded(address l2YieldRecipient);
 
-  event L2YieldRecipientRemoved(address l2YieldRecipient, address indexed caller);
+  event L2YieldRecipientRemoved(address l2YieldRecipient);
 
   /**
    * @notice Emitted when staking is paused for a provider.
    * @param yieldProvider The provider whose staking was paused.
-   * @param caller Address executing the pause.
    */
-  event YieldProviderStakingPaused(address indexed yieldProvider, address indexed caller);
+  event YieldProviderStakingPaused(address indexed yieldProvider);
 
   /**
    * @notice Emitted when staking is unpaused for a provider.
    * @param yieldProvider The provider whose staking was unpaused.
-   * @param caller Address executing the unpause.
    */
-  event YieldProviderStakingUnpaused(address indexed yieldProvider, address indexed caller);
+  event YieldProviderStakingUnpaused(address indexed yieldProvider);
 
   /**
    * @notice Emitted when ossification is initiated for a provider.
    * @param yieldProvider The provider being ossified.
-   * @param caller Address initiating ossification.
    */
-  event YieldProviderOssificationInitiated(address indexed yieldProvider, address indexed caller);
+  event YieldProviderOssificationInitiated(address indexed yieldProvider);
 
   /**
    * @notice Emitted when ossification initiation is undone.
    * @param yieldProvider The provider whose ossification was reverted.
-   * @param caller Address executing the revert.
    */
-  event YieldProviderOssificationReverted(address indexed yieldProvider, address indexed caller);
+  event YieldProviderOssificationReverted(address indexed yieldProvider);
 
   /**
    * @notice Emitted when ossification processing occurs.
    * @param yieldProvider The provider being processed.
-   * @param caller Address executing the processing.
    * @param isOssified Whether the provider is now ossified.
    */
-  event YieldProviderOssificationProcessed(address indexed yieldProvider, address indexed caller, bool isOssified);
+  event YieldProviderOssificationProcessed(address indexed yieldProvider, bool isOssified);
 
   /**
    * @notice Emitted when a donation is routed.
    * @param yieldProvider Provider associated with the donation accounting.
-   * @param caller Address providing the donation.
-   * @param destination Chosen destination for the forwarded ETH.
    * @param amount Amount donated.
    */
   event DonationProcessed(
     address indexed yieldProvider,
-    address indexed caller,
-    address indexed destination,
     uint256 amount
   );
 
   /**
    * @notice Emitted when externally settled LST principal is reconciled.
    * @param yieldProvider Provider whose liability was reduced.
-   * @param caller Address triggering the reconciliation.
    * @param amount Amount of LST principal reconciled.
    */
-  event ExternalLSTPrincipalReconciled(address indexed yieldProvider, address indexed caller, uint256 amount);
+  event ExternalLSTPrincipalReconciled(address indexed yieldProvider, uint256 amount);
 
   /**
    * @dev Thrown when sender is not the L1MessageService.
