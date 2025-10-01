@@ -8,9 +8,10 @@ pragma solidity ^0.8.30;
  * @custom:security-contact security-report@linea.build
  */
 abstract contract YieldManagerStorageLayout {
+  address immutable L1_MESSAGE_SERVICE;
+
   /// @custom:storage-location erc7201:linea.storage.YieldManager
   struct YieldManagerStorage {
-    address _l1MessageService;
     uint16 _minimumWithdrawalReservePercentageBps;
     uint16 _targetWithdrawalReservePercentageBps;
     uint256 _minimumWithdrawalReserveAmount;

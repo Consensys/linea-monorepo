@@ -7,7 +7,9 @@ import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { ILineaNativeYieldExtension } from "./interfaces/ILineaNativeYieldExtension.sol";
 import { YieldManagerPauseManager } from "../security/pausing/YieldManagerPauseManager.sol";
+// import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 import { Math256 } from "../libraries/Math256.sol";
+import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -51,11 +53,6 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
 
   address transient TRANSIENT_RECEIVE_CALLER;
 
-  /// @notice The L1MessageService address.
-  function l1MessageService() public view returns (address) {
-    return _getYieldManagerStorage()._l1MessageService;
-  }
-
   /// @notice Minimum withdrawal reserve percentage in bps.
   /// @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
   function minimumWithdrawalReservePercentageBps() public view returns (uint256) {
@@ -77,13 +74,21 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   }
 
   function _fundReserve(uint256 _amount) internal {
-    ILineaNativeYieldExtension(l1MessageService()).fund{ value: _amount }();
+    ILineaNativeYieldExtension(L1_MESSAGE_SERVICE).fund{ value: _amount }();
+  }
+
+  constructor(address _l1MessageService) {
+      ErrorUtils.revertIfZeroAddress(_l1MessageService);
+      L1_MESSAGE_SERVICE = _l1MessageService;
+      _disableInitializers();
   }
 
   /**
    * @notice Initialises the YieldManager.
    */
-  function initialize() external initializer {}
+  function initialize(YieldManagerInitializationData calldata _initializationData) external initializer {
+    __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
+  }
 
   modifier onlyKnownYieldProvider(address _yieldProvider) {
     if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex == 0) {
@@ -99,15 +104,8 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     _;
   }
 
-  modifier revertIfZeroAddress(address _addr) {
-    if (_addr == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-    _;
-  }
-
   function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance) {
-    withdrawalReserveBalance = l1MessageService().balance;
+    withdrawalReserveBalance = L1_MESSAGE_SERVICE.balance;
   }
 
   function getTotalSystemBalance() external view returns (uint256 totalSystemBalance) {
@@ -120,7 +118,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     returns (uint256 totalSystemBalance, uint256 cachedL1MessageServiceBalance)
   {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    cachedL1MessageServiceBalance = $._l1MessageService.balance;
+    cachedL1MessageServiceBalance = L1_MESSAGE_SERVICE.balance;
     totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $._userFundsInYieldProvidersTotal;
   }
 
@@ -234,7 +232,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
    * @dev Reverts if, after transfer, the withdrawal reserve will be below the minimum threshold.
    */
   function receiveFundsFromReserve() external payable {
-    if (msg.sender != l1MessageService()) {
+    if (msg.sender != L1_MESSAGE_SERVICE) {
       revert SenderNotL1MessageService();
     }
     if (isWithdrawalReserveBelowMinimum()) {
@@ -332,7 +330,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     $$.yieldReportedCumulative += newReportedYield;
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     $._userFundsInYieldProvidersTotal += newReportedYield;
-    ILineaNativeYieldExtension(l1MessageService()).reportNativeYield(newReportedYield, _l2YieldRecipient);
+    ILineaNativeYieldExtension(L1_MESSAGE_SERVICE).reportNativeYield(newReportedYield, _l2YieldRecipient);
     emit NativeYieldReported(_yieldProvider, _l2YieldRecipient, newReportedYield);
   }
 
@@ -635,10 +633,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     uint256 _amount,
     address _recipient
   ) external whenTypeAndGeneralNotPaused(PauseType.LST_WITHDRAWAL) onlyKnownYieldProvider(_yieldProvider) {
-    if (msg.sender != _getYieldManagerStorage()._l1MessageService) {
+    if (msg.sender != L1_MESSAGE_SERVICE) {
       revert NotL1MessageService();
     }
-    if (!ILineaNativeYieldExtension(l1MessageService()).isWithdrawLSTAllowed()) {
+    if (!ILineaNativeYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
@@ -740,14 +738,11 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function addYieldProvider(
     address _yieldProvider,
     YieldProviderRegistration calldata _registration
-  ) external onlyRole(YIELD_PROVIDER_SETTER) revertIfZeroAddress(_yieldProvider) {
-    if (
-      _registration.primaryEntrypoint == address(0) ||
-      _registration.ossifiedEntrypoint == address(0) ||
-      _registration.receiveCaller == address(0)
-    ) {
-      revert ZeroAddressNotAllowed();
-    }
+  ) external onlyRole(YIELD_PROVIDER_SETTER) {
+    ErrorUtils.revertIfZeroAddress(_yieldProvider);
+    ErrorUtils.revertIfZeroAddress(_registration.primaryEntrypoint);
+    ErrorUtils.revertIfZeroAddress(_registration.ossifiedEntrypoint);
+    ErrorUtils.revertIfZeroAddress(_registration.receiveCaller);
     IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_registration);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
 
@@ -786,7 +781,6 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     external
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_SETTER)
-    revertIfZeroAddress(_yieldProvider)
   {
     // We assume that 'pendingPermissionlessUnstake' and 'currentNegativeYield' must be 0, before 'userFunds' can be 0.
     if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
@@ -804,7 +798,6 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     external
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_SETTER)
-    revertIfZeroAddress(_yieldProvider)
   {
     _removeYieldProvider(_yieldProvider);
     emit YieldProviderRemoved(_yieldProvider, true);
@@ -823,18 +816,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     delete $._yieldProviderStorage[_yieldProvider];
   }
 
-  function setL1MessageService(
-    address _l1MessageService
-  ) external onlyRole(DEFAULT_ADMIN_ROLE) revertIfZeroAddress(_l1MessageService) {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-    address oldL1MessageService = $._l1MessageService;
-    emit L1MessageServiceUpdated(oldL1MessageService, _l1MessageService);
-    $._l1MessageService = _l1MessageService;
-  }
-
   function addL2YieldRecipient(
     address _l2YieldRecipient
-  ) external onlyRole(L2_YIELD_RECIPIENT_SETTER) revertIfZeroAddress(_l2YieldRecipient) {
+  ) external onlyRole(L2_YIELD_RECIPIENT_SETTER) {
+    ErrorUtils.revertIfZeroAddress(_l2YieldRecipient);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     if ($._isL2YieldRecipientKnown[_l2YieldRecipient]) {
       revert L2YieldRecipientAlreadyAdded();
@@ -849,7 +834,6 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     external
     onlyKnownL2YieldRecipient(_l2YieldRecipient)
     onlyRole(L2_YIELD_RECIPIENT_SETTER)
-    revertIfZeroAddress(_l2YieldRecipient)
   {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     emit L2YieldRecipientRemoved(_l2YieldRecipient);

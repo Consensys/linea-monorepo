@@ -29,6 +29,7 @@ abstract contract LineaNativeYieldExtension is
 
   bool transient IS_WITHDRAW_LST_ALLOWED;
 
+  /// @dev To consider - could this be an immutable variable instead? Do we expect YieldManager instance to change at a different cadence than LineaRollup upgrades?
   /// @custom:storage-location erc7201:linea.storage.LineaNativeYieldExtensionStorage
   struct LineaNativeYieldExtensionStorage {
     address _yieldManager;

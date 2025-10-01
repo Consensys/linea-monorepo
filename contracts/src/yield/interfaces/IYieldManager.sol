@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
+import { IPauseManager } from "../../security/pausing/interfaces/IPauseManager.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -9,6 +10,13 @@ import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldManager {
+
+  struct YieldManagerInitializationData {
+    IPauseManager.PauseTypeRole[] pauseTypeRoles;
+    IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+
+  }
+
   struct UpdateReserveConfig {
     bool isPercentage;
     bool isMinimum;
@@ -435,8 +443,6 @@ interface IYieldManager {
   function removeYieldProvider(address _yieldProvider) external;
 
   function emergencyRemoveYieldProvider(address _yieldProvider) external;
-
-  function setL1MessageService(address _l1MessageService) external;
 
   /**
    * @notice Set l2YieldRecipient address.

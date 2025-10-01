@@ -11,22 +11,18 @@ import { IStakingVault } from "./interfaces/vendor/lido/IStakingVault.sol";
 import { Math256 } from "../libraries/Math256.sol";
 import { CLProofVerifier } from "./libs/CLProofVerifier.sol";
 import { GIndex } from "./libs/vendor/lido/GIndex.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGenericErrors {
+contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initializable, IGenericErrors {
   uint256 private constant PUBLIC_KEY_LENGTH = 48;
   uint256 private constant MIN_0X02_VALIDATOR_ACTIVATION_BALANCE = 32 ether;
   IVaultHub immutable VAULT_HUB;
   IStETH immutable STETH;
-
-  // yieldProvider = StakingVault
-  // address immutable YIELD_PROVIDER;
-  // IDashboard immutable DASHBOARD;
-  // bytes32 immutable WITHDRAWAL_CREDENTIALS;
 
   event LidoVaultUnstakePermissionlessRequest(
     address indexed yieldProvider,
@@ -39,15 +35,24 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
 
   // @dev _yieldProvider = stakingVault address
   constructor(
+    address _l1MessageService,
+    address _yieldManager,
     address _vaultHub,
     address _steth,
     GIndex _gIFirstValidator,
     GIndex _gIFirstValidatorAfterChange,
     uint64 _changeSlot
-  ) CLProofVerifier(_gIFirstValidator, _gIFirstValidatorAfterChange, _changeSlot) {
+  )
+  YieldProviderBase(_l1MessageService, _yieldManager) 
+  CLProofVerifier(_gIFirstValidator, _gIFirstValidatorAfterChange, _changeSlot) {
     // Do checks
     VAULT_HUB = IVaultHub(_vaultHub);
     STETH = IStETH(_steth);
+    _disableInitializers();
+  }
+
+  // Expect storage initialization to be done via YieldManager.addYieldProvider()
+  function initialize() external initializer {
   }
 
   function _getEntrypointContract(address _yieldProvider) internal view returns (address entrypointContract) {
