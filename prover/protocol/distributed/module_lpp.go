@@ -552,6 +552,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 		// segmenCountLpp is an array of zero with a one at the position
 		// corresponding to the current module.
 		segmentCountLpp = make([]field.Element, nbModules)
+		defInp          = modLPP.DefinitionInput
 	)
 
 	segmentCountLpp[modLPP.Disc.IndexOf(modLPP.DefinitionInput.ModuleName)] = field.One()
@@ -561,6 +562,14 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 		SegmentCountGL:      declareListOfConstantPi(modLPP.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:     declareListOfConstantPi(modLPP.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
 		GeneralMultiSetHash: declareListOfPiColumns(modLPP.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+	}
+
+	// These are the "dummy" public inputs that are only here so that the
+	// moduleGL and moduleLPP have identical set of public inputs. The order
+	// of declaration is also important. Namely, these needs to be declared before
+	// the non-dummy ones.
+	for _, pi := range defInp.PublicInputs {
+		modLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
 	}
 }
 
