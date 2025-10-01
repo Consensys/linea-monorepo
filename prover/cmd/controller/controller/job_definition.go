@@ -18,19 +18,34 @@ const (
 
 // ParamRegexps groups together common regexps used by JobDefinitions
 type ParamRegexps struct {
-	Start, End, Stv, Etv, Cv, ContentHash, Seg, Mod *regexp2.Regexp
+	Start, End, Stv, Etv, Cv, ContentHash, SegID, ModID *regexp2.Regexp
 }
 
 // JobDefinition represents a collection of static parameters allowing to define
 // a job.
 type JobDefinition struct {
+	// Name of the job
+	Name string
+
+	// Parameters for the job definition provided by the user
 	RequestsRootDir string
-	Name            string
+
+	// The regexp to use to match input files.
 	InputFileRegexp *regexp2.Regexp
-	OutputFileTmpl  *template.Template
-	Priority        int
-	ParamsRegexp    ParamRegexps
-	FailureSuffix   *regexp2.Regexp
+
+	// Template to use to generate the output file. May be empty for jobs that
+	// have no output (e.g., GL/LPP that use /dev/null).
+	OutputFileTmpl *template.Template
+
+	// Priority at which this type of job should be processed. The lower the
+	// more of a priority.
+	Priority int
+
+	// Compiled regexps for capturing parameters.
+	ParamsRegexp ParamRegexps
+
+	// Regexp of the failure code so that we can trim it if we want to retry.
+	FailureSuffix *regexp2.Regexp
 }
 
 // -------------------- Job Definitions --------------------
