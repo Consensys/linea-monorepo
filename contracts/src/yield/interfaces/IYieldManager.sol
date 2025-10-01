@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
 import { IPauseManager } from "../../security/pausing/interfaces/IPauseManager.sol";
+import { IPermissionsManager } from "../../security/access/interfaces/IPermissionsManager.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -14,6 +15,7 @@ interface IYieldManager {
   struct YieldManagerInitializationData {
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+    IPermissionsManager.RoleAddress[] roleAddresses;
     address[] initialL2YieldRecipients;
     uint16 initialMinimumWithdrawalReservePercentageBps;
     uint16 initialTargetWithdrawalReservePercentageBps;
