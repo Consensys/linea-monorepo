@@ -891,7 +891,8 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 }
 
 // checkMultiSetHash checks that the LPP commitment MSet is correctly
-// assigned. It is meant to be run as part of a verifier action.
+// assigned. It is meant to be run as part of a verifier action. The function
+// also checks that isFirst and isLast are correctly assigned.
 func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
@@ -904,16 +905,35 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 		mset                   = mimc.MSetHash{}
 		defInp                 = modGL.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
-		numModule              = len(defInp.Disc.Modules)
 		segmentIndexInt        = segmentIndex.Uint64()
-		numSegmentOfLastModule = modGL.PublicInputs.TargetNbSegments[numModule-1].Acc.GetVal(run)
+		numSegmentOfCurrModule = modGL.PublicInputs.TargetNbSegments[segmentIndexInt].Acc.GetVal(run)
+		isFirst                = modGL.IsFirst.GetColAssignmentAt(run, 0)
+		isLast                 = modGL.IsLast.GetColAssignmentAt(run, 0)
 	)
 
 	mset.Insert(moduleIndex, segmentIndex, lppCommitments)
 
+	if !isFirst.IsZero() && !isFirst.IsOne() {
+		return fmt.Errorf("isFirst is not 0 or 1")
+	}
+
+	if !isLast.IsZero() && !isLast.IsOne() {
+		return fmt.Errorf("isLast is not 0 or 1")
+	}
+
+	// This checks that isFirst and isLast are well assigned wrt to the segment
+	// index
+	if (segmentIndexInt == 0) != isFirst.IsOne() {
+		return fmt.Errorf("isFirst does not match the segment index")
+	}
+
+	if (segmentIndexInt == numSegmentOfCurrModule.Uint64()-1) != isLast.IsOne() {
+		return fmt.Errorf("isLast does not match the segment index")
+	}
+
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
-	if segmentIndexInt < numSegmentOfLastModule.Uint64()-1 {
+	if segmentIndexInt < numSegmentOfCurrModule.Uint64()-1 {
 		// This is a local module
 		mset.Insert(moduleIndex, segmentIndex, typeOfProof, globalSentHash)
 	}
@@ -936,4 +956,8 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 	}
 
 	return nil
+}
+
+func isBinaryField(f field.Element) bool {
+	return f.IsZero() || f.IsOne()
 }
