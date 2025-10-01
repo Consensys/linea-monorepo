@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -308,7 +309,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
 
-	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, nil, nil)
+	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
 	yLists = make([][]fext.Element, nCommitments)

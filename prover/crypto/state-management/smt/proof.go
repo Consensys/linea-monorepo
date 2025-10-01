@@ -85,7 +85,7 @@ func (p *Proof) RecoverRoot(conf *Config, leaf field.Octuplet) (field.Octuplet, 
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = hashLR(left, right)
+		current = hashLR(conf, left, right)
 		idx >>= 1
 	}
 

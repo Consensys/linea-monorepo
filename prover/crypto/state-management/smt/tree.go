@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -14,7 +13,7 @@ import (
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
 	// HashFunc is a function returning initialized hashers.
-	HashFunc func() hashtypes.Hasher
+	HashFunc func() hashtypes.FieldHasher
 	// Depth is the depth of the tree
 	Depth int
 }
@@ -52,9 +51,14 @@ func EmptyLeaf() field.Octuplet {
 
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
-func hashLR(nodeL, nodeR field.Octuplet) field.Octuplet {
+func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
 	var d field.Octuplet
-	d = poseidon2.Poseidon2BlockCompression(nodeL, nodeR)
+	if config.HashFunc != nil {
+		hasher := config.HashFunc()
+		d = hasher.BlockCompression(nodeL, nodeR)
+	} else {
+		panic("missing a hash function")
+	}
 
 	return d
 }
@@ -66,13 +70,13 @@ func NewEmptyTree(conf *Config) *Tree {
 	prevNode := EmptyLeaf()
 
 	for i := range emptyNodes {
-		newNode := hashLR(prevNode, prevNode)
+		newNode := hashLR(conf, prevNode, prevNode)
 		emptyNodes[i] = newNode
 		prevNode = newNode
 	}
 
 	// Stores the initial root separately
-	root := hashLR(prevNode, prevNode)
+	root := hashLR(conf, prevNode, prevNode)
 
 	return &Tree{
 		Config:         conf,
@@ -264,7 +268,7 @@ func (t *Tree) reserveLevel(level, newSize int) {
 // input leaves are powers of 2. The depth of the tree is deduced from the list.
 //
 // It panics if the number of leaves is a non-power of 2.
-func BuildComplete(leaves []field.Octuplet) *Tree {
+func BuildComplete(leaves []field.Octuplet, hashFunc func() hashtypes.FieldHasher) *Tree {
 
 	numLeaves := len(leaves)
 
@@ -272,8 +276,11 @@ func BuildComplete(leaves []field.Octuplet) *Tree {
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
+	if hashFunc == nil {
+		panic("missing a hash function")
+	}
 	depth := utils.Log2Ceil(numLeaves)
-	config := &Config{Depth: depth}
+	config := &Config{HashFunc: hashFunc, Depth: depth}
 	tree := NewEmptyTree(config)
 	tree.OccupiedLeaves = leaves
 	currLevels := leaves
@@ -284,12 +291,12 @@ func BuildComplete(leaves []field.Octuplet) *Tree {
 		if len(nextLevel) >= 64 {
 			parallel.Execute(len(nextLevel), func(start, end int) {
 				for k := start; k < end; k++ {
-					nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
+					nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
 				}
 			})
 		} else {
 			for k := range nextLevel {
-				nextLevel[k] = hashLR(currLevels[2*k], currLevels[2*k+1])
+				nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
 			}
 		}
 
@@ -303,6 +310,6 @@ func BuildComplete(leaves []field.Octuplet) *Tree {
 	}
 
 	// And overwrite the root
-	tree.Root = hashLR(currLevels[0], currLevels[1])
+	tree.Root = hashLR(config, currLevels[0], currLevels[1])
 	return tree
 }

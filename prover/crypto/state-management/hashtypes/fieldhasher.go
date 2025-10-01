@@ -8,6 +8,7 @@ import (
 const HashSize = 8
 
 type FieldHasher interface {
+	BlockCompression(left, right field.Octuplet) field.Octuplet
 	Hash(xs []field.Element) [HashSize]field.Element
 }
 
@@ -18,6 +19,10 @@ type poseidon2Hasher struct {
 
 func (p poseidon2Hasher) Hash(xs []field.Element) [HashSize]field.Element {
 	return poseidon2.Poseidon2Sponge(xs)
+}
+
+func (p poseidon2Hasher) BlockCompression(left, right field.Octuplet) field.Octuplet {
+	return poseidon2.Poseidon2BlockCompression(left, right)
 }
 
 func Poseidon2() FieldHasher {

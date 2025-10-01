@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -547,7 +548,7 @@ func (ctx *Ctx) generateVortexParams() {
 		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, nil, nil)
+	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
 }
 
 // return the number of columns to open

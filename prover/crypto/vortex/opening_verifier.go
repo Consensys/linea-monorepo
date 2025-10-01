@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
@@ -169,7 +168,8 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 	var (
 		mTreeHashConfig = &smt.Config{
-			Depth: utils.Log2Ceil(v.Params.NumEncodedCols()),
+			HashFunc: v.Params.MerkleHashFunc,
+			Depth:    utils.Log2Ceil(v.Params.NumEncodedCols()),
 		}
 	)
 
@@ -189,21 +189,20 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 				root           = v.MerkleRoots[i]
 				mProof         = v.OpeningProof.MerkleProofs[i][j]
 			)
-			if v.Params.LeafHashFunc != nil {
-				panic("LeafHashFunc should be defaulted to nil in Vortex")
+
+			hasher := v.Params.LeafHashFunc()
+			// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
+			if !v.IsSISReplacedByPoseidon2[i] {
+				var (
+					// SIS hash of the current sub-column
+					sisHash = v.Params.Key.Hash(selectedSubCol)
+				)
+				leaf = hasher.Hash(sisHash)
 			} else {
-				// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
-				if !v.IsSISReplacedByPoseidon2[i] {
-					var (
-						// SIS hash of the current sub-column
-						sisHash = v.Params.Key.Hash(selectedSubCol)
-					)
-					leaf = poseidon2.Poseidon2Sponge(sisHash)
-				} else {
-					// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
-					// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
-					leaf = poseidon2.Poseidon2Sponge(selectedSubCol)
-				}
+				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
+				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
+				leaf = hasher.Hash(selectedSubCol)
+
 			}
 
 			// Check the Merkle-proof for the obtained leaf

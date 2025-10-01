@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -19,7 +20,7 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, nil, nil)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
 	vec := smartvectors.Rand(1 << 10)
 	rsEncoded := params._rsEncodeBase(vec)
 
@@ -41,7 +42,7 @@ func TestReedSolomonConstant(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, nil, nil)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
 	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
 	rsEncoded := params._rsEncodeBase(vec)
 

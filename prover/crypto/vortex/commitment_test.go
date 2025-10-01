@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -23,7 +24,7 @@ func TestLinearCombination(t *testing.T) {
 	x := fext.NewFromInt(478, 763, 890, 123)
 	randomCoin := fext.NewFromInt(1523, 6783, 32, 789)
 
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, nil, nil)
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
@@ -49,7 +50,7 @@ func TestLinearCombination(t *testing.T) {
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
-	NewParams(4, 1<<3, 32, ringsis.StdParams, nil, nil),
+	NewParams(4, 1<<3, 32, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2),
 }
 
 func TestProver(t *testing.T) {
@@ -269,7 +270,7 @@ func TestVerifierNegative(t *testing.T) {
 		}
 		params = []*Params{
 
-			NewParams(2, 8, 17, ringsis.StdParams, nil, nil),
+			NewParams(2, 8, 17, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2),
 		}
 
 		statementMutatorCorpus = []struct {

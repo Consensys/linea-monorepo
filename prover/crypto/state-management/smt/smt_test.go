@@ -3,6 +3,7 @@ package smt_test
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -23,7 +24,8 @@ func RandBytes32(pos int) Bytes32 {
 func TestTreeInitialization(t *testing.T) {
 
 	config := &smt.Config{
-		Depth: 40,
+		HashFunc: hashtypes.Poseidon2,
+		Depth:    40,
 	}
 
 	tree := smt.NewEmptyTree(config)
@@ -37,7 +39,8 @@ func TestTreeInitialization(t *testing.T) {
 
 func TestTreeUpdateLeaf(t *testing.T) {
 	config := &smt.Config{
-		Depth: 40,
+		HashFunc: hashtypes.Poseidon2,
+		Depth:    40,
 	}
 
 	tree := smt.NewEmptyTree(config)
@@ -56,7 +59,8 @@ func TestTreeUpdateLeaf(t *testing.T) {
 }
 func TestMerkleProofNative(t *testing.T) {
 	config := &smt.Config{
-		Depth: 40,
+		HashFunc: hashtypes.Poseidon2,
+		Depth:    40,
 	}
 
 	tree := smt.NewEmptyTree(config)
@@ -75,7 +79,8 @@ func TestMerkleProofNative(t *testing.T) {
 
 func TestMerkleProofWithUpdate(t *testing.T) {
 	config := &smt.Config{
-		Depth: 40,
+		HashFunc: hashtypes.Poseidon2,
+		Depth:    40,
 	}
 
 	tree := smt.NewEmptyTree(config)
@@ -102,7 +107,8 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 func TestBuildFromScratch(t *testing.T) {
 
 	config := &smt.Config{
-		Depth: 8,
+		HashFunc: hashtypes.Poseidon2,
+		Depth:    8,
 	}
 
 	// Generate random field elements and cast them into Bytes32es
@@ -120,7 +126,7 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// And generate the
-	tree := smt.BuildComplete(leaves)
+	tree := smt.BuildComplete(leaves, config.HashFunc)
 
 	// Test-Merkle tests the merkle proof point by point
 	for i := range leaves {

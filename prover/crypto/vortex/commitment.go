@@ -1,7 +1,6 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -47,6 +46,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 
 		tree = smt.BuildComplete(
 			leavesOcts,
+			p.MerkleHashFunc,
 		)
 	})
 
@@ -85,6 +85,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 
 		tree = smt.BuildComplete(
 			colHashesOcts,
+			p.MerkleHashFunc,
 		)
 	})
 
@@ -136,12 +137,10 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 
-			if p.LeafHashFunc != nil {
-				panic("Default poseidon2 hash function is provided")
-			} else {
-				// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
-				leaves[chunkID] = poseidon2.Poseidon2Sponge(colHashes[startChunk : startChunk+chunkSize])
-			}
+			hasher := p.LeafHashFunc()
+			// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
+			leaves[chunkID] = hasher.Hash(colHashes[startChunk : startChunk+chunkSize])
+
 		}
 
 	})
@@ -166,23 +165,20 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 
 	res := make([]field.Octuplet, numCols)
 
-	if p.LeafHashFunc != nil {
-		panic("Default poseidon2 hash function is provided")
-	} else {
-		// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
-		parallel.ExecuteThreadAware(
-			numCols,
-			func(threadID int) {
-			},
-			func(col, threadID int) {
-				colElems := make([]field.Element, numRows)
-				for row := 0; row < numRows; row++ {
-					colElems[row] = v[row].Get(col)
-				}
-				res[col] = poseidon2.Poseidon2Sponge(colElems)
-			},
-		)
-	}
+	// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
+	hasher := p.LeafHashFunc()
+	parallel.ExecuteThreadAware(
+		numCols,
+		func(threadID int) {
+		},
+		func(col, threadID int) {
+			colElems := make([]field.Element, numRows)
+			for row := 0; row < numRows; row++ {
+				colElems[row] = v[row].Get(col)
+			}
+			res[col] = hasher.Hash(colElems)
+		},
+	)
 
 	return res
 }

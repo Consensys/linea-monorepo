@@ -23,7 +23,7 @@ func (t *Tree) Update(pos int, newVal field.Octuplet) {
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = hashLR(left, right)
+		current = hashLR(t.Config, left, right)
 		idx >>= 1
 	}
 
