@@ -14,7 +14,7 @@ VERSION="0.1.0-d032df64"
 OUTPUT_LOC="./tmp/besu/plugins/$ARTIFACT_ID-$VERSION.jar"
 
 # Download using curl
-response=$(curl -s -w "%{http_code}" -L -H "Authorization: token $GITHUB_TOKEN" \
+response=$(curl -s -w "%{http_code}" -L -H "Authorization: token $GH_TOKEN" \
      -H "Accept: application/octet-stream" \
      "https://maven.pkg.github.com/$OWNER/$REPO/$GROUP_ID/$ARTIFACT_ID/$VERSION/$ARTIFACT_ID-$VERSION.jar" \
      -o "$OUTPUT_LOC")
