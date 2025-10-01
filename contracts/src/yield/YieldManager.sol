@@ -7,9 +7,11 @@ import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { ILineaNativeYieldExtension } from "./interfaces/ILineaNativeYieldExtension.sol";
 import { YieldManagerPauseManager } from "../security/pausing/YieldManagerPauseManager.sol";
-// import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 import { Math256 } from "../libraries/Math256.sol";
 import { ErrorUtils } from "../libraries/ErrorUtils.sol";
+// import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+// import { PermissionsManager } from "../security/access/PermissionsManager.sol";
+
 
 /**
  * @title Contract to handle native yield operations.
@@ -88,6 +90,33 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
    */
   function initialize(YieldManagerInitializationData calldata _initializationData) external initializer {
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
+
+    // _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
+
+    // __Permissions_init(_initializationData.roleAddresses);
+
+    _updateReserveConfig(
+      UpdateReserveConfig({ isPercentage: true, isMinimum: false }),
+      _initializationData.initialTargetWithdrawalReservePercentageBps
+    );
+    _updateReserveConfig(
+      UpdateReserveConfig({ isPercentage: true, isMinimum: true }),
+      _initializationData.initialMinimumWithdrawalReservePercentageBps
+    );
+    _updateReserveConfig(
+      UpdateReserveConfig({ isPercentage: false, isMinimum: false }),
+      _initializationData.initialTargetWithdrawalReserveAmount
+    );
+    _updateReserveConfig(
+      UpdateReserveConfig({ isPercentage: false, isMinimum: true }),
+      _initializationData.initialMinimumWithdrawalReserveAmount
+    );
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    for (uint256 i; i < _initializationData.initialL2YieldRecipients.length; i++) {
+      address l2YieldRecipient = _initializationData.initialL2YieldRecipients[i];
+      ErrorUtils.revertIfZeroAddress(l2YieldRecipient);
+      $._isL2YieldRecipientKnown[l2YieldRecipient] = true;
+    }
   }
 
   modifier onlyKnownYieldProvider(address _yieldProvider) {

@@ -14,7 +14,11 @@ interface IYieldManager {
   struct YieldManagerInitializationData {
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
-
+    address[] initialL2YieldRecipients;
+    uint16 initialMinimumWithdrawalReservePercentageBps;
+    uint16 initialTargetWithdrawalReservePercentageBps;
+    uint256 initialMinimumWithdrawalReserveAmount;
+    uint256 initialTargetWithdrawalReserveAmount;
   }
 
   struct UpdateReserveConfig {
