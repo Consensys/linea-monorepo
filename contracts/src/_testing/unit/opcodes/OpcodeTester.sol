@@ -72,6 +72,8 @@ contract OpcodeTester {
   bytes2 private constant CHAINID = 0x0046;
   bytes2 private constant SELFBALANCE = 0x0047;
   bytes2 private constant BASEFEE = 0x0048;
+  bytes2 private constant BLOBHASH = 0x0049;
+  bytes2 private constant BLOBBASEFEE = 0x004a;
 
   // 0x50 - 0x5F
   bytes2 private constant POP = 0x0050;
@@ -86,6 +88,10 @@ contract OpcodeTester {
   bytes2 private constant MSIZE = 0x0059;
   bytes2 private constant GAS = 0x005A;
   bytes2 private constant JUMPDEST = 0x005B;
+  bytes2 private constant TLOAD = 0x005C;
+  bytes2 private constant TSTORE = 0x005D;
+  bytes2 private constant MCOPY = 0x005E;
+  bytes2 private constant PUSH0 = 0x005F;
 
   // 0x60 - 0x7F
   bytes2 private constant PUSH1 = 0x0060;
@@ -185,7 +191,21 @@ contract OpcodeTester {
 
     incrementOpcodeExecutions();
 
+    performMemoryCopying();
+
     storeRollingGlobalVariablesToState();
+  }
+
+  function performMemoryCopying() private pure {
+    assembly {
+      let mPtr := mload(0x40)
+      mstore(mPtr, 0x20)
+      mstore(add(mPtr, 0x20), 0x01)
+      mstore(add(mPtr, 0x40), 0x02)
+      mstore(add(mPtr, 0x60), 0x03)
+      mstore(add(mPtr, 0x80), 0x04)
+      mcopy(add(mPtr, 0xA0), mPtr, 0xA0)
+    }
   }
 
   function executeExternalCalls() private {
@@ -232,13 +252,13 @@ contract OpcodeTester {
     // 0x0020 - 0x000
     opcodeExecutions[KECCAK256] = opcodeExecutions[KECCAK256] + 1;
 
-    // 0x0030 - 0x0048
-    for (uint16 i = 0x0030; i <= 0x0048; i += 0x0001) {
+    // 0x0030 - 0x004A
+    for (uint16 i = 0x0030; i <= 0x004A; i += 0x0001) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
 
-    // 0x0050 - 0x005B
-    for (uint16 i = 0x0050; i <= 0x005B; i += 0x0001) {
+    // 0x0050 - 0x005F
+    for (uint16 i = 0x0050; i <= 0x005F; i += 0x0001) {
       opcodeExecutions[bytes2(i)] = opcodeExecutions[bytes2(i)] + 1;
     }
 
@@ -273,21 +293,20 @@ contract OpcodeTester {
       block.basefee,
       block.chainid,
       block.coinbase,
-      block.difficulty
+      block.prevrandao
     );
 
-    bytes memory fieldsToHashSection2 = abi.encode(
-      block.gaslimit,
-      block.number,
-      block.difficulty,
-      block.timestamp,
-      gasleft()
-    );
+    bytes memory fieldsToHashSection2 = abi.encode(block.gaslimit, block.number, block.timestamp, gasleft());
 
-    bytes memory fieldsToHashSection3 = abi.encode(msg.data, msg.sender, msg.sig, msg.value, tx.gasprice, tx.origin);
+    bytes memory fieldsToHashSection3 = abi.encode(blobhash(0), block.blobbasefee);
+
+    bytes memory fieldsToHashSection4 = abi.encode(msg.data, msg.sender, msg.sig, msg.value, tx.gasprice, tx.origin);
 
     rollingBlockDetailComputations = keccak256(
-      bytes.concat(bytes.concat(fieldsToHashSection1, fieldsToHashSection2), fieldsToHashSection3)
+      bytes.concat(
+        bytes.concat(bytes.concat(fieldsToHashSection1, fieldsToHashSection2), fieldsToHashSection3),
+        fieldsToHashSection4
+      )
     );
   }
 
