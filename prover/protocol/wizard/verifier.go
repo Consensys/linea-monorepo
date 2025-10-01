@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
@@ -30,7 +31,7 @@ import (
 // the proof within a gnark circuit.
 //
 // The struct does not implement any serialization logic.
-type Proof struct {
+type Proof[T zk.Element] struct {
 	// Messages collection of the prover's message sent to the verifier.
 	Messages collection.Mapping[ifaces.ColID, ifaces.ColAssignment]
 
@@ -40,20 +41,20 @@ type Proof struct {
 }
 
 // Runtime is a generic interface extending the [ifaces.Runtime] interface
-// with all methods of [wizard.VerifierRuntime]. This is used to allow the
+// with all methods of [wizard.VerifierRuntime[T]]. This is used to allow the
 // writing of adapters for the verifier runtime.
-type Runtime interface {
+type Runtime[T zk.Element] interface {
 	ifaces.Runtime
-	GetSpec() *CompiledIOP
+	GetSpec() *CompiledIOP[T]
 	GetPublicInput(name string) field.Element
 	GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams
-	GetHornerParams(name ifaces.QueryID) query.HornerParams
-	GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams
-	GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams
-	GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams
-	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
-	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
-	GetQuery(name ifaces.QueryID) ifaces.Query
+	GetHornerParams(name ifaces.QueryID) query.HornerParams[T]
+	GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams[T]
+	GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams[T]
+	GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams[T]
+	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval[T]
+	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams[T]
+	GetQuery(name ifaces.QueryID) ifaces.Query[T]
 	Fs() hash.StateStorer
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
@@ -63,21 +64,21 @@ type Runtime interface {
 // VerifierStep specifies a single step of verifier for a single subprotocol.
 // This can be used to specify verifier checks involving user-provided
 // columns for relations that cannot be automatically enforced via a
-// [ifaces.Query]
-type VerifierStep func(a Runtime) error
+// [ifaces.Query[T]]
+type VerifierStep[T zk.Element] func(a Runtime[T]) error
 
-// VerifierRuntime runtime collects all data that visible or computed by the
+// VerifierRuntime[T] runtime collects all data that visible or computed by the
 // verifier of the wizard protocol. This includes the prover's messages, the
 // [column.VerifyingKey] tagged columns.
 //
 // The struct is not intended to be constructed by the user and is internally
 // constructed by the [Verify] function. The user should instead
 // restricts its usage of the function within [VerifierStep] functions that are
-// provided to either the [CompiledIOP] or the [Verify] function.
-type VerifierRuntime struct {
+// provided to either the [CompiledIOP[T]] or the [Verify] function.
+type VerifierRuntime[T zk.Element] struct {
 
 	// Spec points to the static description of the underlying protocol
-	Spec *CompiledIOP
+	Spec *CompiledIOP[T]
 
 	// Collection of the prover's message sent to the verifier.
 	Columns collection.Mapping[ifaces.ColID, ifaces.ColAssignment]
@@ -101,23 +102,23 @@ type VerifierRuntime struct {
 	State map[string]interface{}
 }
 
-// Verify verifies a wizard proof. The caller specifies a [CompiledIOP] that
+// Verify verifies a wizard proof. The caller specifies a [CompiledIOP[T]] that
 // describes the protocol to run and a proof to verify. The function returns
 // `nil` to indicate that the proof passed and an error to indicate the proof
 // was invalid.
-func Verify(c *CompiledIOP, proof Proof) error {
+func Verify[T zk.Element](c *CompiledIOP[T], proof Proof[T]) error {
 	_, err := VerifyWithRuntime(c, proof)
 	return err
 }
 
 // VerifyWithRuntime runs the verifier of the protocol and returns the result
 // and the runtime of the verifier.
-func VerifyWithRuntime(c *CompiledIOP, proof Proof) (*VerifierRuntime, error) {
+func VerifyWithRuntime[T zk.Element](c *CompiledIOP[T], proof Proof[T]) (*VerifierRuntime[T], error) {
 	return verifyWithRuntimeUntilRound(c, proof, c.NumRounds())
 }
 
 // VerifyUntilRound runs the verifier up to a specified round
-func VerifyUntilRound(c *CompiledIOP, proof Proof, stopRound int) error {
+func VerifyUntilRound[T zk.Element](c *CompiledIOP[T], proof Proof[T], stopRound int) error {
 	_, err := verifyWithRuntimeUntilRound(c, proof, stopRound)
 	return err
 }
@@ -126,7 +127,7 @@ func VerifyUntilRound(c *CompiledIOP, proof Proof, stopRound int) error {
 // the provided round "stopRound". By "excluding", we mean that the function
 // won't run the round "stopRound". If stopRound is higher than the number of
 // rounds in comp, the function runs the whole protocol.
-func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int) (run *VerifierRuntime, err error) {
+func verifyWithRuntimeUntilRound[T zk.Element](comp *CompiledIOP[T], proof Proof[T], stopRound int) (run *VerifierRuntime[T], err error) {
 
 	var (
 		runtime = comp.createVerifier(proof)
@@ -154,17 +155,17 @@ func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int) 
 	return &runtime, nil
 }
 
-// createVerifier is an internal constructor for a new empty [VerifierRuntime] runtime. It
-// prepopulates the [VerifierRuntime.Columns] and [VerifierRuntime.QueriesParams]
+// createVerifier is an internal constructor for a new empty [VerifierRuntime[T]] runtime. It
+// prepopulates the [VerifierRuntime[T].Columns] and [VerifierRuntime[T].QueriesParams]
 // with the one that are in the proof. It also populates its verifier steps from
 // the `VerifierFuncGen` in the `c`. The user also passes the list of prover
 // messages. It is internally called by the [Verify] function.
-func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
+func (c *CompiledIOP[T]) createVerifier(proof Proof[T]) VerifierRuntime[T] {
 
 	/*
 		Instantiate an empty assigment for the verifier
 	*/
-	runtime := VerifierRuntime{
+	runtime := VerifierRuntime[T]{
 		Spec:          c,
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
@@ -187,23 +188,23 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 }
 
 // GetPublicInput extracts the value of a public input from the proof.
-func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element {
+func (proof Proof[T]) GetPublicInput(comp *CompiledIOP[T], name string) field.Element {
 
 	publicInputsAccessor := comp.GetPublicInputAccessor(name)
 
 	switch a := publicInputsAccessor.(type) {
-	case *accessors.FromConstAccessor:
+	case *accessors.FromConstAccessor[T]:
 		if a.IsBase() {
 			return a.Base
 		} else {
 			panic("Requested a base element from a public input that is a field extension")
 		}
-	case *accessors.FromPublicColumn:
+	case *accessors.FromPublicColumn[T]:
 		if a.Col.Status() == column.Proof {
 			return proof.Messages.MustGet(a.Col.ID).Get(a.Pos)
 		}
-	case *accessors.FromLocalOpeningYAccessor:
-		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).BaseY
+	case *accessors.FromLocalOpeningYAccessor[T]:
+		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams[T]).BaseY
 	}
 
 	// This generically returns the value of a public input by extracting
@@ -220,7 +221,7 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 // GenerateCoinsFromRound generates all the random coins for the given round.
 // It does so by updating the FS with all the prover messages from round-1
 // and then generating all the coins for the current round.
-func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
+func (run *VerifierRuntime[T]) GenerateCoinsFromRound(currRound int) {
 
 	if currRound > 0 {
 
@@ -294,7 +295,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 // than once. The coin should also have been registered as a field element
 // before doing this call. Will also trigger the "goNextRound" logic if
 // appropriate.
-func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
+func (run *VerifierRuntime[T]) GetRandomCoinField(name coin.Name) field.Element {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -307,7 +308,7 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	return run.Coins.MustGet(name).(field.Element)
 }
 
-func (run *VerifierRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
+func (run *VerifierRuntime[T]) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	infos := run.Spec.Coins.Data(name)
 	if infos.Type != coin.FieldExt {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
@@ -317,7 +318,7 @@ func (run *VerifierRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 }
 
 // GetRandomCoinFromSeed returns a field element random based on the seed.
-func (run *VerifierRuntime) GetRandomCoinFromSeed(name coin.Name) field.Element {
+func (run *VerifierRuntime[T]) GetRandomCoinFromSeed(name coin.Name) field.Element {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -335,7 +336,7 @@ func (run *VerifierRuntime) GetRandomCoinFromSeed(name coin.Name) field.Element 
 // can't be retrieved more than once. The coin should also have been registered
 // as an integer vec before doing this call. Will also trigger the
 // "goNextRound" logic if appropriate.
-func (run *VerifierRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
+func (run *VerifierRuntime[T]) GetRandomCoinIntegerVec(name coin.Name) []int {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type
@@ -351,15 +352,15 @@ func (run *VerifierRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 // GetUnivariateParams returns the parameters of a univariate evaluation (i.e:
 // x, the evaluation point) and y, the alleged polynomial opening. This is
 // intended to resolve parameters that have been provided by the proof.
-func (run *VerifierRuntime) GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams {
-	return run.QueriesParams.MustGet(name).(query.UnivariateEvalParams)
+func (run *VerifierRuntime[T]) GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams[T] {
+	return run.QueriesParams.MustGet(name).(query.UnivariateEvalParams[T])
 }
 
 /*
 Returns the number of rounds in the assignment.
-Deprecated: get it from the CompiledIOP instead
+Deprecated: get it from the CompiledIOP[T] instead
 */
-func (run *VerifierRuntime) NumRounds() int {
+func (run *VerifierRuntime[T]) NumRounds() int {
 	/*
 		Getting it from the spec is the safest as it is already
 		tested. We could fit more assertions here nonetheless.
@@ -368,17 +369,17 @@ func (run *VerifierRuntime) NumRounds() int {
 }
 
 /*
-GetUnivariateEval returns a registered [query.UnivariateEval]. Panic if not found.
-Deprecated: get it from the CompiledIOP instead
+GetUnivariateEval returns a registered [query.UnivariateEval[T]]. Panic if not found.
+Deprecated: get it from the CompiledIOP[T] instead
 */
-func (run *VerifierRuntime) GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval {
-	return run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
+func (run *VerifierRuntime[T]) GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval[T] {
+	return run.Spec.QueriesParams.Data(name).(query.UnivariateEval[T])
 }
 
 // GetColumn returns a column by name. The status of the columns must be
 // either proof or public input and the column must be visible to the verifier
 // and consequently be available in the proof.
-func (run *VerifierRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
+func (run *VerifierRuntime[T]) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 
 	msgStatus := run.Spec.Columns.Status(name)
 
@@ -403,30 +404,30 @@ func (run *VerifierRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 // GetInnerProductParams returns the parameters of an inner-product query
 // [query.InnerProduct] provided by the proof. The function will panic if the
 // query does not exist or if the parameters are not available in the proof.
-func (run *VerifierRuntime) GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams {
-	return run.QueriesParams.MustGet(name).(query.InnerProductParams)
+func (run *VerifierRuntime[T]) GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams[T] {
+	return run.QueriesParams.MustGet(name).(query.InnerProductParams[T])
 }
 
 // GetLocalPointEvalParams returns the parameters of a [query.LocalOpening]
 // query  (i.e: y, the alleged opening of the query's column at the first
 // position.
-func (run *VerifierRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams {
-	return run.QueriesParams.MustGet(name).(query.LocalOpeningParams)
+func (run *VerifierRuntime[T]) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams[T] {
+	return run.QueriesParams.MustGet(name).(query.LocalOpeningParams[T])
 }
 
 // GetLogDerivSumParams returns the parameters of a [query.LogDerivativeSum]
-func (run *VerifierRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
-	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams)
+func (run *VerifierRuntime[T]) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams[T] {
+	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams[T])
 }
 
 // GetGrandProductParams returns the parameters of a [query.GrandProduct]
-func (run *VerifierRuntime) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
+func (run *VerifierRuntime[T]) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
 	return run.QueriesParams.MustGet(name).(query.GrandProductParams)
 }
 
 // GetHornerParams returns the parameters of a [query.Honer] query.
-func (run *VerifierRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParams {
-	return run.QueriesParams.MustGet(name).(query.HornerParams)
+func (run *VerifierRuntime[T]) GetHornerParams(name ifaces.QueryID) query.HornerParams[T] {
+	return run.QueriesParams.MustGet(name).(query.HornerParams[T])
 }
 
 /*
@@ -435,7 +436,7 @@ Copies the witness into a slice
 
 Deprecated: this is deadcode
 */
-func (run VerifierRuntime) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAssignment) {
+func (run VerifierRuntime[T]) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAssignment) {
 	/*
 		Make sure the column is registered. If the name is the one specified
 		does not correcpond to a natural column, this will panic. And this is
@@ -455,7 +456,7 @@ func (run VerifierRuntime) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAss
 // position. This is needed to implement the [column.GetWitness] interface and
 // it will only work if the requested column is part of the proof the verifier
 // is running on.
-func (run VerifierRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
+func (run VerifierRuntime[T]) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 	/*
 		Make sure the column is registered. If the name is the one specified
 		does not correcpond to a natural column, this will panic. And this is
@@ -471,7 +472,7 @@ func (run VerifierRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element
 	return wit.Get(pos)
 }
 
-func (run *VerifierRuntime) GetColumnAtBase(name ifaces.ColID, pos int) (field.Element, error) {
+func (run *VerifierRuntime[T]) GetColumnAtBase(name ifaces.ColID, pos int) (field.Element, error) {
 	run.Spec.Columns.MustHaveName(name)
 	wit := run.Columns.MustGet(name)
 
@@ -486,7 +487,7 @@ func (run *VerifierRuntime) GetColumnAtBase(name ifaces.ColID, pos int) (field.E
 	}
 
 }
-func (run *VerifierRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element {
+func (run *VerifierRuntime[T]) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element {
 	run.Spec.Columns.MustHaveName(name)
 	wit := run.Columns.MustGet(name)
 
@@ -501,12 +502,12 @@ func (run *VerifierRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Elem
 //
 // Deprecated: there are already methods to return parameters with an explicit
 // type.
-func (run *VerifierRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
+func (run *VerifierRuntime[T]) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
 }
 
 // GetPublicInput returns a public input from its name
-func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
+func (run *VerifierRuntime[T]) GetPublicInput(name string) field.Element {
 	allPubs := run.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
@@ -518,35 +519,35 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() hash.StateStorer {
+func (run *VerifierRuntime[T]) Fs() hash.StateStorer {
 	return run.FS
 }
 
 // GetSpec returns the compiled IOP
-func (run *VerifierRuntime) GetSpec() *CompiledIOP {
+func (run *VerifierRuntime[T]) GetSpec() *CompiledIOP[T] {
 	return run.Spec
 }
 
 // InsertCoin inserts a coin into the runtime. It should not be
 // used by usual verifier action but is useful when implementing
 // recursion utilities.
-func (run *VerifierRuntime) InsertCoin(name coin.Name, value any) {
+func (run *VerifierRuntime[T]) InsertCoin(name coin.Name, value any) {
 	run.Coins.InsertNew(name, value)
 }
 
 // GetState returns an arbitrary value stored in the runtime
-func (run *VerifierRuntime) GetState(name string) (any, bool) {
+func (run *VerifierRuntime[T]) GetState(name string) (any, bool) {
 	res, ok := run.State[name]
 	return res, ok
 }
 
 // SetState sets an arbitrary value in the runtime
-func (run *VerifierRuntime) SetState(name string, value any) {
+func (run *VerifierRuntime[T]) SetState(name string, value any) {
 	run.State[name] = value
 }
 
 // GetQuery returns a query from its name
-func (run *VerifierRuntime) GetQuery(name ifaces.QueryID) ifaces.Query {
+func (run *VerifierRuntime[T]) GetQuery(name ifaces.QueryID) ifaces.Query[T] {
 
 	if run.Spec.QueriesParams.Exists(name) {
 		return run.Spec.QueriesParams.Data(name)

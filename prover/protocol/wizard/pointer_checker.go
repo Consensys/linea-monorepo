@@ -15,7 +15,7 @@ import (
 // column and expression objects are linked to the store of the compiled IOP.
 //
 // This is useful to early-catch bugs that would otherwise hard to find.
-func (comp *CompiledIOP) checkAnyInStore(x any) {
+func (comp *CompiledIOP[T]) checkAnyInStore(x any) {
 
 	if !comp.WithStorePointerChecks {
 		return
@@ -26,7 +26,7 @@ func (comp *CompiledIOP) checkAnyInStore(x any) {
 
 // checkReflectValueInStore recursively crawls in the fields of the provided
 // reflect.Value object.
-func (comp *CompiledIOP) checkReflectValueInStore(x reflect.Value) {
+func (comp *CompiledIOP[T]) checkReflectValueInStore(x reflect.Value) {
 
 	if !comp.WithStorePointerChecks {
 		return
@@ -36,14 +36,14 @@ func (comp *CompiledIOP) checkReflectValueInStore(x reflect.Value) {
 		return
 	}
 
-	colType := reflect.TypeOf((*ifaces.Column)(nil)).Elem()
-	exprType := reflect.TypeOf((*symbolic.Expression)(nil))
+	colType := reflect.TypeOf((*ifaces.Column[T])(nil)).Elem()
+	exprType := reflect.TypeOf((*symbolic.Expression[T])(nil))
 
 	switch x.Type() {
 	case colType:
-		comp.checkColumnInStore(x.Interface().(ifaces.Column))
+		comp.checkColumnInStore(x.Interface().(ifaces.Column[T]))
 	case exprType:
-		comp.checkExpressionInStore(x.Interface().(*symbolic.Expression))
+		comp.checkExpressionInStore(x.Interface().(*symbolic.Expression[T]))
 	}
 
 	switch x.Kind() {
@@ -73,13 +73,13 @@ func (comp *CompiledIOP) checkReflectValueInStore(x reflect.Value) {
 // checkColumnInStore checks that the provided column is in the store of the
 // compiled IOP. It is used to early-catch bugs that would otherwise hard to
 // find.
-func (comp *CompiledIOP) checkColumnInStore(col ifaces.Column) {
+func (comp *CompiledIOP[T]) checkColumnInStore(col ifaces.Column[T]) {
 
 	if !comp.WithStorePointerChecks {
 		return
 	}
 
-	if nat, ok := col.(column.Natural); ok {
+	if nat, ok := col.(column.Natural[T]); ok {
 		if nat.GetStoreUnsafe() != comp.Columns {
 			utils.Panic("column %v has a wrong store", col.GetColID())
 		}
@@ -89,7 +89,7 @@ func (comp *CompiledIOP) checkColumnInStore(col ifaces.Column) {
 // checkExpressionInStore checks that the provided expression is in the store of
 // the compiled IOP. It is used to early-catch bugs that would otherwise hard to
 // find.
-func (comp *CompiledIOP) checkExpressionInStore(expr *symbolic.Expression) {
+func (comp *CompiledIOP[T]) checkExpressionInStore(expr *symbolic.Expression[T]) {
 
 	if !comp.WithStorePointerChecks {
 		return
@@ -101,7 +101,7 @@ func (comp *CompiledIOP) checkExpressionInStore(expr *symbolic.Expression) {
 	)
 
 	for _, m := range meta {
-		if col, ok := m.(ifaces.Column); ok {
+		if col, ok := m.(ifaces.Column[T]); ok {
 			comp.checkColumnInStore(col)
 		}
 	}

@@ -64,7 +64,7 @@ const (
 // is a behavior that we intend to deprecate and it should not be used by the
 // prover as this tends to create convolutions in the runtime of the prover.
 
-type MainProverStep func(assi *ProverRuntime[T])
+type MainProverStep[T zk.Element] func(assi *ProverRuntime[T])
 
 // ProverRuntime collects the assignment of all the items with which the prover
 // interacts by the prover of the protocol. This includes the prover's
@@ -165,7 +165,7 @@ type ProverRuntime[T zk.Element] struct {
 	PerformanceLogs []*profiling.PerformanceLog
 
 	// High-level prover function
-	HighLevelProver MainProverStep
+	HighLevelProver MainProverStep[T]
 }
 
 // Prove is the top-level function that runs the Prover on the user's side. It
@@ -188,7 +188,7 @@ type ProverRuntime[T zk.Element] struct {
 // auto-detection adds little value and adds a lot of convolution especially
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
-func Prove[T zk.Element](c *CompiledIOP[T], highLevelprover MainProverStep) Proof {
+func Prove[T zk.Element](c *CompiledIOP[T], highLevelprover MainProverStep[T]) Proof[T] {
 	run := RunProver(c, highLevelprover)
 
 	// Write the performance logs to the csv file is the performance monitor is active
@@ -203,19 +203,19 @@ func Prove[T zk.Element](c *CompiledIOP[T], highLevelprover MainProverStep) Proo
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
-func RunProver[T zk.Element](c *CompiledIOP[T], highLevelprover MainProverStep) *ProverRuntime[T] {
+func RunProver[T zk.Element](c *CompiledIOP[T], highLevelprover MainProverStep[T]) *ProverRuntime[T] {
 	return RunProverUntilRound(c, highLevelprover, c.NumRounds())
 }
 
 // RunProverUntilRound runs the prover until the specified round
 // We wrap highLevelProver with a struct that implements the prover action interface
-func RunProverUntilRound[T zk.Element](c *CompiledIOP[T], highLevelProver MainProverStep, round int) *ProverRuntime[T] {
+func RunProverUntilRound[T zk.Element](c *CompiledIOP[T], highLevelProver MainProverStep[T], round int) *ProverRuntime[T] {
 	runtime := c.createProver()
 	runtime.HighLevelProver = highLevelProver
 
 	// Execute the high-level prover as a ProverAction
 	if runtime.HighLevelProver != nil {
-		runtime.exec("high-level-prover", mainProverStepWrapper{step: highLevelProver})
+		runtime.exec("high-level-prover", mainProverStepWrapper[T]{step: highLevelProver})
 	}
 
 	// Run sub-prover steps for the initial round
@@ -233,7 +233,7 @@ func RunProverUntilRound[T zk.Element](c *CompiledIOP[T], highLevelProver MainPr
 // been obtained via a [RunProverUntilRound], then it may be the case that
 // some columns have not been assigned at all. Those won't be included in the
 // returned proof.
-func (run *ProverRuntime[T]) ExtractProof() Proof {
+func (run *ProverRuntime[T]) ExtractProof() Proof[T] {
 	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
 	for _, name := range run.Spec.Columns.AllKeysProof() {
 		cols := run.Spec.Columns.GetHandle(name)
@@ -251,7 +251,7 @@ func (run *ProverRuntime[T]) ExtractProof() Proof {
 		}
 	}
 
-	return Proof{
+	return Proof[T]{
 		Messages:      messages,
 		QueriesParams: queriesParams,
 	}
@@ -833,8 +833,8 @@ func (run *ProverRuntime[T]) GetInnerProduct(name ifaces.QueryID) query.InnerPro
 //
 // The function will panic of the parameters are not available or if the
 // parameters have the wrong type: not an [query.InnerProductParams].
-func (run *ProverRuntime[T]) GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams {
-	return run.QueriesParams.MustGet(name).(query.InnerProductParams)
+func (run *ProverRuntime[T]) GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams[T] {
+	return run.QueriesParams.MustGet(name).(query.InnerProductParams[T])
 }
 
 // AssignInnerProduct assigns the result of an inner-product query in the
@@ -844,7 +844,7 @@ func (run *ProverRuntime[T]) GetInnerProductParams(name ifaces.QueryID) query.In
 //   - no query with the name `name` are found in the [CompiledIOP] object.
 //   - parameters for this query have already been assigned
 //   - the assignment round is not the correct one
-func (run *ProverRuntime[T]) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Element) query.InnerProductParams {
+func (run *ProverRuntime[T]) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Element) query.InnerProductParams[T] {
 	q := run.GetInnerProduct(name)
 	if len(q.Bs) != len(ys) {
 		utils.Panic("Inner-product query %v has %v bs but assigned for %v", name, len(q.Bs), len(ys))
@@ -853,7 +853,7 @@ func (run *ProverRuntime[T]) AssignInnerProduct(name ifaces.QueryID, ys ...fext.
 	// Make sure, it is done at the right round
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
-	param := query.NewInnerProductParams(ys...)
+	param := query.NewInnerProductParams[T](ys...)
 	run.QueriesParams.InsertNew(name, param)
 	return param
 }
@@ -882,7 +882,7 @@ func (run *ProverRuntime[T]) AssignUnivariate(name ifaces.QueryID, x field.Eleme
 		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
 	}
 	// Adds it to the assignments
-	params := query.NewUnivariateEvalParams(x, ys...)
+	params := query.NewUnivariateEvalParams[T](x, ys...)
 	run.QueriesParams.InsertNew(name, params)
 }
 
@@ -901,7 +901,7 @@ func (run *ProverRuntime[T]) AssignUnivariateExt(name ifaces.QueryID, x fext.Ele
 		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
 	}
 	// Adds it to the assignments
-	params := query.NewUnivariateEvalParamsExt(x, ys...)
+	params := query.NewUnivariateEvalParamsExt[T](x, ys...)
 	run.QueriesParams.InsertNew(name, params)
 }
 
@@ -919,11 +919,11 @@ func (run *ProverRuntime[T]) GetUnivariateEval(name ifaces.QueryID) query.Univar
 // x, the evaluation point) and y, the alleged polynomial opening. This is
 // intended to resolve parameters that have been already assigned in a previous
 // step of the prover runtime.
-func (run *ProverRuntime[T]) GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams {
+func (run *ProverRuntime[T]) GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams[T] {
 	// Global prover's lock for accessing params
 	run.lock.Lock()
 	defer run.lock.Unlock()
-	return run.QueriesParams.MustGet(name).(query.UnivariateEvalParams)
+	return run.QueriesParams.MustGet(name).(query.UnivariateEvalParams[T])
 }
 
 // AssignLocalPoint assign evaluation point and claimed values for a local point
@@ -946,7 +946,7 @@ func (run *ProverRuntime[T]) AssignLocalPoint(name ifaces.QueryID, y field.Eleme
 	}
 
 	// Adds it to the assignments
-	params := query.NewLocalOpeningParams(y)
+	params := query.NewLocalOpeningParams[T](y)
 	run.QueriesParams.InsertNew(name, params)
 }
 
@@ -965,7 +965,7 @@ func (run *ProverRuntime[T]) AssignLocalPointExt(name ifaces.QueryID, y fext.Ele
 	}
 
 	// Adds it to the assignments
-	params := query.NewLocalOpeningParamsExt(y)
+	params := query.NewLocalOpeningParamsExt[T](y)
 	run.QueriesParams.InsertNew(name, params)
 }
 
@@ -981,13 +981,13 @@ func (run *ProverRuntime[T]) GetLocalPointEval(name ifaces.QueryID) query.LocalO
 
 // GetLocalPointEvalParams returns the parameters of a univariate evaluation
 // (i.e: x, the evaluation point) and y, the alleged polynomial opening.
-func (run *ProverRuntime[T]) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams {
+func (run *ProverRuntime[T]) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams[T] {
 
 	// Global prover's lock for accessing params
 	run.lock.Lock()
 	defer run.lock.Unlock()
 
-	return run.QueriesParams.MustGet(name).(query.LocalOpeningParams)
+	return run.QueriesParams.MustGet(name).(query.LocalOpeningParams[T])
 }
 
 // AssignLogDerivSum assign the claimed values for a logDeriveSum
@@ -1005,7 +1005,7 @@ func (run *ProverRuntime[T]) AssignLogDerivSum(name ifaces.QueryID, y fext.Gener
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	// Adds it to the assignments
-	params := query.NewLogDerivSumParams(y)
+	params := query.NewLogDerivSumParams[T](y)
 	run.QueriesParams.InsertNew(name, params)
 }
 
@@ -1043,21 +1043,21 @@ func (run *ProverRuntime[T]) AssignGrandProductExt(name ifaces.QueryID, y fext.E
 }
 
 // GetLogDeriveSum gets the metadata of a [query.LogDerivativeSum] query. Panic if not found.
-func (run *ProverRuntime[T]) GetLogDeriveSum(name ifaces.QueryID) query.LogDerivativeSum {
+func (run *ProverRuntime[T]) GetLogDeriveSum(name ifaces.QueryID) query.LogDerivativeSum[T] {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
-	return run.Spec.QueriesParams.Data(name).(query.LogDerivativeSum)
+	return run.Spec.QueriesParams.Data(name).(query.LogDerivativeSum[T])
 }
 
 // GetLogDerivSumParams returns the parameters of [query.LogDerivativeSum]
-func (run *ProverRuntime[T]) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
+func (run *ProverRuntime[T]) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams[T] {
 
 	// Global prover's lock for accessing params
 	run.lock.Lock()
 	defer run.lock.Unlock()
 
-	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams)
+	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams[T])
 }
 
 // GetGrandProductParams returns the parameters of a [query.Honer] query.
@@ -1072,7 +1072,7 @@ func (run *ProverRuntime[T]) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 }
 
 // AssignHornerParams assignes the parameters of a [query.Honer] query.
-func (run *ProverRuntime[T]) AssignHornerParams(name ifaces.QueryID, params query.HornerParams) {
+func (run *ProverRuntime[T]) AssignHornerParams(name ifaces.QueryID, params query.HornerParams[T]) {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -1085,11 +1085,11 @@ func (run *ProverRuntime[T]) AssignHornerParams(name ifaces.QueryID, params quer
 }
 
 // GetHornerParams returns the parameters of a [query.Honer] query.
-func (run *ProverRuntime[T]) GetHornerParams(name ifaces.QueryID) query.HornerParams {
+func (run *ProverRuntime[T]) GetHornerParams(name ifaces.QueryID) query.HornerParams[T] {
 	// Global prover's lock for accessing params
 	run.lock.Lock()
 	defer run.lock.Unlock()
-	return run.QueriesParams.MustGet(name).(query.HornerParams)
+	return run.QueriesParams.MustGet(name).(query.HornerParams[T])
 }
 
 // Fs returns the Fiat-Shamir state
@@ -1115,7 +1115,7 @@ func (run *ProverRuntime[T]) GetPublicInput(name string) field.Element {
 }
 
 // GetQuery returns a query from its name
-func (run *ProverRuntime[T]) GetQuery(name ifaces.QueryID) ifaces.Query {
+func (run *ProverRuntime[T]) GetQuery(name ifaces.QueryID) ifaces.Query[T] {
 
 	if run.Spec.QueriesParams.Exists(name) {
 		return run.Spec.QueriesParams.Data(name)
@@ -1130,7 +1130,7 @@ func (run *ProverRuntime[T]) GetQuery(name ifaces.QueryID) ifaces.Query {
 }
 
 // GetSpec returns the underlying compiled IOP
-func (run *ProverRuntime[T]) GetSpec() *CompiledIOP {
+func (run *ProverRuntime[T]) GetSpec() *CompiledIOP[T] {
 	return run.Spec
 }
 
@@ -1159,7 +1159,7 @@ func (runtime *ProverRuntime[T]) exec(name string, action any) {
 		switch a := action.(type) {
 		case func():
 			a()
-		case ProverAction:
+		case ProverAction[T]:
 			a.Run(runtime)
 		default:
 			utils.Panic("wizard.exec: unsupported action type: got %T; expected one of: func(), ProverAction", action)
@@ -1180,7 +1180,7 @@ func (runtime *ProverRuntime[T]) exec(name string, action any) {
 	case "prover-rounds":
 		shouldProfile = actionIsPlainFunc(action)
 	case "prover-steps":
-		shouldProfile = actionIsProverAction(action)
+		shouldProfile = actionIsProverAction[T](action)
 	}
 
 	if shouldProfile {
@@ -1267,7 +1267,7 @@ func actionIsPlainFunc(action any) bool {
 }
 
 // actionIsProverAction checks if the action is an individual ProverStep in a specific round or highlevelProver.
-func actionIsProverAction(action any) bool {
-	_, ok := action.(ProverAction)
+func actionIsProverAction[T zk.Element](action any) bool {
+	_, ok := action.(ProverAction[T])
 	return ok
 }

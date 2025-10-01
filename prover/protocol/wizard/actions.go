@@ -32,7 +32,7 @@ func (w mainProverStepWrapper[T]) Run(run *ProverRuntime[T]) {
 type VerifierAction[T zk.Element] interface {
 	// Run executes the VerifierAction over a [VerifierRuntime] it returns an
 	// error.
-	Run(Runtime) error
+	Run(Runtime[T]) error
 	// RunGnark is as Run but in a gnark circuit. Instead, of the returning an
 	// error the function enforces the passing of the verifier's checks.
 	RunGnark(frontend.API, GnarkRuntime[T])
@@ -66,7 +66,7 @@ func (p PrintingProverAction[T]) Run(run *ProverRuntime[T]) {
 }
 
 // Run implements the VerifierAction interface for PrintingVerifierAction.
-func (p PrintingVerifierAction[T]) Run(run Runtime) error {
+func (p PrintingVerifierAction[T]) Run(run Runtime[T]) error {
 
 	name := p.Column.GetColID()
 	if len(p.NameReplacement) > 0 {

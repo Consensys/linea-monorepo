@@ -16,7 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -260,7 +259,7 @@ func AllocateWizardCircuit[T zk.Element](comp *CompiledIOP[T], numRound int) *Ve
 // AssignVerifierCircuit assigns values to the wizard verifier
 // circuit from a proof. The result of this function can be used to construct a
 // gnark assignment circuit involving the verification of Wizard proof.
-func AssignVerifierCircuit[T zk.Element](comp *CompiledIOP[T], proof Proof, numRound int) *VerifierCircuit[T] {
+func AssignVerifierCircuit[T zk.Element](comp *CompiledIOP[T], proof Proof[T], numRound int) *VerifierCircuit[T] {
 
 	if numRound == 0 {
 		numRound = comp.NumRounds()
@@ -389,8 +388,8 @@ func (c *VerifierCircuit[T]) GenerateCoinsForRound(api frontend.API, currRound i
 				continue
 			}
 
-			msgContent := c.GetColumn(msg)
-			c.FS.UpdateVec(msgContent)
+			// msgContent := c.GetColumn(msg)
+			// c.FS.UpdateVec(msgContent) // TODO @thomas fixme
 		}
 
 		/*
@@ -590,10 +589,10 @@ func (c *VerifierCircuit[T]) GetColumnBase(name ifaces.ColID) ([]T, error) {
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
 		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		res := gnarkutil.AllocateSlice(len(val))
+		res := make([]T, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = val[i]
+			res[i] = *zk.ValueOf[T](val[i])
 		}
 		return res, nil
 	}
@@ -824,9 +823,13 @@ func (c *VerifierCircuit[T]) AssignHorner(qName ifaces.QueryID, params query.Hor
 // GetPublicInput returns a public input value from its name
 func (c *VerifierCircuit[T]) GetPublicInput(api frontend.API, name string) T {
 	allPubs := c.Spec.PublicInputs
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
 	for i := range allPubs {
 		if allPubs[i].Name == name {
-			return allPubs[i].Acc.GetFrontendVariable(api, c)
+			return allPubs[i].Acc.GetFrontendVariable(apiGen, c)
 		}
 	}
 	utils.Panic("could not find public input nb %v", name)

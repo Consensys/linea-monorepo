@@ -124,7 +124,7 @@ type CompiledIOP[T zk.Element] struct {
 
 	// FunctionalPublic inputs lists the queries representing a public inputs
 	// and their identifiers
-	PublicInputs []PublicInput
+	PublicInputs []PublicInput[T]
 
 	// ExtraData is a free field in which compilers can store whatever they want.
 	ExtraData map[string]any
@@ -625,7 +625,7 @@ func (c *CompiledIOP[T]) InsertMiMC(round int, id ifaces.QueryID, block, old, ne
 	}
 
 	q := query.NewMiMC(id, block, old, new, selector)
-	c.QueriesNoParams.AddToRound(round, id, q)
+	// c.QueriesNoParams.AddToRound(round, id, q) // TODO @thomas fixme
 	return q
 }
 
@@ -748,11 +748,11 @@ func (c *CompiledIOP[T]) InsertProjection(id ifaces.QueryID, in any) query.Proje
 
 // AddPublicInput inserts a public-input in the compiled-IOP. The function
 // panics if the public-input already exists.
-func (c *CompiledIOP[T]) InsertPublicInput(name string, acc ifaces.Accessor[T]) PublicInput {
+func (c *CompiledIOP[T]) InsertPublicInput(name string, acc ifaces.Accessor[T]) PublicInput[T] {
 
 	c.checkAnyInStore(acc)
 
-	res := PublicInput{
+	res := PublicInput[T]{
 		Name: name,
 		Acc:  acc,
 	}
