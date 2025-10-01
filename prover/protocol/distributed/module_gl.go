@@ -940,8 +940,8 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
-		targetMSetGeneral          = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
-		targetMSetSharedRandomness = getPublicInputList(run, sharedRandomnessMultiSetPublicInputBase, 1)
+		targetMSetGeneral          = getPublicInputList(run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetSharedRandomness = getPublicInputList(run, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments             = run.GetPublicInput(lppMerkleRootPublicInput)
 		segmentIndex               = run.GetColumnAt(segmentModuleIndexColumn, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
@@ -1004,6 +1004,63 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 	if !vector.Equal(targetMSetSharedRandomness, multiSetSharedRandomness[:]) {
 		return fmt.Errorf("shared randomness MSet mismatch, expected: %v, got: %v", targetMSetSharedRandomness, multiSetSharedRandomness[:])
+	}
+
+	return nil
+}
+
+// checkGnarkMultiSetHash checks that the LPP commitment MSet is correctly
+// assigned. It is meant to be run as part of a verifier action.
+func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
+
+	var (
+		targetMSetGeneral          = getPublicInputListGnark(api, run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetSharedRandomness = getPublicInputListGnark(api, run, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
+		lppCommitments             = run.GetPublicInput(api, lppMerkleRootPublicInput)
+		segmentIndex               = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		typeOfProof                = field.NewElement(uint64(proofTypeGL))
+		globalSentHash             = modGL.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
+		globalRcvdHash             = modGL.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
+		multiSetGeneral            = mimc.MSetHashGnark{}
+		multiSetSharedRandomness   = mimc.MSetHashGnark{}
+		defInp                     = modGL.DefinitionInput
+		moduleIndex                = frontend.Variable(defInp.ModuleIndex)
+		numSegmentOfCurrModule     = modGL.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
+		isFirst                    = modGL.IsFirst.GetColAssignmentGnarkAt(run, 0)
+		isLast                     = modGL.IsLast.GetColAssignmentGnarkAt(run, 0)
+	)
+
+	multiSetSharedRandomness.Insert(api, moduleIndex, segmentIndex, lppCommitments)
+	multiSetGeneral.Add(api, multiSetSharedRandomness)
+
+	api.AssertIsBoolean(isFirst)
+	api.AssertIsBoolean(isLast)
+
+	// This checks that isFirst and isLast are well assigned wrt to the segment
+	// index
+	api.AssertIsEqual(isFirst, api.IsZero(segmentIndex))
+	api.AssertIsEqual(isLast, api.IsZero(api.Sub(numSegmentOfCurrModule, segmentIndex, 1)))
+
+	// If the segment is not the last one of its module we add the "sent" value
+	// in the multiset.
+	mSetOfSentGlobal := mimc.MsetOfSingletonGnark(api, segmentIndex, typeOfProof, globalSentHash)
+	for i := range mSetOfSentGlobal {
+		mSetOfSentGlobal[i] = api.Mul(mSetOfSentGlobal[i], api.Sub(1, isLast))
+		multiSetGeneral[i] = api.Add(multiSetGeneral[i], mSetOfSentGlobal[i])
+	}
+
+	// If the segment is not the first one of its module, we add the received
+	// value in the multiset. If the segment index is zero, the singleton hash
+	// will be zero-ed out by the "1 - isFirst" term
+	mSetOfReceivedGlobal := mimc.MsetOfSingletonGnark(api, api.Sub(segmentIndex, 1), typeOfProof, globalRcvdHash)
+	for i := range mSetOfReceivedGlobal {
+		mSetOfReceivedGlobal[i] = api.Mul(mSetOfReceivedGlobal[i], api.Sub(1, isFirst))
+		multiSetGeneral[i] = api.Sub(multiSetGeneral[i], mSetOfReceivedGlobal[i])
+	}
+
+	for i := range multiSetGeneral {
+		api.AssertIsEqual(multiSetGeneral[i], targetMSetGeneral[i])
+		api.AssertIsEqual(multiSetSharedRandomness[i], targetMSetSharedRandomness[i])
 	}
 
 	return nil

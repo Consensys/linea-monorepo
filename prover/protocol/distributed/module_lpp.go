@@ -606,12 +606,12 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime, witness *
 
 // checkLPPCommitmentMSetGL checks that the LPP commitment MSet is correctly
 // assigned. It is meant to be run as part of a verifier action.
-func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime, segmentModuleIndexCol ifaces.Column, moduleIndexInt int) error {
+func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime, moduleIndexInt int) error {
 
 	var (
 		targetMSet             = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
 		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex           = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		segmentIndex           = run.GetColumnAt(modLPP.SegmentModuleIndex.GetColID(), 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		n0Hash                 = modLPP.N0Hash.GetColAssignmentAt(run, 0)
 		n1Hash                 = modLPP.N1Hash.GetColAssignmentAt(run, 0)
@@ -647,6 +647,50 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime, segmentModuleInde
 
 	if !vector.Equal(targetMSet, mset[:]) {
 		return fmt.Errorf("LPP commitment MSet mismatch, expected: %v, got: %v", targetMSet, mset[:])
+	}
+
+	return nil
+}
+
+// checkGnarkMultiSetHash checks that the commitment MSet and the randomness MSet
+// are correctly set. It is meant to be run as part of a verifier action..
+func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime, segmentModuleIndexCol ifaces.Column, moduleIndexInt int) error {
+
+	var (
+		targetMSetGeneral      = getPublicInputListGnark(api, run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
+		lppCommitments         = run.GetPublicInput(api, lppMerkleRootPublicInput)
+		segmentIndex           = run.GetColumnAt(modLPP.SegmentModuleIndex.GetColID(), 0)
+		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
+		n0Hash                 = modLPP.N0Hash.GetColAssignmentGnarkAt(run, 0)
+		n1Hash                 = modLPP.N1Hash.GetColAssignmentGnarkAt(run, 0)
+		multiSetGeneral        = mimc.MSetHashGnark{}
+		defInp                 = modLPP.DefinitionInput
+		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
+		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
+		isFirst                = api.IsZero(segmentIndex)
+		isLast                 = api.IsZero(api.Sub(numSegmentOfCurrModule, segmentIndex, 1))
+	)
+
+	multiSetGeneral.Remove(api, moduleIndex, segmentIndex, lppCommitments)
+
+	// If the segment is not the last one, we can add the "n1 hash" to the
+	// multiset.
+	n1HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, moduleIndex, segmentIndex, typeOfProof, n1Hash)
+	for i := 0; i < mimc.MSetHashSize; i++ {
+		n1HashSingletonMsetHash[i] = api.Mul(n1HashSingletonMsetHash[i], api.Sub(1, isLast))
+		multiSetGeneral[i] = api.Add(multiSetGeneral[i], n1HashSingletonMsetHash[i])
+	}
+
+	// If the segment is not the first one, we can remove the "n0 hash" from the
+	// multiset.
+	n0HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, moduleIndex, api.Sub(segmentIndex, 1), typeOfProof, n0Hash)
+	for i := 0; i < mimc.MSetHashSize; i++ {
+		n0HashSingletonMsetHash[i] = api.Mul(n0HashSingletonMsetHash[i], api.Sub(1, isFirst))
+		multiSetGeneral[i] = api.Sub(multiSetGeneral[i], n0HashSingletonMsetHash[i])
+	}
+
+	for i := range multiSetGeneral {
+		api.AssertIsEqual(multiSetGeneral[i], targetMSetGeneral[i])
 	}
 
 	return nil
