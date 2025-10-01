@@ -20,8 +20,7 @@ import static net.consensys.linea.BlockchainReferenceTestJson.readBlockchainRefe
 import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.JSON_INPUT_FILENAME;
 import static net.consensys.linea.reporting.TracerTestBase.getForkOrDefault;
 import static net.consensys.linea.testing.ToyExecutionTools.addSystemAccountsIfRequired;
-import static net.consensys.linea.zktracer.Fork.LONDON;
-import static net.consensys.linea.zktracer.Fork.toPascalCase;
+import static net.consensys.linea.zktracer.Fork.*;
 import static net.consensys.linea.zktracer.container.module.IncrementAndDetectModule.ERROR_MESSAGE_TRIED_TO_COMMIT_UNPROVABLE_TX;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -584,7 +583,6 @@ public class BlockchainReferenceTestTools {
 
     final ProtocolSchedule schedule =
         REFERENCE_TEST_PROTOCOL_SCHEDULES.getByName(spec.getNetwork());
-    final Fork fork = getForkFromNetwork(spec.getNetwork());
     final ChainConfig chain = ChainConfig.ETHEREUM_CHAIN(fork);
     final MutableBlockchain blockchain = spec.getBlockchain();
     final ProtocolContext context = spec.getProtocolContext();
@@ -683,12 +681,5 @@ public class BlockchainReferenceTestTools {
             corsetBlockProcessor);
 
     return new MainnetBlockImporter(blockValidator);
-  }
-
-  private static Fork getForkFromNetwork(String string) {
-    if (string.equals("Merge")) {
-      return Fork.PARIS;
-    }
-    return Fork.fromString(string);
   }
 }

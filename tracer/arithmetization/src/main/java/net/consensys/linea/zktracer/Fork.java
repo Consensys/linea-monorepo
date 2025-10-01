@@ -187,6 +187,7 @@ public enum Fork {
     };
   }
 
+  // Used for blockchain ref tests with the Paris exception of "Merge"
   public static String toPascalCase(Fork fork) {
     return switch (fork) {
       case LONDON -> "London";
