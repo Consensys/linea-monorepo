@@ -50,7 +50,9 @@ func (l *FromGrandProductAccessor[T]) GetFrontendVariableBase(api zk.APIGen[T], 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromGrandProductAccessor[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
 	params := circ.GetParams(l.Q.ID).(query.GnarkGrandProductParams[T])
-	return params.Prod
+	// TODO @thomas fixme
+	//return params.Prod
+	return params.Prod.B0.A0
 }
 
 func (l *FromGrandProductAccessor[T]) GetFrontendVariableExt(api zk.APIGen[T], c ifaces.GnarkRuntime[T]) gnarkfext.E4Gen[T] {

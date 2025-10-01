@@ -33,7 +33,7 @@ func (l *FromLocalOpeningYAccessor[T]) GetValBase(run ifaces.Runtime) (field.Ele
 }
 
 func (l *FromLocalOpeningYAccessor[T]) GetValExt(run ifaces.Runtime) fext.Element {
-	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
+	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams[T])
 	return params.ExtY
 }
 
@@ -65,7 +65,7 @@ func (l *FromLocalOpeningYAccessor[T]) String() string {
 
 // GetVal implements [ifaces.Accessor]
 func (l *FromLocalOpeningYAccessor[T]) GetVal(run ifaces.Runtime) field.Element {
-	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
+	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams[T])
 	return params.BaseY
 }
 

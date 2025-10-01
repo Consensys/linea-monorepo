@@ -36,7 +36,7 @@ func (l *FromLogDerivSumAccessor[T]) GetValBase(run ifaces.Runtime) (field.Eleme
 }
 
 func (l *FromLogDerivSumAccessor[T]) GetValExt(run ifaces.Runtime) fext.Element {
-	params := run.GetParams(l.Q.ID).(query.LogDerivSumParams)
+	params := run.GetParams(l.Q.ID).(query.LogDerivSumParams[T])
 	return params.Sum.GetExt()
 }
 

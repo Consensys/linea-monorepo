@@ -49,7 +49,9 @@ func (l *FromHornerAccessorFinalValue[T]) GetValExt(run ifaces.Runtime) fext.Ele
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromHornerAccessorFinalValue[T]) GetFrontendVariable(_ zk.APIGen[T], circ ifaces.GnarkRuntime[T]) T {
 	params := circ.GetParams(l.Q.ID).(query.GnarkHornerParams[T])
-	return params.FinalResult
+	// TODO @thomas fixme
+	// return params.FinalResult
+	return params.FinalResult.B0.A0
 }
 
 // AsVariable implements the [ifaces.Accessor] interface
