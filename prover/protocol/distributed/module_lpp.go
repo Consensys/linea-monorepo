@@ -625,14 +625,41 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime, witness *
 func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime, segmentModuleIndexCol ifaces.Column, moduleIndexInt int) error {
 
 	var (
-		targetMSet     = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
-		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex   = run.GetColumnAt(segmentModuleIndexColumn, 0)
-		moduleIndex    = field.NewElement(uint64(moduleIndexInt))
-		mset           = mimc.MSetHash{}
+		targetMSet             = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
+		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
+		segmentIndex           = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
+		n0Hash                 = modLPP.N0Hash.GetColAssignmentAt(run, 0)
+		n1Hash                 = modLPP.N1Hash.GetColAssignmentAt(run, 0)
+		mset                   = mimc.MSetHash{}
+		defInp                 = modLPP.DefinitionInput
+		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
+		numModule              = len(defInp.Disc.Modules)
+		segmentIndexInt        = segmentIndex.Uint64()
+		numSegmentOfLastModule = modLPP.PublicInputs.TargetNbSegments[numModule-1].Acc.GetVal(run)
 	)
 
 	mset.Remove(moduleIndex, segmentIndex, lppCommitments)
+
+	// If the segment is not the last one of its module we add the "sent" value
+	// in the multiset.
+	if segmentIndexInt < numSegmentOfLastModule.Uint64()-1 {
+		// This is a local module
+		mset.Remove(moduleIndex, segmentIndex, typeOfProof, n0Hash)
+	}
+
+	// If the segment is not the first one of its module, we add the received
+	// value in the multiset
+	if !segmentIndex.IsZero() {
+
+		var (
+			prevSegmentIndex field.Element
+			one              = field.One()
+		)
+
+		prevSegmentIndex.Sub(&segmentIndex, &one)
+		mset.Insert(moduleIndex, prevSegmentIndex, typeOfProof, n1Hash)
+	}
 
 	if !vector.Equal(targetMSet, mset[:]) {
 		return fmt.Errorf("LPP commitment MSet mismatch, expected: %v, got: %v", targetMSet, mset[:])
