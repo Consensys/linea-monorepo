@@ -50,6 +50,7 @@ func TestLinearCombination(t *testing.T) {
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
+	NewParams(2, 1<<4, 32, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2),
 	NewParams(4, 1<<3, 32, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2),
 }
 

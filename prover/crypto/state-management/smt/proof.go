@@ -99,7 +99,7 @@ func (p *Proof) RecoverRoot(conf *Config, leaf field.Octuplet) (field.Octuplet, 
 }
 
 // Verify the Merkle-proof against a hash and a root
-func (p *Proof) Verify(conf *Config, leaf field.Octuplet, root field.Octuplet) bool {
+func (p *Proof) Verify(conf *Config, leaf, root field.Octuplet) bool {
 	actual, err := p.RecoverRoot(conf, leaf)
 	if err != nil {
 		fmt.Printf("mtree verify: %v\n", err.Error())

@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +13,8 @@ import (
 func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 
 	config := &Config{
-		Depth: 40,
+		HashFunc: hashtypes.Poseidon2,
+		Depth:    40,
 	}
 
 	tree := NewEmptyTree(config)
@@ -53,6 +55,7 @@ func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 	return nil
 }
 
+//TODO@yao: fix
 // func TestMerkleProofGnark(t *testing.T) {
 
 // 	// generate witness

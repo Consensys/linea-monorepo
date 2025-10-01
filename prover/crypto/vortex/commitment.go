@@ -1,6 +1,9 @@
 package vortex
 
 import (
+	"runtime"
+
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -165,13 +168,15 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 
 	res := make([]field.Octuplet, numCols)
 
-	// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
-	hasher := p.LeafHashFunc()
+	hashers := make([]hashtypes.FieldHasher, runtime.GOMAXPROCS(0))
+
 	parallel.ExecuteThreadAware(
 		numCols,
 		func(threadID int) {
+			hashers[threadID] = p.LeafHashFunc()
 		},
 		func(col, threadID int) {
+			hasher := hashers[threadID]
 			colElems := make([]field.Element, numRows)
 			for row := 0; row < numRows; row++ {
 				colElems[row] = v[row].Get(col)

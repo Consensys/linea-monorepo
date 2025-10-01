@@ -3,7 +3,6 @@ package accumulator
 import (
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
@@ -53,8 +52,11 @@ func updateCheckRoot(conf *smt.Config, proof smt.Proof, root, old, new field.Oct
 // TopRoot returns the top-root hash which includes `NextFreeNode` and the
 // `SubTreeRoot`
 func (v *VerifierState[K, V]) TopRoot() field.Octuplet {
+	hasher := v.Config.HashFunc()
+	nodeL := WriteInt64OnHash(v.NextFreeNode)
+	nodeR := v.SubTreeRoot
 
-	return poseidon2.Poseidon2BlockCompression(WriteInt64OnHash(v.NextFreeNode), v.SubTreeRoot)
+	return hasher.BlockCompression(nodeL, nodeR)
 }
 
 // deferCheckUpdateRoot appends to `appendTo` the merkle proof claims that are
