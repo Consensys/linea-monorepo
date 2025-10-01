@@ -68,6 +68,14 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     return _getYieldManagerStorage()._minimumWithdrawalReserveAmount;
   }
 
+  function _callYieldProvider(address _yieldProvider, bytes memory _callData) internal returns (bytes memory) {
+    (bool success, bytes memory returnData) = _yieldProvider.delegatecall(_callData);
+    if (!success) {
+      revert DelegateCallFailed();
+    }
+    return returnData;
+  }
+
   /**
    * @notice Initialises the YieldManager.
    */
@@ -199,12 +207,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   }
 
   function withdrawableValue(address _yieldProvider) public onlyKnownYieldProvider(_yieldProvider) returns (uint256) {
-    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+    bytes memory data = _callYieldProvider(
+      _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
     );
-    if (!success) {
-      revert DelegateCallFailed();
-    }
     return abi.decode(data, (uint256));
   }
 
@@ -264,23 +270,21 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     if (isWithdrawalReserveBelowMinimum()) {
       revert InsufficientWithdrawalReserve();
     }
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount)));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
+    _callYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount))
+    );
   }
 
   function _payLSTPrincipal(
     address _yieldProvider,
     uint256 _maxAvailableRepaymentETH
   ) internal returns (uint256 lstPrincipalPaid) {
-    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+    bytes memory data = _callYieldProvider(
+      _yieldProvider,
       abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _maxAvailableRepaymentETH))
     );
-    if (!success) {
-      revert DelegateCallFailed();
-    }
-    (lstPrincipalPaid) = abi.decode(data, (uint256));
+    lstPrincipalPaid = abi.decode(data, (uint256));
   }
 
   /**
@@ -299,11 +303,11 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     onlyRole(YIELD_REPORTER_ROLE)
     returns (uint256 newReportedYield)
   {
-    (bool success, bytes memory data) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.reportYield, (_yieldProvider)));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
-    (newReportedYield) = abi.decode(data, (uint256));
+    bytes memory data = _callYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.reportYield, (_yieldProvider))
+    );
+    newReportedYield = abi.decode(data, (uint256));
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     $$.userFunds += newReportedYield;
     $$.yieldReportedCumulative += newReportedYield;
@@ -323,10 +327,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     address _yieldProvider,
     bytes memory _withdrawalParams
   ) external payable onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE) {
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.unstake, (_yieldProvider, _withdrawalParams)));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
+    _callYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.unstake, (_yieldProvider, _withdrawalParams))
+    );
     // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
   }
 
@@ -356,13 +360,11 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     if (!isWithdrawalReserveBelowMinimum()) {
       revert WithdrawalReserveNotInDeficit();
     }
-    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+    bytes memory data = _callYieldProvider(
+      _yieldProvider,
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
     );
-    if (!success) {
-      revert DelegateCallFailed();
-    }
-    (maxUnstakeAmount) = abi.decode(data, (uint256));
+    maxUnstakeAmount = abi.decode(data, (uint256));
     _validateUnstakePermissionlessAmount(_yieldProvider, maxUnstakeAmount);
     _getYieldManagerStorage()._pendingPermissionlessUnstake += maxUnstakeAmount;
     // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
@@ -424,12 +426,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     TRANSIENT_RECEIVE_CALLER = $$.receiveCaller;
-    (bool success, ) = _yieldProvider.delegatecall(
+    _callYieldProvider(
+      _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount))
     );
-    if (!success) {
-      revert DelegateCallFailed();
-    }
     TRANSIENT_RECEIVE_CALLER = address(0);
     $$.userFunds -= _amount;
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
@@ -560,10 +560,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   }
 
   function _pauseStaking(address _yieldProvider) internal {
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
+    _callYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider))
+    );
     _getYieldProviderStorage(_yieldProvider).isStakingPaused = true;
   }
 
@@ -598,10 +598,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   }
 
   function _unpauseStaking(address _yieldProvider) internal {
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
+    _callYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider))
+    );
     _getYieldProviderStorage(_yieldProvider).isStakingPaused = false;
   }
 
@@ -617,10 +617,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
       revert LSTWithdrawalNotAllowed();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.withdrawLST, (_yieldProvider, _amount, _recipient)));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
+    _callYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.withdrawLST, (_yieldProvider, _amount, _recipient))
+    );
     emit LSTMinted(_yieldProvider, _recipient, _amount);
   }
 
@@ -633,10 +633,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider)));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
+    _callYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider))
+    );
     _pauseStakingIfNotAlready(_yieldProvider);
     $$.isOssificationInitiated = true;
     emit YieldProviderOssificationInitiated(_yieldProvider);
@@ -657,10 +657,10 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
       _unpauseStaking(_yieldProvider);
     }
     $$.isOssificationInitiated = false;
-    (bool success, ) = _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.undoInitiateOssification, (_yieldProvider)));
-    if (!success) {
-      revert DelegateCallFailed();
-    }
+    _callYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.undoInitiateOssification, (_yieldProvider))
+    );
     emit YieldProviderOssificationReverted(_yieldProvider);
   }
 
@@ -674,13 +674,11 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    (bool success, bytes memory data) = _yieldProvider.delegatecall(
+    bytes memory data = _callYieldProvider(
+      _yieldProvider,
       abi.encodeCall(IYieldProvider.processPendingOssification, (_yieldProvider))
     );
-    if (!success) {
-      revert DelegateCallFailed();
-    }
-    (isOssificationComplete) = abi.decode(data, (bool));
+    isOssificationComplete = abi.decode(data, (bool));
     if (isOssificationComplete) {
       $$.isOssificationInitiated = true;
     }
