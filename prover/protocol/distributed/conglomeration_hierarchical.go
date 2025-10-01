@@ -450,6 +450,15 @@ func getPublicInputList(run wizard.Runtime, name string, nb int) []field.Element
 	return res
 }
 
+// getPublicInputListGnark is as [getPublicInputList] but for gnark.
+func getPublicInputListGnark(api frontend.API, run wizard.GnarkRuntime, name string, nb int) []frontend.Variable {
+	var res []frontend.Variable
+	for i := 0; i < nb; i++ {
+		res = append(res, run.GetPublicInput(api, name+"_"+strconv.Itoa(i)))
+	}
+	return res
+}
+
 // collectAllPublicInputsOfInstance returns a structured object representing
 // the public inputs of the given instance.
 func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.Runtime, instance int) LimitlessPublicInput[field.Element] {
