@@ -317,7 +317,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     address vault = _getYieldProviderStorage(_yieldProvider).ossifiedEntrypoint;
     bytes32 withdrawalCredentials;
     assembly {
-      withdrawalCredentials := or(shl(248, 0x2), _yieldProvider)
+      withdrawalCredentials := or(shl(248, 0x2), vault)
     }
 
     _validateValidatorContainerForPermissionlessUnstake(witness, withdrawalCredentials);
