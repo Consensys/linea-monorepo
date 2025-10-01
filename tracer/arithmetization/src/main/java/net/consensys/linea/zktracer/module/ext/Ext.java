@@ -28,6 +28,7 @@ import net.consensys.linea.zktracer.container.module.OperationSetWithAdditionalR
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationAdder;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -43,8 +44,8 @@ public class Ext implements OperationSetWithAdditionalRowsModule<ExtOperation> {
   private final CountOnlyOperation additionalRows = new CountOnlyOperation();
 
   @Override
-  public String moduleKey() {
-    return EXT.toString();
+  public ModuleName moduleKey() {
+    return EXT;
   }
 
   @Override

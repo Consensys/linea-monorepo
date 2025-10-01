@@ -15,18 +15,21 @@
 
 package net.consensys.linea.zktracer.module.tables.bin;
 
+import static net.consensys.linea.zktracer.module.ModuleName.BIN_REFERENCE_TABLE;
+
 import java.util.List;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
 public class BinRt implements Module {
   @Override
-  public String moduleKey() {
-    return "BIN_REFERENCE_TABLE";
+  public ModuleName moduleKey() {
+    return BIN_REFERENCE_TABLE;
   }
 
   @Override

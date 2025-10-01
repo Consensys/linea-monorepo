@@ -25,6 +25,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -38,8 +39,8 @@ public class Mul implements OperationSetModule<MulOperation> {
       new ModuleOperationStackedSet<>();
 
   @Override
-  public String moduleKey() {
-    return "MUL";
+  public ModuleName moduleKey() {
+    return ModuleName.MUL;
   }
 
   @Override

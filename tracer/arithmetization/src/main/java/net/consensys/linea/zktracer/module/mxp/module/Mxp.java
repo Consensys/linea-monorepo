@@ -26,6 +26,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.mxp.moduleOperation.MxpOperation;
 
@@ -57,8 +58,8 @@ public abstract class Mxp implements OperationListModule<MxpOperation> {
   }
 
   @Override
-  public String moduleKey() {
-    return MXP.toString();
+  public ModuleName moduleKey() {
+    return MXP;
   }
 
   public abstract void call(MxpCall mxpCall);

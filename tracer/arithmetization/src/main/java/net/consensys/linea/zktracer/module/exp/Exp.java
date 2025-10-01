@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.exp;
 
+import static net.consensys.linea.zktracer.module.ModuleName.EXP;
+
 import java.util.List;
 
 import lombok.Getter;
@@ -24,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExpCall;
 
 @Slf4j
@@ -36,8 +39,8 @@ public class Exp implements OperationSetModule<ExpOperation> {
       new ModuleOperationStackedSet<>();
 
   @Override
-  public String moduleKey() {
-    return "EXP";
+  public ModuleName moduleKey() {
+    return EXP;
   }
 
   public void call(ExpCall expCall) {

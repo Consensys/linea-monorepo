@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
+import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import lombok.EqualsAndHashCode;
@@ -23,9 +24,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.EWord;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
 @Accessors(fluent = true)
@@ -34,16 +33,15 @@ public class TrmOperation extends ModuleOperation {
   private final Fork fork;
   @EqualsAndHashCode.Include @Getter private final EWord rawAddress;
 
-  public TrmOperation(Fork fork, EWord rawAddress, Wcp wcp) {
+  public TrmOperation(Fork fork, EWord rawAddress) {
     this.fork = fork;
     this.rawAddress = rawAddress;
-    final Bytes trmAddress = rawAddress.toAddress();
   }
 
   void trace(Trace.Trm trace) {
     final Address trmAddress = rawAddress.toAddress();
     final boolean isPrec = isPrecompile(fork, trmAddress);
-    final long trmAddrHi = trmAddress.slice(0, 4).toLong();
+    final long trmAddrHi = highPart(trmAddress);
 
     trace.rawAddress(rawAddress).addressHi(trmAddrHi).isPrecompile(isPrec).validateRow();
   }

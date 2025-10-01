@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
+import static net.consensys.linea.zktracer.module.ModuleName.WCP;
 import static net.consensys.linea.zktracer.module.wcp.WcpOperation.EQbv;
 import static net.consensys.linea.zktracer.module.wcp.WcpOperation.GEQbv;
 import static net.consensys.linea.zktracer.module.wcp.WcpOperation.GTbv;
@@ -32,6 +33,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -79,8 +81,8 @@ public class Wcp implements Module {
   public final CountOnlyOperation additionalRows = new CountOnlyOperation();
 
   @Override
-  public String moduleKey() {
-    return "WCP";
+  public ModuleName moduleKey() {
+    return WCP;
   }
 
   @Override

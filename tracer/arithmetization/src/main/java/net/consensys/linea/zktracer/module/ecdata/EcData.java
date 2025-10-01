@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -53,8 +54,8 @@ public class EcData implements OperationListModule<EcDataOperation> {
   @Getter private EcDataOperation ecDataOperation;
 
   @Override
-  public String moduleKey() {
-    return EC_DATA.toString();
+  public ModuleName moduleKey() {
+    return EC_DATA;
   }
 
   @Override

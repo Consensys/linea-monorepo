@@ -26,6 +26,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
 
 @RequiredArgsConstructor
@@ -46,8 +47,8 @@ public class Stp implements OperationSetModule<StpOperation> {
   }
 
   @Override
-  public String moduleKey() {
-    return STP.toString();
+  public ModuleName moduleKey() {
+    return STP;
   }
 
   @Override

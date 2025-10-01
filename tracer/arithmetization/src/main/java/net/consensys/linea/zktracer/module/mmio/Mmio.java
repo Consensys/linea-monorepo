@@ -38,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.mmu.Mmu;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
 import net.consensys.linea.zktracer.module.mmu.MmuOperation;
@@ -50,8 +51,8 @@ public class Mmio implements Module {
   private final CountOnlyOperation lineCounter = new CountOnlyOperation();
 
   @Override
-  public String moduleKey() {
-    return MMIO.toString();
+  public ModuleName moduleKey() {
+    return MMIO;
   }
 
   @Override

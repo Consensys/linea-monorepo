@@ -28,6 +28,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationAdder;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
@@ -55,8 +56,8 @@ public class RlpUtils implements OperationSetModule<RlpUtilsCall> {
       new ModuleOperationStackedSet<>();
 
   @Override
-  public String moduleKey() {
-    return RLP_UTILS.toString();
+  public ModuleName moduleKey() {
+    return RLP_UTILS;
   }
 
   public RlpUtilsCall call(RlpUtilsCall call) {

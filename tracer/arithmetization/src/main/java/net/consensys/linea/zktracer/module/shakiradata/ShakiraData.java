@@ -26,6 +26,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.limits.Keccak;
 import net.consensys.linea.zktracer.module.limits.precompiles.RipemdBlocks;
 import net.consensys.linea.zktracer.module.limits.precompiles.Sha256Blocks;
@@ -47,8 +48,8 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
   private long previousID = 0;
 
   @Override
-  public String moduleKey() {
-    return SHAKIRA_DATA.toString();
+  public ModuleName moduleKey() {
+    return SHAKIRA_DATA;
   }
 
   @Override

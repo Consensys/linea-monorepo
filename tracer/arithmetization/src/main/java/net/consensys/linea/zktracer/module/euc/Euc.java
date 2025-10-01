@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.euc;
 
+import static net.consensys.linea.zktracer.module.ModuleName.EUC;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
@@ -27,6 +28,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -46,8 +48,8 @@ public class Euc implements OperationSetModule<EucOperation> {
   public final CountOnlyOperation additionalRows = new CountOnlyOperation();
 
   @Override
-  public String moduleKey() {
-    return "EUC";
+  public ModuleName moduleKey() {
+    return EUC;
   }
 
   @Override

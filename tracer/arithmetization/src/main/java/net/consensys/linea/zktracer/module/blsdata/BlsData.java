@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
@@ -56,8 +57,8 @@ public class BlsData implements OperationListModule<BlsDataOperation> {
   @Getter private BlsDataOperation blsDataOperation;
 
   @Override
-  public String moduleKey() {
-    return BLS_DATA.toString();
+  public ModuleName moduleKey() {
+    return BLS_DATA;
   }
 
   @Override

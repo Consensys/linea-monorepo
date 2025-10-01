@@ -801,7 +801,7 @@ public class ZkCounter implements LineCountingTracer {
     final HashMap<String, Integer> modulesLineCount = HashMap.newHashMap(moduleToCount.size());
 
     for (Module m : moduleToCount) {
-      modulesLineCount.put(m.moduleKey(), m.lineCount() + m.spillage(trace));
+      modulesLineCount.put(m.moduleKey().toString(), m.lineCount() + m.spillage(trace));
     }
     return modulesLineCount;
   }

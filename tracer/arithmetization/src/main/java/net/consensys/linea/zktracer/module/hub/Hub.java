@@ -45,6 +45,7 @@ import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 import net.consensys.linea.zktracer.container.module.IncrementAndDetectModule;
 import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.bin.Bin;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
@@ -176,8 +177,8 @@ public abstract class Hub implements Module {
   private final PlatformController pch = new PlatformController(this);
 
   @Override
-  public String moduleKey() {
-    return HUB.toString();
+  public ModuleName moduleKey() {
+    return HUB;
   }
 
   @Override
@@ -451,7 +452,7 @@ public abstract class Hub implements Module {
         new L1BlockSize(
             blockTransactions, keccak, l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
-    trm = new Trm(fork, wcp);
+    trm = new Trm(fork);
     rlpTxn = setRlpTxn(this);
     rlpAddr = new RlpAddr(this, trm, keccak);
     blockdata = setBlockData(this, wcp, euc, chain);
