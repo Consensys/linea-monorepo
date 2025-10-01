@@ -33,9 +33,9 @@ type Job struct {
 	ContentHash string
 }
 
-// OutputFileRessouce collects all the data needed to fill the output template
+// OutputFileResource collects all the data needed to fill the output template
 // file.
-type OutputFileRessouce struct {
+type OutputFileResource struct {
 	Job
 }
 
@@ -84,7 +84,7 @@ func (j *Job) ResponseFile() (s string, err error) {
 
 	// Run the template
 	w := &strings.Builder{}
-	err = j.Def.OutputFileTmpl.Execute(w, OutputFileRessouce{
+	err = j.Def.OutputFileTmpl.Execute(w, OutputFileResource{
 		Job: *j,
 	})
 	if err != nil {
