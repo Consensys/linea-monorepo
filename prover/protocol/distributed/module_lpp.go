@@ -118,20 +118,6 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
 
-	// // These are the "dummy" public inputs that are only here so that the
-	// // moduleGL and moduleLPP have identical set of public inputs. The order
-	// // of declaration is also important. Namely, these needs to be declared before
-	// // the non-dummy ones.
-	// for _, pi := range moduleInput.PublicInputs {
-	// 	moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
-	// }
-
-	// moduleLPP.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewFromPublicColumn(moduleLPP.InitialFiatShamirState, 0))
-	// moduleLPP.Wiop.InsertPublicInput(IsFirstPublicInput, accessors.NewConstant(field.Zero()))
-	// moduleLPP.Wiop.InsertPublicInput(IsLastPublicInput, accessors.NewConstant(field.Zero()))
-	// moduleLPP.Wiop.InsertPublicInput(GlobalSenderPublicInput, accessors.NewConstant(field.Zero()))
-	// moduleLPP.Wiop.InsertPublicInput(GlobalReceiverPublicInput, accessors.NewConstant(field.Zero()))
-
 	for _, col := range moduleInput.Columns {
 
 		if col.Round() != 0 {
@@ -179,18 +165,14 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 		moduleLPP.Horner = &q
 	}
 
-	// moduleLPP.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.Zero()))
-	// moduleLPP.Wiop.InsertPublicInput(IsLppPublicInput, accessors.NewConstant(field.One()))
-	// moduleLPP.Wiop.InsertPublicInput(NbActualLppPublicInput, accessors.NewConstant(field.NewElement(uint64(len(moduleInputs)))))
-
 	// In case the LPP part is empty, we have a scenario where the sub-proof to
 	// build has no registered coin. This creates errors in the compilation
 	// due to sanity-check firing up. We add a coin to remediate.
 	moduleLPP.InsertCoin(coin.Namef("LPP_DUMMY_COIN_%v", 1), 1)
 
 	moduleLPP.Wiop.RegisterProverAction(0, LppWitnessAssignment{ModuleLPP: *moduleLPP, Round: 0})
-
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
+	moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
 	moduleLPP.Wiop.FiatShamirHooksPreSampling.AppendToInner(1, &SetInitialFSHash{ModuleLPP: *moduleLPP})
 
 	return moduleLPP
@@ -227,6 +209,8 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP)
 
 	a := LppWitnessAssignment{ModuleLPP: *m, Round: 0}
 	a.Run(run)
+
+	m.assignPublicInput(run, witness)
 }
 
 func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
@@ -353,6 +337,8 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 
 		run.AssignLogDerivSum(a.LogDerivativeSum.ID, y)
 	}
+
+	a.ModuleLPP.assignMultiSetHash(run)
 }
 
 func (m ModuleLPP) getHornerParams(run *wizard.ProverRuntime, n0Values []int) query.HornerParams {
@@ -386,6 +372,8 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 		return fmt.Errorf("n0Hash %v != n0HashAlleged %v", n0Hash, n0HashAlleged)
 	}
 
+	a.checkMultiSetHash(run)
+
 	return nil
 }
 
@@ -401,6 +389,8 @@ func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	api.AssertIsEqual(n0Hash, n0HashAlleged)
 	api.AssertIsEqual(n1Hash, n1HashAlleged)
+
+	a.checkGnarkMultiSetHash(api, run)
 }
 
 func (a *CheckNxHash) Skip() {
@@ -563,7 +553,7 @@ func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *M
 
 // assignLPPCommitmentMSetGL assigns the LPP commitment MSet. It is meant to be
 // run as part of a prover action.
-func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
+func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 
 	var (
 		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
@@ -574,16 +564,15 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime, witness *
 		mset                   = mimc.MSetHash{}
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
-		numModule              = len(defInp.Disc.Modules)
 		segmentIndexInt        = segmentIndex.Uint64()
-		numSegmentOfLastModule = modLPP.PublicInputs.TargetNbSegments[numModule-1].Acc.GetVal(run)
+		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetVal(run)
 	)
 
 	mset.Remove(moduleIndex, segmentIndex, lppCommitments)
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
-	if segmentIndexInt < numSegmentOfLastModule.Uint64()-1 {
+	if segmentIndexInt < numSegmentOfCurrModule.Uint64()-1 {
 		// This is a local module
 		mset.Remove(moduleIndex, segmentIndex, typeOfProof, n0Hash)
 	}
@@ -606,7 +595,7 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime, witness *
 
 // checkLPPCommitmentMSetGL checks that the LPP commitment MSet is correctly
 // assigned. It is meant to be run as part of a verifier action.
-func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime, moduleIndexInt int) error {
+func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
 		targetMSet             = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
@@ -654,7 +643,7 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime, moduleIndexInt in
 
 // checkGnarkMultiSetHash checks that the commitment MSet and the randomness MSet
 // are correctly set. It is meant to be run as part of a verifier action..
-func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime, segmentModuleIndexCol ifaces.Column, moduleIndexInt int) error {
+func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
 
 	var (
 		targetMSetGeneral      = getPublicInputListGnark(api, run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
