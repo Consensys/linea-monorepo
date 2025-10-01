@@ -47,6 +47,12 @@ func setDefaultPaths() {
 }
 
 func setDefaultTracesLimit() {
+
+	// Shomei limits
+	viper.SetDefault("traces_limits.SHOMEI_MERKLE_PROOFS", 16384)
+	// Shomei limits large
+	viper.SetDefault("traces_limits_large.SHOMEI_MERKLE_PROOFS", 32768)
+
 	// [traces_limits]
 	viper.SetDefault("traces_limits.ADD", 262144)
 	viper.SetDefault("traces_limits.BIN", 262144)
