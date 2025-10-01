@@ -12,9 +12,9 @@ import (
 
 const (
 	jobNameBootstrap      = "bootstrap"
+	jobNameConglomeration = "conglomeration"
 	jobNameGL             = "gl"
 	jobNameLPP            = "lpp"
-	jobNameConglomeration = "conglomeration"
 )
 
 // -------------------- Job Definitions --------------------
@@ -28,16 +28,16 @@ func BootstrapDefinition(conf *config.Config) JobDefinition {
 			config.FailSuffix,
 		)
 
+		// /tmp/metadata/requests
+		responseRootDir = filepath.Join(conf.Limitless.MetadataDir, config.RequestsFromSubDir)
+
 		outputTmpl = "{{.Start}}-{{.End}}-metadata-getZkProof.json"
 	)
 
-	return newJobDefinition(
-		conf.Execution.RequestsRootDir,
-		jobNameBootstrap,
-		inputPattern,
-		outputTmpl,
-		0,
-		paramsExecution(), // reuse Execution params (start, end, etv, stv)
+	return newJobDefinition(jobNameBootstrap,
+		conf.Execution.RequestsRootDir, inputPattern,
+		responseRootDir, outputTmpl,
+		0, paramsExecution(), // reuse Execution params (start, end, etv, stv)
 	)
 }
 
@@ -50,16 +50,14 @@ func ConglomerationDefinition(conf *config.Config) JobDefinition {
 			config.FailSuffix,
 		)
 
-		outputTmpl = "{{.Start}}-{{.End}}-getZkProof.json"
+		responseRootDir = filepath.Join(conf.Execution.RequestsRootDir, config.RequestsToSubDir)
+		outputTmpl      = "{{.Start}}-{{.End}}-getZkProof.json"
 	)
 
-	return newJobDefinition(
-		conf.Limitless.MetadataDir,
-		jobNameConglomeration,
-		inputPattern,
-		outputTmpl,
-		2,
-		ParamRegexps{
+	return newJobDefinition(jobNameConglomeration,
+		conf.Limitless.MetadataDir, inputPattern,
+		responseRootDir, outputTmpl,
+		2, ParamRegexps{
 			Start: reStart,
 			End:   reEnd,
 		},
@@ -71,6 +69,9 @@ func ConglomerationDefinition(conf *config.Config) JobDefinition {
 func GLDefinitionForModule(conf *config.Config, module string) JobDefinition {
 
 	var (
+		jobName = fmt.Sprintf("%s-%s", jobNameGL, module)
+
+		reqRootDir   = filepath.Join(conf.Limitless.WitnessDir, "GL", module)
 		inputPattern = fmt.Sprintf(
 			`^[0-9]+-[0-9]+-seg-[0-9]+-mod-[0-9]+-gl-wit\.bin(\.failure\.%v_[0-9]+)*$`,
 			config.FailSuffix,
@@ -79,15 +80,11 @@ func GLDefinitionForModule(conf *config.Config, module string) JobDefinition {
 		// GL jobs don't produce an output artifact, only /dev/null.
 		// So outputTmpl is set empty.
 		outputTmpl = ""
-
-		rootDir = filepath.Join(conf.Limitless.WitnessDir, "GL", module)
 	)
 
-	return newJobDefinition(
-		rootDir,
-		jobNameGL,
-		inputPattern,
-		outputTmpl,
+	return newJobDefinition(jobName,
+		reqRootDir, inputPattern,
+		"", outputTmpl,
 		1, // priority set to default value now and will be overwritten later when the file arrives
 		ParamRegexps{
 			Start: reStart,
@@ -103,6 +100,9 @@ func GLDefinitionForModule(conf *config.Config, module string) JobDefinition {
 func LPPDefinitionForModule(conf *config.Config, module string) JobDefinition {
 
 	var (
+		jobName = fmt.Sprintf("%s-%s", jobNameLPP, module)
+
+		reqRootDir   = filepath.Join(conf.Limitless.WitnessDir, "LPP", module)
 		inputPattern = fmt.Sprintf(
 			`^[0-9]+-[0-9]+-seg-[0-9]+-mod-[0-9]+-lpp-wit\.bin(\.failure\.%v_[0-9]+)*$`,
 			config.FailSuffix,
@@ -111,15 +111,11 @@ func LPPDefinitionForModule(conf *config.Config, module string) JobDefinition {
 		// LPP jobs don't produce an output artifact, only /dev/null.
 		// So outputTmpl is set empty.
 		outputTmpl = ""
-
-		rootDir = filepath.Join(conf.Limitless.WitnessDir, "LPP", module)
 	)
 
-	return newJobDefinition(
-		rootDir,
-		jobNameLPP,
-		inputPattern,
-		outputTmpl,
+	return newJobDefinition(jobName,
+		reqRootDir, inputPattern,
+		"", outputTmpl,
 		3, //  priority set to default value now and will be overwritten later when the file arrives
 		ParamRegexps{
 			Start: reStart,
