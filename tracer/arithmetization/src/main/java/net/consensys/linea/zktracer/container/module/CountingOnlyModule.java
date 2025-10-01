@@ -45,8 +45,8 @@ public class CountingOnlyModule implements Module {
   }
 
   @Override
-  public String moduleKey() {
-    return moduleKey.toString();
+  public ModuleName moduleKey() {
+    return moduleKey;
   }
 
   @Override

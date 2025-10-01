@@ -26,6 +26,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.PostOpcodeDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentValues;
@@ -46,8 +47,8 @@ public class Gas implements OperationSetModule<GasOperation>, PostOpcodeDefer {
   private GasParameters gasParameters;
 
   @Override
-  public String moduleKey() {
-    return GAS.toString();
+  public ModuleName moduleKey() {
+    return GAS;
   }
 
   public void call(GasParameters gasParameters, Hub hub, CommonFragmentValues commonValues) {

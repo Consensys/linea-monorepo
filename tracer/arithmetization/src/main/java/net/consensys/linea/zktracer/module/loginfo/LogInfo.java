@@ -29,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptOperation;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -43,8 +44,8 @@ public class LogInfo implements Module {
   private final CountOnlyOperation lineCounter = new CountOnlyOperation();
 
   @Override
-  public String moduleKey() {
-    return LOG_INFO.toString();
+  public ModuleName moduleKey() {
+    return LOG_INFO;
   }
 
   @Override

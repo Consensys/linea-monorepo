@@ -37,7 +37,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
-import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.*;
@@ -141,7 +140,9 @@ public class ToyExecutionEnvironmentV2 {
               copyEnvironment.zkCounter.getModulesLineCount();
 
           final List<String> moduleToCheck =
-              copyEnvironment.zkCounter.checkedModules().stream().map(Module::moduleKey).toList();
+              copyEnvironment.zkCounter.checkedModules().stream()
+                  .map(module -> module.moduleKey().toString())
+                  .toList();
 
           // There is no point to check for conflation where an excluded PRC has been triggered:
           if (lightCounterCount.get(POINT_EVAL.toString()) != 0

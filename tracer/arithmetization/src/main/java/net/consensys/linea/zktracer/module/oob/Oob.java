@@ -23,10 +23,10 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.container.module.OperationSetWithAdditionalRowsModule;
-import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationAdder;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
@@ -36,7 +36,7 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 /** Implementation of a {@link Module} for out of bounds. */
 @RequiredArgsConstructor
 @Accessors(fluent = true)
-public class Oob implements OperationSetWithAdditionalRowsModule<OobOperation> {
+public class Oob implements OperationSetModule<OobOperation> {
 
   private final Hub hub;
   private final Add add;
@@ -47,11 +47,9 @@ public class Oob implements OperationSetWithAdditionalRowsModule<OobOperation> {
   private final ModuleOperationStackedSet<OobOperation> operations =
       new ModuleOperationStackedSet<>();
 
-  @Getter private final CountOnlyOperation additionalRows = new CountOnlyOperation();
-
   @Override
-  public String moduleKey() {
-    return OOB.toString();
+  public ModuleName moduleKey() {
+    return OOB;
   }
 
   public OobCall call(OobCall oobCall) {
@@ -93,7 +91,6 @@ public class Oob implements OperationSetWithAdditionalRowsModule<OobOperation> {
 
   @Override
   public void commit(Trace trace) {
-    OperationSetWithAdditionalRowsModule.super.commit(trace);
     int stamp = 0;
     for (OobOperation op : operations.getAll()) {
       traceOperation(op, ++stamp, trace.oob());

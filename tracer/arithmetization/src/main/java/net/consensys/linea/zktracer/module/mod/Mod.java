@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetWithAdditionalRowsModule;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -39,8 +40,8 @@ public class Mod implements OperationSetWithAdditionalRowsModule<ModOperation> {
   private final CountOnlyOperation additionalRows = new CountOnlyOperation();
 
   @Override
-  public String moduleKey() {
-    return MOD.toString();
+  public ModuleName moduleKey() {
+    return ModuleName.MOD;
   }
 
   @Override

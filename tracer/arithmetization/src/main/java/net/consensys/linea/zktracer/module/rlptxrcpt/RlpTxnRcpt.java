@@ -39,6 +39,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.rlputilsOld.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.types.BitDecOutput;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -61,8 +62,8 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
   private int absLogNum = 0;
 
   @Override
-  public String moduleKey() {
-    return RLP_TXN_RCPT.toString();
+  public ModuleName moduleKey() {
+    return RLP_TXN_RCPT;
   }
 
   @Override

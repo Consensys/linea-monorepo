@@ -26,7 +26,7 @@ import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -37,17 +37,16 @@ import org.hyperledger.besu.datatypes.Address;
 @RequiredArgsConstructor
 public class Trm implements OperationSetModule<TrmOperation> {
   private final Fork fork;
-  private final Wcp wcp;
   private final ModuleOperationStackedSet<TrmOperation> operations =
       new ModuleOperationStackedSet<>();
 
   @Override
-  public String moduleKey() {
-    return TRM.toString();
+  public ModuleName moduleKey() {
+    return TRM;
   }
 
   public Address callTrimming(final Bytes32 rawAddress) {
-    operations.add(new TrmOperation(fork, EWord.of(rawAddress), wcp));
+    operations.add(new TrmOperation(fork, EWord.of(rawAddress)));
     return Address.extract(rawAddress);
   }
 

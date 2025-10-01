@@ -26,6 +26,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -59,8 +60,8 @@ public class L1BlockSize implements Module {
   private short nbBlock = 0;
 
   @Override
-  public String moduleKey() {
-    return BLOCK_L1_SIZE.toString();
+  public ModuleName moduleKey() {
+    return BLOCK_L1_SIZE;
   }
 
   @Override

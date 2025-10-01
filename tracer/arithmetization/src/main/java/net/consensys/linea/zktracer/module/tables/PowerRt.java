@@ -22,13 +22,14 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
 
 public class PowerRt implements Module {
   @Override
-  public String moduleKey() {
-    return POWER_REFERENCE_TABLE.toString();
+  public ModuleName moduleKey() {
+    return POWER_REFERENCE_TABLE;
   }
 
   @Override

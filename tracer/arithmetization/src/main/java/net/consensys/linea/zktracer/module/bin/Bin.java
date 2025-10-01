@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.bin;
 
+import static net.consensys.linea.zktracer.module.ModuleName.BIN;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -41,8 +43,8 @@ public class Bin implements OperationSetModule<BinOperation> {
       new ModuleOperationStackedSet<>();
 
   @Override
-  public String moduleKey() {
-    return "BIN";
+  public ModuleName moduleKey() {
+    return BIN;
   }
 
   @Override

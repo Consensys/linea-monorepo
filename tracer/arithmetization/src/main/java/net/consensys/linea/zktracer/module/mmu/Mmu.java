@@ -26,6 +26,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
@@ -42,8 +43,8 @@ public class Mmu implements OperationListModule<MmuOperation> {
   private final Wcp wcp;
 
   @Override
-  public String moduleKey() {
-    return MMU.toString();
+  public ModuleName moduleKey() {
+    return MMU;
   }
 
   @Override

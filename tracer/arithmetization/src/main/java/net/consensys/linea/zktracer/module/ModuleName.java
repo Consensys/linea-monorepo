@@ -18,11 +18,14 @@ package net.consensys.linea.zktracer.module;
 public enum ModuleName {
   // tracing Modules
   ADD,
+  BIN,
   BLAKE_MODEXP_DATA,
   BLOCK_DATA,
   BLOCK_HASH,
   BLS_DATA,
   EC_DATA,
+  EUC,
+  EXP,
   EXT,
   GAS,
   HUB,
@@ -31,6 +34,7 @@ public enum ModuleName {
   MMIO,
   MMU,
   MOD,
+  MUL,
   MXP,
   OOB,
   RLP_ADDR,
@@ -40,9 +44,11 @@ public enum ModuleName {
   ROM,
   ROM_LEX,
   SHAKIRA_DATA,
+  SHF,
   STP,
   TRM,
   TXN_DATA,
+  WCP,
 
   // precompiles
   // ecdata:
@@ -88,6 +94,8 @@ public enum ModuleName {
   BLOCK_KECCAK,
 
   // reference tables
+  BIN_REFERENCE_TABLE,
   BLS_REFERENCE_TABLE,
+  INSTRUCTION_DECODER,
   POWER_REFERENCE_TABLE
 }

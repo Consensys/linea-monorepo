@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockdataOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -51,8 +52,8 @@ public abstract class Blockdata implements Module {
   @Getter private final OpCode[] opCodes = setOpCodes();
 
   @Override
-  public String moduleKey() {
-    return BLOCK_DATA.toString();
+  public ModuleName moduleKey() {
+    return BLOCK_DATA;
   }
 
   @Override

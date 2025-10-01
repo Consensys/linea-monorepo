@@ -27,11 +27,12 @@ import java.util.Map;
 import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.module.ModuleName;
 
 public class BlsRt implements Module {
   @Override
-  public String moduleKey() {
-    return BLS_REFERENCE_TABLE.toString();
+  public ModuleName moduleKey() {
+    return BLS_REFERENCE_TABLE;
   }
 
   @Override

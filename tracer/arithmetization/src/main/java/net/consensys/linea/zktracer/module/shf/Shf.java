@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
+import static net.consensys.linea.zktracer.module.ModuleName.SHF;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.util.List;
@@ -24,6 +25,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -36,8 +38,8 @@ public class Shf implements OperationSetModule<ShfOperation> {
       new ModuleOperationStackedSet<>();
 
   @Override
-  public String moduleKey() {
-    return "SHF";
+  public ModuleName moduleKey() {
+    return SHF;
   }
 
   @Override

@@ -41,6 +41,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.limits.Keccak;
 import net.consensys.linea.zktracer.module.rlputilsOld.ByteCountAndPowerOutput;
@@ -72,8 +73,8 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
   private final Keccak keccak;
 
   @Override
-  public String moduleKey() {
-    return RLP_ADDR.toString();
+  public ModuleName moduleKey() {
+    return RLP_ADDR;
   }
 
   @Override

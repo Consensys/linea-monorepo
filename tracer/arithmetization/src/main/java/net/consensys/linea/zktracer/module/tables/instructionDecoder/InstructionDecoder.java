@@ -15,10 +15,13 @@
 
 package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
+import static net.consensys.linea.zktracer.module.ModuleName.INSTRUCTION_DECODER;
+
 import java.util.List;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
@@ -101,8 +104,8 @@ public abstract class InstructionDecoder implements Module {
   }
 
   @Override
-  public String moduleKey() {
-    return "INSTRUCTION_DECODER";
+  public ModuleName moduleKey() {
+    return INSTRUCTION_DECODER;
   }
 
   @Override

@@ -24,6 +24,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
+import net.consensys.linea.zktracer.module.ModuleName;
 
 @Accessors(fluent = true)
 public abstract class RlpTxn implements OperationListModule<RlpTxnOperation> {
@@ -33,8 +34,8 @@ public abstract class RlpTxn implements OperationListModule<RlpTxnOperation> {
       new ModuleOperationStackedList<>();
 
   @Override
-  public String moduleKey() {
-    return RLP_TXN.toString();
+  public ModuleName moduleKey() {
+    return RLP_TXN;
   }
 
   @Override
