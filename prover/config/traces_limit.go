@@ -488,7 +488,7 @@ func GetTestTracesLimits() *TracesLimits {
 		PointEval:                                      0,
 		BlsData:                                        4096,
 		RlpUtils:                                       131072,
-		PowerReferenceTable:                            16,
+		PowerReferenceTable:                            32,
 		BlsReferenceTable:                              256,
 	}
 

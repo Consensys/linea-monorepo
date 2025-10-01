@@ -189,7 +189,7 @@ BLS                 = 0
 POINT_EVAL          = 0
 BLS_DATA                = 4096
 RLP_UTILS               = 131072
-POWER_REFERENCE_TABLE   = 16
+POWER_REFERENCE_TABLE   = 32
 BLS_REFERENCE_TABLE     = 256
 
 [traces_limits_large]
@@ -343,5 +343,5 @@ BLS                 = 0
 POINT_EVAL          = 0
 BLS_DATA                = 8192
 RLP_UTILS               = 262144
-POWER_REFERENCE_TABLE   = 16
+POWER_REFERENCE_TABLE   = 32
 BLS_REFERENCE_TABLE     = 256
