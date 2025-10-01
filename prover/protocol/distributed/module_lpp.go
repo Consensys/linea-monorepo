@@ -494,10 +494,11 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	segmentCountLpp[modLPP.Disc.IndexOf(modLPP.DefinitionInput.ModuleName)] = field.One()
 
 	modLPP.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
-		TargetNbSegments:    declareListOfPiColumns(modLPP.Wiop, targetNbSegmentPublicInputBase, nbModules),
-		SegmentCountGL:      declareListOfConstantPi(modLPP.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
-		SegmentCountLPP:     declareListOfConstantPi(modLPP.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
-		GeneralMultiSetHash: declareListOfPiColumns(modLPP.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		TargetNbSegments:             declareListOfPiColumns(modLPP.Wiop, targetNbSegmentPublicInputBase, nbModules),
+		SegmentCountGL:               declareListOfConstantPi(modLPP.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
+		SegmentCountLPP:              declareListOfConstantPi(modLPP.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
+		GeneralMultiSetHash:          declareListOfPiColumns(modLPP.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		SharedRandomnessMultiSetHash: declareListOfConstantPi(modLPP.Wiop, sharedRandomnessMultiSetPublicInputBase, make([]field.Element, mimc.MSetHashSize)),
 	}
 
 	// These are the "dummy" public inputs that are only here so that the
