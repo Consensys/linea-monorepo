@@ -117,6 +117,22 @@ public class BytecodeCompiler {
   }
 
   /**
+   * Add an {@link OpCode} to the bytecode sequence for a {@code reps} number of times.
+   *
+   * @param opCode opcode to be added
+   * @return current instance
+   */
+  public BytecodeCompiler op(final OpCode opCode, int reps) {
+    if (!opCodes.isValid(opCode)) {
+      throw new IllegalArgumentException("invalid opcode for fork: " + opCode);
+    }
+    for (int i = 0; i < reps; i++) {
+      byteCode.add(Bytes.of(opCode.byteValue()));
+    }
+    return this;
+  }
+
+  /**
    * Add an opcode and a list of {@link Bytes32} opcode arguments to the bytecode sequence.
    *
    * @param opCode opcode to be added

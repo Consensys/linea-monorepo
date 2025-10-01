@@ -223,7 +223,7 @@ public abstract class Hub implements Module {
   private final Rom rom = new Rom(romLex);
   private final RlpTxn rlpTxn;
   private final Mmio mmio;
-  private final TxnData<? extends TxnDataOperation> txnData = setTxnData();
+  @Getter final TxnData<? extends TxnDataOperation> txnData = setTxnData();
   private final RlpTxnRcpt rlpTxnRcpt = new RlpTxnRcpt();
   private final LogInfo logInfo = new LogInfo(rlpTxnRcpt);
   private final LogData logData = new LogData(rlpTxnRcpt);

@@ -238,7 +238,11 @@ public class ExecutionEnvironment {
     String methodName = testInfo.getTestMethod().get().getName();
     String params = processTestName(method, testInfo.getDisplayName());
     // Done (for now)
-    return className + "_" + methodName + "_" + params + fork.toLowerCase() + "_";
+    return (className + "_" + methodName + "_" + params + fork.toLowerCase() + "_")
+        .replaceAll("…", "___");
+    // Note that "…" is replaced with "___" as it is cannot be part of the filename
+    // This is automatically added by JUnit when one of the arguments of a parametric test is too
+    // long
   }
 
   /**

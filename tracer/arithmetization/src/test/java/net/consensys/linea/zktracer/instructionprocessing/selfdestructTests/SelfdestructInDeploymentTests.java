@@ -30,6 +30,6 @@ public class SelfdestructInDeploymentTests extends TracerTestBase {
                 .op(OpCode.ADDRESS)
                 .op(OpCode.SELFDESTRUCT)
                 .compile())
-        .runInitcode(chainConfig, testInfo);
+        .runInitCode(chainConfig, testInfo);
   }
 }

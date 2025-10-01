@@ -26,14 +26,15 @@ import java.util.function.Consumer;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
+import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.TestInfo;
@@ -70,9 +71,10 @@ public final class BytecodeRunner {
   public void run(ChainConfig chainConfig, TestInfo testInfo) {
     this.run(
         Wei.fromEth(1),
-        (long) Trace.LINEA_BLOCK_GAS_LIMIT,
+        DEFAULT_GAS_LIMIT,
         List.of(),
         Bytes.EMPTY,
+        List.of(),
         chainConfig,
         testInfo);
   }
@@ -80,31 +82,27 @@ public final class BytecodeRunner {
   // Ad-hoc senderBalance
   public void run(Wei senderBalance, ChainConfig chainConfig, TestInfo testInfo) {
     this.run(
-        senderBalance,
-        (long) Trace.LINEA_BLOCK_GAS_LIMIT,
-        List.of(),
-        Bytes.EMPTY,
-        chainConfig,
-        testInfo);
+        senderBalance, DEFAULT_GAS_LIMIT, List.of(), Bytes.EMPTY, List.of(), chainConfig, testInfo);
   }
 
   // Ad-hoc gasLimit
   public void run(Long gasLimit, ChainConfig chainConfig, TestInfo testInfo) {
-    this.run(Wei.fromEth(1), gasLimit, List.of(), Bytes.EMPTY, chainConfig, testInfo);
+    this.run(Wei.fromEth(1), gasLimit, List.of(), Bytes.EMPTY, List.of(), chainConfig, testInfo);
   }
 
   // Ad-hoc senderBalance and gasLimit
   public void run(Wei senderBalance, Long gasLimit, ChainConfig chainConfig, TestInfo testInfo) {
-    this.run(senderBalance, gasLimit, List.of(), Bytes.EMPTY, chainConfig, testInfo);
+    this.run(senderBalance, gasLimit, List.of(), Bytes.EMPTY, List.of(), chainConfig, testInfo);
   }
 
   // Ad-hoc accounts
   public void run(List<ToyAccount> additionalAccounts, ChainConfig chainConfig, TestInfo testInfo) {
     this.run(
         Wei.fromEth(1),
-        (long) Trace.LINEA_BLOCK_GAS_LIMIT,
+        DEFAULT_GAS_LIMIT,
         additionalAccounts,
         Bytes.EMPTY,
+        List.of(),
         chainConfig,
         testInfo);
   }
@@ -115,7 +113,14 @@ public final class BytecodeRunner {
       List<ToyAccount> additionalAccounts,
       ChainConfig chainConfig,
       TestInfo testInfo) {
-    this.run(Wei.fromEth(1), gasLimit, additionalAccounts, Bytes.EMPTY, chainConfig, testInfo);
+    this.run(
+        Wei.fromEth(1),
+        gasLimit,
+        additionalAccounts,
+        Bytes.EMPTY,
+        List.of(),
+        chainConfig,
+        testInfo);
   }
 
   // Ad-hoc senderBalance, gasLimit and accounts
@@ -125,7 +130,25 @@ public final class BytecodeRunner {
       List<ToyAccount> additionalAccounts,
       ChainConfig chainConfig,
       TestInfo testInfo) {
-    this.run(senderBalance, gasLimit, additionalAccounts, Bytes.EMPTY, chainConfig, testInfo);
+    this.run(
+        senderBalance, gasLimit, additionalAccounts, Bytes.EMPTY, List.of(), chainConfig, testInfo);
+  }
+
+  public void run(
+      Bytes payload, List<AccessListEntry> accessList, ChainConfig chainConfig, TestInfo testInfo) {
+    this.run(
+        Wei.fromEth(1), DEFAULT_GAS_LIMIT, List.of(), payload, accessList, chainConfig, testInfo);
+  }
+
+  public void run(
+      Wei senderBalance,
+      Long gasLimit,
+      List<ToyAccount> additionalAccounts,
+      Bytes payload,
+      ChainConfig chainConfig,
+      TestInfo testInfo) {
+    this.run(
+        senderBalance, gasLimit, additionalAccounts, payload, List.of(), chainConfig, testInfo);
   }
 
   // Ad-hoc senderBalance, gasLimit, accounts and payload
@@ -134,6 +157,7 @@ public final class BytecodeRunner {
       Long gasLimit,
       List<ToyAccount> additionalAccounts,
       Bytes payload,
+      List<AccessListEntry> accessList,
       ChainConfig chainConfig,
       TestInfo testInfo) {
     checkArgument(byteCode != null, "byteCode cannot be empty");
@@ -166,6 +190,10 @@ public final class BytecodeRunner {
     if (!payload.isEmpty()) {
       txBuilder.payload(payload);
     }
+    if (!accessList.isEmpty()) {
+      txBuilder.accessList(accessList).transactionType(TransactionType.ACCESS_LIST);
+    }
+
     final Transaction tx = txBuilder.build();
 
     final List<ToyAccount> accounts = new ArrayList<>();
@@ -184,8 +212,8 @@ public final class BytecodeRunner {
     toyExecutionEnvironmentV2.run();
   }
 
-  public void runInitcode(ChainConfig chainConfig, TestInfo testInfo) {
-    checkArgument(byteCode != null, "initcode cannot be empty");
+  public void runInitCode(ChainConfig chainConfig, TestInfo testInfo) {
+    checkArgument(byteCode != null, "init code cannot be empty");
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -197,7 +225,7 @@ public final class BytecodeRunner {
     final Transaction tx =
         ToyTransaction.builder()
             .payload(byteCode)
-            .gasLimit((long) LINEA_BLOCK_GAS_LIMIT)
+            .gasLimit(DEFAULT_GAS_LIMIT)
             .sender(senderAccount)
             .value(Wei.of(272)) // 256 + 16, easier for debugging
             .keyPair(keyPair)
