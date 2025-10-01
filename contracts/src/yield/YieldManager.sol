@@ -99,6 +99,13 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     _;
   }
 
+  modifier revertIfZeroAddress(address _addr) {
+    if (_addr == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+    _;
+  }
+
   function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance) {
     withdrawalReserveBalance = l1MessageService().balance;
   }
@@ -712,10 +719,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   function addYieldProvider(
     address _yieldProvider,
     YieldProviderRegistration calldata _registration
-  ) external onlyRole(YIELD_PROVIDER_SETTER) {
-    if (_yieldProvider == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
+  ) external onlyRole(YIELD_PROVIDER_SETTER) revertIfZeroAddress(_yieldProvider) {
     if (_registration.primaryEntrypoint == address(0) || _registration.ossifiedEntrypoint == address(0) || _registration.receiveCaller == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -753,11 +757,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
 
   function removeYieldProvider(
     address _yieldProvider
-  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_SETTER) {
-    if (_yieldProvider == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
+  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_SETTER) revertIfZeroAddress(_yieldProvider) {
     // We assume that 'pendingPermissionlessUnstake' and 'currentNegativeYield' must be 0, before 'userFunds' can be 0.
     if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
       revert YieldProviderHasRemainingFunds();
@@ -770,10 +770,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
   // @dev Otherwise newly reported yield can prevent removeYieldProvider
   function emergencyRemoveYieldProvider(
     address _yieldProvider
-  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_SETTER) {
-    if (_yieldProvider == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
+  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(YIELD_PROVIDER_SETTER) revertIfZeroAddress(_yieldProvider) {
     _removeYieldProvider(_yieldProvider);
     emit YieldProviderRemoved(_yieldProvider, true);
   }
@@ -791,20 +788,22 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
     delete $._yieldProviderStorage[_yieldProvider];
   }
 
-  function setL1MessageService(address _l1MessageService) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    if (_l1MessageService == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
+  function setL1MessageService(address _l1MessageService)
+    external
+    onlyRole(DEFAULT_ADMIN_ROLE)
+    revertIfZeroAddress(_l1MessageService)
+  {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     address oldL1MessageService = $._l1MessageService;
     emit L1MessageServiceUpdated(oldL1MessageService, _l1MessageService);
     $._l1MessageService = _l1MessageService;
   }
 
-  function addL2YieldRecipient(address _l2YieldRecipient) external onlyRole(L2_YIELD_RECIPIENT_SETTER) {
-    if (_l2YieldRecipient == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
+  function addL2YieldRecipient(address _l2YieldRecipient)
+    external
+    onlyRole(L2_YIELD_RECIPIENT_SETTER)
+    revertIfZeroAddress(_l2YieldRecipient)
+  {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     if ($._isL2YieldRecipientKnown[_l2YieldRecipient]) {
       revert L2YieldRecipientAlreadyAdded();
@@ -815,10 +814,7 @@ contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IY
 
   function removeL2YieldRecipient(
     address _l2YieldRecipient
-  ) external onlyKnownL2YieldRecipient(_l2YieldRecipient) onlyRole(L2_YIELD_RECIPIENT_SETTER) {
-    if (_l2YieldRecipient == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
+  ) external onlyKnownL2YieldRecipient(_l2YieldRecipient) onlyRole(L2_YIELD_RECIPIENT_SETTER) revertIfZeroAddress(_l2YieldRecipient) {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     emit L2YieldRecipientRemoved(_l2YieldRecipient);
     $._isL2YieldRecipientKnown[_l2YieldRecipient] = false;
