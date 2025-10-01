@@ -9,6 +9,7 @@
 package net.consensys.linea.sequencer.txselection.selectors;
 
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_MODULE_LINE_COUNT_FULL;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.EXECUTION_INTERRUPTED;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_INVALID_COUNT;
@@ -135,7 +136,16 @@ public class TraceLineLimitTransactionSelector
     final var prevCumulatedLineCountMap = getWorkingState();
 
     // check that we are not exceeding line number for any module
-    final var newCumulatedLineCountMap = lineCountingTracer.getModulesLineCount();
+    final Map<String, Integer> newCumulatedLineCountMap;
+    try {
+      newCumulatedLineCountMap = lineCountingTracer.getModulesLineCount();
+    } catch (final Exception e) {
+      if (e.getCause() instanceof InterruptedException) {
+        return EXECUTION_INTERRUPTED;
+      }
+      throw e;
+    }
+
     final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
     log.atTrace()
         .setMessage("Tx {} line count per module: {}")
