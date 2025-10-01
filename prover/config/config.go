@@ -198,9 +198,26 @@ type Controller struct {
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
 
+	// LimitlessProver commands including the --phase flag
+	ProverPhaseCmd ProverPhaseCmd `mapstructure:"prover_phase"`
+
 	// SpotInstanceMode tells the controller to gracefully exit as soon as it
 	// receives a SIGTERM.
 	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
+}
+
+type ProverPhaseCmd struct {
+	BootstrapCmd     string             `mapstructure:"bootstrap_cmd"`
+	BootstrapCmdTmpl *template.Template `mapstructure:"-"`
+
+	GLCmd     string             `mapstructure:"gl_cmd"`
+	GLCmdTmpl *template.Template `mapstructure:"-"`
+
+	LPPCmd     string             `mapstructure:"lpp_cmd"`
+	LPPCmdTmpl *template.Template `mapstructure:"-"`
+
+	ConglomerationCmd     string             `mapstructure:"conglomeration_cmd"`
+	ConglomerationCmdTmpl *template.Template `mapstructure:"-"`
 }
 
 type Prometheus struct {

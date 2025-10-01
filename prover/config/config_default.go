@@ -14,6 +14,7 @@ var (
 func setDefaultValues() {
 	setDefaultTracesLimit()
 	setDefaultPaths()
+	setDefaultProverPhaseCmds()
 
 	viper.SetDefault("debug.profiling", false)
 	viper.SetDefault("debug.tracing", false)
@@ -38,12 +39,28 @@ func setDefaultValues() {
 	viper.SetDefault("execution.ignore_compatibility_check", false)
 }
 
+func setDefaultProverPhaseCmds() {
+
+	// Set default cmds for limitless prover invoking the --phase flag
+	var (
+		bootstrapCmd      = "prover prove -phase=bootstrap --config {{.Config}} --in {{.Input}} --out {{.Output}}"
+		glCmd             = "prover prove -phase=gl --config {{.Config}} --in {{.Input}} --out /dev/null"
+		lppCmd            = "prover prove -phase=lpp --config {{.Config}} --in {{.Input}} --out /dev/null"
+		conglomerationCmd = "prover prove -phase=conglomeration --config {{.Config}} --in {{.Input}} --out {{.Output}}"
+	)
+
+	viper.SetDefault("controller.prover_phase.bootstrap_cmd", bootstrapCmd)
+	viper.SetDefault("controller.prover_phase.gl_cmd", glCmd)
+	viper.SetDefault("controller.prover_phase.lpp_cmd", lppCmd)
+	viper.SetDefault("controller.prover_phase.conglomeration_cmd", conglomerationCmd)
+}
+
 func setDefaultPaths() {
-	viper.SetDefault("execution.conflated_traces_dir", "/shared/traces/conflated")
-	viper.SetDefault("execution.requests_root_dir", "/shared/prover-execution")
-	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/prover-compression")
-	viper.SetDefault("aggregation.requests_root_dir", "/shared/prover-aggregation")
-	viper.SetDefault("debug.performance_monitor.profile_dir", "/shared/prover-execution/profiling")
+	viper.SetDefault("execution.conflated_traces_dir", "/shared/v3/traces/conflated")
+	viper.SetDefault("execution.requests_root_dir", "/shared/v3/prover-execution")
+	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/v3/prover-compression")
+	viper.SetDefault("aggregation.requests_root_dir", "/shared/v3/prover-aggregation")
+	viper.SetDefault("debug.performance_monitor.profile_dir", "/shared/v3/prover-execution/profiling")
 }
 
 func setDefaultTracesLimit() {
