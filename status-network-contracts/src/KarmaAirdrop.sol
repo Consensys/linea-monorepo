@@ -5,6 +5,7 @@ import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 /**
  * @title KarmaAirdrop
@@ -35,6 +36,8 @@ contract KarmaAirdrop is Ownable2Step, Pausable {
     address public immutable token;
     /// @notice Whether the merkle root can be updated more than once
     bool public immutable allowMerkleRootUpdate;
+    /// @notice The default delegatee address for new claimers
+    address public immutable defaultDelegatee;
     /// @notice The Merkle root of the airdrop
     bytes32 public merkleRoot;
     /// @notice Current epoch - incremented with each merkle root update
@@ -42,9 +45,10 @@ contract KarmaAirdrop is Ownable2Step, Pausable {
     /// @notice A bitmap to track claimed indices per epoch
     mapping(uint256 => mapping(uint256 => uint256)) private claimedBitMap;
 
-    constructor(address _token, address _owner, bool _allowMerkleRootUpdate) {
+    constructor(address _token, address _owner, bool _allowMerkleRootUpdate, address _defaultDelegatee) {
         token = _token;
         allowMerkleRootUpdate = _allowMerkleRootUpdate;
+        defaultDelegatee = _defaultDelegatee;
         _transferOwnership(_owner);
     }
 
@@ -99,8 +103,25 @@ contract KarmaAirdrop is Ownable2Step, Pausable {
      * @param account The address of the account to claim tokens for
      * @param amount The amount of tokens to claim
      * @param merkleProof The Merkle proof to validate the claim
+     * @param nonce The nonce for the delegation signature
+     * @param expiry The expiry timestamp for the delegation signature
+     * @param v The v component of the delegation signature
+     * @param r The r component of the delegation signature
+     * @param s The s component of the delegation signature
      */
-    function claim(uint256 index, address account, uint256 amount, bytes32[] calldata merkleProof) external {
+    function claim(
+        uint256 index,
+        address account,
+        uint256 amount,
+        bytes32[] calldata merkleProof,
+        uint256 nonce,
+        uint256 expiry,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
+        external
+    {
         if (merkleRoot == bytes32(0)) {
             revert KarmaAirdrop__MerkleRootNotSet();
         }
@@ -118,6 +139,11 @@ contract KarmaAirdrop is Ownable2Step, Pausable {
         _setClaimed(index);
         if (!IERC20(token).transfer(account, amount)) {
             revert KarmaAirdrop__TransferFailed();
+        }
+
+        // If the account has no karma balance before this claim, delegate to the default delegatee
+        if (IERC20(token).balanceOf(account) == amount) {
+            IVotes(token).delegateBySig(defaultDelegatee, nonce, expiry, v, r, s);
         }
 
         emit Claimed(index, account, amount);

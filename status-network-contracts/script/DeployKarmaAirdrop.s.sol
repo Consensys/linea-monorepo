@@ -14,6 +14,7 @@ import { KarmaAirdrop } from "../src/KarmaAirdrop.sol";
  * The deploy function handles the deployment of the KarmaAirdrop contract.
  * The address of the Karma contract must be provided via the "KARMA_ADDRESS" environment variable.
  * The owner of the KarmaAirdrop contract must be provided via the "KARMA_AIRDROP_OWNER" environment variable.
+ * The default delegatee address must be provided via the "DEFAULT_DELEGATEE" environment variable.
  * The allowMerkleRootUpdate flag can be optionally provided via the "ALLOW_MERKLE_ROOT_UPDATE" environment variable
  * (defaults to false).
  */
@@ -22,6 +23,7 @@ contract DeployKarmaAirdropScript is BaseScript {
      * @dev Deploys KarmaAirdrop contract and returns the instance.
      * The address of the Karma contract must be provided via the "KARMA_ADDRESS" environment variable.
      * The owner of the KarmaAirdrop contract must be provided via the "KARMA_AIRDROP_OWNER" environment variable.
+     * The default delegatee address must be provided via the "DEFAULT_DELEGATEE" environment variable.
      * The allowMerkleRootUpdate flag can be optionally provided via the "ALLOW_MERKLE_ROOT_UPDATE" environment
      * variable
      * (defaults to false).
@@ -35,26 +37,31 @@ contract DeployKarmaAirdropScript is BaseScript {
         address ownerAddress = vm.envAddress("KARMA_AIRDROP_OWNER");
         require(ownerAddress != address(0), "KARMA_AIRDROP_OWNER is not set");
 
+        address defaultDelegatee = vm.envAddress("DEFAULT_DELEGATEE");
+        require(defaultDelegatee != address(0), "DEFAULT_DELEGATEE is not set");
+
         bool allowMerkleRootUpdate = vm.envOr("ALLOW_MERKLE_ROOT_UPDATE", false);
-        karmaAirdrop = _run(karmaAddress, ownerAddress, allowMerkleRootUpdate);
+        karmaAirdrop = _run(karmaAddress, ownerAddress, allowMerkleRootUpdate, defaultDelegatee);
     }
 
     /**
-     * @dev Deploys KarmaAirdrop contract for testing purposes and returns the instance along with deployment config.
+     * @dev Deploys KarmaAirdrop contract for testing purposes with custom defaultDelegatee.
      * @param karmaAddress The address of the Karma token contract.
      * @param owner The address that will be set as the owner of the KarmaAirdrop contract.
+     * @param defaultDelegatee The default delegatee address for new claimers.
      * @return karmaAirdrop The deployed KarmaAirdrop contract instance.
      * @return deploymentConfig The DeploymentConfig instance for the current network.
      */
     function runForTest(
         address karmaAddress,
-        address owner
+        address owner,
+        address defaultDelegatee
     )
         public
         returns (KarmaAirdrop karmaAirdrop, DeploymentConfig deploymentConfig)
     {
         deploymentConfig = new DeploymentConfig(broadcaster);
-        karmaAirdrop = _run(karmaAddress, owner, false);
+        karmaAirdrop = _run(karmaAddress, owner, false, defaultDelegatee);
     }
 
     /**
@@ -74,7 +81,7 @@ contract DeployKarmaAirdropScript is BaseScript {
         returns (KarmaAirdrop karmaAirdrop, DeploymentConfig deploymentConfig)
     {
         deploymentConfig = new DeploymentConfig(broadcaster);
-        karmaAirdrop = _run(karmaAddress, owner, allowMerkleRootUpdate);
+        karmaAirdrop = _run(karmaAddress, owner, allowMerkleRootUpdate, address(0));
     }
 
     /**
@@ -82,17 +89,19 @@ contract DeployKarmaAirdropScript is BaseScript {
      * @param karmaAddress The address of the Karma token contract.
      * @param owner The address that will be set as the owner of the KarmaAirdrop contract.
      * @param allowMerkleRootUpdate Whether to allow merkle root updates.
+     * @param defaultDelegatee The default delegatee address for new claimers.
      * @return karmaAirdrop The deployed KarmaAirdrop contract instance.
      */
     function _run(
         address karmaAddress,
         address owner,
-        bool allowMerkleRootUpdate
+        bool allowMerkleRootUpdate,
+        address defaultDelegatee
     )
         internal
         broadcast
         returns (KarmaAirdrop karmaAirdrop)
     {
-        karmaAirdrop = new KarmaAirdrop(karmaAddress, owner, allowMerkleRootUpdate);
+        karmaAirdrop = new KarmaAirdrop(karmaAddress, owner, allowMerkleRootUpdate, defaultDelegatee);
     }
 }
