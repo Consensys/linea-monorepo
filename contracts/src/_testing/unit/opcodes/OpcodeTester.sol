@@ -8,6 +8,8 @@ contract OpcodeTester {
   address public yulContract;
   bytes32 public rollingBlockDetailComputations;
 
+  address transient contractBeingCalled;
+
   // The opcodes are logged here for completeness sake even though not used.
   // NOTE: For looping we make it 2 bytes instead of one, so the real value is actually missing the 00 from 0x0001 (0x01) etc.
 
@@ -211,6 +213,11 @@ contract OpcodeTester {
   function executeExternalCalls() private {
     ErrorAndDestructionTesting errorAndDestructingContract = new ErrorAndDestructionTesting();
 
+    // TLOAD + TSTORE
+    if (contractBeingCalled == address(0)) {
+      contractBeingCalled = address(errorAndDestructingContract);
+    }
+
     bool success;
     (success, ) = address(errorAndDestructingContract).call(abi.encodeWithSignature("externalRevert()"));
 
@@ -218,6 +225,8 @@ contract OpcodeTester {
     if (success) {
       revert("Error: externalRevert did not revert");
     }
+
+    contractBeingCalled = address(0);
 
     (success, ) = address(errorAndDestructingContract).staticcall(abi.encodeWithSignature("externalRevert()"));
 
