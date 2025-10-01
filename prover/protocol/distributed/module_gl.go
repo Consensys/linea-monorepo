@@ -829,7 +829,7 @@ func (modGl *ModuleGL) declarePublicInput() {
 		TargetNbSegments:    declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:      declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:     declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
-		LppCommitmentMSetGL: declareListOfPiColumns(modGl.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash: declareListOfPiColumns(modGl.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
 	}
 }
 

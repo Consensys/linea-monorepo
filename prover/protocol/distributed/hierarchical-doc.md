@@ -44,19 +44,8 @@ We know that a subproof has aggregated all the segments if the TargetCount is re
 
 ## Proving the unicity of the segments
 
-We do so by allocating a multiset-hash public input. 
-
-
-* For an LPP proof, the multiset hash is the hash of the multiset:
-
-```
-{
-    [-1] ()
-    [+1] (moduleID, moduleSegmentID)
-}
-```
-
-* The multiset hashes of two proofs are aggregated by summation (which gives the hash of the "sum" multiset).
+This is not really needed. Each segment is taking part in a succession of N0Hash
+and GlobalSent/ReceiveHash. Having a valid sequence is valid for us.
 
 ## Proving the segments are from a list of whitelisted circuits
 
