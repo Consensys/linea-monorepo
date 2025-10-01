@@ -827,10 +827,11 @@ func (modGl *ModuleGL) declarePublicInput() {
 	segmentCountGl[modGl.Disc.IndexOf(modGl.DefinitionInput.ModuleName)] = field.One()
 
 	modGl.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
-		TargetNbSegments:    declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, nbModules),
-		SegmentCountGL:      declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
-		SegmentCountLPP:     declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
-		GeneralMultiSetHash: declareListOfPiColumns(modGl.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		TargetNbSegments:             declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, nbModules),
+		SegmentCountGL:               declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
+		SegmentCountLPP:              declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
+		GeneralMultiSetHash:          declareListOfPiColumns(modGl.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		SharedRandomnessMultiSetHash: declareListOfPiColumns(modGl.Wiop, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
 	}
 
 	// This adds the functional inputs by multiplying them with the value of
@@ -892,26 +893,28 @@ func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *Mod
 func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 
 	var (
-		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex           = run.GetColumnAt(segmentModuleIndexColumn, 0)
-		typeOfProof            = field.NewElement(uint64(proofTypeGL))
-		globalSentHash         = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
-		globalRcvdHash         = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
-		mset                   = mimc.MSetHash{}
-		defInp                 = modGL.DefinitionInput
-		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
-		numModule              = len(defInp.Disc.Modules)
-		segmentIndexInt        = segmentIndex.Uint64()
-		numSegmentOfLastModule = modGL.PublicInputs.TargetNbSegments[numModule-1].Acc.GetVal(run)
+		lppCommitments           = run.GetPublicInput(lppMerkleRootPublicInput)
+		segmentIndex             = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		typeOfProof              = field.NewElement(uint64(proofTypeGL))
+		globalSentHash           = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
+		globalRcvdHash           = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
+		multiSetGeneral          = mimc.MSetHash{}
+		multiSetSharedRandomness = mimc.MSetHash{}
+		defInp                   = modGL.DefinitionInput
+		moduleIndex              = field.NewElement(uint64(defInp.ModuleIndex))
+		numModule                = len(defInp.Disc.Modules)
+		segmentIndexInt          = segmentIndex.Uint64()
+		numSegmentOfLastModule   = modGL.PublicInputs.TargetNbSegments[numModule-1].Acc.GetVal(run)
 	)
 
-	mset.Insert(moduleIndex, segmentIndex, lppCommitments)
+	multiSetSharedRandomness.Insert(moduleIndex, segmentIndex, lppCommitments)
+	multiSetGeneral.Add(multiSetSharedRandomness)
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
 	if segmentIndexInt < numSegmentOfLastModule.Uint64()-1 {
 		// This is a local module
-		mset.Insert(moduleIndex, segmentIndex, typeOfProof, globalSentHash)
+		multiSetGeneral.Insert(moduleIndex, segmentIndex, typeOfProof, globalSentHash)
 	}
 
 	// If the segment is not the first one of its module, we add the received
@@ -924,10 +927,11 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 		)
 
 		prevSegmentIndex.Sub(&segmentIndex, &one)
-		mset.Remove(moduleIndex, prevSegmentIndex, typeOfProof, globalRcvdHash)
+		multiSetGeneral.Remove(moduleIndex, prevSegmentIndex, typeOfProof, globalRcvdHash)
 	}
 
-	assignListOfPiColumns(run, generalMultiSetPublicInputBase, mset[:])
+	assignListOfPiColumns(run, generalMultiSetPublicInputBase, multiSetGeneral[:])
+	assignListOfPiColumns(run, sharedRandomnessMultiSetPublicInputBase, multiSetSharedRandomness[:])
 }
 
 // checkMultiSetHash checks that the LPP commitment MSet is correctly
@@ -936,22 +940,25 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
-		targetMSet             = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
-		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex           = run.GetColumnAt(segmentModuleIndexColumn, 0)
-		typeOfProof            = field.NewElement(uint64(proofTypeGL))
-		globalSentHash         = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
-		globalRcvdHash         = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
-		mset                   = mimc.MSetHash{}
-		defInp                 = modGL.DefinitionInput
-		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
-		segmentIndexInt        = segmentIndex.Uint64()
-		numSegmentOfCurrModule = modGL.PublicInputs.TargetNbSegments[segmentIndexInt].Acc.GetVal(run)
-		isFirst                = modGL.IsFirst.GetColAssignmentAt(run, 0)
-		isLast                 = modGL.IsLast.GetColAssignmentAt(run, 0)
+		targetMSetGeneral          = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
+		targetMSetSharedRandomness = getPublicInputList(run, sharedRandomnessMultiSetPublicInputBase, 1)
+		lppCommitments             = run.GetPublicInput(lppMerkleRootPublicInput)
+		segmentIndex               = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		typeOfProof                = field.NewElement(uint64(proofTypeGL))
+		globalSentHash             = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
+		globalRcvdHash             = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
+		multiSetGeneral            = mimc.MSetHash{}
+		multiSetSharedRandomness   = mimc.MSetHash{}
+		defInp                     = modGL.DefinitionInput
+		moduleIndex                = field.NewElement(uint64(defInp.ModuleIndex))
+		segmentIndexInt            = segmentIndex.Uint64()
+		numSegmentOfCurrModule     = modGL.PublicInputs.TargetNbSegments[segmentIndexInt].Acc.GetVal(run)
+		isFirst                    = modGL.IsFirst.GetColAssignmentAt(run, 0)
+		isLast                     = modGL.IsLast.GetColAssignmentAt(run, 0)
 	)
 
-	mset.Insert(moduleIndex, segmentIndex, lppCommitments)
+	multiSetSharedRandomness.Insert(moduleIndex, segmentIndex, lppCommitments)
+	multiSetGeneral.Add(multiSetSharedRandomness)
 
 	if !isFirst.IsZero() && !isFirst.IsOne() {
 		return fmt.Errorf("isFirst is not 0 or 1")
@@ -975,7 +982,7 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 	// in the multiset.
 	if segmentIndexInt < numSegmentOfCurrModule.Uint64()-1 {
 		// This is a local module
-		mset.Insert(moduleIndex, segmentIndex, typeOfProof, globalSentHash)
+		multiSetGeneral.Insert(moduleIndex, segmentIndex, typeOfProof, globalSentHash)
 	}
 
 	// If the segment is not the first one of its module, we add the received
@@ -988,11 +995,15 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 		)
 
 		prevSegmentIndex.Sub(&segmentIndex, &one)
-		mset.Remove(moduleIndex, prevSegmentIndex, typeOfProof, globalRcvdHash)
+		multiSetGeneral.Remove(moduleIndex, prevSegmentIndex, typeOfProof, globalRcvdHash)
 	}
 
-	if !vector.Equal(targetMSet, mset[:]) {
-		return fmt.Errorf("LPP commitment MSet mismatch, expected: %v, got: %v", targetMSet, mset[:])
+	if !vector.Equal(targetMSetGeneral, multiSetGeneral[:]) {
+		return fmt.Errorf("LPP commitment MSet mismatch, expected: %v, got: %v", targetMSetGeneral, multiSetGeneral[:])
+	}
+
+	if !vector.Equal(targetMSetSharedRandomness, multiSetSharedRandomness[:]) {
+		return fmt.Errorf("shared randomness MSet mismatch, expected: %v, got: %v", targetMSetSharedRandomness, multiSetSharedRandomness[:])
 	}
 
 	return nil

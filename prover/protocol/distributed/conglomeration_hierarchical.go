@@ -32,20 +32,21 @@ const (
 	aggregationArity = 2
 
 	// name of the public inputs
-	targetNbSegmentPublicInputBase = "TARGET_NB_SEGMENTS"
-	segmentCountLPPPublicInputBase = "GL_SEGMENT_COUNT"
-	segmentCountGLPublicInputBase  = "LPP_SEGMENT_COUNT"
-	generalMultiSetPublicInputBase = "GENERAL_MULTI_SET"
-	VkMerkleProofBase              = "VK_MERKLE_PROOF"
-	InitialRandomnessPublicInput   = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
-	LogDerivativeSumPublicInput    = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
-	GrandProductPublicInput        = "GRAND_PRODUCT_PUBLIC_INPUT"
-	HornerPublicInput              = "HORNER_FINAL_RES_PUBLIC_INPUT"
-	globalHashSentPublicInput      = "GLOBAL_HASH_SENT"
-	globalHashReceivedPublicInput  = "GLOBAL_HASH_RECEIVED"
-	verifyingKeyPublicInput        = "VERIFYING_KEY"
-	verifyingKey2PublicInput       = "VERIFYING_KEY_2"
-	lppMerkleRootPublicInput       = "LPP_COLUMNS_MERKLE_ROOTS"
+	targetNbSegmentPublicInputBase          = "TARGET_NB_SEGMENTS"
+	segmentCountLPPPublicInputBase          = "GL_SEGMENT_COUNT"
+	segmentCountGLPublicInputBase           = "LPP_SEGMENT_COUNT"
+	generalMultiSetPublicInputBase          = "GENERAL_MULTI_SET"
+	sharedRandomnessMultiSetPublicInputBase = "SHARED_RANDOMNESS_MULTI_SET"
+	VkMerkleProofBase                       = "VK_MERKLE_PROOF"
+	InitialRandomnessPublicInput            = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
+	LogDerivativeSumPublicInput             = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
+	GrandProductPublicInput                 = "GRAND_PRODUCT_PUBLIC_INPUT"
+	HornerPublicInput                       = "HORNER_FINAL_RES_PUBLIC_INPUT"
+	globalHashSentPublicInput               = "GLOBAL_HASH_SENT"
+	globalHashReceivedPublicInput           = "GLOBAL_HASH_RECEIVED"
+	verifyingKeyPublicInput                 = "VERIFYING_KEY"
+	verifyingKey2PublicInput                = "VERIFYING_KEY_2"
+	lppMerkleRootPublicInput                = "LPP_COLUMNS_MERKLE_ROOTS"
 )
 
 // ConglomerationCompilation holds the compilation context of the hierarchical
@@ -79,21 +80,18 @@ type ConglomerationHierarchicalVerifierAction struct {
 // LimitlessPublicInput stores the columns totalling the
 // public inputs of a conglomeration node.
 type LimitlessPublicInput[T any] struct {
-	Functionals            []T
-	TargetNbSegments       []T
-	SegmentCountGL         []T
-	SegmentCountLPP        []T
-	GeneralMultiSetHash    []T
-	LppCommitmentMSetLPP   []T
-	SegmentIndexChecker    []T
-	VKeyMerkleRoot         T
-	VerifyingKey           [2]T
-	LogDerivativeSum       T
-	HornerSum              T
-	GrandProduct           T
-	SharedRandomness       T
-	HornerN0HashChecker    T
-	GlobalSentReceivedMSet []T
+	Functionals                  []T
+	TargetNbSegments             []T
+	SegmentCountGL               []T
+	SegmentCountLPP              []T
+	GeneralMultiSetHash          []T
+	SharedRandomnessMultiSetHash []T
+	VKeyMerkleRoot               T
+	VerifyingKey                 [2]T
+	LogDerivativeSum             T
+	HornerSum                    T
+	GrandProduct                 T
+	SharedRandomness             T
 }
 
 // Compile compiles the conglomeration proof. The function first checks if the
@@ -123,8 +121,6 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 	c.PublicInputs.HornerSum = declarePiColumn(c.Wiop, HornerPublicInput)
 	c.PublicInputs.GrandProduct = declarePiColumn(c.Wiop, GrandProductPublicInput)
 	c.PublicInputs.SharedRandomness = declarePiColumn(c.Wiop, InitialRandomnessPublicInput)
-	c.PublicInputs.HornerN0HashChecker = declarePiColumn(c.Wiop, hornerN0HashCheckerPublicInput)
-	c.PublicInputs.GlobalSentReceivedMSet = declareListOfPiColumns(c.Wiop, GlobalSentReceivedMSetPublicInput, mimc.MSetHashSize)
 
 	// vkMerkleTreeDepth is the depth of the verification key merkle tree
 	vkMerkleTreeDepth := c.VKeyMTreeDepth()
@@ -213,9 +209,8 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 	for k := 0; k < c.ModuleNumber; k++ {
 
 		var (
-			accSegmentIndexChecker = field.One()
-			sumCountGL             = field.Element{}
-			sumCountLPP            = field.Element{}
+			sumCountGL  = field.Element{}
+			sumCountLPP = field.Element{}
 		)
 
 		for instance := 0; instance < aggregationArity; instance++ {
@@ -230,10 +225,6 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 			// is one GL and one LPP counter for each module that's why we do them in the
 			sumCountGL.Add(&sumCountGL, &collectedPIs[instance].SegmentCountGL[k])
 			sumCountLPP.Add(&sumCountLPP, &collectedPIs[instance].SegmentCountLPP[k])
-
-			// This agglomerates the segment index checkers and the horner N0
-			// hash checker.
-			accSegmentIndexChecker.Mul(&accSegmentIndexChecker, &collectedPIs[instance].SegmentIndexChecker[k])
 		}
 
 		if sumCountGL != topPIs.SegmentCountGL[k] {
@@ -243,37 +234,27 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 		if sumCountLPP != topPIs.SegmentCountLPP[k] {
 			err = errors.Join(err, fmt.Errorf("public input mismatch for SegmentCountLPP for module %d", k))
 		}
-
-		if accSegmentIndexChecker != topPIs.SegmentIndexChecker[k] {
-			err = errors.Join(err, fmt.Errorf("public input mismatch for SegmentIndexChecker for module %d", k))
-		}
 	}
 
 	// This agglomerates the multiset hashes
 	for k := 0; k < mimc.MSetHashSize; k++ {
 
 		var (
-			sumHashGL  = field.Element{}
-			sumHashLPP = field.Element{}
-			sumGlobal  = field.Element{}
+			generalSum = field.Element{}
+			sharedSum  = field.Element{}
 		)
 
 		for instance := 0; instance < c.ModuleNumber; instance++ {
-			sumHashGL.Add(&sumHashGL, &collectedPIs[instance].GeneralMultiSetHash[k])
-			sumHashLPP.Add(&sumHashLPP, &collectedPIs[instance].LppCommitmentMSetLPP[k])
-			sumGlobal.Add(&sumGlobal, &collectedPIs[instance].GlobalSentReceivedMSet[k])
+			generalSum.Add(&generalSum, &collectedPIs[instance].GeneralMultiSetHash[k])
+			sharedSum.Add(&sharedSum, &collectedPIs[instance].SharedRandomnessMultiSetHash[k])
 		}
 
-		if sumHashGL != topPIs.GeneralMultiSetHash[k] {
-			err = errors.Join(err, fmt.Errorf("public input mismatch for LppCommitmentMSetGL for index %d", k))
+		if generalSum != topPIs.GeneralMultiSetHash[k] {
+			err = errors.Join(err, fmt.Errorf("public input mismatch for generalMultiSetHash for index %d", k))
 		}
 
-		if sumHashLPP != topPIs.LppCommitmentMSetLPP[k] {
-			err = errors.Join(err, fmt.Errorf("public input mismatch for LppCommitmentMSetLPP for index %d", k))
-		}
-
-		if sumGlobal != topPIs.GlobalSentReceivedMSet[k] {
-			err = errors.Join(err, fmt.Errorf("public input mismatch for GlobalSentReceivedMSet for index %d", k))
+		if sharedSum != topPIs.SharedRandomnessMultiSetHash[k] {
+			err = errors.Join(err, fmt.Errorf("public input mismatch for sharedRandomness for index %d", k))
 		}
 	}
 
@@ -281,17 +262,15 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 	// and horner sum of the sub-instances. The aggregation is done by multiplying/summing
 	// the values. The results are then compared the top-level public inputs.
 	var (
-		accN0HashChecker = field.One()
-		accGrandProduct  = field.One()
-		accLogDeriv      = field.Zero()
-		accHornerSum     = field.Zero()
+		accGrandProduct = field.One()
+		accLogDeriv     = field.Zero()
+		accHornerSum    = field.Zero()
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
 
 		// This agglomerates the horner N0 hash checker, the grand product, the
 		// log derivative sum and the horner sum.
-		accN0HashChecker.Mul(&accN0HashChecker, &collectedPIs[instance].HornerN0HashChecker)
 		accGrandProduct.Mul(&accGrandProduct, &collectedPIs[instance].GrandProduct)
 		accLogDeriv.Add(&accLogDeriv, &collectedPIs[instance].LogDerivativeSum)
 		accHornerSum.Add(&accHornerSum, &collectedPIs[instance].HornerSum)
@@ -303,10 +282,6 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 		if collectedPIs[instance].VKeyMerkleRoot == topPIs.VKeyMerkleRoot {
 			err = errors.Join(err, fmt.Errorf("public input mismatch for VKeyMerkleRoot for instance %d", instance))
 		}
-	}
-
-	if accN0HashChecker != topPIs.HornerN0HashChecker {
-		err = errors.Join(err, fmt.Errorf("public input mismatch for HornerN0HashChecker, %v != %v", accN0HashChecker.String(), topPIs.HornerN0HashChecker.String()))
 	}
 
 	if accGrandProduct != topPIs.GrandProduct {
@@ -488,12 +463,10 @@ func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKeyPublicInput, instance),
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, instance),
 		},
-		LogDerivativeSum:       c.Recursion.GetPublicInputOfInstance(run, LogDerivativeSumPublicInput, instance),
-		HornerSum:              c.Recursion.GetPublicInputOfInstance(run, HornerPublicInput, instance),
-		GrandProduct:           c.Recursion.GetPublicInputOfInstance(run, GrandProductPublicInput, instance),
-		SharedRandomness:       c.Recursion.GetPublicInputOfInstance(run, InitialRandomnessPublicInput, instance),
-		HornerN0HashChecker:    c.Recursion.GetPublicInputOfInstance(run, hornerN0HashCheckerPublicInput, instance),
-		GlobalSentReceivedMSet: getPublicInputListOfInstance(c.Recursion, run, GlobalSentReceivedMSetPublicInput, instance, mimc.MSetHashSize),
+		LogDerivativeSum: c.Recursion.GetPublicInputOfInstance(run, LogDerivativeSumPublicInput, instance),
+		HornerSum:        c.Recursion.GetPublicInputOfInstance(run, HornerPublicInput, instance),
+		GrandProduct:     c.Recursion.GetPublicInputOfInstance(run, GrandProductPublicInput, instance),
+		SharedRandomness: c.Recursion.GetPublicInputOfInstance(run, InitialRandomnessPublicInput, instance),
 	}
 
 	for _, name := range c.FunctionalName {
@@ -516,12 +489,10 @@ func (c ConglomerationHierarchical) collectAllPublicInputs(run wizard.Runtime) L
 			run.GetPublicInput(verifyingKeyPublicInput),
 			run.GetPublicInput(verifyingKey2PublicInput),
 		},
-		LogDerivativeSum:       run.GetPublicInput(LogDerivativeSumPublicInput),
-		HornerSum:              run.GetPublicInput(HornerPublicInput),
-		GrandProduct:           run.GetPublicInput(GrandProductPublicInput),
-		SharedRandomness:       run.GetPublicInput(InitialRandomnessPublicInput),
-		HornerN0HashChecker:    run.GetPublicInput(hornerN0HashCheckerPublicInput),
-		GlobalSentReceivedMSet: getPublicInputList(run, GlobalSentReceivedMSetPublicInput, mimc.MSetHashSize),
+		LogDerivativeSum: run.GetPublicInput(LogDerivativeSumPublicInput),
+		HornerSum:        run.GetPublicInput(HornerPublicInput),
+		GrandProduct:     run.GetPublicInput(GrandProductPublicInput),
+		SharedRandomness: run.GetPublicInput(InitialRandomnessPublicInput),
 	}
 
 	for _, name := range c.FunctionalName {
