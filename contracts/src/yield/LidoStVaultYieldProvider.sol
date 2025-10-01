@@ -235,7 +235,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     );
     uint256 rebalanceAmount = Math256.min(lstLiabilityPrincipalSynced, _availableFunds);
     if (rebalanceAmount > 0) {
-      dashboard.rebalanceVaultWithShares(rebalanceAmount);
+      dashboard.rebalanceVaultWithEther(rebalanceAmount);
     }
     $$.lstLiabilityPrincipal -= rebalanceAmount;
     lstPrincipalPaid = rebalanceAmount;

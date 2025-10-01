@@ -7,6 +7,7 @@ pragma solidity 0.8.30;
 import {GIndex, pack, concat} from "./vendor/lido/GIndex.sol";
 import {SSZ} from "./vendor/lido/SSZ.sol";
 import {BLS12_381} from "./vendor/lido/BLS.sol";
+import {Validator} from "./vendor/lido/BeaconTypes.sol";
 
 /**
  * @title CLProofVerifier
@@ -34,7 +35,7 @@ abstract contract CLProofVerifier {
         bytes32[] proof;
         bytes pubkey;
         uint256 validatorIndex;
-        uint256 effectiveBalance;
+        uint64 effectiveBalance;
         uint64 childBlockTimestamp;
         uint64 slot;
         uint64 proposerIndex;
@@ -149,7 +150,7 @@ abstract contract CLProofVerifier {
     address public constant BEACON_ROOTS = 0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02;
 
     // Sentinel value that a validator has no current exit scheduled 
-    bytes32 FAR_FUTURE_EXIT_EPOCH_LITTLE_ENDIAN = SSZ.toLittleEndian(18446744073709551615);
+    uint64 public constant FAR_FUTURE_EXIT_EPOCH = 18446744073709551615;
 
     // Validator must be active for this many epochs before it is eligible for withdrawals
     uint256 private constant SHARD_COMMITTEE_PERIOD = 256;
@@ -189,20 +190,18 @@ abstract contract CLProofVerifier {
         _verifySlot(_witness);
         _validationActivationEpoch(_witness);
 
-        // parent node for first two leaves in validator container tree: pubkey & wc
-        // we use 'leaf' instead of 'node' due to proving a subtree where this node is a leaf
-        bytes32 pubkeyWCParentLeaf = BLS12_381.sha256Pair(BLS12_381.pubkeyRoot(_witness.pubkey), _withdrawalCredentials);
+        Validator memory validator = Validator({
+            pubkey: _witness.pubkey,
+            withdrawalCredentials: _withdrawalCredentials,
+            effectiveBalance: _witness.effectiveBalance,
+            slashed: false,
+            activationEligibilityEpoch: _witness.activationEligibilityEpoch,
+            activationEpoch: _witness.activationEpoch,
+            exitEpoch: FAR_FUTURE_EXIT_EPOCH,
+            withdrawableEpoch: FAR_FUTURE_EXIT_EPOCH
+        });
 
-        // parent node for 3rd and 4th leaves in validator container tree: effectivebalance & slashed
-        // we hardcode `slashed` to false, because we cannot tolerate withdrawal request to a slashed validator
-        bytes32 ebSlashedParentLeaf = BLS12_381.sha256Pair(SSZ.toLittleEndian(_witness.effectiveBalance), SSZ.toLittleEndian(false));
-        bytes32 pubkeyWCEffectiveBalanceSlashedGrandparentLeaf = BLS12_381.sha256Pair(pubkeyWCParentLeaf, ebSlashedParentLeaf);
-
-        bytes32 activationEligibilityEpochActivationEpochParentLeaf = BLS12_381.sha256Pair(SSZ.toLittleEndian(_witness.activationEligibilityEpoch), SSZ.toLittleEndian(_witness.activationEpoch));
-        bytes32 exitEpochWithdrawalableEpochParentLeaf = BLS12_381.sha256Pair(FAR_FUTURE_EXIT_EPOCH_LITTLE_ENDIAN, FAR_FUTURE_EXIT_EPOCH_LITTLE_ENDIAN);
-        bytes32 aeeAEeeWEGrandparentLeaf = BLS12_381.sha256Pair(activationEligibilityEpochActivationEpochParentLeaf, exitEpochWithdrawalableEpochParentLeaf);
-        
-        bytes32 validatorContainerRootLeaf = BLS12_381.sha256Pair(pubkeyWCEffectiveBalanceSlashedGrandparentLeaf, aeeAEeeWEGrandparentLeaf);
+        bytes32 validatorContainerRootLeaf = SSZ.hashTreeRoot(validator);
 
         // concatenated GIndex for
         // parent(pubkey + wc) ->  Validator Index in state tree -> stateView Index in Beacon block Tree

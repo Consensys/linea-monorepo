@@ -15,10 +15,4 @@ struct Validator {
     uint64 exitEpoch;
     uint64 withdrawableEpoch;
 }
-struct BeaconBlockHeader {
-    uint64 slot;
-    uint64 proposerIndex;
-    bytes32 parentRoot;
-    bytes32 stateRoot;
-    bytes32 bodyRoot;
-}
+

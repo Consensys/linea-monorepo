@@ -12,7 +12,7 @@ pragma solidity ^0.8.25;
 
 type GIndex is bytes32;
 
-using {isRoot, index, width, shr, shl, concat, unwrap, pow} for GIndex global;
+using {index, width, shr, shl, concat, unwrap, pow} for GIndex global;
 
 error IndexOutOfRange();
 
@@ -30,10 +30,6 @@ function pack(uint256 gI, uint8 p) pure returns (GIndex) {
 
 function unwrap(GIndex self) pure returns (bytes32) {
     return GIndex.unwrap(self);
-}
-
-function isRoot(GIndex self) pure returns (bool) {
-    return index(self) == 1;
 }
 
 function index(GIndex self) pure returns (uint256) {
