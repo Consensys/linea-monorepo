@@ -228,9 +228,11 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		// #nosec G115 -- this bound will not overflow
 		s.Comp.InsertRange(0, ifaces.QueryID(name), s.compColumnByCorsetID(rc.Context, rc.Expr.Register), int(bound.Uint64()))
 
+	case air.Assertion[bls12_377.Element]:
+		// Property assertions can be ignored, as they are a debugging tool and
+		// not part of the constraints proper.
 	default:
-
-		utils.Panic("unexpected constraint type: %T", cs)
+		utils.Panic("unexpected constraint type: %s", cs.Lisp(s.Schema).String(false))
 	}
 }
 
