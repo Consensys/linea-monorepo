@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.logdata;
 
-import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.module.ModuleName.LOG_DATA;
+import static net.consensys.linea.zktracer.types.Utils.fromDataSizeToLimbCtMax;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.util.List;
@@ -84,8 +84,8 @@ public class LogData implements Module {
     }
   }
 
-  private static short indexMax(Log log) {
-    return log.getData().isEmpty() ? 0 : (short) ((log.getData().size() - 1) / LLARGE);
+  private static int indexMax(Log log) {
+    return log.getData().isEmpty() ? 0 : fromDataSizeToLimbCtMax(log.getData().size());
   }
 
   @Override
