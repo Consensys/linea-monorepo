@@ -44,46 +44,84 @@ type TracesLimits struct {
 	Txndata           int `mapstructure:"TXN_DATA" validate:"power_of_2" corset:"txndata"`
 	Wcp               int `mapstructure:"WCP" validate:"power_of_2" corset:"wcp"`
 	// internal modules
-	ByteShl256    int `mapstructure:"BYTE_SHL256" validate:"power_of_2" corset:"byte_shl256"`
-	ByteShr256    int `mapstructure:"BYTE_SHR256" validate:"power_of_2" corset:"byte_shr256"`
-	ByteSar256    int `mapstructure:"BYTE_SAR256" validate:"power_of_2" corset:"byte_sar256"`
-	BitShl256     int `mapstructure:"BIT_SHL256" validate:"power_of_2" corset:"bit_shl256"`
-	BitShr256     int `mapstructure:"BIT_SHR256" validate:"power_of_2" corset:"bit_shr256"`
-	BitSar256     int `mapstructure:"BIT_SAR256" validate:"power_of_2" corset:"bit_sar256"`
-	FillBytesFrom int `mapstructure:"FILL_BYTES_FROM" validate:"power_of_2" corset:"fill_bytes_from"`
-	Log2          int `mapstructure:"LOG2" validate:"power_of_2" corset:"log2"`
-	Log2U128      int `mapstructure:"LOG2_U128" validate:"power_of_2" corset:"log2_u128"`
-	Log2U64       int `mapstructure:"LOG2_U64" validate:"power_of_2" corset:"log2_u64"`
-	Log2U32       int `mapstructure:"LOG2_U32" validate:"power_of_2" corset:"log2_u32"`
-	Log2U16       int `mapstructure:"LOG2_U16" validate:"power_of_2" corset:"log2_u16"`
-	Log2U8        int `mapstructure:"LOG2_U8" validate:"power_of_2" corset:"log2_u8"`
-	Log2U4        int `mapstructure:"LOG2_U4" validate:"power_of_2" corset:"log2_u4"`
-	Log2U2        int `mapstructure:"LOG2_U2" validate:"power_of_2" corset:"log2_u2"`
-	Log256        int `mapstructure:"LOG256" validate:"power_of_2" corset:"log256"`
-	Log256U128    int `mapstructure:"LOG256_U128" validate:"power_of_2" corset:"log256_u128"`
-	Log256U64     int `mapstructure:"LOG256_U64" validate:"power_of_2" corset:"log256_u64"`
-	Log256U32     int `mapstructure:"LOG256_U32" validate:"power_of_2" corset:"log256_u32"`
-	Log256U16     int `mapstructure:"LOG256_U16" validate:"power_of_2" corset:"log256_u16"`
-	SetByte256    int `mapstructure:"SET_BYTE256" validate:"power_of_2" corset:"set_byte256"`
-	SetByte128    int `mapstructure:"SET_BYTE128" validate:"power_of_2" corset:"set_byte128"`
-	SetByte64     int `mapstructure:"SET_BYTE64" validate:"power_of_2" corset:"set_byte64"`
-	SetByte32     int `mapstructure:"SET_BYTE32" validate:"power_of_2" corset:"set_byte32"`
-	SetByte16     int `mapstructure:"SET_BYTE16" validate:"power_of_2" corset:"set_byte16"`
+	BitShl256        int `mapstructure:"BIT_SHL256" validate:"power_of_2" corset:"bit_shl256"`
+	BitShl256U7      int `mapstructure:"BIT_SHL256_U7" validate:"power_of_2" corset:"bit_shl256_u7"`
+	BitShl256U6      int `mapstructure:"BIT_SHL256_U6" validate:"power_of_2" corset:"bit_shl256_u6"`
+	BitShl256U5      int `mapstructure:"BIT_SHL256_U5" validate:"power_of_2" corset:"bit_shl256_u5"`
+	BitShl256U4      int `mapstructure:"BIT_SHL256_U4" validate:"power_of_2" corset:"bit_shl256_u4"`
+	BitShl256U3      int `mapstructure:"BIT_SHL256_U3" validate:"power_of_2" corset:"bit_shl256_u3"`
+	BitShl256U2      int `mapstructure:"BIT_SHL256_U2" validate:"power_of_2" corset:"bit_shl256_u2"`
+	BitShl256U1      int `mapstructure:"BIT_SHL256_U1" validate:"power_of_2" corset:"bit_shl256_u1"`
+	BitShr256        int `mapstructure:"BIT_SHR256" validate:"power_of_2" corset:"bit_shr256"`
+	BitShr256U7      int `mapstructure:"BIT_SHR256_U7" validate:"power_of_2" corset:"bit_shr256_u7"`
+	BitShr256U6      int `mapstructure:"BIT_SHR256_U6" validate:"power_of_2" corset:"bit_shr256_u6"`
+	BitShr256U5      int `mapstructure:"BIT_SHR256_U5" validate:"power_of_2" corset:"bit_shr256_u5"`
+	BitShr256U4      int `mapstructure:"BIT_SHR256_U4" validate:"power_of_2" corset:"bit_shr256_u4"`
+	BitShr256U3      int `mapstructure:"BIT_SHR256_U3" validate:"power_of_2" corset:"bit_shr256_u3"`
+	BitShr256U2      int `mapstructure:"BIT_SHR256_U2" validate:"power_of_2" corset:"bit_shr256_u2"`
+	BitShr256U1      int `mapstructure:"BIT_SHR256_U1" validate:"power_of_2" corset:"bit_shr256_u1"`
+	BitSar256        int `mapstructure:"BIT_SAR256" validate:"power_of_2" corset:"bit_sar256"`
+	BitSar256U7      int `mapstructure:"BIT_SAR256_U7" validate:"power_of_2" corset:"bit_sar256_u7"`
+	BitSar256U6      int `mapstructure:"BIT_SAR256_U6" validate:"power_of_2" corset:"bit_sar256_u6"`
+	BitSar256U5      int `mapstructure:"BIT_SAR256_U5" validate:"power_of_2" corset:"bit_sar256_u5"`
+	BitSar256U4      int `mapstructure:"BIT_SAR256_U4" validate:"power_of_2" corset:"bit_sar256_u4"`
+	BitSar256U3      int `mapstructure:"BIT_SAR256_U3" validate:"power_of_2" corset:"bit_sar256_u3"`
+	BitSar256U2      int `mapstructure:"BIT_SAR256_U2" validate:"power_of_2" corset:"bit_sar256_u2"`
+	BitSar256U1      int `mapstructure:"BIT_SAR256_U1" validate:"power_of_2" corset:"bit_sar256_u1"`
+	CallGasExtra     int `mapstructure:"CALL_GAS_EXTRA" validate:"power_of_2" corset:"call_gas_extra"`
+	FillBytesBetween int `mapstructure:"FILL_BYTES_BETWEEN" validate:"power_of_2" corset:"fill_bytes_between"`
+	GasOutOfPocket   int `mapstructure:"GAS_OUT_OF_POCKET" validate:"power_of_2" corset:"gas_out_of_pocket"`
+	Log2             int `mapstructure:"LOG2" validate:"power_of_2" corset:"log2"`
+	Log2U128         int `mapstructure:"LOG2_U128" validate:"power_of_2" corset:"log2_u128"`
+	Log2U64          int `mapstructure:"LOG2_U64" validate:"power_of_2" corset:"log2_u64"`
+	Log2U32          int `mapstructure:"LOG2_U32" validate:"power_of_2" corset:"log2_u32"`
+	Log2U16          int `mapstructure:"LOG2_U16" validate:"power_of_2" corset:"log2_u16"`
+	Log2U8           int `mapstructure:"LOG2_U8" validate:"power_of_2" corset:"log2_u8"`
+	Log2U4           int `mapstructure:"LOG2_U4" validate:"power_of_2" corset:"log2_u4"`
+	Log2U2           int `mapstructure:"LOG2_U2" validate:"power_of_2" corset:"log2_u2"`
+	Log256           int `mapstructure:"LOG256" validate:"power_of_2" corset:"log256"`
+	Log256U128       int `mapstructure:"LOG256_U128" validate:"power_of_2" corset:"log256_u128"`
+	Log256U64        int `mapstructure:"LOG256_U64" validate:"power_of_2" corset:"log256_u64"`
+	Log256U32        int `mapstructure:"LOG256_U32" validate:"power_of_2" corset:"log256_u32"`
+	Log256U16        int `mapstructure:"LOG256_U16" validate:"power_of_2" corset:"log256_u16"`
+	Min25664         int `mapstructure:"MIN256_64" validate:"power_of_2" corset:"min256_64"`
+	SetByte256       int `mapstructure:"SET_BYTE256" validate:"power_of_2" corset:"set_byte256"`
+	SetByte128       int `mapstructure:"SET_BYTE128" validate:"power_of_2" corset:"set_byte128"`
+	SetByte64        int `mapstructure:"SET_BYTE64" validate:"power_of_2" corset:"set_byte64"`
+	SetByte32        int `mapstructure:"SET_BYTE32" validate:"power_of_2" corset:"set_byte32"`
+	SetByte16        int `mapstructure:"SET_BYTE16" validate:"power_of_2" corset:"set_byte16"`
 	// limitless typing modules
 	U128 int `mapstructure:"U128" validate:"power_of_2" corset:"u128"`
 	U127 int `mapstructure:"U127" validate:"power_of_2" corset:"u127"`
 	U126 int `mapstructure:"U126" validate:"power_of_2" corset:"u126"`
+	U125 int `mapstructure:"U125" validate:"power_of_2" corset:"u125"`
+	U124 int `mapstructure:"U124" validate:"power_of_2" corset:"u124"`
+	U123 int `mapstructure:"U123" validate:"power_of_2" corset:"u123"`
 	U120 int `mapstructure:"U120" validate:"power_of_2" corset:"u120"`
 	U119 int `mapstructure:"U119" validate:"power_of_2" corset:"u119"`
+	U112 int `mapstructure:"U112" validate:"power_of_2" corset:"u112"`
+	U111 int `mapstructure:"U111" validate:"power_of_2" corset:"u111"`
+	U96  int `mapstructure:"U96" validate:"power_of_2" corset:"u96"`
+	U95  int `mapstructure:"U95" validate:"power_of_2" corset:"u95"`
 	U64  int `mapstructure:"U64" validate:"power_of_2" corset:"u64"`
 	U63  int `mapstructure:"U63" validate:"power_of_2" corset:"u63"`
 	U62  int `mapstructure:"U62" validate:"power_of_2" corset:"u62"`
+	U61  int `mapstructure:"U61" validate:"power_of_2" corset:"u61"`
+	U60  int `mapstructure:"U60" validate:"power_of_2" corset:"u60"`
+	U59  int `mapstructure:"U59" validate:"power_of_2" corset:"u59"`
+	U58  int `mapstructure:"U58" validate:"power_of_2" corset:"u58"`
 	U56  int `mapstructure:"U56" validate:"power_of_2" corset:"u56"`
 	U55  int `mapstructure:"U55" validate:"power_of_2" corset:"u55"`
+	U48  int `mapstructure:"U48" validate:"power_of_2" corset:"u48"`
+	U47  int `mapstructure:"U47" validate:"power_of_2" corset:"u47"`
 	U36  int `mapstructure:"U36" validate:"power_of_2" corset:"u36"`
 	U32  int `mapstructure:"U32" validate:"power_of_2" corset:"u32"`
 	U31  int `mapstructure:"U31" validate:"power_of_2" corset:"u31"`
 	U30  int `mapstructure:"U30" validate:"power_of_2" corset:"u30"`
+	U29  int `mapstructure:"U29" validate:"power_of_2" corset:"u29"`
+	U28  int `mapstructure:"U28" validate:"power_of_2" corset:"u28"`
+	U27  int `mapstructure:"U27" validate:"power_of_2" corset:"u27"`
+	U26  int `mapstructure:"U26" validate:"power_of_2" corset:"u26"`
 	U24  int `mapstructure:"U24" validate:"power_of_2" corset:"u24"`
 	U23  int `mapstructure:"U23" validate:"power_of_2" corset:"u23"`
 	U20  int `mapstructure:"U20" validate:"power_of_2" corset:"u20"`
@@ -193,20 +231,35 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.BlockKeccak *= by
 	tl.BlockTransactions *= by
 	tl.ShomeiMerkleProofs *= by
-	tl.U128 *= by
-	tl.U20 *= by
-	tl.U32 *= by
-	tl.U36 *= by
-	tl.U64 *= by
 
 	// Beta 4.0 internal modules
-	tl.ByteShl256 *= by
-	tl.ByteShr256 *= by
-	tl.ByteSar256 *= by
 	tl.BitShl256 *= by
+	tl.BitShl256U7 *= by
+	tl.BitShl256U6 *= by
+	tl.BitShl256U5 *= by
+	tl.BitShl256U4 *= by
+	tl.BitShl256U3 *= by
+	tl.BitShl256U2 *= by
+	tl.BitShl256U1 *= by
 	tl.BitShr256 *= by
+	tl.BitShr256U7 *= by
+	tl.BitShr256U6 *= by
+	tl.BitShr256U5 *= by
+	tl.BitShr256U4 *= by
+	tl.BitShr256U3 *= by
+	tl.BitShr256U2 *= by
+	tl.BitShr256U1 *= by
 	tl.BitSar256 *= by
-	tl.FillBytesFrom *= by
+	tl.BitSar256U7 *= by
+	tl.BitSar256U6 *= by
+	tl.BitSar256U5 *= by
+	tl.BitSar256U4 *= by
+	tl.BitSar256U3 *= by
+	tl.BitSar256U2 *= by
+	tl.BitSar256U1 *= by
+	tl.CallGasExtra *= by
+	tl.FillBytesBetween *= by
+	tl.GasOutOfPocket *= by
 	tl.Log2 *= by
 	tl.Log2U128 *= by
 	tl.Log2U64 *= by
@@ -220,24 +273,46 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.Log256U64 *= by
 	tl.Log256U32 *= by
 	tl.Log256U16 *= by
+	tl.Min25664 *= by
 	tl.SetByte256 *= by
 	tl.SetByte128 *= by
 	tl.SetByte64 *= by
 	tl.SetByte32 *= by
 	tl.SetByte16 *= by
-	tl.U23 *= by
-	tl.U24 *= by
-	tl.U30 *= by
-	tl.U31 *= by
-	tl.U55 *= by
-	tl.U56 *= by
-	tl.U62 *= by
-	tl.U63 *= by
-	tl.U119 *= by
-	tl.U120 *= by
-	tl.U126 *= by
+	tl.U128 *= by
 	tl.U127 *= by
-
+	tl.U126 *= by
+	tl.U125 *= by
+	tl.U124 *= by
+	tl.U123 *= by
+	tl.U120 *= by
+	tl.U119 *= by
+	tl.U112 *= by
+	tl.U111 *= by
+	tl.U96 *= by
+	tl.U95 *= by
+	tl.U64 *= by
+	tl.U63 *= by
+	tl.U62 *= by
+	tl.U61 *= by
+	tl.U60 *= by
+	tl.U59 *= by
+	tl.U58 *= by
+	tl.U56 *= by
+	tl.U55 *= by
+	tl.U48 *= by
+	tl.U47 *= by
+	tl.U36 *= by
+	tl.U32 *= by
+	tl.U31 *= by
+	tl.U30 *= by
+	tl.U29 *= by
+	tl.U28 *= by
+	tl.U27 *= by
+	tl.U26 *= by
+	tl.U24 *= by
+	tl.U23 *= by
+	tl.U20 *= by
 	// beta v4.0
 	tl.PrecompileBlsPointEvaluationEffectiveCalls *= by
 	tl.PrecompilePointEvaluationFailureEffectiveCalls *= by
@@ -312,49 +387,88 @@ func GetTestTracesLimits() *TracesLimits {
 		BlockL2L1Logs:                        16,
 		BlockTransactions:                    1 << 8,
 		ShomeiMerkleProofs:                   1 << 14,
-		U128:                                 1 << 17,
-		U20:                                  1 << 17,
-		U32:                                  1 << 17,
-		U36:                                  1 << 17,
-		U64:                                  1 << 17,
 		// Beta 4.0 internal modules
-		ByteShl256:    131072,
-		ByteShr256:    131072,
-		ByteSar256:    131072,
-		BitShl256:     131072,
-		BitShr256:     131072,
-		BitSar256:     131072,
-		FillBytesFrom: 131072,
-		Log2:          131072,
-		Log2U128:      131072,
-		Log2U64:       131072,
-		Log2U32:       131072,
-		Log2U16:       131072,
-		Log2U8:        131072,
-		Log2U4:        131072,
-		Log2U2:        131072,
-		Log256:        131072,
-		Log256U128:    131072,
-		Log256U64:     131072,
-		Log256U32:     131072,
-		Log256U16:     131072,
-		SetByte256:    131072,
-		SetByte128:    131072,
-		SetByte64:     131072,
-		SetByte32:     131072,
-		SetByte16:     131072,
-		U23:           131072,
-		U24:           131072,
-		U30:           131072,
-		U31:           131072,
-		U55:           131072,
-		U56:           131072,
-		U62:           131072,
-		U63:           131072,
-		U119:          131072,
-		U120:          131072,
-		U126:          131072,
-		U127:          131072,
+		BitShl256:        131072,
+		BitShl256U7:      131072,
+		BitShl256U6:      131072,
+		BitShl256U5:      131072,
+		BitShl256U4:      131072,
+		BitShl256U3:      131072,
+		BitShl256U2:      131072,
+		BitShl256U1:      131072,
+		BitShr256:        131072,
+		BitShr256U7:      131072,
+		BitShr256U6:      131072,
+		BitShr256U5:      131072,
+		BitShr256U4:      131072,
+		BitShr256U3:      131072,
+		BitShr256U2:      131072,
+		BitShr256U1:      131072,
+		BitSar256:        131072,
+		BitSar256U7:      131072,
+		BitSar256U6:      131072,
+		BitSar256U5:      131072,
+		BitSar256U4:      131072,
+		BitSar256U3:      131072,
+		BitSar256U2:      131072,
+		BitSar256U1:      131072,
+		CallGasExtra:     131072,
+		FillBytesBetween: 131072,
+		GasOutOfPocket:   131072,
+		Log2:             131072,
+		Log2U128:         131072,
+		Log2U64:          131072,
+		Log2U32:          131072,
+		Log2U16:          131072,
+		Log2U8:           131072,
+		Log2U4:           131072,
+		Log2U2:           131072,
+		Log256:           131072,
+		Log256U128:       131072,
+		Log256U64:        131072,
+		Log256U32:        131072,
+		Log256U16:        131072,
+		SetByte256:       131072,
+		SetByte128:       131072,
+		SetByte64:        131072,
+		SetByte32:        131072,
+		SetByte16:        131072,
+		Min25664:         131072,
+		U128:             131072,
+		U127:             131072,
+		U126:             131072,
+		U125:             131072,
+		U124:             131072,
+		U123:             131072,
+		U120:             131072,
+		U119:             131072,
+		U112:             131072,
+		U111:             131072,
+		U96:              131072,
+		U95:              131072,
+		U64:              131072,
+		U63:              131072,
+		U62:              131072,
+		U61:              131072,
+		U60:              131072,
+		U59:              131072,
+		U58:              131072,
+		U56:              131072,
+		U55:              131072,
+		U48:              131072,
+		U47:              131072,
+		U36:              131072,
+		U32:              131072,
+		U31:              131072,
+		U30:              131072,
+		U29:              131072,
+		U28:              131072,
+		U27:              131072,
+		U26:              131072,
+		U24:              131072,
+		U23:              131072,
+		U20:              131072,
+
 		// beta v4.0
 		PrecompileBlsPointEvaluationEffectiveCalls:     0,
 		PrecompilePointEvaluationFailureEffectiveCalls: 0,
