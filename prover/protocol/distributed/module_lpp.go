@@ -46,13 +46,13 @@ type ModuleLPP struct {
 	N1Hash ifaces.Column
 
 	// LogDerivativeSum is the translated log-derivative query in the module
-	LogDerivativeSum query.LogDerivativeSum
+	LogDerivativeSum *query.LogDerivativeSum
 
 	// GrandProduct is the translated grand-product query in the module
-	GrandProduct query.GrandProduct
+	GrandProduct *query.GrandProduct
 
 	// Horner is the translated horner query in the module
-	Horner query.Horner
+	Horner *query.Horner
 
 	// PublicInput contains the list of the public inputs for the current LPP
 	// module.
@@ -152,95 +152,31 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 		moduleLPP.InsertColumn(*col, 0)
 	}
 
-	logDerivativeArgs, grandProductArgs, hornerArgs := moduleInput.LogDerivativeArgs,
-		moduleInput.GrandProductArgs, moduleInput.HornerArgs
-
-	if len(logDerivativeArgs) > 0 {
-
-		moduleLPP.LogDerivativeSum = moduleLPP.InsertLogDerivative(
+	if len(moduleInput.LogDerivativeArgs) > 0 {
+		q := moduleLPP.InsertLogDerivative(
 			1,
 			ifaces.QueryID("MAIN_LOGDERIVATIVE"),
-			logDerivativeArgs,
+			moduleInput.LogDerivativeArgs,
 		)
-
-		// moduleLPP.Wiop.InsertPublicInput(
-		// 	LogDerivativeSumPublicInput,
-		// 	accessors.NewLogDerivSumAccessor(moduleLPP.LogDerivativeSum),
-		// )
-
-	} else {
-
-		// moduleLPP.Wiop.InsertPublicInput(
-		// 	LogDerivativeSumPublicInput,
-		// 	accessors.NewConstant(field.Zero()),
-		// )
+		moduleLPP.LogDerivativeSum = &q
 	}
 
-	if len(grandProductArgs) > 0 {
-
-		moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(
+	if len(moduleInput.GrandProductArgs) > 0 {
+		q := moduleLPP.InsertGrandProduct(
 			1,
 			ifaces.QueryID("MAIN_GRANDPRODUCT"),
-			grandProductArgs,
+			moduleInput.GrandProductArgs,
 		)
-
-		// moduleLPP.Wiop.InsertPublicInput(
-		// 	GrandProductPublicInput,
-		// 	accessors.NewGrandProductAccessor(moduleLPP.GrandProduct),
-		// )
-
-	} else {
-
-		// moduleLPP.Wiop.InsertPublicInput(
-		// 	GrandProductPublicInput,
-		// 	accessors.NewConstant(field.One()),
-		// )
+		moduleLPP.GrandProduct = &q
 	}
 
-	if len(hornerArgs) > 0 {
-
-		moduleLPP.Horner = moduleLPP.InsertHorner(
+	if len(moduleInput.HornerArgs) > 0 {
+		q := moduleLPP.InsertHorner(
 			1,
 			ifaces.QueryID("MAIN_HORNER"),
-			hornerArgs,
+			moduleInput.HornerArgs,
 		)
-
-		moduleLPP.N0Hash = builder.InsertProof(1, "LPP_N0_HASH", 1)
-		moduleLPP.N1Hash = builder.InsertProof(1, "LPP_N1_HASH", 1)
-
-		// moduleLPP.Wiop.InsertPublicInput(
-		// 	HornerPublicInput,
-		// 	accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner),
-		// )
-
-		// moduleLPP.Wiop.InsertPublicInput(
-		// 	HornerN0HashPublicInput,
-		// 	accessors.NewFromPublicColumn(moduleLPP.N0Hash, 0),
-		// )
-
-		// moduleLPP.Wiop.InsertPublicInput(
-		// 	HornerN1HashPublicInput,
-		// 	accessors.NewFromPublicColumn(moduleLPP.N1Hash, 0),
-		// )
-
-		moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
-
-	} else {
-
-		moduleLPP.Wiop.InsertPublicInput(
-			HornerPublicInput,
-			accessors.NewConstant(field.Zero()),
-		)
-
-		// moduleLPP.Wiop.InsertPublicInput(
-		// 	HornerN0HashPublicInput,
-		// 	accessors.NewConstant(field.Zero()),
-		// )
-
-		// moduleLPP.Wiop.InsertPublicInput(
-		// 	HornerN1HashPublicInput,
-		// 	accessors.NewConstant(field.Zero()),
-		// )
+		moduleLPP.Horner = &q
 	}
 
 	// moduleLPP.Wiop.InsertPublicInput(IsGlPublicInput, accessors.NewConstant(field.Zero()))
@@ -428,7 +364,7 @@ func (m ModuleLPP) getHornerParams(run *wizard.ProverRuntime, n0Values []int) qu
 		})
 	}
 
-	hornerParams.SetResult(run, m.Horner)
+	hornerParams.SetResult(run, *m.Horner)
 	return hornerParams
 }
 
@@ -570,6 +506,44 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	// the non-dummy ones.
 	for _, pi := range defInp.PublicInputs {
 		modLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
+	}
+
+	// This section adds the public inputs for the log-derivative, grand-product
+	// horner-sum.
+	if modLPP.Horner != nil {
+		modLPP.PublicInputs.HornerSum = modLPP.Wiop.InsertPublicInput(
+			HornerPublicInput,
+			accessors.NewFromHornerAccessorFinalValue(modLPP.Horner),
+		)
+	} else {
+		modLPP.PublicInputs.HornerSum = modLPP.Wiop.InsertPublicInput(
+			HornerPublicInput,
+			accessors.NewConstant(field.Zero()),
+		)
+	}
+
+	if modLPP.LogDerivativeSum != nil {
+		modLPP.PublicInputs.LogDerivativeSum = modLPP.Wiop.InsertPublicInput(
+			LogDerivativeSumPublicInput,
+			accessors.NewLogDerivSumAccessor(*modLPP.LogDerivativeSum),
+		)
+	} else {
+		modLPP.PublicInputs.LogDerivativeSum = modLPP.Wiop.InsertPublicInput(
+			LogDerivativeSumPublicInput,
+			accessors.NewConstant(field.Zero()),
+		)
+	}
+
+	if modLPP.GrandProduct != nil {
+		modLPP.PublicInputs.GrandProduct = modLPP.Wiop.InsertPublicInput(
+			GrandProductPublicInput,
+			accessors.NewGrandProductAccessor(*modLPP.GrandProduct),
+		)
+	} else {
+		modLPP.PublicInputs.GrandProduct = modLPP.Wiop.InsertPublicInput(
+			GrandProductPublicInput,
+			accessors.NewConstant(field.Zero()),
+		)
 	}
 }
 

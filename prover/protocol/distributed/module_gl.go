@@ -852,6 +852,25 @@ func (modGl *ModuleGL) declarePublicInput() {
 			pubInputAcc,
 		)
 	}
+
+	// This section adds the dummy public inputs for the log-derivative, grand-product
+	// horner-sum.
+
+	modGl.PublicInputs.HornerSum = modGl.Wiop.InsertPublicInput(
+		HornerPublicInput,
+		accessors.NewConstant(field.Zero()),
+	)
+
+	modGl.PublicInputs.LogDerivativeSum = modGl.Wiop.InsertPublicInput(
+		LogDerivativeSumPublicInput,
+		accessors.NewConstant(field.Zero()),
+	)
+
+	modGl.PublicInputs.GrandProduct = modGl.Wiop.InsertPublicInput(
+		GrandProductPublicInput,
+		accessors.NewConstant(field.Zero()),
+	)
+
 }
 
 func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
