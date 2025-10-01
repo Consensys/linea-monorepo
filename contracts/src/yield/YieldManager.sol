@@ -15,7 +15,7 @@ import { Math256 } from "../libraries/Math256.sol";
  * @dev Sole writer to YieldManagerStorageLayout.
  * @custom:security-contact security-report@linea.build
  */
-contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IYieldManager, IGenericErrors {
+contract YieldManager is YieldManagerStorageLayout, YieldManagerPauseManager, IYieldManager, IGenericErrors {
   /// @notice The role required to send ETH to a yield provider.
   bytes32 public constant YIELD_PROVIDER_FUNDER_ROLE = keccak256("YIELD_PROVIDER_FUNDER_ROLE");
 
@@ -74,7 +74,7 @@ contract YieldManager is YieldManagerPauseManager, YieldManagerStorageLayout, IY
   function initialize() external initializer {}
 
   modifier onlyKnownYieldProvider(address _yieldProvider) {
-    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
+    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex == 0) {
       revert UnknownYieldProvider();
     }
     _;
