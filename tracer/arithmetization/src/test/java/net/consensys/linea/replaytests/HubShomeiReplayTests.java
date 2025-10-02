@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+@Tag("replay")
 @Tag("nightly")
 @ExtendWith(UnitTestWatcher.class)
 public class HubShomeiReplayTests extends TracerTestBase {

@@ -215,6 +215,12 @@ tasks.register("downloadShoemiBesuPlugin", Download) {
   overwrite false
 }
 
+/*
+  * Fast replay tests (only tagged with replay)
+  * Nightly replay tests (tagged with replay and nightly+replay)
+  * Nightly tests (no replay)
+ */
+
 tasks.register("fastReplayTests", Test) {
   if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
@@ -278,31 +284,34 @@ tasks.register("jacocoFastReplayTestsReport", JacocoReport) {
 }
 
 tasks.register("nightlyReplayTests", Test) {
-  if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
+  if (System.getenv().containsKey("NIGHTLY_REPLAY_TESTS_PARALLELISM")) {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
     systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-      System.getenv().getOrDefault("REPLAY_TESTS_PARALLELISM", "1").toInteger())
+      System.getenv().getOrDefault("NIGHTLY_REPLAY_TESTS_PARALLELISM", "1").toInteger())
   }
 
   useJUnitPlatform {
     includeTags("replay")
-    includeTags("nightly")
+    excludeTags("weekly")
   }
 }
 
 tasks.register("nightlyTests", Test) {
+  if (System.getenv().containsKey("NIGHTLY_TESTS_PARALLELISM")) {
   systemProperty("junit.jupiter.execution.parallel.enabled", true)
   systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
   systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
   systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
   systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
           System.getenv().getOrDefault("NIGHTLY_TESTS_PARALLELISM", "1").toInteger())
+  }
 
   useJUnitPlatform {
     includeTags("nightly")
+    excludeTags("replay")
   }
   finalizedBy(jacocoNightlyTestsReport)
 }
@@ -315,6 +324,11 @@ tasks.register("jacocoNightlyTestsReport", JacocoReport) {
   sourceSets project(":arithmetization").sourceSets.main
   executionData(nightlyTests)
 }
+
+/*
+  * Weekly tests (include weekly replays and weekly tests)
+  * Prc Calls tests (only prc calls tests)
+ */
 
 tasks.register("weeklyTests", Test) {
   systemProperty("junit.jupiter.execution.parallel.enabled", true)
