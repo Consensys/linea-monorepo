@@ -17,8 +17,9 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
 import maru.config.P2PConfig
+import maru.config.SyncingConfig
 import maru.consensus.ForkId
-import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
@@ -28,9 +29,10 @@ import maru.database.P2PState
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
-import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.messages.StatusManager
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
+import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
@@ -56,16 +58,18 @@ class P2PNetworkImpl(
   private val chainId: UInt,
   private val serDe: SerDe<SealedBeaconBlock>,
   private val metricsFacade: MetricsFacade,
-  private val metricsSystem: BesuMetricsSystem,
-  private val statusMessageFactory: StatusMessageFactory,
+  metricsSystem: BesuMetricsSystem,
+  private val statusManager: StatusManager,
   private val beaconChain: BeaconChain,
-  private val forkIdHashProvider: ForkIdHashProvider,
+  private val forkIdHashManager: ForkIdHashManager,
   private val forkIdHasher: ForkIdHasher,
   isBlockImportEnabledProvider: () -> Boolean,
   private val p2PState: P2PState,
+  private val syncStatusProviderProvider: () -> SyncStatusProvider,
+  private val syncConfig: SyncingConfig,
   // for testing:
   private val rpcMethodsFactory: (
-    StatusMessageFactory,
+    StatusManager,
     LineaRpcProtocolIdGenerator,
     () -> PeerLookup,
     BeaconChain,
@@ -111,18 +115,19 @@ class P2PNetworkImpl(
     val reputationManager =
       MaruReputationManager(besuMetricsSystem, SystemTimeProvider(), this::isStaticPeer, p2pConfig.reputation)
 
-    val rpcMethods = rpcMethodsFactory(statusMessageFactory, rpcIdGenerator, { maruPeerManager }, beaconChain)
+    val rpcMethods = rpcMethodsFactory(statusManager, rpcIdGenerator, { maruPeerManager }, beaconChain)
     maruPeerManager =
       MaruPeerManager(
         maruPeerFactory =
           DefaultMaruPeerFactory(
             rpcMethods = rpcMethods,
-            statusMessageFactory = statusMessageFactory,
+            statusManager = statusManager,
             p2pConfig = p2pConfig,
           ),
         p2pConfig = p2pConfig,
         reputationManager = reputationManager,
         isStaticPeer = this::isStaticPeer,
+        syncStatusProviderProvider = syncStatusProviderProvider,
       )
 
     return Libp2pNetworkFactory(LINEA_DOMAIN).build(
@@ -146,7 +151,7 @@ class P2PNetworkImpl(
       MaruDiscoveryService(
         privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
+        forkIdHashManager = forkIdHashManager,
         p2PState = p2PState,
       )
     }
@@ -350,6 +355,9 @@ class P2PNetworkImpl(
   override val peerCount: Int
     get() = maruPeerManager.peerCount
 
+  internal fun isConnected(peer: String): Boolean =
+    maruPeerManager.getPeer(LibP2PNodeId(PeerId.fromBase58(peer))) != null
+
   internal fun dropPeer(
     peer: String,
     reason: DisconnectReason,
@@ -396,6 +404,7 @@ class P2PNetworkImpl(
             ?: throw IllegalStateException("Genesis state not found"),
       )
     val newForkIdHash = forkIdHasher.hash(forkId)
+    forkIdHashManager.update(forkSpec)
     discoveryService?.updateForkIdHash(Bytes.wrap(newForkIdHash))
   }
 }

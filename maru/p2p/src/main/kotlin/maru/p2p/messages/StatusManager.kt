@@ -8,20 +8,24 @@
  */
 package maru.p2p.messages
 
-import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashManager
 import maru.database.BeaconChain
 import maru.p2p.Message
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 
-class StatusMessageFactory(
+class StatusManager(
   private val beaconChain: BeaconChain,
-  private val forkIdHashProvider: ForkIdHashProvider,
+  private val forkIdHashManager: ForkIdHashManager,
 ) {
   fun createStatusMessage(): Message<Status, RpcMessageType> {
-    val forkIdHash = forkIdHashProvider.currentForkIdHash()
     val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
-    val statusPayload = Status(forkIdHash = forkIdHash, latestBeaconBlockHeader.hash, latestBeaconBlockHeader.number)
+    val statusPayload =
+      Status(
+        forkIdHash = forkIdHashManager.currentHash(),
+        latestStateRoot = latestBeaconBlockHeader.hash,
+        latestBlockNumber = latestBeaconBlockHeader.number,
+      )
     val statusMessage =
       Message(
         type = RpcMessageType.STATUS,
@@ -30,4 +34,6 @@ class StatusMessageFactory(
       )
     return statusMessage
   }
+
+  fun check(otherStatus: Status): Boolean = forkIdHashManager.check(otherForkIdHash = otherStatus.forkIdHash)
 }

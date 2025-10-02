@@ -21,7 +21,7 @@ import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
 import maru.consensus.ForkId
-import maru.consensus.ForkIdHashProviderImpl
+import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -80,7 +80,7 @@ class MaruDiscoveryServiceTest {
     val forksSchedule = ForksSchedule(chainId = chainId, forks = listOf(forkSpec))
 
     private val forkIdHashProvider =
-      ForkIdHashProviderImpl(
+      ForkIdHashManagerImpl(
         chainId = chainId,
         beaconChain = beaconChain,
         forksSchedule = forksSchedule,
@@ -98,7 +98,7 @@ class MaruDiscoveryServiceTest {
   private val dummyAddr = Optional.of(InetSocketAddress(InetAddress.getByName("1.1.1.1"), 1234))
 
   private fun createValidNodeRecord(
-    forkIdHash: ByteArray? = forkIdHashProvider.currentForkIdHash(),
+    forkIdHash: ByteArray? = forkIdHashProvider.currentHash(),
     tcpAddress: Optional<InetSocketAddress> = dummyAddr,
   ): NodeRecord {
     val nrBuilder =
@@ -134,7 +134,7 @@ class MaruDiscoveryServiceTest {
       MaruDiscoveryService(
         privateKeyBytes = keyPair.secretKey().bytesArray(),
         p2pConfig = p2pConfig,
-        forkIdHashProvider = forkIdHashProvider,
+        forkIdHashManager = forkIdHashProvider,
         p2PState = p2PState,
       )
   }
@@ -147,7 +147,7 @@ class MaruDiscoveryServiceTest {
 
     assertEquals(publicKey, peer.publicKey)
     assertEquals(dummyAddr.get(), peer.nodeAddress)
-    assertEquals(Bytes.wrap(forkIdHashProvider.currentForkIdHash()), peer.forkIdBytes)
+    assertEquals(Bytes.wrap(forkIdHashProvider.currentHash()), peer.forkIdBytes)
   }
 
   @Test
@@ -224,7 +224,7 @@ class MaruDiscoveryServiceTest {
                 refreshInterval = 10.seconds,
               ),
           ),
-        forkIdHashProvider = forkIdHashProvider,
+        forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
       )
 
@@ -242,7 +242,7 @@ class MaruDiscoveryServiceTest {
                 refreshInterval = 500.milliseconds,
               ),
           ),
-        forkIdHashProvider = forkIdHashProvider,
+        forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
       )
 
@@ -260,7 +260,7 @@ class MaruDiscoveryServiceTest {
                 refreshInterval = 500.milliseconds,
               ),
           ),
-        forkIdHashProvider = forkIdHashProvider,
+        forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
       )
 

@@ -8,11 +8,11 @@
  */
 package maru.serialization
 
-interface Deserializer<T> {
+fun interface Deserializer<T> {
   fun deserialize(bytes: ByteArray): T
 }
 
-interface Serializer<T> {
+fun interface Serializer<T> {
   fun serialize(value: T): ByteArray
 }
 

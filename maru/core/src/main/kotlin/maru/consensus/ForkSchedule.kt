@@ -11,6 +11,7 @@ package maru.consensus
 import java.util.NavigableSet
 import java.util.TreeSet
 import kotlin.reflect.KClass
+import org.apache.logging.log4j.LogManager
 
 data class ForkSpec(
   val timestampSeconds: ULong,
@@ -20,13 +21,18 @@ data class ForkSpec(
   init {
     require(blockTimeSeconds > 0UL) { "blockTimeSeconds must be greater or equal to 1 second" }
   }
+
+  override fun toString(): String =
+    "ForkSpec(timestampSeconds=$timestampSeconds, blockTimeSeconds=$blockTimeSeconds, configuration=$configuration)"
 }
 
 class ForksSchedule(
   val chainId: UInt,
   forks: Collection<ForkSpec>,
 ) {
-  private val forks: NavigableSet<ForkSpec> =
+  private val log = LogManager.getLogger(this.javaClass)
+
+  val forks: NavigableSet<ForkSpec> =
     run {
       val newForks =
         TreeSet(
@@ -36,6 +42,7 @@ class ForksSchedule(
         )
       newForks.addAll(forks)
       require(newForks.size == forks.size) { "Fork timestamps must be unique" }
+      log.debug("Forks: {}", newForks)
       newForks
     }
 
@@ -44,13 +51,17 @@ class ForksSchedule(
       "No fork found for $timestamp, first known fork is at ${forks.last.timestampSeconds}",
     )
 
-  fun getNextForkByTimestamp(timestamp: ULong): ForkSpec? {
-    val nextFork =
-      forks
-        .filter { it.timestampSeconds > timestamp }
-        .minByOrNull { it.timestampSeconds }
+  fun getNextForkByTimestamp(timestamp: ULong): ForkSpec? =
+    forks
+      .reversed()
+      .firstOrNull { timestamp < it.timestampSeconds }
 
-    return nextFork
+  fun getPreviousForkByTimestamp(timestamp: ULong): ForkSpec? {
+    val previousForks =
+      forks
+        .filter { timestamp >= it.timestampSeconds }
+        .take(2)
+    return previousForks.getOrNull(1)
   }
 
   fun <T : ConsensusConfig> getForkByConfigType(configClass: KClass<T>): ForkSpec {
