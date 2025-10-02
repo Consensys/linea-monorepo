@@ -70,6 +70,115 @@ type ConglomerationHierarchical struct {
 	VerificationKeyMerkleProofs [][]ifaces.Column
 }
 
+// VerificationKeyMerkleTree is a Merkle tree storing a list of verification keys
+// and it is meant to store the verification keys of all the moduleGL/LPP and
+// and of the ConglomerationHierarchical circuit.
+type VerificationKeyMerkleTree struct {
+	Tree             *smt.Tree
+	VerificationKeys [][2]field.Element
+}
+
+// BuildVerificationKeyMerkleTree builds the verification key merkle tree.
+func BuildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompilation, hierAgg *RecursedSegmentCompilation) VerificationKeyMerkleTree {
+
+	var (
+		leaves           = make([]types.Bytes32, 0, len(moduleGL)+len(moduleLPP)+1)
+		verificationKeys = make([][2]field.Element, 0, len(moduleGL)+len(moduleLPP)+1)
+	)
+
+	appendLeaf := func(comp *wizard.CompiledIOP) {
+		var (
+			vk0, vk1 = getVerifyingKeyPair(comp)
+			leafF    = mimc.HashVec([]field.Element{vk0, vk1})
+			leaf     types.Bytes32
+		)
+
+		leaf.SetField(leafF)
+		leaves = append(leaves, leaf)
+		verificationKeys = append(verificationKeys, [2]field.Element{vk0, vk1})
+	}
+
+	for _, module := range moduleGL {
+		appendLeaf(module.RecursionComp)
+	}
+
+	for _, module := range moduleLPP {
+		appendLeaf(module.RecursionComp)
+	}
+
+	appendLeaf(hierAgg.RecursionComp)
+
+	// padding with zeroes so that the leaves number if a power-of-two
+	paddedSize := utils.NextPowerOfTwo(len(leaves))
+	for i := len(leaves); i < paddedSize; i++ {
+		leaves = append(leaves, types.Bytes32{})
+	}
+
+	return VerificationKeyMerkleTree{
+		Tree:             smt.BuildComplete(leaves, hashtypes.MiMC),
+		VerificationKeys: verificationKeys,
+	}
+}
+
+// GetVkMerkleProof return the merkle proof of a verification key
+func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(t ProofType, moduleIndex int) []field.Element {
+	proof := vmt.Tree.MustProve(moduleIndex)
+	res := make([]field.Element, len(proof.Siblings))
+	for i, sibling := range proof.Siblings {
+		res[i].SetBytes(sibling[:])
+	}
+	return res
+}
+
+// CheckMembership checks if a verification key is in the merkle tree.
+func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.Element, rootF field.Element, proofF []field.Element) error {
+
+	var leafPosition = -1
+
+	switch t {
+	// the instance is a conglomeration proof
+	case proofTypeConglo:
+		leafPosition = 2 * numModule
+	case proofTypeLPP:
+		leafPosition = moduleIndex + numModule
+	case proofTypeGL:
+		leafPosition = moduleIndex
+	}
+
+	// This part of the loop checks the membership of the VK as a member of
+	// the tree using the leafPosition from above.
+
+	var (
+		merkleDepth = utils.Log2Ceil(2*numModule + 1)
+		root        types.Bytes32
+		mProof      = smt.Proof{
+			Path:     leafPosition,
+			Siblings: make([]types.Bytes32, merkleDepth),
+		}
+		smtCfg = &smt.Config{HashFunc: hashtypes.MiMC, Depth: merkleDepth}
+		leafF  = mimc.HashVec(vk[:])
+		leaf   = types.Bytes32{}
+	)
+
+	if merkleDepth != len(proofF) {
+		panic("merkleDepth != len(proofF)")
+	}
+
+	leaf.SetField(leafF)
+
+	for lvl := 0; lvl < merkleDepth; lvl++ {
+		mProof.Siblings[lvl].SetField(proofF[lvl])
+	}
+
+	root.SetField(rootF)
+
+	if !mProof.Verify(smtCfg, leaf, root) {
+		return errors.New("VK is not a member of the tree")
+	}
+
+	return nil
+}
+
 // ConglomerationHierarchicalVerifierAction implements the [wizard.VerifierAction]
 // interface for the conglomeration proof. It checks the consistency of the
 // public inputs with the children instance's public inputs.
@@ -310,64 +419,24 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 
 	for instance := 0; instance < aggregationArity; instance++ {
 
-		// This part of the loop is tasked with determining the "right" value
-		// for leafPosition (as described above).
+		proofType, moduleIndex := findProofTypeAndModule(collectedPIs[instance])
 
-		var (
-			sumGL, sumLPP = 0, 0
-			leafPosition  = -1 // can't be -1 at the end of the "mod" loop.
+		mProof := make([]field.Element, c.ConglomerationHierarchical.VKeyMTreeDepth())
+		for i := range mProof {
+			mProof[i] = c.VerificationKeyMerkleProofs[instance][i].GetColAssignmentAt(run, 0)
+		}
+
+		vkErr := checkVkMembership(
+			proofType,
+			c.ModuleNumber,
+			moduleIndex,
+			collectedPIs[instance].VerifyingKey,
+			collectedPIs[instance].VKeyMerkleRoot,
+			mProof,
 		)
 
-		for mod := 0; mod < c.ModuleNumber; mod++ {
-
-			var (
-				segmentCountGL  = collectedPIs[instance].SegmentCountGL[mod]
-				segmentCountLPP = collectedPIs[instance].SegmentCountLPP[mod]
-			)
-
-			sumGL += int(segmentCountGL.Uint64())
-			sumLPP += int(segmentCountLPP.Uint64())
-
-			if segmentCountGL.IsOne() || segmentCountLPP.IsOne() {
-				leafPosition = mod
-			}
-		}
-
-		switch {
-		// the instance is a conglomeration proof
-		case sumGL+sumLPP > 1:
-			leafPosition = 2 * c.ModuleNumber
-		case sumGL == 1 && sumLPP == 0:
-			leafPosition += c.ModuleNumber
-		case sumGL == 0 && sumLPP == 1:
-			// do nothing, it should already set to the right value
-		}
-
-		// This part of the loop checks the membership of the VK as a member of
-		// the tree using the leafPosition from above.
-
-		var (
-			root   types.Bytes32
-			mProof = smt.Proof{
-				Path:     leafPosition,
-				Siblings: make([]types.Bytes32, c.VKeyMTreeDepth()),
-			}
-			smtCfg = &smt.Config{HashFunc: hashtypes.MiMC, Depth: c.VKeyMTreeDepth()}
-			leafF  = mimc.HashVec(collectedPIs[instance].VerifyingKey[:])
-			leaf   = types.Bytes32{}
-		)
-
-		leaf.SetField(leafF)
-
-		for lvl := 0; lvl < c.VKeyMTreeDepth(); lvl++ {
-			sibling := c.VerificationKeyMerkleProofs[instance][lvl].GetColAssignmentAt(run, 0)
-			mProof.Siblings[lvl].SetField(sibling)
-		}
-
-		root.SetField(c.PublicInputs.VKeyMerkleRoot.Acc.GetVal(run))
-
-		if !mProof.Verify(smtCfg, leaf, root) {
-			err = errors.Join(err, fmt.Errorf("VK %d is not a member of the tree", instance))
+		if vkErr != nil {
+			err = errors.Join(err, vkErr)
 		}
 	}
 
@@ -514,4 +583,41 @@ func (c ConglomerationHierarchical) collectAllPublicInputs(run wizard.Runtime) L
 // VKeyMTreeDepth returns the depth of the verification key merkle tree.
 func (c ConglomerationHierarchical) VKeyMTreeDepth() int {
 	return utils.Log2Ceil(2*c.ModuleNumber + 1)
+}
+
+// findProofTypeAndModule returns the proofType and the module index of the
+// provided instance given collected public inputs of the instances.
+func findProofTypeAndModule(instance LimitlessPublicInput[field.Element]) (ProofType, int) {
+
+	var (
+		sumGL, sumLPP = 0, 0
+		moduleIndex   = -1 // can't be -1 at the end of the "mod" loop.
+		moduleNumber  = len(instance.SegmentCountGL)
+	)
+
+	for mod := 0; mod < moduleNumber; mod++ {
+
+		var (
+			segmentCountGL  = instance.SegmentCountGL[mod]
+			segmentCountLPP = instance.SegmentCountLPP[mod]
+		)
+
+		sumGL += int(segmentCountGL.Uint64())
+		sumLPP += int(segmentCountLPP.Uint64())
+
+		if !segmentCountGL.IsZero() || !segmentCountLPP.IsZero() {
+			moduleIndex = mod
+		}
+	}
+
+	switch {
+	case sumGL+sumLPP > 1:
+		return proofTypeConglo, 0
+	case sumGL >= 1:
+		return proofTypeGL, moduleIndex
+	case sumLPP >= 1:
+		return proofTypeLPP, moduleIndex
+	}
+
+	panic("unreachable")
 }
