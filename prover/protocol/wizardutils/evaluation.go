@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -14,8 +15,8 @@ import (
 // linear combination of columns (hs) using a random coin value (x). It converts
 // each column to a symbolic variable and returns a polynomial expression with
 // the coin value and each columns as the variables.
-func RandLinCombColSymbolic(x coin.Info, hs []ifaces.Column) *symbolic.Expression {
-	cols := make([]*symbolic.Expression, len(hs))
+func RandLinCombColSymbolic[T zk.Element](x coin.Info[T], hs []ifaces.Column[T]) *symbolic.Expression[T] {
+	cols := make([]*symbolic.Expression[T], len(hs))
 	for c := range cols {
 		cols[c] = ifaces.ColumnAsVariable(hs[c])
 	}
@@ -30,7 +31,7 @@ func RandLinCombColSymbolic(x coin.Info, hs []ifaces.Column) *symbolic.Expressio
 // effectively computing a weighted sum of the columns. The weights are powers of the
 // coin value. The function returns the resulting linear combination as a
 // [smartvectors.SmartVector].
-func RandLinCombColAssignment(run *wizard.ProverRuntime, coinVal fext.Element, hs []ifaces.Column) smartvectors.SmartVector {
+func RandLinCombColAssignment[T zk.Element](run *wizard.ProverRuntime[T], coinVal fext.Element, hs []ifaces.Column[T]) smartvectors.SmartVector {
 	var colTableWit smartvectors.SmartVector
 	var witnessCollapsed smartvectors.SmartVector
 	x := fext.One()

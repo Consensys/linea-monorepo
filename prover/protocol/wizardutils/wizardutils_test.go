@@ -11,35 +11,36 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWizarldutils(t *testing.T) {
-	var res1, res11, res2, res22 *symbolic.Expression
-	define := func(b *wizard.Builder) {
+	var res1, res11, res2, res22 *symbolic.Expression[zk.NativeElement]
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 		var (
 			size = 4
 			col1 = b.RegisterCommit("P1", size)
 			col2 = b.RegisterCommit("P2", size)
 
 			col5 = b.RegisterPrecomputed("P3", smartvectors.ForTest(1, 0, 1, 1))
-			col6 = verifiercol.NewConstantCol(field.NewElement(3), size, "")
+			col6 = verifiercol.NewConstantCol[zk.NativeElement](field.NewElement(3), size, "")
 
 			coin = b.RegisterRandomCoin(coin.Namef("Coin"), coin.FieldExt)
 		)
 
 		// PolyEval over columns
-		res1 = symbolic.NewPolyEval(coin.AsVariable(), []*symbolic.Expression{ifaces.ColumnAsVariable(col1), ifaces.ColumnAsVariable(col2)})
-		res11 = linCom(coin.AsVariable(), []*symbolic.Expression{ifaces.ColumnAsVariable(col1), ifaces.ColumnAsVariable(col2)})
+		res1 = symbolic.NewPolyEval(coin.AsVariable(), []*symbolic.Expression[zk.NativeElement]{ifaces.ColumnAsVariable(col1), ifaces.ColumnAsVariable(col2)})
+		res11 = linCom(coin.AsVariable(), []*symbolic.Expression[zk.NativeElement]{ifaces.ColumnAsVariable(col1), ifaces.ColumnAsVariable(col2)})
 
 		// PolyEval over PolyEval and Mul.
-		expr := symbolic.Mul(col6, col5, coin)
-		res2 = symbolic.NewPolyEval(coin.AsVariable(), []*symbolic.Expression{res1, expr})
-		res22 = linCom(coin.AsVariable(), []*symbolic.Expression{res1, expr})
+		expr := symbolic.Mul[zk.NativeElement](col6, col5, coin)
+		res2 = symbolic.NewPolyEval(coin.AsVariable(), []*symbolic.Expression[zk.NativeElement]{res1, expr})
+		res22 = linCom(coin.AsVariable(), []*symbolic.Expression[zk.NativeElement]{res1, expr})
 
 	}
-	prover := func(run *wizard.ProverRuntime) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 		var (
 			col1 = smartvectors.ForTest(1, 2, 1, 0)
 			col2 = smartvectors.ForTest(1, 1, 3, 1)
@@ -72,11 +73,11 @@ func TestWizarldutils(t *testing.T) {
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 }
 
-func linCom(x *symbolic.Expression, coeff []*symbolic.Expression) *symbolic.Expression {
-	res := symbolic.NewConstant(0)
+func linCom(x *symbolic.Expression[zk.NativeElement], coeff []*symbolic.Expression[zk.NativeElement]) *symbolic.Expression[zk.NativeElement] {
+	res := symbolic.NewConstant[zk.NativeElement](0)
 	for i := len(coeff) - 1; i >= 0; i-- {
-		res = symbolic.Mul(res, x)
-		res = symbolic.Add(res, coeff[i])
+		res = symbolic.Mul[zk.NativeElement](res, x)
+		res = symbolic.Add[zk.NativeElement](res, coeff[i])
 	}
 	return res
 }
