@@ -361,4 +361,10 @@ describe("Linea Rollup contract", () => {
       await stopYieldManagerImpersonation();
     });
   });
+
+  describe("Claiming message with proof and withdrawing LST", () => {
+    // LSTWithdrawalRequiresDeficit() error
+    // Non-reentrancy
+    // Successful with event emission
+  });
 });
