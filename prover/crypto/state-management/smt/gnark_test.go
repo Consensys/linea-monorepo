@@ -25,7 +25,6 @@ func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 	leafs := make([]field.Octuplet, nbProofs)
 	for pos := 0; pos < nbProofs; pos++ {
 
-		// Make a valid Bytes32
 		leafs[pos], _ = tree.GetLeaf(pos)
 		proofs[pos], _ = tree.Prove(pos)
 

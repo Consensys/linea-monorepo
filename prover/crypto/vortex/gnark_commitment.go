@@ -26,7 +26,7 @@ func AllocateCircuitVariablesWithMerkleTree(
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32) {
+	roots []field.Octuplet) {
 
 	verifyCircuit.Proof.LinearCombination = make([]frontend.Variable, proof.LinearCombination.Len())
 
@@ -63,7 +63,7 @@ func AssignCicuitVariablesWithMerkleTree(
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32) {
+	roots []field.Octuplet) {
 
 	frLinComb := make([]field.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSlice(frLinComb)
@@ -102,8 +102,7 @@ func AssignCicuitVariablesWithMerkleTree(
 	}
 
 	for i := 0; i < len(roots); i++ {
-		buf.SetBytes(roots[i][:])
-		verifyCircuit.Roots[i] = buf.String()
+		verifyCircuit.Roots[i] = roots[i][:]
 	}
 
 }

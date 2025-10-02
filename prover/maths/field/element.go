@@ -156,3 +156,11 @@ func OctupletToBytes(octuplet [8]Element) [32]byte {
 	}
 	return res
 }
+
+func RandomOctuplet() Octuplet {
+	var oct Octuplet
+	for i := range oct {
+		oct[i] = RandomElement()
+	}
+	return oct
+}
