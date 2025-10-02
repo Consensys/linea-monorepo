@@ -23,8 +23,6 @@ type EncodedMatrix []smartvectors.SmartVector
 //
 //	tree.Root()
 //
-// And can be safely converted to a field Element via
-// [field.Element.SetBytesCanonical]
 // We apply SIS+Poseidon2 hashing on the columns to compute leaves
 // Should be used when the number of rows to commit is more than the [ApplySISThreshold]
 func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
@@ -67,8 +65,6 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 //
 //	tree.Root()
 //
-// And can be safely converted to a field Element via
-// [field.Element.SetBytesCanonical]
 // We apply Poseidon2 hashing on the columns to compute leaves.
 // Should be used when the number of rows to commit is less than the [ApplySISThreshold]
 func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {

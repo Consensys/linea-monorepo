@@ -44,7 +44,7 @@ type Tree struct {
 	EmptyNodes []field.Octuplet
 }
 
-// EmptyLeaf returns an empty leaf (e.g. the zero bytes value).
+// EmptyLeaf returns an empty leaf (e.g. the zero value).
 func EmptyLeaf() field.Octuplet {
 	return field.Octuplet{}
 }
@@ -53,9 +53,12 @@ func EmptyLeaf() field.Octuplet {
 // taking H as the HashFunc of the config.
 func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
 	var d field.Octuplet
+	var toHash [16]field.Element
+	copy(toHash[0:8], nodeL[:])
+	copy(toHash[8:16], nodeR[:])
 	if config.HashFunc != nil {
 		hasher := config.HashFunc()
-		d = hasher.BlockCompression(nodeL, nodeR)
+		d = hasher.FieldHash(toHash[:])
 	} else {
 		panic("missing a hash function")
 	}

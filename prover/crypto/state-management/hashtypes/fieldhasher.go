@@ -18,9 +18,6 @@ type FieldHasher interface {
 	// FieldHash takes a slice of field elements and returns a fixed-size hash output.
 	// It's typically implemented using a sponge construction.
 	FieldHash(xs []field.Element) field.Octuplet
-	// BlockCompression is a function used in Merkle trees to combine two child hashes
-	// (left, right) into a single parent hash.
-	BlockCompression(left, right field.Octuplet) field.Octuplet
 }
 
 // Poseidon2Hasher is a concrete implementation of the FieldHasher interface using the Poseidon2 hash function.
@@ -34,10 +31,6 @@ type Poseidon2Hasher struct {
 // ///// Implementation for the FieldHasher interface ///////
 func (p Poseidon2Hasher) FieldHash(xs []field.Element) field.Octuplet {
 	return poseidon2.Poseidon2Sponge(xs)
-}
-
-func (p Poseidon2Hasher) BlockCompression(left, right field.Octuplet) field.Octuplet {
-	return poseidon2.Poseidon2BlockCompression(left, right)
 }
 
 func (p Poseidon2Hasher) MaxBytes32() Bytes32 {

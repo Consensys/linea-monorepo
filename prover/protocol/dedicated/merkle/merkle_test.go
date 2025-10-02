@@ -53,8 +53,8 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 	for i := range leaves {
 		// #nosec G404 -- no need for a cryptographically strong PRNG for testing purposes
 		var x vortex.Hash
-		for i := 0; i < 8; i++ {
-			x[i].SetRandom()
+		for j := 0; j < 8; j++ {
+			x[j].SetRandom()
 		}
 		leaves[i] = x
 	}
