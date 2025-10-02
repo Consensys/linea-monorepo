@@ -25,7 +25,7 @@ abstract contract LineaNativeYieldExtension is
   bytes32 public constant FUNDER_ROLE = keccak256("FUNDER_ROLE");
 
   /// @notice The role required to set the YieldManager address.
-  bytes32 public constant YIELD_MANAGER_SETTER_ROLE = keccak256("YIELD_MANAGER_SETTER_ROLE");
+  bytes32 public constant SET_YIELD_MANAGER_ROLE = keccak256("SET_YIELD_MANAGER_ROLE");
 
   bool transient IS_WITHDRAW_LST_ALLOWED;
 
@@ -84,10 +84,10 @@ abstract contract LineaNativeYieldExtension is
 
   /**
    * @notice Set YieldManager address.
-   * @dev YIELD_MANAGER_SETTER_ROLE is required to execute.
+   * @dev SET_YIELD_MANAGER_ROLE is required to execute.
    * @param _newYieldManager YieldManager address.
    */
-  function setYieldManager(address _newYieldManager) public onlyRole(YIELD_MANAGER_SETTER_ROLE) {
+  function setYieldManager(address _newYieldManager) public onlyRole(SET_YIELD_MANAGER_ROLE) {
     LineaNativeYieldExtensionStorage storage $ = _storage();
     emit YieldManagerChanged($._yieldManager, _newYieldManager, msg.sender);
     $._yieldManager = _newYieldManager;

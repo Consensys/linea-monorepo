@@ -100,7 +100,7 @@ interface ILineaNativeYieldExtension {
 
   /**
    * @notice Set YieldManager address.
-   * @dev YIELD_MANAGER_SETTER_ROLE is required to execute.
+   * @dev SET_YIELD_MANAGER_ROLE is required to execute.
    * @param _newYieldManager YieldManager address.
    */
   function setYieldManager(address _newYieldManager) external;

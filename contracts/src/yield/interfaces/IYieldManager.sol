@@ -600,14 +600,14 @@ interface IYieldManager {
 
   /**
    * @notice Add an address to the allowlist of L2YieldRecipients.
-   * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
+   * @dev SET_L2_YIELD_RECIPIENT_ROLE is required to execute.
    * @param _L2YieldRecipient L2YieldRecipient address.
    */
   function addL2YieldRecipient(address _L2YieldRecipient) external;
 
   /**
    * @notice Remove an address from the allow-list of L2YieldRecipients.
-   * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
+   * @dev SET_L2_YIELD_RECIPIENT_ROLE is required to execute.
    * @param _L2YieldRecipient L2YieldRecipient address.
    */
   function removeL2YieldRecipient(address _L2YieldRecipient) external;

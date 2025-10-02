@@ -32,6 +32,7 @@ import {
   sendBlobTransaction,
   sendVersionedBlobTransactionFromFile,
   deployPlonkVerifierDev,
+  deployMockYieldManager,
 } from "../helpers";
 import {
   FALLBACK_OPERATOR_ADDRESS,
@@ -739,6 +740,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     it("Can submit blobs and finalize with Prover Beta V2", async () => {
       // *** ARRANGE ***
       const mainnetFullVerifier = await deployPlonkVerifierMainnetFull();
+      const mockYieldManager = await deployMockYieldManager();
 
       // Deploy and initialize LineaRollup
       const initializationData = {
@@ -751,6 +753,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
@@ -852,6 +855,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     it("Should fail to finalize Prover Beta V2 blobs with Dev Verifier", async () => {
       // *** ARRANGE ***
       const devVerifier = await deployPlonkVerifierDev();
+      const mockYieldManager = await deployMockYieldManager();
 
       // Deploy and initialize LineaRollup
       const initializationData = {
@@ -864,6 +868,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };

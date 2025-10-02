@@ -194,9 +194,38 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
     });
 
+    it("Should revert if an initialYieldManager is zero address", async () => {
+      const initializationData = {
+        initialStateRootHash: parentStateRootHash,
+        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
+        genesisTimestamp: GENESIS_L2_TIMESTAMP,
+        defaultVerifier: verifier,
+        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+        roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: ADDRESS_ZERO,
+        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
+        defaultAdmin: securityCouncil.address,
+      };
+
+      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
+        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+        unsafeAllow: ["constructor", "incorrect-initializer-order"],
+      });
+
+      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
+    });
+
     it("Should store verifier address in storage", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
       expect(await lineaRollup.verifiers(0)).to.be.equal(verifier);
+    });
+
+    it("Should store yield manager address in storage", async () => {
+      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+      expect(await lineaRollup.yieldManager()).to.be.equal(mockYieldManager);
     });
 
     it("Should assign the OPERATOR_ROLE to operator addresses", async () => {

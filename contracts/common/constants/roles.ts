@@ -76,6 +76,102 @@ export const SET_CUSTOM_CONTRACT_ROLE = generateKeccak256(["string"], ["SET_CUST
 export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESSAGE_SERVICE_ROLE"], {
   encodePacked: true,
 });
+// Roles for LineaRollup introduced with YieldManager
+export const SET_YIELD_MANAGER_ROLE = generateKeccak256(["string"], ["SET_YIELD_MANAGER_ROLE"], {
+  encodePacked: true,
+});
+export const RESERVE_OPERATOR_ROLE = generateKeccak256(["string"], ["RESERVE_OPERATOR_ROLE"], {
+  encodePacked: true,
+});
+export const FUNDER_ROLE = generateKeccak256(["string"], ["FUNDER_ROLE"], {
+  encodePacked: true,
+});
+export const PAUSE_NATIVE_YIELD_STAKING_ROLE = generateKeccak256(["string"], ["PAUSE_NATIVE_YIELD_STAKING_ROLE"], {
+  encodePacked: true,
+});
+export const UNPAUSE_NATIVE_YIELD_STAKING_ROLE = generateKeccak256(["string"], ["UNPAUSE_NATIVE_YIELD_STAKING_ROLE"], {
+  encodePacked: true,
+});
+// Roles for YieldManager
+export const YIELD_PROVIDER_FUNDER_ROLE = generateKeccak256(["string"], ["YIELD_PROVIDER_FUNDER_ROLE"], {
+  encodePacked: true,
+});
+export const YIELD_PROVIDER_UNSTAKER_ROLE = generateKeccak256(["string"], ["YIELD_PROVIDER_UNSTAKER_ROLE"], {
+  encodePacked: true,
+});
+export const YIELD_REPORTER_ROLE = generateKeccak256(["string"], ["YIELD_REPORTER_ROLE"], {
+  encodePacked: true,
+});
+export const STAKING_PAUSER_ROLE = generateKeccak256(["string"], ["STAKING_PAUSER_ROLE"], {
+  encodePacked: true,
+});
+export const STAKING_UNPAUSER_ROLE = generateKeccak256(["string"], ["STAKING_UNPAUSER_ROLE"], {
+  encodePacked: true,
+});
+export const OSSIFIER_ROLE = generateKeccak256(["string"], ["OSSIFIER_ROLE"], {
+  encodePacked: true,
+});
+export const WITHDRAWAL_RESERVE_SETTER_ROLE = generateKeccak256(["string"], ["WITHDRAWAL_RESERVE_SETTER_ROLE"], {
+  encodePacked: true,
+});
+export const SET_YIELD_PROVIDER_ROLE = generateKeccak256(["string"], ["SET_YIELD_PROVIDER_ROLE"], {
+  encodePacked: true,
+});
+export const SET_L2_YIELD_RECIPIENT_ROLE = generateKeccak256(["string"], ["SET_L2_YIELD_RECIPIENT_ROLE"], {
+  encodePacked: true,
+});
+export const PAUSE_NATIVE_YIELD_UNSTAKING_ROLE = generateKeccak256(["string"], ["PAUSE_NATIVE_YIELD_UNSTAKING_ROLE"], {
+  encodePacked: true,
+});
+export const UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE"],
+  { encodePacked: true },
+);
+export const PAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE"],
+  { encodePacked: true },
+);
+export const UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE"],
+  { encodePacked: true },
+);
+export const PAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE"],
+  { encodePacked: true },
+);
+export const UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE"],
+  { encodePacked: true },
+);
+export const PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE"],
+  { encodePacked: true },
+);
+export const UNPAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE"],
+  { encodePacked: true },
+);
+export const PAUSE_NATIVE_YIELD_REPORTING_ROLE = generateKeccak256(["string"], ["PAUSE_NATIVE_YIELD_REPORTING_ROLE"], {
+  encodePacked: true,
+});
+export const UNPAUSE_NATIVE_YIELD_REPORTING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_REPORTING_ROLE"],
+  { encodePacked: true },
+);
+export const PAUSE_LST_WITHDRAWAL_ROLE = generateKeccak256(["string"], ["PAUSE_LST_WITHDRAWAL_ROLE"], {
+  encodePacked: true,
+});
+export const UNPAUSE_LST_WITHDRAWAL_ROLE = generateKeccak256(["string"], ["UNPAUSE_LST_WITHDRAWAL_ROLE"], {
+  encodePacked: true,
+});
 
 export const BASE_ROLES = [PAUSE_ALL_ROLE, UNPAUSE_ALL_ROLE];
 
@@ -93,6 +189,12 @@ export const LINEA_ROLLUP_ROLES = [
   UNPAUSE_BLOB_SUBMISSION_ROLE,
   PAUSE_FINALIZATION_ROLE,
   UNPAUSE_FINALIZATION_ROLE,
+  // New roles introduced with YieldManager
+  SET_YIELD_MANAGER_ROLE,
+  RESERVE_OPERATOR_ROLE,
+  FUNDER_ROLE,
+  PAUSE_NATIVE_YIELD_STAKING_ROLE,
+  UNPAUSE_NATIVE_YIELD_STAKING_ROLE,
 ];
 
 export const L2_MESSAGE_SERVICE_ROLES = [
@@ -118,4 +220,28 @@ export const TOKEN_BRIDGE_ROLES = [
   UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
   PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
   UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
+];
+
+export const YIELD_MANAGER_ROLES = [
+  ...BASE_ROLES,
+  YIELD_PROVIDER_FUNDER_ROLE,
+  YIELD_PROVIDER_UNSTAKER_ROLE,
+  YIELD_REPORTER_ROLE,
+  STAKING_PAUSER_ROLE,
+  STAKING_UNPAUSER_ROLE,
+  OSSIFIER_ROLE,
+  WITHDRAWAL_RESERVE_SETTER_ROLE,
+  SET_YIELD_PROVIDER_ROLE,
+  SET_L2_YIELD_RECIPIENT_ROLE,
+  // Pause/unpause roles
+  PAUSE_NATIVE_YIELD_UNSTAKING_ROLE,
+  UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE,
+  PAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE,
+  UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE,
+  PAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE,
+  UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE,
+  PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE,
+  UNPAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE,
+  PAUSE_NATIVE_YIELD_REPORTING_ROLE,
+  UNPAUSE_NATIVE_YIELD_REPORTING_ROLE,
 ];

@@ -43,10 +43,10 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   bytes32 public constant WITHDRAWAL_RESERVE_SETTER_ROLE = keccak256("WITHDRAWAL_RESERVE_SETTER_ROLE");
 
   /// @notice The role required to add and remove yield providers.
-  bytes32 public constant YIELD_PROVIDER_SETTER = keccak256("YIELD_PROVIDER_SETTER");
+  bytes32 public constant SET_YIELD_PROVIDER_ROLE = keccak256("SET_YIELD_PROVIDER_ROLE");
 
   /// @notice The role required to add and remove L2 yield recipients.
-  bytes32 public constant L2_YIELD_RECIPIENT_SETTER = keccak256("L2_YIELD_RECIPIENT_SETTER");
+  bytes32 public constant SET_L2_YIELD_RECIPIENT_ROLE = keccak256("SET_L2_YIELD_RECIPIENT_ROLE");
 
   /// @notice 100% in BPS.
   uint256 constant MAX_BPS = 10000;
@@ -915,7 +915,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   function addYieldProvider(
     address _yieldProvider,
     YieldProviderRegistration calldata _registration
-  ) external onlyRole(YIELD_PROVIDER_SETTER) {
+  ) external onlyRole(SET_YIELD_PROVIDER_ROLE) {
     ErrorUtils.revertIfZeroAddress(_yieldProvider);
     ErrorUtils.revertIfZeroAddress(_registration.primaryEntrypoint);
     ErrorUtils.revertIfZeroAddress(_registration.ossifiedEntrypoint);
@@ -962,7 +962,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   )
     external
     onlyKnownYieldProvider(_yieldProvider)
-    onlyRole(YIELD_PROVIDER_SETTER)
+    onlyRole(SET_YIELD_PROVIDER_ROLE)
   {
     // We assume that 'currentNegativeYield' must be 0, before 'userFunds' can be 0.
     if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
@@ -985,7 +985,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   )
     external
     onlyKnownYieldProvider(_yieldProvider)
-    onlyRole(YIELD_PROVIDER_SETTER)
+    onlyRole(SET_YIELD_PROVIDER_ROLE)
   {
     _removeYieldProvider(_yieldProvider);
     emit YieldProviderRemoved(_yieldProvider, true);
@@ -1006,12 +1006,12 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
 
   /**
    * @notice Add an address to the allowlist of L2YieldRecipients.
-   * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
+   * @dev SET_L2_YIELD_RECIPIENT_ROLE is required to execute.
    * @param _l2YieldRecipient L2YieldRecipient address.
    */
   function addL2YieldRecipient(
     address _l2YieldRecipient
-  ) external onlyRole(L2_YIELD_RECIPIENT_SETTER) {
+  ) external onlyRole(SET_L2_YIELD_RECIPIENT_ROLE) {
     ErrorUtils.revertIfZeroAddress(_l2YieldRecipient);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     if ($._isL2YieldRecipientKnown[_l2YieldRecipient]) {
@@ -1023,7 +1023,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
 
   /**
    * @notice Remove an address from the allow-list of L2YieldRecipients.
-   * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
+   * @dev SET_L2_YIELD_RECIPIENT_ROLE is required to execute.
    * @param _l2YieldRecipient L2YieldRecipient address.
    */
   function removeL2YieldRecipient(
@@ -1031,7 +1031,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   )
     external
     onlyKnownL2YieldRecipient(_l2YieldRecipient)
-    onlyRole(L2_YIELD_RECIPIENT_SETTER)
+    onlyRole(SET_L2_YIELD_RECIPIENT_ROLE)
   {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     emit L2YieldRecipientRemoved(_l2YieldRecipient);
