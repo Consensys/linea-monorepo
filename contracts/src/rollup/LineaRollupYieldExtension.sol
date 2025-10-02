@@ -88,6 +88,7 @@ abstract contract LineaRollupYieldExtension is
    * @param _newYieldManager YieldManager address.
    */
   function setYieldManager(address _newYieldManager) public onlyRole(SET_YIELD_MANAGER_ROLE) {
+    require(_newYieldManager != address(0), ZeroAddressNotAllowed());
     LineaRollupYieldExtensionStorage storage $ = _storage();
     emit YieldManagerChanged($._yieldManager, _newYieldManager, msg.sender);
     $._yieldManager = _newYieldManager;
