@@ -4,9 +4,9 @@ import (
 	"hash"
 	"runtime"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -121,19 +121,13 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 		}
 	}
 
-	// The pool will be responsible for holding the coefficients that are
-	// intermediary steps in creating the rs encoded rows.
-	pool := mempool.CreateFromSyncPool(params.NbColumns)
-
 	// The committed matrix is obtained by encoding the input vectors
 	// and laying them in rows.
 	encodedMatrix = make(EncodedMatrix, len(ps))
 	parallel.Execute(len(ps), func(start, stop int) {
-		localPool := mempool.WrapsWithMemCache(pool)
 		for i := start; i < stop; i++ {
-			encodedMatrix[i] = params.rsEncode(ps[i], localPool)
+			encodedMatrix[i] = params.rsEncode(ps[i])
 		}
-		localPool.TearDown()
 	})
 
 	return encodedMatrix
@@ -152,14 +146,15 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 
 	parallel.Execute(numChunks, func(start, stop int) {
 		// Create the hasher in the parallel setting to avoid race conditions.
-		hasher := p.LeafHashFunc()
+		// hasher := p.LeafHashFunc()
+		hasher := mimc.NewMiMC()
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 			hasher.Reset()
 
 			for i := 0; i < chunkSize; i++ {
-				fbytes := colHashes[startChunk+i].Bytes()
-				hasher.Write(fbytes[:])
+				// fbytes := colHashes[startChunk+i].Bytes()
+				hasher.WriteElement(colHashes[startChunk+i])
 			}
 
 			// Manually copies the hasher's digest into the leaves to

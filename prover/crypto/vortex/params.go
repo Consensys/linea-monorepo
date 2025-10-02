@@ -3,8 +3,10 @@ package vortex
 import (
 	"hash"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -39,6 +41,10 @@ type Params struct {
 	// MerkleHashFunc returns a `hash.Hash` which is used
 	// to hash the nodes of the Merkle tree.
 	MerkleHashFunc func() hash.Hash
+
+	// CosetTableBitReverse is the coset table of the small domain in bit
+	// reversed order. It is used to speed-up the encoding of the rows.
+	CosetTableBitReverse field.Vector
 }
 
 // NewParams creates and returns a [Params]:
@@ -80,10 +86,15 @@ func NewParams(
 		utils.Panic("The number of rows per matrix cannot be zero of negative: %v", maxNbRows)
 	}
 
+	shift, err := fr.Generator(uint64(nbColumns * blowUpFactor))
+	if err != nil {
+		panic(err)
+	}
+
 	res := &Params{
 		Domains: [2]*fft.Domain{
-			fft.NewDomain(nbColumns),
-			fft.NewDomain(blowUpFactor * nbColumns),
+			fft.NewDomain(uint64(nbColumns), fft.WithShift(shift)),
+			fft.NewDomain(uint64(blowUpFactor*nbColumns), fft.WithCache()),
 		},
 		NbColumns:      nbColumns,
 		MaxNbRows:      maxNbRows,
@@ -92,6 +103,17 @@ func NewParams(
 		LeafHashFunc:   leafHashFunc,
 		MerkleHashFunc: merkleHashFunc,
 	}
+
+	smallDomain := res.Domains[0]
+	cosetTable, err := smallDomain.CosetTable()
+	if err != nil {
+		panic(err)
+	}
+	cosetTableBitReverse := make(field.Vector, len(cosetTable))
+	copy(cosetTableBitReverse, cosetTable)
+	fft.BitReverse(cosetTableBitReverse)
+
+	res.CosetTableBitReverse = cosetTableBitReverse
 
 	return res
 }

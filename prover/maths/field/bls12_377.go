@@ -18,6 +18,8 @@ import (
 // `field.Element(1, 0, 0, 0)` represent valid field elements.
 type Element = fr.Element
 
+type Vector = fr.Vector
+
 const (
 	// RootOfUnityOrder is the smallest integer such that
 	// 		[RootOfUnity] ** (2 ** RootOfUnityOrder) == 1
