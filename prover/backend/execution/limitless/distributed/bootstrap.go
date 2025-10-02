@@ -185,7 +185,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 			default:
 
 				witnessGLFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
-				witnessGLFile := path.Join(cfg.Limitless.WitnessDir, "GL", string(witnessGL.ModuleName), witnessGLFileName)
+				witnessGLFile := path.Join(cfg.Limitless.WitnessDir, "GL", string(witnessGL.ModuleName), config.RequestsFromSubDir, witnessGLFileName)
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
@@ -195,13 +195,13 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 				}
 
 				glProofFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGLs[i].ModuleIndex)
-				glProofFile := path.Join(cfg.Limitless.SubproofsDir, "GL", string(witnessGL.ModuleName), glProofFileName)
+				glProofFile := path.Join(cfg.Limitless.SubproofsDir, "GL", string(witnessGL.ModuleName), config.RequestsFromSubDir, glProofFileName)
 				if err := os.MkdirAll(filepath.Dir(glProofFile), 0o755); err != nil {
 					return err
 				}
 
 				glCommitFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-lpp-commit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGLs[i].ModuleIndex)
-				glCommitFile := path.Join(cfg.Limitless.CommitsDir, string(witnessGL.ModuleName), glCommitFileName)
+				glCommitFile := path.Join(cfg.Limitless.CommitsDir, string(witnessGL.ModuleName), config.RequestsFromSubDir, glCommitFileName)
 				if err := os.MkdirAll(filepath.Dir(glCommitFile), 0o755); err != nil {
 					return err
 				}
@@ -224,7 +224,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 			default:
 
 				witnessLPPFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
-				witnessLPPFile := path.Join(cfg.Limitless.WitnessDir, "LPP", string(witnessLPP.ModuleName[0]), witnessLPPFileName)
+				witnessLPPFile := path.Join(cfg.Limitless.WitnessDir, "LPP", string(witnessLPP.ModuleName[0]), config.RequestsFromSubDir, witnessLPPFileName)
 
 				// Clean up any prev. witness file before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
@@ -234,7 +234,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 				}
 
 				lppProofFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-proof.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPPs[i].ModuleIndex)
-				lppProofFile := path.Join(cfg.Limitless.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), lppProofFileName)
+				lppProofFile := path.Join(cfg.Limitless.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), config.RequestsFromSubDir, lppProofFileName)
 				if err := os.MkdirAll(filepath.Dir(lppProofFile), 0o755); err != nil {
 					return err
 				}
@@ -251,7 +251,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 	}
 
 	sharedRandomnessFileName := fmt.Sprintf("%s-%s-commit.bin", metadata.StartBlock, metadata.EndBlock)
-	sharedRandomnessPath := path.Join(cfg.Limitless.SharedRandomnessDir, sharedRandomnessFileName)
+	sharedRandomnessPath := path.Join(cfg.Limitless.SharedRandomnessDir, config.RequestsFromSubDir, sharedRandomnessFileName)
 	if err := os.MkdirAll(filepath.Dir(sharedRandomnessPath), 0o755); err != nil {
 		return err
 	}
