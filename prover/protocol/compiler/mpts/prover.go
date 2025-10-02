@@ -189,7 +189,6 @@ func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 	}
 
 	ys := make([]field.Element, len(polyVals))
-	// TODO @gbotrel BatchInterpolate seems to bug.
 	parallel.Execute(len(ys), func(start, stop int) {
 		for i := start; i < stop; i++ {
 			ys[i] = smartvectors.Interpolate(polyVals[i], r)

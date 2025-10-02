@@ -1,7 +1,6 @@
 package globalcs
 
 import (
-	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
@@ -212,7 +211,6 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		timeIFFT      time.Duration
 		timeFFT       time.Duration
 		timeExecRatio = map[int]time.Duration{}
-		timeOmega     time.Duration
 	)
 
 	if ctx.DomainSize >= GC_DOMAIN_SIZE {
@@ -267,30 +265,6 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 		// use sync map to store the coset evaluated polynomials
 		computedReeval := sync.Map{}
-
-		timeOmega += profiling.TimeIt(func() {
-
-			// The following computes the quotient polynomial and assigns it
-			// Omega is a root of unity which generates the domain of evaluation of the
-			// constraint. Its size coincide with the size of the domain of evaluation.
-			// For each value of `i`, X will evaluate to gen*omegaQ^numCoset*omega^i.
-			// Gen is a generator of F^*
-			var (
-				omega        = fft.GetOmega(ctx.DomainSize)
-				omegaQNumCos = fft.GetOmega(ctx.DomainSize * maxRatio)
-				omegaI       = field.NewElement(field.MultiplicativeGen)
-			)
-
-			omegaQNumCos.Exp(omegaQNumCos, big.NewInt(int64(i)))
-			omegaI.Mul(&omegaI, &omegaQNumCos)
-
-			// Precomputations of the powers of omega, can be optimized if useful
-			omegas := make([]field.Element, ctx.DomainSize)
-			for i := range omegas {
-				omegas[i] = omegaI
-				omegaI.Mul(&omegaI, &omega)
-			}
-		})
 
 		for j, ratio := range ctx.Ratios {
 
@@ -476,6 +450,6 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		})
 	}
 
-	logrus.Infof("[global-constraint] msg=\"computed the quotient\" timeIFFT=%v timeOmega=%v timeFFT=%v timeExecExpression=%v totalTimeGC=%v", timeIFFT, timeOmega, timeFFT, timeExecRatio, totalTimeGc)
+	logrus.Infof("[global-constraint] msg=\"computed the quotient\" timeIFFT=%v timeFFT=%v timeExecExpression=%v totalTimeGC=%v", timeIFFT, timeFFT, timeExecRatio, totalTimeGc)
 
 }
