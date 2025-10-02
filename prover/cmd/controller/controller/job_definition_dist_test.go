@@ -1,6 +1,5 @@
-package controller
-
 // Remember for the limitless prover jobs, there will be no large deferrals here
+package controller
 
 import (
 	"testing"
@@ -13,65 +12,124 @@ import (
 // output files are also generated.
 func TestBootstrapInFileRegexp(t *testing.T) {
 
+	conf := config.Config{}
+	conf.Version = "0.1.2"
+
 	var (
-		correctM           = "102-103-etv0.2.3-stv1.2.3-getZkProof.json"
-		correctWithFailM   = "102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_77"
-		correctWith2FailsM = "102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_77.failure.code_77"
-		missingEtv         = "102-103-stv1.2.3-getZkProof.json"
-		missingStv         = "102-103-etv0.2.3-getZkProof.json"
-		notAPoint          = "102-103-etv0.2.3-getZkProofAjson"
-		badName            = "102-103-etv0.2.3-stv1.2.3-getAggregatedProof.json"
+		correct           = "102-103-etv0.2.3-stv1.2.3-getZkProof.json"
+		correctWithFail   = "102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_77"
+		correctWith2Fails = "102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_77.failure.code_77"
+		missingEtv        = "102-103-stv1.2.3-getZkProof.json"
+		missingStv        = "102-103-etv0.2.3-getZkProof.json"
+		notAPoint         = "102-103-etv0.2.3-getZkProofAjson"
+		badName           = "102-103-etv0.2.3-stv1.2.3-getAggregatedProof.json"
 	)
 
 	// The requests in case of success
 	var (
-		respM         = "requests/102-103-metadata-getZkProof.json"
-		respWithFailM = "requests/102-103-metadata-getZkProof.json"
+		resp         = "requests/102-103-metadata-getZkProof.json"
+		respWithFail = "requests/102-103-metadata-getZkProof.json"
 		// #nosec G101 -- Not a credential
-		respWith2FailsM = "requests/102-103-metadata-getZkProof.json"
+		respWith2Fails = "requests/102-103-metadata-getZkProof.json"
 	)
 
 	// The rename in case it is a success
 	var (
-		successM           = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.success"
-		successMWoStv      = "requests-done/102-103-etv0.2.3-getZkProof.json.success"
-		successtWoEtv      = "requests-done/102-103-stv1.2.3-getZkProof.json.success"
-		successWithFailM   = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.success"
-		successWith2FailsM = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.success"
+		success           = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.success"
+		successWoStv      = "requests-done/102-103-etv0.2.3-getZkProof.json.success"
+		successWoEtv      = "requests-done/102-103-stv1.2.3-getZkProof.json.success"
+		successWithFail   = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.success"
+		successWith2Fails = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.success"
 	)
 
 	// The rename in case it is a panic (code = 2)
 	var (
-		failM           = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_2"
-		failMWoStv      = "requests-done/102-103-etv0.2.3-getZkProof.json.failure.code_2"
-		failtWoEtv      = "requests-done/102-103-stv1.2.3-getZkProof.json.failure.code_2"
-		failWithFailM   = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_2"
-		failWith2FailsM = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_2"
+		fail           = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_2"
+		failWoStv      = "requests-done/102-103-etv0.2.3-getZkProof.json.failure.code_2"
+		failWoEtv      = "requests-done/102-103-stv1.2.3-getZkProof.json.failure.code_2"
+		failWithFail   = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_2"
+		failWith2Fails = "requests-done/102-103-etv0.2.3-stv1.2.3-getZkProof.json.failure.code_2"
 	)
 
 	testcase := []inpFileNamesCases{
 		{
 			Ext: "", Fail: "code", ShouldMatch: true,
-			Fnames:         []string{correctM, correctWithFailM, correctWith2FailsM, missingEtv, missingStv},
-			Explainer:      "happy path, case M",
-			ExpectedOutput: []string{respM, respWithFailM, respWith2FailsM, respM, respM},
-			ExpSuccess:     []string{successM, successWithFailM, successWith2FailsM, successtWoEtv, successMWoStv},
-			ExpFailW2:      []string{failM, failWithFailM, failWith2FailsM, failtWoEtv, failMWoStv},
+			Fnames:         []string{correct, correctWithFail, correctWith2Fails, missingEtv, missingStv},
+			Explainer:      "happy path, Bootstrapper picks valid files",
+			ExpectedOutput: []string{resp, respWithFail, respWith2Fails, resp, resp},
+			ExpSuccess:     []string{success, successWithFail, successWith2Fails, successWoEtv, successWoStv},
+			ExpFailW2:      []string{fail, failWithFail, failWith2Fails, failWoEtv, failWoStv},
 		},
 		{
 			Ext: "", Fail: "code", ShouldMatch: false,
 			Fnames:    []string{notAPoint, badName},
-			Explainer: "M does not pick obviously invalid files",
+			Explainer: "Bootstrapper rejects invalid files",
 		},
 	}
 
 	for _, c := range testcase {
-
-		conf := config.Config{}
-		conf.Version = "0.1.2"
-
 		def := BootstrapDefinition(&conf)
+		t.Run(c.Explainer, func(t *testing.T) {
+			runInpFileTestCase(t, &def, c)
+		})
+	}
+}
 
+// This test ensures that the naming convention is respected by the file-watcher
+// for conglomeration jobs: only valid inputs are recognized, and the corresponding
+// output files are also generated.
+func TestConglomerationInFileRegexp(t *testing.T) {
+
+	conf := config.Config{}
+	conf.Version = "0.1.2"
+
+	var (
+		correct           = "200-201-metadata-getZkProof.json"
+		correctWithFail   = "200-201-metadata-getZkProof.json.failure.code_77"
+		correctWith2Fails = "200-201-metadata-getZkProof.json.failure.code_77.failure.code_77"
+		notAPoint         = "200-201-metadata-getZkProofAjson"
+		badName           = "200-201-getAggregatedProof.json"
+	)
+
+	// The requests in case of success
+	var (
+		resp           = "responses/200-201-getZkProof.json"
+		respWithFail   = "responses/200-201-getZkProof.json"
+		respWith2Fails = "responses/200-201-getZkProof.json"
+	)
+
+	// The rename in case it is a success
+	var (
+		success           = "requests-done/200-201-metadata-getZkProof.json.success"
+		successWithFail   = "requests-done/200-201-metadata-getZkProof.json.success"
+		successWith2Fails = "requests-done/200-201-metadata-getZkProof.json.success"
+	)
+
+	// The rename in case it is a panic (code = 2)
+	var (
+		fail           = "requests-done/200-201-metadata-getZkProof.json.failure.code_2"
+		failWithFail   = "requests-done/200-201-metadata-getZkProof.json.failure.code_2"
+		failWith2Fails = "requests-done/200-201-metadata-getZkProof.json.failure.code_2"
+	)
+
+	testcase := []inpFileNamesCases{
+		{
+			Ext: "", Fail: "code", ShouldMatch: true,
+			Fnames:         []string{correct, correctWithFail, correctWith2Fails},
+			Explainer:      "happy path, Conglomerator picks valid files",
+			ExpectedOutput: []string{resp, respWithFail, respWith2Fails},
+			ExpSuccess:     []string{success, successWithFail, successWith2Fails},
+			ExpFailW2:      []string{fail, failWithFail, failWith2Fails},
+		},
+		{
+			Ext: "", Fail: "code", ShouldMatch: false,
+			Fnames:    []string{notAPoint, badName},
+			Explainer: "Conglomerator rejects invalid files",
+		},
+	}
+
+	for _, c := range testcase {
+		def := ConglomerationDefinition(&conf)
 		t.Run(c.Explainer, func(t *testing.T) {
 			runInpFileTestCase(t, &def, c)
 		})
