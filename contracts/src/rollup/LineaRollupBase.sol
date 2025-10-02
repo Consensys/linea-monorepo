@@ -743,6 +743,7 @@ abstract contract LineaRollupBase is
     if (msg.sender != yieldManager()) {
       revert CallerIsNotYieldManager();
     }
+    require(_l2YieldRecipient != address(0), ZeroAddressNotAllowed());
 
     uint256 messageNumber = nextMessageNumber++;
     bytes32 messageHash = MessageHashing._hashMessageWithEmptyCalldata(address(this), _l2YieldRecipient, 0, _amount, messageNumber);

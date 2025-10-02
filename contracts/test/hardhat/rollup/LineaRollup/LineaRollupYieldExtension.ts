@@ -5,11 +5,12 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { TestLineaRollup } from "contracts/typechain-types";
-import { deployLineaRollupFixture, getAccountsFixture, getRoleAddressesFixture } from "../helpers";
+import { deployLineaRollupFixture, getAccountsFixture } from "../helpers";
 import {
   ADDRESS_ZERO,
   FUNDER_ROLE,
   GENERAL_PAUSE_TYPE,
+  L1_L2_PAUSE_TYPE,
   NATIVE_YIELD_STAKING_PAUSE_TYPE,
   RESERVE_OPERATOR_ROLE,
   SET_YIELD_MANAGER_ROLE,
@@ -24,20 +25,19 @@ import {
 describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
   let mockYieldManager: string;
+  let operator: SignerWithAddress;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
-  // let roleAddresses: { addressWithRole: string; role: string }[];
 
   before(async () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount } = await loadFixture(getAccountsFixture));
-    roleAddresses = await loadFixture(getRoleAddressesFixture);
   });
 
   beforeEach(async () => {
-    ({ verifier, mockYieldManager, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    ({ mockYieldManager, lineaRollup } = await loadFixture(deployLineaRollupFixture));
   });
 
   describe("Change yield manager address", () => {
@@ -116,7 +116,7 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, transferCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
     });
 
-    it("Should revert if NATIVE_YIELD_STAKING is enabled", async () => {
+    it("Should revert if NATIVE_YIELD_STAKING pause type is enabled", async () => {
       await lineaRollup.connect(securityCouncil).pauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
 
       const transferCall = lineaRollup.connect(securityCouncil).transferFundsForNativeYield(0n);
@@ -146,6 +146,93 @@ describe("Linea Rollup contract", () => {
 
       expect(finalContractBalance).to.equal(initialContractBalance - amount);
       expect(finalYieldManagerBalance).to.equal(initialYieldManagerBalance + amount);
+    });
+  });
+
+  describe("Yield reporting", () => {
+    async function impersonateYieldManager() {
+      await ethers.provider.send("hardhat_impersonateAccount", [mockYieldManager]);
+      await ethers.provider.send("hardhat_setBalance", [mockYieldManager, ethers.toBeHex(ethers.parseEther("1"))]);
+      return await ethers.getSigner(mockYieldManager);
+    }
+
+    async function stopYieldManagerImpersonation() {
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [mockYieldManager]);
+    }
+
+    it("Should revert if caller is not the YieldManager", async () => {
+      const reportCall = lineaRollup.connect(securityCouncil).reportNativeYield(1n, operator.address);
+
+      await expectRevertWithCustomError(lineaRollup, reportCall, "CallerIsNotYieldManager");
+    });
+
+    it("Should revert if GENERAL_PAUSE_TYPE is enabled", async () => {
+      const yieldManagerSigner = await impersonateYieldManager();
+      await lineaRollup.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+
+      const reportCall = lineaRollup.connect(yieldManagerSigner).reportNativeYield(1n, operator.address);
+
+      await expectRevertWithCustomError(lineaRollup, reportCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+
+      await stopYieldManagerImpersonation();
+    });
+
+    it("Should revert if L1_L2 pause type is enabled", async () => {
+      const yieldManagerSigner = await impersonateYieldManager();
+      await lineaRollup.connect(securityCouncil).pauseByType(L1_L2_PAUSE_TYPE);
+
+      const reportCall = lineaRollup.connect(yieldManagerSigner).reportNativeYield(1n, operator.address);
+
+      await expectRevertWithCustomError(lineaRollup, reportCall, "IsPaused", [L1_L2_PAUSE_TYPE]);
+
+      await stopYieldManagerImpersonation();
+    });
+
+    it("Should revert if l2YieldRecipient is the 0 address", async () => {
+      const yieldManagerSigner = await impersonateYieldManager();
+
+      const reportCall = lineaRollup.connect(yieldManagerSigner).reportNativeYield(1n, ADDRESS_ZERO);
+
+      await expectRevertWithCustomError(lineaRollup, reportCall, "ZeroAddressNotAllowed");
+
+      await stopYieldManagerImpersonation();
+    });
+
+    it("Should successfully emit a synthetic MessageSent event with valid parameters", async () => {
+      const yieldManagerSigner = await impersonateYieldManager();
+      const amount = ethers.parseEther("1");
+      const lineaRollupAddress = await lineaRollup.getAddress();
+      const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
+      const l2YieldRecipient = ethers.Wallet.createRandom().address;
+
+      const expectedMessageHash = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "address", "uint256", "uint256", "uint256", "bytes"],
+          [lineaRollupAddress, l2YieldRecipient, 0, amount, nextMessageNumberBefore, "0x"],
+        ),
+      );
+
+      const reportCall = lineaRollup.connect(yieldManagerSigner).reportNativeYield(amount, l2YieldRecipient);
+
+      await expectEvent(lineaRollup, reportCall, "MessageSent", [
+        // _from should be from YieldManager
+        mockYieldManager,
+        // _to should be from _l2YieldRecipient function param
+        l2YieldRecipient,
+        // _fee should be 0
+        0n,
+        // _value should be _amount function param
+        amount,
+        // _nonce should be nextMessageNumberBefore
+        nextMessageNumberBefore,
+        // _calldata should be empty bytes
+        "0x",
+        expectedMessageHash,
+      ]);
+
+      expect(await lineaRollup.nextMessageNumber()).to.equal(nextMessageNumberBefore + 1n);
+
+      await stopYieldManagerImpersonation();
     });
   });
 });
