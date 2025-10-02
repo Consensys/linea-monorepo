@@ -100,5 +100,6 @@ BLOCK_L1_SIZE      = 1000000
 BLOCK_L2_L1_LOGS   = 16
 BLOCK_TRANSACTIONS = 200 # max number of tx in an L2 block
 
-BLS_DATA = 0
+# copied EC_DATA limit for now, BLS_DATA should be empty in Prague-v1.0
+BLS_DATA = 262144
 RLP_UTILS = 0
