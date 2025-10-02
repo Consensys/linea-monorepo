@@ -540,7 +540,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    * @param _yieldProvider The yield provider address.
    */
   function undoInitiateOssification(address _yieldProvider) external onlyDelegateCall {
-    // No-op
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    if (!VAULT_HUB.isVaultConnected(address(_getVault($$)))) {
+      _getDashboard($$).reconnectToVaultHub();
+    }
   }
 
   /**
@@ -564,7 +567,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    * @notice Performs vendor-specific validation before the provider is registered by the YieldManager.
    * @param _registration Registration payload for the yield provider.
    */
-  function validateAdditionToYieldManager(YieldProviderRegistration calldata _registration) external {
+  function validateAdditionToYieldManager(YieldProviderRegistration calldata _registration) external view {
     if (_registration.yieldProviderVendor != YieldProviderVendor.LIDO_STVAULT) {
       revert UnknownYieldProviderVendor();
     }

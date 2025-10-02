@@ -161,5 +161,5 @@ interface IYieldProvider {
    */
   function validateAdditionToYieldManager(
     YieldManagerStorageLayout.YieldProviderRegistration calldata _registration
-  ) external;
+  ) external view;
 }

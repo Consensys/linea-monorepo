@@ -35,4 +35,6 @@ interface IDashboard {
   function nodeOperatorDisbursableFee() external view returns (uint256);
 
   function disburseNodeOperatorFee() external;
+
+  function reconnectToVaultHub() external;
 }
