@@ -44,16 +44,24 @@ Safe Member
 ## 🗂️ Pause Types
 
 
-| Value | Address                              |
-|-------|---------------------------------------|
-| 1     | GENERAL_PAUSE_TYPE                   |
-| 2     | L1_L2_PAUSE_TYPE                     |
-| 3     | L2_L1_PAUSE_TYPE                     |
-| 4     | PROVING_SYSTEM_PAUSE_TYPE           |
-| 5     | CALLDATA_SUBMISSION_PAUSE_TYPE      |
-| 6     | FINALIZATION_PAUSE_TYPE             |
-| 7     | INITIATE_TOKEN_BRIDGING_PAUSE_TYPE  |
-| 8     | COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE  |
+| Value | Pause Type                                   |
+|-------|----------------------------------------------|
+| 0     | UNUSED_PAUSE_TYPE                            |
+| 1     | GENERAL_PAUSE_TYPE                          |
+| 2     | L1_L2_PAUSE_TYPE                            |
+| 3     | L2_L1_PAUSE_TYPE                            |
+| 4     | BLOB_SUBMISSION_PAUSE_TYPE                  |
+| 5     | CALLDATA_SUBMISSION_PAUSE_TYPE              |
+| 6     | FINALIZATION_PAUSE_TYPE                     |
+| 7     | INITIATE_TOKEN_BRIDGING_PAUSE_TYPE          |
+| 8     | COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE          |
+| 9     | NATIVE_YIELD_STAKING_PAUSE_TYPE             |
+| 10    | NATIVE_YIELD_UNSTAKING_PAUSE_TYPE           |
+| 11    | NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE |
+| 12    | NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE |
+| 13    | NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE     |
+| 14    | NATIVE_YIELD_REPORTING_PAUSE_TYPE           |
+| 15    | LST_WITHDRAWAL_PAUSE_TYPE                   |
 
 
 ---

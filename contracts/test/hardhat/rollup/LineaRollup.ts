@@ -29,6 +29,7 @@ import {
   INITIAL_WITHDRAW_LIMIT,
   ONE_DAY_IN_SECONDS,
   OPERATOR_ROLE,
+  RESERVE_OPERATOR_ROLE,
   VERIFIER_SETTER_ROLE,
   VERIFIER_UNSETTER_ROLE,
   GENESIS_L2_TIMESTAMP,
@@ -37,8 +38,10 @@ import {
   CALLDATA_SUBMISSION_PAUSE_TYPE,
   DEFAULT_ADMIN_ROLE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
+  FUNDER_ROLE,
   SIX_MONTHS_IN_SECONDS,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+  SET_YIELD_MANAGER_ROLE,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -243,6 +246,20 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.hasRole(VERIFIER_UNSETTER_ROLE, securityCouncil.address)).to.be.true;
     });
 
+    it("Should assign the SET_YIELD_MANAGER_ROLE to securityCouncil addresses", async () => {
+      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+      expect(await lineaRollup.hasRole(SET_YIELD_MANAGER_ROLE, securityCouncil.address)).to.be.true;
+    });
+
+    it("Should assign the RESERVE_OPERATOR_ROLE to securityCouncil addresses", async () => {
+      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+      expect(await lineaRollup.hasRole(RESERVE_OPERATOR_ROLE, securityCouncil.address)).to.be.true;
+    });
+
+    it("Should assign the FUNDER_ROLE to securityCouncil addresses", async () => {
+      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+      expect(await lineaRollup.hasRole(FUNDER_ROLE, securityCouncil.address)).to.be.true;
+    });
     it("Should store the startingRootHash in storage for the first block number", async () => {
       const initializationData = {
         initialStateRootHash: parentStateRootHash,

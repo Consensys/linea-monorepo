@@ -61,3 +61,66 @@ export const SET_RESERVED_TOKEN_ROLE = generateKeccak256(["string"], ["SET_RESER
 export const REMOVE_RESERVED_TOKEN_ROLE = generateKeccak256(["string"], ["REMOVE_RESERVED_TOKEN_ROLE"], true);
 export const SET_CUSTOM_CONTRACT_ROLE = generateKeccak256(["string"], ["SET_CUSTOM_CONTRACT_ROLE"], true);
 export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESSAGE_SERVICE_ROLE"], true);
+export const SET_YIELD_MANAGER_ROLE = generateKeccak256(["string"], ["SET_YIELD_MANAGER_ROLE"], true);
+export const RESERVE_OPERATOR_ROLE = generateKeccak256(["string"], ["RESERVE_OPERATOR_ROLE"], true);
+export const FUNDER_ROLE = generateKeccak256(["string"], ["FUNDER_ROLE"], true);
+
+// YieldManager related pause roles
+export const PAUSE_NATIVE_YIELD_STAKING_ROLE = generateKeccak256(["string"], ["PAUSE_NATIVE_YIELD_STAKING_ROLE"], true);
+export const UNPAUSE_NATIVE_YIELD_STAKING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_STAKING_ROLE"],
+  true,
+);
+export const PAUSE_NATIVE_YIELD_UNSTAKING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_NATIVE_YIELD_UNSTAKING_ROLE"],
+  true,
+);
+export const UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE"],
+  true,
+);
+export const PAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE"],
+  true,
+);
+export const UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE"],
+  true,
+);
+export const PAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE"],
+  true,
+);
+export const UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE"],
+  true,
+);
+export const PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE"],
+  true,
+);
+export const UNPAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE"],
+  true,
+);
+export const PAUSE_NATIVE_YIELD_REPORTING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_NATIVE_YIELD_REPORTING_ROLE"],
+  true,
+);
+export const UNPAUSE_NATIVE_YIELD_REPORTING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_REPORTING_ROLE"],
+  true,
+);
+export const PAUSE_LST_WITHDRAWAL_ROLE = generateKeccak256(["string"], ["PAUSE_LST_WITHDRAWAL_ROLE"], true);
+export const UNPAUSE_LST_WITHDRAWAL_ROLE = generateKeccak256(["string"], ["UNPAUSE_LST_WITHDRAWAL_ROLE"], true);
