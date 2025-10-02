@@ -79,9 +79,7 @@ enum class TracingModuleV2 : TracingModule {
 
   // Introduced from beta-v4.0-rc6-CANCUN and present on Cancun
   BLS_DATA,
-  RLP_UTILS,
-  POWER_REFERENCE_TABLE,
-  BLS_REFERENCE_TABLE,
+  RLP_UTILS
   ;
 
   companion object {
