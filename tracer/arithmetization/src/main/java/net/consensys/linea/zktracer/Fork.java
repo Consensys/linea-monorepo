@@ -187,6 +187,22 @@ public enum Fork {
     };
   }
 
+  /**
+   * Return the number of contract addresses seen by the system transaction during execution. This
+   * is primary to testing purposes to ensure the right number were seen.
+   *
+   * @param fork
+   * @return
+   */
+  public static int numberOfAddressesSeenBySystemTransaction(Fork fork) {
+    return switch (fork) {
+      case LONDON, PARIS, SHANGHAI -> 0;
+      case CANCUN -> 1;
+      case PRAGUE -> 2;
+      default -> throw new IllegalArgumentException("Unknown fork: " + fork);
+    };
+  }
+
   // Used for blockchain ref tests with the Paris exception of "Merge"
   public static String toPascalCase(Fork fork) {
     return switch (fork) {
