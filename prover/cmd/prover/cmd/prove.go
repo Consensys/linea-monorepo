@@ -92,9 +92,9 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 				unit = "B"
 			}
 			fmt.Printf("Number of go routines: %d, HeapAlloc = %.2f %s\n", runtime.NumGoroutine(), size, unit)
-			time.Sleep(20 * time.Second)
+			time.Sleep(10 * time.Second)
 
-			if runtime.NumGoroutine() <= 3 {
+			if runtime.NumGoroutine() <= 6 {
 				buf := make([]byte, 1<<20) // 1 MB buffer
 				n := runtime.Stack(buf, true)
 				os.Stderr.Write(buf[:n])
