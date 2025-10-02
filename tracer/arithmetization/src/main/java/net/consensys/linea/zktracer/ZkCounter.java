@@ -695,7 +695,7 @@ public class ZkCounter implements LineCountingTracer {
     switch (precompile) {
       case PRC_ECRECOVER, PRC_ECADD, PRC_ECMUL -> {
         // trigger EcData to count the underlying EC operations
-        if (prcSuccess && callDataSize != 0) {
+        if (callDataSize != 0) {
           // Note: we can't know the id (and we don't care)
           ecdata.callEcData(0, precompile, frame.getInputData(), returnData);
         }
