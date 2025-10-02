@@ -122,7 +122,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    *      and current total ETH value of the YieldProvider.
    * @dev Before reporting yield as available for distribution, will first settle the following from earned yield:
    *      - Incurred negative yield
-   *      - LST liability interest (not principal)
+   *      - LST liability
    *      - Obligations (i.e. Lido protocol fees)
    *      - Node operator fees
    * @param _yieldProvider The yield provider address.
@@ -136,23 +136,14 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     // First compute the total yield
     uint256 lastUserFunds = $$.userFunds;
     uint256 totalVaultFunds = _getDashboard($$).totalValue();
-    uint256 negativeTotalYield;
-    uint256 positiveTotalYield;
+    // Gross positive yield
     if (totalVaultFunds > lastUserFunds) {
-      positiveTotalYield = totalVaultFunds - lastUserFunds;
+      newReportedYield = _handlePostiveYieldAccounting($$, totalVaultFunds - lastUserFunds);
+    // Gross negative yield
     } else {
-      negativeTotalYield = lastUserFunds - totalVaultFunds;
-    }
-
-    if (positiveTotalYield > 0) {
-      positiveTotalYield = _handlePostiveYieldAccounting($$, positiveTotalYield);
-      // emit event
-      return positiveTotalYield;
-    } else if (negativeTotalYield > 0) {
       // If prev reportYield had negativeYield, this correctly accounts for both increase and reduction in negativeYield since
-      $$.currentNegativeYield = negativeTotalYield;
-      // emit event
-      return 0;
+      $$.currentNegativeYield = lastUserFunds - totalVaultFunds;
+      newReportedYield = 0;
     }
   }
 
@@ -174,44 +165,17 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       $$.currentNegativeYield -= negativeYieldReduction;
       newReportedYield -= negativeYieldReduction;
     }
-    // Then pay liability interest
-    newReportedYield -= _payLSTInterest($$, newReportedYield);
+    // Then pay liabilities
+    uint256 lstLiabilityPayment = _payMaximumPossibleLSTLiability($$);
+    if (lstLiabilityPayment > newReportedYield) {
+      $$.currentNegativeYield += (lstLiabilityPayment - newReportedYield);
+      return 0;
+    }
+    newReportedYield = Math256.safeSub(newReportedYield, lstLiabilityPayment);
     // Then pay obligations
     newReportedYield -= _payObligations($$, newReportedYield);
     // Then pay node operator fee(s)
     newReportedYield -= _payNodeOperatorFees($$, newReportedYield);
-  }
-
-  /**
-   * @notice Helper function to pay LST liability interest (but not principal).
-   * @param $$ Storage pointer for the YieldProvider-scoped storage.
-   * @param _availableYield Amount of yield available.
-   * @return lstInterestPaid Amount of ETH used to pay LST interest liability.
-   */
-  function _payLSTInterest(
-    YieldProviderStorage storage $$,
-    uint256 _availableYield
-  ) internal returns (uint256 lstInterestPaid) {
-    if ($$.isOssified) return _availableYield;
-    IDashboard dashboard = _getDashboard($$);
-    uint256 liabilityTotalShares = dashboard.liabilityShares();
-    if (liabilityTotalShares == 0) return _availableYield;
-    (uint256 lstLiabilityPrincipalSynced, bool isLstLiabilityPrincipalChanged) = _syncExternalLiabilitySettlement(
-      $$,
-      liabilityTotalShares,
-      $$.lstLiabilityPrincipal
-    );
-    // If lstLiabilityPrincipal was reduced by _syncExternalLiabilitySettlement(), it means all LST interest has been paid
-    if (!isLstLiabilityPrincipalChanged) {
-      return _availableYield;
-    }
-    uint256 liabilityInterestETH = STETH.getPooledEthBySharesRoundUp(liabilityTotalShares) -
-      lstLiabilityPrincipalSynced;
-    lstInterestPaid = Math256.min(liabilityInterestETH, _availableYield);
-    // Do the payment
-    if (lstInterestPaid > 0) {
-      dashboard.rebalanceVaultWithEther(lstInterestPaid);
-    }
   }
 
   /**
@@ -274,6 +238,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     YieldProviderStorage storage $$,
     uint256 _availableYield
   ) internal returns (uint256 nodeOperatorFeesPaid) {
+    if (_availableYield == 0) return 0;
     IDashboard dashboard = _getDashboard($$);
     IStakingVault vault = _getVault($$);
     uint256 currentFees = dashboard.nodeOperatorDisbursableFee();
@@ -515,20 +480,22 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    * @notice Helper function to pay the maximum possible outstanding LST liability.
    * @param $$ Storage pointer for the YieldProvider-scoped storage.
    * @dev Call _syncExternalLiabilitySettlement() after LST liability payment is done.
+   * @return liabilityPaidETH Amount of ETH used to pay liabilities.
    */
-  function _payMaximumPossibleLSTLiability(YieldProviderStorage storage $$) internal {
-    if ($$.isOssified) return;
+  function _payMaximumPossibleLSTLiability(YieldProviderStorage storage $$) internal returns (uint256 liabilityPaidETH) {
+    if ($$.isOssified) return 0;
     IDashboard dashboard = IDashboard($$.primaryEntrypoint);
     address vault = $$.ossifiedEntrypoint;
     // Assumption - this is maximum available for rebalance
-    uint256 availableRebalanceAmount = vault.balance;
-    uint256 availableRebalanceShares = STETH.getSharesByPooledEth(availableRebalanceAmount);
+    uint256 vaultBalanceBeforeRebalance = vault.balance;
+    uint256 availableRebalanceShares = STETH.getSharesByPooledEth(vaultBalanceBeforeRebalance);
     uint256 liabilityShares = dashboard.liabilityShares();
     uint256 rebalanceShares = Math256.min(liabilityShares, availableRebalanceShares);
     if (rebalanceShares > 0) {
       dashboard.rebalanceVaultWithShares(rebalanceShares);
       // Apply consistent accounting treatment that LST interest paid first, then LST principal
       _syncExternalLiabilitySettlement($$, dashboard.liabilityShares(), $$.lstLiabilityPrincipal);
+      liabilityPaidETH = vaultBalanceBeforeRebalance - vault.balance;
     }
   }
 
