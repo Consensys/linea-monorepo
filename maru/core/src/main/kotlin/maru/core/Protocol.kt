@@ -11,13 +11,7 @@ package maru.core
 interface Protocol {
   fun start()
 
-  fun stop()
-}
+  fun pause()
 
-class NoOpProtocol : Protocol {
-  override fun start() {
-  }
-
-  override fun stop() {
-  }
+  fun close()
 }

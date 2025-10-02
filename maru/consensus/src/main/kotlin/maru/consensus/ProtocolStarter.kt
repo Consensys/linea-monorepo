@@ -64,7 +64,7 @@ class ProtocolStarter(
         )
       syncStatusProvider.onClSyncStatusUpdate {
         if (it == CLSyncStatus.SYNCING) {
-          protocolStarter.stop()
+          protocolStarter.pause()
         }
       }
       syncStatusProvider.onFullSyncComplete {
@@ -133,7 +133,7 @@ class ProtocolStarter(
       )
     log.debug("switching protocol: fromProtocol={} toProtocol={}", currentProtocolWithFork, newProtocolWithFork)
     currentProtocolWithForkReference.set(newProtocolWithFork)
-    currentProtocolWithFork?.protocol?.stop()
+    currentProtocolWithFork?.protocol?.close()
 
     newProtocol.start()
     log.debug("started new protocol {}", newProtocol)
@@ -158,7 +158,7 @@ class ProtocolStarter(
     }
   }
 
-  override fun stop() {
+  override fun pause() {
     synchronized(this) {
       if (poller == null) {
         return
@@ -166,8 +166,15 @@ class ProtocolStarter(
 
       poller?.cancel()
       poller = null
-      currentProtocolWithForkReference.get()?.protocol?.stop()
+      currentProtocolWithForkReference.get()?.protocol?.pause()
       log.debug("Stopped fork transition polling")
+    }
+  }
+
+  override fun close() {
+    synchronized(this) {
+      pause()
+      currentProtocolWithForkReference.get()?.protocol?.close()
     }
   }
 }

@@ -26,9 +26,13 @@ class QbftConsensusValidator(
     eventQueueExecutor.execute(eventProcessor)
   }
 
-  override fun stop() {
+  override fun pause() {
     eventProcessor.stop()
     bftExecutors.stop()
     qbftController.stop()
+  }
+
+  override fun close() {
+    pause()
   }
 }

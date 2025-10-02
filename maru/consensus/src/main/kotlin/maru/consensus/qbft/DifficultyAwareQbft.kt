@@ -135,7 +135,7 @@ class DifficultyAwareQbft(
     }
   }
 
-  override fun stop() {
+  override fun pause() {
     synchronized(this) {
       if (poller != null) {
         stopPoller()
@@ -144,11 +144,18 @@ class DifficultyAwareQbft(
       if (postTtdProtocol != null) {
         log.debug("Stopping post-TTD protocol")
         try {
-          postTtdProtocol?.stop()
+          postTtdProtocol?.pause()
         } catch (e: Exception) {
           log.warn("Error stopping post-TTD protocol", e)
         }
       }
+    }
+  }
+
+  override fun close() {
+    synchronized(this) {
+      pause()
+      postTtdProtocol?.close()
     }
   }
 
