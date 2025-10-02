@@ -105,7 +105,7 @@ func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleT
 				left[k] = ctx.ctx.Lefts[l][k].Result.GetColAssignmentAt(run, i)
 				right[k] = ctx.ctx.Rights[l][k].Result.GetColAssignmentAt(run, i)
 				node[k] = ctx.ctx.Nodes[l].Result()[k].GetColAssignmentAt(run, i)
-				fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left[k].Text(16), right[k].Text(16), node[k].Text(16))
+				// fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left[k].Text(16), right[k].Text(16), node[k].Text(16))
 			}
 
 		}

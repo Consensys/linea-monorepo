@@ -13,6 +13,7 @@ GO_CORSET := PATH="${CORSET_ROOT}/bin":$$PATH
 # Define the list of Go packages to test
 PACKAGES := \
 	github.com/consensys/linea-monorepo/prover/maths/... \
+  github.com/consensys/linea-monorepo/prover/crypto/... \
 	github.com/consensys/linea-monorepo/prover/symbolic/... \
 	github.com/consensys/linea-monorepo/prover/protocol/accessors/... \
 	github.com/consensys/linea-monorepo/prover/protocol/query/... \

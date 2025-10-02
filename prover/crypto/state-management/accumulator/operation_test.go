@@ -31,7 +31,7 @@ func dumval(i int) DummyVal {
 	return DummyBytes32(i)
 }
 
-func newTestAccumulatorKeccak() *accumulator.ProverState[DummyKey, DummyVal] {
+func newTestAccumulatorPoseidon2() *accumulator.ProverState[DummyKey, DummyVal] {
 	config := &smt.Config{
 		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
@@ -41,7 +41,7 @@ func newTestAccumulatorKeccak() *accumulator.ProverState[DummyKey, DummyVal] {
 
 func TestInitialization(t *testing.T) {
 	// Just check that the code returns
-	acc := newTestAccumulatorKeccak()
+	acc := newTestAccumulatorPoseidon2()
 	ver := acc.VerifierState()
 
 	// The next free nodes are well initialized
@@ -55,8 +55,8 @@ func TestInitialization(t *testing.T) {
 	tailHash := accumulator.Head().Hash(acc.Config())
 
 	// First leaf is head
-	assert.Equal(t, acc.Tree.MustGetLeaf(0), accumulator.Head().Hash(acc.Config()))
-	assert.Equal(t, acc.Tree.MustGetLeaf(1), accumulator.Tail(acc.Config()).Hash(acc.Config()))
+	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(0)), accumulator.Head().Hash(acc.Config()))
+	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(1)), accumulator.Tail(acc.Config()).Hash(acc.Config()))
 
 	// Can we prover membership of the leaf
 	proofHead := acc.Tree.MustProve(0)
@@ -69,7 +69,7 @@ func TestInitialization(t *testing.T) {
 func TestInsertion(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorKeccak()
+	acc := newTestAccumulatorPoseidon2()
 	ver := acc.VerifierState()
 
 	for i := 0; i < numRepetion; i++ {
@@ -86,7 +86,7 @@ func TestInsertion(t *testing.T) {
 func TestReadZero(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorKeccak()
+	acc := newTestAccumulatorPoseidon2()
 	ver := acc.VerifierState()
 
 	for i := 0; i < numRepetion; i++ {
@@ -104,7 +104,7 @@ func TestReadZero(t *testing.T) {
 func TestReadNonZero(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorKeccak()
+	acc := newTestAccumulatorPoseidon2()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
@@ -128,7 +128,7 @@ func TestReadNonZero(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	// Performs an insertion
-	acc := newTestAccumulatorKeccak()
+	acc := newTestAccumulatorPoseidon2()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
@@ -151,7 +151,7 @@ func TestUpdate(t *testing.T) {
 
 func TestDeletion(t *testing.T) {
 	// Performs an insertion
-	acc := newTestAccumulatorKeccak()
+	acc := newTestAccumulatorPoseidon2()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
