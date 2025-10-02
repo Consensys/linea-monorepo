@@ -33,15 +33,10 @@ abstract contract LineaRollupPauseManager is PauseManager {
   /// @notice This is used to unpause finalization submission.
   bytes32 public constant UNPAUSE_FINALIZATION_ROLE = keccak256("UNPAUSE_FINALIZATION_ROLE");
 
-  /// @notice This is used to pause L1MessageService to YieldManager communication.
-  bytes32 public constant PAUSE_L1_YIELDMANAGER_ROLE = keccak256("PAUSE_L1_YIELDMANAGER_ROLE");
+  /// @notice This is used to pause native-yield driven funding of external strategies.
+  bytes32 public constant PAUSE_NATIVE_YIELD_STAKING_ROLE = keccak256("PAUSE_NATIVE_YIELD_STAKING_ROLE");
 
-  /// @notice This is used to unpause L1MessageService to YieldManager communication.
-  bytes32 public constant UNPAUSE_L1_YIELDMANAGER_ROLE = keccak256("UNPAUSE_L1_YIELDMANAGER_ROLE");
+  /// @notice This is used to unpause native-yield driven funding of external strategies.
+  bytes32 public constant UNPAUSE_NATIVE_YIELD_STAKING_ROLE = keccak256("UNPAUSE_NATIVE_YIELD_STAKING_ROLE");
 
-  /// @notice This is used to pause funding to L1MessageService.
-  bytes32 public constant PAUSE_FUNDING_ROLE = keccak256("PAUSE_FUNDING_ROLE");
-
-  /// @notice This is used to unpause funding to L1MessageService.
-  bytes32 public constant UNPAUSE_FUNDING_ROLE = keccak256("UNPAUSE_FUNDING_ROLE");
 }
