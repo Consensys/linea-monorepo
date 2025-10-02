@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Final circuit - commitment using Merkle trees
@@ -79,14 +78,11 @@ func AssignCicuitVariablesWithMerkleTree(
 		}
 	}
 
-	var buf field.Element
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
 			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path
 			for k := 0; k < len(proof.MerkleProofs[i][j].Siblings); k++ {
-				hashBytes := types.HashToBytes32(proof.MerkleProofs[i][j].Siblings[k])
-				buf.SetBytes(hashBytes[:])
-				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = buf.String()
+				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = proof.MerkleProofs[i][j].Siblings[k]
 			}
 		}
 	}
