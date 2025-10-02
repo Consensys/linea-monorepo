@@ -1,0 +1,147 @@
+# `IRollupFeeVault`
+
+### ZeroAddressNotAllowed
+
+```solidity
+error ZeroAddressNotAllowed()
+```
+
+_Thrown when a parameter is the zero address._
+
+### OperatingCostsTransferFailed
+
+```solidity
+error OperatingCostsTransferFailed()
+```
+
+_Thrown when the operating costs transfer fails._
+
+### EthBurnFailed
+
+```solidity
+error EthBurnFailed()
+```
+
+_Thrown when the burn of ETH fails._
+
+### TimestampsNotInSequence
+
+```solidity
+error TimestampsNotInSequence()
+```
+
+_Thrown when the timestamps are not in sequence._
+
+### EndTimestampMustBeGreaterThanStartTimestamp
+
+```solidity
+error EndTimestampMustBeGreaterThanStartTimestamp()
+```
+
+_Thrown when the end timestamp is not greater than the start timestamp._
+
+### ZeroOperatingCosts
+
+```solidity
+error ZeroOperatingCosts()
+```
+
+_Thrown when the operating costs are zero._
+
+### InsufficientBalance
+
+```solidity
+error InsufficientBalance()
+```
+
+_Thrown when the contract balance is insufficient._
+
+### InvoiceProcessed
+
+```solidity
+event InvoiceProcessed(uint256 startTimestamp, uint256 endTimestamp, uint256 amountPaid, uint256 amountRequested)
+```
+
+_Emitted when an invoice is processed.
+If amountRequested < amountPaid, the difference is previous unpaid invoice amount._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| startTimestamp | uint256 | The start timestamp of the invoicing period. |
+| endTimestamp | uint256 | The end timestamp of the invoicing period. |
+| amountPaid | uint256 | The amount that was paid. |
+| amountRequested | uint256 | The amount that was requested. |
+
+### EthBurntSwappedAndBridged
+
+```solidity
+event EthBurntSwappedAndBridged(uint256 ethBurnt, uint256 lineaTokensBridged)
+```
+
+_Emitted when ETH is burned, swapped, and bridged._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| ethBurnt | uint256 | The amount of ETH that was burned. |
+| lineaTokensBridged | uint256 | The amount of LINEA tokens that were bridged. |
+
+### L1BurnerContractUpdated
+
+```solidity
+event L1BurnerContractUpdated(address newL1BurnerContract)
+```
+
+_Emitted when the L1 burner contract address is updated._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| newL1BurnerContract | address | The new L1 burner contract address. |
+
+### DexUpdated
+
+```solidity
+event DexUpdated(address newDex)
+```
+
+_Emitted when the DEX contract address is updated._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| newDex | address | The new DEX contract address. |
+
+### EthReceived
+
+```solidity
+event EthReceived(uint256 amount)
+```
+
+_Emitted when ETH is received._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| amount | uint256 | The amount of ETH received. |
+
+### OperatingCostsUpdated
+
+```solidity
+event OperatingCostsUpdated(uint256 newOperatingCosts)
+```
+
+_Emitted when the operating costs are updated._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| newOperatingCosts | uint256 | The new operating costs value. |
+

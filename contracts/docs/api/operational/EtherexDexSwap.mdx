@@ -1,0 +1,105 @@
+# `IWETH9`
+
+### deposit
+
+```solidity
+function deposit() external payable
+```
+
+### withdraw
+
+```solidity
+function withdraw(uint256) external
+```
+
+# `ISwapRouterV3`
+
+### ExactInputSingleParams
+
+```solidity
+struct ExactInputSingleParams {
+  address tokenIn;
+  address tokenOut;
+  uint24 tickSpacing;
+  address recipient;
+  uint256 deadline;
+  uint256 amountIn;
+  uint256 amountOutMinimum;
+  uint160 sqrtPriceLimitX96;
+}
+```
+
+### exactInputSingle
+
+```solidity
+function exactInputSingle(struct ISwapRouterV3.ExactInputSingleParams params) external payable returns (uint256 amountOut)
+```
+
+# `EtherexDexSwap`
+
+### ROUTER
+
+```solidity
+address ROUTER
+```
+
+_Address of the Etherex SwapRouter contract_
+
+### WETH_TOKEN
+
+```solidity
+address WETH_TOKEN
+```
+
+### LINEA_TOKEN
+
+```solidity
+address LINEA_TOKEN
+```
+
+### POOL_TICK_SPACING
+
+```solidity
+uint24 POOL_TICK_SPACING
+```
+
+_Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool_
+
+### ROLLUP_FEE_VAULT
+
+```solidity
+address ROLLUP_FEE_VAULT
+```
+
+_Address of the RollupFeeVault contract authorized to call the swap function_
+
+### constructor
+
+```solidity
+constructor(address _rollupFeeVault) public
+```
+
+_Sets the address of the RollupFeeVault contract._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _rollupFeeVault | address | Address of the RollupFeeVault contract. |
+
+### swap
+
+```solidity
+function swap(uint256 _minLineaOut, uint256 _deadline, uint160 _sqrtPriceLimitX96) external payable returns (uint256 amountOut)
+```
+
+Swap ETH into LINEA.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _minLineaOut | uint256 | Number of LINEA tokens to receive (slippage protection). |
+| _deadline | uint256 | Time after which the transaction will revert if not yet processed. |
+| _sqrtPriceLimitX96 | uint160 | Price limit of the swap as a Q64.96 value. |
+
