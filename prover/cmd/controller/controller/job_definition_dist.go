@@ -137,10 +137,5 @@ func segPriority(filename string) int {
 			return val
 		}
 	}
-	return 1 // fallback default
-}
-
-// setPriority sets the priority of the job based on the file name once it arrives
-func (jd *JobDefinition) setPriority(fileName string) {
-	jd.Priority = segPriority(fileName)
+	panic("failed to parse segment ID") // fallback default
 }

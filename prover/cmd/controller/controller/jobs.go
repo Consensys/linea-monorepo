@@ -192,6 +192,12 @@ func (j *Job) DoneFile(status Status) string {
 // the priority of the job. The 100 value is chosen to make the score easy to
 // mentally compute.
 func (j *Job) Score() int {
+
+	if strings.Contains(j.Def.Name, "gl-") || strings.Contains(j.Def.Name, "lpp-") {
+		// Determine priority score also based on the segment id
+		return 100*j.End + j.Def.Priority + segPriority(j.OriginalFile)
+	}
+
 	return 100*j.End + j.Def.Priority
 }
 
