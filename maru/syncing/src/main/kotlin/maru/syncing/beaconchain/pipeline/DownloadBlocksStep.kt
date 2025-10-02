@@ -40,6 +40,7 @@ class DownloadPeerProviderImpl(
           peers
         } else {
           peers.filter { peer ->
+            // TODO: consider to reduce the downloadRangeEndBlockNumber, because the status of the peers is up to "time between status updates" old
             peer.getStatus()?.latestBlockNumber?.let { it >= downloadRangeEndBlockNumber } == true
           }
         }

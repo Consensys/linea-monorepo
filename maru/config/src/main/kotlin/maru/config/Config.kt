@@ -11,6 +11,7 @@ package maru.config
 import java.net.InetAddress
 import java.net.URL
 import java.nio.file.Path
+import kotlin.math.max
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
@@ -43,9 +44,11 @@ data class P2PConfig(
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
   val maxPeers: Int = 25,
+  val maxUnsyncedPeers: Int = max(1, maxPeers / 10),
   val discovery: Discovery? = null,
   val statusUpdate: StatusUpdate = StatusUpdate(),
   val reputation: Reputation = Reputation(),
+  val forkidAllowedTimeWindowSeconds: Duration = 20.seconds,
 ) {
   init {
     // just a sanity check to ensure the IP address is valid

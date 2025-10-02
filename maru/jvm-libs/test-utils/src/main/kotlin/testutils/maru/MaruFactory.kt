@@ -40,7 +40,7 @@ import maru.config.ValidatorElNode
 import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ForkIdHashProvider
+import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -54,8 +54,9 @@ import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
-import maru.p2p.messages.StatusMessageFactory
+import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
+import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
@@ -320,12 +321,14 @@ class MaruFactory(
       SerDe<SealedBeaconBlock>,
       MetricsFacade,
       BesuMetricsSystem,
-      StatusMessageFactory,
+      StatusManager,
       BeaconChain,
-      ForkIdHashProvider,
+      ForkIdHashManager,
       ForkIdHasher,
       () -> Boolean,
       P2PState,
+      () -> SyncStatusProvider,
+      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp =
     MaruAppFactory().create(
@@ -416,12 +419,14 @@ class MaruFactory(
       SerDe<SealedBeaconBlock>,
       MetricsFacade,
       BesuMetricsSystem,
-      StatusMessageFactory,
+      StatusManager,
       BeaconChain,
-      ForkIdHashProvider,
+      ForkIdHashManager,
       ForkIdHasher,
       () -> Boolean,
       P2PState,
+      () -> SyncStatusProvider,
+      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort)
@@ -477,12 +482,14 @@ class MaruFactory(
       SerDe<SealedBeaconBlock>,
       MetricsFacade,
       BesuMetricsSystem,
-      StatusMessageFactory,
+      StatusManager,
       BeaconChain,
-      ForkIdHashProvider,
+      ForkIdHashManager,
       ForkIdHasher,
       () -> Boolean,
       P2PState,
+      () -> SyncStatusProvider,
+      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =
@@ -545,12 +552,14 @@ class MaruFactory(
       SerDe<SealedBeaconBlock>,
       MetricsFacade,
       BesuMetricsSystem,
-      StatusMessageFactory,
+      StatusManager,
       BeaconChain,
-      ForkIdHashProvider,
+      ForkIdHashManager,
       ForkIdHasher,
       () -> Boolean,
       P2PState,
+      () -> SyncStatusProvider,
+      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =

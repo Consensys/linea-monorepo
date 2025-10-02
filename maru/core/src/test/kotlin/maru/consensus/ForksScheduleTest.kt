@@ -32,15 +32,59 @@ class ForksScheduleTest {
   @Test
   fun `test getForkByTimestamp returns correct fork`() {
     val fork1 = ForkSpec(timestampSeconds = 1UL, blockTimeSeconds = 1u, configuration = consensusConfig)
-    val fork2 = ForkSpec(timestampSeconds = 2UL, blockTimeSeconds = 2u, configuration = consensusConfig)
-    val fork3 = ForkSpec(timestampSeconds = 3UL, blockTimeSeconds = 3u, configuration = consensusConfig)
+    val fork2 = ForkSpec(timestampSeconds = 3UL, blockTimeSeconds = 2u, configuration = consensusConfig)
+    val fork3 = ForkSpec(timestampSeconds = 5UL, blockTimeSeconds = 3u, configuration = consensusConfig)
     val forks = listOf(fork1, fork2, fork3)
 
     val schedule = ForksSchedule(expectedChainId, forks)
 
     assertThat(schedule.getForkByTimestamp(1UL)).isEqualTo(fork1)
-    assertThat(schedule.getForkByTimestamp(2UL)).isEqualTo(fork2)
-    assertThat(schedule.getForkByTimestamp(3UL)).isEqualTo(fork3)
+    assertThat(schedule.getForkByTimestamp(2UL)).isEqualTo(fork1)
+    assertThat(schedule.getForkByTimestamp(3UL)).isEqualTo(fork2)
+    assertThat(schedule.getForkByTimestamp(4UL)).isEqualTo(fork2)
+    assertThat(schedule.getForkByTimestamp(5UL)).isEqualTo(fork3)
+    assertThat(schedule.getForkByTimestamp(6UL)).isEqualTo(fork3)
+    assertThat(schedule.getForkByTimestamp(700UL)).isEqualTo(fork3)
+  }
+
+  @Test
+  fun `test getPreviousForkByTimestamp returns correct fork`() {
+    val fork1 = ForkSpec(timestampSeconds = 1UL, blockTimeSeconds = 1u, configuration = consensusConfig)
+    val fork2 = ForkSpec(timestampSeconds = 3UL, blockTimeSeconds = 2u, configuration = consensusConfig)
+    val fork3 = ForkSpec(timestampSeconds = 5UL, blockTimeSeconds = 3u, configuration = consensusConfig)
+    val fork4 = ForkSpec(timestampSeconds = 7UL, blockTimeSeconds = 3u, configuration = consensusConfig)
+    val forks = listOf(fork1, fork2, fork3, fork4)
+
+    val schedule = ForksSchedule(expectedChainId, forks)
+
+    assertThat(schedule.getPreviousForkByTimestamp(1UL)).isNull()
+    assertThat(schedule.getPreviousForkByTimestamp(2UL)).isNull()
+    assertThat(schedule.getPreviousForkByTimestamp(3UL)).isEqualTo(fork1)
+    assertThat(schedule.getPreviousForkByTimestamp(4UL)).isEqualTo(fork1)
+    assertThat(schedule.getPreviousForkByTimestamp(5UL)).isEqualTo(fork2)
+    assertThat(schedule.getPreviousForkByTimestamp(6UL)).isEqualTo(fork2)
+    assertThat(schedule.getPreviousForkByTimestamp(7UL)).isEqualTo(fork3)
+    assertThat(schedule.getPreviousForkByTimestamp(600UL)).isEqualTo(fork3)
+  }
+
+  @Test
+  fun `test getNextForkByTimestamp returns correct fork`() {
+    val fork1 = ForkSpec(timestampSeconds = 1UL, blockTimeSeconds = 1u, configuration = consensusConfig)
+    val fork2 = ForkSpec(timestampSeconds = 3UL, blockTimeSeconds = 2u, configuration = consensusConfig)
+    val fork3 = ForkSpec(timestampSeconds = 5UL, blockTimeSeconds = 3u, configuration = consensusConfig)
+    val fork4 = ForkSpec(timestampSeconds = 7UL, blockTimeSeconds = 3u, configuration = consensusConfig)
+    val forks = listOf(fork1, fork2, fork3, fork4)
+
+    val schedule = ForksSchedule(expectedChainId, forks)
+
+    assertThat(schedule.getNextForkByTimestamp(1UL)).isEqualTo(fork2)
+    assertThat(schedule.getNextForkByTimestamp(2UL)).isEqualTo(fork2)
+    assertThat(schedule.getNextForkByTimestamp(3UL)).isEqualTo(fork3)
+    assertThat(schedule.getNextForkByTimestamp(4UL)).isEqualTo(fork3)
+    assertThat(schedule.getNextForkByTimestamp(5UL)).isEqualTo(fork4)
+    assertThat(schedule.getNextForkByTimestamp(6UL)).isEqualTo(fork4)
+    assertThat(schedule.getNextForkByTimestamp(7UL)).isNull()
+    assertThat(schedule.getNextForkByTimestamp(800UL)).isNull()
   }
 
   @Test
