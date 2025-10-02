@@ -53,7 +53,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 		allFiles := append([]string{}, req.GLProofFiles...)
 		allFiles = append(allFiles, req.LPPProofFiles...)
 		allFiles = append(allFiles, req.SharedRndFile)
-		files.MarkFiles(allFiles, suf)
+		files.MarkAndMoveToDone(cfg, allFiles, suf)
 	}()
 
 	// Launch the shared randomness proces first
@@ -185,7 +185,7 @@ func runSharedRandomness(cfg *config.Config, req *Metadata) (err error) {
 	// Add defer to mark outcome on all GLCommitFiles
 	defer func() {
 		suf := files.OutcomeSuffix(err)
-		files.MarkFiles(req.GLCommitFiles, suf)
+		files.MarkAndMoveToDone(cfg, req.GLCommitFiles, suf)
 	}()
 
 	// Set timeout for all gl subproofs

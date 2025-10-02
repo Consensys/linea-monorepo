@@ -11,7 +11,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/fsnotify/fsnotify"
 	"github.com/sirupsen/logrus"
 )
@@ -296,17 +298,46 @@ func OutcomeSuffix(err error) string {
 	return ".failure"
 }
 
-// MarkFiles attempts to rename each path -> path+suffix.
-// Best-effort: log warnings on failure but do not return an error.
-func MarkFiles(paths []string, suffix string) {
-	for _, p := range paths {
-		if p == "" {
+// MarkAndMoveToDone first attempts to rename each path -> path+suffix,
+// then moves the marked file into ".../requests-done/filename+suffix".
+// - Marking is best-effort: warnings are logged, no error returned.
+// - Moving is strict: if any move fails, the function returns an error.
+func MarkAndMoveToDone(cfg *config.Config, filePaths []string, suffix string) error {
+	for _, filePath := range filePaths {
+		if filePath == "" {
 			continue
 		}
-		if renameErr := os.Rename(p, p+suffix); renameErr != nil {
-			logrus.Warnf("could not mark %s with %s: %v", p, suffix, renameErr)
+
+		// Step 1: Mark (best-effort)
+		markedPath := filePath + suffix
+		if err := os.Rename(filePath, markedPath); err != nil {
+			logrus.Warnf("could not mark %s with %s: %v", filePath, suffix, err)
+			// if marking fails, skip moving since the file doesn’t exist under marked name
+			continue
 		} else {
-			logrus.Infof("marked %s with %s", p, suffix)
+			logrus.Infof("marked %s with %s", filePath, suffix)
 		}
+
+		// Step 2: Move to requests-done
+		dir := filepath.Dir(markedPath)
+		base := filepath.Base(markedPath)
+
+		if !strings.Contains(dir, config.RequestsFromSubDir) {
+			return fmt.Errorf("path %q does not contain '%s'", markedPath, config.RequestsFromSubDir)
+		}
+		doneDir := strings.Replace(dir, config.RequestsFromSubDir, config.RequestsDoneSubDir, 1)
+
+		if err := os.MkdirAll(doneDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create done dir: %w", err)
+		}
+
+		dest := filepath.Join(doneDir, base)
+		if err := os.Rename(markedPath, dest); err != nil {
+			return fmt.Errorf("failed to move %q to %q: %w", markedPath, dest, err)
+		}
+
+		logrus.Infof("moved %s to %s", markedPath, dest)
 	}
+
+	return nil
 }
