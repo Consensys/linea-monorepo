@@ -13,11 +13,9 @@ import maru.config.QbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
-import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
 import maru.consensus.SealedBeaconBlockHandlerAdapter
-import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.qbft.QbftValidatorFactory
 import maru.consensus.state.FinalizationProvider
@@ -63,22 +61,13 @@ class QbftProtocolValidatorFactory(
         elFork = qbftConsensusConfig.elFork,
         metricsFacade = metricsFacade,
       )
-    val elFollowersNewBlockHandlerMap =
-      followerELNodeEngineApiWeb3JClients.mapValues { (followerName, web3JClient) ->
-        val elFollowerExecutionLayerManager =
-          Helpers.buildExecutionLayerManager(
-            web3JEngineApiClient = web3JClient,
-            elFork = qbftConsensusConfig.elFork,
-            metricsFacade = metricsFacade,
-          )
-        FollowerBeaconBlockImporter.create(
-          executionLayerManager = elFollowerExecutionLayerManager,
-          finalizationStateProvider = finalizationStateProvider,
-          importerName = followerName,
-        )
-      }
     val blockImportHandlers =
-      NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)
+      Helpers.createBlockImportHandlers(
+        qbftConsensusConfig = qbftConsensusConfig,
+        metricsFacade = metricsFacade,
+        finalizationStateProvider = finalizationStateProvider,
+        followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
+      )
     val sealedBlockHandlers =
       mutableMapOf(
         "beacon block handlers" to SealedBeaconBlockHandlerAdapter(blockImportHandlers),
@@ -109,7 +98,7 @@ class QbftProtocolValidatorFactory(
     }
     syncStatusProvider.onClSyncStatusUpdate {
       if (it == CLSyncStatus.SYNCING) {
-        qbftProtocol.stop()
+        qbftProtocol.pause()
       }
     }
 

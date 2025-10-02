@@ -10,6 +10,10 @@ package maru.app
 
 import maru.config.ApiEndpointConfig
 import maru.config.consensus.ElFork
+import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.NewBlockHandlerMultiplexer
+import maru.consensus.blockimport.FollowerBeaconBlockImporter
+import maru.consensus.state.FinalizationProvider
 import maru.executionlayer.client.CancunWeb3JJsonRpcExecutionLayerEngineApiClient
 import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.client.ParisWeb3JJsonRpcExecutionLayerEngineApiClient
@@ -79,4 +83,27 @@ object Helpers {
           metricsFacade = metricsFacade,
         )
     }
+
+  fun createBlockImportHandlers(
+    qbftConsensusConfig: QbftConsensusConfig,
+    metricsFacade: MetricsFacade,
+    finalizationStateProvider: FinalizationProvider,
+    followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,
+  ): NewBlockHandlerMultiplexer {
+    val elFollowersNewBlockHandlerMap =
+      followerELNodeEngineApiWeb3JClients.mapValues { (followerName, web3JClient) ->
+        val elFollowerExecutionLayerManager =
+          buildExecutionLayerManager(
+            web3JEngineApiClient = web3JClient,
+            elFork = qbftConsensusConfig.elFork,
+            metricsFacade = metricsFacade,
+          )
+        FollowerBeaconBlockImporter.create(
+          executionLayerManager = elFollowerExecutionLayerManager,
+          finalizationStateProvider = finalizationStateProvider,
+          importerName = followerName,
+        )
+      }
+    return NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)
+  }
 }

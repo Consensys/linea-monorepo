@@ -114,7 +114,7 @@ class MaruApp(
       stop("Finalization Provider", finalizationProvider::stop)
     }
     stop("Beacon API", apiServer::stop)
-    stop("Protocol", protocolStarter::stop)
+    stop("Protocol", protocolStarter::pause)
     stop("vertx verticles") {
       vertx.deploymentIDs().forEach {
         vertx.undeploy(it).get()
@@ -131,6 +131,7 @@ class MaruApp(
     vertx.close()
     // close db last, otherwise other components may fail trying to save data
     beaconChain.close()
+    protocolStarter.close()
   }
 
   private fun start(

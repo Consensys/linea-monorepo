@@ -13,7 +13,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.time.Duration.Companion.seconds
-import maru.consensus.ForkSpec
 import maru.core.Protocol
 import maru.subscription.InOrderFanoutSubscriptionManager
 import maru.subscription.SubscriptionNotifier
@@ -27,20 +26,27 @@ import testutils.maru.TestablePeriodicTimer
 class ProtocolStarterTest {
   private class StubProtocol : Protocol {
     var started = false
+    var closed = false
 
     override fun start() {
+      require(!closed) { "The protocol can't be started after a close!" }
       started = true
     }
 
-    override fun stop() {
+    override fun pause() {
       started = false
+    }
+
+    override fun close() {
+      pause()
+      closed = true
     }
   }
 
   private val chainId = 1337u
 
-  private val protocol1 = StubProtocol()
-  private val protocol2 = StubProtocol()
+  private lateinit var protocol1: StubProtocol
+  private lateinit var protocol2: StubProtocol
 
   private val protocolConfig1 = object : ConsensusConfig {}
   private val forkSpec1 = ForkSpec(0UL, 5u, protocolConfig1)
@@ -56,10 +62,9 @@ class ProtocolStarterTest {
     }
 
   @BeforeEach
-  fun stopStubProtocols() {
-    forkTransitions.clear()
-    protocol1.stop()
-    protocol2.stop()
+  fun initializeStubProtocols() {
+    protocol1 = StubProtocol()
+    protocol2 = StubProtocol()
   }
 
   @Test
@@ -244,6 +249,34 @@ class ProtocolStarterTest {
     assertActiveProtocol2(protocolStarter)
     assertThat(forkTransitions.size).isEqualTo(1)
     assertThat(forkTransitions.first()).isEqualTo(forkSpec2)
+  }
+
+  @Test
+  fun `ProtocolStarter close method closes active protocol and stops timer`() {
+    val timer = TestablePeriodicTimer()
+    val forksSchedule =
+      ForksSchedule(
+        chainId,
+        listOf(forkSpec1, forkSpec2),
+      )
+    val protocolStarter =
+      createProtocolStarter(
+        forksSchedule = forksSchedule,
+        clockMilliseconds = 5000, // Before fork transition, should start with protocol1
+        timer = timer,
+        forkTransitionNotifier = forkTransitionNotifier,
+      )
+
+    // Start the protocol starter to activate a protocol
+    protocolStarter.start()
+    assertActiveProtocol1(protocolStarter)
+
+    // Close the protocol starter
+    protocolStarter.close()
+
+    // Verify the active protocol is closed
+    assertThat(protocol1.closed).isTrue()
+    assertThat(protocol1.started).isFalse() // pause() should have been called in close()
   }
 
   private val protocolFactory =
