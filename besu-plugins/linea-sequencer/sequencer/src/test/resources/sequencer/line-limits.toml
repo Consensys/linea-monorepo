@@ -47,12 +47,6 @@ WCP                 = 262144
 # to reduce all limits above by the corresponding spillings value (or 16 for simplicity)
 
 #
-# Fixed size, static tables
-#
-BIN_REFERENCE_TABLE = 262144 # contains 3 * 256^2 + 256 data rows + 1 padding row
-INSTRUCTION_DECODER = 512    # contains 256             data rows + 1 padding row
-
-#
 # Block-specific limits
 #
 BLOCK_KECCAK       = 8192
@@ -102,5 +96,3 @@ PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS = 0
 #   as per Alex they are not required by the prover;
 BLS_DATA = 0
 RLP_UTILS = 131072
-BLS_REFERENCE_TABLE = 0
-POWER_REFERENCE_TABLE = 0

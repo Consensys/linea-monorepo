@@ -54,12 +54,6 @@ BLOCK_L2_L1_LOGS = 16
 BLOCK_TRANSACTIONS       = 200 # max number of tx in an L2 block
 
 #
-# Fixed size, static tables
-#
-BIN_REFERENCE_TABLE = 262144 # contains 3 * 256^2 + 256 data rows + 1 padding row
-INSTRUCTION_DECODER = 512    # contains 256             data rows + 1 padding row
-
-#
 # Precompiles limits
 #
 PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS        = 10000
@@ -92,5 +86,3 @@ PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS = 0
 
 BLS_DATA = 0
 RLP_UTILS = 1590
-BLS_REFERENCE_TABLE = 0
-POWER_REFERENCE_TABLE = 0

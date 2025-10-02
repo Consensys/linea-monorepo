@@ -46,12 +46,6 @@ TX_RLP              = 131072
 WCP                 = 262144
 
 #
-# Fixed size, static tables
-#
-BIN_REFERENCE_TABLE = 262144 # contains 3 * 256^2 + 256 data rows + 1 padding row
-INSTRUCTION_DECODER = 512    # contains 256             data rows + 1 padding row
-
-#
 # Block-specific limits
 #
 BLOCK_KECCAK   = 8192
@@ -91,5 +85,3 @@ PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS = 0
 
 BLS_DATA = 16
 RLP_UTILS = 262144
-BLS_REFERENCE_TABLE=257
-POWER_REFERENCE_TABLE=17
