@@ -157,21 +157,9 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   /**
    * @notice Returns the minimum withdrawal reserve derived from the percentage.
    * @return minimumWithdrawalReserveByPercentage Minimum reserve level expressed in wei.
-   */
-  function getMinimumWithdrawalReserveAmountByPercentage()
-    external
-    view
-    returns (uint256 minimumWithdrawalReserveByPercentage)
-  {
-    (minimumWithdrawalReserveByPercentage, ) = _getMinimumWithdrawalReserveAmountByPercentage();
-  }
-
-  /**
-   * @notice Returns the minimum withdrawal reserve derived from the percentage.
-   * @return minimumWithdrawalReserveByPercentage Minimum reserve level expressed in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getMinimumWithdrawalReserveAmountByPercentage()
+  function _getEffectiveMinimumWithdrawalReserveAmountByPercentage()
     internal
     view
     returns (uint256 minimumWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance)
@@ -186,21 +174,9 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   /**
    * @notice Returns the target withdrawal reserve derived from the percentage.
    * @return targetWithdrawalReserveByPercentage Target reserve level expressed in wei.
-   */
-  function getTargetWithdrawalReserveAmountByPercentage()
-    external
-    view
-    returns (uint256 targetWithdrawalReserveByPercentage)
-  {
-    (targetWithdrawalReserveByPercentage, ) = _getTargetWithdrawalReserveAmountByPercentage();
-  }
-
-  /**
-   * @notice Returns the target withdrawal reserve derived from the percentage.
-   * @return targetWithdrawalReserveByPercentage Target reserve level expressed in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getTargetWithdrawalReserveAmountByPercentage()
+  function _getEffectiveTargetWithdrawalReserveAmountByPercentage()
     internal
     view
     returns (uint256 targetWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance)
@@ -216,8 +192,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @notice Returns the effective minimum withdrawal reserve considering both percentage and absolute amount configurations.
    * @return minimumWithdrawalReserve Effective minimum reserve in wei.
    */
-  function getMinimumWithdrawalReserve() external view returns (uint256 minimumWithdrawalReserve) {
-    (minimumWithdrawalReserve, ) = _getMinimumWithdrawalReserve();
+  function getEffectiveMinimumWithdrawalReserve() external view returns (uint256 minimumWithdrawalReserve) {
+    (minimumWithdrawalReserve, ) = _getEffectiveMinimumWithdrawalReserve();
   }
 
   /**
@@ -225,13 +201,13 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @return minimumWithdrawalReserve Effective minimum reserve in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getMinimumWithdrawalReserve()
+  function _getEffectiveMinimumWithdrawalReserve()
     internal
     view
     returns (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance)
   {
     uint256 minimumWithdrawalReserveByPercentage;
-    (minimumWithdrawalReserveByPercentage, cachedL1MessageServiceBalance) = _getMinimumWithdrawalReserveAmountByPercentage();
+    (minimumWithdrawalReserveByPercentage, cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserveAmountByPercentage();
     minimumWithdrawalReserve = Math256.min(
       minimumWithdrawalReserveByPercentage,
       _getYieldManagerStorage()._minimumWithdrawalReserveAmount
@@ -242,8 +218,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @notice Returns the effective target withdrawal reserve considering both percentage and absolute amount configurations.
    * @return targetWithdrawalReserve Effective target reserve in wei.
    */
-  function getTargetWithdrawalReserve() external view returns (uint256 targetWithdrawalReserve) {
-    (targetWithdrawalReserve, ) = _getTargetWithdrawalReserve();
+  function getEffectiveTargetWithdrawalReserve() external view returns (uint256 targetWithdrawalReserve) {
+    (targetWithdrawalReserve, ) = _getEffectiveTargetWithdrawalReserve();
   }
 
   /**
@@ -251,13 +227,13 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @return targetWithdrawalReserve Effective target reserve in wei.
    * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
    */
-  function _getTargetWithdrawalReserve()
+  function _getEffectiveTargetWithdrawalReserve()
     internal
     view
     returns (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance)
   {
     uint256 targetWithdrawalReserveByPercentage;
-    (targetWithdrawalReserveByPercentage, cachedL1MessageServiceBalance) = _getTargetWithdrawalReserveAmountByPercentage();
+    (targetWithdrawalReserveByPercentage, cachedL1MessageServiceBalance) = _getEffectiveTargetWithdrawalReserveAmountByPercentage();
     targetWithdrawalReserve = Math256.min(
       targetWithdrawalReserveByPercentage,
       _getYieldManagerStorage()._targetWithdrawalReserveAmount
@@ -269,7 +245,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @return minimumReserveDeficit Amount of ETH required to meet the minimum reserve, or zero if already satisfied.
    */
   function getMinimumReserveDeficit() public view returns (uint256 minimumReserveDeficit) {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getMinimumWithdrawalReserve();
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve();
     minimumReserveDeficit = Math256.safeSub(minimumWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
@@ -278,7 +254,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @return targetReserveDeficit Amount of ETH required to meet the target reserve, or zero if already satisfied.
    */
   function getTargetReserveDeficit() public view returns (uint256 targetReserveDeficit) {
-    (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getTargetWithdrawalReserve();
+    (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveTargetWithdrawalReserve();
     targetReserveDeficit = Math256.safeSub(targetWithdrawalReserve, cachedL1MessageServiceBalance);
   }
 
@@ -286,7 +262,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @return bool True if the withdrawal reserve balance is below the effective minimum threshold.
    */
   function isWithdrawalReserveBelowMinimum() public view returns (bool) {
-    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getMinimumWithdrawalReserve();
+    (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserve();
     return cachedL1MessageServiceBalance < minimumWithdrawalReserve;
   }
 

@@ -379,31 +379,16 @@ interface IYieldManager {
   function getTotalSystemBalance() external view returns (uint256 totalSystemBalance);
 
   /**
-   * @notice Returns the minimum withdrawal reserve derived from the percentage.
-   * @return minimumWithdrawalReserveByPercentage Minimum reserve level expressed in wei.
-   */
-  function getMinimumWithdrawalReserveAmountByPercentage()
-    external
-    view
-    returns (uint256 minimumWithdrawalReserveByPercentage);
-
-  /**
-   * @notice Returns the target withdrawal reserve derived from the percentage.
-   * @return targetWithdrawalReserveByPercentage Target reserve level expressed in wei.
-   */
-  function getTargetWithdrawalReserveAmountByPercentage() external view returns (uint256 targetWithdrawalReserveByPercentage);
-
-  /**
    * @notice Returns the effective minimum withdrawal reserve considering both percentage and absolute amount configurations.
    * @return minimumWithdrawalReserve Effective minimum reserve in wei.
    */
-  function getMinimumWithdrawalReserve() external view returns (uint256 minimumWithdrawalReserve);
+  function getEffectiveMinimumWithdrawalReserve() external view returns (uint256 minimumWithdrawalReserve);
 
   /**
    * @notice Returns the effective target withdrawal reserve considering both percentage and absolute amount configurations.
    * @return targetWithdrawalReserve Effective target reserve in wei.
    */
-  function getTargetWithdrawalReserve() external view returns (uint256 targetWithdrawalReserve);
+  function getEffectiveTargetWithdrawalReserve() external view returns (uint256 targetWithdrawalReserve);
 
   /**
    * @notice Returns the shortfall between the minimum reserve threshold and the current reserve balance.
