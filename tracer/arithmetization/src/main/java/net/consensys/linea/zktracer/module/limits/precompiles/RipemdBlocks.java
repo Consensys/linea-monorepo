@@ -36,11 +36,11 @@ public final class RipemdBlocks extends CountingOnlyModule {
 
   @Override
   public void updateTally(final int count) {
-    final int blockCount = numberOfRipemd160locks(count);
+    final int blockCount = numberOfRipemd160Blocks(count);
     counts.add(blockCount);
   }
 
-  public static int numberOfRipemd160locks(final int dataByteLength) {
+  public static int numberOfRipemd160Blocks(final int dataByteLength) {
     final long tmp =
         dataByteLength * 8L
             + RIPEMD160_ND_PADDED_ONE

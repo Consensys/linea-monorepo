@@ -72,7 +72,7 @@ public class BlakeSubsection extends PrecompileSubsection {
     blake2fParamsOobCall =
         (Blake2fParamsOobCall) secondImcFragment.callOob(new Blake2fParamsOobCall(calleeGas));
 
-    checkArgument(blake2fParamsOobCall.isRamSuccess() == blakeSuccess);
+    checkArgument(blake2fParamsOobCall.isRamSuccess() == blakeSuccess, "BLAKE2f success mismatch");
   }
 
   @Override
@@ -80,8 +80,9 @@ public class BlakeSubsection extends PrecompileSubsection {
     super.resolveAtContextReEntry(hub, callFrame);
 
     // sanity checks
-    checkArgument(blakeCdsOobCall.isHubSuccess() == (callDataSize() == 213));
-    checkArgument(callSuccess == blakeSuccess);
+    checkArgument(
+        blakeCdsOobCall.isHubSuccess() == (callDataSize() == 213), "BLAKE2f hub success mismatch");
+    checkArgument(callSuccess == blakeSuccess, "BLAKE2f call success mismatch");
     this.sanityCheck();
 
     if (!callSuccess) {

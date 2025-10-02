@@ -56,7 +56,9 @@ public class LondonTxnData extends TxnData<LondonTxnDataOperation> {
 
   @Override
   public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-    checkState(currentTx() instanceof LondonTxnDataOperation);
+    checkState(
+        currentTx() instanceof LondonTxnDataOperation,
+        "non London transaction in LondonTxnData module");
     currentBlock()
         .setNbOfTxsInBlock(
             ((LondonTxnDataOperation) currentTx()).tx.getRelativeTransactionNumber());

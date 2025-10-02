@@ -91,12 +91,12 @@ public class CallFrame {
   @Getter @Setter private long lastValidGasNext = 0;
 
   public void pauseCurrentFrame() {
-    Preconditions.checkState(!executionPaused);
+    Preconditions.checkState(!executionPaused, "cannot pause frame as frame already paused");
     executionPaused = true;
   }
 
   public void unpauseCurrentFrame() {
-    Preconditions.checkState(executionPaused);
+    Preconditions.checkState(executionPaused, "cannot unpause frame as frame is not paused");
     executionPaused = false;
   }
 

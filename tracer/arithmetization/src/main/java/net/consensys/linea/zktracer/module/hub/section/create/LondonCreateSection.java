@@ -30,7 +30,9 @@ public class LondonCreateSection extends CreateSection {
 
   protected boolean maxCodeSizeExceptionalCreate(final short exceptions) {
     // Max Code Size exception appears in EIP-3860, in Shanghai
-    checkArgument(!Exceptions.maxCodeSizeException(exceptions));
+    checkArgument(
+        !Exceptions.maxCodeSizeException(exceptions),
+        "LONDON CREATE: max code size exception should not happen in London");
     return false;
   }
 

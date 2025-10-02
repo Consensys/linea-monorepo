@@ -45,7 +45,9 @@ public class ReturnDataCopySection extends TraceSection {
 
     final short exceptions = hub.pch().exceptions();
     final boolean returnDataCopyException = oobCall.isRdcx();
-    checkArgument(returnDataCopyException == Exceptions.returnDataCopyFault(exceptions));
+    checkArgument(
+        returnDataCopyException == Exceptions.returnDataCopyFault(exceptions),
+        "RETURN_DATA_COPY: oob and hub disagree on RDCX");
 
     // returnDataCopyException case
     if (returnDataCopyException) {
@@ -55,7 +57,9 @@ public class ReturnDataCopySection extends TraceSection {
     final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     imcFragment.callMxp(mxpCall);
 
-    checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(
+        mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions),
+        "RETURN_DATA_COPY: mxp and hub disagree on MXPX");
 
     // memoryExpansionException case
     if (mxpCall.mxpx) {
@@ -64,7 +68,11 @@ public class ReturnDataCopySection extends TraceSection {
 
     // outOfGasException case
     if (Exceptions.any(exceptions)) {
-      checkArgument(exceptions == OUT_OF_GAS_EXCEPTION);
+      checkArgument(
+          exceptions == OUT_OF_GAS_EXCEPTION,
+          "RETURN_DATA_COPY: unexpected exception, %s does not match %s",
+          exceptions,
+          OUT_OF_GAS_EXCEPTION);
       return;
     }
 

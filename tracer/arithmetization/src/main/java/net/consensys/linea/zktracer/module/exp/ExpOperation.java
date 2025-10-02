@@ -57,7 +57,9 @@ public class ExpOperation extends ModuleOperation {
         final ModexpMetadata modexpMetadata = modexplogExpCall.getModexpMetadata();
         final int bbsInt = modexpMetadata.bbsInt();
         final int ebsInt = modexpMetadata.ebsInt();
-        checkArgument(modexpMetadata.callData().size() - BASE_MIN_OFFSET - bbsInt >= 0);
+        checkArgument(
+            modexpMetadata.callData().size() - BASE_MIN_OFFSET - bbsInt >= 0,
+            "MODEXP call data unexpectedly short");
         final EWord rawLead = modexpMetadata.rawLeadingWord();
         final int cdsCutoff =
             Math.min(modexpMetadata.callData().size() - BASE_MIN_OFFSET - bbsInt, 32);

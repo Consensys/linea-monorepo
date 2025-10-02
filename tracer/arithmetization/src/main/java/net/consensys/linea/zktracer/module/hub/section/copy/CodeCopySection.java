@@ -48,7 +48,9 @@ public class CodeCopySection extends TraceSection {
     imcFragment.callMxp(mxpCall);
 
     final short exceptions = hub.pch().exceptions();
-    checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(
+        mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions),
+        "CODECOPY: mxp and hub disagree on MXPX");
 
     // The MXPX case
     if (mxpCall.mxpx) {
@@ -57,7 +59,7 @@ public class CodeCopySection extends TraceSection {
 
     // The OOGX case
     if (Exceptions.any(exceptions)) {
-      checkArgument(exceptions == OUT_OF_GAS_EXCEPTION);
+      checkArgument(exceptions == OUT_OF_GAS_EXCEPTION, "CODECOPY: unexpected exception %s");
       return;
     }
 
@@ -68,7 +70,7 @@ public class CodeCopySection extends TraceSection {
     // Account row
     final AccountSnapshot codeAccountSnapshot =
         AccountSnapshot.canonical(hub, hub.messageFrame().getContractAddress());
-    checkArgument(codeAccountSnapshot.isWarm());
+    checkArgument(codeAccountSnapshot.isWarm(), "CODECOPY: code account should be warm but isn't");
 
     final DomSubStampsSubFragment doingDomSubStamps =
         DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0); // Specifics for CODECOPY

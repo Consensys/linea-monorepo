@@ -43,7 +43,7 @@ public class ReturnScenarioFragment implements TraceFragment {
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
-    checkArgument(!scenario.equals(UNDEFINED));
+    checkArgument(!scenario.equals(UNDEFINED), "Return scenario not defined");
     return trace
         .peekAtScenario(true)
         // RETURN scenarios

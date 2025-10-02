@@ -48,7 +48,7 @@ public class CodeCopy extends MmuCall {
     final Bytes size = currentFrame.frame().getStackItem(2);
 
     // the MMU module only deals with nontrivial CODECOPY instructions
-    checkArgument(!size.isZero());
+    checkArgument(!size.isZero(), "CODECOPY: size 0 operations should not trigger the MMU module");
 
     this.exoBytes(Optional.of(currentFrame.code().bytecode()))
         .targetId(currentFrame.contextNumber())

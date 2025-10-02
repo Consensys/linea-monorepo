@@ -37,7 +37,7 @@ public class RamToRamTwoTarget extends MmioInstruction {
 
     checkArgument(
         mmioData.targetLimbIsTouchedTwice(),
-        "The MMIO instruction RamToRamTwoTarget must temporary update the target limb");
+        "The MMIO instruction RamToRamTwoTarget must temporarily update the target limb");
 
     mmioData.cnA(mmioData.sourceContext());
     mmioData.cnB(mmioData.targetContext());

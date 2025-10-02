@@ -69,7 +69,9 @@ public class TraceSection {
    * @param fragment the fragment to insert
    */
   public final void addFragment(TraceFragment fragment) {
-    checkArgument(!(fragment instanceof CommonFragment));
+    checkArgument(
+        !(fragment instanceof CommonFragment),
+        "CommonFragment should not be added directly to a trace section");
     fragments.add(fragment);
   }
 

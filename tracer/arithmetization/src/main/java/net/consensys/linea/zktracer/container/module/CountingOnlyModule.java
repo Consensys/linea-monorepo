@@ -65,7 +65,8 @@ public class CountingOnlyModule implements Module {
   }
 
   public void updateTally(final int count) {
-    Preconditions.checkArgument(count >= 0, "Must be non-negative");
+    Preconditions.checkArgument(
+        count >= 0, "CountingOnlyModule: count %s in updateTally must be nonnegative", count);
     counts.add(count);
   }
 

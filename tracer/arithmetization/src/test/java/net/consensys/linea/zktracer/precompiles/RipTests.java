@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.precompiles;
 
 import static net.consensys.linea.zktracer.module.limits.precompiles.RipemdBlocks.RIPEMD160_BLOCKSIZE;
-import static net.consensys.linea.zktracer.module.limits.precompiles.RipemdBlocks.numberOfRipemd160locks;
+import static net.consensys.linea.zktracer.module.limits.precompiles.RipemdBlocks.numberOfRipemd160Blocks;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
@@ -67,7 +67,7 @@ public class RipTests extends TracerTestBase {
     // if size is huge, we get an OOGX, so no RIP call made
     final boolean noRipCAll = size == 0 || size == HUGE_SIZE;
     assertEquals(
-        noRipCAll ? 0 : numberOfRipemd160locks(size),
+        noRipCAll ? 0 : numberOfRipemd160Blocks(size),
         bytecodeRunner.getHub().ripemdBlocks().lineCount(),
         "Fail at size: " + size);
   }

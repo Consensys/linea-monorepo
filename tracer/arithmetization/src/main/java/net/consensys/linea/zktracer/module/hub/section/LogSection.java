@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkArgument;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
@@ -44,7 +44,7 @@ public class LogSection extends TraceSection implements EndTransactionDefer {
 
     // Static Case
     if (hub.currentFrame().frame().isStatic()) {
-      checkArgument(Exceptions.staticFault(exceptions));
+      checkArgument(Exceptions.staticFault(exceptions), "STATICX not detected");
       return;
     }
 
@@ -54,7 +54,9 @@ public class LogSection extends TraceSection implements EndTransactionDefer {
     final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     imcFragment.callMxp(mxpCall);
 
-    checkArgument(mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(
+        mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions),
+        "MXPX mismatch with MXP call");
 
     // MXPX case
     if (mxpCall.isMxpx()) {
@@ -67,12 +69,14 @@ public class LogSection extends TraceSection implements EndTransactionDefer {
     }
 
     // the unexceptional case
-    checkArgument(Exceptions.none(exceptions));
+    checkArgument(Exceptions.none(exceptions), "Unexpected exception code " + exceptions);
 
     hub.defers().scheduleForEndTransaction(this);
 
     final LogData logData = new LogData(hub);
-    checkArgument(logData.nontrivialLog() == mxpCall.mayTriggerNontrivialMmuOperation);
+    checkArgument(
+        logData.nontrivialLog() == mxpCall.mayTriggerNontrivialMmuOperation,
+        "non trivial LOG / MMU mismatch");
     mmuCall = (logData.nontrivialLog()) ? MmuCall.LogX(hub, logData) : null;
 
     if (mmuCall != null) {

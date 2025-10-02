@@ -262,8 +262,8 @@ public abstract class BlockdataOperation extends ModuleOperation {
 
   // Module call macros
   private boolean wcpCallTo(int w, EWord arg1, EWord arg2, int inst) {
-    checkArgument(arg1.bitLength() / 8 <= 32);
-    checkArgument(arg2.bitLength() / 8 <= 32);
+    checkArgument(arg1.bitLength() / 8 <= 32, "WCP: arg1 bit width too large");
+    checkArgument(arg2.bitLength() / 8 <= 32, "WCP: arg2 bit width too large");
 
     this.arg1[w] = arg1;
     this.arg2[w] = arg2;

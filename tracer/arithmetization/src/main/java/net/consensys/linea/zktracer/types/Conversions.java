@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.types;
 
-import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.types.Checks.checkArgument;
 
 import java.math.BigInteger;
 

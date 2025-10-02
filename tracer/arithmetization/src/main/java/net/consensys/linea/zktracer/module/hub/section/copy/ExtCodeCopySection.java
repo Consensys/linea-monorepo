@@ -70,7 +70,9 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     imcFragment.callMxp(mxpCall);
 
     final short exceptions = hub.pch().exceptions();
-    checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(
+        mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions),
+        "EXTCODECOPY: mxp and hub disagree on MXPX");
 
     // The MXPX case
     if (mxpCall.mxpx) {
@@ -106,7 +108,7 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     }
 
     // The unexceptional case
-    checkArgument(Exceptions.none(exceptions));
+    checkArgument(Exceptions.none(exceptions), "EXTCODECOPY: unexpected exception");
 
     final boolean triggerMmu = mxpCall.mayTriggerNontrivialMmuOperation;
     if (triggerMmu) {

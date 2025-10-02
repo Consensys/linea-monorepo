@@ -123,7 +123,7 @@ public abstract class TxInitializationSection extends TraceSection implements En
 
     checkState(
         !recipientValueReception.deploymentStatus(),
-        "recipient should not have been undergoing deployment before transaction start");
+        "TxInitializationSection: recipient should not have been undergoing deployment before transaction start");
 
     recipientValueReceptionNew = recipientValueReception.deepCopy();
 
@@ -131,10 +131,10 @@ public abstract class TxInitializationSection extends TraceSection implements En
       if (recipientAccount != null) {
         checkState(
             recipientAccount.getCode().equals(Bytes.EMPTY),
-            "the recipient of a deployment transaction must have empty code");
+            "TxInitializationSection: the recipient of a deployment transaction must have empty code");
         checkState(
             recipientAccount.getNonce() == 0,
-            "the recipient of a deployment transaction must have zero nonce");
+            "TxInitializationSection: the recipient of a deployment transaction must have zero nonce");
       }
 
       deploymentInfo.newDeploymentWithExecutionAt(

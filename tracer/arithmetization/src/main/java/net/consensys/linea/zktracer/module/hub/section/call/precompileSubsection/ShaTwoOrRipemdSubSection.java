@@ -63,7 +63,10 @@ public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
     super.resolveAtContextReEntry(hub, callFrame);
 
     // sanity check
-    checkArgument(callSuccess == oobCall.isHubSuccess());
+    checkArgument(
+        callSuccess == oobCall.isHubSuccess(),
+        "oob and hub disagree on precompile %s success",
+        flag());
 
     if (!callSuccess) {
       return;

@@ -142,7 +142,7 @@ public abstract class StackFragment implements TraceFragment {
   }
 
   private Bytes getPushValue(Hub hub) {
-    checkState(hub.opCodeData().isNonTrivialPush());
+    checkState(hub.opCodeData().isNonTrivialPush(), "getPushValue called for non-PUSH opcode");
 
     final int pc = hub.messageFrame().getPC();
     if (pc + 1 >= hub.messageFrame().getCode().getSize()) {
@@ -313,19 +313,66 @@ public abstract class StackFragment implements TraceFragment {
 
   private void tracedExceptionSanityChecks(TracedException tracedException) {
     switch (tracedException) {
-      case NONE -> checkArgument(Exceptions.none(exceptions));
-      case INVALID_OPCODE -> checkArgument(Exceptions.invalidOpcode(exceptions));
-      case STACK_UNDERFLOW -> checkArgument(Exceptions.stackUnderflow(exceptions));
-      case STACK_OVERFLOW -> checkArgument(Exceptions.stackOverflow(exceptions));
+      case NONE -> checkArgument(
+          Exceptions.none(exceptions),
+          "tracedException %s not present in exceptions %s",
+          NONE,
+          exceptions);
+      case INVALID_OPCODE -> checkArgument(
+          Exceptions.invalidOpcode(exceptions),
+          "tracedException %s not present in exceptions %s",
+          INVALID_OPCODE,
+          exceptions);
+      case STACK_UNDERFLOW -> checkArgument(
+          Exceptions.stackUnderflow(exceptions),
+          "tracedException %s not present in exceptions %s",
+          STACK_UNDERFLOW,
+          exceptions);
+      case STACK_OVERFLOW -> checkArgument(
+          Exceptions.stackOverflow(exceptions),
+          "tracedException %s not present in exceptions %s",
+          STACK_OVERFLOW,
+          exceptions);
       case MEMORY_EXPANSION_EXCEPTION -> checkArgument(
-          Exceptions.memoryExpansionException(exceptions));
-      case OUT_OF_GAS_EXCEPTION -> checkArgument(Exceptions.outOfGasException(exceptions));
-      case RETURN_DATA_COPY_FAULT -> checkArgument(Exceptions.returnDataCopyFault(exceptions));
-      case JUMP_FAULT -> checkArgument(Exceptions.jumpFault(exceptions));
-      case STATIC_FAULT -> checkArgument(Exceptions.staticFault(exceptions));
-      case OUT_OF_SSTORE -> checkArgument(Exceptions.outOfSStore(exceptions));
-      case INVALID_CODE_PREFIX -> checkArgument(Exceptions.invalidCodePrefix(exceptions));
-      case MAX_CODE_SIZE_EXCEPTION -> checkArgument(Exceptions.maxCodeSizeException(exceptions));
+          Exceptions.memoryExpansionException(exceptions),
+          "tracedException %s not present in exceptions %s",
+          MEMORY_EXPANSION_EXCEPTION,
+          exceptions);
+      case OUT_OF_GAS_EXCEPTION -> checkArgument(
+          Exceptions.outOfGasException(exceptions),
+          "tracedException %s not present in exceptions %s",
+          OUT_OF_GAS_EXCEPTION,
+          exceptions);
+      case RETURN_DATA_COPY_FAULT -> checkArgument(
+          Exceptions.returnDataCopyFault(exceptions),
+          "tracedException %s not present in exceptions %s",
+          RETURN_DATA_COPY_FAULT,
+          exceptions);
+      case JUMP_FAULT -> checkArgument(
+          Exceptions.jumpFault(exceptions),
+          "tracedException %s not present in exceptions %s",
+          JUMP_FAULT,
+          exceptions);
+      case STATIC_FAULT -> checkArgument(
+          Exceptions.staticFault(exceptions),
+          "tracedException %s not present in exceptions %s",
+          STATIC_FAULT,
+          exceptions);
+      case OUT_OF_SSTORE -> checkArgument(
+          Exceptions.outOfSStore(exceptions),
+          "tracedException %s not present in exceptions %s",
+          OUT_OF_SSTORE,
+          exceptions);
+      case INVALID_CODE_PREFIX -> checkArgument(
+          Exceptions.invalidCodePrefix(exceptions),
+          "tracedException %s not present in exceptions %s",
+          INVALID_CODE_PREFIX,
+          exceptions);
+      case MAX_CODE_SIZE_EXCEPTION -> checkArgument(
+          Exceptions.maxCodeSizeException(exceptions),
+          "tracedException %s not present in exceptions %s",
+          MAX_CODE_SIZE_EXCEPTION,
+          exceptions);
       case UNDEFINED -> throw new RuntimeException(
           "tracedException remained UNDEFINED but "
               + Exceptions.prettyStringOf(this.opCode.mnemonic(), exceptions));

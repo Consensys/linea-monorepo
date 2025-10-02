@@ -208,7 +208,7 @@ public final class CallStack {
    */
   public void exit() {
     this.depth -= 1;
-    Preconditions.checkState(this.depth >= 0);
+    Preconditions.checkState(this.depth >= 0, "call stack underflow");
     this.currentId = this.currentCallFrame().parentId();
   }
 

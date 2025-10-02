@@ -33,19 +33,22 @@ public class EarlyExceptionSection extends TraceSection {
 
     final OpCodeData opCode = hub.opCodeData();
     if (Exceptions.stackUnderflow(exceptions)) {
-      checkArgument(opCode.mayTriggerStackUnderflow());
+      checkArgument(
+          opCode.mayTriggerStackUnderflow(), "SUX was detected but can't happen for " + opCode);
       commonValues.setTracedException(TracedException.STACK_UNDERFLOW);
       return;
     }
 
     if (Exceptions.stackOverflow(exceptions)) {
-      checkArgument(opCode.mayTriggerStackOverflow());
+      checkArgument(
+          opCode.mayTriggerStackOverflow(), "SOX was detected but can't happen for " + opCode);
       commonValues.setTracedException(TracedException.STACK_OVERFLOW);
       return;
     }
 
     if (hub.opCodeData().instructionFamily() == INVALID) {
-      checkArgument(Exceptions.invalidOpcode(exceptions));
+      checkArgument(
+          Exceptions.invalidOpcode(exceptions), "INVALID opcode detected but no INVALID exception");
       commonValues.setTracedException(TracedException.INVALID_OPCODE);
     }
   }

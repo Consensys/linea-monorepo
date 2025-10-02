@@ -37,7 +37,8 @@ public class CountOnlyOperation {
   }
 
   public void add(final int operationCount) {
-    Preconditions.checkArgument(operationCount >= 0, "operationCount must be non negative");
+    Preconditions.checkArgument(
+        operationCount >= 0, "operationCount %s should be nonnegative", operationCount);
     countInTransactionBundle += operationCount;
   }
 
