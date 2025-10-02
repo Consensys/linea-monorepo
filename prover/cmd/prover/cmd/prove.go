@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
@@ -13,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/pkg/profile"
 )
 
 type ProverArgs struct {
@@ -59,13 +62,49 @@ func Prove(args ProverArgs) error {
 // handleExecutionJob processes an execution job
 func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 	req := &execution.Request{}
+
+	p := profile.Start(profile.CPUProfile, profile.ProfilePath("."), profile.NoShutdownHook)
+	startReadReq := time.Now()
 	if err := readRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
+	fmt.Printf("Time to read request: %s\n", time.Since(startReadReq))
+
+	// start a go routine that wakes up every minute to print current number of go routines and heap usage
+	go func() {
+		for {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			var size float64
+			var unit string
+			switch {
+			case m.HeapAlloc >= 1<<30:
+				size = float64(m.HeapAlloc) / (1 << 30)
+				unit = "GiB"
+			case m.HeapAlloc >= 1<<20:
+				size = float64(m.HeapAlloc) / (1 << 20)
+				unit = "MiB"
+			case m.HeapAlloc >= 1<<10:
+				size = float64(m.HeapAlloc) / (1 << 10)
+				unit = "KiB"
+			default:
+				size = float64(m.HeapAlloc)
+				unit = "B"
+			}
+			fmt.Printf("Number of go routines: %d, HeapAlloc = %.2f %s\n", runtime.NumGoroutine(), size, unit)
+			time.Sleep(20 * time.Second)
+
+			if runtime.NumGoroutine() <= 3 {
+				buf := make([]byte, 1<<20) // 1 MB buffer
+				n := runtime.Stack(buf, true)
+				os.Stderr.Write(buf[:n])
+			}
+		}
+	}()
 
 	var resp *execution.Response
 	var err error
-
+	startProve := time.Now()
 	if cfg.Execution.ProverMode == config.ProverModeLimitless {
 		// Limitless execution mode
 		resp, err = limitless.Prove(cfg, req)
@@ -80,8 +119,14 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 			return fmt.Errorf("could not prove the execution: %w", err)
 		}
 	}
+	fmt.Printf("Time to prove: %s\n", time.Since(startProve))
 
-	return writeResponse(args.Output, resp)
+	startWrite := time.Now()
+	err = writeResponse(args.Output, resp)
+	fmt.Printf("Time to write response: %s\n", time.Since(startWrite))
+
+	p.Stop()
+	return err
 }
 
 // handleBlobDecompressionJob processes a blob decompression job
