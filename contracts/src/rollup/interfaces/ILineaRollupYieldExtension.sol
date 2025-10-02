@@ -8,7 +8,7 @@ import { IL1MessageService } from "../../messaging/l1/interfaces/IL1MessageServi
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface ILineaNativeYieldExtension {
+interface ILineaRollupYieldExtension {
   /**
    * @notice Emitted when ETH send from an authorized funder.
    * @param funder Address which sent ETH.

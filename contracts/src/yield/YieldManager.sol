@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import { YieldManagerStorageLayout } from "./YieldManagerStorageLayout.sol";
 import { IYieldManager } from "./interfaces/IYieldManager.sol";
 import { IYieldProvider } from "./interfaces/IYieldProvider.sol";
-import { ILineaNativeYieldExtension } from "./interfaces/ILineaNativeYieldExtension.sol";
+import { ILineaRollupYieldExtension } from "../rollup/interfaces/ILineaRollupYieldExtension.sol";
 import { YieldManagerPauseManager } from "../security/pausing/YieldManagerPauseManager.sol";
 import { Math256 } from "../libraries/Math256.sol";
 import { ErrorUtils } from "../libraries/ErrorUtils.sol";
@@ -297,7 +297,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @param _amount Amount of ETH to send.
    */
   function _fundReserve(uint256 _amount) internal {
-    ILineaNativeYieldExtension(L1_MESSAGE_SERVICE).fund{ value: _amount }();
+    ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).fund{ value: _amount }();
   }
 
   /**
@@ -421,7 +421,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     $$.yieldReportedCumulative += newReportedYield;
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     $._userFundsInYieldProvidersTotal += newReportedYield;
-    ILineaNativeYieldExtension(L1_MESSAGE_SERVICE).reportNativeYield(newReportedYield, _l2YieldRecipient);
+    ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).reportNativeYield(newReportedYield, _l2YieldRecipient);
     emit NativeYieldReported(_yieldProvider, _l2YieldRecipient, newReportedYield);
   }
 
@@ -778,7 +778,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     if (msg.sender != L1_MESSAGE_SERVICE) {
       revert SenderNotL1MessageService();
     }
-    if (!ILineaNativeYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed()) {
+    if (!ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
     }
     _pauseStakingIfNotAlready(_yieldProvider);

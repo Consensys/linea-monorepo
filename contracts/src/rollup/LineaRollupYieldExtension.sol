@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
-import { ILineaNativeYieldExtension } from "./interfaces/ILineaNativeYieldExtension.sol";
-import { IYieldManager } from "./interfaces/IYieldManager.sol";
+import { ILineaRollupYieldExtension } from "./interfaces/ILineaRollupYieldExtension.sol";
+import { IYieldManager } from "../yield/interfaces/IYieldManager.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { IMessageService } from "../messaging/interfaces/IMessageService.sol";
 import { LineaRollupPauseManager } from "../security/pausing/LineaRollupPauseManager.sol";
@@ -12,9 +12,9 @@ import { LineaRollupPauseManager } from "../security/pausing/LineaRollupPauseMan
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract LineaNativeYieldExtension is
+abstract contract LineaRollupYieldExtension is
   LineaRollupPauseManager,
-  ILineaNativeYieldExtension,
+  ILineaRollupYieldExtension,
   IMessageService,
   IGenericErrors
 {
@@ -30,18 +30,18 @@ abstract contract LineaNativeYieldExtension is
   bool transient IS_WITHDRAW_LST_ALLOWED;
 
   /// @dev To consider - could this be an immutable variable instead? Do we expect YieldManager instance to change at a different cadence than LineaRollup upgrades?
-  /// @custom:storage-location erc7201:linea.storage.LineaNativeYieldExtensionStorage
-  struct LineaNativeYieldExtensionStorage {
+  /// @custom:storage-location erc7201:linea.storage.LineaRollupYieldExtensionStorage
+  struct LineaRollupYieldExtensionStorage {
     address _yieldManager;
   }
 
-  // keccak256(abi.encode(uint256(keccak256("linea.storage.LineaNativeYieldExtensionStorage")) - 1)) & ~bytes32(uint256(0xff))
-  bytes32 private constant LineaNativeYieldExtensionStorageLocation =
+  // keccak256(abi.encode(uint256(keccak256("linea.storage.LineaRollupYieldExtensionStorage")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 private constant LineaRollupYieldExtensionStorageLocation =
     0x1ca1eef1e96a909fae6702b42f1bcde6999f4e0fc09e0e51d048b197a65a8f00;
 
-  function _storage() private pure returns (LineaNativeYieldExtensionStorage storage $) {
+  function _storage() private pure returns (LineaRollupYieldExtensionStorage storage $) {
     assembly {
-      $.slot := LineaNativeYieldExtensionStorageLocation
+      $.slot := LineaRollupYieldExtensionStorageLocation
     }
   }
 
@@ -51,10 +51,10 @@ abstract contract LineaNativeYieldExtension is
   }
 
   /**
-   * @notice Initialises the LineaNativeYieldExtension.
+   * @notice Initialises the LineaRollupYieldExtension.
    * @param _yieldManager YieldManager address.
    */
-  function __LineaNativeYieldExtension_init(address _yieldManager) internal onlyInitializing {
+  function __LineaRollupYieldExtension_init(address _yieldManager) internal onlyInitializing {
     _storage()._yieldManager = _yieldManager;
   }
 
@@ -88,7 +88,7 @@ abstract contract LineaNativeYieldExtension is
    * @param _newYieldManager YieldManager address.
    */
   function setYieldManager(address _newYieldManager) public onlyRole(SET_YIELD_MANAGER_ROLE) {
-    LineaNativeYieldExtensionStorage storage $ = _storage();
+    LineaRollupYieldExtensionStorage storage $ = _storage();
     emit YieldManagerChanged($._yieldManager, _newYieldManager, msg.sender);
     $._yieldManager = _newYieldManager;
   }
