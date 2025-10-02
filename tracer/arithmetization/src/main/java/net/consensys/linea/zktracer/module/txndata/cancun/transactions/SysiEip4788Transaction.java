@@ -40,7 +40,9 @@ public class SysiEip4788Transaction extends CancunTxnDataOperation {
 
   public SysiEip4788Transaction(final CancunTxnData txnData) {
     super(txnData, SYSI);
-    checkState(isPostCancun(txnData.hub().fork));
+    checkState(
+        isPostCancun(txnData.hub().fork),
+        "EIP-4788 system transaction not allowed before Cancun fork");
     process();
   }
 

@@ -85,8 +85,10 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
 
     // deployments are local to a transaction, every address should have deploymentStatus == false
     // at the start of every transaction
-    checkArgument(!hub.deploymentStatusOf(senderAddress));
-    checkArgument(!hub.deploymentStatusOf(recipientAddress));
+    checkArgument(
+        !hub.deploymentStatusOf(senderAddress), "TX_SKIP: Sender address under deployment");
+    checkArgument(
+        !hub.deploymentStatusOf(recipientAddress), "TX_SKIP: Recipient address under deployment");
 
     // the updated deployment info appears in the "updated" account fragment
     if (txMetadata.isDeployment()) {
@@ -103,7 +105,8 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
     coinbase =
         canonical(
             hub, frame.getWorldUpdater(), coinbaseAddress, isPrecompile(hub.fork, coinbaseAddress));
-    checkArgument(!hub.deploymentStatusOf(coinbaseAddress));
+    checkArgument(
+        !hub.deploymentStatusOf(coinbaseAddress), "TX_SKIP: Coinbase address under deployment");
   }
 
   @Override

@@ -291,7 +291,10 @@ public class LondonMxpOperation extends MxpOperation {
       if (maxOffset1.compareTo(TWO_POW_32) >= 0) {
         acc1 = maxOffset1.subtract(TWO_POW_32);
       } else {
-        checkArgument(maxOffset2.compareTo(TWO_POW_32) >= 0);
+        checkArgument(
+            maxOffset2.compareTo(TWO_POW_32) >= 0,
+            "London MXP error: maxOffset2 = %s < 2^32",
+            maxOffset2);
         acc2 = maxOffset2.subtract(TWO_POW_32);
       }
     } else {

@@ -44,7 +44,7 @@ public class Block {
   public void addStorageSeenByHub(final Address address, final Bytes32 storage) {
     checkState(
         addressesSeenByHub.contains(address),
-        "attempt to access storage slot of account not yet touched by the HUB");
+        "Block: attempt to access storage slot of account not yet touched by the HUB");
     final Set<Bytes32> storageSet =
         storagesSeenByHub.computeIfAbsent(address, k -> new HashSet<>());
     storageSet.add(storage);

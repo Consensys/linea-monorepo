@@ -40,7 +40,11 @@ public final class StpOperation extends ModuleOperation {
   }
 
   long getGDiff() {
-    checkArgument(!stpCall.outOfGasException());
+    checkArgument(
+        !stpCall.outOfGasException(),
+        "STP: attempting to compute gDiff = gasActual - gasUpfront, yet gasActual = %s < %s =gasUpfront",
+        stpCall.gasActual(),
+        stpCall.upfrontGasCost());
     return stpCall.gasActual() - stpCall.upfrontGasCost();
   }
 

@@ -398,7 +398,8 @@ public class Stack {
     final short delta = (short) currentOpcodeData.stackSettings().delta();
     final short alpha = (short) currentOpcodeData.stackSettings().alpha();
 
-    checkArgument(heightNew == frame.stackSize());
+    checkArgument(
+        heightNew == frame.stackSize(), "stack height prediction and frame value mismatch");
     height = (short) frame.stackSize();
     heightNew -= delta;
     heightNew += alpha;
@@ -415,7 +416,8 @@ public class Stack {
         hub.transients().conflation().stackHeightChecksForStackUnderflows().add(checkForUnderflow);
     if (isNewCheckForStackUnderflow) {
       final boolean underflowDetected = hub.wcp().callLT(height, delta);
-      checkArgument(underflowDetected == (status == Status.UNDERFLOW));
+      checkArgument(
+          underflowDetected == (status == Status.UNDERFLOW), "stack underflow detection mismatch");
     }
 
     // stack overflow checks happen only if no stack underflow was detected
@@ -425,7 +427,8 @@ public class Stack {
           hub.transients().conflation().stackHeightChecksForStackOverflows().add(checkForOverflow);
       if (isNewCheckForStackOverflow) {
         final boolean overflowDetected = hub.wcp().callGT(heightNew, MAX_STACK_SIZE);
-        checkArgument(overflowDetected == (status == Status.OVERFLOW));
+        checkArgument(
+            overflowDetected == (status == Status.OVERFLOW), "stack overflow detection mismatch");
       }
     }
 

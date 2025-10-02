@@ -57,7 +57,9 @@ public abstract class TxFinalizationSection extends TraceSection implements EndT
   public void resolveAtEndTransaction(
       Hub hub, WorldView world, Transaction tx, boolean isSuccessful) {
 
-    checkArgument(isSuccessful == txMetadata.statusCode());
+    checkArgument(
+        isSuccessful == txMetadata.statusCode(),
+        "Transaction status code does not match with eponymous metadata field");
 
     final DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
     checkArgument(

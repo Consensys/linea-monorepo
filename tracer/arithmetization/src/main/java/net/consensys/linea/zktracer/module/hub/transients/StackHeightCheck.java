@@ -33,7 +33,11 @@ public class StackHeightCheck {
    * @param delta greatest depth at which touched stack items
    */
   public StackHeightCheck(int height, int delta) {
-    checkArgument(0 <= height && height <= MAX_STACK_SIZE && 0 <= delta && delta <= 17);
+    checkArgument(
+        0 <= height && height <= MAX_STACK_SIZE && 0 <= delta && delta <= 17,
+        "StackHeightCheck constructor provided with Invalid height %s or delta %s",
+        height,
+        delta);
     comparison = height << SHIFT_FACTOR | delta;
   }
 
@@ -43,7 +47,10 @@ public class StackHeightCheck {
    * @param heightNew stack height post opcode execution
    */
   public StackHeightCheck(int heightNew) {
-    checkArgument(0 <= heightNew && heightNew <= MAX_STACK_SIZE + 1);
+    checkArgument(
+        0 <= heightNew && heightNew <= MAX_STACK_SIZE + 1,
+        "StackHeightCheck constructor provided with Invalid heightNew %s",
+        heightNew);
     comparison = heightNew;
   }
 }

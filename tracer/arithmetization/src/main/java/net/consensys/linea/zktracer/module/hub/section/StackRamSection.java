@@ -54,7 +54,9 @@ public class StackRamSection extends TraceSection {
     final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     imcFragment.callMxp(mxpCall);
 
-    checkArgument(mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(
+        mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions),
+        "The mxp module's MXPX not seen by the hub's (short) exceptions");
 
     // MXPX or OOGX case
     if (Exceptions.memoryExpansionException(exceptions)
@@ -63,7 +65,11 @@ public class StackRamSection extends TraceSection {
     }
 
     // the unexceptional case
-    checkArgument(Exceptions.none(exceptions));
+    checkArgument(
+        Exceptions.none(exceptions),
+        "STACK_RAM instruction %s throws unexpected exception %s",
+        hub.opCode(),
+        exceptions);
 
     final CallFrame currentFrame = hub.currentFrame();
     final EWord offset = EWord.of(currentFrame.frame().getStackItem(0));

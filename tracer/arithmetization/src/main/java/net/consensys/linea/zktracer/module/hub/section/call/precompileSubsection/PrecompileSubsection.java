@@ -116,9 +116,15 @@ public class PrecompileSubsection
 
   public void sanityCheck() {
     if (callSuccess) {
-      checkArgument(precompileScenarioFragment.scenario.isSuccess());
+      checkArgument(
+          precompileScenarioFragment.scenario.isSuccess(),
+          "precompile scenario %s not success scenario",
+          precompileScenarioFragment.scenario());
     } else {
-      checkArgument(precompileScenarioFragment.scenario.isFailure());
+      checkArgument(
+          precompileScenarioFragment.scenario.isFailure(),
+          "precompile scenario %s not failure scenario",
+          precompileScenarioFragment.scenario());
     }
   }
 
@@ -126,7 +132,9 @@ public class PrecompileSubsection
   public void resolveUponRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
 
     // only successful PRC calls should enter here
-    checkArgument(precompileScenarioFragment.scenario() == PRC_SUCCESS_WONT_REVERT);
+    checkArgument(
+        precompileScenarioFragment.scenario() == PRC_SUCCESS_WONT_REVERT,
+        "precompile scenario %s incompatible with being rolled back");
 
     precompileScenarioFragment.scenario(PRC_SUCCESS_WILL_REVERT);
   }
@@ -151,8 +159,16 @@ public class PrecompileSubsection
     // successful PRC_CALL to MODEXP
     final int mbs = ((ModexpSubsection) this).modexpMetaData.mbsInt();
     final Bytes returnData = frame.getReturnData();
-    checkState(0 <= mbs && mbs <= MODEXP_COMPONENT_BYTE_SIZE);
-    checkState(returnData.size() == mbs);
+    checkState(
+        0 <= mbs && mbs <= MODEXP_COMPONENT_BYTE_SIZE,
+        "MODEXP PrecompileSubsection: invalid mbs: %s not in range [0,%s]",
+        mbs,
+        MODEXP_COMPONENT_BYTE_SIZE);
+    checkState(
+        returnData.size() == mbs,
+        "MODEXP PrecompileSubsection: return data size %s does not agree with mbs %s",
+        returnData.size(),
+        mbs);
     final Bytes leftPaddedReturnData = leftPadTo(returnData, MODEXP_COMPONENT_BYTE_SIZE);
 
     returnDataRange =

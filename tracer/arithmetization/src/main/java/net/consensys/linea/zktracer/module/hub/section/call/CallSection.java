@@ -184,7 +184,9 @@ public class CallSection extends TraceSection
 
     final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     firstImcFragment.callMxp(mxpCall);
-    checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(
+        mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions),
+        "mxp module MXPX does not match the hub's MXPX");
 
     // MXPX case
     if (Exceptions.memoryExpansionException(exceptions)) {
@@ -222,7 +224,7 @@ public class CallSection extends TraceSection
     }
 
     // The CALL is now unexceptional
-    checkArgument(Exceptions.none(exceptions));
+    checkArgument(Exceptions.none(exceptions), "Unexpected exception in CallSection");
     currentFrame.childSpanningSection(this);
 
     // the call data span and ``return at'' spans are only required once the CALL is unexceptional
@@ -239,7 +241,9 @@ public class CallSection extends TraceSection
     final CallOobCall oobCall = (CallOobCall) firstImcFragment.callOob(new CallOobCall());
 
     final boolean aborts = hub.pch().abortingConditions().any();
-    checkArgument(oobCall.isAbortingCondition() == aborts);
+    checkArgument(
+        oobCall.isAbortingCondition() == aborts,
+        "oob module ABORT prediction and hub module ABORT prediction mismatch");
 
     hub.defers().scheduleForPostRollback(this, currentFrame);
     hub.defers().scheduleForEndTransaction(this);
@@ -418,7 +422,11 @@ public class CallSection extends TraceSection
   public void resolveUponContextEntry(Hub hub, MessageFrame frame) {
 
     final CallScenarioFragment.CallScenario scenario = scenarioFragment.getScenario();
-    checkState(scenario == CALL_SMC_UNDEFINED | scenario == CALL_PRC_UNDEFINED);
+    checkState(
+        scenario == CALL_SMC_UNDEFINED | scenario == CALL_PRC_UNDEFINED,
+        String.format(
+            "CallSection: call scenario %s should be undefined at context entry resolution",
+            scenario));
 
     callerFirstNew = callerFirst.deepCopy();
     calleeFirstNew = calleeFirst.deepCopy().turnOnWarmth();
@@ -434,7 +442,9 @@ public class CallSection extends TraceSection
     }
 
     if (isNonzeroValueSelfCall()) {
-      checkState(scenarioFragment.getScenario() == CALL_SMC_UNDEFINED);
+      checkState(
+          scenarioFragment.getScenario() == CALL_SMC_UNDEFINED,
+          "CallSection: self-calls cannot involve precompiles");
       calleeFirst = callerFirstNew.deepCopy();
       calleeFirstNew = callerFirst.deepCopy();
     }
@@ -466,7 +476,9 @@ public class CallSection extends TraceSection
   /** Resolution happens as the child context is about to terminate. */
   @Override
   public void resolveUponContextExit(Hub hub, CallFrame frame) {
-    checkArgument(scenarioFragment.getScenario() == CALL_SMC_UNDEFINED);
+    checkArgument(
+        scenarioFragment.getScenario() == CALL_SMC_UNDEFINED,
+        "Illegal CALL scenario at context exit");
   }
 
   @Override
@@ -480,7 +492,10 @@ public class CallSection extends TraceSection
 
     switch (scenarioFragment.getScenario()) {
       case CALL_EOA_UNDEFINED -> {
-        checkState(success);
+        checkState(
+            success,
+            String.format(
+                "EOA calls that are still %s at context re-entry cannot fail", CALL_EOA_UNDEFINED));
         scenarioFragment.setScenario(CALL_EOA_SUCCESS_WONT_REVERT);
         firstAccountRowsEoaOrPrc(hub);
         final long gasAfterCall = frame.frame().getRemainingGas();
@@ -661,7 +676,12 @@ public class CallSection extends TraceSection
   private void completeSmcOrPrcSuccessWillRevert(Hub hub) {
 
     final CallScenarioFragment.CallScenario callScenario = scenarioFragment.getScenario();
-    checkState(callScenario.isAnyOf(CALL_SMC_SUCCESS_WONT_REVERT, CALL_PRC_SUCCESS_WONT_REVERT));
+    checkState(
+        callScenario.isAnyOf(CALL_SMC_SUCCESS_WONT_REVERT, CALL_PRC_SUCCESS_WONT_REVERT),
+        "The only CALL scenarios that can be successful and reverted (down stream) are %s and %s, yet we are given %s",
+        CALL_SMC_SUCCESS_WONT_REVERT,
+        CALL_PRC_SUCCESS_WONT_REVERT,
+        callScenario);
     if (callScenario == CALL_SMC_SUCCESS_WONT_REVERT) {
       scenarioFragment.setScenario(CALL_SMC_SUCCESS_WILL_REVERT);
     } else {
@@ -733,12 +753,16 @@ public class CallSection extends TraceSection
   }
 
   private boolean isSelfCall() {
-    checkState(scenarioFragment.getScenario().isIndefiniteSmcCallScenario());
+    checkState(
+        scenarioFragment.getScenario().isIndefiniteSmcCallScenario(),
+        "self-calls only make sense for SMC call scenarios");
     return calleeAddress.equals(callerAddress);
   }
 
   private boolean isNonzeroValueSelfCall() {
-    checkState(scenarioFragment.getScenario().isIndefiniteSmcCallScenario());
+    checkState(
+        scenarioFragment.getScenario().isIndefiniteSmcCallScenario(),
+        "(nonzero value) self-calls only make sense for SMC call scenarios");
     return isSelfCall() && !value.isZero();
   }
 }

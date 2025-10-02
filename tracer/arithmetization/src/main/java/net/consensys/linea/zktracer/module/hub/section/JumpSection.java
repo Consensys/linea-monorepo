@@ -51,7 +51,7 @@ public class JumpSection extends TraceSection {
     final Address codeAddress = hub.messageFrame().getContractAddress();
 
     final boolean warmth = hub.messageFrame().isAddressWarm(codeAddress);
-    checkArgument(warmth);
+    checkArgument(warmth, "Must be warm when doing a JUMP");
 
     final AccountSnapshot codeAccount = canonical(hub, codeAddress);
 

@@ -54,7 +54,9 @@ public class IdentitySubsection extends PrecompileSubsection {
     super.resolveAtContextReEntry(hub, callFrame);
 
     // sanity check
-    checkArgument(callSuccess == oobCall.isHubSuccess());
+    checkArgument(
+        callSuccess == oobCall.isHubSuccess(),
+        "oob and hub disagree on IDENTITY precompile success");
 
     if (!callSuccess) {
       return;

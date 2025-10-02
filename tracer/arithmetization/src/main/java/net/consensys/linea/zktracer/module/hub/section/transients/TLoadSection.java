@@ -43,7 +43,8 @@ public class TLoadSection extends TraceSection implements PostOpcodeDefer {
 
     if (Exceptions.any(exceptions)) {
       checkArgument(
-          Exceptions.outOfGasException(exceptions), "The only possible exception is OOGX");
+          Exceptions.outOfGasException(exceptions),
+          "TLOAD: The only possible (non stack) exception is OOGX");
       storageKey = Bytes32.ZERO; // OOGX, no transient row
       return;
     }

@@ -324,7 +324,11 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
 
     final int precompileContextNumber = subsection.exoModuleOperationId();
 
-    checkState(subsection.returnDataRange.getRange().size() == TOTAL_SIZE_ECRECOVER_RESULT);
+    checkState(
+        subsection.returnDataRange.getRange().size() == TOTAL_SIZE_ECRECOVER_RESULT,
+        String.format(
+            "MmuCall: Ecrecover return data size is %d but is expected to be %d",
+            subsection.returnDataRange.getRange().size(), TOTAL_SIZE_ECRECOVER_RESULT));
 
     return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
         .sourceId(precompileContextNumber)
@@ -358,7 +362,12 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
 
     final PrecompileScenarioFragment.PrecompileFlag flag =
         subsection.precompileScenarioFragment().flag;
-    checkArgument(flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160));
+    checkArgument(
+        flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160),
+        "Unexpected precompile %s, only accept %s and %s",
+        flag,
+        PRC_SHA2_256,
+        PRC_RIPEMD_160);
 
     return new MmuCall(hub, MMU_INST_RAM_TO_EXO_WITH_PADDING)
         .sourceId(hub.currentFrame().contextNumber())
@@ -377,7 +386,12 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
 
     final PrecompileScenarioFragment.PrecompileFlag flag =
         subsection.precompileScenarioFragment().flag;
-    checkArgument(flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160));
+    checkArgument(
+        flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160),
+        "Unexpected precompile %s, only accept %s and %s",
+        flag,
+        PRC_SHA2_256,
+        PRC_RIPEMD_160);
 
     final boolean isShaTwo = flag == PRC_SHA2_256;
 
@@ -405,8 +419,15 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
     final PrecompileScenarioFragment.PrecompileFlag flag =
         subsection.precompileScenarioFragment().flag;
 
-    checkArgument(flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160));
-    checkArgument(!subsection.getReturnAtRange().isEmpty());
+    checkArgument(
+        flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160),
+        "Unexpected precompile %s, only accept %s and %s",
+        flag,
+        PRC_SHA2_256,
+        PRC_RIPEMD_160);
+    checkArgument(
+        !subsection.getReturnAtRange().isEmpty(),
+        "Partial copy of return data cannot be done if the `returnAtRange` is empty");
 
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(subsection.returnDataContextNumber())
@@ -435,8 +456,12 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
   public static MmuCall partialCopyOfReturnDataForIdentity(
       final Hub hub, final PrecompileSubsection subsection) {
 
-    checkState(subsection.callDataSize() == subsection.returnDataSize());
-    checkState(subsection.returnDataOffset() == 0);
+    checkState(
+        subsection.callDataSize() == subsection.returnDataSize(),
+        "MmuCall: the IDENTITY precompile should have <call data size> == <return data size>");
+    checkState(
+        subsection.returnDataOffset() == 0,
+        "MmuCall: the IDENTITY precompile store its <return data> starting at offset 0");
 
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(subsection.exoModuleOperationId())
@@ -572,7 +597,9 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
     final int precompileContextNumber = subsection.exoModuleOperationId();
 
     final long expectedReturnDataSize = BlsDataOperation.expectedReturnDataSize(subsection.flag());
-    checkState(subsection.returnDataRange.getRange().size() == expectedReturnDataSize);
+    checkState(
+        subsection.returnDataRange.getRange().size() == expectedReturnDataSize,
+        "The return data size for BLS precompile does not match our expectation of it");
 
     return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
         .sourceId(precompileContextNumber)

@@ -439,7 +439,7 @@ public abstract class Hub implements Module {
     gasCalculator = getGasCalculatorFromFork(fork);
     opCodes = OpCodes.load(fork);
     gasProjector = new GasProjector(fork, gasCalculator);
-    checkState(chain.id.signum() >= 0);
+    checkState(chain.id.signum() >= 0, "Hub constructor: chain id must be nonnegative");
     Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
     final Bytes l2l1Topic = chain.bridgeConfiguration.topic();
     //
@@ -636,7 +636,9 @@ public abstract class Hub implements Module {
     // root and transaction call data context's
     if (frame.getDepth() == 0) {
       if (state.processingPhase() == TX_SKIP) {
-        checkState(currentTraceSection() instanceof TxSkipSection);
+        checkState(
+            currentTraceSection() instanceof TxSkipSection,
+            "traceContextEnter of Hub: expected a skip section");
         ((TxSkipSection) currentTraceSection()).coinbaseSnapshots(this, frame);
       }
       final TransactionProcessingMetadata currentTransaction = transients().tx();
@@ -645,15 +647,24 @@ public abstract class Hub implements Module {
       final boolean isDeployment = frame.getType() == CONTRACT_CREATION;
       final Wei value = frame.getValue();
       final long initiallyAvailableGas = frame.getRemainingGas();
+      final Transaction tx = currentTransaction.getBesuTransaction();
 
       checkArgument(
-          recipientAddress.equals(effectiveToAddress(currentTransaction.getBesuTransaction())));
-      checkArgument(senderAddress.equals(currentTransaction.getBesuTransaction().getSender()));
-      checkArgument(isDeployment == currentTransaction.getBesuTransaction().getTo().isEmpty());
+          recipientAddress.equals(effectiveToAddress(tx)),
+          "Mismatch between frame and transaction recipient");
       checkArgument(
-          value.equals(
-              Wei.of(currentTransaction.getBesuTransaction().getValue().getAsBigInteger())));
-      checkArgument(frame.getRemainingGas() == currentTransaction.getInitiallyAvailableGas());
+          senderAddress.equals(tx.getSender()), "Mismatch between frame and transaction sender");
+      checkArgument(
+          isDeployment == tx.getTo().isEmpty(),
+          "Mismatch between frame and transaction deployment info");
+      checkArgument(
+          value.equals(Wei.of(tx.getValue().getAsBigInteger())),
+          "Mismatch between frame and transaction value");
+      checkArgument(
+          frame.getRemainingGas() == currentTransaction.getInitiallyAvailableGas(),
+          "Frame gas available at the beginning of the tx %s != transaction initially available gas %s",
+          frame.getRemainingGas(),
+          currentTransaction.getInitiallyAvailableGas());
 
       final boolean copyTransactionCallData = currentTransaction.copyTransactionCallData();
       if (copyTransactionCallData) {
@@ -687,11 +698,16 @@ public abstract class Hub implements Module {
       final OpCodeData currentOpCode = opCodes.of(callStack.currentCallFrame().opCode());
       final boolean isDeployment = frame.getType() == CONTRACT_CREATION;
 
-      checkState(currentOpCode.isCall() || currentOpCode.isCreate());
+      checkState(
+          currentOpCode.isCall() || currentOpCode.isCreate(),
+          "trace context enter at positive depth must be call or create");
       checkState(
           currentTraceSection() instanceof CallSection
-              || currentTraceSection() instanceof CreateSection);
-      checkState(currentTraceSection() instanceof CreateSection == isDeployment);
+              || currentTraceSection() instanceof CreateSection,
+          "trace context enter at positive depth must have in call or create section as most recent trace section");
+      checkState(
+          currentTraceSection() instanceof CreateSection == isDeployment,
+          "trace context enter at positive depth must have a create section as most recent trace section iff it is a deployment");
 
       final CallFrameType frameType =
           frame.isStatic() ? CallFrameType.STATIC : CallFrameType.STANDARD;
@@ -776,9 +792,8 @@ public abstract class Hub implements Module {
 
   public void tracePreExecution(final MessageFrame frame) {
     checkArgument(
-        this.state().processingPhase() == TX_EXEC,
+        state().processingPhase() == TX_EXEC,
         "There can't be any execution if the HUB is not in execution phase");
-
     this.processStateExec(frame);
   }
 
@@ -830,11 +845,10 @@ public abstract class Hub implements Module {
    * deployment in the sense that it updates the relevant deployment information.
    */
   private void exitDeploymentFromDeploymentInfoPov(MessageFrame frame) {
-
-    // sanity check
-    final Address bytecodeAddress = this.currentFrame().byteCodeAddress();
-    checkArgument(bytecodeAddress.equals(frame.getContractAddress()));
-    checkArgument(bytecodeAddress.equals(this.bytecodeAddress()));
+    final Address bytecodeAddress = currentFrame().byteCodeAddress();
+    checkArgument(
+        bytecodeAddress.equals(bytecodeAddress()),
+        "bytecode address mismatch between frame / callFrame at exit from deployment");
 
     /**
      * Explanation: if the current address isn't under deployment there is nothing to do.
@@ -843,7 +857,8 @@ public abstract class Hub implements Module {
      * immediately set to the deployed state
      */
     if (state.processingPhase() == TX_SKIP) {
-      checkArgument(!deploymentStatusOfBytecodeAddress());
+      checkArgument(
+          !deploymentStatusOfBytecodeAddress(), "TX_SKIP: deployments must have empty code");
       return;
     }
     /**
@@ -876,9 +891,9 @@ public abstract class Hub implements Module {
 
     final boolean emptyDeployment = messageFrame().getCode().getBytes().isEmpty();
 
-    // empty deployments are immediately considered as 'deployed' i.e.
-    // deploymentStatus = false
-    checkArgument(deploymentStatusOfBytecodeAddress() == !emptyDeployment);
+    checkArgument(
+        deploymentStatusOfBytecodeAddress() == !emptyDeployment,
+        "empty deployments are immediately considered as 'deployed'");
 
     if (emptyDeployment) return;
     // from here on out nonempty deployments

@@ -158,7 +158,7 @@ public class AccountSnapshot {
 
   public void wipe(DeploymentInfo deploymentInfo) {
     final boolean deploymentStatus = deploymentInfo.getDeploymentStatus(address);
-    checkArgument(!deploymentStatus);
+    checkArgument(!deploymentStatus, "Cannot wipe an account that is under deployment");
     this.nonce(0).balance(Wei.ZERO).code(Bytecode.EMPTY).setDeploymentInfo(deploymentInfo);
   }
 
@@ -232,7 +232,10 @@ public class AccountSnapshot {
   }
 
   public AccountSnapshot decrementNonceByOne() {
-    checkState(nonce > 0);
+    checkState(
+        nonce > 0,
+        "AccountSnapshot: attempting to decrement nonce by one when nonce is %s ≤ 0",
+        nonce);
     return this.nonce(nonce - 1);
   }
 
@@ -245,7 +248,10 @@ public class AccountSnapshot {
   }
 
   public void decrementDeploymentNumberByOne() {
-    checkState(deploymentNumber > 0);
+    checkState(
+        deploymentNumber > 0,
+        "Attempting to decrement deployment number by one when deployment number is %s ≤ 0",
+        deploymentNumber);
     this.deploymentNumber(deploymentNumber - 1);
   }
 

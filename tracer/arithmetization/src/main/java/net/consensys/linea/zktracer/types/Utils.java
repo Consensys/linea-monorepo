@@ -44,7 +44,7 @@ public class Utils {
   }
 
   public static int fromDataSizeToLimbNbRows(int dataSize) {
-    assert dataSize >= 0 : "Data size must be non-negative";
+    checkArgument(dataSize >= 0, "Data size must be non-negative");
     return (int) Math.ceil((double) dataSize / LLARGE);
   }
 

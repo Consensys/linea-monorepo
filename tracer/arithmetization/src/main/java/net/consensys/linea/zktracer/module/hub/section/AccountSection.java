@@ -64,7 +64,9 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
       if (Exceptions.any(exceptions)) {
         // the "squash parent return data" context row is all there is
         // The following is true since we do not enter here in case of a STACK_OVERFLOW_EXCEPTION
-        Preconditions.checkArgument(Exceptions.outOfGasException(exceptions));
+        Preconditions.checkArgument(
+            Exceptions.outOfGasException(exceptions),
+            "SELF_ACCOUNT_OPCODES (SELFBALANCE, CODESIZE) that don't break the stack should only fail with OOGX");
         return;
       }
 

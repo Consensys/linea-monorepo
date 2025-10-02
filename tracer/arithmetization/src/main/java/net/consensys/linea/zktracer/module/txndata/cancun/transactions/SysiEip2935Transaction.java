@@ -40,7 +40,9 @@ public class SysiEip2935Transaction extends CancunTxnDataOperation {
 
   public SysiEip2935Transaction(final CancunTxnData txnData) {
     super(txnData, SYSI);
-    checkState(isPostPrague(txnData.hub().fork));
+    checkState(
+        isPostPrague(txnData.hub().fork),
+        "EIP-2935 system transaction not allowed before Prague fork");
     process();
   }
 

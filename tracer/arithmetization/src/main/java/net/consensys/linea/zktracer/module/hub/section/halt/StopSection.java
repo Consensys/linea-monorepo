@@ -73,7 +73,9 @@ public class StopSection extends TraceSection implements PostRollbackDefer, EndT
     deploymentStatus = deploymentInfo.getDeploymentStatus(address);
     parentContextReturnDataReset = executionProvidesEmptyReturnData(hub);
 
-    checkArgument(hub.currentFrame().isDeployment() == deploymentStatus); // sanity check
+    checkArgument(
+        hub.currentFrame().isDeployment() == deploymentStatus,
+        "CallFrame and code running in frame disagree on deployment / deployment status of byte code"); // sanity check
 
     // Message call case
     if (!deploymentStatus) {
@@ -121,7 +123,9 @@ public class StopSection extends TraceSection implements PostRollbackDefer, EndT
       return;
     }
 
-    checkArgument(this.fragments().getLast() instanceof AccountFragment);
+    checkArgument(
+        this.fragments().getLast() instanceof AccountFragment,
+        "STOP's which trigger a rollback (in deployment context) should terminate on an fragment as last fragment before rollback");
 
     final AccountFragment lastAccountFragment = (AccountFragment) this.fragments().getLast();
     final DomSubStampsSubFragment undoingDomSubStamps =

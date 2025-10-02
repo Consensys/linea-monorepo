@@ -48,17 +48,6 @@ public class TraceSections {
   }
 
   /**
-   * Returns the previous trace section, i.e., the one before the most recent.
-   *
-   * @return the previous trace section
-   * @throws IllegalArgumentException if there are fewer than two sections in the trace
-   */
-  public TraceSection previousSection() {
-    Preconditions.checkArgument(trace.size() > 1);
-    return trace.get(size() - 2);
-  }
-
-  /**
    * Returns the trace section that is `n` positions before the most recent one.
    *
    * @param n the number of positions before the most recent trace section
@@ -66,7 +55,11 @@ public class TraceSections {
    * @throws IllegalArgumentException if there are fewer than `n + 1` sections in the trace
    */
   public TraceSection previousSection(int n) {
-    Preconditions.checkArgument(trace.size() > n);
+    Preconditions.checkArgument(
+        trace.size() > n,
+        "Trace has only %s sections, cannot access %s sections back",
+        trace.size(),
+        n);
     return trace.get(size() - 1 - n);
   }
 

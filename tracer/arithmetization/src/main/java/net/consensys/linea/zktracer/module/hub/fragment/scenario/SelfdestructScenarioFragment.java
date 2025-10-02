@@ -27,7 +27,7 @@ public class SelfdestructScenarioFragment implements TraceFragment {
   SelfdestructScenario scenario;
 
   public SelfdestructScenarioFragment() {
-    this.scenario = UNDEFINED;
+    scenario = UNDEFINED;
   }
 
   public enum SelfdestructScenario {
@@ -40,18 +40,21 @@ public class SelfdestructScenarioFragment implements TraceFragment {
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
-    checkArgument(!this.scenario.equals(UNDEFINED));
+    checkArgument(
+        !scenario.equals(UNDEFINED),
+        "SELFDESTRUCT: scenario %s is UNDEFINED at trace time",
+        scenario);
     return trace
         .peekAtScenario(true)
         // // SELFDESTRUCT scenarios
         ////////////////////////////
         .pScenarioSelfdestructException(
-            this.scenario.equals(SelfdestructScenario.SELFDESTRUCT_EXCEPTION))
+            scenario.equals(SelfdestructScenario.SELFDESTRUCT_EXCEPTION))
         .pScenarioSelfdestructWillRevert(
-            this.scenario.equals(SelfdestructScenario.SELFDESTRUCT_WILL_REVERT))
+            scenario.equals(SelfdestructScenario.SELFDESTRUCT_WILL_REVERT))
         .pScenarioSelfdestructWontRevertAlreadyMarked(
-            this.scenario.equals(SelfdestructScenario.SELFDESTRUCT_WONT_REVERT_ALREADY_MARKED))
+            scenario.equals(SelfdestructScenario.SELFDESTRUCT_WONT_REVERT_ALREADY_MARKED))
         .pScenarioSelfdestructWontRevertNotYetMarked(
-            this.scenario.equals(SelfdestructScenario.SELFDESTRUCT_WONT_REVERT_NOT_YET_MARKED));
+            scenario.equals(SelfdestructScenario.SELFDESTRUCT_WONT_REVERT_NOT_YET_MARKED));
   }
 }

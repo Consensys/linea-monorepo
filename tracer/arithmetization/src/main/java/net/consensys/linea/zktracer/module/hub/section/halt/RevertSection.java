@@ -50,7 +50,9 @@ public class RevertSection extends TraceSection {
     // triggerMxp = true
     final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     imcFragment.callMxp(mxpCall);
-    checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(
+        mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions),
+        "REVERT: mxp and hub disagree on MXPX");
 
     if (Exceptions.memoryExpansionException(exceptions)) {
       return;
@@ -61,7 +63,7 @@ public class RevertSection extends TraceSection {
     }
 
     // The XAHOY = 0 case
-    checkArgument(Exceptions.none(exceptions));
+    checkArgument(Exceptions.none(exceptions), "REVERT: unexpected exception %s", exceptions);
 
     final CallFrame callFrame = hub.currentFrame();
     final Bytes offset = frame.getStackItem(0);

@@ -24,7 +24,9 @@ import net.consensys.linea.zktracer.Fork;
 public abstract class GasProjection {
 
   long linearCost(long costPerUnit, long size, long unit) {
-    checkArgument((unit == 1) || (unit == WORD_SIZE));
+    checkArgument(
+        (unit == 1) || (unit == WORD_SIZE),
+        "GasProjection.linearCost: unit must be 1 (per byte) or 32 (per word)");
     return clampedMultiply(costPerUnit, clampedAdd(size, unit - 1) / unit);
   }
 

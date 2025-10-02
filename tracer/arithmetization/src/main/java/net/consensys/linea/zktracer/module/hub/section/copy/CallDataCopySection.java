@@ -48,7 +48,9 @@ public class CallDataCopySection extends TraceSection {
     ////////////////////////////////////
 
     final short exceptions = hub.pch().exceptions();
-    checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(
+        mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions),
+        "CALLDATACOPY: mxp and hub disagree on MXPX");
 
     // The MXPX case
     if (mxpCall.mxpx) {
@@ -57,7 +59,7 @@ public class CallDataCopySection extends TraceSection {
 
     // The OOGX case
     if (Exceptions.any(exceptions)) {
-      checkArgument(exceptions == OUT_OF_GAS_EXCEPTION);
+      checkArgument(exceptions == OUT_OF_GAS_EXCEPTION, "CALLDATACOPY: unexpected exception");
       return;
     }
 

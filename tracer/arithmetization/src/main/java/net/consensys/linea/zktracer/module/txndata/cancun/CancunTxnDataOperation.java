@@ -48,7 +48,11 @@ public abstract class CancunTxnDataOperation extends TxnDataOperation {
 
   @Override
   public int computeLineCount() {
-    checkState(rows.size() == 1 + ctMax());
+    checkState(
+        rows.size() == 1 + ctMax(),
+        "Cancun TXN_DATA operation has rows size = %s != 1 + ctMax = %s",
+        rows.size(),
+        ctMax() + 1);
     return rows.size();
   }
 

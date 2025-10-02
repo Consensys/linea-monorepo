@@ -138,7 +138,9 @@ public abstract class CreateSection extends TraceSection
     // MXPX case
     final MxpCall mxpCall = MxpCall.newMxpCall(hub);
     imcFragment.callMxp(mxpCall);
-    checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(
+        mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions),
+        "CREATE(2): mxp and hub disagree on MXPX");
     if (mxpCall.mxpx) {
       return;
     }
@@ -146,13 +148,15 @@ public abstract class CreateSection extends TraceSection
     // OOGX case
     final StpCall stpCall = new StpCall(hub, frame, mxpCall.getGasMxp());
     imcFragment.callStp(stpCall);
-    checkArgument(stpCall.outOfGasException() == Exceptions.outOfGasException(exceptions));
+    checkArgument(
+        stpCall.outOfGasException() == Exceptions.outOfGasException(exceptions),
+        "CREATE(2): stp and hub disagree on OOGX");
     if (Exceptions.outOfGasException(exceptions)) {
       return;
     }
 
     // The CREATE(2) is now unexceptional
-    checkArgument(Exceptions.none(exceptions));
+    checkArgument(Exceptions.none(exceptions), "CREATE(2): unexpectedly exceptional");
     hub.currentFrame().childSpanningSection(this);
 
     final CreateOobCall oobCall = (CreateOobCall) imcFragment.callOob(createOobCall());
@@ -165,7 +169,8 @@ public abstract class CreateSection extends TraceSection
     final boolean emptyInitCode =
         scenarioFragment.getScenario() == CREATE_EMPTY_INIT_CODE_WONT_REVERT;
 
-    checkArgument(oobCall.isAbortingCondition() == aborts);
+    checkArgument(
+        oobCall.isAbortingCondition() == aborts, "CREATE(2): oob and hub disagree on ABORT");
     if (aborts) {
       this.traceAbort(hub);
       return;
@@ -264,8 +269,18 @@ public abstract class CreateSection extends TraceSection
 
     switch (scenario) {
       case CREATE_FAILURE_CONDITION_WONT_REVERT, CREATE_EMPTY_INIT_CODE_WONT_REVERT -> {
-        if (scenario == CREATE_FAILURE_CONDITION_WONT_REVERT) checkState(!success);
-        if (scenario == CREATE_EMPTY_INIT_CODE_WONT_REVERT) checkState(success);
+        if (scenario == CREATE_FAILURE_CONDITION_WONT_REVERT)
+          checkState(
+              !success,
+              "CreateSection: %s scenario requires CREATE failure, yet success = %s",
+              CREATE_FAILURE_CONDITION_WONT_REVERT,
+              success);
+        if (scenario == CREATE_EMPTY_INIT_CODE_WONT_REVERT)
+          checkState(
+              success,
+              "CreateSection: %s scenario requires CREATE success, yet success = %s",
+              CREATE_EMPTY_INIT_CODE_WONT_REVERT,
+              success);
 
         firstCreatorNew =
             AccountSnapshot.canonical(hub, frame.frame().getWorldUpdater(), creatorAddress);
@@ -337,7 +352,9 @@ public abstract class CreateSection extends TraceSection
                 CREATE_FAILURE_CONDITION_WONT_REVERT,
                 CREATE_EMPTY_INIT_CODE_WONT_REVERT,
                 CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WONT_REVERT,
-                CREATE_NON_EMPTY_INIT_CODE_FAILURE_WONT_REVERT));
+                CREATE_NON_EMPTY_INIT_CODE_FAILURE_WONT_REVERT),
+        "CreateSection: %s CREATE-scenario not allowed when resolving upon rollback",
+        scenarioFragment.getScenario());
 
     final int revertStamp = callFrame.revertStamp();
 
@@ -502,7 +519,10 @@ public abstract class CreateSection extends TraceSection
   @Override
   public void resolvePostExecution(
       Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
-    checkState(scenarioFragment.isAbortedCreate());
+    checkState(
+        scenarioFragment.isAbortedCreate(),
+        "CreateSection: we resolve a CREATE(2) post execution only if it's an aborted CREATE(2), yet scenario = %s",
+        scenarioFragment.getScenario());
     hub.unlatchStack(frame, this);
   }
 

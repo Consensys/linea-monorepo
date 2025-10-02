@@ -53,7 +53,11 @@ public record EcRecoverTuple(String h, String v, String r, String s) {
     Bytes pointData =
         Bytes.concatenate(hBytes, vBytes, rBytes, sBytes, Bytes.fromHexString(MAX_WORD));
 
-    checkState(pointData.size() == 5 * WORD_SIZE);
+    checkState(
+        pointData.size() == 5 * WORD_SIZE,
+        "ECRECOVER input vector size %s is not the expected one %s",
+        pointData.size(),
+        5 * WORD_SIZE);
 
     BytecodeCompiler memoryContents = BytecodeCompiler.newProgram(chainConfig);
     memoryContents.immediate(pointData);

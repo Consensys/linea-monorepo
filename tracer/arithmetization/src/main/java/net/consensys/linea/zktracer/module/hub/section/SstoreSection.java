@@ -91,7 +91,9 @@ public class SstoreSection extends TraceSection implements PostRollbackDefer {
       return;
     }
 
-    checkArgument(Exceptions.outOfGasException(exceptions) || Exceptions.none(exceptions));
+    checkArgument(
+        Exceptions.outOfGasException(exceptions) || Exceptions.none(exceptions),
+        "SSTORE may only throw STATICX, SSTOREX or OOGX exceptions, in that order of priority");
 
     hub.defers().scheduleForPostRollback(this, hub.currentFrame());
 

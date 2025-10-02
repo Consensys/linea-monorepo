@@ -49,7 +49,9 @@ public class CallDataLoadSection extends TraceSection {
       }
     } else {
       // Sanity check
-      checkArgument(Exceptions.outOfGasException(exception));
+      checkArgument(
+          Exceptions.outOfGasException(exception),
+          "CALLDATALOAD may only throw the OOGX exception");
     }
 
     final ContextFragment context = readCurrentContextData(hub);

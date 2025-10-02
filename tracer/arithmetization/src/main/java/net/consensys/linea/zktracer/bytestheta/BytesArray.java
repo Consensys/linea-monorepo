@@ -92,7 +92,7 @@ public class BytesArray {
    * @param bytes the new Bytes value
    */
   public void set(int index, Bytes bytes) {
-    checkArgument(bytes.size() == 8);
+    checkArgument(bytes.size() == 8, "bytes size must be 8");
     bytesArray[index] = MutableBytes.wrap(bytes.toArray());
   }
 

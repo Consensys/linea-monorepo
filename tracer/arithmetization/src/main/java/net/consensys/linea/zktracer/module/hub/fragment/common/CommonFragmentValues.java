@@ -102,7 +102,7 @@ public class CommonFragmentValues {
     this.callFrame = hub.currentFrame();
     this.exceptions = exceptions;
     this.pc = isExec ? callFrame.pc() : 0;
-    this.pcNew = computePcNew(hub, callFrame, opCode, pc, stackException, isExec);
+    this.pcNew = computePcNew(callFrame, opCode, pc, stackException, isExec);
     this.height = callFrame.stack().getHeight();
     this.heightNew = callFrame.stack().getHeightNew();
 
@@ -133,7 +133,10 @@ public class CommonFragmentValues {
     }
 
     if (Exceptions.staticFault(exceptions)) {
-      checkArgument(opCode.mayTriggerStaticException());
+      checkArgument(
+          opCode.mayTriggerStaticException(),
+          "CommonFragmentValues: opCode %s throws impossible static exception",
+          opCode);
       setTracedException(TracedException.STATIC_FAULT);
       return;
     }
@@ -160,13 +163,15 @@ public class CommonFragmentValues {
     if (maxCodeSizeException(exceptions))
     // the MaxCodeSize exceptions for return is already dealt before
     {
-      checkArgument(opCode.isCreate());
+      checkArgument(opCode.isCreate(), "MaxCodeSize exception on non CREATE opcode" + opCode);
       setTracedException(MAX_CODE_SIZE_EXCEPTION);
       return;
     }
 
     if (Exceptions.memoryExpansionException(exceptions)) {
-      checkArgument(opCode.mayTriggerMemoryExpansionException(hub.fork));
+      checkArgument(
+          opCode.mayTriggerMemoryExpansionException(hub.fork),
+          "MXP triggered by non MXP opcode" + opCode);
       setTracedException(TracedException.MEMORY_EXPANSION_EXCEPTION);
       return;
     }
@@ -183,12 +188,13 @@ public class CommonFragmentValues {
   }
 
   public void setTracedException(TracedException tracedException) {
-    checkArgument(this.tracedException == UNDEFINED);
+    checkArgument(
+        this.tracedException == UNDEFINED,
+        "Traced exception already set to " + this.tracedException);
     this.tracedException = tracedException;
   }
 
   static int computePcNew(
-      final Hub hub,
       final CallFrame callFrame,
       OpCodeData opCode,
       final int pc,
