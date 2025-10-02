@@ -109,7 +109,10 @@ public class MultiBlockExecutionEnvironment {
         blockHeaderBuilder.parentBeaconBlockRoot(
             startingBlockNumber$value == 0 ? Bytes32.ZERO : Bytes32.fromHexString("0xBADDADD7"));
       } else {
-        blockHeaderBuilder.parentBeaconBlockRoot(blocks.getLast().header().parentBeaconBlockRoot());
+        // e.g. 0xaaaa..aa00e3 for block number 0xe3
+        final String prefix = "aa".repeat(30);
+        final String suffix = String.format("%04x", blocks.size());
+        blockHeaderBuilder.parentBeaconBlockRoot(Bytes32.fromHexString("0x" + prefix + suffix));
       }
 
       final BlockBody blockBody = new BlockBody(transactions, Collections.emptyList());

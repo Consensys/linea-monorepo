@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section.systemTransaction;
 
+import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
 import static net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment.systemTransactionStoring;
@@ -62,8 +63,11 @@ public class EIP4788BeaconBlockRootSection extends TraceSection {
     final boolean currentBlockIsGenesisBlock = blockHeader.getNumber() == 0;
     final boolean isNonTrivialOperation =
         !currentBlockIsGenesisBlock && !beaconrootAccount.code().isEmpty();
-    final Bytes32 beaconRoot =
-        isNonTrivialOperation ? blockHeader.getParentBeaconBlockRoot().get() : Bytes32.ZERO;
+    checkState(blockHeader.getParentBeaconBlockRoot().isPresent(), "Missing parentBeaconBlockRoot");
+    checkState(
+        !currentBlockIsGenesisBlock || blockHeader.getParentBeaconBlockRoot().get().isZero(),
+        "Genesis block must have a zero parentBeaconBlockRoot");
+    final Bytes32 beaconRoot = blockHeader.getParentBeaconBlockRoot().get();
 
     final Eip4788TransactionFragment transactionFragment =
         new Eip4788TransactionFragment(timestamp, beaconRoot, currentBlockIsGenesisBlock);
