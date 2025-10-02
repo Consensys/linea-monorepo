@@ -147,6 +147,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 
 			if !uniqueRootsForRatio.Exists(rootCol.GetColID()) {
 				ctx.RootsForRatio[k] = append(ctx.RootsForRatio[k], rootCol)
+				uniqueRootsForRatio.Insert(rootCol.GetColID())
 			}
 
 			// Get the name of the
