@@ -1007,6 +1007,132 @@ describe("L1MessageService", () => {
     });
   });
 
+  describe("Validate and consume Message with Proof", () => {
+    it("Should revert when the contract is generally paused", async () => {
+      await l1MessageServiceMerkleProof.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
+
+      await expect(
+        l1MessageServiceMerkleProof.claimMessageWithProof({
+          proof: VALID_MERKLE_PROOF.proof,
+          messageNumber: 1,
+          leafIndex: VALID_MERKLE_PROOF.index,
+          from: admin.address,
+          to: admin.address,
+          fee: MESSAGE_FEE,
+          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+          feeRecipient: ADDRESS_ZERO,
+          merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+          data: EMPTY_CALLDATA,
+        }),
+      )
+        .to.be.revertedWithCustomError(l1MessageService, "IsPaused")
+        .withArgs(GENERAL_PAUSE_TYPE);
+    });
+
+    it("Should fail when l2 Merkle root does not exist on L1", async () => {
+      const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
+        proof: VALID_MERKLE_PROOF.proof,
+        messageNumber: 1,
+        leafIndex: VALID_MERKLE_PROOF.index,
+        from: admin.address,
+        to: admin.address,
+        fee: MESSAGE_FEE,
+        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        feeRecipient: ADDRESS_ZERO,
+        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        data: EMPTY_CALLDATA,
+      });
+
+      await expectRevertWithCustomError(l1MessageService, claimMessageCall, "L2MerkleRootDoesNotExist");
+    });
+
+    it("Should fail when the merkle depth is different than the proof length", async () => {
+      await l1MessageServiceMerkleProof.addL2MerkleRoots(
+        [VALID_MERKLE_PROOF.merkleRoot],
+        VALID_MERKLE_PROOF.proof.length,
+      );
+
+      const merkleDepth = await l1MessageServiceMerkleProof.l2MerkleRootsDepths(VALID_MERKLE_PROOF.merkleRoot);
+
+      const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
+        proof: VALID_MERKLE_PROOF.proof.slice(0, -1),
+        messageNumber: 1,
+        leafIndex: VALID_MERKLE_PROOF.index,
+        from: admin.address,
+        to: admin.address,
+        fee: MESSAGE_FEE,
+        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        feeRecipient: await l1MessageService.getAddress(),
+        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        data: EMPTY_CALLDATA,
+      });
+
+      await expectRevertWithCustomError(
+        l1MessageServiceMerkleProof,
+        claimMessageCall,
+        "ProofLengthDifferentThanMerkleDepth",
+        [merkleDepth, VALID_MERKLE_PROOF.proof.slice(0, -1).length],
+      );
+    });
+
+    it("Should fail when the message has already been claimed", async () => {
+      await l1MessageServiceMerkleProof.addL2MerkleRoots(
+        [VALID_MERKLE_PROOF.merkleRoot],
+        VALID_MERKLE_PROOF.proof.length,
+      );
+
+      await l1MessageServiceMerkleProof.claimMessageWithProof({
+        proof: VALID_MERKLE_PROOF.proof,
+        messageNumber: 1,
+        leafIndex: VALID_MERKLE_PROOF.index,
+        from: admin.address,
+        to: admin.address,
+        fee: MESSAGE_FEE,
+        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        feeRecipient: ADDRESS_ZERO,
+        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        data: EMPTY_CALLDATA,
+      });
+
+      const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
+        proof: VALID_MERKLE_PROOF.proof,
+        messageNumber: 1,
+        leafIndex: VALID_MERKLE_PROOF.index,
+        from: admin.address,
+        to: admin.address,
+        fee: MESSAGE_FEE,
+        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        feeRecipient: ADDRESS_ZERO,
+        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        data: EMPTY_CALLDATA,
+      });
+
+      await expectRevertWithCustomError(l1MessageServiceMerkleProof, claimMessageCall, "MessageAlreadyClaimed", [1]);
+    });
+
+    it("Should fail when l2 merkle proof is invalid", async () => {
+      await l1MessageServiceMerkleProof.addL2MerkleRoots(
+        [VALID_MERKLE_PROOF.merkleRoot],
+        VALID_MERKLE_PROOF.proof.length,
+      );
+
+      const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
+        proof: INVALID_MERKLE_PROOF.proof,
+        messageNumber: 1,
+        leafIndex: VALID_MERKLE_PROOF.index,
+        from: admin.address,
+        to: admin.address,
+        fee: MESSAGE_FEE,
+        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        feeRecipient: ADDRESS_ZERO,
+        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        data: EMPTY_CALLDATA,
+      });
+
+      await expectRevertWithCustomError(l1MessageService, claimMessageCall, "InvalidMerkleProof");
+    });
+  });
+
   describe("Claim Message with Proof", () => {
     it("Should be able to claim a message that was sent", async () => {
       await l1MessageServiceMerkleProof.addL2MerkleRoots(
@@ -1057,101 +1183,6 @@ describe("L1MessageService", () => {
       });
 
       await expectEvent(l1MessageServiceMerkleProof, claimMessageCall, "MessageClaimed", [messageLeafHash]);
-    });
-
-    it("Should fail to claim when the contract is generally paused", async () => {
-      await l1MessageServiceMerkleProof.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
-
-      await expect(
-        l1MessageServiceMerkleProof.claimMessageWithProof({
-          proof: VALID_MERKLE_PROOF.proof,
-          messageNumber: 1,
-          leafIndex: VALID_MERKLE_PROOF.index,
-          from: admin.address,
-          to: admin.address,
-          fee: MESSAGE_FEE,
-          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-          feeRecipient: ADDRESS_ZERO,
-          merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
-          data: EMPTY_CALLDATA,
-        }),
-      )
-        .to.be.revertedWithCustomError(l1MessageService, "IsPaused")
-        .withArgs(GENERAL_PAUSE_TYPE);
-    });
-
-    it("Should fail when the message has already been claimed", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF.merkleRoot],
-        VALID_MERKLE_PROOF.proof.length,
-      );
-
-      await l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
-        messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
-        from: admin.address,
-        to: admin.address,
-        fee: MESSAGE_FEE,
-        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-        feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
-        data: EMPTY_CALLDATA,
-      });
-
-      const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
-        messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
-        from: admin.address,
-        to: admin.address,
-        fee: MESSAGE_FEE,
-        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-        feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
-        data: EMPTY_CALLDATA,
-      });
-
-      await expectRevertWithCustomError(l1MessageServiceMerkleProof, claimMessageCall, "MessageAlreadyClaimed", [1]);
-    });
-
-    it("Should fail when l2 Merkle root does not exist on L1", async () => {
-      const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
-        messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
-        from: admin.address,
-        to: admin.address,
-        fee: MESSAGE_FEE,
-        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-        feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
-        data: EMPTY_CALLDATA,
-      });
-
-      await expectRevertWithCustomError(l1MessageService, claimMessageCall, "L2MerkleRootDoesNotExist");
-    });
-
-    it("Should fail when l2 merkle proof is invalid", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF.merkleRoot],
-        VALID_MERKLE_PROOF.proof.length,
-      );
-
-      const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: INVALID_MERKLE_PROOF.proof,
-        messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
-        from: admin.address,
-        to: admin.address,
-        fee: MESSAGE_FEE,
-        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-        feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
-        data: EMPTY_CALLDATA,
-      });
-
-      await expectRevertWithCustomError(l1MessageService, claimMessageCall, "InvalidMerkleProof");
     });
 
     it("Should fail claiming when the call transaction fails with receive()", async () => {
@@ -1246,35 +1277,6 @@ describe("L1MessageService", () => {
       await expectRevertWithCustomError(l1MessageServiceMerkleProof, claimMessageCall, "FeePaymentFailed", [
         await l1MessageService.getAddress(),
       ]);
-    });
-
-    it("Should fail when the merkle depth is different than the proof length", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF.merkleRoot],
-        VALID_MERKLE_PROOF.proof.length,
-      );
-
-      const merkleDepth = await l1MessageServiceMerkleProof.l2MerkleRootsDepths(VALID_MERKLE_PROOF.merkleRoot);
-
-      const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof.slice(0, -1),
-        messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
-        from: admin.address,
-        to: admin.address,
-        fee: MESSAGE_FEE,
-        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-        feeRecipient: await l1MessageService.getAddress(),
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
-        data: EMPTY_CALLDATA,
-      });
-
-      await expectRevertWithCustomError(
-        l1MessageServiceMerkleProof,
-        claimMessageCall,
-        "ProofLengthDifferentThanMerkleDepth",
-        [merkleDepth, VALID_MERKLE_PROOF.proof.slice(0, -1).length],
-      );
     });
   });
 
