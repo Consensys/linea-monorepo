@@ -32,6 +32,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,28 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
 public class EcRecoverTest extends TracerTestBase {
+
+  static final EWord h =
+      EWord.ofHexString("0x456e9aea5e197a1f1af7a3e85a3212fa4049a3ba34c2289b4c860fc0b0c64ef3");
+  static final List<EWord> v =
+      List.of(
+          EWord.of(28),
+          EWord.ZERO,
+          EWord.of(BigInteger.ONE, BigInteger.valueOf(27)),
+          EWord.of(BigInteger.ONE, BigInteger.valueOf(28)));
+  static final List<EWord> r =
+      List.of(
+          EWord.ofHexString("0x9242685bf161793cc25603c231bc2f568eb630ea16aa137d2664ac8038825608"),
+          EWord.ZERO,
+          SECP256K1N,
+          SECP256K1N.add(EWord.of(1)));
+  static final List<EWord> s =
+      List.of(
+          EWord.ofHexString("0x4f8ae3bd7535248d0bd448298cc2e2071e56992d0774dc340c368ae950852ada"),
+          EWord.ZERO,
+          SECP256K1N,
+          SECP256K1N.add(EWord.of(1)));
+
   @Test
   void testEcRecoverWithEmptyExt(TestInfo testInfo) {
     BytecodeRunner.of(
@@ -52,6 +75,35 @@ public class EcRecoverTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("ecRecoverSource")
   void testEcRecover(
+      String description,
+      EWord h,
+      EWord v,
+      EWord r,
+      EWord s,
+      boolean expectedInternalChecksPassed,
+      boolean expectedSuccessBit,
+      TestInfo testInfo) {
+    testEcRecoverBody(
+        description, h, v, r, s, expectedInternalChecksPassed, expectedSuccessBit, testInfo);
+  }
+
+  @Tag("nightly")
+  @ParameterizedTest
+  @MethodSource("ecRecoverSourceNightly")
+  void testEcRecoverNightly(
+      String description,
+      EWord h,
+      EWord v,
+      EWord r,
+      EWord s,
+      boolean expectedInternalChecksPassed,
+      boolean expectedSuccessBit,
+      TestInfo testInfo) {
+    testEcRecoverBody(
+        description, h, v, r, s, expectedInternalChecksPassed, expectedSuccessBit, testInfo);
+  }
+
+  private void testEcRecoverBody(
       String description,
       EWord h,
       EWord v,
@@ -103,45 +155,7 @@ public class EcRecoverTest extends TracerTestBase {
   }
 
   private static Stream<Arguments> ecRecoverSource() {
-    EWord h =
-        EWord.ofHexString("0x456e9aea5e197a1f1af7a3e85a3212fa4049a3ba34c2289b4c860fc0b0c64ef3");
-    List<EWord> v =
-        List.of(
-            EWord.of(28),
-            EWord.ZERO,
-            EWord.of(BigInteger.ONE, BigInteger.valueOf(27)),
-            EWord.of(BigInteger.ONE, BigInteger.valueOf(28)));
-    List<EWord> r =
-        List.of(
-            EWord.ofHexString("0x9242685bf161793cc25603c231bc2f568eb630ea16aa137d2664ac8038825608"),
-            EWord.ZERO,
-            SECP256K1N,
-            SECP256K1N.add(EWord.of(1)));
-    List<EWord> s =
-        List.of(
-            EWord.ofHexString("0x4f8ae3bd7535248d0bd448298cc2e2071e56992d0774dc340c368ae950852ada"),
-            EWord.ZERO,
-            SECP256K1N,
-            SECP256K1N.add(EWord.of(1)));
-
     List<Arguments> arguments = new ArrayList<>();
-
-    // Test cases where ICP = successBit = 1 (first one) or ICP = successBit = 0 (all the others)
-    for (int i = 0; i < v.size(); i++) {
-      for (int j = 0; j < r.size(); j++) {
-        for (int k = 0; k < s.size(); k++) {
-          arguments.add(
-              Arguments.of(
-                  i + j + k == 0 ? "[ICP = 1, successBit = 1]" : "[ICP = 0, successBit = 0]",
-                  h,
-                  v.get(i),
-                  r.get(j),
-                  s.get(k),
-                  i + j + k == 0,
-                  i + j + k == 0));
-        }
-      }
-    }
 
     // Test cases where ICP = successBit = 1
     arguments.add(
@@ -217,6 +231,36 @@ public class EcRecoverTest extends TracerTestBase {
             "0x4da31701c798fe3078ee9de6e4d892242e235dc078df76b15a9ad82137c6250e",
             true,
             false));
+
+    // Test cases where ICP = successBit = 0
+    arguments.add(
+        Arguments.of("[ICP = 0, successBit = 0]", h, v.get(1), r.get(1), s.get(1), false, false));
+
+    arguments.add(
+        Arguments.of("[ICP = 0, successBit = 0]", h, v.get(2), r.get(2), s.get(2), false, false));
+
+    return arguments.stream();
+  }
+
+  private static Stream<Arguments> ecRecoverSourceNightly() {
+    List<Arguments> arguments = new ArrayList<>();
+
+    // Test cases where ICP = successBit = 1 (first one) or ICP = successBit = 0 (all the others)
+    for (int i = 0; i < v.size(); i++) {
+      for (int j = 0; j < r.size(); j++) {
+        for (int k = 0; k < s.size(); k++) {
+          arguments.add(
+              Arguments.of(
+                  i + j + k == 0 ? "[ICP = 1, successBit = 1]" : "[ICP = 0, successBit = 0]",
+                  h,
+                  v.get(i),
+                  r.get(j),
+                  s.get(k),
+                  i + j + k == 0,
+                  i + j + k == 0));
+        }
+      }
+    }
 
     return arguments.stream();
   }
