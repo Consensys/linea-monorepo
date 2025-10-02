@@ -559,3 +559,29 @@ func TestVerifierNegative(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkCommitWithSIS(b *testing.B) {
+	const (
+		blowUpFactor = 2
+		polySize     = 1 << 15
+		nPolys       = 1 << 10
+	)
+
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	// func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+
+	ps := make([]smartvectors.SmartVector, nPolys)
+	for i := range ps {
+		if i%15 == 0 {
+			// sprinkle some constants
+			ps[i] = smartvectors.NewConstant(field.NewElement(uint64(i+1)*42), polySize)
+			continue
+		}
+		ps[i] = smartvectors.Rand(polySize)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = params.CommitMerkleWithSIS(ps)
+	}
+}
