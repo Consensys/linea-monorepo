@@ -1,4 +1,6 @@
 name: Nightly Tests
+permissions:
+  contents: read
 
 on:
   schedule:
@@ -10,52 +12,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  nightly-tests:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          submodules: recursive
+  nightly-tests-london:
+    uses: ./.github/workflows/reusable-nightly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: LONDON
+      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
 
-      - name: Setup Test Environment
-        uses: ./.github/actions/setup-environment
+  nightly-tests-paris:
+    uses: ./.github/workflows/reusable-nightly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: PARIS
+      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
 
-      - name: Run Nightly tests
-        run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew nightlyTests
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-          GOCORSET_FLAGS: -v --ansi-escapes=false --report --mir
-          NIGHTLY_TESTS_PARALLELISM: 2
-          ZKEVM_FORK: LONDON
+  nightly-tests-shanghai:
+    uses: ./.github/workflows/reusable-nightly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: SHANGHAI
+      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
 
-      - name: Upload test report
-        if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: nightly-tests-report-LONDON
-          path: arithmetization/build/reports/tests/**/*
+  nightly-tests-cancun:
+    uses: ./.github/workflows/reusable-nightly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: CANCUN
+      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
 
-      - name: Upload jacoco nightly tests coverage report
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: jacoco-nightly-tests-coverage-report-LONDON
-          path: arithmetization/build/reports/jacoco/jacocoNightlyTestsReport/**/*
-
-      - name: Upload jacoco nightly tests exec file
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: jacoco-nightly-tests-exec-file-LONDON
-          path: arithmetization/build/jacoco/nightlyTests.exec
-
-      - name: Failure Notification
-        if: github.ref == 'refs/heads/arith-dev' && (failure() || cancelled())
-        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: webhook-trigger
-          payload: |
-             name: "Nightly"
-             status: "${{ job.status }}"
+  nightly-tests-prague:
+    uses: ./.github/workflows/reusable-nightly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: PRAGUE
+      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
