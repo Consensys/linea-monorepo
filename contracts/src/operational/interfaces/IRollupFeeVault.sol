@@ -33,6 +33,11 @@ interface IRollupFeeVault {
   error ZeroOperatingCosts();
 
   /**
+   * @dev Thrown when the contract balance is insufficient.
+   */
+  error InsufficientBalance();
+
+  /**
    * @dev Emitted when an invoice is processed.
    * @dev If amountRequested < amountPaid, the difference is previous unpaid invoice amount.
    * @param startTimestamp The start timestamp of the invoicing period.

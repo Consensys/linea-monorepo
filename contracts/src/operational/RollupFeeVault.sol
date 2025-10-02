@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { L2MessageService } from "../messaging/l2/L2MessageService.sol";
 import { TokenBridge } from "../bridging/token/TokenBridge.sol";
 import { IRollupFeeVault } from "./interfaces/IRollupFeeVault.sol";
@@ -233,6 +234,9 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
     require(operatingCosts == 0, ZeroOperatingCosts());
 
     uint256 minimumFee = messageService.minimumFeeInWei();
+
+    require(address(this).balance > minimumFee, InsufficientBalance());
+
     uint256 balanceAvailable = address(this).balance - minimumFee;
 
     uint256 ethToBurn = (balanceAvailable * 20) / 100;
@@ -244,6 +248,8 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
       _deadline,
       _sqrtPriceLimitX96
     );
+
+    IERC20(lineaToken).approve(address(tokenBridge), nbLineaTokens);
 
     tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, nbLineaTokens, l1BurnerContract);
 
