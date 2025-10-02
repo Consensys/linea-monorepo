@@ -534,6 +534,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
 
   /**
    * @notice Reverts a previously initiated ossification request.
+   * @dev In Lido's case, this is only available for a limited time after initiateOssification.
+   *      If there is subsequent accounting report is applied and no liabilities or obligations 
+   *      are outstanding, the vault will be disconnected which will be 
    * @param _yieldProvider The yield provider address.
    */
   function undoInitiateOssification(address _yieldProvider) external onlyDelegateCall {
@@ -561,9 +564,17 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    * @notice Performs vendor-specific validation before the provider is registered by the YieldManager.
    * @param _registration Registration payload for the yield provider.
    */
-  function validateAdditionToYieldManager(YieldProviderRegistration calldata _registration) external pure {
+  function validateAdditionToYieldManager(YieldProviderRegistration calldata _registration) external {
     if (_registration.yieldProviderVendor != YieldProviderVendor.LIDO_STVAULT) {
       revert UnknownYieldProviderVendor();
+    }
+    IDashboard dashboard = IDashboard(_registration.primaryEntrypoint);
+    address expectedVault = address(dashboard.stakingVault());
+    if (expectedVault != _registration.ossifiedEntrypoint) {
+      revert InvalidYieldProviderRegistration(YieldProviderRegistrationError.LidoDashboardNotLinkedToVault);
+    }
+    if (_registration.receiveCaller != _registration.ossifiedEntrypoint) {
+      revert InvalidYieldProviderRegistration(YieldProviderRegistrationError.LidoVaultIsExpectedReceiveCallerAndOssifiedEntrypoint);
     }
   }
 }

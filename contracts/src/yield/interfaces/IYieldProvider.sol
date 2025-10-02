@@ -14,7 +14,15 @@ interface IYieldProvider {
     ReportYield
   }
 
-  /// @notice Thrown when an is blocked because ossification is either pending or complete.
+  /**
+   * @notice Enum defining the specific type of YieldProvider registration error.
+   */
+  enum YieldProviderRegistrationError{
+    LidoDashboardNotLinkedToVault,
+    LidoVaultIsExpectedReceiveCallerAndOssifiedEntrypoint
+  }
+
+  /// @notice Thrown when an operation is blocked because ossification is either pending or complete.
   /// @param operationType The operation that was attempted.
   error OperationNotSupportedDuringOssification(OperationType operationType);
 
@@ -32,6 +40,10 @@ interface IYieldProvider {
 
   /// @notice Raised when a function is called outside of a `delegatecall` from the YieldManager.
   error ContextIsNotYieldManager();
+
+  /// @notice Thrown when a YieldProvider registration is invalid.
+  /// @param error Specific error details.
+  error InvalidYieldProviderRegistration(YieldProviderRegistrationError error);
 
   /**
    * @notice Returns the amount of ETH the provider can immediately remit back to the YieldManager.

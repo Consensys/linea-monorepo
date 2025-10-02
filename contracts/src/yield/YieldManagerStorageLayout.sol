@@ -89,7 +89,6 @@ abstract contract YieldManagerStorageLayout {
     LIDO_STVAULT
   }
 
-
   /**
    * @notice Struct representing expected information to add a YieldProvider adaptor instance.
    * @param yieldProviderVendor Specific type of YieldProvider adaptor.

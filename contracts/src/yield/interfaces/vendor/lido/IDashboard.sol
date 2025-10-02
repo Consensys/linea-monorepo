@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
+import { IStakingVault } from "./IStakingVault.sol";
+
 // See contracts/COMPILERS.md
 pragma solidity >=0.8.0;
 
@@ -12,6 +14,8 @@ pragma solidity >=0.8.0;
  * including funding, withdrawing, minting, burning, and rebalancing operations.
  */
 interface IDashboard {
+  function stakingVault() external view returns (IStakingVault);
+
   function totalValue() external view returns (uint256);
 
   function liabilityShares() external view returns (uint256);
