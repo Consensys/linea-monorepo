@@ -7,8 +7,6 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -43,13 +41,6 @@ func WriteInt64On32Bytes(w io.Writer, x int64) (int64, error) {
 		return int64(n), fmt.Errorf("could not write 32 bytes into Writer : %w", err)
 	}
 	return int64(n), nil
-}
-
-func WriteInt64OnHash(x int64) field.Octuplet {
-	res := [32]byte{}
-	binary.BigEndian.PutUint64(res[24:], uint64(x))
-
-	return Bytes32ToHash(res)
 }
 
 func ReadInt64On32Bytes(r io.Reader) (x, n_ int64, err error) {

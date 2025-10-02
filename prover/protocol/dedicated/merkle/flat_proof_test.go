@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 const (
@@ -24,8 +25,7 @@ var testcases = [][]merkleTestCaseInstance{
 		{
 			IsWrite: true,
 			Pos:     0,
-			Leaf:    field.Octuplet{field.NewElement(1), field.NewElement(2), field.NewElement(3), field.NewElement(4), field.NewElement(5), field.NewElement(6), field.NewElement(7), field.NewElement(8)},
-		},
+			Leaf:    types.Bytes32ToHash(types.Bytes32{1, 2, 3, 4})},
 		{
 			Pos: 1,
 		},

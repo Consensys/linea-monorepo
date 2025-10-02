@@ -4,9 +4,9 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -32,8 +32,8 @@ func InitializeProverState[K, V io.WriterTo](conf *smt.Config, location string) 
 
 	// Insert the head and the tail in the tree
 	head, tail := Head(), Tail(conf)
-	tree.Update(0, head.Hash(conf))
-	tree.Update(1, tail.Hash(conf))
+	tree.Update(0, types.Bytes32ToHash(head.Hash(conf)))
+	tree.Update(1, types.Bytes32ToHash(tail.Hash(conf)))
 
 	data := collection.NewMapping[int64, KVOpeningTuple[K, V]]()
 	data.InsertNew(0, KVOpeningTuple[K, V]{LeafOpening: head})
@@ -53,8 +53,8 @@ func (s *ProverState[K, V]) Config() *smt.Config {
 }
 
 // SubTreeRoot returns the root of the tree
-func (s *ProverState[K, V]) SubTreeRoot() field.Octuplet {
-	return s.Tree.Root
+func (s *ProverState[K, V]) SubTreeRoot() Bytes32 {
+	return types.HashToBytes32(s.Tree.Root)
 }
 
 // FindKey finds the position of a key in the accumulator. If the key is absent,
@@ -173,7 +173,7 @@ func (s *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt
 
 	// Perform the update
 	s.Data.Update(i, tuple)
-	s.Tree.Update(int(i), leaf)
+	s.Tree.Update(int(i), types.Bytes32ToHash(leaf))
 	newRoot := s.SubTreeRoot()
 
 	logrus.Tracef("upsert pos %v, leaf %x, root=%x -> %x", i, leaf, oldRoot, newRoot)

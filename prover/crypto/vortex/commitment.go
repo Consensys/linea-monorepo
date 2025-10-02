@@ -142,7 +142,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 
 			hasher := p.LeafHashFunc()
 			// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
-			leaves[chunkID] = hasher.Hash(colHashes[startChunk : startChunk+chunkSize])
+			leaves[chunkID] = hasher.FieldHash(colHashes[startChunk : startChunk+chunkSize])
 
 		}
 
@@ -168,7 +168,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 
 	res := make([]field.Octuplet, numCols)
 
-	hashers := make([]hashtypes.FieldHasher, runtime.GOMAXPROCS(0))
+	hashers := make([]hashtypes.Poseidon2Hasher, runtime.GOMAXPROCS(0))
 
 	parallel.ExecuteThreadAware(
 		numCols,
@@ -181,7 +181,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			for row := 0; row < numRows; row++ {
 				colElems[row] = v[row].Get(col)
 			}
-			res[col] = hasher.Hash(colElems)
+			res[col] = hasher.FieldHash(colElems)
 		},
 	)
 

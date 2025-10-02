@@ -3,6 +3,8 @@ package accumulator_test
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
@@ -31,7 +33,7 @@ func dumval(i int) DummyVal {
 
 func newTestAccumulatorKeccak() *accumulator.ProverState[DummyKey, DummyVal] {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 	return accumulator.InitializeProverState[DummyKey, DummyVal](config, locationTesting)
@@ -58,10 +60,10 @@ func TestInitialization(t *testing.T) {
 
 	// Can we prover membership of the leaf
 	proofHead := acc.Tree.MustProve(0)
-	proofHead.Verify(acc.Config(), headHash, acc.SubTreeRoot())
+	proofHead.Verify(acc.Config(), types.Bytes32ToHash(headHash), types.Bytes32ToHash(acc.SubTreeRoot()))
 
 	proofTail := acc.Tree.MustProve(1)
-	proofTail.Verify(acc.Config(), tailHash, acc.SubTreeRoot())
+	proofTail.Verify(acc.Config(), types.Bytes32ToHash(tailHash), types.Bytes32ToHash(acc.SubTreeRoot()))
 }
 
 func TestInsertion(t *testing.T) {

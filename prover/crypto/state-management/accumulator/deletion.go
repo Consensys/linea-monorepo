@@ -9,6 +9,7 @@ import (
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -140,7 +141,7 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 
 	// Audit the update of the deleted leaf
 	deletedLeaf := hash(v.Config, &trace.DeletedOpen)
-	currentRoot, err = updateCheckRoot(v.Config, trace.ProofDeleted, currentRoot, deletedLeaf, smt.EmptyLeaf())
+	currentRoot, err = updateCheckRoot(v.Config, trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt.EmptyLeaf()))
 	if err != nil {
 		return fmt.Errorf("audit of the update of the middle leaf failed %v", err)
 	}
@@ -184,7 +185,7 @@ func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 
 	// the proof verification for the deleted leaf
 	deletedLeaf := hash(config, &trace.DeletedOpen)
-	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofDeleted, currentRoot, deletedLeaf, smt.EmptyLeaf(), appendTo)
+	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt.EmptyLeaf()), appendTo)
 
 	// Audit the update of the "plus"
 	oldLeafPlus := trace.OldOpenPlus.Hash(config)

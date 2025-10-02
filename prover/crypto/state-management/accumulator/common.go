@@ -4,20 +4,17 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Generic hashing for object satisfying the io.WriterTo interface
-func hash[T io.WriterTo](conf *smt.Config, m T) field.Octuplet {
+func hash[T io.WriterTo](conf *smt.Config, m T) Bytes32 {
 	hasher := conf.HashFunc()
 	m.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
-	oct := types.Bytes32ToHash(AsBytes32(Bytes32))
-	return oct
+	return AsBytes32(Bytes32)
 }
 
 // Trace is an interface shared by all the "traces" types. Used to

@@ -5,11 +5,11 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 )
@@ -24,11 +24,11 @@ type UpdateTrace[K, V io.WriterTo] struct {
 	NewValue V      `json:"newValue"`
 	// We call it new next free node, but the value is not updated
 	// during the update.
-	NewNextFreeNode int            `json:"newNextFreeNode"`
-	OldSubRoot      field.Octuplet `json:"oldSubRoot"`
-	NewSubRoot      field.Octuplet `json:"newSubRoot"`
-	OldOpening      LeafOpening    `json:"priorUpdatedLeaf"`
-	Proof           smt.Proof      `json:"proof"`
+	NewNextFreeNode int         `json:"newNextFreeNode"`
+	OldSubRoot      Bytes32     `json:"oldSubRoot"`
+	NewSubRoot      Bytes32     `json:"newSubRoot"`
+	OldOpening      LeafOpening `json:"priorUpdatedLeaf"`
+	Proof           smt.Proof   `json:"proof"`
 }
 
 // UpdateAndProve performs a read on the accumulator. Panics if the associated
@@ -57,7 +57,7 @@ func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 	p.Data.Update(i, tuple)
 
 	newLeaf := tuple.LeafOpening.Hash(p.Config())
-	p.Tree.Update(int(i), newLeaf)
+	p.Tree.Update(int(i), types.Bytes32ToHash(newLeaf))
 
 	return UpdateTrace[K, V]{
 		Location:        p.Location,
@@ -97,7 +97,7 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 		return errors.WithMessage(err, "read update verifier failed")
 	}
 
-	if !trace.Proof.Verify(v.Config, leaf, trace.OldSubRoot) {
+	if !trace.Proof.Verify(v.Config, types.Bytes32ToHash(leaf), types.Bytes32ToHash(trace.OldSubRoot)) {
 		return fmt.Errorf("merkle proof verification failed")
 	}
 

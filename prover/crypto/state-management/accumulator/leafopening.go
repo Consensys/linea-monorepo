@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -46,7 +45,7 @@ func (leaf *LeafOpening) WriteTo(w io.Writer) (int64, error) {
 }
 
 // Hash returns a hash of the leaf opening
-func (leaf LeafOpening) Hash(conf *smt.Config) field.Octuplet {
+func (leaf LeafOpening) Hash(conf *smt.Config) Bytes32 {
 	return hash(conf, &leaf)
 }
 
