@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.forkSpecific.systemTransaction;
 
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -24,16 +26,20 @@ import org.hyperledger.besu.datatypes.Address;
 
 public class SystemTransactionTestUtils {
 
-  static Bytes byteCodeCallingBeaconRootSystemAccount(
+  static Bytes byteCodeCallingSystemSmartContract(
       ChainConfig chainConfig, Address systemContractAddress, long arg) {
     return BytecodeCompiler.newProgram(chainConfig)
         // prepare memory with arg left padded
         .push(Bytes32.leftPad(Bytes.minimalBytes(arg))) // value
         .push(0) // offset
         .op(OpCode.MSTORE)
+        // prepare memory with 0xff..ff where the CALL will write return data
+        .push("ff".repeat(WORD_SIZE)) // value
+        .push(32) // offset
+        .op(OpCode.MSTORE)
         // call system contract
-        .push(0) // retSize
-        .push(0) // retOffset
+        .push(32) // retSize
+        .push(32) // retOffset
         .push(32) // argSize
         .push(0) // argOffset
         .push(0) // value
@@ -41,27 +47,6 @@ public class SystemTransactionTestUtils {
         .push(757575) // gas
         .op(OpCode.CALL)
         .op(OpCode.POP) // clean stack
-        .compile();
-  }
-
-  static Bytes byteCodeCallingBeaconRootSystemAccountFromCallData(
-      ChainConfig chainConfig, Address systemContractAddress) {
-    return BytecodeCompiler.newProgram(chainConfig)
-        // prepare memory with argument
-        .op(OpCode.CALLDATASIZE) // size@
-        .push(0) // source offset
-        .push(0) // destOffset
-        .op(OpCode.CALLDATACOPY)
-
-        // call system contract
-        .push(0) // retSize
-        .push(0) // retOffset
-        .push(32) // argSize
-        .push(0) // argOffset
-        .push(0) // value
-        .push(systemContractAddress) // address
-        .push(757575) // gas
-        .op(OpCode.CALL)
         .compile();
   }
 }
