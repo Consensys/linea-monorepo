@@ -12,6 +12,7 @@ import { Math256 } from "../libraries/Math256.sol";
 import { CLProofVerifier } from "./libs/CLProofVerifier.sol";
 import { GIndex } from "./libs/vendor/lido/GIndex.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
@@ -19,21 +20,40 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
  * @custom:security-contact security-report@linea.build
  */
 contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initializable, IGenericErrors {
+  /// @notice Byte-length of a validator BLS pubkey.
   uint256 private constant PUBLIC_KEY_LENGTH = 48;
+
+  /// @notice Minimum effective balance for a validator with 0x02 withdrawal credentials.
   uint256 private constant MIN_0X02_VALIDATOR_ACTIVATION_BALANCE = 32 ether;
+
+  /// @notice Address of the Lido VaultHub.
   IVaultHub immutable VAULT_HUB;
+
+  /// @notice Address of the Lido stETH contract.
   IStETH immutable STETH;
 
+  /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
+  /// @param yieldProvider The yield provider adaptor instance address.
+  /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.
+  /// @param maxUnstakeAmount Maximum ETH expected to be withdrawn for the request.
+  /// @param pubkeys Concatenated validator pubkeys.
+  /// @param amounts Withdrawal request amount array (currently length 1).
   event LidoVaultUnstakePermissionlessRequest(
     address indexed yieldProvider,
-    address indexed caller,
     address indexed refundRecipient,
     uint256 maxUnstakeAmount,
     bytes pubkeys,
     uint64[] amounts
   );
 
-  // @dev _yieldProvider = stakingVault address
+  /// @notice Used to set immutable variables, but not storage.
+  /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve.
+  /// @param _yieldManager The Linea YieldManager.
+  /// @param _vaultHub Lido VaultHub contract.
+  /// @param _steth Lido stETH contract.
+  /// @param _gIFirstValidator Packed generalized index for the first validator before the pivot slot.
+  /// @param _gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
+  /// @param _changeSlot Beacon chain slot at which the validator generalized index changes.
   constructor(
     address _l1MessageService,
     address _yieldManager,
@@ -43,48 +63,70 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     GIndex _gIFirstValidatorAfterChange,
     uint64 _changeSlot
   )
-  YieldProviderBase(_l1MessageService, _yieldManager) 
-  CLProofVerifier(_gIFirstValidator, _gIFirstValidatorAfterChange, _changeSlot) {
-    // Do checks
+    YieldProviderBase(_l1MessageService, _yieldManager)
+    CLProofVerifier(_gIFirstValidator, _gIFirstValidatorAfterChange, _changeSlot)
+  {
+    ErrorUtils.revertIfZeroAddress(_l1MessageService);
+    ErrorUtils.revertIfZeroAddress(_yieldManager);
+    ErrorUtils.revertIfZeroAddress(_vaultHub);
+    ErrorUtils.revertIfZeroAddress(_steth);
     VAULT_HUB = IVaultHub(_vaultHub);
     STETH = IStETH(_steth);
     _disableInitializers();
   }
 
-  // Expect storage initialization to be done via YieldManager.addYieldProvider()
-  function initialize() external initializer {
-  }
+  /**
+   * @dev Storage is expected to be initialized via the permissioned YieldManager.addYieldProvider function
+   */
+  function initialize() external initializer {}
 
+  /// @notice Helper function to get the Lido contract to interact with.
   function _getEntrypointContract(address _yieldProvider) internal view returns (address entrypointContract) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     entrypointContract = $$.isOssified ? $$.ossifiedEntrypoint : $$.primaryEntrypoint;
   }
 
+  /// @notice Helper function to get the associated Lido Dashboard contract.
   function _getDashboard(YieldProviderStorage storage $$) internal view returns (IDashboard dashboard) {
     dashboard = IDashboard($$.primaryEntrypoint);
   }
 
+  /// @notice Helper function to get the associated Lido StakingVault contract.
   function _getVault(YieldProviderStorage storage $$) internal view returns (IStakingVault vault) {
     vault = IStakingVault($$.ossifiedEntrypoint);
   }
 
+  /**
+   * @notice Returns the amount of ETH the provider can immediately remit back to the YieldManager.
+   * @dev Called via `delegatecall` from the YieldManager.
+   * @param _yieldProvider The yield provider address.
+   * @return availableBalance The ETH amount that can be withdrawn.
+   */
   function withdrawableValue(address _yieldProvider) external view onlyDelegateCall returns (uint256) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     return $$.isOssified ? $$.ossifiedEntrypoint.balance : IDashboard($$.primaryEntrypoint).withdrawableValue();
   }
 
   /**
-   * @notice Send ETH to the specified yield strategy.
-   * @param _amount        The amount of ETH to send.
+   * @notice Forwards ETH from the YieldManager to the yield provider.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount Amount of ETH supplied by the YieldManager.
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).fund{ value: _amount }();
   }
 
   /**
-   * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
-   * @dev Note here we have broken our pattern that we handle all state mutation in the YieldManager, we will revisit this
-   * @dev Both `redemptions` and `obligations` can both be reduced permissionlessly via VaultHub.settleObligations(). Then this is accounted within negative yield.
+   * @notice Computes and returns earned yield that can be distributed to L2 users.
+   * @dev Gross net yield is the difference between recorded user funds dedicated to the YieldProvider,
+   *      and current total ETH value of the YieldProvider.
+   * @dev Before reporting yield as available for distribution, will first settle the following from earned yield:
+   *      - Incurred negative yield
+   *      - LST liability interest (not principal)
+   *      - Obligations (i.e. Lido protocol fees)
+   *      - Node operator fees
+   * @param _yieldProvider The yield provider address.
+   * @return newReportedYield New net yield (denominated in ETH) since the prior report.
    */
   function reportYield(address _yieldProvider) external onlyDelegateCall returns (uint256 newReportedYield) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
@@ -114,9 +156,18 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     }
   }
 
-  function _handlePostiveYieldAccounting(YieldProviderStorage storage $$, uint256 positiveTotalYield) internal returns (uint256 newReportedYield) {
+  /**
+   * @notice Helper function to handle state updates in the case of remaining yield after clearing previously incurred negative yield.
+   * @param $$ Storage pointer for the YieldProvider-scoped storage.
+   * @param _availableYield Amount of yield available after clearing previous negative yield.
+   * @return newReportedYield New net yield (denominated in ETH) since the prior report.
+   */
+  function _handlePostiveYieldAccounting(
+    YieldProviderStorage storage $$,
+    uint256 _availableYield
+  ) internal returns (uint256 newReportedYield) {
     // First pay negative yield
-    newReportedYield = positiveTotalYield;
+    newReportedYield = _availableYield;
     uint256 currentNegativeYield = $$.currentNegativeYield;
     if (currentNegativeYield > 0) {
       uint256 negativeYieldReduction = Math256.min(currentNegativeYield, newReportedYield);
@@ -131,13 +182,20 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     newReportedYield -= _payNodeOperatorFees($$, newReportedYield);
   }
 
-  // Returns how much of _availableFunds available, after LST interest payment
-  // @dev Redemption component of obligations, and liability - are decremented in tandem in Lido VaultHub
-  function _payLSTInterest(YieldProviderStorage storage $$, uint256 _availableFunds) internal returns (uint256 lstInterestPaid) {
-    if ($$.isOssified) return _availableFunds;
+  /**
+   * @notice Helper function to pay LST liability interest (but not principal).
+   * @param $$ Storage pointer for the YieldProvider-scoped storage.
+   * @param _availableYield Amount of yield available.
+   * @return lstInterestPaid Amount of ETH used to pay LST interest liability.
+   */
+  function _payLSTInterest(
+    YieldProviderStorage storage $$,
+    uint256 _availableYield
+  ) internal returns (uint256 lstInterestPaid) {
+    if ($$.isOssified) return _availableYield;
     IDashboard dashboard = _getDashboard($$);
     uint256 liabilityTotalShares = dashboard.liabilityShares();
-    if (liabilityTotalShares == 0) return _availableFunds;
+    if (liabilityTotalShares == 0) return _availableYield;
     (uint256 lstLiabilityPrincipalSynced, bool isLstLiabilityPrincipalChanged) = _syncExternalLiabilitySettlement(
       $$,
       liabilityTotalShares,
@@ -145,29 +203,37 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     );
     // If lstLiabilityPrincipal was reduced by _syncExternalLiabilitySettlement(), it means all LST interest has been paid
     if (!isLstLiabilityPrincipalChanged) {
-      return _availableFunds;
+      return _availableYield;
     }
     uint256 liabilityInterestETH = STETH.getPooledEthBySharesRoundUp(liabilityTotalShares) -
       lstLiabilityPrincipalSynced;
-    lstInterestPaid = Math256.min(liabilityInterestETH, _availableFunds);
+    lstInterestPaid = Math256.min(liabilityInterestETH, _availableYield);
     // Do the payment
     if (lstInterestPaid > 0) {
       dashboard.rebalanceVaultWithEther(lstInterestPaid);
     }
   }
 
-  // Check if lstPrincipal < ETH value of liabilityShares
-  // If true, this means obligations were accrued and settled - settleVaultObligations is permissionless so this could have been us or another entity.
-  // This conservatively assumes that interest was settled first, then the leftover is allocated to payment.
-  // This is a reasonable approach, because we actually cannot compute the principal/liability split without keeping track of the time that we accrued and reduced lstLiability.
-  // @dev May reduce $$.lstLiabilityPrincipal
-  // @return New value of lstLiabilityPrincipal
+  /**
+   * @notice Helper function to handle liability settlement executed by external actors (i.e. via permissionless VaultHub.settleVaultObligations)
+   * @dev Must be called before any function that LST liability by a specified amount. Otherwise we encounter the edge case
+   *      that externally settled liabilities will block these operations and hence withdrawal functions that eagerly execute LST principal payment.
+   * @dev Greedily assumes that externally settled liability was first allocated to lstLiabilityInterest, then the remainder to lstLiabilityPrincipal
+   * @dev User funds removed from the Vault due to external actor settlement, are recognised as negative yield.
+   *      See tech spec for more details.
+   * @param $$ Storage pointer for the YieldProvider-scoped storage.
+   * @param _liabilityShares Current outstanding liabilityShares.
+   * @param _lstLiabilityPrincipalCached Recorded LST liability principal.
+   * @return lstLiabilityPrincipalSynced New LST liability principal.
+   * @return isLstLiabilityPrincipalChanged True if LST liability principal was updated.
+   */
   function _syncExternalLiabilitySettlement(
     YieldProviderStorage storage $$,
     uint256 _liabilityShares,
     uint256 _lstLiabilityPrincipalCached
   ) internal returns (uint256 lstLiabilityPrincipalSynced, bool isLstLiabilityPrincipalChanged) {
     uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(_liabilityShares);
+    // If true, this means an external actor settled liabilities.
     if (liabilityETH < _lstLiabilityPrincipalCached) {
       $$.lstLiabilityPrincipal = liabilityETH;
       return (liabilityETH, true);
@@ -176,26 +242,38 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     }
   }
 
-  // @dev Obligations can include redemptions, which gets reduced in tandem with liabilities
-  // @dev We will not eagerly track redemptions paid through this function, because redemptions can be paid permissionlessly
-  // @dev Therefore it is not possible for us to eagerly track all redemption changes
-  // @dev From a user funds POV, we isolate permissionless settlement by accounting it as negative yield
-  // @dev From an LST liability principal accounting POV, the main issue not eagerly tracking redemptions will cause
-  //     is that we will overpay an LST liability payment, and our rebalance() call will fail because the system thinks
-  //     it has more debt than it actually has. We handle this by checking if this has happened, and adjusting lstLiabilityPrincipal accordingly via _syncExternalLiabilitySettlement.
-  function _payObligations(YieldProviderStorage storage $$, uint256 _availableFunds) internal returns (uint256 obligationsPaid) {
+  /**
+   * @notice Helper function to pay obligations.
+   * @dev In Lido's system, a subfield of obligations is 'redemptions'. Redemptions are decremented 1:1 with liabilities.
+   * @param $$ Storage pointer for the YieldProvider-scoped storage.
+   * @param _availableYield Amount of yield available.
+   * @return obligationsPaid Amount of ETH used to pay obligations.
+   */
+  function _payObligations(
+    YieldProviderStorage storage $$,
+    uint256 _availableYield
+  ) internal returns (uint256 obligationsPaid) {
     address vault = $$.ossifiedEntrypoint;
     uint256 beforeVaultBalance = vault.balance;
     // Unfortunately, there is no function on VaultHub to specify how much obligation we want to repay.
     VAULT_HUB.settleVaultObligations(vault);
     uint256 afterVaultBalance = vault.balance;
     obligationsPaid = afterVaultBalance - beforeVaultBalance;
-    if (obligationsPaid > _availableFunds) {
-      $$.currentNegativeYield += (obligationsPaid - _availableFunds);
+    if (obligationsPaid > _availableYield) {
+      $$.currentNegativeYield += (obligationsPaid - _availableYield);
     }
   }
 
-  function _payNodeOperatorFees(YieldProviderStorage storage $$, uint256 _availableAmount) internal returns (uint256 nodeOperatorFeesPaid) {
+  /**
+   * @notice Helper function to pay node operator fees.
+   * @param $$ Storage pointer for the YieldProvider-scoped storage.
+   * @param _availableYield Amount of yield available.
+   * @return nodeOperatorFeesPaid Amount of ETH used to pay node operator fees.
+   */
+  function _payNodeOperatorFees(
+    YieldProviderStorage storage $$,
+    uint256 _availableYield
+  ) internal returns (uint256 nodeOperatorFeesPaid) {
     IDashboard dashboard = _getDashboard($$);
     IStakingVault vault = _getVault($$);
     uint256 currentFees = dashboard.nodeOperatorDisbursableFee();
@@ -204,14 +282,20 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     if (vaultBalance > currentFees) {
       dashboard.disburseNodeOperatorFee();
       nodeOperatorFeesPaid = currentFees;
-      if (nodeOperatorFeesPaid >= _availableAmount) {
-        $$.currentNegativeYield += (nodeOperatorFeesPaid - _availableAmount);
+      if (nodeOperatorFeesPaid >= _availableYield) {
+        $$.currentNegativeYield += (nodeOperatorFeesPaid - _availableYield);
       }
     }
   }
 
-  // @dev LST Principal reduction from discovered external sync, does not count as payment
-  // @dev Guard to validate against ossification is done on the YieldManager
+  /**
+   * @notice Reduces the outstanding LST liability principal.
+   * @dev Called after the YieldManager has reserved `_availableFunds` for liability
+   *      settlement. Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
+   * @param _yieldProvider The yield provider address.
+   * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
+   * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
+   */
   function payLSTPrincipal(
     address _yieldProvider,
     uint256 _availableFunds
@@ -223,7 +307,17 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     lstPrincipalPaid = _payLSTPrincipal($$, _availableFunds);
   }
 
-  function _payLSTPrincipal(YieldProviderStorage storage $$, uint256 _availableFunds) internal returns (uint256 lstPrincipalPaid) {
+  /**
+   * @notice Helper function to pay LST liability principal.
+   * @dev Calls _syncExternalLiabilitySettlement before computing the liability payment.
+   * @param $$ Storage pointer for the YieldProvider-scoped storage.
+   * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
+   * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
+   */
+  function _payLSTPrincipal(
+    YieldProviderStorage storage $$,
+    uint256 _availableFunds
+  ) internal returns (uint256 lstPrincipalPaid) {
     if ($$.isOssified) return 0;
     uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
     if (lstLiabilityPrincipalCached == 0) return 0;
@@ -242,8 +336,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   }
 
   /**
-   * @notice Request beacon chain withdrawal.
-   * @param _withdrawalParams   Provider-specific withdrawal parameters.
+   * @notice Requests beacon chain withdrawal via EIP-7002 withdrawal contract.
+   * @dev Parameters are ABI encoded by the YieldManager and understood by the yield provider.
+   * @dev Dynamic withdrawal fee is sourced from `msg.value`
+   * @param _yieldProvider The yield provider address.
+   * @param _withdrawalParams Provider-specific payload describing the withdrawals to trigger.
    */
   function unstake(address _yieldProvider, bytes memory _withdrawalParams) external payable onlyDelegateCall {
     (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(
@@ -254,30 +351,38 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     // Intentional choice to not emit event as downstream StakingVault will emit ValidatorWithdrawalsTriggered event.
   }
 
-  function _unstake(address _yieldProvider, bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) internal {
+  /**
+   * @notice Helper function to execute EIP-7002 withdrawal requests via Lido contracts.
+   * @param _yieldProvider The yield provider address.
+   * @param _pubkeys Concatenated validator public keys (48 bytes each).
+   * @param _amounts Withdrawal amounts in wei for each validator key and must match _pubkeys length.
+   *         Set amount to 0 for a full validator exit.
+   *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation
+   * @param _refundRecipient Address to receive any fee refunds, if zero, refunds go to msg.sender.
+   */
+  function _unstake(
+    address _yieldProvider,
+    bytes memory _pubkeys,
+    uint64[] memory _amounts,
+    address _refundRecipient
+  ) internal {
     // Lido StakingVault.sol will handle the param validation
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).triggerValidatorWithdrawals{ value: msg.value }(
-      pubkeys,
-      amounts,
-      refundRecipient
+      _pubkeys,
+      _amounts,
+      _refundRecipient
     );
   }
 
   /**
-   * @notice Permissionlessly request beacon chain withdrawal.
-   * @dev    Callable only when the withdrawal reserve is in deficit.
-   * @dev    The permissionless unstake amount is capped to the remaining reserve deficit that
-   *         cannot be covered by other liquidity sources:
-   *
-   *         PERMISSIONLESS_UNSTAKE_AMOUNT ≤
-   *           RESERVE_DEFICIT
-   *         - YIELD_PROVIDER_BALANCE
-   *         - YIELD_MANAGER_BALANCE
-   *         - PENDING_PERMISSIONLESS_UNSTAKE
-   *
-   * @dev Validates (validatorPubkey, validatorBalance, validatorWithdrawalCredential) against EIP-4788 beacon chain root.
-   * @param _withdrawalParams       Provider-specific withdrawal parameters.
-   * @param _withdrawalParamsProof  Merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
+   * @notice Permissionlessly requests beacon chain withdrawal via EIP-7002 withdrawal contract when reserve is under minimum threshold.
+   * @dev Implementations must verify the calldata proof (for example against EIP-4788 beacon roots)
+   *      and enforce any provider-specific safety checks. The returned amount is used by the
+   *      YieldManager to cap pending withdrawals tracked on L1.
+   * @param _yieldProvider The yield provider address.
+   * @param _withdrawalParams ABI encoded provider parameters.
+   * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
+   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */
   function unstakePermissionless(
     address _yieldProvider,
@@ -292,8 +397,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
 
     emit LidoVaultUnstakePermissionlessRequest(
-       _getYieldProviderStorage(_yieldProvider).ossifiedEntrypoint,
-      msg.sender,
+      _getYieldProviderStorage(_yieldProvider).ossifiedEntrypoint,
       refundRecipient,
       maxUnstakeAmount,
       pubkeys,
@@ -301,19 +405,30 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     );
   }
 
-  // @dev Checks guided by https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
+  /**
+   * @notice Helper function to validate permissionless unstake requests.
+   * @dev Validates that the request is for a partial withdrawal from a single validator.
+   * @dev Checks guided by consensus specs https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
+   * @param _yieldProvider The yield provider address.
+   * @param _pubkeys Concatenated validator public keys (48 bytes each).
+   * @param _amounts Withdrawal amounts in wei for each validator key and must match _pubkeys length.
+   *         Set amount to 0 for a full validator exit.
+   *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation
+   * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
+   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
+   */
   function _validateUnstakePermissionless(
     address _yieldProvider,
-    bytes memory pubkeys,
-    uint64[] memory amounts,
+    bytes memory _pubkeys,
+    uint64[] memory _amounts,
     bytes calldata _withdrawalParamsProof
   ) internal view returns (uint256 maxUnstakeAmount) {
     // Length validator
-    if (pubkeys.length != PUBLIC_KEY_LENGTH || amounts.length != 1) {
+    if (_pubkeys.length != PUBLIC_KEY_LENGTH || _amounts.length != 1) {
       revert SingleValidatorOnlyForUnstakePermissionless();
     }
 
-    uint256 amount = amounts[0];
+    uint256 amount = _amounts[0];
     if (amount == 0) {
       revert NoValidatorExitForUnstakePermissionless();
     }
@@ -343,25 +458,38 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     maxUnstakeAmount = Math256.min(amount, witness.effectiveBalance - MIN_0X02_VALIDATOR_ACTIVATION_BALANCE);
   }
 
+  /**
+   * @notice Withdraws ETH from the provider back into the YieldManager.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount Amount of ETH to withdraw to the YieldManager.
+   */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(address(this), _amount);
   }
 
   /**
-   * @notice Pauses beacon chain deposits for specified yield provier.
+   * @notice Pauses new beacon chain deposits.
+   * @param _yieldProvider The yield provider address.
    */
   function pauseStaking(address _yieldProvider) external onlyDelegateCall {
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).pauseBeaconChainDeposits();
   }
 
   /**
-   * @notice Unpauses beacon chain deposits for specified yield provier.
-   * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
+   * @notice Resumes beacon chain deposits for the provider after a pause.
+   * @param _yieldProvider The yield provider address.
    */
   function unpauseStaking(address _yieldProvider) external onlyDelegateCall {
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).resumeBeaconChainDeposits();
   }
 
+  /**
+   * @notice Withdraws liquid staking tokens (LST) to a recipient.
+   * @dev Implementations must `lstLiabilityPrincipal` state for the yield provider.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount Amount of LST (denominated in ETH) to withdraw.
+   * @param _recipient Address receiving the LST.
+   */
   function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyDelegateCall {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if ($$.isOssificationInitiated || $$.isOssified) {
@@ -371,8 +499,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     $$.lstLiabilityPrincipal += _amount;
   }
 
-  // TODO - Role
-  // @dev Requires fresh report
+  /**
+   * @notice Begins the provider-specific ossification workflow.
+   * @param _yieldProvider The yield provider address.
+   */
   function initiateOssification(address _yieldProvider) external onlyDelegateCall {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     _payMaximumPossibleLSTLiability($$);
@@ -381,8 +511,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     IDashboard(_getYieldProviderStorage(_yieldProvider).primaryEntrypoint).voluntaryDisconnect();
   }
 
-  // Will settle as much LST liability as possible. Will return amount of liabilityEth remaining
-  // Settle interest before principal
+  /**
+   * @notice Helper function to pay the maximum possible outstanding LST liability.
+   * @param $$ Storage pointer for the YieldProvider-scoped storage.
+   * @dev Call _syncExternalLiabilitySettlement() after LST liability payment is done.
+   */
   function _payMaximumPossibleLSTLiability(YieldProviderStorage storage $$) internal {
     if ($$.isOssified) return;
     IDashboard dashboard = IDashboard($$.primaryEntrypoint);
@@ -400,15 +533,21 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   }
 
   /**
-   * @notice Start the ossification process for the yield provider.
+   * @notice Reverts a previously initiated ossification request.
+   * @param _yieldProvider The yield provider address.
    */
   function undoInitiateOssification(address _yieldProvider) external onlyDelegateCall {
     // No-op
   }
 
-  // TODO - Role
-  // Returns true if ossified after function call is done
-  function processPendingOssification(address _yieldProvider) external onlyDelegateCall returns (bool isOssificationComplete) {
+  /**
+   * @notice Process a previously initiated ossification process.
+   * @param _yieldProvider The yield provider address.
+   * @return isOssificationComplete True if the provider is now in the ossified state.
+   */
+  function processPendingOssification(
+    address _yieldProvider
+  ) external onlyDelegateCall returns (bool isOssificationComplete) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     // Give ownership to YieldManager
     IDashboard($$.primaryEntrypoint).abandonDashboard(address(this));
@@ -418,6 +557,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     isOssificationComplete = true;
   }
 
+  /**
+   * @notice Performs vendor-specific validation before the provider is registered by the YieldManager.
+   * @param _registration Registration payload for the yield provider.
+   */
   function validateAdditionToYieldManager(YieldProviderRegistration calldata _registration) external pure {
     if (_registration.yieldProviderVendor != YieldProviderVendor.LIDO_STVAULT) {
       revert UnknownYieldProviderVendor();

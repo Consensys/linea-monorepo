@@ -52,20 +52,36 @@ interface ILineaNativeYieldExtension {
    */
   error CallerIsNotYieldManager();
 
+  /**
+   * @dev Thrown when an LST withdrawal is attempted while L1MessageService still has sufficient balance to covers the claim.
+   */
   error LSTWithdrawalRequiresDeficit();
 
   /**
    * @notice Report native yield earned for L2 distribution by emitting a synthetic `MessageSent` event.
    * @dev Callable only by the registered YieldManager.
    * @param _amount The net earned yield.
+   * @param _l2YieldRecipient L2 account that the reported yield will be distributed to.
    */
   function reportNativeYield(uint256 _amount, address _l2YieldRecipient) external;
 
+  /**
+   * @notice Claims a bridged message and settles the withdrawal using minted LST when the reserve is insufficient.
+   * @dev Permissionless path that flips a transient flag so the YieldManager can verify the call stack.
+   *      Reverts with `LSTWithdrawalRequiresDeficit` unless the claimed value exceeds the contract's ETH balance.
+   * @param _params Proven `L1MessageService` claim payload.
+   * @param _yieldProvider Yield strategy that must deliver the LST to the recipient.
+   */
   function claimMessageWithProofAndWithdrawLST(
     IL1MessageService.ClaimMessageWithProofParams calldata _params,
     address _yieldProvider
   ) external;
 
+  /**
+   * @notice Returns whether the transient LST withdrawal flag is currently toggled.
+   * @dev The flag is toggled during `claimMessageWithProofAndWithdrawLST` so the YieldManager can reject
+   *      cross-chain invoked calls from `claimMessageWithProof` that lacks appropriate safeguards for LST minting.
+   */
   function isWithdrawLSTAllowed() external view returns (bool);
 
   /**

@@ -4,77 +4,91 @@ pragma solidity ^0.8.30;
 import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
 
 /**
- * @title Contract that will the YieldManager will delegatecall, to handle provider-specific yield operations.
+ * @title Interface for a YieldProvider adaptor contract to handle vendor-specific interactions.
  * @author ConsenSys Software Inc.
- * @dev YieldProvider will handle only the external protocol interactions, YieldManager will handle the remainder (storage update, input validation, etc).
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldProvider {
+  /// @notice Enumerates operations that can be paused during ossification depending on the yield provider vendor.
   enum OperationType {
     ReportYield
   }
 
-  /// @notice Thrown when an operation is forbidden while ossification is active.
-  /// @param operationType The attempted operation type.
+  /// @notice Thrown when an is blocked because ossification is either pending or complete.
+  /// @param operationType The operation that was attempted.
   error OperationNotSupportedDuringOssification(OperationType operationType);
 
-  /// @notice Thrown when the registration yield provider type is not expected.
+  /// @notice Raised when the YieldManager attempts to add a yield provider with an unexpected vendor identifier.
   error UnknownYieldProviderVendor();
 
+  /// @notice Raised when LST minting is attempted while ossification is either pending or complete.
   error MintLSTDisabledDuringOssification();
 
+  /// @notice Raised when a permissionless unstake request references more than one validator.
   error SingleValidatorOnlyForUnstakePermissionless();
 
+  /// @notice Raised when a permissionless unstake request specifies a zero exit amount.
   error NoValidatorExitForUnstakePermissionless();
 
+  /// @notice Raised when a function is called outside of a `delegatecall` from the YieldManager.
   error ContextIsNotYieldManager();
 
   /**
-   * @notice Get the ETH balance held by the yield provider that can be withdrawn immediately.
-   * @return The available ETH balance that may be withdrawn.
+   * @notice Returns the amount of ETH the provider can immediately remit back to the YieldManager.
+   * @dev Called via `delegatecall` from the YieldManager.
+   * @param _yieldProvider The yield provider address.
+   * @return availableBalance The ETH amount that can be withdrawn.
    */
-  function withdrawableValue(address _yieldProvider) external view returns (uint256);
+  function withdrawableValue(address _yieldProvider) external view returns (uint256 availableBalance);
 
   /**
-   * @notice Send ETH to the specified yield strategy.
-   * @dev Will settle any outstanding liabilities to the YieldProvider.
-   * @param _amount        The amount of ETH to send.
+   * @notice Forwards ETH from the YieldManager to the yield provider.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount Amount of ETH supplied by the YieldManager.
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
-   * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
+   * @notice Computes and returns earned yield that can be distributed to L2 users.
+   * @dev Implementations should apply provider-specific adjustments (obligations, fees, negative
+   *      yield) and mutate only `lstLiabilityPrincipal` and `currentNegativeYield` in the 
+   *      YieldProvider state.
+   * @param _yieldProvider The yield provider address.
+   * @return newReportedYield New net yield (denominated in ETH) since the prior report.
    */
   function reportYield(address _yieldProvider) external returns (uint256 newReportedYield);
 
   /**
-   * @notice Repay part or all of the outstanding LST principal liability.
-   * @param _maxAvailableRepaymentETH Maximum amount of ETH available to repay the liability.
-   * @return lstPrincipalPaid The amount of ETH used to reduce the liability.
+   * @notice Reduces the outstanding LST liability principal.
+   * @dev Called after the YieldManager has reserved `_availableFunds` for liability
+   *      settlement. Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
+   * @param _yieldProvider The yield provider address.
+   * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
+   * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
    */
-  function payLSTPrincipal(address _yieldProvider, uint256 _maxAvailableRepaymentETH) external returns (uint256 lstPrincipalPaid);
+  function payLSTPrincipal(
+    address _yieldProvider,
+    uint256 _availableFunds
+  ) external returns (uint256 lstPrincipalPaid);
 
   /**
-   * @notice Request beacon chain withdrawal.
-   * @param _withdrawalParams   Provider-specific withdrawal parameters.
+   * @notice Requests beacon chain withdrawal via EIP-7002 withdrawal contract.
+   * @dev Parameters are ABI encoded by the YieldManager and understood by the yield provider.
+   * @dev Dynamic withdrawal fee is sourced from `msg.value`
+   * @param _yieldProvider The yield provider address.
+   * @param _withdrawalParams Provider-specific payload describing the withdrawals to trigger.
    */
   function unstake(address _yieldProvider, bytes memory _withdrawalParams) external payable;
 
   /**
-   * @notice Permissionlessly request beacon chain withdrawal.
-   * @dev    Callable only when the withdrawal reserve is in deficit.
-   * @dev    The permissionless unstake amount is capped to the remaining reserve deficit that
-   *         cannot be covered by other liquidity sources:
-   *
-   *         PERMISSIONLESS_UNSTAKE_AMOUNT ≤
-   *           RESERVE_DEFICIT
-   *         - YIELD_PROVIDER_BALANCE
-   *         - YIELD_MANAGER_BALANCE
-   *         - PENDING_PERMISSIONLESS_UNSTAKE
-   *
-   * @dev Validates (validatorPubkey, validatorBalance, validatorWithdrawalCredential) against EIP-4788 beacon chain root.
-   * @param _withdrawalParams       Provider-specific withdrawal parameters.
-   * @param _withdrawalParamsProof  Merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
+   * @notice Permissionlessly requests beacon chain withdrawal via EIP-7002 withdrawal contract when reserve is under minimum threshold.
+   * @dev Implementations must verify the calldata proof (for example against EIP-4788 beacon roots)
+   *      and enforce any provider-specific safety checks. The returned amount is used by the
+   *      YieldManager to cap pending withdrawals tracked on L1.
+   * @param _yieldProvider The yield provider address.
+   * @param _withdrawalParams ABI encoded provider parameters.
+   * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
+   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */
   function unstakePermissionless(
     address _yieldProvider,
@@ -83,50 +97,55 @@ interface IYieldProvider {
   ) external payable returns (uint256 maxUnstakeAmount);
 
   /**
-   * @notice Withdraw ETH from a specified yield provider.
-   * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
-   * @dev If fund remaining, will settle any outstanding LST liabilities.
-   * @param _amount Amount to withdraw.
+   * @notice Withdraws ETH from the provider back into the YieldManager.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount Amount of ETH to withdraw to the YieldManager.
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
-   * @notice Pauses beacon chain deposits for specified yield provier.
+   * @notice Pauses new beacon chain deposits.
+   * @param _yieldProvider The yield provider address.
    */
   function pauseStaking(address _yieldProvider) external;
 
   /**
-   * @notice Unpauses beacon chain deposits for specified yield provier.
-   * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
+   * @notice Resumes beacon chain deposits for the provider after a pause.
+   * @param _yieldProvider The yield provider address.
    */
   function unpauseStaking(address _yieldProvider) external;
 
   /**
-   * @notice Mint LST to a recipient .
-   * @param _amount Amount of underlying to convert into LST.
-   * @param _recipient Address that receives the minted LST.
+   * @notice Withdraws liquid staking tokens (LST) to a recipient.
+   * @dev Implementations must `lstLiabilityPrincipal` state for the yield provider.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount Amount of LST (denominated in ETH) to withdraw.
+   * @param _recipient Address receiving the LST.
    */
   function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external;
 
   /**
-   * @notice Start the ossification process for the yield provider.
+   * @notice Begins the provider-specific ossification workflow.
+   * @param _yieldProvider The yield provider address.
    */
   function initiateOssification(address _yieldProvider) external;
 
   /**
-   * @notice Start the ossification process for the yield provider.
+   * @notice Reverts a previously initiated ossification request.
+   * @param _yieldProvider The yield provider address.
    */
   function undoInitiateOssification(address _yieldProvider) external;
 
   /**
    * @notice Process a previously initiated ossification process.
-   * @return isOssificationComplete True if ossification is completed.
+   * @param _yieldProvider The yield provider address.
+   * @return isOssificationComplete True if the provider is now in the ossified state.
    */
   function processPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
 
   /**
-   * @notice Validate the supplied registration before it is added to the yield manager.
-   * @param _registration Supplied registration data for the yield provider.
+   * @notice Performs vendor-specific validation before the provider is registered by the YieldManager.
+   * @param _registration Registration payload for the yield provider.
    */
   function validateAdditionToYieldManager(
     YieldManagerStorageLayout.YieldProviderRegistration calldata _registration

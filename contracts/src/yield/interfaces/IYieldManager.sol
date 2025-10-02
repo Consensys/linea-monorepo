@@ -12,6 +12,18 @@ import { IPermissionsManager } from "../../security/access/interfaces/IPermissio
  */
 interface IYieldManager {
 
+  /**
+   * @notice Initialization data structure for the YieldManager contract.
+   * @param pauseTypeRoles The list of pause types to associate with roles.
+   * @param unpauseTypeRoles The list of unpause types to associate with roles.
+   * @param roleAddresses The list of role address and roles to assign permissions to.
+   * @param initialL2YieldRecipients The list of initially accepted L2 yield recipient addresses.
+   * @param defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
+   * @param initialMinimumWithdrawalReservePercentageBps Initial minimum withdrawal reserve percentage in bps.
+   * @param initialTargetWithdrawalReservePercentageBps Initial target withdrawal reserve percentage in bps.
+   * @param initialMinimumWithdrawalReserveAmount Initial minimum withdrawal reserve in wei.
+   * @param initialTargetWithdrawalReserveAmount Initial target withdrawal reserve in wei.
+   */
   struct YieldManagerInitializationData {
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
@@ -24,56 +36,41 @@ interface IYieldManager {
     uint256 initialTargetWithdrawalReserveAmount;
   }
 
+  /**
+   * @notice Struct used to represent reserve threshold updates.
+   * @param isPercentage True if percentage update.
+   * @param isMinimum True if minimum threshold update.
+   */
   struct UpdateReserveConfig {
     bool isPercentage;
     bool isMinimum;
   }
 
   /**
-   * @notice Emitted when minimumWithdrawalReservePercentageBps is set.
-   * @param oldMinimumWithdrawalReservePercentageBps The previous minimumWithdrawalReservePercentageBps.
-   * @param newMinimumWithdrawalReservePercentageBps The new minimumWithdrawalReservePercentageBps.
-   */
-  event MinimumWithdrawalReservePercentageBpsSet(
-    uint256 oldMinimumWithdrawalReservePercentageBps,
-    uint256 newMinimumWithdrawalReservePercentageBps
-  );
-
-  /**
-   * @notice Emitted when minimumWithdrawalReserveAmountSet is set.
-   * @param oldMinimumWithdrawalReserveAmount The previous minimumWithdrawalReserveAmountSet.
-   * @param newMinimumWithdrawalReserveAmount The new minimumWithdrawalReserveAmountSet.
-   */
-  event MinimumWithdrawalReserveAmountSet(
-    uint256 oldMinimumWithdrawalReserveAmount,
-    uint256 newMinimumWithdrawalReserveAmount
-  );
-
-  /**
-   * @notice Emitted when funds are sent to a yield provider.
-   * @param yieldProvider The yield provider that received funds.
-   * @param amount Total amount forwarded to the provider.
-   * @param lstPrincipalRepaid Portion of the amount used to repay LST principal liabilities.
-   * @param userFundsIncreased Portion of the amount remaining in the yield provider.
-   */
-  event YieldProviderFunded(
-    address indexed yieldProvider,
-    uint256 amount,
-    uint256 lstPrincipalRepaid,
-    uint256 userFundsIncreased
-  );
-
-  /**
-   * @notice Emitted when the withdrawal reserve sends funds to the yield manager.
+   * @notice Emitted when ETH is received from the withdrawal reserve.
    * @param amount Amount of ETH received.
    */
   event ReserveFundsReceived(uint256 amount);
 
   /**
-   * @notice Emitted when new native yield is reported for a provider.
-   * @param yieldProvider The provider that produced yield.
+   * @notice Emitted when ETH is sent to a YieldProvider.
+   * @param yieldProvider The yield provider address.
+   * @param amount Gross amount transferred to the YieldProvider.
+   * @param userFundsIncrement Portion of `amount` that is dedicated to staking.
+   * @param lstPrincipalRepaid Portion of `amount` used to repay outstanding LST principal.
+  */
+  event YieldProviderFunded(
+    address indexed yieldProvider,
+    uint256 amount,
+    uint256 userFundsIncrement,
+    uint256 lstPrincipalRepaid
+  );
+
+  /**
+   * @notice Emitted when new earned yield is reported for a YieldProvider.
+   * @param yieldProvider The yield provider address.
    * @param l2YieldRecipient The L2 address receiving the yield.
-   * @param yieldAmount Amount of yield accounted for users.
+   * @param yieldAmount Reported amount of new earned yield.
    */
   event NativeYieldReported(
     address indexed yieldProvider,
@@ -81,30 +78,31 @@ interface IYieldManager {
     uint256 yieldAmount
   );
 
-  // TODO - Also parameter for lstPrincipalRepayment
   /**
-   * @notice Emitted when funds are withdrawn from a yield provider.
-   * @param yieldProvider The provider that processed the withdrawal.
-   * @param amountRequested Total amount requested to withdraw.
-   * @param amountWithdrawn Amount actually withdrawn from the provider.
-   * @param amountSentToReserve Portion sent directly to the withdrawal reserve.
-   */
+   * @notice Emitted when ETH is requested from a yield provider.
+   * @param yieldProvider The yield provider address.
+   * @param amountRequested Amount requested to withdraw from the YieldProvider.
+   * @param amountWithdrawn Actual amount withdrawn from the YieldProvider.
+   * @param reserveIncrementAmount Amount routed to the reserve.
+   * @param lstPrincipalPaid Amount of the YieldProvider withdrawal used to repay LST liability principal.
+  */
   event YieldProviderWithdrawal(
     address indexed yieldProvider,
     uint256 amountRequested,
     uint256 amountWithdrawn,
-    uint256 amountSentToReserve
+    uint256 reserveIncrementAmount,
+    uint256 lstPrincipalPaid
   );
 
   /**
    * @notice Emitted when the withdrawal reserve is augmented by an operator.
-   * @param yieldProvider The provider supplying additional liquidity.
-   * @param requestedAmount The targeted increase of the reserve.
-   * @param reserveIncrementAmount h
-   * @param fromYieldManager Amount provided by current YieldManager balance.
-   * @param fromYieldProvider Amount withdrawn from the provider.
-   * @param lstPrincipalPaid h
-   */
+   * @param yieldProvider The yield provider address.
+   * @param requestedAmount Amount requested to route to the reserve.
+   * @param reserveIncrementAmount Total amount actually routed to the reserve.
+   * @param fromYieldManager Portion filled  from the YieldManager balance.
+   * @param fromYieldProvider Portion filled from the YieldProvider withdrawal.
+   * @param lstPrincipalPaid Amount of the YieldProvider withdrawal used to repay LST liability principal.
+  */
   event WithdrawalReserveAugmented(
     address indexed yieldProvider,
     uint256 requestedAmount,
@@ -116,12 +114,12 @@ interface IYieldManager {
 
   /**
    * @notice Emitted when the withdrawal reserve is replenished permissionlessly.
-   * @param yieldProvider The provider tapped for liquidity.
-   * @param targetDeficit a
-   * @param reserveIncrementAmount a
-   * @param fromYieldManager a
-   * @param fromYieldProvider a
-   */
+   * @param yieldProvider The yield provider address.
+   * @param targetDeficit The deficit from target threshold at the operation start.
+   * @param reserveIncrementAmount Total amount routed to the reserve.
+   * @param fromYieldManager Portion filled  from the YieldManager balance.
+   * @param fromYieldProvider Portion filled from the YieldProvider withdrawal.
+  */
   event WithdrawalReserveReplenished(
     address indexed yieldProvider,
     uint256 targetDeficit,
@@ -131,45 +129,108 @@ interface IYieldManager {
   );
 
   /**
-   * @notice Emitted when a yield provider is added.
-   * @param yieldProvider The provider address added to the manager.
-   * @param yieldProviderVendor Provider type identifier.
-   * @param primaryEntrypoint Entrypoint when not ossified.
-   * @param ossifiedEntrypoint Entrypoint used once ossified.
-   * @param receiveCaller Address that will send ETH to YieldManager on withdraw.
+   * @notice Emitted when staking is paused for a YieldProvider.
+   * @param yieldProvider The yield provider address.
+   */
+  event YieldProviderStakingPaused(address indexed yieldProvider);
 
+  /**
+   * @notice Emitted when staking is unpaused for a YieldProvider.
+   * @param yieldProvider The yield provider address.
+   */
+  event YieldProviderStakingUnpaused(address indexed yieldProvider);
+
+  /**
+   * @notice Emitted when LST is withdrawn from a YieldProvider.
+   * @param yieldProvider The yield provider address.
+   * @param recipient Address that received LST.
+   * @param amount Amount of LST minted (denominated in ETH).
+  */
+  event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amount);
+
+  /**
+   * @notice Emitted when ossification is initiated for a YieldProvider instance.
+   * @param yieldProvider The yield provider address.
+   */
+  event YieldProviderOssificationInitiated(address indexed yieldProvider);
+
+  /**
+   * @notice Emitted when ossification initiation is undone.
+   * @param yieldProvider The yield provider address.
+   */
+  event YieldProviderOssificationReverted(address indexed yieldProvider);
+
+  /**
+   * @notice Emitted when a previously initiated ossification has progressed to the next stage.
+   * @param yieldProvider The yield provider address.
+   * @param isOssified Whether ossification has finalized.
+   */
+  event YieldProviderOssificationProcessed(address indexed yieldProvider, bool isOssified);
+
+  /**
+   * @notice Emitted when a donation is received.
+   * @param yieldProvider YieldProvider instance whose negative yield was offset.
+   * @param amount Amount of ETH donated.
+  */
+  event DonationProcessed(
+    address indexed yieldProvider,
+    uint256 amount
+  );
+
+  /**
+   * @notice Emitted when a yield provider is added.
+   * @param yieldProvider YieldProvider instance that was added to the registry.
+   * @param yieldProviderVendor Specific type of YieldProvider adaptor.
+   * @param primaryEntrypoint Contract used for operations when not-ossified.
+   * @param ossifiedEntrypoint Contract used for operations once ossification is finalized.
+   * @param receiveCaller Contract which is expected to .call() the YieldManager during withdrawals.
    */
   event YieldProviderAdded(
     address indexed yieldProvider,
-    YieldManagerStorageLayout.YieldProviderVendor yieldProviderVendor,
+    YieldManagerStorageLayout.YieldProviderVendor indexed yieldProviderVendor,
     address primaryEntrypoint,
-    address ossifiedEntrypoint,
+    address indexed ossifiedEntrypoint,
     address receiveCaller
   );
 
   /**
    * @notice Emitted when a yield provider is removed.
-   * @param yieldProvider The provider being removed.
-   * @param emergencyRemoval True if removal bypassed remaining funds checks.
+   * @param yieldProvider YieldProvider instance that was removed from the registry.
+   * @param emergencyRemoval True when the removal bypassed the usual requirements of
+   *                         0 userFunds and 0 negativeYield.
    */
   event YieldProviderRemoved(address indexed yieldProvider, bool emergencyRemoval);
 
   /**
-   * @notice Emitted when LST principal is minted for a provider.
-   * @param yieldProvider The provider on whose behalf LST was minted.
-   * @param recipient LST recipient address.
-   * @param amount Amount of LST minted.
+   * @notice Emitted when an L2 yield recipient address is added to the allow-list.
+   * @param l2YieldRecipient The L2YieldRecipient address to add.
    */
-  event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amount);
+  event L2YieldRecipientAdded(address l2YieldRecipient);
 
   /**
-   * @notice Emitted when the L1 message service address is updated.
-   * @param oldL1MessageService Previous address.
-   * @param newL1MessageService New address.
+   * @notice Emitted when an L2 yield recipient address is removed from the allow-list.
+   * @param l2YieldRecipient The L2YieldRecipient address to remove.
    */
-  event L1MessageServiceUpdated(
-    address indexed oldL1MessageService,
-    address indexed newL1MessageService
+  event L2YieldRecipientRemoved(address l2YieldRecipient);
+
+  /**
+   * @notice Emitted when the minimum withdrawal reserve percentage is updated.
+   * @param oldMinimumWithdrawalReservePercentageBps Previous minimum expressed in basis points.
+   * @param newMinimumWithdrawalReservePercentageBps New minimum expressed in basis points.
+   */
+  event MinimumWithdrawalReservePercentageBpsSet(
+    uint256 oldMinimumWithdrawalReservePercentageBps,
+    uint256 newMinimumWithdrawalReservePercentageBps
+  );
+
+  /**
+   * @notice Emitted when the absolute minimum withdrawal reserve is updated.
+   * @param oldMinimumWithdrawalReserveAmount Previous minimum reserve in wei.
+   * @param newMinimumWithdrawalReserveAmount New minimum reserve in wei.
+  */
+  event MinimumWithdrawalReserveAmountSet(
+    uint256 oldMinimumWithdrawalReserveAmount,
+    uint256 newMinimumWithdrawalReserveAmount
   );
 
   /**
@@ -192,57 +253,20 @@ interface IYieldManager {
     uint256 newTargetWithdrawalReserveAmount
   );
 
-  event L2YieldRecipientAdded(address l2YieldRecipient);
-
-  event L2YieldRecipientRemoved(address l2YieldRecipient);
+  /**
+   * @dev Thrown when delegatecall to a YieldProvider instance fails.
+   */
+  error DelegateCallFailed();
 
   /**
-   * @notice Emitted when staking is paused for a provider.
-   * @param yieldProvider The provider whose staking was paused.
+   * @dev Thrown an unknown YieldProvider address is used.
    */
-  event YieldProviderStakingPaused(address indexed yieldProvider);
+  error UnknownYieldProvider();
 
   /**
-   * @notice Emitted when staking is unpaused for a provider.
-   * @param yieldProvider The provider whose staking was unpaused.
+   * @dev Thrown when an unknown L2YieldRecipient address is used.
    */
-  event YieldProviderStakingUnpaused(address indexed yieldProvider);
-
-  /**
-   * @notice Emitted when ossification is initiated for a provider.
-   * @param yieldProvider The provider being ossified.
-   */
-  event YieldProviderOssificationInitiated(address indexed yieldProvider);
-
-  /**
-   * @notice Emitted when ossification initiation is undone.
-   * @param yieldProvider The provider whose ossification was reverted.
-   */
-  event YieldProviderOssificationReverted(address indexed yieldProvider);
-
-  /**
-   * @notice Emitted when ossification processing occurs.
-   * @param yieldProvider The provider being processed.
-   * @param isOssified Whether the provider is now ossified.
-   */
-  event YieldProviderOssificationProcessed(address indexed yieldProvider, bool isOssified);
-
-  /**
-   * @notice Emitted when a donation is routed.
-   * @param yieldProvider Provider associated with the donation accounting.
-   * @param amount Amount donated.
-   */
-  event DonationProcessed(
-    address indexed yieldProvider,
-    uint256 amount
-  );
-
-  /**
-   * @notice Emitted when externally settled LST principal is reconciled.
-   * @param yieldProvider Provider whose liability was reduced.
-   * @param amount Amount of LST principal reconciled.
-   */
-  event ExternalLSTPrincipalReconciled(address indexed yieldProvider, uint256 amount);
+  error UnknownL2YieldRecipient();
 
   /**
    * @dev Thrown when sender is not the L1MessageService.
@@ -250,19 +274,9 @@ interface IYieldManager {
   error SenderNotL1MessageService();
 
   /**
-   * @dev Thrown when an operation will leave the withdrawal reserve below the minimum required amount.
+   * @dev Thrown when an operation will leave the withdrawal reserve below the minimum threshold.
    */
   error InsufficientWithdrawalReserve();
-
-  /**
-   * @dev Thrown when delegatecall to a YieldProvider fails.
-   */
-  error DelegateCallFailed();
-
-  /**
-   * @dev Thrown when >10000 bps is provided.
-   */
-  error BpsMoreThan10000();
 
   /**
    * @dev Thrown when caller is missing a required role.
@@ -271,61 +285,153 @@ interface IYieldManager {
    */
   error CallerMissingRole(bytes32 role1, bytes32 role2);
 
-  error UnknownYieldProvider();
-
-  error UnknownL2YieldRecipient();
-
-  error YieldProviderAlreadyAdded();
-
-  error YieldProviderHasRemainingFunds();
-
-  error StakingAlreadyPaused();
-
-  error StakingAlreadyUnpaused();
-
-  error TargetReservePercentageMustBeAboveMinimum();
-
-  error TargetReserveAmountMustBeAboveMinimum();
-
+  /**
+   * @dev Thrown when a permissionless rebalance operation is attempted when the withdrawal reserve is not in deficit.
+   */
   error WithdrawalReserveNotInDeficit();
 
-  error UnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
+  /**
+   * @dev Thrown when a permissionless unstake request exceeds the minimum required amount to restore the reserve to the target threshold,
+   *      taking into consideration available funds in the system that can be routed to the reserve.
+   */
+  error PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
 
+  /**
+   * @dev Thrown when pausing staking for a YieldProvider which is currently paused.
+   */
+  error StakingAlreadyPaused();
+
+  /**
+   * @dev Thrown when resuming staking for a YieldProvider which is currently unpaused.
+   */
+  error StakingAlreadyUnpaused();
+
+  /**
+   * @dev Thrown when attempting to unpause staking with an outstanding LST principal liability.
+   */
+  error UnpauseStakingForbiddenWithCurrentLSTLiability();
+
+  /**
+   * @dev Thrown when attempting to unpause staking when ossification has been initiated or finalized.
+   */
+  error UnpauseStakingForbiddenDuringOssification();
+
+  /**
+   * @dev Thrown when LST withdrawal is attempted through another route other than L1MessageService.claimMessageWithProofAndWithdrawLST.
+   */
   error LSTWithdrawalNotAllowed();
 
-  error AlreadyOssified();
-
+  /**
+   * @dev Thrown when attempting to undo or progress an ossification process that was not previously initiated.
+   */
   error OssificationNotInitiated();
 
-  error UnpauseStakingForbiddenWithCurrentLSTPrincipal();
+  /**
+   * @dev Thrown when attempting to initiate or progress the ossification process for a YieldProvider that is already ossified.
+   */
+  error AlreadyOssified();
 
-  error L2YieldRecipientAlreadyAdded();
-
-  error NotL1MessageService();
-
+  /**
+   * @dev Thrown when the YieldManager receives ETH from an unexpected sender.
+   */
   error UnexpectedReceiveCaller();
 
+  /**
+   * @dev Thrown when adding a YieldProvider instance that was previously registered
+   */
+  error YieldProviderAlreadyAdded();
+
+  /**
+   * @dev Thrown when removing a YieldProvider with remaining user funds.
+   */
+  error YieldProviderHasRemainingFunds();
+
+  /**
+   * @dev Thrown when removing a YieldProvider with remaining negative yield.
+   */
+  error YieldProviderHasRemainingNegativeYield();
+  
+  /**
+   * @dev Thrown when adding an L2YieldRecipient that has previously been added to the allowlist.
+   */
+  error L2YieldRecipientAlreadyAdded();
+
+  /**
+   * @dev Thrown when >10000 bps is provided.
+   */
+  error BpsMoreThan10000();
+
+  /**
+   * @dev Thrown when the target reserve percentage will be set below the minimum percentage.
+   */
+  error TargetReservePercentageMustBeAboveMinimum();
+
+  /**
+   * @dev Thrown when the target reserve threshold amount will be set below the minimum amount.
+   */
+  error TargetReserveAmountMustBeAboveMinimum();
+
+  /**
+   * @notice Returns the balance of the withdrawal reserve (i.e. Linea L1MessageService).
+   * @return withdrawalReserveBalance Reserve balance in wei.
+   */
   function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance);
 
+  /**
+   * @notice Returns the total ETH in the native yield system.
+   * @dev Sums the withdrawal reserve, YieldManager balance, and capital deployed into yield providers.
+   * @return totalSystemBalance Total system balance in wei.
+   */
   function getTotalSystemBalance() external view returns (uint256 totalSystemBalance);
 
-  function getMinimumWithdrawalReserveByPercentage()
+  /**
+   * @notice Returns the minimum withdrawal reserve derived from the percentage.
+   * @return minimumWithdrawalReserveByPercentage Minimum reserve level expressed in wei.
+   */
+  function getMinimumWithdrawalReserveAmountByPercentage()
     external
     view
     returns (uint256 minimumWithdrawalReserveByPercentage);
 
-  function getTargetWithdrawalReserveByPercentage() external view returns (uint256 targetWithdrawalReserveByPercentage);
+  /**
+   * @notice Returns the target withdrawal reserve derived from the percentage.
+   * @return targetWithdrawalReserveByPercentage Target reserve level expressed in wei.
+   */
+  function getTargetWithdrawalReserveAmountByPercentage() external view returns (uint256 targetWithdrawalReserveByPercentage);
 
+  /**
+   * @notice Returns the effective minimum withdrawal reserve considering both percentage and absolute amount configurations.
+   * @return minimumWithdrawalReserve Effective minimum reserve in wei.
+   */
   function getMinimumWithdrawalReserve() external view returns (uint256 minimumWithdrawalReserve);
 
+  /**
+   * @notice Returns the effective target withdrawal reserve considering both percentage and absolute amount configurations.
+   * @return targetWithdrawalReserve Effective target reserve in wei.
+   */
   function getTargetWithdrawalReserve() external view returns (uint256 targetWithdrawalReserve);
 
+  /**
+   * @notice Returns the shortfall between the minimum reserve threshold and the current reserve balance.
+   * @return minimumReserveDeficit Amount of ETH required to meet the minimum reserve, or zero if already satisfied.
+   */
   function getMinimumReserveDeficit() external view returns (uint256 minimumReserveDeficit);
 
+  /**
+   * @notice Returns the shortfall between the target reserve threshold and the current reserve balance.
+   * @return targetReserveDeficit Amount of ETH required to meet the target reserve, or zero if already satisfied.
+   */
   function getTargetReserveDeficit() external view returns (uint256 targetReserveDeficit);
 
+  /**
+   * @return bool True if the withdrawal reserve balance is below the effective minimum threshold.
+   */
   function isWithdrawalReserveBelowMinimum() external view returns (bool);
 
+  /**
+   * @param _yieldProvider The yield provider address.
+   * @return withdrawableAmount Amount of ETH that can be instantly withdrawn from the YieldProvider.
+   */
   function withdrawableValue(address _yieldProvider) external returns (uint256);
 
   /**
@@ -343,20 +449,22 @@ interface IYieldManager {
   function transferFundsToReserve(uint256 _amount) external;
 
   /**
-   * @notice Send ETH to the specified yield strategy.
+   * @notice Send ETH to the specified YieldProvider instance.
    * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
    * @dev Reverts if the withdrawal reserve is below the minimum threshold.
-   * @dev Will settle any outstanding liabilities to the YieldProvider.
+   * @dev ETH sent to the YieldProvider will be eagerly used to settle any outstanding LST liabilities.
    * @param _yieldProvider The target yield provider contract.
    * @param _amount        The amount of ETH to send.
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
-   * @notice Report newly accrued yield, excluding any portion reserved for system obligations.
+   * @notice Report newly accrued yield for the YieldProvider since the last report.
    * @dev YIELD_REPORTER_ROLE is required to execute.
-   * @param _yieldProvider      Yield provider address.
-   * @param _l2YieldRecipient   L2 address that will receive the yield. Must be previously registered in the YieldManager.
+   * @dev Reported yield excludes amounts reserved to pay system obligations.
+   * @param _yieldProvider      The yield provider address.
+   * @param _l2YieldRecipient   The L2YieldRecipient address.
+   * @return newReportedYield New net yield (denominated in ETH) since the prior report.
    */
   function reportYield(address _yieldProvider, address _l2YieldRecipient) external returns (uint256 newReportedYield);
 
@@ -371,19 +479,22 @@ interface IYieldManager {
   /**
    * @notice Permissionlessly request beacon chain withdrawal from a specified yield provider.
    * @dev    Callable only when the withdrawal reserve is in deficit.
-   * @dev    The permissionless unstake amount is capped to the remaining reserve deficit that
+   * @dev    The permissionless unstake amount is capped to the remaining target deficit that
    *         cannot be covered by other liquidity sources:
    *
    *         PERMISSIONLESS_UNSTAKE_AMOUNT ≤
-   *           RESERVE_DEFICIT
+   *           TARGET_DEFICIT
    *         - YIELD_PROVIDER_BALANCE
    *         - YIELD_MANAGER_BALANCE
    *         - PENDING_PERMISSIONLESS_UNSTAKE
    *
-   * @dev Validates (validatorPubkey, validatorBalance, validatorWithdrawalCredential) against EIP-4788 beacon chain root.
+   * @dev PENDING_PERMISSIONLESS_UNSTAKE will be greedily reduced with i.) donations or ii.) future withdrawals from the YieldProvider
    * @param _yieldProvider          Yield provider address.
    * @param _withdrawalParams       Provider-specific withdrawal parameters.
-   * @param _withdrawalParamsProof  Merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
+   * @param _withdrawalParamsProof  Data containing merkle proof of _withdrawalParams to be verified against EIP-4788 beacon chain root.
+   * @return maxUnstakeAmount       Maximum amount expected to be withdrawn from the beacon chain.
+   *                                - Cannot efficiently get exact amount as relevant state and computation is located in the consensus client,
+   *                                and not the execution layer.
    */
   function unstakePermissionless(
     address _yieldProvider,
@@ -392,92 +503,161 @@ interface IYieldManager {
   ) external payable returns (uint256 maxUnstakeAmount);
 
   /**
-   * @notice Withdraw ETH from a specified yield provider.
-   * @dev YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
-   * @dev If withdrawal reserve is in deficit, will route funds to the bridge.
-   * @dev If fund remaining, will settle any outstanding LST liabilities.
-   * @param _yieldProvider          Yield provider address.
-   * @param _amount                 Amount to withdraw.
+   * @notice Withdraw ETH from a YieldProvider.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
+   * @dev This function proactively allocates withdrawn funds in the following priority:
+   *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
+   *      to restore the deficit.
+   *      2. If there is an outstanding LST liability, it will be paid.
+   *      3. YieldManager will keep the remainder.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount Amount to withdraw..
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev RESERVE_OPERATOR_ROLE is required to execute.
-   * @dev Settles any outstanding LST liabilities, provided this does not leave the withdrawal reserve in deficit.
+   * @dev This function proactively allocates withdrawn funds in the following priority:
+   *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
+   *      to restore the deficit.
+   *      2. If there is no remaining target deficit and there is an outstanding LST liability, it will be paid.
+   *      3. The remainder will be sent to the withdrawal reserve.
    * @param _yieldProvider          Yield provider address.
-   * @param _amount                 Amount to withdraw.
+   * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
    */
   function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
 
   /**
-   * @notice Permissionlessly rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev Only available when the withdrawal is in deficit.
-   * @param _yieldProvider          Yield provider address.
+   * @notice Permissionlessly top up the withdrawal reserve to the target threshold using available liquidity.
+   * @dev Callable only when the reserve is below the effective minimum threshold. 
+   * @dev The function first spends the YieldManager's balance to clear the target threshold deficit.
+   * @dev If a target deficit still remains, then it will withdraw from the specified YieldProvider.
+   * @param _yieldProvider The yield provider address.
    */
   function replenishWithdrawalReserve(address _yieldProvider) external;
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.
    * @dev STAKING_PAUSER_ROLE is required to execute.
-   * @param _yieldProvider          Yield provider address.
+   * @param _yieldProvider The yield provider address.
    */
   function pauseStaking(address _yieldProvider) external;
 
   /**
    * @notice Unpauses beacon chain deposits for specified yield provier.
    * @dev STAKING_UNPAUSER_ROLE is required to execute.
-   * @dev Will revert if the withdrawal reserve is in deficit, or there is an existing LST liability.
-   * @param _yieldProvider          Yield provider address.
+   * @dev Will revert if:
+   *      - The withdrawal reserve is in deficit, or
+   *      - There is an existing LST liability, or
+   *      - Ossification has been initiated or finalized.
+   * @param _yieldProvider The yield provider address.
    */
   function unpauseStaking(address _yieldProvider) external;
 
+  /**
+   * @notice Withdraw LST from a specified YieldProvider instance.
+   * @dev Callable only by the L1MessageService
+   * @dev Will pause staking to mitigate further reserve deficits.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount Amount of LST (ETH-denominated) to withdraw.
+   * @param _recipient L1 address to receive the LST.
+   */
   function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external;
 
+  /**
+   * @notice Initiate the ossification sequence for a provider.
+   * @dev Will pause beacon chain staking and LST withdrawals.
+   * @param _yieldProvider The yield provider address.
+   */
   function initiateOssification(address _yieldProvider) external;
 
+  /**
+   * @notice Revert a previously initiated ossification.
+   * @param _yieldProvider The yield provider address.
+   */
   function undoInitiateOssification(address _yieldProvider) external;
 
+  /**
+   * @notice Progress an initiated ossification process.
+   * @param _yieldProvider The yield provider address.
+   * @return isOssificationComplete True if ossification is finalized.
+   */
   function processPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
 
+  /**
+   * @notice Donate ETH that offsets a specified yield provider's negative yield.
+   * @dev Donations are forwarded to the withdrawal reserve.
+   * @dev The donate() function is located on the YieldManager because it is otherwise tricky to track donations
+   *      to offset negative yield for a specific yield provider.
+   * @dev `pendingPermissionlessUnstake` is greedily decremented against incoming donations.
+   * @param _yieldProvider The yield provider address.
+   */
   function donate(address _yieldProvider) external payable;
 
+  /**
+   * @notice Register a new YieldProvider adaptor instance.
+   * @param _yieldProvider The yield provider address.
+   * @param _registration Struct representing expected information to add a YieldProvider adaptor instance.
+   */
   function addYieldProvider(
     address _yieldProvider,
-    YieldManagerStorageLayout.YieldProviderRegistration calldata _yieldProviderRegistration
+    YieldManagerStorageLayout.YieldProviderRegistration calldata _registration
   ) external;
 
+  /**
+   * @notice Remove a YieldProvider instance from the YieldManager.
+   * @dev Has safety checks to ensure that there is no remaining user funds or negative yield on the YieldProvider.
+   * @param _yieldProvider The yield provider address.
+   */
   function removeYieldProvider(address _yieldProvider) external;
 
+  /**
+   * @notice Emergency remove a YieldProvider instance from the YieldManager, skipping the regular safety checks.
+   * @dev Without this function, newly reported yield can prevent deregistration of the YieldProvider.
+   * @param _yieldProvider The yield provider address.
+   */
   function emergencyRemoveYieldProvider(address _yieldProvider) external;
 
   /**
-   * @notice Set l2YieldRecipient address.
+   * @notice Add an address to the allowlist of L2YieldRecipients.
    * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
-   * @param _newL2YieldRecipient L2YieldRecipient address.
+   * @param _L2YieldRecipient L2YieldRecipient address.
    */
-  function addL2YieldRecipient(address _newL2YieldRecipient) external;
+  function addL2YieldRecipient(address _L2YieldRecipient) external;
 
-  function removeL2YieldRecipient(address _newL2YieldRecipient) external;
+  /**
+   * @notice Remove an address from the allow-list of L2YieldRecipients.
+   * @dev L2_YIELD_RECIPIENT_SETTER_ROLE is required to execute.
+   * @param _L2YieldRecipient L2YieldRecipient address.
+   */
+  function removeL2YieldRecipient(address _L2YieldRecipient) external;
 
   /**
    * @notice Set minimum withdrawal reserve percentage.
-   * @dev Units of bps.
-   * @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
    * @param _minimumWithdrawalReservePercentageBps Minimum withdrawal reserve percentage in bps.
    */
   function setMinimumWithdrawalReservePercentageBps(uint16 _minimumWithdrawalReservePercentageBps) external;
 
   /**
-   * @notice Set minimum withdrawal reserve.
-   * @dev Effective minimum reserve is min(minimumWithdrawalReservePercentageBps, minimumWithdrawalReserveAmount).
+   * @notice Set minimum withdrawal reserve as an absolute amount.
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
    * @param _minimumWithdrawalReserveAmount Minimum withdrawal reserve amount.
    */
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external;
 
+  /**
+   * @notice Set target withdrawal reserve percentage.
+   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
+   * @param _targetWithdrawalReservePercentageBps Target withdrawal reserve percentage in bps.
+   */
   function setTargetWithdrawalReservePercentageBps(uint16 _targetWithdrawalReservePercentageBps) external;
 
+  /**
+   * @notice Set target withdrawal reserve as an absolute amount.
+   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
+   * @param _targetWithdrawalReserveAmount Target withdrawal reserve amount.
+   */
   function setTargetWithdrawalReserveAmount(uint256 _targetWithdrawalReserveAmount) external;
 }
