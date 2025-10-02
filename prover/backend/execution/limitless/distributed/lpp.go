@@ -55,7 +55,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 	// We wait for the shared randomness file to arrive
 	var (
 		sharedRandomnessFileName = fmt.Sprintf("%s-%s-commit.bin", req.StartBlock, req.EndBlock)
-		sharedRandomnessFile     = path.Join(cfg.Limitless.SharedRandomnessDir, sharedRandomnessFileName)
+		sharedRandomnessFile     = path.Join(cfg.Limitless.SharedRandomnessDir, config.RequestsFromSubDir, sharedRandomnessFileName)
 	)
 	req.SharedRandomnessFile = sharedRandomnessFile
 	err = waitForSharedRandomnessFile(cfg, req)
@@ -72,7 +72,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 
 	var (
 		lppProofFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessLPP.ModuleIndex)
-		proofLPPFile     = path.Join(cfg.Limitless.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), lppProofFileName)
+		proofLPPFile     = path.Join(cfg.Limitless.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), config.RequestsFromSubDir, lppProofFileName)
 	)
 
 	// Incase the prev. process was interrupted, we clear the previous corrupted files (if it exists)
