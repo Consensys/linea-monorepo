@@ -372,12 +372,6 @@ interface IYieldManager {
   error TargetReserveAmountMustBeAboveMinimum();
 
   /**
-   * @notice Returns the balance of the withdrawal reserve (i.e. Linea L1MessageService).
-   * @return withdrawalReserveBalance Reserve balance in wei.
-   */
-  function getWithdrawalReserveBalance() external view returns (uint256 withdrawalReserveBalance);
-
-  /**
    * @notice Returns the total ETH in the native yield system.
    * @dev Sums the withdrawal reserve, YieldManager balance, and capital deployed into yield providers.
    * @return totalSystemBalance Total system balance in wei.
