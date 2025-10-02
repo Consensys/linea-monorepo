@@ -159,7 +159,7 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runtime) map[ifaces.ColID]field.Element {
 
 	var (
-		evaluationMap = make(map[ifaces.ColID]field.Element)
+		evaluationMap = make(map[ifaces.ColID]field.Element, len(ctx.NewQuery.Pols)+len(ctx.ExplicitlyEvaluated))
 		univParams    = run.GetParams(ctx.NewQuery.QueryID).(query.UnivariateEvalParams)
 		x             = univParams.X
 	)

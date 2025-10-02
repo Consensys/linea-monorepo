@@ -151,15 +151,11 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 			hasher.Reset()
-
-			for i := 0; i < chunkSize; i++ {
-				// fbytes := colHashes[startChunk+i].Bytes()
-				hasher.WriteElement(colHashes[startChunk+i])
-			}
-
+			s := hasher.SumElements(colHashes[startChunk : startChunk+chunkSize])
+			sbytes := s.Bytes()
 			// Manually copies the hasher's digest into the leaves to
 			// skip a verbose type conversion.
-			copy(leaves[chunkID][:], hasher.Sum(nil))
+			copy(leaves[chunkID][:], sbytes[:])
 		}
 	})
 
