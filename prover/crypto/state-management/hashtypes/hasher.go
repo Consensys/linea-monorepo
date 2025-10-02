@@ -10,19 +10,19 @@ import (
 )
 
 // Wrapper types for hasher which additionally provides a max value
-type Hasher struct {
+type OldHasher struct {
 	hash.Hash         // the underlying hasher
 	maxValue  Bytes32 // the maximal value obtainable with that hasher
 }
 
 // Immutable accessor for the max value of the hasher
-func (h Hasher) MaxBytes32() Bytes32 {
+func (h OldHasher) MaxBytes32() Bytes32 {
 	return h.maxValue
 }
 
 // Create a Keccak hasher
-func Keccak() Hasher {
-	return Hasher{
+func Keccak() OldHasher {
+	return OldHasher{
 		Hash: crypto.NewKeccakState(),
 		maxValue: Bytes32{
 			255, 255, 255, 255,
@@ -38,10 +38,10 @@ func Keccak() Hasher {
 }
 
 // Create a new MiMC hasher
-func MiMC() Hasher {
+func MiMC() OldHasher {
 	var maxVal [8]field.Element
 	maxVal[7] = field.NewFromString("-1")
-	return Hasher{
+	return OldHasher{
 		Hash:     mimc.NewMiMC(),
 		maxValue: HashToBytes32(maxVal), // TODO@yao: what's the maxValue of MiMC hasher
 	}

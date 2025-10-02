@@ -62,7 +62,7 @@ var (
 	TypeOfArithmetization    = reflect.TypeOf(arithmetization.Arithmetization{})
 	TypeOfFrontendVariable   = reflect.TypeOf((*frontend.Variable)(nil)).Elem()
 	TypeOfHashFuncGenerator  = reflect.TypeOf(func() hash.Hash { return nil })
-	TypeOfHashTypeHasher     = reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} })
+	TypeOfHashTypeHasher     = reflect.TypeOf(func() hashtypes.OldHasher { return hashtypes.OldHasher{} })
 	TypeOfRingSisKeyPtr      = reflect.TypeOf(&ringsis.Key{})
 	TypeofRingSisKeyGenParam = reflect.TypeOf(ringsis.KeyGen{})
 	TypeOfMutexPtr           = reflect.TypeOf(&sync.Mutex{})
