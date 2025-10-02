@@ -61,6 +61,7 @@ describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
   let verifier: string;
   let callForwardingProxy: CallForwardingProxy;
+  let mockYieldManager: string;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
@@ -79,7 +80,7 @@ describe("Linea Rollup contract", () => {
   });
 
   beforeEach(async () => {
-    ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    ({ verifier, mockYieldManager, lineaRollup } = await loadFixture(deployLineaRollupFixture));
   });
 
   describe("Fallback/Receive tests", () => {
@@ -108,6 +109,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
@@ -131,6 +133,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: ADDRESS_ZERO,
         defaultAdmin: securityCouncil.address,
       };
@@ -154,6 +157,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: ADDRESS_ZERO,
       };
@@ -177,6 +181,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
@@ -220,6 +225,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
@@ -247,6 +253,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
@@ -281,6 +288,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       });

@@ -60,6 +60,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       hardfork: "prague",
+      allowUnlimitedContractSize: true, // TODO - Remove when ready for PR
     },
     mainnet: {
       accounts: [process.env.MAINNET_PRIVATE_KEY || EMPTY_HASH],

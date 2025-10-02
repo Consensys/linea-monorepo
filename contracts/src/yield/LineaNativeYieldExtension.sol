@@ -55,7 +55,7 @@ abstract contract LineaNativeYieldExtension is
    * @param _yieldManager YieldManager address.
    */
   function __LineaNativeYieldExtension_init(address _yieldManager) internal onlyInitializing {
-    setYieldManager(_yieldManager);
+    _storage()._yieldManager = _yieldManager;
   }
 
   function isWithdrawLSTAllowed() external view returns (bool) {
@@ -88,9 +88,6 @@ abstract contract LineaNativeYieldExtension is
    * @param _newYieldManager YieldManager address.
    */
   function setYieldManager(address _newYieldManager) public onlyRole(YIELD_MANAGER_SETTER_ROLE) {
-    if (_newYieldManager == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
     LineaNativeYieldExtensionStorage storage $ = _storage();
     emit YieldManagerChanged($._yieldManager, _newYieldManager, msg.sender);
     $._yieldManager = _newYieldManager;

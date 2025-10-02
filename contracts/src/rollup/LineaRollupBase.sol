@@ -120,6 +120,9 @@ abstract contract LineaRollupBase is
 
     __Permissions_init(_initializationData.roleAddresses);
 
+    if (_initializationData.initialYieldManager == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
     __LineaNativeYieldExtension_init(_initializationData.initialYieldManager);
 
     verifiers[0] = _initializationData.defaultVerifier;

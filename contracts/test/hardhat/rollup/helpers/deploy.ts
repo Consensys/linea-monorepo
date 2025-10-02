@@ -50,12 +50,21 @@ export async function deployCallForwardingProxy(target: string): Promise<CallFor
   return callForwardingProxy;
 }
 
+export async function deployMockYieldManager(): Promise<string> {
+  const mockYieldManagerFactory = await ethers.getContractFactory("MockYieldManager");
+  const mockYieldManager = await mockYieldManagerFactory.deploy();
+  await mockYieldManager.waitForDeployment();
+  return await mockYieldManager.getAddress();
+}
+
 export async function deployLineaRollupFixture() {
   const { securityCouncil } = await loadFixture(getAccountsFixture);
   const roleAddresses = await loadFixture(getRoleAddressesFixture);
 
   const verifier = await deployTestPlonkVerifierForDataAggregation();
   const { parentStateRootHash } = firstCompressedDataContent;
+
+  const mockYieldManager = await deployMockYieldManager();
 
   const initializationData = {
     initialStateRootHash: parentStateRootHash,
@@ -67,6 +76,7 @@ export async function deployLineaRollupFixture() {
     roleAddresses,
     pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
     unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+    initialYieldManager: mockYieldManager,
     fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
     defaultAdmin: securityCouncil.address,
   };
@@ -76,7 +86,7 @@ export async function deployLineaRollupFixture() {
     unsafeAllow: ["constructor", "incorrect-initializer-order"],
   })) as unknown as TestLineaRollup;
 
-  return { verifier, lineaRollup };
+  return { verifier, mockYieldManager, lineaRollup };
 }
 
 async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {
