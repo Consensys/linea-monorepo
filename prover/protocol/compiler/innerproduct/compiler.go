@@ -68,7 +68,7 @@ func compile[T zk.Element](comp *wizard.CompiledIOP[T], options ...Option) {
 	)
 
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
-		q, ok := comp.QueriesParams.Data(qName).(query.InnerProduct)
+		q, ok := comp.QueriesParams.Data(qName).(query.InnerProduct[T])
 		if !ok {
 			// not an inner-product query, ignore
 			continue

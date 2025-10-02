@@ -12,14 +12,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestInnerProduct(t *testing.T) {
 
-	define := func(b *wizard.Builder) {
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 		for i, c := range testCases {
-			bs := make([]ifaces.Column[T], len(c.bName))
+			bs := make([]ifaces.Column[zk.NativeElement], len(c.bName))
 			a := b.RegisterCommit(c.aName, c.size)
 			for i, name := range c.bName {
 				bs[i] = b.RegisterCommit(name, c.size)
@@ -30,7 +31,7 @@ func TestInnerProduct(t *testing.T) {
 		}
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 		for j, c := range testCases {
 			run.AssignColumn(c.aName, c.a)
 			for i, name := range c.bName {
@@ -42,7 +43,7 @@ func TestInnerProduct(t *testing.T) {
 		}
 	}
 
-	comp := wizard.Compile(define, Compile(), dummy.Compile)
+	comp := wizard.Compile(define, Compile[zk.NativeElement](), dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
@@ -59,7 +60,7 @@ func compileForSize[T zk.Element](
 		// batchingCoin is used to collapse all the inner-product queries
 		// into a batched inner-product query so that we only need to
 		// commit to a single `Summation` column for all theses.
-		batchingCoin coin.Info
+		batchingCoin coin.Info[T]
 	)
 
 	if hasMoreThan1Pair {
@@ -70,7 +71,7 @@ func compileForSize[T zk.Element](
 
 	ctx.Summation = comp.InsertCommit(
 		round,
-		deriveName[ifaces.ColID]("SUMMATION", size, comp.SelfRecursionCount),
+		wizardutils.DeriveName[ifaces.ColID, T]("SUMMATION", size, comp.SelfRecursionCount),
 		size,
 	)
 
@@ -82,7 +83,7 @@ func compileForSize[T zk.Element](
 
 		batchingCoin = comp.InsertCoin(
 			round,
-			deriveName[coin.Name]("BATCHING_COIN", size, comp.SelfRecursionCount),
+			wizardutils.DeriveName[coin.Name, T]("BATCHING_COIN", size, comp.SelfRecursionCount),
 			coin.FieldExt,
 		)
 
@@ -107,7 +108,7 @@ func compileForSize[T zk.Element](
 	// This constraints set the recurrent property of summation
 	comp.InsertGlobal(
 		round,
-		deriveName[ifaces.QueryID]("SUMMATION_CONSISTENCY", size, comp.SelfRecursionCount),
+		wizardutils.DeriveName[ifaces.QueryID, T]("SUMMATION_CONSISTENCY", size, comp.SelfRecursionCount),
 		symbolic.Sub[T](
 			ctx.Summation,
 			column.Shift(ctx.Summation, -1),
@@ -118,7 +119,7 @@ func compileForSize[T zk.Element](
 	// This constraint ensures that summation has the correct initial value
 	comp.InsertLocal(
 		round,
-		deriveName[ifaces.QueryID]("SUMMATION_INIT", size, comp.SelfRecursionCount),
+		wizardutils.DeriveName[ifaces.QueryID, T]("SUMMATION_INIT", size, comp.SelfRecursionCount),
 		symbolic.Sub[T](ctx.Collapsed, ctx.Summation),
 	)
 
@@ -126,12 +127,12 @@ func compileForSize[T zk.Element](
 	// the linear combinations of the alleged openings of the inner-products.
 	ctx.SummationOpening = comp.InsertLocalOpening(
 		round,
-		deriveName[ifaces.QueryID]("SUMMATION_END", size, comp.SelfRecursionCount),
+		wizardutils.DeriveName[ifaces.QueryID, T]("SUMMATION_END", size, comp.SelfRecursionCount),
 		column.Shift(ctx.Summation, -1),
 	)
 
 	lastRound := comp.NumRounds() - 1
-	comp.RegisterVerifierAction(lastRound, &VerifierForSize{
+	comp.RegisterVerifierAction(lastRound, &VerifierForSize[T]{
 		Queries:          queries,
 		SummationOpening: ctx.SummationOpening,
 		BatchOpening:     batchingCoin,
