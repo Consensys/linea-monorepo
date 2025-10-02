@@ -40,8 +40,24 @@ public class CancunMxpOperation extends MxpOperation {
     this.cancunMxpCall = (CancunMxpCall) mxpCall;
   }
 
-  public static short MXP_FROM_CTMAX_TO_LINECOUNT =
-      4; // 3 for decoder, macro and scenario rows + 1 for computation row (from ctMax to nRow)
+  /**
+   * {@link CancunMxpOperation#MXP_FROM_CTMAX_TO_LINECOUNT} is used to convert <b>ctMax</b>, which
+   * accounts only for computation rows, to the full line count of the MXP instruction, i.e. number
+   * of rows of MXP instruction as a whole.
+   *
+   * <p>The conversion is
+   *
+   * <pre> nRows = ctMax + {@link CancunMxpOperation#MXP_FROM_CTMAX_TO_LINECOUNT} </pre>
+   *
+   * <p>{@link CancunMxpOperation#MXP_FROM_CTMAX_TO_LINECOUNT} is the sum of the following
+   * components:
+   *
+   * <ul>
+   *   <li>3 ≡ 1 decoder row + 1 macro row + 1 scenario row
+   *   <li>1 ≡ to convert <b>ctMax</b> (of computation rows) to "<b>nComputationRows</b>"
+   * </ul>
+   */
+  public static short MXP_FROM_CTMAX_TO_LINECOUNT = 4;
 
   @Override
   protected int computeLineCount() {
