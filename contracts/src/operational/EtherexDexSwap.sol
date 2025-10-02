@@ -1,29 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
-import { IV3DexSwap } from "./interfaces/IV3DexSwap.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IV3DexSwap } from "./interfaces/IV3DexSwap.sol";
+import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
+import { IWETH9 } from "./interfaces/IWETH9.sol";
 
-interface IWETH9 is IERC20 {
-  function deposit() external payable;
-  function withdraw(uint256) external;
-}
-
-interface ISwapRouterV3 {
-  struct ExactInputSingleParams {
-    address tokenIn;
-    address tokenOut;
-    uint24 tickSpacing;
-    address recipient;
-    uint256 deadline;
-    uint256 amountIn;
-    uint256 amountOutMinimum;
-    uint160 sqrtPriceLimitX96;
-  }
-
-  function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
-}
-
+/**
+ * @title EtherexDexSwap.
+ * @dev A contract for swapping tokens on the Etherex decentralized exchange.
+ * @author Consensys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 contract EtherexDexSwap is IV3DexSwap {
   /// @dev Address of the Etherex SwapRouter contract
   address public constant ROUTER = 0x8BE024b5c546B5d45CbB23163e1a4dca8fA5052A;

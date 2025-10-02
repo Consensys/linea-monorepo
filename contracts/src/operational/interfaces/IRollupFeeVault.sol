@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
+/**
+ * @title Upgradeable Fee Vault Contract.
+ * @notice Accepts ETH for later economic functions.
+ * @author Consensys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 interface IRollupFeeVault {
   /**
    * @dev Thrown when a parameter is the zero address.
@@ -40,12 +46,14 @@ interface IRollupFeeVault {
   /**
    * @dev Emitted when an invoice is processed.
    * @dev If amountRequested < amountPaid, the difference is previous unpaid invoice amount.
+   * @param receiver The address of the invoice receiver.
    * @param startTimestamp The start timestamp of the invoicing period.
    * @param endTimestamp The end timestamp of the invoicing period.
    * @param amountPaid The amount that was paid.
    * @param amountRequested The amount that was requested.
    */
   event InvoiceProcessed(
+    address indexed receiver,
     uint256 indexed startTimestamp,
     uint256 indexed endTimestamp,
     uint256 amountPaid,
@@ -82,4 +90,10 @@ interface IRollupFeeVault {
    * @param newOperatingCosts The new operating costs value.
    */
   event OperatingCostsUpdated(uint256 newOperatingCosts);
+
+  /**
+   * @dev Emitted when the operating costs receiver is updated.
+   * @param newOperatingCostsReceiver The new operating costs receiver address.
+   */
+  event OperatingCostsReceiverUpdated(address newOperatingCostsReceiver);
 }

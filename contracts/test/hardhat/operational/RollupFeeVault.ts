@@ -342,7 +342,7 @@ describe("RollupFeeVault", () => {
         rollupFeeVault,
         rollupFeeVault.connect(invoiceSetter).sendOperatingCosts(startTimestamp, endTimestamp, operatingCostsAmount),
         "InvoiceProcessed",
-        [startTimestamp, endTimestamp, 0n, operatingCostsAmount],
+        [operatingCostsReceiver, startTimestamp, endTimestamp, 0n, operatingCostsAmount],
       );
 
       const operatingCostsReceiverBalanceAfter = await ethers.provider.getBalance(operatingCostsReceiver.address);
@@ -365,7 +365,7 @@ describe("RollupFeeVault", () => {
         rollupFeeVault,
         rollupFeeVault.connect(invoiceSetter).sendOperatingCosts(startTimestamp, endTimestamp, operatingCostsAmount),
         "InvoiceProcessed",
-        [startTimestamp, endTimestamp, balanceAvailable, operatingCostsAmount],
+        [operatingCostsReceiver, startTimestamp, endTimestamp, balanceAvailable, operatingCostsAmount],
       );
 
       const operatingCostsReceiverBalanceAfter = await ethers.provider.getBalance(operatingCostsReceiver.address);
@@ -389,7 +389,7 @@ describe("RollupFeeVault", () => {
         rollupFeeVault,
         rollupFeeVault.connect(invoiceSetter).sendOperatingCosts(startTimestamp, endTimestamp, operatingCostsAmount),
         "InvoiceProcessed",
-        [startTimestamp, endTimestamp, operatingCostsAmount, operatingCostsAmount],
+        [operatingCostsReceiver, startTimestamp, endTimestamp, operatingCostsAmount, operatingCostsAmount],
       );
 
       const operatingCostsReceiverBalanceAfter = await ethers.provider.getBalance(operatingCostsReceiver.address);
@@ -484,6 +484,39 @@ describe("RollupFeeVault", () => {
       ]);
 
       expect(await rollupFeeVault.v3Dex()).to.equal(randomAddress);
+    });
+  });
+
+  describe("updateOperatingCostsReceiver", () => {
+    it("Should revert if caller is not admin", async () => {
+      const randomAddress = toChecksumAddress(generateRandomBytes(20));
+      await expectRevertWithReason(
+        rollupFeeVault.connect(nonAuthorizedAccount).updateOperatingCostsReceiver(randomAddress),
+        "AccessControl: account " +
+          nonAuthorizedAccount.address.toLowerCase() +
+          " is missing role " +
+          (await rollupFeeVault.DEFAULT_ADMIN_ROLE()).toLowerCase(),
+      );
+    });
+
+    it("Should revert if operatingCostsReceiver address is zero address", async () => {
+      await expectRevertWithCustomError(
+        rollupFeeVault,
+        rollupFeeVault.connect(admin).updateOperatingCostsReceiver(ZeroAddress),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should update operatingCostsReceiver address", async () => {
+      const randomAddress = toChecksumAddress(generateRandomBytes(20));
+      await expectEvent(
+        rollupFeeVault,
+        rollupFeeVault.connect(admin).updateOperatingCostsReceiver(randomAddress),
+        "OperatingCostsReceiverUpdated",
+        [randomAddress],
+      );
+
+      expect(await rollupFeeVault.operatingCostsReceiver()).to.equal(randomAddress);
     });
   });
 

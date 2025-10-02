@@ -6,6 +6,11 @@ import { IL1BurnerContract } from "./interfaces/IL1BurnerContract.sol";
 import { IL1MessageService } from "../messaging/l1/interfaces/IL1MessageService.sol";
 import { IL1MessageManager } from "../messaging/l1/interfaces/IL1MessageManager.sol";
 
+/**
+ * @title L1 Burner Contract.
+ * @author Consensys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 contract L1BurnerContract is IL1BurnerContract {
   address public immutable LINEA_TOKEN;
   address public immutable MESSAGE_SERVICE;

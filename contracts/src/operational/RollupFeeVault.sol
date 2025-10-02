@@ -187,7 +187,7 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
       require(success, OperatingCostsTransferFailed());
     }
 
-    emit InvoiceProcessed(_startTimestamp, _endTimestamp, amountToPay, _amount);
+    emit InvoiceProcessed(receiver, _startTimestamp, _endTimestamp, amountToPay, _amount);
   }
 
   /**
@@ -218,6 +218,16 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
     require(_newDex != address(0), ZeroAddressNotAllowed());
     v3Dex = IV3DexSwap(_newDex);
     emit DexUpdated(_newDex);
+  }
+
+  /**
+   * @notice Updates the address of the operating costs receiver.
+   * @param _newOperatingCostsReceiver Address of the new operating costs receiver.
+   */
+  function updateOperatingCostsReceiver(address _newOperatingCostsReceiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    require(_newOperatingCostsReceiver != address(0), ZeroAddressNotAllowed());
+    operatingCostsReceiver = _newOperatingCostsReceiver;
+    emit OperatingCostsReceiverUpdated(_newOperatingCostsReceiver);
   }
 
   /**

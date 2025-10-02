@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
+/**
+ * @title EtherexDexSwap.
+ * @dev A contract for swapping tokens on the Etherex decentralized exchange.
+ * @author Consensys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 interface IV3DexSwap {
   /**
    * @dev Thrown when no ETH is sent with the swap call.
