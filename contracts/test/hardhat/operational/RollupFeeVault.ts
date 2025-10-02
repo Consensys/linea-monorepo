@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { L2MessageService, RollupFeeVault, TestDexSwap, TestERC20, TokenBridge } from "../../../typechain-types";
@@ -554,7 +553,7 @@ describe("RollupFeeVault", () => {
       await expectRevertWithCustomError(
         rollupFeeVault,
         rollupFeeVault.connect(burner).burnAndBridge(minLineaOut, deadline, 0n),
-        "ZeroOperatingCosts",
+        "OperatingCostsNotZero",
       );
     });
 

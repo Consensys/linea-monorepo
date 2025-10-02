@@ -39,6 +39,11 @@ interface IRollupFeeVault {
   error ZeroOperatingCosts();
 
   /**
+   * @dev Thrown when the operating costs are not zero.
+   */
+  error OperatingCostsNotZero();
+
+  /**
    * @dev Thrown when the contract balance is insufficient.
    */
   error InsufficientBalance();

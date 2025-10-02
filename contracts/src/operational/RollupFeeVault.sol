@@ -43,14 +43,14 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
   /**
    * @notice Initializes the contract state.
    * @param _defaultAdmin Address to be granted the default admin role.
-   * @param _invoiceSetter Address to be granted the invoice role.
+   * @param _invoiceSetter Address to be granted the invoice setter role.
    * @param _burner Address to be granted the burner role.
    * @param _operatingCostsReceiver Address to receive operating costs.
    * @param _tokenBridge Address of the token bridge contract.
    * @param _messageService Address of the L2 message service contract.
    * @param _l1BurnerContract Address of the L1 burner contract.
    * @param _lineaToken Address of the LINEA token contract.
-   * @param _dex Address of the DEX contract.
+   * @param _v3Dex Address of the DEX contract.
    */
   function initialize(
     address _defaultAdmin,
@@ -61,7 +61,7 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
     address _messageService,
     address _l1BurnerContract,
     address _lineaToken,
-    address _dex
+    address _v3Dex
   ) external initializer {
     __AccessControl_init();
     __RollupFeeVault_init(
@@ -73,21 +73,21 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
       _messageService,
       _l1BurnerContract,
       _lineaToken,
-      _dex
+      _v3Dex
     );
   }
 
   /**
    * @notice Initializes the contract state for upgrade.
    * @param _defaultAdmin Address to be granted the default admin role.
-   * @param _invoiceSetter Address to be granted the invoice role.
+   * @param _invoiceSetter Address to be granted the invoice setter role.
    * @param _burner Address to be granted the burner role.
    * @param _operatingCostsReceiver Address to receive operating costs.
    * @param _tokenBridge Address of the token bridge contract.
    * @param _messageService Address of the L2 message service contract.
    * @param _l1BurnerContract Address of the L1 burner contract.
    * @param _lineaToken Address of the LINEA token contract.
-   * @param _dex Address of the DEX contract.
+   * @param _v3Dex Address of the DEX contract.
    */
   function initializeRolesAndStorageVariables(
     address _defaultAdmin,
@@ -98,7 +98,7 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
     address _messageService,
     address _l1BurnerContract,
     address _lineaToken,
-    address _dex
+    address _v3Dex
   ) external reinitializer(2) {
     __AccessControl_init();
     __RollupFeeVault_init(
@@ -110,7 +110,7 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
       _messageService,
       _l1BurnerContract,
       _lineaToken,
-      _dex
+      _v3Dex
     );
   }
 
@@ -123,7 +123,7 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
     address _messageService,
     address _l1BurnerContract,
     address _lineaToken,
-    address _dex
+    address _v3Dex
   ) internal onlyInitializing {
     require(_defaultAdmin != address(0), ZeroAddressNotAllowed());
     require(_invoiceSetter != address(0), ZeroAddressNotAllowed());
@@ -133,7 +133,7 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
     require(_messageService != address(0), ZeroAddressNotAllowed());
     require(_l1BurnerContract != address(0), ZeroAddressNotAllowed());
     require(_lineaToken != address(0), ZeroAddressNotAllowed());
-    require(_dex != address(0), ZeroAddressNotAllowed());
+    require(_v3Dex != address(0), ZeroAddressNotAllowed());
 
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
     _grantRole(INVOICE_SETTER_ROLE, _invoiceSetter);
@@ -146,7 +146,7 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
     messageService = L2MessageService(_messageService);
     l1BurnerContract = _l1BurnerContract;
     lineaToken = _lineaToken;
-    v3Dex = IV3DexSwap(_dex);
+    v3Dex = IV3DexSwap(_v3Dex);
   }
 
   /**
@@ -241,7 +241,7 @@ contract RollupFeeVault is AccessControlUpgradeable, IRollupFeeVault {
     uint256 _deadline,
     uint160 _sqrtPriceLimitX96
   ) public onlyRole(BURNER_ROLE) {
-    require(operatingCosts == 0, ZeroOperatingCosts());
+    require(operatingCosts == 0, OperatingCostsNotZero());
 
     uint256 minimumFee = messageService.minimumFeeInWei();
 
