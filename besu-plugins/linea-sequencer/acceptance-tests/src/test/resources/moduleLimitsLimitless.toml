@@ -16,7 +16,6 @@
 #
 # Arithmetization module limits
 #
-# We set 16 for unchecked modules EUC, MMIO, MMU, RLPTXN, RLPUTILS, ROM, ROMLEX, TRM, WCP
 ADD                 = 524288
 BIN                 = 262144
 BLAKE_MODEXP_DATA   = 16384
@@ -24,31 +23,31 @@ BLOCK_DATA          = 4096
 BLOCK_HASH          = 2048
 BLS                 = 1
 EC_DATA             = 262144
-EUC                 = 16
+EUC                 = 65536
 EXP                 = 8192
 EXT                 = 65536
 GAS                 = 65536
 HUB                 = 2097152
 LOG_DATA            = 65536
 LOG_INFO            = 4096
-MMIO                = 16
-MMU                 = 16
+MMIO                = 4194304
+MMU                 = 4194304
 MOD                 = 131072
 MUL                 = 65536
 MXP                 = 524288
 OOB                 = 262144
 POINT_EVAL          = 1
 RLP_ADDR            = 4096
-RLP_TXN             = 16
+RLP_TXN             = 131072
 RLP_TXN_RCPT        = 65536
-ROM                 = 16
-ROM_LEX             = 16
+ROM                 = 4194304
+ROM_LEX             = 1024
 SHAKIRA_DATA        = 32768
 SHF                 = 65536
 STP                 = 16384
-TRM                 = 16
+TRM                 = 32768
 TXN_DATA            = 8192
-WCP                 = 16
+WCP                 = 262144
 # NOTE: in the original file the limits were just shy of powers of 2, e.g. ADD = 524286
 # Question: this seemed deliberate; it could be related to spillings; if so we may want
 # to reduce all limits above by the corresponding spillings value (or 16 for simplicity)
@@ -99,6 +98,6 @@ BLOCK_L1_SIZE      = 1000000
 BLOCK_L2_L1_LOGS   = 16
 BLOCK_TRANSACTIONS = 200 # max number of tx in an L2 block
 
-# copied EC_DATA limit for now, BLS_DATA should be empty in Prague-v1.0
-BLS_DATA = 16
-RLP_UTILS = 16
+# BLS_DATA should be empty in Prague-v1.0, we set that limit ti be sure, and still small so it doesn't overflow
+BLS_DATA = 4096
+RLP_UTILS = 131072
