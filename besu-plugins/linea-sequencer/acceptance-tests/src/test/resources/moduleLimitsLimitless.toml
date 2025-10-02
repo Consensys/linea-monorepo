@@ -4,14 +4,6 @@
 # Changing this values may compromise the system.
 # issue: https://github.com/Consensys/zkevm-monorepo/issues/525
 ##
-
-##
-# This file specifies prover limit by each EVM module
-# WARN: The prover/arithmetization team has the owneship of this.
-# Changing this values may compromise the system.
-# issue: https://github.com/Consensys/zkevm-monorepo/issues/525
-##
-
 [traces-limits]
 #
 # Arithmetization module limits
@@ -99,5 +91,5 @@ BLOCK_L2_L1_LOGS   = 16
 BLOCK_TRANSACTIONS = 200 # max number of tx in an L2 block
 
 # BLS_DATA should be empty in Prague-v1.0, we set that limit ti be sure, and still small so it doesn't overflow
-BLS_DATA = 4096
+BLS_DATA = 8192
 RLP_UTILS = 131072

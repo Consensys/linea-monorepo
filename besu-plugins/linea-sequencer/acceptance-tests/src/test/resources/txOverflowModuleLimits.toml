@@ -53,7 +53,7 @@ BLOCK_L1_SIZE   = 1000000
 BLOCK_L2_L1_LOGS = 16
 BLOCK_TRANSACTIONS       = 200 # max number of tx in an L2 block
 
-BLS_DATA = 4096
+BLS_DATA = 8192
 RLP_UTILS = 1300
 
 #
