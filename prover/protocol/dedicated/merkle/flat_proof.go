@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // FlatProof is a collection of columns representing a Merkle proof in a flat
@@ -63,7 +62,7 @@ func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
 	}
 	for i := range proofs {
 		for j := range proofs[i].Siblings {
-			nodeAsFr := types.Bytes32ToHash(proofs[i].Siblings[j])
+			nodeAsFr := proofs[i].Siblings[j]
 			for k := 0; k < blockSize; k++ {
 				assignment[k][j] = append(assignment[k][j], nodeAsFr[k])
 			}
@@ -97,7 +96,7 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 
 		newProof := smt.Proof{
 			Path:     field.ToInt(pos.GetPtr(i)),
-			Siblings: make([]types.Bytes32, len(p.Nodes[0])),
+			Siblings: make([]field.Octuplet, len(p.Nodes[0])),
 		}
 
 		for n := range p.Nodes[0] {
@@ -105,7 +104,7 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 			for j := 0; j < blockSize; j++ {
 				node[j] = p.Nodes[j][n].GetColAssignmentAt(run, i)
 			}
-			newProof.Siblings[n] = types.HashToBytes32(node)
+			newProof.Siblings[n] = node
 		}
 
 		proofs = append(proofs, newProof)
