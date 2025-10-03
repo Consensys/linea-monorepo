@@ -3,9 +3,11 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"text/template"
@@ -237,4 +239,121 @@ func setupFsTestSpotInstance(t *testing.T) (cfg *config.Config) {
 	}
 
 	return cfg
+}
+
+// --- Replace TestRunDistController with this version ---
+func TestRunDistController(t *testing.T) {
+	conf := setupFsTestLimitless(t)
+
+	// --- Bootstrap jobs (must live under Execution.RequestsRootDir/requests) ---
+	bsSucc := createLimitlessInputFile(
+		filepath.Join(conf.Execution.RequestsRootDir), // <- IMPORTANT: requests-root
+		"bootstrap",
+		101, 102, 0, "",
+	)
+	bsFail := createLimitlessInputFile(
+		filepath.Join(conf.Execution.RequestsRootDir),
+		"bootstrap",
+		103, 104, 77, "",
+	)
+
+	// --- Conglomeration jobs (metadata requests) ---
+	cgSucc := createLimitlessInputFile(
+		filepath.Join(conf.ExecutionLimitless.MetadataDir), "conglomeration",
+		201, 202, 0, "",
+	)
+	cgFail := createLimitlessInputFile(
+		filepath.Join(conf.ExecutionLimitless.MetadataDir), "conglomeration",
+		203, 204, 2, "",
+	)
+
+	// --- GL and LPP jobs for all modules ---
+	glSucc, glFail := []string{}, []string{}
+	lppSucc, lppFail := []string{}, []string{}
+
+	for _, mod := range config.ALL_MODULES {
+		glSucc = append(glSucc, createLimitlessInputFile(
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL"),
+			"gl", 300, 301, 0, mod,
+		))
+		glFail = append(glFail, createLimitlessInputFile(
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL"),
+			"gl", 302, 303, 137, mod,
+		))
+		lppSucc = append(lppSucc, createLimitlessInputFile(
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP"),
+			"lpp", 400, 401, 0, mod,
+		))
+		lppFail = append(lppFail, createLimitlessInputFile(
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP"),
+			"lpp", 402, 403, 137, mod,
+		))
+	}
+
+	// Run controller
+	ctx, stop := context.WithCancel(context.Background())
+	go runController(ctx, conf)
+	time.Sleep(4 * time.Second)
+	stop()
+
+	// --- Assertions ---
+
+	// Bootstrap: done files live under the requests-root requests-done
+	require.FileExists(t, filepath.Join(conf.Execution.RequestsRootDir, config.RequestsDoneSubDir, bsSucc+".success"))
+	require.FileExists(t, filepath.Join(conf.Execution.RequestsRootDir, config.RequestsDoneSubDir, bsFail+".failure.code_77"))
+
+	// Conglomeration (metadata) - these go to metadata/requests-done
+	require.FileExists(t, filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir, cgSucc+".success"))
+	require.FileExists(t, filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir, cgFail+".failure.code_2"))
+
+	// GL + LPP for all modules (requests-done under each module)
+	for i, mod := range config.ALL_MODULES {
+		// GL
+		require.FileExists(t,
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir, glSucc[i]+".success"))
+		require.FileExists(t,
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir, glFail[i]+".failure.code_137"))
+
+		// LPP
+		require.FileExists(t,
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir, lppSucc[i]+".success"))
+		require.FileExists(t,
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir, lppFail[i]+".failure.code_137"))
+	}
+}
+
+// --- Slightly updated createLimitlessInputFile: keeps behaviour but creates files under <dir>/<requests-from> or <dir>/<mod>/requests -->
+func createLimitlessInputFile(dir, jobType string, start, end, exitWith int, mod string) string {
+	var fname string
+	switch jobType {
+	case "bootstrap":
+		fname = fmt.Sprintf("%d-%d-etv0.2.3-stv1.2.3-getZkProof.json", start, end)
+	case "conglomeration":
+		fname = fmt.Sprintf("%d-%d-metadata-getZkProof.json", start, end)
+	case "gl":
+		fname = fmt.Sprintf("%d-%d-seg-0-mod-0-gl-wit.bin", start, end)
+	case "lpp":
+		fname = fmt.Sprintf("%d-%d-seg-0-mod-0-lpp-wit.bin", start, end)
+	default:
+		panic("bad jobType")
+	}
+
+	// Module subdir if needed
+	if mod != "" {
+		dir = filepath.Join(dir, mod, config.RequestsFromSubDir)
+	} else {
+		// For bootstrap the caller passes the requests-root, so append requests-from there.
+		dir = filepath.Join(dir, config.RequestsFromSubDir)
+	}
+
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		panic(err)
+	}
+
+	full := filepath.Join(dir, fname)
+	content := fmt.Sprintf("#!/bin/sh\nexit %d\n", exitWith)
+	if err := os.WriteFile(full, []byte(content), 0o755); err != nil {
+		panic(err)
+	}
+	return fname
 }
