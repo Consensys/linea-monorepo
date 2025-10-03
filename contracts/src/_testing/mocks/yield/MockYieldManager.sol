@@ -10,9 +10,7 @@ contract MockYieldManager {
   address private reentryYieldProvider;
   bool private shouldAttemptReentry;
 
-  event LSTWithdrawalFlag(
-    bool indexed flag
-  );
+  event LSTWithdrawalFlag(bool indexed flag);
 
   function receiveFundsFromReserve() external payable {}
 

@@ -5,7 +5,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { MockYieldManager__factory, TestLineaRollup } from "contracts/typechain-types";
-import { deployLineaRollupFixture, getAccountsFixture } from "../helpers";
+import { deployLineaRollupFixture } from "../helpers";
 import {
   ADDRESS_ZERO,
   EMPTY_CALLDATA,
@@ -25,6 +25,7 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
   calculateRollingHash,
+  getAccountsFixture,
 } from "../../common/helpers";
 
 describe("Linea Rollup contract", () => {

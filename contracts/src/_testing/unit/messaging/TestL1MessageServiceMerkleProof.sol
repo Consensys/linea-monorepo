@@ -85,7 +85,9 @@ contract TestL1MessageServiceMerkleProof is L1MessageService, TestSetPauseTypeRo
     _addL2MerkleRoots(_newRoot, _treeDepth);
   }
 
-  function validateAndConsumeMessageProof(ClaimMessageWithProofParams calldata _params) external returns (bytes32 messageLeafHash) {
+  function validateAndConsumeMessageProof(
+    ClaimMessageWithProofParams calldata _params
+  ) external returns (bytes32 messageLeafHash) {
     return _validateAndConsumeMessageProof(_params);
   }
 }

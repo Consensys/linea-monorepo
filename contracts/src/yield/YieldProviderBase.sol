@@ -25,14 +25,11 @@ abstract contract YieldProviderBase is YieldManagerStorageLayout, IYieldProvider
     YIELD_MANAGER = _yieldManager;
   }
 
-
   /**
    * @dev Modifier to ensure the function is only invoked via delegatecall from YieldManager.
    */
   modifier onlyDelegateCall() {
-    if (address(this) != YIELD_MANAGER) {
-      revert ContextIsNotYieldManager();
-    }
+    require(address(this) == YIELD_MANAGER, ContextIsNotYieldManager());
     _;
   }
 }

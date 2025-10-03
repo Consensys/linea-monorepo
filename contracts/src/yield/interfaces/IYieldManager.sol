@@ -11,7 +11,6 @@ import { IPermissionsManager } from "../../security/access/interfaces/IPermissio
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldManager {
-
   /**
    * @notice Initialization data structure for the YieldManager contract.
    * @param pauseTypeRoles The list of pause types to associate with roles.
@@ -62,7 +61,7 @@ interface IYieldManager {
    * @param amount Gross amount transferred to the YieldProvider.
    * @param userFundsIncrement Portion of `amount` that is dedicated to staking.
    * @param lstPrincipalRepaid Portion of `amount` used to repay outstanding LST principal.
-  */
+   */
   event YieldProviderFunded(
     address indexed yieldProvider,
     uint256 amount,
@@ -76,11 +75,7 @@ interface IYieldManager {
    * @param l2YieldRecipient The L2 address receiving the yield.
    * @param yieldAmount Reported amount of new earned yield.
    */
-  event NativeYieldReported(
-    address indexed yieldProvider,
-    address indexed l2YieldRecipient,
-    uint256 yieldAmount
-  );
+  event NativeYieldReported(address indexed yieldProvider, address indexed l2YieldRecipient, uint256 yieldAmount);
 
   /**
    * @notice Emitted when ETH is requested from a yield provider.
@@ -89,7 +84,7 @@ interface IYieldManager {
    * @param amountWithdrawn Actual amount withdrawn from the YieldProvider.
    * @param reserveIncrementAmount Amount routed to the reserve.
    * @param lstPrincipalPaid Amount of the YieldProvider withdrawal used to repay LST liability principal.
-  */
+   */
   event YieldProviderWithdrawal(
     address indexed yieldProvider,
     uint256 amountRequested,
@@ -106,7 +101,7 @@ interface IYieldManager {
    * @param fromYieldManager Portion filled  from the YieldManager balance.
    * @param fromYieldProvider Portion filled from the YieldProvider withdrawal.
    * @param lstPrincipalPaid Amount of the YieldProvider withdrawal used to repay LST liability principal.
-  */
+   */
   event WithdrawalReserveAugmented(
     address indexed yieldProvider,
     uint256 requestedAmount,
@@ -123,7 +118,7 @@ interface IYieldManager {
    * @param reserveIncrementAmount Total amount routed to the reserve.
    * @param fromYieldManager Portion filled  from the YieldManager balance.
    * @param fromYieldProvider Portion filled from the YieldProvider withdrawal.
-  */
+   */
   event WithdrawalReserveReplenished(
     address indexed yieldProvider,
     uint256 targetDeficit,
@@ -149,7 +144,7 @@ interface IYieldManager {
    * @param yieldProvider The yield provider address.
    * @param recipient Address that received LST.
    * @param amount Amount of LST minted (denominated in ETH).
-  */
+   */
   event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amount);
 
   /**
@@ -175,11 +170,8 @@ interface IYieldManager {
    * @notice Emitted when a donation is received.
    * @param yieldProvider YieldProvider instance whose negative yield was offset.
    * @param amount Amount of ETH donated.
-  */
-  event DonationProcessed(
-    address indexed yieldProvider,
-    uint256 amount
-  );
+   */
+  event DonationProcessed(address indexed yieldProvider, uint256 amount);
 
   /**
    * @notice Emitted when a yield provider is added.
@@ -336,7 +328,7 @@ interface IYieldManager {
    * @dev Thrown when removing a YieldProvider with remaining negative yield.
    */
   error YieldProviderHasRemainingNegativeYield();
-  
+
   /**
    * @dev Thrown when adding an L2YieldRecipient that has previously been added to the allowlist.
    */
@@ -501,7 +493,7 @@ interface IYieldManager {
 
   /**
    * @notice Permissionlessly top up the withdrawal reserve to the target threshold using available liquidity.
-   * @dev Callable only when the reserve is below the effective minimum threshold. 
+   * @dev Callable only when the reserve is below the effective minimum threshold.
    * @dev The function first spends the YieldManager's balance to clear the target threshold deficit.
    * @dev If a target deficit still remains, then it will withdraw from the specified YieldProvider.
    * @param _yieldProvider The yield provider address.

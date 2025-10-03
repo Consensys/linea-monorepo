@@ -17,7 +17,13 @@ import { PermissionsManager } from "../security/access/PermissionsManager.sol";
  * @dev Sole writer to YieldManagerStorageLayout.
  * @custom:security-contact security-report@linea.build
  */
-contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, PermissionsManager, YieldManagerStorageLayout, IYieldManager {
+contract YieldManager is
+  AccessControlUpgradeable,
+  YieldManagerPauseManager,
+  PermissionsManager,
+  YieldManagerStorageLayout,
+  IYieldManager
+{
   /// @notice The role required to send ETH to a yield provider.
   bytes32 public constant YIELD_PROVIDER_FUNDER_ROLE = keccak256("YIELD_PROVIDER_FUNDER_ROLE");
 
@@ -75,9 +81,9 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   }
 
   constructor(address _l1MessageService) {
-      ErrorUtils.revertIfZeroAddress(_l1MessageService);
-      L1_MESSAGE_SERVICE = _l1MessageService;
-      _disableInitializers();
+    ErrorUtils.revertIfZeroAddress(_l1MessageService);
+    L1_MESSAGE_SERVICE = _l1MessageService;
+    _disableInitializers();
   }
 
   /**
@@ -87,17 +93,20 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @param _initializationData Struct bundling pause/unpause roles, permissions, reserve targets, and default recipients.
    */
   function initialize(YieldManagerInitializationData calldata _initializationData) external initializer {
-    __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
-    if (_initializationData.defaultAdmin == address(0)) revert ZeroAddressNotAllowed();
+    ErrorUtils.revertIfZeroAddress(_initializationData.defaultAdmin);
     _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
+
+    __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
     __Permissions_init(_initializationData.roleAddresses);
 
-    _setWithdrawalReserveParameters(UpdateReserveParametersConfig({
-      minimumWithdrawalReservePercentageBps: _initializationData.initialMinimumWithdrawalReservePercentageBps,
-      minimumWithdrawalReserveAmount: _initializationData.initialMinimumWithdrawalReserveAmount,
-      targetWithdrawalReservePercentageBps: _initializationData.initialTargetWithdrawalReservePercentageBps,
-      targetWithdrawalReserveAmount: _initializationData.initialTargetWithdrawalReserveAmount
-    }));
+    _setWithdrawalReserveParameters(
+      UpdateReserveParametersConfig({
+        minimumWithdrawalReservePercentageBps: _initializationData.initialMinimumWithdrawalReservePercentageBps,
+        minimumWithdrawalReserveAmount: _initializationData.initialMinimumWithdrawalReserveAmount,
+        targetWithdrawalReservePercentageBps: _initializationData.initialTargetWithdrawalReservePercentageBps,
+        targetWithdrawalReserveAmount: _initializationData.initialTargetWithdrawalReserveAmount
+      })
+    );
 
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     for (uint256 i; i < _initializationData.initialL2YieldRecipients.length; i++) {
@@ -108,16 +117,12 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   }
 
   modifier onlyKnownYieldProvider(address _yieldProvider) {
-    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex == 0) {
-      revert UnknownYieldProvider();
-    }
+    require(_getYieldProviderStorage(_yieldProvider).yieldProviderIndex > 0, UnknownYieldProvider());
     _;
   }
 
   modifier onlyKnownL2YieldRecipient(address _l2YieldRecipient) {
-    if (!_getYieldManagerStorage()._isL2YieldRecipientKnown[_l2YieldRecipient]) {
-      revert UnknownL2YieldRecipient();
-    }
+    require(_getYieldManagerStorage()._isL2YieldRecipientKnown[_l2YieldRecipient], UnknownL2YieldRecipient());
     _;
   }
 
@@ -141,9 +146,11 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     view
     returns (uint256 totalSystemBalance, uint256 cachedL1MessageServiceBalance)
   {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
     cachedL1MessageServiceBalance = L1_MESSAGE_SERVICE.balance;
-    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $._userFundsInYieldProvidersTotal;
+    totalSystemBalance =
+      cachedL1MessageServiceBalance +
+      address(this).balance +
+      _getYieldManagerStorage()._userFundsInYieldProvidersTotal;
   }
 
   /**
@@ -164,17 +171,15 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     view
     returns (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance)
   {
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+
     uint256 totalSystemBalance;
     (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
     // Get minimumWithdrawalReserveByPercentage
-    uint256 minimumWithdrawalReserveByPercentage =
-      (totalSystemBalance * _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps) /
+    uint256 minimumWithdrawalReserveByPercentage = (totalSystemBalance * $._minimumWithdrawalReservePercentageBps) /
       MAX_BPS;
     // Get minimumWithdrawalReserve
-    minimumWithdrawalReserve = Math256.max(
-      minimumWithdrawalReserveByPercentage,
-      _getYieldManagerStorage()._minimumWithdrawalReserveAmount
-    );
+    minimumWithdrawalReserve = Math256.max(minimumWithdrawalReserveByPercentage, $._minimumWithdrawalReserveAmount);
   }
 
   /**
@@ -197,9 +202,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   {
     uint256 totalSystemBalance;
     (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
-    uint256 targetWithdrawalReserveByPercentage =
-      (totalSystemBalance * _getYieldManagerStorage()._targetWithdrawalReservePercentageBps) /
-      MAX_BPS;
+    uint256 targetWithdrawalReserveByPercentage = (totalSystemBalance *
+      _getYieldManagerStorage()._targetWithdrawalReservePercentageBps) / MAX_BPS;
     targetWithdrawalReserve = Math256.max(
       targetWithdrawalReserveByPercentage,
       _getYieldManagerStorage()._targetWithdrawalReserveAmount
@@ -236,7 +240,9 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @param _yieldProvider The yield provider address.
    * @return withdrawableAmount Amount of ETH that can be instantly withdrawn from the YieldProvider.
    */
-  function withdrawableValue(address _yieldProvider) public onlyKnownYieldProvider(_yieldProvider) returns (uint256 withdrawableAmount) {
+  function withdrawableValue(
+    address _yieldProvider
+  ) public onlyKnownYieldProvider(_yieldProvider) returns (uint256 withdrawableAmount) {
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
@@ -260,9 +266,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    */
   function _delegatecallYieldProvider(address _yieldProvider, bytes memory _callData) internal returns (bytes memory) {
     (bool success, bytes memory returnData) = _yieldProvider.delegatecall(_callData);
-    if (!success) {
-      revert DelegateCallFailed();
-    }
+    require(success, DelegateCallFailed());
     return returnData;
   }
 
@@ -283,12 +287,9 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @dev Reverts if, after transfer, the withdrawal reserve will be below the minimum threshold.
    */
   function receiveFundsFromReserve() external payable {
-    if (msg.sender != L1_MESSAGE_SERVICE) {
-      revert SenderNotL1MessageService();
-    }
-    if (isWithdrawalReserveBelowMinimum()) {
-      revert InsufficientWithdrawalReserve();
-    }
+    require(msg.sender == L1_MESSAGE_SERVICE, SenderNotL1MessageService());
+    require(!isWithdrawalReserveBelowMinimum(), InsufficientWithdrawalReserve());
+
     emit ReserveFundsReceived(msg.value);
   }
 
@@ -300,9 +301,10 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   function transferFundsToReserve(
     uint256 _amount
   ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_RESERVE_FUNDING) {
-    if (!hasRole(RESERVE_OPERATOR_ROLE, msg.sender) && !hasRole(YIELD_PROVIDER_FUNDER_ROLE, msg.sender)) {
-      revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_FUNDER_ROLE);
-    }
+    require(
+      hasRole(RESERVE_OPERATOR_ROLE, msg.sender) || hasRole(YIELD_PROVIDER_FUNDER_ROLE, msg.sender),
+      CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_FUNDER_ROLE)
+    );
     _fundReserve(_amount);
     // Destination will emit the event.
   }
@@ -324,9 +326,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_FUNDER_ROLE)
   {
-    if (isWithdrawalReserveBelowMinimum()) {
-      revert InsufficientWithdrawalReserve();
-    }
+    require(!isWithdrawalReserveBelowMinimum(), InsufficientWithdrawalReserve());
+
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount))
@@ -404,9 +405,11 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING)
     onlyKnownYieldProvider(_yieldProvider)
   {
-    if (!hasRole(YIELD_PROVIDER_UNSTAKER_ROLE, msg.sender) && !hasRole(RESERVE_OPERATOR_ROLE, msg.sender)) {
-      revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_UNSTAKER_ROLE);
-    }
+    require(
+      hasRole(YIELD_PROVIDER_UNSTAKER_ROLE, msg.sender) || hasRole(RESERVE_OPERATOR_ROLE, msg.sender),
+      CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_UNSTAKER_ROLE)
+    );
+
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstake, (_yieldProvider, _withdrawalParams))
@@ -445,9 +448,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     onlyKnownYieldProvider(_yieldProvider)
     returns (uint256 maxUnstakeAmount)
   {
-    if (!isWithdrawalReserveBelowMinimum()) {
-      revert WithdrawalReserveNotInDeficit();
-    }
+    require(isWithdrawalReserveBelowMinimum(), WithdrawalReserveNotInDeficit());
+
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
@@ -458,9 +460,11 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     uint256 availableFundsToSettleTargetDeficit = address(this).balance +
       withdrawableValue(_yieldProvider) +
       _getYieldManagerStorage()._pendingPermissionlessUnstake;
-    if (availableFundsToSettleTargetDeficit + maxUnstakeAmount > targetDeficit) {
-      revert PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
-    }
+
+    require(
+      availableFundsToSettleTargetDeficit + maxUnstakeAmount <= targetDeficit,
+      PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit()
+    );
 
     _getYieldManagerStorage()._pendingPermissionlessUnstake += maxUnstakeAmount;
     // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
@@ -488,11 +492,10 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   {
     uint256 targetDeficit = getTargetReserveDeficit();
     // Withdraw from Vault -> YieldManager
-    (uint256 withdrawnFromProvider, uint256 lstLiabilityPaid) = _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
-      _yieldProvider,
-      _amount,
-      targetDeficit
-    );
+    (
+      uint256 withdrawnFromProvider,
+      uint256 lstLiabilityPaid
+    ) = _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, targetDeficit);
     // Send funds to L1MessageService if targetDeficit
     if (targetDeficit > 0) {
       _fundReserve(targetDeficit);
@@ -611,7 +614,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
 
   /**
    * @notice Permissionlessly top up the withdrawal reserve to the target threshold using available liquidity.
-   * @dev Callable only when the reserve is below the effective minimum threshold. 
+   * @dev Callable only when the reserve is below the effective minimum threshold.
    * @dev The function first spends the YieldManager's balance to clear the target threshold deficit.
    * @dev If a target deficit still remains, then it will withdraw from the specified YieldProvider.
    * @param _yieldProvider The yield provider address.
@@ -623,9 +626,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_REBALANCE)
     onlyKnownYieldProvider(_yieldProvider)
   {
-    if (!isWithdrawalReserveBelowMinimum()) {
-      revert WithdrawalReserveNotInDeficit();
-    }
+    require(isWithdrawalReserveBelowMinimum(), WithdrawalReserveNotInDeficit());
+
     uint256 targetDeficit = getTargetReserveDeficit();
 
     // First see if we can fully settle from YieldManager
@@ -664,9 +666,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   function pauseStaking(
     address _yieldProvider
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(STAKING_PAUSER_ROLE) {
-    if (_getYieldProviderStorage(_yieldProvider).isStakingPaused) {
-      revert StakingAlreadyPaused();
-    }
+    require(!_getYieldProviderStorage(_yieldProvider).isStakingPaused, StakingAlreadyPaused());
+
     _pauseStaking(_yieldProvider);
     emit YieldProviderStakingPaused(_yieldProvider);
   }
@@ -696,19 +697,14 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(STAKING_UNPAUSER_ROLE) {
     // Other checks for unstaking
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if (!$$.isStakingPaused) {
-      revert StakingAlreadyUnpaused();
-    }
-    if (isWithdrawalReserveBelowMinimum()) {
-      revert InsufficientWithdrawalReserve();
-    }
-    if ($$.lstLiabilityPrincipal > 0) {
-      revert UnpauseStakingForbiddenWithCurrentLSTLiability();
-    }
-    if ($$.isOssificationInitiated || $$.isOssified) {
-      revert UnpauseStakingForbiddenDuringOssification();
-    }
+
+    require($$.isStakingPaused, StakingAlreadyUnpaused());
+    require(!isWithdrawalReserveBelowMinimum(), InsufficientWithdrawalReserve());
+    require($$.lstLiabilityPrincipal == 0, UnpauseStakingForbiddenWithCurrentLSTLiability());
+    require(!$$.isOssificationInitiated && !$$.isOssified, UnpauseStakingForbiddenDuringOssification());
+
     _unpauseStaking(_yieldProvider);
+
     emit YieldProviderStakingUnpaused(_yieldProvider);
   }
 
@@ -734,17 +730,16 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     uint256 _amount,
     address _recipient
   ) external whenTypeAndGeneralNotPaused(PauseType.LST_WITHDRAWAL) onlyKnownYieldProvider(_yieldProvider) {
-    if (msg.sender != L1_MESSAGE_SERVICE) {
-      revert SenderNotL1MessageService();
-    }
-    if (!ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed()) {
-      revert LSTWithdrawalNotAllowed();
-    }
+    require(msg.sender == L1_MESSAGE_SERVICE, SenderNotL1MessageService());
+    require(ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed(), LSTWithdrawalNotAllowed());
+
     _pauseStakingIfNotAlready(_yieldProvider);
+
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawLST, (_yieldProvider, _amount, _recipient))
     );
+
     emit LSTMinted(_yieldProvider, _recipient, _amount);
   }
 
@@ -757,9 +752,9 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     address _yieldProvider
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(OSSIFIER_ROLE) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if ($$.isOssified) {
-      revert AlreadyOssified();
-    }
+
+    require(!$$.isOssified, AlreadyOssified());
+
     _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider)));
     _pauseStakingIfNotAlready(_yieldProvider);
     $$.isOssificationInitiated = true;
@@ -774,16 +769,16 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     address _yieldProvider
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(OSSIFIER_ROLE) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if (!$$.isOssificationInitiated) {
-      revert OssificationNotInitiated();
-    }
-    if ($$.isOssified) {
-      revert AlreadyOssified();
-    }
+
+    require($$.isOssificationInitiated, OssificationNotInitiated());
+    require(!$$.isOssified, AlreadyOssified());
+
     if (_getYieldProviderStorage(_yieldProvider).isStakingPaused) {
       _unpauseStaking(_yieldProvider);
     }
+
     $$.isOssificationInitiated = false;
+
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.undoInitiateOssification, (_yieldProvider))
@@ -800,12 +795,10 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     address _yieldProvider
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(OSSIFIER_ROLE) returns (bool isOssificationComplete) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if (!$$.isOssificationInitiated) {
-      revert OssificationNotInitiated();
-    }
-    if ($$.isOssified) {
-      revert AlreadyOssified();
-    }
+
+    require($$.isOssificationInitiated, OssificationNotInitiated());
+    require(!$$.isOssified, AlreadyOssified());
+
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.processPendingOssification, (_yieldProvider))
@@ -853,9 +846,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @dev Donations are available through a dedicated donate() function.
    */
   receive() external payable {
-    if (TRANSIENT_RECEIVE_CALLER != msg.sender) {
-      revert UnexpectedReceiveCaller();
-    }
+    require(TRANSIENT_RECEIVE_CALLER == msg.sender, UnexpectedReceiveCaller());
   }
 
   /**
@@ -874,9 +865,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_registration);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
 
-    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
-      revert YieldProviderAlreadyAdded();
-    }
+    require(_getYieldProviderStorage(_yieldProvider).yieldProviderIndex == 0, YieldProviderAlreadyAdded());
+
     // Ensure no added yield provider has index 0
     uint96 yieldProviderIndex = uint96($._yieldProviders.length) + 1;
     $._yieldProviders.push(_yieldProvider);
@@ -910,18 +900,14 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    */
   function removeYieldProvider(
     address _yieldProvider
-  )
-    external
-    onlyKnownYieldProvider(_yieldProvider)
-    onlyRole(SET_YIELD_PROVIDER_ROLE)
-  {
+  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
     // We assume that 'currentNegativeYield' must be 0, before 'userFunds' can be 0.
-    if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
-      revert YieldProviderHasRemainingFunds();
-    }
-      if (_getYieldProviderStorage(_yieldProvider).currentNegativeYield != 0) {
-      revert YieldProviderHasRemainingNegativeYield();
-    }
+    require(_getYieldProviderStorage(_yieldProvider).userFunds == 0, YieldProviderHasRemainingFunds());
+    require(
+      _getYieldProviderStorage(_yieldProvider).currentNegativeYield == 0,
+      YieldProviderHasRemainingNegativeYield()
+    );
+
     _removeYieldProvider(_yieldProvider);
     emit YieldProviderRemoved(_yieldProvider, false);
   }
@@ -933,11 +919,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    */
   function emergencyRemoveYieldProvider(
     address _yieldProvider
-  )
-    external
-    onlyKnownYieldProvider(_yieldProvider)
-    onlyRole(SET_YIELD_PROVIDER_ROLE)
-  {
+  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
     _removeYieldProvider(_yieldProvider);
     emit YieldProviderRemoved(_yieldProvider, true);
   }
@@ -960,14 +942,12 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @dev SET_L2_YIELD_RECIPIENT_ROLE is required to execute.
    * @param _l2YieldRecipient L2YieldRecipient address.
    */
-  function addL2YieldRecipient(
-    address _l2YieldRecipient
-  ) external onlyRole(SET_L2_YIELD_RECIPIENT_ROLE) {
+  function addL2YieldRecipient(address _l2YieldRecipient) external onlyRole(SET_L2_YIELD_RECIPIENT_ROLE) {
     ErrorUtils.revertIfZeroAddress(_l2YieldRecipient);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if ($._isL2YieldRecipientKnown[_l2YieldRecipient]) {
-      revert L2YieldRecipientAlreadyAdded();
-    }
+
+    require(!$._isL2YieldRecipientKnown[_l2YieldRecipient], L2YieldRecipientAlreadyAdded());
+
     emit L2YieldRecipientAdded(_l2YieldRecipient);
     $._isL2YieldRecipientKnown[_l2YieldRecipient] = true;
   }
@@ -979,11 +959,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    */
   function removeL2YieldRecipient(
     address _l2YieldRecipient
-  )
-    external
-    onlyKnownL2YieldRecipient(_l2YieldRecipient)
-    onlyRole(SET_L2_YIELD_RECIPIENT_ROLE)
-  {
+  ) external onlyKnownL2YieldRecipient(_l2YieldRecipient) onlyRole(SET_L2_YIELD_RECIPIENT_ROLE) {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     emit L2YieldRecipientRemoved(_l2YieldRecipient);
     $._isL2YieldRecipientKnown[_l2YieldRecipient] = false;
@@ -994,7 +970,9 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
    * @param _params Data used to update withdrawal reserve parameters.
    */
-  function setWithdrawalReserveParameters(UpdateReserveParametersConfig memory _params) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+  function setWithdrawalReserveParameters(
+    UpdateReserveParametersConfig memory _params
+  ) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
     _setWithdrawalReserveParameters(_params);
   }
 
@@ -1004,24 +982,31 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @param _params Data used to update withdrawal reserve parameters.
    */
   function _setWithdrawalReserveParameters(UpdateReserveParametersConfig memory _params) internal {
-    if (_params.minimumWithdrawalReservePercentageBps > MAX_BPS || _params.targetWithdrawalReservePercentageBps > MAX_BPS) {
-        revert BpsMoreThan10000();
-    }
-    if (_params.minimumWithdrawalReservePercentageBps > _params.targetWithdrawalReservePercentageBps) {
-      revert TargetReservePercentageMustBeAboveMinimum();
-    }
-    if (_params.minimumWithdrawalReserveAmount > _params.targetWithdrawalReserveAmount) {
-      revert TargetReserveAmountMustBeAboveMinimum();
-    }
+    require(
+      _params.minimumWithdrawalReservePercentageBps <= MAX_BPS &&
+        _params.targetWithdrawalReservePercentageBps <= MAX_BPS,
+      BpsMoreThan10000()
+    );
+    require(
+      _params.minimumWithdrawalReservePercentageBps <= _params.targetWithdrawalReservePercentageBps,
+      TargetReservePercentageMustBeAboveMinimum()
+    );
+    require(
+      _params.minimumWithdrawalReserveAmount <= _params.targetWithdrawalReserveAmount,
+      TargetReserveAmountMustBeAboveMinimum()
+    );
+
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint256 prevMinimumWithdrawalReservePercentageBps = $._minimumWithdrawalReservePercentageBps;
     uint256 prevMinimumWithdrawalReserveAmount = $._minimumWithdrawalReserveAmount;
     uint256 prevTargetWithdrawalReservePercentageBps = $._targetWithdrawalReservePercentageBps;
     uint256 prevTargetWithdrawalReserveAmount = $._targetWithdrawalReserveAmount;
+
     $._minimumWithdrawalReservePercentageBps = _params.minimumWithdrawalReservePercentageBps;
     $._minimumWithdrawalReserveAmount = _params.minimumWithdrawalReserveAmount;
     $._targetWithdrawalReservePercentageBps = _params.targetWithdrawalReservePercentageBps;
     $._targetWithdrawalReserveAmount = _params.targetWithdrawalReserveAmount;
+
     emit WithdrawalReserveParametersSet(
       prevMinimumWithdrawalReservePercentageBps,
       _params.minimumWithdrawalReservePercentageBps,

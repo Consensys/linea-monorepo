@@ -30,14 +30,14 @@ abstract contract YieldManagerStorageLayout {
    * @param _yieldProviderStorage YieldProvider-scoped storage scoped by the YieldProvider adaptor contract address.
    */
 
-  /// 
+  ///
   struct YieldManagerStorage {
     uint16 _minimumWithdrawalReservePercentageBps;
     uint16 _targetWithdrawalReservePercentageBps;
     uint256 _minimumWithdrawalReserveAmount;
     uint256 _targetWithdrawalReserveAmount;
     uint256 _userFundsInYieldProvidersTotal;
-   uint256 _pendingPermissionlessUnstake;
+    uint256 _pendingPermissionlessUnstake;
     address[] _yieldProviders;
     mapping(address l2YieldRecipient => bool) _isL2YieldRecipientKnown;
     mapping(address yieldProvider => YieldProviderStorage) _yieldProviderStorage;

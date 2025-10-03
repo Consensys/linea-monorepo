@@ -2,5 +2,5 @@
 pragma solidity ^0.8.0;
 
 contract MockLineaRollup {
-    uint256 constant public boo = 1;
+  uint256 public constant boo = 1;
 }
