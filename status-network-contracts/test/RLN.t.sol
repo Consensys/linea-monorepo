@@ -8,19 +8,26 @@ import { RLN } from "../src/rln/RLN.sol";
 import { Karma } from "../src/Karma.sol";
 import { KarmaDistributorMock } from "./mocks/KarmaDistributorMock.sol";
 import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
+import { PoseidonHasher } from "../src/rln/PoseidonHasher.sol";
 
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 
 contract RLNTest is Test {
     RLN public rln;
+    PoseidonHasher public poseidonHasher;
 
     uint256 private constant DEPTH = 2; // for most tests
-    uint256 private constant SMALL_DEPTH = 1; // for “full” test
+    uint256 private constant SMALL_DEPTH = 1; // for "full" test
 
-    // Sample identity commitments
-    uint256 private identityCommitment0 = 1234;
-    uint256 private identityCommitment1 = 5678;
-    uint256 private identityCommitment2 = 9999;
+    // Sample private keys (32 bytes)
+    bytes32 private privateKey0 = bytes32(uint256(1234));
+    bytes32 private privateKey1 = bytes32(uint256(5678));
+    bytes32 private privateKey2 = bytes32(uint256(9999));
+
+    // Identity commitments derived from private keys
+    uint256 private identityCommitment0;
+    uint256 private identityCommitment1;
+    uint256 private identityCommitment2;
 
     // Role‐holders
     address private owner;
@@ -44,6 +51,14 @@ contract RLNTest is Test {
         owner = deployer;
         distributor1 = new KarmaDistributorMock(IERC20(address(_karma)));
         distributor2 = new KarmaDistributorMock(IERC20(address(_karma)));
+
+        // Deploy PoseidonHasher
+        poseidonHasher = new PoseidonHasher();
+
+        // Compute identity commitments from private keys
+        identityCommitment0 = poseidonHasher.hash(uint256(privateKey0));
+        identityCommitment1 = poseidonHasher.hash(uint256(privateKey1));
+        identityCommitment2 = poseidonHasher.hash(uint256(privateKey2));
 
         // Assign deterministic addresses
         adminAddr = makeAddr("admin");
@@ -76,7 +91,8 @@ contract RLNTest is Test {
                 slasherAddr,
                 registerAddr,
                 depth,
-                address(karmaToken) // token address unused in these tests
+                address(karmaToken),
+                address(poseidonHasher)
             )
         );
         address impl = address(new RLN());
@@ -177,11 +193,11 @@ contract RLNTest is Test {
         // Retrieve the assigned index
         (, uint256 index1) = _memberData(identityCommitment1);
 
-        // Slash with a valid proof
+        // Slash with the private key
         vm.startPrank(slasherAddr);
         vm.expectEmit(false, true, false, true);
         emit RLN.MemberSlashed(index1, slasherAddr);
-        rln.slash(identityCommitment1);
+        rln.slash(privateKey1);
         vm.stopPrank();
 
         // After slash, the member record should be cleared
@@ -194,7 +210,7 @@ contract RLNTest is Test {
         // Attempt to slash a non‐existent identity
         vm.startPrank(slasherAddr);
         vm.expectRevert(RLN.RLN__MemberNotFound.selector);
-        rln.slash(identityCommitment0);
+        rln.slash(privateKey0);
         vm.stopPrank();
     }
 

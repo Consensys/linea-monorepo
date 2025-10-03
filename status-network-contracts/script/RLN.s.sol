@@ -7,6 +7,7 @@ import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import { RLN } from "../src/rln/RLN.sol";
+import { PoseidonHasher } from "../src/rln/PoseidonHasher.sol";
 
 contract DeployRLNScript is BaseScript {
     error InvalidDepth();
@@ -26,9 +27,12 @@ contract DeployRLNScript is BaseScript {
         }
 
         vm.startBroadcast(deployer);
-        // Deploy Karma logic contract
+        // Deploy PoseidonHasher
+        address poseidonHasher = address(new PoseidonHasher());
+
+        // Deploy RLN logic contract
         bytes memory initializeData =
-            abi.encodeCall(RLN.initialize, (deployer, deployer, deployer, depth, karmaAddress));
+            abi.encodeCall(RLN.initialize, (deployer, deployer, deployer, depth, karmaAddress, poseidonHasher));
         address impl = address(new RLN());
         // Create upgradeable proxy
         address proxy = address(new ERC1967Proxy(impl, initializeData));

@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import { Karma } from "../Karma.sol";
+import { IPoseidonHasher } from "./PoseidonHasher.sol";
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -38,6 +39,9 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
     /// @dev Karma Token used for registering.
     Karma public karma;
 
+    /// @dev Poseidon hasher contract.
+    IPoseidonHasher public poseidonHasher;
+
     /// @dev Emmited when a new member registered.
     /// @param identityCommitment: `identityCommitment`;
     /// @param index: idCommitmentIndex value.
@@ -58,12 +62,14 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
     /// @param _register: address of the register;
     /// @param depth: depth of the merkle tree;
     /// @param _token: address of the ERC20 contract;
+    /// @param _poseidonHasher: address of the PoseidonHasher contract;
     function initialize(
         address _owner,
         address _slasher,
         address _register,
         uint256 depth,
-        address _token
+        address _token,
+        address _poseidonHasher
     )
         public
         initializer
@@ -76,6 +82,7 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
         SET_SIZE = 1 << depth;
 
         karma = Karma(_token);
+        poseidonHasher = IPoseidonHasher(_poseidonHasher);
     }
 
     /**
@@ -110,9 +117,12 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
         }
     }
 
-    /// @dev Slashes identity with identityCommitment.
-    /// @param identityCommitment: `identityCommitment`;
-    function slash(uint256 identityCommitment) external onlyRole(SLASHER_ROLE) {
+    /// @dev Slashes identity with privateKey.
+    /// @param privateKey: RLN private key as bytes32;
+    function slash(bytes32 privateKey) external onlyRole(SLASHER_ROLE) {
+        // Hash the private key using Poseidon to get identityCommitment
+        uint256 identityCommitment = poseidonHasher.hash(uint256(privateKey));
+
         User memory member = members[identityCommitment];
         if (member.userAddress == address(0)) {
             revert RLN__MemberNotFound();
