@@ -4,7 +4,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { TestLineaRollup } from "contracts/typechain-types";
+import { MockYieldManager__factory, TestLineaRollup } from "contracts/typechain-types";
 import { deployLineaRollupFixture, getAccountsFixture } from "../helpers";
 import {
   ADDRESS_ZERO,
@@ -386,6 +386,44 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, claimCall, "LSTWithdrawalRequiresDeficit");
 
       expect(await ethers.provider.getBalance(await lineaRollup.getAddress())).to.equal(preFundAmount);
+    });
+
+    it("Should revert on reentry", async () => {
+      const lineaRollupAddress = await lineaRollup.getAddress();
+
+      const l2MerkleRootsDepthsSlot = 336n;
+      const storageSlot = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ["bytes32", "uint256"],
+          [VALID_MERKLE_PROOF.merkleRoot, l2MerkleRootsDepthsSlot],
+        ),
+      );
+
+      await ethers.provider.send("hardhat_setStorageAt", [
+        lineaRollupAddress,
+        storageSlot,
+        ethers.zeroPadValue(ethers.toBeHex(BigInt(VALID_MERKLE_PROOF.proof.length)), 32),
+      ]);
+
+      const claimParams = {
+        proof: VALID_MERKLE_PROOF.proof,
+        messageNumber: 1n,
+        leafIndex: VALID_MERKLE_PROOF.index,
+        from: admin.address,
+        to: admin.address,
+        fee: MESSAGE_FEE,
+        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        feeRecipient: ADDRESS_ZERO,
+        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        data: EMPTY_CALLDATA,
+      };
+
+      const mockYieldManagerContract = MockYieldManager__factory.connect(mockYieldManager, securityCouncil);
+      await mockYieldManagerContract.connect(admin).setReentryData(claimParams, operator.address);
+
+      const claimCall = lineaRollup.connect(admin).claimMessageWithProofAndWithdrawLST(claimParams, operator.address);
+
+      await expectRevertWithCustomError(lineaRollup, claimCall, "ReentrantCall");
     });
 
     it("Should claim successfully with correct MessageClaimed event emitted", async () => {
