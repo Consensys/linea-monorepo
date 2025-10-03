@@ -1,8 +1,0 @@
-time="2025-10-02T14:39:45Z" level=info msg="[vortex-commitment-with-sis] numCol=32768 numRow=1024 numColEncoded=65536 timeEncoding=280.298455ms timeSisHashing=2.096722643s timeMerkleizing=585.191431ms"
-goos: linux
-goarch: amd64
-pkg: github.com/consensys/linea-monorepo/prover/crypto/vortex
-cpu: Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
-BenchmarkCommitWithSIS-64    	       1	2962381746 ns/op	2309161128 B/op	  607940 allocs/op
-PASS
-ok  	github.com/consensys/linea-monorepo/prover/crypto/vortex	10.338s
