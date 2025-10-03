@@ -12,19 +12,20 @@ var (
 )
 
 func setDefaultValues() {
-	setDefaultTracesLimit()
 	setDefaultPaths()
-	setDefaultProverPhaseCmds()
+	setDefaultTracesLimit()
+	setDefaultDebugFlags()
+	setDefaultControllerParams()
+	viper.SetDefault("execution.ignore_compatibility_check", false)
+}
 
-	viper.SetDefault("debug.profiling", false)
-	viper.SetDefault("debug.tracing", false)
-	viper.SetDefault("debug.performance_monitor.active", false)
-	viper.SetDefault("debug.performance_monitor.sample_duration", 1*time.Second)
-	viper.SetDefault("debug.performance_monitor.profile", "prover-rounds")
-
+func setDefaultControllerParams() {
 	viper.SetDefault("controller.enable_execution", false)
 	viper.SetDefault("controller.enable_blob_decompression", false)
 	viper.SetDefault("controller.enable_aggregation", false)
+
+	viper.SetDefault("controller.limitless_jobs.enable_bootstrapper", false)
+	viper.SetDefault("controller.limitless_jobs.enable_conglomerator", false)
 
 	// Set the default values for the retry delays
 	viper.SetDefault("controller.retry_delays", []int{0, 1, 2, 3, 5, 8, 13, 21, 44, 85})
@@ -36,7 +37,7 @@ func setDefaultValues() {
 	viper.SetDefault("controller.worker_cmd_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}")
 	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
 
-	viper.SetDefault("execution.ignore_compatibility_check", false)
+	setDefaultProverPhaseCmds()
 }
 
 func setDefaultProverPhaseCmds() {
@@ -61,6 +62,14 @@ func setDefaultPaths() {
 	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/v3/prover-compression")
 	viper.SetDefault("aggregation.requests_root_dir", "/shared/v3/prover-aggregation")
 	viper.SetDefault("debug.performance_monitor.profile_dir", "/shared/v3/prover-execution/profiling")
+}
+
+func setDefaultDebugFlags() {
+	viper.SetDefault("debug.profiling", false)
+	viper.SetDefault("debug.tracing", false)
+	viper.SetDefault("debug.performance_monitor.active", false)
+	viper.SetDefault("debug.performance_monitor.sample_duration", 1*time.Second)
+	viper.SetDefault("debug.performance_monitor.profile", "prover-rounds")
 }
 
 func setDefaultTracesLimit() {
