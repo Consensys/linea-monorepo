@@ -35,7 +35,11 @@ public class TracingExceptions extends RuntimeException {
   public String getMessage() {
     final StringBuilder msg = new StringBuilder("Exceptions triggered while tracing:\n");
     for (final Exception e : tracingExceptions) {
-      msg.append("  - ").append(e.getMessage()).append("\n");
+      msg.append("  - ").append(e.getClass());
+      if (e.getMessage() != null) {
+        msg.append(": ").append(e.getMessage());
+      }
+      msg.append("\n");
     }
     log.error("First exception that was caught while tracing:", tracingExceptions.getFirst());
     return msg.toString();
