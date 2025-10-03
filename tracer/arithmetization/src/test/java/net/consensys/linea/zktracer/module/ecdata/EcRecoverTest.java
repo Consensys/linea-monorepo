@@ -73,15 +73,15 @@ public class EcRecoverTest extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @MethodSource("ecRecoverSource")
+  @MethodSource({"ecRecoverSource", "ecRecoverSourceForSLimits"})
   void testEcRecover(
       String description,
       EWord h,
       EWord v,
       EWord r,
       EWord s,
-      boolean expectedInternalChecksPassed,
-      boolean expectedSuccessBit,
+      Boolean expectedInternalChecksPassed,
+      Boolean expectedSuccessBit,
       TestInfo testInfo) {
     testEcRecoverBody(
         description, h, v, r, s, expectedInternalChecksPassed, expectedSuccessBit, testInfo);
@@ -89,15 +89,15 @@ public class EcRecoverTest extends TracerTestBase {
 
   @Tag("nightly")
   @ParameterizedTest
-  @MethodSource("ecRecoverSourceNightly")
+  @MethodSource({"ecRecoverSourceNightly", "ecRecoverSourceForSLimits"})
   void testEcRecoverNightly(
       String description,
       EWord h,
       EWord v,
       EWord r,
       EWord s,
-      boolean expectedInternalChecksPassed,
-      boolean expectedSuccessBit,
+      Boolean expectedInternalChecksPassed,
+      Boolean expectedSuccessBit,
       TestInfo testInfo) {
     testEcRecoverBody(
         description, h, v, r, s, expectedInternalChecksPassed, expectedSuccessBit, testInfo);
@@ -109,8 +109,8 @@ public class EcRecoverTest extends TracerTestBase {
       EWord v,
       EWord r,
       EWord s,
-      boolean expectedInternalChecksPassed,
-      boolean expectedSuccessBit,
+      Boolean expectedInternalChecksPassed,
+      Boolean expectedSuccessBit,
       TestInfo testInfo) {
     BytecodeCompiler program =
         BytecodeCompiler.newProgram(chainConfig)
@@ -147,7 +147,9 @@ public class EcRecoverTest extends TracerTestBase {
     boolean successBit = ecDataOperation.successBit();
 
     assertEquals(expectedInternalChecksPassed, internalChecksPassed);
-    assertEquals(expectedSuccessBit, successBit);
+    if (expectedSuccessBit != null) {
+      assertEquals(expectedSuccessBit, successBit);
+    }
 
     // Check that the line count is made
     assertEquals(
@@ -260,6 +262,46 @@ public class EcRecoverTest extends TracerTestBase {
                   i + j + k == 0));
         }
       }
+    }
+
+    return arguments.stream();
+  }
+
+  /**
+   * The test cases generated in this method are meant to explore the corner cases of the 's'
+   * parameter. We do not require ECRECOVER to succeed, as such the other parameters h and v are
+   * irrelevant, albeit well-formed.
+   */
+  private static Stream<Arguments> ecRecoverSourceForSLimits() {
+    EWord h =
+        EWord.ofHexString("0x456e9aea5e197a1f1af7a3e85a3212fa4049a3ba34c2289b4c860fc0b0c64ef3");
+    EWord v = EWord.of(28);
+    EWord r =
+        EWord.ofHexString("0x9242685bf161793cc25603c231bc2f568eb630ea16aa137d2664ac8038825608");
+    List<EWord> s =
+        List.of(
+            ((SECP256K1N.subtract(1)).divide(2)).subtract(1), // universally accepted
+            ((SECP256K1N.subtract(1)).divide(2)), // universally accepted
+            ((SECP256K1N.subtract(1)).divide(2)).add(1), // universally accepted
+            ((SECP256K1N.subtract(1)).divide(2))
+                .add(2), // rejected for transactions, acceptable in ECRECOVER
+            SECP256K1N.subtract(2), // acceptable in ECRECOVER
+            SECP256K1N.subtract(1), // acceptable in ECRECOVER
+            SECP256K1N, // universally rejected
+            SECP256K1N.add(1)); // universally rejected
+
+    List<Arguments> arguments = new ArrayList<>();
+
+    for (int i = 0; i < s.size(); i++) {
+      arguments.add(
+          Arguments.of(
+              s.get(i).lessThan(SECP256K1N) ? "[ICP = 1]" : "[ICP = 0]",
+              h,
+              v,
+              r,
+              s.get(i),
+              s.get(i).lessThan(SECP256K1N),
+              null)); // The assertion over successBit is not relevant here
     }
 
     return arguments.stream();
