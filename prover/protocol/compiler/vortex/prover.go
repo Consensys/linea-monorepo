@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 
@@ -79,8 +80,14 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	} else if ctx.RoundStatus[round] == IsSISApplied {
 		committedMatrix, tree, sisAndMimcDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
 	}
-	run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
-	run.State.InsertNew(ctx.MerkleTreeName(round), tree)
+
+	stateConstructionTime := profiling.TimeIt(func() {
+		// We store the committed matrix and the tree in the prover state
+		run.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
+		run.State.InsertNew(ctx.MerkleTreeName(round), tree)
+	})
+
+	logrus.Infof("[vortex] time to update prover state, i.e., matrices and MTproofs, at round %v: %v", round, stateConstructionTime)
 
 	// Only to be read by the self-recursion compiler.
 	if ctx.IsSelfrecursed {
@@ -111,6 +118,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	var (
 		committedSVSIS   = []smartvectors.SmartVector{}
 		committedSVNoSIS = []smartvectors.SmartVector{}
+		randomCoinLC     field.Element
 	)
 	// Add the precomputed columns
 	if ctx.IsNonEmptyPrecomputed() {
@@ -145,9 +153,11 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// matrices before the SIS round matrices
 	committedSV := append(committedSVNoSIS, committedSVSIS...)
 
-	// And get the randomness
-	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
-
+	coinLcTime := profiling.TimeIt(func() {
+		// And get the randomness
+		randomCoinLC = pr.GetRandomCoinField(ctx.Items.Alpha.Name)
+	})
+	logrus.Infof("[vortex] LC random coin generation time: %v", coinLcTime)
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
@@ -262,12 +272,21 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	committedMatrices := append(committedMatricesNoSIS, committedMatricesSIS...)
 	trees := append(treesNoSIS, treesSIS...)
 
-	entryList := run.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
+	var entryList []int
+	coinOpenColTime := profiling.TimeIt(func() {
+		// And get the randomness
+		entryList = run.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
+	})
+	logrus.Infof("[vortex] time to generate coin for column-opening: %v", coinOpenColTime)
+
 	proof := vortex.OpeningProof{}
 
-	// Amend the Vortex proof with the Merkle proofs and registers
-	// the Merkle proofs in the prover runtime
-	proof.Complete(entryList, committedMatrices, trees)
+	timeToRetrieveColandProof := profiling.TimeIt(func() {
+		// Amend the Vortex proof with the Merkle proofs and registers
+		// the Merkle proofs in the prover runtime
+		proof.Complete(entryList, committedMatrices, trees)
+	})
+	logrus.Infof("[vortex] time to retrieve opened columns and merkle proofs: %v", timeToRetrieveColandProof)
 
 	selectedCols := proof.Columns
 

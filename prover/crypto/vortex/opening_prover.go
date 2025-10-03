@@ -6,6 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/sirupsen/logrus"
 )
 
 // OpeningProof represents an opening proof for a Vortex commitment. The proof
@@ -48,22 +50,30 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 
 	// Compute the linear combination
 	linComb := make([]field.Element, params.NbColumns)
+	lcComputeTime := profiling.TimeIt(func() {
+		parallel.ExecuteChunky(len(linComb), func(start, stop int) {
+			subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
+			for i := range committedSV {
+				subTask = append(subTask, committedSV[i].SubVector(start, stop))
+			}
 
-	parallel.ExecuteChunky(len(linComb), func(start, stop int) {
-		subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
-		for i := range committedSV {
-			subTask = append(subTask, committedSV[i].SubVector(start, stop))
-		}
-
-		// Collect the result in the larger slice at the end
-		subResult := smartvectors.PolyEval(subTask, randomCoin)
-		subResult.WriteInSlice(linComb[start:stop])
+			// Collect the result in the larger slice at the end
+			subResult := smartvectors.PolyEval(subTask, randomCoin)
+			subResult.WriteInSlice(linComb[start:stop])
+		})
 	})
+	logrus.Infof("[vortex] time to compute lC-step %v", lcComputeTime)
 
 	linCombSV := smartvectors.NewRegular(linComb)
 
+	// Encode the linear combination
+	var rsencoded smartvectors.SmartVector
+	encodeTime := profiling.TimeIt(func() {
+		rsencoded = params.rsEncode(linCombSV, nil)
+	})
+	logrus.Infof("[vortex] time to compute RS encoding of LC %v", encodeTime)
 	return &OpeningProof{
-		LinearCombination: params.rsEncode(linCombSV, nil),
+		LinearCombination: rsencoded,
 	}
 }
 
