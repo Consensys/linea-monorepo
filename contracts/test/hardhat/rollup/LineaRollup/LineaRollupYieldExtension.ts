@@ -17,6 +17,7 @@ import {
   NATIVE_YIELD_STAKING_PAUSE_TYPE,
   RESERVE_OPERATOR_ROLE,
   SET_YIELD_MANAGER_ROLE,
+  VALID_MERKLE_PROOF,
 } from "../../common/constants";
 import {
   expectEvent,
@@ -363,8 +364,82 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("Claiming message with proof and withdrawing LST", () => {
-    // LSTWithdrawalRequiresDeficit() error
-    // Non-reentrancy
-    // Successful with event emission
+    it("Should revert if L1MessageService has sufficient balance to fulfil withdrawal request amount", async () => {
+      const preFundAmount = ethers.parseEther("1");
+      await lineaRollup.connect(securityCouncil).fund({ value: preFundAmount });
+
+      const params = {
+        proof: [] as string[],
+        messageNumber: 0n,
+        leafIndex: 0,
+        from: admin.address,
+        to: admin.address,
+        fee: 0n,
+        value: ethers.parseEther("0.5"),
+        feeRecipient: admin.address,
+        merkleRoot: ethers.ZeroHash,
+        data: EMPTY_CALLDATA,
+      };
+
+      const claimCall = lineaRollup.connect(admin).claimMessageWithProofAndWithdrawLST(params, operator.address);
+
+      await expectRevertWithCustomError(lineaRollup, claimCall, "LSTWithdrawalRequiresDeficit");
+
+      expect(await ethers.provider.getBalance(await lineaRollup.getAddress())).to.equal(preFundAmount);
+    });
+
+    it("Should claim successfully with correct MessageClaimed event emitted", async () => {
+      const lineaRollupAddress = await lineaRollup.getAddress();
+      const l2MerkleRootsDepthsSlot = 336n; // Storage slot for l2MerkleRootsDepths (forge inspect)
+      const storageSlot = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ["bytes32", "uint256"],
+          [VALID_MERKLE_PROOF.merkleRoot, l2MerkleRootsDepthsSlot],
+        ),
+      );
+
+      await ethers.provider.send("hardhat_setStorageAt", [
+        lineaRollupAddress,
+        storageSlot,
+        ethers.zeroPadValue(ethers.toBeHex(BigInt(VALID_MERKLE_PROOF.proof.length)), 32),
+      ]);
+
+      expect(await lineaRollup.l2MerkleRootsDepths(VALID_MERKLE_PROOF.merkleRoot)).to.equal(
+        BigInt(VALID_MERKLE_PROOF.proof.length),
+      );
+
+      const claimParams = {
+        proof: VALID_MERKLE_PROOF.proof,
+        messageNumber: 1n,
+        leafIndex: VALID_MERKLE_PROOF.index,
+        from: admin.address,
+        to: admin.address,
+        fee: MESSAGE_FEE,
+        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        feeRecipient: ADDRESS_ZERO,
+        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        data: EMPTY_CALLDATA,
+      };
+
+      const messageLeafHash = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "address", "uint256", "uint256", "uint256", "bytes"],
+          [
+            claimParams.from,
+            claimParams.to,
+            claimParams.fee,
+            claimParams.value,
+            claimParams.messageNumber,
+            claimParams.data,
+          ],
+        ),
+      );
+
+      const claimCall = lineaRollup.connect(admin).claimMessageWithProofAndWithdrawLST(claimParams, operator.address);
+
+      await expectEvent(lineaRollup, claimCall, "MessageClaimed", [messageLeafHash]);
+
+      expect(await lineaRollup.isWithdrawLSTAllowed()).to.be.false;
+    });
   });
 });

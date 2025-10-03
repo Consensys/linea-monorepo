@@ -753,8 +753,22 @@ abstract contract LineaRollupBase is
     emit MessageSent(msg.sender, _l2YieldRecipient, 0, _amount, messageNumber, hex"", messageHash);
   }
 
-  // @dev Any calldata is ignored, we don't have the ETH to do call.value...
-  // @dev No refund here, message service is in ETH deficit
+  /**
+   * @notice Claims a cross-chain message using a Merkle proof, and withdraws LST from the specified yield provider 
+   *         when the L1MessageService balance is insufficient to fulfill delivery.
+   *
+   * @dev Reverts if the L1MessageService has sufficient balance to fulfill the message delivery.
+   * @dev Differences from `claimMessageWithProof`:
+   *      - Does not deliver the message payload to the recipient, as the L1MessageService lacks sufficient balance.
+   *      - Does not provide a refund of the message fee.
+   * @dev Temporarily enables an alternate call path by toggling the `IS_WITHDRAW_LST_ALLOWED` flag, 
+   *      which is unavailable via `claimMessageWithProof`.
+   * @dev Reverts with `L2MerkleRootDoesNotExist` if no Merkle tree exists at the specified depth.
+   * @dev Reverts with `ProofLengthDifferentThanMerkleDepth` if the provided proof size does not match the tree depth.
+   *
+   * @param _params Collection of claim data with proof and supporting data.
+   * @param _yieldProvider The yield provider address to withdraw LST from.
+   */
   function claimMessageWithProofAndWithdrawLST(ClaimMessageWithProofParams calldata _params, address _yieldProvider) external nonReentrant {
     if (_params.value < address(this).balance) {
       revert LSTWithdrawalRequiresDeficit();
