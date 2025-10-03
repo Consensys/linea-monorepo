@@ -25,8 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -41,6 +44,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -180,7 +184,15 @@ public class EcPairingTest extends TracerTestBase {
   @MethodSource("ecPairingSingleSource")
   void testEcPairingSingleForScenarioUsingMethodSource(
       String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe, TestInfo testInfo) {
-    testEcPairingSingleForScenario(Ax, Ay, BxIm, BxRe, ByIm, ByRe, testInfo);
+    testEcPairingSingleForScenarioBody(Ax, Ay, BxIm, BxRe, ByIm, ByRe, testInfo);
+  }
+
+  @Tag("nightly")
+  @ParameterizedTest
+  @MethodSource("ecPairingSingleSourceNightly")
+  void testEcPairingSingleForScenarioUsingMethodSourceNightly(
+      String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe, TestInfo testInfo) {
+    testEcPairingSingleForScenarioBody(Ax, Ay, BxIm, BxRe, ByIm, ByRe, testInfo);
   }
 
   @Disabled // Useful only to test specific test cases in a CSV file
@@ -188,15 +200,15 @@ public class EcPairingTest extends TracerTestBase {
   @CsvFileSource(
       resources =
           "/ecpairing/test_ec_pairing_single_for_scenario_using_method_source_failed_placeholder.csv")
-  void testEcPairingSingleForScenarioUsingCsv(
+  void testEcPairingSingleForScenarioUsingCsvNightly(
       String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe, TestInfo testInfo) {
-    testEcPairingSingleForScenario(Ax, Ay, BxIm, BxRe, ByIm, ByRe, testInfo);
+    testEcPairingSingleForScenarioBody(Ax, Ay, BxIm, BxRe, ByIm, ByRe, testInfo);
   }
 
   // Body of:
   // testEcPairingSingleForScenarioUsingMethodSource
   // testEcPairingSingleForScenarioUsingCsv
-  private static void testEcPairingSingleForScenario(
+  private static void testEcPairingSingleForScenarioBody(
       String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe, TestInfo testInfo) {
     // small point: (Ax,Ay)
     // large point: (BxRe + i*BxIm, ByRe + i*ByIm)
@@ -242,6 +254,12 @@ public class EcPairingTest extends TracerTestBase {
 
   // Method source of testEcPairingSingleForScenarioUsingMethodSource
   private static Stream<Arguments> ecPairingSingleSource() {
+    List<Arguments> arguments = new ArrayList<>(ecPairingSingleSourceNightly().toList());
+    Collections.shuffle(arguments, new Random(LocalDate.now().toEpochDay()));
+    return arguments.stream().limit(arguments.size() / 20); // Execute 5 % of the tests
+  }
+
+  private static Stream<Arguments> ecPairingSingleSourceNightly() {
     List<Arguments> arguments = new ArrayList<>();
     for (Arguments smallPoint : smallPoints) {
       for (Arguments largePoint : largePoints) {
@@ -255,7 +273,15 @@ public class EcPairingTest extends TracerTestBase {
   @MethodSource({"ecPairingGenericSource", "ecPairingSuccessfulNonTrivialSource"})
   void testEcPairingGenericForScenarioUsingMethodSource(
       String description, String pairingsAsString, TestInfo testInfo) {
-    testEcPairingGenericForScenario(description, pairingsAsString, testInfo);
+    testEcPairingGenericForScenarioBody(description, pairingsAsString, testInfo);
+  }
+
+  @Tag("nightly")
+  @ParameterizedTest
+  @MethodSource({"ecPairingGenericSourceNightly", "ecPairingSuccessfulNonTrivialSource"})
+  void testEcPairingGenericForScenarioUsingMethodSourceNightly(
+      String description, String pairingsAsString, TestInfo testInfo) {
+    testEcPairingGenericForScenarioBody(description, pairingsAsString, testInfo);
   }
 
   @Disabled // Useful only to test specific test cases in a CSV file
@@ -264,15 +290,15 @@ public class EcPairingTest extends TracerTestBase {
       resources =
           "/ecpairing/test_ec_pairing_generic_for_scenario_using_method_source_failed_placeholder.csv",
       maxCharsPerColumn = 100000)
-  void testEcPairingGenericForScenarioUsingCsv(
+  void testEcPairingGenericForScenarioUsingCsvNightly(
       String description, String pairingsAsString, TestInfo testInfo) {
-    testEcPairingGenericForScenario(description, pairingsAsString, testInfo);
+    testEcPairingGenericForScenarioBody(description, pairingsAsString, testInfo);
   }
 
   // Body of:
   // testEcPairingGenericForScenarioUsingMethodSource
   // testEcPairingGenericForScenarioUsingCsv
-  private void testEcPairingGenericForScenario(
+  private void testEcPairingGenericForScenarioBody(
       String description, String pairingsAsString, TestInfo testInfo) {
     assertFalse(description.contains(" "), "Description cannot contain spaces");
 
@@ -339,6 +365,12 @@ public class EcPairingTest extends TracerTestBase {
 
   // Method source of testEcPairingGenericForScenarioUsingMethodSource
   private static Stream<Arguments> ecPairingGenericSource() {
+    List<Arguments> arguments = new ArrayList<>(ecPairingGenericSourceNightly().toList());
+    Collections.shuffle(arguments, new Random(LocalDate.now().toEpochDay()));
+    return arguments.stream().limit(arguments.size() / 20); // Execute 5 % of the tests
+  }
+
+  private static Stream<Arguments> ecPairingGenericSourceNightly() {
     List<Arguments> allPairings = new ArrayList<>();
     EcPairingTestSupport util = new EcPairingTestSupport();
 
@@ -533,7 +565,8 @@ public class EcPairingTest extends TracerTestBase {
   }
 
   // Method source of testEcPairingGenericForScenarioUsingMethodSource
-  private static Stream<Arguments> ecPairingSuccessfulNonTrivialSource(TestInfo testInfo) {
+  // This source is already small so no need to reduce it for non-nightly runs
+  private static Stream<Arguments> ecPairingSuccessfulNonTrivialSource() {
     List<Arguments> allPairings = new ArrayList<>();
 
     // case totalPairings = 2
@@ -663,6 +696,7 @@ public class EcPairingTest extends TracerTestBase {
   }
 
   // Tests for support methods
+  @Tag("nightly")
   @Test
   public void testPair(TestInfo testInfo) {
     Arguments smallPoint = Arguments.of("Ax", "Ay");
@@ -677,6 +711,7 @@ public class EcPairingTest extends TracerTestBase {
     assertEquals("ByRe", pair.get()[5]);
   }
 
+  @Tag("nightly")
   @Test
   public void testArgumentsListToPairingsAsString(TestInfo testInfo) {
     List<Arguments> pairings = new ArrayList<>();
