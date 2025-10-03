@@ -165,6 +165,30 @@ describe("Linea Rollup contract", () => {
       expect(await yieldManager.isL2YieldRecipientKnown(existingRecipient)).to.be.true;
     });
 
+    it("Should have the initial minimum reserve percentage in state", async () => {
+      expect(await yieldManager.minimumWithdrawalReservePercentageBps()).to.equal(
+        BigInt(initializationData.initialMinimumWithdrawalReservePercentageBps),
+      );
+    });
+
+    it("Should have the initial minimum reserve amount in state", async () => {
+      expect(await yieldManager.minimumWithdrawalReserveAmount()).to.equal(
+        initializationData.initialMinimumWithdrawalReserveAmount,
+      );
+    });
+
+    it("Should have the initial target reserve percentage in state", async () => {
+      expect(await yieldManager.targetWithdrawalReservePercentageBps()).to.equal(
+        BigInt(initializationData.initialTargetWithdrawalReservePercentageBps),
+      );
+    });
+
+    it("Should have the initial target reserve amount in state", async () => {
+      expect(await yieldManager.targetWithdrawalReserveAmount()).to.equal(
+        initializationData.initialTargetWithdrawalReserveAmount,
+      );
+    });
+
     it("Should assign the OSSIFIER_ROLE to securityCouncil address", async () => {
       const ossifierRole = await yieldManager.OSSIFIER_ROLE();
       expect(await yieldManager.hasRole(ossifierRole, securityCouncil.address)).to.be.true;
@@ -334,17 +358,108 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("Setting withdrawal reserve parameters", () => {
-    it("Should revert set minimum withdrawal percentage when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {});
-    it("Should revert set minimum withdrawal amount when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {});
-    it("Should revert set target withdrawal percentage when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {});
-    it("Should revert set target withdrawal amount when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {});
-    it("Should revert if set minimum withdrawal percentage higher than 10000 bps", async () => {});
-    it("Should revert if set target withdrawal percentage higher than 10000 bps", async () => {});
+    const buildSetWithdrawalReserveParams = (
+      overrides: Partial<{ minPct: number; targetPct: number; minAmount: bigint; targetAmount: bigint }> = {},
+    ) => ({
+      minimumWithdrawalReservePercentageBps:
+        overrides.minPct ?? initializationData.initialMinimumWithdrawalReservePercentageBps,
+      targetWithdrawalReservePercentageBps:
+        overrides.targetPct ?? initializationData.initialTargetWithdrawalReservePercentageBps,
+      minimumWithdrawalReserveAmount: overrides.minAmount ?? initializationData.initialMinimumWithdrawalReserveAmount,
+      targetWithdrawalReserveAmount: overrides.targetAmount ?? initializationData.initialTargetWithdrawalReserveAmount,
+    });
 
-    // it("Should add the new l2YieldRecipient address and emit the correct event", async () => {});
-    // it("Should revert if the address being added has already been added", async () => {});
-    // it("Should revert if the address being removed is unknown", async () => {});
-    // it("Should revert when removing if the caller does not have the SET_L2_YIELD_RECIPIENT_ROLE", async () => {});
-    // it("Should remove the new l2YieldRecipient address and emit the correct event", async () => {});
+    it("Should revert set withdrawal reserve parameters when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {
+      const role = await yieldManager.WITHDRAWAL_RESERVE_SETTER_ROLE();
+      await expect(
+        yieldManager.connect(nonAuthorizedAccount).setWithdrawalReserveParameters(buildSetWithdrawalReserveParams()),
+      ).to.be.revertedWith(
+        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${role}`,
+      );
+    });
+
+    it("Should revert if minimum withdrawal percentage higher than 10000 bps", async () => {
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams({ minPct: 10001 })),
+        "BpsMoreThan10000",
+      );
+    });
+
+    it("Should revert if target withdrawal percentage higher than 10000 bps", async () => {
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams({ targetPct: 10001 })),
+        "BpsMoreThan10000",
+      );
+    });
+
+    it("Should revert if minimum withdrawal reserve percentage > target", async () => {
+      const target = initializationData.initialTargetWithdrawalReservePercentageBps;
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams({ minPct: target + 1, targetPct: target })),
+        "TargetReservePercentageMustBeAboveMinimum",
+      );
+    });
+
+    it("Should revert if minimum withdrawal amount > target", async () => {
+      const target = initializationData.initialTargetWithdrawalReserveAmount;
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .setWithdrawalReserveParameters(
+            buildSetWithdrawalReserveParams({ minAmount: target + 1n, targetAmount: target }),
+          ),
+        "TargetReserveAmountMustBeAboveMinimum",
+      );
+    });
+
+    it("Should successfully set withdrawal reserve parameters and emit logs", async () => {
+      const params = buildSetWithdrawalReserveParams({
+        minPct: initializationData.initialMinimumWithdrawalReservePercentageBps + 1,
+        targetPct: initializationData.initialTargetWithdrawalReservePercentageBps + 2,
+        minAmount: initializationData.initialMinimumWithdrawalReserveAmount + 5n,
+        targetAmount: initializationData.initialTargetWithdrawalReserveAmount + 10n,
+      });
+
+      const prevMinPct = await yieldManager.minimumWithdrawalReservePercentageBps();
+      const prevMinAmount = await yieldManager.minimumWithdrawalReserveAmount();
+      const prevTargetPct = await yieldManager.targetWithdrawalReservePercentageBps();
+      const prevTargetAmount = await yieldManager.targetWithdrawalReserveAmount();
+
+      const tx = yieldManager.connect(nativeYieldOperator).setWithdrawalReserveParameters(params);
+
+      await expect(tx)
+        .to.emit(yieldManager, "WithdrawalReserveParametersSet")
+        .withArgs(
+          prevMinPct,
+          params.minimumWithdrawalReservePercentageBps,
+          prevMinAmount,
+          params.minimumWithdrawalReserveAmount,
+          prevTargetPct,
+          params.targetWithdrawalReservePercentageBps,
+          prevTargetAmount,
+          params.targetWithdrawalReserveAmount,
+        );
+
+      await tx;
+
+      expect(await yieldManager.minimumWithdrawalReservePercentageBps()).to.equal(
+        BigInt(params.minimumWithdrawalReservePercentageBps),
+      );
+      expect(await yieldManager.minimumWithdrawalReserveAmount()).to.equal(params.minimumWithdrawalReserveAmount);
+      expect(await yieldManager.targetWithdrawalReservePercentageBps()).to.equal(
+        BigInt(params.targetWithdrawalReservePercentageBps),
+      );
+      expect(await yieldManager.targetWithdrawalReserveAmount()).to.equal(params.targetWithdrawalReserveAmount);
+    });
   });
 });
