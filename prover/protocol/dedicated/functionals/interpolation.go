@@ -2,11 +2,11 @@ package functionals
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -165,6 +165,7 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a ifaces.Accessor, p i
 	nInv := field.NewElement(uint64(p.Size()))
 	nInv.Inverse(&nInv)
 
+	// Finally we return the accessor that will read the interpolation result
 	return accessors.NewFromExpression(
 		symbolic.Mul(
 			symbolic.Sub(

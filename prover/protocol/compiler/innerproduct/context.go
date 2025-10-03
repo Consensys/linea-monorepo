@@ -104,15 +104,18 @@ func compileForSize(
 	}
 
 	// This constraints set the recurrent property of summation
-	comp.InsertGlobal(
-		round,
-		deriveName[ifaces.QueryID]("SUMMATION_CONSISTENCY", size, comp.SelfRecursionCount),
-		symbolic.Sub(
-			ctx.Summation,
-			column.Shift(ctx.Summation, -1),
-			ctx.Collapsed,
-		),
-	)
+	// when Summation size == 1, no need for the recurrence relation
+	if ctx.Summation.Size() > 1 {
+		comp.InsertGlobal(
+			round,
+			deriveName[ifaces.QueryID]("SUMMATION_CONSISTENCY", size, comp.SelfRecursionCount),
+			symbolic.Sub(
+				ctx.Summation,
+				column.Shift(ctx.Summation, -1),
+				ctx.Collapsed,
+			),
+		)
+	}
 
 	// This constraint ensures that summation has the correct initial value
 	comp.InsertLocal(

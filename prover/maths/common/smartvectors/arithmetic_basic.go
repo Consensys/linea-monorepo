@@ -48,7 +48,6 @@ func InnerProduct(a, b SmartVector) field.Element {
 	}
 
 	var res field.Element
-
 	for i := 0; i < a.Len(); i++ {
 		var tmp field.Element
 		a_, b_ := a.Get(i), b.Get(i)

@@ -1,7 +1,6 @@
 package keccakf
 
 import (
-	"math/big"
 	"strconv"
 	"strings"
 
@@ -101,41 +100,9 @@ func DecomposeFrInSlice(f []field.Element, base int) (res [][]field.Element) {
 // Decompose a field into a given base. nb gives the number of chunks needed
 func DecomposeFr(f field.Element, base int, nb int) (res []field.Element) {
 
-	// Optimization : the computation is faster to perform if
-	// f fits on a U64
-	if f.IsUint64() {
-		return DecomposeSmall(f.Uint64(), base, nb)
-	}
+	//TODO@yao: consider decompose directly in base, uint32 is smaller than uint64
+	return DecomposeSmall(f.Uint64(), base, nb)
 
-	// Converts f to bigint
-	var curr big.Int
-	f.BigInt(&curr)
-
-	// Also the base
-	baseBig := big.NewInt(int64(base))
-	zero := big.NewInt(0)
-	var limbBig big.Int
-	var limbF field.Element
-
-	// Initialize the result
-	res = make([]field.Element, 0, nb)
-
-	for curr.Cmp(zero) > 0 {
-		curr.DivMod(&curr, baseBig, &limbBig)
-		limbF.SetBigInt(&limbBig)
-		res = append(res, limbF)
-	}
-
-	if len(res) > nb {
-		utils.Panic("expected %v limbs, but got %v", nb, len(res))
-	}
-
-	// Complete with zeroes
-	for len(res) < nb {
-		res = append(res, field.Zero())
-	}
-
-	return res
 }
 
 // Converts from (possibly dirty) base representation to a U64. Used for

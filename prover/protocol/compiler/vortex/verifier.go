@@ -56,8 +56,11 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
-		precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID())
-		precompRootF := field.Octuplet(precompRootSv.IntoRegVecSaveAlloc())
+		var precompRootF field.Octuplet
+		for i := 0; i < blockSize; i++ {
+			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
+			precompRootF[i] = precompRootSv.IntoRegVecSaveAlloc()[0]
+		}
 
 		if ctx.IsSISAppliedToPrecomputed() {
 			sisRoots = append(sisRoots, types.HashToBytes32(precompRootF))
@@ -80,8 +83,11 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 			continue
 		}
 
-		rootSv := run.GetColumn(ctx.Items.MerkleRoots[round].GetColID())
-		precompRootF := field.Octuplet(rootSv.IntoRegVecSaveAlloc())
+		var precompRootF field.Octuplet
+		for i := 0; i < blockSize; i++ {
+			rootSv := run.GetColumn(ctx.Items.MerkleRoots[round][i].GetColID())
+			precompRootF[i] = rootSv.IntoRegVecSaveAlloc()[0]
+		}
 
 		switch ctx.RoundStatus[round] {
 		case IsOnlyPoseidon2Applied:

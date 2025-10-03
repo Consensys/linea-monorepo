@@ -29,7 +29,11 @@ PACKAGES := \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit/... \
-	github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates/...
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates/... \
+  github.com/consensys/linea-monorepo/prover/protocol/dedicated/...\
+  github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion/...\
+
+
 
 # these targets are not defined as depending on source files,
 # so they should be recompiled by default “just in case”.
@@ -160,7 +164,7 @@ test:
 	@echo "Running all Go tests for Linea Monorepo prover packages..."
 	@for pkg in $(PACKAGES); do \
 		echo "--> Running tests for $$pkg"; \
-		go test -tags debug -skip 'Gnark' $$pkg || exit 1; \
+		go test -tags debug -skip 'Gnark|TestSelfRecursionManyLayersWithSerde' $$pkg || exit 1; \
 	done
 	@echo "All tests completed successfully."
 

@@ -108,12 +108,17 @@ func (r InnerProduct) Compute(run ifaces.Runtime) []fext.Element {
 
 	res := make([]fext.Element, len(r.Bs))
 	a := r.A.GetColAssignment(run)
-	a = smartvectors_mixed.LiftToExt(a)
+
+	if smartvectors.IsBase(a) {
+		a = smartvectors_mixed.LiftToExt(a)
+	}
 
 	for i := range r.Bs {
 
 		b := r.Bs[i].GetColAssignment(run)
-		b = smartvectors_mixed.LiftToExt(b)
+		if smartvectors.IsBase(b) {
+			b = smartvectors_mixed.LiftToExt(b)
+		}
 		ab := smartvectors_mixed.Mul(a, b)
 		res[i] = smartvectors.SumExt(ab)
 	}

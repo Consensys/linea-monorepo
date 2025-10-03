@@ -14,25 +14,27 @@ import (
 // FlatProof is a collection of columns representing a Merkle proof in a flat
 // manner.
 type FlatProof struct {
-	Nodes []ifaces.Column
+	Nodes [blockSize][]ifaces.Column
 }
 
 // Depth returns the depth of the tree represented by the proof
 func (p *FlatProof) Depth() int {
-	return len(p.Nodes)
+	return len(p.Nodes[0])
 }
 
 // NumRow returns the number of rows of the [FlatProof]
 func (p *FlatProof) NumRow() int {
-	return p.Nodes[0].Size()
+	return p.Nodes[0][0].Size()
 }
 
 // NewProof instantiates a new [FlatProof] object in the wizard
 func NewProof(comp *wizard.CompiledIOP, round int, name string, depth, numRows int) *FlatProof {
 	proof := &FlatProof{}
 	for i := 0; i < depth; i++ {
-		node := comp.InsertCommit(round, ifaces.ColIDf("%v_NODE_%v", name, i), numRows)
-		proof.Nodes = append(proof.Nodes, node)
+		for j := 0; j < blockSize; j++ {
+			node := comp.InsertCommit(round, ifaces.ColIDf("%v_NODE_%v_%v", name, i, j), numRows)
+			proof.Nodes[j] = append(proof.Nodes[j], node)
+		}
 	}
 	return proof
 }
@@ -40,8 +42,10 @@ func NewProof(comp *wizard.CompiledIOP, round int, name string, depth, numRows i
 // WithStatus changes the status of all the columns of the [FlatProof] to
 // "status" and returns a pointer to the receiver.
 func (p *FlatProof) WithStatus(comp *wizard.CompiledIOP, status column.Status) *FlatProof {
-	for i := range p.Nodes {
-		comp.Columns.SetStatus(p.Nodes[i].GetColID(), status)
+	for j := 0; j < blockSize; j++ {
+		for i := range p.Nodes[j] {
+			comp.Columns.SetStatus(p.Nodes[j][i].GetColID(), status)
+		}
 	}
 	return p
 }
@@ -51,17 +55,25 @@ func (p *FlatProof) WithStatus(comp *wizard.CompiledIOP, status column.Status) *
 // Each leaf in the proof is converted to a [8]field.Element and then appended to assignment
 func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
 
-	assignment := make([][]field.Element, p.Depth())
+	var assignment [blockSize][][]field.Element
 
+	for i := 0; i < blockSize; i++ {
+		assignment[i] = make([][]field.Element, p.Depth())
+
+	}
 	for i := range proofs {
 		for j := range proofs[i].Siblings {
 			nodeAsFr := types.Bytes32ToHash(proofs[i].Siblings[j])
-			assignment[j] = append(assignment[j], nodeAsFr...)
+			for k := 0; k < blockSize; k++ {
+				assignment[k][j] = append(assignment[k][j], nodeAsFr[k])
+			}
 		}
 	}
 
-	for i := range p.Nodes {
-		run.AssignColumn(p.Nodes[i].GetColID(), smartvectors.RightZeroPadded(assignment[i], p.NumRow()))
+	for j := 0; j < blockSize; j++ {
+		for i := range p.Nodes[j] {
+			run.AssignColumn(p.Nodes[j][i].GetColID(), smartvectors.RightZeroPadded(assignment[j][i], p.NumRow()))
+		}
 	}
 }
 
@@ -78,20 +90,20 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 		proofs = make([]smt.Proof, 0)
 		// The assumption here is two-fold: first, this relies on the
 		// fact that we know all the columns are structured and padded the same
-		start, stop = smartvectors.CoWindowRange(p.Nodes[0].GetColAssignment(run))
+		start, stop = smartvectors.CoWindowRange(p.Nodes[0][0].GetColAssignment(run))
 	)
 
 	for i := start; i <= stop; i++ {
 
 		newProof := smt.Proof{
 			Path:     field.ToInt(pos.GetPtr(i)),
-			Siblings: make([]types.Bytes32, len(p.Nodes)),
+			Siblings: make([]types.Bytes32, len(p.Nodes[0])),
 		}
 
-		for n := range p.Nodes {
-			var node [8]field.Element
-			for j := 0; j < 8; j++ {
-				node[j] = p.Nodes[n].GetColAssignmentAt(run, i+j)
+		for n := range p.Nodes[0] {
+			var node [blockSize]field.Element
+			for j := 0; j < blockSize; j++ {
+				node[j] = p.Nodes[j][n].GetColAssignmentAt(run, i)
 			}
 			newProof.Siblings[n] = types.HashToBytes32(node)
 		}
@@ -116,11 +128,15 @@ func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []frontend.Va
 
 		newProof := smt.GnarkProof{
 			Path:     entryList[i],
-			Siblings: make([]frontend.Variable, len(p.Nodes)),
+			Siblings: make([]frontend.Variable, len(p.Nodes[0])),
 		}
 
-		for j := range p.Nodes {
-			node := p.Nodes[i].GetColAssignmentGnarkAt(run, i)
+		for j := range p.Nodes[0] {
+			var node [blockSize]frontend.Variable
+
+			for k := 0; k < blockSize; k++ {
+				node[k] = p.Nodes[k][j].GetColAssignmentGnarkAt(run, i)
+			}
 			newProof.Siblings[j] = node
 		}
 
