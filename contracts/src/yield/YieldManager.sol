@@ -171,7 +171,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       (totalSystemBalance * _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps) /
       MAX_BPS;
     // Get minimumWithdrawalReserve
-    minimumWithdrawalReserve = Math256.min(
+    minimumWithdrawalReserve = Math256.max(
       minimumWithdrawalReserveByPercentage,
       _getYieldManagerStorage()._minimumWithdrawalReserveAmount
     );
@@ -200,7 +200,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     uint256 targetWithdrawalReserveByPercentage =
       (totalSystemBalance * _getYieldManagerStorage()._targetWithdrawalReservePercentageBps) /
       MAX_BPS;
-    targetWithdrawalReserve = Math256.min(
+    targetWithdrawalReserve = Math256.max(
       targetWithdrawalReserveByPercentage,
       _getYieldManagerStorage()._targetWithdrawalReserveAmount
     );
@@ -1033,5 +1033,4 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       _params.targetWithdrawalReserveAmount
     );
   }
-
 }
