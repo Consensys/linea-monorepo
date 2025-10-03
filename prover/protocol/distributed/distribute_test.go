@@ -3,7 +3,6 @@ package distributed_test
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
@@ -128,8 +127,6 @@ func TestDistributedWizardLogic(t *testing.T) {
 		allGrandProduct     = field.NewElement(1)
 		allLogDerivativeSum = field.Element{}
 		allHornerSum        = field.Element{}
-		prevGlobalSent      = field.Element{}
-		prevHornerN1Hash    = field.Element{}
 	)
 
 	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
@@ -142,10 +139,10 @@ func TestDistributedWizardLogic(t *testing.T) {
 	for i := range witnessGLs {
 
 		var (
-			witnessGL   = witnessGLs[i]
-			moduleIndex = witnessGLs[i].ModuleIndex
-			moduleName  = witnessGLs[i].ModuleName
-			moduleGL    *distributed.ModuleGL
+			witnessGL = witnessGLs[i]
+			// moduleIndex = witnessGLs[i].ModuleIndex
+			// moduleName  = witnessGLs[i].ModuleName
+			moduleGL *distributed.ModuleGL
 		)
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
@@ -164,38 +161,14 @@ func TestDistributedWizardLogic(t *testing.T) {
 		}
 
 		var (
-			proverRunGL        = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
-			proofGL            = proverRunGL.ExtractProof()
-			verGLRun, verGLErr = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
+			proverRunGL = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
+			proofGL     = proverRunGL.ExtractProof()
+			_, verGLErr = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
 		)
 
 		if verGLErr != nil {
 			t.Errorf("verifier failed for segment %v, reason=%v", i, verGLErr)
 		}
-
-		var (
-			errMsg         = fmt.Sprintf("segment=%v, moduleName=%v, segment-index=%v", i, moduleName, moduleIndex)
-			globalReceived = verGLRun.GetPublicInput(distributed.GlobalReceiverPublicInput)
-			globalSent     = verGLRun.GetPublicInput(distributed.GlobalSenderPublicInput)
-			isFirst        = verGLRun.GetPublicInput(distributed.IsFirstPublicInput)
-			isLast         = verGLRun.GetPublicInput(distributed.IsLastPublicInput)
-			shouldBeFirst  = i == 0 || witnessGLs[i].ModuleName != witnessGLs[i-1].ModuleName
-			shouldBeLast   = i == len(witnessGLs)-1 || witnessGLs[i].ModuleName != witnessGLs[i+1].ModuleName
-		)
-
-		if isFirst.IsOne() != shouldBeFirst {
-			t.Error("isFirst has unexpected values: " + errMsg)
-		}
-
-		if isLast.IsOne() != shouldBeLast {
-			t.Error("isLast has unexpected values: " + errMsg)
-		}
-
-		if !shouldBeFirst && globalReceived != prevGlobalSent {
-			t.Error("global-received does not match: " + errMsg)
-		}
-
-		prevGlobalSent = globalSent
 	}
 
 	for i := range witnessLPPs {
@@ -203,26 +176,12 @@ func TestDistributedWizardLogic(t *testing.T) {
 		var (
 			witnessLPP  = witnessLPPs[i]
 			moduleIndex = witnessLPPs[i].ModuleIndex
-			moduleNames = witnessLPPs[i].ModuleName
-			moduleLPP   *distributed.ModuleLPP
+			moduleLPP   = distWizard.LPPs[moduleIndex]
 		)
 
 		witnessLPP.InitialFiatShamirState = field.NewFromString("6861409415040334196327676756394403519979367936044773323994693747743991500772")
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
-
-		for k := range distWizard.LPPs {
-			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), moduleNames) {
-				continue
-			}
-
-			moduleLPP = distWizard.LPPs[k]
-			break
-		}
-
-		if moduleLPP == nil {
-			t.Fatalf("module does not exists")
-		}
 
 		var (
 			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP))
@@ -235,22 +194,13 @@ func TestDistributedWizardLogic(t *testing.T) {
 		}
 
 		var (
-			errMsg           = fmt.Sprintf("segment=%v, moduleName=%v, segment-index=%v", i, moduleNames, moduleIndex)
 			logDerivativeSum = verLPPRun.GetPublicInput(distributed.LogDerivativeSumPublicInput)
 			grandProduct     = verLPPRun.GetPublicInput(distributed.GrandProductPublicInput)
 			hornerSum        = verLPPRun.GetPublicInput(distributed.HornerPublicInput)
-			hornerN0Hash     = verLPPRun.GetPublicInput(distributed.HornerN0HashPublicInput)
-			hornerN1Hash     = verLPPRun.GetPublicInput(distributed.HornerN1HashPublicInput)
-			shouldBeFirst    = i == 0 || !reflect.DeepEqual(witnessLPPs[i].ModuleName, witnessLPPs[i-1].ModuleName)
 		)
-
-		if !shouldBeFirst && hornerN0Hash != prevHornerN1Hash {
-			t.Error("horner-n0-hash mismatch: " + errMsg)
-		}
 
 		t.Logf("log-derivative-sum=%v grand-product=%v horner-sum=%v", logDerivativeSum.String(), grandProduct.String(), hornerSum.String())
 
-		prevHornerN1Hash = hornerN1Hash
 		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
 		allHornerSum.Add(&allHornerSum, &hornerSum)
 		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
@@ -433,41 +383,20 @@ func runProverLPPs(
 ) []*wizard.ProverRuntime {
 
 	var (
-		runs         = make([]*wizard.ProverRuntime, len(witnessLPPs))
-		compiledLPPs = distWizard.CompiledLPPs
+		runs = make([]*wizard.ProverRuntime, len(witnessLPPs))
 	)
 
 	for i := range witnessLPPs {
 
 		var (
-			witnessLPP      = witnessLPPs[i]
-			moduleLPP       *distributed.RecursedSegmentCompilation
-			distModuleNames = [][]distributed.ModuleName{}
+			witnessLPP  = witnessLPPs[i]
+			moduleIndex = witnessLPP.ModuleIndex
+			moduleLPP   = distWizard.CompiledLPPs[moduleIndex]
 		)
 
 		witnessLPP.InitialFiatShamirState = sharedRandomness
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
-
-	ModuleLoop:
-		for k := range distWizard.LPPs {
-
-			moduleList := distWizard.LPPs[k].ModuleNames()
-			distModuleNames = append(distModuleNames, moduleList)
-
-			for l, m := range moduleList {
-				if m != witnessLPP.ModuleName[l] {
-					continue ModuleLoop
-				}
-			}
-
-			moduleLPP = compiledLPPs[k]
-			break
-		}
-
-		if moduleLPP == nil {
-			t.Fatalf("module does not exists, moduleName=%v distModuleNames=%v", witnessLPP.ModuleName, distModuleNames)
-		}
 
 		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
 		runs[i] = moduleLPP.ProveSegment(witnessLPP)

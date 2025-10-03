@@ -69,9 +69,9 @@ type DistributedWizard struct {
 	// [DistributedWizard.Compile]
 	CompiledLPPs []*RecursedSegmentCompilation
 
-	// CompiledConglomeration stores the compilation context of the
-	// conglomeration wizard.
-	CompiledConglomeration *ConglomeratorCompilation
+	// // CompiledConglomeration stores the compilation context of the
+	// // conglomeration wizard.
+	// CompiledConglomeration *ConglomeratorCompilation
 }
 
 func init() {
@@ -85,8 +85,8 @@ func init() {
 	serialization.RegisterImplementation(ModuleGLAssignSendReceiveGlobal{})
 	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
 	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
-	serialization.RegisterImplementation(ConglomerateHolisticCheck{})
-	serialization.RegisterImplementation(ConglomerationAssignHolisticCheckColumn{})
+	// serialization.RegisterImplementation(ConglomerateHolisticCheck{})
+	// serialization.RegisterImplementation(ConglomerationAssignHolisticCheckColumn{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
@@ -222,16 +222,16 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	return dist
 }
 
-// Conglomerate registers the conglomeration wizard and compiles it.
-func (dist *DistributedWizard) Conglomerate(maxNumSegment int) *DistributedWizard {
-	dist.CompiledConglomeration = conglomerate(
-		maxNumSegment,
-		dist.CompiledGLs,
-		dist.CompiledLPPs,
-		dist.CompiledDefault,
-	)
-	return dist
-}
+// // Conglomerate registers the conglomeration wizard and compiles it.
+// func (dist *DistributedWizard) Conglomerate(maxNumSegment int) *DistributedWizard {
+// 	dist.CompiledConglomeration = conglomerate(
+// 		maxNumSegment,
+// 		dist.CompiledGLs,
+// 		dist.CompiledLPPs,
+// 		dist.CompiledDefault,
+// 	)
+// 	return dist
+// }
 
 // GetSharedRandomness returns the shared randomness used by the protocol
 // to generate the LPP proofs. The LPP commitments are supposed to be the
