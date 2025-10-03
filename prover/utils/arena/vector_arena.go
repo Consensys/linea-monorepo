@@ -32,7 +32,6 @@ func (a *VectorArena) get(nbBytes int64) []byte {
 	start := n - nbBytes
 	end := n
 	if end > int64(len(a.data)) {
-		atomic.AddInt64(&a.offset, -nbBytes)
 		return nil
 	}
 	return a.data[start:end]
