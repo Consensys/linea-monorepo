@@ -101,7 +101,7 @@ func (s *schemaScanner) scanConstraints() {
 	for i := range indices {
 		indices[i] = i
 	}
-	
+
 	// Sort indices by constraint name for deterministic ordering
 	sort.Slice(indices, func(i, j int) bool {
 		nameI := fmt.Sprintf("%v", corsetCSs[indices[i]].Lisp(s.Schema).String(false))
