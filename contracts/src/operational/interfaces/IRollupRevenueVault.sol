@@ -49,6 +49,11 @@ interface IRollupRevenueVault {
   error InvoiceInArrears();
 
   /**
+   * @dev Thrown when the invoice date is too old.
+   */
+  error InvoiceDateTooOld();
+
+  /**
    * @dev Thrown when the contract balance is insufficient.
    */
   error InsufficientBalance();

@@ -253,7 +253,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     uint256 _newInvoiceArrears,
     uint256 _lastInvoiceDate
   ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    require(_lastInvoiceDate >= lastInvoiceDate, TimestampsNotInSequence());
+    require(_lastInvoiceDate >= lastInvoiceDate, InvoiceDateTooOld());
 
     invoiceArrears = _newInvoiceArrears;
     lastInvoiceDate = _lastInvoiceDate;

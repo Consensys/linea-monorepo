@@ -491,6 +491,15 @@ describe("RollupRevenueVault", () => {
       );
     });
 
+    it("Should revert if lastInvoiceDate is before the current one", async () => {
+      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(admin).updateInvoiceArrears(100n, lastInvoiceDate - 1n),
+        "InvoiceDateTooOld",
+      );
+    });
+
     it("Should update invoice arrears", async () => {
       const newInvoiceArrears = 100n;
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
@@ -580,7 +589,7 @@ describe("RollupRevenueVault", () => {
       );
     });
 
-    it("Should revert if operatingCostsReceiver address is zero address", async () => {
+    it("Should revert if invoicePaymentReceiver address is zero address", async () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateInvoicePaymentReceiver(ZeroAddress),
@@ -588,7 +597,7 @@ describe("RollupRevenueVault", () => {
       );
     });
 
-    it("Should update operatingCostsReceiver address", async () => {
+    it("Should update invoicePaymentReceiver address", async () => {
       const randomAddress = toChecksumAddress(generateRandomBytes(20));
       await expectEvent(
         rollupRevenueVault,
