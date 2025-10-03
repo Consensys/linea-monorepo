@@ -88,6 +88,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    */
   function initialize(YieldManagerInitializationData calldata _initializationData) external initializer {
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
+    if (_initializationData.defaultAdmin == address(0)) revert ZeroAddressNotAllowed();
     _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
     __Permissions_init(_initializationData.roleAddresses);
 

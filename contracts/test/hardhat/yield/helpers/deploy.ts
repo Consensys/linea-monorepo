@@ -9,17 +9,45 @@ import {
   TARGET_WITHDRAWAL_RESERVE_AMOUNT,
 } from "../../common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
-import { YIELD_MANAGER_ROLES } from "contracts/common/constants";
+import {
+  YIELD_MANAGER_OPERATOR_ROLES,
+  YIELD_MANAGER_OPERATIONAL_SAFE_ROLES,
+  YIELD_MANAGER_SECURITY_COUNCIL_ROLES,
+} from "contracts/common/constants";
 import { YIELD_MANAGER_INITIALIZE_SIGNATURE } from "contracts/common/constants";
 import { deployUpgradableWithConstructorArgs } from "../../common/deployment";
 import { TestYieldManager, MockLineaRollup, MockYieldProvider } from "contracts/typechain-types";
+import { YieldManagerInitializationData } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
 
-async function getYieldManagerRoleAddressesFixture() {
-  const { nativeYieldOperator } = await loadFixture(getAccountsFixture);
-  const roleAddresses = generateRoleAssignments(YIELD_MANAGER_ROLES, await nativeYieldOperator.getAddress(), []);
-  return roleAddresses;
+async function getYieldManagerRoleAddressesFixture(): Promise<
+  {
+    role: string;
+    addressWithRole: string;
+  }[]
+> {
+  const { nativeYieldOperator, securityCouncil, operationalSafe } = await loadFixture(getAccountsFixture);
+  const yieldManagerOpereratorRoleAssignments = generateRoleAssignments(
+    YIELD_MANAGER_OPERATOR_ROLES,
+    await nativeYieldOperator.getAddress(),
+    [],
+  );
+  const securityCouncilRoleAssignments = generateRoleAssignments(
+    YIELD_MANAGER_SECURITY_COUNCIL_ROLES,
+    await securityCouncil.getAddress(),
+    [],
+  );
+  const operationalSafeRoleAssignments = generateRoleAssignments(
+    YIELD_MANAGER_OPERATIONAL_SAFE_ROLES,
+    await operationalSafe.getAddress(),
+    [],
+  );
+  return [
+    ...yieldManagerOpereratorRoleAssignments,
+    ...securityCouncilRoleAssignments,
+    ...operationalSafeRoleAssignments,
+  ];
 }
 
 export async function deployMockLineaRollup(): Promise<MockLineaRollup> {
@@ -43,7 +71,7 @@ export async function deployYieldManagerForUnitTest() {
 
   const mockLineaRollup = await deployMockLineaRollup();
 
-  const initializationData = {
+  const initializationData: YieldManagerInitializationData = {
     pauseTypeRoles: YIELD_MANAGER_PAUSE_TYPES_ROLES,
     unpauseTypeRoles: YIELD_MANAGER_UNPAUSE_TYPES_ROLES,
     roleAddresses,
@@ -66,5 +94,21 @@ export async function deployYieldManagerForUnitTest() {
     },
   )) as unknown as TestYieldManager;
 
-  return { mockLineaRollup, yieldManager };
+  return { mockLineaRollup, yieldManager, initializationData };
+}
+
+export async function deployYieldManagerForUnitTestWithMutatedInitData(
+  mutatedInitData: YieldManagerInitializationData,
+) {
+  const mockLineaRollup = await deployMockLineaRollup();
+  await deployUpgradableWithConstructorArgs(
+    "TestYieldManager",
+    [await mockLineaRollup.getAddress()],
+    [mutatedInitData],
+    {
+      // initializer: "initialize",
+      initializer: YIELD_MANAGER_INITIALIZE_SIGNATURE,
+      unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable"],
+    },
+  );
 }
