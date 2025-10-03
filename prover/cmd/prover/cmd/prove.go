@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
@@ -13,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/pkg/profile"
 )
 
 type ProverArgs struct {
@@ -66,6 +68,9 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 	var resp *execution.Response
 	var err error
 
+	start := time.Now()
+	p := profile.Start(profile.MemProfile, profile.ProfilePath("."), profile.NoShutdownHook)
+
 	if cfg.Execution.ProverMode == config.ProverModeLimitless {
 		// Limitless execution mode
 		resp, err = limitless.Prove(cfg, req)
@@ -80,6 +85,8 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 			return fmt.Errorf("could not prove the execution: %w", err)
 		}
 	}
+	fmt.Printf("Proving took %s\n", time.Since(start).String())
+	p.Stop()
 
 	return writeResponse(args.Output, resp)
 }
