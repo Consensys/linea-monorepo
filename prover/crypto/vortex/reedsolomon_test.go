@@ -3,7 +3,6 @@ package vortex
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -19,7 +18,7 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 
 	x := field.NewElement(478)
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams)
 	vec := smartvectors.Rand(1 << 10)
 	rsEncoded := params.rsEncode(vec)
 
@@ -41,7 +40,7 @@ func TestReedSolomonConstant(t *testing.T) {
 
 	x := field.NewElement(478)
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams)
 	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
 	rsEncoded := params.rsEncode(vec)
 

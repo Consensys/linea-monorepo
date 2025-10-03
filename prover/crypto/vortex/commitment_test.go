@@ -5,7 +5,6 @@ import (
 	"runtime/debug"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -24,7 +23,7 @@ func TestLinearCombination(t *testing.T) {
 	x := field.NewElement(478)
 	randomCoin := field.NewElement(1523)
 
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams)
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
@@ -50,8 +49,8 @@ func TestLinearCombination(t *testing.T) {
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
-	NewParams(2, 1<<4, 32, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
+	NewParams(2, 1<<4, 32, ringsis.StdParams),
+	NewParams(4, 1<<3, 32, ringsis.StdParams),
 }
 
 func TestProver(t *testing.T) {
@@ -270,8 +269,8 @@ func TestVerifierNegative(t *testing.T) {
 			{3, 1, 15},
 		}
 		params = []*Params{
-			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
-			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
+			NewParams(2, 8, 17, ringsis.StdParams),
+			NewParams(2, 8, 17, ringsis.StdParams),
 		}
 
 		statementMutatorCorpus = []struct {
@@ -567,7 +566,7 @@ func BenchmarkCommitWithSIS(b *testing.B) {
 		nPolys       = 1 << 10
 	)
 
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams)
 	// func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
 	ps := make([]smartvectors.SmartVector, nPolys)

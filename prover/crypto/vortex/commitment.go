@@ -51,7 +51,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 		tree = smt.BuildComplete(
 			leaves,
 			func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: p.MerkleHashFunc()}
+				return hashtypes.Hasher{Hash: mimc.NewMiMC()}
 			},
 		)
 	})
@@ -96,7 +96,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 		tree = smt.BuildComplete(
 			leaves,
 			func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: p.MerkleHashFunc()}
+				return hashtypes.Hasher{Hash: mimc.NewMiMC()}
 			},
 		)
 	})
@@ -145,8 +145,6 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 	leaves = make([]types.Bytes32, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
-		// Create the hasher in the parallel setting to avoid race conditions.
-		// hasher := p.LeafHashFunc()
 		hasher := mimc.NewMiMC()
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
@@ -182,7 +180,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Elem
 	parallel.ExecuteThreadAware(
 		numCols,
 		func(threadID int) {
-			hashers[threadID] = p.LeafHashFunc()
+			hashers[threadID] = mimc.NewMiMC()
 		},
 		func(col, threadID int) {
 			hasher := hashers[threadID]

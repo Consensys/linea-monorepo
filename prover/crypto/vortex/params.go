@@ -1,8 +1,6 @@
 package vortex
 
 import (
-	"hash"
-
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -35,12 +33,6 @@ type Params struct {
 	// polynomial p is appended whose size if not 0 mod MaxNbRows, it is padded
 	// as p' so that len(p')=0 mod MaxNbRows.
 	MaxNbRows int
-	// LeafHashFunc returns a `hash.Hash` which is used
-	// to compute the leaves of the Merkle tree.
-	LeafHashFunc func() hash.Hash
-	// MerkleHashFunc returns a `hash.Hash` which is used
-	// to hash the nodes of the Merkle tree.
-	MerkleHashFunc func() hash.Hash
 
 	// CosetTableBitReverse is the coset table of the small domain in bit
 	// reversed order. It is used to speed-up the encoding of the rows.
@@ -62,8 +54,6 @@ func NewParams(
 	nbColumns int,
 	maxNbRows int,
 	sisParams ringsis.Params,
-	leafHashFunc func() hash.Hash,
-	merkleHashFunc func() hash.Hash,
 ) *Params {
 
 	if !utils.IsPowerOfTwo(nbColumns) {
@@ -72,14 +62,6 @@ func NewParams(
 
 	if !utils.IsPowerOfTwo(blowUpFactor) {
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
-	}
-
-	if leafHashFunc == nil {
-		utils.Panic("`nil` leaf hash function provided")
-	}
-
-	if merkleHashFunc == nil {
-		utils.Panic("`nil` merkle hash function provided")
 	}
 
 	if maxNbRows < 1 {
@@ -96,12 +78,10 @@ func NewParams(
 			fft.NewDomain(uint64(nbColumns), fft.WithShift(shift)),
 			fft.NewDomain(uint64(blowUpFactor*nbColumns), fft.WithCache()),
 		},
-		NbColumns:      nbColumns,
-		MaxNbRows:      maxNbRows,
-		BlowUpFactor:   blowUpFactor,
-		Key:            ringsis.GenerateKey(sisParams, maxNbRows),
-		LeafHashFunc:   leafHashFunc,
-		MerkleHashFunc: merkleHashFunc,
+		NbColumns:    nbColumns,
+		MaxNbRows:    maxNbRows,
+		BlowUpFactor: blowUpFactor,
+		Key:          ringsis.GenerateKey(sisParams, maxNbRows),
 	}
 
 	smallDomain := res.Domains[0]
