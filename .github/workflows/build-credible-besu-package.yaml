@@ -27,13 +27,14 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GH_TOKEN }}          
+          password: ${{ secrets.GH_TOKEN }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           push: true
+          platforms: linux/amd64,linux/arm64
           context: ./linea-besu-package/tmp
           file: ./linea-besu-package/linea-besu/Dockerfile
           tags: ghcr.io/${{ github.repository }}/linea-besu-package:${{ github.sha }}
