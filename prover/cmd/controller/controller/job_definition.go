@@ -197,3 +197,8 @@ func (jd *JobDefinition) dirTo() string {
 
 	return filepath.Join(jd.RequestRootDir, config.RequestsToSubDir)
 }
+
+// WritesToDevNull reports whether this job definition discards responses.
+func (jd *JobDefinition) WritesToDevNull() bool {
+	return jd.ResponseRootDir == "/dev/null"
+}

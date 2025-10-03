@@ -25,20 +25,42 @@ func runController(ctx context.Context, cfg *config.Config) {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
 	defer stop()
 
-	cmdContext := commandContext(ctx, cfg)
+	// cmdContext is the context we provide for the command execution. In
+	// spot-instance mode, the context is subordinated to the ctx.
+	cmdContext := context.Background()
+	if cfg.Controller.SpotInstanceMode {
+		cmdContext = ctx
+	}
 
 	// log cancellation requests immediately when received
+	// This goroutine's raison d'etre is to log a message immediately when a
+	// cancellation request (e.g., ctx expiration/cancellation, SIGTERM, etc.)
+	// is received. It ensures timely logging of the request's reception,
+	// which may be important for diagnostics. Without this
+	// goroutine, if the prover is busy with a proof when, for example, a
+	// SIGTERM is received, there would be no log entry about the signal
+	// until the proof completes.
 	go logCancellationOnSignal(ctx, cfg, cLog)
 
 	// Main loop
 	for {
 		select {
 		case <-ctx.Done():
-			handleShutdown(ctx, cLog)
+			// This case captures both cancellations initiated by the caller
+			// through ctx and SIGTERM signals. Even if the cancellation
+			// request is first intercepted by the goroutine at line 34, Go
+			// allows the ctx.Done channel to be read multiple times, which, in
+			// our scenario, ensures cancellation requests are effectively
+			// detected and handled.
+			cLog.Infoln("Context canceled by caller or SIGTERM. Exiting")
+			metrics.ShutdownServer(ctx)
 			return
 
+			// Processing a new job
 		case <-retryDelay(cfg.Controller.RetryDelays, numRetrySoFar):
 			job := fsWatcher.GetBest()
+
+			// No jobs, waiting a little before we retry
 			if job == nil {
 				numRetrySoFar++
 				logNoJobFound(cLog, numRetrySoFar)
@@ -49,52 +71,6 @@ func runController(ctx context.Context, cfg *config.Config) {
 			status := executor.Run(cmdContext, job)
 			handleJobResult(cfg, cLog, job, status)
 		}
-	}
-}
-
-// startMetricsServer starts Prometheus metrics server if enabled.
-func startMetricsServer(cfg *config.Config) {
-	if cfg.Controller.Prometheus.Enabled {
-		metrics.StartServer(
-			cfg.Controller.LocalID,
-			cfg.Controller.Prometheus.Route,
-			cfg.Controller.Prometheus.Port,
-		)
-	}
-}
-
-// commandContext returns the execution context for commands.
-// In spot-instance mode, the command context is subordinated to the main ctx.
-func commandContext(ctx context.Context, cfg *config.Config) context.Context {
-	if cfg.Controller.SpotInstanceMode {
-		return ctx
-	}
-	return context.Background()
-}
-
-// logCancellationOnSignal logs immediately when a cancellation request is received.
-func logCancellationOnSignal(ctx context.Context, cfg *config.Config, cLog *logrus.Entry) {
-	<-ctx.Done()
-	if cfg.Controller.SpotInstanceMode {
-		cLog.Infoln("Received cancellation request. Killing the ongoing process and exiting immediately after.")
-	} else {
-		cLog.Infoln("Received cancellation request, will exit as soon as possible or once current proof task is complete.")
-	}
-}
-
-// handleShutdown handles graceful shutdown of the controller.
-func handleShutdown(ctx context.Context, cLog *logrus.Entry) {
-	cLog.Infoln("Context canceled by caller or SIGTERM. Exiting")
-	metrics.ShutdownServer(ctx)
-}
-
-// logNoJobFound logs when no job is found, with reduced verbosity after 5 retries.
-func logNoJobFound(cLog *logrus.Entry, numRetrySoFar int) {
-	msg := "found no jobs in the queue"
-	if numRetrySoFar > 5 {
-		cLog.Debug(msg)
-	} else {
-		cLog.Info(msg)
 	}
 }
 
@@ -111,26 +87,33 @@ func handleJobResult(cfg *config.Config, cLog *logrus.Entry, job *Job, status St
 		handleJobKilledByUs(cfg, cLog, job)
 
 	default:
-		handleJobFailure(cLog, job, status)
+		handleJobFailure(cfg, cLog, job, status)
 	}
 }
 
 // handleJobSuccess moves response and in-progress files to their final locations.
 func handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
-	respFile, err := job.ResponseFile()
-	tmpRespFile := job.TmpResponseFile(cfg)
-	if err != nil {
-		utils.Panic("Could not generate the response file: %v (original request file: %v)", err, job.OriginalFile)
+
+	if job.Def.WritesToDevNull() {
+		// Jobs that target /dev/null do not produce a response file.
+		cLog.Debugf("Job %s has ResponseRootDir='/dev/null', skipping response file move", job.OriginalFile)
+	} else {
+		respFile, err := job.ResponseFile()
+		tmpRespFile := job.TmpResponseFile(cfg)
+		if err != nil {
+			utils.Panic("Could not generate the response file: %v (original request file: %v)", err, job.OriginalFile)
+		}
+
+		logrus.Infof("Moving the response file from the tmp response file `%v`, to the final response file: `%v`", tmpRespFile, respFile)
+
+		if err := os.Rename(tmpRespFile, respFile); err != nil {
+			// If rename fails, remove tmp file.
+			_ = os.Remove(tmpRespFile)
+			cLog.Errorf("Error renaming %v to %v: %v, removed the tmp file", tmpRespFile, respFile, err)
+		}
 	}
 
-	logrus.Infof("Moving the response file from the tmp response file `%v`, to the final response file: `%v`", tmpRespFile, respFile)
-
-	if err := os.Rename(tmpRespFile, respFile); err != nil {
-		// If rename fails, remove tmp file.
-		os.Remove(tmpRespFile)
-		cLog.Errorf("Error renaming %v to %v: %v, removed the tmp file", tmpRespFile, respFile, err)
-	}
-
+	// Move the input (in-progress) file to requests-done with a .success suffix.
 	cLog.Infof("Moving %v to %v with the success prefix", job.OriginalFile, job.Def.dirDone())
 
 	jobDone := job.DoneFile(status)
@@ -161,17 +144,32 @@ func handleJobKilledByUs(cfg *config.Config, cLog *logrus.Entry, job *Job) {
 		cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), job.OriginalPath(), err)
 	}
 
-	// Edge-case: delete tmp-response file if it exists.
-	os.Remove(job.TmpResponseFile(cfg))
+	// Remove tmp-response only if we produce a response file for this job.
+	if !job.Def.WritesToDevNull() {
+		// Edge-case: delete tmp-response file if it exists.
+		if tmp := job.TmpResponseFile(cfg); tmp != "" {
+			_ = os.Remove(tmp)
+		}
+	} else {
+		cLog.Debugf("Job %s writes to /dev/null, no tmp response to clean", job.OriginalFile)
+	}
 }
 
 // handleJobFailure moves the failed job to the done directory with failure suffix.
-func handleJobFailure(cLog *logrus.Entry, job *Job, status Status) {
+func handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 	cLog.Infof("Moving %v with in %v with a failure suffix for code %v", job.OriginalFile, job.Def.dirDone(), status.ExitCode)
 
 	jobFailed := job.DoneFile(status)
 	if err := os.Rename(job.InProgressPath(), jobFailed); err != nil {
 		cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), jobFailed, err)
+	}
+
+	if !job.Def.WritesToDevNull() {
+		if tmp := job.TmpResponseFile(cfg); tmp != "" {
+			_ = os.Remove(tmp)
+		}
+	} else {
+		cLog.Debugf("Job %s writes to /dev/null, skipping tmp-response cleanup", job.OriginalFile)
 	}
 }
 
@@ -192,4 +190,35 @@ func retryDelay(retryDelaysSec []int, numRetrySoFar int) <-chan time.Time {
 	}
 
 	return time.After(ttw)
+}
+
+// startMetricsServer starts Prometheus metrics server if enabled.
+func startMetricsServer(cfg *config.Config) {
+	if cfg.Controller.Prometheus.Enabled {
+		metrics.StartServer(
+			cfg.Controller.LocalID,
+			cfg.Controller.Prometheus.Route,
+			cfg.Controller.Prometheus.Port,
+		)
+	}
+}
+
+// logCancellationOnSignal logs immediately when a cancellation request is received.
+func logCancellationOnSignal(ctx context.Context, cfg *config.Config, cLog *logrus.Entry) {
+	<-ctx.Done()
+	if cfg.Controller.SpotInstanceMode {
+		cLog.Infoln("Received cancellation request. Killing the ongoing process and exiting immediately after.")
+	} else {
+		cLog.Infoln("Received cancellation request, will exit as soon as possible or once current proof task is complete.")
+	}
+}
+
+// logNoJobFound logs when no job is found, with reduced verbosity after 5 retries.
+func logNoJobFound(cLog *logrus.Entry, numRetrySoFar int) {
+	msg := "found no jobs in the queue"
+	if numRetrySoFar > 5 {
+		cLog.Debug(msg)
+	} else {
+		cLog.Info(msg)
+	}
 }
