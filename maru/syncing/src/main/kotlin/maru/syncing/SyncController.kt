@@ -55,7 +55,7 @@ class BeaconSyncControllerImpl(
     clSyncService.onSyncComplete { syncTarget ->
       updateClSyncStatus(CLSyncStatus.SYNCED)
     }
-    onFullSyncComplete { log.info("El client is synced now") }
+    onFullSyncComplete { log.info("Maru is fully synced now") }
   }
 
   override fun getCLSyncStatus(): CLSyncStatus = lock.read { currentState.clStatus }

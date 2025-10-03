@@ -113,7 +113,7 @@ class MaruPeerManager(
       peers[peer.id] = maruPeer
       log.debug("Connected to peer={}, static=$isAStaticPeer", peer.id)
     } else { // not static and not allowed to connect -> disconnect
-      peer.disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
+      peer.disconnectCleanly(DisconnectReason.RATE_LIMITING)
       log.debug("Peer={} is not allowed to connect yet", peer.id)
     }
   }

@@ -115,10 +115,10 @@ class TopicHanlderWithInOrderDeliveringTest {
         if (value.toInt() % 2 == 1) {
           SafeFuture.failedFuture(RuntimeException("Subscriber failure"))
         } else {
-          SafeFuture.completedFuture(ValidationResult.Companion.Valid)
+          SafeFuture.completedFuture<ValidationResult>(ValidationResult.Companion.Valid)
         }
       nextExpectedSequenceNumber++
-      result as SafeFuture<ValidationResult>
+      result
     }
 
   private fun throwingHandler(processed: MutableList<ULong>): (ULong) -> SafeFuture<ValidationResult> =
