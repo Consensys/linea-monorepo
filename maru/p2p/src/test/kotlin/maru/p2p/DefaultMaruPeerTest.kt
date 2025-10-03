@@ -9,7 +9,6 @@
 package maru.p2p
 
 import java.util.Optional
-import java.util.concurrent.ScheduledFuture
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
 import maru.p2p.messages.Status
@@ -198,9 +197,7 @@ class DefaultMaruPeerTest {
     maruPeer.scheduleDisconnectIfStatusNotReceived(1.seconds)
     maruPeer.updateStatus(status)
     assertThat(maruPeer.getStatus()).isEqualTo(status)
-    val field = DefaultMaruPeer::class.java.getDeclaredField("scheduledDisconnect")
-    field.isAccessible = true
-    val value = field.get(maruPeer) as? Optional<ScheduledFuture<*>>
-    assertThat(value!!.get().isCancelled).isTrue()
+    val scheduledDisconnect = maruPeer.scheduledDisconnect
+    assertThat(scheduledDisconnect.get().isCancelled).isTrue()
   }
 }

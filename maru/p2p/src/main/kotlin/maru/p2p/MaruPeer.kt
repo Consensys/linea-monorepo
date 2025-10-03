@@ -93,8 +93,7 @@ class DefaultMaruPeer(
 
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private val status = AtomicReference<Status?>(null)
-  private var scheduledDisconnect: Optional<ScheduledFuture<*>> = Optional.empty()
-  private val initialStatusUpdateFuture = SafeFuture<Status>()
+  internal var scheduledDisconnect: Optional<ScheduledFuture<*>> = Optional.empty()
 
   override fun getStatus(): Status? = status.get()
 
