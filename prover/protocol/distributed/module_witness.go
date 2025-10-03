@@ -231,6 +231,7 @@ func segmentModuleLPP(
 			ModuleName:         moduleLPP.ModuleName,
 			ModuleIndex:        segment,
 			SegmentModuleIndex: segment,
+			TotalSegmentCount:  totalNbSegment,
 			Columns:            make(map[ifaces.ColID]smartvectors.SmartVector),
 			N0Values:           n0,
 		}

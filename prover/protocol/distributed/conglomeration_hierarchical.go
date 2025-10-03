@@ -47,6 +47,10 @@ const (
 	verifyingKeyPublicInput                 = "VERIFYING_KEY"
 	verifyingKey2PublicInput                = "VERIFYING_KEY_2"
 	lppMerkleRootPublicInput                = "LPP_COLUMNS_MERKLE_ROOTS"
+
+	// The prerecursion prefix is a prefix to apply to the name of the public
+	// inputs to be able to access them in the conglomerated wizard-IOP.
+	preRecursionPrefix = "wizard-recursion-0."
 )
 
 // ConglomerationCompilation holds the compilation context of the hierarchical
@@ -620,4 +624,10 @@ func findProofTypeAndModule(instance LimitlessPublicInput[field.Element]) (Proof
 	}
 
 	panic("unreachable")
+}
+
+// getVerifyingKeyPair extracts the verifyingKeys from the compiled IOP.
+func getVerifyingKeyPair(wiop *wizard.CompiledIOP) (vkGL, vkLPP field.Element) {
+	return wiop.ExtraData[verifyingKeyPublicInput].(field.Element),
+		wiop.ExtraData[verifyingKey2PublicInput].(field.Element)
 }
