@@ -79,12 +79,13 @@ func GLDefinitionForModule(conf *config.Config, module string) JobDefinition {
 
 		// GL jobs don't produce an output artifact, only /dev/null.
 		// So outputTmpl is set empty.
-		outputTmpl = ""
+		respRootDir = "/dev/null"
+		outputTmpl  = ""
 	)
 
 	return newJobDefinition(jobName,
 		reqRootDir, inputPattern,
-		"", outputTmpl,
+		respRootDir, outputTmpl,
 		1, // priority set to default value now and will be overwritten later when the file arrives
 		ParamRegexps{
 			Start: reStart,
@@ -110,12 +111,13 @@ func LPPDefinitionForModule(conf *config.Config, module string) JobDefinition {
 
 		// LPP jobs don't produce an output artifact, only /dev/null.
 		// So outputTmpl is set empty.
-		outputTmpl = ""
+		respRootDir = "/dev/null"
+		outputTmpl  = ""
 	)
 
 	return newJobDefinition(jobName,
 		reqRootDir, inputPattern,
-		"", outputTmpl,
+		respRootDir, outputTmpl,
 		3, //  priority set to default value now and will be overwritten later when the file arrives
 		ParamRegexps{
 			Start: reStart,
