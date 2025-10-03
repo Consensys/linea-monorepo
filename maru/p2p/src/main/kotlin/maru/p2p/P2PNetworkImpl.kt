@@ -317,7 +317,7 @@ class P2PNetworkImpl(
               "Failed to connect to static peer={}, retrying after {} ms. Error={}",
               peerAddress,
               p2pConfig.reconnectDelay,
-              t.message,
+              t,
             )
             if (t.cause?.message != "Transport is closed") {
               SafeFuture
