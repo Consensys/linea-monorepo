@@ -1,0 +1,34 @@
+# `L1LineaTokenBurner`
+
+### LINEA_TOKEN
+
+```solidity
+address LINEA_TOKEN
+```
+
+### MESSAGE_SERVICE
+
+```solidity
+address MESSAGE_SERVICE
+```
+
+### constructor
+
+```solidity
+constructor(address _messageService, address _lineaToken) public
+```
+
+### claimMessageWithProof
+
+```solidity
+function claimMessageWithProof(struct IL1MessageService.ClaimMessageWithProofParams _params) external
+```
+
+### receive
+
+```solidity
+receive() external payable
+```
+
+Receive function - Receives Funds.
+
