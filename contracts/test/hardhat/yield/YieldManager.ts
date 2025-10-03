@@ -6,7 +6,7 @@ import { ethers } from "hardhat";
 
 import { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
 import { deployYieldManagerForUnitTest, deployYieldManagerForUnitTestWithMutatedInitData } from "./helpers/deploy";
-import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER } from "../common/constants";
+import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS } from "../common/constants";
 import {
   // expectEvent,
   // buildAccessErrorMessage,
@@ -143,6 +143,10 @@ describe("Linea Rollup contract", () => {
       await expect(yieldManager.initialize(cloneInitializationData())).to.be.revertedWith(
         "Initializable: contract is already initialized",
       );
+    });
+
+    it("Should have the correct L1_MESSAGE_ADDRESS", async () => {
+      expect(await yieldManager.getL1MessageService()).to.equal(await mockLineaRollup.getAddress());
     });
 
     it("Should have the initial l2YieldRecipients in state", async () => {
@@ -484,15 +488,15 @@ describe("Linea Rollup contract", () => {
       // Arrange
       const minPct = initializationData.initialMinimumWithdrawalReservePercentageBps;
       const minAmount = initializationData.initialMinimumWithdrawalReserveAmount;
-      const SYSTEM_BALANCE_WITH_EFFECTIVE_MINIMUM_ABOVE_AMOUNT = (minAmount * 10000n) / BigInt(minPct);
+      const systemBalanceThreshold = (minAmount * MAX_BPS) / BigInt(minPct);
       const l1MessageServiceAddress = await mockLineaRollup.getAddress();
       await ethers.provider.send("hardhat_setBalance", [
         l1MessageServiceAddress,
-        ethers.toBeHex(SYSTEM_BALANCE_WITH_EFFECTIVE_MINIMUM_ABOVE_AMOUNT),
+        ethers.toBeHex(systemBalanceThreshold),
       ]);
       await ethers.provider.send("hardhat_setBalance", [
         await yieldManager.getAddress(),
-        ethers.toBeHex(SYSTEM_BALANCE_WITH_EFFECTIVE_MINIMUM_ABOVE_AMOUNT),
+        ethers.toBeHex(systemBalanceThreshold),
       ]);
 
       // Assert
@@ -501,7 +505,7 @@ describe("Linea Rollup contract", () => {
       );
       expect(await yieldManager.getEffectiveMinimumWithdrawalReserve()).to.equal(
         ((await yieldManager.getTotalSystemBalance()) * (await yieldManager.minimumWithdrawalReservePercentageBps())) /
-          10000n,
+          MAX_BPS,
       );
     });
   });
@@ -520,15 +524,15 @@ describe("Linea Rollup contract", () => {
       // Arrange
       const targetPct = initializationData.initialTargetWithdrawalReservePercentageBps;
       const targetAmount = initializationData.initialTargetWithdrawalReserveAmount;
-      const SYSTEM_BALANCE_WITH_EFFECTIVE_TARGET_ABOVE_AMOUNT = (targetAmount * 10000n) / BigInt(targetPct);
+      const systemBalanceThreshold = (targetAmount * MAX_BPS) / BigInt(targetPct);
       const l1MessageServiceAddress = await mockLineaRollup.getAddress();
       await ethers.provider.send("hardhat_setBalance", [
         l1MessageServiceAddress,
-        ethers.toBeHex(SYSTEM_BALANCE_WITH_EFFECTIVE_TARGET_ABOVE_AMOUNT),
+        ethers.toBeHex(systemBalanceThreshold),
       ]);
       await ethers.provider.send("hardhat_setBalance", [
         await yieldManager.getAddress(),
-        ethers.toBeHex(SYSTEM_BALANCE_WITH_EFFECTIVE_TARGET_ABOVE_AMOUNT),
+        ethers.toBeHex(systemBalanceThreshold),
       ]);
 
       // Assert
@@ -537,8 +541,135 @@ describe("Linea Rollup contract", () => {
       );
       expect(await yieldManager.getEffectiveTargetWithdrawalReserve()).to.equal(
         ((await yieldManager.getTotalSystemBalance()) * (await yieldManager.targetWithdrawalReservePercentageBps())) /
-          10000n,
+          MAX_BPS,
       );
+    });
+  });
+
+  describe("getMinimumReserveDeficit", () => {
+    it("With 0 balance in total system, should equal deficit from minimum amount", async () => {
+      const l1MessageServiceAddress = await mockLineaRollup.getAddress();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, "0x0"]);
+      await ethers.provider.send("hardhat_setBalance", [await yieldManager.getAddress(), "0x0"]);
+
+      expect(await yieldManager.getMinimumReserveDeficit()).to.equal(
+        await yieldManager.minimumWithdrawalReserveAmount(),
+      );
+    });
+
+    it("With 0 L1MessageService balance and effective minimum dictated by percentage, should return deficit from value dictated by MINIMUM_WITHDRAWAL_PERCENTAGE", async () => {
+      // Arrange
+      const minPct = initializationData.initialMinimumWithdrawalReservePercentageBps;
+      const minAmount = initializationData.initialMinimumWithdrawalReserveAmount;
+      const systemBalanceThreshold = (minAmount * MAX_BPS) / BigInt(minPct);
+      // Arrange - no funds on L1MessageService -> Deficit
+      await ethers.provider.send("hardhat_setBalance", [
+        await yieldManager.getAddress(),
+        ethers.toBeHex(2n * systemBalanceThreshold),
+      ]);
+
+      // Assert
+      const effectiveMinimum = await yieldManager.getEffectiveMinimumWithdrawalReserve();
+      const l1MessageServiceBalance = await ethers.provider.getBalance(await mockLineaRollup.getAddress());
+      const expectedDeficit = effectiveMinimum - l1MessageServiceBalance;
+      expect(await yieldManager.getMinimumReserveDeficit()).to.equal(expectedDeficit);
+    });
+
+    it("With no reserve deficit, should return 0", async () => {
+      // Arrange
+      const minPct = initializationData.initialMinimumWithdrawalReservePercentageBps;
+      const minAmount = initializationData.initialMinimumWithdrawalReserveAmount;
+      const systemBalanceThreshold = (minAmount * MAX_BPS) / BigInt(minPct);
+      // Arrange - All funds on L1MessageService -> No deficit
+      await ethers.provider.send("hardhat_setBalance", [
+        await mockLineaRollup.getAddress(),
+        ethers.toBeHex(2n * systemBalanceThreshold),
+      ]);
+
+      // Assert
+      expect(await yieldManager.getMinimumReserveDeficit()).to.equal(0n);
+    });
+  });
+
+  describe("getTargetReserveDeficit", () => {
+    it("With 0 balance in total system, should deficit from target amount", async () => {
+      const l1MessageServiceAddress = await mockLineaRollup.getAddress();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, "0x0"]);
+      await ethers.provider.send("hardhat_setBalance", [await yieldManager.getAddress(), "0x0"]);
+      expect(await yieldManager.getTargetReserveDeficit()).to.equal(await yieldManager.targetWithdrawalReserveAmount());
+    });
+
+    it("With 0 L1MessageService balance and effective target dictated by percentage, should return deficit from value dictated by TARGET_WITHDRAWAL_PERCENTAGE", async () => {
+      // Arrange
+      const targetPct = initializationData.initialMinimumWithdrawalReservePercentageBps;
+      const targetAmount = initializationData.initialMinimumWithdrawalReserveAmount;
+      const systemBalanceThreshold = (targetAmount * MAX_BPS) / BigInt(targetPct);
+      // Arrange - no funds on L1MessageService -> Deficit
+      await ethers.provider.send("hardhat_setBalance", [
+        await yieldManager.getAddress(),
+        ethers.toBeHex(2n * systemBalanceThreshold),
+      ]);
+
+      // Assert
+      const effectiveTarget = await yieldManager.getEffectiveTargetWithdrawalReserve();
+      const l1MessageServiceBalance = await ethers.provider.getBalance(await mockLineaRollup.getAddress());
+      const expectedDeficit = effectiveTarget - l1MessageServiceBalance;
+      expect(await yieldManager.getTargetReserveDeficit()).to.equal(expectedDeficit);
+    });
+
+    it("With no reserve deficit, should return 0", async () => {
+      // Arrange
+      const minPct = initializationData.initialTargetWithdrawalReservePercentageBps;
+      const minAmount = initializationData.initialTargetWithdrawalReserveAmount;
+      const systemBalanceThreshold = (minAmount * MAX_BPS) / BigInt(minPct);
+      // Arrange - All funds on L1MessageService -> No deficit
+      await ethers.provider.send("hardhat_setBalance", [
+        await mockLineaRollup.getAddress(),
+        ethers.toBeHex(2n * systemBalanceThreshold),
+      ]);
+
+      // Assert
+      expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
+    });
+  });
+
+  describe("isWithdrawalReserveBelowMinimum", () => {
+    it("With 0 balance in total system and deficit dictated by minimum amount, return true", async () => {
+      const l1MessageServiceAddress = await mockLineaRollup.getAddress();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, "0x0"]);
+      await ethers.provider.send("hardhat_setBalance", [await yieldManager.getAddress(), "0x0"]);
+
+      expect(await yieldManager.isWithdrawalReserveBelowMinimum()).to.be.true;
+    });
+
+    it("With 0 L1MessageService balance and effective minimum dictated by percentage, should return true", async () => {
+      // Arrange
+      const minPct = initializationData.initialMinimumWithdrawalReservePercentageBps;
+      const minAmount = initializationData.initialMinimumWithdrawalReserveAmount;
+      const systemBalanceThreshold = (minAmount * MAX_BPS) / BigInt(minPct);
+      // Arrange - no funds on L1MessageService -> Deficit
+      await ethers.provider.send("hardhat_setBalance", [
+        await yieldManager.getAddress(),
+        ethers.toBeHex(2n * systemBalanceThreshold),
+      ]);
+
+      // Assert
+      expect(await yieldManager.isWithdrawalReserveBelowMinimum()).to.be.true;
+    });
+
+    it("With no reserve deficit, should return false", async () => {
+      // Arrange
+      const minPct = initializationData.initialMinimumWithdrawalReservePercentageBps;
+      const minAmount = initializationData.initialMinimumWithdrawalReserveAmount;
+      const systemBalanceThreshold = (minAmount * MAX_BPS) / BigInt(minPct);
+      // Arrange - All funds on L1MessageService -> No deficit
+      await ethers.provider.send("hardhat_setBalance", [
+        await mockLineaRollup.getAddress(),
+        ethers.toBeHex(2n * systemBalanceThreshold),
+      ]);
+
+      // Assert
+      expect(await yieldManager.isWithdrawalReserveBelowMinimum()).to.be.false;
     });
   });
 });

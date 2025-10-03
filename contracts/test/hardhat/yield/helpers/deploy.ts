@@ -1,5 +1,5 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 import { YIELD_MANAGER_PAUSE_TYPES_ROLES, YIELD_MANAGER_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
 import {
@@ -66,6 +66,7 @@ export async function deployMockYieldProvider(): Promise<MockYieldProvider> {
 
 // Deploys with MockLineaRollup and MockYieldProvider
 export async function deployYieldManagerForUnitTest() {
+  upgrades.silenceWarnings();
   const { securityCouncil, l2YieldRecipient } = await loadFixture(getAccountsFixture);
   const roleAddresses = await loadFixture(getYieldManagerRoleAddressesFixture);
 
@@ -100,6 +101,7 @@ export async function deployYieldManagerForUnitTest() {
 export async function deployYieldManagerForUnitTestWithMutatedInitData(
   mutatedInitData: YieldManagerInitializationData,
 ) {
+  upgrades.silenceWarnings();
   const mockLineaRollup = await deployMockLineaRollup();
   await deployUpgradableWithConstructorArgs(
     "TestYieldManager",
