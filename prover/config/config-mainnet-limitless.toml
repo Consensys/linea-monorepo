@@ -5,6 +5,17 @@ log_level = 4                                  # TODO @gbotrel will be refactore
 
 [controller]
 retry_delays = [0, 1]
+enable_execution = false 
+enable_blob_decompression = false
+enable_aggregation = false
+
+[controller.limitless_jobs]
+enable_bootstrapper   = false
+enable_conglomerator = false
+enable_gl = false
+gl_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
+enable_lpp = false
+lpp_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
 
 [execution]
 prover_mode = "limitless"
@@ -13,8 +24,7 @@ requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
 limitless_with_debug = false 
 ignore_compatibility_check = true
 
-[limitless_params]
-modules = ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
+[execution_limitless]
 metadata_dir = "/tmp/exec-limitless/metadata"
 witness_dir = "/tmp/exec-limitless/witness"
 subproofs_dir = "/tmp/exec-limitless/subproofs"

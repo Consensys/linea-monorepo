@@ -52,12 +52,18 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	}
 
 	if withValidation {
-		// Validate the config
 		validate := validator.New(validator.WithRequiredStructEnabled())
+
+		// Register custom validators
 		if err = validate.RegisterValidation("power_of_2", validateIsPowerOfTwo); err != nil {
 			return nil, err
 		}
 
+		if err = validate.RegisterValidation("mod_entries", ValidateModEntries); err != nil {
+			return nil, err
+		}
+
+		// Validate the struct after registering all custom validators
 		if err = validate.Struct(cfg); err != nil {
 			return nil, err
 		}
@@ -126,6 +132,31 @@ func validateIsPowerOfTwo(f validator.FieldLevel) bool {
 	return n > 0 && (n&(n-1)) == 0
 }
 
+// validateModEntries implements validator.Func
+func ValidateModEntries(fl validator.FieldLevel) bool {
+	mods, ok := fl.Field().Interface().([]string)
+	if !ok {
+		return false
+	}
+
+	if len(mods) > len(ALL_MODULES) {
+		return false
+	}
+
+	for _, mod := range mods {
+		found := false
+		for _, valid := range ALL_MODULES {
+			if mod == valid {
+				return true
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return false
+}
+
 // TODO @gbotrel add viper hook to decode custom types (instead of having duplicate string and custom type.)
 
 type Config struct {
@@ -148,9 +179,9 @@ type Config struct {
 	Execution                  Execution
 	BlobDecompression          BlobDecompression `mapstructure:"blob_decompression"`
 	Aggregation                Aggregation
-	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
-	Debug                      Debug       `mapstructure:"debug"`
-	Limitless                  Limitless   `mapstructure:"limitless_params"`
+	PublicInputInterconnection PublicInput        `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
+	Debug                      Debug              `mapstructure:"debug"`
+	ExecutionLimitless         ExecutionLimitless `mapstructure:"execution_limitless"`
 
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
@@ -212,6 +243,9 @@ type Controller struct {
 	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`
 	EnableAggregation       bool `mapstructure:"enable_aggregation"`
 
+	// Limitless prover jobs
+	LimitlessJobs LimitlessJobs `mapstructure:"limitless_jobs"`
+
 	// TODO @gbotrel the only reason we keep these is for test purposes; default value is fine,
 	// we should remove them from here for readability.
 	WorkerCmd          string             `mapstructure:"worker_cmd_tmpl"`
@@ -225,6 +259,15 @@ type Controller struct {
 	// SpotInstanceMode tells the controller to gracefully exit as soon as it
 	// receives a SIGTERM.
 	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
+}
+
+type LimitlessJobs struct {
+	EnableBootstrapper  bool     `mapstructure:"enable_bootstrapper"`
+	EnableConglomerator bool     `mapstructure:"enable_conglomerator"`
+	EnableGL            bool     `mapstructure:"enable_gl"`
+	GLMods              []string `mapstructure:"gl_mods" validate:"mod_entries"`
+	EnableLPP           bool     `mapstructure:"enable_lpp"`
+	LPPMods             []string `mapstructure:"lpp_mods" validate:"mod_entries"`
 }
 
 type ProverPhaseCmd struct {
@@ -251,18 +294,17 @@ type Prometheus struct {
 	Route string
 }
 
-type Limitless struct {
-	Modules             []string `mapstructure:"modules"`
-	MetadataDir         string   `mapstructure:"metadata_dir"`
-	WitnessDir          string   `mapstructure:"witness_dir"`
-	SubproofsDir        string   `mapstructure:"subproofs_dir"`
-	CommitsDir          string   `mapstructure:"commits_dir"`
-	SharedRandomnessDir string   `mapstructure:"shared_rnd_dir"`
-	GLSubproofsTimeout  int      `mapstructure:"gl_subproofs_timeout" validate:"gt=0"`
-	LPPSubproofsTimeout int      `mapstructure:"lpp_subproofs_timeout" validate:"gt=0"`
-	RndBeconTimeout     int      `mapstructure:"rnd_beacon_timeout" validate:"gt=0"`
-	RetryDelay          int      `mapstructure:"retry_delay"`
-	NumberOfRetries     int      `mapstructure:"number_retries"`
+type ExecutionLimitless struct {
+	MetadataDir         string `mapstructure:"metadata_dir"`
+	WitnessDir          string `mapstructure:"witness_dir"`
+	SubproofsDir        string `mapstructure:"subproofs_dir"`
+	CommitsDir          string `mapstructure:"commits_dir"`
+	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
+	GLSubproofsTimeout  int    `mapstructure:"gl_subproofs_timeout" validate:"gt=0"`
+	LPPSubproofsTimeout int    `mapstructure:"lpp_subproofs_timeout" validate:"gt=0"`
+	RndBeconTimeout     int    `mapstructure:"rnd_beacon_timeout" validate:"gt=0"`
+	RetryDelay          int    `mapstructure:"retry_delay"`
+	NumberOfRetries     int    `mapstructure:"number_retries"`
 }
 
 type Execution struct {
