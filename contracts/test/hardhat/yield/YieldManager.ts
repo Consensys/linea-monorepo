@@ -672,4 +672,43 @@ describe("Linea Rollup contract", () => {
       expect(await yieldManager.isWithdrawalReserveBelowMinimum()).to.be.false;
     });
   });
+
+  describe("adding yield providers", () => {
+    it("Should revert when the caller does not have the SET_YIELD_PROVIDER_ROLE role", async () => {});
+    it("Should revert when 0 address is provided for the _yieldProvider", async () => {});
+    it("Should revert when 0 address is provided for the primaryEntrypoint", async () => {});
+    it("Should revert when 0 address is provided for the ossifiedEntrypoint", async () => {});
+    it("Should revert when 0 address is provided for the receiveCaller", async () => {});
+    it("Should successfully add a yield provider, change state to expected and emit correct event", async () => {
+      // See below snippet from Solidity code for expected YieldProvider state
+      // $._yieldProviderStorage[_yieldProvider] = YieldProviderStorage({
+      //   yieldProviderVendor: _registration.yieldProviderVendor,
+      //   isStakingPaused: false,
+      //   isOssificationInitiated: false,
+      //   isOssified: false,
+      //   primaryEntrypoint: _registration.primaryEntrypoint,
+      //   ossifiedEntrypoint: _registration.ossifiedEntrypoint,
+      //   receiveCaller: _registration.receiveCaller,
+      //   yieldProviderIndex: yieldProviderIndex,
+      //   userFunds: 0,
+      //   yieldReportedCumulative: 0,
+      //   currentNegativeYield: 0,
+      //   lstLiabilityPrincipal: 0
+      // });
+      //
+      // To confirm the state use the below available functions on YieldManager.sol
+      // function isYieldProviderKnown(address _yieldProvider) external view returns (bool);
+      // function yieldProviderCount() external view returns (uint256);
+      // function yieldProviderByIndex() external view returns (uint256);
+      // function getYieldProviderData(address _yieldProvider) external view returns (YieldManagerStorageLayout.YieldProviderStorage memory);
+      // function userFunds(address _yieldProvider) external view returns (uint256);
+      // function isStakingPaused(address _yieldProvider) external view returns (uint256);
+      // function isOssified(address _yieldProvider) external view returns (uint256);
+      // function isOssificationInitiated(address _yieldProvider) external view returns (uint256);
+      // function userFundsInYieldProvidersTotal() external view returns (uint256);
+      // function pendingPermissionlessUnstake() external view returns (uint256);
+    });
+    it("First yield provider successfully added, should have yieldProviderIndex 1", async () => {});
+    it("Should revert when the yieldProvider has been previously added", async () => {});
+  });
 });

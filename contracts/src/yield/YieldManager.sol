@@ -233,23 +233,155 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   }
 
   /**
-   * @param _yieldProvider The yield provider address.
-   * @return withdrawableAmount Amount of ETH that can be instantly withdrawn from the YieldProvider.
-   */
-  function withdrawableValue(address _yieldProvider) public onlyKnownYieldProvider(_yieldProvider) returns (uint256 withdrawableAmount) {
-    bytes memory data = _delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
-    );
-    withdrawableAmount = abi.decode(data, (uint256));
-  }
-
-  /**
    * @param _l2YieldRecipient The L2YieldRecipient address.
    * @return bool True if the L2YieldRecipient is on the allowlist.
    */
   function isL2YieldRecipientKnown(address _l2YieldRecipient) external view returns (bool) {
     return _getYieldManagerStorage()._isL2YieldRecipientKnown[_l2YieldRecipient];
+  }
+
+  /**
+   * @param _yieldProvider The YieldProvider address.
+   * @return bool True if the YieldProvider is registered.
+   */
+  function isYieldProviderKnown(address _yieldProvider) external view returns (bool) {
+    return _getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0;
+  }
+
+  /**
+   * @notice Returns the number of registered yield provider adaptor contracts.
+   * @return count Total number of yield providers tracked by the YieldManager.
+   */
+  function yieldProviderCount() external view override returns (uint256 count) {
+    count = _getYieldManagerStorage()._yieldProviders.length;
+  }
+
+  /**
+   * @notice Returns the yield provider address stored at a specific index in the registry.
+   * @dev Uses 1-based indexing: 1 returns the first element.
+   * @dev 0 index is the sentinel value for a yield provider not being registered.
+   * @param _index Index of the yield provider to query.
+   * @return yieldProvider Yield provider adaptor address stored at the supplied index.
+   *                       - Zero address if yield provider not registered.
+   */
+  function yieldProviderByIndex(uint256 _index) external view override returns (address yieldProvider) {
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    yieldProvider = $._yieldProviders[_index];
+  }
+
+  /**
+   * @notice Returns the full state for a registered yield provider.
+   * @param _yieldProvider Yield provider adaptor address to query.
+   * @return yieldProviderData Struct containing the yield provider data.
+   */
+  function getYieldProviderData(address _yieldProvider)
+    external
+    view
+    override
+    onlyKnownYieldProvider(_yieldProvider)
+    returns (YieldManagerStorageLayout.YieldProviderStorage memory yieldProviderData)
+  {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    yieldProviderData = YieldManagerStorageLayout.YieldProviderStorage({
+      yieldProviderVendor: $$.yieldProviderVendor,
+      isStakingPaused: $$.isStakingPaused,
+      isOssificationInitiated: $$.isOssificationInitiated,
+      isOssified: $$.isOssified,
+      primaryEntrypoint: $$.primaryEntrypoint,
+      ossifiedEntrypoint: $$.ossifiedEntrypoint,
+      receiveCaller: $$.receiveCaller,
+      yieldProviderIndex: $$.yieldProviderIndex,
+      userFunds: $$.userFunds,
+      yieldReportedCumulative: $$.yieldReportedCumulative,
+      currentNegativeYield: $$.currentNegativeYield,
+      lstLiabilityPrincipal: $$.lstLiabilityPrincipal
+    });
+  }
+
+  /**
+   * @notice Returns the tracked user funds for a specific yield provider.
+   * @param _yieldProvider Yield provider adaptor address to query.
+   * @return funds Amount of user funds currently attributed to the yield provider.
+   */
+  function userFunds(address _yieldProvider)
+    external
+    view
+    override
+    onlyKnownYieldProvider(_yieldProvider)
+    returns (uint256 funds)
+  {
+    funds = _getYieldProviderStorage(_yieldProvider).userFunds;
+  }
+
+  /**
+   * @notice Returns whether staking is currently paused for a specific yield provider.
+   * @param _yieldProvider Yield provider adaptor address to query.
+   * @return isPaused True if staking is paused on the yield provider.
+   */
+  function isStakingPaused(address _yieldProvider)
+    external
+    view
+    override
+    onlyKnownYieldProvider(_yieldProvider)
+    returns (bool isPaused)
+  {
+    isPaused = _getYieldProviderStorage(_yieldProvider).isStakingPaused;
+  }
+
+  /**
+   * @notice Returns whether a yield provider has been fully ossified.
+   * @param _yieldProvider Yield provider adaptor address to query.
+   * @return bool True if the ossification process has completed for the yield provider.
+   */
+  function isOssified(address _yieldProvider)
+    external
+    view
+    override
+    onlyKnownYieldProvider(_yieldProvider)
+    returns (bool)
+  {
+    return _getYieldProviderStorage(_yieldProvider).isOssified;
+  }
+
+  /**
+   * @notice Returns whether a yield provider has initiated ossification.
+   * @param _yieldProvider Yield provider adaptor address to query.
+   * @return isInitiated True if ossification has been initiated for the yield provider.
+   */
+  function isOssificationInitiated(address _yieldProvider)
+    external
+    view
+    override
+    onlyKnownYieldProvider(_yieldProvider)
+    returns (bool isInitiated)
+  {
+    isInitiated = _getYieldProviderStorage(_yieldProvider).isOssificationInitiated;
+  }
+
+  /**
+   * @notice Returns the aggregate user funds deployed across all registered yield providers.
+   * @return totalUserFunds Aggregate amount of user funds currently deployed across yield providers.
+   */
+  function userFundsInYieldProvidersTotal()
+    external
+    view
+    override
+    returns (uint256 totalUserFunds)
+  {
+    totalUserFunds = _getYieldManagerStorage()._userFundsInYieldProvidersTotal;
+  }
+
+  /**
+   * @notice Returns the amount of ETH expected from pending permissionless unstake requests.
+   * @return pendingUnstake Amount of ETH pending arrival from the beacon chain via permissionless unstaking.
+   */
+  function pendingPermissionlessUnstake()
+    external
+    view
+    override
+    returns (uint256 pendingUnstake)
+  {
+    pendingUnstake = _getYieldManagerStorage()._pendingPermissionlessUnstake;
   }
 
   /**
@@ -272,6 +404,18 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    */
   function _fundReserve(uint256 _amount) internal {
     ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).fund{ value: _amount }();
+  }
+
+  /**
+   * @param _yieldProvider The yield provider address.
+   * @return withdrawableAmount Amount of ETH that can be instantly withdrawn from the YieldProvider.
+   */
+  function withdrawableValue(address _yieldProvider) public onlyKnownYieldProvider(_yieldProvider) returns (uint256 withdrawableAmount) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
+    );
+    withdrawableAmount = abi.decode(data, (uint256));
   }
 
   /**

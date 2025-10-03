@@ -37,7 +37,7 @@ abstract contract YieldManagerStorageLayout {
     uint256 _minimumWithdrawalReserveAmount;
     uint256 _targetWithdrawalReserveAmount;
     uint256 _userFundsInYieldProvidersTotal;
-   uint256 _pendingPermissionlessUnstake;
+    uint256 _pendingPermissionlessUnstake;
     address[] _yieldProviders;
     mapping(address l2YieldRecipient => bool) _isL2YieldRecipientKnown;
     mapping(address yieldProvider => YieldProviderStorage) _yieldProviderStorage;
