@@ -2,6 +2,8 @@
 package controller
 
 import (
+	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -133,5 +135,131 @@ func TestConglomerationInFileRegexp(t *testing.T) {
 		t.Run(c.Explainer, func(t *testing.T) {
 			runInpFileTestCase(t, &def, c)
 		})
+	}
+}
+
+// This test ensures that the naming convention is respected by the file-watcher
+// for GL module jobs: only valid inputs are recognized. GL jobs do not produce
+// any output artifact (only /dev/null), so ExpectedOutput is empty, but success
+// and failure renames still happen.
+func TestGLModsInFileRegexp(t *testing.T) {
+	conf := config.Config{}
+	conf.Version = "0.1.2"
+	conf.Limitless.WitnessDir = "/tmp/exec-limitless/witness"
+
+	modules := []string{
+		"ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK",
+		"SHA2", "ECDSA", "MODEXP_256", "G2_CHECK",
+		"STATIC", "TINY-STUFFS", "MODEXP_4096",
+	}
+
+	var (
+		correct           = "22504197-22504198-seg-0-mod-0-gl-wit.bin"
+		correctWithFail   = "22504197-22504198-seg-0-mod-0-gl-wit.bin.failure.code_77"
+		correctWith2Fails = "22504197-22504198-seg-0-mod-0-gl-wit.bin.failure.code_77.failure.code_77"
+		notAPoint         = "22504197-22504198-seg-0-mod-0-gl-witA.bin"
+		badName           = "22504197-22504198-gl-wit.json"
+	)
+
+	var (
+		resp = "/dev/null"
+	)
+
+	for _, module := range modules {
+		testcase := []inpFileNamesCases{
+			{
+				Ext: "", Fail: "code", ShouldMatch: true,
+				Fnames:    []string{correct, correctWithFail, correctWith2Fails},
+				Explainer: fmt.Sprintf("happy path, GL module %s picks valid files", module),
+				ExpectedOutput: []string{
+					resp, resp, resp, // no real output files, GL jobs write to /dev/null
+				},
+				ExpSuccess: []string{
+					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".success"),
+					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".success"),
+					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".success"),
+				},
+				ExpFailW2: []string{
+					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".failure.code_2"),
+				},
+			},
+			{
+				Ext: "", Fail: "code", ShouldMatch: false,
+				Fnames:    []string{notAPoint, badName},
+				Explainer: fmt.Sprintf("GL module %s rejects invalid files", module),
+			},
+		}
+
+		for _, c := range testcase {
+			def := GLDefinitionForModule(&conf, module)
+			t.Run(c.Explainer, func(t *testing.T) {
+				runInpFileTestCase(t, &def, c)
+			})
+		}
+	}
+}
+
+// This test ensures that the naming convention is respected by the file-watcher
+// for LPP module jobs: only valid inputs are recognized. LPP jobs do not produce
+// any output artifact (only /dev/null), so ExpectedOutput is empty, but success
+// and failure renames still happen.
+func TestLPPModsInFileRegexp(t *testing.T) {
+	conf := config.Config{}
+	conf.Version = "0.1.2"
+	conf.Limitless.WitnessDir = "/tmp/exec-limitless/witness"
+
+	modules := []string{
+		"ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK",
+		"SHA2", "ECDSA", "MODEXP_256", "G2_CHECK",
+		"STATIC", "TINY-STUFFS", "MODEXP_4096",
+	}
+
+	var (
+		correct           = "22504197-22504198-seg-0-mod-0-lpp-wit.bin"
+		correctWithFail   = "22504197-22504198-seg-0-mod-0-lpp-wit.bin.failure.code_77"
+		correctWith2Fails = "22504197-22504198-seg-0-mod-0-lpp-wit.bin.failure.code_77.failure.code_77"
+		notAPoint         = "22504197-22504198-seg-0-mod-0-lpp-witA.bin"
+		badName           = "22504197-22504198-lpp-wit.json"
+	)
+
+	var (
+		resp = "/dev/null"
+	)
+
+	for _, module := range modules {
+		testcase := []inpFileNamesCases{
+			{
+				Ext: "", Fail: "code", ShouldMatch: true,
+				Fnames:    []string{correct, correctWithFail, correctWith2Fails},
+				Explainer: fmt.Sprintf("happy path, lpp module %s picks valid files", module),
+				ExpectedOutput: []string{
+					resp, resp, resp, // no real output files, lpp jobs write to /dev/null
+				},
+				ExpSuccess: []string{
+					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".success"),
+					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".success"),
+					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".success"),
+				},
+				ExpFailW2: []string{
+					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".failure.code_2"),
+				},
+			},
+			{
+				Ext: "", Fail: "code", ShouldMatch: false,
+				Fnames:    []string{notAPoint, badName},
+				Explainer: fmt.Sprintf("LPP module %s rejects invalid files", module),
+			},
+		}
+
+		for _, c := range testcase {
+			def := LPPDefinitionForModule(&conf, module)
+			t.Run(c.Explainer, func(t *testing.T) {
+				runInpFileTestCase(t, &def, c)
+			})
+		}
 	}
 }
