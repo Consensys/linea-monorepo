@@ -289,14 +289,13 @@ func TestFileWatcherL(t *testing.T) {
 	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
 }
 
-func TestFileWatcherDist(t *testing.T) {
+func setupFsTestLimitless(t *testing.T) *config.Config {
 	tmpRoot := t.TempDir()
-	reqRoot := filepath.Join(tmpRoot, "requests-root")
 
 	conf := &config.Config{
 		Execution: config.Execution{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: reqRoot,
+				RequestsRootDir: filepath.Join(tmpRoot, "requests-root"),
 			},
 		},
 		ExecutionLimitless: config.ExecutionLimitless{
@@ -304,7 +303,10 @@ func TestFileWatcherDist(t *testing.T) {
 			WitnessDir:  filepath.Join(tmpRoot, "witness"),
 		},
 		Controller: config.Controller{
-			LocalID: "local-test",
+			LocalID:        "local-test",
+			RetryDelays:    []int{0, 1},
+			WorkerCmd:      "/bin/sh {{.InFile}}; CODE=$?; if [ $CODE -eq 0 ]; then touch {{.OutFile}}; fi; exit $CODE",
+			WorkerCmdLarge: "/bin/sh {{.InFile}}; CODE=$?; if [ $CODE -eq 0 ]; then touch {{.OutFile}}; fi; exit $CODE",
 			LimitlessJobs: config.LimitlessJobs{
 				EnableBootstrapper:  true,
 				EnableConglomerator: true,
@@ -316,24 +318,52 @@ func TestFileWatcherDist(t *testing.T) {
 		},
 	}
 
-	// --- Create required dirs ---
-	requireDir := func(p string) {
+	// Parse templates for executor fallback
+	conf.Controller.WorkerCmdTmpl = template.Must(template.New("worker").Parse(conf.Controller.WorkerCmd))
+	conf.Controller.WorkerCmdLargeTmpl = template.Must(template.New("worker-large").Parse(conf.Controller.WorkerCmdLarge))
+
+	// Phase templates for limitless (bootstrap & conglomeration need to create tmp response files)
+	conf.Controller.ProverPhaseCmd.BootstrapCmdTmpl = template.Must(template.New("bootstrap").Parse("/bin/sh {{.InFile}}; CODE=$?; if [ $CODE -eq 0 ]; then touch {{.OutFile}}; fi; exit $CODE"))
+	conf.Controller.ProverPhaseCmd.ConglomerationCmdTmpl = template.Must(template.New("conglomeration").Parse("/bin/sh {{.InFile}}; CODE=$?; if [ $CODE -eq 0 ]; then touch {{.OutFile}}; fi; exit $CODE"))
+	// GL/LPP write to /dev/null -> no tmp response needed
+	conf.Controller.ProverPhaseCmd.GLCmdTmpl = template.Must(template.New("gl").Parse("/bin/sh {{.InFile}}"))
+	conf.Controller.ProverPhaseCmd.LPPCmdTmpl = template.Must(template.New("lpp").Parse("/bin/sh {{.InFile}}"))
+
+	// helper to mkdir and fail the test on error
+	mkdir := func(p string) {
 		if err := os.MkdirAll(p, 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", p, err)
 		}
 	}
 
-	requireDir(filepath.Join(conf.Execution.RequestsRootDir, config.RequestsFromSubDir))
-	requireDir(filepath.Join(conf.Execution.RequestsRootDir, config.RequestsToSubDir))
-	requireDir(filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsFromSubDir))
-	requireDir(filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsToSubDir))
+	// Bootstrap requests root (requests/from, requests/done, responses)
+	mkdir(filepath.Join(conf.Execution.RequestsRootDir, config.RequestsFromSubDir))
+	mkdir(filepath.Join(conf.Execution.RequestsRootDir, config.RequestsDoneSubDir))
+	mkdir(filepath.Join(conf.Execution.RequestsRootDir, config.RequestsToSubDir))
 
+	// Conglomeration (metadata) - create from/to/done
+	mkdir(filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsFromSubDir))
+	mkdir(filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir))
+	mkdir(filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsToSubDir))
+
+	// GL + LPP directories per module: create from/to/done for each module
 	for _, mod := range conf.Controller.LimitlessJobs.GLMods {
-		requireDir(filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", mod, "requests"))
+		mkdir(filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsFromSubDir))
+		mkdir(filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsToSubDir))
+		mkdir(filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir)) // <- important
 	}
 	for _, mod := range conf.Controller.LimitlessJobs.LPPMods {
-		requireDir(filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", mod, "requests"))
+		mkdir(filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsFromSubDir))
+		mkdir(filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsToSubDir))
+		mkdir(filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir)) // <- important
 	}
+
+	return conf
+}
+
+func TestFileWatcherDist(t *testing.T) {
+
+	conf := setupFsTestLimitless(t)
 
 	// --- Define test cases dynamically ---
 	type testcase struct {
