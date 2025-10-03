@@ -100,7 +100,7 @@ func DecomposeFrInSlice(f []field.Element, base int) (res [][]field.Element) {
 // Decompose a field into a given base. nb gives the number of chunks needed
 func DecomposeFr(f field.Element, base int, nb int) (res []field.Element) {
 
-	//TODO@yao: decompose directly in base, uint32 is smaller than uint64
+	//TODO@yao: consider decompose directly in base, uint32 is smaller than uint64
 	return DecomposeSmall(f.Uint64(), base, nb)
 
 }

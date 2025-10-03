@@ -77,18 +77,16 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		}
 
 		return accessors.NewFromPublicColumn(pol, 0)
-	}
+	} else {
+		hornerPoly := comp.InsertCommit(
+			maxRound,
+			ifaces.ColIDf("%v_%v", name, EVAL_COEFF_POLY),
+			length,
+		)
 
-	hornerPoly := comp.InsertCommit(
-		maxRound,
-		ifaces.ColIDf("%v_%v", name, EVAL_COEFF_POLY),
-		length,
-	)
-
-	// (x * h[i+1]) + expr[i] == h[i]
-	// This will be cancelled at the border already
-	// if length == 1, we skip the shift as the poly is constant
-	if length > 1 {
+		// (x * h[i+1]) + expr[i] == h[i]
+		// This will be cancelled at the border already
+		// if length == 1, we skip the shift as the poly is constant
 		globalExpr := ifaces.ColumnAsVariable(column.Shift(hornerPoly, 1)).
 			Mul(x.AsVariable()).
 			Add(ifaces.ColumnAsVariable(pol)).
@@ -99,29 +97,30 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 			ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_GLOBAL),
 			globalExpr,
 		)
+
+		// p[-1] = h[-1]
+		comp.InsertLocal(
+			maxRound,
+			ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_LOCAL_CONSTRAINT_END),
+			ifaces.ColumnAsVariable(column.Shift(hornerPoly, -1)).
+				Sub(ifaces.ColumnAsVariable(column.Shift(pol, -1))),
+		)
+
+		// The result is given by
+		localOpening := comp.InsertLocalOpening(
+			maxRound,
+			ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_FIXED_POINT_BEGIN),
+			hornerPoly,
+		)
+
+		comp.RegisterProverAction(maxRound, &CoeffEvalProverAction{
+			Name:   name,
+			X:      x,
+			Pol:    pol,
+			Length: length,
+		})
+
+		return accessors.NewLocalOpeningAccessor(localOpening, maxRound)
 	}
 
-	// p[-1] = h[-1]
-	comp.InsertLocal(
-		maxRound,
-		ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_LOCAL_CONSTRAINT_END),
-		ifaces.ColumnAsVariable(column.Shift(hornerPoly, -1)).
-			Sub(ifaces.ColumnAsVariable(column.Shift(pol, -1))),
-	)
-
-	// The result is given by
-	localOpening := comp.InsertLocalOpening(
-		maxRound,
-		ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_FIXED_POINT_BEGIN),
-		hornerPoly,
-	)
-
-	comp.RegisterProverAction(maxRound, &CoeffEvalProverAction{
-		Name:   name,
-		X:      x,
-		Pol:    pol,
-		Length: length,
-	})
-
-	return accessors.NewLocalOpeningAccessor(localOpening, maxRound)
 }
