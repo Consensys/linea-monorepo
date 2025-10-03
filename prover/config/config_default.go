@@ -22,9 +22,9 @@ func setDefaultValues() {
 	viper.SetDefault("debug.performance_monitor.sample_duration", 1*time.Second)
 	viper.SetDefault("debug.performance_monitor.profile", "prover-rounds")
 
-	viper.SetDefault("controller.enable_execution", true)
-	viper.SetDefault("controller.enable_blob_decompression", true)
-	viper.SetDefault("controller.enable_aggregation", true)
+	viper.SetDefault("controller.enable_execution", false)
+	viper.SetDefault("controller.enable_blob_decompression", false)
+	viper.SetDefault("controller.enable_aggregation", false)
 
 	// Set the default values for the retry delays
 	viper.SetDefault("controller.retry_delays", []int{0, 1, 2, 3, 5, 8, 13, 21, 44, 85})
