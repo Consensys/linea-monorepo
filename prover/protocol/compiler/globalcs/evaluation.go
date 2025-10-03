@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"reflect"
 	"sync"
-	"time"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -103,8 +102,6 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		witnesses = make([]sv.SmartVector, len(pa.AllInvolvedColumns))
 	)
 
-	fmt.Printf("gbotrel: nb of columns to evaluate: %d\n", len(pa.AllInvolvedColumns))
-
 	// Compute the evaluations
 	parallel.Execute(len(pa.AllInvolvedColumns), func(start, stop int) {
 		for i := start; i < stop; i++ {
@@ -118,9 +115,7 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	start := time.Now()
 	ys := sv.BatchInterpolate(witnesses, r)
-	logrus.Infof("gbotrel: BatchInterpolate %d columns in %s", len(pa.AllInvolvedColumns), time.Since(start).String())
 	run.AssignUnivariate(pa.WitnessEval.QueryID, r, ys...)
 
 	/*
@@ -139,10 +134,7 @@ func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 	rootInv.Inverse(&rootInv)
 	quotientEvalPoint.Mul(&mulGenInv, &r)
 
-	fmt.Printf("gbotrel: nb of quotient evaluations to compute: %d\n", len(pa.QuotientEvals))
-
 	for i := range pa.QuotientEvals {
-		fmt.Printf("gbotrel: scheduling quotient evaluation nb q.Pols %d\n", len(pa.QuotientEvals[i].Pols))
 		wg.Add(1)
 		go func(i int, evalPoint field.Element) {
 			var (

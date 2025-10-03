@@ -88,8 +88,6 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 			}
 
 			if polySV.Len() < qa.getNumRow() {
-				// TODO @gbotrel this does not seem to be tested.
-				// poly := polySV.IntoRegVecSaveAlloc()
 				poly := make(field.Vector, qa.getNumRow())
 				polySV.WriteInSlice(poly[:polySV.Len()])
 				_ldeOf(poly, polySV.Len(), qa.getNumRow())
@@ -265,8 +263,8 @@ func getPowersOfOmega(n int) []field.Element {
 }
 
 func _ldeOf(v []field.Element, sizeSmall, sizeLarge int) {
-	domainSmall := fft.NewDomain(uint64(sizeSmall), fft.WithCache()) // TODO @gbotrel last gnark-crypto, fft.WithCache())
-	domainLarge := fft.NewDomain(uint64(sizeLarge), fft.WithCache()) // TODO @gbotrel last gnark-crypto, fft.WithCache())
+	domainSmall := fft.NewDomain(uint64(sizeSmall), fft.WithCache())
+	domainLarge := fft.NewDomain(uint64(sizeLarge), fft.WithCache())
 
 	domainSmall.FFTInverse(v[:sizeSmall], fft.DIF, fft.WithNbTasks(1))
 	fft.BitReverse(v[:sizeSmall])
