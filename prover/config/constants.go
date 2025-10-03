@@ -21,3 +21,11 @@ const (
 	// Limitless prover stuffs
 	WitnessDir = "/tmp/witness"
 )
+
+var (
+	ALL_MODULES = [10]string{
+		"ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK",
+		"SHA2", "ECDSA", "MODEXP_256", "G2_CHECK",
+		"STATIC", "TINY-STUFFS", "MODEXP_4096",
+	}
+)

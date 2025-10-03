@@ -145,13 +145,7 @@ func TestConglomerationInFileRegexp(t *testing.T) {
 func TestGLModsInFileRegexp(t *testing.T) {
 	conf := config.Config{}
 	conf.Version = "0.1.2"
-	conf.Limitless.WitnessDir = "/tmp/exec-limitless/witness"
-
-	modules := []string{
-		"ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK",
-		"SHA2", "ECDSA", "MODEXP_256", "G2_CHECK",
-		"STATIC", "TINY-STUFFS", "MODEXP_4096",
-	}
+	conf.ExecutionLimitless.WitnessDir = "/tmp/exec-limitless/witness"
 
 	var (
 		correct           = "22504197-22504198-seg-0-mod-0-gl-wit.bin"
@@ -165,7 +159,7 @@ func TestGLModsInFileRegexp(t *testing.T) {
 		resp = "/dev/null"
 	)
 
-	for _, module := range modules {
+	for _, module := range config.ALL_MODULES {
 		testcase := []inpFileNamesCases{
 			{
 				Ext: "", Fail: "code", ShouldMatch: true,
@@ -175,14 +169,14 @@ func TestGLModsInFileRegexp(t *testing.T) {
 					resp, resp, resp, // no real output files, GL jobs write to /dev/null
 				},
 				ExpSuccess: []string{
-					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".success"),
-					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".success"),
-					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".success"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", module, "requests-done", correct+".success"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", module, "requests-done", correct+".success"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", module, "requests-done", correct+".success"),
 				},
 				ExpFailW2: []string{
-					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".failure.code_2"),
-					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".failure.code_2"),
-					filepath.Join(conf.Limitless.WitnessDir, "GL", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", module, "requests-done", correct+".failure.code_2"),
 				},
 			},
 			{
@@ -208,13 +202,7 @@ func TestGLModsInFileRegexp(t *testing.T) {
 func TestLPPModsInFileRegexp(t *testing.T) {
 	conf := config.Config{}
 	conf.Version = "0.1.2"
-	conf.Limitless.WitnessDir = "/tmp/exec-limitless/witness"
-
-	modules := []string{
-		"ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK",
-		"SHA2", "ECDSA", "MODEXP_256", "G2_CHECK",
-		"STATIC", "TINY-STUFFS", "MODEXP_4096",
-	}
+	conf.ExecutionLimitless.WitnessDir = "/tmp/exec-limitless/witness"
 
 	var (
 		correct           = "22504197-22504198-seg-0-mod-0-lpp-wit.bin"
@@ -228,7 +216,7 @@ func TestLPPModsInFileRegexp(t *testing.T) {
 		resp = "/dev/null"
 	)
 
-	for _, module := range modules {
+	for _, module := range config.ALL_MODULES {
 		testcase := []inpFileNamesCases{
 			{
 				Ext: "", Fail: "code", ShouldMatch: true,
@@ -238,14 +226,14 @@ func TestLPPModsInFileRegexp(t *testing.T) {
 					resp, resp, resp, // no real output files, lpp jobs write to /dev/null
 				},
 				ExpSuccess: []string{
-					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".success"),
-					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".success"),
-					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".success"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", module, "requests-done", correct+".success"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", module, "requests-done", correct+".success"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", module, "requests-done", correct+".success"),
 				},
 				ExpFailW2: []string{
-					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".failure.code_2"),
-					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".failure.code_2"),
-					filepath.Join(conf.Limitless.WitnessDir, "LPP", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", module, "requests-done", correct+".failure.code_2"),
+					filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", module, "requests-done", correct+".failure.code_2"),
 				},
 			},
 			{
