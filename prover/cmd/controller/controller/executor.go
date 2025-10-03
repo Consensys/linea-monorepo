@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/cmd/controller/controller/metrics"
@@ -61,7 +62,7 @@ func NewExecutor(cfg *config.Config) *Executor {
 	}
 }
 
-// Run an execution proof job. Importantly, this code must NOT panic because no
+// Run a proof job. Importantly, this code must NOT panic because no
 // matter what happens we want to be able to gracefully shutdown. When the
 // context is exited, the Run function will SIGKILL the process and the function
 // immediately exits.
@@ -134,21 +135,55 @@ func (e *Executor) Run(ctx context.Context, job *Job) (status Status) {
 // Builds a command from a template to run, returns a status if it failed
 func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 
-	// The generates a name for the output file. Also attempts to generate the
-	// name of the final response file so that we can be sure it will be
-	// not fail being generated after having run the command.
-	if _, err := job.ResponseFile(); err != nil {
-		logrus.Errorf(
-			"could not generate the tmp response filename for %s: %v",
-			job.OriginalFile, err,
-		)
-		return "", err
-	}
-	outFile := job.TmpResponseFile(e.Config)
+	// For jobs that produce an actual response file, ensure we can generate
+	// the tmp response filename. For jobs that produce no output (e.g. GL/LPP
+	// with ResponseRootDir == "/dev/null"), skip ResponseFile generation.
+	var outFile string
 
-	tmpl := e.Config.Controller.WorkerCmdTmpl
-	if large {
-		tmpl = e.Config.Controller.WorkerCmdLargeTmpl
+	if job.Def.ResponseRootDir == "/dev/null" {
+		// GL / LPP jobs (or any job explicitly configured to write to /dev/null)
+		outFile = "/dev/null"
+	} else {
+		// The generates a name for the output file. Also attempts to generate the
+		// name of the final response file so that we can be sure it will be
+		// not fail being generated after having run the command.
+		if _, err := job.ResponseFile(); err != nil {
+			logrus.Errorf(
+				"could not generate the tmp response filename for %s: %v",
+				job.OriginalFile, err,
+			)
+			return "", err
+		}
+		outFile = job.TmpResponseFile(e.Config)
+	}
+
+	var tmpl *template.Template
+	switch {
+	case job.Def.Name == jobNameExecution || job.Def.Name == jobNameBlobDecompression || job.Def.Name == jobNameAggregation:
+		tmpl = e.Config.Controller.WorkerCmdTmpl
+		if large {
+			tmpl = e.Config.Controller.WorkerCmdLargeTmpl
+		}
+	case job.Def.Name == jobNameBootstrap:
+		if e.Config.Controller.ProverPhaseCmd.BootstrapCmdTmpl != nil {
+			tmpl = e.Config.Controller.ProverPhaseCmd.BootstrapCmdTmpl
+		}
+	case job.Def.Name == jobNameConglomeration:
+		if e.Config.Controller.ProverPhaseCmd.ConglomerationCmdTmpl != nil {
+			tmpl = e.Config.Controller.ProverPhaseCmd.ConglomerationCmdTmpl
+		}
+	// job.Def.Name looks like "gl-<MODULE>"
+	case strings.HasPrefix(job.Def.Name, jobNameGL):
+		if e.Config.Controller.ProverPhaseCmd.GLCmdTmpl != nil {
+			tmpl = e.Config.Controller.ProverPhaseCmd.GLCmdTmpl
+		}
+	// job.Def.Name looks like "lpp-<MODULE>"
+	case strings.HasPrefix(job.Def.Name, jobNameLPP):
+		if e.Config.Controller.ProverPhaseCmd.LPPCmdTmpl != nil {
+			tmpl = e.Config.Controller.ProverPhaseCmd.LPPCmdTmpl
+		}
+	default:
+		panic("unknown job type: " + job.Def.Name)
 	}
 
 	// use the template to generate the command
