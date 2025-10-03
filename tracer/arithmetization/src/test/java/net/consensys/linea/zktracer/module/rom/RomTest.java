@@ -25,6 +25,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,15 +36,24 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class RomTest extends TracerTestBase {
 
-  @ParameterizedTest
-  @MethodSource("incompletePushRomTestSource")
-  void incompletePushRomTest(int j, int k, TestInfo testInfo) {
+  @Test
+  void oneIncompletePushTest(TestInfo testInfo) {
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
+    program.incompletePush(12, "ff".repeat(4));
+    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
+  }
+
+  @Tag("nightly")
+  @ParameterizedTest
+  @MethodSource("incompletePushTestSource")
+  void extensiveIncompletePushTest(int j, int k, TestInfo testInfo) {
+    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
+    // Bytes taken by a PUSHX do not have a specific purpose here
     program.incompletePush(k, "ff".repeat(j));
     BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
   }
 
-  private static Stream<Arguments> incompletePushRomTestSource() {
+  private static Stream<Arguments> incompletePushTestSource() {
     List<Arguments> trailingFFRomTestSourceList = new ArrayList<>();
     for (int k = 1; k <= 32; k++) {
       for (int j = 0; j <= k; j++) {
@@ -53,8 +63,22 @@ public class RomTest extends TracerTestBase {
     return trailingFFRomTestSourceList.stream();
   }
 
+  /**
+   * The bytecode constructed in the following test is a random concatenation of incomplete pushes
+   * where every "incomplete push" is made up of some <b>PUSHX</b> opcode follwed by
+   *
+   * <pre> l := 0, 1, ..., X </pre>
+   *
+   * bytes with value "5b", i.e. the byte value of <b>JUMPDEST</b>.
+   *
+   * <p>The execution of this code is therefore a mixture of <b>PUSHX</b>'s and <b>JUMPDEST</b>'s.
+   *
+   * <p>The purpose is to test ROM module's ability to correctly perform "jump destination analysis"
+   * i.e. its ability to distinguish between valid <b>JUMPDEST</b>'s and invalid ones, i.e. "5b"'s
+   * claimed by some <b>PUSHX</b> opcode.
+   */
   @Test
-  void randomConcatenationOfIncompletePushesRomTest(TestInfo testInfo) {
+  void jumpDestinationAnalysisTest(TestInfo testInfo) {
     List<Pair<Integer, Integer>> permutationOfKAndJPairs = new ArrayList<>();
     for (int k = 1; k <= 32; k++) {
       for (int j = 0; j <= k; j++) {
@@ -67,7 +91,7 @@ public class RomTest extends TracerTestBase {
     for (Pair<Integer, Integer> kAndJPair : permutationOfKAndJPairs) {
       int k = kAndJPair.getFirst();
       int j = kAndJPair.getSecond();
-      program.incompletePush(k, "5b".repeat(j));
+      program.incompletePush(k, "5b".repeat(j)); // invalid JUMPDEST
     }
 
     BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
