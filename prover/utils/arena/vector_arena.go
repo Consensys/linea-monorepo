@@ -41,6 +41,7 @@ func (a *VectorArena) get(nbBytes int64) []byte {
 // This should only be called when previously allocated vectors are no longer in use.
 // Offset should be 0 to reuse the entire arena, or set to a specific value (returned by Offset())
 // There is no safety check, use at your own risk.
+// Note that this is not safe for concurrent use with calls to Get.
 func (a *VectorArena) Reset(offset int64) {
 	atomic.StoreInt64(&a.offset, offset)
 }
