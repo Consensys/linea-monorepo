@@ -332,4 +332,19 @@ describe("Linea Rollup contract", () => {
       expect(await yieldManager.isL2YieldRecipientKnown(recipientToRemove)).to.be.false;
     });
   });
+
+  describe("Setting withdrawal reserve parameters", () => {
+    it("Should revert set minimum withdrawal percentage when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {});
+    it("Should revert set minimum withdrawal amount when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {});
+    it("Should revert set target withdrawal percentage when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {});
+    it("Should revert set target withdrawal amount when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {});
+    it("Should revert if set minimum withdrawal percentage higher than 10000 bps", async () => {});
+    it("Should revert if set target withdrawal percentage higher than 10000 bps", async () => {});
+
+    // it("Should add the new l2YieldRecipient address and emit the correct event", async () => {});
+    // it("Should revert if the address being added has already been added", async () => {});
+    // it("Should revert if the address being removed is unknown", async () => {});
+    // it("Should revert when removing if the caller does not have the SET_L2_YIELD_RECIPIENT_ROLE", async () => {});
+    // it("Should remove the new l2YieldRecipient address and emit the correct event", async () => {});
+  });
 });

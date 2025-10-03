@@ -38,12 +38,16 @@ interface IYieldManager {
 
   /**
    * @notice Struct used to represent reserve threshold updates.
-   * @param isPercentage True if percentage update.
-   * @param isMinimum True if minimum threshold update.
+   * @param minimumWithdrawalReservePercentageBps Minimum withdrawal reserve percentage in bps.
+   * @param targetWithdrawalReservePercentageBps Target withdrawal reserve percentage in bps.
+   * @param minimumWithdrawalReserveAmount Minimum withdrawal reserve in wei.
+   * @param targetWithdrawalReserveAmount Target withdrawal reserve in wei.
    */
-  struct UpdateReserveConfig {
-    bool isPercentage;
-    bool isMinimum;
+  struct UpdateReserveParametersConfig {
+    uint16 minimumWithdrawalReservePercentageBps;
+    uint16 targetWithdrawalReservePercentageBps;
+    uint256 minimumWithdrawalReserveAmount;
+    uint256 targetWithdrawalReserveAmount;
   }
 
   /**
@@ -214,41 +218,23 @@ interface IYieldManager {
   event L2YieldRecipientRemoved(address l2YieldRecipient);
 
   /**
-   * @notice Emitted when the minimum withdrawal reserve percentage is updated.
+   * @notice Emitted when the minimum withdrawal reserve parameters are updated.
    * @param oldMinimumWithdrawalReservePercentageBps Previous minimum expressed in basis points.
    * @param newMinimumWithdrawalReservePercentageBps New minimum expressed in basis points.
-   */
-  event MinimumWithdrawalReservePercentageBpsSet(
-    uint256 oldMinimumWithdrawalReservePercentageBps,
-    uint256 newMinimumWithdrawalReservePercentageBps
-  );
-
-  /**
-   * @notice Emitted when the absolute minimum withdrawal reserve is updated.
    * @param oldMinimumWithdrawalReserveAmount Previous minimum reserve in wei.
    * @param newMinimumWithdrawalReserveAmount New minimum reserve in wei.
-  */
-  event MinimumWithdrawalReserveAmountSet(
-    uint256 oldMinimumWithdrawalReserveAmount,
-    uint256 newMinimumWithdrawalReserveAmount
-  );
-
-  /**
-   * @notice Emitted when the target withdrawal reserve percentage is updated.
    * @param oldTargetWithdrawalReservePercentageBps Previous target in basis points.
    * @param newTargetWithdrawalReservePercentageBps New target in basis points.
-   */
-  event TargetWithdrawalReservePercentageBpsSet(
-    uint256 oldTargetWithdrawalReservePercentageBps,
-    uint256 newTargetWithdrawalReservePercentageBps
-  );
-
-  /**
-   * @notice Emitted when the target withdrawal reserve amount is updated.
    * @param oldTargetWithdrawalReserveAmount Previous target amount.
    * @param newTargetWithdrawalReserveAmount New target amount.
    */
-  event TargetWithdrawalReserveAmountSet(
+  event WithdrawalReserveParametersSet(
+    uint256 oldMinimumWithdrawalReservePercentageBps,
+    uint256 newMinimumWithdrawalReservePercentageBps,
+    uint256 oldMinimumWithdrawalReserveAmount,
+    uint256 newMinimumWithdrawalReserveAmount,
+    uint256 oldTargetWithdrawalReservePercentageBps,
+    uint256 newTargetWithdrawalReservePercentageBps,
     uint256 oldTargetWithdrawalReserveAmount,
     uint256 newTargetWithdrawalReserveAmount
   );
@@ -619,30 +605,9 @@ interface IYieldManager {
   function removeL2YieldRecipient(address _L2YieldRecipient) external;
 
   /**
-   * @notice Set minimum withdrawal reserve percentage.
+   * @notice Update withdrawal reserve parameters
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
-   * @param _minimumWithdrawalReservePercentageBps Minimum withdrawal reserve percentage in bps.
+   * @param _params Data used to update withdrawal reserve parameters.
    */
-  function setMinimumWithdrawalReservePercentageBps(uint16 _minimumWithdrawalReservePercentageBps) external;
-
-  /**
-   * @notice Set minimum withdrawal reserve as an absolute amount.
-   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
-   * @param _minimumWithdrawalReserveAmount Minimum withdrawal reserve amount.
-   */
-  function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external;
-
-  /**
-   * @notice Set target withdrawal reserve percentage.
-   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
-   * @param _targetWithdrawalReservePercentageBps Target withdrawal reserve percentage in bps.
-   */
-  function setTargetWithdrawalReservePercentageBps(uint16 _targetWithdrawalReservePercentageBps) external;
-
-  /**
-   * @notice Set target withdrawal reserve as an absolute amount.
-   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
-   * @param _targetWithdrawalReserveAmount Target withdrawal reserve amount.
-   */
-  function setTargetWithdrawalReserveAmount(uint256 _targetWithdrawalReserveAmount) external;
+  function setWithdrawalReserveParameters(UpdateReserveParametersConfig calldata _params) external;
 }

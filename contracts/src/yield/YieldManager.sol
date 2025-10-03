@@ -92,22 +92,13 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
     __Permissions_init(_initializationData.roleAddresses);
 
-    _updateReserveConfig(
-      UpdateReserveConfig({ isPercentage: true, isMinimum: false }),
-      _initializationData.initialTargetWithdrawalReservePercentageBps
-    );
-    _updateReserveConfig(
-      UpdateReserveConfig({ isPercentage: true, isMinimum: true }),
-      _initializationData.initialMinimumWithdrawalReservePercentageBps
-    );
-    _updateReserveConfig(
-      UpdateReserveConfig({ isPercentage: false, isMinimum: false }),
-      _initializationData.initialTargetWithdrawalReserveAmount
-    );
-    _updateReserveConfig(
-      UpdateReserveConfig({ isPercentage: false, isMinimum: true }),
-      _initializationData.initialMinimumWithdrawalReserveAmount
-    );
+    _setWithdrawalReserveParameters(UpdateReserveParametersConfig({
+      minimumWithdrawalReservePercentageBps: _initializationData.initialMinimumWithdrawalReservePercentageBps,
+      minimumWithdrawalReserveAmount: _initializationData.initialMinimumWithdrawalReserveAmount,
+      targetWithdrawalReservePercentageBps: _initializationData.initialTargetWithdrawalReservePercentageBps,
+      targetWithdrawalReserveAmount: _initializationData.initialTargetWithdrawalReserveAmount
+    }));
+
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     for (uint256 i; i < _initializationData.initialL2YieldRecipients.length; i++) {
       address l2YieldRecipient = _initializationData.initialL2YieldRecipients[i];
@@ -999,111 +990,48 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   }
 
   /**
-   * @notice Set minimum withdrawal reserve percentage.
+   * @notice Update withdrawal reserve parameters
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
-   * @param _minimumWithdrawalReservePercentageBps Minimum withdrawal reserve percentage in bps.
+   * @param _params Data used to update withdrawal reserve parameters.
    */
-  function setMinimumWithdrawalReservePercentageBps(
-    uint16 _minimumWithdrawalReservePercentageBps
-  ) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
-    uint256 oldValue = _updateReserveConfig(
-      UpdateReserveConfig({ isPercentage: true, isMinimum: true }),
-      _minimumWithdrawalReservePercentageBps
-    );
-    emit MinimumWithdrawalReservePercentageBpsSet(oldValue, _minimumWithdrawalReservePercentageBps);
+  function setWithdrawalReserveParameters(UpdateReserveParametersConfig memory _params) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
+    _setWithdrawalReserveParameters(_params);
   }
 
   /**
-   * @notice Set minimum withdrawal reserve as an absolute amount.
+   * @notice Helper function toupdate withdrawal reserve parameters
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
-   * @param _minimumWithdrawalReserveAmount Minimum withdrawal reserve amount.
+   * @param _params Data used to update withdrawal reserve parameters.
    */
-  function setMinimumWithdrawalReserveAmount(
-    uint256 _minimumWithdrawalReserveAmount
-  ) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
-    uint256 oldValue = _updateReserveConfig(
-      UpdateReserveConfig({ isPercentage: false, isMinimum: true }),
-      _minimumWithdrawalReserveAmount
-    );
-    emit MinimumWithdrawalReserveAmountSet(oldValue, _minimumWithdrawalReserveAmount);
-  }
-
-  /**
-   * @notice Set target withdrawal reserve percentage.
-   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
-   * @param _targetWithdrawalReservePercentageBps Target withdrawal reserve percentage in bps.
-   */
-  function setTargetWithdrawalReservePercentageBps(
-    uint16 _targetWithdrawalReservePercentageBps
-  ) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
-    uint256 oldValue = _updateReserveConfig(
-      UpdateReserveConfig({ isPercentage: true, isMinimum: false }),
-      _targetWithdrawalReservePercentageBps
-    );
-    emit TargetWithdrawalReservePercentageBpsSet(oldValue, _targetWithdrawalReservePercentageBps);
-  }
-
-  /**
-   * @notice Set target withdrawal reserve as an absolute amount.
-   * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
-   * @param _targetWithdrawalReserveAmount Target withdrawal reserve amount.
-   */
-  function setTargetWithdrawalReserveAmount(
-    uint256 _targetWithdrawalReserveAmount
-  ) external onlyRole(WITHDRAWAL_RESERVE_SETTER_ROLE) {
-    uint256 oldValue = _updateReserveConfig(
-      UpdateReserveConfig({ isPercentage: false, isMinimum: false }),
-      _targetWithdrawalReserveAmount
-    );
-    emit TargetWithdrawalReserveAmountSet(oldValue, _targetWithdrawalReserveAmount);
-  }
-
-  /**
-   * @notice Helper function to update reserve threshold configuration.
-   * @param _config Reserve threshold updates configuration.
-   * @param _newValue The new reserve threshold configuration value.
-   */
-  function _updateReserveConfig(
-    UpdateReserveConfig memory _config,
-    uint256 _newValue
-  ) internal returns (uint256 oldValue) {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
-
-    if (_config.isPercentage) {
-      if (_newValue > MAX_BPS) {
+  function _setWithdrawalReserveParameters(UpdateReserveParametersConfig memory _params) internal {
+    if (_params.minimumWithdrawalReservePercentageBps > MAX_BPS || _params.targetWithdrawalReservePercentageBps > MAX_BPS) {
         revert BpsMoreThan10000();
-      }
-      // Update minimumPercentage
-      if (_config.isMinimum) {
-        if ($._targetWithdrawalReservePercentageBps < _newValue) {
-          revert TargetReservePercentageMustBeAboveMinimum();
-        }
-        oldValue = $._minimumWithdrawalReservePercentageBps;
-        $._minimumWithdrawalReservePercentageBps = uint16(_newValue);
-        // Update targetPercentage
-      } else {
-        if (_newValue < $._minimumWithdrawalReservePercentageBps) {
-          revert TargetReservePercentageMustBeAboveMinimum();
-        }
-        oldValue = $._targetWithdrawalReservePercentageBps;
-        $._targetWithdrawalReservePercentageBps = uint16(_newValue);
-      }
-    } else {
-      // Update minimumAmount
-      if (_config.isMinimum) {
-        if ($._targetWithdrawalReserveAmount < _newValue) {
-          revert TargetReserveAmountMustBeAboveMinimum();
-        }
-        oldValue = $._minimumWithdrawalReserveAmount;
-        $._minimumWithdrawalReserveAmount = _newValue;
-        // Update targetAmount
-      } else {
-        if (_newValue < $._minimumWithdrawalReserveAmount) {
-          revert TargetReserveAmountMustBeAboveMinimum();
-        }
-        oldValue = $._targetWithdrawalReserveAmount;
-        $._targetWithdrawalReserveAmount = _newValue;
-      }
     }
+    if (_params.minimumWithdrawalReservePercentageBps > _params.targetWithdrawalReservePercentageBps) {
+      revert TargetReservePercentageMustBeAboveMinimum();
+    }
+    if (_params.minimumWithdrawalReserveAmount > _params.targetWithdrawalReserveAmount) {
+      revert TargetReserveAmountMustBeAboveMinimum();
+    }
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    uint256 prevMinimumWithdrawalReservePercentageBps = $._minimumWithdrawalReservePercentageBps;
+    uint256 prevMinimumWithdrawalReserveAmount = $._minimumWithdrawalReserveAmount;
+    uint256 prevTargetWithdrawalReservePercentageBps = $._targetWithdrawalReservePercentageBps;
+    uint256 prevTargetWithdrawalReserveAmount = $._targetWithdrawalReserveAmount;
+    $._minimumWithdrawalReservePercentageBps = _params.minimumWithdrawalReservePercentageBps;
+    $._minimumWithdrawalReserveAmount = _params.minimumWithdrawalReserveAmount;
+    $._targetWithdrawalReservePercentageBps = _params.targetWithdrawalReservePercentageBps;
+    $._targetWithdrawalReserveAmount = _params.targetWithdrawalReserveAmount;
+    emit WithdrawalReserveParametersSet(
+      prevMinimumWithdrawalReservePercentageBps,
+      _params.minimumWithdrawalReservePercentageBps,
+      prevMinimumWithdrawalReserveAmount,
+      _params.minimumWithdrawalReserveAmount,
+      prevTargetWithdrawalReservePercentageBps,
+      _params.targetWithdrawalReservePercentageBps,
+      prevTargetWithdrawalReserveAmount,
+      _params.targetWithdrawalReserveAmount
+    );
   }
+
 }
