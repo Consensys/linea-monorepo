@@ -9,10 +9,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/stretchr/testify/require"
 )
 
-func testCaseFibonnaci() (wizard.DefineFunc, wizard.MainProverStep) {
+func testCaseFibonnaci() (wizard.DefineFunc[zk.NativeElement], wizard.MainProverStep[zk.NativeElement]) {
 
 	var (
 		P1 ifaces.ColID   = "P1"
@@ -20,7 +21,7 @@ func testCaseFibonnaci() (wizard.DefineFunc, wizard.MainProverStep) {
 		Q  ifaces.QueryID = "LOCAL"
 	)
 
-	definer := func(build *wizard.Builder) {
+	definer := func(build *wizard.Builder[zk.NativeElement]) {
 
 		// Number of rows
 		n := 1 << 3
@@ -35,7 +36,7 @@ func testCaseFibonnaci() (wizard.DefineFunc, wizard.MainProverStep) {
 		build.LocalConstraint(Q, expr)
 	}
 
-	hLProver := func(assi *wizard.ProverRuntime[T]) {
+	hLProver := func(assi *wizard.ProverRuntime[zk.NativeElement]) {
 		p1 := sv.ForTest(1, 1, 2, 3, 5, 8, 13, 21)
 		p2 := sv.ForTest(2, 0, 4, 5, 5, 6, 8, 7)
 		assi.AssignColumn(P1, p1)

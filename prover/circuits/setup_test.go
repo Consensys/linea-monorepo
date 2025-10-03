@@ -22,7 +22,7 @@ func TestLoadSetup(t *testing.T) {
 	cfg := config.Config{
 		AssetsDir: dir,
 	}
-	cs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, &circuit{make([]frontend.Variable, 1)})
+	cs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, &circuit{make([]T, 1)})
 	require.NoError(t, err)
 
 	canonicalSize, lagrangeSize := plonk.SRSSize(cs)
@@ -49,7 +49,7 @@ func TestLoadSetup(t *testing.T) {
 type circuit struct {
 	// this is a dummy circuit that does nothing
 	// it is used to generate the SRS
-	Input []frontend.Variable `gnark:",public"`
+	Input []T `gnark:",public"`
 }
 
 func (circuit *circuit) Define(api frontend.API) error {
@@ -57,7 +57,7 @@ func (circuit *circuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	prod := frontend.Variable(1)
+	prod := T(1)
 	for _, x := range circuit.Input {
 		prod = api.Mul(prod, x)
 	}

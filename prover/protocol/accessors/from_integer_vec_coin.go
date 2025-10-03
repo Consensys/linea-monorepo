@@ -18,7 +18,7 @@ import (
 // [coin.IntegerVec].
 type FromIntVecCoinPositionAccessor[T zk.Element] struct {
 	// Info points to the underlying coin on which the accessor points to.
-	Info coin.Info
+	Info coin.Info[T]
 	// Pos indexes the pointed position in the coin.
 	Pos int
 }
@@ -51,7 +51,7 @@ func (c *FromIntVecCoinPositionAccessor[T]) GetFrontendVariableExt(api zk.APIGen
 // NewFromIntegerVecCoinPosition constructs an [ifaces.Accessor] object refering
 // to a specific position of a coin of the [coin.IntegerVec]. It is used to build
 // generic verifier columns.
-func NewFromIntegerVecCoinPosition[T zk.Element](info coin.Info, pos int) ifaces.Accessor[T] {
+func NewFromIntegerVecCoinPosition[T zk.Element](info coin.Info[T], pos int) ifaces.Accessor[T] {
 	if info.Type != coin.IntegerVec {
 		panic("expected an coin.IntegerVec")
 	}

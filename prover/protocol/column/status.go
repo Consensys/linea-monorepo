@@ -75,7 +75,7 @@ const (
 func (s Status) String() string {
 	switch s {
 	case Committed:
-		return "COMMITTED"
+		return "COMMI[T]ED"
 	case Ignored:
 		return "IGNORED"
 	case Proof:

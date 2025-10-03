@@ -20,10 +20,10 @@ func main() {
 }
 
 type circuit struct {
-	NbBatches    frontend.Variable
-	BlobPayload  [blob.MaxUncompressedBytes]frontend.Variable
-	BatchEnds    [v1.MaxNbBatches]frontend.Variable
-	ExpectedSums [v1.MaxNbBatches]frontend.Variable
+	NbBatches    T
+	BlobPayload  [blob.MaxUncompressedBytes]T
+	BatchEnds    [v1.MaxNbBatches]T
+	ExpectedSums [v1.MaxNbBatches]T
 }
 
 func (c *circuit) Define(api frontend.API) error {

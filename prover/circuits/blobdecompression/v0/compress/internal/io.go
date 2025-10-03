@@ -22,12 +22,12 @@ func NewRangeChecker(api frontend.API) *RangeChecker {
 	return &RangeChecker{api: api, tables: make(map[uint]logderivlookup.Table)}
 }
 
-func (r *RangeChecker) AssertLessThan(bound uint, c ...frontend.Variable) {
+func (r *RangeChecker) AssertLessThan(bound uint, c ...T) {
 
-	var check func(frontend.Variable)
+	var check func(T)
 	switch bound {
 	case 1:
-		check = func(v frontend.Variable) { r.api.AssertIsEqual(v, 0) }
+		check = func(v T) { r.api.AssertIsEqual(v, 0) }
 	case 2:
 		check = r.api.AssertIsBoolean
 	case 4:
@@ -50,7 +50,7 @@ func (r *RangeChecker) AssertLessThan(bound uint, c ...frontend.Variable) {
 
 // IsLessThan returns a variable that is 1 if 0 ≤ c < bound, 0 otherwise
 // TODO perf @Tabaie see if we can get away with a weaker contract, where the return value is 0 iff 0 ≤ c < bound
-func (r *RangeChecker) IsLessThan(bound uint, c frontend.Variable) frontend.Variable {
+func (r *RangeChecker) IsLessThan(bound uint, c T) T {
 	if bound >= 1<<(bits.UintSize/2-1) {
 		panic("possible overflow")
 	}
@@ -82,7 +82,7 @@ var wordNbBitsToHint = map[int]hint.Hint{1: BreakUpBytesIntoBitsHint, 2: BreakUp
 // Then the output words are b₀, b₁, b₂, b₃, b₄, b₅, b₆, b₇, b₈, b₉, b₁₀, b₁₁, b₁₂, b₁₃, b₁₄, b₁₅
 // The "recombined" output is the slice {[b₀ b₁ b₂ b₃ b₄ b₅ b₆ b₇], [b₁ b₂ b₃ b₄ b₅ b₆ b₇ b₈], ...}
 // Note that for any i in range we get recombined[8*i] = bytes[i]
-func (r *RangeChecker) BreakUpBytesIntoWords(wordNbBits int, bytes ...frontend.Variable) (words, recombined []frontend.Variable) {
+func (r *RangeChecker) BreakUpBytesIntoWords(wordNbBits int, bytes ...T) (words, recombined []T) {
 
 	wordsPerByte := 8 / wordNbBits
 	if wordsPerByte*wordNbBits != 8 {
@@ -102,7 +102,7 @@ func (r *RangeChecker) BreakUpBytesIntoWords(wordNbBits int, bytes ...frontend.V
 	r.AssertLessThan(1<<wordNbBits, words...)
 
 	reader := compress.NewNumReader(r.api, words, 8, wordNbBits) // "fill in" the spaces in between the given bytes
-	recombined = make([]frontend.Variable, len(words))
+	recombined = make([]T, len(words))
 	for i := range bytes {
 		reader.AssertNextEquals(bytes[i]) // see that the words do recombine to the original bytes; the only real difference between this and the inner loop is a single constraint saved
 		recombined[i*wordsPerByte] = bytes[i]

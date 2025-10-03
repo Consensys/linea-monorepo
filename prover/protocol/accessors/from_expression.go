@@ -56,7 +56,7 @@ func NewFromExpression[T zk.Element](expr *symbolic.Expression[T], exprName stri
 		case ifaces.Accessor[T]:
 			// this is always fine because all coins are public
 			exprRound = utils.Max(exprRound, castedMetadata.Round())
-		case coin.Info:
+		case coin.Info[T]:
 			// this is always fine because all coins are public
 			exprRound = utils.Max(exprRound, castedMetadata.Round)
 		default:
@@ -102,7 +102,7 @@ func (e *FromExprAccessor[T]) GetVal(run ifaces.Runtime) field.Element {
 		case ifaces.Accessor[T]:
 			x := castedMetadata.GetVal(run)
 			inputs[i] = smartvectors.NewConstant(x, 1)
-		case coin.Info:
+		case coin.Info[T]:
 			// this is always fine because all coins are public
 			x := run.GetRandomCoinField(castedMetadata.Name)
 			inputs[i] = smartvectors.NewConstant(x, 1)
@@ -124,7 +124,7 @@ func (e *FromExprAccessor[T]) GetValBase(run ifaces.Runtime) (field.Element, err
 			case ifaces.Accessor[T]:
 				x, _ := castedMetadata.GetValBase(run)
 				inputs[i] = smartvectors.NewConstant(x, 1)
-			case coin.Info:
+			case coin.Info[T]:
 				// this is always fine because all coins are public
 				x := run.GetRandomCoinField(castedMetadata.Name)
 				inputs[i] = smartvectors.NewConstant(x, 1)
@@ -154,7 +154,7 @@ func (e *FromExprAccessor[T]) GetValExt(run ifaces.Runtime) fext.Element {
 			case ifaces.Accessor[T]:
 				x := castedMetadata.GetValExt(run)
 				inputs[i] = smartvectors.NewConstantExt(x, 1)
-			case coin.Info:
+			case coin.Info[T]:
 				// this is always fine because all coins are public
 				x := run.GetRandomCoinFieldExt(castedMetadata.Name)
 				inputs[i] = smartvectors.NewConstantExt(x, 1)
@@ -177,7 +177,7 @@ func (e *FromExprAccessor[T]) GetFrontendVariable(api zk.APIGen[T], circ ifaces.
 		switch castedMetadata := m.(type) {
 		case ifaces.Accessor[T]:
 			inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
-		case coin.Info:
+		case coin.Info[T]:
 			inputs[i] = circ.GetRandomCoinField(castedMetadata.Name)
 		default:
 			utils.Panic("unsupported type %T", m)
@@ -196,7 +196,7 @@ func (e *FromExprAccessor[T]) GetFrontendVariableBase(api zk.APIGen[T], circ ifa
 			switch castedMetadata := m.(type) {
 			case ifaces.Accessor[T]:
 				inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
-			case coin.Info:
+			case coin.Info[T]:
 				inputs[i] = circ.GetRandomCoinField(castedMetadata.Name)
 			default:
 				utils.Panic("unsupported type %T", m)
@@ -228,7 +228,7 @@ func (e *FromExprAccessor[T]) GetFrontendVariableExt(api zk.APIGen[T], circ ifac
 			switch castedMetadata := m.(type) {
 			case ifaces.Accessor[T]:
 				inputs[i] = castedMetadata.GetFrontendVariableExt(api, circ)
-			case coin.Info:
+			case coin.Info[T]:
 				inputs[i] = circ.GetRandomCoinFieldExt(castedMetadata.Name)
 			default:
 				utils.Panic("unsupported type %T", m)

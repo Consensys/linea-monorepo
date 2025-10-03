@@ -12,14 +12,14 @@ import (
 
 type VerifierCol[T zk.Element] interface {
 	ifaces.Column[T]
-	Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column[T]
+	Split(comp *wizard.CompiledIOP[T], from, to int) ifaces.Column[T]
 }
 
 // AssertIsPublicCol returns true if the column is public
 // TODO @AlexandreBelling, this function seems at the wrong place in
 // this package. We should consider rework the package organization
 // to make it work in a cleaner manner.
-func AssertIsPublicCol[T zk.Element](comp *wizard.CompiledIOP, col ifaces.Column[T]) {
+func AssertIsPublicCol[T zk.Element](comp *wizard.CompiledIOP[T], col ifaces.Column[T]) {
 
 	// Sanity-check, the columns should be accessible to the verifier
 	grandpa := column.RootParents(col)
@@ -46,7 +46,7 @@ func AssertIsPublicCol[T zk.Element](comp *wizard.CompiledIOP, col ifaces.Column
 // NewConcatTinyColumns creates a new ConcatTinyColumns. The columns must all
 // have a length of "1"
 func NewConcatTinyColumns[T zk.Element](
-	comp *wizard.CompiledIOP,
+	comp *wizard.CompiledIOP[T],
 	paddedSize int,
 	paddingVal fext.Element,
 	cols ...ifaces.Column[T],

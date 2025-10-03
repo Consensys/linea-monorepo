@@ -137,8 +137,8 @@ type Column[T zk.Element] interface {
 // protocol/symbolic package API to provide functions of the form
 // symbolic.Add(inputs ...any) where the type inference is delegated within the
 // function.
-func ColumnAsVariable[T zk.Element](h Column[T]) *symbolic.Expression {
-	return symbolic.NewVariable(h)
+func ColumnAsVariable[T zk.Element](h Column[T]) *symbolic.Expression[T] {
+	return symbolic.NewVariable[T](h)
 }
 
 // MustBeInRound asserts the round of registration of the commitment. It is

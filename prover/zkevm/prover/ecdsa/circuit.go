@@ -15,13 +15,13 @@ import (
 )
 
 type EcRecoverInstance struct {
-	PKXHi, PKXLo, PKYHi, PKYLo frontend.Variable `gnark:",public"`
-	HHi, HLo                   frontend.Variable `gnark:",public"`
-	VHi, VLo                   frontend.Variable `gnark:",public"`
-	RHi, RLo                   frontend.Variable `gnark:",public"`
-	SHi, SLo                   frontend.Variable `gnark:",public"`
-	SUCCESS_BIT                frontend.Variable `gnark:",public"`
-	ECRECOVERBIT               frontend.Variable `gnark:",public"`
+	PKXHi, PKXLo, PKYHi, PKYLo T `gnark:",public"`
+	HHi, HLo                   T `gnark:",public"`
+	VHi, VLo                   T `gnark:",public"`
+	RHi, RLo                   T `gnark:",public"`
+	SHi, SLo                   T `gnark:",public"`
+	SUCCESS_BIT                T `gnark:",public"`
+	ECRECOVERBIT               T `gnark:",public"`
 }
 
 type MultiEcRecoverCircuit struct {
@@ -50,7 +50,7 @@ func (c *MultiEcRecoverCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.AffinePoint[emparams.Secp256k1Fp], msg *emulated.Element[emparams.Secp256k1Fr], v frontend.Variable, r, s *emulated.Element[emparams.Secp256k1Fr], strictRange, isFailure frontend.Variable, err error) {
+func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.AffinePoint[emparams.Secp256k1Fp], msg *emulated.Element[emparams.Secp256k1Fr], v T, r, s *emulated.Element[emparams.Secp256k1Fr], strictRange, isFailure T, err error) {
 	fr, err2 := emulated.NewField[emparams.Secp256k1Fr](api)
 	if err2 != nil {
 		err = fmt.Errorf("field emulation: %w", err2)
@@ -64,17 +64,17 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 	// gnark circuit works with 64 bits values, we need to split the 128 bits
 	// values into high and low parts.
 	// we leave the result unconstrained as field emulation constraints automatically
-	msgLimbs := make([]frontend.Variable, 4)
+	msgLimbs := make([]T, 4)
 	msgLimbs[2], msgLimbs[3] = bitslice.Partition(api, c.HHi, 64, bitslice.WithNbDigits(128))
 	msgLimbs[0], msgLimbs[1] = bitslice.Partition(api, c.HLo, 64, bitslice.WithNbDigits(128))
 	msg = fr.NewElement(msgLimbs)
 
-	PXlimbs := make([]frontend.Variable, 4)
+	PXlimbs := make([]T, 4)
 	PXlimbs[2], PXlimbs[3] = bitslice.Partition(api, c.PKXHi, 64, bitslice.WithNbDigits(128))
 	PXlimbs[0], PXlimbs[1] = bitslice.Partition(api, c.PKXLo, 64, bitslice.WithNbDigits(128))
 	PX := fp.NewElement(PXlimbs)
 
-	PYlimbs := make([]frontend.Variable, 4)
+	PYlimbs := make([]T, 4)
 	PYlimbs[2], PYlimbs[3] = bitslice.Partition(api, c.PKYHi, 64, bitslice.WithNbDigits(128))
 	PYlimbs[0], PYlimbs[1] = bitslice.Partition(api, c.PKYLo, 64, bitslice.WithNbDigits(128))
 	PY := fp.NewElement(PYlimbs)
@@ -89,12 +89,12 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 
 	// similarly, we split r and s into limbs compatible with gnark. But we work
 	// over a different field (scalar field vs base field for PK).
-	rLimbs := make([]frontend.Variable, 4)
+	rLimbs := make([]T, 4)
 	rLimbs[2], rLimbs[3] = bitslice.Partition(api, c.RHi, 64, bitslice.WithNbDigits(128))
 	rLimbs[0], rLimbs[1] = bitslice.Partition(api, c.RLo, 64, bitslice.WithNbDigits(128))
 	r = fr.NewElement(rLimbs)
 
-	sLimbs := make([]frontend.Variable, 4)
+	sLimbs := make([]T, 4)
 	sLimbs[2], sLimbs[3] = bitslice.Partition(api, c.SHi, 64, bitslice.WithNbDigits(128))
 	sLimbs[0], sLimbs[1] = bitslice.Partition(api, c.SLo, 64, bitslice.WithNbDigits(128))
 	s = fr.NewElement(sLimbs)

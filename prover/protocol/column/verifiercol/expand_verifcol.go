@@ -119,6 +119,6 @@ func (ex ExpandedVerifCol[T]) String() string {
 }
 
 // Split implements the [VerifierCol] interface
-func (ex ExpandedVerifCol[T]) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column[T] {
+func (ex ExpandedVerifCol[T]) Split(_ *wizard.CompiledIOP[T], from, to int) ifaces.Column[T] {
 	return ex.Verifiercol
 }

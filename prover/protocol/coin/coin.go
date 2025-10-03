@@ -5,9 +5,9 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark-crypto/hash"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
@@ -50,7 +50,7 @@ func (n *Name) UnmarshalJSON(b []byte) error {
 // ensure that it is built from the [NewInfo] constructor. The reason is that
 // the structure contains an internal UUID used for the serialization process
 // and we want to be sure that all instances have their own UUID.
-type Info struct {
+type Info[T zk.Element] struct {
 	info
 }
 
@@ -105,7 +105,7 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs hash.StateStorer, seed field.Element) interface{} {
+func (info *Info[T]) Sample(fs hash.StateStorer, seed field.Element) interface{} {
 	switch info.Type {
 	case Field:
 		return fiatshamir.RandomField(fs)
@@ -121,7 +121,7 @@ func (info *Info) Sample(fs hash.StateStorer, seed field.Element) interface{} {
 
 // SampleGnark samples a random coin in a gnark circuit. The seed can optionally be
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
-func (info *Info) SampleGnark(fs *fiatshamir.GnarkFiatShamir, seed T) interface{} {
+func (info *Info[T]) SampleGnark(fs *fiatshamir.GnarkFiatShamir, seed T) interface{} {
 	switch info.Type {
 	case Field:
 		return fs.RandomField()
@@ -137,9 +137,9 @@ func (info *Info) SampleGnark(fs *fiatshamir.GnarkFiatShamir, seed T) interface{
 Constructor for Info. For IntegerVec, size[0] contains the
 number of integers and size[1] contains the upperBound.
 */
-func NewInfo(name Name, type_ Type, round int, size ...int) Info {
+func NewInfo[T zk.Element](name Name, type_ Type, round int, size ...int) Info[T] {
 
-	infos := Info{info{Name: name, Type: type_, Round: round, uuid: uuid.New()}}
+	infos := Info[T]{info{Name: name, Type: type_, Round: round, uuid: uuid.New()}}
 
 	switch type_ {
 	case IntegerVec:
@@ -167,6 +167,6 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 	return infos
 }
 
-func (info Info) UUID() uuid.UUID {
+func (info Info[T]) UUID() uuid.UUID {
 	return info.uuid
 }

@@ -91,7 +91,7 @@ func (f RepeatedAccessor[T]) Size() int {
 }
 
 // Split implements the [VerifierCol] interface
-func (f RepeatedAccessor[T]) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column[T] {
+func (f RepeatedAccessor[T]) Split(_ *wizard.CompiledIOP[T], from, to int) ifaces.Column[T] {
 	return NewRepeatedAccessor(f.Accessor, to-from)
 }
 

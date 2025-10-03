@@ -413,7 +413,9 @@ func (c *VerifierCircuit[T]) GenerateCoinsForRound(api frontend.API, currRound i
 		}
 	}
 
-	seed := c.FS.State()
+	// TODO @thomas fixme
+	var seed T
+	// seed := c.FS.State()
 
 	// Then assigns the coins for the new round.
 	toCompute := c.Spec.Coins.AllKeysAt(currRound)
@@ -423,7 +425,8 @@ func (c *VerifierCircuit[T]) GenerateCoinsForRound(api frontend.API, currRound i
 		}
 
 		cn := c.Spec.Coins.Data(coinName)
-		value := cn.SampleGnark(c.FS, seed[0])
+		// value := cn.SampleGnark(c.FS, seed[0]) // TODO @thomas fixme
+		value := cn.SampleGnark(c.FS, seed)
 		c.Coins.InsertNew(coinName, value)
 	}
 }

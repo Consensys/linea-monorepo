@@ -44,7 +44,7 @@ func Compile[T zk.Element](comp *wizard.CompiledIOP[T]) {
 				continue
 			}
 
-			if q_, ok := comp.QueriesNoParams.Data(qName).(query.LocalConstraint); ok {
+			if q_, ok := comp.QueriesNoParams.Data(qName).(query.LocalConstraint[T]); ok {
 				ReduceLocalConstraint(comp, q_, i)
 			}
 		}

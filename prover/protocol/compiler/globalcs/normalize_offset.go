@@ -4,17 +4,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 // NormalizeGlobalOffset is a small compilation routine which shifts all the
 // global constraints expression so that their minimal offset is zero.
-func NormalizeGlobalOffset(comp *wizard.CompiledIOP[T]) {
+func NormalizeGlobalOffset[T zk.Element](comp *wizard.CompiledIOP[T]) {
 
 	queries := comp.QueriesNoParams.AllUnignoredKeys()
 
 	for i := range queries {
 
-		q, ok := comp.QueriesNoParams.Data(queries[i]).(query.GlobalConstraint)
+		q, ok := comp.QueriesNoParams.Data(queries[i]).(query.GlobalConstraint[T])
 		if !ok {
 			continue
 		}

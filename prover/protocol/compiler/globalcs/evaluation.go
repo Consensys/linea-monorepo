@@ -31,12 +31,83 @@ type EvaluationCtx[T zk.Element] struct {
 	QuotientCtx[T]
 	QuotientEvals []query.UnivariateEval[T]
 	WitnessEval   query.UnivariateEval[T]
-	EvalCoin      coin.Info
+	EvalCoin      coin.Info[T]
 }
 
 // EvaluationProver wraps [evaluationCtx] to implement the [wizard.ProverAction]
 // interface.
-// type EvaluationProver EvaluationCtx
+type EvaluationProver[T zk.Element] EvaluationCtx[T]
+
+// Run computes the evaluation of the univariate queries and implements the
+// [wizard.ProverAction] interface.
+func (pa EvaluationProver[T]) Run(run *wizard.ProverRuntime[T]) {
+
+	var (
+		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
+		r         = run.GetRandomCoinFieldExt(pa.EvalCoin.Name)
+		witnesses = make([]sv.SmartVector, len(pa.AllInvolvedColumns))
+	)
+
+	// Compute the evaluations
+	parallel.Execute(len(pa.AllInvolvedColumns), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			handle := pa.AllInvolvedColumns[i]
+			witness := handle.GetColAssignment(run)
+			witnesses[i] = witness
+
+			if witness.Len() == 0 {
+				logrus.Errorf("found a witness of size zero: %v", handle.GetColID())
+			}
+		}
+	})
+
+	ys := smartvectors_mixed.BatchEvaluateLagrange(witnesses, r)
+	run.AssignUnivariateExt(pa.WitnessEval.QueryID, r, ys...)
+
+	/*
+		For the quotient evaluate it on `x = r / g`, where g is the coset
+		shift. The generation of the domain is memoized.
+	*/
+
+	var (
+		maxRatio          = utils.Max(pa.Ratios...)
+		mulGenInv         = fft.NewDomain(uint64(maxRatio*pa.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
+		rootInv, _        = fft.Generator(uint64(maxRatio * pa.DomainSize))
+		quotientEvalPoint fext.Element
+		wg                = &sync.WaitGroup{}
+	)
+	rootInv.Inverse(&rootInv)
+	quotientEvalPoint.MulByElement(&r, &mulGenInv)
+
+	for i := range pa.QuotientEvals {
+		wg.Add(1)
+		go func(i int, evalPoint fext.Element) {
+			var (
+				q  = pa.QuotientEvals[i]
+				cs = make([]sv.SmartVector, len(q.Pols))
+			)
+
+			parallel.Execute(len(q.Pols), func(start, stop int) {
+				for i := start; i < stop; i++ {
+					cs[i] = q.Pols[i].GetColAssignment(run)
+				}
+			})
+			ys := smartvectors_mixed.BatchEvaluateLagrange(cs, evalPoint)
+
+			run.AssignUnivariateExt(q.Name(), evalPoint, ys...)
+			wg.Done()
+		}(i, quotientEvalPoint)
+		quotientEvalPoint.MulByElement(&quotientEvalPoint, &rootInv)
+	}
+
+	wg.Wait()
+
+	/*
+		as we shifted the evaluation point. No need to do do coset evaluation
+		here
+	*/
+	stoptimer()
+}
 
 // EvaluationVerifier wraps [evaluationCtx] to implement the [wizard.VerifierAction]
 // interface.
@@ -167,7 +238,7 @@ func (pa EvaluationCtx[T]) Run(run *wizard.ProverRuntime[T]) {
 }
 
 // Run evaluate the constraint and checks that
-func (ctx *EvaluationVerifier[T]) Run(run wizard.Runtime) error {
+func (ctx *EvaluationVerifier[T]) Run(run wizard.Runtime[T]) error {
 
 	var (
 		// Will be assigned to "X", the random point at which we check the constraint.
@@ -225,7 +296,7 @@ func (ctx *EvaluationVerifier[T]) Run(run wizard.Runtime) error {
 					elem := entry.GetExt()
 					evalInputs[k] = sv.NewConstantExt(elem, 1)
 				}
-			case coin.Info:
+			case coin.Info[T]:
 				evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), 1)
 			case variables.X[T]:
 				evalInputs[k] = sv.NewConstantExt(r, 1)
@@ -298,11 +369,12 @@ func (ctx *EvaluationVerifier[T]) RunGnark(api frontend.API, c wizard.GnarkRunti
 			switch metadata := metadataInterface.(type) {
 			case ifaces.Column[T]:
 				evalInputs[k] = mapYs[metadata.GetColID()]
-			case coin.Info:
+			case coin.Info[T]:
 				if metadata.IsBase() {
 					evalInputs[k] = c.GetRandomCoinField(metadata.Name)
 				} else {
-					evalInputs[k] = c.GetRandomCoinFieldExt(metadata.Name)
+					// TODO @thomas fixme
+					// evalInputs[k] = c.GetRandomCoinFieldExt(metadata.Name)
 				}
 			case variables.X[T]:
 				evalInputs[k] = r.B0.A0 // TODO @thomas should be extension fixme
@@ -329,7 +401,7 @@ func (ctx *EvaluationVerifier[T]) RunGnark(api frontend.API, c wizard.GnarkRunti
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx EvaluationVerifier[T]) recombineQuotientSharesEvaluation(run wizard.Runtime, r fext.Element) ([]fext.Element, error) {
+func (ctx EvaluationVerifier[T]) recombineQuotientSharesEvaluation(run wizard.Runtime[T], r fext.Element) ([]fext.Element, error) {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
@@ -459,7 +531,7 @@ func (ctx EvaluationVerifier[T]) recombineQuotientSharesEvaluationGnark(api fron
 		_expectedX := apiGen.Inverse(zk.ValueOf[T](omegaN))
 		_expectedX = field.Exp[T](apiGen, *_expectedX, big.NewInt(int64(i)))
 		expectedX := e4Api.MulByFp(&shiftedR, _expectedX)
-		e4Api.AssertIsEqual(expectedX, providedX)
+		e4Api.AssertIsEqual(expectedX, gnarkfext.Lift(&providedX)) // TODO @thomas fixme
 	}
 
 	for i, ratio := range ctx.Ratios {

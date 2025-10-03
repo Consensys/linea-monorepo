@@ -46,10 +46,10 @@ type Circuit struct {
 	publicInputVerifyingKey        emVkey              `gnark:"-"`
 	PublicInputProof               emProof             `gnark:",secret"`
 	PublicInputWitness             emWitness           `gnark:",secret"` // ordered for the PI circuit
-	PublicInputWitnessClaimIndexes []frontend.Variable `gnark:",secret"`
+	PublicInputWitnessClaimIndexes []T `gnark:",secret"`
 
 	// general public input
-	PublicInput frontend.Variable `gnark:",public"`
+	PublicInput T `gnark:",public"`
 }
 
 func (c *Circuit) Define(api frontend.API) error {
@@ -149,7 +149,7 @@ func AllocateCircuit(nbProofs int, pi circuits.Setup, verifyingKeys []plonk.Veri
 		publicInputVerifyingKey:        piVkEm,
 		PublicInputProof:               emPlonk.PlaceholderProof[emFr, emG1, emG2](pi.Circuit),
 		PublicInputWitness:             emPlonk.PlaceholderWitness[emFr](pi.Circuit),
-		PublicInputWitnessClaimIndexes: make([]frontend.Variable, pi_interconnection.GetMaxNbCircuitsSum(pi.Circuit)),
+		PublicInputWitnessClaimIndexes: make([]T, pi_interconnection.GetMaxNbCircuitsSum(pi.Circuit)),
 	}, nil
 
 }
@@ -163,7 +163,7 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 	var (
 		bvk       = vks[0].BaseVerifyingKey
 		cvks      = make([]emCircVKey, len(vks)-1)
-		switches  = make([]frontend.Variable, len(claims))
+		switches  = make([]T, len(claims))
 		proofs    = make([]emProof, len(claims))
 		witnesses = make([]emWitness, len(claims))
 	)
@@ -203,7 +203,7 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 }
 
 // assertSlicesEqualZEXT asserts two slices are equal, extending the shorter slice by zeros so the lengths match
-func assertSlicesEqualZEXT(api frontend.API, a, b []frontend.Variable) {
+func assertSlicesEqualZEXT(api frontend.API, a, b []T) {
 	// let a be the shorter one
 	if len(b) < len(a) {
 		a, b = b, a

@@ -22,9 +22,9 @@ func TestFPIConsistency(t *testing.T) {
 	sfpi, err := fpi.ToSnarkType()
 	assert.NoError(t, err)
 
-	t.Run("3-batches", test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	t.Run("3-batches", test_utils.SnarkFunctionTest(func(api frontend.API) []T {
 		hsh, err := mimc.NewMiMC(api)
 		assert.NoError(t, err)
-		return []frontend.Variable{sfpi.Sum(api, &hsh)}
+		return []T{sfpi.Sum(api, &hsh)}
 	}, sum))
 }

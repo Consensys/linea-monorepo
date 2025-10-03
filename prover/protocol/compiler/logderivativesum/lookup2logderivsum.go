@@ -43,7 +43,7 @@ type ColumnSegmenter[T zk.Element] interface {
 // is used by the distributed wizard protocol feature as it allows to
 // prepare the lookup queries to be split across several wizard-IOP
 // in such a way that we can recombine them later.
-func LookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
+func LookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T]) {
 	compileLookupIntoLogDerivativeSum[T](comp, nil)
 }
 
@@ -53,8 +53,8 @@ func LookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 // action based on the information of the segmenter. The compiler analyses the
 // size and the density of each "S" column to determines which values ought to be
 // ignored.
-func LookupIntoLogDerivativeSumWithSegmenter[T zk.Element](seg ColumnSegmenter[T]) func(*wizard.CompiledIOP[T][T]) {
-	return func(comp *wizard.CompiledIOP[T][T]) {
+func LookupIntoLogDerivativeSumWithSegmenter[T zk.Element](seg ColumnSegmenter[T]) func(*wizard.CompiledIOP[T]) {
+	return func(comp *wizard.CompiledIOP[T]) {
 		compileLookupIntoLogDerivativeSum(comp, seg)
 	}
 }
@@ -71,7 +71,7 @@ func compileLookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T]
 		// which Z context should be used to handle a part of a given inclusion
 		// query.
 		zCatalog    = []query.LogDerivativeSumPart[T]{}
-		proverTasks = make([]ProverTaskAtRound, comp.NumRounds())
+		proverTasks = make([]ProverTaskAtRound[T], comp.NumRounds())
 	)
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise
@@ -100,7 +100,7 @@ func compileLookupIntoLogDerivativeSum[T zk.Element](comp *wizard.CompiledIOP[T]
 		zCatalog = pushToZCatalog(tableCtx, zCatalog)
 
 		// assign the multiplicity column
-		proverTasks[round].pushMAssignment(MAssignmentTask{
+		proverTasks[round].pushMAssignment(MAssignmentTask[T]{
 			M:         tableCtx.M,
 			S:         checkTable,
 			T:         lookupTable,
@@ -176,7 +176,7 @@ func pushToZCatalog[T zk.Element](stc SingleTableCtx[T], zCatalog []query.LogDer
 	// Process the S columns
 	for table := range stc.S {
 		var (
-			_, _, size = wizardutils.AsExpr(stc.S[table])
+			_, _, size = wizardutils.AsExpr[T](stc.S[table])
 			sFilter    = symbolic.NewConstant[T](1)
 		)
 
@@ -202,7 +202,7 @@ type CheckLogDerivativeSumMustBeZero[T zk.Element] struct {
 	skipped bool `serde:"omit"`
 }
 
-func (c *CheckLogDerivativeSumMustBeZero[T]) Run(run wizard.Runtime) error {
+func (c *CheckLogDerivativeSumMustBeZero[T]) Run(run wizard.Runtime[T]) error {
 	y := run.GetLogDerivSumParams(c.Q.ID).Sum
 	if !y.IsZero() {
 		return fmt.Errorf("log-derivate sum; the final evaluation check failed for %v\n"+
@@ -251,7 +251,7 @@ func captureLookupTables[T zk.Element](comp *wizard.CompiledIOP[T], seg ColumnSe
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
 
 		// Filter out non lookup queries
-		lookup, ok := comp.QueriesNoParams.Data(qName).(query.Inclusion)
+		lookup, ok := comp.QueriesNoParams.Data(qName).(query.Inclusion[T])
 		if !ok {
 			continue
 		}
@@ -261,26 +261,30 @@ func captureLookupTables[T zk.Element](comp *wizard.CompiledIOP[T], seg ColumnSe
 		// the beginning because we are iterating over the unignored keys.
 		comp.QueriesNoParams.MarkAsIgnored(qName)
 
-		var (
-			// checkedTable corresponds to the "included" table and lookupTable
-			// corresponds to the including table.
-			checkedTable, lookupTable = GetTableCanonicalOrder(lookup)
-			tableName                 = NameTable(lookupTable)
-			// includedFilters stores the query.IncludedFilter parameter. If the
-			// query has no includedFilters on the Included side. Then this is
-			// left as nil.
-			includedFilter ifaces.Column[T]
-		)
+		// checkedTable corresponds to the "included" table and lookupTable
+		// corresponds to the including table.
+		var checkedTable, _lookupTable = GetTableCanonicalOrder(lookup)
+
+		lookupTable := make([]table[T], len(_lookupTable))
+		for i := 0; i < len(_lookupTable); i++ {
+			lookupTable[i] = table[T]{_lookupTable[i]}
+		}
+		var tableName = NameTable(lookupTable)
+
+		// includedFilters stores the query.IncludedFilter parameter. If the
+		// query has no includedFilters on the Included side. Then this is
+		// left as nil.
+		var includedFilter ifaces.Column[T]
 
 		if lookup.IsFilteredOnIncluding() {
 			var (
 				checkedLen = checkedTable[0].Size()
-				ones       = verifiercol.NewConstantCol(field.One(), checkedLen, string(lookup.Name()))
+				ones       = verifiercol.NewConstantCol[T](field.One(), checkedLen, string(lookup.Name()))
 			)
 
 			checkedTable = append([]ifaces.Column[T]{ones}, checkedTable...)
 			for frag := range lookupTable {
-				lookupTable[frag] = append([]ifaces.Column[T]{lookup.IncludingFilter[frag]}, lookupTable[frag]...)
+				lookupTable[frag].t = append([]ifaces.Column[T]{lookup.IncludingFilter[frag]}, lookupTable[frag].t...)
 			}
 
 			tableName = NameTable(lookupTable)
@@ -300,7 +304,7 @@ func captureLookupTables[T zk.Element](comp *wizard.CompiledIOP[T], seg ColumnSe
 		}
 
 		ctx.IncludedFilters[tableName] = append(ctx.IncludedFilters[tableName], includedFilter)
-		ctx.CheckedTables[tableName] = append(ctx.CheckedTables[tableName], checkedTable)
+		ctx.CheckedTables[tableName] = append(ctx.CheckedTables[tableName], table[T]{checkedTable})
 		ctx.Rounds[tableName] = max(ctx.Rounds[tableName], comp.QueriesNoParams.Round(lookup.ID))
 
 	}
@@ -368,7 +372,7 @@ func compileLookupTable[T zk.Element](
 		)
 
 		for frag := range ctx.T {
-			ctx.T[frag] = wizardutils.RandLinCombColSymbolic(alpha, lookupTable[frag])
+			ctx.T[frag] = wizardutils.RandLinCombColSymbolic(alpha, lookupTable[frag].t)
 			ctx.M[frag] = comp.InsertCommit(
 				round,
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
@@ -382,7 +386,7 @@ func compileLookupTable[T zk.Element](
 		}
 
 		for i := range ctx.S {
-			ctx.S[i] = wizardutils.RandLinCombColSymbolic(alpha, checkedTables[i])
+			ctx.S[i] = wizardutils.RandLinCombColSymbolic(alpha, checkedTables[i].t)
 		}
 	}
 

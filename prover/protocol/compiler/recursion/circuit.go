@@ -38,7 +38,7 @@ type RecursionCircuit[T zk.Element] struct {
 
 // AllocRecursionCircuit allocates a new RecursionCircuit with the
 // given parameters.
-func AllocRecursionCircuit[T zk.Element](comp *wizard.CompiledIOP[T][T], withoutGkr bool, withExternalHasher bool) *RecursionCircuit[T] {
+func AllocRecursionCircuit[T zk.Element](comp *wizard.CompiledIOP[T], withoutGkr bool, withExternalHasher bool) *RecursionCircuit[T] {
 
 	var (
 		pcsCtx      = comp.PcsCtxs.(*vortex.Ctx)
@@ -107,7 +107,7 @@ func (r *RecursionCircuit[T]) Define(api frontend.API) error {
 
 // AssignRecursionCircuit assigns a recursion based on a compiled-IOP
 // and a proof.
-func AssignRecursionCircuit[T zk.Element](comp *wizard.CompiledIOP[T][T], proof wizard.Proof, pubs []field.Element, finalFsState field.Element) *RecursionCircuit[T] {
+func AssignRecursionCircuit[T zk.Element](comp *wizard.CompiledIOP[T], proof wizard.Proof, pubs []field.Element, finalFsState field.Element) *RecursionCircuit[T] {
 
 	var (
 		pcsCtx         = comp.PcsCtxs.(*vortex.Ctx)

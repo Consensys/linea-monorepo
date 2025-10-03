@@ -140,7 +140,7 @@ func checkPublicInputs(
 func execDataHash(
 	api frontend.API,
 	wvc *wizard.VerifierCircuit,
-) frontend.Variable {
+) T {
 
 	hsh, err := mimc.NewMiMC(api)
 	if err != nil {

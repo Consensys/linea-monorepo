@@ -70,12 +70,12 @@ func Spaghettify(comp *wizard.CompiledIOP, inputs SpaghettificationInput) *Spagh
 			Inputs: inputs,
 			Tags:   make([]ifaces.Column, numPieces),
 			FilterSpaghetti: comp.InsertCommit(0,
-				ifaces.ColIDf("%v_%v", inputs.Name, "FILTERS_SPAGHETTI"),
+				ifaces.ColIDf("%v_%v", inputs.Name, "FILTERS_SPAGHE[T]I"),
 				inputs.SpaghettiSize,
 			),
 			ContentSpaghetti: make([]ifaces.Column, numTables),
 			TagSpaghetti: comp.InsertCommit(0,
-				ifaces.ColIDf("%v_%v", inputs.Name, "TAGS_SPAGHETTI"),
+				ifaces.ColIDf("%v_%v", inputs.Name, "TAGS_SPAGHE[T]I"),
 				inputs.SpaghettiSize,
 			),
 		}
@@ -92,7 +92,7 @@ func Spaghettify(comp *wizard.CompiledIOP, inputs SpaghettificationInput) *Spagh
 	for table := 0; table < numTables; table++ {
 
 		spaghetti.ContentSpaghetti[table] = comp.InsertCommit(0,
-			ifaces.ColIDf("%v_%v_%v", inputs.Name, "CONTENT_SPAGHETTI", table),
+			ifaces.ColIDf("%v_%v_%v", inputs.Name, "CONTENT_SPAGHE[T]I", table),
 			inputs.SpaghettiSize,
 		)
 	}
@@ -144,7 +144,7 @@ func (sp *Spaghettification) csTags(comp *wizard.CompiledIOP) {
 func (sp *Spaghettification) csTagSpaghetti(comp *wizard.CompiledIOP) {
 
 	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_TAGS_SPAGHETTI_INCREASES", sp.Inputs.Name),
+		ifaces.QueryIDf("%v_TAGS_SPAGHE[T]I_INCREASES", sp.Inputs.Name),
 		sym.Sub(
 			sp.TagSpaghetti,
 			sym.Mul(
@@ -160,7 +160,7 @@ func (sp *Spaghettification) csTagSpaghetti(comp *wizard.CompiledIOP) {
 func (sp *Spaghettification) csFilterSpaghetti(comp *wizard.CompiledIOP) {
 
 	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_FILTER_SPAGHETTI_IS_BINARY", sp.Inputs.Name),
+		ifaces.QueryIDf("%v_FILTER_SPAGHE[T]I_IS_BINARY", sp.Inputs.Name),
 		sym.Mul(
 			sym.Sub(sp.FilterSpaghetti, 1),
 			sp.FilterSpaghetti,
@@ -168,7 +168,7 @@ func (sp *Spaghettification) csFilterSpaghetti(comp *wizard.CompiledIOP) {
 	)
 
 	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_FILTER_SPAGHETTI_NO_0_TO_1", sp.Inputs.Name),
+		ifaces.QueryIDf("%v_FILTER_SPAGHE[T]I_NO_0_TO_1", sp.Inputs.Name),
 		sym.Mul(
 			sp.FilterSpaghetti,
 			sym.Sub(1, column.Shift(sp.FilterSpaghetti, -1)),
@@ -199,7 +199,7 @@ func (sp *Spaghettification) csInclusion(comp *wizard.CompiledIOP) {
 		inputTables[pieceID] = append(matrix[pieceID], sp.Tags[pieceID])
 
 		comp.GenericFragmentedConditionalInclusion(0,
-			ifaces.QueryIDf("%v_SPAGHETTI_INCLUSION_%v", sp.Inputs.Name, pieceID),
+			ifaces.QueryIDf("%v_SPAGHE[T]I_INCLUSION_%v", sp.Inputs.Name, pieceID),
 			[][]ifaces.Column{spaghettiTable},
 			inputTables[pieceID],
 			[]ifaces.Column{sp.FilterSpaghetti},
@@ -208,7 +208,7 @@ func (sp *Spaghettification) csInclusion(comp *wizard.CompiledIOP) {
 	}
 
 	comp.GenericFragmentedConditionalInclusion(0,
-		ifaces.QueryIDf("%v_SPAGHETTI_INCLUSION_BACKWARD", sp.Inputs.Name),
+		ifaces.QueryIDf("%v_SPAGHE[T]I_INCLUSION_BACKWARD", sp.Inputs.Name),
 		inputTables,
 		spaghettiTable,
 		sp.Inputs.Filter,

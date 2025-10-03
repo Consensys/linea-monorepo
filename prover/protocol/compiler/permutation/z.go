@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -23,7 +24,7 @@ const (
 // paper.
 //
 // Without it, it would allow mixing and matching between the different queries.
-type ZCtx struct {
+type ZCtx[T zk.Element] struct {
 	// Round is the declaration round of the Z polynomials.
 	Round int
 
@@ -33,37 +34,37 @@ type ZCtx struct {
 	// NumeratorFactors is the list of expressions of the form (\gamma + A) or
 	// (\gamma + lincomb(A, \alpha). The corresponding alpha and gamma can be
 	// the same if the factors emanates from the same query.
-	NumeratorFactors []*symbolic.Expression
+	NumeratorFactors []*symbolic.Expression[T]
 
 	// DenominatorFactor is as NumeratorFactors but for the `Bs` of the queries
-	DenominatorFactors []*symbolic.Expression
+	DenominatorFactors []*symbolic.Expression[T]
 
 	// NumeratorFactorsBoarded are DenominatorFactorsBoarded the boarded
 	// expressions and are "precomputed" versions of the expression which allow
 	// faster execution.
-	NumeratorFactorsBoarded, DenominatorFactorsBoarded []symbolic.ExpressionBoard
+	NumeratorFactorsBoarded, DenominatorFactorsBoarded []symbolic.ExpressionBoard[T]
 
 	// Zs is the list of the packed Zs
 	Zs []ifaces.Column[T]
 
 	// ZOpenings are the opening queries to the end of each Z.
-	ZOpenings []query.LocalOpening
+	ZOpenings []query.LocalOpening[T]
 }
 
 // NewZCtxFromGrandProduct creates list of zctxs from a single grand-product
 // query.
-func NewZCtxFromGrandProduct(gp query.GrandProduct) []*ZCtx {
+func NewZCtxFromGrandProduct[T zk.Element](gp query.GrandProduct[T]) []*ZCtx[T] {
 
 	var (
 		cmpInt = func(a, b int) bool {
 			return a < b
 		}
 		sizes = utils.SortedKeysOf(gp.Inputs, cmpInt)
-		zctxs = make([]*ZCtx, 0, len(sizes))
+		zctxs = make([]*ZCtx[T], 0, len(sizes))
 	)
 
 	for _, size := range sizes {
-		zctx := &ZCtx{
+		zctx := &ZCtx[T]{
 			Size:               size,
 			Round:              gp.Round,
 			NumeratorFactors:   gp.Inputs[size].Numerators,
@@ -78,7 +79,7 @@ func NewZCtxFromGrandProduct(gp query.GrandProduct) []*ZCtx {
 // compileZs declares the Z polynomials and constraint them. It assumes that the
 // current z context is partially filled with their Size, Round, NumeratorFactors
 // and DenominatorFactors (not the boarded one).
-func (z *ZCtx) Compile(comp *wizard.CompiledIOP[T]) {
+func (z *ZCtx[T]) Compile(comp *wizard.CompiledIOP[T]) {
 
 	var (
 		numZs = utils.Max(
@@ -88,9 +89,9 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP[T]) {
 	)
 
 	z.Zs = make([]ifaces.Column[T], numZs)
-	z.ZOpenings = make([]query.LocalOpening, numZs)
-	z.NumeratorFactorsBoarded = make([]symbolic.ExpressionBoard, numZs)
-	z.DenominatorFactorsBoarded = make([]symbolic.ExpressionBoard, numZs)
+	z.ZOpenings = make([]query.LocalOpening[T], numZs)
+	z.NumeratorFactorsBoarded = make([]symbolic.ExpressionBoard[T], numZs)
+	z.DenominatorFactorsBoarded = make([]symbolic.ExpressionBoard[T], numZs)
 
 	for i := range z.Zs {
 
@@ -98,16 +99,16 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP[T]) {
 			packedNum = safeAnySubSlice(z.NumeratorFactors, i*packingArity, (i+1)*packingArity)
 			packedDen = safeAnySubSlice(z.DenominatorFactors, i*packingArity, (i+1)*packingArity)
 
-			prodNumerator   = symbolic.NewConstant(1)
-			prodDenominator = symbolic.NewConstant(1)
+			prodNumerator   = symbolic.NewConstant[T](1)
+			prodDenominator = symbolic.NewConstant[T](1)
 		)
 
 		if len(packedNum) > 0 {
-			prodNumerator = symbolic.Mul(packedNum...)
+			prodNumerator = symbolic.Mul[T](packedNum...)
 		}
 
 		if len(packedDen) > 0 {
-			prodDenominator = symbolic.Mul(packedDen...)
+			prodDenominator = symbolic.Mul[T](packedDen...)
 		}
 
 		z.NumeratorFactorsBoarded[i] = prodNumerator.Board()
@@ -122,17 +123,17 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP[T]) {
 		comp.InsertGlobal(
 			z.Round,
 			deriveNameGen[ifaces.QueryID](comp.SelfRecursionCount, "Z", z.Round, z.Size, "PART", i, "GLOBAL"),
-			symbolic.Sub(
-				symbolic.Mul(z.Zs[i], prodDenominator),
-				symbolic.Mul(column.Shift(z.Zs[i], -1), prodNumerator),
+			symbolic.Sub[T](
+				symbolic.Mul[T](z.Zs[i], prodDenominator),
+				symbolic.Mul[T](column.Shift(z.Zs[i], -1), prodNumerator),
 			),
 		)
 
 		comp.InsertLocal(
 			z.Round,
 			deriveNameGen[ifaces.QueryID](comp.SelfRecursionCount, "Z", z.Round, z.Size, "PART", i, "LOCAL_INIT"),
-			symbolic.Sub(
-				symbolic.Mul(z.Zs[i], prodDenominator),
+			symbolic.Sub[T](
+				symbolic.Mul[T](z.Zs[i], prodDenominator),
 				prodNumerator,
 			),
 		)

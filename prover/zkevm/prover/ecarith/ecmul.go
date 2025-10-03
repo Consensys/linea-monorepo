@@ -103,15 +103,15 @@ type ECMulInstance struct {
 	// significant bits. The values are already range checked to be in 128 bit
 	// range.
 
-	P_X_hi, P_X_lo frontend.Variable `gnark:",public"`
-	P_Y_hi, P_Y_lo frontend.Variable `gnark:",public"`
+	P_X_hi, P_X_lo T `gnark:",public"`
+	P_Y_hi, P_Y_lo T `gnark:",public"`
 
-	N_hi, N_lo frontend.Variable `gnark:",public"`
+	N_hi, N_lo T `gnark:",public"`
 
 	// The result of the multiplication. Is provided by the caller, we have to
 	// ensure that the result is correct.
-	R_X_hi, R_X_lo frontend.Variable `gnark:",public"`
-	R_Y_hi, R_Y_lo frontend.Variable `gnark:",public"`
+	R_X_hi, R_X_lo T `gnark:",public"`
+	R_Y_hi, R_Y_lo T `gnark:",public"`
 }
 
 // NewECMulCircuit creates a new circuit for verifying the EC_MUL precompile
@@ -142,11 +142,11 @@ func (c *MultiECMulCircuit) Define(api frontend.API) error {
 	Rs := make([]sw_bn254.G1Affine, nbInstances)
 	for i := range c.Instances {
 
-		PXlimbs := make([]frontend.Variable, 4)
+		PXlimbs := make([]T, 4)
 		PXlimbs[2], PXlimbs[3] = bitslice.Partition(api, c.Instances[i].P_X_hi, 64, bitslice.WithNbDigits(128))
 		PXlimbs[0], PXlimbs[1] = bitslice.Partition(api, c.Instances[i].P_X_lo, 64, bitslice.WithNbDigits(128))
 		PX := f.NewElement(PXlimbs)
-		PYlimbs := make([]frontend.Variable, 4)
+		PYlimbs := make([]T, 4)
 		PYlimbs[2], PYlimbs[3] = bitslice.Partition(api, c.Instances[i].P_Y_hi, 64, bitslice.WithNbDigits(128))
 		PYlimbs[0], PYlimbs[1] = bitslice.Partition(api, c.Instances[i].P_Y_lo, 64, bitslice.WithNbDigits(128))
 		PY := f.NewElement(PYlimbs)
@@ -155,16 +155,16 @@ func (c *MultiECMulCircuit) Define(api frontend.API) error {
 			Y: *PY,
 		}
 
-		Nlimbs := make([]frontend.Variable, 4)
+		Nlimbs := make([]T, 4)
 		Nlimbs[2], Nlimbs[3] = bitslice.Partition(api, c.Instances[i].N_hi, 64, bitslice.WithNbDigits(128))
 		Nlimbs[0], Nlimbs[1] = bitslice.Partition(api, c.Instances[i].N_lo, 64, bitslice.WithNbDigits(128))
 		N := s.NewElement(Nlimbs)
 
-		RXlimbs := make([]frontend.Variable, 4)
+		RXlimbs := make([]T, 4)
 		RXlimbs[2], RXlimbs[3] = bitslice.Partition(api, c.Instances[i].R_X_hi, 64, bitslice.WithNbDigits(128))
 		RXlimbs[0], RXlimbs[1] = bitslice.Partition(api, c.Instances[i].R_X_lo, 64, bitslice.WithNbDigits(128))
 		RX := f.NewElement(RXlimbs)
-		RYlimbs := make([]frontend.Variable, 4)
+		RYlimbs := make([]T, 4)
 		RYlimbs[2], RYlimbs[3] = bitslice.Partition(api, c.Instances[i].R_Y_hi, 64, bitslice.WithNbDigits(128))
 		RYlimbs[0], RYlimbs[1] = bitslice.Partition(api, c.Instances[i].R_Y_lo, 64, bitslice.WithNbDigits(128))
 		RY := f.NewElement(RYlimbs)

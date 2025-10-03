@@ -27,26 +27,6 @@ type Runtime interface {
 	GetParams(id QueryID) QueryParams
 }
 
-// Interface implemented by the [github.com/consensys/linea-monorepo/protocol/wizard.WizardVerifierCircuit]. The interface
-// // exists to prevent circular dependencies internally.
-// type GnarkRuntime interface {
-// 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
-// 	GetColumn(ColID) []T
-// 	GetColumnBase(ColID) ([]T, error)
-// 	GetColumnExt(ColID) []gnarkfext.Element
-// 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
-// 	GetColumnAt(ColID, int) T
-// 	GetColumnAtBase(ColID, int) (T, error)
-// 	GetColumnAtExt(ColID, int) gnarkfext.Element
-// 	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
-// 	GetRandomCoinField(name coin.Name) T
-// 	GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element
-// 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
-// 	GetRandomCoinIntegerVec(name coin.Name) []T
-// 	// GetParams is as [Runtime.GetParams] but in a gnark circuit
-// 	GetParams(id QueryID) GnarkQueryParams
-// }
-
 // TODO @thomas ??? interface redefined in protocol/wizard/gnark_verifier.go
 type GnarkRuntime[T zk.Element] interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit

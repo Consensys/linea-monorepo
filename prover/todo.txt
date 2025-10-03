@@ -1,0 +1,26 @@
+25/08/2025
+----------
+
+outer circuit -> both for koalabear and bls12
+
+wizard/prover.go -> proverRunTime stores live data, to sample challenges, etc
+wizard/verifier -> same as proverRunTime
+
+gnark version of the above:
+gnark_verifier.go -> Verify(api frontend.API): similar to gnark's Define
+
+all the compiler's gnark equivalent are in the corresponding folder
+(ex prover/protocol/compiler/permutation/verifier.go)
+
+dedicated -> gnar components useful for the glue and the self recursion
+IMPORTANT POINT: plonk in wizard
+
+15/09/2025
+----------
+
+move factory one step above -> both for poseidon2 & mimc
+ExternalHasherFactory -> only for poseidon2
+implement 16 elmts width poseidon2 (crypto/poseidon2)
+gkrmimc -> used in the compression circuit, interconnecation circuit.
+
+Gautam -> make the statestorer use fieldElement instead of bytes

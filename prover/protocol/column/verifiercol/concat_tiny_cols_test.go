@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,8 +42,8 @@ func TestConcatTinyColRange(t *testing.T) {
 					QUERY ifaces.QueryID = "QUERY"
 				)
 
-				cols := make([]ifaces.Column[T], tc.NumCols)
-				define := func(b *wizard.Builder) {
+				cols := make([]ifaces.Column[zk.NativeElement], tc.NumCols)
+				define := func(b *wizard.Builder[zk.NativeElement]) {
 
 					// Registers the tiny columns
 					for i := range cols {
@@ -69,7 +70,7 @@ func TestConcatTinyColRange(t *testing.T) {
 					b.Range(QUERY, ctc, tc.NumCols)
 				}
 
-				prove := func(run *wizard.ProverRuntime) {
+				prove := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 					for i := range cols {
 						// the assignment value must respect the range check constraint
 						run.AssignColumn(cols[i].GetColID(), smartvectors.ForTest(i))
@@ -119,9 +120,9 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 					QUERY ifaces.QueryID = "QUERY"
 				)
 
-				cols := make([]ifaces.Column[T], tc.NumCols)
+				cols := make([]ifaces.Column[zk.NativeElement], tc.NumCols)
 
-				define := func(b *wizard.Builder) {
+				define := func(b *wizard.Builder[zk.NativeElement]) {
 
 					for i := range cols {
 						cols[i] = b.CompiledIOP.InsertColumn(
@@ -147,7 +148,7 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 					b.Range(QUERY, ctc, tc.NumCols)
 				}
 
-				prove := func(run *wizard.ProverRuntime) {
+				prove := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 					for i := range cols {
 						// the assignment value must respect the range check constraint
 						run.AssignColumn(cols[i].GetColID(), smartvectors.ForTest(i))

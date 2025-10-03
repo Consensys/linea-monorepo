@@ -54,7 +54,7 @@ func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime[T]) {
 	y := a.CoeffCheck.GetFrontendVariable(api, wvc)
 	y_ := a.EvalCheck.GetFrontendVariable(api, wvc)
 	api.AssertIsEqual(y, y_)

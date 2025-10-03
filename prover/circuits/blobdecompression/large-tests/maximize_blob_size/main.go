@@ -15,8 +15,8 @@ import (
 func nbConstraints(blobSize int) int {
 	fmt.Printf("*********************\nfor blob of size %d B or %.2fKB:\n", blobSize, float32(blobSize)/1024)
 	c := v1.Circuit{
-		BlobBytes:             make([]frontend.Variable, 32*4096),
-		Dict:                  make([]frontend.Variable, 64*1024),
+		BlobBytes:             make([]T, 32*4096),
+		Dict:                  make([]T, 64*1024),
 		MaxBlobPayloadNbBytes: blobSize,
 		UseGkrMiMC:            true,
 	}

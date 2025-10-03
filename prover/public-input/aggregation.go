@@ -120,7 +120,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 		AggregationFPIQSnark: AggregationFPIQSnark{
 			LastFinalizedBlockNumber:       pi.LastFinalizedBlockNumber,
 			LastFinalizedBlockTimestamp:    pi.LastFinalizedBlockTimestamp,
-			LastFinalizedRollingHash:       [32]frontend.Variable{},
+			LastFinalizedRollingHash:       [32]T{},
 			LastFinalizedRollingHashNumber: pi.LastFinalizedRollingHashMsgNumber,
 			InitialStateRootHash:           pi.InitialStateRootHash[:],
 
@@ -128,7 +128,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			ChainID:              pi.ChainID,
 			L2MessageServiceAddr: pi.L2MessageServiceAddr[:],
 		},
-		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, len(pi.L2MsgMerkleTreeRoots)),
+		L2MsgMerkleTreeRoots:   make([][32]T, len(pi.L2MsgMerkleTreeRoots)),
 		FinalBlockNumber:       pi.FinalBlockNumber,
 		FinalBlockTimestamp:    pi.FinalBlockTimestamp,
 		L2MsgMerkleTreeDepth:   pi.L2MsgMerkleTreeDepth,
@@ -148,28 +148,28 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 }
 
 type AggregationFPIQSnark struct {
-	ParentShnarf                   [32]frontend.Variable
-	NbDecompression                frontend.Variable
-	InitialStateRootHash           frontend.Variable
-	LastFinalizedBlockNumber       frontend.Variable
-	LastFinalizedBlockTimestamp    frontend.Variable
-	LastFinalizedRollingHash       [32]frontend.Variable
-	LastFinalizedRollingHashNumber frontend.Variable
-	ChainID                        frontend.Variable // WARNING: Currently not bound in Sum
-	L2MessageServiceAddr           frontend.Variable // WARNING: Currently not bound in Sum
+	ParentShnarf                   [32]T
+	NbDecompression                T
+	InitialStateRootHash           T
+	LastFinalizedBlockNumber       T
+	LastFinalizedBlockTimestamp    T
+	LastFinalizedRollingHash       [32]T
+	LastFinalizedRollingHashNumber T
+	ChainID                        T // WARNING: Currently not bound in Sum
+	L2MessageServiceAddr           T // WARNING: Currently not bound in Sum
 }
 
 type AggregationFPISnark struct {
 	AggregationFPIQSnark
-	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
-	L2MsgMerkleTreeRoots   [][32]frontend.Variable
-	NbL2MsgMerkleTreeRoots frontend.Variable
-	// FinalStateRootHash     frontend.Variable redundant: incorporated into final shnarf
-	FinalBlockNumber       frontend.Variable
-	FinalBlockTimestamp    frontend.Variable
-	FinalShnarf            [32]frontend.Variable
-	FinalRollingHash       [32]frontend.Variable
-	FinalRollingHashNumber frontend.Variable
+	NbL2Messages           T // TODO not used in hash. delete if not necessary
+	L2MsgMerkleTreeRoots   [][32]T
+	NbL2MsgMerkleTreeRoots T
+	// FinalStateRootHash     T redundant: incorporated into final shnarf
+	FinalBlockNumber       T
+	FinalBlockTimestamp    T
+	FinalShnarf            [32]T
+	FinalRollingHash       [32]T
+	FinalRollingHashNumber T
 	L2MsgMerkleTreeDepth   int
 }
 
@@ -212,7 +212,7 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 	return
 }
 
-func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]frontend.Variable {
+func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]T {
 	// number of hashes: 12
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
@@ -230,7 +230,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 	)
 
 	// turn the hash into a bn254 element
-	var res [32]frontend.Variable
+	var res [32]T
 	copy(res[:], utils.ReduceBytes[emulated.BN254Fr](api, sum[:]))
 	return res
 }

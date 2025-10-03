@@ -481,7 +481,7 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	var (
 		hornerParams  = run.GetHornerParams(a.Horner.ID)
@@ -509,7 +509,7 @@ func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	state := a.InitialFiatShamirState.GetColAssignmentGnark(run)[0]
 	run.Fs().SetState([]T{state})
 }

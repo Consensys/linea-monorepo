@@ -15,14 +15,14 @@ import (
 // compiles them using the GrandProduct argument technique. All the queries are
 // compiled independently and the technique relies on computing a column Z
 // accumulating the fractions (A[i] + Beta) / (B[i] + Beta)
-func CompileViaGrandProduct[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
+func CompileViaGrandProduct[T zk.Element](comp *wizard.CompiledIOP[T]) {
 	CompileIntoGdProduct[T](comp)
 	CompileGrandProduct(comp)
 }
 
 // CompileIntoGdProduct scans comp, looking for [query.Permutation] queries
 // and compile them into global [query.GrandProduct]. One for every-round.
-func CompileIntoGdProduct[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
+func CompileIntoGdProduct[T zk.Element](comp *wizard.CompiledIOP[T]) {
 
 	var (
 		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
@@ -37,7 +37,7 @@ func CompileIntoGdProduct[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
 
 		// Filter out non permutation queries
-		permutation, ok := comp.QueriesNoParams.Data(qName).(query.Permutation)
+		permutation, ok := comp.QueriesNoParams.Data(qName).(query.Permutation[T])
 		if !ok {
 			continue
 		}
@@ -67,7 +67,7 @@ func CompileIntoGdProduct[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 // dispatchPermutation applies the grand product argument compilation over
 // a specific [query.Permutation]
 func dispatchPermutation[T zk.Element](
-	comp *wizard.CompiledIOP[T][T],
+	comp *wizard.CompiledIOP[T],
 	permutationInputs map[int]*query.GrandProductInput[T],
 	round int,
 	q query.Permutation[T],
@@ -75,7 +75,7 @@ func dispatchPermutation[T zk.Element](
 
 	var (
 		isMultiColumn = len(q.A[0]) > 1
-		alpha         coin.Info
+		alpha         coin.Info[T]
 		beta          = comp.InsertCoin(round+1, deriveName[coin.Name](q, "BETA"), coin.FieldExt)
 	)
 
@@ -94,7 +94,7 @@ func dispatchPermutation[T zk.Element](
 				factor = wizardutils.RandLinCombColSymbolic(alpha, aOrB[frag])
 			}
 
-			factor = symbolic.Add(factor, beta)
+			factor = symbolic.Add[T](factor, beta)
 
 			if _, ok := permutationInputs[numRow]; !ok {
 				permutationInputs[numRow] = &query.GrandProductInput[T]{

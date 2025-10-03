@@ -102,7 +102,7 @@ func (a *SubsampleVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *SubsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
+func (a *SubsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime[T]) {
 	resAccLast := run.GetLocalPointEvalParams(a.AccLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.AccSmallLast)
 	frontend.AssertIsEqual(resAccLast.ExtY, expectedResAccLast.ExtY)

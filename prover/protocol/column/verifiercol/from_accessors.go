@@ -167,7 +167,7 @@ func (f FromAccessors[T]) String() string {
 }
 
 // Split implements the [VerifierCol] interface
-func (f FromAccessors[T]) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column[T] {
+func (f FromAccessors[T]) Split(_ *wizard.CompiledIOP[T], from, to int) ifaces.Column[T] {
 
 	if from >= len(f.Accessors) {
 		// The reason we don't want to remove the size from the name here is that

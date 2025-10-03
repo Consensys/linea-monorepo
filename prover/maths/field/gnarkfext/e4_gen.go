@@ -74,6 +74,15 @@ func NewFromBase[T zk.Element](val any) *E4Gen[T] {
 	}
 }
 
+func Lift[T zk.Element](base *T) *E4Gen[T] {
+	var res E4Gen[T]
+	res.B0.A0 = *base
+	res.B0.A1 = *zk.ValueOf[T](0)
+	res.B1.A0 = *zk.ValueOf[T](0)
+	res.B1.A1 = *zk.ValueOf[T](0)
+	return &res
+}
+
 // NewFromBase returns a real E4 elmt equal to val
 func (ext4 *Ext4[T]) NewFromBase(val any) *E4Gen[T] {
 	return &E4Gen[T]{

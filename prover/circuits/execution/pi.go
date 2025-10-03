@@ -15,16 +15,16 @@ import (
 // FunctionalPublicInputQSnark the information on this execution that cannot be
 // extracted from other input in the same aggregation batch
 type FunctionalPublicInputQSnark struct {
-	DataChecksum                 frontend.Variable
+	DataChecksum                 T
 	L2MessageHashes              L2MessageHashes
-	InitialBlockTimestamp        frontend.Variable
-	FinalStateRootHash           frontend.Variable
-	FinalBlockNumber             frontend.Variable
-	FinalBlockTimestamp          frontend.Variable
-	InitialRollingHashUpdate     [32]frontend.Variable
-	FirstRollingHashUpdateNumber frontend.Variable
-	FinalRollingHashUpdate       [32]frontend.Variable
-	LastRollingHashUpdateNumber  frontend.Variable
+	InitialBlockTimestamp        T
+	FinalStateRootHash           T
+	FinalBlockNumber             T
+	FinalBlockTimestamp          T
+	InitialRollingHashUpdate     [32]T
+	FirstRollingHashUpdateNumber T
+	FinalRollingHashUpdate       [32]T
+	LastRollingHashUpdateNumber  T
 }
 
 // L2MessageHashes is a wrapper for [Var32Slice] it is use to instantiate the
@@ -68,13 +68,13 @@ func (s *L2MessageHashes) RangeCheck(api frontend.API) {
 // @alex: it would be nice to make that function compatible with the GKR hasher
 // factory though in practice this function will only create 32 calls to the
 // MiMC permutation which makes it a non-issue.
-func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
+func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) T {
 
 	var (
 		// sumIsUsed is used to count the number of non-zero hashes that we
 		// found in s. It is to be tested against s.Length.
-		sumIsUsed = frontend.Variable(0)
-		res       = frontend.Variable(0)
+		sumIsUsed = T(0)
+		res       = T(0)
 	)
 
 	for i := range s.Values {
@@ -103,10 +103,10 @@ func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
 
 type FunctionalPublicInputSnark struct {
 	FunctionalPublicInputQSnark
-	InitialStateRootHash frontend.Variable
-	InitialBlockNumber   frontend.Variable
-	ChainID              frontend.Variable
-	L2MessageServiceAddr frontend.Variable
+	InitialStateRootHash T
+	InitialBlockNumber   T
+	ChainID              T
+	L2MessageServiceAddr T
 }
 
 // RangeCheck checks that values are within range
@@ -130,7 +130,7 @@ func (spiq *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 	spiq.L2MessageHashes.RangeCheck(api)
 }
 
-func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
+func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) T {
 
 	var (
 		finalRollingHash   = internal.CombineBytesIntoElements(api, spi.FinalRollingHashUpdate)

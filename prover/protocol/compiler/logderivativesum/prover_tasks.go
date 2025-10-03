@@ -217,11 +217,11 @@ func (a MAssignmentTask[T]) Run(run *wizard.ProverRuntime[T]) {
 		}
 
 		for frag := range a.T {
-			tCollapsed[frag] = wizardutils.RandLinCombColAssignment(run, collapsingRandomness, a.T[frag])
+			tCollapsed[frag] = wizardutils.RandLinCombColAssignment(run, collapsingRandomness, a.T[frag].t)
 		}
 
 		for i := range a.S {
-			sCollapsed[i] = wizardutils.RandLinCombColAssignment(run, collapsingRandomness, a.S[i])
+			sCollapsed[i] = wizardutils.RandLinCombColAssignment(run, collapsingRandomness, a.S[i].t)
 		}
 	}
 
@@ -430,7 +430,7 @@ func (z ZCtx[T]) Run(run *wizard.ProverRuntime[T]) {
 
 }
 
-func inspectWiop(run *wizard.ProverRuntime[T]) {
+func inspectWiop[T zk.Element](run *wizard.ProverRuntime[T]) {
 
 	if true {
 		return
@@ -443,7 +443,7 @@ func inspectWiop(run *wizard.ProverRuntime[T]) {
 	for _, colID := range columns {
 
 		var (
-			col                     = run.Spec.Columns.GetHandle(colID).(column.Natural)
+			col                     = run.Spec.Columns.GetHandle(colID).(column.Natural[T])
 			_, hasPragmaFullCol     = col.GetPragma(pragmas.FullColumnPragma)
 			_, hasPragmaLeftPadded  = col.GetPragma(pragmas.LeftPadded)
 			_, hasPragmaRightPadded = col.GetPragma(pragmas.RightPadded)

@@ -63,7 +63,7 @@ func accumulateConstraints[T zk.Element](comp *wizard.CompiledIOP[T]) (mergingCt
 
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
 		// Filter only the global constraints
-		cs, ok := comp.QueriesNoParams.Data(qName).(query.GlobalConstraint)
+		cs, ok := comp.QueriesNoParams.Data(qName).(query.GlobalConstraint[T])
 		if !ok {
 			// Not a global constraint
 			continue
@@ -218,7 +218,7 @@ func GetDegree[T zk.Element](size int) func(iface interface{}) int {
 			// The size gives the number of coefficients , but we return the degree
 			// hence the - 1
 			return v.Size() - 1
-		case coin.Info, ifaces.Accessor[T]:
+		case coin.Info[T], ifaces.Accessor[T]:
 			// Coins are treated
 			return 0
 		case variables.X[T]:

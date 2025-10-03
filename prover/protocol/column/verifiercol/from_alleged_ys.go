@@ -24,7 +24,7 @@ type FromYs[T zk.Element] struct {
 	// as we like to layout the currently-described column
 	Ranges []ifaces.ColID
 	// The Query from which we shall select the evaluations
-	Query query.UnivariateEval
+	Query query.UnivariateEval[T]
 	// Remember the round in which the query was made
 	Round_ int
 }
@@ -68,7 +68,7 @@ func (fys FromYs[T]) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime[T], pos 
 // If passed a column that is not part of the query. It will not panic but it will
 // return a zero entry. This is the expected behavior when given a shadow column
 // from the vortex compiler but otherwise this is a bug.
-func NewFromYs[T zk.Element](comp *wizard.CompiledIOP, q query.UnivariateEval, ranges []ifaces.ColID) ifaces.Column[T] {
+func NewFromYs[T zk.Element](comp *wizard.CompiledIOP[T], q query.UnivariateEval[T], ranges []ifaces.ColID) ifaces.Column[T] {
 
 	// All the names in the range should also be part of the query.
 	// To make sure of this, we build the following map.
@@ -118,7 +118,7 @@ func (fys FromYs[T]) Size() int {
 // Returns the coin's value as a column assignment
 func (fys FromYs[T]) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 
-	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
+	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams[T])
 
 	// Map the alleged evaluations to their respective commitment names
 	yMap := map[ifaces.ColID]fext.Element{} // TODO@yao:check fext or field?
@@ -138,7 +138,7 @@ func (fys FromYs[T]) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 // Returns the coin's value as a column assignment
 func (fys FromYs[T]) GetColAssignmentGnark(run ifaces.GnarkRuntime[T]) []T {
 
-	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
+	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams[T])
 
 	// Map the alleged evaluations to their respective commitment names
 	yMap := map[ifaces.ColID]T{}
@@ -180,6 +180,6 @@ func (fys FromYs[T]) String() string {
 }
 
 // Split the FromYs by restricting to a range
-func (fys FromYs[T]) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column[T] {
+func (fys FromYs[T]) Split(comp *wizard.CompiledIOP[T], from, to int) ifaces.Column[T] {
 	return NewFromYs[T](comp, fys.Query, fys.Ranges[from:to])
 }

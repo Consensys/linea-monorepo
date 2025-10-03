@@ -29,7 +29,7 @@ type CircuitExecution struct {
 	// process. What is the public input is their hash.
 	FuncInputs FunctionalPublicInputSnark `gnark:",secret"`
 	// The public input of the proof
-	PublicInput frontend.Variable `gnark:",public"`
+	PublicInput T `gnark:",public"`
 }
 
 // Allocates the outer-proof circuit
@@ -41,7 +41,7 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, zkevm.Limits().BlockL2L1Logs),
+					Values: make([][32]T, zkevm.Limits().BlockL2L1Logs),
 					Length: nil,
 				},
 			},
@@ -66,7 +66,7 @@ func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+					Values: make([][32]T, limits.BlockL2L1Logs),
 					Length: nil,
 				},
 			},
@@ -89,7 +89,7 @@ func assign(
 			FuncInputs: FunctionalPublicInputSnark{
 				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 					L2MessageHashes: L2MessageHashes{
-						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+						Values: make([][32]T, limits.BlockL2L1Logs),
 					},
 				},
 			},

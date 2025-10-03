@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ import (
 // It tests that the given expression for the LogDerivativeSum adds up to the given parameter.
 func TestLogDerivativeSum(t *testing.T) {
 
-	define := func(b *wizard.Builder) {
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 		var (
 			comp = b.CompiledIOP
 		)
@@ -31,23 +32,23 @@ func TestLogDerivativeSum(t *testing.T) {
 		q1 := b.RegisterCommit("Den_1", 4)
 		q2 := b.RegisterCommit("Den_2", 4)
 
-		numerators := []*symbolic.Expression{
-			symbolic.Mul(p0, -1),
-			ifaces.Column[T]AsVariable(p1),
-			symbolic.Mul(p2, p0, 2),
+		numerators := []*symbolic.Expression[zk.NativeElement]{
+			symbolic.Mul[zk.NativeElement](p0, -1),
+			ifaces.ColumnAsVariable(p1),
+			symbolic.Mul[zk.NativeElement](p2, p0, 2),
 		}
 
-		denominators := []*symbolic.Expression{
-			ifaces.Column[T]AsVariable(q0),
-			ifaces.Column[T]AsVariable(q1),
-			ifaces.Column[T]AsVariable(q2),
+		denominators := []*symbolic.Expression[zk.NativeElement]{
+			ifaces.ColumnAsVariable(q0),
+			ifaces.ColumnAsVariable(q1),
+			ifaces.ColumnAsVariable(q2),
 		}
 
 		size := 4
-		zCat1 := query.LogDerivativeSumInput{}
+		zCat1 := query.LogDerivativeSumInput[zk.NativeElement]{}
 		for i := range numerators {
 
-			zCat1.Parts = append(zCat1.Parts, query.LogDerivativeSumPart{
+			zCat1.Parts = append(zCat1.Parts, query.LogDerivativeSumPart[zk.NativeElement]{
 				Size: size,
 				Num:  numerators[i],
 				Den:  denominators[i],
@@ -57,7 +58,7 @@ func TestLogDerivativeSum(t *testing.T) {
 
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 
 		run.AssignColumn("Num_0", smartvectors.ForTest(1, 1, 1, 1))
 		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3, 7, 9))
@@ -79,7 +80,7 @@ func TestLogDerivativeSum(t *testing.T) {
 
 func TestLogDerivativeSumMixed(t *testing.T) {
 
-	define := func(b *wizard.Builder) {
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 		var (
 			comp = b.CompiledIOP
 		)
@@ -94,25 +95,25 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 		q2 := b.RegisterCommit("Den_2", 4)
 		q3 := b.RegisterCommit("Den_3", 4)
 
-		numerators := []*symbolic.Expression{
-			ifaces.Column[T]AsVariable(p0),
-			symbolic.Mul(p0, p1),
-			symbolic.Sub(p2, symbolic.Mul(p0, 4), symbolic.Mul(p0, p1)),
-			ifaces.Column[T]AsVariable(p3),
+		numerators := []*symbolic.Expression[zk.NativeElement]{
+			ifaces.ColumnAsVariable(p0),
+			symbolic.Mul[zk.NativeElement](p0, p1),
+			symbolic.Sub[zk.NativeElement](p2, symbolic.Mul[zk.NativeElement](p0, 4), symbolic.Mul[zk.NativeElement](p0, p1)),
+			ifaces.ColumnAsVariable(p3),
 		}
 
-		denominators := []*symbolic.Expression{
-			ifaces.Column[T]AsVariable(q0),
-			ifaces.Column[T]AsVariable(q1),
-			ifaces.Column[T]AsVariable(q2),
-			ifaces.Column[T]AsVariable(q3),
+		denominators := []*symbolic.Expression[zk.NativeElement]{
+			ifaces.ColumnAsVariable(q0),
+			ifaces.ColumnAsVariable(q1),
+			ifaces.ColumnAsVariable(q2),
+			ifaces.ColumnAsVariable(q3),
 		}
 
 		size := 4
-		zCat1 := query.LogDerivativeSumInput{}
+		zCat1 := query.LogDerivativeSumInput[zk.NativeElement]{}
 
 		for i := range numerators {
-			zCat1.Parts = append(zCat1.Parts, query.LogDerivativeSumPart{
+			zCat1.Parts = append(zCat1.Parts, query.LogDerivativeSumPart[zk.NativeElement]{
 				Size: size,
 				Num:  numerators[i],
 				Den:  denominators[i],
@@ -122,7 +123,7 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 
 		run.AssignColumn("Num_0", smartvectors.ForTest(1, 2, 3, 4))
 		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3, 7, 9))
@@ -147,7 +148,7 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 
 func TestLogDerivativeSumMixed2(t *testing.T) {
 
-	define := func(b *wizard.Builder) {
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 		var (
 			comp = b.CompiledIOP
 		)
@@ -160,22 +161,22 @@ func TestLogDerivativeSumMixed2(t *testing.T) {
 		q1 := b.RegisterCommit("Den_1", 4)
 		q2 := b.RegisterCommit("Den_2", 4)
 
-		numerators := []*symbolic.Expression{
-			symbolic.Mul(p0, -1),
-			ifaces.Column[T]AsVariable(p1),
-			symbolic.Mul(p2, p0, 2),
+		numerators := []*symbolic.Expression[zk.NativeElement]{
+			symbolic.Mul[zk.NativeElement](p0, -1),
+			ifaces.ColumnAsVariable(p1),
+			symbolic.Mul[zk.NativeElement](p2, p0, 2),
 		}
 
-		denominators := []*symbolic.Expression{
-			ifaces.Column[T]AsVariable(q0),
-			ifaces.Column[T]AsVariable(q1),
-			ifaces.Column[T]AsVariable(q2),
+		denominators := []*symbolic.Expression[zk.NativeElement]{
+			ifaces.ColumnAsVariable(q0),
+			ifaces.ColumnAsVariable(q1),
+			ifaces.ColumnAsVariable(q2),
 		}
 
 		size := 4
-		zCat1 := query.LogDerivativeSumInput{}
+		zCat1 := query.LogDerivativeSumInput[zk.NativeElement]{}
 		for i := range numerators {
-			zCat1.Parts = append(zCat1.Parts, query.LogDerivativeSumPart{
+			zCat1.Parts = append(zCat1.Parts, query.LogDerivativeSumPart[zk.NativeElement]{
 				Size: size,
 				Num:  numerators[i],
 				Den:  denominators[i],
@@ -185,7 +186,7 @@ func TestLogDerivativeSumMixed2(t *testing.T) {
 		comp.InsertLogDerivativeSum(0, "LogDerivSum_Test", zCat1)
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 
 		run.AssignColumn("Num_0", smartvectors.ForTest(1, 1, 1, 1))
 		run.AssignColumn("Num_1", smartvectors.ForTest(2, 3, 7, 9))

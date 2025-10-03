@@ -6,14 +6,14 @@ import (
 )
 
 type ShnarfIteration struct {
-	BlobDataSnarkHash                          [32]frontend.Variable
-	NewStateRootHash                           [32]frontend.Variable
-	EvaluationPointBytes, EvaluationClaimBytes [32]frontend.Variable
+	BlobDataSnarkHash                          [32]T
+	NewStateRootHash                           [32]T
+	EvaluationPointBytes, EvaluationClaimBytes [32]T
 }
 
 // ComputeShnarfs DOES NOT check nbShnarfs ≤ len(s.Iterations)
-func ComputeShnarfs(h keccak.BlockHasher, parent [32]frontend.Variable, iterations []ShnarfIteration) (result [][32]frontend.Variable) {
-	result = make([][32]frontend.Variable, len(iterations))
+func ComputeShnarfs(h keccak.BlockHasher, parent [32]T, iterations []ShnarfIteration) (result [][32]T) {
+	result = make([][32]T, len(iterations))
 	prevShnarf := parent
 
 	for i, t := range iterations {

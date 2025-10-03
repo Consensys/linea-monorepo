@@ -23,7 +23,7 @@ func TestDeepEqual(t *testing.T) {
 func TestCoinRounds(t *testing.T) {
 
 	var (
-		c coin.Info
+		c coin.Info[zk.NativeElement]
 		a ifaces.Accessor[zk.NativeElement]
 	)
 

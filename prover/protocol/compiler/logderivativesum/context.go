@@ -58,7 +58,7 @@ type SingleTableCtx[T zk.Element] struct {
 	M []ifaces.Column[T]
 
 	// Gamma is the coin used to evaluate the sum of the inverse of the columns.
-	Gamma coin.Info
+	Gamma coin.Info[T]
 
 	// S represents the list of the looked-up tables. Each entry of S
 	// corresponds to a lookup query into T. The expressions that are stored

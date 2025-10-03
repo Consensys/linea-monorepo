@@ -72,7 +72,7 @@ func TestInterpolateLagrange(t *testing.T) {
 		assert.NoError(t, err)
 
 		assignment := testInterpolateLagrangeCircuit{
-			UnitCircleEvaluationsBytes: make([][fr381.Bytes]frontend.Variable, len(unitCircleEvaluations)),
+			UnitCircleEvaluationsBytes: make([][fr381.Bytes]T, len(unitCircleEvaluations)),
 		}
 		for i := range unitCircleEvaluations {
 			bytes := unitCircleEvaluationsFr[i].Bytes()
@@ -123,22 +123,22 @@ func TestInterpolateLagrange(t *testing.T) {
 
 	for i := range assignments {
 		assert.NoError(t, test.IsSolved(
-			&testInterpolateLagrangeCircuit{UnitCircleEvaluationsBytes: make([][fr381.Bytes]frontend.Variable, len(assignments[i].UnitCircleEvaluationsBytes))},
+			&testInterpolateLagrangeCircuit{UnitCircleEvaluationsBytes: make([][fr381.Bytes]T, len(assignments[i].UnitCircleEvaluationsBytes))},
 			assignments[i], ecc.BLS12_377.ScalarField(),
 		))
 	}
 }
 
 type testInterpolateLagrangeCircuit struct {
-	EvaluationPoint            [2]frontend.Variable
-	Evaluation                 [2]frontend.Variable
-	UnitCircleEvaluationsBytes [][fr381.Bytes]frontend.Variable
+	EvaluationPoint            [2]T
+	Evaluation                 [2]T
+	UnitCircleEvaluationsBytes [][fr381.Bytes]T
 }
 
 func (c *testInterpolateLagrangeCircuit) Define(api frontend.API) error {
 	field, err := emulated.NewField[emulated.BLS12381Fr](api)
-	unitCircleEvaluations := mapSlice(c.UnitCircleEvaluationsBytes, func(v [fr381.Bytes]frontend.Variable) *emulated.Element[emulated.BLS12381Fr] {
-		var bits [len(v) * 8]frontend.Variable
+	unitCircleEvaluations := mapSlice(c.UnitCircleEvaluationsBytes, func(v [fr381.Bytes]T) *emulated.Element[emulated.BLS12381Fr] {
+		var bits [len(v) * 8]T
 		for i := range v {
 			copy(bits[i*8:], api.ToBinary(v[len(v)-1-i], 8))
 		}
@@ -161,10 +161,10 @@ func (c *testInterpolateLagrangeCircuit) Define(api frontend.API) error {
 }
 
 type blobConsistencyCheckCircuit struct {
-	BlobBytes      []frontend.Variable   // "the blob" in EIP-4844 parlance
-	X              [32]frontend.Variable `gnark:",public"` // "high" and "low"
-	Y              [2]frontend.Variable  `gnark:",public"`
-	Eip4844Enabled frontend.Variable
+	BlobBytes      []T   // "the blob" in EIP-4844 parlance
+	X              [32]T `gnark:",public"` // "high" and "low"
+	Y              [2]T  `gnark:",public"`
+	Eip4844Enabled T
 }
 
 func (c *blobConsistencyCheckCircuit) Define(api frontend.API) error {
@@ -193,7 +193,7 @@ func decodeHex(t *testing.T, s string) []byte {
 	return b
 }
 
-func decodeHexHL(t *testing.T, s string) (r [2]frontend.Variable) {
+func decodeHexHL(t *testing.T, s string) (r [2]T) {
 	b := decodeHex(t, s)
 	assert.Equal(t, len(b), 32)
 
@@ -206,7 +206,7 @@ func decodeHexHL(t *testing.T, s string) (r [2]frontend.Variable) {
 
 func TestVerifyBlobConsistencyIntegration(t *testing.T) {
 	circuit := &blobConsistencyCheckCircuit{
-		BlobBytes: make([]frontend.Variable, 4096*32),
+		BlobBytes: make([]T, 4096*32),
 	}
 
 	loadTestsInFolder := func(path string) {
@@ -255,7 +255,7 @@ func TestVerifyBlobConsistencyIntegration(t *testing.T) {
 
 func TestCompileBlobConsistencyCheck(t *testing.T) {
 	circuit := &blobConsistencyCheckCircuit{
-		BlobBytes: make([]frontend.Variable, 4096*32),
+		BlobBytes: make([]T, 4096*32),
 	}
 	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit, frontend.WithCapacity(8000000))
 	assert.NoError(t, err)
@@ -292,22 +292,22 @@ func TestVectorIopCompatibility(t *testing.T) {
 
 func TestConsistencyCheckFlagRange(t *testing.T) {
 	circuit := &blobConsistencyCheckCircuit{
-		BlobBytes: make([]frontend.Variable, 4096*32),
+		BlobBytes: make([]T, 4096*32),
 	}
 	assignments := []*blobConsistencyCheckCircuit{
 		{
 			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
-			Y:              [2]frontend.Variable{0, 0},
+			Y:              [2]T{0, 0},
 			Eip4844Enabled: 0,
 		},
 		{
 			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
-			Y:              [2]frontend.Variable{0, 0},
+			Y:              [2]T{0, 0},
 			Eip4844Enabled: 1,
 		},
 		{
 			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
-			Y:              [2]frontend.Variable{0, 0},
+			Y:              [2]T{0, 0},
 			Eip4844Enabled: 2,
 		},
 	}
@@ -327,7 +327,7 @@ func TestConsistencyCheckFlagRange(t *testing.T) {
 	test.NewAssert(t).CheckCircuit(circuit, options...)
 }
 
-func setZero(s []frontend.Variable) {
+func setZero(s []T) {
 	for i := range s {
 		s[i] = 0
 	}
@@ -384,7 +384,7 @@ func TestFrConversions(t *testing.T) {
 }
 
 type testFrConversionCircuit struct {
-	X [2]frontend.Variable
+	X [2]T
 }
 
 func (c *testFrConversionCircuit) Define(api frontend.API) error {
@@ -409,17 +409,17 @@ func TestPackCrumbEmulated(t *testing.T) {
 }
 
 type testPackCrumbEmulatedCircuit struct {
-	Bytes [fr381.Bytes]frontend.Variable // big endian
+	Bytes [fr381.Bytes]T // big endian
 }
 
 func (c *testPackCrumbEmulatedCircuit) Define(api frontend.API) error {
-	var bits [fr381.Bits - 1]frontend.Variable // big endian
+	var bits [fr381.Bits - 1]T // big endian
 	copy(bits[:], api.ToBinary(c.Bytes[0], msbNbBits))
 	for i := 1; i < len(c.Bytes); i++ {
 		copy(bits[msbNbBits+8*i-8:], api.ToBinary(c.Bytes[i], 8))
 	}
 
-	var crumbs [len(bits) / 2]frontend.Variable
+	var crumbs [len(bits) / 2]T
 	for i := range crumbs {
 		crumbs[i] = api.Add(api.Mul(bits[2*i], 2), bits[2*i+1])
 	}

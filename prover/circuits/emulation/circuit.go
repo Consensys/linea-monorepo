@@ -41,8 +41,8 @@ type CircuitEmulation struct {
 	BaseVKey     emBaseVKey        `gnark:"-"`
 	Proof        emProof           `gnark:",secret:"`
 	Witness      emWitness         `gnark:",secret:"`
-	PublicInput  frontend.Variable `gnark:",public"`
-	CircuitID    frontend.Variable `gnark:",secret:"`
+	PublicInput  T `gnark:",public"`
+	CircuitID    T `gnark:",secret:"`
 }
 
 func (c *CircuitEmulation) Define(api frontend.API) error {
@@ -55,7 +55,7 @@ func (c *CircuitEmulation) Define(api frontend.API) error {
 	var (
 		proofs    = []emProof{c.Proof}
 		witnesses = []emWitness{c.Witness}
-		switches  = []frontend.Variable{c.CircuitID}
+		switches  = []T{c.CircuitID}
 	)
 
 	err = verifier.AssertDifferentProofs(c.BaseVKey, c.CircuitVkeys, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic())

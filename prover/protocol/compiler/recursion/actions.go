@@ -97,7 +97,7 @@ func ExtractWitness(run *wizard.ProverRuntime[T]) Witness {
 	}
 }
 
-func (pa AssignVortexUAlpha[T]) Run(run *wizard.ProverRuntime[T][T]) {
+func (pa AssignVortexUAlpha[T]) Run(run *wizard.ProverRuntime[T]) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.
@@ -105,7 +105,7 @@ func (pa AssignVortexUAlpha[T]) Run(run *wizard.ProverRuntime[T][T]) {
 	}
 }
 
-func (pa AssignVortexOpenedCols[T]) Run(run *wizard.ProverRuntime[T][T]) {
+func (pa AssignVortexOpenedCols[T]) Run(run *wizard.ProverRuntime[T]) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.

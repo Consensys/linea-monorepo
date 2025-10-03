@@ -48,7 +48,7 @@ func makeTestCaseLaneRepacking(uc generic.HashingUsecase) (
 			Imported:     imported,
 		}
 
-		createCol := common.CreateColFn(comp, "TEST_SPAGHETTI", size, pragmas.RightPadded)
+		createCol := common.CreateColFn(comp, "TEST_SPAGHE[T]I", size, pragmas.RightPadded)
 		cleaning = cleaningCtx{
 			CleanLimb: createCol("CleanLimb"),
 			Inputs:    &cleaningInputs{Imported: imported},

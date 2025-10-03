@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
@@ -20,7 +21,7 @@ to manually check all associated queries against them.
 This utility is primarily intended for testing and debugging, allowing inspection of commitment-query
 consistency without automated verification.
 */
-func Compile(comp *wizard.CompiledIOP[T]) {
+func Compile[T zk.Element](comp *wizard.CompiledIOP[T]) {
 
 	comp.DummyCompiled = true
 
@@ -86,7 +87,7 @@ func Compile(comp *wizard.CompiledIOP[T]) {
 		One step to be run at the end, by verifying every constraint
 		"a la mano"
 	*/
-	comp.RegisterVerifierAction(numRounds-1, &DummyVerifierAction{
+	comp.RegisterVerifierAction(numRounds-1, &DummyVerifierAction[T]{
 		Comp:                     comp,
 		QueriesParamsToCompile:   queriesParamsToCompile,
 		QueriesNoParamsToCompile: queriesNoParamsToCompile,
@@ -97,14 +98,14 @@ func Compile(comp *wizard.CompiledIOP[T]) {
 
 // DummyVerifierAction is the action to verify queries in the dummy compiler.
 // It implements the [wizard.VerifierAction] interface.
-type DummyVerifierAction struct {
+type DummyVerifierAction[T zk.Element] struct {
 	Comp                     *wizard.CompiledIOP[T]
 	QueriesParamsToCompile   []ifaces.QueryID
 	QueriesNoParamsToCompile []ifaces.QueryID
 }
 
 // Run executes the verifier action, checking all queries in parallel.
-func (a *DummyVerifierAction) Run(run wizard.Runtime) error {
+func (a *DummyVerifierAction[T]) Run(run wizard.Runtime[T]) error {
 	var finalErr error
 	lock := sync.Mutex{}
 
@@ -155,6 +156,6 @@ func (a *DummyVerifierAction) Run(run wizard.Runtime) error {
 
 // RunGnark executes the verifier action in a Gnark circuit.
 // In this dummy implementation, no constraints are enforced.
-func (a *DummyVerifierAction) RunGnark(api frontend.API, gnarkRun wizard.GnarkRuntime[T]) {
+func (a *DummyVerifierAction[T]) RunGnark(api frontend.API, gnarkRun wizard.GnarkRuntime[T]) {
 	// No constraints are enforced in the dummy reduction, as per the original empty function
 }

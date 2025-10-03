@@ -7,6 +7,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
@@ -40,7 +41,7 @@ type OptionSet struct {
 // column in plain-text to the verifier. The drawback is that since it happens
 // at prover level, the "errors" result in panics. This makes it not very
 // suitable for established unit-tests where we want to analyze the errors.
-func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP[T]) {
+func CompileAtProverLvl[T zk.Element](opts ...Option) func(*wizard.CompiledIOP[T]) {
 	os := &OptionSet{}
 	for _, opt := range opts {
 		opt(os)
@@ -50,7 +51,7 @@ func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP[T]) {
 	}
 }
 
-func compileAtProverLvl(comp *wizard.CompiledIOP[T], os *OptionSet) {
+func compileAtProverLvl[T zk.Element](comp *wizard.CompiledIOP[T], os *OptionSet) {
 
 	/*
 		Registers all declared commitments and query parameters
@@ -72,7 +73,7 @@ func compileAtProverLvl(comp *wizard.CompiledIOP[T], os *OptionSet) {
 		One step to be run at the end, by verifying every constraint
 		"a la mano"
 	*/
-	comp.RegisterProverAction(numRounds-1, &DummyProverAction{
+	comp.RegisterProverAction(numRounds-1, &DummyProverAction[T]{
 		Comp:                     comp,
 		QueriesParamsToCompile:   queriesParamsToCompile,
 		QueriesNoParamsToCompile: queriesNoParamsToCompile,
@@ -82,7 +83,7 @@ func compileAtProverLvl(comp *wizard.CompiledIOP[T], os *OptionSet) {
 
 // DummyProverAction is the action to verify queries at the prover level.
 // It implements the [wizard.ProverAction] interface.
-type DummyProverAction struct {
+type DummyProverAction[T zk.Element] struct {
 	Comp                     *wizard.CompiledIOP[T]
 	QueriesParamsToCompile   []ifaces.QueryID
 	QueriesNoParamsToCompile []ifaces.QueryID
@@ -90,7 +91,7 @@ type DummyProverAction struct {
 }
 
 // Run executes the dummy verification by checking all queries.
-func (a *DummyProverAction) Run(run *wizard.ProverRuntime[T]) {
+func (a *DummyProverAction[T]) Run(run *wizard.ProverRuntime[T]) {
 	logrus.Infof("started to run the dummy verifier")
 
 	var finalErr error

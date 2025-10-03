@@ -17,18 +17,18 @@ import (
 // var _ ifaces.Accessor = &FromCoinAccessor{}
 
 // FromCoinAccessor implements [ifaces.Accessor] and represents the value of a
-// [coin.Info] of type [coin.Field]. It is sometime used to supply a coin to
+// [coin.Info[T]] of type [coin.Field]. It is sometime used to supply a coin to
 // a function requiring an accessor explicitly. For [github.com/consensys/linea-monorepo/prover/symbolic.Expression]
-// this should not be necessary as [coin.Info] already implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata].
+// this should not be necessary as [coin.Info[T]] already implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata].
 type FromCoinAccessor[T zk.Element] struct {
-	// Info represents the underlying [coin.Info] being wrapped by the accessor.
-	Info coin.Info
+	// Info represents the underlying [coin.Info[T]] being wrapped by the accessor.
+	Info coin.Info[T]
 }
 
 // NewFromCoin returns an [ifaces.Accessor] object symbolizing a
-// [coin.Info]. The supplied [coin.Info] must be of type [coin.Field] or the
+// [coin.Info[T]]. The supplied [coin.Info[T]] must be of type [coin.Field] or the
 // function panics.
-func NewFromCoin[T zk.Element](info coin.Info) ifaces.Accessor[T] {
+func NewFromCoin[T zk.Element](info coin.Info[T]) ifaces.Accessor[T] {
 	if info.Type != coin.Field && info.Type != coin.FieldFromSeed && info.Type != coin.FieldExt {
 		utils.Panic("NewFromCoin expects a [coin.Field], a [coin.FieldFromSeed] or a [coin.FieldExt] `info`, got `%v`", info.Type)
 	}

@@ -10,12 +10,12 @@ import (
 
 // ShadowRowProverAction is a prover action that assigns a shadow column
 // to zero
-type ShadowRowProverAction struct {
+type ShadowRowProverAction[T zk.Element] struct {
 	Name ifaces.ColID
 	Size int
 }
 
-func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime[T]) {
+func (a *ShadowRowProverAction[T]) Run(run *wizard.ProverRuntime[T]) {
 	run.AssignColumn(a.Name, smartvectors.NewConstant(field.Zero(), a.Size))
 }
 
@@ -27,7 +27,7 @@ func autoAssignedShadowRow[T zk.Element](comp *wizard.CompiledIOP[T], size, roun
 	name := ifaces.ColIDf("MPTS_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
 	col := comp.InsertCommit(round, name, size)
 
-	comp.RegisterProverAction(round, &ShadowRowProverAction{
+	comp.RegisterProverAction(round, &ShadowRowProverAction[T]{
 		Name: name,
 		Size: size,
 	})

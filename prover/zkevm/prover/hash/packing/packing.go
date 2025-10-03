@@ -25,7 +25,7 @@ const (
 	CLEANING           = "CLEANING"
 	DECOMPOSITION      = "DECOMPOSITION"
 	LENGTH_CONSISTENCY = "LENGTH_CONSISTENCY"
-	SPAGHETTI          = "SPAGHETTI"
+	SPAGHE[T]I          = "SPAGHE[T]I"
 	LANE               = "LANE"
 	BLOCK              = "BLOCK"
 )

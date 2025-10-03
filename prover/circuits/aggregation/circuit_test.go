@@ -62,10 +62,10 @@ func TestPublicInput(t *testing.T) {
 		sfpi.L2MessageServiceAddr = -4
 		sfpi.NbL2Messages = -5
 
-		var res [32]frontend.Variable
+		var res [32]T
 		assert.NoError(t, internal.CopyHexEncodedBytes(res[:], testCases[i].GetPublicInputHex()))
 
-		snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+		snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []T {
 			sum := sfpi.Sum(api, keccak.NewHasher(api, 500))
 			return sum[:]
 		}, res[:]...)(t)
@@ -116,10 +116,10 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 	}
 
 	piCircuit := pi_interconnection.DummyCircuit{
-		ExecutionPublicInput:     make([]frontend.Variable, piConfig.MaxNbExecution),
-		ExecutionFPI:             make([]frontend.Variable, piConfig.MaxNbExecution),
-		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDecompression),
-		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDecompression),
+		ExecutionPublicInput:     make([]T, piConfig.MaxNbExecution),
+		ExecutionFPI:             make([]T, piConfig.MaxNbExecution),
+		DecompressionPublicInput: make([]T, piConfig.MaxNbDecompression),
+		DecompressionFPI:         make([]T, piConfig.MaxNbDecompression),
 	}
 
 	piCs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &piCircuit)
@@ -175,7 +175,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 		decompPI := utils.RightPad(innerPiPartition[typeDecomp], len(piCircuit.DecompressionPublicInput))
 
 		piAssignment := pi_interconnection.DummyCircuit{
-			AggregationPublicInput:   [2]frontend.Variable{aggregationPIBytes[:16], aggregationPIBytes[16:]},
+			AggregationPublicInput:   [2]T{aggregationPIBytes[:16], aggregationPIBytes[16:]},
 			ExecutionPublicInput:     utils.ToVariableSlice(execPI),
 			DecompressionPublicInput: utils.ToVariableSlice(decompPI),
 			DecompressionFPI:         utils.ToVariableSlice(pow5(decompPI)),

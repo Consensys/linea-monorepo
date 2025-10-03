@@ -48,7 +48,7 @@ func (a *FoldVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *FoldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+func (a *FoldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime[T]) {
 	c := a.FoldedEvalAcc.GetFrontendVariable(api, wvc)
 	c_ := a.HEvalAcc.GetFrontendVariable(api, wvc)
 	api.AssertIsEqual(c, c_)

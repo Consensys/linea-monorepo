@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -18,14 +19,14 @@ import (
 // The verifier gets all the query openings and multiply them together and
 // expect them to be one. It is represented by an array of ZCtx holding for
 // the same round. (we have the guarantee that they come from the same query).
-type VerifierCtx struct {
-	Ctxs    []*ZCtx
+type VerifierCtx[T zk.Element] struct {
+	Ctxs    []*ZCtx[T]
 	skipped bool
 }
 
 // Run implements the [wizard.VerifierAction] interface and checks that the
 // product of the products given by the ZCtx is equal to one.
-func (v *VerifierCtx) Run(run wizard.Runtime) error {
+func (v *VerifierCtx[T]) Run(run wizard.Runtime[T]) error {
 
 	mustBeOne := field.One()
 
@@ -45,38 +46,43 @@ func (v *VerifierCtx) Run(run wizard.Runtime) error {
 
 // Run implements the [wizard.VerifierAction] interface and is as
 // [VerifierCtx.Run] but in the context of a gnark circuit.
-func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
+func (v *VerifierCtx[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
-	mustBeOne := T(1)
+	mustBeOne := *zk.ValueOf[T](1)
+
+	apiGen, err := zk.NewApi[T](api)
+	if err != nil {
+		panic(err)
+	}
 
 	for _, zCtx := range v.Ctxs {
 		for _, opening := range zCtx.ZOpenings {
 			y := run.GetLocalPointEvalParams(opening.ID).BaseY
-			mustBeOne = api.Mul(mustBeOne, y)
+			mustBeOne = *apiGen.Mul(&mustBeOne, &y)
 		}
 	}
 
-	api.AssertIsEqual(mustBeOne, T(1))
+	api.AssertIsEqual(mustBeOne, *zk.ValueOf[T](1))
 }
 
-func (v *VerifierCtx) Skip() {
+func (v *VerifierCtx[T]) Skip() {
 	v.skipped = true
 }
 
-func (v *VerifierCtx) IsSkipped() bool {
+func (v *VerifierCtx[T]) IsSkipped() bool {
 	return v.skipped
 }
 
 // CheckGrandProductIsOne is a verifier action checking that the grand product
 // is one.
-type CheckGrandProductIsOne struct {
-	Query       *query.GrandProduct
-	ExplicitNum []*symbolic.Expression
-	ExplicitDen []*symbolic.Expression
+type CheckGrandProductIsOne[T zk.Element] struct {
+	Query       *query.GrandProduct[T]
+	ExplicitNum []*symbolic.Expression[T]
+	ExplicitDen []*symbolic.Expression[T]
 	Skipped     bool
 }
 
-func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
+func (c *CheckGrandProductIsOne[T]) Run(run wizard.Runtime[T]) error {
 
 	var (
 		y = run.GetGrandProductParams(c.Query.ID).ExtY

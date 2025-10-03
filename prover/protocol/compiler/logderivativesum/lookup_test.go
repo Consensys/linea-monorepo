@@ -10,12 +10,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/sirupsen/logrus"
 )
 
 // assignmentStrat is a function responsible for assigning a list of column in
 // a prover runtime. It is used to specify how the table should be assigned.
-type assignmentStrat func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T])
+type assignmentStrat func(run *wizard.ProverRuntime[zk.NativeElement], cols ...ifaces.Column[zk.NativeElement])
 
 // lookupTestCase represents a generic test case for the lookup compiler. It
 // can feature multiple different tables in the same test.
@@ -67,7 +68,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// only suitable for T
-		assignSmallNumbers = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
+		assignSmallNumbers = func(run *wizard.ProverRuntime[zk.NativeElement], cols ...ifaces.Column[zk.NativeElement]) {
 			if len(cols) != 1 {
 				panic("only works with 1 columns")
 			}
@@ -75,7 +76,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// only suitable for T
-		assignXorTable = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
+		assignXorTable = func(run *wizard.ProverRuntime[zk.NativeElement], cols ...ifaces.Column[zk.NativeElement]) {
 			if len(cols) != 3 {
 				panic("only works with 3 columns")
 			}
@@ -85,7 +86,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignZeroes = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
+		assignZeroes = func(run *wizard.ProverRuntime[zk.NativeElement], cols ...ifaces.Column[zk.NativeElement]) {
 			size := cols[0].Size()
 			for i := range cols {
 				run.AssignColumn(cols[i].GetColID(), smartvectors.NewConstant(field.Zero(), size))
@@ -93,7 +94,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignOnes = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
+		assignOnes = func(run *wizard.ProverRuntime[zk.NativeElement], cols ...ifaces.Column[zk.NativeElement]) {
 			size := cols[0].Size()
 			for i := range cols {
 				run.AssignColumn(cols[i].GetColID(), smartvectors.NewConstant(field.One(), size))
@@ -101,7 +102,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignRandoms = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
+		assignRandoms = func(run *wizard.ProverRuntime[zk.NativeElement], cols ...ifaces.Column[zk.NativeElement]) {
 			size := cols[0].Size()
 			for i := range cols {
 				run.AssignColumn(cols[i].GetColID(), smartvectors.PseudoRand(rng, size))
@@ -109,7 +110,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignRandom1Bit = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
+		assignRandom1Bit = func(run *wizard.ProverRuntime[zk.NativeElement], cols ...ifaces.Column[zk.NativeElement]) {
 			size := cols[0].Size()
 			for i := range cols {
 				vec := make([]int, size)
@@ -121,7 +122,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for any table or column
-		assignRandom4Bit = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
+		assignRandom4Bit = func(run *wizard.ProverRuntime[zk.NativeElement], cols ...ifaces.Column[zk.NativeElement]) {
 			size := cols[0].Size()
 			for i := range cols {
 				vec := make([]int, size)
@@ -133,7 +134,7 @@ func TestExhaustive(t *testing.T) {
 		}
 
 		// suitable for tables of 3 columns
-		randomXor = func(run *wizard.ProverRuntime[T], cols ...ifaces.Column[T]) {
+		randomXor = func(run *wizard.ProverRuntime[zk.NativeElement], cols ...ifaces.Column[zk.NativeElement]) {
 			if len(cols) != 3 {
 				panic("only works with 3 columns")
 			}
@@ -467,18 +468,18 @@ func TestExhaustive(t *testing.T) {
 				// def is the definition function for the test case. It also
 				// internally schedules the assignment so that we do not have
 				// additionally declare a prove function.
-				def := func(b *wizard.Builder) {
+				def := func(b *wizard.Builder[zk.NativeElement]) {
 					for tabID, tabCase := range testCase.PerTableCases {
 
 						// This declare the table and its conditional
-						table := make([][]ifaces.Column[T], len(tabCase.StratIncluding))
-						var condTable []ifaces.Column[T]
+						table := make([][]ifaces.Column[zk.NativeElement], len(tabCase.StratIncluding))
+						var condTable []ifaces.Column[zk.NativeElement]
 						if tabCase.StratCondIncluding != nil {
-							condTable = make([]ifaces.Column[T], len(tabCase.StratCondIncluding))
+							condTable = make([]ifaces.Column[zk.NativeElement], len(tabCase.StratCondIncluding))
 						}
 
 						for frag := range table {
-							table[frag] = make([]ifaces.Column[T], tabCase.NumCol)
+							table[frag] = make([]ifaces.Column[zk.NativeElement], tabCase.NumCol)
 							for col := range table[frag] {
 								table[frag][col] = b.InsertCommit(
 									0,
@@ -504,14 +505,14 @@ func TestExhaustive(t *testing.T) {
 							if condTable != nil && tabCase.StratCondIncluding[frag] != nil {
 								b.RegisterProverAction(0, &AssignColumnsProverAction{
 									strat: tabCase.StratCondIncluding[frag],
-									cols:  []ifaces.Column[T]{condTable[frag]},
+									cols:  []ifaces.Column[zk.NativeElement]{condTable[frag]},
 								})
 							}
 						}
 
 						// This declare the included ones
 						for incID := range tabCase.StratIncluded {
-							included := make([]ifaces.Column[T], tabCase.NumCol)
+							included := make([]ifaces.Column[zk.NativeElement], tabCase.NumCol)
 							for i := range included {
 								included[i] = b.RegisterCommit(
 									ifaces.ColIDf("TAB_%v_SUB_%v_COL_%v", tabID, incID, i),
@@ -519,7 +520,7 @@ func TestExhaustive(t *testing.T) {
 								)
 							}
 
-							var condInc ifaces.Column[T]
+							var condInc ifaces.Column[zk.NativeElement]
 							if tabCase.StratCondIncluded != nil && tabCase.StratCondIncluded[incID] != nil {
 								condInc = b.InsertCommit(
 									0,
@@ -535,7 +536,7 @@ func TestExhaustive(t *testing.T) {
 							if tabCase.StratCondIncluded != nil && tabCase.StratCondIncluded[incID] != nil {
 								b.RegisterProverAction(0, &AssignColumnsProverAction{
 									strat: tabCase.StratCondIncluded[incID],
-									cols:  []ifaces.Column[T]{condInc},
+									cols:  []ifaces.Column[zk.NativeElement]{condInc},
 								})
 							}
 
@@ -562,7 +563,7 @@ func TestExhaustive(t *testing.T) {
 					}()
 				}
 
-				proof := wizard.Prove(comp, func(_ *wizard.ProverRuntime[T]) {})
+				proof := wizard.Prove(comp, func(_ *wizard.ProverRuntime[zk.NativeElement]) {})
 
 				err := wizard.Verify(comp, proof)
 				if err != nil {
@@ -575,10 +576,10 @@ func TestExhaustive(t *testing.T) {
 // Define a new struct to implement the ProverAction interface
 type AssignColumnsProverAction struct {
 	strat assignmentStrat
-	cols  []ifaces.Column[T]
+	cols  []ifaces.Column[zk.NativeElement]
 }
 
 // Implement the Run method for the ProverAction interface
-func (a *AssignColumnsProverAction) Run(run *wizard.ProverRuntime[T]) {
+func (a *AssignColumnsProverAction) Run(run *wizard.ProverRuntime[zk.NativeElement]) {
 	a.strat(run, a.cols...)
 }

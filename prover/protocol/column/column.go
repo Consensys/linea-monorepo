@@ -151,7 +151,7 @@ func EvalExprColumn[T zk.Element](run ifaces.Runtime, board symbolic.ExpressionB
 		switch m := metadata[i].(type) {
 		case ifaces.Column[T]:
 			inputs[i] = m.GetColAssignment(run)
-		case coin.Info:
+		case coin.Info[T]:
 			if m.IsBase() {
 				v = run.GetRandomCoinField(m.Name)
 				inputs[i] = smartvectors.NewConstant(v, length)
@@ -203,7 +203,7 @@ func GnarkEvalExprColumn[T zk.Element](api frontend.API, run ifaces.GnarkRuntime
 			switch m := metadata[i].(type) {
 			case ifaces.Column[T]:
 				inputs[i] = m.GetColAssignmentGnarkAt(run, k)
-			case coin.Info:
+			case coin.Info[T]:
 				if m.IsBase() {
 					inputs[i] = run.GetRandomCoinField(m.Name)
 				} else {
@@ -250,7 +250,7 @@ func ExprIsOnSameLengthHandles[T zk.Element](board *symbolic.ExpressionBoard[T])
 				utils.Panic("Inconsistent length for %v (has size %v, but expected %v)", metadata.GetColID(), metadata.Size(), length)
 			}
 		// The expression can involve random coins
-		case coin.Info, variables.X[T], variables.PeriodicSample[T], ifaces.Accessor[T]:
+		case coin.Info[T], variables.X[T], variables.PeriodicSample[T], ifaces.Accessor[T]:
 			// Do nothing
 		default:
 			utils.Panic("unknown type %T", metadata)

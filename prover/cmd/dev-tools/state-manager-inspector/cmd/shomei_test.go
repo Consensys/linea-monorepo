@@ -62,7 +62,7 @@ type passToChanHandler struct {
 	ret chan []byte
 }
 
-func (h *passToChanHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *passToChanHandler) ServeH[T]P(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("server got the request\n")
 	body, err := io.ReadAll(r.Body)
 	if err != nil {

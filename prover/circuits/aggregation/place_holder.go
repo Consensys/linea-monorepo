@@ -38,15 +38,15 @@ func getPlaceHolderCS() constraint.ConstraintSystem {
 // constraints, public inputs and BBS commitment. Its public inputs should
 // always be assigned to zero.
 type genericPlaceHolderCircuit struct {
-	PubInputs     []frontend.Variable `gnark:",public"`
-	Seed          frontend.Variable   `gnark:",secret"`
+	PubInputs     []T `gnark:",public"`
+	Seed          T   `gnark:",secret"`
 	nbConstraints int
 	nbBbsCommit   int
 }
 
 func allocatePlaceHolderCircuit(nbPublicInput, nbConstraints, nbBbsCommit int) *genericPlaceHolderCircuit {
 	return &genericPlaceHolderCircuit{
-		PubInputs:     make([]frontend.Variable, nbPublicInput),
+		PubInputs:     make([]T, nbPublicInput),
 		nbConstraints: nbConstraints,
 		nbBbsCommit:   nbBbsCommit,
 	}
@@ -59,7 +59,7 @@ func (g *genericPlaceHolderCircuit) Define(api frontend.API) error {
 		// number of constraints.
 		nbMul     = g.nbConstraints - 3*g.nbBbsCommit - len(g.PubInputs) - 1
 		commitApi = api.(frontend.Committer)
-		_x        = frontend.Variable(1)
+		_x        = T(1)
 	)
 
 	for i := 0; i < nbMul; i++ {

@@ -6,7 +6,7 @@ import (
 )
 
 // CopyHexEncodedBytes panics if the string won't fit. If the string is too small, is will be 0-padded on the left.
-func CopyHexEncodedBytes(dst []frontend.Variable, hex string) error {
+func CopyHexEncodedBytes(dst []T, hex string) error {
 	b, err := utils.HexDecodeString(hex)
 	if err != nil {
 		return err

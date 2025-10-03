@@ -61,7 +61,7 @@ type CompiledIOP[T zk.Element] struct {
 	// element, an array of field element or an array of bounded field elements.
 	// The challenges can be used to specify sub-protocols and are a very
 	// widespread cryptographic tool to build them.
-	Coins ByRoundRegister[coin.Name, coin.Info]
+	Coins ByRoundRegister[coin.Name, coin.Info[T]]
 
 	// SubProver stores all the specified steps that needs to be performed by
 	// the prover as specified in the protocol. These functions are provided to
@@ -197,7 +197,7 @@ func (c *CompiledIOP[T]) InsertColumn(round int, name ifaces.ColID, size int, st
 }
 
 /*
-Registers a new coin at a given rounds. Returns a [coin.Info] object.
+Registers a new coin at a given rounds. Returns a [coin.Info[T]] object.
 
 * For normal coins, pass
 
@@ -207,9 +207,9 @@ Registers a new coin at a given rounds. Returns a [coin.Info] object.
 
 	_ = c.InsertCoin(<round of sampling>, <stringID of the coin>, coin.IntegerVec, <#Size of the vec>, <#Bound on the integers>)
 */
-func (c *CompiledIOP[T]) InsertCoin(round int, name coin.Name, type_ coin.Type, size ...int) coin.Info {
+func (c *CompiledIOP[T]) InsertCoin(round int, name coin.Name, type_ coin.Type, size ...int) coin.Info[T] {
 	// Short-hand to access the compiled object
-	info := coin.NewInfo(name, type_, round, size...)
+	info := coin.NewInfo[T](name, type_, round, size...)
 	c.Coins.AddToRound(round, name, info)
 	return info
 }
@@ -245,7 +245,7 @@ func (c *CompiledIOP[T]) InsertGlobal(round int, name ifaces.QueryID, expr *symb
 		switch metadata := metadataInterface.(type) {
 		case ifaces.Column[T]:
 			// The handle mecanism prevents this.
-		case coin.Info:
+		case coin.Info[T]:
 			c.Coins.MustExists(metadata.Name)
 		case variables.X[T], variables.PeriodicSample[T], ifaces.Accessor[T]:
 			// Pass
@@ -287,7 +287,7 @@ func (c *CompiledIOP[T]) InsertLocal(round int, name ifaces.QueryID, cs_ *symbol
 		switch metadata := metadataInterface.(type) {
 		case ifaces.Column[T]:
 			// Existence is guaranteed already
-		case coin.Info:
+		case coin.Info[T]:
 			c.Coins.MustExists(metadata.Name)
 		case variables.X[T], variables.PeriodicSample[T], ifaces.Accessor[T]:
 			// Pass

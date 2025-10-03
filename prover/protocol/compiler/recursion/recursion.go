@@ -42,7 +42,7 @@ type Recursion[T zk.Element] struct {
 
 	// InputCompiledIOP is the input compiled-IOP whose proofs are to be
 	// recursed.
-	InputCompiledIOP *wizard.CompiledIOP[T][T]
+	InputCompiledIOP *wizard.CompiledIOP[T]
 
 	// Round is an optional parameter that allows the caller to specify
 	// which round of the input proof they want to use. If not specified,
@@ -334,7 +334,7 @@ func VortexQueryRound(comp *wizard.CompiledIOP[T]) int {
 // comp. The mirror has all its commitments defined at the initial round
 // and the "vortex proof" columns are inserted starting at round 1 (after
 // vortex.alpha has been sampled).
-func createNewPcsCtx[T zk.Element](translator *compTranslator[T], srcComp *wizard.CompiledIOP[T][T]) *vortex.Ctx {
+func createNewPcsCtx[T zk.Element](translator *compTranslator[T], srcComp *wizard.CompiledIOP[T]) *vortex.Ctx {
 
 	srcVortexCtx := srcComp.PcsCtxs.(*vortex.Ctx)
 

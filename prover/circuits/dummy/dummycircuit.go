@@ -20,11 +20,11 @@ import (
 // be optionally given an ID (0 by default) so that a proof for circuit of ID
 // x will be rejected by the verifier for the circuit of ID y.
 type CircuitDummy struct {
-	X frontend.Variable `gnark:",public"`
+	X T `gnark:",public"`
 
 	// This relies on the fact that x^5 is a permutation in Fr of the bn254
 	// curve.
-	X5 frontend.Variable `gnark:",secret"`
+	X5 T `gnark:",secret"`
 
 	// Optional field, changes the circuit so that X5 = X^5 + ID. This
 	// functionality allows generated different incompatible versions of the

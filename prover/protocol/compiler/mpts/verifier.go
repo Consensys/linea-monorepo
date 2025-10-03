@@ -12,17 +12,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // VerifierAction implements [wizard.VerifierAction]. It is tasked with
 //   - (1) checking that the X value of the univariate query is correct.
 //   - (2) checking that q(r) = sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-type VerifierAction struct {
-	*MultipointToSinglepointCompilation
+type VerifierAction[T zk.Element] struct {
+	*MultipointToSinglepointCompilation[T]
 }
 
-func (va VerifierAction) Run(run wizard.Runtime) error {
+func (va VerifierAction[T]) Run(run wizard.Runtime[T]) error {
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
@@ -94,7 +95,7 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
+func (va VerifierAction[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
@@ -160,11 +161,11 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) 
 // cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the
 // polynomials handled by [ctx]. This includes the columns of the new query
 // but also the explictly evaluated columns.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Runtime) map[ifaces.ColID]fext.Element {
+func (ctx *MultipointToSinglepointCompilation[T]) cptEvaluationMapExt(run wizard.Runtime[T]) map[ifaces.ColID]fext.Element {
 
 	var (
 		evaluationMap = make(map[ifaces.ColID]fext.Element)
-		univParams    = run.GetParams(ctx.NewQuery.QueryID).(query.UnivariateEvalParams)
+		univParams    = run.GetParams(ctx.NewQuery.QueryID).(query.UnivariateEvalParams[T])
 		x             = univParams.ExtX
 	)
 
@@ -183,7 +184,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 }
 
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime[T]) map[ifaces.ColID]gnarkfext.Element {
+func (ctx *MultipointToSinglepointCompilation[T]) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime[T]) map[ifaces.ColID]gnarkfext.Element {
 
 	var (
 		evaluationMap = make(map[ifaces.ColID]gnarkfext.Element)

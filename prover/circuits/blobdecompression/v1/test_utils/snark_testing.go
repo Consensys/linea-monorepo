@@ -11,7 +11,7 @@ import (
 
 // Larger tests will need to be run as independent executables. So we need to make some testing utils publicly available.
 
-func PadBytes(b []byte, targetLen int) []frontend.Variable {
+func PadBytes(b []byte, targetLen int) []T {
 	padded := make([]byte, targetLen)
 	copy(padded, b)
 	if _, err := rand.Read(padded[len(b):]); err != nil {

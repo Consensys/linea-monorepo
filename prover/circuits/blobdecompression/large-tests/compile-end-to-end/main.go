@@ -14,8 +14,8 @@ import (
 
 func main() {
 	c := v1.Circuit{
-		BlobBytes:             make([]frontend.Variable, 32*4096),
-		Dict:                  make([]frontend.Variable, 64*1024),
+		BlobBytes:             make([]T, 32*4096),
+		Dict:                  make([]T, 64*1024),
 		MaxBlobPayloadNbBytes: blob.MaxUncompressedBytes,
 	}
 

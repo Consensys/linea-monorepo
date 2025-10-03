@@ -59,7 +59,7 @@ type TranscriptStats struct {
 }
 
 // GetWizardStats counts the cells occuring in the provided wizard-IOP.
-func GetWizardStats[T zk.Element](comp *wizard.CompiledIOP[T][T]) *WizardStats {
+func GetWizardStats[T zk.Element](comp *wizard.CompiledIOP[T]) *WizardStats {
 
 	var (
 		listOfColumns = comp.Columns.AllKeys()

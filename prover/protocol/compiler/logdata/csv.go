@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -29,7 +30,7 @@ const (
 )
 
 // Dump the columns into a csv file
-func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[T]) {
+func GenCSV[T zk.Element](w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[T]) {
 
 	return func(comp *wizard.CompiledIOP[T]) {
 
@@ -43,7 +44,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[
 				var (
 					col    = comp.Columns.GetHandle(colID)
 					status = comp.Columns.Status(colID)
-					row    = &csvRow{
+					row    = &csvRow[T]{
 						size:   col.Size(),
 						round:  col.Round(),
 						status: status.String(),
@@ -66,7 +67,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[
 
 		if filter&IncludeQueryCSVFilter > 0 {
 
-			registers := []wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query]{
+			registers := []wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query[T]]{
 				comp.QueriesNoParams,
 				comp.QueriesParams,
 			}
@@ -82,7 +83,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[
 						isIgnored = reg.IsIgnored(name)
 						status    = utils.Ternary(isIgnored, "Ignored", "Active")
 						round     = reg.Round(name)
-						row       = &csvRow{
+						row       = &csvRow[T]{
 							status: status,
 							round:  round,
 							id:     string(name),
@@ -110,7 +111,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[
 			for _, c := range coins {
 
 				info := comp.Coins.Data(c)
-				row := &csvRow{
+				row := &csvRow[T]{
 					round:  comp.Coins.Round(c),
 					id:     info.String(),
 					status: "-",
@@ -131,7 +132,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[
 				for i := range vas {
 
 					va := vas[i]
-					row := &csvRow{
+					row := &csvRow[T]{
 						round:  round,
 						id:     reflect.TypeOf(va).String(),
 						status: "-",
@@ -145,7 +146,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[
 		}
 
 		for _, pubInputs := range comp.PublicInputs {
-			row := &csvRow{
+			row := &csvRow[T]{
 				round:  0,
 				id:     pubInputs.Name,
 				status: "-",
@@ -159,7 +160,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP[
 }
 
 // Represents a csv row to print
-type csvRow struct {
+type csvRow[T zk.Element] struct {
 	id     string
 	size   int
 	status string
@@ -169,28 +170,28 @@ type csvRow struct {
 	extra  []string
 }
 
-func (r *csvRow) SetQuery(q ifaces.Query) {
+func (r *csvRow[T]) SetQuery(q ifaces.Query[T]) {
 
 	r.typ = reflect.TypeOf(q).Name()
 
 	switch q_ := q.(type) {
-	case query.LogDerivativeSum:
+	case query.LogDerivativeSum[T]:
 		r.size = 1
-	case query.GrandProduct:
+	case query.GrandProduct[T]:
 		r.size = 1
-	case query.LocalOpening:
+	case query.LocalOpening[T]:
 		r.size = 1
-	case query.UnivariateEval:
+	case query.UnivariateEval[T]:
 		r.size = len(q_.Pols)
 		extras := make([]string, len(q_.Pols))
 		r.extra = extras
-	case query.InnerProduct:
+	case query.InnerProduct[T]:
 		r.size = len(q_.Bs)
-	case *query.Horner:
+	case *query.Horner[T]:
 		r.size = 1 + 2*len(q_.Parts)
 	}
 }
 
-func (r *csvRow) Write(w io.Writer) {
+func (r *csvRow[T]) Write(w io.Writer) {
 	fmt.Fprintln(w, r.id, ";", r.typ, ";", r.status, ";", r.round, ";", r.size, ";", r.val, ";", r.extra)
 }

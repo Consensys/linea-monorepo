@@ -91,7 +91,7 @@ func NewCompiledIOP[T zk.Element]() *CompiledIOP[T] {
 		Columns:         column.NewStore[T](),
 		QueriesParams:   NewRegister[ifaces.QueryID, ifaces.Query[T]](),
 		QueriesNoParams: NewRegister[ifaces.QueryID, ifaces.Query[T]](),
-		Coins:           NewRegister[coin.Name, coin.Info](),
+		Coins:           NewRegister[coin.Name, coin.Info[T]](),
 		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
 		ExtraData:       make(map[string]interface{}),
 	}
@@ -132,7 +132,7 @@ Asserts there will be a Fiat-Shamir hash
 - size[0] contains the number of integers and
 - size[1] contains the upperBound.
 */
-func (b *Builder[T]) RegisterRandomCoin(name coin.Name, type_ coin.Type, size ...int) coin.Info {
+func (b *Builder[T]) RegisterRandomCoin(name coin.Name, type_ coin.Type, size ...int) coin.Info[T] {
 	/*
 		The fact that the fsStateIsDirty indicates that something
 		was sent to the verifier since the last message. Thus it

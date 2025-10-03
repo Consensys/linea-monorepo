@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStore(t *testing.T) {
 
-	store := column.NewStore()
+	store := column.NewStore[zk.NativeElement]()
 
 	assert.False(t, store.Exists("a"))
 	assert.Panics(t, func() {

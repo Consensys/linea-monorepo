@@ -39,17 +39,17 @@ func TestPIConsistency(t *testing.T) {
 
 	snarkPi := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-			L2MessageHashes: L2MessageHashes{Values: make([][32]frontend.Variable, 3)},
+			L2MessageHashes: L2MessageHashes{Values: make([][32]T, 3)},
 		},
 	}
 	require.NoError(t, snarkPi.Assign(&pi))
 	piSum := pi.Sum(nil)
 
-	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []T {
 		hsh, err := mimc.NewMiMC(api)
 		if err != nil {
 			panic(err)
 		}
-		return []frontend.Variable{snarkPi.Sum(api, &hsh)}
+		return []T{snarkPi.Sum(api, &hsh)}
 	}, piSum)(t)
 }

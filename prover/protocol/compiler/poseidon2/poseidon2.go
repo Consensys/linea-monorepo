@@ -66,7 +66,7 @@ type Poseidon2Context[T zk.Element] struct {
 // CompilePoseidon2 compiles all the Poseidon2 queries in the [comp] object. The compiler
 // works by creating its own module responsible for checking each unique Poseidon2
 // query statements, taking into account the padding.
-func CompilePoseidon2[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
+func CompilePoseidon2[T zk.Element](comp *wizard.CompiledIOP[T]) {
 	_ = defineContext[T](comp)
 }
 
@@ -82,7 +82,7 @@ func CompilePoseidon2[T zk.Element](comp *wizard.CompiledIOP[T][T]) {
 //     are used to stack all the unique triplets provided in the inputs.
 //   - declaring the intermediate computations for all Poseidon2 rounds and the
 //     constraints enforcing their correctness.
-func defineContext[T zk.Element](comp *wizard.CompiledIOP[T][T]) *Poseidon2Context[T] {
+func defineContext[T zk.Element](comp *wizard.CompiledIOP[T]) *Poseidon2Context[T] {
 
 	var (
 		ctx             = &Poseidon2Context[T]{}

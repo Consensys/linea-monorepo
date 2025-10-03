@@ -106,7 +106,7 @@ func createQuotientCtx[T zk.Element](comp *wizard.CompiledIOP[T], ratios []int, 
 	var (
 		allInvolvedHandlesIndex = map[ifaces.ColID]int{}
 		allInvolvedRootsSet     = collection.NewSet[ifaces.ColID]()
-		_, _, domainSize        = wizardutils.AsExpr(aggregateExpressions[0])
+		_, _, domainSize        = wizardutils.AsExpr[T](aggregateExpressions[0])
 		ctx                     = QuotientCtx[T]{
 			DomainSize:                domainSize,
 			Ratios:                    ratios,
@@ -364,7 +364,7 @@ func (ctx *QuotientCtx[T]) Run(run *wizard.ProverRuntime[T]) {
 					}
 					evalInputs[k] = value.(sv.SmartVector)
 
-				case coin.Info:
+				case coin.Info[T]:
 					if metadata.IsBase() {
 						evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
 					} else {

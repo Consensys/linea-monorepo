@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,13 +18,13 @@ func TestLogDerivativeLookupSimple(t *testing.T) {
 
 	var sizeA, sizeB int = 16, 8
 
-	define := func(b *wizard.Builder) {
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 		cola := b.RegisterCommit("A", sizeA)
 		colb := b.RegisterCommit("B", sizeB)
-		b.Inclusion("LOOKUP", []ifaces.Column[T]{cola}, []ifaces.Column[T]{colb})
+		b.Inclusion("LOOKUP", []ifaces.Column[zk.NativeElement]{cola}, []ifaces.Column[zk.NativeElement]{colb})
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 		// assign a and b
 		cola := smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 		colb := smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7)
@@ -40,15 +41,15 @@ func TestLogDerivativeLookupSimple(t *testing.T) {
 func TestLogDerivativeLookupSimple2(t *testing.T) {
 
 	var sizeA, sizeB int = 16, 4
-	var runtime *wizard.ProverRuntime[T]
+	var runtime *wizard.ProverRuntime[zk.NativeElement]
 
-	define := func(b *wizard.Builder) {
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 		cola := b.RegisterCommit("S", sizeA)
 		colb := b.RegisterCommit("T", sizeB)
-		b.Inclusion("LOOKUP", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola})
+		b.Inclusion("LOOKUP", []ifaces.Column[zk.NativeElement]{colb}, []ifaces.Column[zk.NativeElement]{cola})
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 		runtime = run
 		// assign a and b
 		cola := smartvectors.ForTest(1, 1, 1, 2, 3, 0, 0, 1, 1, 1, 1, 2, 3, 0, 0, 1)
@@ -75,19 +76,19 @@ func TestLogDerivativeLookupSimple2(t *testing.T) {
 func TestLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 
 	var sizeA, sizeB int = 16, 4
-	var runtime *wizard.ProverRuntime[T]
+	var runtime *wizard.ProverRuntime[zk.NativeElement]
 
-	define := func(b *wizard.Builder) {
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 		cola := b.RegisterCommit("S", sizeA)
 		cola2 := b.RegisterCommit("S2", sizeA)
 		cola3 := b.RegisterCommit("S3", sizeA)
 		colb := b.RegisterCommit("T", sizeB)
-		b.Inclusion("LOOKUP", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola})
-		b.Inclusion("LOOKUP2", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola2})
-		b.Inclusion("LOOKUP3", []ifaces.Column[T]{colb}, []ifaces.Column[T]{cola3})
+		b.Inclusion("LOOKUP", []ifaces.Column[zk.NativeElement]{colb}, []ifaces.Column[zk.NativeElement]{cola})
+		b.Inclusion("LOOKUP2", []ifaces.Column[zk.NativeElement]{colb}, []ifaces.Column[zk.NativeElement]{cola2})
+		b.Inclusion("LOOKUP3", []ifaces.Column[zk.NativeElement]{colb}, []ifaces.Column[zk.NativeElement]{cola3})
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 		runtime = run
 		// assign a and b
 		cola := smartvectors.ForTest(1, 1, 1, 2, 3, 0, 0, 1, 1, 1, 1, 2, 3, 0, 0, 1)
@@ -118,11 +119,11 @@ func TestLogDerivativeLookupManyChecksOneTable(t *testing.T) {
 func TestLogDerivativeLookupOneXor(t *testing.T) {
 
 	var sizeTable, sizeCheckeds int = 16, 4
-	var runtime *wizard.ProverRuntime[T]
+	var runtime *wizard.ProverRuntime[zk.NativeElement]
 
 	// The test uses a lookup over a xor table
 
-	define := func(b *wizard.Builder) {
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 
 		xorX := b.RegisterCommit("XOR_TABLE_X", sizeTable)
 		xorY := b.RegisterCommit("XOR_TABLE_Y", sizeTable)
@@ -132,10 +133,10 @@ func TestLogDerivativeLookupOneXor(t *testing.T) {
 		wY := b.RegisterCommit("WITNESS_Y", sizeCheckeds)
 		wXY := b.RegisterCommit("WITNESS_XXORY", sizeCheckeds)
 
-		b.Inclusion("LOOKUP", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{wX, wY, wXY})
+		b.Inclusion("LOOKUP", []ifaces.Column[zk.NativeElement]{xorX, xorY, xorXY}, []ifaces.Column[zk.NativeElement]{wX, wY, wXY})
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 		runtime = run
 		// assign a and b
 		xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)
@@ -172,11 +173,11 @@ func TestLogDerivativeLookupOneXor(t *testing.T) {
 func TestLogDerivativeLookupMultiXor(t *testing.T) {
 
 	var sizeTable, sizeCheckeds, sizeCheckedLarger int = 16, 4, 8
-	var runtime *wizard.ProverRuntime[T]
+	var runtime *wizard.ProverRuntime[zk.NativeElement]
 
 	// The test uses a lookup over a xor table
 
-	define := func(b *wizard.Builder) {
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 
 		xorX := b.RegisterCommit("XOR_TABLE_X", sizeTable)
 		xorY := b.RegisterCommit("XOR_TABLE_Y", sizeTable)
@@ -190,11 +191,11 @@ func TestLogDerivativeLookupMultiXor(t *testing.T) {
 		w2Y := b.RegisterCommit("W2_Y", sizeCheckedLarger)
 		w2XY := b.RegisterCommit("W2_XXORY", sizeCheckedLarger)
 
-		b.Inclusion("LOOKUP", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{wX, wY, wXY})
-		b.Inclusion("LOOKUP2", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{w2X, w2Y, w2XY})
+		b.Inclusion("LOOKUP", []ifaces.Column[zk.NativeElement]{xorX, xorY, xorXY}, []ifaces.Column[zk.NativeElement]{wX, wY, wXY})
+		b.Inclusion("LOOKUP2", []ifaces.Column[zk.NativeElement]{xorX, xorY, xorXY}, []ifaces.Column[zk.NativeElement]{w2X, w2Y, w2XY})
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 		runtime = run
 		// assign a and b
 		xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)
@@ -239,8 +240,8 @@ func TestLogDerivativeLookupMultiXor(t *testing.T) {
 func TestLogDerivativeLookupRandomLinComb(t *testing.T) {
 
 	var sizeA, sizeB int = 16, 8
-	var col1, col2 ifaces.Column[T]
-	define := func(b *wizard.Builder) {
+	var col1, col2 ifaces.Column[zk.NativeElement]
+	define := func(b *wizard.Builder[zk.NativeElement]) {
 		col1 = b.RegisterPrecomputed("P1", smartvectors.ForTest(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1))
 		col2 = b.RegisterPrecomputed("P2", smartvectors.ForTest(12, 6, 8, 0, 3, 12, 13, 23, 17, 9, 8, 7, 6, 5, 4, 3))
 		colI := b.RegisterPrecomputed("I", smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
@@ -255,10 +256,10 @@ func TestLogDerivativeLookupRandomLinComb(t *testing.T) {
 		uChosen := b.RegisterCommit("UChosen", sizeB)
 
 		// multi-col query
-		b.Inclusion("LOOKUP", []ifaces.Column[T]{colI, uCol}, []ifaces.Column[T]{colQ, uChosen})
+		b.Inclusion("LOOKUP", []ifaces.Column[zk.NativeElement]{colI, uCol}, []ifaces.Column[zk.NativeElement]{colQ, uChosen})
 	}
 
-	prover := func(run *wizard.ProverRuntime[T]) {
+	prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 		// assign a and b
 
 		coin := run.GetRandomCoinFieldExt("COIN")
@@ -295,7 +296,7 @@ func BenchmarkLogDeriveLookupMultiXor(b *testing.B) {
 
 		// The test uses a lookup over a xor table
 
-		define := func(b *wizard.Builder) {
+		define := func(b *wizard.Builder[zk.NativeElement]) {
 
 			xorX := b.RegisterCommit("XOR_TABLE_X", sizeTable)
 			xorY := b.RegisterCommit("XOR_TABLE_Y", sizeTable)
@@ -309,11 +310,11 @@ func BenchmarkLogDeriveLookupMultiXor(b *testing.B) {
 			w2Y := b.RegisterCommit("W2_Y", sizeCheckedLarger)
 			w2XY := b.RegisterCommit("W2_XXORY", sizeCheckedLarger)
 
-			b.Inclusion("LOOKUP", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{wX, wY, wXY})
-			b.Inclusion("LOOKUP2", []ifaces.Column[T]{xorX, xorY, xorXY}, []ifaces.Column[T]{w2X, w2Y, w2XY})
+			b.Inclusion("LOOKUP", []ifaces.Column[zk.NativeElement]{xorX, xorY, xorXY}, []ifaces.Column[zk.NativeElement]{wX, wY, wXY})
+			b.Inclusion("LOOKUP2", []ifaces.Column[zk.NativeElement]{xorX, xorY, xorXY}, []ifaces.Column[zk.NativeElement]{w2X, w2Y, w2XY})
 		}
 
-		prover := func(run *wizard.ProverRuntime[T]) {
+		prover := func(run *wizard.ProverRuntime[zk.NativeElement]) {
 
 			// assign a and b
 			xorX := smartvectors.ForTest(0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11, 0b00, 0b01, 0b10, 0b11)

@@ -1,0 +1,42 @@
+protocol/wizard
+---------------
+CompiledIOP -> needs to be generic CompiledIOP[T zk.Element], because 
+* QueriesNoParams ByRoundRegister[ifaces.QueryID, ifaces.Query] is templated by ifaces.QueryID
+* ifaces.Query is templated by T (through ifaces.QueryGen[T])
+
+protocol/ifaces
+---------------
+QueryGen
+ColumnGen
+AccessorGen
+
+protocol/query
+--------------
+innerproduct gen
+poseidon2 gen
+local opening gen
+univariate --> wip
+local, global constraints
+
+protocol/variables
+------------------
+PeriodicSample -> generified
+X -> generified
+
+symbolic/
+---------
+expression_board
+
+math
+----
+arithmetic ok
+
+wizard
+------
+gnark verifier gen WIP
+
+REMAINING
+---------
+
+compiler
+dedicated

@@ -169,7 +169,7 @@ func (cc ConstCol[T]) String() string {
 }
 
 // Splits the column and return a handle of it
-func (cc ConstCol[T]) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column[T] {
+func (cc ConstCol[T]) Split(comp *wizard.CompiledIOP[T], from, to int) ifaces.Column[T] {
 
 	if to < from || to-from > cc.Size() {
 		utils.Panic("Can't split %++v into [%v, %v]", cc, from, to)

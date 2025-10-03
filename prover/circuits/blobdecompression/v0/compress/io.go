@@ -13,14 +13,14 @@ import (
 
 // Pack packs the words as tightly as possible, and works Big Endian: i.e. the first word is the most significant in the packed elem
 // it is on the caller to make sure the words are within range
-func Pack(api frontend.API, words []frontend.Variable, bitsPerWord int) []frontend.Variable {
+func Pack(api frontend.API, words []T, bitsPerWord int) []T {
 	return PackN(api, words, bitsPerWord, (api.Compiler().FieldBitLen()-1)/bitsPerWord)
 }
 
 // PackN packs the words wordsPerElem at a time into field elements, and works Big Endian: i.e. the first word is the most significant in the packed elem
 // it is on the caller to make sure the words are within range
-func PackN(api frontend.API, words []frontend.Variable, bitsPerWord, wordsPerElem int) []frontend.Variable {
-	res := make([]frontend.Variable, (len(words)+wordsPerElem-1)/wordsPerElem)
+func PackN(api frontend.API, words []T, bitsPerWord, wordsPerElem int) []T {
+	res := make([]T, (len(words)+wordsPerElem-1)/wordsPerElem)
 
 	r := make([]big.Int, wordsPerElem)
 	r[wordsPerElem-1].SetInt64(1)
@@ -42,7 +42,7 @@ func PackN(api frontend.API, words []frontend.Variable, bitsPerWord, wordsPerEle
 }
 
 // AssertChecksumEquals takes a MiMC hash of e and asserts it is equal to checksum
-func AssertChecksumEquals(api frontend.API, e []frontend.Variable, checksum frontend.Variable) error {
+func AssertChecksumEquals(api frontend.API, e []T, checksum T) error {
 	hsh, err := mimc.NewMiMC(api)
 	if err != nil {
 		return err
@@ -78,18 +78,18 @@ func ChecksumPaddedBytes(b []byte, validLength int, hsh hash.Hash, fieldNbBits i
 // TODO @tabaie @gbotrel move the padding/packing code to gnark or compress
 // the very last non-zero byte in the unpacked stream is meant to encode the number of unused bytes in the last field element used.
 // though UnpackIntoBytes includes that last byte in unpacked, it is not counted in nbBytes
-func UnpackIntoBytes(api frontend.API, bytesPerElem int, packed []frontend.Variable) (unpacked []frontend.Variable, nbBytes frontend.Variable, err error) {
+func UnpackIntoBytes(api frontend.API, bytesPerElem int, packed []T) (unpacked []T, nbBytes T, err error) {
 	if unpacked, err = api.Compiler().NewHint(UnpackIntoBytesHint, bytesPerElem*len(packed), packed...); err != nil {
 		return
 	}
-	found := frontend.Variable(0)
-	nbBytes = frontend.Variable(0)
+	found := T(0)
+	nbBytes = T(0)
 	for i := len(unpacked) - 1; i >= 0; i-- {
 
 		z := api.IsZero(unpacked[i])
 
 		lastNonZero := plonk.EvaluateExpression(api, z, found, -1, -1, 1, 1)   // nz - found
-		nbBytes = api.Add(nbBytes, api.Mul(lastNonZero, frontend.Variable(i))) // the last nonzero byte itself is useless
+		nbBytes = api.Add(nbBytes, api.Mul(lastNonZero, T(i))) // the last nonzero byte itself is useless
 
 		//api.AssertIsEqual(api.Mul(api.Sub(bytesPerElem-i%bytesPerElem, unpacked[i]), lastNonZero), 0) // sanity check, technically unnecessary TODO @Tabaie make sure it's one constraint only or better yet, remove
 
@@ -115,7 +115,7 @@ func UnpackIntoBytesHint(_ *big.Int, ins, outs []*big.Int) error {
 }
 
 // ReadNum reads the slice c as a big endian number in base radix
-func ReadNum(api frontend.API, c []frontend.Variable, radix *big.Int) frontend.Variable {
+func ReadNum(api frontend.API, c []T, radix *big.Int) T {
 	if len(c) == 0 {
 		return 0
 	}
@@ -130,8 +130,8 @@ func ReadNum(api frontend.API, c []frontend.Variable, radix *big.Int) frontend.V
 
 // ShiftLeft erases shiftAmount many elements from the left of Slice and replaces them in the right with zeros
 // it is the caller's responsibility to make sure that 0 \le shift < len(c)
-func ShiftLeft(api frontend.API, slice []frontend.Variable, shiftAmount frontend.Variable) []frontend.Variable {
-	res := make([]frontend.Variable, len(slice))
+func ShiftLeft(api frontend.API, slice []T, shiftAmount T) []T {
+	res := make([]T, len(slice))
 	l := logderivlookup.New(api)
 	for i := range slice {
 		l.Insert(slice[i])
@@ -149,11 +149,11 @@ func ShiftLeft(api frontend.API, slice []frontend.Variable, shiftAmount frontend
 // and returns the numbers (b₀ b₁ ... bₙ₋₁)ᵣ, (b₁ b₂ ... bₙ)ᵣ, ... upon successive calls to Next()
 type NumReader struct {
 	api         frontend.API
-	toRead      []frontend.Variable
+	toRead      []T
 	radix       *big.Int
 	numBound    *big.Int
 	wordsPerNum int
-	last        frontend.Variable
+	last        T
 }
 
 // NewNumReader returns a new NumReader
@@ -161,7 +161,7 @@ type NumReader struct {
 // numNbBits defines the radix as r = 2ⁿᵘᵐᴺᵇᴮⁱᵗˢ (or rather numNbBits = log₂(r) )
 // wordNbBits defines the number of bits in each word such that n = numNbBits/wordNbBits
 // it is the caller's responsibility to check 0 ≤ bᵢ < r ∀ i
-func NewNumReader(api frontend.API, toRead []frontend.Variable, numNbBits, wordNbBits int) *NumReader {
+func NewNumReader(api frontend.API, toRead []T, numNbBits, wordNbBits int) *NumReader {
 	wordsPerNum := numNbBits / wordNbBits
 
 	if wordsPerNum*wordNbBits != numNbBits {
@@ -183,7 +183,7 @@ func twoPow(n int) *big.Int {
 }
 
 // Next returns the next number in the sequence and advances the reader head by one word. assumes bits past the end of the Slice are 0
-func (nr *NumReader) Next() frontend.Variable {
+func (nr *NumReader) Next() T {
 	return nr.next(nil)
 }
 
@@ -193,13 +193,13 @@ func (nr *NumReader) Next() frontend.Variable {
 //	api.AssertIsEqual(v, z)
 //
 // while saving exactly one constraint
-func (nr *NumReader) AssertNextEquals(v frontend.Variable) {
+func (nr *NumReader) AssertNextEquals(v T) {
 	nr.next(v)
 }
 
 // next returns the next number in the sequence.
 // if v != nil, it returns v and asserts it is equal to the next number in the sequence (making a petty saving of one constraint by not creating a new variable)
-func (nr *NumReader) next(v frontend.Variable) frontend.Variable {
+func (nr *NumReader) next(v T) T {
 	if len(nr.toRead) == 0 {
 		return 0
 	}

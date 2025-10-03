@@ -344,7 +344,7 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 }
 
 // RunGnark is as [Run] but in a gnark circuit
-func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	var (
 		allGrandProduct           = T(1)

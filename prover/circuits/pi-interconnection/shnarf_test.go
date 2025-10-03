@@ -32,12 +32,12 @@ func TestSingleShnarf(t *testing.T) {
 			c := testShnarfCircuit{
 				Shnarfs:      make([]ShnarfIteration, maxNbShnarf),
 				maxNbKeccakF: maxNbKeccakF,
-				Results:      make([][32]frontend.Variable, maxNbShnarf),
+				Results:      make([][32]T, maxNbShnarf),
 			}
 			a := testShnarfCircuit{
 				Shnarfs:   make([]ShnarfIteration, maxNbShnarf),
 				NbShnarfs: 1,
-				Results:   make([][32]frontend.Variable, maxNbShnarf),
+				Results:   make([][32]T, maxNbShnarf),
 			}
 
 			it := &a.Shnarfs[0]
@@ -64,9 +64,9 @@ func TestSingleShnarf(t *testing.T) {
 
 type testShnarfCircuit struct {
 	Shnarfs      []ShnarfIteration
-	Results      [][32]frontend.Variable
-	Prev, Final  [32]frontend.Variable
-	NbShnarfs    frontend.Variable
+	Results      [][32]T
+	Prev, Final  [32]T
+	NbShnarfs    T
 	maxNbKeccakF int
 }
 
@@ -82,7 +82,7 @@ func (c *testShnarfCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func copyHexIntoVarArray(t *testing.T, dst *[32]frontend.Variable, src string) {
+func copyHexIntoVarArray(t *testing.T, dst *[32]T, src string) {
 	b, err := utils.HexDecodeString(src)
 	assert.NoError(t, err)
 	assert.Equal(t, len(dst), len(b))

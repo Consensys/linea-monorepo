@@ -64,7 +64,7 @@ func Assign(blobData []byte, dictStore dictionary.Store, eip4844Enabled bool, x 
 
 	blobDataVar, err := assignVarByteSlice(blobData, maxCLen)
 	if err != nil {
-		err = fmt.Errorf("decompression circuit assignment : casting the compressed data into frontend.Variable : %w", err)
+		err = fmt.Errorf("decompression circuit assignment : casting the compressed data into T : %w", err)
 		return
 	}
 
@@ -134,8 +134,8 @@ func Assign(blobData []byte, dictStore dictionary.Store, eip4844Enabled bool, x 
 	return
 }
 
-func boolToVar(b bool) frontend.Variable {
-	res := frontend.Variable(0)
+func boolToVar(b bool) T {
+	res := T(0)
 	if b {
 		res = 1
 	}

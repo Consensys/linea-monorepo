@@ -715,7 +715,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 // Run implements the [wizard.VerifierAction] interface and recomputes and
 // checks the values of [ModuleGL.SentValuesGlobalHash] and
 // [ModuleGL.ReceivedValuesGlobalHash].
-func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 
 	if len(a.ReceivedValuesGlobalMap) == 0 {
 		return

@@ -24,7 +24,7 @@ type fromIntVecCoinSettings struct {
 type FivcOp func(*fromIntVecCoinSettings)
 
 // Construct a new column from a `IntegerVec` coin
-func NewFromIntVecCoin[T zk.Element](comp *wizard.CompiledIOP, info coin.Info, ops ...FivcOp) ifaces.Column[T] {
+func NewFromIntVecCoin[T zk.Element](comp *wizard.CompiledIOP[T], info coin.Info[T], ops ...FivcOp) ifaces.Column[T] {
 
 	// Sanity-checks the coin to have the right type
 	if info.Type != coin.IntegerVec {

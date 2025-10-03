@@ -85,11 +85,11 @@ type MultipointToSinglepointCompilation[T zk.Element] struct {
 
 	// LinCombCoeffLambda is the linear combination coefficient that is used to
 	// accumulate the quotient.
-	LinCombCoeffLambda, LinCombCoeffRho coin.Info
+	LinCombCoeffLambda, LinCombCoeffRho coin.Info[T]
 
 	// EvaluationPoint is the random evaluation point that is used to evaluate
 	// the quotient and all the evaluation claims.
-	EvaluationPoint coin.Info
+	EvaluationPoint coin.Info[T]
 }
 
 // Compile applies the multipoint to singlepoint compilation pass over `comp`.
@@ -257,7 +257,7 @@ func getAndMarkAsCompiledQueries[T zk.Element](comp *wizard.CompiledIOP[T]) []qu
 
 	for _, qName := range allQueries {
 
-		q, isUnivariate := comp.QueriesParams.Data(qName).(query.UnivariateEval)
+		q, isUnivariate := comp.QueriesParams.Data(qName).(query.UnivariateEval[T])
 		if !isUnivariate {
 			continue
 		}

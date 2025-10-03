@@ -16,7 +16,7 @@ import (
 // compiled IOP are prefixed with an identifier.
 type compTranslator[T zk.Element] struct {
 	Prefix string
-	Target *wizard.CompiledIOP[T][T]
+	Target *wizard.CompiledIOP[T]
 }
 
 // addPrefixToID adds a prefix <prefix>.<message> to a string-like object message

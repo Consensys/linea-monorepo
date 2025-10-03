@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 )
 
 // ArcaneParams is an option for the Arcane compiler
@@ -92,7 +93,7 @@ func GenCSVAfterExpansion(genCSVAfterExpansion string) ArcaneParams {
 
 // Arcane is a grouping of all compilers. It compiles
 // any wizard into a single-point polynomial-IOP
-func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP[T]) {
+func Arcane[T zk.Element](options ...ArcaneParams) func(comp *wizard.CompiledIOP[T]) {
 
 	params := &arcaneParamSet{}
 	for _, op := range options {
@@ -105,7 +106,7 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP[T]) {
 
 	return func(comp *wizard.CompiledIOP[T]) {
 		if params.withLogs {
-			logdata.Log("initially")(comp)
+			logdata.Log[T]("initially")(comp)
 		}
 
 		specialqueries.RangeProof(comp)

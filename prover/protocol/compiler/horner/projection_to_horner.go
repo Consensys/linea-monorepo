@@ -10,45 +10,46 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
+	"github.com/consensys/linea-monorepo/prover/protocol/zk"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // ProjectionContext is a compilation artefact generated during the execution of
 // the [InsertProjection] and which is used to instantiate the Horner query.
-type ProjectionContext struct {
+type ProjectionContext[T zk.Element] struct {
 	// Query is the Horner query generated during the compilation of the projection
 	// queries.
-	Query query.Horner
+	Query query.Horner[T]
 }
 
 // AssignHornerQuery is a [wizard.ProverAction] that assigns the Horner query from
 // the [projectionContext] to the [wizard.ProverRuntime[T]]. The final value is zero
 // and the N0 values are zero. The function additionally sanity-checks the values
 // of the Horner query.
-type AssignHornerQuery struct {
-	ProjectionContext
+type AssignHornerQuery[T zk.Element] struct {
+	ProjectionContext[T]
 }
 
 // CheckHornerQuery result is a [wizard.VerifierAction] that can be used to check
 // the value of a Horner query.
-type CheckHornerQuery struct {
-	ProjectionContext
+type CheckHornerQuery[T zk.Element] struct {
+	ProjectionContext[T]
 	skipped bool `serde:"omit"`
 }
 
 // ProjectionToHorner is a compilation step that compiles [query.Projection] queries
 // into [query.Horner] queries.
-func ProjectionToHorner(comp *wizard.CompiledIOP[T]) {
+func ProjectionToHorner[T zk.Element](comp *wizard.CompiledIOP[T]) {
 
 	round := 0
-	parts := []query.HornerPart{}
-	ctx := ProjectionContext{}
+	parts := []query.HornerPart[T]{}
+	ctx := ProjectionContext[T]{}
 
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
 
 		// Filter out non projection queries
-		projection, ok := comp.QueriesNoParams.Data(qName).(query.Projection)
+		projection, ok := comp.QueriesNoParams.Data(qName).(query.Projection[T])
 		if !ok {
 			continue
 		}
@@ -64,7 +65,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP[T]) {
 			bs         = make([]*sym.Expression[T], widthB)
 			selectorsA = make([]ifaces.Column[T], widthA)
 			selectorsB = make([]ifaces.Column[T], widthB)
-			gamma      coin.Info
+			gamma      coin.Info[T]
 			alpha      = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_ALPHA"), coin.FieldExt)
 		)
 
@@ -76,7 +77,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP[T]) {
 
 		for i := 0; i < widthA; i++ {
 
-			as[widthA-i-1] = sym.NewVariable(projection.Inp.ColumnsA[i][0])
+			as[widthA-i-1] = sym.NewVariable[T](projection.Inp.ColumnsA[i][0])
 			if numCols > 1 {
 				as[widthA-i-1] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsA[i])
 			}
@@ -89,7 +90,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP[T]) {
 
 		for i := 0; i < widthB; i++ {
 
-			bs[widthB-i-1] = sym.NewVariable(projection.Inp.ColumnsB[i][0])
+			bs[widthB-i-1] = sym.NewVariable[T](projection.Inp.ColumnsB[i][0])
 			if numCols > 1 {
 				bs[widthB-i-1] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsB[i])
 			}
@@ -102,13 +103,13 @@ func ProjectionToHorner(comp *wizard.CompiledIOP[T]) {
 
 		parts = append(
 			parts,
-			query.HornerPart{
+			query.HornerPart[T]{
 				Name:         string(qName) + "_A",
 				Coefficients: as,
 				Selectors:    selectorsA,
 				X:            accessors.NewFromCoin(alpha),
 			},
-			query.HornerPart{
+			query.HornerPart[T]{
 				Name:         string(qName) + "_B",
 				SignNegative: true,
 				Coefficients: bs,
@@ -123,16 +124,16 @@ func ProjectionToHorner(comp *wizard.CompiledIOP[T]) {
 	}
 
 	ctx.Query = comp.InsertHornerQuery(round, ifaces.QueryIDf("PROJECTION_TO_HORNER_%v", comp.SelfRecursionCount), parts)
-	comp.RegisterProverAction(round, AssignHornerQuery{ctx})
-	comp.RegisterVerifierAction(round, &CheckHornerQuery{ProjectionContext: ctx})
+	comp.RegisterProverAction(round, AssignHornerQuery[T]{ctx})
+	comp.RegisterVerifierAction(round, &CheckHornerQuery[T]{ProjectionContext: ctx})
 }
 
-func (a AssignHornerQuery) Run(run *wizard.ProverRuntime[T]) {
+func (a AssignHornerQuery[T]) Run(run *wizard.ProverRuntime[T]) {
 
-	params := query.HornerParams{}
+	params := query.HornerParams[T]{}
 
 	for range a.Query.Parts {
-		params.Parts = append(params.Parts, query.HornerParamsPart{
+		params.Parts = append(params.Parts, query.HornerParamsPart[T]{
 			N0: 0,
 		})
 	}
@@ -146,7 +147,7 @@ func (a AssignHornerQuery) Run(run *wizard.ProverRuntime[T]) {
 	run.AssignHornerParams(a.Query.ID, params)
 }
 
-func (c *CheckHornerQuery) Run(run wizard.Runtime) error {
+func (c *CheckHornerQuery[T]) Run(run wizard.Runtime[T]) error {
 
 	params := run.GetHornerParams(c.Query.ID)
 
@@ -163,7 +164,7 @@ func (c *CheckHornerQuery) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
+func (c *CheckHornerQuery[T]) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]) {
 	params := run.GetHornerParams(c.Query.ID)
 	api.AssertIsEqual(params.FinalResult, 0)
 
@@ -172,10 +173,10 @@ func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime[T]
 	}
 }
 
-func (c *CheckHornerQuery) Skip() {
+func (c *CheckHornerQuery[T]) Skip() {
 	c.skipped = true
 }
 
-func (c *CheckHornerQuery) IsSkipped() bool {
+func (c *CheckHornerQuery[T]) IsSkipped() bool {
 	return c.skipped
 }
