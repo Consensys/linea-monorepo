@@ -155,40 +155,6 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   }
 
   /**
-   * @notice Returns the minimum withdrawal reserve derived from the percentage.
-   * @return minimumWithdrawalReserveByPercentage Minimum reserve level expressed in wei.
-   * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
-   */
-  function _getEffectiveMinimumWithdrawalReserveAmountByPercentage()
-    internal
-    view
-    returns (uint256 minimumWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance)
-  {
-    uint256 totalSystemBalance;
-    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
-    minimumWithdrawalReserveByPercentage =
-      (totalSystemBalance * _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps) /
-      MAX_BPS;
-  }
-
-  /**
-   * @notice Returns the target withdrawal reserve derived from the percentage.
-   * @return targetWithdrawalReserveByPercentage Target reserve level expressed in wei.
-   * @return cachedL1MessageServiceBalance Cached L1MessageService balance to avoid duplicated SLOAD + BALANCE opcodes.
-   */
-  function _getEffectiveTargetWithdrawalReserveAmountByPercentage()
-    internal
-    view
-    returns (uint256 targetWithdrawalReserveByPercentage, uint256 cachedL1MessageServiceBalance)
-  {
-    uint256 totalSystemBalance;
-    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
-    targetWithdrawalReserveByPercentage =
-      (totalSystemBalance * _getYieldManagerStorage()._targetWithdrawalReservePercentageBps) /
-      MAX_BPS;
-  }
-
-  /**
    * @notice Returns the effective minimum withdrawal reserve considering both percentage and absolute amount configurations.
    * @return minimumWithdrawalReserve Effective minimum reserve in wei.
    */
@@ -206,8 +172,13 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     view
     returns (uint256 minimumWithdrawalReserve, uint256 cachedL1MessageServiceBalance)
   {
-    uint256 minimumWithdrawalReserveByPercentage;
-    (minimumWithdrawalReserveByPercentage, cachedL1MessageServiceBalance) = _getEffectiveMinimumWithdrawalReserveAmountByPercentage();
+    uint256 totalSystemBalance;
+    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
+    // Get minimumWithdrawalReserveByPercentage
+    uint256 minimumWithdrawalReserveByPercentage =
+      (totalSystemBalance * _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps) /
+      MAX_BPS;
+    // Get minimumWithdrawalReserve
     minimumWithdrawalReserve = Math256.min(
       minimumWithdrawalReserveByPercentage,
       _getYieldManagerStorage()._minimumWithdrawalReserveAmount
@@ -232,8 +203,11 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     view
     returns (uint256 targetWithdrawalReserve, uint256 cachedL1MessageServiceBalance)
   {
-    uint256 targetWithdrawalReserveByPercentage;
-    (targetWithdrawalReserveByPercentage, cachedL1MessageServiceBalance) = _getEffectiveTargetWithdrawalReserveAmountByPercentage();
+    uint256 totalSystemBalance;
+    (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
+    uint256 targetWithdrawalReserveByPercentage =
+      (totalSystemBalance * _getYieldManagerStorage()._targetWithdrawalReservePercentageBps) /
+      MAX_BPS;
     targetWithdrawalReserve = Math256.min(
       targetWithdrawalReserveByPercentage,
       _getYieldManagerStorage()._targetWithdrawalReserveAmount
@@ -350,22 +324,6 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_FUNDER_ROLE)
   {
-    _fundYieldProvider(_yieldProvider, _amount);
-    // Do LST repayment
-    uint256 lstPrincipalRepayment = _payLSTPrincipal(_yieldProvider, _amount);
-    uint256 amountRemaining = _amount - lstPrincipalRepayment;
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += amountRemaining;
-    _getYieldProviderStorage(_yieldProvider).userFunds += amountRemaining;
-    emit YieldProviderFunded(_yieldProvider, _amount, lstPrincipalRepayment, amountRemaining);
-  }
-
-  /**
-   * @notice Helper function to send ETH to the specified YieldProvider instance.
-   * @dev Reverts if the withdrawal reserve is below the minimum threshold.
-   * @param _yieldProvider The target yield provider contract.
-   * @param _amount        The amount of ETH to send.
-   */
-  function _fundYieldProvider(address _yieldProvider, uint256 _amount) internal {
     if (isWithdrawalReserveBelowMinimum()) {
       revert InsufficientWithdrawalReserve();
     }
@@ -373,6 +331,12 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       _yieldProvider,
       abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount))
     );
+    // Do LST repayment
+    uint256 lstPrincipalRepayment = _payLSTPrincipal(_yieldProvider, _amount);
+    uint256 amountRemaining = _amount - lstPrincipalRepayment;
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += amountRemaining;
+    _getYieldProviderStorage(_yieldProvider).userFunds += amountRemaining;
+    emit YieldProviderFunded(_yieldProvider, _amount, lstPrincipalRepayment, amountRemaining);
   }
 
   /**
@@ -489,22 +453,17 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
     );
     maxUnstakeAmount = abi.decode(data, (uint256));
-    _validateUnstakePermissionlessAmount(_yieldProvider, maxUnstakeAmount);
-    _getYieldManagerStorage()._pendingPermissionlessUnstake += maxUnstakeAmount;
-    // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
-  }
-
-  /**
-   * @notice Helper function to validate the amount unstaked permissionlessly from a beacon chain validator.
-   */
-  function _validateUnstakePermissionlessAmount(address _yieldProvider, uint256 _maxUnstakeAmount) internal {
+    // Validiate maxUnstakeAmount
     uint256 targetDeficit = getTargetReserveDeficit();
     uint256 availableFundsToSettleTargetDeficit = address(this).balance +
       withdrawableValue(_yieldProvider) +
       _getYieldManagerStorage()._pendingPermissionlessUnstake;
-    if (availableFundsToSettleTargetDeficit + _maxUnstakeAmount > targetDeficit) {
+    if (availableFundsToSettleTargetDeficit + maxUnstakeAmount > targetDeficit) {
       revert PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
     }
+
+    _getYieldManagerStorage()._pendingPermissionlessUnstake += maxUnstakeAmount;
+    // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
   }
 
   /**
@@ -863,6 +822,9 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @dev Donations are forwarded to the withdrawal reserve.
    * @dev The donate() function is located on the YieldManager because it is otherwise tricky to track donations
    *      to offset negative yield for a specific yield provider.
+   * @dev We decrement currentNegativeYield here, but do not count any excess as yield. Reported yield is intended to
+   *      remain staked in the YieldProvider and be distributed as L2 ETH (Backed by newly earned yield). So if donations
+   *      are routed to the L1MessageService, it is not reportable yield.
    * @dev `pendingPermissionlessUnstake` is greedily decremented against incoming donations.
    * @param _yieldProvider The yield provider address.
    */
@@ -874,7 +836,12 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_RESERVE_FUNDING)
     onlyKnownYieldProvider(_yieldProvider)
   {
-    _decrementNegativeYieldAgainstDonation(_yieldProvider, msg.value);
+    // decrement negative yield against donation
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    uint256 currentNegativeYield = $$.currentNegativeYield;
+    if (currentNegativeYield > 0) {
+      $$.currentNegativeYield -= Math256.min(currentNegativeYield, msg.value);
+    }
     _decrementPendingPermissionlessUnstake(msg.value);
     _fundReserve(msg.value);
     emit DonationProcessed(_yieldProvider, msg.value);
@@ -888,22 +855,6 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   receive() external payable {
     if (TRANSIENT_RECEIVE_CALLER != msg.sender) {
       revert UnexpectedReceiveCaller();
-    }
-  }
-
-  /**
-   * @notice Helper function to offset negative yield for a specific YieldProvider against a received donation.
-   * @param _yieldProvider The yield provider address.
-   * @param _amount Donation amount received.
-   * @dev We mutate currentNegativeYield here, but do not count any excess as yield. Reported yield is intended to
-   *      remain staked in the YieldProvider and be distributed as L2 ETH (Backed by newly earned yield). So if donations
-   *      are routed to the L1MessageService, it is not reportable yield.
-   */
-  function _decrementNegativeYieldAgainstDonation(address _yieldProvider, uint256 _amount) internal {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    uint256 currentNegativeYield = $$.currentNegativeYield;
-    if (currentNegativeYield > 0) {
-      $$.currentNegativeYield -= Math256.min(currentNegativeYield, _amount);
     }
   }
 

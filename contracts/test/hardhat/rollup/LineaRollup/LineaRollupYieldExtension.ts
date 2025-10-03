@@ -475,8 +475,12 @@ describe("Linea Rollup contract", () => {
 
       const claimCall = lineaRollup.connect(admin).claimMessageWithProofAndWithdrawLST(claimParams, operator.address);
 
+      // Assert MessageClaimed event emitted
       await expectEvent(lineaRollup, claimCall, "MessageClaimed", [messageLeafHash]);
-
+      const mockYieldManagerContract = MockYieldManager__factory.connect(mockYieldManager, securityCouncil);
+      // Assert that isWithdrawLSTAllowed() flag is toggled on during the tx - use event on MockYieldManager
+      await expectEvent(mockYieldManagerContract, claimCall, "LSTWithdrawalFlag", [true]);
+      // Assert that isWithdrawLSTAllowed() flag is toggled off after the tx
       expect(await lineaRollup.isWithdrawLSTAllowed()).to.be.false;
     });
   });
