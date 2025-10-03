@@ -2,6 +2,7 @@ package mpts
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -52,7 +53,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 		// foundNonConstantPoly indicates whether any of the assignments of
 		// [Polys] is not constant. It is evaluated on the fly during the
 		// first loop.
-		foundNonConstantPoly = false
+		foundNonConstantPoly = int64(0)
 	)
 
 	// The first part of the algorithm is to compute the terms of the form:
@@ -78,7 +79,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 				continue
 			}
 
-			foundNonConstantPoly = true
+			atomic.StoreInt64(&foundNonConstantPoly, 1) // at least one non-constant poly
 			pointsOfPoly := qa.EvalPointOfPolys[polyID]
 
 			copy(localPartialQuotient, zetas[pointsOfPoly[0]])
@@ -109,7 +110,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 	// This clause addresses the edge-case where all the [Polys] are
 	// constant. In that case, the quotient is always the constant zero
 	// and we can early return with a default assignment to zero.
-	if !foundNonConstantPoly {
+	if foundNonConstantPoly == 0 {
 		run.AssignColumn(
 			qa.Quotient.GetColID(),
 			smartvectors.NewConstant(field.Zero(), qa.getNumRow()),
