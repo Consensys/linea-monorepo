@@ -29,7 +29,7 @@ func BootstrapDefinition(conf *config.Config) JobDefinition {
 		)
 
 		// /tmp/metadata/requests
-		responseRootDir = filepath.Join(conf.Limitless.MetadataDir, config.RequestsFromSubDir)
+		responseRootDir = filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsFromSubDir)
 
 		outputTmpl = "{{.Start}}-{{.End}}-metadata-getZkProof.json"
 	)
@@ -55,7 +55,7 @@ func ConglomerationDefinition(conf *config.Config) JobDefinition {
 	)
 
 	return newJobDefinition(jobNameConglomeration,
-		conf.Limitless.MetadataDir, inputPattern,
+		conf.ExecutionLimitless.MetadataDir, inputPattern,
 		responseRootDir, outputTmpl,
 		2, ParamRegexps{
 			Start: reStart,
@@ -71,7 +71,7 @@ func GLDefinitionForModule(conf *config.Config, module string) JobDefinition {
 	var (
 		jobName = fmt.Sprintf("%s-%s", jobNameGL, module)
 
-		reqRootDir   = filepath.Join(conf.Limitless.WitnessDir, "GL", module)
+		reqRootDir   = filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", module)
 		inputPattern = fmt.Sprintf(
 			`^[0-9]+-[0-9]+-seg-[0-9]+-mod-[0-9]+-gl-wit\.bin(\.failure\.%v_[0-9]+)*$`,
 			config.FailSuffix,
@@ -103,7 +103,7 @@ func LPPDefinitionForModule(conf *config.Config, module string) JobDefinition {
 	var (
 		jobName = fmt.Sprintf("%s-%s", jobNameLPP, module)
 
-		reqRootDir   = filepath.Join(conf.Limitless.WitnessDir, "LPP", module)
+		reqRootDir   = filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", module)
 		inputPattern = fmt.Sprintf(
 			`^[0-9]+-[0-9]+-seg-[0-9]+-mod-[0-9]+-lpp-wit\.bin(\.failure\.%v_[0-9]+)*$`,
 			config.FailSuffix,
