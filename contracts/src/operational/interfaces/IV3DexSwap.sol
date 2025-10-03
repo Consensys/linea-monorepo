@@ -2,8 +2,8 @@
 pragma solidity 0.8.30;
 
 /**
- * @title EtherexDexSwap.
- * @dev A contract for swapping tokens on the Etherex decentralized exchange.
+ * @title Interface for the V3DexSwap contract.
+ * @dev A contract for swapping tokens on the V3 decentralized exchange.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
@@ -24,7 +24,7 @@ interface IV3DexSwap {
   error MinOutputAmountNotMet();
 
   /** @notice Swap ETH into LINEA.
-   * @param _minLineaOut Number of LINEA tokens to receive (slippage protection).
+   * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
    * @param _sqrtPriceLimitX96 Price limit of the swap as a Q64.96 value.
    */

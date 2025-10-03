@@ -1,22 +1,22 @@
 import { ethers } from "hardhat";
 
-export async function getRollupFeeVaultAccountsFixture() {
+export async function getRollupRevenueVaultAccountsFixture() {
   const [
     admin,
-    invoiceSetter,
+    invoiceSubmitter,
     burner,
-    operatingCostsReceiver,
+    invoicePaymentReceiver,
     l1l2MessageSetter,
-    l1BurnerContract,
+    l1LineaTokenBurner,
     nonAuthorizedAccount,
   ] = await ethers.getSigners();
   return {
     admin,
-    invoiceSetter,
+    invoiceSubmitter,
     burner,
-    operatingCostsReceiver,
+    invoicePaymentReceiver,
     l1l2MessageSetter,
-    l1BurnerContract,
+    l1LineaTokenBurner,
     nonAuthorizedAccount,
   };
 }

@@ -2,21 +2,26 @@
 pragma solidity 0.8.30;
 
 /**
- * @title Upgradeable Fee Vault Contract.
+ * @title Interface for Revenue Vault Contract.
  * @notice Accepts ETH for later economic functions.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface IRollupFeeVault {
+interface IRollupRevenueVault {
   /**
    * @dev Thrown when a parameter is the zero address.
    */
   error ZeroAddressNotAllowed();
 
   /**
-   * @dev Thrown when the operating costs transfer fails.
+   * @dev Thrown when a timestamp is zero.
    */
-  error OperatingCostsTransferFailed();
+  error ZeroTimestampNotAllowed();
+
+  /**
+   * @dev Thrown when the invoice transfer fails.
+   */
+  error InvoiceTransferFailed();
 
   /**
    * @dev Thrown when the burn of ETH fails.
@@ -34,14 +39,14 @@ interface IRollupFeeVault {
   error EndTimestampMustBeGreaterThanStartTimestamp();
 
   /**
-   * @dev Thrown when the operating costs are zero.
+   * @dev Thrown when the invoice amount is zero.
    */
-  error ZeroOperatingCosts();
+  error ZeroInvoiceAmount();
 
   /**
-   * @dev Thrown when the operating costs are not zero.
+   * @dev Thrown when the invoice is in arrears.
    */
-  error OperatingCostsNotZero();
+  error InvoiceInArrears();
 
   /**
    * @dev Thrown when the contract balance is insufficient.
@@ -73,10 +78,10 @@ interface IRollupFeeVault {
   event EthBurntSwappedAndBridged(uint256 ethBurnt, uint256 lineaTokensBridged);
 
   /**
-   * @dev Emitted when the L1 burner contract address is updated.
-   * @param newL1BurnerContract The new L1 burner contract address.
+   * @dev Emitted when the L1 LINEA token burner contract address is updated.
+   * @param newL1LineaTokenBurner The new L1 LINEA token burner contract address.
    */
-  event L1BurnerContractUpdated(address newL1BurnerContract);
+  event L1LineaTokenBurnerUpdated(address newL1LineaTokenBurner);
 
   /**
    * @dev Emitted when the DEX contract address is updated.
@@ -91,14 +96,15 @@ interface IRollupFeeVault {
   event EthReceived(uint256 amount);
 
   /**
-   * @dev Emitted when the operating costs are updated.
-   * @param newOperatingCosts The new operating costs value.
+   * @dev Emitted when the invoice arrears are updated.
+   * @param newInvoiceArrears The new invoice arrears value.
+   * @param lastInvoiceDate The timestamp of the last invoice processed.
    */
-  event OperatingCostsUpdated(uint256 newOperatingCosts);
+  event InvoiceArrearsUpdated(uint256 newInvoiceArrears, uint256 lastInvoiceDate);
 
   /**
-   * @dev Emitted when the operating costs receiver is updated.
-   * @param newOperatingCostsReceiver The new operating costs receiver address.
+   * @dev Emitted when the invoice payment receiver is updated.
+   * @param newInvoicePaymentReceiver The new invoice payment receiver address.
    */
-  event OperatingCostsReceiverUpdated(address newOperatingCostsReceiver);
+  event InvoicePaymentReceiverUpdated(address newInvoicePaymentReceiver);
 }

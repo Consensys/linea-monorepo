@@ -7,32 +7,42 @@ import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
 
 /**
- * @title EtherexDexSwap.
- * @dev A contract for swapping tokens on the Etherex decentralized exchange.
+ * @title DexSwap.
+ * @dev A contract for swapping tokens on a decentralized exchange.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract EtherexDexSwap is IV3DexSwap {
-  /// @dev Address of the Etherex SwapRouter contract
-  address public constant ROUTER = 0x8BE024b5c546B5d45CbB23163e1a4dca8fA5052A;
-  address public constant WETH_TOKEN = 0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f;
-  address public constant LINEA_TOKEN = 0x1789e0043623282D5DCc7F213d703C6D8BAfBB04;
+contract DexSwap is IV3DexSwap {
   /// @dev Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool
   uint24 public constant POOL_TICK_SPACING = 50;
-  /// @dev Address of the RollupFeeVault contract authorized to call the swap function
-  address public immutable ROLLUP_FEE_VAULT;
+  /// @dev Address of the Etherex SwapRouter contract
+  address public immutable ROUTER;
+  address public immutable WETH_TOKEN;
+  address public immutable LINEA_TOKEN;
+  /// @dev Address of the RollupRevenueVault contract authorized to call the swap function
+  address public immutable ROLLUP_REVENUE_VAULT;
 
   /**
-   * @dev Sets the address of the RollupFeeVault contract.
-   * @param _rollupFeeVault Address of the RollupFeeVault contract.
+   * @dev Sets the address of the RollupRevenueVault contract.
+   * @param _router Address of the Router contract.
+   * @param _wethToken Address of the WETH token contract.
+   * @param _lineaToken Address of the LINEA token contract.
+   * @param _rollupRevenueVault Address of the RollupRevenueVault contract.
    */
-  constructor(address _rollupFeeVault) {
-    require(_rollupFeeVault != address(0), ZeroAddressNotAllowed());
-    ROLLUP_FEE_VAULT = _rollupFeeVault;
+  constructor(address _router, address _wethToken, address _lineaToken, address _rollupRevenueVault) {
+    require(_rollupRevenueVault != address(0), ZeroAddressNotAllowed());
+    require(_wethToken != address(0), ZeroAddressNotAllowed());
+    require(_lineaToken != address(0), ZeroAddressNotAllowed());
+    require(_router != address(0), ZeroAddressNotAllowed());
+
+    ROUTER = _router;
+    WETH_TOKEN = _wethToken;
+    LINEA_TOKEN = _lineaToken;
+    ROLLUP_REVENUE_VAULT = _rollupRevenueVault;
   }
 
   /** @notice Swap ETH into LINEA.
-   * @param _minLineaOut Number of LINEA tokens to receive (slippage protection).
+   * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
    * @param _sqrtPriceLimitX96 Price limit of the swap as a Q64.96 value.
    */
@@ -51,7 +61,7 @@ contract EtherexDexSwap is IV3DexSwap {
         tokenIn: WETH_TOKEN,
         tokenOut: LINEA_TOKEN,
         tickSpacing: POOL_TICK_SPACING,
-        recipient: ROLLUP_FEE_VAULT,
+        recipient: ROLLUP_REVENUE_VAULT,
         deadline: _deadline,
         amountIn: msg.value,
         amountOutMinimum: _minLineaOut,
