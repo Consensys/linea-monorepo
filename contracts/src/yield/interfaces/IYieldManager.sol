@@ -414,6 +414,12 @@ interface IYieldManager {
   function withdrawableValue(address _yieldProvider) external returns (uint256);
 
   /**
+   * @param _l2YieldRecipient The L2YieldRecipient address.
+   * @return bool True if the L2YieldRecipient is on the allowlist.
+   */
+  function isL2YieldRecipientKnown(address _l2YieldRecipient) external view returns (bool);
+
+  /**
    * @notice Receive ETH from the withdrawal reserve.
    * @dev Only accepts calls from the withdrawal reserve.
    * @dev Reverts if, after transfer, the withdrawal reserve will be below the minimum threshold.

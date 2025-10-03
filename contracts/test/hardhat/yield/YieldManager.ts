@@ -20,16 +20,20 @@ import { ZeroAddress } from "ethers";
 describe("Linea Rollup contract", () => {
   let yieldManager: TestYieldManager;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
-  // let nonAuthorizedAccount: SignerWithAddress;
+  let nonAuthorizedAccount: SignerWithAddress;
   let nativeYieldOperator: SignerWithAddress;
   let operationalSafe: SignerWithAddress;
   let mockLineaRollup: MockLineaRollup;
   let initializationData: YieldManagerInitializationData;
 
   before(async () => {
-    ({ securityCouncil, nativeYieldOperator, operationalSafe } = await loadFixture(getAccountsFixture));
+    ({
+      securityCouncil,
+      operator: nonAuthorizedAccount,
+      nativeYieldOperator,
+      operationalSafe,
+    } = await loadFixture(getAccountsFixture));
   });
 
   beforeEach(async () => {
@@ -156,6 +160,11 @@ describe("Linea Rollup contract", () => {
       await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageServiceAddress]);
     });
 
+    it("Should have the initial l2YieldRecipients in state", async () => {
+      const existingRecipient = initializationData.initialL2YieldRecipients[0];
+      expect(await yieldManager.isL2YieldRecipientKnown(existingRecipient)).to.be.true;
+    });
+
     it("Should assign the OSSIFIER_ROLE to securityCouncil address", async () => {
       const ossifierRole = await yieldManager.OSSIFIER_ROLE();
       expect(await yieldManager.hasRole(ossifierRole, securityCouncil.address)).to.be.true;
@@ -264,6 +273,63 @@ describe("Linea Rollup contract", () => {
     it("Should assign the UNPAUSE_NATIVE_YIELD_REPORTING_ROLE to operationalSafe address", async () => {
       const role = await yieldManager.UNPAUSE_NATIVE_YIELD_REPORTING_ROLE();
       expect(await yieldManager.hasRole(role, operationalSafe.address)).to.be.true;
+    });
+  });
+
+  describe("Adding and removing L2YieldRecipients", () => {
+    it("Should revert when adding if the caller does not have the SET_L2_YIELD_RECIPIENT_ROLE", async () => {
+      const requiredRole = await yieldManager.SET_L2_YIELD_RECIPIENT_ROLE();
+      await expect(
+        yieldManager.connect(nonAuthorizedAccount).addL2YieldRecipient(nonAuthorizedAccount.address),
+      ).to.be.revertedWith(
+        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
+      );
+    });
+
+    it("Should add the new l2YieldRecipient address and emit the correct event", async () => {
+      const newRecipient = ethers.Wallet.createRandom().address;
+      const addTx = yieldManager.connect(operationalSafe).addL2YieldRecipient(newRecipient);
+
+      await expect(addTx).to.emit(yieldManager, "L2YieldRecipientAdded").withArgs(newRecipient);
+
+      expect(await yieldManager.isL2YieldRecipientKnown(newRecipient)).to.be.true;
+    });
+
+    it("Should revert if the address being added has already been added", async () => {
+      const existingRecipient = initializationData.initialL2YieldRecipients[0];
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).addL2YieldRecipient(existingRecipient),
+        "L2YieldRecipientAlreadyAdded",
+      );
+    });
+
+    it("Should revert if the address being removed is unknown", async () => {
+      const unknownRecipient = ethers.Wallet.createRandom().address;
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).removeL2YieldRecipient(unknownRecipient),
+        "UnknownL2YieldRecipient",
+      );
+    });
+
+    it("Should revert when removing if the caller does not have the SET_L2_YIELD_RECIPIENT_ROLE", async () => {
+      const requiredRole = await yieldManager.SET_L2_YIELD_RECIPIENT_ROLE();
+      const existingRecipient = initializationData.initialL2YieldRecipients[0];
+      await expect(
+        yieldManager.connect(nonAuthorizedAccount).removeL2YieldRecipient(existingRecipient),
+      ).to.be.revertedWith(
+        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
+      );
+    });
+
+    it("Should remove the new l2YieldRecipient address and emit the correct event", async () => {
+      const recipientToRemove = initializationData.initialL2YieldRecipients[0];
+      const removeTx = yieldManager.connect(operationalSafe).removeL2YieldRecipient(recipientToRemove);
+
+      await expect(removeTx).to.emit(yieldManager, "L2YieldRecipientRemoved").withArgs(recipientToRemove);
+
+      expect(await yieldManager.isL2YieldRecipientKnown(recipientToRemove)).to.be.false;
     });
   });
 });

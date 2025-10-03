@@ -254,6 +254,14 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   }
 
   /**
+   * @param _l2YieldRecipient The L2YieldRecipient address.
+   * @return bool True if the L2YieldRecipient is on the allowlist.
+   */
+  function isL2YieldRecipientKnown(address _l2YieldRecipient) external view returns (bool) {
+    return _getYieldManagerStorage()._isL2YieldRecipientKnown[_l2YieldRecipient];
+  }
+
+  /**
    * @notice Helper function to delegatecall YieldProvider adaptor instances.
    * @param _yieldProvider The yield provider address.
    * @param _callData Calldata to send with YieldProvider delegatecall.
