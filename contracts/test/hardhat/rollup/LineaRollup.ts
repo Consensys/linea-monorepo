@@ -15,7 +15,6 @@ import {
   deployCallForwardingProxy,
   deployLineaRollupFixture,
   expectSuccessfulFinalizeViaCallForwarder,
-  getAccountsFixture,
   getRoleAddressesFixture,
   sendBlobTransactionViaCallForwarder,
 } from "./helpers";
@@ -55,6 +54,7 @@ import {
   expectRevertWithReason,
   generateBlobParentShnarfData,
   calculateLastFinalizedState,
+  getAccountsFixture,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
 

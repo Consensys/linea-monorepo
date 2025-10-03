@@ -25,7 +25,6 @@ import {
   deployPlonkVerifierMainnetFull,
   deployRevertingVerifier,
   expectSuccessfulFinalize,
-  getAccountsFixture,
   getVersionedBlobFiles,
   getRoleAddressesFixture,
   getWalletForIndex,
@@ -58,6 +57,7 @@ import {
   generateBlobDataSubmission,
   generateBlobParentShnarfData,
   expectEventDirectFromReceiptData,
+  getAccountsFixture,
 } from "../../common/helpers";
 
 describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
