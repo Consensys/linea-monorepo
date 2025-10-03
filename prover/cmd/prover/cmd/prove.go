@@ -59,13 +59,13 @@ func Prove(args ProverArgs) error {
 // handleExecutionJob processes an execution job
 func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 	req := &execution.Request{}
-
 	if err := readRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
 	var resp *execution.Response
 	var err error
+
 	if cfg.Execution.ProverMode == config.ProverModeLimitless {
 		// Limitless execution mode
 		resp, err = limitless.Prove(cfg, req)
@@ -81,8 +81,7 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 		}
 	}
 
-	err = writeResponse(args.Output, resp)
-	return err
+	return writeResponse(args.Output, resp)
 }
 
 // handleBlobDecompressionJob processes a blob decompression job
