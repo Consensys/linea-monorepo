@@ -79,7 +79,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 			default:
 				proofGL := &recursion.Witness{}
 				// GL proof loading
-				if err := retryDeser(req.GLProofFiles[i], proofGL, true, cfg.Limitless.NumberOfRetries, time.Duration(cfg.Limitless.RetryDelay)*time.Millisecond); err != nil {
+				if err := retryDeser(req.GLProofFiles[i], proofGL, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); err != nil {
 					return err
 				}
 
@@ -115,7 +115,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 			default:
 				proofLPP := &recursion.Witness{}
 				// LPP proof loading
-				if err := retryDeser(req.LPPProofFiles[i], proofLPP, true, cfg.Limitless.NumberOfRetries, time.Duration(cfg.Limitless.RetryDelay)*time.Millisecond); err != nil {
+				if err := retryDeser(req.LPPProofFiles[i], proofLPP, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); err != nil {
 					return err
 				}
 
@@ -189,10 +189,10 @@ func runSharedRandomness(cfg *config.Config, req *Metadata) (err error) {
 	}()
 
 	// Set timeout for all gl subproofs
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Limitless.GLSubproofsTimeout)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.ExecutionLimitless.GLSubproofsTimeout)*time.Second)
 	defer cancel()
 
-	msg := fmt.Sprintf("Scanning for %d LPP commitments from GL provers with configured timeout:%d sec to generate shared randomness", req.NumGL, cfg.Limitless.GLSubproofsTimeout)
+	msg := fmt.Sprintf("Scanning for %d LPP commitments from GL provers with configured timeout:%d sec to generate shared randomness", req.NumGL, cfg.ExecutionLimitless.GLSubproofsTimeout)
 	if err = files.WaitForAllFilesAtPath(ctx, req.GLCommitFiles, true, msg); err != nil {
 		return fmt.Errorf("error waiting for all GL workers: %w", err)
 	}
@@ -201,7 +201,7 @@ func runSharedRandomness(cfg *config.Config, req *Metadata) (err error) {
 	lppCommitments := make([]field.Element, len(req.GLCommitFiles))
 	for i, path := range req.GLCommitFiles {
 		lppCommitment := &field.Element{}
-		if derr := retryDeser(path, lppCommitment, true, cfg.Limitless.NumberOfRetries, time.Duration(cfg.Limitless.RetryDelay)*time.Millisecond); derr != nil {
+		if derr := retryDeser(path, lppCommitment, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); derr != nil {
 			err = fmt.Errorf("could not load lpp-commitment: %w", derr)
 			return err
 		}
@@ -220,10 +220,10 @@ func runSharedRandomness(cfg *config.Config, req *Metadata) (err error) {
 }
 
 func waitForAllLPPWorkers(cfg *config.Config, req *Metadata) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Limitless.LPPSubproofsTimeout)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.ExecutionLimitless.LPPSubproofsTimeout)*time.Second)
 	defer cancel()
 
-	msg := fmt.Sprintf("Waiting for %d proof files from LPP workers with configured timeout:%d seconds", req.NumLPP, cfg.Limitless.LPPSubproofsTimeout)
+	msg := fmt.Sprintf("Waiting for %d proof files from LPP workers with configured timeout:%d seconds", req.NumLPP, cfg.ExecutionLimitless.LPPSubproofsTimeout)
 	err := files.WaitForAllFilesAtPath(ctx, req.LPPProofFiles, true, msg)
 	if err != nil {
 		return fmt.Errorf("error waiting for all LPP workers: %w", err)
