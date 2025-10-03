@@ -62,10 +62,6 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 
 	for x := range v.IterateCompact() {
 
-		if x.LexicographicallyLargest() {
-			panic("can handle 64 bits at most")
-		}
-
 		x := x.Uint64()
 
 		for i := range bd.Bits {

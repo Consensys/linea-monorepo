@@ -391,7 +391,6 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		// since some of the Ah and Dh can be nil, we compactify the slice by
 		// only retaining the non-nil elements before sending it to the
 		// linear combination operator.
-		// TODO@yao maybe the bug is here
 		nonNilAh := []ifaces.Column{}
 		for _, ah := range ctx.Columns.Ah {
 			if ah != nil {
