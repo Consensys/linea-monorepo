@@ -140,17 +140,19 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		if ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Enabled {
 
 			var (
-				merkleRootColumn = ctx.Items.Precomputeds.MerkleRoot
-				merkleRootValue  [blockSize]smartvectors.SmartVector
+				merkleRootColumn   = ctx.Items.Precomputeds.MerkleRoot
+				merkleRootSV       [blockSize]smartvectors.SmartVector
+				merkleRootOctuplet field.Octuplet
 			)
 			for i := 0; i < blockSize; i++ {
-				merkleRootValue[i] = ctx.Comp.Precomputed.MustGet(merkleRootColumn[i].GetColID())
-
-				ctx.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[i] = merkleRootValue[i].Get(0)
+				merkleRootSV[i] = ctx.Comp.Precomputed.MustGet(merkleRootColumn[i].GetColID())
+				merkleRootOctuplet[i] = merkleRootSV[i].Get(0)
+				ctx.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[i] = merkleRootOctuplet[i]
 				ctx.Comp.Columns.SetStatus(merkleRootColumn[i].GetColID(), column.Proof)
 				ctx.Comp.Precomputed.Del(merkleRootColumn[i].GetColID())
-				ctx.Comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootValue[i].Get(0)
 			}
+			ctx.Comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootOctuplet
+
 			comp.RegisterProverAction(0, &ReassignPrecomputedRootAction{
 				Ctx: ctx,
 			})

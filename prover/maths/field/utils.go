@@ -4,5 +4,5 @@ package field
 
 func ToInt(e *Element) int {
 	n := e.Uint64()
-	return int(n) // #nosec G115 -- Checked for overflow
+	return int(n)
 }
