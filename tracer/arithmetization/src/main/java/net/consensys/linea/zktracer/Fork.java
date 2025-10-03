@@ -109,7 +109,7 @@ public enum Fork {
    * @param hardForkId the hardfork id retrieved from Besu API
    * @return Fork
    */
-  private static Fork fromMainnetHardforkId(MainnetHardforkId hardForkId) {
+  public static Fork fromMainnetHardforkIdToTracerFork(MainnetHardforkId hardForkId) {
     return switch (hardForkId) {
       case MainnetHardforkId.LONDON -> LONDON;
       case MainnetHardforkId.PARIS -> PARIS;
@@ -117,7 +117,8 @@ public enum Fork {
       case MainnetHardforkId.CANCUN -> CANCUN;
       case MainnetHardforkId.PRAGUE -> PRAGUE;
       case MainnetHardforkId.OSAKA -> OSAKA;
-      default -> throw new IllegalArgumentException("Unknown hardfork id: " + hardForkId);
+      default -> throw new IllegalArgumentException(
+          "Fork not supported by the tracer: " + hardForkId);
     };
   }
 
@@ -152,7 +153,7 @@ public enum Fork {
                 + toBlock);
       }
     }
-    return fromMainnetHardforkId((MainnetHardforkId) forkStart);
+    return fromMainnetHardforkIdToTracerFork((MainnetHardforkId) forkStart);
   }
 
   /**
