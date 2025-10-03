@@ -1,0 +1,71 @@
+# `DexSwap`
+
+### POOL_TICK_SPACING
+
+```solidity
+uint24 POOL_TICK_SPACING
+```
+
+_Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool_
+
+### ROUTER
+
+```solidity
+address ROUTER
+```
+
+_Address of the Etherex SwapRouter contract_
+
+### WETH_TOKEN
+
+```solidity
+address WETH_TOKEN
+```
+
+### LINEA_TOKEN
+
+```solidity
+address LINEA_TOKEN
+```
+
+### ROLLUP_REVENUE_VAULT
+
+```solidity
+address ROLLUP_REVENUE_VAULT
+```
+
+_Address of the RollupRevenueVault contract authorized to call the swap function_
+
+### constructor
+
+```solidity
+constructor(address _router, address _wethToken, address _lineaToken, address _rollupRevenueVault) public
+```
+
+_Sets the address of the RollupRevenueVault contract._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _router | address | Address of the Router contract. |
+| _wethToken | address | Address of the WETH token contract. |
+| _lineaToken | address | Address of the LINEA token contract. |
+| _rollupRevenueVault | address | Address of the RollupRevenueVault contract. |
+
+### swap
+
+```solidity
+function swap(uint256 _minLineaOut, uint256 _deadline, uint160 _sqrtPriceLimitX96) external payable returns (uint256 amountOut)
+```
+
+Swap ETH into LINEA.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _minLineaOut | uint256 | Minimum number of LINEA tokens to receive (slippage protection). |
+| _deadline | uint256 | Time after which the transaction will revert if not yet processed. |
+| _sqrtPriceLimitX96 | uint160 | Price limit of the swap as a Q64.96 value. |
+
