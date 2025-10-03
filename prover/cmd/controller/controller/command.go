@@ -56,6 +56,13 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 		cfg.Aggregation.DirDone(),
 		cfg.Aggregation.DirFrom(),
 		cfg.Aggregation.DirTo(),
+
+		// Limitless-specific directories
+		cfg.ExecutionLimitless.MetadataDir,
+		cfg.ExecutionLimitless.WitnessDir,
+		cfg.ExecutionLimitless.SubproofsDir,
+		cfg.ExecutionLimitless.CommitsDir,
+		cfg.ExecutionLimitless.SharedRandomnessDir,
 	}
 
 	for _, dir := range dirs {
