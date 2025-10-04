@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -35,11 +36,17 @@ type schemaScanner struct {
 // from config.
 func Define(comp *wizard.CompiledIOP, schema *air.Schema[bls12_377.Element], limits *config.TracesLimits) {
 
+	// Collect modules and sort them by name to ensure deterministic processing order
+	modules := schema.Modules().Collect()
+	sort.Slice(modules, func(i, j int) bool {
+		return modules[i].Name() < modules[j].Name()
+	})
+
 	scanner := &schemaScanner{
 		LimitMap:           mapModuleLimits(limits),
 		Comp:               comp,
 		Schema:             schema,
-		Modules:            schema.Modules().Collect(),
+		Modules:            modules,
 		InterleavedColumns: map[string]air.InterleavingConstraint[bls12_377.Element]{},
 	}
 
@@ -50,11 +57,9 @@ func Define(comp *wizard.CompiledIOP, schema *air.Schema[bls12_377.Element], lim
 // scanColumns scans the column declaration of the corset [air.Schema] into the
 // [wizard.CompiledIOP] object.
 func (s *schemaScanner) scanColumns() {
-	var (
-		schMod = s.Schema.Modules().Collect()
-	)
+	// Use the pre-sorted modules from the scanner to ensure deterministic ordering
 	// Iterate each declared module
-	for _, modDecl := range schMod {
+	for _, modDecl := range s.Modules {
 		// Identify limits for this module
 		var (
 			moduleLimit = s.LimitMap[modDecl.Name()]
@@ -89,7 +94,24 @@ func (s *schemaScanner) scanConstraints() {
 
 	corsetCSs := s.Schema.Constraints().Collect()
 
-	for _, corsetCS := range corsetCSs {
+	// Create a stable ordering based on constraint names to ensure deterministic processing
+	// We use a slice of indices and sort those instead of the constraints themselves
+	// to preserve any internal dependency ordering within constraint types
+	indices := make([]int, len(corsetCSs))
+	for i := range indices {
+		indices[i] = i
+	}
+
+	// Sort indices by constraint name for deterministic ordering
+	sort.Slice(indices, func(i, j int) bool {
+		nameI := fmt.Sprintf("%v", corsetCSs[indices[i]].Lisp(s.Schema).String(false))
+		nameJ := fmt.Sprintf("%v", corsetCSs[indices[j]].Lisp(s.Schema).String(false))
+		return nameI < nameJ
+	})
+
+	// Process constraints in the sorted order
+	for _, idx := range indices {
+		corsetCS := corsetCSs[idx]
 		name := fmt.Sprintf("%v", corsetCS.Lisp(s.Schema).String(false))
 		if s.Comp.QueriesNoParams.Exists(ifaces.QueryID(name)) {
 			continue
