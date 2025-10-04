@@ -87,7 +87,7 @@ public class TraceLineLimitTransactionSelector
         new LineCountingTracerWithLog(
             tracerConfiguration, l1L2BridgeConfiguration, blockchainService);
     for (Module m : lineCountingTracer.getModulesToCount()) {
-      if (!tracerConfiguration.moduleLimitsMap().containsKey(m.moduleKey())) {
+      if (!tracerConfiguration.moduleLimitsMap().containsKey(m.moduleKey().name())) {
         throw new IllegalStateException(
             "Limit for module %s not defined in %s"
                 .formatted(m.moduleKey(), tracerConfiguration.moduleLimitsFilePath()));
@@ -245,7 +245,10 @@ public class TraceLineLimitTransactionSelector
 
     @Override
     public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-      delegate.traceEndBlock(blockHeader, blockBody);
+      // do not call the delegated since there is no need when building block
+      // this also avoid concurrency related exceptions, since ZkTracer is not thread safe,
+      // and during a block creation timeout there is the possibility of one thread still
+      // processing a tx while another is packing a block and call this method
       log.atDebug()
           .addMarker(BLOCK_LINE_COUNT_MARKER)
           .addKeyValue("blockNumber", blockHeader::getNumber)
@@ -287,7 +290,7 @@ public class TraceLineLimitTransactionSelector
 
     @Override
     public void traceEndConflation(final WorldView worldView) {
-      delegate.traceEndConflation(worldView);
+      // do not call the delegated since there is no need when building block
     }
 
     @Override
