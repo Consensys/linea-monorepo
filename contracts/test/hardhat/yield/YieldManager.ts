@@ -6,7 +6,7 @@ import { ethers } from "hardhat";
 
 import { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
 import { deployYieldManagerForUnitTest, deployYieldManagerForUnitTestWithMutatedInitData } from "./helpers/deploy";
-import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS } from "../common/constants";
+import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../common/constants";
 import {
   // expectEvent,
   // buildAccessErrorMessage,
@@ -176,6 +176,18 @@ describe("Linea Rollup contract", () => {
       expect(await yieldManager.targetWithdrawalReserveAmount()).to.equal(
         initializationData.initialTargetWithdrawalReserveAmount,
       );
+    });
+
+    it("Should have initial userFundsInYieldProvidersTotal = 0", async () => {
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(ZERO_VALUE);
+    });
+
+    it("Should have initial pendingPermissionlessUnstake = 0", async () => {
+      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(ZERO_VALUE);
+    });
+
+    it("Should have initial yieldProviderCount = 0", async () => {
+      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(ZERO_VALUE);
     });
 
     it("Should assign the OSSIFIER_ROLE to securityCouncil address", async () => {
