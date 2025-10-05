@@ -22,8 +22,8 @@ type ApiCircuitGen struct {
 	SquareA E4Gen
 	DivAB   E4Gen
 	InvA    E4Gen
-	// ExpA    E4Gen
-	// n       big.Int
+	ExpA    E4Gen
+	n       big.Int
 }
 
 func (c *ApiCircuitGen) Define(api frontend.API) error {
@@ -47,11 +47,11 @@ func (c *ApiCircuitGen) Define(api frontend.API) error {
 	divAB := ext4.Div(&c.A, &c.B)
 	ext4.AssertIsEqual(divAB, &c.DivAB)
 
-	// invA := ext4.Inverse(&c.A)
-	// ext4.AssertIsEqual(invA, &c.InvA)
+	invA := ext4.Inverse(&c.A)
+	ext4.AssertIsEqual(invA, &c.InvA)
 
-	// expA := ext4.Exp(&c.A, &c.n)
-	// ext4.AssertIsEqual(expA, &c.ExpA)
+	expA := ext4.Exp(&c.A, &c.n)
+	ext4.AssertIsEqual(expA, &c.ExpA)
 
 	return nil
 }
@@ -78,8 +78,8 @@ func testApiGenWitness() *ApiCircuitGen {
 		SquareA: NewE4Gen(squarea),
 		DivAB:   NewE4Gen(divab),
 		InvA:    NewE4Gen(inva),
-		// ExpA:    NewE4Gen(expa),
-		// n:       n,
+		ExpA:    NewE4Gen(expa),
+		n:       n,
 	}
 }
 
@@ -89,7 +89,7 @@ func TestAPIGen(t *testing.T) {
 		witness := testApiGenWitness()
 
 		var circuit ApiCircuitGen
-		// circuit.n.SetUint64(uint64(sizeExpo))
+		circuit.n.SetUint64(uint64(sizeExpo))
 
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
 		assert.NoError(t, err)
@@ -104,7 +104,7 @@ func TestAPIGen(t *testing.T) {
 		witness := testApiGenWitness()
 
 		var circuit ApiCircuitGen
-		// circuit.n.SetUint64(uint64(sizeExpo))
+		circuit.n.SetUint64(uint64(sizeExpo))
 
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
 		assert.NoError(t, err)

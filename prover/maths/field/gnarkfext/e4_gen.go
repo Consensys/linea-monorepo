@@ -216,7 +216,9 @@ func (ext4 *Ext4) Select(b frontend.Variable, r1, r2 *E4Gen) *E4Gen {
 // Inverse Element elmts
 func (ext4 *Ext4) Inverse(e1 *E4Gen) *E4Gen {
 
-	res, err := ext4.mixedAPI.NewHint(inverseE4Hint, 4, &e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1)
+	invE4 := inverseE4Hint(ext4.apiGen.Type())
+
+	res, err := ext4.mixedAPI.NewHint(invE4, 4, &e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1)
 	if err != nil {
 		// err is non-nil only for invalid number of inputs
 		panic(err)

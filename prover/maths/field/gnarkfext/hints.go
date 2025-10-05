@@ -11,7 +11,9 @@ import (
 )
 
 func init() {
-	solver.RegisterHint(inverseE2Hint, inverseE4Hint,
+	solver.RegisterHint(
+		inverseE2Hint,
+		inverseE4HintNative, inverseE4HintEmulated,
 		divE4HintNative, divE4HintEmulated)
 }
 
@@ -29,7 +31,7 @@ func inverseE2Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	return nil
 }
 
-func inverseE4Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
+func inverseE4HintNative(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	var a, c fext.Element
 
 	a.B0.A0.SetBigInt(inputs[0])
@@ -45,6 +47,18 @@ func inverseE4Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	c.B1.A1.BigInt(res[3])
 
 	return nil
+}
+
+func inverseE4HintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
+	return emulated.UnwrapHint(inputs, output, inverseE4HintNative)
+}
+
+func inverseE4Hint(t zk.VType) solver.Hint {
+	if t == zk.Native {
+		return inverseE4HintNative
+	} else {
+		return inverseE4HintEmulated
+	}
 }
 
 func divE4HintNative(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
