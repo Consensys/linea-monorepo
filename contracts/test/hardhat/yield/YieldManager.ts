@@ -5,7 +5,12 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 import { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
-import { deployYieldManagerForUnitTest, deployYieldManagerForUnitTestWithMutatedInitData } from "./helpers/deploy";
+import {
+  deployMockYieldProvider,
+  deployYieldManagerForUnitTest,
+  deployYieldManagerForUnitTestWithMutatedInitData,
+} from "./helpers/deploy";
+import { buildMockYieldProviderRegistration } from "./helpers/mocks";
 import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../common/constants";
 import {
   // expectEvent,
@@ -686,41 +691,124 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("adding yield providers", () => {
-    it("Should revert when the caller does not have the SET_YIELD_PROVIDER_ROLE role", async () => {});
-    it("Should revert when 0 address is provided for the _yieldProvider", async () => {});
-    it("Should revert when 0 address is provided for the primaryEntrypoint", async () => {});
-    it("Should revert when 0 address is provided for the ossifiedEntrypoint", async () => {});
-    it("Should revert when 0 address is provided for the receiveCaller", async () => {});
-    it("Should successfully add a yield provider, change state to expected and emit correct event", async () => {
-      // See below snippet from Solidity code for expected YieldProvider state
-      // $._yieldProviderStorage[_yieldProvider] = YieldProviderStorage({
-      //   yieldProviderVendor: _registration.yieldProviderVendor,
-      //   isStakingPaused: false,
-      //   isOssificationInitiated: false,
-      //   isOssified: false,
-      //   primaryEntrypoint: _registration.primaryEntrypoint,
-      //   ossifiedEntrypoint: _registration.ossifiedEntrypoint,
-      //   receiveCaller: _registration.receiveCaller,
-      //   yieldProviderIndex: yieldProviderIndex,
-      //   userFunds: 0,
-      //   yieldReportedCumulative: 0,
-      //   currentNegativeYield: 0,
-      //   lstLiabilityPrincipal: 0
-      // });
-      //
-      // To confirm the state use the below available functions on YieldManager.sol
-      // function isYieldProviderKnown(address _yieldProvider) external view returns (bool);
-      // function yieldProviderCount() external view returns (uint256);
-      // function yieldProviderByIndex() external view returns (uint256);
-      // function getYieldProviderData(address _yieldProvider) external view returns (YieldManagerStorageLayout.YieldProviderStorage memory);
-      // function userFunds(address _yieldProvider) external view returns (uint256);
-      // function isStakingPaused(address _yieldProvider) external view returns (uint256);
-      // function isOssified(address _yieldProvider) external view returns (uint256);
-      // function isOssificationInitiated(address _yieldProvider) external view returns (uint256);
-      // function userFundsInYieldProvidersTotal() external view returns (uint256);
-      // function pendingPermissionlessUnstake() external view returns (uint256);
+    it("Should revert when the caller does not have the SET_YIELD_PROVIDER_ROLE role", async () => {
+      const mockYieldProvider = await deployMockYieldProvider();
+      const registration = buildMockYieldProviderRegistration();
+      const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
+
+      await expect(
+        yieldManager.connect(nonAuthorizedAccount).addYieldProvider(await mockYieldProvider.getAddress(), registration),
+      ).to.be.revertedWith(
+        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
+      );
     });
-    it("First yield provider successfully added, should have yieldProviderIndex 1", async () => {});
-    it("Should revert when the yieldProvider has been previously added", async () => {});
+
+    it("Should revert when 0 address is provided for the _yieldProvider", async () => {
+      const registration = buildMockYieldProviderRegistration();
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).addYieldProvider(ZeroAddress, registration),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should revert when 0 address is provided for the primaryEntrypoint", async () => {
+      const mockYieldProvider = await deployMockYieldProvider();
+      const registration = buildMockYieldProviderRegistration({ primaryEntrypoint: ZeroAddress });
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).addYieldProvider(await mockYieldProvider.getAddress(), registration),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should revert when 0 address is provided for the ossifiedEntrypoint", async () => {
+      const mockYieldProvider = await deployMockYieldProvider();
+      const registration = buildMockYieldProviderRegistration({ ossifiedEntrypoint: ZeroAddress });
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).addYieldProvider(await mockYieldProvider.getAddress(), registration),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should revert when 0 address is provided for the receiveCaller", async () => {
+      const mockYieldProvider = await deployMockYieldProvider();
+      const registration = buildMockYieldProviderRegistration({ receiveCaller: ZeroAddress });
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).addYieldProvider(await mockYieldProvider.getAddress(), registration),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should successfully add a yield provider, change state to expected and emit correct event", async () => {
+      const mockYieldProvider = await deployMockYieldProvider();
+      const registration = buildMockYieldProviderRegistration();
+      const providerAddress = await mockYieldProvider.getAddress();
+
+      const addYieldProviderTx = yieldManager.connect(operationalSafe).addYieldProvider(providerAddress, registration);
+
+      await expect(addYieldProviderTx)
+        .to.emit(yieldManager, "YieldProviderAdded")
+        .withArgs(
+          providerAddress,
+          registration.yieldProviderVendor,
+          registration.primaryEntrypoint,
+          registration.ossifiedEntrypoint,
+          registration.receiveCaller,
+        );
+
+      expect(await yieldManager.isYieldProviderKnown(providerAddress)).to.be.true;
+      expect(await yieldManager.yieldProviderCount()).to.equal(1n);
+
+      const yieldProviderData = await yieldManager.getYieldProviderData(providerAddress);
+      expect(yieldProviderData.yieldProviderVendor).to.equal(BigInt(registration.yieldProviderVendor));
+      expect(yieldProviderData.isStakingPaused).to.be.false;
+      expect(yieldProviderData.isOssificationInitiated).to.be.false;
+      expect(yieldProviderData.isOssified).to.be.false;
+      expect(yieldProviderData.primaryEntrypoint).to.equal(registration.primaryEntrypoint);
+      expect(yieldProviderData.ossifiedEntrypoint).to.equal(registration.ossifiedEntrypoint);
+      expect(yieldProviderData.receiveCaller).to.equal(registration.receiveCaller);
+      expect(yieldProviderData.yieldProviderIndex).to.equal(1n);
+      expect(yieldProviderData.userFunds).to.equal(0n);
+      expect(yieldProviderData.yieldReportedCumulative).to.equal(0n);
+      expect(yieldProviderData.currentNegativeYield).to.equal(0n);
+      expect(yieldProviderData.lstLiabilityPrincipal).to.equal(0n);
+
+      expect(await yieldManager.userFunds(providerAddress)).to.equal(0n);
+      expect(await yieldManager.isStakingPaused(providerAddress)).to.be.false;
+      expect(await yieldManager.isOssified(providerAddress)).to.be.false;
+      expect(await yieldManager.isOssificationInitiated(providerAddress)).to.be.false;
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
+      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(0n);
+    });
+    it("First yield provider successfully added, should have yieldProviderIndex 1", async () => {
+      const mockYieldProvider = await deployMockYieldProvider();
+      const providerAddress = await mockYieldProvider.getAddress();
+      const registration = buildMockYieldProviderRegistration();
+
+      await yieldManager.connect(operationalSafe).addYieldProvider(providerAddress, registration);
+
+      const yieldProviderData = await yieldManager.getYieldProviderData(providerAddress);
+      expect(yieldProviderData.yieldProviderIndex).to.equal(1n);
+    });
+
+    it("Should revert when the yieldProvider has been previously added", async () => {
+      const mockYieldProvider = await deployMockYieldProvider();
+      const providerAddress = await mockYieldProvider.getAddress();
+      const registration = buildMockYieldProviderRegistration();
+
+      await yieldManager.connect(operationalSafe).addYieldProvider(providerAddress, registration);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).addYieldProvider(providerAddress, registration),
+        "YieldProviderAlreadyAdded",
+      );
+    });
   });
 });

@@ -9,3 +9,10 @@ export interface YieldManagerInitializationData {
   initialMinimumWithdrawalReserveAmount: bigint; // uint256 on-chain
   initialTargetWithdrawalReserveAmount: bigint; // uint256 on-chain
 }
+
+export interface YieldProviderRegistration {
+  yieldProviderVendor: number;
+  primaryEntrypoint: string;
+  ossifiedEntrypoint: string;
+  receiveCaller: string;
+}
