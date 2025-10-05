@@ -1084,6 +1084,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(SET_YIELD_PROVIDER_ROLE)
   {
+    ErrorUtils.revertIfZeroAddress(_yieldProvider);
     _removeYieldProvider(_yieldProvider);
     emit YieldProviderRemoved(_yieldProvider, true);
   }
@@ -1160,23 +1161,19 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       revert TargetReserveAmountMustBeAboveMinimum();
     }
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    uint256 prevMinimumWithdrawalReservePercentageBps = $._minimumWithdrawalReservePercentageBps;
-    uint256 prevMinimumWithdrawalReserveAmount = $._minimumWithdrawalReserveAmount;
-    uint256 prevTargetWithdrawalReservePercentageBps = $._targetWithdrawalReservePercentageBps;
-    uint256 prevTargetWithdrawalReserveAmount = $._targetWithdrawalReserveAmount;
+    emit WithdrawalReserveParametersSet(
+      $._minimumWithdrawalReservePercentageBps,
+      _params.minimumWithdrawalReservePercentageBps,
+      $._minimumWithdrawalReserveAmount,
+      _params.minimumWithdrawalReserveAmount,
+      $._targetWithdrawalReservePercentageBps,
+      _params.targetWithdrawalReservePercentageBps,
+      $._targetWithdrawalReserveAmount,
+      _params.targetWithdrawalReserveAmount
+    );
     $._minimumWithdrawalReservePercentageBps = _params.minimumWithdrawalReservePercentageBps;
     $._minimumWithdrawalReserveAmount = _params.minimumWithdrawalReserveAmount;
     $._targetWithdrawalReservePercentageBps = _params.targetWithdrawalReservePercentageBps;
     $._targetWithdrawalReserveAmount = _params.targetWithdrawalReserveAmount;
-    emit WithdrawalReserveParametersSet(
-      prevMinimumWithdrawalReservePercentageBps,
-      _params.minimumWithdrawalReservePercentageBps,
-      prevMinimumWithdrawalReserveAmount,
-      _params.minimumWithdrawalReserveAmount,
-      prevTargetWithdrawalReservePercentageBps,
-      _params.targetWithdrawalReservePercentageBps,
-      prevTargetWithdrawalReserveAmount,
-      _params.targetWithdrawalReserveAmount
-    );
   }
 }

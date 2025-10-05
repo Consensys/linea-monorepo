@@ -159,6 +159,10 @@ describe("Linea Rollup contract", () => {
       expect(await yieldManager.isL2YieldRecipientKnown(existingRecipient)).to.be.true;
     });
 
+    it("Should return zero address for index 0 yield provider", async () => {
+      expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
+    });
+
     it("Should have the initial minimum reserve percentage in state", async () => {
       expect(await yieldManager.minimumWithdrawalReservePercentageBps()).to.equal(
         BigInt(initializationData.initialMinimumWithdrawalReservePercentageBps),
@@ -690,6 +694,68 @@ describe("Linea Rollup contract", () => {
     });
   });
 
+  describe("Modifers on YieldProvider-scoped read functions", () => {
+    it("getYieldProviderData should revert for unknown yield provider", async () => {
+      const unknownYieldProvider = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.getYieldProviderData(unknownYieldProvider),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("userFunds should revert for unknown yield provider", async () => {
+      const unknownYieldProvider = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.userFunds(unknownYieldProvider),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("isStakingPaused should revert for unknown yield provider", async () => {
+      const unknownYieldProvider = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.isStakingPaused(unknownYieldProvider),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("isOssified should revert for unknown yield provider", async () => {
+      const unknownYieldProvider = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.isOssified(unknownYieldProvider),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("isOssificationInitiated should revert for unknown yield provider", async () => {
+      const unknownYieldProvider = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.isOssificationInitiated(unknownYieldProvider),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("withdrawableValue should revert for unknown yield provider", async () => {
+      const unknownYieldProvider = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.withdrawableValue(unknownYieldProvider),
+        "UnknownYieldProvider",
+      );
+    });
+  });
+
   describe("adding yield providers", () => {
     it("Should revert when the caller does not have the SET_YIELD_PROVIDER_ROLE role", async () => {
       const mockYieldProvider = await deployMockYieldProvider();
@@ -778,6 +844,7 @@ describe("Linea Rollup contract", () => {
       expect(yieldProviderData.currentNegativeYield).to.equal(0n);
       expect(yieldProviderData.lstLiabilityPrincipal).to.equal(0n);
 
+      expect(await yieldManager.isYieldProviderKnown(providerAddress)).to.equal(true);
       expect(await yieldManager.userFunds(providerAddress)).to.equal(0n);
       expect(await yieldManager.isStakingPaused(providerAddress)).to.be.false;
       expect(await yieldManager.isOssified(providerAddress)).to.be.false;
@@ -808,6 +875,7 @@ describe("Linea Rollup contract", () => {
       const registration2 = buildMockYieldProviderRegistration();
       await yieldManager.connect(operationalSafe).addYieldProvider(providerAddress2, registration2);
       // Assert
+      expect(await yieldManager.isYieldProviderKnown(providerAddress2)).to.equal(true);
       expect(await yieldManager.yieldProviderCount()).to.equal(2n);
       expect(await yieldManager.yieldProviderByIndex(2)).to.equal(mockYieldProvider2);
     });
@@ -840,30 +908,128 @@ describe("Linea Rollup contract", () => {
       );
     });
 
-    it("Should revert when 0 address is provided for the _yieldProvider", async () => {});
-    it("Should revert when the yield provider has not previously been added", async () => {});
+    it("Should revert when 0 address is provided for the _yieldProvider", async () => {
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).removeYieldProvider(ZeroAddress),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("Should revert when the yield provider has not previously been added", async () => {
+      const unknownYieldProvider = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).removeYieldProvider(unknownYieldProvider),
+        "UnknownYieldProvider",
+      );
+    });
+
     it("Should revert when the yield provider has remaining user funds", async () => {
-      // Setup by doing successfull addYieldProvider first
-      // Use setter method on TestYieldManager.sol
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, 1n);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).removeYieldProvider(mockYieldProviderAddress),
+        "YieldProviderHasRemainingFunds",
+      );
     });
+
     it("Should revert when the yield provider has remaining negative yield", async () => {
-      // Setup by doing successfull addYieldProvider first
-      // Use setter method on TestYieldManager.sol
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.setYieldProviderCurrentNegativeYield(mockYieldProviderAddress, 1n);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).removeYieldProvider(mockYieldProviderAddress),
+        "YieldProviderHasRemainingNegativeYield",
+      );
     });
+
     it("Should successfully remove the yield provider, emit the correct event and wipe the yield provider state", async () => {
-      // Setup by doing successful addYieldProvider first
-      // Please confirm event emission
-      // Please assert the state post removal with each of state getter functions
-      // function yieldProviderCount() external view returns (uint256 count);
-      // function yieldProviderByIndex(uint256 _index) external view returns (address yieldProvider);
-      // function getYieldProviderData(address _yieldProvider)
-      // function userFunds(address _yieldProvider) external view returns (uint256 funds);
-      // function isStakingPaused(address _yieldProvider) external view returns (bool isPaused);
-      // function isOssified(address _yieldProvider) external view returns (bool);
-      // function isOssificationInitiated(address _yieldProvider) external view returns (bool isInitiated);
-      // function userFundsInYieldProvidersTotal()
-      // function pendingPermissionlessUnstake()
-      it("Adding three providers, then removing the first, should leave the middle provider with stable index", async () => {});
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await expect(yieldManager.connect(operationalSafe).removeYieldProvider(mockYieldProviderAddress))
+        .to.emit(yieldManager, "YieldProviderRemoved")
+        .withArgs(mockYieldProviderAddress, false);
+
+      expect(await yieldManager.isYieldProviderKnown(mockYieldProviderAddress)).to.be.false;
+      expect(await yieldManager.yieldProviderCount()).to.equal(0n);
+      expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.getYieldProviderData(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.userFunds(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.isStakingPaused(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.isOssified(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.isOssificationInitiated(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
+      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(0n);
+
+      // Ensure state is wiped
+      expect(await yieldManager.getYieldProviderVendor(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderIsStakingPaused(mockYieldProviderAddress)).to.equal(false);
+      expect(await yieldManager.getYieldProviderIsOssificationInitiated(mockYieldProviderAddress)).to.equal(false);
+      expect(await yieldManager.getYieldProviderIsOssified(mockYieldProviderAddress)).to.equal(false);
+      expect(await yieldManager.getYieldProviderPrimaryEntrypoint(mockYieldProviderAddress)).to.equal(ZeroAddress);
+      expect(await yieldManager.getYieldProviderOssifiedEntrypoint(mockYieldProviderAddress)).to.equal(ZeroAddress);
+      expect(await yieldManager.getYieldProviderReceiveCaller(mockYieldProviderAddress)).to.equal(ZeroAddress);
+      expect(await yieldManager.getYieldProviderIndex(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderCurrentNegativeYield(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress)).to.equal(0n);
+    });
+
+    it("Adding three providers, then removing the first, should leave the middle provider with stable index", async () => {
+      // Arrange
+      const { mockYieldProviderAddress: providerOne } = await addMockYieldProvider(yieldManager);
+      const { mockYieldProviderAddress: providerTwo } = await addMockYieldProvider(yieldManager);
+      const { mockYieldProviderAddress: providerThree } = await addMockYieldProvider(yieldManager);
+
+      const providerTwoDataBefore = await yieldManager.getYieldProviderData(providerTwo);
+      expect(providerTwoDataBefore.yieldProviderIndex).to.equal(2n);
+
+      // Act
+      await yieldManager.connect(operationalSafe).removeYieldProvider(providerOne);
+
+      // Assert
+      expect(await yieldManager.isYieldProviderKnown(providerOne)).to.equal(false);
+      expect(await yieldManager.isYieldProviderKnown(providerOne)).to.equal(false);
+
+      const providerTwoDataAfter = await yieldManager.getYieldProviderData(providerTwo);
+      expect(providerTwoDataAfter.yieldProviderIndex).to.equal(2n);
+      expect(await yieldManager.yieldProviderByIndex(2)).eq(providerTwo);
+      expect(await yieldManager.isYieldProviderKnown(providerTwo)).to.equal(true);
+
+      const providerThreeDataAfter = await yieldManager.getYieldProviderData(providerThree);
+      expect(providerThreeDataAfter.yieldProviderIndex).to.equal(1n);
+      expect(await yieldManager.yieldProviderByIndex(1)).eq(providerThree);
+      expect(await yieldManager.isYieldProviderKnown(providerThree)).to.equal(true);
+
+      expect(await yieldManager.yieldProviderCount()).equal(2n);
     });
   });
 });
