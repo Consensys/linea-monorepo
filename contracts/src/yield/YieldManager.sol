@@ -105,6 +105,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       ErrorUtils.revertIfZeroAddress(l2YieldRecipient);
       $._isL2YieldRecipientKnown[l2YieldRecipient] = true;
     }
+    // Ensure address(0) at index=0.
+    $._yieldProviders.push(address(0));
   }
 
   modifier onlyKnownYieldProvider(address _yieldProvider) {
@@ -253,7 +255,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @return count Total number of yield providers tracked by the YieldManager.
    */
   function yieldProviderCount() external view override returns (uint256 count) {
-    count = _getYieldManagerStorage()._yieldProviders.length;
+    count = _getYieldManagerStorage()._yieldProviders.length - 1;
   }
 
   /**
@@ -1021,8 +1023,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
       revert YieldProviderAlreadyAdded();
     }
-    // Ensure no added yield provider has index 0
-    uint96 yieldProviderIndex = uint96($._yieldProviders.length) + 1;
+    uint96 yieldProviderIndex = uint96($._yieldProviders.length);
     $._yieldProviders.push(_yieldProvider);
     $._yieldProviderStorage[_yieldProvider] = YieldProviderStorage({
       yieldProviderVendor: _registration.yieldProviderVendor,
@@ -1059,6 +1060,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(SET_YIELD_PROVIDER_ROLE)
   {
+    ErrorUtils.revertIfZeroAddress(_yieldProvider);
     // We assume that 'currentNegativeYield' must be 0, before 'userFunds' can be 0.
     if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
       revert YieldProviderHasRemainingFunds();

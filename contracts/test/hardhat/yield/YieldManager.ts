@@ -192,7 +192,7 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should have initial yieldProviderCount = 0", async () => {
-      expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(ZERO_VALUE);
+      expect(await yieldManager.yieldProviderCount()).to.equal(ZERO_VALUE);
     });
 
     it("Should assign the OSSIFIER_ROLE to securityCouncil address", async () => {
@@ -744,7 +744,6 @@ describe("Linea Rollup contract", () => {
         "ZeroAddressNotAllowed",
       );
     });
-
     it("Should successfully add a yield provider, change state to expected and emit correct event", async () => {
       const mockYieldProvider = await deployMockYieldProvider();
       const registration = buildMockYieldProviderRegistration();
@@ -793,8 +792,24 @@ describe("Linea Rollup contract", () => {
 
       await yieldManager.connect(operationalSafe).addYieldProvider(providerAddress, registration);
 
+      expect(await yieldManager.yieldProviderCount()).to.equal(1n);
       const yieldProviderData = await yieldManager.getYieldProviderData(providerAddress);
       expect(yieldProviderData.yieldProviderIndex).to.equal(1n);
+    });
+    it("Second yield provider successfully added, should have yieldProviderIndex 1", async () => {
+      // Add first yield provider
+      const mockYieldProvider = await deployMockYieldProvider();
+      const providerAddress = await mockYieldProvider.getAddress();
+      const registration = buildMockYieldProviderRegistration();
+      await yieldManager.connect(operationalSafe).addYieldProvider(providerAddress, registration);
+      // Add second yield provider
+      const mockYieldProvider2 = await deployMockYieldProvider();
+      const providerAddress2 = await mockYieldProvider2.getAddress();
+      const registration2 = buildMockYieldProviderRegistration();
+      await yieldManager.connect(operationalSafe).addYieldProvider(providerAddress2, registration2);
+      // Assert
+      expect(await yieldManager.yieldProviderCount()).to.equal(2n);
+      expect(await yieldManager.yieldProviderByIndex(2)).to.equal(mockYieldProvider2);
     });
 
     it("Should revert when the yieldProvider has been previously added", async () => {

@@ -5,7 +5,8 @@ import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-
 
 import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
 import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
-import { getAccountsFixture, getRoleAddressesFixture } from "./";
+import { getRoleAddressesFixture } from "./";
+import { getAccountsFixture } from "../../common/helpers";
 import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   FALLBACK_OPERATOR_ADDRESS,
