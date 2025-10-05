@@ -30,6 +30,8 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
     error Karma__Unauthorized();
     /// @notice Emitted when slash percentage to set is invalid
     error Karma__InvalidSlashPercentage();
+    /// @notice Emitted when slash reward percentage is invalid
+    error Karma__InvalidSlashRewardPercentage();
     /// @notice Emitted when balance to slash is invalid
     error Karma__CannotSlashZeroBalance();
     /// @notice Emitted when there are insufficient funds to transfer
@@ -40,9 +42,13 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
     /// @notice Emitted when a reward distributor is removed
     event RewardDistributorRemoved(address distributor);
     /// @notice Emitted when an account is slashed
-    event AccountSlashed(address indexed account, uint256 amount);
+    event AccountSlashed(
+        address indexed account, uint256 amount, address indexed rewardRecipient, uint256 rewardAmount
+    );
     /// @notice Emitted when the slash percentage is updated
     event SlashPercentageUpdated(uint256 oldPercentage, uint256 newPercentage);
+    /// @notice Emitted when the slash reward percentage is updated
+    event SlashRewardPercentageUpdated(uint256 oldPercentage, uint256 newPercentage);
 
     /*//////////////////////////////////////////////////////////////////////////
                                   CONSTANTS
@@ -67,6 +73,9 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
     mapping(address account => bool whitelisted) public allowedToTransfer;
     /// @notice Percentage of Karma to slash (in basis points: 1% = 100, 10% = 1000, 100% = 10000)
     uint256 public slashPercentage;
+    /// @notice Percentage of slashed amount to allocate for rewards (in basis points: 1% = 100, 10% = 1000, 100% =
+    /// 10000)
+    uint256 public slashRewardPercentage;
 
     /// @notice Operator role keccak256("OPERATOR_ROLE")
     bytes32 public constant OPERATOR_ROLE = 0x97667070c54ef182b0f5858b034beac1b6f3089aa2d3188bb1e8929f4fa9b929;
@@ -116,6 +125,7 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
 
         _setupRole(DEFAULT_ADMIN_ROLE, _owner);
         slashPercentage = 5000; // 50%
+        slashRewardPercentage = 1000; // 10%
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -144,7 +154,7 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
 
     /**
      * @notice Sets the slash percentage for the contract.
-     * @dev Only the admin configure the slash percentage
+     * @dev Only the admin can configure the slash percentage
      * @param percentage The percentage to set (in basis points: 1% = 100, 10% = 1000, 100% = 10000)
      */
     function setSlashPercentage(uint256 percentage) public onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -154,6 +164,20 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
         uint256 oldPercentage = slashPercentage;
         slashPercentage = percentage;
         emit SlashPercentageUpdated(oldPercentage, percentage);
+    }
+
+    /**
+     * @notice Sets the slash reward percentage for the contract.
+     * @dev Only the admin or operator can configure the slash reward percentage
+     * @param percentage The percentage to set (in basis points: 1% = 100, 10% = 1000, 100% = 10000)
+     */
+    function setSlashRewardPercentage(uint256 percentage) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (percentage > 10_000) {
+            revert Karma__InvalidSlashRewardPercentage();
+        }
+        uint256 oldPercentage = slashRewardPercentage;
+        slashRewardPercentage = percentage;
+        emit SlashRewardPercentageUpdated(oldPercentage, percentage);
     }
 
     /**
@@ -204,10 +228,11 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
      * @notice Slashes karma from an account based on the current slashing percentage
      * @dev Only accounts with the SLASHER_ROLE can call this function
      * @param account Account to slash
+     * @param rewardRecipient Address that will receive the slash reward
      * @return slashedAmount The amount of karma that was slashed
      */
-    function slash(address account) public virtual onlySlasher returns (uint256) {
-        return _slash(account);
+    function slash(address account, address rewardRecipient) public virtual onlySlasher returns (uint256) {
+        return _slash(account, rewardRecipient);
     }
 
     function calculateSlashAmount(uint256 value) public view returns (uint256) {
@@ -304,9 +329,10 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
     /**
      * @notice Slashes karma from an account based on the current slashing percentage
      * @param account Account to slash
+     * @param rewardRecipient Address that will receive the slash reward
      * @return slashedAmount The amount of karma that was slashed
      */
-    function _slash(address account) internal virtual returns (uint256) {
+    function _slash(address account, address rewardRecipient) internal virtual returns (uint256) {
         uint256 currentBalance = _balanceOf(account);
         if (currentBalance == 0) {
             revert Karma__CannotSlashZeroBalance();
@@ -326,9 +352,19 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
             IRewardDistributor(distributor).redeemRewards(account);
         }
 
-        // finally, burn the total amount to slash from the actual Karma balance
+        // Calculate reward from the slashed amount
+        // slashRewardPercentage of the slashed amount goes to the reward recipient
+        uint256 rewardAmount = Math.mulDiv(totalAmountToSlash, slashRewardPercentage, MAX_SLASH_PERCENTAGE);
+
+        // Burn the entire slashed amount from the account
         _burn(account, totalAmountToSlash);
-        emit AccountSlashed(account, totalAmountToSlash);
+
+        // Mint the reward to the recipient (if recipient is specified)
+        if (rewardAmount > 0 && rewardRecipient != address(0)) {
+            _mint(rewardRecipient, rewardAmount);
+        }
+
+        emit AccountSlashed(account, totalAmountToSlash, rewardRecipient, rewardAmount);
         return totalAmountToSlash;
     }
 

@@ -119,7 +119,8 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
 
     /// @dev Slashes identity with privateKey.
     /// @param privateKey: RLN private key as bytes32;
-    function slash(bytes32 privateKey) external onlyRole(SLASHER_ROLE) {
+    /// @param rewardRecipient: Address that will receive the slash reward;
+    function slash(bytes32 privateKey, address rewardRecipient) external onlyRole(SLASHER_ROLE) {
         // Hash the private key using Poseidon to get identityCommitment
         uint256 identityCommitment = poseidonHasher.hash(uint256(privateKey));
 
@@ -127,7 +128,7 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
         if (member.userAddress == address(0)) {
             revert RLN__MemberNotFound();
         }
-        karma.slash(member.userAddress);
+        karma.slash(member.userAddress, rewardRecipient);
         delete members[identityCommitment];
 
         emit MemberSlashed(member.index, msg.sender);

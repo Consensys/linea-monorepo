@@ -3,8 +3,9 @@ pragma solidity ^0.8.26;
 
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { Test } from "forge-std/Test.sol";
+import { Test, console } from "forge-std/Test.sol";
 import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { Karma } from "../src/Karma.sol";
@@ -379,21 +380,31 @@ contract SlashTest is KarmaTest {
     function test_RevertWhen_SenderIsNotDefaultAdminOrSlasher() public {
         vm.prank(makeAddr("someone"));
         vm.expectRevert(Karma.Karma__Unauthorized.selector);
-        karma.slash(alice);
+        karma.slash(alice, address(0));
     }
 
     function test_RevertWhen_KarmaBalanceIsInvalid() public {
         vm.prank(slasher);
         vm.expectRevert(Karma.Karma__CannotSlashZeroBalance.selector);
-        karma.slash(alice);
+        karma.slash(alice, address(0));
     }
 
     function test_SlashRemainingBalanceIfBalanceIsLow() public {
-        _mintKarmaToAccount(alice, karma.MIN_SLASH_AMOUNT() - 1);
+        uint256 initialBalance = karma.MIN_SLASH_AMOUNT() - 1;
+        _mintKarmaToAccount(alice, initialBalance);
+
+        address rewardRecipient = makeAddr("rewardRecipient");
 
         vm.prank(slasher);
-        karma.slash(alice);
+        uint256 slashed = karma.slash(alice, rewardRecipient);
 
+        // The entire balance should be slashed
+        // slashRewardPercentage (default 10%) goes to recipient
+        uint256 rewardAmount = (slashed * karma.slashRewardPercentage()) / 10_000;
+
+        // Verify recipient received the reward
+        assertEq(karma.balanceOf(rewardRecipient), rewardAmount);
+        // Alice should have 0 balance (everything slashed, reward went to recipient)
         assertEq(karma.balanceOf(alice), 0);
     }
 
@@ -403,9 +414,11 @@ contract SlashTest is KarmaTest {
         _mintKarmaToAccount(alice, currentBalance);
         uint256 slashedAmount = karma.calculateSlashAmount(currentBalance);
 
-        // slash the account
+        // slash the account with no reward recipient
         vm.prank(slasher);
-        karma.slash(alice);
+        karma.slash(alice, address(0));
+
+        // With address(0) recipient, entire amount is burned (no reward minted back)
         assertEq(karma.balanceOf(alice), currentBalance - slashedAmount);
 
         currentBalance = karma.balanceOf(alice);
@@ -413,8 +426,9 @@ contract SlashTest is KarmaTest {
 
         // slash again
         vm.prank(slasher);
-        karma.slash(alice);
+        karma.slash(alice, address(0));
 
+        // Same - entire amount burned
         assertEq(karma.balanceOf(alice), currentBalance - slashedAmount);
     }
 
@@ -425,8 +439,64 @@ contract SlashTest is KarmaTest {
         uint256 slashAmount = karma.calculateSlashAmount(rewardsAmount);
 
         vm.prank(slasher);
-        karma.slash(alice);
+        karma.slash(alice, address(0));
+
+        // With address(0) recipient, entire amount is burned (no reward minted back)
         assertEq(karma.balanceOf(alice), rewardsAmount - slashAmount);
+    }
+}
+
+contract SlashRewardPercentageTest is KarmaTest {
+    function test_SetSlashRewardPercentageAsAdmin() public {
+        vm.prank(owner);
+        vm.expectEmit(true, true, true, true);
+        emit Karma.SlashRewardPercentageUpdated(1000, 2000);
+        karma.setSlashRewardPercentage(2000); // 20%
+
+        assertEq(karma.slashRewardPercentage(), 2000);
+    }
+
+    function test_RevertWhen_SetSlashRewardPercentageAsOperator() public {
+        bytes memory expectedError = _accessControlError(operator, karma.DEFAULT_ADMIN_ROLE());
+        vm.prank(operator);
+        vm.expectRevert(expectedError);
+        karma.setSlashRewardPercentage(2000);
+    }
+
+    function test_RevertWhen_SetSlashRewardPercentageNotAuthorized() public {
+        bytes memory expectedError = _accessControlError(alice, karma.DEFAULT_ADMIN_ROLE());
+        vm.prank(alice);
+        vm.expectRevert(expectedError);
+        karma.setSlashRewardPercentage(2000);
+    }
+
+    function test_RevertWhen_SetSlashRewardPercentageExceedsMax() public {
+        vm.prank(owner);
+        vm.expectRevert(Karma.Karma__InvalidSlashRewardPercentage.selector);
+        karma.setSlashRewardPercentage(10_001);
+    }
+
+    function test_SlashWithCustomRewardPercentage() public {
+        // Set custom slash reward percentage to 20%
+        vm.prank(owner);
+        karma.setSlashRewardPercentage(2000);
+
+        // Setup: mint karma and grant slasher role
+        vm.startPrank(owner);
+        karma.mint(alice, 100 ether);
+        karma.grantRole(karma.SLASHER_ROLE(), owner);
+        vm.stopPrank();
+
+        uint256 slashAmount = karma.calculateSlashAmount(100 ether); // 50 ether (50%)
+
+        address rewardRecipient = makeAddr("rewardRecipient");
+        vm.prank(owner);
+        karma.slash(alice, rewardRecipient);
+
+        uint256 rewardAmount = Math.mulDiv(slashAmount, 2000, 10_000);
+
+        assertEq(karma.balanceOf(rewardRecipient), rewardAmount);
+        assertEq(karma.balanceOf(alice), 100 ether - slashAmount);
     }
 }
 
@@ -448,10 +518,12 @@ contract TransferTest is KarmaTest {
         assertEq(karma.balanceOf(alice), amount);
 
         uint256 slashedAmount = karma.calculateSlashAmount(karma.balanceOf(alice));
-        uint256 transferableAmount = amount - slashedAmount;
 
         karma.grantRole(karma.SLASHER_ROLE(), owner);
-        karma.slash(alice);
+        karma.slash(alice, address(0));
+
+        // With address(0) recipient, entire amount is burned (no reward minted back)
+        uint256 transferableAmount = amount - slashedAmount;
         assertEq(karma.balanceOf(alice), transferableAmount);
 
         karma.setAllowedToTransfer(alice, true);

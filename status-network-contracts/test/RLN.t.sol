@@ -9,6 +9,7 @@ import { Karma } from "../src/Karma.sol";
 import { KarmaDistributorMock } from "./mocks/KarmaDistributorMock.sol";
 import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
 import { PoseidonHasher } from "../src/rln/PoseidonHasher.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 
@@ -42,6 +43,7 @@ contract RLNTest is Test {
     address private user1Addr = makeAddr("user1");
     address private user2Addr = makeAddr("user2");
     address private user3Addr = makeAddr("user3");
+    address private rewardRecipientAddr = makeAddr("rewardRecipient");
 
     function setUp() public {
         DeployKarmaScript karmaDeployment = new DeployKarmaScript();
@@ -85,15 +87,7 @@ contract RLNTest is Test {
     /// @dev Deploys a new RLN instance (behind ERC1967Proxy).
     function _deployRLN(uint256 depth, Karma karmaToken) internal returns (RLN) {
         bytes memory initData = abi.encodeCall(
-            RLN.initialize,
-            (
-                adminAddr,
-                slasherAddr,
-                registerAddr,
-                depth,
-                address(karmaToken),
-                address(poseidonHasher)
-            )
+            RLN.initialize, (adminAddr, slasherAddr, registerAddr, depth, address(karmaToken), address(poseidonHasher))
         );
         address impl = address(new RLN());
         address proxy = address(new ERC1967Proxy(impl, initData));
@@ -193,12 +187,20 @@ contract RLNTest is Test {
         // Retrieve the assigned index
         (, uint256 index1) = _memberData(identityCommitment1);
 
-        // Slash with the private key
-        vm.startPrank(slasherAddr);
+        // burn event
+        vm.expectEmit(false, true, false, true);
+        emit IERC20Upgradeable.Transfer(user2Addr, address(0), 5 ether);
+
+        // reward mint event
+        vm.expectEmit(false, true, false, true);
+        emit IERC20Upgradeable.Transfer(address(0), rewardRecipientAddr, 0.5 ether);
+
+        // slash event
         vm.expectEmit(false, true, false, true);
         emit RLN.MemberSlashed(index1, slasherAddr);
-        rln.slash(privateKey1);
-        vm.stopPrank();
+
+        vm.prank(slasherAddr);
+        rln.slash(privateKey1, rewardRecipientAddr);
 
         // After slash, the member record should be cleared
         (address u1, uint256 i1) = _memberData(identityCommitment1);
@@ -210,7 +212,7 @@ contract RLNTest is Test {
         // Attempt to slash a non‐existent identity
         vm.startPrank(slasherAddr);
         vm.expectRevert(RLN.RLN__MemberNotFound.selector);
-        rln.slash(privateKey0);
+        rln.slash(privateKey0, rewardRecipientAddr);
         vm.stopPrank();
     }
 
