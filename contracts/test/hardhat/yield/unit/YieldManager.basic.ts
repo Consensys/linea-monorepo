@@ -1,4 +1,3 @@
-// TODO rename to LineaRollupYieldExtension
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
@@ -9,17 +8,11 @@ import {
   deployMockYieldProvider,
   deployYieldManagerForUnitTest,
   deployYieldManagerForUnitTestWithMutatedInitData,
-} from "./helpers/deploy";
-import { addMockYieldProvider, buildMockYieldProviderRegistration } from "./helpers/mocks";
-import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../common/constants";
-import {
-  // expectEvent,
-  // buildAccessErrorMessage,
-  expectRevertWithCustomError,
-  // expectRevertWithReason,
-  getAccountsFixture,
-} from "../common/helpers";
-import { YieldManagerInitializationData } from "./helpers/types";
+} from "../helpers/deploy";
+import { addMockYieldProvider, buildMockYieldProviderRegistration } from "../helpers/mocks";
+import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../../common/constants";
+import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { YieldManagerInitializationData } from "../helpers/types";
 import { ZeroAddress } from "ethers";
 
 describe("Linea Rollup contract", () => {
@@ -319,9 +312,7 @@ describe("Linea Rollup contract", () => {
       const requiredRole = await yieldManager.SET_L2_YIELD_RECIPIENT_ROLE();
       await expect(
         yieldManager.connect(nonAuthorizedAccount).addL2YieldRecipient(nonAuthorizedAccount.address),
-      ).to.be.revertedWith(
-        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
-      );
+      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
 
     it("Should add the new l2YieldRecipient address and emit the correct event", async () => {
@@ -356,9 +347,7 @@ describe("Linea Rollup contract", () => {
       const existingRecipient = initializationData.initialL2YieldRecipients[0];
       await expect(
         yieldManager.connect(nonAuthorizedAccount).removeL2YieldRecipient(existingRecipient),
-      ).to.be.revertedWith(
-        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
-      );
+      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
 
     it("Should remove the new l2YieldRecipient address and emit the correct event", async () => {
@@ -387,9 +376,7 @@ describe("Linea Rollup contract", () => {
       const role = await yieldManager.WITHDRAWAL_RESERVE_SETTER_ROLE();
       await expect(
         yieldManager.connect(nonAuthorizedAccount).setWithdrawalReserveParameters(buildSetWithdrawalReserveParams()),
-      ).to.be.revertedWith(
-        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${role}`,
-      );
+      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, role));
     });
 
     it("Should revert if minimum withdrawal percentage higher than 10000 bps", async () => {
@@ -768,9 +755,7 @@ describe("Linea Rollup contract", () => {
 
       await expect(
         yieldManager.connect(nonAuthorizedAccount).addYieldProvider(await mockYieldProvider.getAddress(), registration),
-      ).to.be.revertedWith(
-        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
-      );
+      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
 
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {
@@ -907,9 +892,7 @@ describe("Linea Rollup contract", () => {
 
       await expect(
         yieldManager.connect(nonAuthorizedAccount).removeYieldProvider(mockYieldProviderAddress),
-      ).to.be.revertedWith(
-        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
-      );
+      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
 
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {
@@ -1045,9 +1028,7 @@ describe("Linea Rollup contract", () => {
 
       await expect(
         yieldManager.connect(nonAuthorizedAccount).emergencyRemoveYieldProvider(mockYieldProviderAddress),
-      ).to.be.revertedWith(
-        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
-      );
+      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
 
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {
