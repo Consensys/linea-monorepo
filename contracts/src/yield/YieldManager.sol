@@ -1060,7 +1060,6 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(SET_YIELD_PROVIDER_ROLE)
   {
-    ErrorUtils.revertIfZeroAddress(_yieldProvider);
     // We assume that 'currentNegativeYield' must be 0, before 'userFunds' can be 0.
     if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
       revert YieldProviderHasRemainingFunds();
@@ -1084,7 +1083,6 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(SET_YIELD_PROVIDER_ROLE)
   {
-    ErrorUtils.revertIfZeroAddress(_yieldProvider);
     _removeYieldProvider(_yieldProvider);
     emit YieldProviderRemoved(_yieldProvider, true);
   }

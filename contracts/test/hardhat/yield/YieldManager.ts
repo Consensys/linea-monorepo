@@ -163,6 +163,10 @@ describe("Linea Rollup contract", () => {
       expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
     });
 
+    it("Should not register the zero address as a known yield provider", async () => {
+      expect(await yieldManager.isYieldProviderKnown(ZeroAddress)).to.equal(false);
+    });
+
     it("Should have the initial minimum reserve percentage in state", async () => {
       expect(await yieldManager.minimumWithdrawalReservePercentageBps()).to.equal(
         BigInt(initializationData.initialMinimumWithdrawalReservePercentageBps),
@@ -1028,6 +1032,111 @@ describe("Linea Rollup contract", () => {
       expect(providerThreeDataAfter.yieldProviderIndex).to.equal(1n);
       expect(await yieldManager.yieldProviderByIndex(1)).eq(providerThree);
       expect(await yieldManager.isYieldProviderKnown(providerThree)).to.equal(true);
+
+      expect(await yieldManager.yieldProviderCount()).equal(2n);
+    });
+  });
+
+  describe("emergency remove yield providers", () => {
+    it("Should revert when the caller does not have the SET_YIELD_PROVIDER_ROLE role", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
+
+      await expect(
+        yieldManager.connect(nonAuthorizedAccount).emergencyRemoveYieldProvider(mockYieldProviderAddress),
+      ).to.be.revertedWith(
+        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
+      );
+    });
+
+    it("Should revert when 0 address is provided for the _yieldProvider", async () => {
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).emergencyRemoveYieldProvider(ZeroAddress),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("Should revert when the yield provider has not previously been added", async () => {
+      const unknownYieldProvider = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(operationalSafe).emergencyRemoveYieldProvider(unknownYieldProvider),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("Should successfully remove the yield provider with outstanding userFunds and negativeYield, emit the correct event and wipe the yield provider state", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, 1n);
+      await yieldManager.setYieldProviderCurrentNegativeYield(mockYieldProviderAddress, 1n);
+
+      await expect(yieldManager.connect(operationalSafe).emergencyRemoveYieldProvider(mockYieldProviderAddress))
+        .to.emit(yieldManager, "YieldProviderRemoved")
+        .withArgs(mockYieldProviderAddress, true);
+
+      expect(await yieldManager.isYieldProviderKnown(mockYieldProviderAddress)).to.be.false;
+      expect(await yieldManager.yieldProviderCount()).to.equal(0n);
+      expect(await yieldManager.yieldProviderByIndex(0)).to.equal(ZeroAddress);
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.getYieldProviderData(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.userFunds(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.isStakingPaused(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.isOssified(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.isOssificationInitiated(mockYieldProviderAddress),
+        "UnknownYieldProvider",
+      );
+
+      // Ensure state is wiped
+      expect(await yieldManager.getYieldProviderVendor(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderIsStakingPaused(mockYieldProviderAddress)).to.equal(false);
+      expect(await yieldManager.getYieldProviderIsOssificationInitiated(mockYieldProviderAddress)).to.equal(false);
+      expect(await yieldManager.getYieldProviderIsOssified(mockYieldProviderAddress)).to.equal(false);
+      expect(await yieldManager.getYieldProviderPrimaryEntrypoint(mockYieldProviderAddress)).to.equal(ZeroAddress);
+      expect(await yieldManager.getYieldProviderOssifiedEntrypoint(mockYieldProviderAddress)).to.equal(ZeroAddress);
+      expect(await yieldManager.getYieldProviderReceiveCaller(mockYieldProviderAddress)).to.equal(ZeroAddress);
+      expect(await yieldManager.getYieldProviderIndex(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderCurrentNegativeYield(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress)).to.equal(0n);
+    });
+
+    it("Adding three providers, then removing the first, should leave the middle provider with stable index", async () => {
+      const { mockYieldProviderAddress: providerOne } = await addMockYieldProvider(yieldManager);
+      const { mockYieldProviderAddress: providerTwo } = await addMockYieldProvider(yieldManager);
+      const { mockYieldProviderAddress: providerThree } = await addMockYieldProvider(yieldManager);
+
+      const providerTwoDataBefore = await yieldManager.getYieldProviderData(providerTwo);
+      expect(providerTwoDataBefore.yieldProviderIndex).to.equal(2n);
+
+      await yieldManager.connect(operationalSafe).emergencyRemoveYieldProvider(providerOne);
+
+      const providerTwoDataAfter = await yieldManager.getYieldProviderData(providerTwo);
+      expect(providerTwoDataAfter.yieldProviderIndex).to.equal(2n);
+
+      const providerThreeDataAfter = await yieldManager.getYieldProviderData(providerThree);
+      expect(providerThreeDataAfter.yieldProviderIndex).to.equal(1n);
 
       expect(await yieldManager.yieldProviderCount()).equal(2n);
     });
