@@ -10,7 +10,7 @@ import {
   deployYieldManagerForUnitTest,
   deployYieldManagerForUnitTestWithMutatedInitData,
 } from "./helpers/deploy";
-import { buildMockYieldProviderRegistration } from "./helpers/mocks";
+import { addMockYieldProvider, buildMockYieldProviderRegistration } from "./helpers/mocks";
 import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../common/constants";
 import {
   // expectEvent,
@@ -824,6 +824,46 @@ describe("Linea Rollup contract", () => {
         yieldManager.connect(operationalSafe).addYieldProvider(providerAddress, registration),
         "YieldProviderAlreadyAdded",
       );
+    });
+  });
+
+  describe("removing yield providers", () => {
+    it("Should revert when the caller does not have the SET_YIELD_PROVIDER_ROLE role", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
+
+      await expect(
+        yieldManager.connect(nonAuthorizedAccount).removeYieldProvider(mockYieldProviderAddress),
+      ).to.be.revertedWith(
+        `AccessControl: account ${nonAuthorizedAccount.address.toLowerCase()} is missing role ${requiredRole}`,
+      );
+    });
+
+    it("Should revert when 0 address is provided for the _yieldProvider", async () => {});
+    it("Should revert when the yield provider has not previously been added", async () => {});
+    it("Should revert when the yield provider has remaining user funds", async () => {
+      // Setup by doing successfull addYieldProvider first
+      // Use setter method on TestYieldManager.sol
+    });
+    it("Should revert when the yield provider has remaining negative yield", async () => {
+      // Setup by doing successfull addYieldProvider first
+      // Use setter method on TestYieldManager.sol
+    });
+    it("Should successfully remove the yield provider, emit the correct event and wipe the yield provider state", async () => {
+      // Setup by doing successful addYieldProvider first
+      // Please confirm event emission
+      // Please assert the state post removal with each of state getter functions
+      // function yieldProviderCount() external view returns (uint256 count);
+      // function yieldProviderByIndex(uint256 _index) external view returns (address yieldProvider);
+      // function getYieldProviderData(address _yieldProvider)
+      // function userFunds(address _yieldProvider) external view returns (uint256 funds);
+      // function isStakingPaused(address _yieldProvider) external view returns (bool isPaused);
+      // function isOssified(address _yieldProvider) external view returns (bool);
+      // function isOssificationInitiated(address _yieldProvider) external view returns (bool isInitiated);
+      // function userFundsInYieldProvidersTotal()
+      // function pendingPermissionlessUnstake()
+      it("Adding three providers, then removing the first, should leave the middle provider with stable index", async () => {});
     });
   });
 });

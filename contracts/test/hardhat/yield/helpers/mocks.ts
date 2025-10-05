@@ -1,5 +1,8 @@
 import { ethers } from "hardhat";
 import { YieldProviderRegistration } from "./types";
+import { deployMockYieldProvider } from "./deploy";
+import { TestYieldManager } from "contracts/typechain-types";
+import { getAccountsFixture } from "../../common/helpers";
 
 export const buildMockYieldProviderRegistration = (
   overrides: Partial<{
@@ -14,3 +17,12 @@ export const buildMockYieldProviderRegistration = (
   ossifiedEntrypoint: overrides.ossifiedEntrypoint ?? ethers.Wallet.createRandom().address,
   receiveCaller: overrides.receiveCaller ?? ethers.Wallet.createRandom().address,
 });
+
+export const addMockYieldProvider = async (yieldManager: TestYieldManager) => {
+  const { operationalSafe } = await getAccountsFixture();
+  const mockYieldProvider = await deployMockYieldProvider();
+  const mockYieldProviderAddress = await mockYieldProvider.getAddress();
+  const mockRegistration = buildMockYieldProviderRegistration();
+  await yieldManager.connect(operationalSafe).addYieldProvider(mockYieldProviderAddress, mockRegistration);
+  return { mockYieldProvider, mockYieldProviderAddress, mockRegistration };
+};
