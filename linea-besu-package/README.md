@@ -98,7 +98,7 @@ Additionally, the `latest` tag will be updated to match this release
 
 ## Profiles
 
-This project leverages [Besu Profiles](https://besu.hyperledger.org/public-networks/how-to/use-configuration-file/profile) to enable multiple startup configurations for different node types.
+This project leverages [Besu Profiles](https://besu.hyperledger.org/public-networks/how-to/configure-besu/profile) to enable multiple startup configurations for different node types.
 
 During the build process, all TOML files located in the [linea-besu-package/linea-besu/profiles](https://github.com/Consensys/linea-monorepo/tree/main/linea-besu-package/linea-besu/profiles) directory will be incorporated into the package. These profiles are crucial for configuring the node, as each one specifies the necessary plugins and CLI options to ensure Besu operates correctly.
 
