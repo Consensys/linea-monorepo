@@ -91,7 +91,7 @@ export async function deployYieldManagerForUnitTest() {
     {
       // initializer: "initialize",
       initializer: YIELD_MANAGER_INITIALIZE_SIGNATURE,
-      unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable"],
+      unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable", "delegatecall"],
     },
   )) as unknown as TestYieldManager;
 
@@ -110,7 +110,7 @@ export async function deployYieldManagerForUnitTestWithMutatedInitData(
     {
       // initializer: "initialize",
       initializer: YIELD_MANAGER_INITIALIZE_SIGNATURE,
-      unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable"],
+      unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable", "delegatecall"],
     },
   );
 }

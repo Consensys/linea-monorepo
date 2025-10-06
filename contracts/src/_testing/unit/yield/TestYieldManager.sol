@@ -171,4 +171,12 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     function setYieldProviderLstLiabilityPrincipal(address _yieldProvider, uint256 _lstLiabilityPrincipal) external {
         _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal = _lstLiabilityPrincipal;
     }
+
+  function withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
+    address _yieldProvider,
+    uint256 _amount,
+    uint256 _targetDeficit
+  ) internal returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
+    return _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, _targetDeficit);
+  }
 }
