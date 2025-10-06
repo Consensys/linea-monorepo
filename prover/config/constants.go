@@ -19,7 +19,8 @@ const (
 	LargeSuffix = "large"
 
 	// Limitless prover stuffs
-	WitnessDir = "/tmp/witness"
+	BootstrapSuffix = "bootstrap"
+	WitnessDir      = "/tmp/witness"
 )
 
 var (

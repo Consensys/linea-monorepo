@@ -133,8 +133,8 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 	logrus.Infoln("Deserialized all LPP-subproofs and loaded into memory")
 
 	execReq := &execution.Request{}
-	if err := files.ReadRequest(req.ExecutionRequestFile, execReq); err != nil {
-		return nil, fmt.Errorf("could not read the execution proof request file (%v): %w", req.ExecutionRequestFile, err)
+	if err := files.ReadRequest(req.BootstrapRequestDoneFile, execReq); err != nil {
+		return nil, fmt.Errorf("could not read the execution proof request file (%v): %w", req.BootstrapRequestDoneFile, err)
 	}
 
 	out := execution.CraftProverOutput(cfg, execReq)
