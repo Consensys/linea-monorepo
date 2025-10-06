@@ -1,4 +1,3 @@
-import { ZeroAddress } from "ethers";
 import { ethers, network } from "hardhat";
 import { expect } from "chai";
 import { toChecksumAddress } from "@ethereumjs/util";
@@ -7,7 +6,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { DexSwap, L2MessageService, RollupRevenueVault, TestERC20, TokenBridge } from "../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./helpers/before";
 import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
-import { EMPTY_CALLDATA, ONE_DAY_IN_SECONDS } from "../common/constants";
+import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_DAY_IN_SECONDS } from "../common/constants";
 import {
   expectEvent,
   expectRevertWithCustomError,
@@ -88,7 +87,7 @@ describe("RollupRevenueVault", () => {
         "RollupRevenueVault",
         [
           await time.latest(),
-          ZeroAddress,
+          ADDRESS_ZERO,
           invoiceSubmitter.address,
           burner.address,
           invoicePaymentReceiver.address,
@@ -112,7 +111,7 @@ describe("RollupRevenueVault", () => {
         [
           await time.latest(),
           admin.address,
-          ZeroAddress,
+          ADDRESS_ZERO,
           burner.address,
           invoicePaymentReceiver.address,
           await tokenBridge.getAddress(),
@@ -136,7 +135,7 @@ describe("RollupRevenueVault", () => {
           await time.latest(),
           admin.address,
           invoiceSubmitter.address,
-          ZeroAddress,
+          ADDRESS_ZERO,
           invoicePaymentReceiver.address,
           await tokenBridge.getAddress(),
           await messageService.getAddress(),
@@ -160,7 +159,7 @@ describe("RollupRevenueVault", () => {
           admin.address,
           invoiceSubmitter.address,
           burner.address,
-          ZeroAddress,
+          ADDRESS_ZERO,
           await tokenBridge.getAddress(),
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
@@ -184,7 +183,7 @@ describe("RollupRevenueVault", () => {
           invoiceSubmitter.address,
           burner.address,
           invoicePaymentReceiver.address,
-          ZeroAddress,
+          ADDRESS_ZERO,
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
@@ -208,7 +207,7 @@ describe("RollupRevenueVault", () => {
           burner.address,
           invoicePaymentReceiver.address,
           await tokenBridge.getAddress(),
-          ZeroAddress,
+          ADDRESS_ZERO,
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
           await dex.getAddress(),
@@ -232,7 +231,7 @@ describe("RollupRevenueVault", () => {
           invoicePaymentReceiver.address,
           await tokenBridge.getAddress(),
           await messageService.getAddress(),
-          ZeroAddress,
+          ADDRESS_ZERO,
           await l2LineaToken.getAddress(),
           await dex.getAddress(),
         ],
@@ -256,7 +255,7 @@ describe("RollupRevenueVault", () => {
           await tokenBridge.getAddress(),
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
-          ZeroAddress,
+          ADDRESS_ZERO,
           await dex.getAddress(),
         ],
         {
@@ -280,7 +279,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          ZeroAddress,
+          ADDRESS_ZERO,
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -529,7 +528,7 @@ describe("RollupRevenueVault", () => {
     it("Should revert if l1LineaTokenBurner address is zero address", async () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateL1LineaTokenBurner(ZeroAddress),
+        rollupRevenueVault.connect(admin).updateL1LineaTokenBurner(ADDRESS_ZERO),
         "ZeroAddressNotAllowed",
       );
     });
@@ -562,7 +561,7 @@ describe("RollupRevenueVault", () => {
     it("Should revert if Dex address is zero address", async () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateDex(ZeroAddress),
+        rollupRevenueVault.connect(admin).updateDex(ADDRESS_ZERO),
         "ZeroAddressNotAllowed",
       );
     });
@@ -592,7 +591,7 @@ describe("RollupRevenueVault", () => {
     it("Should revert if invoicePaymentReceiver address is zero address", async () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateInvoicePaymentReceiver(ZeroAddress),
+        rollupRevenueVault.connect(admin).updateInvoicePaymentReceiver(ADDRESS_ZERO),
         "ZeroAddressNotAllowed",
       );
     });

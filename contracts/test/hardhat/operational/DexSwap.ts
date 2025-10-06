@@ -1,4 +1,3 @@
-import { ZeroAddress } from "ethers";
 import { ethers, network } from "hardhat";
 import { toChecksumAddress } from "@ethereumjs/util";
 import { expect } from "chai";
@@ -8,7 +7,7 @@ import { deployWETH9Fixture } from "./helpers/deploy";
 import { deployFromFactory } from "../common/deployment";
 import { DexSwap, TestDexRouter, TestERC20 } from "../../../typechain-types";
 import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
-import { ONE_MINUTE_IN_SECONDS } from "../common/constants";
+import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
 
 describe("DexSwap", () => {
   let dexSwap: DexSwap;
@@ -56,7 +55,7 @@ describe("DexSwap", () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
       await expectRevertWithCustomError(
         dexSwap,
-        deployFromFactory("DexSwap", ZeroAddress, randomnAddress, randomnAddress, randomnAddress),
+        deployFromFactory("DexSwap", ADDRESS_ZERO, randomnAddress, randomnAddress, randomnAddress),
         "ZeroAddressNotAllowed",
       );
     });
@@ -65,7 +64,7 @@ describe("DexSwap", () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
       await expectRevertWithCustomError(
         dexSwap,
-        deployFromFactory("DexSwap", randomnAddress, ZeroAddress, randomnAddress, randomnAddress),
+        deployFromFactory("DexSwap", randomnAddress, ADDRESS_ZERO, randomnAddress, randomnAddress),
         "ZeroAddressNotAllowed",
       );
     });
@@ -74,7 +73,7 @@ describe("DexSwap", () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
       await expectRevertWithCustomError(
         dexSwap,
-        deployFromFactory("DexSwap", randomnAddress, randomnAddress, ZeroAddress, randomnAddress),
+        deployFromFactory("DexSwap", randomnAddress, randomnAddress, ADDRESS_ZERO, randomnAddress),
         "ZeroAddressNotAllowed",
       );
     });
@@ -83,7 +82,7 @@ describe("DexSwap", () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
       await expectRevertWithCustomError(
         dexSwap,
-        deployFromFactory("DexSwap", randomnAddress, randomnAddress, randomnAddress, ZeroAddress),
+        deployFromFactory("DexSwap", randomnAddress, randomnAddress, randomnAddress, ADDRESS_ZERO),
         "ZeroAddressNotAllowed",
       );
     });

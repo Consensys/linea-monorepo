@@ -5,17 +5,21 @@ import { ERC20Burnable } from "@openzeppelin/contracts/token/ERC20/extensions/ER
 import { IL1LineaTokenBurner } from "./interfaces/IL1LineaTokenBurner.sol";
 import { IL1MessageService } from "../messaging/l1/interfaces/IL1MessageService.sol";
 import { IL1MessageManager } from "../messaging/l1/interfaces/IL1MessageManager.sol";
+import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 
 /**
  * @title L1 Linea Token Burner Contract.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract L1LineaTokenBurner is IL1LineaTokenBurner {
+contract L1LineaTokenBurner is IL1LineaTokenBurner, IGenericErrors {
   address public immutable LINEA_TOKEN;
   address public immutable MESSAGE_SERVICE;
 
   constructor(address _messageService, address _lineaToken) {
+    require(_messageService != address(0), ZeroAddressNotAllowed());
+    require(_lineaToken != address(0), ZeroAddressNotAllowed());
+
     MESSAGE_SERVICE = _messageService;
     LINEA_TOKEN = _lineaToken;
   }
