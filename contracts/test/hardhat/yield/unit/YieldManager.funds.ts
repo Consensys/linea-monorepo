@@ -19,7 +19,7 @@ import {
   NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { fundYieldProviderForWithdrawal } from "../helpers";
+import { fundYieldProviderForWithdrawal, incrementBalance } from "../helpers";
 
 describe("YieldManager contract - funding ETH", () => {
   let yieldManager: TestYieldManager;
@@ -1044,325 +1044,164 @@ describe("YieldManager contract - funding ETH", () => {
       expect(await ethers.provider.getBalance(yieldManagerAddress)).to.equal(rebalanceAmount);
       expect(await ethers.provider.getBalance(await mockLineaRollup.getAddress())).to.equal(rebalanceAmount);
     });
-    // it("With insufficient YieldManager balance, 0 targetDeficit and 0 lstLiabilityPrincipal, should withdraw from YieldProvider to the reserve", async () => {
-    //   // Arrange - setup 0 target deficit
-    //   const l1MessageService = await mockLineaRollup.getAddress();
-    //   const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //   await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(targetReserveAmount)]);
-    //   expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
+    it("With YieldManager balance < _amount, 0 targetDeficit and 0 lstLiabilityPrincipal, should withdraw from YieldProvider to the reserve", async () => {
+      const rebalanceAmount = ONE_ETHER * 2n;
+      // Arrange - setup remainder of rebalanceAmount on YieldProvider
+      const { mockYieldProviderAddress, mockYieldProvider, mockWithdrawTarget } =
+        await addMockYieldProvider(yieldManager);
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, rebalanceAmount / 2n);
+      // Arrange - setup insufficient YieldManager balance
+      const yieldManagerAddress = await yieldManager.getAddress();
+      await incrementBalance(yieldManagerAddress, rebalanceAmount / 2n);
+      // Arrange - setup 0 target deficit
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(targetReserveAmount)]);
+      expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
 
-    //   const rebalanceAmount = ONE_ETHER * 2n;
-    //   // Arrange - setup remainder of rebalanceAmount on YieldProvider
-    //   const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-    //   await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, rebalanceAmount / 2n);
-    //   // Arrange - setup insufficient YieldManager balance
-    //   const yieldManagerAddress = await yieldManager.getAddress();
-    //   await incrementBalance(yieldManagerAddress, rebalanceAmount / 2n);
+      // Act
+      await expect(
+        yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
+      )
+        .to.emit(yieldManager, "WithdrawalReserveAugmented")
+        .withArgs(
+          mockYieldProviderAddress,
+          rebalanceAmount,
+          rebalanceAmount,
+          rebalanceAmount / 2n,
+          rebalanceAmount / 2n,
+          0n,
+        );
 
-    //   // Act
-    //   await expect(
-    //     yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
-    //   )
-    //     .to.emit(yieldManager, "WithdrawalReserveAugmented")
-    //     .withArgs(
-    //       mockYieldProviderAddress,
-    //       rebalanceAmount,
-    //       rebalanceAmount,
-    //       rebalanceAmount / 2n,
-    //       rebalanceAmount / 2n,
-    //       0n,
-    //     );
+      expect(await ethers.provider.getBalance(l1MessageService)).to.equal(targetReserveAmount + rebalanceAmount);
+      expect(await ethers.provider.getBalance(yieldManager)).to.equal(0);
+      expect(await ethers.provider.getBalance(mockWithdrawTarget)).to.equal(0);
+    });
+    it("With YieldManager balance < _amount, 0 targetDeficit and non-0 lstLiabilityPrincipal paid, should partial withdraw from YieldProvider to the reserve", async () => {
+      const rebalanceAmount = ONE_ETHER * 2n;
+      // Arrange - setup remainder of rebalanceAmount on YieldProvider
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, rebalanceAmount / 2n);
+      // Arrange - setup insufficient YieldManager balance
+      const yieldManagerAddress = await yieldManager.getAddress();
+      await incrementBalance(yieldManagerAddress, rebalanceAmount / 2n);
+      // Arrange - setup 0 target deficit
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(targetReserveAmount)]);
+      expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
+      // Arrange setup non-0 lstLiabilityPrincipal paid
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setPayLSTPrincipalReturnVal(mockYieldProviderAddress, rebalanceAmount / 4n);
 
-    //   // expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(0n);
-    //   // expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
-    //   // expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
-    //   // expect(await ethers.provider.getBalance(l1MessageService)).to.equal(targetReserveAmount);
+      // Act
+      const expectedToReserve = rebalanceAmount - rebalanceAmount / 4n;
+      await expect(
+        yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
+      )
+        .to.emit(yieldManager, "WithdrawalReserveAugmented")
+        .withArgs(
+          mockYieldProviderAddress,
+          rebalanceAmount,
+          expectedToReserve,
+          rebalanceAmount / 2n,
+          rebalanceAmount / 4n,
+          rebalanceAmount / 4n,
+        );
 
-    //   // //
+      expect(await ethers.provider.getBalance(l1MessageService)).to.equal(targetReserveAmount + expectedToReserve);
+      expect(await ethers.provider.getBalance(yieldManager)).to.equal(0);
+      // Accept imperfection of mock, that mockWithdrawTarget balance is not 0 here/
+    });
+    it("With YieldManager balance < _amount, targetDeficit > _amount and 0 lstLiabilityPrincipal paid, should withdraw _amount from YieldProvider to the reserve", async () => {
+      const rebalanceAmount = ONE_ETHER * 2n;
+      // Arrange - setup half of rebalanceAmount on YieldProvider
+      const { mockYieldProviderAddress, mockYieldProvider, mockWithdrawTarget } =
+        await addMockYieldProvider(yieldManager);
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, rebalanceAmount / 2n);
+      // Arrange - setup other half of rebalanceAmount on YieldManager
+      const yieldManagerAddress = await yieldManager.getAddress();
+      await incrementBalance(yieldManagerAddress, rebalanceAmount / 2n);
+      // Arrange - setup targetDeficit > _amount
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
+      const targetDeficit = rebalanceAmount * 2n;
+      const startingL1MessageServiceBalance = targetReserveAmount - targetDeficit;
+      await ethers.provider.send("hardhat_setBalance", [
+        l1MessageService,
+        ethers.toBeHex(startingL1MessageServiceBalance),
+      ]);
+      expect(await yieldManager.getTargetReserveDeficit()).to.equal(targetDeficit);
+      expect(targetDeficit).to.above(rebalanceAmount);
 
-    //   // const amountToReserve = ONE_ETHER;
-    //   // await fundYieldProviderForWithdrawal(
-    //   //   yieldManager,
-    //   //   mockYieldProvider,
-    //   //   nativeYieldOperator,
-    //   //   amountToReserve,
-    //   // );
-    //   // const l1MessageService = await mockLineaRollup.getAddress();
-    //   // const yieldManagerAddress = await yieldManager.getAddress();
-    //   // const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //   // const managerPrefund = amountToReserve / 2n;
-    //   // await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(managerPrefund)]);
-    //   // await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(targetReserveAmount)]);
-    //   // expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
-    //   // const tx = yieldManager
-    //   //   .connect(nativeYieldOperator)
-    //   //   .addToWithdrawalReserve(mockYieldProviderAddress, amountToReserve);
-    //   // await expect(tx)
-    //   //   .to.emit(yieldManager, "WithdrawalReserveAugmented")
-    //   //   .withArgs(
-    //   //     mockYieldProviderAddress,
-    //   //     amountToReserve,
-    //   //     amountToReserve,
-    //   //     managerPrefund,
-    //   //     amountToReserve - managerPrefund,
-    //   //     0n,
-    //   //   );
-    //   // expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(managerPrefund);
-    //   // expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(managerPrefund);
-    //   // expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
-    // });
-    //   it(
-    //     "With 0 targetDeficit and lstLiabilityPrincipal < withdrawRequestAmount, should pay whole lstLiabilityPrincipal, and withdraw remainder from YieldProvider to reserve ",
-    //     async () => {
-    //       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-    //       const amountToReserve = ONE_ETHER;
-    //       await fundYieldProviderForWithdrawal(
-    //         yieldManager,
-    //         mockYieldProvider,
-    //         nativeYieldOperator,
-    //         amountToReserve,
-    //       );
-    //       const l1MessageService = await mockLineaRollup.getAddress();
-    //       const yieldManagerAddress = await yieldManager.getAddress();
-    //       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //       const managerPrefund = amountToReserve / 2n;
-    //       const lstPrincipalPayment = amountToReserve / 4n;
-    //       await yieldManager
-    //         .connect(nativeYieldOperator)
-    //         .setPayLSTPrincipalReturnVal(mockYieldProviderAddress, lstPrincipalPayment);
-    //       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(managerPrefund)]);
-    //       await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(targetReserveAmount)]);
-    //       expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
-    //       const withdrawAmountExpected = amountToReserve - managerPrefund - lstPrincipalPayment;
-    //       const expectedReserveIncrement = managerPrefund + withdrawAmountExpected;
-    //       await expect(
-    //         yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, amountToReserve),
-    //       )
-    //         .to.emit(yieldManager, "WithdrawalReserveAugmented")
-    //         .withArgs(
-    //           mockYieldProviderAddress,
-    //           amountToReserve,
-    //           expectedReserveIncrement,
-    //           managerPrefund,
-    //           withdrawAmountExpected,
-    //           lstPrincipalPayment,
-    //         );
-    //       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(
-    //         amountToReserve - withdrawAmountExpected,
-    //       );
-    //       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(
-    //         amountToReserve - withdrawAmountExpected,
-    //       );
-    //       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
-    //     },
-    //   );
-    //   it(
-    //     "With 0 targetDeficit and lstLiabilityPrincipal > withdrawRequestAmount, should make no withdrawal from YieldProvider",
-    //     async () => {
-    //       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-    //       const amountToReserve = ONE_ETHER;
-    //       await fundYieldProviderForWithdrawal(
-    //         yieldManager,
-    //         mockYieldProvider,
-    //         nativeYieldOperator,
-    //         amountToReserve,
-    //       );
-    //       const l1MessageService = await mockLineaRollup.getAddress();
-    //       const yieldManagerAddress = await yieldManager.getAddress();
-    //       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //       const managerPrefund = amountToReserve / 2n;
-    //       const lstPrincipalPayment = amountToReserve - managerPrefund;
-    //       await yieldManager
-    //         .connect(nativeYieldOperator)
-    //         .setPayLSTPrincipalReturnVal(mockYieldProviderAddress, lstPrincipalPayment);
-    //       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(managerPrefund)]);
-    //       await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(targetReserveAmount)]);
-    //       expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
-    //       await expect(
-    //         yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, amountToReserve),
-    //       )
-    //         .to.emit(yieldManager, "WithdrawalReserveAugmented")
-    //         .withArgs(
-    //           mockYieldProviderAddress,
-    //           amountToReserve,
-    //           managerPrefund,
-    //           managerPrefund,
-    //           0n,
-    //           lstPrincipalPayment,
-    //         );
-    //       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(amountToReserve);
-    //       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(amountToReserve);
-    //       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
-    //     },
-    //   );
-    //   it(
-    //     "With targetDeficit > withdrawRequestAmount and 0 lstLiabilityPrincipal, should withdraw from YieldProvider and send _amount to the reserve",
-    //     async () => {
-    //       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-    //       const amountToReserve = ONE_ETHER;
-    //       await fundYieldProviderForWithdrawal(
-    //         yieldManager,
-    //         mockYieldProvider,
-    //         nativeYieldOperator,
-    //         amountToReserve,
-    //       );
-    //       const l1MessageService = await mockLineaRollup.getAddress();
-    //       const yieldManagerAddress = await yieldManager.getAddress();
-    //       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //       const targetDeficit = amountToReserve + amountToReserve / 2n;
-    //       const managerPrefund = amountToReserve / 2n;
-    //       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(managerPrefund)]);
-    //       await ethers.provider.send("hardhat_setBalance", [
-    //         l1MessageService,
-    //         ethers.toBeHex(targetReserveAmount - targetDeficit),
-    //       ]);
-    //       expect(await yieldManager.getTargetReserveDeficit()).to.equal(targetDeficit);
-    //       await expect(
-    //         yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, amountToReserve),
-    //       )
-    //         .to.emit(yieldManager, "WithdrawalReserveAugmented")
-    //         .withArgs(
-    //           mockYieldProviderAddress,
-    //           amountToReserve,
-    //           amountToReserve,
-    //           managerPrefund,
-    //           amountToReserve - managerPrefund,
-    //           0n,
-    //         );
-    //       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(managerPrefund);
-    //       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(managerPrefund);
-    //       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
-    //     },
-    //   );
-    //   it(
-    //     "With targetDeficit > withdrawRequestAmount and non-0 lstLiabilityPrincipal, should withdraw from YieldProvider and send _amount to the reserve",
-    //     async () => {
-    //       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-    //       const amountToReserve = ONE_ETHER;
-    //       await fundYieldProviderForWithdrawal(
-    //         yieldManager,
-    //         mockYieldProvider,
-    //         nativeYieldOperator,
-    //         amountToReserve,
-    //       );
-    //       const l1MessageService = await mockLineaRollup.getAddress();
-    //       const yieldManagerAddress = await yieldManager.getAddress();
-    //       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //       const targetDeficit = amountToReserve + amountToReserve / 2n;
-    //       const managerPrefund = amountToReserve / 2n;
-    //       await yieldManager
-    //         .connect(nativeYieldOperator)
-    //         .setPayLSTPrincipalReturnVal(mockYieldProviderAddress, amountToReserve / 3n);
-    //       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(managerPrefund)]);
-    //       await ethers.provider.send("hardhat_setBalance", [
-    //         l1MessageService,
-    //         ethers.toBeHex(targetReserveAmount - targetDeficit),
-    //       ]);
-    //       expect(await yieldManager.getTargetReserveDeficit()).to.equal(targetDeficit);
-    //       await expect(
-    //         yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, amountToReserve),
-    //       )
-    //         .to.emit(yieldManager, "WithdrawalReserveAugmented")
-    //         .withArgs(
-    //           mockYieldProviderAddress,
-    //           amountToReserve,
-    //           amountToReserve,
-    //           managerPrefund,
-    //           amountToReserve - managerPrefund,
-    //           0n,
-    //         );
-    //       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(managerPrefund);
-    //       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(managerPrefund);
-    //       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
-    //     },
-    //   );
-    //   it(
-    //     "With targetDeficit < withdrawRequestAmount and 0 lstLiabilityPrincipal, should withdraw from YieldProvider and send _amount to the reserve",
-    //     async () => {
-    //       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-    //       const amountToReserve = ONE_ETHER;
-    //       await fundYieldProviderForWithdrawal(
-    //         yieldManager,
-    //         mockYieldProvider,
-    //         nativeYieldOperator,
-    //         amountToReserve,
-    //       );
-    //       const l1MessageService = await mockLineaRollup.getAddress();
-    //       const yieldManagerAddress = await yieldManager.getAddress();
-    //       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //       const targetDeficit = amountToReserve / 4n;
-    //       const managerPrefund = amountToReserve / 2n;
-    //       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(managerPrefund)]);
-    //       await ethers.provider.send("hardhat_setBalance", [
-    //         l1MessageService,
-    //         ethers.toBeHex(targetReserveAmount - targetDeficit),
-    //       ]);
-    //       expect(await yieldManager.getTargetReserveDeficit()).to.equal(targetDeficit);
-    //       await expect(
-    //         yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, amountToReserve),
-    //       )
-    //         .to.emit(yieldManager, "WithdrawalReserveAugmented")
-    //         .withArgs(
-    //           mockYieldProviderAddress,
-    //           amountToReserve,
-    //           amountToReserve,
-    //           managerPrefund,
-    //           amountToReserve - managerPrefund,
-    //           0n,
-    //         );
-    //       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(managerPrefund);
-    //       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(managerPrefund);
-    //       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
-    //     },
-    //   );
-    //   it(
-    //     "With targetDeficit < withdrawRequestAmount and non-0 lstLiabilityPrincipal, should pay LSTPrincipal with excess, withdraw from YieldProvider and send remainder to the reserve",
-    //     async () => {
-    //       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-    //       const amountToReserve = ONE_ETHER;
-    //       await fundYieldProviderForWithdrawal(
-    //         yieldManager,
-    //         mockYieldProvider,
-    //         nativeYieldOperator,
-    //         amountToReserve,
-    //       );
-    //       const l1MessageService = await mockLineaRollup.getAddress();
-    //       const yieldManagerAddress = await yieldManager.getAddress();
-    //       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-    //       const targetDeficit = amountToReserve / 4n;
-    //       const lstPrincipalPayment = amountToReserve / 5n;
-    //       const managerPrefund = amountToReserve / 2n;
-    //       await yieldManager
-    //         .connect(nativeYieldOperator)
-    //         .setPayLSTPrincipalReturnVal(mockYieldProviderAddress, lstPrincipalPayment);
-    //       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(managerPrefund)]);
-    //       await ethers.provider.send("hardhat_setBalance", [
-    //         l1MessageService,
-    //         ethers.toBeHex(targetReserveAmount - targetDeficit),
-    //       ]);
-    //       expect(await yieldManager.getTargetReserveDeficit()).to.equal(targetDeficit);
-    //       const withdrawAmountExpected = amountToReserve - managerPrefund - lstPrincipalPayment;
-    //       const expectedReserveIncrement = managerPrefund + withdrawAmountExpected;
-    //       await expect(
-    //         yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, amountToReserve),
-    //       )
-    //         .to.emit(yieldManager, "WithdrawalReserveAugmented")
-    //         .withArgs(
-    //           mockYieldProviderAddress,
-    //           amountToReserve,
-    //           expectedReserveIncrement,
-    //           managerPrefund,
-    //           withdrawAmountExpected,
-    //           lstPrincipalPayment,
-    //         );
-    //       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(
-    //         amountToReserve - withdrawAmountExpected,
-    //       );
-    //       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(
-    //         amountToReserve - withdrawAmountExpected,
-    //       );
-    //       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
-    //     },
-    //   );
+      // Act
+      await expect(
+        yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
+      )
+        .to.emit(yieldManager, "WithdrawalReserveAugmented")
+        .withArgs(
+          mockYieldProviderAddress,
+          rebalanceAmount,
+          rebalanceAmount,
+          rebalanceAmount / 2n,
+          rebalanceAmount / 2n,
+          0n,
+        );
+
+      expect(await ethers.provider.getBalance(l1MessageService)).to.equal(
+        startingL1MessageServiceBalance + rebalanceAmount,
+      );
+      expect(await ethers.provider.getBalance(yieldManager)).to.equal(0);
+      expect(await ethers.provider.getBalance(mockWithdrawTarget)).to.equal(0);
+    });
+    it("With YieldManager balance < _amount, targetDeficit > _amount and non-0 lstLiabilityPrincipal paid, should withdraw _amount from YieldProvider to the reserve", async () => {
+      const rebalanceAmount = ONE_ETHER * 2n;
+      // Arrange - setup half of rebalanceAmount on YieldProvider
+      const { mockYieldProviderAddress, mockYieldProvider, mockWithdrawTarget } =
+        await addMockYieldProvider(yieldManager);
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, rebalanceAmount / 2n);
+      // Arrange - setup other half of rebalanceAmount on YieldManager
+      const yieldManagerAddress = await yieldManager.getAddress();
+      await incrementBalance(yieldManagerAddress, rebalanceAmount / 2n);
+      // Arrange - setup targetDeficit > _amount
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
+      const targetDeficit = rebalanceAmount * 2n;
+      const startingL1MessageServiceBalance = targetReserveAmount - targetDeficit;
+      await ethers.provider.send("hardhat_setBalance", [
+        l1MessageService,
+        ethers.toBeHex(startingL1MessageServiceBalance),
+      ]);
+      expect(await yieldManager.getTargetReserveDeficit()).to.equal(targetDeficit);
+      expect(targetDeficit).to.above(rebalanceAmount);
+      // Arrange setup non-0 lstLiabilityPrincipal paid
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setPayLSTPrincipalReturnVal(mockYieldProviderAddress, rebalanceAmount / 4n);
+
+      // Act
+      await expect(
+        yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
+      )
+        .to.emit(yieldManager, "WithdrawalReserveAugmented")
+        .withArgs(
+          mockYieldProviderAddress,
+          rebalanceAmount,
+          rebalanceAmount,
+          rebalanceAmount / 2n,
+          rebalanceAmount / 2n,
+          0n,
+        );
+
+      expect(await ethers.provider.getBalance(l1MessageService)).to.equal(
+        startingL1MessageServiceBalance + rebalanceAmount,
+      );
+      expect(await ethers.provider.getBalance(yieldManager)).to.equal(0);
+      expect(await ethers.provider.getBalance(mockWithdrawTarget)).to.equal(0);
+    });
+    // Ok to skip the following two cases because we won't explore new paths in addToWithdrawalReserve()
+    // - With YieldManager balance > _amount, targetDeficit > _amount and 0 lstLiabilityPrincipal paid
+    // - With YieldManager balance > _amount, targetDeficit > _amount and non00 lstLiabilityPrincipal paid
   });
 });
