@@ -2,11 +2,18 @@ import { Address } from "viem";
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
 import { BridgeTransaction, BridgeTransactionType, Chain, Token, CctpDepositForBurnAbiEvent } from "@/types";
-import { isCctp, getCctpMessageByTxHash, getCctpTransactionStatus, isUndefined } from "@/utils";
+import {
+  isCctp,
+  getCctpMessageByTxHash,
+  getCctpTransactionStatus,
+  isUndefined,
+  getCctpModeFromFinalityThreshold,
+} from "@/utils";
 import { DepositForBurnLogEvent } from "@/types/events";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
-import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
+import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
+import { saveToTransactionCache } from "./saveToTransactionCache";
 
 export async function fetchCctpBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -30,15 +37,22 @@ export async function fetchCctpBridgeEvents(
     },
   })) as unknown as DepositForBurnLogEvent[];
 
+  const filteredUSDCLogs = usdcLogs.filter((log) => log.args.destinationDomain === toChain.cctpDomain);
+
   await Promise.all(
-    usdcLogs.map(async (log) => {
+    filteredUSDCLogs.map(async (log) => {
       const transactionHash = log.transactionHash;
 
       // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
-      const cacheKey = getCompleteTxStoreKey(fromChain.id, transactionHash);
-      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
-      if (cachedCompletedTx) {
-        transactionsMap.set(transactionHash, cachedCompletedTx);
+      if (
+        restoreFromTransactionCache(
+          historyStoreActions,
+          fromChain.id,
+          transactionHash,
+          transactionsMap,
+          transactionHash,
+        )
+      ) {
         return;
       }
 
@@ -67,10 +81,10 @@ export async function fetchCctpBridgeEvents(
           attestation: cctpMessage.attestation,
           message: cctpMessage.message,
         },
+        cctpMode: getCctpModeFromFinalityThreshold(log.args.minFinalityThreshold),
       };
 
-      // Store COMPLETE tx in cache
-      historyStoreActions.setCompleteTx(tx);
+      saveToTransactionCache(historyStoreActions, tx);
       transactionsMap.set(transactionHash, tx);
     }),
   );

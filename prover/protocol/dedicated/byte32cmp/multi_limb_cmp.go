@@ -30,7 +30,7 @@ type MultiLimbCmp struct {
 
 	// IsEqualCtx is the dedicated [wizard.ProverAction] responsible for
 	// assigning the returned isEqual column.
-	IsEqualCtx wizard.ProverAction
+	IsEqualCtx *dedicated.IsZeroCtx
 
 	// nonNegative syndrom is an internal column created such that it should
 	// always represent a number of size 1 << numLimbs. It is constructed using
@@ -100,9 +100,9 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 		numLimbs        = len(a.Limbs)
 		numBitsPerLimbs = a.LimbBitSize
 		ctx             = &MultiLimbCmp{
-			IsGreater:          comp.InsertCommit(round, ifaces.ColIDf(ctxName("IS_GREATER")), nRows),
-			IsLower:            comp.InsertCommit(round, ifaces.ColIDf(ctxName("IS_LOWER")), nRows),
-			NonNegativeSyndrom: comp.InsertCommit(round, ifaces.ColIDf(ctxName("MUST_BE_POSITIVE")), nRows),
+			IsGreater:          comp.InsertCommit(round, ifaces.ColID(ctxName("IS_GREATER")), nRows),
+			IsLower:            comp.InsertCommit(round, ifaces.ColID(ctxName("IS_LOWER")), nRows),
+			NonNegativeSyndrom: comp.InsertCommit(round, ifaces.ColID(ctxName("MUST_BE_POSITIVE")), nRows),
 		}
 
 		syndromExpression = sym.NewConstant(0)
@@ -140,11 +140,12 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 		sym.Mul(ctx.IsLower, sym.Sub(ctx.IsLower, 1)),
 	)
 
-	isEqual, ctx.IsEqualCtx = dedicated.IsZero(comp, allLimbsEqual)
+	ctx.IsEqualCtx = dedicated.IsZero(comp, allLimbsEqual)
+	isEqual = ctx.IsEqualCtx.IsZero
 
 	comp.InsertGlobal(
 		round,
-		ifaces.QueryIDf(ctxName("FLAGS_MUTUALLY_EXCLUSIVE")),
+		ifaces.QueryID(ctxName("FLAGS_MUTUALLY_EXCLUSIVE")),
 		sym.Sub(1, ctx.IsGreater, isEqual, ctx.IsLower),
 	)
 
