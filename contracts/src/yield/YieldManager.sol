@@ -410,7 +410,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @notice Helper function to send ETH to the Linea L1MessageService (i.e. withdrawal reserve).
    * @param _amount Amount of ETH to send.
    */
-  function _fundReserve(uint256 _amount) internal {
+  function _fundReserve(uint256 _amount) internal virtual {
     ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).fund{ value: _amount }();
   }
 
