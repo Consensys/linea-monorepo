@@ -68,6 +68,10 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
         _getYieldManagerStorage()._pendingPermissionlessUnstake = _pendingPermissionlessUnstake;
     }
 
+    function decrementPendingPermissionlessUnstake(uint256 _amount) external {
+        _decrementPendingPermissionlessUnstake(_amount);
+    }
+
     function getYieldProviders() external view returns (address[] memory) {
         return _getYieldManagerStorage()._yieldProviders;
     }
@@ -187,8 +191,4 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     ) external returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
         return _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, _targetDeficit);
     }
-
-  function decrementPendingPermissionlessUnstake(uint256 _amount) external {
-    _decrementPendingPermissionlessUnstake(_amount);
-  } 
 }

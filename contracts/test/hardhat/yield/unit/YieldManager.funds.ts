@@ -599,9 +599,30 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("decrementPendingPermissionlessUnstake helper", () => {
-    it("if pendingPermissionlessUnstake = 0, should be a no-op", async () => {});
-    it("if pendingPermissionlessUnstake <= _amount, should reduce pendingPermissionlessUnstake to 0", async () => {});
-    it("if pendingPermissionlessUnstake > _amount, should reduce pendingPermissionlessUnstake accordingly", async () => {});
+    it("if pendingPermissionlessUnstake = 0, should be a no-op", async () => {
+      expect(await yieldManager.getPendingPermissionlessUnstake()).to.equal(0n);
+
+      await yieldManager.connect(nativeYieldOperator).decrementPendingPermissionlessUnstake(ONE_ETHER);
+
+      expect(await yieldManager.getPendingPermissionlessUnstake()).to.equal(0n);
+    });
+
+    it("if pendingPermissionlessUnstake <= _amount, should reduce pendingPermissionlessUnstake to 0", async () => {
+      await yieldManager.setPendingPermissionlessUnstake(ONE_ETHER);
+
+      await yieldManager.connect(nativeYieldOperator).decrementPendingPermissionlessUnstake(ONE_THOUSAND_ETHER);
+
+      expect(await yieldManager.getPendingPermissionlessUnstake()).to.equal(0n);
+    });
+
+    it("if pendingPermissionlessUnstake > _amount, should reduce pendingPermissionlessUnstake accordingly", async () => {
+      const startingPending = ONE_THOUSAND_ETHER;
+      await yieldManager.setPendingPermissionlessUnstake(startingPending);
+
+      await yieldManager.connect(nativeYieldOperator).decrementPendingPermissionlessUnstake(ONE_ETHER);
+
+      expect(await yieldManager.getPendingPermissionlessUnstake()).to.equal(startingPending - ONE_ETHER);
+    });
   });
 
   // describe("withdraw with target deficit priority and lst liability principal reduction", () => {

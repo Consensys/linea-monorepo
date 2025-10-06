@@ -396,10 +396,10 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     (bool success, bytes memory returnData) = _yieldProvider.delegatecall(_callData);
     if (!success) {
       if (returnData.length > 0) {
-          /// @solidity memory-safe-assembly
-          assembly {
-              revert(add(32, returnData), mload(returnData))
-          }
+        /// @solidity memory-safe-assembly
+        assembly {
+          revert(add(returnData, 32), mload(returnData))
+        }
       }
       revert DelegateCallFailed();
     }
