@@ -2,8 +2,11 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -117,8 +120,42 @@ func handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status S
 	cLog.Infof("Moving %v to %v with the success prefix", job.OriginalFile, job.Def.dirDone())
 
 	jobDone := job.DoneFile(status)
+
+	// Limitless-specific renaming
+	if job.Def.Name == jobNameBootstrap {
+		// For bootstrap: append `-bootstrap` suffix to mark partial success.
+		// This is because it is technically incorrect to consider moving the entire file move to
+		// `requests-done` folder with success prefix. So we prepend`.bootstrap` suffix to indicate that
+		// at this moment only bootstrap is successful. The entire file
+		// should be moved only after conglomeration is successful. At this point, we should just trim the
+		// bootstrap suffix to indicate the entire request is successful.
+		jobDone = strings.Replace(jobDone, "-getZkProof.json.success", "-getZkProof.json.success.bootstrap", 1)
+		cLog.Info("Added .bootstrap suffix to indicate partial success (bootstrap phase only).")
+	}
+
 	if err := os.Rename(job.InProgressPath(), jobDone); err != nil {
 		cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), jobDone, err)
+	}
+
+	// --- After conglomeration finishes, trim the boostrap suffix marker to indicate full success ---
+	if job.Def.Name == jobNameConglomeration {
+		bootstrapFile := filepath.Join(
+			cfg.Execution.DirDone(),
+			fmt.Sprintf("%d-%d-etv%s-stv%s-getZkProof.json.success.bootstrap",
+				job.Start, job.End, job.VersionExecutionTracer, job.VersionStateManager),
+		)
+		finalFile := strings.TrimSuffix(bootstrapFile, ".bootstrap")
+
+		if _, err := os.Stat(bootstrapFile); err == nil {
+			cLog.Infof("Renaming bootstrap success file → final success file: %v → %v", bootstrapFile, finalFile)
+			if err := os.Rename(bootstrapFile, finalFile); err != nil {
+				cLog.Errorf("Failed to rename %v to %v: %v", bootstrapFile, finalFile, err)
+			}
+		} else if !os.IsNotExist(err) {
+			cLog.Errorf("Error checking bootstrap file %v: %v", bootstrapFile, err)
+		} else {
+			cLog.Warnf("Bootstrap success file not found for %d-%d (may have been already moved)", job.Start, job.End)
+		}
 	}
 }
 
