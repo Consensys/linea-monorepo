@@ -199,8 +199,7 @@ describe("Linea Rollup contract", () => {
         "InsufficientWithdrawalReserve",
       );
     });
-
-    it("Should successfully send ETH to the YieldProvider, update state and emit the expected event", async () => {
+    it("With 0 LSTPrincipal payment, should successfully send ETH to the YieldProvider, update state and emit the expected event", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const l1MessageService = await mockLineaRollup.getAddress();
       const yieldManagerAddress = await yieldManager.getAddress();
@@ -220,6 +219,29 @@ describe("Linea Rollup contract", () => {
       expect(yieldProviderData.userFunds).to.equal(transferAmount);
 
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(transferAmount);
+    });
+
+    it("With non-0 LSTPrincipal payment, should successfully send ETH to the YieldProvider, update state and emit the expected event", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const yieldManagerAddress = await yieldManager.getAddress();
+
+      const minimumReserveAmount = await yieldManager.getMinimumWithdrawalReserveAmount();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(minimumReserveAmount)]);
+      const transferAmount = 40n;
+      await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(transferAmount)]);
+      const lstPrincipalPayment = 10n;
+      await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, lstPrincipalPayment);
+
+      await expect(
+        yieldManager.connect(nativeYieldOperator).fundYieldProvider(mockYieldProviderAddress, transferAmount),
+      )
+        .to.emit(yieldManager, "YieldProviderFunded")
+        .withArgs(mockYieldProviderAddress, transferAmount, lstPrincipalPayment, transferAmount - lstPrincipalPayment);
+
+      const yieldProviderData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
+      expect(yieldProviderData.userFunds).to.equal(transferAmount - lstPrincipalPayment);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(transferAmount - lstPrincipalPayment);
     });
   });
 
@@ -279,13 +301,11 @@ describe("Linea Rollup contract", () => {
       );
     });
 
-    it("Should successfully report yield, update state and emit the expected event", async () => {
+    it("Should successfully report non-0 yield, update state and emit the expected event", async () => {
       // ARRANGE
-      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const reportedYield = ONE_ETHER;
-      await mockYieldProvider
-        .connect(nativeYieldOperator)
-        .setReportYieldReturnVal(mockYieldProviderAddress, reportedYield);
+      await yieldManager.connect(nativeYieldOperator).setReportYieldReturnVal(mockYieldProviderAddress, reportedYield);
 
       // ACT + ASSERT
       await expect(
@@ -294,12 +314,11 @@ describe("Linea Rollup contract", () => {
         .to.emit(yieldManager, "NativeYieldReported")
         .withArgs(mockYieldProviderAddress, l2YieldRecipient.address, reportedYield);
 
-      // const providerDataAfter = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
-      // expect(providerDataAfter.userFunds).to.equal(providerDataBefore.userFunds + reportedYield);
-      // expect(providerDataAfter.yieldReportedCumulative).to.equal(
-      //   providerDataBefore.yieldReportedCumulative + reportedYield,
-      // );
-      // expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(totalBefore + reportedYield);
+      const providerData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
+      expect(providerData.userFunds).to.equal(reportedYield);
+      expect(providerData.yieldReportedCumulative).to.equal(reportedYield);
+      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(reportedYield);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(reportedYield);
     });
   });
 });
