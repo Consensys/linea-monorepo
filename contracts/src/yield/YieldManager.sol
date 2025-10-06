@@ -645,11 +645,12 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       _amount,
       targetDeficit
     );
+    uint256 toReserve = Math256.min(withdrawnFromProvider, targetDeficit);
     // Send funds to L1MessageService if targetDeficit
-    if (targetDeficit > 0) {
-      _fundReserve(targetDeficit);
+    if (toReserve > 0) {
+      _fundReserve(toReserve);
     }
-    emit YieldProviderWithdrawal(_yieldProvider, _amount, withdrawnFromProvider, targetDeficit, lstLiabilityPaid);
+    emit YieldProviderWithdrawal(_yieldProvider, _amount, withdrawnFromProvider, toReserve, lstLiabilityPaid);
   }
 
   /**
@@ -737,7 +738,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   {
     // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
-    if (yieldManagerBalance > _amount) {
+    if (yieldManagerBalance >= _amount) {
       _fundReserve(_amount);
       emit WithdrawalReserveAugmented(_yieldProvider, _amount, _amount, _amount, 0, 0);
       return;
