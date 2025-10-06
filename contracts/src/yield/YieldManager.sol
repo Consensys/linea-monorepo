@@ -675,7 +675,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     uint256 availableFundsForLSTLiabilityPayment = Math256.safeSub(_amount, _targetDeficit);
     withdrawAmount = _amount;
     if (availableFundsForLSTLiabilityPayment > 0) {
-      lstPrincipalPaid -= _payLSTPrincipal(_yieldProvider, availableFundsForLSTLiabilityPayment);
+      lstPrincipalPaid = _payLSTPrincipal(_yieldProvider, availableFundsForLSTLiabilityPayment);
       withdrawAmount -= lstPrincipalPaid;
       // Will remain in target deficit after withdrawal
     } else {

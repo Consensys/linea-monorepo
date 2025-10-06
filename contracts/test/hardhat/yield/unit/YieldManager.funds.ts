@@ -742,39 +742,39 @@ describe("Linea Rollup contract", () => {
       expect(lstPrincipalPaid).eq(0);
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
     });
-    // it("With targetDeficit < _amount and non-0 lstLiabilityPrincipal, should pay LSTPrincipal with _amount - targetDeficit", async () => {
-    //   // Arrange
-    //   const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-    //   const withdrawRequestAmount = ONE_ETHER;
-    //   await setupSuccessfulYieldProviderWithdrawal(
-    //     yieldManager,
-    //     mockYieldProvider,
-    //     nativeYieldOperator,
-    //     withdrawRequestAmount,
-    //   );
-    //   const deficitExcess = ONE_ETHER / 10n;
-    //   const targetDeficit = withdrawRequestAmount - deficitExcess;
+    it("With targetDeficit < _amount and non-0 lstLiabilityPrincipal, should pay LSTPrincipal liability with _amount - targetDeficit", async () => {
+      // Arrange
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      const withdrawRequestAmount = ONE_ETHER;
+      await setupSuccessfulYieldProviderWithdrawal(
+        yieldManager,
+        mockYieldProvider,
+        nativeYieldOperator,
+        withdrawRequestAmount,
+      );
+      const deficitExcess = ONE_ETHER / 10n;
+      const targetDeficit = withdrawRequestAmount - deficitExcess;
 
-    //   // We trust implementation to return < availableAmount
-    //   await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, deficitExcess);
+      // We trust implementation to return < availableAmount
+      await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, deficitExcess);
 
-    //   // Act
-    //   const [actualWithdrawAmount, lstPrincipalPaid] =
-    //     await yieldManager.withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction.staticCall(
-    //       mockYieldProviderAddress,
-    //       withdrawRequestAmount,
-    //       targetDeficit,
-    //     );
-    //   // await yieldManager.withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
-    //   //   mockYieldProviderAddress,
-    //   //   withdrawRequestAmount,
-    //   //   targetDeficit,
-    //   // );
+      // Act
+      const [actualWithdrawAmount, lstPrincipalPaid] =
+        await yieldManager.withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction.staticCall(
+          mockYieldProviderAddress,
+          withdrawRequestAmount,
+          targetDeficit,
+        );
+      await yieldManager.withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
+        mockYieldProviderAddress,
+        withdrawRequestAmount,
+        targetDeficit,
+      );
 
-    //   // Assert
-    //   // expect(actualWithdrawAmount).eq(withdrawRequestAmount - deficitExcess);
-    //   // expect(lstPrincipalPaid).eq(targetDeficit);
-    //   // expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
-    // });
+      // Assert
+      expect(actualWithdrawAmount).eq(withdrawRequestAmount - deficitExcess);
+      expect(lstPrincipalPaid).eq(deficitExcess);
+      expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
+    });
   });
 });
