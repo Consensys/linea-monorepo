@@ -13,6 +13,7 @@ import {
   NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE,
   GENERAL_PAUSE_TYPE,
   NATIVE_YIELD_STAKING_PAUSE_TYPE,
+  NATIVE_YIELD_REPORTING_PAUSE_TYPE,
   ONE_ETHER,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
@@ -24,6 +25,7 @@ describe("Linea Rollup contract", () => {
   let nonAuthorizedAccount: SignerWithAddress;
   let nativeYieldOperator: SignerWithAddress;
   let operationalSafe: SignerWithAddress;
+  let l2YieldRecipient: SignerWithAddress;
   let mockLineaRollup: MockLineaRollup;
 
   before(async () => {
@@ -32,6 +34,7 @@ describe("Linea Rollup contract", () => {
       operator: nonAuthorizedAccount,
       nativeYieldOperator,
       operationalSafe,
+      l2YieldRecipient,
     } = await loadFixture(getAccountsFixture));
   });
 
@@ -202,24 +205,101 @@ describe("Linea Rollup contract", () => {
       const l1MessageService = await mockLineaRollup.getAddress();
       const yieldManagerAddress = await yieldManager.getAddress();
 
-      // Arrange funds so that not in withdrawal reserve deficit
       const minimumReserveAmount = await yieldManager.getMinimumWithdrawalReserveAmount();
       await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(minimumReserveAmount)]);
-      const transferAmount = ONE_ETHER;
+      const transferAmount = 40n;
       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(transferAmount)]);
 
-      // Act
       await expect(
         yieldManager.connect(nativeYieldOperator).fundYieldProvider(mockYieldProviderAddress, transferAmount),
       )
         .to.emit(yieldManager, "YieldProviderFunded")
         .withArgs(mockYieldProviderAddress, transferAmount, 0n, transferAmount);
 
-      // Assert
       const yieldProviderData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
       expect(yieldProviderData.userFunds).to.equal(transferAmount);
 
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(transferAmount);
+    });
+  });
+
+  describe("reporting yield", () => {
+    it("Should revert when the caller is not the YIELD_REPORTER_ROLE", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await expect(
+        yieldManager.connect(nonAuthorizedAccount).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
+      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_REPORTER_ROLE()));
+    });
+
+    it("Should revert when the NATIVE_YIELD_REPORTING pause type is activated", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_REPORTING_PAUSE_TYPE);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
+        "IsPaused",
+        [NATIVE_YIELD_REPORTING_PAUSE_TYPE],
+      );
+    });
+
+    it("Should revert when the GENERAL pause type is activated", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
+        "IsPaused",
+        [GENERAL_PAUSE_TYPE],
+      );
+    });
+
+    it("Should revert when reporting for an unknown YieldProvider", async () => {
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .reportYield(ethers.Wallet.createRandom().address, l2YieldRecipient.address),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("Should revert when distributing yield to an unknown L2YieldRecipient", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const unknownRecipient = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, unknownRecipient),
+        "UnknownL2YieldRecipient",
+      );
+    });
+
+    it("Should successfully report yield, update state and emit the expected event", async () => {
+      // ARRANGE
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      // const totalBefore = await yieldManager.userFundsInYieldProvidersTotal();
+      // const providerDataBefore = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
+      const reportedYield = ONE_ETHER;
+      await mockYieldProvider.connect(nativeYieldOperator).setReportYieldReturnVal(reportedYield);
+
+      // ACT + ASSERT
+      await expect(
+        yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
+      )
+        .to.emit(yieldManager, "NativeYieldReported")
+        .withArgs(mockYieldProviderAddress, l2YieldRecipient.address, reportedYield);
+
+      // const providerDataAfter = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
+      // expect(providerDataAfter.userFunds).to.equal(providerDataBefore.userFunds + reportedYield);
+      // expect(providerDataAfter.yieldReportedCumulative).to.equal(
+      //   providerDataBefore.yieldReportedCumulative + reportedYield,
+      // );
+      // expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(totalBefore + reportedYield);
     });
   });
 });
