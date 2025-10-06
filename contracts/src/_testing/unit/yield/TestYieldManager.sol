@@ -176,15 +176,19 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
         _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal = _lstLiabilityPrincipal;
     }
 
-  function delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
-    _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
-  }
+    function delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
+        _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
+    }
 
-  function withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
-    address _yieldProvider,
-    uint256 _amount,
-    uint256 _targetDeficit
-  ) external returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
-    return _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, _targetDeficit);
-  }
+    function withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
+        address _yieldProvider,
+        uint256 _amount,
+        uint256 _targetDeficit
+    ) external returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
+        return _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, _targetDeficit);
+    }
+
+  function decrementPendingPermissionlessUnstake(uint256 _amount) external {
+    _decrementPendingPermissionlessUnstake(_amount);
+  } 
 }

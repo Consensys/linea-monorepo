@@ -395,6 +395,12 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   function _delegatecallYieldProvider(address _yieldProvider, bytes memory _callData) internal returns (bytes memory) {
     (bool success, bytes memory returnData) = _yieldProvider.delegatecall(_callData);
     if (!success) {
+      if (returnData.length > 0) {
+          /// @solidity memory-safe-assembly
+          assembly {
+              revert(add(32, returnData), mload(returnData))
+          }
+      }
       revert DelegateCallFailed();
     }
     return returnData;

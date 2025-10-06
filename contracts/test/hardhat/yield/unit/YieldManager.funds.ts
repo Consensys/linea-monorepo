@@ -19,6 +19,7 @@ import {
   NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { setupSuccessfulYieldProviderWithdrawal } from "../helpers";
 
 describe("Linea Rollup contract", () => {
   let yieldManager: TestYieldManager;
@@ -554,41 +555,53 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("delegatecall helper for withdraw from yield provider helper", () => {
-    it("Should revert if receiveCaller not configured correctly", async () => {
-      // Arrange - add yield provider
-      // const { operationalSafe } = await getAccountsFixture();
-      // const mockYieldProvider = await deployMockYieldProvider();
-      // const mockYieldProviderAddress = await mockYieldProvider.getAddress();
-      // const mockRegistration = buildMockYieldProviderRegistration();
-      // // Omit step to setup YieldManager address as receiveCaller
-      // await yieldManager.connect(operationalSafe).addYieldProvider(mockYieldProviderAddress, mockRegistration);
-      // // Act
-      // const call = await yieldManager
-      //   .connect(nativeYieldOperator)
-      //   .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, 0n);
-      // await expectRevertWithCustomError(yieldManager, call, "UnexpectedReceiveCaller");
-      // return { mockYieldProvider, mockYieldProviderAddress, mockRegistration };
-    });
-
     it("Should revert if the YieldProvider does not have sufficient balance", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const call = yieldManager
         .connect(nativeYieldOperator)
         .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, 1n);
-      await expect(call).to.be.reverted;
+
+      await expect(call).to.be.revertedWithPanic(0x11);
+    });
+    it("Should revert if receiveCaller not configured correctly", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const call = yieldManager
+        .connect(nativeYieldOperator)
+        .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, 0n);
+      await expectRevertWithCustomError(yieldManager, call, "UnexpectedReceiveCaller");
     });
 
     it("Delegatecalls successfully and makes correct state transitions", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
       const withdrawAmount = ONE_ETHER;
-      await ethers.provider.send("hardhat_setBalance", [
-        await yieldManager.getAddress(),
-        ethers.toBeHex(withdrawAmount),
-      ]);
+      await setupSuccessfulYieldProviderWithdrawal(
+        yieldManager,
+        mockYieldProvider,
+        nativeYieldOperator,
+        withdrawAmount,
+      );
+
+      const beforeYieldProviderUserFunds = await yieldManager.userFunds(mockYieldProviderAddress);
+      const beforeUserFundsInYieldProvidersTotal = await yieldManager.userFundsInYieldProvidersTotal();
+
+      // Act
       await yieldManager
         .connect(nativeYieldOperator)
         .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, withdrawAmount);
+
+      // Assert
+      const afterYieldProviderUserFunds = await yieldManager.userFunds(mockYieldProviderAddress);
+      const afterUserFundsInYieldProvidersTotal = await yieldManager.userFundsInYieldProvidersTotal();
+
+      expect(afterYieldProviderUserFunds).to.equal(beforeYieldProviderUserFunds - withdrawAmount);
+      expect(afterUserFundsInYieldProvidersTotal).to.equal(beforeUserFundsInYieldProvidersTotal - withdrawAmount);
     });
+  });
+
+  describe("decrementPendingPermissionlessUnstake helper", () => {
+    it("if pendingPermissionlessUnstake = 0, should be a no-op", async () => {});
+    it("if pendingPermissionlessUnstake <= _amount, should reduce pendingPermissionlessUnstake to 0", async () => {});
+    it("if pendingPermissionlessUnstake > _amount, should reduce pendingPermissionlessUnstake accordingly", async () => {});
   });
 
   // describe("withdraw with target deficit priority and lst liability principal reduction", () => {
