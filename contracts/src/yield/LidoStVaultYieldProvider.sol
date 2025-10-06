@@ -201,8 +201,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     if (liabilityETH < _lstLiabilityPrincipalCached) {
       uint256 lstLiabilityPrincipalDecrement = liabilityETH - _lstLiabilityPrincipalCached;
       // Any decrement in lstLiabilityPrincipal must be 1:1 matched with decrements in userFunds and _userFundsInYieldProvidersTotal.
-      _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _lstLiabilityPrincipalCached;
-      $$.userFunds -= _lstLiabilityPrincipalCached;
+      _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= lstLiabilityPrincipalDecrement;
+      $$.userFunds -= lstLiabilityPrincipalDecrement;
       $$.lstLiabilityPrincipal = liabilityETH;
       return (liabilityETH, true);
     } else {
