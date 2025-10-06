@@ -10,11 +10,12 @@ import { deployYieldManagerForUnitTest } from "../helpers/deploy";
 import { addMockYieldProvider } from "../helpers/mocks";
 import {
   ONE_THOUSAND_ETHER,
+  ONE_ETHER,
   NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE,
   GENERAL_PAUSE_TYPE,
   NATIVE_YIELD_STAKING_PAUSE_TYPE,
   NATIVE_YIELD_REPORTING_PAUSE_TYPE,
-  ONE_ETHER,
+  NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 
@@ -320,5 +321,67 @@ describe("Linea Rollup contract", () => {
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(reportedYield);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(reportedYield);
     });
+  });
+
+  describe("permissioned unstake", () => {
+    const mockWithdrawalParams = ethers.hexlify(ethers.randomBytes(8));
+
+    it("Should revert when the caller is not the RESERVE_OPERATOR_ROLE", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nonAuthorizedAccount).unstake(mockYieldProviderAddress, mockWithdrawalParams),
+        "CallerMissingRole",
+        [await yieldManager.RESERVE_OPERATOR_ROLE(), await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()],
+      );
+    });
+
+    it("Should revert when the caller is not the YIELD_PROVIDER_UNSTAKER_ROLE", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      const unstakerRole = await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE();
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nonAuthorizedAccount).unstake(mockYieldProviderAddress, mockWithdrawalParams),
+        "CallerMissingRole",
+        [await yieldManager.RESERVE_OPERATOR_ROLE(), unstakerRole],
+      );
+    });
+
+    it("Should revert when the GENERAL pause type is activated", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).unstake(mockYieldProviderAddress, mockWithdrawalParams),
+        "IsPaused",
+        [GENERAL_PAUSE_TYPE],
+      );
+    });
+
+    it("Should revert when the NATIVE_YIELD_UNSTAKING pause type is activated", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).unstake(mockYieldProviderAddress, mockWithdrawalParams),
+        "IsPaused",
+        [NATIVE_YIELD_UNSTAKING_PAUSE_TYPE],
+      );
+    });
+
+    it("Should revert when unstaking from an unknown YieldProvider", async () => {
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).unstake(ethers.Wallet.createRandom().address, mockWithdrawalParams),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("Should successfully unstake from a YieldProvider", async () => {});
   });
 });
