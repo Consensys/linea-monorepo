@@ -23,6 +23,8 @@ export const addMockYieldProvider = async (yieldManager: TestYieldManager) => {
   const mockYieldProvider = await deployMockYieldProvider();
   const mockYieldProviderAddress = await mockYieldProvider.getAddress();
   const mockRegistration = buildMockYieldProviderRegistration();
+  // Enable delegatecall into MockYieldProvider to call() back into YieldManager
+  mockRegistration.receiveCaller = await yieldManager.getAddress();
   await yieldManager.connect(operationalSafe).addYieldProvider(mockYieldProviderAddress, mockRegistration);
   return { mockYieldProvider, mockYieldProviderAddress, mockRegistration };
 };

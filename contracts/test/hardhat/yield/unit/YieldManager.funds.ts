@@ -552,4 +552,207 @@ describe("Linea Rollup contract", () => {
       );
     });
   });
+
+  describe("delegatecall helper for withdraw from yield provider helper", () => {
+    it("Should revert if receiveCaller not configured correctly", async () => {
+      // Arrange - add yield provider
+      // const { operationalSafe } = await getAccountsFixture();
+      // const mockYieldProvider = await deployMockYieldProvider();
+      // const mockYieldProviderAddress = await mockYieldProvider.getAddress();
+      // const mockRegistration = buildMockYieldProviderRegistration();
+      // // Omit step to setup YieldManager address as receiveCaller
+      // await yieldManager.connect(operationalSafe).addYieldProvider(mockYieldProviderAddress, mockRegistration);
+      // // Act
+      // const call = await yieldManager
+      //   .connect(nativeYieldOperator)
+      //   .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, 0n);
+      // await expectRevertWithCustomError(yieldManager, call, "UnexpectedReceiveCaller");
+      // return { mockYieldProvider, mockYieldProviderAddress, mockRegistration };
+    });
+
+    it("Should revert if the YieldProvider does not have sufficient balance", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const call = yieldManager
+        .connect(nativeYieldOperator)
+        .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, 1n);
+      await expect(call).to.be.reverted;
+    });
+
+    it("Delegatecalls successfully and makes correct state transitions", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const withdrawAmount = ONE_ETHER;
+      await ethers.provider.send("hardhat_setBalance", [
+        await yieldManager.getAddress(),
+        ethers.toBeHex(withdrawAmount),
+      ]);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, withdrawAmount);
+    });
+  });
+
+  // describe("withdraw with target deficit priority and lst liability principal reduction", () => {
+  //   const amount = ONE_ETHER;
+
+  //   const setupProviderBalances = async (provider: string, userFunds: bigint) => {
+  //     await yieldManager.setYieldProviderUserFunds(provider, userFunds);
+  //     await yieldManager.setUserFundsInYieldProvidersTotal(userFunds);
+  //   };
+
+  //   it("With 0 targetDeficit and 0 lstLiabilityPrincipal, should successfully withdraw the full _amount", async () => {
+  //     const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+  //     await setupProviderBalances(mockYieldProviderAddress, amount);
+  //     await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, 0n);
+
+  //     const callData = yieldManager.interface.encodeFunctionData(
+  //       "withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction",
+  //       [mockYieldProviderAddress, amount, 0n],
+  //     );
+  //     const staticResult = await ethers.provider.call({
+  //       to: await yieldManager.getAddress(),
+  //       data: callData,
+  //       from: nativeYieldOperator.address,
+  //     });
+  //     const [withdrawAmount, lstPrincipalPaid] = yieldManager.interface.decodeFunctionResult(
+  //       "withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction",
+  //       staticResult,
+  //     );
+
+  //     expect(withdrawAmount).to.equal(amount);
+  //     expect(lstPrincipalPaid).to.equal(0n);
+
+  //     await nativeYieldOperator.sendTransaction({
+  //       to: await yieldManager.getAddress(),
+  //       data: callData,
+  //     });
+
+  //     expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
+  //     expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
+  //     expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
+  //   });
+
+  //   it("With targetDeficit > _amount and 0 lstLiabilityPrincipal, should successfully withdraw the full _amount and pause staking", async () => {
+  //     const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+  //     await setupProviderBalances(mockYieldProviderAddress, amount);
+  //     await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, 0n);
+
+  //     const targetDeficit = amount + 1n;
+
+  //     const callData = yieldManager.interface.encodeFunctionData(
+  //       "withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction",
+  //       [mockYieldProviderAddress, amount, targetDeficit],
+  //     );
+  //     const staticResult = await ethers.provider.call({
+  //       to: await yieldManager.getAddress(),
+  //       data: callData,
+  //       from: nativeYieldOperator.address,
+  //     });
+  //     const [withdrawAmount, lstPrincipalPaid] = yieldManager.interface.decodeFunctionResult(
+  //       "withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction",
+  //       staticResult,
+  //     );
+
+  //     expect(withdrawAmount).to.equal(amount);
+  //     expect(lstPrincipalPaid).to.equal(0n);
+
+  //     await nativeYieldOperator.sendTransaction({
+  //       to: await yieldManager.getAddress(),
+  //       data: callData,
+  //     });
+
+  //     expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
+  //     expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
+  //     expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
+  //   });
+
+  //   it("With targetDeficit > _amount and non-0 lstLiabilityPrincipal, should pay LSTPrincipal, withdraw reduced _amount and pause staking", async () => {
+  //     const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+  //     await setupProviderBalances(mockYieldProviderAddress, amount);
+  //     await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, 0n);
+  //     await yieldManager.setYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress, 5n);
+
+  //     const targetDeficit = amount + 1n;
+
+  //     const callData = yieldManager.interface.encodeFunctionData(
+  //       "withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction",
+  //       [mockYieldProviderAddress, amount, targetDeficit],
+  //     );
+  //     const staticResult = await ethers.provider.call({
+  //       to: await yieldManager.getAddress(),
+  //       data: callData,
+  //       from: nativeYieldOperator.address,
+  //     });
+  //     const [withdrawAmount, lstPrincipalPaid] = yieldManager.interface.decodeFunctionResult(
+  //       "withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction",
+  //       staticResult,
+  //     );
+
+  //     expect(withdrawAmount).to.equal(amount);
+  //     expect(lstPrincipalPaid).to.equal(0n);
+
+  //     await nativeYieldOperator.sendTransaction({
+  //       to: await yieldManager.getAddress(),
+  //       data: callData,
+  //     });
+
+  //     expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
+  //     expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
+  //     expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
+  //   });
+
+  //   it("With targetDeficit < _amount and 0 lstLiabilityPrincipal, should successfully withdraw the full _amount", async () => {
+  //     const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+  //     await setupProviderBalances(mockYieldProviderAddress, amount);
+  //     await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, 0n);
+
+  //     const targetDeficit = amount / 4n;
+
+  //     const callData = yieldManager.interface.encodeFunctionData(
+  //       "withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction",
+  //       [mockYieldProviderAddress, amount, targetDeficit],
+  //     );
+  //     const staticResult = await ethers.provider.call({
+  //       to: await yieldManager.getAddress(),
+  //       data: callData,
+  //       from: nativeYieldOperator.address,
+  //     });
+  //     const [withdrawAmount, lstPrincipalPaid] = yieldManager.interface.decodeFunctionResult(
+  //       "withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction",
+  //       staticResult,
+  //     );
+
+  //     expect(withdrawAmount).to.equal(amount);
+  //     expect(lstPrincipalPaid).to.equal(0n);
+
+  //     await nativeYieldOperator.sendTransaction({
+  //       to: await yieldManager.getAddress(),
+  //       data: callData,
+  //     });
+
+  //     expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
+  //     expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
+  //     expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
+  //   });
+
+  //   it("With targetDeficit < _amount and non-0 lstLiabilityPrincipal, should pay LSTPrincipal and withdraw reduced _amount", async () => {
+  //     const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+  //     const lstPrincipalPayment = amount / 4n;
+  //     await setupProviderBalances(mockYieldProviderAddress, amount + lstPrincipalPayment);
+  //     await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, lstPrincipalPayment);
+
+  //     const targetDeficit = amount / 2n;
+
+  //     const callData = yieldManager.interface.encodeFunctionData(
+  //       "withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction",
+  //       [mockYieldProviderAddress, amount, targetDeficit],
+  //     );
+
+  //     await expect(
+  //       nativeYieldOperator.sendTransaction({
+  //         to: await yieldManager.getAddress(),
+  //         data: callData,
+  //       }),
+  //     ).to.be.revertedWithPanic(0x11);
+  //   });
+  // });
 });

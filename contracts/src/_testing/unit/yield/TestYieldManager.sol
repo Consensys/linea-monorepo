@@ -12,6 +12,10 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
         TRANSIENT_RECEIVE_CALLER = _caller;
     }
 
+    function getTransientReceiveCaller() external view returns (address) {
+        return TRANSIENT_RECEIVE_CALLER;
+    }
+
     function getL1MessageService() external view returns (address) {
         return L1_MESSAGE_SERVICE;
     }
@@ -172,11 +176,15 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
         _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal = _lstLiabilityPrincipal;
     }
 
+  function delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
+    _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
+  }
+
   function withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
     address _yieldProvider,
     uint256 _amount,
     uint256 _targetDeficit
-  ) internal returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
+  ) external returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
     return _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, _targetDeficit);
   }
 }

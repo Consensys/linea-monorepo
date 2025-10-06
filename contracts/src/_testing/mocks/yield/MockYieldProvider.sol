@@ -33,7 +33,11 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
     return unstakePermissionlessReturnVal(_yieldProvider);
   }
 
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {}
+  event ReceiveCallerConfirmation(address indexed receiveCaller);
+
+  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
+    address(this).call{ value: _amount }(hex"");
+  }
 
   function pauseStaking(address _yieldProvider) external {}
 

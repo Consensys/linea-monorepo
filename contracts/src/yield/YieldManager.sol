@@ -628,7 +628,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     uint256 _amount
   )
     external
-    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_UNSTAKING)
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING)
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
@@ -675,7 +675,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     } else {
       _pauseStakingIfNotAlready(_yieldProvider);
     }
-    _withdrawFromYieldProvider(_yieldProvider, withdrawAmount);
+    _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawAmount);
   }
 
   /**
@@ -685,7 +685,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount to withdraw.
    */
-  function _withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
+  function _delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     TRANSIENT_RECEIVE_CALLER = $$.receiveCaller;
     _delegatecallYieldProvider(
@@ -785,7 +785,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     // Insufficient balance on YieldManager, must withdraw from YieldProvider
     uint256 yieldProviderBalance = withdrawableValue(_yieldProvider);
     uint256 withdrawAmount = Math256.min(yieldProviderBalance, targetDeficit - yieldManagerBalance);
-    _withdrawFromYieldProvider(_yieldProvider, withdrawAmount);
+    _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawAmount);
     _fundReserve(yieldManagerBalance + withdrawAmount);
 
     // Pause staking if remaining target deficit
