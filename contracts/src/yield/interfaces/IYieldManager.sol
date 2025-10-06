@@ -315,6 +315,11 @@ interface IYieldManager {
   error LSTWithdrawalNotAllowed();
 
   /**
+   * @dev Thrown when LST withdrawal request exceeds the user funds in the YieldProvider.
+   */
+  error LSTWithdrawalExceedsYieldProviderFunds();
+
+  /**
    * @dev Thrown when attempting to undo or progress an ossification process that was not previously initiated.
    */
   error OssificationNotInitiated();

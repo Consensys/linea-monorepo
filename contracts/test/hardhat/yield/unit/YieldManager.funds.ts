@@ -236,7 +236,10 @@ describe("YieldManager contract - funding ETH", () => {
       await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(minimumReserveAmount)]);
       const transferAmount = 40n;
       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(transferAmount)]);
+      // lstPrincipal can only be accrued when it is 'backed' by existing user funds
       const lstPrincipalPayment = 10n;
+      await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, lstPrincipalPayment);
+      await yieldManager.setUserFundsInYieldProvidersTotal(lstPrincipalPayment);
       await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, lstPrincipalPayment);
 
       await expect(
@@ -245,8 +248,7 @@ describe("YieldManager contract - funding ETH", () => {
         .to.emit(yieldManager, "YieldProviderFunded")
         .withArgs(mockYieldProviderAddress, transferAmount, lstPrincipalPayment, transferAmount - lstPrincipalPayment);
 
-      const yieldProviderData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
-      expect(yieldProviderData.userFunds).to.equal(transferAmount - lstPrincipalPayment);
+      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(transferAmount - lstPrincipalPayment);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(transferAmount - lstPrincipalPayment);
     });
   });
@@ -1000,8 +1002,8 @@ describe("YieldManager contract - funding ETH", () => {
         );
 
       expect(await ethers.provider.getBalance(l1MessageService)).to.equal(reserveBalanceBefore + targetDeficit);
-      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(lstPrincipalPayment);
-      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(lstPrincipalPayment);
+      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(0);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0);
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
     });
   });

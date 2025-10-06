@@ -506,6 +506,8 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _availableFunds))
     );
     lstPrincipalPaid = abi.decode(data, (uint256));
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= lstPrincipalPaid;
+    _getYieldProviderStorage(_yieldProvider).userFunds -= lstPrincipalPaid;
   }
 
   /**
@@ -895,6 +897,10 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     }
     if (!ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
+    }
+    // Enshrine assumption that LST withdrawals are an advance on user withdrawal of funds already on a YieldProvider.
+    if (_amount > _getYieldProviderStorage(_yieldProvider).userFunds) {
+      revert LSTWithdrawalExceedsYieldProviderFunds();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
     _delegatecallYieldProvider(
