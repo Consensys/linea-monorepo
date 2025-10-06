@@ -39,7 +39,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 	}()
 
 	witnessLPP := &distributed.ModuleWitnessLPP{}
-	if err := serialization.LoadFromDisk(req.WitnessLPPFile, witnessLPP, true); err != nil {
+	if err := retryDeser(req.WitnessLPPFile, witnessLPP, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); err != nil {
 		return fmt.Errorf("could not load witness: %w", err)
 	}
 
