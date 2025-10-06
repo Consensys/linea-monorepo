@@ -46,4 +46,20 @@ abstract contract MockYieldProviderStorageLayout {
   function setUnstakePermissionlessReturnVal(address _yieldProvider, uint256 _val) external {
     _getMockYieldProviderStorage(_yieldProvider).unstakePermissionlessReturnVal = _val;
   }
+
+  function withdrawableValueReturnVal(address _yieldProvider) public view returns (uint256) {
+    return _getMockYieldProviderStorage(_yieldProvider).withdrawableValueReturnVal;
+  }
+
+  function reportYieldReturnVal(address _yieldProvider) public view returns (uint256) {
+    return _getMockYieldProviderStorage(_yieldProvider).reportYieldReturnVal;
+  }
+
+  function payLSTPrincipalReturnVal(address _yieldProvider) public view returns (uint256) {
+    return _getMockYieldProviderStorage(_yieldProvider).payLSTPrincipalReturnVal;
+  }
+
+  function unstakePermissionlessReturnVal(address _yieldProvider) public view returns (uint256) {
+    return _getMockYieldProviderStorage(_yieldProvider).unstakePermissionlessReturnVal;
+  }
 }

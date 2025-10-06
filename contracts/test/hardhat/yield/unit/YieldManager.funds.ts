@@ -282,10 +282,10 @@ describe("Linea Rollup contract", () => {
     it("Should successfully report yield, update state and emit the expected event", async () => {
       // ARRANGE
       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
-      // const totalBefore = await yieldManager.userFundsInYieldProvidersTotal();
-      // const providerDataBefore = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
       const reportedYield = ONE_ETHER;
-      await mockYieldProvider.connect(nativeYieldOperator).setReportYieldReturnVal(reportedYield);
+      await mockYieldProvider
+        .connect(nativeYieldOperator)
+        .setReportYieldReturnVal(mockYieldProviderAddress, reportedYield);
 
       // ACT + ASSERT
       await expect(

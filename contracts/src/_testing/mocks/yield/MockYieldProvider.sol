@@ -5,50 +5,22 @@ import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
 import { YieldManagerStorageLayout } from "../../../yield/YieldManagerStorageLayout.sol";
 import { MockYieldProviderStorageLayout } from "./MockYieldProviderStorageLayout.sol";
 
-contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
-  /*//////////////////////////////////////////////////////////////
-                            MOCK HELPERS
-  //////////////////////////////////////////////////////////////*/
-  uint256 withdrawableValueReturnVal;
-  uint256 reportYieldReturnVal;
-  uint256 payLSTPrincipalReturnVal;
-  uint256 unstakePermissionlessReturnVal;
-
-  function setWithdrawableValueReturnVal(uint256 _val) external {
-      withdrawableValueReturnVal = _val;
-  }
-
-  function setReportYieldReturnVal(uint256 _val) external {
-      reportYieldReturnVal = _val;
-  }
-
-  function setPayLSTPrincipalReturnVal(uint256 _val) external {
-      payLSTPrincipalReturnVal = _val;
-  }
-
-  function setUnstakePermissionlessReturnVal(uint256 _val) external {
-      unstakePermissionlessReturnVal = _val;
-    }
-  
-  /*//////////////////////////////////////////////////////////////
-                      IYIELDPROVIDER FUNCTIONS
-  //////////////////////////////////////////////////////////////*/
-  
+contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {  
   function withdrawableValue(address _yieldProvider) external view returns (uint256 availableBalance) {
-    return withdrawableValueReturnVal;
+    return withdrawableValueReturnVal(_yieldProvider);
   }
 
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external {}
 
   function reportYield(address _yieldProvider) external returns (uint256 newReportedYield) {
-    return reportYieldReturnVal;
+    return reportYieldReturnVal(_yieldProvider);
   }
   
   function payLSTPrincipal(
     address _yieldProvider,
     uint256 _availableFunds
   ) external returns (uint256 lstPrincipalPaid) {
-    return payLSTPrincipalReturnVal;
+    return payLSTPrincipalReturnVal(_yieldProvider);
   }
 
   function unstake(address _yieldProvider, bytes memory _withdrawalParams) external payable {}
@@ -58,7 +30,7 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
   ) external payable returns (uint256 maxUnstakeAmount) {
-    return unstakePermissionlessReturnVal;
+    return unstakePermissionlessReturnVal(_yieldProvider);
   }
 
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {}
