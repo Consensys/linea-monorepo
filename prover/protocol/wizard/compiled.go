@@ -183,7 +183,7 @@ func (c *CompiledIOP) InsertColumn(round int, name ifaces.ColID, size int, statu
 	// @alex: this has actually caught a few typos. When wrongly setting an
 	// incorrect but very large size here, it will generate a disproportionate
 	// wizard
-	if size > 1<<40 {
+	if size > 1<<31 {
 		utils.Panic("column %v has size %v", name, size)
 	}
 
