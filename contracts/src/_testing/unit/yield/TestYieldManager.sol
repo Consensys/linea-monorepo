@@ -2,9 +2,10 @@
 pragma solidity 0.8.30;
 
 import { YieldManager } from "../../../yield/YieldManager.sol";
+import { MockYieldProviderStorageLayout } from "../../mocks/yield/MockYieldProviderStorageLayout.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
-contract TestYieldManager is YieldManager {
+contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     constructor(address _l1MessageService) YieldManager(_l1MessageService) {}
 
     function setTransientReceiveCaller(address _caller) external {

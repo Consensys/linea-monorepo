@@ -3,8 +3,9 @@ pragma solidity ^0.8.0;
 
 import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
 import { YieldManagerStorageLayout } from "../../../yield/YieldManagerStorageLayout.sol";
+import { MockYieldProviderStorageLayout } from "./MockYieldProviderStorageLayout.sol";
 
-contract MockYieldProvider is IYieldProvider {
+contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
   /*//////////////////////////////////////////////////////////////
                             MOCK HELPERS
   //////////////////////////////////////////////////////////////*/
