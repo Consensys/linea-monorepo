@@ -13,6 +13,7 @@ export const setupReceiveCallerForSuccessfulYieldProviderWithdrawal = async (
     .setYieldProviderReceiveCaller(mockYieldProviderAddress, testYieldManagerAddress);
 };
 
+// TODO - Existence of this setup function means that YieldManager has invariants that withdraw cannot underflow for userFunds and userFundsInYieldProvidersTotal
 export const setupSuccessfulYieldProviderWithdrawal = async (
   testYieldManager: TestYieldManager,
   mockYieldProvider: MockYieldProvider,

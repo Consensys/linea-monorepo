@@ -73,7 +73,9 @@ interface IYieldProvider {
   /**
    * @notice Reduces the outstanding LST liability principal.
    * @dev Called after the YieldManager has reserved `_availableFunds` for liability
-   *      settlement. Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
+   *      settlement. 
+   *      - Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
+   *      - Implementations should ensure lstPrincipalPaid <= _availableFunds
    * @param _yieldProvider The yield provider address.
    * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
    * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
