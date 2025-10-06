@@ -241,7 +241,6 @@ func setupFsTestSpotInstance(t *testing.T) (cfg *config.Config) {
 	return cfg
 }
 
-// --- Replace TestRunDistController with this version ---
 func TestRunDistController(t *testing.T) {
 	conf := setupFsTestLimitless(t)
 
@@ -322,7 +321,6 @@ func TestRunDistController(t *testing.T) {
 	}
 }
 
-// --- Slightly updated createLimitlessInputFile: keeps behaviour but creates files under <dir>/<requests-from> or <dir>/<mod>/requests -->
 func createLimitlessInputFile(dir, jobType string, start, end, exitWith int, mod string) string {
 	var fname string
 	switch jobType {
