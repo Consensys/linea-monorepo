@@ -171,7 +171,7 @@ func (j *Job) DoneFile(status Status) string {
 	// Remove the suffix .failure.code_[0-9]+ from all the strings
 	origFile, err := j.Def.FailureSuffix.Replace(j.OriginalFile, "", -1, -1)
 	if err != nil {
-		// he assumption here is that the above function may return an error
+		// The assumption here is that the above function may return an error
 		// but this error can only depend on the regexp, the replacement,
 		// the startAt and the count/ Thus, if it fails, the error is
 		// unrelated to the input stream, which is the only user-provided
