@@ -555,12 +555,12 @@ describe("YieldManager contract - funding ETH", () => {
 
   describe("delegatecall helper for withdraw from yield provider helper", () => {
     it("Should revert if the YieldProvider does not have sufficient balance", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const { mockYieldProviderAddress, mockWithdrawTarget } = await addMockYieldProvider(yieldManager);
       const call = yieldManager
         .connect(nativeYieldOperator)
         .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, 1n);
 
-      await expect(call).to.be.revertedWithPanic(0x11);
+      await expect(call).to.be.revertedWithCustomError(mockWithdrawTarget, "MockWithdrawFailed");
     });
     it("Should revert if receiveCaller not configured correctly", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);

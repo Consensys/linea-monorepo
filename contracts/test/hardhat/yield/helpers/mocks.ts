@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { YieldProviderRegistration } from "./types";
-import { deployMockYieldProvider } from "./deploy";
+import { deployMockWithdrawTarget, deployMockYieldProvider } from "./deploy";
 import { TestYieldManager } from "contracts/typechain-types";
 import { getAccountsFixture } from "../../common/helpers";
 
@@ -24,5 +24,10 @@ export const addMockYieldProvider = async (yieldManager: TestYieldManager) => {
   const mockYieldProviderAddress = await mockYieldProvider.getAddress();
   const mockRegistration = buildMockYieldProviderRegistration();
   await yieldManager.connect(operationalSafe).addYieldProvider(mockYieldProviderAddress, mockRegistration);
-  return { mockYieldProvider, mockYieldProviderAddress, mockRegistration };
+  const mockWithdrawTarget = await deployMockWithdrawTarget();
+  const mockWithdrawTargetAddress = await mockWithdrawTarget.getAddress();
+  await yieldManager
+    .connect(operationalSafe)
+    .setMockWithdrawTarget(mockYieldProviderAddress, mockWithdrawTargetAddress);
+  return { mockWithdrawTarget, mockYieldProvider, mockYieldProviderAddress, mockRegistration };
 };

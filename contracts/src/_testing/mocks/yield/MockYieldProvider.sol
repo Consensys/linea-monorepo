@@ -4,13 +4,23 @@ pragma solidity ^0.8.0;
 import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
 import { YieldManagerStorageLayout } from "../../../yield/YieldManagerStorageLayout.sol";
 import { MockYieldProviderStorageLayout } from "./MockYieldProviderStorageLayout.sol";
+import { IMockWithdrawTarget } from "./MockWithdrawTarget.sol";
 
-contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {  
+contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
   function withdrawableValue(address _yieldProvider) external view returns (uint256 availableBalance) {
     return withdrawableValueReturnVal(_yieldProvider);
   }
 
-  function fundYieldProvider(address _yieldProvider, uint256 _amount) external {}
+  error FundMockWithdrawTargetFailed();
+
+  // Route to MockWithdrawTarget
+  function fundYieldProvider(address _yieldProvider, uint256 _amount) external {
+    address mockWithdrawTargetAddress = getMockWithdrawTarget(_yieldProvider);
+    (bool success, bytes memory returnData) = mockWithdrawTargetAddress.call{value: _amount}("");
+    if (!success) {
+      revert FundMockWithdrawTargetFailed();
+    }
+  }
 
   function reportYield(address _yieldProvider) external returns (uint256 newReportedYield) {
     return reportYieldReturnVal(_yieldProvider);
@@ -33,18 +43,18 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
     return unstakePermissionlessReturnVal(_yieldProvider);
   }
 
-  event ReceiveCallerConfirmation(address indexed receiveCaller);
-
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
-    (bool success, bytes memory returnData) = address(this).call{value: _amount}("");
-    if (!success) {
-      if (returnData.length > 0) {
-          /// @solidity memory-safe-assembly
-          assembly {
-              revert(add(32, returnData), mload(returnData))
-          }
-      }
-    }
+    IMockWithdrawTarget mockWithdrawTarget = IMockWithdrawTarget(getMockWithdrawTarget(_yieldProvider));
+    mockWithdrawTarget.withdraw(_amount, address(this));
+    // (bool success, bytes memory returnData) = address(this).call{value: _amount}("");
+    // if (!success) {
+    //   if (returnData.length > 0) {
+    //       /// @solidity memory-safe-assembly
+    //       assembly {
+    //           revert(add(32, returnData), mload(returnData))
+    //       }
+    //   }
+    // }
   }
 
   function pauseStaking(address _yieldProvider) external {}

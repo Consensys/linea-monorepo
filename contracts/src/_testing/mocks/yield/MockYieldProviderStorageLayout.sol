@@ -17,6 +17,7 @@ abstract contract MockYieldProviderStorageLayout {
     uint256 reportYieldReturnVal;
     uint256 payLSTPrincipalReturnVal;
     uint256 unstakePermissionlessReturnVal;
+    address mockWithdrawTarget;
   }
 
   function _getMockYieldProviderStorage(address _yieldProvider) internal view returns (MockYieldProviderStorage storage) {
@@ -30,6 +31,10 @@ abstract contract MockYieldProviderStorageLayout {
   /*//////////////////////////////////////////////////////////////
                             MOCK HELPERS
   //////////////////////////////////////////////////////////////*/
+
+  function setMockWithdrawTarget(address _yieldProvider, address _val) external {
+    _getMockYieldProviderStorage(_yieldProvider).mockWithdrawTarget = _val;
+  }
 
   function setWithdrawableValueReturnVal(address _yieldProvider, uint256 _val) external {
     _getMockYieldProviderStorage(_yieldProvider).withdrawableValueReturnVal = _val;
@@ -45,6 +50,10 @@ abstract contract MockYieldProviderStorageLayout {
 
   function setUnstakePermissionlessReturnVal(address _yieldProvider, uint256 _val) external {
     _getMockYieldProviderStorage(_yieldProvider).unstakePermissionlessReturnVal = _val;
+  }
+
+  function getMockWithdrawTarget(address _yieldProvider) public view returns (address) {
+    return _getMockYieldProviderStorage(_yieldProvider).mockWithdrawTarget;
   }
 
   function withdrawableValueReturnVal(address _yieldProvider) public view returns (uint256) {

@@ -16,7 +16,7 @@ import {
 } from "contracts/common/constants";
 import { YIELD_MANAGER_INITIALIZE_SIGNATURE } from "contracts/common/constants";
 import { deployUpgradableWithConstructorArgs } from "../../common/deployment";
-import { TestYieldManager, MockLineaRollup, MockYieldProvider } from "contracts/typechain-types";
+import { TestYieldManager, MockLineaRollup, MockYieldProvider, MockWithdrawTarget } from "contracts/typechain-types";
 import { YieldManagerInitializationData } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
@@ -55,6 +55,13 @@ export async function deployMockLineaRollup(): Promise<MockLineaRollup> {
   const mockYieldManager = await mockYieldManagerFactory.deploy();
   await mockYieldManager.waitForDeployment();
   return await mockYieldManager;
+}
+
+export async function deployMockWithdrawTarget(): Promise<MockWithdrawTarget> {
+  const factory = await ethers.getContractFactory("MockWithdrawTarget");
+  const mockWithdrawTarget = await factory.deploy();
+  await mockWithdrawTarget.waitForDeployment();
+  return await mockWithdrawTarget;
 }
 
 export async function deployMockYieldProvider(): Promise<MockYieldProvider> {
