@@ -199,6 +199,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(_liabilityShares);
     // If true, this means an external actor settled liabilities.
     if (liabilityETH < _lstLiabilityPrincipalCached) {
+      uint256 lstLiabilityPrincipalDecrement = liabilityETH - _lstLiabilityPrincipalCached;
+      // Any decrement in lstLiabilityPrincipal must be 1:1 matched with decrements in userFunds and _userFundsInYieldProvidersTotal.
+      _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _lstLiabilityPrincipalCached;
+      $$.userFunds -= _lstLiabilityPrincipalCached;
       $$.lstLiabilityPrincipal = liabilityETH;
       return (liabilityETH, true);
     } else {
@@ -256,7 +260,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   /**
    * @notice Reduces the outstanding LST liability principal.
    * @dev Called after the YieldManager has reserved `_availableFunds` for liability
-   *      settlement. Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
+   *      settlement. Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage.
    * @param _yieldProvider The yield provider address.
    * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
    * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
