@@ -32,7 +32,7 @@ start_instance() {
   echo "→ Starting controller (local-id=${local_id}) with config ${cfg}"
   echo "  Log file: ${logf}"
 
-  "$BIN" --config "$cfg" --local-id "$local_id" >> "$logf" 2>&1 &
+  "$BIN" --config "$cfg" --local-id "$local_id" > "$logf" 2>&1 &
   local pid=$!
   PIDS+=("$pid")
   echo "  PID: $pid"
@@ -41,9 +41,11 @@ start_instance() {
 shutdown_all() {
   echo ""
   echo "⚙️  Shutting down controllers..."
+
+  # Kill tracked controller PIDs
   for pid in "${PIDS[@]:-}"; do
     if kill -0 "$pid" 2>/dev/null; then
-      echo "  Sending SIGTERM to pid $pid"
+      echo "  Sending SIGTERM to controller pid $pid"
       kill -TERM "$pid" 2>/dev/null || true
     fi
   done
@@ -55,7 +57,18 @@ shutdown_all() {
       kill -KILL "$pid" 2>/dev/null || true
     fi
   done
-  echo "Shutdown complete."
+
+  # Kill any remaining 'prover prove' processes
+  echo "⚙️  Killing any remaining 'prover prove' processes..."
+  pkill -f "prover prove" 2>/dev/null || true
+
+  # Optional: clean up /tmp/exec-limitless
+  if [ -d "/tmp/exec-limitless" ]; then
+    echo "⚙️  Cleaning /tmp/exec-limitless..."
+    rm -rf /tmp/exec-limitless/* || true
+  fi
+
+  echo "✅ Shutdown complete."
 }
 
 trap 'shutdown_all; exit 0' INT TERM
@@ -75,7 +88,7 @@ done
 mkdir -p "$LOG_DIR"
 
 # ====== START CONTROLLERS ======
-echo "Launching controllers from $BASE_DIR"
+echo "🚀 Launching controllers from $BASE_DIR"
 echo "  GL_WORKERS=$GL_WORKERS"
 echo "  LPP_WORKERS=$LPP_WORKERS"
 echo
@@ -97,7 +110,7 @@ for ((i=1; i<=LPP_WORKERS; i++)); do
 done
 
 echo
-echo " All controllers started successfully!"
+echo "✅ All controllers started successfully!"
 echo "  PIDs: ${PIDS[*]}"
 echo "  Logs are in: $LOG_DIR"
 echo
@@ -109,4 +122,4 @@ for pid in "${PIDS[@]}"; do
   wait "$pid" || true
 done
 
-echo " All child controllers exited."
+echo "🛑 All child controllers exited."
