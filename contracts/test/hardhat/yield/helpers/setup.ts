@@ -1,5 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { MockYieldProvider, TestYieldManager } from "contracts/typechain-types";
+import { ethers } from "hardhat";
 
 export const setupReceiveCallerForSuccessfulYieldProviderWithdrawal = async (
   testYieldManager: TestYieldManager,
@@ -22,6 +23,13 @@ export const setupSuccessfulYieldProviderWithdrawal = async (
 ) => {
   await setupReceiveCallerForSuccessfulYieldProviderWithdrawal(testYieldManager, mockYieldProvider, signer);
   const mockYieldProviderAddress = await mockYieldProvider.getAddress();
-  await testYieldManager.connect(signer).setYieldProviderUserFunds(mockYieldProviderAddress, withdrawAmount);
-  await testYieldManager.connect(signer).setUserFundsInYieldProvidersTotal(withdrawAmount);
+  const yieldManagerAddress = await testYieldManager.getAddress();
+  // Funding cannot happen if withdrawal reserve in deficit
+  const minimumReserveAmount = await testYieldManager.minimumWithdrawalReserveAmount();
+  const l1MessageServiceAddress = await testYieldManager.getL1MessageService();
+  await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, ethers.toBeHex(minimumReserveAmount)]);
+  await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(withdrawAmount)]);
+  await testYieldManager.connect(signer).fundYieldProvider(mockYieldProviderAddress, withdrawAmount);
+  // await testYieldManager.connect(signer).setYieldProviderUserFunds(mockYieldProviderAddress, withdrawAmount);
+  // await testYieldManager.connect(signer).setUserFundsInYieldProvidersTotal(withdrawAmount);
 };

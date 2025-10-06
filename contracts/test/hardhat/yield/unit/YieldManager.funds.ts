@@ -21,7 +21,7 @@ import {
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { setupSuccessfulYieldProviderWithdrawal } from "../helpers";
 
-describe("Linea Rollup contract", () => {
+describe("YieldManager contract - funding ETH", () => {
   let yieldManager: TestYieldManager;
 
   let securityCouncil: SignerWithAddress;
@@ -685,13 +685,13 @@ describe("Linea Rollup contract", () => {
       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
       const withdrawRequestAmount = ONE_ETHER;
       const lstLiabilityPrincipalForPayment = ONE_ETHER / 2n;
-      await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, lstLiabilityPrincipalForPayment);
       await setupSuccessfulYieldProviderWithdrawal(
         yieldManager,
         mockYieldProvider,
         nativeYieldOperator,
         withdrawRequestAmount,
       );
+      await yieldManager.setPayLSTPrincipalReturnVal(mockYieldProviderAddress, lstLiabilityPrincipalForPayment);
       const targetDeficit = withdrawRequestAmount + 1n;
 
       // Act

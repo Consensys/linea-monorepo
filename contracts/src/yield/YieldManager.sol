@@ -699,6 +699,9 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount))
     );
     TRANSIENT_RECEIVE_CALLER = address(0);
+    // Edge case here where withdrawableValue > userFunds.
+    // Cause some YieldProvider funds to become unwithdrawable temporarily.
+    // This is tolerated because it is temporary until the next reportYield() call, where we assume the YieldManager reports new surplus as yield.
     $$.userFunds -= _amount;
     _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
     // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
