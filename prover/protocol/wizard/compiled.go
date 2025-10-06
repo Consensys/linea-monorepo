@@ -155,8 +155,8 @@ func (c *CompiledIOP) ListCommitments() []ifaces.ColID {
 // round and returns the corresponding [ifaces.Column] object which summarizes
 // the metadata of the column. The user should provide a unique identifier `name`
 // and specify a size for the column.
-func (c *CompiledIOP) InsertCommit(round int, name ifaces.ColID, size int) ifaces.Column {
-	return c.InsertColumn(round, name, size, column.Committed)
+func (c *CompiledIOP) InsertCommit(round int, name ifaces.ColID, size int, isBase bool) ifaces.Column {
+	return c.InsertColumn(round, name, size, column.Committed, isBase)
 }
 
 // InsertColumn registers a new column in the protocol at a given
@@ -175,7 +175,7 @@ func (c *CompiledIOP) InsertCommit(round int, name ifaces.ColID, size int) iface
 //   - if the name is the empty string
 //   - if the size of the column is not a power of 2
 //   - if a column using the same name has already been registered
-func (c *CompiledIOP) InsertColumn(round int, name ifaces.ColID, size int, status column.Status) ifaces.Column {
+func (c *CompiledIOP) InsertColumn(round int, name ifaces.ColID, size int, status column.Status, isBase bool) ifaces.Column {
 	// Panic if the size is not a power of 2
 	if !utils.IsPowerOfTwo(size) {
 		utils.Panic("Registering column %v with a non power of two size = %v", name, size)
@@ -192,7 +192,7 @@ func (c *CompiledIOP) InsertColumn(round int, name ifaces.ColID, size int, statu
 	}
 
 	// This performs all the checks
-	return c.Columns.AddToRound(round, name, size, status)
+	return c.Columns.AddToRound(round, name, size, status, isBase)
 }
 
 /*
@@ -465,7 +465,7 @@ func (c *CompiledIOP) InsertPrecomputed(name ifaces.ColID, v smartvectors.SmartV
 	}
 
 	c.Precomputed.InsertNew(name, v)
-	return c.Columns.AddToRound(0, name, v.Len(), column.Precomputed)
+	return c.Columns.AddToRound(0, name, v.Len(), column.Precomputed, true)
 }
 
 // InsertProof registers a proof message by specifying its size and providing
@@ -475,14 +475,14 @@ func (c *CompiledIOP) InsertPrecomputed(name ifaces.ColID, v smartvectors.SmartV
 // end of the current prover's round.
 //
 // The name must be non-empty and unique and the size must be a power of 2.
-func (c *CompiledIOP) InsertProof(round int, name ifaces.ColID, size int) (msg ifaces.Column) {
+func (c *CompiledIOP) InsertProof(round int, name ifaces.ColID, size int, isBase bool) (msg ifaces.Column) {
 
 	// Common : No zero length
 	if size == 0 {
 		utils.Panic("when registering %v, VecType with length zero", name)
 	}
 
-	return c.Columns.AddToRound(round, name, size, column.Proof)
+	return c.Columns.AddToRound(round, name, size, column.Proof, isBase)
 }
 
 // InsertRange registers [query.Range] in the CompiledIOP. Namely, it ensures
@@ -648,13 +648,13 @@ func (c *CompiledIOP) InsertPoseidon2(round int, id ifaces.QueryID, block, old, 
 // RegistersVerifyingKey registers a column as part of the verifying key of the
 // protocol; meaning a column whose assignment is static and which is visible
 // to the verifier.
-func (c *CompiledIOP) RegisterVerifyingKey(name ifaces.ColID, witness ifaces.ColAssignment) ifaces.Column {
+func (c *CompiledIOP) RegisterVerifyingKey(name ifaces.ColID, witness ifaces.ColAssignment, isBase bool) ifaces.Column {
 	size := witness.Len()
 	if size == 0 {
 		utils.Panic("when registering %v, VecType with length zero", name)
 	}
 	c.Precomputed.InsertNew(name, witness)
-	return c.InsertColumn(0, name, size, column.VerifyingKey)
+	return c.InsertColumn(0, name, size, column.VerifyingKey, isBase)
 }
 
 // RegisterProverAction registers an action to be accomplished by the prover

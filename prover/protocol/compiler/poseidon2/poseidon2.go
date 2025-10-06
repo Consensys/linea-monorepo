@@ -32,33 +32,9 @@ type Poseidon2Context struct {
 	// all unique triplets (oldState, blocks, newStates).
 	StackedNewStates [blockSize]ifaces.Column
 
-	// Internal data columns are organized by block location index, then by poseidon2Round index (each ifaces.Column stores query values).
-	//
-	// MatMulM4Tmp stores all the intermediate results of the Poseidon2 matMulM4InPlace computation.
-	// Refer to the t01, t23, t0123, t01123, t01233 values of all input chunks:
-	// https://github.com/Consensys/gnark-crypto/blob/master/field/koalabear/poseidon2/poseidon2.go#L178
-	MatMulM4Tmp [matMulM4TmpSize][]ifaces.Column
-	// MatMulM4 stores all the round outputs of the Poseidon2 matMulM4InPlace computation.
-	MatMulM4 [width][]ifaces.Column
-	// T stores the partial sum of MatMulM4.
-	// T[j] = sum_{i = 0,1,2,3} MatMulM4[4*i+j], for j = 0,1,2,3
-	T [tSize][]ifaces.Column
-	// MatMulExternal stores all the round outputs of the Poseidon2 matMulExternalInPlace computation.
-	// MatMulExternal[4i+j] = MatMulM4[4i+j] + T[j], for i, j = 0,1,2,3
-	MatMulExternal [width][]ifaces.Column
-	// AddRoundKey stores all the round outputs of the Poseidon2 addRoundKeyInPlace computation.
-	// AddRoundKey[i] = MatMulExternal[i] + RoundKeys[round][i]
-	AddRoundKey [width][]ifaces.Column
-	// SBox stores all the round outputs of the Poseidon2 sBox computation.
-	// SBox[i]=AddRoundKey[i] ^3
-	SBox [width][]ifaces.Column
-	// SBox stores all the SBox sum in the Poseidon2 matMulInternalInPlace computation.
-	// sum = ∑ SBox[i]
-	SBoxSum []ifaces.Column
-	// MatMulInternal stores all the round outputs of the Poseidon2 matMulInternalInPlace computation.
-	// mul by diag16:
-	// [-2, 1, 2, 1/2, 3, 4, -1/2, -3, -4, 1/2^8, 1/8, 1/2^24, -1/2^8, -1/8, -1/16, -1/2^24]
-	MatMulInternal [width][]ifaces.Column
+	// Interm stores the intermediate values of the Poseidon2 computation. This
+	// internal to the compiler.
+	Interm [][]ifaces.Column
 }
 
 // CompilePoseidon2 compiles all the Poseidon2 queries in the [comp] object. The compiler
@@ -108,15 +84,15 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 	for block := 0; block < blockSize; block++ {
 		ctx.StackedOldStates[block] = comp.InsertCommit(protocolRoundID,
 			ifaces.ColIDf("Poseidon2_STACKED_OLD_STATES_SelfRecursionCount_%v_ID_%v_BLOCK_%v", comp.SelfRecursionCount, uniqueID(comp), block),
-			totalSize)
+			totalSize, true)
 
 		ctx.StackedBlocks[block] = comp.InsertCommit(protocolRoundID,
 			ifaces.ColIDf("Poseidon2_STACKED_BLOCKS_SelfRecursionCount_%v_ID_%v_BLOCK_%v", comp.SelfRecursionCount, uniqueID(comp), block),
-			totalSize)
+			totalSize, true)
 
 		ctx.StackedNewStates[block] = comp.InsertCommit(protocolRoundID,
 			ifaces.ColIDf("Poseidon2_STACKED_NEW_STATES_SelfRecursionCount_%v_ID_%v_BLOCK_%v", comp.SelfRecursionCount, uniqueID(comp), block),
-			totalSize)
+			totalSize, true)
 	}
 
 	input := make([]ifaces.Column, width)
@@ -130,7 +106,7 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 	feedForwardInput := make([]ifaces.Column, blockSize)
 	copy(feedForwardInput, ctx.StackedBlocks[:])
 
-	checkPoseidon2BlockCompressionExpression(
+	ctx.Interm = checkPoseidon2BlockCompressionExpression(
 		comp,
 		asExprs(ctx.StackedOldStates[:]),
 		asExprs(ctx.StackedBlocks[:]),
@@ -507,7 +483,7 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 	for round := 1; round < fullRounds-1; round++ {
 		for col := 0; col < width; col++ {
 			run.AssignColumn(
-				ifaces.ColIDf("POSEIDON2_ROUND_%v_%v", round, col),
+				ctx.Interm[round][col].GetColID(),
 				smartvectors.RightPadded(
 					intermediateStates[round][col][:effectiveSize],
 					intermediateStates[round][col][effectiveSize],

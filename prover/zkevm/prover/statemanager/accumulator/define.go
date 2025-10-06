@@ -207,45 +207,45 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	am.Comp = comp
 
 	// Initializes the columns
-	am.Cols.Leaves = comp.InsertCommit(am.Round, ACCUMULATOR_LEAVES_NAME, am.NumRows())
-	am.Cols.Roots = comp.InsertCommit(am.Round, ACCUMULATOR_ROOTS_NAME, am.NumRows())
-	am.Cols.Positions = comp.InsertCommit(am.Round, ACCUMULATOR_POSITIONS_NAME, am.NumRows())
+	am.Cols.Leaves = comp.InsertCommit(am.Round, ACCUMULATOR_LEAVES_NAME, am.NumRows(), true)
+	am.Cols.Roots = comp.InsertCommit(am.Round, ACCUMULATOR_ROOTS_NAME, am.NumRows(), true)
+	am.Cols.Positions = comp.InsertCommit(am.Round, ACCUMULATOR_POSITIONS_NAME, am.NumRows(), true)
 	am.Cols.Proofs = merkle.NewProof(comp, am.Round, ACCUMULATOR_PROOFS_NAME, am.MerkleTreeDepth, am.NumRows())
-	am.Cols.UseNextMerkleProof = comp.InsertCommit(am.Round, ACCUMULATOR_USE_NEXT_MERKLE_PROOF_NAME, am.NumRows())
-	am.Cols.IsActiveAccumulator = comp.InsertCommit(am.Round, ACCUMULATOR_IS_ACTIVE_NAME, am.NumRows())
-	am.Cols.AccumulatorCounter = comp.InsertCommit(am.Round, ACCUMULATOR_COUNTER_NAME, am.NumRows())
-	am.Cols.IsFirst = comp.InsertCommit(am.Round, ACCUMULATOR_IS_FIRST_NAME, am.NumRows())
-	am.Cols.IsInsert = comp.InsertCommit(am.Round, ACCUMULATOR_IS_INSERT_NAME, am.NumRows())
-	am.Cols.IsDelete = comp.InsertCommit(am.Round, ACCUMULATOR_IS_DELETE_NAME, am.NumRows())
-	am.Cols.IsUpdate = comp.InsertCommit(am.Round, ACCUMULATOR_IS_UPDATE_NAME, am.NumRows())
-	am.Cols.IsReadZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_ZERO_NAME, am.NumRows())
-	am.Cols.IsReadNonZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_NON_ZERO_NAME, am.NumRows())
+	am.Cols.UseNextMerkleProof = comp.InsertCommit(am.Round, ACCUMULATOR_USE_NEXT_MERKLE_PROOF_NAME, am.NumRows(), true)
+	am.Cols.IsActiveAccumulator = comp.InsertCommit(am.Round, ACCUMULATOR_IS_ACTIVE_NAME, am.NumRows(), true)
+	am.Cols.AccumulatorCounter = comp.InsertCommit(am.Round, ACCUMULATOR_COUNTER_NAME, am.NumRows(), true)
+	am.Cols.IsFirst = comp.InsertCommit(am.Round, ACCUMULATOR_IS_FIRST_NAME, am.NumRows(), true)
+	am.Cols.IsInsert = comp.InsertCommit(am.Round, ACCUMULATOR_IS_INSERT_NAME, am.NumRows(), true)
+	am.Cols.IsDelete = comp.InsertCommit(am.Round, ACCUMULATOR_IS_DELETE_NAME, am.NumRows(), true)
+	am.Cols.IsUpdate = comp.InsertCommit(am.Round, ACCUMULATOR_IS_UPDATE_NAME, am.NumRows(), true)
+	am.Cols.IsReadZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_ZERO_NAME, am.NumRows(), true)
+	am.Cols.IsReadNonZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_NON_ZERO_NAME, am.NumRows(), true)
 
 	// columns for the sandwitch check
-	am.Cols.HKey = comp.InsertCommit(am.Round, ACCUMULATOR_HKEY_NAME, am.NumRows())
-	am.Cols.HKeyMinus = comp.InsertCommit(am.Round, ACCUMULATOR_HKEY_MINUS_NAME, am.NumRows())
-	am.Cols.HKeyPlus = comp.InsertCommit(am.Round, ACCUMULATOR_HKEY_PLUS_NAME, am.NumRows())
+	am.Cols.HKey = comp.InsertCommit(am.Round, ACCUMULATOR_HKEY_NAME, am.NumRows(), true)
+	am.Cols.HKeyMinus = comp.InsertCommit(am.Round, ACCUMULATOR_HKEY_MINUS_NAME, am.NumRows(), true)
+	am.Cols.HKeyPlus = comp.InsertCommit(am.Round, ACCUMULATOR_HKEY_PLUS_NAME, am.NumRows(), true)
 
 	// columns for the pointer check
-	am.Cols.LeafMinusIndex = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_MINUS_INDEX_NAME, am.NumRows())
-	am.Cols.LeafMinusNext = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_MINUS_NEXT_NAME, am.NumRows())
-	am.Cols.LeafPlusIndex = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_PLUS_INDEX_NAME, am.NumRows())
-	am.Cols.LeafPlusPrev = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_PLUS_PREV_NAME, am.NumRows())
-	am.Cols.LeafDeletedIndex = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_DELETED_INDEX_NAME, am.NumRows())
-	am.Cols.LeafDeletedPrev = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_DELETED_PREV_NAME, am.NumRows())
-	am.Cols.LeafDeletedNext = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_DELETED_NEXT_NAME, am.NumRows())
+	am.Cols.LeafMinusIndex = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_MINUS_INDEX_NAME, am.NumRows(), true)
+	am.Cols.LeafMinusNext = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_MINUS_NEXT_NAME, am.NumRows(), true)
+	am.Cols.LeafPlusIndex = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_PLUS_INDEX_NAME, am.NumRows(), true)
+	am.Cols.LeafPlusPrev = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_PLUS_PREV_NAME, am.NumRows(), true)
+	am.Cols.LeafDeletedIndex = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_DELETED_INDEX_NAME, am.NumRows(), true)
+	am.Cols.LeafDeletedPrev = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_DELETED_PREV_NAME, am.NumRows(), true)
+	am.Cols.LeafDeletedNext = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_DELETED_NEXT_NAME, am.NumRows(), true)
 
 	// Leaf hashing columns commitments
 	am.commitLeafHashingCols()
 
 	// NextFreeNode check columns commitments
-	am.Cols.NextFreeNode = comp.InsertCommit(am.Round, ACCUMULATOR_NEXT_FREE_NODE_NAME, am.NumRows())
-	am.Cols.InsertionPath = comp.InsertCommit(am.Round, ACCUMULATOR_INSERTION_PATH_NAME, am.NumRows())
-	am.Cols.IsInsertRow3 = comp.InsertCommit(am.Round, ACCUMULATOR_IS_INSERT_ROW3_NAME, am.NumRows())
+	am.Cols.NextFreeNode = comp.InsertCommit(am.Round, ACCUMULATOR_NEXT_FREE_NODE_NAME, am.NumRows(), true)
+	am.Cols.InsertionPath = comp.InsertCommit(am.Round, ACCUMULATOR_INSERTION_PATH_NAME, am.NumRows(), true)
+	am.Cols.IsInsertRow3 = comp.InsertCommit(am.Round, ACCUMULATOR_IS_INSERT_ROW3_NAME, am.NumRows(), true)
 
 	// TopRoot hash check columns commitments
-	am.Cols.IntermTopRoot = comp.InsertCommit(am.Round, ACCUMULATOR_INTERM_TOP_ROOT_NAME, am.NumRows())
-	am.Cols.TopRoot = comp.InsertCommit(am.Round, ACCUMULATOR_TOP_ROOT_NAME, am.NumRows())
+	am.Cols.IntermTopRoot = comp.InsertCommit(am.Round, ACCUMULATOR_INTERM_TOP_ROOT_NAME, am.NumRows(), true)
+	am.Cols.TopRoot = comp.InsertCommit(am.Round, ACCUMULATOR_TOP_ROOT_NAME, am.NumRows(), true)
 
 	// Declare constraints
 
@@ -330,15 +330,15 @@ func (am *Module) commitLeafHashingCols() {
 	ACCUMULATOR_INTERM[2] = "ACCUMULATOR_INTERM_HKEY"
 	am.Cols.Interm = make([]ifaces.Column, 3)
 	am.Cols.Zero = verifiercol.NewConstantCol(field.Zero(), am.NumRows(), "merkle-tree-accumulator")
-	am.Cols.LeafOpenings.Prev = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_PREV), am.NumRows())
-	am.Cols.LeafOpenings.Next = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_NEXT), am.NumRows())
-	am.Cols.LeafOpenings.HKey = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_HKEY), am.NumRows())
-	am.Cols.LeafOpenings.HVal = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_HVAL), am.NumRows())
+	am.Cols.LeafOpenings.Prev = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_PREV), am.NumRows(), true)
+	am.Cols.LeafOpenings.Next = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_NEXT), am.NumRows(), true)
+	am.Cols.LeafOpenings.HKey = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_HKEY), am.NumRows(), true)
+	am.Cols.LeafOpenings.HVal = am.Comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_HVAL), am.NumRows(), true)
 	for i := 0; i < len(am.Cols.Interm); i++ {
-		am.Cols.Interm[i] = am.Comp.InsertCommit(am.Round, ACCUMULATOR_INTERM[i], am.NumRows())
+		am.Cols.Interm[i] = am.Comp.InsertCommit(am.Round, ACCUMULATOR_INTERM[i], am.NumRows(), true)
 	}
-	am.Cols.LeafHashes = am.Comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_HASHES_NAME, am.NumRows())
-	am.Cols.IsEmptyLeaf = am.Comp.InsertCommit(am.Round, ACCUMULATOR_IS_EMPTY_LEAF_NAME, am.NumRows())
+	am.Cols.LeafHashes = am.Comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_HASHES_NAME, am.NumRows(), true)
+	am.Cols.IsEmptyLeaf = am.Comp.InsertCommit(am.Round, ACCUMULATOR_IS_EMPTY_LEAF_NAME, am.NumRows(), true)
 
 }
 

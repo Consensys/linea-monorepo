@@ -111,18 +111,21 @@ func (m *Poseidon2Testcase) Define(comp *wizard.CompiledIOP) {
 				0,
 				ifaces.ColIDf("%v_BLOCKS_%v_%v", m.NameStr, i, j),
 				size,
+				true,
 			)
 
 			oldStates[j] = comp.InsertCommit(
 				0,
 				ifaces.ColIDf("%v_OLD_STATES_%v_%v", m.NameStr, i, j),
 				size,
+				true,
 			)
 
 			newStates[j] = comp.InsertCommit(
 				0,
 				ifaces.ColIDf("%v_NEW_STATES_%v_%v", m.NameStr, i, j),
 				size,
+				true,
 			)
 
 		}

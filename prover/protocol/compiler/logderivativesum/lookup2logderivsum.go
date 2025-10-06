@@ -346,6 +346,7 @@ func compileLookupTable(
 				round,
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
+				true,
 			)
 		}
 
@@ -370,6 +371,7 @@ func compileLookupTable(
 				round,
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
+				true,
 			)
 
 			// This is to tell the limitless prover that the column should be extended

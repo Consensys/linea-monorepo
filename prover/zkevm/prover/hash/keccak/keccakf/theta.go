@@ -64,21 +64,21 @@ func (t *theta) declareColumn(comp *wizard.CompiledIOP, round, numKeccakf int) {
 		for y := 0; y < 5; y++ {
 			//
 			t.AThetaBaseA[x][y] = comp.InsertCommit(
-				round, deriveName("A_THETA_BASE1", x, y), colSize,
+				round, deriveName("A_THETA_BASE1", x, y), colSize, true,
 			)
 			//
 			t.AThetaBaseAMsb[x][y] = comp.InsertCommit(
-				round, deriveName("A_THETA_BASE1_MBS", x, y), colSize,
+				round, deriveName("A_THETA_BASE1_MBS", x, y), colSize, true,
 			)
 			//
 			for k := 0; k < numSlice; k++ {
 				//
 				t.AThetaSlicedBaseA[x][y][k] = comp.InsertCommit(
-					round, deriveName("A_THETA_BASE1_SLICED", x, y, k), colSize,
+					round, deriveName("A_THETA_BASE1_SLICED", x, y, k), colSize, true,
 				)
 				//
 				t.AThetaSlicedBaseB[x][y][k] = comp.InsertCommit(
-					round, deriveName("A_THETA_BASE2_SLICED", x, y, k), colSize,
+					round, deriveName("A_THETA_BASE2_SLICED", x, y, k), colSize, true,
 				)
 			}
 		}

@@ -5,11 +5,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -136,10 +138,67 @@ func BenchmarkCompilerWithoutSelfRecursion(b *testing.B) {
 	}
 }
 
+func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
+
+	comp := wizard.Compile(
+		// Round of recursion 0
+		sbc.Define,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<20),
+			compiler.WithStitcherMinSize(1<<8),
+		),
+		vortex.Compile(
+			2,
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+		selfrecursion.SelfRecurse,
+
+		// Round of recursion 1
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<19),
+			compiler.WithStitcherMinSize(1<<8),
+		),
+		vortex.Compile(
+			16,
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+		selfrecursion.SelfRecurse,
+
+		// Round of recursion 2
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<18),
+			compiler.WithStitcherMinSize(1<<8),
+		),
+		vortex.Compile(
+			16,
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+		selfrecursion.SelfRecurse,
+
+		// Round of recursion 2
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<17),
+			compiler.WithStitcherMinSize(1<<8),
+		),
+	)
+
+	csvF := files.MustOverwrite("selfrecursion-data.csv")
+	logdata.GenCSV(csvF, logdata.IncludeNonIgnoredColumnCSVFilter)(comp)
+}
+
 func BenchmarkCompilerWithSelfRecursion(b *testing.B) {
 	for _, bc := range benchCases {
 		b.Run(bc.Name, func(b *testing.B) {
-			benchmarkCompilerWithSelfRecursion(b, bc)
+			profileSelfRecursionCompilation(b, bc)
 		})
 	}
 }
@@ -174,7 +233,7 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<18),
+			compiler.WithTargetColSize(1<<20),
 			compiler.WithStitcherMinSize(1<<8),
 		),
 		vortex.Compile(
@@ -188,13 +247,13 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		// Round of recursion 1
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<16),
+			compiler.WithTargetColSize(1<<19),
 			compiler.WithStitcherMinSize(1<<8),
 		),
 		vortex.Compile(
-			8,
+			16,
 			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(256),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 		selfrecursion.SelfRecurse,
@@ -202,16 +261,33 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		// Round of recursion 2
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<13),
+			compiler.WithTargetColSize(1<<18),
 			compiler.WithStitcherMinSize(1<<8),
 		),
 		vortex.Compile(
-			8,
+			16,
 			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(256),
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+
+		// Round of recursion 2
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<17),
+			compiler.WithStitcherMinSize(1<<8),
+		),
+		vortex.Compile(
+			16,
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)
+
+	if true {
+		return
+	}
 
 	b.ResetTimer()
 
@@ -284,8 +360,8 @@ func defineLookupModule(comp *wizard.CompiledIOP, index int, params SubModulePar
 	)
 
 	for i := 0; i < params.NumCol; i++ {
-		si := comp.InsertCommit(0, formatName[ifaces.ColID]("Lookup", index, "S", i), params.NumRow)
-		ti := comp.InsertCommit(0, formatName[ifaces.ColID]("Lookup", index, "T", i), params.NumRowAux)
+		si := comp.InsertCommit(0, formatName[ifaces.ColID]("Lookup", index, "S", i), params.NumRow, true)
+		ti := comp.InsertCommit(0, formatName[ifaces.ColID]("Lookup", index, "T", i), params.NumRowAux, true)
 
 		s = append(s, si)
 		t = append(t, ti)
@@ -317,8 +393,8 @@ func definePermutationModule(comp *wizard.CompiledIOP, index int, params SubModu
 	)
 
 	for i := 0; i < params.NumCol; i++ {
-		ai := comp.InsertCommit(0, formatName[ifaces.ColID]("Permutation", index, "A", i), params.NumRow)
-		bi := comp.InsertCommit(0, formatName[ifaces.ColID]("Permutation", index, "B", i), params.NumRow)
+		ai := comp.InsertCommit(0, formatName[ifaces.ColID]("Permutation", index, "A", i), params.NumRow, true)
+		bi := comp.InsertCommit(0, formatName[ifaces.ColID]("Permutation", index, "B", i), params.NumRow, true)
 
 		a = append(a, ai)
 		b = append(b, bi)
@@ -346,13 +422,13 @@ func defineProjectionModule(comp *wizard.CompiledIOP, index int, params SubModul
 	var (
 		a       = []ifaces.Column{}
 		b       = []ifaces.Column{}
-		aFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "AFilter"), params.NumRow)
-		bFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "BFilter"), params.NumRowAux)
+		aFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "AFilter"), params.NumRow, true)
+		bFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "BFilter"), params.NumRowAux, true)
 	)
 
 	for i := 0; i < params.NumCol; i++ {
-		ai := comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "A", i), params.NumRow)
-		bi := comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "B", i), params.NumRowAux)
+		ai := comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "A", i), params.NumRow, true)
+		bi := comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "B", i), params.NumRowAux, true)
 
 		a = append(a, ai)
 		b = append(b, bi)
@@ -409,7 +485,7 @@ func assignProjectionModule(run *wizard.ProverRuntime, index int, params SubModu
 // starting at 1, 1
 func defineFiboModule(comp *wizard.CompiledIOP, index int, params SubModuleParameters) {
 
-	a := comp.InsertCommit(0, formatName[ifaces.ColID]("Fibo", index), params.NumRow)
+	a := comp.InsertCommit(0, formatName[ifaces.ColID]("Fibo", index), params.NumRow, true)
 
 	comp.InsertGlobal(0, formatName[ifaces.QueryID]("Fibo", index, "Global"), sym.Sub(
 		a,

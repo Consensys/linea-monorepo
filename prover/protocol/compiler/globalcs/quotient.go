@@ -166,6 +166,7 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 				currRound,
 				ifaces.ColID(deriveName(comp, QUOTIENT_POLY_TMPL, ratio, k)),
 				domainSize,
+				false,
 			)
 		}
 	}

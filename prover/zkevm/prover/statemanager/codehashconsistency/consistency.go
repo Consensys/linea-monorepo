@@ -62,13 +62,13 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, m
 	ch := Module{
 		StateSummaryInput: ss,
 		MimcCodeHashInput: mch,
-		IsActive:          comp.InsertCommit(0, ifaces.ColID(name+"_IS_ACTIVE"), size),
+		IsActive:          comp.InsertCommit(0, ifaces.ColID(name+"_IS_ACTIVE"), size, true),
 		StateSumKeccak:    common.NewHiLoColumns(comp, size, name+"_STATE_SUMMARY_KECCAK"),
 		RomKeccak:         common.NewHiLoColumns(comp, size, name+"_ROM_KECCAK"),
-		StateSumMiMC:      comp.InsertCommit(0, ifaces.ColID(name+"_STATE_SUMMARY_MIMC"), size),
-		RomMiMC:           comp.InsertCommit(0, ifaces.ColID(name+"_ROM_MIMC"), size),
-		RomOngoing:        comp.InsertCommit(0, ifaces.ColID(name+"_ROM_ONGOING"), size),
-		StateSumOngoing:   comp.InsertCommit(0, ifaces.ColID(name+"_STATE_SUM_ONGOING"), size),
+		StateSumMiMC:      comp.InsertCommit(0, ifaces.ColID(name+"_STATE_SUMMARY_MIMC"), size, true),
+		RomMiMC:           comp.InsertCommit(0, ifaces.ColID(name+"_ROM_MIMC"), size, true),
+		RomOngoing:        comp.InsertCommit(0, ifaces.ColID(name+"_ROM_ONGOING"), size, true),
+		StateSumOngoing:   comp.InsertCommit(0, ifaces.ColID(name+"_STATE_SUM_ONGOING"), size, true),
 	}
 
 	commonconstraints.MustBeActivationColumns(comp, ch.IsActive)

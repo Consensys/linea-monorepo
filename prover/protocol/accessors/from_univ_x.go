@@ -24,15 +24,14 @@ type FromUnivXAccessor struct {
 	QRound int
 }
 
+// IsBase returns false as this accessor does not refer to a base value.
 func (u *FromUnivXAccessor) IsBase() bool {
-	//TODO implement me
-	return u.Q.Pols[0].IsBase()
-
+	return false
 }
 
 func (u *FromUnivXAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
 	//TODO implement me
-	panic("implement me")
+	panic("called GetValBase on a FromUnivXAccessor; this should be ")
 }
 
 func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {

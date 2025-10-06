@@ -34,11 +34,11 @@ func makeTestCaseLengthConsistency() (
 			}
 		)
 
-		t[0] = comp.InsertCommit(0, "Table_0", size)
-		t[1] = comp.InsertCommit(0, "Table_1", size)
+		t[0] = comp.InsertCommit(0, "Table_0", size, true)
+		t[1] = comp.InsertCommit(0, "Table_1", size, true)
 
-		tLen[0] = comp.InsertCommit(0, "TableLen_0", size)
-		tLen[1] = comp.InsertCommit(0, "TableLen_1", size)
+		tLen[0] = comp.InsertCommit(0, "TableLen_0", size, true)
+		tLen[1] = comp.InsertCommit(0, "TableLen_1", size, true)
 
 		lc = *LengthConsistency(comp, inp)
 	}

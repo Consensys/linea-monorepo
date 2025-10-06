@@ -208,12 +208,14 @@ func (t *LogDerivativeSumTestcase) Define(comp *wizard.CompiledIOP) {
 			0,
 			formatName[ifaces.ColID]("LogDerivative", t.NameStr, "Numerator", i),
 			t.Numerators[i].Len(),
+			smartvectors.IsBase(t.Numerators[i]),
 		)
 
 		denominators[i] = comp.InsertCommit(
 			0,
 			formatName[ifaces.ColID]("LogDerivative", t.NameStr, "Denominator", i),
 			t.Denominators[i].Len(),
+			smartvectors.IsBase(t.Denominators[i]),
 		)
 
 		size := numerators[i].Size()

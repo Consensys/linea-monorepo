@@ -51,7 +51,7 @@ func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) Input {
 // setIsModexp constructs, constraints and set the [isModexpColumn]
 func (i *Input) setIsModexp(comp *wizard.CompiledIOP) {
 
-	i.IsModExp = comp.InsertCommit(0, "MODEXP_INPUT_IS_MODEXP", i.IsModExpBase.Size())
+	i.IsModExp = comp.InsertCommit(0, "MODEXP_INPUT_IS_MODEXP", i.IsModExpBase.Size(), true)
 
 	comp.InsertGlobal(
 		0,

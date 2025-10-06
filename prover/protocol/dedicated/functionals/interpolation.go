@@ -83,6 +83,7 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a ifaces.Accessor, p i
 		maxRound,
 		ifaces.ColIDf("%v_%v", name, INTERPOLATION_POLY),
 		length,
+		false,
 	)
 
 	/*

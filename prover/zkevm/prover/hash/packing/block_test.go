@@ -37,8 +37,8 @@ func makeTestCaseBlockModule(uc generic.HashingUsecase) (
 		comp := build.CompiledIOP
 
 		// commit to isActive
-		isActive = comp.InsertCommit(0, "IsActive", size)
-		isFirstLaneOfHash = comp.InsertCommit(0, "IsFirstLaneOfHash", size)
+		isActive = comp.InsertCommit(0, "IsActive", size, true)
+		isFirstLaneOfHash = comp.InsertCommit(0, "IsFirstLaneOfHash", size, true)
 
 		inp := blockInput{
 			Lanes: laneRepacking{
