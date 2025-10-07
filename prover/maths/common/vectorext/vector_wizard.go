@@ -195,10 +195,10 @@ func PowerVec(x fext.Element, n int) Vector {
 }
 
 // IntoGnarkAssignment converts an array of field.Element into an array of
-// frontend.Variable that can be used to assign a vector of frontend.Variable
+// zk.WrappedVariable that can be used to assign a vector of zk.WrappedVariable
 // in a circuit or to generate a vector of constant in the circuit definition.
-func IntoGnarkAssignment(msgData Vector) []gnarkfext.Element {
-	assignedMsg := []gnarkfext.Element{}
+func IntoGnarkAssignment(msgData Vector) []gnarkfext.E4Gen {
+	assignedMsg := []gnarkfext.E4Gen{}
 	for _, x := range msgData {
 		assignedMsg = append(assignedMsg, gnarkfext.FromValue(x))
 	}

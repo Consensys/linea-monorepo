@@ -44,22 +44,22 @@ func (f RepeatedAccessor) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fex
 	return f.Accessor.GetValExt(run)
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
+func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
@@ -101,8 +101,8 @@ func (f RepeatedAccessor) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignm
 }
 
 // GetColAssignmentGnark returns a gnark assignment of the current column
-func (f RepeatedAccessor) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
-	res := make([]frontend.Variable, f.Size())
+func (f RepeatedAccessor) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
+	res := make([]zk.WrappedVariable, f.Size())
 	x := f.Accessor.GetFrontendVariable(nil, run)
 	for i := range res {
 		res[i] = x
@@ -116,7 +116,7 @@ func (f RepeatedAccessor) GetColAssignmentAt(run ifaces.Runtime, pos int) field.
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (f RepeatedAccessor) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (f RepeatedAccessor) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
 	return f.Accessor.GetFrontendVariable(nil, run)
 }
 

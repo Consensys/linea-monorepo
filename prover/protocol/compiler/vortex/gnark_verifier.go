@@ -29,7 +29,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	}
 
 	// In non-Merkle mode, this is left as empty
-	roots := []frontend.Variable{}
+	roots := []zk.WrappedVariable{}
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
@@ -72,7 +72,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		return &h, err
 	}
 
-	packedMProofs := [8][]frontend.Variable{}
+	packedMProofs := [8][]zk.WrappedVariable{}
 	for i := range packedMProofs {
 		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
 	}
@@ -99,14 +99,14 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]frontend.Variable) {
+func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]zk.WrappedVariable) {
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.
-	ysMap := make(map[ifaces.ColID]frontend.Variable, len(params.Ys))
+	ysMap := make(map[ifaces.ColID]zk.WrappedVariable, len(params.Ys))
 	for i := range query.Pols {
 		ysMap[query.Pols[i].GetColID()] = params.Ys[i]
 	}
@@ -124,7 +124,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 		ysMap[shadowID] = field.Zero()
 	}
 
-	ys = [][]frontend.Variable{}
+	ys = [][]zk.WrappedVariable{}
 
 	// add ys for precomputed when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
@@ -132,7 +132,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
 			names[i] = poly.GetColID()
 		}
-		ysPrecomputed := make([]frontend.Variable, len(names))
+		ysPrecomputed := make([]zk.WrappedVariable, len(names))
 		for i, name := range names {
 			y, yFound := ysMap[name]
 			if !yFound {
@@ -152,7 +152,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 			continue // skip the dry rounds
 		}
 		names := ctx.CommitmentsByRounds.MustGet(round)
-		ysRounds := make([]frontend.Variable, len(names))
+		ysRounds := make([]zk.WrappedVariable, len(names))
 		for i, name := range names {
 			y, yFound := ysMap[name]
 			if !yFound {
@@ -174,22 +174,22 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
-func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRuntime) [][][]frontend.Variable {
+func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRuntime) [][][]zk.WrappedVariable {
 
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
-	fullSelectedCols := make([][]frontend.Variable, ctx.NbColsToOpen())
+	fullSelectedCols := make([][]zk.WrappedVariable, ctx.NbColsToOpen())
 	for j := 0; j < ctx.NbColsToOpen(); j++ {
 		fullSelectedCols[j] = vr.GetColumn(ctx.SelectedColName(j))
 	}
 
 	// Split the columns per commitment for the verification
-	openedSubColumns := [][][]frontend.Variable{}
+	openedSubColumns := [][][]zk.WrappedVariable{}
 	roundStartAt := 0
 
 	// Process precomputed
 	if ctx.IsNonEmptyPrecomputed() {
-		openedPrecompCols := make([][]frontend.Variable, ctx.NbColsToOpen())
+		openedPrecompCols := make([][]zk.WrappedVariable, ctx.NbColsToOpen())
 		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {
 			openedPrecompCols[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numPrecomputeds]
@@ -204,7 +204,7 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue // skip the dry rounds
 		}
-		openedSubColumnsForRound := make([][]frontend.Variable, ctx.NbColsToOpen())
+		openedSubColumnsForRound := make([][]zk.WrappedVariable, ctx.NbColsToOpen())
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {
 			openedSubColumnsForRound[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numRowsForRound]
@@ -228,8 +228,8 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 
 	var (
 		params     = vr.GetUnivariateParams(ctx.Query.QueryID)
-		polys      = make([][]frontend.Variable, 0)
-		expectedYs = make([]frontend.Variable, 0)
+		polys      = make([][]zk.WrappedVariable, 0)
+		expectedYs = make([]zk.WrappedVariable, 0)
 	)
 
 	for i, pol := range ctx.Query.Pols {
@@ -260,7 +260,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]frontend.Variable, entryList []frontend.Variable) (proofs [][]smt.GnarkProof) {
+func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt.GnarkProof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -278,7 +278,7 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]frontend.Variable, entryList []f
 			// initialize the proof that we are parsing
 			proof := smt.GnarkProof{
 				Path:     entryList[j],
-				Siblings: make([]frontend.Variable, depth),
+				Siblings: make([]zk.WrappedVariable, depth),
 			}
 
 			// parse the siblings accounting for the fact that we
@@ -287,8 +287,8 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]frontend.Variable, entryList []f
 
 				utils.Panic("gnark SMT does not currently support hashes that are arrays of field elements")
 
-				// this will fail because we are setting a []frontend.Variable
-				// to a frontend.Variable
+				// this will fail because we are setting a []zk.WrappedVariable
+				// to a zk.WrappedVariable
 				proof.Siblings[depth-k-1] = sv[curr]
 				curr++
 			}

@@ -44,22 +44,22 @@ func (fys FromYs) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Elemen
 	panic("implement me")
 }
 
-func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
+func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
@@ -136,24 +136,24 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 }
 
 // Returns the coin's value as a column assignment
-func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
 
 	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
 
 	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]frontend.Variable{}
+	yMap := map[ifaces.ColID]zk.WrappedVariable{}
 	for i, polName := range fys.Query.Pols {
 		yMap[polName.GetColID()] = queryParams.Ys[i]
 	}
 
 	// This will leave some of the columns to nil
-	res := make([]frontend.Variable, len(fys.Ranges))
+	res := make([]zk.WrappedVariable, len(fys.Ranges))
 	for i, name := range fys.Ranges {
 		if y, found := yMap[name]; found {
 			res[i] = y
 		} else {
 			// Set it to zero explicitly
-			res[i] = frontend.Variable(0)
+			res[i] = zk.WrappedVariable(0)
 		}
 	}
 
@@ -166,7 +166,7 @@ func (fys FromYs) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element 
 }
 
 // Returns a particular position of the coin value
-func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
 	return fys.GetColAssignmentGnark(run)[pos]
 }
 

@@ -20,7 +20,7 @@ import (
 // compiler. It simply checks that all positions of [testCircuit.A] are consecutive.
 // Thus, [1, 2, 3] is a valid assignment and [1, 1, 0] is not.
 type testCircuit struct {
-	A [3]frontend.Variable `gnark:",public"`
+	A [3]zk.WrappedVariable `gnark:",public"`
 }
 
 // Define implements the [frontend.Circuit] interface

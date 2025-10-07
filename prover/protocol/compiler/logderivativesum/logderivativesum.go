@@ -138,7 +138,7 @@ func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntim
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried
 	// in the protocol via the
-	zSum := frontend.Variable(field.Zero())
+	zSum := zk.WrappedVariable(field.Zero())
 	for k := range f.ZOpenings {
 		// not using panic so that the compiler does not ask us to comment out
 		// the remainder of the loop

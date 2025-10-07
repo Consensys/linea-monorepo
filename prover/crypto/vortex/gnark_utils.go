@@ -50,7 +50,7 @@ func FFTInverseKoalaBear(_ *big.Int, inputs []*big.Int, results []*big.Int) erro
 
 // computes fft^-1(p) where the fft is done on <generator>, a set of size cardinality.
 // It is assumed that p is correctly sized.
-func FFTInverse(api frontend.API, p []frontend.Variable, genInv field.Element, cardinality uint64) ([]frontend.Variable, error) {
+func FFTInverse(api frontend.API, p []zk.WrappedVariable, genInv field.Element, cardinality uint64) ([]zk.WrappedVariable, error) {
 
 	var cardInverse field.Element
 	cardInverse.SetUint64(cardinality).Inverse(&cardInverse)
@@ -64,7 +64,7 @@ func FFTInverse(api frontend.API, p []frontend.Variable, genInv field.Element, c
 	// probabilistically check the result of the FFT
 	multicommit.WithCommitment(
 		api,
-		func(api frontend.API, x frontend.Variable) error {
+		func(api frontend.API, x zk.WrappedVariable) error {
 			// evaluation canonical
 			ec := gnarkEvalCanonical(api, res, x)
 
@@ -72,7 +72,7 @@ func FFTInverse(api frontend.API, p []frontend.Variable, genInv field.Element, c
 			var gen field.Element
 			gen.Inverse(&genInv)
 			lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
-			var el frontend.Variable
+			var el zk.WrappedVariable
 			el = 0
 			for i := 0; i < len(p); i++ {
 				tmp := api.Mul(p[i], lagranges[i])
@@ -89,9 +89,9 @@ func FFTInverse(api frontend.API, p []frontend.Variable, genInv field.Element, c
 }
 
 // gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
-func gnarkEvalCanonical(api frontend.API, p []frontend.Variable, z frontend.Variable) frontend.Variable {
+func gnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z zk.WrappedVariable) zk.WrappedVariable {
 
-	var res frontend.Variable
+	var res zk.WrappedVariable
 	res = 0
 	s := len(p)
 	for i := 0; i < len(p); i++ {
@@ -101,9 +101,9 @@ func gnarkEvalCanonical(api frontend.API, p []frontend.Variable, z frontend.Vari
 	return res
 }
 
-func gnarkEvaluateLagrange(api frontend.API, p []frontend.Variable, z frontend.Variable, gen field.Element, cardinality uint64) frontend.Variable {
+func gnarkEvaluateLagrange(api frontend.API, p []zk.WrappedVariable, z zk.WrappedVariable, gen field.Element, cardinality uint64) zk.WrappedVariable {
 
-	var res frontend.Variable
+	var res zk.WrappedVariable
 	res = 0
 
 	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
@@ -118,9 +118,9 @@ func gnarkEvaluateLagrange(api frontend.API, p []frontend.Variable, z frontend.V
 // computeLagrange returns Lᵢ(ζ) for i=1..n
 // with lᵢ(ζ) = ωⁱ/n*(ζⁿ-1)/(ζ - ωⁱ)
 // (the g stands for gnark)
-func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen field.Element, cardinality uint64) []frontend.Variable {
+func gnarkComputeLagrangeAtZ(api frontend.API, z zk.WrappedVariable, gen field.Element, cardinality uint64) []zk.WrappedVariable {
 
-	res := make([]frontend.Variable, cardinality)
+	res := make([]zk.WrappedVariable, cardinality)
 	tb := bits.TrailingZeros(uint(cardinality))
 
 	// ζⁿ-1
@@ -131,7 +131,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen field.El
 	res[0] = api.Sub(res[0], 1)
 
 	// ζ-1
-	var accZetaMinusOmegai frontend.Variable
+	var accZetaMinusOmegai zk.WrappedVariable
 	accZetaMinusOmegai = api.Sub(z, 1)
 
 	// (ζⁿ-1)/(ζ-1)
@@ -159,7 +159,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen field.El
 // * p polynomial of size cardinality
 // * genInv inverse of the generator of the subgroup of size cardinality
 // * rate of the RS code
-func assertIsCodeWord(api frontend.API, p []frontend.Variable, genInv koalabear.Element, cardinality, rate uint64) error {
+func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear.Element, cardinality, rate uint64) error {
 
 	if uint64(len(p)) != cardinality {
 		return ErrPNotOfSizeCardinality
@@ -188,7 +188,7 @@ type GProofWoMerkle struct {
 	// as well be dispatched in several matrices.
 	// Columns [i][j][k] returns the k-th entry of the j-th selected
 	// column of the i-th commitment
-	Columns [][][]frontend.Variable
+	Columns [][][]zk.WrappedVariable
 
 	// domain of the RS code
 	RsDomain *fft.Domain
@@ -197,7 +197,7 @@ type GProofWoMerkle struct {
 	Rate uint64
 
 	// Linear combination of the rows of the polynomial P written as a square matrix
-	LinearCombination []frontend.Variable
+	LinearCombination []zk.WrappedVariable
 }
 
 // Opening proof with Merkle proofs
@@ -221,11 +221,11 @@ func GnarkVerifyCommon(
 	api frontend.API,
 	params GParams,
 	proof GProofWoMerkle,
-	x frontend.Variable,
-	ys [][]frontend.Variable,
-	randomCoin frontend.Variable,
-	entryList []frontend.Variable,
-) ([][]frontend.Variable, error) {
+	x zk.WrappedVariable,
+	ys [][]zk.WrappedVariable,
+	randomCoin zk.WrappedVariable,
+	entryList []zk.WrappedVariable,
+) ([][]zk.WrappedVariable, error) {
 
 	// check the linear combination is a codeword
 	api.Compiler().Defer(func(api frontend.API) error {
@@ -252,7 +252,7 @@ func GnarkVerifyCommon(
 	// Size of the hash of 1 column
 	numRounds := len(ys)
 
-	selectedColSisDigests := make([][]frontend.Variable, numRounds)
+	selectedColSisDigests := make([][]zk.WrappedVariable, numRounds)
 	tbl := logderivlookup.New(api)
 	for i := range proof.LinearCombination {
 		tbl.Insert(proof.LinearCombination[i])
@@ -260,12 +260,12 @@ func GnarkVerifyCommon(
 	for j, selectedColID := range entryList {
 
 		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []frontend.Variable{}
+		fullCol := []zk.WrappedVariable{}
 
 		for i := range selectedColSisDigests {
 
 			if j == 0 {
-				selectedColSisDigests[i] = make([]frontend.Variable, len(entryList))
+				selectedColSisDigests[i] = make([]zk.WrappedVariable, len(entryList))
 			}
 
 			// Entries of the selected columns #j contained in the commitment #i.

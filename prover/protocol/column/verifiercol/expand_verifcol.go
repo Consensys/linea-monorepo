@@ -33,22 +33,22 @@ func (ex ExpandedVerifCol) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fe
 	panic("implement me")
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+func (ex ExpandedVerifCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+func (ex ExpandedVerifCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+func (ex ExpandedVerifCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
+func (ex ExpandedVerifCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
@@ -87,9 +87,9 @@ func (ex ExpandedVerifCol) GetColAssignment(run ifaces.Runtime) ifaces.ColAssign
 }
 
 // GetColAssignment returns a gnark assignment of the current column
-func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
 	assi := ex.Verifiercol.GetColAssignmentGnark(run)
-	res := make([]frontend.Variable, ex.Size())
+	res := make([]zk.WrappedVariable, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		for j := 0; j < ex.Expansion; j++ {
 			res[j+i*ex.Expansion] = assi[i]
@@ -104,7 +104,7 @@ func (ex ExpandedVerifCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (ex ExpandedVerifCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (ex ExpandedVerifCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
 	return ex.Verifiercol.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
 }
 

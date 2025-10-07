@@ -72,11 +72,11 @@ func (f FromAccessors) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.E
 	return f.Accessors[pos].GetValExt(run)
 }
 
-func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
 	if !f.IsBase() {
 		panic("From accessors, the column is not base")
 	} else {
-		res := make([]frontend.Variable, f.Size_)
+		res := make([]zk.WrappedVariable, f.Size_)
 		for i := range f.Accessors {
 			res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
 		}
@@ -89,8 +89,8 @@ func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]fro
 
 }
 
-func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
-	res := make([]gnarkfext.Element, f.Size_)
+func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
+	res := make([]gnarkfext.E4Gen, f.Size_)
 	for i := range f.Accessors {
 		res[i] = f.Accessors[i].GetFrontendVariableExt(nil, run)
 	}
@@ -102,7 +102,7 @@ func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnark
 	return res
 }
 
-func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
 	if !f.IsBase() {
 		utils.Panic("From accessors, the column is not base")
 	}
@@ -118,7 +118,7 @@ func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos 
 	return f.Accessors[pos].GetFrontendVariable(nil, run), nil
 }
 
-func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
+func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
 	if pos >= f.Size_ {
 		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
 	}
@@ -181,9 +181,9 @@ func (f FromAccessors) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment
 }
 
 // GetColAssignment returns a gnark assignment of the current column
-func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
 
-	res := make([]frontend.Variable, f.Size_)
+	res := make([]zk.WrappedVariable, f.Size_)
 	for i := range f.Accessors {
 		res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
 	}
@@ -201,7 +201,7 @@ func (f FromAccessors) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Ele
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
 	if pos >= f.Size_ {
 		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
 	}

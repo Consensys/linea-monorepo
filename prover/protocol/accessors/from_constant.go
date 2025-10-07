@@ -73,7 +73,7 @@ func (c *FromConstAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return c.Ext
 }
 
-func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRuntime) frontend.Variable {
+func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRuntime) zk.WrappedVariable {
 	if c.IsBaseFlag {
 		return c.Base
 	} else {
@@ -81,7 +81,7 @@ func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRu
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	if c.IsBaseFlag {
 		return c.Base, nil
 	} else {
@@ -89,8 +89,8 @@ func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.Gna
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableExt(_ frontend.API, _ ifaces.GnarkRuntime) gnarkfext.Element {
-	var e gnarkfext.Element
+func (c *FromConstAccessor) GetFrontendVariableExt(_ frontend.API, _ ifaces.GnarkRuntime) gnarkfext.E4Gen {
+	var e gnarkfext.E4Gen
 	e.Assign(c.Ext)
 	return e
 }

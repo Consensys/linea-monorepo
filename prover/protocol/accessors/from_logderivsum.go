@@ -40,12 +40,12 @@ func (l *FromLogDerivSumAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return params.Sum.GetExt()
 }
 
-func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
@@ -73,7 +73,7 @@ func (l *FromLogDerivSumAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromLogDerivSumAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (l *FromLogDerivSumAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLogDerivSumParams)
 	return params.Sum
 }

@@ -15,9 +15,9 @@ import (
 // circuit
 func GnarkDeriveEvaluationPoint(
 	api frontend.API, h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, frontend.Variable],
-	x frontend.Variable,
-) (xRes []frontend.Variable) {
+	cachedXs collection.Mapping[string, zk.WrappedVariable],
+	x zk.WrappedVariable,
+) (xRes []zk.WrappedVariable) {
 
 	if !h.IsComposite() {
 		// Just return x and cache it if necessary
@@ -27,13 +27,13 @@ func GnarkDeriveEvaluationPoint(
 			// Else register the result in the cache
 			cachedXs.InsertNew(newUpstream, x)
 		}
-		return []frontend.Variable{x}
+		return []zk.WrappedVariable{x}
 	}
 
 	switch inner := h.(type) {
 	case Shifted:
 		newUpstream := appendNodeToUpstream(upstream, inner)
-		var derivedX frontend.Variable
+		var derivedX zk.WrappedVariable
 		// Early return if the result is cached
 		if cachedXs.Exists(newUpstream) {
 			derivedX = cachedXs.MustGet(newUpstream)
@@ -44,7 +44,7 @@ func GnarkDeriveEvaluationPoint(
 			if err != nil {
 				panic(err)
 			}
-			omegaN := frontend.Variable(generator)
+			omegaN := zk.WrappedVariable(generator)
 			omegaN = gnarkutil.Exp(api, omegaN, inner.Offset)
 			derivedX = api.Mul(x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
@@ -61,9 +61,9 @@ func GnarkDeriveEvaluationPoint(
 // circuit.
 func GnarkVerifyYConsistency(
 	api frontend.API, h ifaces.Column, upstream string,
-	cachedXs collection.Mapping[string, frontend.Variable],
-	finalYs collection.Mapping[string, frontend.Variable],
-) (y frontend.Variable) {
+	cachedXs collection.Mapping[string, zk.WrappedVariable],
+	finalYs collection.Mapping[string, zk.WrappedVariable],
+) (y zk.WrappedVariable) {
 
 	if !h.IsComposite() {
 		// Get the Y from the map. An absence from this map is unexpected at

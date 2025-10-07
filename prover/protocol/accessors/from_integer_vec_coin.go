@@ -36,11 +36,11 @@ func (c *FromIntVecCoinPositionAccessor) GetValExt(run ifaces.Runtime) fext.Elem
 	return fext.Lift(base)
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	return circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos], nil
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	elem := circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]
 	return gnarkfext.NewFromBase(elem)
 }
@@ -77,7 +77,7 @@ func (c *FromIntVecCoinPositionAccessor) GetVal(run ifaces.Runtime) field.Elemen
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
 	return circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]
 }
 

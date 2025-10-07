@@ -13,9 +13,9 @@ import (
 )
 
 type EvaluateLagrangeCircuit struct {
-	X    gnarkfext.Element   // point of evaluation
-	Poly []gnarkfext.Element // poly in Lagrange form
-	R    gnarkfext.Element   // expected result
+	X    gnarkfext.E4Gen   // point of evaluation
+	Poly []gnarkfext.E4Gen // poly in Lagrange form
+	R    gnarkfext.E4Gen   // expected result
 }
 
 func (c *EvaluateLagrangeCircuit) Define(api frontend.API) error {
@@ -43,8 +43,8 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 
 	// test circuit
 	var witness, circuit EvaluateLagrangeCircuit
-	circuit.Poly = make([]gnarkfext.Element, size)
-	witness.Poly = make([]gnarkfext.Element, size)
+	circuit.Poly = make([]gnarkfext.E4Gen, size)
+	witness.Poly = make([]gnarkfext.E4Gen, size)
 	for i := 0; i < size; i++ {
 		witness.Poly[i] = gnarkfext.FromValue(poly[i])
 	}

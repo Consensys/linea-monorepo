@@ -47,7 +47,7 @@ func (l *FromHornerAccessorFinalValue) GetValExt(run ifaces.Runtime) fext.Elemen
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromHornerAccessorFinalValue) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (l *FromHornerAccessorFinalValue) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
 	params := circ.GetParams(l.Q.ID).(query.GnarkHornerParams)
 	return params.FinalResult
 }
@@ -69,12 +69,12 @@ func (l *FromHornerAccessorFinalValue) GetValBase(run ifaces.Runtime) (field.Ele
 	panic("should not be called as the result is an extension field")
 }
 
-func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }

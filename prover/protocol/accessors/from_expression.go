@@ -170,10 +170,10 @@ func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
 
 	metadata := e.Boarded.ListVariableMetadata()
-	inputs := make([]frontend.Variable, len(metadata))
+	inputs := make([]zk.WrappedVariable, len(metadata))
 
 	for i, m := range metadata {
 		switch castedMetadata := m.(type) {
@@ -189,10 +189,10 @@ func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.Gna
 	return e.Boarded.GnarkEval(api, inputs)
 }
 
-func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	if e.IsBase() {
 		metadata := e.Boarded.ListVariableMetadata()
-		inputs := make([]frontend.Variable, len(metadata))
+		inputs := make([]zk.WrappedVariable, len(metadata))
 
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {
@@ -211,13 +211,13 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 	}
 }
 
-func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	if e.IsBase() {
 		baseElem, _ := e.GetFrontendVariableBase(api, circ)
 		return gnarkfext.NewFromBase(baseElem)
 	} else {
 		metadata := e.Boarded.ListVariableMetadata()
-		inputs := make([]gnarkfext.Element, len(metadata))
+		inputs := make([]gnarkfext.E4Gen, len(metadata))
 
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {

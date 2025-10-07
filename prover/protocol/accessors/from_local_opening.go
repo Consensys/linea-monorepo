@@ -37,12 +37,12 @@ func (l *FromLocalOpeningYAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return params.ExtY
 }
 
-func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (l *FromLocalOpeningYAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+func (l *FromLocalOpeningYAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
@@ -70,7 +70,7 @@ func (l *FromLocalOpeningYAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromLocalOpeningYAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (l *FromLocalOpeningYAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
 	return params.BaseY
 }

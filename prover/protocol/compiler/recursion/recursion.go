@@ -310,7 +310,7 @@ func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, 
 
 // GetPublicInputOfInstanceGnark returns the requested public input in a
 // gnark circuit context.
-func (rec *Recursion) GetPublicInputOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, name string, inst int) frontend.Variable {
+func (rec *Recursion) GetPublicInputOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, name string, inst int) zk.WrappedVariable {
 	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
 	return run.GetPublicInput(api, name)
 }

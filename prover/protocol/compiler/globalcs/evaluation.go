@@ -263,13 +263,13 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 	params := c.GetUnivariateParams(ctx.WitnessEval.QueryID)
 	univQuery := c.GetUnivariateEval(ctx.WitnessEval.QueryID)
 
-	annulator = api.Sub(annulator, frontend.Variable(1))
+	annulator = api.Sub(annulator, zk.WrappedVariable(1))
 
 	// Get the parameters
 	api.AssertIsEqual(r, params.X) // check the evaluation is consistent with the other stuffs
 
 	// Map all the evaluations and checks the evaluations points
-	mapYs := make(map[ifaces.ColID]frontend.Variable)
+	mapYs := make(map[ifaces.ColID]zk.WrappedVariable)
 
 	// Collect the evaluation points
 	for j, handle := range univQuery.Pols {
@@ -281,7 +281,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 		board := ctx.AggregateExpressionsBoard[i]
 		metadatas := board.ListVariableMetadata()
 
-		evalInputs := make([]frontend.Variable, len(metadatas))
+		evalInputs := make([]zk.WrappedVariable, len(metadatas))
 
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
@@ -408,17 +408,17 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r gnarkfext.Element) []gnarkfext.Element {
+func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r gnarkfext.E4Gen) []gnarkfext.E4Gen {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
 		// combination.
-		recombinedYs = make([]gnarkfext.Element, len(ctx.Ratios))
+		recombinedYs = make([]gnarkfext.E4Gen, len(ctx.Ratios))
 		// ys stores the values of the quotient shares ordered by ratio
-		qYs      = make([][]gnarkfext.Element, utils.Max(ctx.Ratios...))
+		qYs      = make([][]gnarkfext.E4Gen, utils.Max(ctx.Ratios...))
 		maxRatio = utils.Max(ctx.Ratios...)
 		// shiftedR = r / g where g is the generator of the multiplicative group
-		shiftedR gnarkfext.Element
+		shiftedR gnarkfext.E4Gen
 		// mulGen is the generator of the multiplicative group
 		mulGenInv = fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
 		// omegaN is a root of unity generating the domain of size `domainSize
@@ -434,7 +434,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 
 		// Check that the provided value for x is the right one
 		providedX := params.X
-		var expectedX frontend.Variable
+		var expectedX zk.WrappedVariable
 		expectedX = api.Inverse(omegaN)
 		expectedX = gnarkutil.Exp(api, expectedX, i)
 		expectedX = api.Mul(expectedX, shiftedR)
@@ -444,7 +444,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	for i, ratio := range ctx.Ratios {
 		var (
 			jumpBy = maxRatio / ratio
-			ys     = make([]frontend.Variable, ratio)
+			ys     = make([]zk.WrappedVariable, ratio)
 		)
 
 		for j := range ctx.QuotientShares[i] {
@@ -459,7 +459,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			// outerFactor stores m/n*(r^n - 1)
 			one           = field.One()
 			omegaRatioInv field.Element
-			res           gnarkfext.Element
+			res           gnarkfext.E4Gen
 			ratioInvField = field.NewElement(uint64(ratio))
 		)
 		res.SetZero()

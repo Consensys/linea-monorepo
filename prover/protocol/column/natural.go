@@ -89,11 +89,11 @@ func (n Natural) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element
 }
 
 // GetColAssignmentGnark implements [ifaces.Column]
-func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
 	return run.GetColumn(n.ID)
 }
 
-func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
 	if n.isBase {
 		return run.GetColumn(n.ID), nil
 	} else {
@@ -101,16 +101,16 @@ func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.
 	}
 }
 
-func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
 	return run.GetColumnExt(n.ID)
 }
 
 // GetColAssignmentGnarkAt implements [ifaces.Column]
-func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
 	return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size()))
 }
 
-func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
 	if n.isBase {
 		return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size())), nil
 	} else {
@@ -119,7 +119,7 @@ func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (
 
 }
 
-func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
+func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
 	return run.GetColumnAtExt(n.ID, utils.PositiveMod(pos, n.Size()))
 }
 

@@ -42,12 +42,12 @@ func (l *FromGrandProductAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return run.GetParams(l.Q.ID).(query.GrandProductParams).ExtY
 }
 
-func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (l *FromGrandProductAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+func (l *FromGrandProductAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
@@ -75,7 +75,7 @@ func (l *FromGrandProductAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromGrandProductAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (l *FromGrandProductAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
 	params := circ.GetParams(l.Q.ID).(query.GnarkGrandProductParams)
 	return params.Prod
 }

@@ -12,11 +12,11 @@ import (
 // Final circuit - commitment using Merkle trees
 type VerifyOpeningCircuitMerkleTree struct {
 	Proof      GProof                `gnark:",public"`
-	Roots      []frontend.Variable   `gnark:",public"`
-	X          frontend.Variable     `gnark:",public"`
-	RandomCoin frontend.Variable     `gnark:",public"`
-	Ys         [][]frontend.Variable `gnark:",public"`
-	EntryList  []frontend.Variable   `gnark:",public"`
+	Roots      []zk.WrappedVariable   `gnark:",public"`
+	X          zk.WrappedVariable     `gnark:",public"`
+	RandomCoin zk.WrappedVariable     `gnark:",public"`
+	Ys         [][]zk.WrappedVariable `gnark:",public"`
+	EntryList  []zk.WrappedVariable   `gnark:",public"`
 	Params     GParams
 }
 
@@ -28,13 +28,13 @@ func AllocateCircuitVariablesWithMerkleTree(
 	entryList []int,
 	roots []types.Bytes32) {
 
-	verifyCircuit.Proof.LinearCombination = make([]frontend.Variable, proof.LinearCombination.Len())
+	verifyCircuit.Proof.LinearCombination = make([]zk.WrappedVariable, proof.LinearCombination.Len())
 
-	verifyCircuit.Proof.Columns = make([][][]frontend.Variable, len(proof.Columns))
+	verifyCircuit.Proof.Columns = make([][][]zk.WrappedVariable, len(proof.Columns))
 	for i := 0; i < len(proof.Columns); i++ {
-		verifyCircuit.Proof.Columns[i] = make([][]frontend.Variable, len(proof.Columns[i]))
+		verifyCircuit.Proof.Columns[i] = make([][]zk.WrappedVariable, len(proof.Columns[i]))
 		for j := 0; j < len(proof.Columns[i]); j++ {
-			verifyCircuit.Proof.Columns[i][j] = make([]frontend.Variable, len(proof.Columns[i][j]))
+			verifyCircuit.Proof.Columns[i][j] = make([]zk.WrappedVariable, len(proof.Columns[i][j]))
 		}
 	}
 
@@ -42,18 +42,18 @@ func AllocateCircuitVariablesWithMerkleTree(
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		verifyCircuit.Proof.MerkleProofs[i] = make([]smt.GnarkProof, len(proof.MerkleProofs[i]))
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]frontend.Variable, len(proof.MerkleProofs[i][j].Siblings))
+			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]zk.WrappedVariable, len(proof.MerkleProofs[i][j].Siblings))
 		}
 	}
 
-	verifyCircuit.EntryList = make([]frontend.Variable, len(entryList))
+	verifyCircuit.EntryList = make([]zk.WrappedVariable, len(entryList))
 
-	verifyCircuit.Ys = make([][]frontend.Variable, len(ys))
+	verifyCircuit.Ys = make([][]zk.WrappedVariable, len(ys))
 	for i := 0; i < len(ys); i++ {
-		verifyCircuit.Ys[i] = make([]frontend.Variable, len(ys[i]))
+		verifyCircuit.Ys[i] = make([]zk.WrappedVariable, len(ys[i]))
 	}
 
-	verifyCircuit.Roots = make([]frontend.Variable, len(roots))
+	verifyCircuit.Roots = make([]zk.WrappedVariable, len(roots))
 
 }
 
@@ -126,12 +126,12 @@ func (circuit *VerifyOpeningCircuitMerkleTree) Define(api frontend.API) error {
 func GnarkVerifyOpeningWithMerkleProof(
 	api frontend.API,
 	params GParams,
-	roots []frontend.Variable,
+	roots []zk.WrappedVariable,
 	proof GProof,
-	x frontend.Variable,
-	ys [][]frontend.Variable,
-	randomCoin frontend.Variable,
-	entryList []frontend.Variable,
+	x zk.WrappedVariable,
+	ys [][]zk.WrappedVariable,
+	randomCoin zk.WrappedVariable,
+	entryList []zk.WrappedVariable,
 ) error {
 
 	if !params.HasNoSisHasher() {

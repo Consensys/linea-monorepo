@@ -25,10 +25,10 @@ import (
 // Alex: please don't change the ordering of the arguments as this
 // affects the parsing of the witness.
 type RecursionCircuit struct {
-	X                  gnarkfext.Element   `gnark:",public"`
-	Ys                 []gnarkfext.Element `gnark:",public"`
-	Commitments        []frontend.Variable `gnark:",public"`
-	Pubs               []frontend.Variable `gnark:",public"`
+	X                  gnarkfext.E4Gen   `gnark:",public"`
+	Ys                 []gnarkfext.E4Gen `gnark:",public"`
+	Commitments        []zk.WrappedVariable `gnark:",public"`
+	Pubs               []zk.WrappedVariable `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit
 	withoutGkr         bool                 `gnark:"-"`
 	withExternalHasher bool                 `gnark:"-"`
@@ -63,9 +63,9 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,
 		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
-		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)),
-		Commitments:        make([]frontend.Variable, len(merkleRoots)),
-		Ys:                 make([]gnarkfext.Element, len(polyQuery.Pols)),
+		Pubs:               make([]zk.WrappedVariable, len(comp.PublicInputs)),
+		Commitments:        make([]zk.WrappedVariable, len(merkleRoots)),
+		Ys:                 make([]gnarkfext.E4Gen, len(polyQuery.Pols)),
 	}
 }
 
@@ -166,10 +166,10 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x T, ys, mRoots, pubs 
 	// The order below is based on the field declaration order for the
 	// circuit struct.
 	//
-	// X              frontend.Variable   `gnark:",public"`
-	// Ys             []frontend.Variable `gnark:",public"`
-	// Commitments    []frontend.Variable `gnark:",public"`
-	// Pubs           []frontend.Variable `gnark:",public"`
+	// X              zk.WrappedVariable   `gnark:",public"`
+	// Ys             []zk.WrappedVariable `gnark:",public"`
+	// Commitments    []zk.WrappedVariable `gnark:",public"`
+	// Pubs           []zk.WrappedVariable `gnark:",public"`
 	//
 	x, allPubDrain = allPubDrain[0], allPubDrain[1:]
 	ys, allPubDrain = allPubDrain[:numYs], allPubDrain[numYs:]

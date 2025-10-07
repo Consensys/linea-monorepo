@@ -11,7 +11,7 @@ import (
 )
 
 // EvaluateLagrangeGnark evaluates a polynomial in lagrange basis on a gnark circuit
-func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
+func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext.E4Gen) gnarkfext.E4Gen {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
@@ -27,13 +27,13 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfe
 	var accw, one field.Element
 	one.SetOne()
 	accw.SetOne()
-	dens := make([]gnarkfext.Element, size) // [x-1, x-ω, x-ω², ...]
+	dens := make([]gnarkfext.E4Gen, size) // [x-1, x-ω, x-ω², ...]
 	for i := 0; i < size; i++ {
 		dens[i] = x
 		dens[i].B0.A0 = api.Sub(x.B0.A0, accw) // accw lives in the base field
 		accw.Mul(&accw, &omega)
 	}
-	invdens := make([]gnarkfext.Element, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
+	invdens := make([]gnarkfext.E4Gen, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
 	for i := 0; i < size; i++ {
 		invdens[i].Inverse(api, dens[i])
 	}
@@ -61,10 +61,10 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfe
 // on a gnark circuit. The evaluation point is common to all polynomials.
 // The implementation relies on the barycentric interpolation formula and
 // leverages
-func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.Element, x gnarkfext.Element) []gnarkfext.Element {
+func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.E4Gen, x gnarkfext.E4Gen) []gnarkfext.E4Gen {
 
 	if len(polys) == 0 {
-		return []gnarkfext.Element{}
+		return []gnarkfext.E4Gen{}
 	}
 
 	var (
@@ -72,23 +72,23 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.Element, x
 		maxSize          = sizes[len(sizes)-1]
 		xNs              = raiseToPowersOfTwosExt(api, x, sizes)
 		powersOfOmegaInv = powerVectorOfOmegaInv(maxSize)
-		one              gnarkfext.Element
+		one              gnarkfext.E4Gen
 
 		// innerProductTerms lists a sequence of term computed as
 		// \frac{1}{x \omega^{-i} - 1}. These will be used to compute
 		// an inner-product between the polys to obtain an unscaled
 		// result. The unscaled result will then be scaled by (x^n - 1)/n
 		// to obtain the result of the Lagrange interpolation.
-		innerProductTerms = make([]gnarkfext.Element, maxSize)
+		innerProductTerms = make([]gnarkfext.E4Gen, maxSize)
 
 		// scalingTerms lists a sequence of term computed as (x^n - 1)/n
 		// where n stands for all the different sizes of the polys in
 		// increasing order. (as found in "sizes"). The used to derive
 		// the final result of the evaluations.
-		scalingTerms = make([]gnarkfext.Element, len(sizes))
+		scalingTerms = make([]gnarkfext.E4Gen, len(sizes))
 
 		// res stores the final result of the interpolation
-		res = make([]gnarkfext.Element, len(polys))
+		res = make([]gnarkfext.E4Gen, len(polys))
 	)
 	one.SetOne()
 	for i := range innerProductTerms {
@@ -109,9 +109,9 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.Element, x
 		var (
 			poly          = polys[i]
 			n             = len(poly)
-			scalingFactor gnarkfext.Element
-			yUnscaled     gnarkfext.Element
-			tmp           gnarkfext.Element
+			scalingFactor gnarkfext.E4Gen
+			yUnscaled     gnarkfext.E4Gen
+			tmp           gnarkfext.E4Gen
 		)
 
 		for j := range sizes {
@@ -152,7 +152,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.Element, x
 
 // listOfDifferentSizes returns the list of sizes of the different polys
 // vectors. The returned slices is deduplicated and sorted in ascending order.
-func listOfDifferentSizes(polys [][]gnarkfext.Element) []int {
+func listOfDifferentSizes(polys [][]gnarkfext.E4Gen) []int {
 
 	sizes := make([]int, 0, len(polys))
 	for _, poly := range polys {
@@ -169,10 +169,10 @@ func listOfDifferentSizes(polys [][]gnarkfext.Element) []int {
 // instance, if ns = [2, 4, 8], then it returns [x, x^2, x^4, x^8]. It assumes
 // that ns is sorted in ascending order and deduplicated and non-zero and are
 // powers of two.
-func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.Element, ns []int) []gnarkfext.Element {
+func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.E4Gen, ns []int) []gnarkfext.E4Gen {
 
 	var (
-		res   = make([]gnarkfext.Element, len(ns))
+		res   = make([]gnarkfext.E4Gen, len(ns))
 		curr  = x
 		currN = 1
 	)
@@ -197,11 +197,11 @@ func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.Element, ns []int) []g
 // powerVector returns w raised to the powers contained up to n starting from
 // 0. For instance, if n = 4, then it returns [1, w^-1, w^-2, w^-3]. Where w
 // is the inverse of the generator of the subgroup of root of unity of order 4.
-func powerVectorOfOmegaInv(n int) []frontend.Variable {
+func powerVectorOfOmegaInv(n int) []zk.WrappedVariable {
 
 	var (
 		resField = field.One()
-		res      = make([]frontend.Variable, n)
+		res      = make([]zk.WrappedVariable, n)
 		w, _     = fft.Generator(uint64(n))
 	)
 
@@ -216,7 +216,7 @@ func powerVectorOfOmegaInv(n int) []frontend.Variable {
 }
 
 // isConstantZeroGnarkVariable returns true if the variable is a constant equal to zero
-func isConstantZeroGnarkVariable(api frontend.API, p frontend.Variable) bool {
+func isConstantZeroGnarkVariable(api frontend.API, p zk.WrappedVariable) bool {
 	c, isC := api.Compiler().ConstantValue(p)
 	return isC && c.IsInt64() && c.Int64() == 0
 }

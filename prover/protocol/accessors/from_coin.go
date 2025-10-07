@@ -61,15 +61,15 @@ func (c *FromCoinAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
 	return circ.GetRandomCoinField(c.Info.Name)
 }
 
-func (c *FromCoinAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (c *FromCoinAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	return circ.GetRandomCoinField(c.Info.Name), nil
 }
 
-func (c *FromCoinAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+func (c *FromCoinAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	return circ.GetRandomCoinFieldExt(c.Info.Name)
 }
 

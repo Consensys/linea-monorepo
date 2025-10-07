@@ -40,12 +40,12 @@ func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return params.ExtX
 }
 
-func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	//TODO implement me
 	panic("implement me")
 }
@@ -77,7 +77,7 @@ func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (u *FromUnivXAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (u *FromUnivXAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
 	params := circ.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams)
 	return params.X
 }

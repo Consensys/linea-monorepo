@@ -9,13 +9,13 @@ import (
 
 // EvaluateLagrangeAnyDomainGnark mirrors [EvaluateLagrangesAnyDomain] but in
 // a gnark circuit. The same usage precautions applies for it.
-func EvaluateLagrangeAnyDomainGnark(api frontend.API, domain []gnarkfext.Element, x gnarkfext.Element) []gnarkfext.Element {
+func EvaluateLagrangeAnyDomainGnark(api frontend.API, domain []gnarkfext.E4Gen, x gnarkfext.E4Gen) []gnarkfext.E4Gen {
 
 	outerAPI := gnarkfext.API{Inner: api}
-	lagrange := make([]gnarkfext.Element, len(domain))
+	lagrange := make([]gnarkfext.E4Gen, len(domain))
 
 	for i, hi := range domain {
-		lhix := gnarkfext.Element{field.One(), field.Zero()}
+		lhix := gnarkfext.E4Gen{field.One(), field.Zero()}
 		for j, hj := range domain {
 			if i == j {
 				// Skip it
@@ -38,8 +38,8 @@ func EvaluateLagrangeAnyDomainGnark(api frontend.API, domain []gnarkfext.Element
 
 // EvaluateUnivariateGnark evaluate a univariate polynomial in a gnark circuit.
 // It mirrors [EvalUnivariate].
-func EvaluateUnivariateGnark(api frontend.API, pol []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
-	res := gnarkfext.Element{frontend.Variable(0), frontend.Variable(0)}
+func EvaluateUnivariateGnark(api frontend.API, pol []gnarkfext.E4Gen, x gnarkfext.E4Gen) gnarkfext.E4Gen {
+	res := gnarkfext.E4Gen{zk.WrappedVariable(0), zk.WrappedVariable(0)}
 	outerAPI := gnarkfext.API{Inner: api}
 	for i := len(pol) - 1; i >= 0; i-- {
 		res = outerAPI.Mul(res, x)

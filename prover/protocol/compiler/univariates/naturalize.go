@@ -363,7 +363,7 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 	// Collect the subqueries and the collection in finalYs evaluations
 	subQueries := []query.UnivariateEval{}
 	subQueriesParams := []query.GnarkUnivariateEvalParams{}
-	finalYs := collection.NewMapping[string, frontend.Variable]()
+	finalYs := collection.NewMapping[string, zk.WrappedVariable]()
 
 	for qID, qName := range ctx.SubQueriesNames {
 		subQueries = append(subQueries, c.GetUnivariateEval(qName))
@@ -375,7 +375,7 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 	}
 
 	// For each subqueries verifies the values for xs
-	cachedXs := collection.NewMapping[string, frontend.Variable]()
+	cachedXs := collection.NewMapping[string, zk.WrappedVariable]()
 	cachedXs.InsertNew("", originalQueryParams.X)
 	alreadyCheckedReprs := collection.NewSet[string]()
 

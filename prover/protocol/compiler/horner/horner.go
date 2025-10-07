@@ -355,7 +355,7 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	var (
 		hornerQuery  = c.Q
 		hornerParams = run.GetHornerParams(hornerQuery.ID)
-		res          = frontend.Variable(0)
+		res          = zk.WrappedVariable(0)
 	)
 
 	for i := range c.Q.Parts {
@@ -363,7 +363,7 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		var (
 			ipQuery  = c.CountingInnerProducts[i]
 			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-			ipCount  = frontend.Variable(0)
+			ipCount  = zk.WrappedVariable(0)
 		)
 
 		for k := range ipQuery.Bs {

@@ -181,17 +181,17 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 }
 
 // GnarkEvalExprColumn evaluates an expression in a gnark circuit setting
-func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []frontend.Variable {
+func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []zk.WrappedVariable {
 
 	var (
 		metadata = board.ListVariableMetadata()
 		length   = ExprIsOnSameLengthHandles(&board)
-		res      = make([]frontend.Variable, length)
+		res      = make([]zk.WrappedVariable, length)
 	)
 
 	for k := 0; k < length; k++ {
 
-		inputs := make([]frontend.Variable, len(metadata))
+		inputs := make([]zk.WrappedVariable, len(metadata))
 
 		for i := range inputs {
 			switch m := metadata[i].(type) {

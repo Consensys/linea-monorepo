@@ -8,10 +8,10 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -158,26 +158,26 @@ func IntoRegVecExt(s SmartVector) []fext.Element {
 }
 
 // IntoGnarkAssignment converts a smart-vector into a gnark assignment
-func IntoGnarkAssignment(sv SmartVector) []frontend.Variable {
-	res := make([]frontend.Variable, sv.Len())
+func IntoGnarkAssignment(sv SmartVector) []zk.WrappedVariable {
+	res := make([]zk.WrappedVariable, sv.Len())
 	_, err := sv.GetBase(0)
 	if err == nil {
 		for i := range res {
 			elem, _ := sv.GetBase(i)
-			res[i] = elem
+			res[i] = zk.ValueOf(elem)
 		}
 	} else {
 		for i := range res {
 			elem := sv.GetExt(i)
-			res[i] = elem
+			res[i] = zk.ValueOf(elem)
 		}
 	}
 	return res
 }
 
 // IntoGnarkAssignment converts an extension smart-vector into a gnark assignment
-func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Element {
-	res := make([]gnarkfext.Element, sv.Len())
+func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.E4Gen {
+	res := make([]gnarkfext.E4Gen, sv.Len())
 	_, err := sv.GetBase(0)
 	if err == nil {
 		for i := range res {

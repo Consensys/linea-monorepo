@@ -108,7 +108,7 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 		// zetasOfR stores the values zetas[i] = lambda^i / (r - xi).
 		// These values are precomputed for efficiency.
-		zetasOfR = make([]gnarkfext.Element, len(va.Queries))
+		zetasOfR = make([]gnarkfext.E4Gen, len(va.Queries))
 
 		lambda = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
 		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
@@ -117,11 +117,11 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	api.AssertIsEqual(r, rCoin)
 
 	var (
-		lambdaPowI gnarkfext.Element
-		rhoK       gnarkfext.Element
+		lambdaPowI gnarkfext.E4Gen
+		rhoK       gnarkfext.E4Gen
 		// res stores the right-hand of the equality check. Namely,
 		// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-		res gnarkfext.Element
+		res gnarkfext.E4Gen
 	)
 	lambdaPowI.SetOne()
 	rhoK.SetOne()
@@ -183,13 +183,13 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 }
 
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.Element {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]gnarkfext.E4Gen {
 
 	var (
-		evaluationMap = make(map[ifaces.ColID]gnarkfext.Element)
+		evaluationMap = make(map[ifaces.ColID]gnarkfext.E4Gen)
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
 		x             = univParams.ExtX
-		polys         = make([][]frontend.Variable, 0)
+		polys         = make([][]zk.WrappedVariable, 0)
 	)
 
 	for i := range ctx.NewQuery.Pols {
@@ -207,7 +207,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 			if err != nil {
 				utils.Panic("err=%v", err)
 			}
-			polys = append(polys, []frontend.Variable{x})
+			polys = append(polys, []zk.WrappedVariable{x})
 			continue
 		}
 

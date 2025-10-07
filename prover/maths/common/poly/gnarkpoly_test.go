@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/require"
 )
@@ -51,10 +52,10 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 
 		def := func(api frontend.API) error {
 			var (
-				domain                     = vector.IntoGnarkAssignment(vector.ForTest(0))
-				x        frontend.Variable = 42
-				expected                   = vector.IntoGnarkAssignment(vector.ForTest(1))
-				res                        = EvaluateLagrangeAnyDomainGnark(api, domain, x)
+				domain                      = vector.IntoGnarkAssignment(vector.ForTest(0))
+				x        zk.WrappedVariable = zk.ValueOf(42)
+				expected                    = vector.IntoGnarkAssignment(vector.ForTest(1))
+				res                         = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
 
 			require.Len(t, res, len(expected))
@@ -72,10 +73,10 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 
 		def := func(api frontend.API) error {
 			var (
-				domain                     = vector.IntoGnarkAssignment(vector.ForTest(0, 1))
-				x        frontend.Variable = 42
-				expected                   = vector.IntoGnarkAssignment(vector.ForTest(-41, 42))
-				res                        = EvaluateLagrangeAnyDomainGnark(api, domain, x)
+				domain                      = vector.IntoGnarkAssignment(vector.ForTest(0, 1))
+				x        zk.WrappedVariable = zk.ValueOf(42)
+				expected                    = vector.IntoGnarkAssignment(vector.ForTest(-41, 42))
+				res                         = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
 
 			require.Len(t, res, len(expected))
