@@ -6,7 +6,7 @@
 uint24 POOL_TICK_SPACING
 ```
 
-Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool
+Tick spacing of the pool.
 
 ### ROUTER
 
@@ -14,7 +14,7 @@ Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool
 address ROUTER
 ```
 
-Address of the Etherex SwapRouter contract
+Address of the Swap Router contract.
 
 ### WETH_TOKEN
 
@@ -22,7 +22,7 @@ Address of the Etherex SwapRouter contract
 address WETH_TOKEN
 ```
 
-Address of the WETH token contract
+Address of the WETH token contract.
 
 ### LINEA_TOKEN
 
@@ -30,7 +30,7 @@ Address of the WETH token contract
 address LINEA_TOKEN
 ```
 
-Address of the LINEA token contract
+Address of the LINEA token contract.
 
 ### ROLLUP_REVENUE_VAULT
 
@@ -38,12 +38,12 @@ Address of the LINEA token contract
 address ROLLUP_REVENUE_VAULT
 ```
 
-Address of the RollupRevenueVault contract authorized to call the swap function
+Address of the RollupRevenueVault contract authorized to call the swap function.
 
 ### constructor
 
 ```solidity
-constructor(address _router, address _wethToken, address _lineaToken, address _rollupRevenueVault) public
+constructor(address _router, address _wethToken, address _lineaToken, address _rollupRevenueVault, uint24 _poolTickSpacing) public
 ```
 
 _Sets the address of the RollupRevenueVault contract and other immutable values._
@@ -56,6 +56,7 @@ _Sets the address of the RollupRevenueVault contract and other immutable values.
 | _wethToken | address | Address of the WETH token contract. |
 | _lineaToken | address | Address of the LINEA token contract. |
 | _rollupRevenueVault | address | Address of the RollupRevenueVault contract. |
+| _poolTickSpacing | uint24 |  |
 
 ### swap
 

@@ -82,13 +82,13 @@ error InsufficientBalance()
 
 _Thrown when the contract balance is insufficient._
 
-### AddressAlreadySetup
+### ExistingAddressTheSame
 
 ```solidity
-error AddressAlreadySetup()
+error ExistingAddressTheSame()
 ```
 
-_Thrown when the provided address is already set up._
+_Thrown when the provided address is the same as the existing address._
 
 ### InvoiceProcessed
 
@@ -139,20 +139,20 @@ _Emitted when the L1 LINEA token burner contract address is updated._
 | previousValue | address | The previous L1 LINEA token burner contract address. |
 | newValue | address | The new L1 LINEA token burner contract address. |
 
-### DexUpdated
+### V3DexUpdated
 
 ```solidity
-event DexUpdated(address previousValue, address newValue)
+event V3DexUpdated(address previousValue, address newValue)
 ```
 
-_Emitted when the DEX contract address is updated._
+_Emitted when the V3 DEX contract address is updated._
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| previousValue | address | The previous DEX contract address. |
-| newValue | address | The new DEX contract address. |
+| previousValue | address | The previous V3 DEX contract address. |
+| newValue | address | The new V3 DEX contract address. |
 
 ### EthReceived
 
