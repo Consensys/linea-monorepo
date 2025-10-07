@@ -92,6 +92,7 @@ public class ZkTracer implements LineCountingTracer {
           case SHANGHAI -> new ShanghaiHub(chain);
           case CANCUN -> new CancunHub(chain);
           case PRAGUE -> new PragueHub(chain);
+          case OSAKA -> new OsakaHub(chain);
           default -> throw new IllegalArgumentException("Unknown fork: " + chain.fork);
         };
     this.trace = getTraceFromFork(chain.fork);

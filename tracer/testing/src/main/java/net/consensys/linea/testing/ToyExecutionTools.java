@@ -16,8 +16,7 @@
 package net.consensys.linea.testing;
 
 import static net.consensys.linea.reporting.TracerTestBase.chainConfig;
-import static net.consensys.linea.zktracer.Fork.isPostCancun;
-import static net.consensys.linea.zktracer.Fork.isPostPrague;
+import static net.consensys.linea.zktracer.Fork.*;
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash.EIP2935_HISTORY_STORAGE_ADDRESS;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection.EIP4788_BEACONROOT_ADDRESS;
@@ -32,10 +31,7 @@ import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.*;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.BlobGas;
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor;
@@ -103,7 +99,9 @@ public class ToyExecutionTools {
     final WorldUpdater worldStateUpdater = initialWorldState.updater();
 
     // Add system accounts if the fork requires it.
-    final Fork fork = Fork.valueOf(protocolSpec.getHardforkId().name());
+    final Fork fork =
+        fromMainnetHardforkIdToTracerFork(
+            (HardforkId.MainnetHardforkId) protocolSpec.getHardforkId());
     addSystemAccountsIfRequired(worldStateUpdater, fork);
 
     final MainnetTransactionProcessor processor = protocolSpec.getTransactionProcessor();

@@ -47,7 +47,7 @@ public enum Fork {
     return releaseNumber;
   }
 
-  public static String toString(Fork fork) {
+  public static String toCamelCase(Fork fork) {
     return switch (fork) {
       case LONDON -> "london";
       case PARIS -> "paris";
@@ -95,14 +95,6 @@ public enum Fork {
     return forkIsAtLeast(fork, OSAKA);
   }
 
-  public static boolean forkSupported(Fork fork) {
-    return !forkNotSupported(fork);
-  }
-
-  public static boolean forkNotSupported(Fork fork) {
-    return isPostOsaka(fork);
-  }
-
   /**
    * Map MainnetHardforkId, datatype from Besu, to Fork enum instance
    *
@@ -110,6 +102,7 @@ public enum Fork {
    * @return Fork
    */
   public static Fork fromMainnetHardforkIdToTracerFork(MainnetHardforkId hardForkId) {
+    // equivalent to return Fork.valueOf(hardForkId.name());
     return switch (hardForkId) {
       case MainnetHardforkId.LONDON -> LONDON;
       case MainnetHardforkId.PARIS -> PARIS;
@@ -174,6 +167,7 @@ public enum Fork {
       case SHANGHAI -> new TraceShanghai();
       case CANCUN -> new TraceCancun();
       case PRAGUE -> new TracePrague();
+      case OSAKA -> new TraceOsaka();
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
@@ -184,6 +178,7 @@ public enum Fork {
       case SHANGHAI -> new ShanghaiGasCalculator();
       case CANCUN -> new CancunGasCalculator();
       case PRAGUE -> new PragueGasCalculator();
+      case OSAKA -> new OsakaGasCalculator();
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }
@@ -199,7 +194,7 @@ public enum Fork {
     return switch (fork) {
       case LONDON, PARIS, SHANGHAI -> 0;
       case CANCUN -> 1;
-      case PRAGUE -> 2;
+      case PRAGUE, OSAKA -> 2;
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }

@@ -81,7 +81,7 @@ public abstract class MxpCall implements TraceSubFragment {
       case LONDON, PARIS, SHANGHAI -> {
         return new LondonMxpCall(hub);
       }
-      case CANCUN, PRAGUE -> {
+      case CANCUN, PRAGUE, OSAKA -> {
         return getCancunMxpCall(hub);
       }
       default -> throw new IllegalArgumentException("Unsupported fork: " + hub.fork);

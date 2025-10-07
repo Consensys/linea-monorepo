@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.opcode;
 
+import static net.consensys.linea.zktracer.Fork.toCamelCase;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -148,7 +150,7 @@ public class OpCodes {
   private static List<OpCodeData> opCodesLocal(Fork fork) {
     final JsonConverter yamlConverter = JsonConverter.builder().enableYaml().build();
 
-    final String yamlFileName = Fork.toString(fork) + "Opcodes.yml";
+    final String yamlFileName = toCamelCase(fork) + "Opcodes.yml";
 
     final JsonNode rootNode =
         yamlConverter
@@ -165,7 +167,7 @@ public class OpCodes {
         // Before Cancun, we deserialize Billing with a type (TYPE_1, TYPE_2, TYPE_3, TYPE_4).
         module.addDeserializer(Billing.class, new BillingDeserializer(true));
       }
-      case CANCUN, PRAGUE -> {
+      case CANCUN, PRAGUE, OSAKA -> {
         // From Cancun and on, we deserialize Billing without a type.
         module.addDeserializer(Billing.class, new BillingDeserializer(false));
       }

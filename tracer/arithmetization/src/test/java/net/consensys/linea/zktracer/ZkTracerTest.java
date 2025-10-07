@@ -57,7 +57,7 @@ public class ZkTracerTest extends TracerTestBase {
         checkArgument(totalNumberOfModules == numberOfTracedModules, "no missing modules expected");
         // note: when RLP_AUTH will be implemented, we'll expoect a difference of 1
       }
-      case PRAGUE -> {
+      case PRAGUE, OSAKA -> {
         checkArgument(totalNumberOfModules == numberOfTracedModules, "no missing modules expected");
       }
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
