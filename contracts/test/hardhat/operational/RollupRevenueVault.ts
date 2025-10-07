@@ -578,7 +578,7 @@ describe("RollupRevenueVault", () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateDex(await dex.getAddress()),
-        "AlreadySetup",
+        "AddressAlreadySetup",
       );
     });
 
