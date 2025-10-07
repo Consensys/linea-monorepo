@@ -14,6 +14,7 @@ export const setupReceiveCallerForSuccessfulYieldProviderWithdrawal = async (
 };
 
 // TODO - Existence of this setup function means that YieldManager has invariants that withdraw cannot underflow for userFunds and userFundsInYieldProvidersTotal
+// Caution - assumes it will only be used once, will not work for consecutive uses in its current form
 export const fundYieldProviderForWithdrawal = async (
   testYieldManager: TestYieldManager,
   mockYieldProvider: MockYieldProvider,
@@ -28,6 +29,7 @@ export const fundYieldProviderForWithdrawal = async (
   const l1MessageServiceAddress = await testYieldManager.getL1MessageService();
   await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, ethers.toBeHex(minimumReserveAmount)]);
   await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(withdrawAmount)]);
+  await testYieldManager.connect(signer).setWithdrawableValueReturnVal(mockYieldProviderAddress, withdrawAmount);
   await testYieldManager.connect(signer).fundYieldProvider(mockYieldProviderAddress, withdrawAmount);
 };
 

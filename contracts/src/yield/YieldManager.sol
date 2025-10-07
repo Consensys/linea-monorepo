@@ -423,7 +423,10 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
       _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
     );
-    withdrawableAmount = abi.decode(data, (uint256));
+    uint256 fetchedWithdrawableAmount = abi.decode(data, (uint256));
+    // Avoid underflow with 'userFunds - withdrawableValue'.
+    // Assumption that funds on YieldProvider are eventually available for withdrawal after next reportYield.
+    withdrawableAmount = Math256.min(fetchedWithdrawableAmount, _getYieldProviderStorage(_yieldProvider).userFunds);
   }
 
   /**
