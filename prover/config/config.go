@@ -150,14 +150,16 @@ func validateModEntries(fl validator.FieldLevel) bool {
 		found := false
 		for _, valid := range ALL_MODULES {
 			if mod == valid {
-				return true
+				found = true
+				break
 			}
 		}
 		if !found {
 			return false
 		}
 	}
-	return false
+
+	return true
 }
 
 // validateExecutionLimitlessTimeoutOrder ensures GLSubproofsTimeout < RndBeaconTimeout < LPPSubproofsTimeout
