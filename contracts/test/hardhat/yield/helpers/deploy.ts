@@ -121,3 +121,5 @@ export async function deployYieldManagerForUnitTestWithMutatedInitData(
     },
   );
 }
+
+export async function deployLidoStVaultYieldProviderFactory() {}

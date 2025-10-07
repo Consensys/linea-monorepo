@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 import { IStakingVault } from "./IStakingVault.sol";
+import { ICommonVaultOperations } from "./ICommonVaultOperations.sol";
 
 // See contracts/COMPILERS.md
 pragma solidity >=0.8.0;
@@ -13,7 +14,7 @@ pragma solidity >=0.8.0;
  * in this single contract. It provides administrative functions for managing the StakingVault,
  * including funding, withdrawing, minting, burning, and rebalancing operations.
  */
-interface IDashboard {
+interface IDashboard is ICommonVaultOperations {
   function stakingVault() external view returns (IStakingVault);
 
   function totalValue() external view returns (uint256);

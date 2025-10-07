@@ -5,12 +5,14 @@
 // solhint-disable-next-line lido/fixed-compiler-version
 pragma solidity >=0.8.0;
 
+import { ICommonVaultOperations } from "./ICommonVaultOperations.sol";
+
 /**
  * @title IStakingVault
  * @author Lido
  * @notice Interface for the `StakingVault` contract
  */
-interface IStakingVault {
+interface IStakingVault is ICommonVaultOperations {
   function acceptOwnership() external;
 
   function ossify() external;
