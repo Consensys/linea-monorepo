@@ -7,6 +7,9 @@ import {
   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
   MINIMUM_WITHDRAWAL_RESERVE_AMOUNT,
   TARGET_WITHDRAWAL_RESERVE_AMOUNT,
+  GI_FIRST_VALIDATOR,
+  GI_FIRST_VALIDATOR_AFTER_CHANGE,
+  CHANGE_SLOT,
 } from "../../common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import {
@@ -16,7 +19,14 @@ import {
 } from "contracts/common/constants";
 import { YIELD_MANAGER_INITIALIZE_SIGNATURE } from "contracts/common/constants";
 import { deployUpgradableWithConstructorArgs } from "../../common/deployment";
-import { TestYieldManager, MockLineaRollup, MockYieldProvider, MockWithdrawTarget } from "contracts/typechain-types";
+import {
+  TestYieldManager,
+  MockLineaRollup,
+  MockYieldProvider,
+  MockWithdrawTarget,
+  MockVaultHub,
+  MockSTETH,
+} from "contracts/typechain-types";
 import { YieldManagerInitializationData } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
@@ -96,7 +106,6 @@ export async function deployYieldManagerForUnitTest() {
     [await mockLineaRollup.getAddress()],
     [initializationData],
     {
-      // initializer: "initialize",
       initializer: YIELD_MANAGER_INITIALIZE_SIGNATURE,
       unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable", "delegatecall"],
     },
@@ -122,4 +131,50 @@ export async function deployYieldManagerForUnitTestWithMutatedInitData(
   );
 }
 
-export async function deployLidoStVaultYieldProviderFactory() {}
+export async function deployMockVaultHub(): Promise<MockVaultHub> {
+  const factory = await ethers.getContractFactory("MockVaultHub");
+  const contract = await factory.deploy();
+  await contract.waitForDeployment();
+  return contract;
+}
+
+export async function deployMockSTETH(): Promise<MockSTETH> {
+  const factory = await ethers.getContractFactory("MockSTETH");
+  const contract = await factory.deploy();
+  await contract.waitForDeployment();
+  return contract;
+}
+
+export async function deployLidoStVaultYieldProviderFactory() {
+  const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTest);
+  const yieldProviderFactory = await ethers.getContractFactory("LidoStVaultYieldProvider");
+  const mockVaultHub = await deployMockVaultHub();
+  const mockSTETH = await deployMockSTETH();
+
+  const l1MessageServiceAddress = await mockLineaRollup.getAddress();
+  const yieldManagerAddress = await yieldManager.getAddress();
+  const mockVaultHubAddress = await mockVaultHub.getAddress();
+  const mockSTETHAddress = await mockSTETH.getAddress();
+
+  const beacon = await upgrades.deployBeacon(yieldProviderFactory, {
+    unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable", "delegatecall"],
+    constructorArgs: [
+      l1MessageServiceAddress,
+      yieldManagerAddress,
+      mockVaultHubAddress,
+      mockSTETHAddress,
+      GI_FIRST_VALIDATOR,
+      GI_FIRST_VALIDATOR_AFTER_CHANGE,
+      CHANGE_SLOT,
+    ],
+  });
+
+  await beacon.waitForDeployment();
+  const beaconAddress = await beacon.getAddress();
+
+  const yieldProviderFactoryFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
+  const lidoStVaultYieldProviderFactory = await yieldProviderFactoryFactory.deploy(beaconAddress);
+  await lidoStVaultYieldProviderFactory.waitForDeployment();
+
+  return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, beacon, lidoStVaultYieldProviderFactory };
+}
