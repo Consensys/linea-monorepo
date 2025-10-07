@@ -9,5 +9,9 @@ import { IL1MessageService } from "../../messaging/l1/interfaces/IL1MessageServi
  * @custom:security-contact security-report@linea.build
  */
 interface IL1LineaTokenBurner {
+  /**
+   * @notice Claims a message with proof and burns the LINEA tokens held by this contract.
+   * @param _params The parameters required to claim the message with proof.
+   */
   function claimMessageWithProof(IL1MessageService.ClaimMessageWithProofParams calldata _params) external;
 }

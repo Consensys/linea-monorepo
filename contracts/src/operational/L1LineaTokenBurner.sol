@@ -26,6 +26,10 @@ contract L1LineaTokenBurner is IL1LineaTokenBurner, IGenericErrors {
     LINEA_TOKEN = _lineaToken;
   }
 
+  /**
+   * @notice Claims a message with proof and burns the LINEA tokens held by this contract.
+   * @param _params The parameters required to claim the message with proof.
+   */
   function claimMessageWithProof(IL1MessageService.ClaimMessageWithProofParams calldata _params) external {
     if (!IL1MessageManager(MESSAGE_SERVICE).isMessageClaimed(_params.messageNumber)) {
       IL1MessageService(MESSAGE_SERVICE).claimMessageWithProof(_params);
