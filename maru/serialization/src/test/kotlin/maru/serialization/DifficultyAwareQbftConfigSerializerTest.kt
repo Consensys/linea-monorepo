@@ -8,9 +8,9 @@
  */
 package maru.serialization
 
-import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ElFork
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat

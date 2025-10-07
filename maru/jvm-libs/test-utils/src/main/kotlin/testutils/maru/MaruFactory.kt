@@ -37,9 +37,9 @@ import maru.config.QbftConfig
 import maru.config.SyncingConfig
 import maru.config.SyncingConfig.SyncTargetSelection
 import maru.config.ValidatorElNode
-import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec

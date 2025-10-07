@@ -9,7 +9,7 @@
 package maru.executionlayer.client
 
 import java.util.Optional
-import maru.config.consensus.ElFork
+import maru.consensus.ElFork
 import maru.core.ExecutionPayload
 import maru.extensions.captureTimeSafeFuture
 import maru.mappers.Mappers.toDomainExecutionPayload

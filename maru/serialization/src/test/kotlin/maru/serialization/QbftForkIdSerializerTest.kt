@@ -9,8 +9,8 @@
 package maru.serialization
 
 import kotlin.random.Random
-import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkId
 import maru.consensus.ForkSpec
 import maru.core.ext.DataGenerators
