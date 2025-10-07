@@ -130,6 +130,11 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, transferCall, "IsPaused", [NATIVE_YIELD_STAKING_PAUSE_TYPE]);
     });
 
+    it("Security council should be able to unpause NATIVE_YIELD_STAKING pause type", async () => {
+      await lineaRollup.connect(securityCouncil).pauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
+      await lineaRollup.connect(securityCouncil).unPauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
+    });
+
     it("Should revert if LineaRollup has balance < _amount", async () => {
       const amount = ethers.parseEther("1");
       const transferCall = lineaRollup.connect(securityCouncil).transferFundsForNativeYield(amount);

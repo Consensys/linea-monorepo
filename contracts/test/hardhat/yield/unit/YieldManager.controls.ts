@@ -19,7 +19,7 @@ import {
 import { setWithdrawalReserveBalance, setWithdrawalReserveToMinimum } from "../helpers/setup";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 
-describe("Linea Rollup contract", () => {
+describe("YieldManager contract - control operations", () => {
   let yieldManager: TestYieldManager;
 
   let securityCouncil: SignerWithAddress;

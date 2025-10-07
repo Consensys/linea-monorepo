@@ -15,7 +15,7 @@ import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixtur
 import { YieldManagerInitializationData } from "../helpers/types";
 import { ZeroAddress } from "ethers";
 
-describe("Linea Rollup contract", () => {
+describe("YieldManager contract - basic operations", () => {
   let yieldManager: TestYieldManager;
 
   let securityCouncil: SignerWithAddress;

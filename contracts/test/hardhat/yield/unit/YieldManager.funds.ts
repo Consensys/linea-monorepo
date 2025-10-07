@@ -23,7 +23,7 @@ import {
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { fundYieldProviderForWithdrawal, incrementBalance, setWithdrawalReserveBalance } from "../helpers";
 
-describe("YieldManager contract - funding ETH", () => {
+describe("YieldManager contract - ETH transfer operations", () => {
   let yieldManager: TestYieldManager;
 
   let securityCouncil: SignerWithAddress;
