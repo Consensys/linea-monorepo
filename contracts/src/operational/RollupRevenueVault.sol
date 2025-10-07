@@ -208,7 +208,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     uint256 _minLineaOut,
     uint256 _deadline,
     uint160 _sqrtPriceLimitX96
-  ) public onlyRole(BURNER_ROLE) {
+  ) external onlyRole(BURNER_ROLE) {
     require(invoiceArrears == 0, InvoiceInArrears());
 
     uint256 minimumFee = messageService.minimumFeeInWei();

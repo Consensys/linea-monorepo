@@ -31,9 +31,9 @@ interface ISwapRouterV3 {
   }
 
   /**
-   * @notice Swaps `amountIn` of one token for as much as possible of another token
-   * @param params The parameters necessary for the swap, encoded as `ExactInputSingleParams` in calldata
-   * @return amountOut The amount of the received token
+   * @notice Swaps `amountIn` of one token for as much as possible of another token.
+   * @param params The parameters necessary for the swap, encoded as `ExactInputSingleParams` in calldata.
+   * @return amountOut The amount of the received token.
    */
   function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
 }
