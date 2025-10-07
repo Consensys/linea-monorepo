@@ -303,8 +303,6 @@ type ExecutionLimitless struct {
 	GLSubproofsTimeout  int    `mapstructure:"gl_subproofs_timeout" validate:"gt=0"`
 	LPPSubproofsTimeout int    `mapstructure:"lpp_subproofs_timeout" validate:"gt=0"`
 	RndBeconTimeout     int    `mapstructure:"rnd_beacon_timeout" validate:"gt=0"`
-	RetryDelay          int    `mapstructure:"retry_delay"`
-	NumberOfRetries     int    `mapstructure:"number_retries"`
 }
 
 type Execution struct {
