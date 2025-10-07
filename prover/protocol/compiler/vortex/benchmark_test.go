@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVortexForBenchmark(t *testing.T) {
+func BenchmarkVortexForBenchmark(b *testing.B) {
 	var (
 		polySize  = []int{1 << 10, 1 << 14, 1 << 17}
 		nPoly     = []int{1 << 10, 1 << 15, 1 << 20}
@@ -25,14 +25,14 @@ func TestVortexForBenchmark(t *testing.T) {
 	for i := range numRounds {
 		for n := range nPoly {
 			for p := range polySize {
-				benchmarkVortex(t, polySize[p], nPoly[n], numRounds[i])
+				benchmarkVortex(b, polySize[p], nPoly[n], numRounds[i])
 			}
 		}
 	}
 
 }
 
-func benchmarkVortex(t *testing.T, polSize int, nPoly int, numRounds int) {
+func benchmarkVortex(b *testing.B, polSize int, nPoly int, numRounds int) {
 
 	logrus.Infof(" ------------ Benchmarking Vortex with numRounds=%v, nPoly=%v, PolySize=%v,-------------- ", numRounds, nPoly, polSize)
 	var (
@@ -89,8 +89,12 @@ func benchmarkVortex(t *testing.T, polSize int, nPoly int, numRounds int) {
 		vortex.ForceNumOpenedColumns(10),
 		vortex.WithOptionalSISHashingThreshold(512)))
 
-	proof := wizard.Prove(compiled, Prove)
+	b.ResetTimer()
+	var proof wizard.Proof
+	for i := 0; i < b.N; i++ {
+		proof = wizard.Prove(compiled, Prove)
+	}
 	valid := wizard.Verify(compiled, proof)
 
-	require.NoErrorf(t, valid, "the proof did not pass")
+	require.NoErrorf(b, valid, "the proof did not pass")
 }
