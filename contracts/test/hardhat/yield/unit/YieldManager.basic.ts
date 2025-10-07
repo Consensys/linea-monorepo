@@ -685,7 +685,7 @@ describe("Linea Rollup contract", () => {
     });
   });
 
-  describe("Modifers on YieldProvider-scoped read functions", () => {
+  describe("Safeguards on YieldProvider-scoped read functions", () => {
     it("getYieldProviderData should revert for unknown yield provider", async () => {
       const unknownYieldProvider = ethers.Wallet.createRandom().address;
 
@@ -744,6 +744,13 @@ describe("Linea Rollup contract", () => {
         yieldManager.withdrawableValue(unknownYieldProvider),
         "UnknownYieldProvider",
       );
+    });
+
+    it("withdrawableValue should return minimum of delegatecall return and userfunds", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      await yieldManager.connect(nativeYieldOperator).setWithdrawableValueReturnVal(mockYieldProviderAddress, 1n);
+      const withdrawableValue = await yieldManager.withdrawableValue.staticCall(mockYieldProviderAddress);
+      expect(withdrawableValue).eq(0);
     });
   });
 

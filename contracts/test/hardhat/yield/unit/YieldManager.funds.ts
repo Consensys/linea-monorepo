@@ -18,6 +18,7 @@ import {
   NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
   NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE,
   NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE,
+  LST_WITHDRAWAL_PAUSE_TYPE,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { fundYieldProviderForWithdrawal, incrementBalance } from "../helpers";
@@ -1418,6 +1419,118 @@ describe("YieldManager contract - funding ETH", () => {
       expect(await ethers.provider.getBalance(mockWithdrawTargetAddress)).eq(
         beforeMockWithdrawTargetBalance - targetReserveAmount / 2n,
       );
+    });
+  });
+
+  describe("withdraw LST", () => {
+    it("Should revert when the GENERAL pause type is activated", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).withdrawLST(mockYieldProviderAddress, 0n, ethers.ZeroAddress),
+        "IsPaused",
+        [GENERAL_PAUSE_TYPE],
+      );
+    });
+
+    it("Should revert when the LST_WITHDRAWAL pause type is activated", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      const pauseRole = await yieldManager.PAUSE_LST_WITHDRAWAL_ROLE();
+      await yieldManager.connect(securityCouncil).grantRole(pauseRole, operationalSafe.address);
+      await yieldManager.connect(operationalSafe).pauseByType(LST_WITHDRAWAL_PAUSE_TYPE);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).withdrawLST(mockYieldProviderAddress, 0n, ethers.ZeroAddress),
+        "IsPaused",
+        [LST_WITHDRAWAL_PAUSE_TYPE],
+      );
+    });
+
+    it("Should revert when choosing an unknown YieldProvider", async () => {
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .withdrawLST(ethers.Wallet.createRandom().address, 0n, ethers.ZeroAddress),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("Should revert if the sender is not the L1MessageService", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).withdrawLST(mockYieldProviderAddress, 0n, ethers.ZeroAddress),
+        "SenderNotL1MessageService",
+      );
+    });
+
+    it("Should revert if L1MessageService does not have withdraw LST flag toggled", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const l1MessageService = await mockLineaRollup.getAddress();
+
+      await mockLineaRollup.setWithdrawLSTAllowed(false);
+      // Arrange - set gas funds for L1MessageService to be signer
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(l1Signer).withdrawLST(mockYieldProviderAddress, 0n, ethers.ZeroAddress),
+        "LSTWithdrawalNotAllowed",
+      );
+
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);
+    });
+
+    it("Should revert if LST withdraw amount > userFunds for yield provider", async () => {
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const withdrawAmount = ONE_ETHER;
+
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, withdrawAmount / 2n);
+
+      // Arrange - set gas funds for L1MessageService to be signer
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(l1Signer).withdrawLST(mockYieldProviderAddress, withdrawAmount, ethers.ZeroAddress),
+        "LSTWithdrawalExceedsYieldProviderFunds",
+      );
+
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);
+    });
+
+    it("Should successfully withdraw LST, pause staking and emit the expected event", async () => {
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const withdrawAmount = ONE_ETHER;
+      const recipient = ethers.Wallet.createRandom().address;
+
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, withdrawAmount);
+
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+
+      // Act
+      await expect(yieldManager.connect(l1Signer).withdrawLST(mockYieldProviderAddress, withdrawAmount, recipient))
+        .to.emit(yieldManager, "LSTMinted")
+        .withArgs(mockYieldProviderAddress, recipient, withdrawAmount);
+
+      expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
+
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);
     });
   });
 });
