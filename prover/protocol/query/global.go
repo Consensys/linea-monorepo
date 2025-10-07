@@ -335,7 +335,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	/*
 		Collects the relevant datas into a slice for the evaluation
 	*/
-	evalInputs := make([][]frontend.Variable, len(metadatas))
+	evalInputs := make([][]zk.WrappedVariable, len(metadatas))
 
 	/*
 		Omega is a root of unity which generates the domain of evaluation
@@ -349,7 +349,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful
-	omegas := make([]frontend.Variable, cs.DomainSize)
+	omegas := make([]zk.WrappedVariable, cs.DomainSize)
 	for i := 0; i < cs.DomainSize; i++ {
 		omegas[i] = omegaI
 		omegaI.Mul(&omegaI, &omega)
@@ -386,7 +386,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 
 	for i := start; i < stop; i++ {
 		// This panics if the global constraints doesn't use any commitment
-		inputs := make([]frontend.Variable, len(evalInputs))
+		inputs := make([]zk.WrappedVariable, len(evalInputs))
 		for j := range inputs {
 			inputs[j] = evalInputs[j][i]
 		}

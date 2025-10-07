@@ -11,13 +11,13 @@ import (
 
 // A gnark circuit version of the LocalOpeningResult
 type GnarkLocalOpeningParams struct {
-	BaseY  frontend.Variable
-	ExtY   gnarkfext.Element
+	BaseY  zk.WrappedVariable
+	ExtY   gnarkfext.E4Gen
 	IsBase bool
 }
 
 func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
-	var exty gnarkfext.Element
+	var exty gnarkfext.E4Gen
 	exty.Assign(p.ExtY)
 	return GnarkLocalOpeningParams{
 		BaseY:  p.BaseY,
@@ -28,20 +28,20 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 // A gnark circuit version of LogDerivSumParams
 type GnarkLogDerivSumParams struct {
-	Sum frontend.Variable
+	Sum zk.WrappedVariable
 }
 
 // A gnark circuit version of GrandProductParams
 type GnarkGrandProductParams struct {
-	Prod frontend.Variable
+	Prod zk.WrappedVariable
 }
 
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
 type HornerParamsPartGnark struct {
 	// N0 is an initial offset of the Horner query
-	N0 frontend.Variable
+	N0 zk.WrappedVariable
 	// N1 is the second offset of the Horner query
-	N1 frontend.Variable
+	N1 zk.WrappedVariable
 }
 
 // GnarkHornerParams represents the parameters of the Horner evaluation query
@@ -49,7 +49,7 @@ type HornerParamsPartGnark struct {
 type GnarkHornerParams struct {
 	// Final result is the result of summing the Horner parts for every
 	// queries.
-	FinalResult frontend.Variable
+	FinalResult zk.WrappedVariable
 	// Parts are the parameters of the Horner parts
 	Parts []HornerParamsPartGnark
 }
@@ -60,11 +60,11 @@ func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 
 // A gnark circuit version of InnerProductParams
 type GnarkInnerProductParams struct {
-	Ys []gnarkfext.Element
+	Ys []gnarkfext.E4Gen
 }
 
 func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: make([]gnarkfext.Element, len(p.Bs))}
+	return GnarkInnerProductParams{Ys: make([]gnarkfext.E4Gen, len(p.Bs))}
 }
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
@@ -73,18 +73,18 @@ func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	X      frontend.Variable
-	Ys     []frontend.Variable
-	ExtX   gnarkfext.Element
-	ExtYs  []gnarkfext.Element
+	X      zk.WrappedVariable
+	Ys     []zk.WrappedVariable
+	ExtX   gnarkfext.E4Gen
+	ExtYs  []gnarkfext.E4Gen
 	IsBase bool
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
 	return GnarkUnivariateEvalParams{
-		Ys:    make([]frontend.Variable, len(p.Pols)),
-		ExtYs: make([]gnarkfext.Element, len(p.Pols)),
+		Ys:    make([]zk.WrappedVariable, len(p.Pols)),
+		ExtYs: make([]gnarkfext.E4Gen, len(p.Pols)),
 	}
 }
 

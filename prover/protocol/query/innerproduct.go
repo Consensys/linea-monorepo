@@ -131,7 +131,7 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		wB := b.GetColAssignmentGnark(run)
 
 		// mul <- \sum_j wA * wB
-		actualIP := frontend.Variable(0)
+		actualIP := zk.WrappedVariable(0)
 		for j := range wA {
 			tmp := api.Mul(wA[j], wB[j])
 			actualIP = api.Add(actualIP, tmp)

@@ -105,7 +105,7 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 // UnpackGnark unpacks the proof into a list of [smt.GnarkProof] objects. The
 // function also takes a list of positions to use to fill the [Path] field
 // of the proof.
-func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []frontend.Variable) []smt.GnarkProof {
+func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []zk.WrappedVariable) []smt.GnarkProof {
 
 	var (
 		proofs   = make([]smt.GnarkProof, 0)
@@ -116,7 +116,7 @@ func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []frontend.Va
 
 		newProof := smt.GnarkProof{
 			Path:     entryList[i],
-			Siblings: make([]frontend.Variable, len(p.Nodes)),
+			Siblings: make([]zk.WrappedVariable, len(p.Nodes)),
 		}
 
 		for j := range p.Nodes {

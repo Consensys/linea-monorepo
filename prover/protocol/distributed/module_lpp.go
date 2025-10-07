@@ -511,7 +511,7 @@ func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 
 func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	state := a.InitialFiatShamirState.GetColAssignmentGnark(run)[0]
-	run.Fs().SetState([]frontend.Variable{state})
+	run.Fs().SetState([]zk.WrappedVariable{state})
 }
 
 func (a *SetInitialFSHash) Skip() {
@@ -551,13 +551,13 @@ func hashNxs(params query.HornerParams, x int) field.Element {
 }
 
 // hashNxsGnark is as [hashNxs] but in a gnark circuit
-func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
+func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) zk.WrappedVariable {
 
 	hsh := factory.NewHasher()
 
 	for _, part := range params.Parts {
 
-		var nx frontend.Variable
+		var nx zk.WrappedVariable
 
 		if x == 0 {
 			nx = part.N0

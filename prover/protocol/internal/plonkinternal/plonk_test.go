@@ -17,8 +17,8 @@ import (
 type MyCircuit struct {
 	// struct tags on a variable is optional
 	// default uses variable name and secret visibility.
-	X frontend.Variable `gnark:"x,public"`
-	Y frontend.Variable `gnark:",public"`
+	X zk.WrappedVariable `gnark:"x,public"`
+	Y zk.WrappedVariable `gnark:",public"`
 }
 
 // Define declares the circuit constraints
@@ -44,7 +44,7 @@ func TestPlonkWizard(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]zk.WrappedVariable{0, 5})})
 	})
 
 	err := wizard.Verify(compiled, proof)
@@ -66,7 +66,7 @@ func TestPlonkWizardWithFixedNbRow(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]zk.WrappedVariable{0, 5})})
 	})
 
 	err := wizard.Verify(compiled, proof)

@@ -231,7 +231,7 @@ func unmarshalArithmetization(des *Deserializer, val any, _ reflect.Type) (refle
 func marshalFrontendVariable(ser *Serializer, val reflect.Value) (any, *serdeError) {
 
 	var (
-		variable = val.Interface().(frontend.Variable)
+		variable = val.Interface().(zk.WrappedVariable)
 		bi       = &big.Int{}
 	)
 
@@ -270,7 +270,7 @@ func marshalFrontendVariable(ser *Serializer, val reflect.Value) (any, *serdeErr
 		}
 
 		// The check cannot be done on val.Type as it would return
-		// [frontend.Variable]. The check is somewhat fragile as it rely on
+		// [zk.WrappedVariable]. The check is somewhat fragile as it rely on
 		// the type name and the package name. We return nil in that case, be
 		// -cause it signifies that the variable belongs to a circuit that has
 		// been compiled by gnark. That information is not relevant to

@@ -31,18 +31,18 @@ type Runtime interface {
 // exists to prevent circular dependencies internally.
 type GnarkRuntime interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
-	GetColumn(ColID) []frontend.Variable
-	GetColumnBase(ColID) ([]frontend.Variable, error)
-	GetColumnExt(ColID) []gnarkfext.Element
+	GetColumn(ColID) []zk.WrappedVariable
+	GetColumnBase(ColID) ([]zk.WrappedVariable, error)
+	GetColumnExt(ColID) []gnarkfext.E4Gen
 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
-	GetColumnAt(ColID, int) frontend.Variable
-	GetColumnAtBase(ColID, int) (frontend.Variable, error)
-	GetColumnAtExt(ColID, int) gnarkfext.Element
+	GetColumnAt(ColID, int) zk.WrappedVariable
+	GetColumnAtBase(ColID, int) (zk.WrappedVariable, error)
+	GetColumnAtExt(ColID, int) gnarkfext.E4Gen
 	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
-	GetRandomCoinField(name coin.Name) frontend.Variable
-	GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element
+	GetRandomCoinField(name coin.Name) zk.WrappedVariable
+	GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen
 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
-	GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable
+	GetRandomCoinIntegerVec(name coin.Name) []zk.WrappedVariable
 	// GetParams is as [Runtime.GetParams] but in a gnark circuit
 	GetParams(id QueryID) GnarkQueryParams
 }

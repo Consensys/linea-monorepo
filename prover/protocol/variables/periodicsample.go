@@ -131,11 +131,11 @@ func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Elem
 }
 
 // Evaluate a particular position on the domain
-func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) frontend.Variable {
+func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) zk.WrappedVariable {
 	return t.GnarkEvalNoCoset(t.T)[pos%t.T]
 }
 
-func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x frontend.Variable) frontend.Variable {
+func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x zk.WrappedVariable) zk.WrappedVariable {
 	n := size
 	l := n / t.T
 	one := field.One()
@@ -162,10 +162,10 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x fro
 }
 
 // Returns the result in gnark form. This returns a vector of constant
-// on the form of frontend.Variables.
-func (t PeriodicSample) GnarkEvalNoCoset(size int) []frontend.Variable {
+// on the form of zk.WrappedVariables.
+func (t PeriodicSample) GnarkEvalNoCoset(size int) []zk.WrappedVariable {
 	res_ := t.EvalCoset(size, 0, 1, false)
-	res := make([]frontend.Variable, res_.Len())
+	res := make([]zk.WrappedVariable, res_.Len())
 	for i := range res {
 		res[i] = res_.Get(i)
 	}

@@ -17,8 +17,8 @@ import (
 type TestCommitCircuit struct {
 	// struct tags on a variable is optional
 	// default uses variable name and secret visibility.
-	X frontend.Variable `gnark:",public"`
-	Y frontend.Variable `gnark:",public"`
+	X zk.WrappedVariable `gnark:",public"`
+	Y zk.WrappedVariable `gnark:",public"`
 }
 
 // Define declares the circuit constraints
@@ -28,7 +28,7 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	a := api.Add(x3, circuit.X, 5)
 
 	// compute powers of a:
-	powersOfA := []frontend.Variable{a}
+	powersOfA := []zk.WrappedVariable{a}
 	for i := 1; i < 15; i++ {
 		powersOfA = append(powersOfA, api.Mul(powersOfA[i-1], powersOfA[i-1]))
 	}
@@ -63,7 +63,7 @@ func TestPlonkWizardCircuitWithCommit(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{0, 5})})
 	})
 
 	err := wizard.Verify(compiled, proof)
@@ -86,9 +86,9 @@ func TestPlonkWizardCircuitWithCommitMultiInstance(t *testing.T) {
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 		pa.Run(run, []witness.Witness{
-			gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{0, 5}),
+			gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{0, 5}),
+			gnarkutil.AsWitnessPublicSmallField([]zk.WrappedVariable{0, 5}),
 		})
 	})
 
@@ -112,9 +112,9 @@ func TestPlonkWizardCircuitWithCommitMultiInstanceFixedNbRow(t *testing.T) {
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 		pa.Run(run, []witness.Witness{
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublic([]zk.WrappedVariable{0, 5}),
+			gnarkutil.AsWitnessPublic([]zk.WrappedVariable{0, 5}),
+			gnarkutil.AsWitnessPublic([]zk.WrappedVariable{0, 5}),
 		})
 	})
 

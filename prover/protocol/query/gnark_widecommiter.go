@@ -45,7 +45,7 @@ func From(newBuilder frontend.NewBuilderU32) frontend.NewBuilderU32 {
 	}
 }
 
-func (w *wrappedBuilder) WideCommit(width int, toCommit ...frontend.Variable) (commitment []frontend.Variable, err error) {
+func (w *wrappedBuilder) WideCommit(width int, toCommit ...zk.WrappedVariable) (commitment []zk.WrappedVariable, err error) {
 	res, err := w.Compiler().NewHint(mockedWideCommitHint, width, toCommit...)
 	return res, err
 }
@@ -54,7 +54,7 @@ func (w *wrappedBuilder) Compiler() frontend.Compiler {
 	return w
 }
 
-func (w *wrappedBuilder) Check(in frontend.Variable, width int) {
+func (w *wrappedBuilder) Check(in zk.WrappedVariable, width int) {
 	_, err := w.Compiler().NewHint(mockedRangecheckHint, 1, width, in)
 	if err != nil {
 		panic(fmt.Sprintf("failed to check range: %v", err))

@@ -347,14 +347,14 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
-		allGrandProduct           = frontend.Variable(1)
-		allLogDerivativeSum       = frontend.Variable(0)
-		allHornerSum              = frontend.Variable(0)
-		prevGlobalSent            = frontend.Variable(0)
-		prevHornerN1Hash          = frontend.Variable(0)
-		usedSharedRandomness      = frontend.Variable(0)
-		usedSharedRandomnessFound = frontend.Variable(0)
-		accumulativeLppHash       = frontend.Variable(0)
+		allGrandProduct           = zk.WrappedVariable(1)
+		allLogDerivativeSum       = zk.WrappedVariable(0)
+		allHornerSum              = zk.WrappedVariable(0)
+		prevGlobalSent            = zk.WrappedVariable(0)
+		prevHornerN1Hash          = zk.WrappedVariable(0)
+		usedSharedRandomness      = zk.WrappedVariable(0)
+		usedSharedRandomnessFound = zk.WrappedVariable(0)
+		accumulativeLppHash       = zk.WrappedVariable(0)
 	)
 
 	for i := 0; i < c.MaxNbProofs; i++ {
@@ -376,7 +376,7 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 			isLPP            = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLppPublicInput, i)
 			isGL             = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsGlPublicInput, i)
 
-			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext = frontend.Variable(0), frontend.Variable(0)
+			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext = zk.WrappedVariable(0), zk.WrappedVariable(0)
 		)
 
 		if i > 0 {

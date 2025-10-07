@@ -190,7 +190,7 @@ func (a *XYPow1MinNAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return res
 }
 
-func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (frontend.Variable, error) {
+func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	x, errX := a.X.GetFrontendVariableBase(api, run)
 	if errX != nil {
 		return field.Zero(), errX
@@ -204,7 +204,7 @@ func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run iface
 	return res, nil
 }
 
-func (a *XYPow1MinNAccessor) GetFrontendVariableExt(api frontend.API, run ifaces.GnarkRuntime) gnarkfext.Element {
+func (a *XYPow1MinNAccessor) GetFrontendVariableExt(api frontend.API, run ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	x := a.X.GetFrontendVariableExt(api, run)
 	y := a.Y.GetFrontendVariableExt(api, run)
 	temp := gnarkfext.Exp(api, x, 1-a.N)
@@ -240,7 +240,7 @@ func (a *XYPow1MinNAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements the [ifaces.Accessor] interface.
-func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) frontend.Variable {
+func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.GnarkRuntime) zk.WrappedVariable {
 	x := a.X.GetFrontendVariable(api, run)
 	y := a.Y.GetFrontendVariable(api, run)
 	res := gnarkutil.Exp(api, x, 1-a.N)
