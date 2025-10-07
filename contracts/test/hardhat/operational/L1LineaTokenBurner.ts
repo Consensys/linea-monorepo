@@ -3,25 +3,28 @@ import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { deployFromFactory, deployUpgradableFromFactory } from "../common/deployment";
-import { L1LineaTokenBurner, TestERC20, TestL1MessageServiceMerkleProof } from "../../../typechain-types";
-import { expectEvent, expectRevertWithCustomError } from "../common/helpers";
+import { L1LineaTokenBurner, MockL1LineaToken, TestL1MessageServiceMerkleProof } from "../../../typechain-types";
+import { expectEvent, expectEvents, expectRevertWithCustomError } from "../common/helpers";
 import {
   ADDRESS_ZERO,
   EMPTY_CALLDATA,
   INITIAL_WITHDRAW_LIMIT,
-  MESSAGE_FEE,
   MESSAGE_VALUE_1ETH,
   ONE_DAY_IN_SECONDS,
   pauseTypeRoles,
   unpauseTypeRoles,
-  VALID_MERKLE_PROOF,
+  VALID_MERKLE_PROOF_WITH_ZERO_FEE,
 } from "../common/constants";
 
+// TODO: Dynamically generate a valid merkle proof for testing instead of using a hardcoded one.
+// Should trigger a call to the token bridge to mint tokens on L1 to the burner address as part of the test setup.
 describe("L1LineaTokenBurner", () => {
   let l1LineaTokenBurner: L1LineaTokenBurner;
   let admin: SignerWithAddress;
-  let lineaToken: TestERC20;
+  let lineaToken: MockL1LineaToken;
   let messageService: TestL1MessageServiceMerkleProof;
+
+  const INITIAL_LINEA_TOKEN_SUPPLY = ethers.parseUnits("100", 18);
 
   async function deployTestL1MessageServiceFixture(): Promise<TestL1MessageServiceMerkleProof> {
     return deployUpgradableFromFactory(
@@ -32,15 +35,23 @@ describe("L1LineaTokenBurner", () => {
   }
 
   async function deployL1LineaTokenBurnerContractFixture() {
-    const lineaTokenFn = () => deployFromFactory("TestERC20", "TestERC20", "TEST", ethers.parseUnits("1000000000", 18));
-    const lineaToken = (await loadFixture(lineaTokenFn)) as TestERC20;
-
     const messageService = await loadFixture(deployTestL1MessageServiceFixture);
+
+    const l2LineaToken = await deployFromFactory("TestERC20", "TestERC20", "TEST", ethers.parseUnits("1000000000", 18));
+    const lineaTokenFn = async () =>
+      deployUpgradableFromFactory(
+        "MockL1LineaToken",
+        [await messageService.getAddress(), await l2LineaToken.getAddress(), "TestERC20", "TEST"],
+        { unsafeAllow: ["constructor", "incorrect-initializer-order"] },
+      ) as unknown as Promise<MockL1LineaToken>;
+
+    const l1LineaToken = (await loadFixture(lineaTokenFn)) as MockL1LineaToken;
+
     const l1LineaTokenBurnerFn = async () =>
-      deployFromFactory("L1LineaTokenBurner", await messageService.getAddress(), await lineaToken.getAddress());
+      deployFromFactory("L1LineaTokenBurner", await messageService.getAddress(), await l1LineaToken.getAddress());
     const l1LineaTokenBurner = (await loadFixture(l1LineaTokenBurnerFn)) as L1LineaTokenBurner;
 
-    return { l1LineaTokenBurner, lineaToken, messageService };
+    return { l1LineaTokenBurner, lineaToken: l1LineaToken, messageService };
   }
 
   before(async () => {
@@ -50,6 +61,9 @@ describe("L1LineaTokenBurner", () => {
 
   beforeEach(async () => {
     ({ l1LineaTokenBurner, lineaToken, messageService } = await loadFixture(deployL1LineaTokenBurnerContractFixture));
+    // Mint some LINEA tokens to the admin so that we can test the burning functionality.
+    // It is used to initialize the total supply of the token.
+    await lineaToken.mint(admin.address, INITIAL_LINEA_TOKEN_SUPPLY);
   });
 
   describe("construtor", () => {
@@ -83,15 +97,15 @@ describe("L1LineaTokenBurner", () => {
       await expectRevertWithCustomError(
         messageService,
         l1LineaTokenBurner.claimMessageWithProof({
-          proof: VALID_MERKLE_PROOF.proof,
+          proof: VALID_MERKLE_PROOF_WITH_ZERO_FEE.proof,
           messageNumber: 1,
-          leafIndex: VALID_MERKLE_PROOF.index,
+          leafIndex: VALID_MERKLE_PROOF_WITH_ZERO_FEE.index,
           from: admin.address,
           to: admin.address,
-          fee: MESSAGE_FEE,
-          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+          fee: 0n,
+          value: MESSAGE_VALUE_1ETH,
           feeRecipient: ADDRESS_ZERO,
-          merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+          merkleRoot: VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot,
           data: EMPTY_CALLDATA,
         }),
         "L2MerkleRootDoesNotExist",
@@ -104,90 +118,106 @@ describe("L1LineaTokenBurner", () => {
       const burnerBalanceBefore = await lineaToken.balanceOf(await l1LineaTokenBurner.getAddress());
       expect(burnerBalanceBefore).to.equal(0);
 
-      await expect(
-        l1LineaTokenBurner.claimMessageWithProof({
-          proof: VALID_MERKLE_PROOF.proof,
-          messageNumber: 1,
-          leafIndex: VALID_MERKLE_PROOF.index,
-          from: admin.address,
-          to: admin.address,
-          fee: MESSAGE_FEE,
-          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-          feeRecipient: ADDRESS_ZERO,
-          merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
-          data: EMPTY_CALLDATA,
-        }),
-      ).to.not.emit(lineaToken, "Transfer");
+      const txPromise = l1LineaTokenBurner.claimMessageWithProof({
+        proof: VALID_MERKLE_PROOF_WITH_ZERO_FEE.proof,
+        messageNumber: 1,
+        leafIndex: VALID_MERKLE_PROOF_WITH_ZERO_FEE.index,
+        from: admin.address,
+        to: admin.address,
+        fee: 0n,
+        value: MESSAGE_VALUE_1ETH,
+        feeRecipient: ADDRESS_ZERO,
+        merkleRoot: VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot,
+        data: EMPTY_CALLDATA,
+      });
+      await expect(txPromise).to.not.emit(lineaToken, "Transfer");
+      await expect(txPromise).to.not.emit(lineaToken, "L1TotalSupplySyncStarted");
     });
 
-    it("Should only burn LINEA tokens when message is already claimed and burner contract balance > 0", async () => {
+    it("Should only burn LINEA tokens and syncTotalSupplyToL2 when message is already claimed and burner contract balance > 0", async () => {
       await messageService.setL2L1MessageToClaimed(1);
 
-      const lineaTokensBalance = ethers.parseUnits("100", 18);
-      await lineaToken.mint(await l1LineaTokenBurner.getAddress(), lineaTokensBalance);
+      const lineaTokensBalanceOwnedByBurnerContract = ethers.parseUnits("100", 18);
+      await lineaToken.mint(await l1LineaTokenBurner.getAddress(), lineaTokensBalanceOwnedByBurnerContract);
+
+      const totalSupplyBeforeBurning = await lineaToken.totalSupply();
+      expect(totalSupplyBeforeBurning).to.equal(INITIAL_LINEA_TOKEN_SUPPLY + lineaTokensBalanceOwnedByBurnerContract);
 
       const burnerBalanceBefore = await lineaToken.balanceOf(await l1LineaTokenBurner.getAddress());
-      expect(burnerBalanceBefore).to.equal(lineaTokensBalance);
+      expect(burnerBalanceBefore).to.equal(lineaTokensBalanceOwnedByBurnerContract);
 
-      await expectEvent(
-        lineaToken,
-        l1LineaTokenBurner.claimMessageWithProof({
-          proof: VALID_MERKLE_PROOF.proof,
-          messageNumber: 1,
-          leafIndex: VALID_MERKLE_PROOF.index,
-          from: admin.address,
-          to: admin.address,
-          fee: MESSAGE_FEE,
-          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-          feeRecipient: ADDRESS_ZERO,
-          merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
-          data: EMPTY_CALLDATA,
-        }),
-        "Transfer",
-        [await l1LineaTokenBurner.getAddress(), ADDRESS_ZERO, lineaTokensBalance],
-      );
+      const txPromise = l1LineaTokenBurner.claimMessageWithProof({
+        proof: VALID_MERKLE_PROOF_WITH_ZERO_FEE.proof,
+        messageNumber: 1,
+        leafIndex: VALID_MERKLE_PROOF_WITH_ZERO_FEE.index,
+        from: admin.address,
+        to: admin.address,
+        fee: 0n,
+        value: MESSAGE_VALUE_1ETH,
+        feeRecipient: ADDRESS_ZERO,
+        merkleRoot: VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot,
+        data: EMPTY_CALLDATA,
+      });
+
+      await expectEvents(lineaToken, txPromise, [
+        {
+          name: "Transfer",
+          args: [await l1LineaTokenBurner.getAddress(), ADDRESS_ZERO, lineaTokensBalanceOwnedByBurnerContract],
+        },
+        {
+          name: "L1TotalSupplySyncStarted",
+          args: [INITIAL_LINEA_TOKEN_SUPPLY],
+        },
+      ]);
 
       const burnerBalanceAfter = await lineaToken.balanceOf(await l1LineaTokenBurner.getAddress());
       expect(burnerBalanceAfter).to.equal(0);
     });
 
-    it("Should claim message and burn LINEA tokens when message is not yet claimed and burner contract balance > 0", async () => {
+    it("Should claim message, burn LINEA tokens and syncTotalSupplyToL2 when message is not yet claimed and burner contract balance > 0", async () => {
       await messageService.addFunds({ value: INITIAL_WITHDRAW_LIMIT * 2n });
 
-      const lineaTokensBalance = ethers.parseUnits("100", 18);
-      await lineaToken.mint(await l1LineaTokenBurner.getAddress(), lineaTokensBalance);
+      const lineaTokensBalanceOwnedByBurnerContract = ethers.parseUnits("100", 18);
+      await lineaToken.mint(await l1LineaTokenBurner.getAddress(), lineaTokensBalanceOwnedByBurnerContract);
 
       const burnerBalanceBefore = await lineaToken.balanceOf(await l1LineaTokenBurner.getAddress());
-      expect(burnerBalanceBefore).to.equal(lineaTokensBalance);
+      expect(burnerBalanceBefore).to.equal(lineaTokensBalanceOwnedByBurnerContract);
 
-      await messageService.addL2MerkleRoots([VALID_MERKLE_PROOF.merkleRoot], VALID_MERKLE_PROOF.proof.length);
+      await messageService.addL2MerkleRoots(
+        [VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot],
+        VALID_MERKLE_PROOF_WITH_ZERO_FEE.proof.length,
+      );
 
       const txPromise = l1LineaTokenBurner.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
+        proof: VALID_MERKLE_PROOF_WITH_ZERO_FEE.proof,
         messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
+        leafIndex: VALID_MERKLE_PROOF_WITH_ZERO_FEE.index,
         from: admin.address,
         to: admin.address,
-        fee: MESSAGE_FEE,
-        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        fee: 0n,
+        value: MESSAGE_VALUE_1ETH,
         feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        merkleRoot: VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot,
         data: EMPTY_CALLDATA,
       });
 
       const messageLeafHash = ethers.keccak256(
         ethers.AbiCoder.defaultAbiCoder().encode(
           ["address", "address", "uint256", "uint256", "uint256", "bytes"],
-          [admin.address, admin.address, MESSAGE_FEE, MESSAGE_FEE + MESSAGE_VALUE_1ETH, "1", EMPTY_CALLDATA],
+          [admin.address, admin.address, 0n, MESSAGE_VALUE_1ETH, "1", EMPTY_CALLDATA],
         ),
       );
 
       await expectEvent(messageService, txPromise, "MessageClaimed", [messageLeafHash]);
-
-      await expectEvent(lineaToken, txPromise, "Transfer", [
-        await l1LineaTokenBurner.getAddress(),
-        ADDRESS_ZERO,
-        lineaTokensBalance,
+      await expectEvents(lineaToken, txPromise, [
+        {
+          name: "Transfer",
+          args: [await l1LineaTokenBurner.getAddress(), ADDRESS_ZERO, lineaTokensBalanceOwnedByBurnerContract],
+        },
+        {
+          name: "L1TotalSupplySyncStarted",
+          args: [INITIAL_LINEA_TOKEN_SUPPLY],
+        },
       ]);
     });
 
@@ -197,30 +227,34 @@ describe("L1LineaTokenBurner", () => {
       const burnerBalanceBefore = await lineaToken.balanceOf(await l1LineaTokenBurner.getAddress());
       expect(burnerBalanceBefore).to.equal(0);
 
-      await messageService.addL2MerkleRoots([VALID_MERKLE_PROOF.merkleRoot], VALID_MERKLE_PROOF.proof.length);
+      await messageService.addL2MerkleRoots(
+        [VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot],
+        VALID_MERKLE_PROOF_WITH_ZERO_FEE.proof.length,
+      );
 
       const txPromise = l1LineaTokenBurner.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
+        proof: VALID_MERKLE_PROOF_WITH_ZERO_FEE.proof,
         messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
+        leafIndex: VALID_MERKLE_PROOF_WITH_ZERO_FEE.index,
         from: admin.address,
         to: admin.address,
-        fee: MESSAGE_FEE,
-        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        fee: 0n,
+        value: MESSAGE_VALUE_1ETH,
         feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        merkleRoot: VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot,
         data: EMPTY_CALLDATA,
       });
 
       const messageLeafHash = ethers.keccak256(
         ethers.AbiCoder.defaultAbiCoder().encode(
           ["address", "address", "uint256", "uint256", "uint256", "bytes"],
-          [admin.address, admin.address, MESSAGE_FEE, MESSAGE_FEE + MESSAGE_VALUE_1ETH, "1", EMPTY_CALLDATA],
+          [admin.address, admin.address, 0n, MESSAGE_VALUE_1ETH, "1", EMPTY_CALLDATA],
         ),
       );
 
       await expectEvent(messageService, txPromise, "MessageClaimed", [messageLeafHash]);
       await expect(txPromise).to.not.emit(lineaToken, "Transfer");
+      await expect(txPromise).to.not.emit(lineaToken, "L1TotalSupplySyncStarted");
     });
   });
 });

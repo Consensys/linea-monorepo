@@ -7,6 +7,16 @@ import { IL1MessageService } from "../messaging/l1/interfaces/IL1MessageService.
 import { IL1MessageManager } from "../messaging/l1/interfaces/IL1MessageManager.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 
+interface IL1LineaToken {
+  /**
+   * @notice Synchronizes the total supply of the L1 token to the L2 token.
+   * @dev This function sends a message to the L2 token contract to sync the total supply.
+   * @dev NB: This function is permissionless on purpose, allowing anyone to trigger the sync.
+   * @dev This function can only be called after the L2 token address has been set.
+   */
+  function syncTotalSupplyToL2() external;
+}
+
 /**
  * @title L1 Linea Token Burner Contract.
  * @author Consensys Software Inc.
@@ -28,6 +38,7 @@ contract L1LineaTokenBurner is IL1LineaTokenBurner, IGenericErrors {
 
   /**
    * @notice Claims a message with proof and burns the LINEA tokens held by this contract.
+   * @dev This is expected to be permissionless, allowing anyone to trigger the burn.
    * @param _params The parameters required to claim the message with proof.
    */
   function claimMessageWithProof(IL1MessageService.ClaimMessageWithProofParams calldata _params) external {
@@ -38,11 +49,7 @@ contract L1LineaTokenBurner is IL1LineaTokenBurner, IGenericErrors {
     uint256 balance = ERC20Burnable(LINEA_TOKEN).balanceOf(address(this));
     if (balance > 0) {
       ERC20Burnable(LINEA_TOKEN).burn(balance);
+      IL1LineaToken(LINEA_TOKEN).syncTotalSupplyToL2();
     }
   }
-
-  /**
-   * @notice Receive function - Receives Funds.
-   */
-  receive() external payable {}
 }
