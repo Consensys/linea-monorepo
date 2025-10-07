@@ -155,7 +155,7 @@ Submit invoice to pay to the designated receiver.
 ### burnAndBridge
 
 ```solidity
-function burnAndBridge(uint256 _minLineaOut, uint256 _deadline, uint160 _sqrtPriceLimitX96) public
+function burnAndBridge(uint256 _minLineaOut, uint256 _deadline, uint160 _sqrtPriceLimitX96) external
 ```
 
 Burns 20% of the ETH balance and uses the rest to buy LINEA tokens which are then bridged to L1 to be burned.
