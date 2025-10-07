@@ -21,6 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // StdBenchmarkCase represents a benchmark case for the Arcane and Vortex compilers
@@ -32,6 +33,13 @@ type StdBenchmarkCase struct {
 	Lookup       SubModuleParameters
 	Projection   SubModuleParameters
 	Fibo         SubModuleParameters
+}
+
+// selfRecursionParameters stores parameters for self-recursion
+type selfRecursionParameters struct {
+	TargetRowSize   int
+	RsInverseRate   int
+	NbOpenedColumns int
 }
 
 // SubModuleParameters represents the parameters of a sub-module in [StdBenchmarkCase]
@@ -130,6 +138,69 @@ var (
 	}
 )
 
+var selfRecursionParametersSet = []selfRecursionParameters{
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 8,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 9,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 10,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 11,
+	},
+	{
+		NbOpenedColumns: 128,
+		RsInverseRate:   4,
+		TargetRowSize:   1 << 8,
+	},
+	{
+		NbOpenedColumns: 128,
+		RsInverseRate:   4,
+		TargetRowSize:   1 << 9,
+	},
+	{
+		NbOpenedColumns: 128,
+		RsInverseRate:   4,
+		TargetRowSize:   1 << 10,
+	},
+	{
+		NbOpenedColumns: 128,
+		RsInverseRate:   4,
+		TargetRowSize:   1 << 11,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 8,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 9,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 10,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 11,
+	},
+}
+
 func BenchmarkCompilerWithoutSelfRecursion(b *testing.B) {
 	for _, bc := range benchCases {
 		b.Run(bc.Name, func(b *testing.B) {
@@ -138,67 +209,67 @@ func BenchmarkCompilerWithoutSelfRecursion(b *testing.B) {
 	}
 }
 
-func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
-
-	comp := wizard.Compile(
-		// Round of recursion 0
-		sbc.Define,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<20),
-			compiler.WithStitcherMinSize(1<<8),
-		),
-		vortex.Compile(
-			2,
-			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&ringsis.StdParams),
-		),
-		selfrecursion.SelfRecurse,
-
-		// Round of recursion 1
-		poseidon2.CompilePoseidon2,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<19),
-			compiler.WithStitcherMinSize(1<<8),
-		),
-		vortex.Compile(
-			16,
-			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&ringsis.StdParams),
-		),
-		selfrecursion.SelfRecurse,
-
-		// Round of recursion 2
-		poseidon2.CompilePoseidon2,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<18),
-			compiler.WithStitcherMinSize(1<<8),
-		),
-		vortex.Compile(
-			16,
-			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&ringsis.StdParams),
-		),
-		selfrecursion.SelfRecurse,
-
-		// Round of recursion 2
-		poseidon2.CompilePoseidon2,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<17),
-			compiler.WithStitcherMinSize(1<<8),
-		),
-	)
-
-	csvF := files.MustOverwrite("selfrecursion-data.csv")
-	logdata.GenCSV(csvF, logdata.IncludeNonIgnoredColumnCSVFilter)(comp)
-}
-
 func BenchmarkCompilerWithSelfRecursion(b *testing.B) {
 	for _, bc := range benchCases {
 		b.Run(bc.Name, func(b *testing.B) {
+			benchmarkCompilerWithSelfRecursion(b, bc)
+		})
+	}
+}
+
+func BenchmarkProfileSelfRecursion(b *testing.B) {
+	for _, bc := range benchCases {
+		b.Run(bc.Name, func(b *testing.B) {
 			profileSelfRecursionCompilation(b, bc)
+		})
+	}
+}
+
+func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
+
+	logrus.SetLevel(logrus.FatalLevel)
+	nbIteration := 5
+
+	for _, params := range selfRecursionParametersSet {
+		b.Run(fmt.Sprintf("%+v", params), func(b *testing.B) {
+
+			comp := wizard.Compile(
+				// Round of recursion 0
+				sbc.Define,
+				compiler.Arcane(
+					compiler.WithTargetColSize(1<<18),
+					compiler.WithStitcherMinSize(1<<8),
+				),
+				vortex.Compile(
+					2,
+					vortex.WithOptionalSISHashingThreshold(512),
+					vortex.ForceNumOpenedColumns(256),
+					vortex.WithSISParams(&ringsis.StdParams),
+				),
+			)
+
+			for i := 0; i < nbIteration-1; i++ {
+				applySelfRecursionThenArcane(comp, params)
+				applyVortex(comp, params)
+			}
+
+			statsVortex := logdata.GetWizardStats(comp)
+
+			applySelfRecursionThenArcane(comp, params)
+
+			statsArcane := logdata.GetWizardStats(comp)
+
+			b.ReportMetric(float64(statsArcane.NumCellsCommitted), "#committed-cells")
+			b.ReportMetric(float64(statsVortex.NumCellsProof), "#proof-cells")
+
+			csvF := files.MustOverwrite(
+				fmt.Sprintf(
+					"selfrecursion-nbOpenedColumns-%v-rsInverseRate-%v-targetRowSize-%v.csv",
+					params.NbOpenedColumns, params.RsInverseRate, params.TargetRowSize,
+				),
+			)
+
+			logdata.GenCSV(csvF, logdata.IncludeNonIgnoredColumnCSVFilter)(comp)
 		})
 	}
 }
@@ -228,8 +299,14 @@ func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
-	comp := wizard.Compile(
+	// These parameters have been found to give the best result for performances
+	params := selfRecursionParameters{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 9,
+	}
 
+	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
@@ -242,51 +319,13 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
-		selfrecursion.SelfRecurse,
-
-		// Round of recursion 1
-		poseidon2.CompilePoseidon2,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<19),
-			compiler.WithStitcherMinSize(1<<8),
-		),
-		vortex.Compile(
-			16,
-			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&ringsis.StdParams),
-		),
-		selfrecursion.SelfRecurse,
-
-		// Round of recursion 2
-		poseidon2.CompilePoseidon2,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<18),
-			compiler.WithStitcherMinSize(1<<8),
-		),
-		vortex.Compile(
-			16,
-			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&ringsis.StdParams),
-		),
-
-		// Round of recursion 2
-		poseidon2.CompilePoseidon2,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<17),
-			compiler.WithStitcherMinSize(1<<8),
-		),
-		vortex.Compile(
-			16,
-			vortex.WithOptionalSISHashingThreshold(512),
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&ringsis.StdParams),
-		),
 	)
 
-	if true {
-		return
+	nbIteration := 2
+
+	for i := 0; i < nbIteration; i++ {
+		applySelfRecursionThenArcane(comp, params)
+		applyVortex(comp, params)
 	}
 
 	b.ResetTimer()
@@ -341,6 +380,42 @@ func (sbc *StdBenchmarkCase) NewAssigner(b *testing.B) func(run *wizard.ProverRu
 
 		b.StartTimer()
 	}
+}
+
+// applySelfRecursionThenArcane applies the self-recursion step and then the
+// arcane step using the provided parameters.
+func applySelfRecursionThenArcane(comp *wizard.CompiledIOP, params selfRecursionParameters) {
+
+	selfrecursion.SelfRecurse(comp)
+
+	var (
+		stats      = logdata.GetWizardStats(comp)
+		totalCells = stats.NumCellsCommitted
+		rowSize    = utils.NextPowerOfTwo(utils.DivCeil(totalCells, params.TargetRowSize))
+	)
+
+	_ = wizard.ContinueCompilation(
+		comp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(rowSize),
+			compiler.WithStitcherMinSize(1<<8),
+		),
+	)
+}
+
+// applyVortex applies the vortex step using the provided parameters.
+func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters) {
+
+	_ = wizard.ContinueCompilation(
+		comp,
+		vortex.Compile(
+			params.RsInverseRate,
+			vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
+			vortex.WithOptionalSISHashingThreshold(ringsis.StdParams.OutputSize()),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+	)
 }
 
 // defineLookupModule adds a lookup module to the benchmark case
