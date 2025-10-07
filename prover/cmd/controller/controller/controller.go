@@ -168,7 +168,7 @@ func trimBootstrapSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job) {
 	if err := os.Rename(bootstrapFile, finalFile); err != nil {
 		cLog.Errorf("Failed to rename %v → %v: %v", bootstrapFile, finalFile, err)
 	} else {
-		cLog.Infof("Successfully finalized conglomeration for %d–%d", job.Start, job.End)
+		cLog.Infof("Successfully finalized conglomeration for %d-%d", job.Start, job.End)
 	}
 }
 
