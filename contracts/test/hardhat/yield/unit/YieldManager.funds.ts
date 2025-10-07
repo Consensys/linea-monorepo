@@ -449,11 +449,14 @@ describe("YieldManager contract - funding ETH", () => {
     });
 
     it("Should revert when there is sufficient withdrawable YieldProvider value to cover target deficit", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      // Arrange - Put targetDeficit on YieldProvider
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
-      await yieldManager
-        .connect(nativeYieldOperator)
-        .setWithdrawableValueReturnVal(mockYieldProviderAddress, targetReserveAmount);
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, targetReserveAmount);
+      // Arrange - Ensure 0 balance on L1MessageService
+      await ethers.provider.send("hardhat_setBalance", [await mockLineaRollup.getAddress(), ethers.toBeHex(0)]);
+
+      // Act
       const unstakeAmount = 1n;
       await yieldManager
         .connect(nativeYieldOperator)
