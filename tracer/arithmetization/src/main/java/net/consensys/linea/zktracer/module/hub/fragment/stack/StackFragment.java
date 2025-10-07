@@ -170,7 +170,7 @@ public abstract class StackFragment implements TraceFragment {
     return switch (hub.fork) {
       case LONDON, PARIS, SHANGHAI -> new LondonStackFragment(
           hub, stack, stackItems, exceptions, aborts, gp, isDeploying, commonFragmentValues);
-      case CANCUN, PRAGUE -> new CancunStackFragment(
+      case CANCUN, PRAGUE, OSAKA -> new CancunStackFragment(
           hub, stack, stackItems, exceptions, aborts, gp, isDeploying, commonFragmentValues);
       default -> throw new IllegalArgumentException("Unknown fork: " + hub.fork);
     };

@@ -72,6 +72,9 @@ public class AddressUtils {
   public static final List<Address> precompileAddressPrague =
       Stream.concat(precompileAddressCancun.stream(), BLS_PRECOMPILES.stream()).toList();
 
+  public static final List<Address> precompileAddressOsaka =
+      Stream.concat(precompileAddressPrague.stream(), Stream.of(P256_VERIFY)).toList();
+
   /**
    * Check if the address is one of the BLS precompiles added in Prague (so excluding
    * KZG_POINT_EVAL).
@@ -93,6 +96,7 @@ public class AddressUtils {
       case LONDON, PARIS, SHANGHAI -> precompileAddressLondon.contains(to);
       case CANCUN -> precompileAddressCancun.contains(to);
       case PRAGUE -> precompileAddressPrague.contains(to);
+      case OSAKA -> precompileAddressOsaka.contains(to);
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }

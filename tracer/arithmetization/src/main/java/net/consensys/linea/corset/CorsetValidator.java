@@ -16,6 +16,7 @@
 package net.consensys.linea.corset;
 
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_LONDON_TESTCONFIG;
+import static net.consensys.linea.zktracer.Fork.toCamelCase;
 import static net.consensys.linea.zktracer.Trace.*;
 
 import java.io.File;
@@ -37,7 +38,6 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.Fork;
 
 /**
  * Responsible for running the command-line <code>go-corset</code> tool to check that a given trace
@@ -52,17 +52,8 @@ import net.consensys.linea.zktracer.Fork;
 public class CorsetValidator extends AbstractExecutable {
   public record Result(boolean isValid, File traceFile, String corsetOutput) {}
 
-  private static final String ZKEVM_BIN_PREFIX = "../linea-constraints/";
-  private static final String[] ZKEVM_BINS;
-
-  static {
-    ZKEVM_BINS = new String[Fork.values().length];
-    ZKEVM_BINS[Fork.LONDON.ordinal()] = "zkevm_london.bin";
-    ZKEVM_BINS[Fork.PARIS.ordinal()] = "zkevm_paris.bin";
-    ZKEVM_BINS[Fork.SHANGHAI.ordinal()] = "zkevm_shanghai.bin";
-    ZKEVM_BINS[Fork.CANCUN.ordinal()] = "zkevm_cancun.bin";
-    ZKEVM_BINS[Fork.PRAGUE.ordinal()] = "zkevm_prague.bin";
-  }
+  private static final String ZKEVM_BIN_PREFIX = "../linea-constraints/zkevm_";
+  private static final String ZKEVM_BIN_SUFFIX = ".bin";
 
   /** Indicates whether or not this validator is active (i.e. we located the go-corset binary). */
   @Getter private boolean active = false;
@@ -89,8 +80,7 @@ public class CorsetValidator extends AbstractExecutable {
    *     additional information for debugging purposes.
    */
   public Result validate(final Path traceFile) {
-    String zkevmBin = ZKEVM_BIN_PREFIX + ZKEVM_BINS[chain.fork.ordinal()];
-    //
+    final String zkevmBin = ZKEVM_BIN_PREFIX + toCamelCase(chain.fork) + ZKEVM_BIN_SUFFIX;
     if (active) {
       Outcome outcome;
       try {
@@ -176,6 +166,7 @@ public class CorsetValidator extends AbstractExecutable {
           case SHANGHAI -> EVM_SHANGHAI;
           case CANCUN -> EVM_CANCUN;
           case PRAGUE -> EVM_PRAGUE;
+          case OSAKA -> EVM_OSAKA;
           default -> throw new IllegalArgumentException("unknown fork \"" + chain.fork + "\"");
         };
     options.add("-SEVM_FORK=" + fork);

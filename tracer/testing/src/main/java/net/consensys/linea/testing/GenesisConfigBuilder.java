@@ -25,13 +25,12 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 
 public class GenesisConfigBuilder {
-  private ObjectNode LINEA_CONFIG;
-  private ObjectNode genesisRoot;
-  private ObjectNode configNode;
-  private ObjectNode allocNode;
+  private final ObjectNode genesisRoot;
+  private final ObjectNode configNode;
+  private final ObjectNode allocNode;
 
   public GenesisConfigBuilder(String genesisJsonFileName) {
-    LINEA_CONFIG =
+    final ObjectNode LINEA_CONFIG =
         JsonUtil.objectNodeFromURL(
             GenesisConfigBuilder.class.getResource("/" + genesisJsonFileName), true);
     genesisRoot = LINEA_CONFIG.deepCopy();
@@ -44,7 +43,7 @@ public class GenesisConfigBuilder {
     return this;
   }
 
-  public GenesisConfigBuilder addAccount(ToyAccount toyAccount) {
+  public void addAccount(ToyAccount toyAccount) {
     GenesisAccount genesisAccount = toyAccount.toGenesisAccount();
 
     final ObjectNode accountNode =
@@ -64,8 +63,6 @@ public class GenesisConfigBuilder {
     if (genesisAccount.privateKey() != null) {
       accountStorageNode.put("privatekey", genesisAccount.privateKey().toHexString());
     }
-
-    return this;
   }
 
   public GenesisConfigBuilder setDifficulty(String difficulty) {
@@ -119,6 +116,11 @@ public class GenesisConfigBuilder {
   public String getPragueTime() {
     JsonNode pragueTime = configNode.get("pragueTime");
     return pragueTime == null ? null : pragueTime.asText();
+  }
+
+  public String getOsakaTime() {
+    JsonNode osakaTime = configNode.get("osakaTime");
+    return osakaTime == null ? null : osakaTime.asText();
   }
 
   public String getCliqueBlockPeriodSeconds() {

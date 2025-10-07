@@ -79,7 +79,7 @@ public abstract class AccountFragment
       return switch (hub.fork) {
         case LONDON, PARIS, SHANGHAI -> new LondonAccountFragment(
             hub, oldState, newState, Optional.empty(), domSubStampsSubFragment, txProcessingType);
-        case CANCUN, PRAGUE -> new CancunAccountFragment(
+        case CANCUN, PRAGUE, OSAKA -> new CancunAccountFragment(
             hub, oldState, newState, Optional.empty(), domSubStampsSubFragment, txProcessingType);
         default -> throw new IllegalArgumentException("Unknown fork: " + hub.fork);
       };
@@ -100,7 +100,7 @@ public abstract class AccountFragment
             Optional.of(toTrim),
             domSubStampsSubFragment,
             txProcessingType);
-        case CANCUN, PRAGUE -> new CancunAccountFragment(
+        case CANCUN, PRAGUE, OSAKA -> new CancunAccountFragment(
             hub,
             oldState,
             newState,

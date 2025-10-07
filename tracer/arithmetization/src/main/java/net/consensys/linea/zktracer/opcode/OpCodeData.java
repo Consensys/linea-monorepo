@@ -227,7 +227,7 @@ public record OpCodeData(
   public boolean mayTriggerMemoryExpansionException(Fork fork) {
     return switch (fork) {
       case LONDON, PARIS, SHANGHAI -> this.mnemonic != MSIZE && this.isMxpLondon();
-      case CANCUN, PRAGUE -> this.mnemonic != MSIZE && this.isMxp();
+      case CANCUN, PRAGUE, OSAKA -> this.mnemonic != MSIZE && this.isMxp();
       default -> throw new IllegalArgumentException("Unknown fork: " + fork);
     };
   }

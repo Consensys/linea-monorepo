@@ -16,6 +16,7 @@ package net.consensys.linea.testing;
 
 import static java.lang.Long.parseLong;
 import static net.consensys.linea.testing.ShomeiNode.MerkelProofResponse;
+import static net.consensys.linea.zktracer.Fork.OSAKA;
 import static net.consensys.linea.zktracer.Fork.isPostParis;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hyperledger.besu.tests.acceptance.dsl.WaitUtils.waitFor;
@@ -367,6 +368,7 @@ public class BesuExecutionTools {
     var shanghaiTime = genesisConfigBuilder.getShanghaiTime();
     var cancunTime = genesisConfigBuilder.getCancunTime();
     var pragueTime = genesisConfigBuilder.getPragueTime();
+    var osakaTime = genesisConfigBuilder.getOsakaTime();
 
     // No fork switch specified in the genesis file, stay in London
     if (TTD == null && shanghaiTime == null && cancunTime == null && pragueTime == null) {
@@ -380,6 +382,9 @@ public class BesuExecutionTools {
       if (shanghaiTime != null && (nextBlockTimestamp >= parseLong(shanghaiTime))) {
         if (cancunTime != null && (nextBlockTimestamp >= parseLong(cancunTime))) {
           if (pragueTime != null && (nextBlockTimestamp >= parseLong(pragueTime))) {
+            if (osakaTime != null && (nextBlockTimestamp >= parseLong(osakaTime))) {
+              return OSAKA;
+            }
             return Fork.PRAGUE;
           }
           return Fork.CANCUN;

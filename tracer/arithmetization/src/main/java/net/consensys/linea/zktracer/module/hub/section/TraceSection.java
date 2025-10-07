@@ -242,7 +242,7 @@ public class TraceSection {
                 nonStackLineCounter,
                 hub().state.mmuStamp(),
                 hub().state.mxpStamp());
-            case CANCUN, PRAGUE -> new CancunCommonFragment(
+            case CANCUN, PRAGUE, OSAKA -> new CancunCommonFragment(
                 commonValues,
                 stackLineCounter,
                 nonStackLineCounter,
