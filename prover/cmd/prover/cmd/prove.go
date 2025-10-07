@@ -152,12 +152,12 @@ func handleConglomerationJob(cfg *config.Config, args ProverArgs) error {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
-	_, err := distributed.RunConglomerator(cfg, req)
+	resp, err := distributed.RunConglomerator(cfg, req)
 	if err != nil {
 		return fmt.Errorf("error while running the conglomerator: %w", err)
 	}
 
-	return nil
+	return writeResponse(args.Output, resp)
 }
 
 // handleExecutionJob processes an execution job
