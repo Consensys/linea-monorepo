@@ -95,6 +95,7 @@ func handleJobResult(cfg *config.Config, cLog *logrus.Entry, job *Job, status St
 }
 
 // handleJobSuccess moves response and in-progress files to their final locations.
+
 func handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 
 	if job.Def.WritesToDevNull() {
@@ -139,23 +140,35 @@ func handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status S
 
 	// --- After conglomeration finishes, trim the boostrap suffix marker to indicate full success ---
 	if job.Def.Name == jobNameConglomeration {
-		bootstrapFile := filepath.Join(
-			cfg.Execution.DirDone(),
-			fmt.Sprintf("%d-%d-etv%s-stv%s-getZkProof.json.success.bootstrap",
-				job.Start, job.End, job.VersionExecutionTracer, job.VersionStateManager),
-		)
-		finalFile := strings.TrimSuffix(bootstrapFile, ".bootstrap")
+		trimBootstrapSuffix(cfg, cLog, job)
+	}
+}
 
-		if _, err := os.Stat(bootstrapFile); err == nil {
-			cLog.Infof("Renaming bootstrap success file → final success file: %v → %v", bootstrapFile, finalFile)
-			if err := os.Rename(bootstrapFile, finalFile); err != nil {
-				cLog.Errorf("Failed to rename %v to %v: %v", bootstrapFile, finalFile, err)
-			}
-		} else if !os.IsNotExist(err) {
-			cLog.Errorf("Error checking bootstrap file %v: %v", bootstrapFile, err)
-		} else {
-			cLog.Warnf("Bootstrap success file not found for %d-%d (may have been already moved)", job.Start, job.End)
-		}
+func trimBootstrapSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job) {
+	pattern := filepath.Join(cfg.Execution.DirDone(), fmt.Sprintf("%d-%d-*.success.bootstrap", job.Start, job.End))
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		cLog.Errorf("Glob pattern failed for %v: %v", pattern, err)
+		return
+	}
+
+	if len(matches) == 0 {
+		cLog.Warnf("No bootstrap success file found matching %v (maybe already moved?)", pattern)
+		return
+	}
+	if len(matches) > 1 {
+		cLog.Warnf("Multiple bootstrap success files match %v, using first: %v", pattern, matches)
+	}
+
+	bootstrapFile := matches[0]
+	finalFile := strings.TrimSuffix(bootstrapFile, ".bootstrap")
+
+	cLog.Infof("Renaming bootstrap success file → final success file: %v → %v", bootstrapFile, finalFile)
+
+	if err := os.Rename(bootstrapFile, finalFile); err != nil {
+		cLog.Errorf("Failed to rename %v → %v: %v", bootstrapFile, finalFile, err)
+	} else {
+		cLog.Infof("Successfully finalized conglomeration for %d–%d", job.Start, job.End)
 	}
 }
 
