@@ -9,7 +9,7 @@ abstract contract MockYieldProviderStorageLayout {
     0x6872667b28c0553451b98c9cc79a262d1e6603e3af2375dec0299e2db861a700;
 
   struct TestYieldManagerStorage {
-    mapping (address => MockYieldProviderStorage) _mockYieldProviderStorage;
+    mapping(address => MockYieldProviderStorage) _mockYieldProviderStorage;
   }
 
   struct MockYieldProviderStorage {
@@ -21,7 +21,9 @@ abstract contract MockYieldProviderStorageLayout {
     address mockWithdrawTarget;
   }
 
-  function _getMockYieldProviderStorage(address _yieldProvider) internal view returns (MockYieldProviderStorage storage) {
+  function _getMockYieldProviderStorage(
+    address _yieldProvider
+  ) internal view returns (MockYieldProviderStorage storage) {
     TestYieldManagerStorage storage $;
     assembly {
       $.slot := MockYieldProviderStorageLocation

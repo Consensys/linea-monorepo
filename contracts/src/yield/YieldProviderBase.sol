@@ -25,7 +25,6 @@ abstract contract YieldProviderBase is YieldManagerStorageLayout, IYieldProvider
     YIELD_MANAGER = _yieldManager;
   }
 
-
   /**
    * @dev Modifier to ensure the function is only invoked via delegatecall from YieldManager.
    */

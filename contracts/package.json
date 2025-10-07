@@ -15,7 +15,7 @@
     "prettier": "prettier -c '**/*.{js,ts,sol}'",
     "prettier:fix": "prettier -w '**/*.{js,ts,sol}'",
     "lint:sol": "solhint -f stylish 'src/**/*.sol'",
-    "lint:sol:fix": "solhint --fix --noPrompt -f stylish 'src/**/*.sol'",
+    "lint:sol:fix": "prettier -w 'src/**/*.sol'",
     "lint:ts": "npx eslint '**/*.{js,ts}'",
     "lint:ts:fix": "npx eslint --fix '**/*.{js,ts}'",
     "lint": "pnpm run lint:sol && npm run lint:ts && npm run prettier",

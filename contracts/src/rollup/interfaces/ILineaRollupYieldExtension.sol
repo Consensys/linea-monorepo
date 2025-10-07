@@ -66,14 +66,14 @@ interface ILineaRollupYieldExtension {
   function reportNativeYield(uint256 _amount, address _l2YieldRecipient) external;
 
   /**
-   * @notice Claims a cross-chain message using a Merkle proof, and withdraws LST from the specified yield provider 
+   * @notice Claims a cross-chain message using a Merkle proof, and withdraws LST from the specified yield provider
    *         when the L1MessageService balance is insufficient to fulfill delivery.
    *
    * @dev Reverts if the L1MessageService has sufficient balance to fulfill the message delivery.
    * @dev Differences from `claimMessageWithProof`:
    *      - Does not deliver the message payload to the recipient, as the L1MessageService lacks sufficient balance.
    *      - Does not provide a refund of the message fee.
-   * @dev Temporarily enables an alternate call path by toggling the `IS_WITHDRAW_LST_ALLOWED` flag, 
+   * @dev Temporarily enables an alternate call path by toggling the `IS_WITHDRAW_LST_ALLOWED` flag,
    *      which is unavailable via `claimMessageWithProof`.
    * @dev Reverts with `L2MerkleRootDoesNotExist` if no Merkle tree exists at the specified depth.
    * @dev Reverts with `ProofLengthDifferentThanMerkleDepth` if the provided proof size does not match the tree depth.

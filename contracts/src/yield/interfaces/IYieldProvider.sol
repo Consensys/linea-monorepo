@@ -17,7 +17,7 @@ interface IYieldProvider {
   /**
    * @notice Enum defining the specific type of YieldProvider registration error.
    */
-  enum YieldProviderRegistrationError{
+  enum YieldProviderRegistrationError {
     LidoDashboardNotLinkedToVault,
     LidoVaultIsExpectedReceiveCallerAndOssifiedEntrypoint
   }
@@ -63,7 +63,7 @@ interface IYieldProvider {
   /**
    * @notice Computes and returns earned yield that can be distributed to L2 users.
    * @dev Implementations should apply provider-specific adjustments (obligations, fees, negative
-   *      yield) and mutate only `lstLiabilityPrincipal` and `currentNegativeYield` in the 
+   *      yield) and mutate only `lstLiabilityPrincipal` and `currentNegativeYield` in the
    *      YieldProvider state.
    * @param _yieldProvider The yield provider address.
    * @return newReportedYield New net yield (denominated in ETH) since the prior report.
@@ -73,17 +73,14 @@ interface IYieldProvider {
   /**
    * @notice Reduces the outstanding LST liability principal.
    * @dev Called after the YieldManager has reserved `_availableFunds` for liability
-   *      settlement. 
+   *      settlement.
    *      - Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
    *      - Implementations should ensure lstPrincipalPaid <= _availableFunds
    * @param _yieldProvider The yield provider address.
    * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
    * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
    */
-  function payLSTPrincipal(
-    address _yieldProvider,
-    uint256 _availableFunds
-  ) external returns (uint256 lstPrincipalPaid);
+  function payLSTPrincipal(address _yieldProvider, uint256 _availableFunds) external returns (uint256 lstPrincipalPaid);
 
   /**
    * @notice Requests beacon chain withdrawal via EIP-7002 withdrawal contract.

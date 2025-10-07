@@ -8,19 +8,19 @@
 pragma solidity >=0.4.24 <0.9.0;
 
 library Math256 {
-    /// @dev Returns the smallest of two numbers.
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
-    }
+  /// @dev Returns the smallest of two numbers.
+  function min(uint256 a, uint256 b) internal pure returns (uint256) {
+    return a < b ? a : b;
+  }
 
-    /// @dev Returns the larger of two numbers.
-    function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a : b;
-    }
+  /// @dev Returns the larger of two numbers.
+  function max(uint256 a, uint256 b) internal pure returns (uint256) {
+    return a > b ? a : b;
+  }
 
-    /// @dev Returns a - b, or 0 if b > a.
-    /// This is a saturating subtraction: it never reverts or goes negative.
-    function safeSub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a - b : 0;
-    }
+  /// @dev Returns a - b, or 0 if b > a.
+  /// This is a saturating subtraction: it never reverts or goes negative.
+  function safeSub(uint256 a, uint256 b) internal pure returns (uint256) {
+    return a > b ? a - b : 0;
+  }
 }

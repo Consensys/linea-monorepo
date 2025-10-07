@@ -6,13 +6,12 @@
 pragma solidity ^0.8.25;
 
 struct Validator {
-    bytes pubkey;
-    bytes32 withdrawalCredentials;
-    uint64 effectiveBalance;
-    bool slashed;
-    uint64 activationEligibilityEpoch;
-    uint64 activationEpoch;
-    uint64 exitEpoch;
-    uint64 withdrawableEpoch;
+  bytes pubkey;
+  bytes32 withdrawalCredentials;
+  uint64 effectiveBalance;
+  bool slashed;
+  uint64 activationEligibilityEpoch;
+  uint64 activationEpoch;
+  uint64 exitEpoch;
+  uint64 withdrawableEpoch;
 }
-

@@ -124,7 +124,9 @@ abstract contract L1MessageService is
     emit MessageClaimed(messageLeafHash);
   }
 
-  function _validateAndConsumeMessageProof(ClaimMessageWithProofParams calldata _params) internal virtual returns (bytes32 messageLeafHash) {
+  function _validateAndConsumeMessageProof(
+    ClaimMessageWithProofParams calldata _params
+  ) internal virtual returns (bytes32 messageLeafHash) {
     _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
 
     uint256 merkleDepth = l2MerkleRootsDepths[_params.merkleRoot];

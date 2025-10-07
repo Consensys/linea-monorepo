@@ -139,7 +139,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     // Gross positive yield
     if (totalVaultFunds > lastUserFunds) {
       newReportedYield = _handlePostiveYieldAccounting($$, totalVaultFunds - lastUserFunds);
-    // Gross negative yield
+      // Gross negative yield
     } else {
       // If prev reportYield had negativeYield, this correctly accounts for both increase and reduction in negativeYield since
       $$.currentNegativeYield = lastUserFunds - totalVaultFunds;
@@ -260,7 +260,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   /**
    * @notice Reduces the outstanding LST liability principal.
    * @dev Called after the YieldManager has reserved `_availableFunds` for liability
-   *      settlement. 
+   *      settlement.
    *      - Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
    *      - Implementations should ensure lstPrincipalPaid <= _availableFunds
    * @param _yieldProvider The yield provider address.
@@ -488,7 +488,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    * @dev Call _syncExternalLiabilitySettlement() after LST liability payment is done.
    * @return liabilityPaidETH Amount of ETH used to pay liabilities.
    */
-  function _payMaximumPossibleLSTLiability(YieldProviderStorage storage $$) internal returns (uint256 liabilityPaidETH) {
+  function _payMaximumPossibleLSTLiability(
+    YieldProviderStorage storage $$
+  ) internal returns (uint256 liabilityPaidETH) {
     if ($$.isOssified) return 0;
     IDashboard dashboard = IDashboard($$.primaryEntrypoint);
     address vault = $$.ossifiedEntrypoint;
@@ -508,8 +510,8 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   /**
    * @notice Reverts a previously initiated ossification request.
    * @dev In Lido's case, this is only available for a limited time after initiateOssification.
-   *      If there is subsequent accounting report is applied and no liabilities or obligations 
-   *      are outstanding, the vault will be disconnected which will be 
+   *      If there is subsequent accounting report is applied and no liabilities or obligations
+   *      are outstanding, the vault will be disconnected which will be
    * @param _yieldProvider The yield provider address.
    */
   function undoInitiateOssification(address _yieldProvider) external onlyDelegateCall {
@@ -550,7 +552,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       revert InvalidYieldProviderRegistration(YieldProviderRegistrationError.LidoDashboardNotLinkedToVault);
     }
     if (_registration.receiveCaller != _registration.ossifiedEntrypoint) {
-      revert InvalidYieldProviderRegistration(YieldProviderRegistrationError.LidoVaultIsExpectedReceiveCallerAndOssifiedEntrypoint);
+      revert InvalidYieldProviderRegistration(
+        YieldProviderRegistrationError.LidoVaultIsExpectedReceiveCallerAndOssifiedEntrypoint
+      );
     }
   }
 }

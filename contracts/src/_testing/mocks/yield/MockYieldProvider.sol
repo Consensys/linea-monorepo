@@ -16,7 +16,7 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
   // Route to MockWithdrawTarget
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external {
     address mockWithdrawTargetAddress = getMockWithdrawTarget(_yieldProvider);
-    (bool success, bytes memory returnData) = mockWithdrawTargetAddress.call{value: _amount}("");
+    (bool success, bytes memory returnData) = mockWithdrawTargetAddress.call{ value: _amount }("");
     if (!success) {
       revert FundMockWithdrawTargetFailed();
     }
@@ -25,7 +25,7 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
   function reportYield(address _yieldProvider) external returns (uint256 newReportedYield) {
     return reportYieldReturnVal(_yieldProvider);
   }
-  
+
   function payLSTPrincipal(
     address _yieldProvider,
     uint256 _availableFunds
