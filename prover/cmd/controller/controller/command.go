@@ -63,32 +63,26 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 	limitlessDirs := []string{
 		path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsFromSubDir),
 		path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir),
-		path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsToSubDir),
+
 		path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsFromSubDir),
 		path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsDoneSubDir),
-		path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsToSubDir),
 	}
 
 	for _, mod := range config.ALL_MODULES {
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsFromSubDir))
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsToSubDir))
 
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsFromSubDir))
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsToSubDir))
 
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", mod, config.RequestsFromSubDir))
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", mod, config.RequestsDoneSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", mod, config.RequestsToSubDir))
 
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsFromSubDir))
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsDoneSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsToSubDir))
 
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.CommitsDir, mod, config.RequestsFromSubDir))
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.CommitsDir, mod, config.RequestsDoneSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.CommitsDir, mod, config.RequestsToSubDir))
 	}
 
 	dirs = append(dirs, limitlessDirs...)
