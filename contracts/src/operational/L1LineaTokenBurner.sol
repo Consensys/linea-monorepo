@@ -7,12 +7,16 @@ import { IL1MessageService } from "../messaging/l1/interfaces/IL1MessageService.
 import { IL1MessageManager } from "../messaging/l1/interfaces/IL1MessageManager.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 
+/**
+ * @title Simplified L1 Linea Token Interface.
+ * @author Consensys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 interface IL1LineaToken {
   /**
    * @notice Synchronizes the total supply of the L1 token to the L2 token.
    * @dev This function sends a message to the L2 token contract to sync the total supply.
    * @dev NB: This function is permissionless on purpose, allowing anyone to trigger the sync.
-   * @dev This function can only be called after the L2 token address has been set.
    */
   function syncTotalSupplyToL2() external;
 }

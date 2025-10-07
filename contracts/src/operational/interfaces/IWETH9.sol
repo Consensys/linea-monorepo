@@ -9,6 +9,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @custom:security-contact security-report@linea.build
  */
 interface IWETH9 is IERC20 {
+  /**
+   * @notice Deposits ETH into the WETH9 contract.
+   */
   function deposit() external payable;
-  function withdraw(uint256) external;
 }

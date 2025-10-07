@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
+/**
+ * @title V3 Router interface.
+ * @author Consensys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 interface ISwapRouterV3 {
   /**
    * @dev Parameters for the exact input single swap.
