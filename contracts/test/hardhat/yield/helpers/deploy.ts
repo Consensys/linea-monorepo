@@ -176,5 +176,5 @@ export async function deployLidoStVaultYieldProviderFactory() {
   const lidoStVaultYieldProviderFactory = await yieldProviderFactoryFactory.deploy(beaconAddress);
   await lidoStVaultYieldProviderFactory.waitForDeployment();
 
-  return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, beacon, lidoStVaultYieldProviderFactory };
+  return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, beaconAddress, lidoStVaultYieldProviderFactory };
 }

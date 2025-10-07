@@ -1,4 +1,4 @@
-import { generateKeccak256 } from "../helpers";
+import { generateKeccak256 } from "../helpers/hashing";
 import { HASH_ZERO } from "./general";
 
 // Linea XP Token roles
