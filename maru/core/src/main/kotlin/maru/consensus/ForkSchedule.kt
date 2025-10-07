@@ -13,6 +13,28 @@ import java.util.TreeSet
 import kotlin.reflect.KClass
 import org.apache.logging.log4j.LogManager
 
+enum class ClFork(
+  val version: Byte,
+) {
+  QBFT_PHASE0(0x0), // ElDelegated before TTD is reached
+  QBFT_PHASE1(0x1), // current QBFT
+}
+
+enum class ElFork(
+  val version: Byte,
+) {
+  // London(0x0),
+  Paris(0x1),
+  Shanghai(0x2),
+  Cancun(0x3),
+  Prague(0x4),
+}
+
+data class ChainFork(
+  val clFork: ClFork,
+  val elFork: ElFork,
+)
+
 data class ForkSpec(
   val timestampSeconds: ULong,
   val blockTimeSeconds: UInt,

@@ -13,9 +13,9 @@ import java.util.Timer
 import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
-import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.DifficultyAwareQbftConfig
 import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.state.FinalizationProvider

@@ -11,9 +11,9 @@ package maru.p2p
 import java.util.concurrent.ConcurrentHashMap
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.config.consensus.ElFork
 import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
 import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher

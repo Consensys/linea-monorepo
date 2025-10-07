@@ -13,7 +13,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import linea.kotlin.minusCoercingUnderflow
-import maru.config.consensus.ElFork
+import maru.consensus.ElFork
 import maru.consensus.ForksSchedule
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationProvider

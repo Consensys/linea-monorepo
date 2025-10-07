@@ -8,8 +8,8 @@
  */
 package maru.config.consensus.qbft
 
-import maru.config.consensus.ElFork
 import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
 import maru.core.Validator
 
 data class QbftConsensusConfig(
