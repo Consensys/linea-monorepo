@@ -16,9 +16,9 @@ import (
 
 func BenchmarkVortexForBenchmark(b *testing.B) {
 	var (
-		polySize  = []int{1 << 10, 1 << 14, 1 << 17}
-		nPoly     = []int{1 << 10, 1 << 15, 1 << 20}
-		numRounds = []int{1, 4, 8, 16}
+		polySize  = []int{1 << 18, 1 << 19, 1 << 20}
+		nPoly     = []int{1 << 11, 1 << 12, 1 << 13}
+		numRounds = []int{1, 4, 8}
 	)
 
 	// Run benchmarks for all combinations of numRounds, nPoly, and polSize
