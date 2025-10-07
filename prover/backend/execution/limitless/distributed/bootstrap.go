@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"runtime/debug"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
@@ -240,9 +239,6 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 
 	sharedRandomnessFileName := fmt.Sprintf("%s-%s-commit.bin", metadata.StartBlock, metadata.EndBlock)
 	sharedRandomnessPath := path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsFromSubDir, sharedRandomnessFileName)
-	if err := os.MkdirAll(filepath.Dir(sharedRandomnessPath), 0o755); err != nil {
-		return err
-	}
 	metadata.SharedRndFile = sharedRandomnessPath
 
 	return nil
