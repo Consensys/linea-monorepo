@@ -35,10 +35,18 @@ func (p *Params) rsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVecto
 		largeDomain := p.Domains[1]
 
 		smallDomain.FFTInverseExt(expandedCoeffs[:v.Len()], fft.DIF, fft.WithNbTasks(1))
-		utils.BitReverse(expandedCoeffs[:v.Len()])
 
-		largeDomain.FFTExt(expandedCoeffs, fft.DIF, fft.WithNbTasks(1))
-		utils.BitReverse(expandedCoeffs)
+		n := v.Len()
+		rho := p.BlowUpFactor
+
+		// this loop dispatches the values that are all located at the beginning
+		// of the domain to the entire domain by homothety
+		for j := n - 1; j >= 0; j-- {
+			expandedCoeffs[rho*j] = expandedCoeffs[j]
+			expandedCoeffs[j] = fext.Element{}
+		}
+
+		largeDomain.FFTExt(expandedCoeffs, fft.DIT, fft.WithNbTasks(1))
 
 		return smartvectors.NewRegularExt(expandedCoeffs)
 	}
