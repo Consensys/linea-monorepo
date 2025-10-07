@@ -204,4 +204,9 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     ) external returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
         return _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, _targetDeficit);
     }
+
+  function pauseStakingIfNotAlready(address _yieldProvider) external {
+    _pauseStakingIfNotAlready(_yieldProvider);
+  }
+
 }

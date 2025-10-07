@@ -916,6 +916,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
   /**
    * @notice Initiate the ossification sequence for a provider.
    * @dev Will pause beacon chain staking and LST withdrawals.
+   * @dev Re-calling this function after a prior initiation is allowed.
    * @param _yieldProvider The yield provider address.
    */
   function initiateOssification(
@@ -977,7 +978,7 @@ contract YieldManager is AccessControlUpgradeable, YieldManagerPauseManager, Per
     );
     isOssificationComplete = abi.decode(data, (bool));
     if (isOssificationComplete) {
-      $$.isOssificationInitiated = true;
+      $$.isOssified = true;
     }
     emit YieldProviderOssificationProcessed(_yieldProvider, isOssificationComplete);
   }

@@ -623,6 +623,7 @@ interface IYieldManager {
   /**
    * @notice Initiate the ossification sequence for a provider.
    * @dev Will pause beacon chain staking and LST withdrawals.
+   * @dev Re-calling this function after a prior initiation is allowed.
    * @param _yieldProvider The yield provider address.
    */
   function initiateOssification(address _yieldProvider) external;
