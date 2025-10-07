@@ -182,6 +182,16 @@ var selfRecursionParametersSet = []selfRecursionParameters{
 	{
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
+		TargetRowSize:   1 << 6,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 7,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
 		TargetRowSize:   1 << 8,
 	},
 	{
@@ -198,6 +208,16 @@ var selfRecursionParametersSet = []selfRecursionParameters{
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
 		TargetRowSize:   1 << 11,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 12,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 13,
 	},
 }
 
@@ -311,7 +331,7 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 		sbc.Define,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<20),
-			compiler.WithStitcherMinSize(1<<8),
+			compiler.WithStitcherMinSize(1<<1),
 		),
 		vortex.Compile(
 			2,
@@ -399,7 +419,7 @@ func applySelfRecursionThenArcane(comp *wizard.CompiledIOP, params selfRecursion
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(rowSize),
-			compiler.WithStitcherMinSize(1<<8),
+			compiler.WithStitcherMinSize(1<<1),
 		),
 	)
 }
