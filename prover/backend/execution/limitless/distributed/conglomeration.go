@@ -2,9 +2,7 @@ package distributed
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"runtime/debug"
 	"time"
@@ -79,7 +77,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 			default:
 				proofGL := &recursion.Witness{}
 				// GL proof loading
-				if err := retryDeser(req.GLProofFiles[i], proofGL, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); err != nil {
+				if err := serialization.LoadFromDisk(req.GLProofFiles[i], proofGL, true); err != nil {
 					return err
 				}
 
@@ -115,7 +113,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 			default:
 				proofLPP := &recursion.Witness{}
 				// LPP proof loading
-				if err := retryDeser(req.LPPProofFiles[i], proofLPP, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); err != nil {
+				if err := serialization.LoadFromDisk(req.LPPProofFiles[i], proofLPP, true); err != nil {
 					return err
 				}
 
@@ -201,7 +199,7 @@ func runSharedRandomness(cfg *config.Config, req *Metadata) (err error) {
 	lppCommitments := make([]field.Element, len(req.GLCommitFiles))
 	for i, path := range req.GLCommitFiles {
 		lppCommitment := &field.Element{}
-		if derr := retryDeser(path, lppCommitment, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); derr != nil {
+		if derr := serialization.LoadFromDisk(path, lppCommitment, true); derr != nil {
 			err = fmt.Errorf("could not load lpp-commitment: %w", derr)
 			return err
 		}
@@ -256,26 +254,4 @@ func runConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witne
 	logrus.Infof("Successfully sanity-checked the conglomerator")
 
 	return proof, cong.Wiop, nil
-}
-
-// retryDeser: wraps LoadFromDisk with simple flat retries for io.EOF / io.ErrUnexpectedEOF
-func retryDeser(path string, v any, compressed bool, retries int, delay time.Duration) error {
-	for attempt := 0; attempt <= retries; attempt++ {
-		err := serialization.LoadFromDisk(path, v, compressed)
-		if err == nil {
-			return nil
-		}
-
-		// Retry if the underlying cause is EOF-related
-		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-			if attempt < retries {
-				logrus.Warnf("Retrying load for %s after %v due to %v (attempt %d/%d)", path, delay, err, attempt+1, retries)
-				time.Sleep(delay)
-				continue
-			}
-		}
-
-		return fmt.Errorf("could not deserialize %s: %w", path, err)
-	}
-	return fmt.Errorf("unreachable retry logic for %s", path)
 }

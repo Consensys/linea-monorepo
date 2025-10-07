@@ -39,7 +39,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 	}()
 
 	witnessLPP := &distributed.ModuleWitnessLPP{}
-	if err := retryDeser(req.WitnessLPPFile, witnessLPP, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); err != nil {
+	if err := serialization.LoadFromDisk(req.WitnessLPPFile, witnessLPP, true); err != nil {
 		return fmt.Errorf("could not load witness: %w", err)
 	}
 
@@ -65,7 +65,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 
 	// Generate the shared randomness
 	sharedRandomness := &field.Element{}
-	if err := retryDeser(sharedRandomnessFile, sharedRandomness, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); err != nil {
+	if err := serialization.LoadFromDisk(sharedRandomnessFile, sharedRandomness, true); err != nil {
 		return fmt.Errorf("could not load shared randomness: %w", err)
 	}
 	witnessLPP.InitialFiatShamirState = *sharedRandomness
