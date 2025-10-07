@@ -1,3 +1,17 @@
+# `IL1LineaToken`
+
+### syncTotalSupplyToL2
+
+```solidity
+function syncTotalSupplyToL2() external
+```
+
+Synchronizes the total supply of the L1 token to the L2 token.
+
+_This function sends a message to the L2 token contract to sync the total supply.
+NB: This function is permissionless on purpose, allowing anyone to trigger the sync.
+This function can only be called after the L2 token address has been set._
+
 # `L1LineaTokenBurner`
 
 ### LINEA_TOKEN
@@ -30,17 +44,11 @@ function claimMessageWithProof(struct IL1MessageService.ClaimMessageWithProofPar
 
 Claims a message with proof and burns the LINEA tokens held by this contract.
 
+_This is expected to be permissionless, allowing anyone to trigger the burn._
+
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | _params | struct IL1MessageService.ClaimMessageWithProofParams | The parameters required to claim the message with proof. |
-
-### receive
-
-```solidity
-receive() external payable
-```
-
-Receive function - Receives Funds.
 
