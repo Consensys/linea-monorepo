@@ -97,10 +97,10 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 func waitForSharedRandomnessFile(cfg *config.Config, req *LPPRequest) error {
 
 	// Set timeout for all randomness beacon timeout
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.ExecutionLimitless.RndBeconTimeout)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.ExecutionLimitless.RndBeaconTimeout)*time.Second)
 	defer cancel()
 
-	msg := fmt.Sprintf("Waiting for shared randomness file with configured timeout:%d sec", cfg.ExecutionLimitless.RndBeconTimeout)
+	msg := fmt.Sprintf("Waiting for shared randomness file with configured timeout:%d sec", cfg.ExecutionLimitless.RndBeaconTimeout)
 	err := files.WaitForAllFilesAtPath(ctx, []string{req.SharedRandomnessFile}, true, msg)
 	if err != nil {
 		return fmt.Errorf("error waiting for shared randomness file: %w", err)
