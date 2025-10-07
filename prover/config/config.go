@@ -63,15 +63,13 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 			return nil, err
 		}
 
-		if err = validate.RegisterValidation("timeout_order", validateTimeoutOrder); err != nil {
-			return nil, err
-		}
+		// Struct-level validator for ExecutionLimitless
+		validate.RegisterStructValidation(validateExecutionLimitlessTimeoutOrder, ExecutionLimitless{})
 
 		// Validate the struct after registering all custom validators
 		if err = validate.Struct(cfg); err != nil {
 			return nil, err
 		}
-
 	}
 
 	// Ensure cmdTmpl and cmdLargeTmpl are parsed
@@ -162,23 +160,15 @@ func validateModEntries(fl validator.FieldLevel) bool {
 	return false
 }
 
-// validateTimeoutOrder ensures:
-// rnd_beacon_timeout > gl_subproofs_timeout
-// lpp_subproofs_timeout > rnd_beacon_timeout
-func validateTimeoutOrder(fl validator.FieldLevel) bool {
-	cfg, ok := fl.Top().Interface().(ExecutionLimitless)
-	if !ok {
-		return false
-	}
+// validateExecutionLimitlessTimeoutOrder ensures GLSubproofsTimeout < RndBeaconTimeout < LPPSubproofsTimeout
+func validateExecutionLimitlessTimeoutOrder(sl validator.StructLevel) {
+	cfg := sl.Current().Interface().(ExecutionLimitless)
 
-	if cfg.RndBeaconTimeout <= cfg.GLSubproofsTimeout {
-		return false
+	if !(cfg.GLSubproofsTimeout < cfg.RndBeaconTimeout && cfg.RndBeaconTimeout < cfg.LPPSubproofsTimeout) {
+		sl.ReportError(cfg.GLSubproofsTimeout, "GLSubproofsTimeout", "GLSubproofsTimeout", "timeout_order", "")
+		sl.ReportError(cfg.RndBeaconTimeout, "RndBeaconTimeout", "RndBeaconTimeout", "timeout_order", "")
+		sl.ReportError(cfg.LPPSubproofsTimeout, "LPPSubproofsTimeout", "LPPSubproofsTimeout", "timeout_order", "")
 	}
-	if cfg.LPPSubproofsTimeout <= cfg.RndBeaconTimeout {
-		return false
-	}
-
-	return true
 }
 
 // TODO @gbotrel add viper hook to decode custom types (instead of having duplicate string and custom type.)
@@ -324,9 +314,9 @@ type ExecutionLimitless struct {
 	SubproofsDir        string `mapstructure:"subproofs_dir"`
 	CommitsDir          string `mapstructure:"commits_dir"`
 	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
-	GLSubproofsTimeout  int    `mapstructure:"gl_subproofs_timeout" validate:"gt=0"`
-	RndBeaconTimeout    int    `mapstructure:"rnd_beacon_timeout" validate:"gt=0"`
-	LPPSubproofsTimeout int    `mapstructure:"lpp_subproofs_timeout" validate:"gt=0, timeout_order"`
+	GLSubproofsTimeout  int    `mapstructure:"gl_subproofs_timeout" validate:"gt=0,number"`
+	RndBeaconTimeout    int    `mapstructure:"rnd_beacon_timeout" validate:"gt=0,number"`
+	LPPSubproofsTimeout int    `mapstructure:"lpp_subproofs_timeout" validate:"gt=0,number"`
 }
 
 type Execution struct {
