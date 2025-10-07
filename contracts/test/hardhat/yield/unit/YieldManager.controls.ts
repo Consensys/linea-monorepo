@@ -6,6 +6,16 @@ import { ethers } from "hardhat";
 import { TestYieldManager } from "contracts/typechain-types";
 import { deployYieldManagerForUnitTest } from "../helpers/deploy";
 import { addMockYieldProvider } from "../helpers/mocks";
+import {
+  GENERAL_PAUSE_TYPE,
+  NATIVE_YIELD_STAKING_PAUSE_TYPE,
+  NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
+  NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE,
+  NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE,
+  NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE,
+  NATIVE_YIELD_REPORTING_PAUSE_TYPE,
+  LST_WITHDRAWAL_PAUSE_TYPE,
+} from "../../common/constants";
 import { setWithdrawalReserveBalance, setWithdrawalReserveToMinimum } from "../helpers/setup";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 
@@ -15,9 +25,119 @@ describe("Linea Rollup contract", () => {
   let securityCouncil: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
   let nativeYieldOperator: SignerWithAddress;
+  let operationalSafe: SignerWithAddress;
 
   before(async () => {
-    ({ securityCouncil, operator: nonAuthorizedAccount, nativeYieldOperator } = await loadFixture(getAccountsFixture));
+    ({
+      securityCouncil,
+      operator: nonAuthorizedAccount,
+      nativeYieldOperator,
+      operationalSafe,
+    } = await loadFixture(getAccountsFixture));
+  });
+
+  describe("pausing", () => {
+    it("Security council should be able to activate GENERAL_PAUSE_TYPE", async () => {
+      await expect(yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE))
+        .to.emit(yieldManager, "Paused")
+        .withArgs(securityCouncil.address, GENERAL_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+    });
+
+    it("Operational safe should be able to activate NATIVE_YIELD_STAKING_PAUSE_TYPE", async () => {
+      await expect(yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE))
+        .to.emit(yieldManager, "Paused")
+        .withArgs(operationalSafe.address, NATIVE_YIELD_STAKING_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(NATIVE_YIELD_STAKING_PAUSE_TYPE)).to.be.true;
+    });
+
+    it("Operational safe should be able to activate NATIVE_YIELD_UNSTAKING_PAUSE_TYPE", async () => {
+      await expect(yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE))
+        .to.emit(yieldManager, "Paused")
+        .withArgs(operationalSafe.address, NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE)).to.be.true;
+    });
+
+    it("Operational safe should be able to activate NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE", async () => {
+      await expect(yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE))
+        .to.emit(yieldManager, "Paused")
+        .withArgs(operationalSafe.address, NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE)).to.be.true;
+    });
+
+    it("Operational safe should be able to activate NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE", async () => {
+      await expect(yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE))
+        .to.emit(yieldManager, "Paused")
+        .withArgs(operationalSafe.address, NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE)).to.be.true;
+    });
+
+    it("Operational safe should be able to activate NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE", async () => {
+      await expect(yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE))
+        .to.emit(yieldManager, "Paused")
+        .withArgs(operationalSafe.address, NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE)).to.be.true;
+    });
+
+    it("Operational safe should be able to activate NATIVE_YIELD_REPORTING_PAUSE_TYPE", async () => {
+      await expect(yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_REPORTING_PAUSE_TYPE))
+        .to.emit(yieldManager, "Paused")
+        .withArgs(operationalSafe.address, NATIVE_YIELD_REPORTING_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(NATIVE_YIELD_REPORTING_PAUSE_TYPE)).to.be.true;
+    });
+
+    it("Operational safe should be able to activate LST_WITHDRAWAL_PAUSE_TYPE", async () => {
+      await expect(yieldManager.connect(operationalSafe).pauseByType(LST_WITHDRAWAL_PAUSE_TYPE))
+        .to.emit(yieldManager, "Paused")
+        .withArgs(operationalSafe.address, LST_WITHDRAWAL_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(LST_WITHDRAWAL_PAUSE_TYPE)).to.be.true;
+    });
+  });
+
+  describe("unpausing", () => {
+    it("Security council should be able to unpause GENERAL_PAUSE_TYPE", async () => {
+      await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+      await expect(yieldManager.connect(securityCouncil).unPauseByType(GENERAL_PAUSE_TYPE))
+        .to.emit(yieldManager, "UnPaused")
+        .withArgs(securityCouncil.address, GENERAL_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+    });
+
+    async function pauseThenUnpause(pauseType: bigint) {
+      await yieldManager.connect(operationalSafe).pauseByType(pauseType);
+      await expect(yieldManager.connect(operationalSafe).unPauseByType(pauseType))
+        .to.emit(yieldManager, "UnPaused")
+        .withArgs(operationalSafe.address, pauseType);
+      expect(await yieldManager.isPaused(pauseType)).to.be.false;
+    }
+
+    it("Operational safe should be able to unpause NATIVE_YIELD_STAKING_PAUSE_TYPE", async () => {
+      await pauseThenUnpause(NATIVE_YIELD_STAKING_PAUSE_TYPE);
+    });
+
+    it("Operational safe should be able to unpause NATIVE_YIELD_UNSTAKING_PAUSE_TYPE", async () => {
+      await pauseThenUnpause(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
+    });
+
+    it("Operational safe should be able to unpause NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE", async () => {
+      await pauseThenUnpause(NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE);
+    });
+
+    it("Operational safe should be able to unpause NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE", async () => {
+      await pauseThenUnpause(NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE);
+    });
+
+    it("Operational safe should be able to unpause NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE", async () => {
+      await pauseThenUnpause(NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE);
+    });
+
+    it("Operational safe should be able to unpause NATIVE_YIELD_REPORTING_PAUSE_TYPE", async () => {
+      await pauseThenUnpause(NATIVE_YIELD_REPORTING_PAUSE_TYPE);
+    });
+
+    it("Operational safe should be able to unpause LST_WITHDRAWAL_PAUSE_TYPE", async () => {
+      await pauseThenUnpause(LST_WITHDRAWAL_PAUSE_TYPE);
+    });
   });
 
   beforeEach(async () => {
