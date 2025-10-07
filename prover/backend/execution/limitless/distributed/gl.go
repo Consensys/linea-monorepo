@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 	"runtime/debug"
-	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -35,7 +34,7 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 	}()
 
 	witnessGL := &distributed.ModuleWitnessGL{}
-	if err := retryDeser(req.WitnessGLFile, witnessGL, true, cfg.ExecutionLimitless.NumberOfRetries, time.Duration(cfg.ExecutionLimitless.RetryDelay)*time.Millisecond); err != nil {
+	if err := serialization.LoadFromDisk(req.WitnessGLFile, witnessGL, true); err != nil {
 		return fmt.Errorf("could not load witness: %w", err)
 	}
 
