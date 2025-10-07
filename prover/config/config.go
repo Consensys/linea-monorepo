@@ -59,7 +59,11 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 			return nil, err
 		}
 
-		if err = validate.RegisterValidation("mod_entries", ValidateModEntries); err != nil {
+		if err = validate.RegisterValidation("mod_entries", validateModEntries); err != nil {
+			return nil, err
+		}
+
+		if err = validate.RegisterValidation("timeout_order", validateTimeoutOrder); err != nil {
 			return nil, err
 		}
 
@@ -67,6 +71,7 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 		if err = validate.Struct(cfg); err != nil {
 			return nil, err
 		}
+
 	}
 
 	// Ensure cmdTmpl and cmdLargeTmpl are parsed
@@ -133,7 +138,7 @@ func validateIsPowerOfTwo(f validator.FieldLevel) bool {
 }
 
 // validateModEntries implements validator.Func
-func ValidateModEntries(fl validator.FieldLevel) bool {
+func validateModEntries(fl validator.FieldLevel) bool {
 	mods, ok := fl.Field().Interface().([]string)
 	if !ok {
 		return false
@@ -155,6 +160,25 @@ func ValidateModEntries(fl validator.FieldLevel) bool {
 		}
 	}
 	return false
+}
+
+// validateTimeoutOrder ensures:
+// rnd_beacon_timeout > gl_subproofs_timeout
+// lpp_subproofs_timeout > rnd_beacon_timeout
+func validateTimeoutOrder(fl validator.FieldLevel) bool {
+	cfg, ok := fl.Top().Interface().(ExecutionLimitless)
+	if !ok {
+		return false
+	}
+
+	if cfg.RndBeaconTimeout <= cfg.GLSubproofsTimeout {
+		return false
+	}
+	if cfg.LPPSubproofsTimeout <= cfg.RndBeaconTimeout {
+		return false
+	}
+
+	return true
 }
 
 // TODO @gbotrel add viper hook to decode custom types (instead of having duplicate string and custom type.)
@@ -301,8 +325,8 @@ type ExecutionLimitless struct {
 	CommitsDir          string `mapstructure:"commits_dir"`
 	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
 	GLSubproofsTimeout  int    `mapstructure:"gl_subproofs_timeout" validate:"gt=0"`
-	LPPSubproofsTimeout int    `mapstructure:"lpp_subproofs_timeout" validate:"gt=0"`
-	RndBeconTimeout     int    `mapstructure:"rnd_beacon_timeout" validate:"gt=0"`
+	RndBeaconTimeout    int    `mapstructure:"rnd_beacon_timeout" validate:"gt=0"`
+	LPPSubproofsTimeout int    `mapstructure:"lpp_subproofs_timeout" validate:"gt=0, timeout_order"`
 }
 
 type Execution struct {
