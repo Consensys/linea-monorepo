@@ -1,4 +1,4 @@
-# `DexSwap`
+# `V3DexSwap`
 
 ### POOL_TICK_SPACING
 
@@ -6,7 +6,7 @@
 uint24 POOL_TICK_SPACING
 ```
 
-_Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool_
+Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool
 
 ### ROUTER
 
@@ -14,7 +14,7 @@ _Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool_
 address ROUTER
 ```
 
-_Address of the Etherex SwapRouter contract_
+Address of the Etherex SwapRouter contract
 
 ### WETH_TOKEN
 
@@ -22,11 +22,15 @@ _Address of the Etherex SwapRouter contract_
 address WETH_TOKEN
 ```
 
+Address of the WETH token contract
+
 ### LINEA_TOKEN
 
 ```solidity
 address LINEA_TOKEN
 ```
+
+Address of the LINEA token contract
 
 ### ROLLUP_REVENUE_VAULT
 
@@ -34,7 +38,7 @@ address LINEA_TOKEN
 address ROLLUP_REVENUE_VAULT
 ```
 
-_Address of the RollupRevenueVault contract authorized to call the swap function_
+Address of the RollupRevenueVault contract authorized to call the swap function
 
 ### constructor
 
@@ -42,7 +46,7 @@ _Address of the RollupRevenueVault contract authorized to call the swap function
 constructor(address _router, address _wethToken, address _lineaToken, address _rollupRevenueVault) public
 ```
 
-_Sets the address of the RollupRevenueVault contract._
+_Sets the address of the RollupRevenueVault contract and other immutable values._
 
 #### Parameters
 

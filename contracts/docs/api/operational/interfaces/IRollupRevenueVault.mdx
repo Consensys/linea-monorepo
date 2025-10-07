@@ -1,6 +1,6 @@
 # `IRollupRevenueVault`
 
-Accepts ETH for later economic functions.
+Accepts rollup revenue, and performs burning operations.
 
 ### ZeroAddressNotAllowed
 
@@ -82,6 +82,14 @@ error InsufficientBalance()
 
 _Thrown when the contract balance is insufficient._
 
+### AddressAlreadySetup
+
+```solidity
+error AddressAlreadySetup()
+```
+
+_Thrown when the provided address is already set up._
+
 ### InvoiceProcessed
 
 ```solidity
@@ -107,19 +115,19 @@ If amountRequested < amountPaid, the difference is previous unpaid invoice amoun
 event EthBurntSwappedAndBridged(uint256 ethBurnt, uint256 lineaTokensBridged)
 ```
 
-_Emitted when ETH is burned, swapped, and bridged._
+_Emitted when ETH is burnt, swapped, and bridged._
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| ethBurnt | uint256 | The amount of ETH that was burned. |
+| ethBurnt | uint256 | The amount of ETH that was burnt. |
 | lineaTokensBridged | uint256 | The amount of LINEA tokens that were bridged. |
 
 ### L1LineaTokenBurnerUpdated
 
 ```solidity
-event L1LineaTokenBurnerUpdated(address newL1LineaTokenBurner)
+event L1LineaTokenBurnerUpdated(address previousValue, address newValue)
 ```
 
 _Emitted when the L1 LINEA token burner contract address is updated._
@@ -128,12 +136,13 @@ _Emitted when the L1 LINEA token burner contract address is updated._
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| newL1LineaTokenBurner | address | The new L1 LINEA token burner contract address. |
+| previousValue | address | The previous L1 LINEA token burner contract address. |
+| newValue | address | The new L1 LINEA token burner contract address. |
 
 ### DexUpdated
 
 ```solidity
-event DexUpdated(address newDex)
+event DexUpdated(address previousValue, address newValue)
 ```
 
 _Emitted when the DEX contract address is updated._
@@ -142,7 +151,8 @@ _Emitted when the DEX contract address is updated._
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| newDex | address | The new DEX contract address. |
+| previousValue | address | The previous DEX contract address. |
+| newValue | address | The new DEX contract address. |
 
 ### EthReceived
 
@@ -176,7 +186,7 @@ _Emitted when the invoice arrears are updated._
 ### InvoicePaymentReceiverUpdated
 
 ```solidity
-event InvoicePaymentReceiverUpdated(address newInvoicePaymentReceiver)
+event InvoicePaymentReceiverUpdated(address previousValue, address newValue)
 ```
 
 _Emitted when the invoice payment receiver is updated._
@@ -185,5 +195,6 @@ _Emitted when the invoice payment receiver is updated._
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| newInvoicePaymentReceiver | address | The new invoice payment receiver address. |
+| previousValue | address | The previous invoice payment receiver address. |
+| newValue | address | The new invoice payment receiver address. |
 

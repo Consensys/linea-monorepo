@@ -1,6 +1,6 @@
 # `RollupRevenueVault`
 
-Accepts ETH for later economic functions.
+Accepts rollup revenue, and performs burning operations.
 
 ### INVOICE_SUBMITTER_ROLE
 
@@ -105,7 +105,7 @@ Initializes the contract state.
 | _messageService | address | Address of the L2 message service contract. |
 | _l1LineaTokenBurner | address | Address of the L1 LINEA token burner contract. |
 | _lineaToken | address | Address of the LINEA token contract. |
-| _v3Dex | address | Address of the DEX contract. |
+| _v3Dex | address | Address of the V3 DEX contract. |
 
 ### initializeRolesAndStorageVariables
 
@@ -113,7 +113,7 @@ Initializes the contract state.
 function initializeRolesAndStorageVariables(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _v3Dex) external
 ```
 
-Initializes the contract state for upgrade.
+Reinitializes the contract state for upgrade.
 
 #### Parameters
 
@@ -128,18 +128,18 @@ Initializes the contract state for upgrade.
 | _messageService | address | Address of the L2 message service contract. |
 | _l1LineaTokenBurner | address | Address of the L1 LINEA token burner contract. |
 | _lineaToken | address | Address of the LINEA token contract. |
-| _v3Dex | address | Address of the DEX contract. |
+| _v3Dex | address | Address of the V3 DEX contract. |
 
-### __RollupFeeVault_init
+### __RollupRevenueVault_init
 
 ```solidity
-function __RollupFeeVault_init(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _v3Dex) internal
+function __RollupRevenueVault_init(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _v3Dex) internal
 ```
 
 ### submitInvoice
 
 ```solidity
-function submitInvoice(uint256 _startTimestamp, uint256 _endTimestamp, uint256 _newInvoiceAmount) external payable
+function submitInvoice(uint256 _startTimestamp, uint256 _endTimestamp, uint256 _invoiceAmount) external payable
 ```
 
 Submit invoice to pay to the designated receiver.
@@ -148,9 +148,9 @@ Submit invoice to pay to the designated receiver.
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _startTimestamp | uint256 | Start of the period the costs are covering. |
-| _endTimestamp | uint256 | End of the period the costs are covering. |
-| _newInvoiceAmount | uint256 | New invoice amount. |
+| _startTimestamp | uint256 | Start of the period the invoice is covering. |
+| _endTimestamp | uint256 | End of the period the invoice is covering. |
+| _invoiceAmount | uint256 | New invoice amount. |
 
 ### burnAndBridge
 
@@ -164,7 +164,7 @@ Burns 20% of the ETH balance and uses the rest to buy LINEA tokens which are the
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _minLineaOut | uint256 | Number of LINEA tokens to receive as a minimum (slippage protection). |
+| _minLineaOut | uint256 | Number of LINEA tokens to receive as a minimum (slippage protection). Computed off-chain just prior to execution. |
 | _deadline | uint256 | Time after which the transaction will revert if not yet processed. |
 | _sqrtPriceLimitX96 | uint160 | Price limit of the swap as a Q64.96 value. |
 
