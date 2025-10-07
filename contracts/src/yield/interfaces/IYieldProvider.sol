@@ -5,7 +5,7 @@ import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
 
 /**
  * @title Interface for a YieldProvider adaptor contract to handle vendor-specific interactions.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldProvider {

@@ -7,7 +7,7 @@ import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 
 /**
  * @title Base contract YieldProvider adaptor.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 abstract contract YieldProviderBase is YieldManagerStorageLayout, IYieldProvider {

@@ -16,7 +16,7 @@ import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initializable, IGenericErrors {

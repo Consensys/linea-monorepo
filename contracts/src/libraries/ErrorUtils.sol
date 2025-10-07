@@ -10,8 +10,6 @@ import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
  */
 library ErrorUtils {
   function revertIfZeroAddress(address _addr) internal pure {
-    if (_addr == address(0)) {
-      revert IGenericErrors.ZeroAddressNotAllowed();
-    }
+    if (_addr == address(0)) revert IGenericErrors.ZeroAddressNotAllowed();
   }
 }

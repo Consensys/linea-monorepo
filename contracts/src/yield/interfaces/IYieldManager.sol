@@ -7,7 +7,7 @@ import { IPermissionsManager } from "../../security/access/interfaces/IPermissio
 
 /**
  * @title Contract to handle native yield operations.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface IYieldManager {

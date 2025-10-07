@@ -13,7 +13,7 @@ import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 
 /**
  * @title Contract to handle native yield operations.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @dev Sole writer to YieldManagerStorageLayout.
  * @custom:security-contact security-report@linea.build
  */

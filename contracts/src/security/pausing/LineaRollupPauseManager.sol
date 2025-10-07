@@ -5,7 +5,7 @@ import { PauseManager } from "./PauseManager.sol";
 
 /**
  * @title Contract to manage cross-chain function pausing roles for the LineaRollup.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 abstract contract LineaRollupPauseManager is PauseManager {

@@ -5,7 +5,7 @@ import { IL1MessageService } from "../../messaging/l1/interfaces/IL1MessageServi
 
 /**
  * @title Native yield extension module for the Linea L1MessageService.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface ILineaRollupYieldExtension {

@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 contract LineaRollup is LineaRollupBase {
