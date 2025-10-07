@@ -13,15 +13,15 @@ import { IWETH9 } from "./interfaces/IWETH9.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract V3DexSwap is IV3DexSwap {
-  /// @notice Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool
-  uint24 public constant POOL_TICK_SPACING = 50;
-  /// @notice Address of the Etherex SwapRouter contract
+  /// @notice Tick spacing of the pool.
+  uint24 public immutable POOL_TICK_SPACING;
+  /// @notice Address of the Swap Router contract.
   address public immutable ROUTER;
-  /// @notice Address of the WETH token contract
+  /// @notice Address of the WETH token contract.
   address public immutable WETH_TOKEN;
-  /// @notice Address of the LINEA token contract
+  /// @notice Address of the LINEA token contract.
   address public immutable LINEA_TOKEN;
-  /// @notice Address of the RollupRevenueVault contract authorized to call the swap function
+  /// @notice Address of the RollupRevenueVault contract authorized to call the swap function.
   address public immutable ROLLUP_REVENUE_VAULT;
 
   /**
@@ -31,16 +31,24 @@ contract V3DexSwap is IV3DexSwap {
    * @param _lineaToken Address of the LINEA token contract.
    * @param _rollupRevenueVault Address of the RollupRevenueVault contract.
    */
-  constructor(address _router, address _wethToken, address _lineaToken, address _rollupRevenueVault) {
+  constructor(
+    address _router,
+    address _wethToken,
+    address _lineaToken,
+    address _rollupRevenueVault,
+    uint24 _poolTickSpacing
+  ) {
     require(_rollupRevenueVault != address(0), ZeroAddressNotAllowed());
     require(_wethToken != address(0), ZeroAddressNotAllowed());
     require(_lineaToken != address(0), ZeroAddressNotAllowed());
     require(_router != address(0), ZeroAddressNotAllowed());
+    require(_poolTickSpacing > 0, ZeroTickSpacingNotAllowed());
 
     ROUTER = _router;
     WETH_TOKEN = _wethToken;
     LINEA_TOKEN = _lineaToken;
     ROLLUP_REVENUE_VAULT = _rollupRevenueVault;
+    POOL_TICK_SPACING = _poolTickSpacing;
   }
 
   /** @notice Swap ETH into LINEA.
@@ -70,7 +78,5 @@ contract V3DexSwap is IV3DexSwap {
         sqrtPriceLimitX96: _sqrtPriceLimitX96
       })
     );
-
-    require(amountOut >= _minLineaOut, MinOutputAmountNotMet(_minLineaOut, amountOut));
   }
 }

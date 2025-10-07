@@ -19,9 +19,9 @@ interface IV3DexSwap {
   error ZeroAddressNotAllowed();
 
   /**
-   * @dev Thrown when the minimum output amount is not met.
+   * @dev Thrown when the tick spacing is zero.
    */
-  error MinOutputAmountNotMet(uint256 expected, uint256 actual);
+  error ZeroTickSpacingNotAllowed();
 
   /** @notice Swap ETH into LINEA.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).

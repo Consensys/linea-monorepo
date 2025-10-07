@@ -50,6 +50,7 @@ export async function deployV3DexSwapFixture(rollupRevenueVaultAddress: string, 
     testWETH9,
     lineaTokenAddress,
     rollupRevenueVaultAddress,
+    50,
   );
   return dexSwap as V3DexSwap;
 }

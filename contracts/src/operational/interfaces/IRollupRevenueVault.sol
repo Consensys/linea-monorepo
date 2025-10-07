@@ -59,9 +59,9 @@ interface IRollupRevenueVault {
   error InsufficientBalance();
 
   /**
-   * @dev Thrown when the provided address is already set up.
+   * @dev Thrown when the provided address is the same as the existing address.
    */
-  error AddressAlreadySetup();
+  error ExistingAddressTheSame();
 
   /**
    * @dev Emitted when an invoice is processed.
@@ -95,11 +95,11 @@ interface IRollupRevenueVault {
   event L1LineaTokenBurnerUpdated(address previousValue, address newValue);
 
   /**
-   * @dev Emitted when the DEX contract address is updated.
-   * @param previousValue The previous DEX contract address.
-   * @param newValue The new DEX contract address.
+   * @dev Emitted when the V3 DEX contract address is updated.
+   * @param previousValue The previous V3 DEX contract address.
+   * @param newValue The new V3 DEX contract address.
    */
-  event DexUpdated(address previousValue, address newValue);
+  event V3DexUpdated(address previousValue, address newValue);
 
   /**
    * @dev Emitted when ETH is received.

@@ -537,7 +537,7 @@ describe("RollupRevenueVault", () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateL1LineaTokenBurner(l1LineaTokenBurner.address),
-        "AddressAlreadySetup",
+        "ExistingAddressTheSame",
       );
     });
 
@@ -578,16 +578,18 @@ describe("RollupRevenueVault", () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateDex(await dex.getAddress()),
-        "AddressAlreadySetup",
+        "ExistingAddressTheSame",
       );
     });
 
     it("Should update Dex address", async () => {
       const randomAddress = toChecksumAddress(generateRandomBytes(20));
-      await expectEvent(rollupRevenueVault, rollupRevenueVault.connect(admin).updateDex(randomAddress), "DexUpdated", [
-        await dex.getAddress(),
-        randomAddress,
-      ]);
+      await expectEvent(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(admin).updateDex(randomAddress),
+        "V3DexUpdated",
+        [await dex.getAddress(), randomAddress],
+      );
 
       expect(await rollupRevenueVault.v3Dex()).to.equal(randomAddress);
     });
@@ -617,7 +619,7 @@ describe("RollupRevenueVault", () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateInvoicePaymentReceiver(invoicePaymentReceiver.address),
-        "AddressAlreadySetup",
+        "ExistingAddressTheSame",
       );
     });
 
@@ -691,31 +693,6 @@ describe("RollupRevenueVault", () => {
         rollupRevenueVault,
         rollupRevenueVault.connect(burner).burnAndBridge(minLineaOut, deadline, 0n),
         "InsufficientBalance",
-      );
-    });
-
-    it("Should revert if minLineaOut is not met", async () => {
-      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
-      const startTimestamp = lastInvoiceDate + 1n;
-      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-
-      const invoiceAmount = ethers.parseEther("0.5");
-      await rollupRevenueVault.connect(invoiceSubmitter).submitInvoice(startTimestamp, endTimestamp, invoiceAmount);
-
-      const minLineaOut = ethers.parseUnits("200", 18); // Big number to not be met
-      const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
-      const minimumFee = await messageService.minimumFeeInWei();
-      const contractBalance = await ethers.provider.getBalance(rollupRevenueVault.getAddress());
-      const balanceAvailable = contractBalance - minimumFee;
-      const ethToBurn = (balanceAvailable * 20n) / 100n; // 20% of the available balance
-
-      const amountOut = (balanceAvailable - ethToBurn) * 2n; // We mock the swap to return amountIn * 2
-
-      await expectRevertWithCustomError(
-        dex,
-        rollupRevenueVault.connect(burner).burnAndBridge(minLineaOut, deadline, 0n),
-        "MinOutputAmountNotMet",
-        [minLineaOut, amountOut],
       );
     });
 

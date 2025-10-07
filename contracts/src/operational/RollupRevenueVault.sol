@@ -242,7 +242,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     require(_newInvoicePaymentReceiver != address(0), ZeroAddressNotAllowed());
 
     address currentInvoicePaymentReceiver = invoicePaymentReceiver;
-    require(_newInvoicePaymentReceiver != currentInvoicePaymentReceiver, AddressAlreadySetup());
+    require(_newInvoicePaymentReceiver != currentInvoicePaymentReceiver, ExistingAddressTheSame());
 
     invoicePaymentReceiver = _newInvoicePaymentReceiver;
     emit InvoicePaymentReceiverUpdated(currentInvoicePaymentReceiver, _newInvoicePaymentReceiver);
@@ -272,24 +272,24 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     require(_newL1LineaTokenBurner != address(0), ZeroAddressNotAllowed());
 
     address currentL1LineaTokenBurner = l1LineaTokenBurner;
-    require(_newL1LineaTokenBurner != currentL1LineaTokenBurner, AddressAlreadySetup());
+    require(_newL1LineaTokenBurner != currentL1LineaTokenBurner, ExistingAddressTheSame());
 
     l1LineaTokenBurner = _newL1LineaTokenBurner;
     emit L1LineaTokenBurnerUpdated(currentL1LineaTokenBurner, _newL1LineaTokenBurner);
   }
 
   /**
-   * @notice Updates the address of the DEX contract.
-   * @param _newDex Address of the new DEX contract.
+   * @notice Updates the address of the V3 DEX contract.
+   * @param _newV3Dex Address of the new V3 DEX contract.
    */
-  function updateDex(address _newDex) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    require(_newDex != address(0), ZeroAddressNotAllowed());
+  function updateDex(address _newV3Dex) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    require(_newV3Dex != address(0), ZeroAddressNotAllowed());
 
-    address currentDex = address(v3Dex);
-    require(_newDex != currentDex, AddressAlreadySetup());
+    address currentV3Dex = address(v3Dex);
+    require(_newV3Dex != currentV3Dex, ExistingAddressTheSame());
 
-    v3Dex = IV3DexSwap(_newDex);
-    emit DexUpdated(currentDex, _newDex);
+    v3Dex = IV3DexSwap(_newV3Dex);
+    emit V3DexUpdated(currentV3Dex, _newV3Dex);
   }
 
   /**
