@@ -2,8 +2,8 @@
 pragma solidity 0.8.30;
 
 /**
- * @title Interface for Revenue Vault Contract.
- * @notice Accepts ETH for later economic functions.
+ * @title Interface for Rollup Revenue Vault Contract.
+ * @notice Accepts rollup revenue, and performs burning operations.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
@@ -59,6 +59,11 @@ interface IRollupRevenueVault {
   error InsufficientBalance();
 
   /**
+   * @dev Thrown when the provided address is already set up.
+   */
+  error AddressAlreadySetup();
+
+  /**
    * @dev Emitted when an invoice is processed.
    * @dev If amountRequested < amountPaid, the difference is previous unpaid invoice amount.
    * @param receiver The address of the invoice receiver.
@@ -76,23 +81,25 @@ interface IRollupRevenueVault {
   );
 
   /**
-   * @dev Emitted when ETH is burned, swapped, and bridged.
-   * @param ethBurnt The amount of ETH that was burned.
+   * @dev Emitted when ETH is burnt, swapped, and bridged.
+   * @param ethBurnt The amount of ETH that was burnt.
    * @param lineaTokensBridged The amount of LINEA tokens that were bridged.
    */
   event EthBurntSwappedAndBridged(uint256 ethBurnt, uint256 lineaTokensBridged);
 
   /**
    * @dev Emitted when the L1 LINEA token burner contract address is updated.
-   * @param newL1LineaTokenBurner The new L1 LINEA token burner contract address.
+   * @param previousValue The previous L1 LINEA token burner contract address.
+   * @param newValue The new L1 LINEA token burner contract address.
    */
-  event L1LineaTokenBurnerUpdated(address newL1LineaTokenBurner);
+  event L1LineaTokenBurnerUpdated(address previousValue, address newValue);
 
   /**
    * @dev Emitted when the DEX contract address is updated.
-   * @param newDex The new DEX contract address.
+   * @param previousValue The previous DEX contract address.
+   * @param newValue The new DEX contract address.
    */
-  event DexUpdated(address newDex);
+  event DexUpdated(address previousValue, address newValue);
 
   /**
    * @dev Emitted when ETH is received.
@@ -109,7 +116,8 @@ interface IRollupRevenueVault {
 
   /**
    * @dev Emitted when the invoice payment receiver is updated.
-   * @param newInvoicePaymentReceiver The new invoice payment receiver address.
+   * @param previousValue The previous invoice payment receiver address.
+   * @param newValue The new invoice payment receiver address.
    */
-  event InvoicePaymentReceiverUpdated(address newInvoicePaymentReceiver);
+  event InvoicePaymentReceiverUpdated(address previousValue, address newValue);
 }

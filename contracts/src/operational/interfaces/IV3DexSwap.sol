@@ -21,7 +21,7 @@ interface IV3DexSwap {
   /**
    * @dev Thrown when the minimum output amount is not met.
    */
-  error MinOutputAmountNotMet();
+  error MinOutputAmountNotMet(uint256 expected, uint256 actual);
 
   /** @notice Swap ETH into LINEA.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).

@@ -7,23 +7,25 @@ import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
 
 /**
- * @title DexSwap.
+ * @title V3DexSwap.
  * @dev A contract for swapping tokens on a decentralized exchange.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract DexSwap is IV3DexSwap {
-  /// @dev Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool
+contract V3DexSwap is IV3DexSwap {
+  /// @notice Etherex uses a fixed tick spacing of 50 for WETH/LINEA pool
   uint24 public constant POOL_TICK_SPACING = 50;
-  /// @dev Address of the Etherex SwapRouter contract
+  /// @notice Address of the Etherex SwapRouter contract
   address public immutable ROUTER;
+  /// @notice Address of the WETH token contract
   address public immutable WETH_TOKEN;
+  /// @notice Address of the LINEA token contract
   address public immutable LINEA_TOKEN;
-  /// @dev Address of the RollupRevenueVault contract authorized to call the swap function
+  /// @notice Address of the RollupRevenueVault contract authorized to call the swap function
   address public immutable ROLLUP_REVENUE_VAULT;
 
   /**
-   * @dev Sets the address of the RollupRevenueVault contract.
+   * @dev Sets the address of the RollupRevenueVault contract and other immutable values.
    * @param _router Address of the Router contract.
    * @param _wethToken Address of the WETH token contract.
    * @param _lineaToken Address of the LINEA token contract.
@@ -69,6 +71,6 @@ contract DexSwap is IV3DexSwap {
       })
     );
 
-    require(amountOut >= _minLineaOut, MinOutputAmountNotMet());
+    require(amountOut >= _minLineaOut, MinOutputAmountNotMet(_minLineaOut, amountOut));
   }
 }

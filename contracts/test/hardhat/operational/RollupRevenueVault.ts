@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { toChecksumAddress } from "@ethereumjs/util";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { DexSwap, L2MessageService, RollupRevenueVault, TestERC20, TokenBridge } from "../../../typechain-types";
+import { V3DexSwap, L2MessageService, RollupRevenueVault, TestERC20, TokenBridge } from "../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./helpers/before";
 import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
 import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_DAY_IN_SECONDS } from "../common/constants";
@@ -21,7 +21,7 @@ describe("RollupRevenueVault", () => {
   let l2LineaToken: TestERC20;
   let tokenBridge: TokenBridge;
   let messageService: L2MessageService;
-  let dex: DexSwap;
+  let dex: V3DexSwap;
 
   let admin: SignerWithAddress;
   let invoiceSubmitter: SignerWithAddress;
@@ -266,7 +266,7 @@ describe("RollupRevenueVault", () => {
       await expectRevertWithCustomError(rollupRevenueVault, deployCall, "ZeroAddressNotAllowed");
     });
 
-    it("Should revert if DexSwap contract address is zero address", async () => {
+    it("Should revert if V3DexSwap contract address is zero address", async () => {
       const deployCall = deployUpgradableFromFactory(
         "RollupRevenueVault",
         [
@@ -533,13 +533,21 @@ describe("RollupRevenueVault", () => {
       );
     });
 
+    it("Should revert if l1LineaTokenBurner address is already setup", async () => {
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(admin).updateL1LineaTokenBurner(l1LineaTokenBurner.address),
+        "AddressAlreadySetup",
+      );
+    });
+
     it("Should update l1LineaTokenBurner address", async () => {
       const randomAddress = toChecksumAddress(generateRandomBytes(20));
       await expectEvent(
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateL1LineaTokenBurner(randomAddress),
         "L1LineaTokenBurnerUpdated",
-        [randomAddress],
+        [l1LineaTokenBurner.address, randomAddress],
       );
 
       expect(await rollupRevenueVault.l1LineaTokenBurner()).to.equal(randomAddress);
@@ -566,9 +574,18 @@ describe("RollupRevenueVault", () => {
       );
     });
 
+    it("Should revert if Dex address is already setup", async () => {
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(admin).updateDex(await dex.getAddress()),
+        "AlreadySetup",
+      );
+    });
+
     it("Should update Dex address", async () => {
       const randomAddress = toChecksumAddress(generateRandomBytes(20));
       await expectEvent(rollupRevenueVault, rollupRevenueVault.connect(admin).updateDex(randomAddress), "DexUpdated", [
+        await dex.getAddress(),
         randomAddress,
       ]);
 
@@ -596,13 +613,21 @@ describe("RollupRevenueVault", () => {
       );
     });
 
+    it("Should revert if invoicePaymentReceiver address is already setup", async () => {
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(admin).updateInvoicePaymentReceiver(invoicePaymentReceiver.address),
+        "AddressAlreadySetup",
+      );
+    });
+
     it("Should update invoicePaymentReceiver address", async () => {
       const randomAddress = toChecksumAddress(generateRandomBytes(20));
       await expectEvent(
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateInvoicePaymentReceiver(randomAddress),
         "InvoicePaymentReceiverUpdated",
-        [randomAddress],
+        [invoicePaymentReceiver.address, randomAddress],
       );
 
       expect(await rollupRevenueVault.invoicePaymentReceiver()).to.equal(randomAddress);
@@ -674,17 +699,23 @@ describe("RollupRevenueVault", () => {
       const startTimestamp = lastInvoiceDate + 1n;
       const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
 
-      await rollupRevenueVault
-        .connect(invoiceSubmitter)
-        .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("0.5"));
+      const invoiceAmount = ethers.parseEther("0.5");
+      await rollupRevenueVault.connect(invoiceSubmitter).submitInvoice(startTimestamp, endTimestamp, invoiceAmount);
 
       const minLineaOut = ethers.parseUnits("200", 18); // Big number to not be met
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
+      const minimumFee = await messageService.minimumFeeInWei();
+      const contractBalance = await ethers.provider.getBalance(rollupRevenueVault.getAddress());
+      const balanceAvailable = contractBalance - minimumFee;
+      const ethToBurn = (balanceAvailable * 20n) / 100n; // 20% of the available balance
+
+      const amountOut = (balanceAvailable - ethToBurn) * 2n; // We mock the swap to return amountIn * 2
 
       await expectRevertWithCustomError(
         dex,
         rollupRevenueVault.connect(burner).burnAndBridge(minLineaOut, deadline, 0n),
         "MinOutputAmountNotMet",
+        [minLineaOut, amountOut],
       );
     });
 

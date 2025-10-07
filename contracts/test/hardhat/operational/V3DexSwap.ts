@@ -5,12 +5,12 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { deployWETH9Fixture } from "./helpers/deploy";
 import { deployFromFactory } from "../common/deployment";
-import { DexSwap, TestDexRouter, TestERC20 } from "../../../typechain-types";
+import { V3DexSwap, TestDexRouter, TestERC20 } from "../../../typechain-types";
 import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
 import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
 
-describe("DexSwap", () => {
-  let dexSwap: DexSwap;
+describe("V3DexSwap", () => {
+  let dexSwap: V3DexSwap;
   let admin: SignerWithAddress;
   let rollupRevenueVault: SignerWithAddress;
   let lineaToken: TestERC20;
@@ -20,23 +20,24 @@ describe("DexSwap", () => {
   async function deployDexSwapContractFixture() {
     const [, rollupRevenueVault] = await ethers.getSigners();
 
-    const lineaTokenFn = () => deployFromFactory("TestERC20", "TestERC20", "TEST", ethers.parseUnits("1000000000", 18));
-    const lineaToken = (await loadFixture(lineaTokenFn)) as TestERC20;
+    const lineaToken = (await deployFromFactory(
+      "TestERC20",
+      "TestERC20",
+      "TEST",
+      ethers.parseUnits("1000000000", 18),
+    )) as TestERC20;
 
-    const testWETH9 = await loadFixture(deployWETH9Fixture);
+    const testWETH9 = await deployWETH9Fixture();
 
-    const routerFn = () => deployFromFactory("TestDexRouter");
-    const router = (await loadFixture(routerFn)) as TestDexRouter;
+    const router = (await deployFromFactory("TestDexRouter")) as TestDexRouter;
 
-    const dexSwapFn = async () =>
-      deployFromFactory(
-        "DexSwap",
-        await router.getAddress(),
-        testWETH9,
-        await lineaToken.getAddress(),
-        rollupRevenueVault.address,
-      );
-    const dexSwap = (await loadFixture(dexSwapFn)) as DexSwap;
+    const dexSwap = (await deployFromFactory(
+      "V3DexSwap",
+      await router.getAddress(),
+      testWETH9,
+      await lineaToken.getAddress(),
+      rollupRevenueVault.address,
+    )) as V3DexSwap;
 
     return { dexSwap, lineaToken, testWETH9, router };
   }
@@ -55,7 +56,7 @@ describe("DexSwap", () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
       await expectRevertWithCustomError(
         dexSwap,
-        deployFromFactory("DexSwap", ADDRESS_ZERO, randomnAddress, randomnAddress, randomnAddress),
+        deployFromFactory("V3DexSwap", ADDRESS_ZERO, randomnAddress, randomnAddress, randomnAddress),
         "ZeroAddressNotAllowed",
       );
     });
@@ -64,7 +65,7 @@ describe("DexSwap", () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
       await expectRevertWithCustomError(
         dexSwap,
-        deployFromFactory("DexSwap", randomnAddress, ADDRESS_ZERO, randomnAddress, randomnAddress),
+        deployFromFactory("V3DexSwap", randomnAddress, ADDRESS_ZERO, randomnAddress, randomnAddress),
         "ZeroAddressNotAllowed",
       );
     });
@@ -73,7 +74,7 @@ describe("DexSwap", () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
       await expectRevertWithCustomError(
         dexSwap,
-        deployFromFactory("DexSwap", randomnAddress, randomnAddress, ADDRESS_ZERO, randomnAddress),
+        deployFromFactory("V3DexSwap", randomnAddress, randomnAddress, ADDRESS_ZERO, randomnAddress),
         "ZeroAddressNotAllowed",
       );
     });
@@ -82,7 +83,7 @@ describe("DexSwap", () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
       await expectRevertWithCustomError(
         dexSwap,
-        deployFromFactory("DexSwap", randomnAddress, randomnAddress, randomnAddress, ADDRESS_ZERO),
+        deployFromFactory("V3DexSwap", randomnAddress, randomnAddress, randomnAddress, ADDRESS_ZERO),
         "ZeroAddressNotAllowed",
       );
     });
@@ -134,6 +135,7 @@ describe("DexSwap", () => {
         dexSwap,
         dexSwap.connect(admin).swap(minLineaOut, deadline, 0n, { value: ethValueToSwap }),
         "MinOutputAmountNotMet",
+        [minLineaOut, ethValueToSwap * 2n],
       );
     });
   });

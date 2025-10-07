@@ -9,8 +9,8 @@ import { IRollupRevenueVault } from "./interfaces/IRollupRevenueVault.sol";
 import { IV3DexSwap } from "./interfaces/IV3DexSwap.sol";
 
 /**
- * @title Upgradeable Revenue Vault Contract.
- * @notice Accepts ETH for later economic functions.
+ * @title Upgradeable Rollup Revenue Vault Contract.
+ * @notice Accepts rollup revenue, and performs burning operations.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
@@ -51,7 +51,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @param _messageService Address of the L2 message service contract.
    * @param _l1LineaTokenBurner Address of the L1 LINEA token burner contract.
    * @param _lineaToken Address of the LINEA token contract.
-   * @param _v3Dex Address of the DEX contract.
+   * @param _v3Dex Address of the V3 DEX contract.
    */
   function initialize(
     uint256 _lastInvoiceDate,
@@ -66,7 +66,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _v3Dex
   ) external initializer {
     __AccessControl_init();
-    __RollupFeeVault_init(
+    __RollupRevenueVault_init(
       _lastInvoiceDate,
       _defaultAdmin,
       _invoiceSubmitter,
@@ -81,7 +81,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   }
 
   /**
-   * @notice Initializes the contract state for upgrade.
+   * @notice Reinitializes the contract state for upgrade.
    * @param _lastInvoiceDate Timestamp of the last invoice.
    * @param _defaultAdmin Address to be granted the default admin role.
    * @param _invoiceSubmitter Address to be granted the invoice submitter role.
@@ -91,7 +91,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @param _messageService Address of the L2 message service contract.
    * @param _l1LineaTokenBurner Address of the L1 LINEA token burner contract.
    * @param _lineaToken Address of the LINEA token contract.
-   * @param _v3Dex Address of the DEX contract.
+   * @param _v3Dex Address of the V3 DEX contract.
    */
   function initializeRolesAndStorageVariables(
     uint256 _lastInvoiceDate,
@@ -106,7 +106,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _v3Dex
   ) external reinitializer(2) {
     __AccessControl_init();
-    __RollupFeeVault_init(
+    __RollupRevenueVault_init(
       _lastInvoiceDate,
       _defaultAdmin,
       _invoiceSubmitter,
@@ -120,7 +120,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     );
   }
 
-  function __RollupFeeVault_init(
+  function __RollupRevenueVault_init(
     uint256 _lastInvoiceDate,
     address _defaultAdmin,
     address _invoiceSubmitter,
@@ -159,20 +159,20 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
   /**
    * @notice Submit invoice to pay to the designated receiver.
-   * @param _startTimestamp Start of the period the costs are covering.
-   * @param _endTimestamp End of the period the costs are covering.
-   * @param _newInvoiceAmount New invoice amount.
+   * @param _startTimestamp Start of the period the invoice is covering.
+   * @param _endTimestamp End of the period the invoice is covering.
+   * @param _invoiceAmount New invoice amount.
    */
   function submitInvoice(
     uint256 _startTimestamp,
     uint256 _endTimestamp,
-    uint256 _newInvoiceAmount
+    uint256 _invoiceAmount
   ) external payable onlyRole(INVOICE_SUBMITTER_ROLE) {
     require(_startTimestamp == lastInvoiceDate + 1, TimestampsNotInSequence());
     require(_endTimestamp > _startTimestamp, EndTimestampMustBeGreaterThanStartTimestamp());
-    require(_newInvoiceAmount != 0, ZeroInvoiceAmount());
+    require(_invoiceAmount != 0, ZeroInvoiceAmount());
 
-    uint256 totalAmountOwing = invoiceArrears + _newInvoiceAmount;
+    uint256 totalAmountOwing = invoiceArrears + _invoiceAmount;
     lastInvoiceDate = _endTimestamp;
 
     address payable receiver = payable(invoicePaymentReceiver);
@@ -195,12 +195,12 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       require(success, InvoiceTransferFailed());
     }
 
-    emit InvoiceProcessed(receiver, _startTimestamp, _endTimestamp, amountToPay, _newInvoiceAmount);
+    emit InvoiceProcessed(receiver, _startTimestamp, _endTimestamp, amountToPay, _invoiceAmount);
   }
 
   /**
    * @notice Burns 20% of the ETH balance and uses the rest to buy LINEA tokens which are then bridged to L1 to be burned.
-   * @param _minLineaOut Number of LINEA tokens to receive as a minimum (slippage protection).
+   * @param _minLineaOut Number of LINEA tokens to receive as a minimum (slippage protection). Computed off-chain just prior to execution.
    * @param _deadline Time after which the transaction will revert if not yet processed.
    * @param _sqrtPriceLimitX96 Price limit of the swap as a Q64.96 value.
    */
@@ -240,8 +240,12 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    */
   function updateInvoicePaymentReceiver(address _newInvoicePaymentReceiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(_newInvoicePaymentReceiver != address(0), ZeroAddressNotAllowed());
+
+    address currentInvoicePaymentReceiver = invoicePaymentReceiver;
+    require(_newInvoicePaymentReceiver != currentInvoicePaymentReceiver, AddressAlreadySetup());
+
     invoicePaymentReceiver = _newInvoicePaymentReceiver;
-    emit InvoicePaymentReceiverUpdated(_newInvoicePaymentReceiver);
+    emit InvoicePaymentReceiverUpdated(currentInvoicePaymentReceiver, _newInvoicePaymentReceiver);
   }
 
   /**
@@ -266,8 +270,12 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    */
   function updateL1LineaTokenBurner(address _newL1LineaTokenBurner) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(_newL1LineaTokenBurner != address(0), ZeroAddressNotAllowed());
+
+    address currentL1LineaTokenBurner = l1LineaTokenBurner;
+    require(_newL1LineaTokenBurner != currentL1LineaTokenBurner, AddressAlreadySetup());
+
     l1LineaTokenBurner = _newL1LineaTokenBurner;
-    emit L1LineaTokenBurnerUpdated(_newL1LineaTokenBurner);
+    emit L1LineaTokenBurnerUpdated(currentL1LineaTokenBurner, _newL1LineaTokenBurner);
   }
 
   /**
@@ -276,8 +284,12 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    */
   function updateDex(address _newDex) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(_newDex != address(0), ZeroAddressNotAllowed());
+
+    address currentDex = address(v3Dex);
+    require(_newDex != currentDex, AddressAlreadySetup());
+
     v3Dex = IV3DexSwap(_newDex);
-    emit DexUpdated(_newDex);
+    emit DexUpdated(currentDex, _newDex);
   }
 
   /**

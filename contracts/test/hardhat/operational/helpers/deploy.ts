@@ -2,7 +2,7 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "hardhat";
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
 import { ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE } from "../constants";
-import { DexSwap, L2MessageService, RollupRevenueVault, TestERC20 } from "../../../../typechain-types";
+import { V3DexSwap, L2MessageService, RollupRevenueVault, TestERC20 } from "../../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./before";
 import { deployTokenBridge } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { INITIAL_WITHDRAW_LIMIT, L1_L2_MESSAGE_SETTER_ROLE, ONE_DAY_IN_SECONDS } from "../../common/constants";
@@ -41,17 +41,17 @@ async function deployL2MessageService(adminAddress: string, l1l2MessageSetterAdd
   return messageService as unknown as L2MessageService;
 }
 
-export async function deployDexSwapFixture(rollupRevenueVaultAddress: string, lineaTokenAddress: string) {
+export async function deployV3DexSwapFixture(rollupRevenueVaultAddress: string, lineaTokenAddress: string) {
   const testWETH9 = await loadFixture(deployWETH9Fixture);
   const router = await deployFromFactory("TestDexRouter");
   const dexSwap = await deployFromFactory(
-    "DexSwap",
+    "V3DexSwap",
     await router.getAddress(),
     testWETH9,
     lineaTokenAddress,
     rollupRevenueVaultAddress,
   );
-  return dexSwap as DexSwap;
+  return dexSwap as V3DexSwap;
 }
 
 export async function deployRollupRevenueVaultFixture() {
@@ -92,7 +92,7 @@ export async function deployRollupRevenueVaultFixture() {
   const rollupRevenueVault = await loadFixture(rollupRevenueVaultFn);
 
   const dexFn = async () =>
-    await deployDexSwapFixture(await rollupRevenueVault.getAddress(), await l2LineaToken.getAddress());
+    await deployV3DexSwapFixture(await rollupRevenueVault.getAddress(), await l2LineaToken.getAddress());
 
   const dex = await loadFixture(dexFn);
   await rollupRevenueVault.updateDex(dex.getAddress());

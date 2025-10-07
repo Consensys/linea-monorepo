@@ -13,7 +13,9 @@ import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract L1LineaTokenBurner is IL1LineaTokenBurner, IGenericErrors {
+  /// @notice Address of the LINEA token contract
   address public immutable LINEA_TOKEN;
+  /// @notice Address of the MessageService contract
   address public immutable MESSAGE_SERVICE;
 
   constructor(address _messageService, address _lineaToken) {
