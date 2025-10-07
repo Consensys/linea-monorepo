@@ -41,7 +41,7 @@ func (p *Params) _rsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVec
 
 		// this loop dispatches the values that are all located at the beginning
 		// of the domain to the entire domain by homothety
-		for j := n - 1; j >= 0; j-- {
+		for j := n - 1; j > 0; j-- {
 			expandedCoeffs[rho*j] = expandedCoeffs[j]
 			expandedCoeffs[j] = field.Element{}
 		}

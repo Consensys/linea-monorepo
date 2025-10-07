@@ -251,7 +251,6 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
-			dummy.Compile,
 		)
 
 		proof := wizard.Prove(
