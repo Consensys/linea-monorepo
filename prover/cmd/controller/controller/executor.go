@@ -371,8 +371,7 @@ func (e *Executor) preLoadStaticAssets(ctx context.Context, job *Job) error {
 	logger := e.Logger.WithField("component", "assets-cacher")
 
 	// Use tuned options for your infra
-	opts := &assets.PrefetchOptions{
-		Parallelism:        4,
+	opts := &assets.PreloadOptions{
 		ChunkSize:          64 << 20,
 		LargeFileThreshold: 10 << 30, // 10 GiB
 		PerFileTimeout:     150 * time.Second,
