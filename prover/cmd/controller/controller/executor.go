@@ -347,44 +347,44 @@ func runCmd(ctx context.Context, cmd string, job *Job, retry bool) Status {
 	}
 }
 
-// preLoadAssetsForJob should be called near the start of Executor.Run, before spawning the child.
+// inside executor.preLoadAssetsForJob (replace existing logic with this)
 func (e *Executor) preLoadAssetsForJob(ctx context.Context, job *Job) error {
-	// Only prefetch for the limitless job types
-	if job.Def == nil || (job.Def.Name != "bootstrap" && job.Def.Name != "conglomeration" &&
-		!strings.HasPrefix(job.Def.Name, "gl-") && !strings.HasPrefix(job.Def.Name, "lpp-")) {
+	if job.Def == nil {
+		return nil
+	}
+	// Only handle known limitless jobs
+	if job.Def.Name != jobNameBootstrap &&
+		job.Def.Name != jobNameConglomeration &&
+		!strings.HasPrefix(job.Def.Name, jobNameGL) &&
+		!strings.HasPrefix(job.Def.Name, jobNameLPP) {
 		return nil
 	}
 
-	baseAssetDir := e.Config.PathForSetup("execution-limitless")
+	// resolverFn returns (allPaths, criticalPaths, error)
 	resolver := assets.NewResolver(e.Config)
-
-	paths, critical, err := resolver.AssetsForJob(job.Def.Name)
-	if err != nil {
-		return fmt.Errorf("assets resolver error for job %s: %v", job.Def.Name, err)
+	resolverFn := func() ([]string, []string, error) {
+		return resolver.AssetsForJob(job.Def.Name)
 	}
 
-	if len(paths) == 0 {
-		return fmt.Errorf("no asset paths to prefetch for job %s (baseDir=%s)", job.Def.Name, baseAssetDir)
-	}
+	// Pass a logger entry for better logs
+	logger := e.Logger.WithField("component", "asset-prefetch")
 
-	// Tune options for your environment
+	// Use tuned options for your infra
 	opts := &assets.PrefetchOptions{
 		Parallelism:        4,
-		ChunkSize:          64 << 20, // 64 MiB chunks
-		LargeFileThreshold: 10 << 30, // 10 GiB threshold
+		ChunkSize:          64 << 20,
+		LargeFileThreshold: 10 << 30, // 10 GiB
 		PerFileTimeout:     150 * time.Second,
+		Populate:           true,
 	}
 
-	// Create a context bounded to the total expected prefetch time to avoid hanging
-	totalTimeout := time.Duration(len(paths)) * opts.PerFileTimeout
-	pctx, cancel := context.WithTimeout(ctx, totalTimeout)
-	defer cancel()
-
-	e.Logger.Infof("Prefetching %d assets for job %s (critical=%d); base=%s", len(paths), job.Def.Name, len(critical), baseAssetDir)
-	if err := assets.PrefetchFiles(pctx, paths, opts); err != nil {
-		return fmt.Errorf("prefetch error for job %s: %v", job.Def.Name, err)
+	// Do the once-per-job prefetch (non-blocking risk: it's blocking, but run before spawning child)
+	if err := assets.PrefetchForJobOnce(ctx, job.Def.Name, resolverFn, opts, logger); err != nil {
+		// Consider: if a critical asset is missing, return error to prevent running the job
+		logger.WithError(err).Warnf("prefetch once failed for job %s", job.Def.Name)
+		// decide policy: here we return error so job doesn't run; you may prefer to continue
+		return err
 	}
-
 	return nil
 }
 
