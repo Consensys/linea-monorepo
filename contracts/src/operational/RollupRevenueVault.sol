@@ -177,18 +177,9 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
     address payable receiver = payable(invoicePaymentReceiver);
     uint256 balanceAvailable = address(this).balance;
-    uint256 amountToPay;
 
-    if (balanceAvailable == 0) {
-      invoiceArrears = totalAmountOwing;
-      amountToPay = 0;
-    } else if (balanceAvailable < totalAmountOwing) {
-      invoiceArrears = totalAmountOwing - balanceAvailable;
-      amountToPay = balanceAvailable;
-    } else {
-      invoiceArrears = 0;
-      amountToPay = totalAmountOwing;
-    }
+    uint256 amountToPay = balanceAvailable < totalAmountOwing ? balanceAvailable : totalAmountOwing;
+    invoiceArrears = totalAmountOwing - amountToPay;
 
     if (amountToPay > 0) {
       (bool success, ) = receiver.call{ value: amountToPay }("");
