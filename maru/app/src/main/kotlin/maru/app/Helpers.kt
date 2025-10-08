@@ -9,9 +9,10 @@
 package maru.app
 
 import maru.config.ApiEndpointConfig
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ElFork
+import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandlerMultiplexer
+import maru.consensus.blockimport.ElForkAwareBlockImporter
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.state.FinalizationProvider
 import maru.executionlayer.client.CancunWeb3JJsonRpcExecutionLayerEngineApiClient
@@ -85,7 +86,7 @@ object Helpers {
     }
 
   fun createBlockImportHandlers(
-    qbftConsensusConfig: QbftConsensusConfig,
+    elFork: ElFork,
     metricsFacade: MetricsFacade,
     finalizationStateProvider: FinalizationProvider,
     followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,
@@ -95,13 +96,39 @@ object Helpers {
         val elFollowerExecutionLayerManager =
           buildExecutionLayerManager(
             web3JEngineApiClient = web3JClient,
-            elFork = qbftConsensusConfig.elFork,
+            elFork = elFork,
             metricsFacade = metricsFacade,
           )
         FollowerBeaconBlockImporter.create(
           executionLayerManager = elFollowerExecutionLayerManager,
           finalizationStateProvider = finalizationStateProvider,
           importerName = followerName,
+        )
+      }
+    return NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)
+  }
+
+  fun createForkAwareBlockImportHandlers(
+    forksSchedule: ForksSchedule,
+    metricsFacade: MetricsFacade,
+    followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient>,
+    finalizationProvider: FinalizationProvider,
+  ): NewBlockHandlerMultiplexer {
+    val elFollowersNewBlockHandlerMap =
+      followerELNodeEngineApiWeb3JClients.mapValues { (followerName, web3JClient) ->
+        val elManagerMap =
+          ElFork.entries.associateWith { elFork ->
+            buildExecutionLayerManager(
+              web3JEngineApiClient = web3JClient,
+              elFork = elFork,
+              metricsFacade = metricsFacade,
+            )
+          }
+        ElForkAwareBlockImporter(
+          forksSchedule = forksSchedule,
+          elManagerMap = elManagerMap,
+          importerName = followerName,
+          finalizationProvider = finalizationProvider,
         )
       }
     return NewBlockHandlerMultiplexer(elFollowersNewBlockHandlerMap)

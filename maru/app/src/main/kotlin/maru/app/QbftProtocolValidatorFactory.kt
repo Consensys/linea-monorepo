@@ -63,7 +63,7 @@ class QbftProtocolValidatorFactory(
       )
     val blockImportHandlers =
       Helpers.createBlockImportHandlers(
-        qbftConsensusConfig = qbftConsensusConfig,
+        elFork = qbftConsensusConfig.elFork,
         metricsFacade = metricsFacade,
         finalizationStateProvider = finalizationStateProvider,
         followerELNodeEngineApiWeb3JClients = followerELNodeEngineApiWeb3JClients,
