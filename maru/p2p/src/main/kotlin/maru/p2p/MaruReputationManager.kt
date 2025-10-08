@@ -13,7 +13,11 @@ import java.util.EnumSet
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.Volatile
+import kotlin.jvm.optionals.getOrNull
 import kotlin.math.min
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import maru.config.P2PConfig
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.MaruMetricsCategory
@@ -66,8 +70,16 @@ class MaruReputationManager(
   }
 
   override fun reportInitiatedConnectionFailed(peerAddress: PeerAddress) {
-    getOrCreateReputation(peerAddress)
-      .reportInitiatedConnectionFailed(timeProvider.timeInMillis)
+    val reputation =
+      getOrCreateReputation(peerAddress)
+        .also {
+          it.reportInitiatedConnectionFailed(timeProvider.timeInMillis)
+        }
+    log.trace(
+      "Reporting initiated connection failed: peer={}, reputation={}",
+      peerAddress,
+      reputation,
+    )
   }
 
   override fun isConnectionInitiationAllowed(peerAddress: PeerAddress): Boolean =
@@ -75,9 +87,22 @@ class MaruReputationManager(
       .getCached(peerAddress.id)
       .map { it.shouldInitiateConnection(timeProvider.timeInMillis) }
       .orElse(true)
+      .also {
+        log.trace(
+          "Checking if connection initiation is allowed: peer={}, allowed={}, reputation={}",
+          peerAddress,
+          it,
+          peerReputations.getCached(peerAddress.id),
+        )
+      }
 
   override fun reportInitiatedConnectionSuccessful(peerAddress: PeerAddress) {
-    getOrCreateReputation(peerAddress).reportInitiatedConnectionSuccessful()
+    val reputation = getOrCreateReputation(peerAddress).also { it.reportInitiatedConnectionSuccessful() }
+    log.trace(
+      "Reporting connection: peer={}, reputation={}",
+      peerAddress,
+      reputation,
+    )
   }
 
   override fun reportDisconnection(
@@ -85,14 +110,17 @@ class MaruReputationManager(
     reason: Optional<DisconnectReason>,
     locallyInitiated: Boolean,
   ) {
+    val reputation =
+      getOrCreateReputation(peerAddress).also {
+        it.reportDisconnection(timeProvider.timeInMillis, reason, locallyInitiated)
+      }
     log.trace(
-      "Reporting disconnection: peer={}, reason={}, locallyInitiated={}",
+      "Reporting disconnection: peer={}, reason={}, locallyInitiated={}, reputation={}",
       peerAddress,
       reason.orElse(null),
       locallyInitiated,
+      reputation,
     )
-    getOrCreateReputation(peerAddress)
-      .reportDisconnection(timeProvider.timeInMillis, reason, locallyInitiated)
   }
 
   override fun adjustReputation(
@@ -148,7 +176,7 @@ class MaruReputationManager(
         ) {
           suitableAfter = Optional.of(disconnectTime.plus(banPeriod))
           score.set(DEFAULT_SCORE)
-        } else {
+        } else if (locallyInitiated) {
           suitableAfter = Optional.of(disconnectTime.plus(cooldownPeriod))
         }
       }
@@ -181,8 +209,17 @@ class MaruReputationManager(
     override fun toString(): String =
       MoreObjects
         .toStringHelper(this)
-        .add("suitableAfter", suitableAfter)
-        .add("score", score)
+        .add(
+          "suitableAfter",
+          suitableAfter
+            .getOrNull()
+            ?.let {
+              Instant
+                .fromEpochMilliseconds(it.longValue())
+                .toLocalDateTime(TimeZone.currentSystemDefault())
+                .toString()
+            },
+        ).add("score", score)
         .toString()
   }
 }

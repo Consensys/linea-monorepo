@@ -9,7 +9,6 @@
 package maru.app
 
 import java.lang.Thread.sleep
-import java.net.ServerSocket
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -50,6 +49,7 @@ import org.junit.jupiter.api.Test
 import testutils.FourEmptyResponsesStrategy
 import testutils.MisbehavingP2PNetwork
 import testutils.PeeringNodeNetworkStack
+import testutils.TestUtils.findFreePort
 import testutils.TimeOutResponsesStrategy
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
@@ -330,14 +330,4 @@ class MaruPeerScoringTest {
     }
     return MaruNodeSetup(validatorMaruApp = validatorMaruApp, followerMaruApp = followerMaruApp, job = job)
   }
-
-  private fun findFreePort(): UInt =
-    runCatching {
-      ServerSocket(0).use { socket ->
-        socket.reuseAddress = true
-        socket.localPort.toUInt()
-      }
-    }.getOrElse {
-      throw IllegalStateException("Could not find a free port", it)
-    }
 }

@@ -18,6 +18,7 @@
     <Logger name="maru.syncing" level="DEBUG"/>
     <Logger name="org.hyperledger.besu" level="INFO"/>
     <Logger name="org.hyperledger.besu.consensus.qbft" level="INFO"/>
+    <Logger name="maru.p2p" level="TRACE"/>
     <Root level="INFO" additivity="false">
       <appender-ref ref="console"/>
     </Root>
