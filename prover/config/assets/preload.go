@@ -42,10 +42,10 @@ func DefaultPrefetchOptions() *PrefetchOptions {
 	}
 }
 
-// PrefetchForJobOnce will prefetch (mmap-populate or fadvise) only once per jobName
+// PreLoadOnceForJob will prefetch (mmap-populate or fadvise) only once per jobName
 // when called concurrently multiple times only the first caller will execute the work.
 // resolverFn should return the list of asset paths for that jobName.
-func PrefetchForJobOnce(
+func PreLoadOnceForJob(
 	ctx context.Context, jobName string,
 	resolverFn func() ([]string, []string, error),
 	opts *PrefetchOptions, logger *logrus.Entry,
@@ -87,7 +87,7 @@ func PrefetchForJobOnce(
 			default:
 			}
 
-			if err := prefetchPath(p, opts, logger); err != nil {
+			if err := preloadPath(p, opts, logger); err != nil {
 				logger.Warnf("prefetch failed for %s: %v", p, err)
 			}
 		}
@@ -98,9 +98,9 @@ func PrefetchForJobOnce(
 	return preErr
 }
 
-// prefetchPath applies the correct prefetch strategy for a single file.
+// preloadPath applies the correct prefetch strategy for a single file.
 // It keeps the same logic as before but isolates it for readability.
-func prefetchPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
+func preloadPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
 	p = filepath.Clean(p)
 
 	fi, err := os.Stat(p)
@@ -115,7 +115,7 @@ func prefetchPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
 
 	// 1. Large file → fadvise
 	if opts.LargeFileThreshold > 0 && size >= opts.LargeFileThreshold {
-		if err := prefetchLargeWithFadvise(p); err != nil {
+		if err := preloadLarge(p); err != nil {
 			return fmt.Errorf("fadvise failed: %w", err)
 		}
 		logger.Infof("prefetch: fadvise(WILLNEED) applied on %s (size=%d)", p, size)
@@ -125,11 +125,11 @@ func prefetchPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
 
 	// 2. Otherwise → mmap+MAP_POPULATE (if enabled)
 	if opts.Populate {
-		if err := prefetchWithMmapPopulate(p); err != nil {
+		if err := preLoadNormal(p); err != nil {
 			logger.Warnf("prefetch: mmap-populate failed for %s: %v", p, err)
 
 			// fallback → fadvise
-			if err2 := prefetchLargeWithFadvise(p); err2 != nil {
+			if err2 := preloadLarge(p); err2 != nil {
 				return fmt.Errorf("fallback fadvise failed: %v (original mmap error: %v)", err2, err)
 			}
 			logger.Infof("prefetch: fallback fadvise succeeded for %s", p)
@@ -143,16 +143,16 @@ func prefetchPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
 	}
 
 	// 3. Populate disabled → fadvise only
-	if err := prefetchLargeWithFadvise(p); err != nil {
+	if err := preloadLarge(p); err != nil {
 		return fmt.Errorf("fadvise failed: %w", err)
 	}
 	logResidency(p, "fadvise", logger)
 	return nil
 }
 
-// prefetchLargeWithFadvise tries posix_fadvise(FADV_WILLNEED).
+// preloadLarge tries posix_fadvise(FADV_WILLNEED).
 // Best-effort: returns nil if it succeeds, returns error if syscall returns error.
-func prefetchLargeWithFadvise(path string) error {
+func preloadLarge(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
@@ -170,11 +170,11 @@ func prefetchLargeWithFadvise(path string) error {
 	return nil
 }
 
-// prefetchWithMmapPopulate mmap()s the whole file with MAP_POPULATE,
+// preLoadNormal mmap()s the whole file with MAP_POPULATE,
 // stores the mapping in a global slice (to keep it alive) and returns nil on success.
 // The mapping is intentionally NOT unmapped so the mapping stays present until process exit.
 // This keeps pages resident and prevents GC from dropping the slice.
-func prefetchWithMmapPopulate(path string) error {
+func preLoadNormal(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
