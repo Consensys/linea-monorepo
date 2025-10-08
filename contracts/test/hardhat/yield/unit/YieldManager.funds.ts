@@ -29,7 +29,6 @@ describe("YieldManager contract - ETH transfer operations", () => {
   let securityCouncil: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
   let nativeYieldOperator: SignerWithAddress;
-  let operationalSafe: SignerWithAddress;
   let l2YieldRecipient: SignerWithAddress;
   let mockLineaRollup: MockLineaRollup;
 
@@ -41,7 +40,6 @@ describe("YieldManager contract - ETH transfer operations", () => {
       securityCouncil,
       operator: nonAuthorizedAccount,
       nativeYieldOperator,
-      operationalSafe,
       l2YieldRecipient,
     } = await loadFixture(getAccountsFixture));
   });
@@ -110,7 +108,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
     });
 
     it("Should revert when the NATIVE_YIELD_RESERVE_FUNDING pause type is activated", async () => {
-      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,
@@ -164,7 +162,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the NATIVE_YIELD_STAKING pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,
@@ -264,7 +262,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the NATIVE_YIELD_REPORTING pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_REPORTING_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_REPORTING_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,
@@ -366,7 +364,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
     it("Should revert when the NATIVE_YIELD_UNSTAKING pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,
@@ -409,7 +407,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
     it("Should revert when the NATIVE_YIELD_PERMISSIONLESS_UNSTAKING pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,
@@ -815,7 +813,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the NATIVE_YIELD_UNSTAKING pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,
@@ -1014,7 +1012,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
     });
     it("Should revert when the NATIVE_YIELD_RESERVE_FUNDING pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE);
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(mockYieldProviderAddress, 1n),
@@ -1227,7 +1225,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the NATIVE_YIELD_PERMISSIONLESS_REBALANCE pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,
@@ -1438,7 +1436,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
     it("Should revert when the LST_WITHDRAWAL pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      await yieldManager.connect(operationalSafe).pauseByType(LST_WITHDRAWAL_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(LST_WITHDRAWAL_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,
@@ -1548,7 +1546,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the NATIVE_YIELD_RESERVE_FUNDING pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await yieldManager.connect(operationalSafe).pauseByType(NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,

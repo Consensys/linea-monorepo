@@ -13,11 +13,7 @@ import {
   LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
 } from "../../common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
-import {
-  YIELD_MANAGER_OPERATOR_ROLES,
-  YIELD_MANAGER_OPERATIONAL_SAFE_ROLES,
-  YIELD_MANAGER_SECURITY_COUNCIL_ROLES,
-} from "contracts/common/constants";
+import { YIELD_MANAGER_OPERATOR_ROLES, YIELD_MANAGER_SECURITY_COUNCIL_ROLES } from "contracts/common/constants";
 import { YIELD_MANAGER_INITIALIZE_SIGNATURE } from "contracts/common/constants";
 import { deployUpgradableWithConstructorArgs } from "../../common/deployment";
 import {
@@ -41,7 +37,7 @@ async function getYieldManagerRoleAddressesFixture(): Promise<
     addressWithRole: string;
   }[]
 > {
-  const { nativeYieldOperator, securityCouncil, operationalSafe } = await loadFixture(getAccountsFixture);
+  const { nativeYieldOperator, securityCouncil } = await loadFixture(getAccountsFixture);
   const yieldManagerOpereratorRoleAssignments = generateRoleAssignments(
     YIELD_MANAGER_OPERATOR_ROLES,
     await nativeYieldOperator.getAddress(),
@@ -52,16 +48,7 @@ async function getYieldManagerRoleAddressesFixture(): Promise<
     await securityCouncil.getAddress(),
     [],
   );
-  const operationalSafeRoleAssignments = generateRoleAssignments(
-    YIELD_MANAGER_OPERATIONAL_SAFE_ROLES,
-    await operationalSafe.getAddress(),
-    [],
-  );
-  return [
-    ...yieldManagerOpereratorRoleAssignments,
-    ...securityCouncilRoleAssignments,
-    ...operationalSafeRoleAssignments,
-  ];
+  return [...yieldManagerOpereratorRoleAssignments, ...securityCouncilRoleAssignments];
 }
 
 export async function deployMockLineaRollup(): Promise<MockLineaRollup> {
@@ -165,7 +152,6 @@ export async function deployMockStakingVault(): Promise<MockStakingVault> {
 
 export async function deployLidoStVaultYieldProviderFactory() {
   const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTest);
-  const yieldProviderFactory = await ethers.getContractFactory("TestLidoStVaultYieldProvider");
   const mockVaultHub = await deployMockVaultHub();
   const mockSTETH = await deployMockSTETH();
 
@@ -174,27 +160,19 @@ export async function deployLidoStVaultYieldProviderFactory() {
   const mockVaultHubAddress = await mockVaultHub.getAddress();
   const mockSTETHAddress = await mockSTETH.getAddress();
 
-  const beacon = await upgrades.deployBeacon(yieldProviderFactory, {
-    unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable", "delegatecall"],
-    constructorArgs: [
-      l1MessageServiceAddress,
-      yieldManagerAddress,
-      mockVaultHubAddress,
-      mockSTETHAddress,
-      GI_FIRST_VALIDATOR,
-      GI_FIRST_VALIDATOR_AFTER_CHANGE,
-      CHANGE_SLOT,
-    ],
-  });
-
-  await beacon.waitForDeployment();
-  const beaconAddress = await beacon.getAddress();
-
   const yieldProviderFactoryFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
-  const lidoStVaultYieldProviderFactory = await yieldProviderFactoryFactory.deploy(beaconAddress);
+  const lidoStVaultYieldProviderFactory = await yieldProviderFactoryFactory.deploy(
+    l1MessageServiceAddress,
+    yieldManagerAddress,
+    mockVaultHubAddress,
+    mockSTETHAddress,
+    GI_FIRST_VALIDATOR,
+    GI_FIRST_VALIDATOR_AFTER_CHANGE,
+    CHANGE_SLOT,
+  );
   await lidoStVaultYieldProviderFactory.waitForDeployment();
 
-  return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, beaconAddress, lidoStVaultYieldProviderFactory };
+  return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, lidoStVaultYieldProviderFactory };
 }
 
 export async function deployLidoStVaultYieldProvider() {
@@ -209,7 +187,7 @@ export async function deployLidoStVaultYieldProvider() {
 }
 
 export async function deployAndAddSingleLidoStVaultYieldProvider() {
-  const { operationalSafe } = await loadFixture(getAccountsFixture);
+  const { securityCouncil } = await loadFixture(getAccountsFixture);
   const { yieldManager, mockVaultHub, mockSTETH, mockLineaRollup } = await loadFixture(
     deployLidoStVaultYieldProviderFactory,
   );
@@ -228,7 +206,7 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
     receiveCaller: mockStakingVaultAddress,
   };
 
-  await yieldManager.connect(operationalSafe).addYieldProvider(yieldProviderAddress, registration);
+  await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
   return {
     mockDashboard,
     mockStakingVault,

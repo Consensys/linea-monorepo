@@ -19,15 +19,15 @@ export const buildMockYieldProviderRegistration = (
 });
 
 export const addMockYieldProvider = async (yieldManager: TestYieldManager) => {
-  const { operationalSafe } = await getAccountsFixture();
+  const { securityCouncil } = await getAccountsFixture();
   const mockYieldProvider = await deployMockYieldProvider();
   const mockYieldProviderAddress = await mockYieldProvider.getAddress();
   const mockRegistration = buildMockYieldProviderRegistration();
-  await yieldManager.connect(operationalSafe).addYieldProvider(mockYieldProviderAddress, mockRegistration);
+  await yieldManager.connect(securityCouncil).addYieldProvider(mockYieldProviderAddress, mockRegistration);
   const mockWithdrawTarget = await deployMockWithdrawTarget();
   const mockWithdrawTargetAddress = await mockWithdrawTarget.getAddress();
   await yieldManager
-    .connect(operationalSafe)
+    .connect(securityCouncil)
     .setMockWithdrawTarget(mockYieldProviderAddress, mockWithdrawTargetAddress);
   return { mockWithdrawTarget, mockYieldProvider, mockYieldProviderAddress, mockRegistration };
 };

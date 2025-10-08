@@ -56,7 +56,7 @@ abstract contract YieldManagerStorageLayout {
    * @param userFunds User funds currently in the YieldProvider.
    *                  - Only decremented during withdraw operations.
    *                  - Any other loss in YieldProvider funds is tracked as negative yield.
-   *                     - Must increment and decrement 1:1 with _userFundsInYieldProvidersTotal.
+   *                  - Must increment and decrement 1:1 with _userFundsInYieldProvidersTotal.
    * @param yieldReportedCumulative Cumulative positive yield (denominated in ETH) reported back to the YieldManager.
    *                                - Increases 1:1 with userFunds, as reported yield is distributed to users.
    * @param currentNegativeYield Negative yield (denominated in ETH) as of the last yield report.

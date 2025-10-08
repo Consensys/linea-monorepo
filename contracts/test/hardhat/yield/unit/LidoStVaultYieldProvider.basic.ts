@@ -140,15 +140,12 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const expectedWithdrawableValue = 99n;
       await mockDashboard.setWithdrawableValueReturn(expectedWithdrawableValue);
       await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, expectedWithdrawableValue + 10n);
-      console.log(await yieldProvider.L1_MESSAGE_SERVICE());
-      console.log(await yieldManager.L1_MESSAGE_SERVICE());
 
       // Act
-      console.log(yieldProviderAddress);
-      console.log(await yieldManager.getYieldProviderPrimaryEntrypoint(yieldProviderAddress));
-      expect("").eq(mockDashboardAddress + mockStakingVaultAddress);
-      // const withdrawableValue = await yieldManager.withdrawableValue(yieldProviderAddress);
-      // expect(withdrawableValue).eq(expectedWithdrawableValue);
+      const withdrawableValue = await yieldManager.withdrawableValue.staticCall(yieldProviderAddress);
+      console.log(mockDashboardAddress, mockStakingVaultAddress);
+      // Assert
+      expect(withdrawableValue).eq(expectedWithdrawableValue);
     });
     it("If ossified, should return staking vault balance", async () => {});
   });
