@@ -9,10 +9,10 @@
 package maru.serialization
 
 import kotlin.random.Random
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkId
 import maru.consensus.ForkSpec
+import maru.consensus.QbftConsensusConfig
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test

@@ -9,9 +9,9 @@
 package maru.serialization
 
 import java.nio.ByteBuffer
-import maru.config.consensus.qbft.DifficultyAwareQbftConfig
-import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
+import maru.consensus.QbftConsensusConfig
 import maru.extensions.encodeHex
 
 object QbftConsensusConfigSerializer : Serializer<QbftConsensusConfig> {

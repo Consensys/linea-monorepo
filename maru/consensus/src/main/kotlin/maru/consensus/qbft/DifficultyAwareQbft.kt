@@ -13,7 +13,7 @@ import java.util.Timer
 import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration.Companion.seconds
-import maru.config.consensus.qbft.DifficultyAwareQbftConfig
+import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ProtocolFactory
 import maru.core.Protocol

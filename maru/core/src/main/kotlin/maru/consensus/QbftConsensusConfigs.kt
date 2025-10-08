@@ -6,10 +6,8 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.config.consensus.qbft
+package maru.consensus
 
-import maru.consensus.ConsensusConfig
-import maru.consensus.ElFork
 import maru.core.Validator
 
 data class QbftConsensusConfig(

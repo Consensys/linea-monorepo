@@ -8,8 +8,8 @@
  */
 package maru.serialization
 
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ElFork
+import maru.consensus.QbftConsensusConfig
 import maru.core.ext.DataGenerators
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test

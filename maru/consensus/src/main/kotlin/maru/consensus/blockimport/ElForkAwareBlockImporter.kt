@@ -8,12 +8,12 @@
  */
 package maru.consensus.blockimport
 
-import maru.config.consensus.qbft.DifficultyAwareQbftConfig
-import maru.config.consensus.qbft.QbftConsensusConfig
+import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
+import maru.consensus.QbftConsensusConfig
 import maru.consensus.state.FinalizationProvider
 import maru.core.BeaconBlock
 import maru.executionlayer.manager.ExecutionLayerManager
