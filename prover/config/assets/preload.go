@@ -26,7 +26,6 @@ var (
 
 // PreloadOptions controls behaviour; tune for your environment
 type PreloadOptions struct {
-	ChunkSize          int64         // chunk size when doing fallback mapping-touch
 	LargeFileThreshold int64         // >= this size we use fadvise instead of mmap-populate
 	PerFileTimeout     time.Duration // timeout per file (used by fallbacks)
 	Populate           bool          // whether to use MAP_POPULATE for mmap path
@@ -34,7 +33,6 @@ type PreloadOptions struct {
 
 func DefaultPreloadOptions() *PreloadOptions {
 	return &PreloadOptions{
-		ChunkSize:          64 << 20, // 64 MiB
 		LargeFileThreshold: 10 << 30, // 10 GiB
 		PerFileTimeout:     120 * time.Second,
 		Populate:           true, // use MAP_POPULATE for mmap
