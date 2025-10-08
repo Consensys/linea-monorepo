@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type AddCircuit struct {
+type TestCircuit struct {
 	A, B  WrappedVariable
 	MulAB WrappedVariable
 	AddAB WrappedVariable
@@ -19,7 +19,7 @@ type AddCircuit struct {
 	NegA  WrappedVariable
 }
 
-func (c *AddCircuit) Define(api frontend.API) error {
+func (c *TestCircuit) Define(api frontend.API) error {
 
 	genApi, err := NewGenericApi(api)
 	if err != nil {
@@ -44,28 +44,35 @@ func (c *AddCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func TestAddCircuit(t *testing.T) {
+func getWitness() TestCircuit {
+
+	var witness TestCircuit
+	var a, b, mulab, addab, subab, divab, nega koalabear.Element
+	a.SetRandom()
+	b.SetRandom()
+	mulab.Mul(&a, &b)
+	addab.Add(&a, &b)
+	subab.Sub(&a, &b)
+	divab.Div(&a, &b)
+	nega.Neg(&a)
+
+	witness.A = ValueOf(a.String())
+	witness.B = ValueOf(b.String())
+	witness.MulAB = ValueOf(mulab.String())
+	witness.AddAB = ValueOf(addab.String())
+	witness.SubAB = ValueOf(subab.String())
+	witness.DivAB = ValueOf(divab.String())
+	witness.NegA = ValueOf(nega.String())
+
+	return witness
+}
+
+func TestTestCircuit(t *testing.T) {
 
 	{
-		var witness AddCircuit
-		var a, b, mulab, addab, subab, divab, nega koalabear.Element
-		a.SetRandom()
-		b.SetRandom()
-		mulab.Mul(&a, &b)
-		addab.Add(&a, &b)
-		subab.Sub(&a, &b)
-		divab.Div(&a, &b)
-		nega.Neg(&a)
+		witness := getWitness()
 
-		witness.A = ValueOf(a.String())
-		witness.B = ValueOf(b.String())
-		witness.MulAB = ValueOf(mulab.String())
-		witness.AddAB = ValueOf(addab.String())
-		witness.SubAB = ValueOf(subab.String())
-		witness.DivAB = ValueOf(divab.String())
-		witness.NegA = ValueOf(nega.String())
-
-		var circuit AddCircuit
+		var circuit TestCircuit
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
 		assert.NoError(t, err)
 
@@ -76,24 +83,9 @@ func TestAddCircuit(t *testing.T) {
 	}
 
 	{
-		var witness AddCircuit
-		var a, b, mulab, addab, subab, divab, nega koalabear.Element
-		a.SetRandom()
-		b.SetRandom()
-		mulab.Mul(&a, &b)
-		addab.Add(&a, &b)
-		subab.Sub(&a, &b)
-		divab.Div(&a, &b)
-		nega.Neg(&a)
+		witness := getWitness()
 
-		witness.A = ValueOf(a.String())
-		witness.B = ValueOf(b.String())
-		witness.MulAB = ValueOf(mulab.String())
-		witness.AddAB = ValueOf(addab.String())
-		witness.SubAB = ValueOf(subab.String())
-		witness.DivAB = ValueOf(divab.String())
-		witness.NegA = ValueOf(nega.String())
-		var circuit AddCircuit
+		var circuit TestCircuit
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
 		assert.NoError(t, err)
 
