@@ -356,7 +356,10 @@ export class LineaRollupClient
    */
   public async claim(
     message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    opts: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    } = {},
   ): Promise<ContractTransactionResponse> {
     if (this.mode === "read-only") {
       throw makeBaseError("'claim' function not callable using readOnly mode.");
@@ -368,7 +371,9 @@ export class LineaRollupClient
 
     const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(message.messageHash);
 
-    return await this.contract.claimMessageWithProof(
+    const contract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
+
+    return await contract.claimMessageWithProof(
       {
         from: messageSender,
         to: destination,
@@ -383,7 +388,7 @@ export class LineaRollupClient
       },
       {
         ...(await this.gasProvider.getGasFees()),
-        ...overrides,
+        ...opts.overrides,
       },
     );
   }

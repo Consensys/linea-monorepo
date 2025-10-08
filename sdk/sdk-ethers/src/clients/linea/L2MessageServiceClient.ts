@@ -169,7 +169,10 @@ export class L2MessageServiceClient
    */
   public async claim(
     message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    opts: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    } = {},
   ): Promise<ContractTransactionResponse> {
     if (this.mode === "read-only") {
       throw makeBaseError("'claim' function not callable using readOnly mode.");
@@ -178,18 +181,11 @@ export class L2MessageServiceClient
     const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
     const l2FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
 
-    return await this.contract.claimMessage(
-      messageSender,
-      destination,
-      fee,
-      value,
-      l2FeeRecipient,
-      calldata,
-      messageNonce,
-      {
-        ...overrides,
-      },
-    );
+    const contract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
+
+    return await contract.claimMessage(messageSender, destination, fee, value, l2FeeRecipient, calldata, messageNonce, {
+      ...opts.overrides,
+    });
   }
 
   /**

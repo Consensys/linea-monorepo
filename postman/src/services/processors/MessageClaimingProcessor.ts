@@ -172,7 +172,10 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         ...message,
         feeRecipient: this.config.feeRecipientAddress,
       },
-      { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
+      {
+        claimViaAddress: this.config.claimViaAddress,
+        overrides: { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
+      },
     );
     await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise);
   }
