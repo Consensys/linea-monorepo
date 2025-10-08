@@ -349,10 +349,10 @@ func runCmd(ctx context.Context, cmd string, job *Job, retry bool) Status {
 
 // preLoadAssetsForJob should be called near the start of Executor.Run, before spawning the child.
 func (e *Executor) preLoadAssetsForJob(ctx context.Context, job *Job) error {
-	// Only prefetch for the limitless types that spawn new child processes
+	// Only prefetch for the limitless job types
 	if job.Def == nil || (job.Def.Name != "bootstrap" && job.Def.Name != "conglomeration" &&
 		!strings.HasPrefix(job.Def.Name, "gl-") && !strings.HasPrefix(job.Def.Name, "lpp-")) {
-		return fmt.Errorf("cannot prefetch for job %s", job.Def.Name)
+		return nil
 	}
 
 	baseAssetDir := e.Config.PathForSetup("execution-limitless")
