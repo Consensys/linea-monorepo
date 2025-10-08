@@ -5,7 +5,6 @@ import (
 	"math/rand/v2"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/config"
@@ -176,9 +175,10 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	)
 
 	// These are the slow and expensive operations.
-	dw.CompileSegments().Conglomerate(100)
+	panic("uncomment the limitless")
+	// dw.CompileSegments().Conglomerate(100)
 
-	decorateWithPublicInputs(dw.CompiledConglomeration)
+	// decorateWithPublicInputs(dw.CompiledConglomeration)
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
@@ -341,15 +341,16 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		logrus.Infof("Checking LPP witness %v, module=%v", i, witness.ModuleName)
 
 		var (
-			moduleToFind = witness.ModuleName
-			debugLPP     *distributed.ModuleLPP
+			// moduleToFind = witness.ModuleName
+			debugLPP *distributed.ModuleLPP
 		)
 
-		for i := range lz.DistWizard.DebugLPPs {
-			if reflect.DeepEqual(lz.DistWizard.DebugLPPs[i].ModuleNames(), moduleToFind) {
-				debugLPP = lz.DistWizard.DebugLPPs[i]
-				break
-			}
+		for _ = range lz.DistWizard.DebugLPPs {
+			panic("uncomment me")
+			// if reflect.DeepEqual(lz.DistWizard.DebugLPPs[i].ModuleNames(), moduleToFind) {
+			// 	debugLPP = lz.DistWizard.DebugLPPs[i]
+			// 	break
+			// }
 		}
 
 		if debugLPP == nil {
@@ -373,9 +374,10 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 	logrus.Infof("Running SanityCheckPublicInputsForConglo")
 
-	if err := distributed.SanityCheckPublicInputsForConglo(runtimes); err != nil {
-		utils.Panic("Sanity-check for conglo failed: %v", err)
-	}
+	panic("uncomment me")
+	// if err := distributed.SanityCheckPublicInputsForConglo(runtimes); err != nil {
+	// 	utils.Panic("Sanity-check for conglo failed: %v", err)
+	// }
 
 	logrus.Infof("Done running SanityCheckPublicInputsForConglo")
 }
@@ -509,41 +511,42 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		})
 	}
 
-	for _, modLpp := range lz.DistWizard.CompiledLPPs {
-		assets = append(assets, asset{
-			Name:   fmt.Sprintf(compileLppTemplate, modLpp.ModuleLPP.ModuleNames()),
-			Object: *modLpp,
-		})
-	}
+	panic("not implemented")
+	// for _, modLpp := range lz.DistWizard.CompiledLPPs {
+	// 	assets = append(assets, asset{
+	// 		Name:   fmt.Sprintf(compileLppTemplate, modLpp.ModuleLPP.ModuleNames()),
+	// 		Object: *modLpp,
+	// 	})
+	// }
 
-	for i, blueprintLPP := range lz.DistWizard.BlueprintLPPs {
-		assets = append(assets, asset{
-			Name:   fmt.Sprintf(blueprintLppTemplate, i),
-			Object: blueprintLPP,
-		})
-	}
+	// for i, blueprintLPP := range lz.DistWizard.BlueprintLPPs {
+	// 	assets = append(assets, asset{
+	// 		Name:   fmt.Sprintf(blueprintLppTemplate, i),
+	// 		Object: blueprintLPP,
+	// 	})
+	// }
 
-	for _, debugLPP := range lz.DistWizard.DebugLPPs {
-		assets = append(assets, asset{
-			Name:   fmt.Sprintf(debugLppTemplate, debugLPP.ModuleNames()),
-			Object: debugLPP,
-		})
-	}
+	// for _, debugLPP := range lz.DistWizard.DebugLPPs {
+	// 	assets = append(assets, asset{
+	// 		Name:   fmt.Sprintf(debugLppTemplate, debugLPP.ModuleNames()),
+	// 		Object: debugLPP,
+	// 	})
+	// }
 
-	assets = append(assets, struct {
-		Name   string
-		Object any
-	}{
-		Name:   conglomerationFile,
-		Object: *lz.DistWizard.CompiledConglomeration,
-	})
+	// assets = append(assets, struct {
+	// 	Name   string
+	// 	Object any
+	// }{
+	// 	Name:   conglomerationFile,
+	// 	Object: *lz.DistWizard.CompiledConglomeration,
+	// })
 
-	for _, asset := range assets {
-		logrus.Infof("writing %s to disk", asset.Name)
-		if err := serialization.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
-			return err
-		}
-	}
+	// for _, asset := range assets {
+	// 	logrus.Infof("writing %s to disk", asset.Name)
+	// 	if err := serialization.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	logrus.Info("limitless prover assets written to disk")
 	return nil
@@ -711,21 +714,21 @@ func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*dis
 	return res, nil
 }
 
-// LoadConglomeration loads the conglomeration assets from disk
-func LoadConglomeration(cfg *config.Config) (*distributed.ConglomeratorCompilation, error) {
+// // LoadConglomeration loads the conglomeration assets from disk
+// func LoadConglomeration(cfg *config.Config) (*distributed.ConglomeratorCompilation, error) {
 
-	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, conglomerationFile)
-		res      = &distributed.ConglomeratorCompilation{}
-	)
+// 	var (
+// 		assetDir = cfg.PathForSetup(executionLimitlessPath)
+// 		filePath = path.Join(assetDir, conglomerationFile)
+// 		res      = &distributed.ConglomeratorCompilation{}
+// 	)
 
-	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
-		return nil, err
-	}
+// 	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
+// 		return nil, err
+// 	}
 
-	return res, nil
-}
+// 	return res, nil
+// }
 
 // GetAffinities returns a list of affinities for the following modules. This
 // affinities regroup how the modules are grouped.
@@ -810,10 +813,10 @@ func LogPublicInputs(vr wizard.Runtime) {
 	}
 }
 
-// decorateWithPublicInputs decorates the [LimitlessZkEVM] with the public inputs from
-// the initial zkevm.
-func decorateWithPublicInputs(cong *distributed.ConglomeratorCompilation) {
-	for _, name := range publicInputNames {
-		cong.BubbleUpPublicInput(name)
-	}
-}
+// // decorateWithPublicInputs decorates the [LimitlessZkEVM] with the public inputs from
+// // the initial zkevm.
+// func decorateWithPublicInputs(cong *distributed.ConglomeratorCompilation) {
+// 	for _, name := range publicInputNames {
+// 		cong.BubbleUpPublicInput(name)
+// 	}
+// }

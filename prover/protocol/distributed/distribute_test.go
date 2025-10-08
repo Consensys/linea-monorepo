@@ -22,6 +22,140 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
+// TestDistributedWizardBasic attempts to compiler the wizard distribution.
+func TestDistributedWizardBasic(t *testing.T) {
+
+	var (
+		z       = DistributeTestCase{numRow: 1 << 20}
+		defFunc = func(build *wizard.Builder) { z.Define(build.CompiledIOP) }
+		wiop    = wizard.Compile(defFunc)
+		disc    = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 1 << 20,
+			Predivision:  1,
+		}
+
+		// This tests the compilation of the compiled-IOP
+		distWizard = distributed.DistributeWizard(wiop, disc).CompileSegments()
+	)
+
+	// This compilation step is needed for sanity-checking the bootstrapper
+	dummy.Compile(distWizard.Bootstrapper)
+
+	// This applies the dummy.Compiler to all parts of the distributed wizard.
+	for i := range distWizard.GLs {
+		dummy.CompileAtProverLvl()(distWizard.GLs[i].Wiop)
+	}
+
+	for i := range distWizard.LPPs {
+		dummy.CompileAtProverLvl()(distWizard.LPPs[i].Wiop)
+	}
+
+	var (
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.Assign)
+		proof       = runtimeBoot.ExtractProof()
+		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
+	)
+
+	if verBootErr != nil {
+		t.Fatalf("Bootstrapper failed because: %v", verBootErr)
+	}
+
+	var (
+		allGrandProduct     = field.NewElement(1)
+		allLogDerivativeSum = field.Element{}
+		allHornerSum        = field.Element{}
+	)
+
+	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
+		runtimeBoot,
+		distWizard.Disc,
+		distWizard.BlueprintGLs,
+		distWizard.BlueprintLPPs,
+	)
+
+	for i := range witnessGLs {
+
+		var (
+			witnessGL = witnessGLs[i]
+			// moduleIndex = witnessGLs[i].ModuleIndex
+			// moduleName  = witnessGLs[i].ModuleName
+			moduleGL *distributed.ModuleGL
+		)
+
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
+
+		for k := range distWizard.ModuleNames {
+			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
+				continue
+			}
+
+			moduleGL = distWizard.GLs[k]
+			break
+		}
+
+		if moduleGL == nil {
+			t.Fatalf("module does not exists")
+		}
+
+		var (
+			proverRunGL = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
+			proofGL     = proverRunGL.ExtractProof()
+			_, verGLErr = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
+		)
+
+		if verGLErr != nil {
+			t.Errorf("verifier failed for segment %v, reason=%v", i, verGLErr)
+		}
+	}
+
+	for i := range witnessLPPs {
+
+		var (
+			witnessLPP  = witnessLPPs[i]
+			moduleIndex = witnessLPPs[i].ModuleIndex
+			moduleLPP   = distWizard.LPPs[moduleIndex]
+		)
+
+		witnessLPP.InitialFiatShamirState = field.NewFromString("6861409415040334196327676756394403519979367936044773323994693747743991500772")
+
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
+
+		var (
+			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP))
+			proofLPP             = proverRunLPP.ExtractProof()
+			verLPPRun, verLPPErr = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
+		)
+
+		if verLPPErr != nil {
+			t.Errorf("verifier failed for segment %v, reason=%v", i, verLPPErr)
+		}
+
+		var (
+			logDerivativeSum = verLPPRun.GetPublicInput(distributed.LogDerivativeSumPublicInput)
+			grandProduct     = verLPPRun.GetPublicInput(distributed.GrandProductPublicInput)
+			hornerSum        = verLPPRun.GetPublicInput(distributed.HornerPublicInput)
+		)
+
+		t.Logf("log-derivative-sum=%v grand-product=%v horner-sum=%v", logDerivativeSum.String(), grandProduct.String(), hornerSum.String())
+
+		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
+		allHornerSum.Add(&allHornerSum, &hornerSum)
+		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
+	}
+
+	if !allGrandProduct.IsOne() {
+		t.Errorf("grand-product does not cancel")
+	}
+
+	if !allHornerSum.IsZero() {
+		t.Errorf("horner does not cancel")
+	}
+
+	if !allLogDerivativeSum.IsZero() {
+		t.Errorf("log-derivative-sum does not cancel. Has %v", allLogDerivativeSum.String())
+	}
+}
+
 // TestDistributedWizard attempts to compiler the wizard distribution.
 func TestDistributedWizard(t *testing.T) {
 
@@ -145,7 +279,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 			moduleGL *distributed.ModuleGL
 		)
 
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
+		t.Logf("segment(total)=%v module=%v module.index=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex, witnessGL.SegmentModuleIndex)
 
 		for k := range distWizard.ModuleNames {
 			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
@@ -181,7 +315,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 		witnessLPP.InitialFiatShamirState = field.NewFromString("6861409415040334196327676756394403519979367936044773323994693747743991500772")
 
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
+		t.Logf("segment(total)=%v module=%v module.index=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex, witnessLPP.SegmentModuleIndex)
 
 		var (
 			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP))

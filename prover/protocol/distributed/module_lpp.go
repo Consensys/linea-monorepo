@@ -173,6 +173,8 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 	// due to sanity-check firing up. We add a coin to remediate.
 	moduleLPP.InsertCoin(coin.Namef("LPP_DUMMY_COIN_%v", 1), 1)
 
+	moduleLPP.declarePublicInput()
+
 	moduleLPP.Wiop.RegisterProverAction(0, LppWitnessAssignment{ModuleLPP: *moduleLPP, Round: 0})
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
@@ -490,13 +492,14 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 		defInp          = modLPP.DefinitionInput
 	)
 
+	modLPP.SegmentModuleIndex = modLPP.Wiop.InsertProof(0, "SEGMENT_MODULE_INDEX", 1)
 	segmentCountLpp[modLPP.Disc.IndexOf(modLPP.DefinitionInput.ModuleName)] = field.One()
 
 	modLPP.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
-		TargetNbSegments:             declareListOfPiColumns(modLPP.Wiop, targetNbSegmentPublicInputBase, nbModules),
+		TargetNbSegments:             declareListOfPiColumns(modLPP.Wiop, 0, targetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:               declareListOfConstantPi(modLPP.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:              declareListOfConstantPi(modLPP.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
-		GeneralMultiSetHash:          declareListOfPiColumns(modLPP.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash:          declareListOfPiColumns(modLPP.Wiop, 1, generalMultiSetPublicInputBase, mimc.MSetHashSize),
 		SharedRandomnessMultiSetHash: declareListOfConstantPi(modLPP.Wiop, sharedRandomnessMultiSetPublicInputBase, make([]field.Element, mimc.MSetHashSize)),
 	}
 
@@ -566,7 +569,7 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 
 	var (
 		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex           = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
 		mset                   = mimc.MSetHash{}
@@ -609,7 +612,7 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 	var (
 		targetMSet             = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
 		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex           = run.GetColumnAt(modLPP.SegmentModuleIndex.GetColID(), 0)
+		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
 		mset                   = mimc.MSetHash{}
@@ -658,10 +661,10 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 	var (
 		targetMSetGeneral      = getPublicInputListGnark(api, run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments         = run.GetPublicInput(api, lppMerkleRootPublicInput)
-		segmentIndex           = run.GetColumnAt(modLPP.SegmentModuleIndex.GetColID(), 0)
+		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
-		multiSetGeneral        = mimc.MSetHashGnark{}
+		multiSetGeneral        = mimc.EmptyMSetHashGnark()
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
