@@ -2,6 +2,7 @@ package assets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,18 +24,16 @@ var (
 	residentMappings = make([][]byte, 0, 64)
 )
 
-// PrefetchOptions controls behaviour; tune for your environment
-type PrefetchOptions struct {
-	Parallelism        int           // not used by mmap path here, but kept for compatibility
+// PreloadOptions controls behaviour; tune for your environment
+type PreloadOptions struct {
 	ChunkSize          int64         // chunk size when doing fallback mapping-touch
 	LargeFileThreshold int64         // >= this size we use fadvise instead of mmap-populate
 	PerFileTimeout     time.Duration // timeout per file (used by fallbacks)
 	Populate           bool          // whether to use MAP_POPULATE for mmap path
 }
 
-func DefaultPrefetchOptions() *PrefetchOptions {
-	return &PrefetchOptions{
-		Parallelism:        4,
+func DefaultPreloadOptions() *PreloadOptions {
+	return &PreloadOptions{
 		ChunkSize:          64 << 20, // 64 MiB
 		LargeFileThreshold: 10 << 30, // 10 GiB
 		PerFileTimeout:     120 * time.Second,
@@ -42,26 +41,29 @@ func DefaultPrefetchOptions() *PrefetchOptions {
 	}
 }
 
-// PreLoadOnceForJob will prefetch (mmap-populate or fadvise) only once per jobName
+// PreLoadOnceForJob will preload (mmap-populate or fadvise) only once per jobName
 // when called concurrently multiple times only the first caller will execute the work.
 // resolverFn should return the list of asset paths for that jobName.
 func PreloadOnceForJob(
 	ctx context.Context, jobName string,
 	resolverFn func() ([]string, []string, error),
-	opts *PrefetchOptions, logger *logrus.Entry,
+	opts *PreloadOptions, logger *logrus.Entry,
 ) error {
 	if jobName == "" {
 		return fmt.Errorf("empty jobName")
 	}
 	if opts == nil {
-		opts = DefaultPrefetchOptions()
+		opts = DefaultPreloadOptions()
 	}
 	if logger == nil {
 		logger = logrus.NewEntry(logrus.StandardLogger())
 	}
 
 	val, _ := onceMap.LoadOrStore(jobName, &sync.Once{})
-	once := val.(*sync.Once)
+	once, ok := val.(*sync.Once)
+	if !ok {
+		return errors.New("cannot cast to *sync.Once")
+	}
 
 	var preErr error
 	once.Do(func() {
@@ -71,36 +73,36 @@ func PreloadOnceForJob(
 			return
 		}
 		if len(paths) == 0 {
-			logger.Infof("no assets to prefetch for job %s", jobName)
+			logger.Infof("no assets to preload for job %s", jobName)
 			return
 		}
 
-		logger.Infof("Prefetch (once) starting for job=%s: total assets=%d critical=%d",
+		logger.Infof("preload (once) starting for job=%s: total assets=%d critical=%d",
 			jobName, len(paths), len(critical))
 
 		for _, p := range paths {
 			// Context cancellation
 			select {
 			case <-ctx.Done():
-				preErr = fmt.Errorf("prefetch canceled for job %s: %w", jobName, ctx.Err())
+				preErr = fmt.Errorf("preload canceled for job %s: %w", jobName, ctx.Err())
 				return
 			default:
 			}
 
 			if err := preloadPath(p, opts, logger); err != nil {
-				logger.Warnf("prefetch failed for %s: %v", p, err)
+				logger.Warnf("preload failed for %s: %v", p, err)
 			}
 		}
 
-		logger.Infof("Prefetch (once) finished for job=%s", jobName)
+		logger.Infof("preload (once) finished for job=%s", jobName)
 	})
 
 	return preErr
 }
 
-// preloadPath applies the correct prefetch strategy for a single file.
+// preloadPath applies the correct preload strategy for a single file.
 // It keeps the same logic as before but isolates it for readability.
-func preloadPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
+func preloadPath(p string, opts *PreloadOptions, logger *logrus.Entry) error {
 	p = filepath.Clean(p)
 
 	fi, err := os.Stat(p)
@@ -109,7 +111,7 @@ func preloadPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
 	}
 	size := fi.Size()
 	if size == 0 {
-		logger.Debugf("prefetch: skipping empty file %s", p)
+		logger.Debugf("preload: skipping empty file %s", p)
 		return nil
 	}
 
@@ -118,7 +120,7 @@ func preloadPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
 		if err := preloadLarge(p); err != nil {
 			return fmt.Errorf("fadvise failed: %w", err)
 		}
-		logger.Infof("prefetch: fadvise(WILLNEED) applied on %s (size=%d)", p, size)
+		logger.Infof("preload: fadvise(WILLNEED) applied on %s (size=%d)", p, size)
 		logResidency(p, "fadvise", logger)
 		return nil
 	}
@@ -126,18 +128,18 @@ func preloadPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
 	// 2. Otherwise → mmap+MAP_POPULATE (if enabled)
 	if opts.Populate {
 		if err := preLoadNormal(p); err != nil {
-			logger.Warnf("prefetch: mmap-populate failed for %s: %v", p, err)
+			logger.Warnf("preload: mmap-populate failed for %s: %v", p, err)
 
 			// fallback → fadvise
 			if err2 := preloadLarge(p); err2 != nil {
 				return fmt.Errorf("fallback fadvise failed: %v (original mmap error: %v)", err2, err)
 			}
-			logger.Infof("prefetch: fallback fadvise succeeded for %s", p)
+			logger.Infof("preload: fallback fadvise succeeded for %s", p)
 			logResidency(p, "fallback", logger)
 			return nil
 		}
 
-		logger.Infof("prefetch: mmap-populate succeeded for %s (size=%d)", p, size)
+		logger.Infof("preload: mmap-populate succeeded for %s (size=%d)", p, size)
 		logResidency(p, "mmap", logger)
 		return nil
 	}
@@ -163,7 +165,7 @@ func preloadLarge(path string) error {
 	// unix.Fadvise returns error only on failure; treat SUCCEED -> nil
 	// This tells the kernel: the user plans to read this file soon and requests reading it into page cache in background
 	// It is asynchronous and non-blocking — it just hints to the kernel.
-	// Effect: the kernel may start prefetching pages in background via readahead.
+	// Effect: the kernel may start preloading pages in background via readahead.
 	if err := unix.Fadvise(fd, 0, 0, unix.FADV_WILLNEED); err != nil {
 		return fmt.Errorf("fadvise WILLNEED: %w", err)
 	}
@@ -214,7 +216,7 @@ func preLoadNormal(path string) error {
 // logResidency logs how much of the file is currently resident in RAM.
 func logResidency(p, phase string, logger *logrus.Entry) {
 	if frac, err := residentFractionForPath(p); err == nil {
-		logger.Infof("prefetch: residency after %s %s: %.1f%%", phase, p, frac*100)
+		logger.Infof("preload: residency after %s %s: %.1f%%", phase, p, frac*100)
 	}
 }
 
