@@ -1,6 +1,8 @@
 package vortex
 
 import (
+	"time"
+
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
@@ -56,7 +58,7 @@ type ColumnAssignmentProverAction struct {
 func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 
 	round := ctx.Round
-
+	commitTime := time.Now()
 	// Check if that is a dry round
 	if ctx.RoundStatus[round] == IsEmpty {
 		// Nothing special to do.
@@ -105,6 +107,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	for i := 0; i < blockSize; i++ {
 		run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(root[i], 1))
 	}
+	logrus.Infof("Vortex at round %v: committed %v polynomials in %v", round, len(pols), time.Since(commitTime))
 }
 
 type LinearCombinationComputationProverAction struct {
@@ -116,6 +119,7 @@ type LinearCombinationComputationProverAction struct {
 // For the precomputed matrix, we stack it on top of the SIS round matrices if SIS is used on it or
 // we stack it on top of the No SIS round matrices if SIS is not used on it.
 func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntime) {
+	lcComputationTime := time.Now()
 	var (
 		committedSVSIS   = []smartvectors.SmartVector{}
 		committedSVNoSIS = []smartvectors.SmartVector{}
@@ -159,6 +163,7 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+	logrus.Infof("Vortex ComputeLinearComb: computed linear combination in %v", time.Since(lcComputationTime))
 }
 
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
@@ -217,7 +222,7 @@ type OpenSelectedColumnsProverAction struct {
 }
 
 func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
-
+	openSelectedColumnsTime := time.Now()
 	var (
 		committedMatricesSIS   = []vortex.EncodedMatrix{}
 		committedMatricesNoSIS = []vortex.EncodedMatrix{}
@@ -310,6 +315,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		//  in the prover state
 		ctx.storeSelectedColumnsForNonSisRounds(run, nonSisSelectedCols)
 	}
+	logrus.Infof("Vortex OpenSelectedColumns: opened %v columns in %v", ctx.NbColsToOpen(), time.Since(openSelectedColumnsTime))
 }
 
 // returns the list of all committed smartvectors for the given round
