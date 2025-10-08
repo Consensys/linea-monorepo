@@ -175,14 +175,14 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     require(_endTimestamp > _startTimestamp, EndTimestampMustBeGreaterThanStartTimestamp());
     require(_invoiceAmount != 0, ZeroInvoiceAmount());
 
-    uint256 totalAmountOwing = invoiceArrears + _invoiceAmount;
-    lastInvoiceDate = _endTimestamp;
-
     address payable receiver = payable(invoicePaymentReceiver);
     uint256 balanceAvailable = address(this).balance;
 
+    uint256 totalAmountOwing = invoiceArrears + _invoiceAmount;
     uint256 amountToPay = balanceAvailable < totalAmountOwing ? balanceAvailable : totalAmountOwing;
+
     invoiceArrears = totalAmountOwing - amountToPay;
+    lastInvoiceDate = _endTimestamp;
 
     if (amountToPay > 0) {
       (bool success, ) = receiver.call{ value: amountToPay }("");

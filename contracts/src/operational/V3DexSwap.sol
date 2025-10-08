@@ -40,7 +40,9 @@ contract V3DexSwap is IV3DexSwap {
     POOL_TICK_SPACING = _poolTickSpacing;
   }
 
-  /** @notice Swap ETH into LINEA.
+  /** @notice Swap ETH into LINEA tokens.
+   * @dev The msg.sender will be the recipient of the LINEA tokens, and WETH is swapped 1:1 with `msg.value`.
+   * @dev No ETH is kept in the contract after the swap due to exactInputSingle swapping.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
    * @param _sqrtPriceLimitX96 Price limit of the swap as a Q64.96 value.
