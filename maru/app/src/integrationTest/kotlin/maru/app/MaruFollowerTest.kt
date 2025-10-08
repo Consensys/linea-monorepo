@@ -8,14 +8,10 @@
  */
 package maru.app
 
-import java.math.BigInteger
 import kotlin.collections.map
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 import maru.config.SyncingConfig
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
@@ -27,9 +23,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
-import org.web3j.protocol.core.methods.response.EthBlock
+import testutils.Checks.checkAllNodesHaveSameBlocks
 import testutils.Checks.getBlockNumber
-import testutils.Checks.getMinedBlocks
 import testutils.PeeringNodeNetworkStack
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
@@ -448,45 +443,13 @@ class MaruFollowerTest {
   }
 
   private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
-    await
-      .pollDelay(1.seconds.toJavaDuration())
-      .timeout(30.seconds.toJavaDuration())
-      .untilAsserted {
-        val blocksProducedByQbftValidator = blocksToMetadata(validatorStack.besuNode.getMinedBlocks(blocksToProduce))
-        val blocksImportedByFollower = blocksToMetadata(followerStack.besuNode.getMinedBlocks(blocksToProduce))
-        assertThat(blocksProducedByQbftValidator)
-          .hasSize(blocksToProduce)
-        assertThat(blocksImportedByFollower)
-          .hasSize(blocksToProduce)
-        assertThat(blocksImportedByFollower)
-          .isEqualTo(blocksProducedByQbftValidator)
-      }
+    checkAllNodesHaveSameBlocks(blocksToProduce, validatorStack.besuNode, followerStack.besuNode)
   }
-
-  private fun blocksToMetadata(blocks: List<EthBlock.Block>): List<Pair<BigInteger, String>> =
-    blocks.map {
-      it.number to it.hash
-    }
 
   private fun checkNetworkStacksBlocksProduced(
     blocksProduced: Int,
     vararg stacks: PeeringNodeNetworkStack,
   ) {
-    await
-      .pollDelay(1.seconds.toJavaDuration())
-      .timeout(30.seconds.toJavaDuration())
-      .untilAsserted {
-        if (stacks.isNotEmpty()) {
-          val referenceBlocks = blocksToMetadata(stacks.first().besuNode.getMinedBlocks(blocksProduced))
-          if (stacks.size == 1) {
-            assertThat(referenceBlocks.size).isEqualTo(blocksProduced)
-          } else {
-            stacks.drop(1).map {
-              val checkedBlocks = blocksToMetadata(it.besuNode.getMinedBlocks(blocksProduced))
-              assertThat(checkedBlocks).isEqualTo(referenceBlocks)
-            }
-          }
-        }
-      }
+    checkAllNodesHaveSameBlocks(blocksProduced, *stacks.map { it.besuNode }.toTypedArray())
   }
 }

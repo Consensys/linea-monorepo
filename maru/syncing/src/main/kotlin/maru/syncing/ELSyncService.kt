@@ -13,16 +13,11 @@ import java.util.Timer
 import java.util.UUID
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
-import maru.config.consensus.qbft.DifficultyAwareQbftConfig
-import maru.config.consensus.qbft.QbftConsensusConfig
-import maru.consensus.ElFork
-import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
-import maru.consensus.state.FinalizationProvider
+import maru.consensus.NewBlockHandler
 import maru.core.GENESIS_EXECUTION_PAYLOAD
 import maru.database.BeaconChain
-import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ExecutionPayloadStatus
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.extensions.encodeHex
 import maru.services.LongRunningService
 import org.apache.logging.log4j.LogManager
@@ -60,11 +55,10 @@ data class ElBlockInfo(
  */
 class ELSyncService(
   private val beaconChain: BeaconChain,
-  private val forksSchedule: ForksSchedule,
-  private val elManagerMap: Map<ElFork, ExecutionLayerManager>,
+  private val eLValidatorBlockImportHandler: NewBlockHandler<ForkChoiceUpdatedResult>,
+  private val followerELBLockImportHandler: NewBlockHandler<Unit>,
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
-  private val finalizationProvider: FinalizationProvider,
   private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
     Timer(
       "$name-${UUID.randomUUID()}",
@@ -102,31 +96,17 @@ class ELSyncService(
       onStatusChange(newELSyncStatus)
       return
     }
-
-    val finalizationState = finalizationProvider(latestBeaconBlockBody)
-    val forkSpec = forksSchedule.getForkByTimestamp(latestBeaconBlockHeader.timestamp)
-    val elFork =
-      when (forkSpec.configuration) {
-        is QbftConsensusConfig -> (forkSpec.configuration as QbftConsensusConfig).elFork
-        is DifficultyAwareQbftConfig -> extractEvmForkFromDifficultyAwareQbft(forkSpec)
-        else -> throw IllegalStateException(
-          "Current fork isn't QBFT nor DifficultyAwareQbft, this case is not supported yet! forkSpec=$forkSpec",
-        )
-      }
-    val executionLayerManager =
-      elManagerMap[elFork]
-        ?: throw IllegalStateException("No execution layer manager found for EL fork: $elFork")
-    val fcuResponse =
-      executionLayerManager
-        .newPayload(latestBeaconBlockBody.executionPayload)
-        .thenCompose {
-          executionLayerManager
-            .setHead(
-              headHash = currentElSyncTarget!!.blockHash,
-              safeHash = finalizationState.safeBlockHash,
-              finalizedHash = finalizationState.finalizedBlockHash,
-            )
-        }.get()
+    val fcuResponse = eLValidatorBlockImportHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).get()
+    // Call and forget, best effort
+    followerELBLockImportHandler.handleNewBlock(latestSealedBeaconBlock.beaconBlock).whenException { ex ->
+      log.warn(
+        "Block import to followers failed: clBlockNumber={}, elBlockNumber={} errorMessage={}",
+        latestBeaconBlockHeader.number,
+        latestBeaconBlockBody.executionPayload.blockNumber,
+        ex.message,
+        ex,
+      )
+    }
 
     val newELSyncStatus =
       when (fcuResponse.payloadStatus.status) {
@@ -157,9 +137,6 @@ class ELSyncService(
 
     onStatusChange(newELSyncStatus)
   }
-
-  private fun extractEvmForkFromDifficultyAwareQbft(forkSpec: ForkSpec): ElFork =
-    ((forkSpec.configuration as DifficultyAwareQbftConfig).postTtdConfig).elFork
 
   @Synchronized
   override fun start() {

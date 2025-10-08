@@ -19,6 +19,14 @@ import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.besu.BesuFactory
 
+/**
+ * Metadata for block comparison containing essential block identity.
+ */
+data class BlockMetadata(
+  val number: BigInteger,
+  val hash: String,
+)
+
 object Checks {
   fun BesuNode.assertMinedBlocks(blocksMined: Int) {
     await
@@ -50,6 +58,47 @@ object Checks {
       .sendAsync()
       .get()
       .blockNumber
+
+  /**
+   * Converts blocks to metadata for comparison.
+   * This ensures we're comparing the essential block identity without full content comparison.
+   */
+  fun blocksToMetadata(blocks: List<EthBlock.Block>): List<BlockMetadata> =
+    blocks.map { block ->
+      BlockMetadata(number = block.number, hash = block.hash)
+    }
+
+  /**
+   * Helper method to check that all provided Besu nodes have produced the same blocks.
+   * Uses block metadata (number and hash) for comparison.
+   */
+  fun checkAllNodesHaveSameBlocks(
+    expectedBlockCount: Int,
+    vararg besuNodes: BesuNode,
+  ) {
+    await
+      .pollDelay(1.seconds.toJavaDuration())
+      .timeout(30.seconds.toJavaDuration())
+      .untilAsserted {
+        require(besuNodes.isNotEmpty()) { "At least one node must be provided" }
+
+        // Get blocks from the first node as reference
+        val referenceBlocks = blocksToMetadata(besuNodes.first().getMinedBlocks(expectedBlockCount))
+        assertThat(referenceBlocks)
+          .withFailMessage("Reference node should have $expectedBlockCount blocks")
+          .hasSize(expectedBlockCount)
+
+        // Compare all other nodes against the reference
+        besuNodes.drop(1).forEach { node ->
+          val checkedBlocks = blocksToMetadata(node.getMinedBlocks(expectedBlockCount))
+          assertThat(checkedBlocks)
+            .withFailMessage(
+              "Node ${node.name} should have $expectedBlockCount blocks matching reference",
+            ).hasSize(expectedBlockCount)
+            .isEqualTo(referenceBlocks)
+        }
+      }
+  }
 
   // Checks that all block times in the list are exactly BesuFactory.MIN_BLOCK_TIME (1 second)
   // First block is skipped, because after startup block time is sometimes floating above 1 second
