@@ -144,7 +144,7 @@ describe("YieldManager contract - basic operations", () => {
     });
 
     it("Should have the correct L1_MESSAGE_ADDRESS", async () => {
-      expect(await yieldManager.getL1MessageService()).to.equal(await mockLineaRollup.getAddress());
+      expect(await yieldManager.L1_MESSAGE_SERVICE()).to.equal(await mockLineaRollup.getAddress());
     });
 
     it("Should have the initial l2YieldRecipients in state", async () => {

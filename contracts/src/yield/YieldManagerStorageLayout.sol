@@ -12,7 +12,7 @@ pragma solidity ^0.8.30;
  */
 abstract contract YieldManagerStorageLayout {
   /// @notice The Linea L1MessageService.
-  address immutable L1_MESSAGE_SERVICE;
+  address public immutable L1_MESSAGE_SERVICE;
 
   /**
    * @notice ERC-7201 namespaced storage layout for a YieldProvider adaptor contract

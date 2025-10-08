@@ -27,10 +27,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   uint256 private constant MIN_0X02_VALIDATOR_ACTIVATION_BALANCE = 32 ether;
 
   /// @notice Address of the Lido VaultHub.
-  IVaultHub immutable VAULT_HUB;
+  IVaultHub public immutable VAULT_HUB;
 
   /// @notice Address of the Lido stETH contract.
-  IStETH immutable STETH;
+  IStETH public immutable STETH;
 
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
   /// @param yieldProvider The yield provider adaptor instance address.

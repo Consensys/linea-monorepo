@@ -26,6 +26,7 @@ import {
   MockWithdrawTarget,
   MockVaultHub,
   MockSTETH,
+  LidoStVaultYieldProvider,
 } from "contracts/typechain-types";
 import { YieldManagerInitializationData } from "./types";
 
@@ -147,7 +148,7 @@ export async function deployMockSTETH(): Promise<MockSTETH> {
 
 export async function deployLidoStVaultYieldProviderFactory() {
   const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTest);
-  const yieldProviderFactory = await ethers.getContractFactory("LidoStVaultYieldProvider");
+  const yieldProviderFactory = await ethers.getContractFactory("TestLidoStVaultYieldProvider");
   const mockVaultHub = await deployMockVaultHub();
   const mockSTETH = await deployMockSTETH();
 
@@ -177,4 +178,15 @@ export async function deployLidoStVaultYieldProviderFactory() {
   await lidoStVaultYieldProviderFactory.waitForDeployment();
 
   return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, beaconAddress, lidoStVaultYieldProviderFactory };
+}
+
+export async function deployLidoStVaultYieldProvider() {
+  const { nativeYieldOperator } = await loadFixture(getAccountsFixture);
+  const { lidoStVaultYieldProviderFactory } = await loadFixture(deployLidoStVaultYieldProviderFactory);
+  const yieldProviderAddress = await lidoStVaultYieldProviderFactory.createLidoStVaultYieldProvider.staticCall();
+  await lidoStVaultYieldProviderFactory.connect(nativeYieldOperator).createLidoStVaultYieldProvider();
+  const yieldProvider: LidoStVaultYieldProvider = (await ethers.getContractFactory("LidoStVaultYieldProvider")).attach(
+    yieldProviderAddress,
+  );
+  return { yieldProvider, yieldProviderAddress };
 }

@@ -46,15 +46,6 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
     IMockWithdrawTarget mockWithdrawTarget = IMockWithdrawTarget(getMockWithdrawTarget(_yieldProvider));
     mockWithdrawTarget.withdraw(_amount, address(this));
-    // (bool success, bytes memory returnData) = address(this).call{value: _amount}("");
-    // if (!success) {
-    //   if (returnData.length > 0) {
-    //       /// @solidity memory-safe-assembly
-    //       assembly {
-    //           revert(add(32, returnData), mload(returnData))
-    //       }
-    //   }
-    // }
   }
 
   function pauseStaking(address _yieldProvider) external {}

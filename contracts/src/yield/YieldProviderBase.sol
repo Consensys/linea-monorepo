@@ -11,7 +11,7 @@ import { ErrorUtils } from "../libraries/ErrorUtils.sol";
  * @custom:security-contact security-report@linea.build
  */
 abstract contract YieldProviderBase is YieldManagerStorageLayout, IYieldProvider {
-  address immutable YIELD_MANAGER;
+  address public immutable YIELD_MANAGER;
 
   /**
    * @notice Sets immutable variables shared by the YieldManager and YieldProvider adaptor.
