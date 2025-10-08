@@ -96,7 +96,7 @@ class MaruConsensusSwitchTest {
 
   @Test
   fun `follower node correctly switches from Clique to POS after peering with Sequencer validator`() {
-    val stackStartupMargin = 20UL
+    val stackStartupMargin = 40UL
     val expectedBlocksInClique = 5
     var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
     val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksInClique.toULong()

@@ -113,7 +113,12 @@ class PeerDiscoveryTask(
             if (throwable != null) {
               if (throwable.cause !is PeerAlreadyConnectedException) {
                 reputationManager.reportInitiatedConnectionFailed(peerAddress)
-                log.trace("Failed to connect to peer={}", peerAddress, throwable)
+                log.trace(
+                  "Failed to connect to peer={}. Error={}, Stacktrace={}",
+                  peerAddress,
+                  throwable.message,
+                  throwable.stackTraceToString(),
+                )
               } else {
                 log.trace("Peer is already connected, peer={}", peerAddress)
               }
