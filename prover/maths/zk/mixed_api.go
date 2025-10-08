@@ -29,6 +29,10 @@ func (w *WrappedVariable) AsEmulated() *emulated.Element[emulated.KoalaBear] {
 	return &w.EV
 }
 
+func (w *WrappedVariable) IsEmpty() bool {
+	return w.V == nil && len(w.EV.Limbs) == 0
+}
+
 func (w *WrappedVariable) Initialize(field *big.Int) {
 	if field.Cmp(koalabear.Modulus()) == 0 {
 		return
