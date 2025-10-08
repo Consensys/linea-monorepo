@@ -34,4 +34,5 @@ dependencies {
   testFixturesImplementation(project(":serialization"))
   testFixturesImplementation(project(":observability"))
   testFixturesImplementation(project(":p2p"))
+  testFixturesImplementation(project(":crypto"))
 }
