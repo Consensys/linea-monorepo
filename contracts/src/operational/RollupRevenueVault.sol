@@ -18,6 +18,9 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   bytes32 public constant INVOICE_SUBMITTER_ROLE = keccak256("INVOICE_SUBMITTER_ROLE");
   bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
+  /// @notice Percentage of ETH to be burnt when performing the burn and bridge operation.
+  uint256 public constant ETH_BURNT_PERCENTAGE = 20;
+
   /// @notice Decentralized exchange contract for swapping ETH to LINEA tokens.
   IV3DexSwap public v3Dex;
   /// @notice Address to receive invoice payments.
@@ -208,21 +211,21 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
     uint256 balanceAvailable = address(this).balance - minimumFee;
 
-    uint256 ethToBurn = (balanceAvailable * 20) / 100;
+    uint256 ethToBurn = (balanceAvailable * ETH_BURNT_PERCENTAGE) / 100;
     (bool success, ) = address(0).call{ value: ethToBurn }("");
     require(success, EthBurnFailed());
 
-    uint256 nbLineaTokens = v3Dex.swap{ value: balanceAvailable - ethToBurn }(
+    uint256 numLineaTokens = v3Dex.swap{ value: balanceAvailable - ethToBurn }(
       _minLineaOut,
       _deadline,
       _sqrtPriceLimitX96
     );
 
-    IERC20(lineaToken).approve(address(tokenBridge), nbLineaTokens);
+    IERC20(lineaToken).approve(address(tokenBridge), numLineaTokens);
 
-    tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, nbLineaTokens, l1LineaTokenBurner);
+    tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, numLineaTokens, l1LineaTokenBurner);
 
-    emit EthBurntSwappedAndBridged(ethToBurn, nbLineaTokens);
+    emit EthBurntSwappedAndBridged(ethToBurn, numLineaTokens);
   }
 
   /**

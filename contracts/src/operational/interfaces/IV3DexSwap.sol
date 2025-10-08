@@ -23,6 +23,11 @@ interface IV3DexSwap {
    */
   error ZeroTickSpacingNotAllowed();
 
+  /**
+   * @dev Thrown when the minimum LINEA out parameter is zero.
+   */
+  error ZeroMinLineaOutNotAllowed();
+
   /** @notice Swap ETH into LINEA.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.

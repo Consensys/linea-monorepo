@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IV3DexSwap } from "./interfaces/IV3DexSwap.sol";
 import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
@@ -21,7 +20,7 @@ contract V3DexSwap is IV3DexSwap {
   address public immutable WETH_TOKEN;
   /// @notice Address of the LINEA token contract.
   address public immutable LINEA_TOKEN;
-  /// @notice Address of the RollupRevenueVault contract authorized to call the swap function.
+  /// @notice Address of the RollupRevenueVault contract to receive swapped tokens.
   address public immutable ROLLUP_REVENUE_VAULT;
 
   /**
@@ -62,9 +61,10 @@ contract V3DexSwap is IV3DexSwap {
     uint160 _sqrtPriceLimitX96
   ) external payable returns (uint256 amountOut) {
     require(msg.value > 0, NoEthSend());
+    require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
 
     IWETH9(WETH_TOKEN).deposit{ value: msg.value }();
-    IERC20(WETH_TOKEN).approve(ROUTER, msg.value);
+    IWETH9(WETH_TOKEN).approve(ROUTER, msg.value);
 
     amountOut = ISwapRouterV3(ROUTER).exactInputSingle(
       ISwapRouterV3.ExactInputSingleParams({

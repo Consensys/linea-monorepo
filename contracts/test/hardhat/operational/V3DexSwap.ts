@@ -122,6 +122,16 @@ describe("V3DexSwap", () => {
       );
     });
 
+    it("Should revert when minLineaOut == 0", async () => {
+      const deadline = (await time.latest()) + ONE_MINUTE_IN_SECONDS;
+      const ethValueToSwap = ethers.parseEther("1");
+      await expectRevertWithCustomError(
+        dexSwap,
+        dexSwap.connect(admin).swap(0n, deadline, 0n, { value: ethValueToSwap }),
+        "ZeroMinLineaOutNotAllowed",
+      );
+    });
+
     it("Should swap ETH to LINEA tokens", async () => {
       const minLineaOut = ethers.parseUnits("2", 18);
       const deadline = (await time.latest()) + ONE_MINUTE_IN_SECONDS;
