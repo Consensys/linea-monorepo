@@ -379,7 +379,7 @@ func (e *Executor) preLoadAssetsForJob(ctx context.Context, job *Job) error {
 	}
 
 	// Do the once-per-job prefetch (non-blocking risk: it's blocking, but run before spawning child)
-	if err := assets.PrefetchForJobOnce(ctx, job.Def.Name, resolverFn, opts, logger); err != nil {
+	if err := assets.PreLoadOnceForJob(ctx, job.Def.Name, resolverFn, opts, logger); err != nil {
 		// Consider: if a critical asset is missing, return error to prevent running the job
 		logger.WithError(err).Warnf("prefetch once failed for job %s", job.Def.Name)
 		// decide policy: here we return error so job doesn't run; you may prefer to continue
