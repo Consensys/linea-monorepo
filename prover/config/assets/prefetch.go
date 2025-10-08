@@ -16,7 +16,8 @@ import (
 
 // Per-job sync.Once registry
 var (
-	onceMap sync.Map // map[string]*sync.Once
+	// Global map[string]*sync.Once
+	onceMap sync.Map
 	// keep mappings so GC doesn't drop them and to keep pages "active"
 	residentMu       sync.Mutex
 	residentMappings = make([][]byte, 0, 64)
@@ -43,9 +44,7 @@ func DefaultPrefetchOptions() *PrefetchOptions {
 
 // PrefetchForJobOnce will prefetch (mmap-populate or fadvise) only once per jobName
 // when called concurrently multiple times only the first caller will execute the work.
-// cfgRoot is the base assets dir (e.g. cfg.PathForSetup("execution-limitless"))
 // resolverFn should return the list of asset paths for that jobName.
-// logger is optional (nil => uses default logrus.StandardLogger).
 func PrefetchForJobOnce(
 	ctx context.Context, jobName string,
 	resolverFn func() ([]string, []string, error),
@@ -80,6 +79,7 @@ func PrefetchForJobOnce(
 			jobName, len(paths), len(critical))
 
 		for _, p := range paths {
+			// Context cancellation
 			select {
 			case <-ctx.Done():
 				preErr = fmt.Errorf("prefetch canceled for job %s: %w", jobName, ctx.Err())
@@ -87,60 +87,8 @@ func PrefetchForJobOnce(
 			default:
 			}
 
-			p = filepath.Clean(p)
-
-			fi, err := os.Stat(p)
-			if err != nil {
-				logger.Warnf("prefetch: stat failed %s: %v", p, err)
-				continue
-			}
-			size := fi.Size()
-			if size == 0 {
-				logger.Debugf("prefetch: skipping empty file %s", p)
-				continue
-			}
-
-			// Large file → fadvise
-			if opts.LargeFileThreshold > 0 && size >= opts.LargeFileThreshold {
-				if err := prefetchLargeWithFadvise(p); err != nil {
-					logger.Warnf("prefetch: fadvise failed for %s: %v", p, err)
-				} else {
-					logger.Infof("prefetch: fadvise(WILLNEED) applied on %s (size=%d)", p, size)
-					// Check residency after fadvise
-					if frac, err := residentFractionForPath(p); err == nil {
-						logger.Infof("prefetch: residency after fadvise %s: %.1f%%", p, frac*100)
-					}
-				}
-				continue
-			}
-
-			// Otherwise → mmap+MAP_POPULATE
-			if opts.Populate {
-				if err := prefetchWithMmapPopulate(p); err != nil {
-					logger.Warnf("prefetch: mmap-populate failed for %s: %v", p, err)
-					if err2 := prefetchLargeWithFadvise(p); err2 != nil {
-						logger.Warnf("prefetch: fallback fadvise also failed for %s: %v", p, err2)
-					} else {
-						logger.Infof("prefetch: fallback fadvise succeeded for %s", p)
-						if frac, err := residentFractionForPath(p); err == nil {
-							logger.Infof("prefetch: residency after fallback %s: %.1f%%", p, frac*100)
-						}
-					}
-				} else {
-					logger.Infof("prefetch: mmap-populate succeeded for %s (size=%d)", p, size)
-					// Check residency after mmap populate
-					if frac, err := residentFractionForPath(p); err == nil {
-						logger.Infof("prefetch: residency after mmap %s: %.1f%%", p, frac*100)
-					}
-				}
-				continue
-			}
-
-			// If Populate disabled, use fadvise
-			if err := prefetchLargeWithFadvise(p); err != nil {
-				logger.Warnf("prefetch: fadvise failed for %s: %v", p, err)
-			} else if frac, err := residentFractionForPath(p); err == nil {
-				logger.Infof("prefetch: residency after fadvise %s: %.1f%%", p, frac*100)
+			if err := prefetchPath(p, opts, logger); err != nil {
+				logger.Warnf("prefetch failed for %s: %v", p, err)
 			}
 		}
 
@@ -148,6 +96,58 @@ func PrefetchForJobOnce(
 	})
 
 	return preErr
+}
+
+// prefetchPath applies the correct prefetch strategy for a single file.
+// It keeps the same logic as before but isolates it for readability.
+func prefetchPath(p string, opts *PrefetchOptions, logger *logrus.Entry) error {
+	p = filepath.Clean(p)
+
+	fi, err := os.Stat(p)
+	if err != nil {
+		return fmt.Errorf("stat failed: %w", err)
+	}
+	size := fi.Size()
+	if size == 0 {
+		logger.Debugf("prefetch: skipping empty file %s", p)
+		return nil
+	}
+
+	// 1. Large file → fadvise
+	if opts.LargeFileThreshold > 0 && size >= opts.LargeFileThreshold {
+		if err := prefetchLargeWithFadvise(p); err != nil {
+			return fmt.Errorf("fadvise failed: %w", err)
+		}
+		logger.Infof("prefetch: fadvise(WILLNEED) applied on %s (size=%d)", p, size)
+		logResidency(p, "fadvise", logger)
+		return nil
+	}
+
+	// 2. Otherwise → mmap+MAP_POPULATE (if enabled)
+	if opts.Populate {
+		if err := prefetchWithMmapPopulate(p); err != nil {
+			logger.Warnf("prefetch: mmap-populate failed for %s: %v", p, err)
+
+			// fallback → fadvise
+			if err2 := prefetchLargeWithFadvise(p); err2 != nil {
+				return fmt.Errorf("fallback fadvise failed: %v (original mmap error: %v)", err2, err)
+			}
+			logger.Infof("prefetch: fallback fadvise succeeded for %s", p)
+			logResidency(p, "fallback", logger)
+			return nil
+		}
+
+		logger.Infof("prefetch: mmap-populate succeeded for %s (size=%d)", p, size)
+		logResidency(p, "mmap", logger)
+		return nil
+	}
+
+	// 3. Populate disabled → fadvise only
+	if err := prefetchLargeWithFadvise(p); err != nil {
+		return fmt.Errorf("fadvise failed: %w", err)
+	}
+	logResidency(p, "fadvise", logger)
+	return nil
 }
 
 // prefetchLargeWithFadvise tries posix_fadvise(FADV_WILLNEED).
@@ -159,7 +159,11 @@ func prefetchLargeWithFadvise(path string) error {
 	}
 	defer f.Close()
 	fd := int(f.Fd())
+
 	// unix.Fadvise returns error only on failure; treat SUCCEED -> nil
+	// This tells the kernel: the user plans to read this file soon and requests reading it into page cache in background
+	// It is asynchronous and non-blocking — it just hints to the kernel.
+	// Effect: the kernel may start prefetching pages in background via readahead.
 	if err := unix.Fadvise(fd, 0, 0, unix.FADV_WILLNEED); err != nil {
 		return fmt.Errorf("fadvise WILLNEED: %w", err)
 	}
@@ -190,6 +194,9 @@ func prefetchWithMmapPopulate(path string) error {
 	// mmap with MAP_POPULATE to fault pages in immediately.
 	flags := unix.MAP_SHARED
 	flags |= unix.MAP_POPULATE
+
+	// Map a segment of the file into the process’s address space (read-only).
+	// OS won’t actually read data yet — it will lazily page-fault when you touch those pages
 	data, err := unix.Mmap(int(f.Fd()), 0, size, unix.PROT_READ, flags)
 	// once mmap'd, we can close the fd safely; the mapping remains valid.
 	_ = f.Close()
@@ -197,11 +204,18 @@ func prefetchWithMmapPopulate(path string) error {
 		return fmt.Errorf("mmap: %w", err)
 	}
 
-	// store mapping so it is not GC'd and to keep pages pinned by active mapping
+	// Store mapping so it is not GC'd and to keep pages pinned by active mapping
 	residentMu.Lock()
 	residentMappings = append(residentMappings, data)
 	residentMu.Unlock()
 	return nil
+}
+
+// logResidency logs how much of the file is currently resident in RAM.
+func logResidency(p, phase string, logger *logrus.Entry) {
+	if frac, err := residentFractionForPath(p); err == nil {
+		logger.Infof("prefetch: residency after %s %s: %.1f%%", phase, p, frac*100)
+	}
 }
 
 func residentFractionForPath(p string) (float64, error) {
