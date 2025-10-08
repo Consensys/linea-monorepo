@@ -1,23 +1,28 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { deployAndAddSingleLidoStVaultYieldProvider, incrementBalance, ossifyYieldProvider } from "../helpers";
 import {
-  LidoStVaultYieldProvider,
+  deployAndAddSingleLidoStVaultYieldProvider,
+  fundLidoStVaultYieldProvider,
+  incrementBalance,
+  ossifyYieldProvider,
+} from "../helpers";
+import {
   MockVaultHub,
   MockSTETH,
   MockLineaRollup,
   TestYieldManager,
   MockDashboard,
   MockStakingVault,
+  TestLidoStVaultYieldProvider,
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import { ZeroAddress } from "ethers";
-import { GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT } from "../../common/constants";
+import { GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT, ONE_ETHER } from "../../common/constants";
 
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
-  let yieldProvider: LidoStVaultYieldProvider;
+  let yieldProvider: TestLidoStVaultYieldProvider;
   let nativeYieldOperator: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let mockVaultHub: MockVaultHub;
@@ -182,6 +187,22 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("should return the Dashboard address", async () => {
       const contract = await yieldManager.getVault.staticCall(yieldProviderAddress);
       expect(contract).eq(mockStakingVaultAddress);
+    });
+  });
+
+  describe("fund YieldProvider", () => {
+    it("If not ossified, should fund the Dashboard", async () => {
+      const beforeDashboardBalance = await ethers.provider.getBalance(mockDashboardAddress);
+      const fundAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      expect(await ethers.provider.getBalance(mockDashboardAddress)).eq(beforeDashboardBalance + fundAmount);
+    });
+    it("If ossified, should fund the StakingVault", async () => {
+      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
+      const beforeVaultBalance = await ethers.provider.getBalance(mockStakingVaultAddress);
+      const fundAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
     });
   });
 });

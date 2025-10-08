@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { MockYieldProvider, TestYieldManager } from "contracts/typechain-types";
+import { MockYieldProvider, TestLidoStVaultYieldProvider, TestYieldManager } from "contracts/typechain-types";
 import { ethers } from "hardhat";
 
 export const setupReceiveCallerForSuccessfulYieldProviderWithdrawal = async (
@@ -58,4 +58,20 @@ export const ossifyYieldProvider = async (
   await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
   await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
   expect(await yieldManager.isOssified(yieldProviderAddress)).to.be.true;
+};
+
+export const fundLidoStVaultYieldProvider = async (
+  testYieldManager: TestYieldManager,
+  yieldProvider: TestLidoStVaultYieldProvider,
+  signer: SignerWithAddress,
+  withdrawAmount: bigint,
+) => {
+  const yieldProviderAddress = await yieldProvider.getAddress();
+  const yieldManagerAddress = await testYieldManager.getAddress();
+  // Funding cannot happen if withdrawal reserve in deficit
+  const minimumReserveAmount = await testYieldManager.minimumWithdrawalReserveAmount();
+  const l1MessageServiceAddress = await testYieldManager.getL1MessageService();
+  await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, ethers.toBeHex(minimumReserveAmount)]);
+  await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(withdrawAmount)]);
+  await testYieldManager.connect(signer).fundYieldProvider(yieldProviderAddress, withdrawAmount);
 };
