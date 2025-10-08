@@ -175,6 +175,31 @@ export async function deployLidoStVaultYieldProviderFactory() {
   return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, lidoStVaultYieldProviderFactory };
 }
 
+export async function deployTestLidoStVaultYieldProviderFactory() {
+  const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTest);
+  const mockVaultHub = await deployMockVaultHub();
+  const mockSTETH = await deployMockSTETH();
+
+  const l1MessageServiceAddress = await mockLineaRollup.getAddress();
+  const yieldManagerAddress = await yieldManager.getAddress();
+  const mockVaultHubAddress = await mockVaultHub.getAddress();
+  const mockSTETHAddress = await mockSTETH.getAddress();
+
+  const yieldProviderFactoryFactory = await ethers.getContractFactory("TestLidoStVaultYieldProviderFactory");
+  const lidoStVaultYieldProviderFactory = await yieldProviderFactoryFactory.deploy(
+    l1MessageServiceAddress,
+    yieldManagerAddress,
+    mockVaultHubAddress,
+    mockSTETHAddress,
+    GI_FIRST_VALIDATOR,
+    GI_FIRST_VALIDATOR_AFTER_CHANGE,
+    CHANGE_SLOT,
+  );
+  await lidoStVaultYieldProviderFactory.waitForDeployment();
+
+  return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, lidoStVaultYieldProviderFactory };
+}
+
 export async function deployLidoStVaultYieldProvider() {
   const { nativeYieldOperator } = await loadFixture(getAccountsFixture);
   const { lidoStVaultYieldProviderFactory } = await loadFixture(deployLidoStVaultYieldProviderFactory);
@@ -186,12 +211,23 @@ export async function deployLidoStVaultYieldProvider() {
   return { yieldProvider, yieldProviderAddress };
 }
 
+export async function deployTestLidoStVaultYieldProvider() {
+  const { nativeYieldOperator } = await loadFixture(getAccountsFixture);
+  const { lidoStVaultYieldProviderFactory } = await loadFixture(deployTestLidoStVaultYieldProviderFactory);
+  const yieldProviderAddress = await lidoStVaultYieldProviderFactory.createTestLidoStVaultYieldProvider.staticCall();
+  await lidoStVaultYieldProviderFactory.connect(nativeYieldOperator).createTestLidoStVaultYieldProvider();
+  const yieldProvider: LidoStVaultYieldProvider = (
+    await ethers.getContractFactory("TestLidoStVaultYieldProvider")
+  ).attach(yieldProviderAddress);
+  return { yieldProvider, yieldProviderAddress };
+}
+
 export async function deployAndAddSingleLidoStVaultYieldProvider() {
   const { securityCouncil } = await loadFixture(getAccountsFixture);
   const { yieldManager, mockVaultHub, mockSTETH, mockLineaRollup } = await loadFixture(
-    deployLidoStVaultYieldProviderFactory,
+    deployTestLidoStVaultYieldProviderFactory,
   );
-  const { yieldProvider, yieldProviderAddress } = await loadFixture(deployLidoStVaultYieldProvider);
+  const { yieldProvider, yieldProviderAddress } = await loadFixture(deployTestLidoStVaultYieldProvider);
   const mockDashboard = await loadFixture(deployMockDashboard);
   const mockStakingVault = await loadFixture(deployMockStakingVault);
   await mockDashboard.setStakingVaultReturn(await mockStakingVault.getAddress());
