@@ -1,5 +1,5 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { getAccountsFixture } from "../../common/helpers";
+import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { deployLidoStVaultYieldProviderFactory } from "../helpers";
 import {
   LidoStVaultYieldProviderFactory,
@@ -10,6 +10,9 @@ import {
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { CHANGE_SLOT, GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE } from "../../common/constants";
+import { ethers } from "hardhat";
+import { ZeroAddress } from "ethers";
 
 describe("YieldManager contract - control operations", () => {
   let lidoStVaultYieldProviderFactory: LidoStVaultYieldProviderFactory;
@@ -20,6 +23,11 @@ describe("YieldManager contract - control operations", () => {
 
   let nativeYieldOperator: SignerWithAddress;
 
+  let l1MessageServiceAddress: string;
+  let yieldManagerAddress: string;
+  let vaultHubAddress: string;
+  let stethAddress: string;
+
   before(async () => {
     ({ nativeYieldOperator } = await loadFixture(getAccountsFixture));
   });
@@ -28,6 +36,67 @@ describe("YieldManager contract - control operations", () => {
     ({ lidoStVaultYieldProviderFactory, mockVaultHub, mockLineaRollup, yieldManager, mockSTETH } = await loadFixture(
       deployLidoStVaultYieldProviderFactory,
     ));
+    l1MessageServiceAddress = await mockLineaRollup.getAddress();
+    yieldManagerAddress = await yieldManager.getAddress();
+    vaultHubAddress = await mockVaultHub.getAddress();
+    stethAddress = await mockSTETH.getAddress();
+  });
+
+  describe("Constructor", () => {
+    it("Should revert if 0 address provided for _l1MessageService", async () => {
+      const contractFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
+      const call = contractFactory.deploy(
+        ZeroAddress,
+        yieldManagerAddress,
+        vaultHubAddress,
+        stethAddress,
+        GI_FIRST_VALIDATOR,
+        GI_FIRST_VALIDATOR_AFTER_CHANGE,
+        CHANGE_SLOT,
+      );
+      await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
+    });
+    it("Should revert if 0 address provided for _yieldManager", async () => {
+      const contractFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
+      const call = contractFactory
+        .connect(nativeYieldOperator)
+        .deploy(
+          l1MessageServiceAddress,
+          ZeroAddress,
+          vaultHubAddress,
+          stethAddress,
+          GI_FIRST_VALIDATOR,
+          GI_FIRST_VALIDATOR_AFTER_CHANGE,
+          CHANGE_SLOT,
+        );
+      await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
+    });
+    it("Should revert if 0 address provided for _vaultHub", async () => {
+      const contractFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
+      const call = contractFactory.deploy(
+        l1MessageServiceAddress,
+        yieldManagerAddress,
+        ZeroAddress,
+        stethAddress,
+        GI_FIRST_VALIDATOR,
+        GI_FIRST_VALIDATOR_AFTER_CHANGE,
+        CHANGE_SLOT,
+      );
+      await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
+    });
+    it("Should revert if 0 address provided for _steth", async () => {
+      const contractFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
+      const call = contractFactory.deploy(
+        l1MessageServiceAddress,
+        yieldManagerAddress,
+        vaultHubAddress,
+        ZeroAddress,
+        GI_FIRST_VALIDATOR,
+        GI_FIRST_VALIDATOR_AFTER_CHANGE,
+        CHANGE_SLOT,
+      );
+      await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
+    });
   });
 
   describe("Immutables", () => {
@@ -42,6 +111,18 @@ describe("YieldManager contract - control operations", () => {
     });
     it("Should deploy with correct YieldManager address", async () => {
       expect(await lidoStVaultYieldProviderFactory.YIELD_MANAGER()).eq(await yieldManager.getAddress());
+    });
+
+    it("Should deploy with correct GI_FIRST_VALIDATOR", async () => {
+      expect(await lidoStVaultYieldProviderFactory.GI_FIRST_VALIDATOR()).eq(GI_FIRST_VALIDATOR);
+    });
+    it("Should deploy with correct GI_FIRST_VALIDATOR_AFTER_CHANGE", async () => {
+      expect(await lidoStVaultYieldProviderFactory.GI_FIRST_VALIDATOR_AFTER_CHANGE()).eq(
+        GI_FIRST_VALIDATOR_AFTER_CHANGE,
+      );
+    });
+    it("Should deploy with correct CHANGE_SLOT", async () => {
+      expect(await lidoStVaultYieldProviderFactory.CHANGE_SLOT()).eq(CHANGE_SLOT);
     });
   });
 

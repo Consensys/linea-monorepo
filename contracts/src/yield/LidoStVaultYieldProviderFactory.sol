@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import { GIndex } from "./libs/vendor/lido/GIndex.sol";
 import { LidoStVaultYieldProvider } from "./LidoStVaultYieldProvider.sol";
+import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 
 /**
  * @notice Deploys LidoStVaultYieldProvider contract.
@@ -53,6 +54,10 @@ contract LidoStVaultYieldProviderFactory {
     GIndex _gIFirstValidatorAfterChange,
     uint64 _changeSlot
   ) {
+    ErrorUtils.revertIfZeroAddress(_l1MessageService);
+    ErrorUtils.revertIfZeroAddress(_yieldManager);
+    ErrorUtils.revertIfZeroAddress(_vaultHub);
+    ErrorUtils.revertIfZeroAddress(_steth);
     L1_MESSAGE_SERVICE = _l1MessageService;
     YIELD_MANAGER = _yieldManager;
     VAULT_HUB = _vaultHub;

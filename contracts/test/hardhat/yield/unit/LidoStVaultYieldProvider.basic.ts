@@ -1,6 +1,6 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { deployAndAddSingleLidoStVaultYieldProvider } from "../helpers";
+import { deployAndAddSingleLidoStVaultYieldProvider, incrementBalance } from "../helpers";
 import {
   LidoStVaultYieldProvider,
   MockVaultHub,
@@ -19,6 +19,7 @@ import { GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT } from
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let yieldProvider: LidoStVaultYieldProvider;
   let nativeYieldOperator: SignerWithAddress;
+  let securityCouncil: SignerWithAddress;
   let mockVaultHub: MockVaultHub;
   let mockSTETH: MockSTETH;
   let mockLineaRollup: MockLineaRollup;
@@ -33,9 +34,8 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let mockDashboardAddress: string;
   let mockStakingVaultAddress: string;
   let yieldProviderAddress: string;
-
   before(async () => {
-    ({ nativeYieldOperator } = await loadFixture(getAccountsFixture));
+    ({ nativeYieldOperator, securityCouncil } = await loadFixture(getAccountsFixture));
   });
 
   beforeEach(async () => {
@@ -56,6 +56,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     stethAddress = await mockSTETH.getAddress();
     mockDashboardAddress = await mockDashboard.getAddress();
     mockStakingVaultAddress = await mockStakingVault.getAddress();
+    console.log(mockDashboardAddress);
   });
 
   describe("Constructor", () => {
@@ -140,13 +141,24 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const expectedWithdrawableValue = 99n;
       await mockDashboard.setWithdrawableValueReturn(expectedWithdrawableValue);
       await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, expectedWithdrawableValue + 10n);
-
       // Act
       const withdrawableValue = await yieldManager.withdrawableValue.staticCall(yieldProviderAddress);
-      console.log(mockDashboardAddress, mockStakingVaultAddress);
       // Assert
       expect(withdrawableValue).eq(expectedWithdrawableValue);
     });
-    it("If ossified, should return staking vault balance", async () => {});
+    it("If ossified, should return staking vault balance", async () => {
+      // Arrange - Ossify
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+      expect(await yieldManager.isOssified(yieldProviderAddress)).to.be.true;
+      // Arrange - Set Staking Vault Balance
+      const expectedWithdrawableValue = 99n;
+      await incrementBalance(mockStakingVaultAddress, expectedWithdrawableValue);
+      await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, expectedWithdrawableValue + 10n);
+      // Act
+      const withdrawableValue = await yieldManager.withdrawableValue.staticCall(yieldProviderAddress);
+      // Assert
+      expect(withdrawableValue).eq(expectedWithdrawableValue);
+    });
   });
 });
