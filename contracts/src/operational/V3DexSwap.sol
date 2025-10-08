@@ -60,6 +60,7 @@ contract V3DexSwap is IV3DexSwap {
     uint256 _deadline,
     uint160 _sqrtPriceLimitX96
   ) external payable returns (uint256 amountOut) {
+    require(msg.sender == ROLLUP_REVENUE_VAULT, UnauthorizedAccount());
     require(msg.value > 0, NoEthSend());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
 

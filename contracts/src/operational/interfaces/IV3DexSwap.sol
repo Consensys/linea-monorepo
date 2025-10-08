@@ -28,6 +28,11 @@ interface IV3DexSwap {
    */
   error ZeroMinLineaOutNotAllowed();
 
+  /**
+   * @dev Thrown when the caller is not authorized.
+   */
+  error UnauthorizedAccount();
+
   /** @notice Swap ETH into LINEA.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
