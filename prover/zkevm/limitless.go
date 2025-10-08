@@ -239,6 +239,78 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_6686_64_PATTERN,REPEATED_PATTERN_6686_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
 	{BaseSize: 32, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_6817_20_PATTERN,REPEATED_PATTERN_6817_20_PATTERNPOS_0_LOGDERIVATIVE_M"},
 	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_6829_64_PATTERN,REPEATED_PATTERN_6829_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
+
+	// ARITH-OPS: bit_256 main tables and u1..u7 stages
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256.n,bit_sar256.res'0,bit_sar256.res'1,bit_sar256.word'0,bit_sar256.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u1.n,bit_sar256_u1.res'0,bit_sar256_u1.res'1,bit_sar256_u1.word'0,bit_sar256_u1.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u2.n,bit_sar256_u2.res'0,bit_sar256_u2.res'1,bit_sar256_u2.word'0,bit_sar256_u2.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u3.n,bit_sar256_u3.res'0,bit_sar256_u3.res'1,bit_sar256_u3.word'0,bit_sar256_u3.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u4.n,bit_sar256_u4.res'0,bit_sar256_u4.res'1,bit_sar256_u4.word'0,bit_sar256_u4.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u5.n,bit_sar256_u5.res'0,bit_sar256_u5.res'1,bit_sar256_u5.word'0,bit_sar256_u5.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u6.n,bit_sar256_u6.res'0,bit_sar256_u6.res'1,bit_sar256_u6.word'0,bit_sar256_u6.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_sar256_u7.n,bit_sar256_u7.res'0,bit_sar256_u7.res'1,bit_sar256_u7.word'0,bit_sar256_u7.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256.n,bit_shl256.res'0,bit_shl256.res'1,bit_shl256.word'0,bit_shl256.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u1.n,bit_shl256_u1.res'0,bit_shl256_u1.res'1,bit_shl256_u1.word'0,bit_shl256_u1.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u2.n,bit_shl256_u2.res'0,bit_shl256_u2.res'1,bit_shl256_u2.word'0,bit_shl256_u2.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u3.n,bit_shl256_u3.res'0,bit_shl256_u3.res'1,bit_shl256_u3.word'0,bit_shl256_u3.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u4.n,bit_shl256_u4.res'0,bit_shl256_u4.res'1,bit_shl256_u4.word'0,bit_shl256_u4.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u5.n,bit_shl256_u5.res'0,bit_shl256_u5.res'1,bit_shl256_u5.word'0,bit_shl256_u5.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u6.n,bit_shl256_u6.res'0,bit_shl256_u6.res'1,bit_shl256_u6.word'0,bit_shl256_u6.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shl256_u7.n,bit_shl256_u7.res'0,bit_shl256_u7.res'1,bit_shl256_u7.word'0,bit_shl256_u7.word'1_0_LOGDERIVATIVE_M"},
+
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256.n,bit_shr256.res'0,bit_shr256.res'1,bit_shr256.word'0,bit_shr256.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u1.n,bit_shr256_u1.res'0,bit_shr256_u1.res'1,bit_shr256_u1.word'0,bit_shr256_u1.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u2.n,bit_shr256_u2.res'0,bit_shr256_u2.res'1,bit_shr256_u2.word'0,bit_shr256_u2.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u3.n,bit_shr256_u3.res'0,bit_shr256_u3.res'1,bit_shr256_u3.word'0,bit_shr256_u3.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u4.n,bit_shr256_u4.res'0,bit_shr256_u4.res'1,bit_shr256_u4.word'0,bit_shr256_u4.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u5.n,bit_shr256_u5.res'0,bit_shr256_u5.res'1,bit_shr256_u5.word'0,bit_shr256_u5.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u6.n,bit_shr256_u6.res'0,bit_shr256_u6.res'1,bit_shr256_u6.word'0,bit_shr256_u6.word'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_shr256_u7.n,bit_shr256_u7.res'0,bit_shr256_u7.res'1,bit_shr256_u7.word'0,bit_shr256_u7.word'1_0_LOGDERIVATIVE_M"},
+
+	// ARITH-OPS: fill_bytes_between
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_fill_bytes_between.end,fill_bytes_between.res'0,fill_bytes_between.res'1,fill_bytes_between.start,fill_bytes_between.value,fill_bytes_between.word'0,fill_bytes_between.word'1_0_LOGDERIVATIVE_M"},
+	// HUB-KECCAK: gas helpers and stp (primed fields)
+	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_call_gas_extra.exists,call_gas_extra.gas_extra,call_gas_extra.inst,call_gas_extra.stipend,call_gas_extra.value'0,call_gas_extra.value'1,call_gas_extra.warm_0_LOGDERIVATIVE_M"},
+	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_gas_out_of_pocket.gas_actual,gas_out_of_pocket.gas_upfront,gas_out_of_pocket.oogx,gas_out_of_pocket.oop_0_LOGDERIVATIVE_M"},
+	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_min256_64.L_gas_diff,min256_64.gas'0,min256_64.gas'1,min256_64.res_0_LOGDERIVATIVE_M"},
+	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_stp.EXISTS,stp.GAS'0,stp.GAS'1,stp.GAS_ACTUAL,stp.GAS_MXP,stp.GAS_OOP,stp.GAS_STIPEND,stp.GAS_UPFRONT,stp.INST,stp.OOGX,stp.VALUE'0,stp.VALUE'1,stp.WARM_0_LOGDERIVATIVE_M"},
+	// HUB-KECCAK: oob variant with DATA_10
+	{BaseSize: 262144, Cluster: "HUB-KECCAK", Column: "TABLE_oob.DATA_1,oob.DATA_10,oob.DATA_2,oob.DATA_3,oob.DATA_4,oob.DATA_5,oob.DATA_6,oob.DATA_7,oob.DATA_8,oob.DATA_9,oob.OOB_INST_0_LOGDERIVATIVE_M"},
+	// TINY-STUFFS: trm updated tables
+	{BaseSize: 2048, Cluster: "TINY-STUFFS", Column: "TABLE_trm.ADDRESS_HI,trm.IS_PRECOMPILE,trm.RAW_ADDRESS'0,trm.RAW_ADDRESS'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 2048, Cluster: "TINY-STUFFS", Column: "TABLE_trm.ADDRESS_HI,trm.RAW_ADDRESS'0,trm.RAW_ADDRESS'1_0_LOGDERIVATIVE_M"},
+	// TINY-STUFFS: new u-variants
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u111.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u112.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u123.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u124.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u125.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u26.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u27.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u28.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u29.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u47.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u48.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u58.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u59.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u60.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u61.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u95.V_0_LOGDERIVATIVE_M"},
+	{BaseSize: 131072, Cluster: "TINY-STUFFS", Column: "TABLE_u96.V_0_LOGDERIVATIVE_M"},
+	// ARITH-OPS: MIMC_STACKED with new IDs
+	{BaseSize: 1048576, Cluster: "ARITH-OPS", Column: "TABLE_MIMC_STACKED_BLOCKS_0_7466,MIMC_STACKED_NEW_STATES_0_7467,MIMC_STACKED_OLD_STATES_0_7465_0_LOGDERIVATIVE_M"},
+	// STATIC: new REPEATED_PATTERN tables
+	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_2665_64_PATTERN,REPEATED_PATTERN_2665_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_4991_24_PATTERN,REPEATED_PATTERN_4991_24_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 128, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_6936_128_PATTERN,REPEATED_PATTERN_6936_128_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 128, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_6944_128_PATTERN,REPEATED_PATTERN_6944_128_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 512, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_6952_512_PATTERN,REPEATED_PATTERN_6952_512_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_6960_64_PATTERN,REPEATED_PATTERN_6960_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 16, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_6993_16_PATTERN,REPEATED_PATTERN_6993_16_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7001_64_PATTERN,REPEATED_PATTERN_7001_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7009_64_PATTERN,REPEATED_PATTERN_7009_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7140_20_PATTERN,REPEATED_PATTERN_7140_20_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7152_64_PATTERN,REPEATED_PATTERN_7152_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
 }
 
 // NewLimitlessZkEVM returns a new LimitlessZkEVM object.
