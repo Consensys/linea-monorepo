@@ -28,7 +28,7 @@ contract DeployVaultFactoryScript is BaseScript {
         address stakingToken = vm.envAddress("STAKING_TOKEN_ADDRESS");
         require(stakingToken != address(0), "STAKING_TOKEN_ADDRESS is not set");
 
-        return _run(stakeManager, stakingToken);
+        (vaultFactory, vaultImplementation, vaultProxyClone) = deploy(broadcaster, stakeManager, stakingToken);
     }
 
     /**
@@ -53,32 +53,12 @@ contract DeployVaultFactoryScript is BaseScript {
         )
     {
         deploymentConfig = new DeploymentConfig(broadcaster);
-        (vaultFactory, vaultImplementation, vaultProxyClone) = _run(stakeManager, stakingToken);
+        (vaultFactory, vaultImplementation, vaultProxyClone) = deploy(broadcaster, stakeManager, stakingToken);
         return (vaultFactory, vaultImplementation, vaultProxyClone, deploymentConfig);
     }
 
     /**
-     * @dev Deploys VaultFactory contract within a broadcast context and returns the instance.
-     * @param stakeManager The address of the StakeManager contract.
-     * @param stakingToken The address of the staking token.
-     * @return vaultFactory The deployed VaultFactory contract instance.
-     * @return vaultImplementation The address of the StakeVault logic contract.
-     * @return vaultProxyClone The address of the StakeVault proxy clone used by the VaultFactory.
-     */
-    function _run(
-        address stakeManager,
-        address stakingToken
-    )
-        internal
-        broadcast
-        returns (VaultFactory vaultFactory, address vaultImplementation, address vaultProxyClone)
-    {
-        return deploy(broadcaster, stakeManager, stakingToken);
-    }
-
-    /**
      * @dev Deploys VaultFactory contract and returns the instance.
-     * Note: This function does not handle broadcasting; it should be called within a broadcast context.
      * @param deployer The address that will be set as the deployer/owner of the VaultFactory contract.
      * @param stakeManager The address of the StakeManager contract.
      * @param stakingToken The address of the staking token.
@@ -94,10 +74,12 @@ contract DeployVaultFactoryScript is BaseScript {
         public
         returns (VaultFactory vaultFactory, address vaultImplementation, address vaultProxyClone)
     {
+        vm.startBroadcast(deployer);
         // Create vault implementation for proxy clones
         vaultImplementation = address(new StakeVault(IERC20(stakingToken)));
         vaultProxyClone = Clones.clone(vaultImplementation);
         // Create vault factory
         vaultFactory = new VaultFactory(deployer, stakeManager, vaultImplementation);
+        vm.stopBroadcast();
     }
 }

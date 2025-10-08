@@ -16,7 +16,7 @@ contract DeployKarmaTiersScript is BaseScript {
      * @return karmaTiers The deployed KarmaTiers contract instance.
      */
     function run() public returns (KarmaTiers) {
-        return _run();
+        return deploy(broadcaster);
     }
 
     /**
@@ -27,24 +27,18 @@ contract DeployKarmaTiersScript is BaseScript {
      */
     function runForTest() public returns (KarmaTiers, DeploymentConfig) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        KarmaTiers karmaTiers = _run();
+        KarmaTiers karmaTiers = deploy(broadcaster);
         return (karmaTiers, deploymentConfig);
     }
 
     /**
-     * @dev Deploys KarmaTiers contract within a broadcast context and returns the instance.
-     * @return karmaTiers The deployed KarmaTiers contract instance.
-     */
-    function _run() internal broadcast returns (KarmaTiers) {
-        return deploy();
-    }
-
-    /**
      * @dev Deploys KarmaTiers contract and returns the instance.
-     * Note: This function does not handle broadcasting; it should be called within a broadcast context.
+     * @param deployer The address that will be set as the deployer/owner of the KarmaTiers contract.
      * @return karmaTiers The deployed KarmaTiers contract instance.
      */
-    function deploy() public returns (KarmaTiers karmaTiers) {
+    function deploy(address deployer) public returns (KarmaTiers karmaTiers) {
+        vm.startBroadcast(deployer);
         karmaTiers = new KarmaTiers();
+        vm.stopBroadcast();
     }
 }

@@ -22,7 +22,7 @@ contract DeployKarmaScript is BaseScript {
      * @return impl The address of the Karma logic contract.
      */
     function run() public returns (Karma karma, address impl) {
-        (karma, impl) = _run();
+        (karma, impl) = deploy(broadcaster);
     }
 
     /**
@@ -33,32 +33,25 @@ contract DeployKarmaScript is BaseScript {
      */
     function runForTest() public returns (Karma, DeploymentConfig) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (Karma karma,) = _run();
+        (Karma karma,) = deploy(broadcaster);
         return (karma, deploymentConfig);
     }
 
     /**
-     * @dev Deploys Karma contract within a broadcast context and returns the instance.
-     * @return karma The deployed Karma contract instance.
-     * @return impl The address of the Karma logic contract.
-     */
-    function _run() internal broadcast returns (Karma, address) {
-        return deploy(broadcaster);
-    }
-
-    /**
      * @dev Deploys Karma contract and returns the instance.
-     * Note: This function does not handle broadcasting; it should be called within a broadcast context.
      * @param deployer The address that will be set as the deployer/owner of the Karma contract.
      * @return karma The deployed Karma contract instance.
      * @return impl The address of the Karma logic contract.
      */
     function deploy(address deployer) public returns (Karma, address) {
+        vm.startBroadcast(deployer);
         // Deploy Karma logic contract
         bytes memory initializeData = abi.encodeCall(Karma.initialize, (deployer));
         address impl = address(new Karma());
         // Create upgradeable proxy
         address proxy = address(new ERC1967Proxy(impl, initializeData));
+        vm.stopBroadcast();
+
         return (Karma(proxy), impl);
     }
 }

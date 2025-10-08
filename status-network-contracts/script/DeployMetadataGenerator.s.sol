@@ -22,7 +22,7 @@ contract DeployMetadataGeneratorScript is BaseScript {
      * @return metadataGenerator The deployed NFT metadata generator contract instance.
      */
     function run() public returns (INFTMetadataGenerator metadataGenerator) {
-        metadataGenerator = _run();
+        metadataGenerator = deploy(broadcaster);
     }
 
     /**
@@ -43,24 +43,18 @@ contract DeployMetadataGeneratorScript is BaseScript {
         deploymentConfig = new DeploymentConfig(broadcaster);
         svgPrefix = _svgPrefix;
         svgSuffix = _svgSuffix;
-        metadataGenerator = _run();
-    }
-
-    /**
-     * @dev Deploys NFT metadata generator contract within a broadcast context and returns the instances.
-     * @return metadataGenerator The deployed NFT metadata generator contract instance.
-     */
-    function _run() internal broadcast returns (INFTMetadataGenerator) {
-        return deploy();
+        metadataGenerator = deploy(broadcaster);
     }
 
     /**
      * @dev Deploys NFT metadata generator contract and returns the instances.
-     * Note: This function does not handle broadcasting; it should be called within a broadcast context.
+     * @param deployer The address that will be set as the deployer/owner of the NFT metadata generator contract.
      * @return metadataGenerator The deployed NFT metadata generator contract instance.
      */
-    function deploy() public returns (INFTMetadataGenerator) {
+    function deploy(address deployer) public returns (INFTMetadataGenerator) {
+        vm.startBroadcast(deployer);
         NFTMetadataGeneratorSVG metadataGenerator = new NFTMetadataGeneratorSVG(svgPrefix, svgSuffix);
+        vm.stopBroadcast();
         return INFTMetadataGenerator(metadataGenerator);
     }
 }

@@ -114,7 +114,7 @@ contract DeployProtocolScript is BaseScript {
     }
 
     /**
-     * @dev Deploys protocol within a broadcast context and returns the instances.
+     * @dev Deploys protocol by calling sub script `deploy()` functions and returns the instances.
      * @param stakingToken The address of the staking token to be used in the StakeManager and VaultFactory.
      * @return karma The deployed Karma contract instance.
      * @return karmaImpl The address of the Karma logic contract.
@@ -128,7 +128,6 @@ contract DeployProtocolScript is BaseScript {
      */
     function _run(address stakingToken)
         internal
-        broadcast
         returns (
             Karma karma,
             address karmaImpl,
@@ -145,10 +144,10 @@ contract DeployProtocolScript is BaseScript {
         (karma, karmaImpl) = deployKarma.deploy(broadcaster);
 
         console.log("Deploying NFTMetadataGeneratorSVG...");
-        metadataGenerator = deployMetadataGenerator.deploy();
+        metadataGenerator = deployMetadataGenerator.deploy(broadcaster);
 
         console.log("Deploying KarmaNFT...");
-        karmaNFT = deployKarmaNFT.deploy(address(metadataGenerator), address(karma));
+        karmaNFT = deployKarmaNFT.deploy(broadcaster, address(metadataGenerator), address(karma));
 
         console.log("Deploying StakeManager...");
         (stakeManager, stakeManagerImpl) = deployStakeManager.deploy(broadcaster, stakingToken, address(karma));
@@ -169,6 +168,7 @@ contract DeployProtocolScript is BaseScript {
         console.log(vaultProxyClone, ": StakeVault (proxy clone)");
 
         /// INITIALIZATION
+        vm.startBroadcast(broadcaster);
         console.log("\nInitializing contracts...");
 
         karma.addRewardDistributor(address(stakeManager));
@@ -182,5 +182,6 @@ contract DeployProtocolScript is BaseScript {
 
         stakeManager.setTrustedCodehash(vaultProxyClone.codehash, true);
         console.log("Set trusted codehash for StakeVault proxy clone:", vaultProxyClone);
+        vm.stopBroadcast();
     }
 }

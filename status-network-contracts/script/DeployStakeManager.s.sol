@@ -33,7 +33,7 @@ contract DeployStakeManagerScript is BaseScript {
 
         deploymentConfig = new DeploymentConfig(broadcaster);
         (, address stakingToken) = deploymentConfig.activeNetworkConfig();
-        stakeManager = _run(stakingToken, karmaAddress);
+        (stakeManager,) = deploy(broadcaster, stakingToken, karmaAddress);
     }
 
     /**
@@ -48,23 +48,11 @@ contract DeployStakeManagerScript is BaseScript {
     {
         deploymentConfig = new DeploymentConfig(broadcaster);
         (, address stakingToken) = deploymentConfig.activeNetworkConfig();
-        stakeManager = _run(stakingToken, rewardToken);
-    }
-
-    /**
-     * @dev Deploys StakeManager contract within a broadcast context and returns the instance.
-     * @param stakingToken The address of the staking token to be used in the StakeManager.
-     * @param rewardToken The address of the reward token (Karma) to be used in the StakeManager.
-     * @return stakeManager The deployed StakeManager contract instance.
-     */
-    function _run(address stakingToken, address rewardToken) internal broadcast returns (StakeManager) {
-        (StakeManager stakeManager,) = deploy(broadcaster, stakingToken, rewardToken);
-        return stakeManager;
+        (stakeManager,) = deploy(broadcaster, stakingToken, rewardToken);
     }
 
     /**
      * @dev Deploys StakeManager contract and returns the instance.
-     * Note: This function does not handle broadcasting; it should be called within a broadcast context.
      * @param deployer The address that will be set as the deployer/owner of the StakeManager contract.
      * @param stakingToken The address of the staking token to be used in the StakeManager.
      * @param rewardToken The address of the reward token (Karma) to be used in the StakeManager.
@@ -79,11 +67,13 @@ contract DeployStakeManagerScript is BaseScript {
         public
         returns (StakeManager proxy, address impl)
     {
+        vm.startBroadcast(deployer);
         bytes memory initializeData = abi.encodeCall(StakeManager.initialize, (deployer, stakingToken, rewardToken));
 
         // Deploy StakeManager logic contract
         impl = address(new StakeManager());
         // Create upgradeable proxy
         proxy = StakeManager(address(new ERC1967Proxy(impl, initializeData)));
+        vm.stopBroadcast();
     }
 }

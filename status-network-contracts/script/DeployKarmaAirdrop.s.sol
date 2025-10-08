@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 import { BaseScript } from "./Base.s.sol";
 import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 
-import { Karma } from "../src/Karma.sol";
 import { KarmaAirdrop } from "../src/KarmaAirdrop.sol";
 
 /**
