@@ -12,7 +12,6 @@ import {
   L2_MESSAGE_SERVICE_ROLES,
   L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
 } from "../../../../common/constants";
-import { generateRandomBytes } from "../../common/helpers";
 
 export async function deployWETH9Fixture(): Promise<string> {
   const weth9Factory = await ethers.getContractFactory("TestWETH9");
@@ -41,17 +40,10 @@ async function deployL2MessageService(adminAddress: string, l1l2MessageSetterAdd
   return messageService as unknown as L2MessageService;
 }
 
-export async function deployV3DexSwapFixture(rollupRevenueVaultAddress: string, lineaTokenAddress: string) {
+export async function deployV3DexSwapFixture(lineaTokenAddress: string) {
   const testWETH9 = await loadFixture(deployWETH9Fixture);
   const router = await deployFromFactory("TestDexRouter");
-  const dexSwap = await deployFromFactory(
-    "V3DexSwap",
-    await router.getAddress(),
-    testWETH9,
-    lineaTokenAddress,
-    rollupRevenueVaultAddress,
-    50,
-  );
+  const dexSwap = await deployFromFactory("V3DexSwap", await router.getAddress(), testWETH9, lineaTokenAddress, 50);
   return dexSwap as V3DexSwap;
 }
 
@@ -69,6 +61,9 @@ export async function deployRollupRevenueVaultFixture() {
 
   const l2LineaToken = await loadFixture(l2LineaTokenFn);
 
+  const dexFn = async () => await deployV3DexSwapFixture(await l2LineaToken.getAddress());
+  const dex = await loadFixture(dexFn);
+
   const rollupRevenueVaultFn = async () =>
     (await deployUpgradableFromFactory(
       "RollupRevenueVault",
@@ -82,7 +77,7 @@ export async function deployRollupRevenueVaultFixture() {
         await messageService.getAddress(),
         l1LineaTokenBurner.address,
         await l2LineaToken.getAddress(),
-        generateRandomBytes(20), // Will be set after RollupRevenueVault deployment
+        await dex.getAddress(),
       ],
       {
         initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -91,12 +86,6 @@ export async function deployRollupRevenueVaultFixture() {
     )) as unknown as RollupRevenueVault;
 
   const rollupRevenueVault = await loadFixture(rollupRevenueVaultFn);
-
-  const dexFn = async () =>
-    await deployV3DexSwapFixture(await rollupRevenueVault.getAddress(), await l2LineaToken.getAddress());
-
-  const dex = await loadFixture(dexFn);
-  await rollupRevenueVault.updateDex(dex.getAddress());
 
   return { rollupRevenueVault, l2LineaToken, tokenBridge, l1LineaTokenBurner, messageService, dex };
 }

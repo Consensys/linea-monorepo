@@ -29,9 +29,9 @@ interface IV3DexSwap {
   error ZeroMinLineaOutNotAllowed();
 
   /**
-   * @dev Thrown when the caller is not authorized.
+   * @dev Thrown when the deadline is in the past. (< block.timestamp)
    */
-  error UnauthorizedAccount();
+  error DeadlineInThePast();
 
   /** @notice Swap ETH into LINEA.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
-import { ERC20Burnable } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import { IL1LineaTokenBurner } from "./interfaces/IL1LineaTokenBurner.sol";
 import { IL1MessageService } from "../messaging/l1/interfaces/IL1MessageService.sol";
 import { IL1MessageManager } from "../messaging/l1/interfaces/IL1MessageManager.sol";
@@ -37,9 +36,9 @@ contract L1LineaTokenBurner is IL1LineaTokenBurner, IGenericErrors {
       IL1MessageService(MESSAGE_SERVICE).claimMessageWithProof(_params);
     }
 
-    uint256 balance = ERC20Burnable(LINEA_TOKEN).balanceOf(address(this));
+    uint256 balance = IL1LineaToken(LINEA_TOKEN).balanceOf(address(this));
     if (balance > 0) {
-      ERC20Burnable(LINEA_TOKEN).burn(balance);
+      IL1LineaToken(LINEA_TOKEN).burn(balance);
       IL1LineaToken(LINEA_TOKEN).syncTotalSupplyToL2();
     }
   }

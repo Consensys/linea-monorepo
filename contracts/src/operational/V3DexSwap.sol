@@ -20,33 +20,23 @@ contract V3DexSwap is IV3DexSwap {
   address public immutable WETH_TOKEN;
   /// @notice Address of the LINEA token contract.
   address public immutable LINEA_TOKEN;
-  /// @notice Address of the RollupRevenueVault contract to receive swapped tokens.
-  address public immutable ROLLUP_REVENUE_VAULT;
 
   /**
-   * @dev Sets the address of the RollupRevenueVault contract and other immutable values.
+   * @dev Initializes the contract with the given parameters.
    * @param _router Address of the Router contract.
    * @param _wethToken Address of the WETH token contract.
    * @param _lineaToken Address of the LINEA token contract.
-   * @param _rollupRevenueVault Address of the RollupRevenueVault contract.
+   * @param _poolTickSpacing Tick spacing of the pool.
    */
-  constructor(
-    address _router,
-    address _wethToken,
-    address _lineaToken,
-    address _rollupRevenueVault,
-    uint24 _poolTickSpacing
-  ) {
-    require(_rollupRevenueVault != address(0), ZeroAddressNotAllowed());
+  constructor(address _router, address _wethToken, address _lineaToken, uint24 _poolTickSpacing) {
+    require(_router != address(0), ZeroAddressNotAllowed());
     require(_wethToken != address(0), ZeroAddressNotAllowed());
     require(_lineaToken != address(0), ZeroAddressNotAllowed());
-    require(_router != address(0), ZeroAddressNotAllowed());
     require(_poolTickSpacing > 0, ZeroTickSpacingNotAllowed());
 
     ROUTER = _router;
     WETH_TOKEN = _wethToken;
     LINEA_TOKEN = _lineaToken;
-    ROLLUP_REVENUE_VAULT = _rollupRevenueVault;
     POOL_TICK_SPACING = _poolTickSpacing;
   }
 
@@ -60,8 +50,8 @@ contract V3DexSwap is IV3DexSwap {
     uint256 _deadline,
     uint160 _sqrtPriceLimitX96
   ) external payable returns (uint256 amountOut) {
-    require(msg.sender == ROLLUP_REVENUE_VAULT, UnauthorizedAccount());
     require(msg.value > 0, NoEthSend());
+    require(_deadline > block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
 
     IWETH9(WETH_TOKEN).deposit{ value: msg.value }();
@@ -72,7 +62,7 @@ contract V3DexSwap is IV3DexSwap {
         tokenIn: WETH_TOKEN,
         tokenOut: LINEA_TOKEN,
         tickSpacing: POOL_TICK_SPACING,
-        recipient: ROLLUP_REVENUE_VAULT,
+        recipient: msg.sender,
         deadline: _deadline,
         amountIn: msg.value,
         amountOutMinimum: _minLineaOut,
