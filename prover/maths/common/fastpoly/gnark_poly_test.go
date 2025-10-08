@@ -76,14 +76,14 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// {
-	// 	circuit, witness := getWitnessAndCircuit(zk.Emulated)
-	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
-	// 	assert.NoError(t, err)
+	{
+		circuit, witness := getWitnessAndCircuit(zk.Emulated)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		assert.NoError(t, err)
 
-	// 	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
+		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 }
