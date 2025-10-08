@@ -93,7 +93,7 @@ func (e *Executor) Run(ctx context.Context, job *Job) (status Status) {
 	}
 
 	// Prewarm the assets for limitless jobs
-	if err := e.preLoadAssetsForJob(ctx, job); err != nil {
+	if err := e.preLoadStaticAssets(ctx, job); err != nil {
 		return Status{
 			ExitCode: CodeCantPreLoad,
 			Err:      err,
@@ -347,8 +347,9 @@ func runCmd(ctx context.Context, cmd string, job *Job, retry bool) Status {
 	}
 }
 
-// inside executor.preLoadAssetsForJob (replace existing logic with this)
-func (e *Executor) preLoadAssetsForJob(ctx context.Context, job *Job) error {
+// preLoadStaticAssets: preloads the static prover assets relevant for the job and keeps
+// it in the controller mememory and loads it on-demand
+func (e *Executor) preLoadStaticAssets(ctx context.Context, job *Job) error {
 	if job.Def == nil {
 		return nil
 	}
@@ -379,7 +380,7 @@ func (e *Executor) preLoadAssetsForJob(ctx context.Context, job *Job) error {
 	}
 
 	// Do the once-per-job prefetch (non-blocking risk: it's blocking, but run before spawning child)
-	if err := assets.PreLoadOnceForJob(ctx, job.Def.Name, resolverFn, opts, logger); err != nil {
+	if err := assets.PreloadOnceForJob(ctx, job.Def.Name, resolverFn, opts, logger); err != nil {
 		// Consider: if a critical asset is missing, return error to prevent running the job
 		logger.WithError(err).Warnf("prefetch once failed for job %s", job.Def.Name)
 		// decide policy: here we return error so job doesn't run; you may prefer to continue

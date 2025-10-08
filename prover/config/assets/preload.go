@@ -45,7 +45,7 @@ func DefaultPrefetchOptions() *PrefetchOptions {
 // PreLoadOnceForJob will prefetch (mmap-populate or fadvise) only once per jobName
 // when called concurrently multiple times only the first caller will execute the work.
 // resolverFn should return the list of asset paths for that jobName.
-func PreLoadOnceForJob(
+func PreloadOnceForJob(
 	ctx context.Context, jobName string,
 	resolverFn func() ([]string, []string, error),
 	opts *PrefetchOptions, logger *logrus.Entry,
