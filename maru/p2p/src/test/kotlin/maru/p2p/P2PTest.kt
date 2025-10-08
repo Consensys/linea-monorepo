@@ -19,14 +19,9 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.consensus.ConsensusConfig
-import maru.consensus.ElFork
 import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
-import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
-import maru.consensus.QbftConsensusConfig
+import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
@@ -128,8 +123,11 @@ class P2PTest {
 
     private val beaconChain: InMemoryBeaconChain =
       InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
-    private val genesisRootHash = beaconChain.getBeaconState(0UL)?.beaconBlockHeader?.hash
-    private val forkIdHashManager: ForkIdHashManager = createForkIdHashManager()
+    private val forkIdHashManager: ForkIdHashManager =
+      createForkIdHashManager(
+        chainId = chainId,
+        beaconChain = beaconChain,
+      )
     private val statusManager: StatusManager = StatusManager(beaconChain, forkIdHashManager)
     private val rpcMethods = createRpcMethods()
 
@@ -169,47 +167,6 @@ class P2PTest {
           syncStatusProviderProvider = syncStatusProviderProvider,
         )
       return rpcMethods
-    }
-
-    fun createForkIdHashManager(): ForkIdHashManager {
-      val consensusConfig: ConsensusConfig =
-        QbftConsensusConfig(
-          validatorSet =
-            setOf(
-              DataGenerators.randomValidator(),
-              DataGenerators.randomValidator(),
-            ),
-          elFork = ElFork.Prague,
-        )
-      val forksSchedule = ForksSchedule(chainId = chainId, forks = listOf(ForkSpec(0UL, 1u, consensusConfig)))
-
-      return ForkIdHashManagerImpl(
-        chainId = chainId,
-        beaconChain = beaconChain,
-        forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
-      )
-    }
-
-    var successfullForkIdHashes = 0
-
-    class ForkIdHashManagerWithExceptionOnSecondCall : ForkIdHashManager {
-      override fun currentHash(): ByteArray {
-        if (successfullForkIdHashes < 1) {
-          successfullForkIdHashes++
-          return forkIdHashManager.currentHash()
-        } else {
-          throw IllegalStateException("currentForkIdHash exception testing")
-        }
-      }
-
-      override fun check(otherForkIdHash: ByteArray): Boolean {
-        TODO("Not yet implemented")
-      }
-
-      override fun update(newForkSpec: ForkSpec) {
-        TODO("Not yet implemented")
-      }
     }
 
     private fun createP2PNetwork(

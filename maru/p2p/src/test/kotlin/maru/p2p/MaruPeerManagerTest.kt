@@ -11,18 +11,6 @@ package maru.p2p
 import java.util.concurrent.ConcurrentHashMap
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
-import maru.consensus.ConsensusConfig
-import maru.consensus.ElFork
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHashManagerImpl
-import maru.consensus.ForkIdHasher
-import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
-import maru.consensus.QbftConsensusConfig
-import maru.core.ext.DataGenerators
-import maru.crypto.Hashing
-import maru.database.InMemoryBeaconChain
-import maru.serialization.ForkIdSerializer
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
 import maru.syncing.SyncStatusProvider
@@ -76,8 +64,6 @@ class MaruPeerManagerTest {
   }
 
   companion object {
-    private val chainId = 1337u
-    private val beaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
     val reputationManager =
       MaruReputationManager(
         metricsSystem = NoOpMetricsSystem(),
@@ -85,28 +71,6 @@ class MaruPeerManagerTest {
         isStaticPeer = { _: NodeId -> false },
         reputationConfig = P2PConfig.Reputation(),
       )
-
-    fun createForkIdHashManager(): ForkIdHashManager {
-      val consensusConfig: ConsensusConfig =
-        QbftConsensusConfig(
-          validatorSet =
-            setOf(
-              DataGenerators.randomValidator(),
-              DataGenerators.randomValidator(),
-            ),
-          elFork = ElFork.Prague,
-        )
-      val forksSchedule = ForksSchedule(chainId, listOf(ForkSpec(0UL, 1U, consensusConfig)))
-
-      return ForkIdHashManagerImpl(
-        chainId = chainId,
-        beaconChain = beaconChain,
-        forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
-      )
-    }
-
-    val forkIdHashManager: ForkIdHashManager = createForkIdHashManager()
 
     private fun createSyncStatusProvider(): SyncStatusProvider =
       object : SyncStatusProvider {

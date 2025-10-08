@@ -20,10 +20,9 @@ import maru.config.P2PConfig
 import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkId
-import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
+import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
 import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
@@ -77,14 +76,12 @@ class MaruDiscoveryServiceTest {
         elFork = ElFork.Prague,
       )
     val forkSpec = ForkSpec(0UL, 1u, consensusConfig)
-    val forksSchedule = ForksSchedule(chainId = chainId, forks = listOf(forkSpec))
-
     private val forkIdHashProvider =
-      ForkIdHashManagerImpl(
+      createForkIdHashManager(
         chainId = chainId,
         beaconChain = beaconChain,
-        forksSchedule = forksSchedule,
-        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
+        consensusConfig = consensusConfig,
+        forks = listOf(forkSpec),
       )
 
     val otherForkSpec = ForkSpec(1UL, 1u, consensusConfig)

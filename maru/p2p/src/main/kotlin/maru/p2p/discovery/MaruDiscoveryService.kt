@@ -13,6 +13,7 @@ import java.util.TimerTask
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.timerTask
+import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
 import maru.config.P2PConfig
@@ -74,9 +75,9 @@ class MaruDiscoveryService(
         }
       if (!forkIdHashManager.check(forkId.toArray())) {
         log.trace(
-          "Peer {} is on a different chain. Expected: {}, Found: {}",
+          "peer={} is on a different forkId: localForkId={} peerForkId={}",
           node.nodeId,
-          Bytes.wrap(forkIdHashManager.currentHash()),
+          forkIdHashManager.currentHash().encodeHex(),
           forkId,
         )
         return false
