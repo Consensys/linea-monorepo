@@ -1,6 +1,7 @@
 package vortex_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -10,11 +11,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
-func BenchmarkVortexForBenchmark(b *testing.B) {
+func BenchmarkVortex(b *testing.B) {
 	var (
 		polySize  = []int{1 << 18, 1 << 19, 1 << 20}
 		nPoly     = []int{1 << 11, 1 << 12, 1 << 13}
@@ -25,7 +25,11 @@ func BenchmarkVortexForBenchmark(b *testing.B) {
 	for i := range numRounds {
 		for n := range nPoly {
 			for p := range polySize {
-				benchmarkVortex(b, polySize[p], nPoly[n], numRounds[i])
+				explainer := fmt.Sprintf("Running benchmark with numRounds=%v, nPoly=%v, PolySize=%v\n", numRounds[i], nPoly[n], polySize[p])
+				b.Run(explainer, func(b *testing.B) {
+					benchmarkVortex(b, polySize[p], nPoly[n], numRounds[i])
+				})
+
 			}
 		}
 	}
@@ -34,7 +38,6 @@ func BenchmarkVortexForBenchmark(b *testing.B) {
 
 func benchmarkVortex(b *testing.B, polSize int, nPoly int, numRounds int) {
 
-	logrus.Infof(" ------------ Benchmarking Vortex with numRounds=%v, nPoly=%v, PolySize=%v,-------------- ", numRounds, nPoly, polSize)
 	var (
 		rowsMultiRound = make([][]ifaces.Column, numRounds)
 	)
