@@ -73,7 +73,7 @@ services:
 
   l1-node-genesis-generator:
     image: ethpandaops/ethereum-genesis-generator:4.0.0
-    profiles: [ "l1", "debug", "external-to-monorepo" ]
+    profiles: [ "l1", "debug", "external-to-monorepo", "linea-besu" ]
     entrypoint:
       - /bin/bash
       - -c
