@@ -119,8 +119,6 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) 
 			distributedWizard.Bootstrapper,
 		)
 
-		logrus.Infof("Compiling GL module %v", moduleName)
-
 		var (
 			moduleGL         = BuildModuleGL(&filteredModuleInputs)
 			moduleGLForDebug = BuildModuleGL(&filteredModuleInputs)
@@ -159,8 +157,6 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) 
 	)
 
 	for i := 0; i < nbLPP; i++ {
-
-		logrus.Infof("Compiling LPP modules %d", i)
 
 		var (
 			moduleLPP         = BuildModuleLPP(allFilteredModuleInputs[i])
