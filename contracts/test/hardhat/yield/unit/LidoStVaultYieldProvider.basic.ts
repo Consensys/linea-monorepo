@@ -1,14 +1,14 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { deployAndAddSingleLidoStVaultYieldProvider, incrementBalance } from "../helpers";
+import { deployAndAddSingleTestLidoStVaultYieldProvider, incrementBalance } from "../helpers";
 import {
-  LidoStVaultYieldProvider,
   MockVaultHub,
   MockSTETH,
   MockLineaRollup,
   TestYieldManager,
   MockDashboard,
   MockStakingVault,
+  TestLidoStVaultYieldProvider,
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
@@ -17,7 +17,7 @@ import { ZeroAddress } from "ethers";
 import { GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT } from "../../common/constants";
 
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
-  let yieldProvider: LidoStVaultYieldProvider;
+  let yieldProvider: TestLidoStVaultYieldProvider;
   let nativeYieldOperator: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let mockVaultHub: MockVaultHub;
@@ -48,7 +48,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       mockVaultHub,
       mockSTETH,
       mockLineaRollup,
-    } = await loadFixture(deployAndAddSingleLidoStVaultYieldProvider));
+    } = await loadFixture(deployAndAddSingleTestLidoStVaultYieldProvider));
 
     l1MessageServiceAddress = await mockLineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();

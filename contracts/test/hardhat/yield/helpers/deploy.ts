@@ -23,9 +23,9 @@ import {
   MockWithdrawTarget,
   MockVaultHub,
   MockSTETH,
-  LidoStVaultYieldProvider,
   MockDashboard,
   MockStakingVault,
+  TestLidoStVaultYieldProvider,
 } from "contracts/typechain-types";
 import { YieldManagerInitializationData, YieldProviderRegistration } from "./types";
 
@@ -152,8 +152,8 @@ export async function deployMockStakingVault(): Promise<MockStakingVault> {
 
 export async function deployLidoStVaultYieldProviderFactory() {
   const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTest);
-  const mockVaultHub = await deployMockVaultHub();
-  const mockSTETH = await deployMockSTETH();
+  const mockVaultHub = await loadFixture(deployMockVaultHub);
+  const mockSTETH = await loadFixture(deployMockSTETH);
 
   const l1MessageServiceAddress = await mockLineaRollup.getAddress();
   const yieldManagerAddress = await yieldManager.getAddress();
@@ -175,25 +175,42 @@ export async function deployLidoStVaultYieldProviderFactory() {
   return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, lidoStVaultYieldProviderFactory };
 }
 
-export async function deployLidoStVaultYieldProvider() {
-  const { nativeYieldOperator } = await loadFixture(getAccountsFixture);
-  const { lidoStVaultYieldProviderFactory } = await loadFixture(deployLidoStVaultYieldProviderFactory);
-  const yieldProviderAddress = await lidoStVaultYieldProviderFactory.createLidoStVaultYieldProvider.staticCall();
-  await lidoStVaultYieldProviderFactory.connect(nativeYieldOperator).createLidoStVaultYieldProvider();
-  const yieldProvider: LidoStVaultYieldProvider = (await ethers.getContractFactory("LidoStVaultYieldProvider")).attach(
-    yieldProviderAddress,
-  );
-  return { yieldProvider, yieldProviderAddress };
-}
-
-export async function deployAndAddSingleLidoStVaultYieldProvider() {
+export async function deployAndAddSingleTestLidoStVaultYieldProvider() {
+  // Deploy TestLidoStVaultYieldProviderFactory
+  const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTest);
   const { securityCouncil } = await loadFixture(getAccountsFixture);
-  const { yieldManager, mockVaultHub, mockSTETH, mockLineaRollup } = await loadFixture(
-    deployLidoStVaultYieldProviderFactory,
-  );
-  const { yieldProvider, yieldProviderAddress } = await loadFixture(deployLidoStVaultYieldProvider);
+  const mockVaultHub = await loadFixture(deployMockVaultHub);
+  const mockSTETH = await loadFixture(deployMockSTETH);
   const mockDashboard = await loadFixture(deployMockDashboard);
   const mockStakingVault = await loadFixture(deployMockStakingVault);
+
+  const l1MessageServiceAddress = await mockLineaRollup.getAddress();
+  const yieldManagerAddress = await yieldManager.getAddress();
+  const mockVaultHubAddress = await mockVaultHub.getAddress();
+  const mockSTETHAddress = await mockSTETH.getAddress();
+
+  const yieldProviderFactoryFactory = await ethers.getContractFactory("TestLidoStVaultYieldProviderFactory");
+  const lidoStVaultYieldProviderFactory = await yieldProviderFactoryFactory.deploy(
+    l1MessageServiceAddress,
+    yieldManagerAddress,
+    mockVaultHubAddress,
+    mockSTETHAddress,
+    GI_FIRST_VALIDATOR,
+    GI_FIRST_VALIDATOR_AFTER_CHANGE,
+    CHANGE_SLOT,
+  );
+  await lidoStVaultYieldProviderFactory.waitForDeployment();
+
+  // Create TestLidoStVaultYieldProvider
+  const yieldProviderAddress = await lidoStVaultYieldProviderFactory
+    .connect(securityCouncil)
+    .createTestLidoStVaultYieldProvider.staticCall();
+  await lidoStVaultYieldProviderFactory.connect(securityCouncil).createTestLidoStVaultYieldProvider();
+  const yieldProvider: TestLidoStVaultYieldProvider = (
+    await ethers.getContractFactory("TestLidoStVaultYieldProvider")
+  ).attach(yieldProviderAddress);
+
+  // Add YieldProvider to YieldManager
   await mockDashboard.setStakingVaultReturn(await mockStakingVault.getAddress());
 
   const mockDashboardAddress = await mockDashboard.getAddress();
@@ -206,6 +223,7 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
     receiveCaller: mockStakingVaultAddress,
   };
 
+  console.log(mockStakingVault);
   await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
   return {
     mockDashboard,

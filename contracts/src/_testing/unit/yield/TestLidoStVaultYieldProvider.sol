@@ -39,4 +39,56 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     return address(_getVault($$));
   }
+
+  function handlePostiveYieldAccounting(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    return _handlePostiveYieldAccounting($$, _availableYield);
+  }
+
+  function syncExternalLiabilitySettlement(
+    address _yieldProvider,
+    uint256 _liabilityShares,
+    uint256 _lstLiabilityPrincipalCached
+  ) external returns (uint256, bool) {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    return _syncExternalLiabilitySettlement($$, _liabilityShares, _lstLiabilityPrincipalCached);
+  }
+
+  function payObligations(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    return _payObligations($$, _availableYield);
+  }
+
+  function payNodeOperatorFees(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    return _payNodeOperatorFees($$, _availableYield);
+  }
+
+  function payLSTPrincipalInternal(address _yieldProvider, uint256 _availableFunds) external returns (uint256) {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    return _payLSTPrincipal($$, _availableFunds);
+  }
+
+  function unstakeHarness(
+    address _yieldProvider,
+    bytes calldata _pubkeys,
+    uint64[] calldata _amounts,
+    address _refundRecipient
+  ) external payable {
+    _unstake(_yieldProvider, _pubkeys, _amounts, _refundRecipient);
+  }
+
+  function validateUnstakePermissionlessHarness(
+    address _yieldProvider,
+    bytes calldata _pubkeys,
+    uint64[] calldata _amounts,
+    bytes calldata _withdrawalParamsProof
+  ) external view returns (uint256) {
+    return _validateUnstakePermissionless(_yieldProvider, _pubkeys, _amounts, _withdrawalParamsProof);
+  }
+
+  function payMaximumPossibleLSTLiability(address _yieldProvider) external returns (uint256) {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    return _payMaximumPossibleLSTLiability($$);
+  }
 }
