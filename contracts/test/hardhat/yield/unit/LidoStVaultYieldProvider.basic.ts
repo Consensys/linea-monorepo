@@ -1,12 +1,14 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { deployLidoStVaultYieldProvider, deployLidoStVaultYieldProviderFactory } from "../helpers";
+import { deployAndAddSingleLidoStVaultYieldProvider, deployLidoStVaultYieldProviderFactory } from "../helpers";
 import {
   LidoStVaultYieldProvider,
   MockVaultHub,
   MockSTETH,
   MockLineaRollup,
   TestYieldManager,
+  MockDashboard,
+  MockStakingVault,
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
@@ -21,11 +23,16 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let mockSTETH: MockSTETH;
   let mockLineaRollup: MockLineaRollup;
   let yieldManager: TestYieldManager;
+  let mockDashboard: MockDashboard;
+  let mockStakingVault: MockStakingVault;
 
   let l1MessageServiceAddress: string;
   let yieldManagerAddress: string;
   let vaultHubAddress: string;
   let stethAddress: string;
+  let mockDashboardAddress: string;
+  let mockStakingVaultAddress: string;
+  let yieldProviderAddress: string;
 
   before(async () => {
     ({ nativeYieldOperator } = await loadFixture(getAccountsFixture));
@@ -35,11 +42,16 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     ({ mockVaultHub, mockSTETH, mockLineaRollup, yieldManager } = await loadFixture(
       deployLidoStVaultYieldProviderFactory,
     ));
-    ({ yieldProvider } = await loadFixture(deployLidoStVaultYieldProvider));
+    ({ yieldProvider, yieldProviderAddress, mockDashboard, mockStakingVault } = await loadFixture(
+      deployAndAddSingleLidoStVaultYieldProvider,
+    ));
+
     l1MessageServiceAddress = await mockLineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
     vaultHubAddress = await mockVaultHub.getAddress();
     stethAddress = await mockSTETH.getAddress();
+    mockDashboardAddress = await mockDashboard.getAddress();
+    mockStakingVaultAddress = await mockStakingVault.getAddress();
   });
 
   describe("Constructor", () => {
@@ -112,5 +124,26 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("Should deploy with correct YieldManager address", async () => {
       expect(await yieldProvider.YIELD_MANAGER()).eq(await yieldManager.getAddress());
     });
+  });
+
+  describe("withdrawableValue", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.withdrawableValue(yieldProviderAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("If not ossified, should return withdrawable value from Dashboard", async () => {
+      // Arrange
+      const expectedWithdrawableValue = 99n;
+      await mockDashboard.setWithdrawableValueReturn(expectedWithdrawableValue);
+      await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, expectedWithdrawableValue + 10n);
+
+      // Act
+      console.log(yieldProviderAddress);
+      console.log(await yieldManager.getYieldProviderPrimaryEntrypoint(yieldProviderAddress));
+      expect("").eq(mockDashboardAddress + mockStakingVaultAddress);
+      // const withdrawableValue = await yieldManager.withdrawableValue(yieldProviderAddress);
+      // expect(withdrawableValue).eq(expectedWithdrawableValue);
+    });
+    it("If ossified, should return staking vault balance", async () => {});
   });
 });

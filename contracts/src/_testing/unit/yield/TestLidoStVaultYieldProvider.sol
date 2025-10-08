@@ -25,4 +25,18 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
       _changeSlot
     )
   {}
+
+  function getEntrypointContract(address _yieldProvider) external view returns (address entrypointContract) {
+    return _getEntrypointContract(_yieldProvider);
+  }
+
+  function getDashboard(address _yieldProvider) external view returns (address dashboard) {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    return address(_getDashboard($$));
+  }
+
+  function getVault(address _yieldProvider) external view returns (address vault) {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    return address(_getVault($$));
+  }
 }

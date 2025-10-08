@@ -10,6 +10,7 @@ import {
   GI_FIRST_VALIDATOR,
   GI_FIRST_VALIDATOR_AFTER_CHANGE,
   CHANGE_SLOT,
+  LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
 } from "../../common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import {
@@ -27,8 +28,10 @@ import {
   MockVaultHub,
   MockSTETH,
   LidoStVaultYieldProvider,
+  MockDashboard,
+  MockStakingVault,
 } from "contracts/typechain-types";
-import { YieldManagerInitializationData } from "./types";
+import { YieldManagerInitializationData, YieldProviderRegistration } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
 
@@ -146,6 +149,20 @@ export async function deployMockSTETH(): Promise<MockSTETH> {
   return contract;
 }
 
+export async function deployMockDashboard(): Promise<MockDashboard> {
+  const factory = await ethers.getContractFactory("MockDashboard");
+  const contract = await factory.deploy();
+  await contract.waitForDeployment();
+  return contract;
+}
+
+export async function deployMockStakingVault(): Promise<MockStakingVault> {
+  const factory = await ethers.getContractFactory("MockStakingVault");
+  const contract = await factory.deploy();
+  await contract.waitForDeployment();
+  return contract;
+}
+
 export async function deployLidoStVaultYieldProviderFactory() {
   const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTest);
   const yieldProviderFactory = await ethers.getContractFactory("TestLidoStVaultYieldProvider");
@@ -189,4 +206,26 @@ export async function deployLidoStVaultYieldProvider() {
     yieldProviderAddress,
   );
   return { yieldProvider, yieldProviderAddress };
+}
+
+export async function deployAndAddSingleLidoStVaultYieldProvider() {
+  const { operationalSafe } = await loadFixture(getAccountsFixture);
+  const { yieldManager } = await loadFixture(deployLidoStVaultYieldProviderFactory);
+  const { yieldProvider, yieldProviderAddress } = await loadFixture(deployLidoStVaultYieldProvider);
+  const mockDashboard = await loadFixture(deployMockDashboard);
+  const mockStakingVault = await loadFixture(deployMockStakingVault);
+  await mockDashboard.setStakingVaultReturn(await mockStakingVault.getAddress());
+
+  const mockDashboardAddress = await mockDashboard.getAddress();
+  const mockStakingVaultAddress = await mockStakingVault.getAddress();
+
+  const registration: YieldProviderRegistration = {
+    yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
+    primaryEntrypoint: mockDashboardAddress,
+    ossifiedEntrypoint: mockStakingVaultAddress,
+    receiveCaller: mockStakingVaultAddress,
+  };
+
+  await yieldManager.connect(operationalSafe).addYieldProvider(yieldProviderAddress, registration);
+  return { mockDashboard, mockStakingVault, yieldManager, yieldProvider, yieldProviderAddress };
 }

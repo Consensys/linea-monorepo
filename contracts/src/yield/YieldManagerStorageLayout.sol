@@ -90,6 +90,7 @@ abstract contract YieldManagerStorageLayout {
    * @notice Enum defining the specific type of YieldProvider adaptor.
    */
   enum YieldProviderVendor {
+    UNUSED,
     LIDO_STVAULT
   }
 
