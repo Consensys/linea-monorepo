@@ -170,4 +170,18 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(entryPoint).eq(mockStakingVaultAddress);
     });
   });
+
+  describe("getDashboard", () => {
+    it("should return the Dashboard address", async () => {
+      const contract = await yieldManager.getEntrypointContract.staticCall(yieldProviderAddress);
+      expect(contract).eq(mockDashboardAddress);
+    });
+  });
+
+  describe("getVault", () => {
+    it("should return the Dashboard address", async () => {
+      const contract = await yieldManager.getVault.staticCall(yieldProviderAddress);
+      expect(contract).eq(mockStakingVaultAddress);
+    });
+  });
 });
