@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -178,9 +179,11 @@ func segmentModuleGL(
 
 		moduleWitnessGL := &ModuleWitnessGL{
 			ModuleName:           moduleName,
-			ModuleIndex:          moduleIndex,
+			ModuleIndex:          blueprintGL.ModuleIndex,
 			Columns:              make(map[ifaces.ColID]smartvectors.SmartVector),
 			ReceivedValuesGlobal: receivedValuesGlobal,
+			SegmentModuleIndex:   moduleIndex,
+			TotalSegmentCount:    totalNbSegment,
 		}
 
 		for _, col := range cols {
@@ -229,7 +232,7 @@ func segmentModuleLPP(
 
 		moduleWitnessLPP := &ModuleWitnessLPP{
 			ModuleName:         moduleLPP.ModuleName,
-			ModuleIndex:        segment,
+			ModuleIndex:        moduleLPP.ModuleIndex,
 			SegmentModuleIndex: segment,
 			TotalSegmentCount:  totalNbSegment,
 			Columns:            make(map[ifaces.ColID]smartvectors.SmartVector),
@@ -468,8 +471,15 @@ func (moduleGL *ModuleGL) Blueprint() ModuleSegmentationBlueprint {
 // Blueprint returns the blueprint for the current module.
 func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 
-	hornerParts := moduleLPP.Horner.Parts
-	numHornerPart := len(moduleLPP.Horner.Parts)
+	var (
+		hornerParts   = []query.HornerPart{}
+		numHornerPart = 0
+	)
+
+	if moduleLPP.Horner != nil {
+		hornerParts = moduleLPP.Horner.Parts
+		numHornerPart = len(moduleLPP.Horner.Parts)
+	}
 
 	res := ModuleSegmentationBlueprint{
 		ModuleName:               moduleLPP.ModuleName(),
@@ -555,7 +565,7 @@ func (mw *ModuleWitnessLPP) NextN0s(blueprintLPP *ModuleSegmentationBlueprint) [
 
 			selSV, ok := mw.Columns[selColID]
 			if !ok {
-				utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selColID, mw.ModuleName, mw.ModuleIndex)
+				utils.Panic("selector: %v is missing from witness columns for module: %v index: %v, segment-index: %v", selColID, mw.ModuleName, mw.ModuleIndex, mw.SegmentModuleIndex)
 			}
 
 			sel := selSV.IntoRegVecSaveAlloc()

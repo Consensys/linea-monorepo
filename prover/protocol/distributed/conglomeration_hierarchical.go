@@ -224,10 +224,10 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 		c.PublicInputs.Functionals = append(c.PublicInputs.Functionals, declarePiColumn(c.Wiop, name))
 	}
 
-	c.PublicInputs.TargetNbSegments = declareListOfPiColumns(c.Wiop, targetNbSegmentPublicInputBase, c.ModuleNumber)
-	c.PublicInputs.SegmentCountGL = declareListOfPiColumns(c.Wiop, segmentCountGLPublicInputBase, c.ModuleNumber)
-	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, segmentCountLPPPublicInputBase, c.ModuleNumber)
-	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize)
+	c.PublicInputs.TargetNbSegments = declareListOfPiColumns(c.Wiop, 0, targetNbSegmentPublicInputBase, c.ModuleNumber)
+	c.PublicInputs.SegmentCountGL = declareListOfPiColumns(c.Wiop, 0, segmentCountGLPublicInputBase, c.ModuleNumber)
+	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, 0, segmentCountLPPPublicInputBase, c.ModuleNumber)
+	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, 0, generalMultiSetPublicInputBase, mimc.MSetHashSize)
 	c.PublicInputs.VerifyingKey[0] = declarePiColumn(c.Wiop, verifyingKeyPublicInput)
 	c.PublicInputs.VerifyingKey[1] = declarePiColumn(c.Wiop, verifyingKey2PublicInput)
 	c.PublicInputs.LogDerivativeSum = declarePiColumn(c.Wiop, LogDerivativeSumPublicInput)
@@ -475,7 +475,7 @@ func assignPiColumn(run *wizard.ProverRuntime, name string, val field.Element) {
 
 // declareListOfPiColumns declares a list of columns with the requested name as
 // proof columns and length provided.
-func declareListOfPiColumns(comp *wizard.CompiledIOP, name string, length int) []wizard.PublicInput {
+func declareListOfPiColumns(comp *wizard.CompiledIOP, round int, name string, length int) []wizard.PublicInput {
 	var cols []wizard.PublicInput
 	for i := 0; i < length; i++ {
 		cols = append(cols, declarePiColumn(comp, name+"_"+strconv.Itoa(i)))

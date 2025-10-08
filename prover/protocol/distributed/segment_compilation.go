@@ -302,10 +302,11 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime {
 
 	var (
-		comp        *wizard.CompiledIOP
-		proverStep  wizard.MainProverStep
-		moduleName  any
-		moduleIndex int
+		comp               *wizard.CompiledIOP
+		proverStep         wizard.MainProverStep
+		moduleName         any
+		moduleIndex        int
+		segmentModuleIndex int
 	)
 
 	switch m := wit.(type) {
@@ -314,11 +315,13 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		proverStep = r.ModuleLPP.GetMainProverStep(m)
 		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
+		segmentModuleIndex = m.SegmentModuleIndex
 	case *ModuleWitnessGL:
 		comp = r.ModuleGL.Wiop
 		proverStep = r.ModuleGL.GetMainProverStep(m)
 		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
+		segmentModuleIndex = m.SegmentModuleIndex
 	default:
 		utils.Panic("unexpected type")
 	}
@@ -360,6 +363,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 	logrus.
 		WithField("moduleName", moduleName).
 		WithField("moduleIndex", moduleIndex).
+		WithField("segmentModuleIndex", segmentModuleIndex).
 		WithField("initial-time", initialTime).
 		WithField("recursion-time", recursionTime).
 		WithField("segment-type", fmt.Sprintf("%T", wit)).

@@ -186,6 +186,9 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 	// the columns and the queries but not for the coins.
 	_ = moduleGL.Wiop.InsertCoin(1, "DUMMY_GL_COIN", coin.Field)
 
+	moduleGL.IsFirst = moduleGL.Wiop.InsertProof(0, "IS_FIRST", 1)
+	moduleGL.IsLast = moduleGL.Wiop.InsertProof(0, "IS_LAST", 1)
+
 	for _, globalCs := range moduleInput.GlobalConstraints {
 		moduleGL.InsertGlobal(*globalCs)
 	}
@@ -226,15 +229,6 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 
 	return moduleGL
 }
-
-// func (m *ModuleGL) GetModuleTranslator() moduleTranslator {
-// 	return m.moduleTranslator
-// }
-
-// func (m *ModuleGL) SetModuleTranslator(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) {
-// 	m.moduleTranslator.Wiop = comp
-// 	m.moduleTranslator.Disc = disc
-// }
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
@@ -797,11 +791,11 @@ func (modGl *ModuleGL) declarePublicInput() {
 	segmentCountGl[modGl.Disc.IndexOf(modGl.DefinitionInput.ModuleName)] = field.One()
 
 	modGl.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
-		TargetNbSegments:             declareListOfPiColumns(modGl.Wiop, targetNbSegmentPublicInputBase, nbModules),
+		TargetNbSegments:             declareListOfPiColumns(modGl.Wiop, 0, targetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:               declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:              declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
-		GeneralMultiSetHash:          declareListOfPiColumns(modGl.Wiop, generalMultiSetPublicInputBase, mimc.MSetHashSize),
-		SharedRandomnessMultiSetHash: declareListOfPiColumns(modGl.Wiop, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash:          declareListOfPiColumns(modGl.Wiop, 1, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		SharedRandomnessMultiSetHash: declareListOfPiColumns(modGl.Wiop, 1, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
 	}
 
 	// This adds the functional inputs by multiplying them with the value of
@@ -864,7 +858,7 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 
 	var (
 		lppCommitments           = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex             = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		segmentIndex             = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof              = field.NewElement(uint64(proofTypeGL))
 		globalSentHash           = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
 		globalRcvdHash           = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
@@ -913,7 +907,7 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 		targetMSetGeneral          = getPublicInputList(run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
 		targetMSetSharedRandomness = getPublicInputList(run, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments             = run.GetPublicInput(lppMerkleRootPublicInput)
-		segmentIndex               = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
 		globalSentHash             = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
 		globalRcvdHash             = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
@@ -987,12 +981,12 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		targetMSetGeneral          = getPublicInputListGnark(api, run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
 		targetMSetSharedRandomness = getPublicInputListGnark(api, run, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments             = run.GetPublicInput(api, lppMerkleRootPublicInput)
-		segmentIndex               = run.GetColumnAt(segmentModuleIndexColumn, 0)
+		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
 		globalSentHash             = modGL.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
 		globalRcvdHash             = modGL.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		multiSetGeneral            = mimc.MSetHashGnark{}
-		multiSetSharedRandomness   = mimc.MSetHashGnark{}
+		multiSetGeneral            = mimc.EmptyMSetHashGnark()
+		multiSetSharedRandomness   = mimc.EmptyMSetHashGnark()
 		defInp                     = modGL.DefinitionInput
 		moduleIndex                = frontend.Variable(defInp.ModuleIndex)
 		numSegmentOfCurrModule     = modGL.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)

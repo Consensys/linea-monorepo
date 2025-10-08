@@ -75,6 +75,16 @@ func (m *MSetHash) update(rem bool, msgs ...field.Element) {
 	}
 }
 
+// EmptyMSetHashGnark returns an empty multisets hash pre-initialized with 0s.
+// Use that instead of `MSetHashGnark{}`
+func EmptyMSetHashGnark() MSetHashGnark {
+	res := MSetHashGnark{}
+	for i := range res {
+		res[i] = 0
+	}
+	return res
+}
+
 // updateGnark updates the multisets hash using the gnark library.
 func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs []frontend.Variable) {
 
