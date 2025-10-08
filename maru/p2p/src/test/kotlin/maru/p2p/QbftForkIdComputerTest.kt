@@ -9,13 +9,13 @@
 package maru.p2p
 
 import kotlin.random.Random
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkId
 import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.QbftConsensusConfig
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain

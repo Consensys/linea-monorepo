@@ -12,13 +12,13 @@ import java.time.Clock
 import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.seconds
 import maru.config.QbftConfig
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.PrevRandaoProvider
 import maru.consensus.PrevRandaoProviderImpl
 import maru.consensus.ProtocolFactory
+import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.blockimport.SealedBeaconBlockImporter

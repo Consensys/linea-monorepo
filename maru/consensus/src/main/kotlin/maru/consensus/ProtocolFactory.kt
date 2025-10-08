@@ -8,8 +8,6 @@
  */
 package maru.consensus
 
-import maru.config.consensus.qbft.DifficultyAwareQbftConfig
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.qbft.DifficultyAwareQbftFactory
 import maru.core.Protocol
 

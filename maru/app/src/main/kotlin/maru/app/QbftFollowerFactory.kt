@@ -8,9 +8,9 @@
  */
 package maru.app
 
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ProtocolFactory
+import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter

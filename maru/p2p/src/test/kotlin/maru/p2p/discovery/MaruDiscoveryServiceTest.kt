@@ -17,7 +17,6 @@ import kotlin.time.toJavaDuration
 import linea.kotlin.decodeHex
 import linea.kotlin.toULong
 import maru.config.P2PConfig
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkId
@@ -25,6 +24,7 @@ import maru.consensus.ForkIdHashManagerImpl
 import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.QbftConsensusConfig
 import maru.core.ext.DataGenerators
 import maru.crypto.Hashing
 import maru.database.InMemoryBeaconChain

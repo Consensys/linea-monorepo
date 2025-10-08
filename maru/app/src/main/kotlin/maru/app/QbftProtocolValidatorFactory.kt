@@ -10,11 +10,11 @@ package maru.app
 
 import java.time.Clock
 import maru.config.QbftConfig
-import maru.config.consensus.qbft.QbftConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
+import maru.consensus.QbftConsensusConfig
 import maru.consensus.SealedBeaconBlockHandlerAdapter
 import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.qbft.QbftValidatorFactory
