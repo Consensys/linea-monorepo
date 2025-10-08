@@ -12,6 +12,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/cmd/controller/controller/metrics"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/config/assets"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -26,6 +27,7 @@ const (
 	CodeOom            int = 137  // When the process exits on OOM
 	CodeFatal          int = 14   // When the process could not start
 	CodeCantRunCommand int = 15   // When the controller could not run the command
+	CodeCantPreLoad    int = 16   // When the controller could not preload the prover assets
 	CodeKilledByUs     int = 1137 // When the process is killed by the controller. We purposefully use a non-Unix code.
 )
 
@@ -87,6 +89,15 @@ func (e *Executor) Run(ctx context.Context, job *Job) (status Status) {
 			ExitCode: CodeCantRunCommand,
 			Err:      err,
 			What:     "can't format the command",
+		}
+	}
+
+	// Prewarm the assets for limitless jobs
+	if err := e.preLoadAssetsForJob(ctx, job); err != nil {
+		return Status{
+			ExitCode: CodeCantPreLoad,
+			Err:      err,
+			What:     "can't preload the assets",
 		}
 	}
 
@@ -334,6 +345,47 @@ func runCmd(ctx context.Context, cmd string, job *Job, retry bool) Status {
 	case status := <-done:
 		return status
 	}
+}
+
+// preLoadAssetsForJob should be called near the start of Executor.Run, before spawning the child.
+func (e *Executor) preLoadAssetsForJob(ctx context.Context, job *Job) error {
+	// Only prefetch for the limitless types that spawn new child processes
+	if job.Def == nil || (job.Def.Name != "bootstrap" && job.Def.Name != "conglomeration" &&
+		!strings.HasPrefix(job.Def.Name, "gl-") && !strings.HasPrefix(job.Def.Name, "lpp-")) {
+		return fmt.Errorf("cannot prefetch for job %s", job.Def.Name)
+	}
+
+	baseAssetDir := e.Config.PathForSetup("execution-limitless")
+	resolver := assets.NewResolver(e.Config)
+
+	paths, critical, err := resolver.AssetsForJob(job.Def.Name)
+	if err != nil {
+		return fmt.Errorf("assets resolver error for job %s: %v", job.Def.Name, err)
+	}
+
+	if len(paths) == 0 {
+		return fmt.Errorf("no asset paths to prefetch for job %s (baseDir=%s)", job.Def.Name, baseAssetDir)
+	}
+
+	// Tune options for your environment
+	opts := &assets.PrefetchOptions{
+		Parallelism:        4,
+		ChunkSize:          64 << 20, // 64 MiB chunks
+		LargeFileThreshold: 10 << 30, // 10 GiB threshold
+		PerFileTimeout:     150 * time.Second,
+	}
+
+	// Create a context bounded to the total expected prefetch time to avoid hanging
+	totalTimeout := time.Duration(len(paths)) * opts.PerFileTimeout
+	pctx, cancel := context.WithTimeout(ctx, totalTimeout)
+	defer cancel()
+
+	e.Logger.Infof("Prefetching %d assets for job %s (critical=%d); base=%s", len(paths), job.Def.Name, len(critical), baseAssetDir)
+	if err := assets.PrefetchFiles(pctx, paths, opts); err != nil {
+		return fmt.Errorf("prefetch error for job %s: %v", job.Def.Name, err)
+	}
+
+	return nil
 }
 
 // Returns a human-readable process name. The process name is formatted as in

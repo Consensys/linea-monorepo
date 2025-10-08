@@ -158,7 +158,6 @@ func validateModEntries(fl validator.FieldLevel) bool {
 			return false
 		}
 	}
-
 	return true
 }
 
