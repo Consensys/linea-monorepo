@@ -1,6 +1,6 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { deployAndAddSingleLidoStVaultYieldProvider, deployLidoStVaultYieldProviderFactory } from "../helpers";
+import { deployAndAddSingleLidoStVaultYieldProvider } from "../helpers";
 import {
   LidoStVaultYieldProvider,
   MockVaultHub,
@@ -39,12 +39,16 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   });
 
   beforeEach(async () => {
-    ({ mockVaultHub, mockSTETH, mockLineaRollup, yieldManager } = await loadFixture(
-      deployLidoStVaultYieldProviderFactory,
-    ));
-    ({ yieldProvider, yieldProviderAddress, mockDashboard, mockStakingVault } = await loadFixture(
-      deployAndAddSingleLidoStVaultYieldProvider,
-    ));
+    ({
+      yieldProvider,
+      yieldProviderAddress,
+      mockDashboard,
+      mockStakingVault,
+      yieldManager,
+      mockVaultHub,
+      mockSTETH,
+      mockLineaRollup,
+    } = await loadFixture(deployAndAddSingleLidoStVaultYieldProvider));
 
     l1MessageServiceAddress = await mockLineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
@@ -136,6 +140,8 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const expectedWithdrawableValue = 99n;
       await mockDashboard.setWithdrawableValueReturn(expectedWithdrawableValue);
       await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, expectedWithdrawableValue + 10n);
+      console.log(await yieldProvider.L1_MESSAGE_SERVICE());
+      console.log(await yieldManager.L1_MESSAGE_SERVICE());
 
       // Act
       console.log(yieldProviderAddress);

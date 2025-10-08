@@ -210,7 +210,9 @@ export async function deployLidoStVaultYieldProvider() {
 
 export async function deployAndAddSingleLidoStVaultYieldProvider() {
   const { operationalSafe } = await loadFixture(getAccountsFixture);
-  const { yieldManager } = await loadFixture(deployLidoStVaultYieldProviderFactory);
+  const { yieldManager, mockVaultHub, mockSTETH, mockLineaRollup } = await loadFixture(
+    deployLidoStVaultYieldProviderFactory,
+  );
   const { yieldProvider, yieldProviderAddress } = await loadFixture(deployLidoStVaultYieldProvider);
   const mockDashboard = await loadFixture(deployMockDashboard);
   const mockStakingVault = await loadFixture(deployMockStakingVault);
@@ -227,5 +229,14 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
   };
 
   await yieldManager.connect(operationalSafe).addYieldProvider(yieldProviderAddress, registration);
-  return { mockDashboard, mockStakingVault, yieldManager, yieldProvider, yieldProviderAddress };
+  return {
+    mockDashboard,
+    mockStakingVault,
+    yieldManager,
+    yieldProvider,
+    yieldProviderAddress,
+    mockVaultHub,
+    mockSTETH,
+    mockLineaRollup,
+  };
 }
