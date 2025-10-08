@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import { YieldManager } from "../../../yield/YieldManager.sol";
 import { MockYieldProviderStorageLayout } from "../../mocks/yield/MockYieldProviderStorageLayout.sol";
+import { TestLidoStVaultYieldProvider } from "./TestLidoStVaultYieldProvider.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
@@ -195,6 +196,116 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
 
   function delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
+  }
+
+  function getEntrypointContract(address _yieldProvider) external returns (address) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(TestLidoStVaultYieldProvider.getEntrypointContract, (_yieldProvider))
+    );
+    return abi.decode(data, (address));
+  }
+
+  function getDashboard(address _yieldProvider) external returns (address) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(TestLidoStVaultYieldProvider.getDashboard, (_yieldProvider))
+    );
+    return abi.decode(data, (address));
+  }
+
+  function getVault(address _yieldProvider) external returns (address) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(TestLidoStVaultYieldProvider.getVault, (_yieldProvider))
+    );
+    return abi.decode(data, (address));
+  }
+
+  function handlePostiveYieldAccounting(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(TestLidoStVaultYieldProvider.handlePostiveYieldAccounting, (_yieldProvider, _availableYield))
+    );
+    return abi.decode(data, (uint256));
+  }
+
+  function syncExternalLiabilitySettlement(
+    address _yieldProvider,
+    uint256 _liabilityShares,
+    uint256 _lstLiabilityPrincipalCached
+  ) external returns (uint256, bool) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(
+        TestLidoStVaultYieldProvider.syncExternalLiabilitySettlement,
+        (_yieldProvider, _liabilityShares, _lstLiabilityPrincipalCached)
+      )
+    );
+    return abi.decode(data, (uint256, bool));
+  }
+
+  function payObligations(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(TestLidoStVaultYieldProvider.payObligations, (_yieldProvider, _availableYield))
+    );
+    return abi.decode(data, (uint256));
+  }
+
+  function payNodeOperatorFees(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(TestLidoStVaultYieldProvider.payNodeOperatorFees, (_yieldProvider, _availableYield))
+    );
+    return abi.decode(data, (uint256));
+  }
+
+  function payLSTPrincipalInternal(address _yieldProvider, uint256 _availableFunds) external returns (uint256) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(TestLidoStVaultYieldProvider.payLSTPrincipalInternal, (_yieldProvider, _availableFunds))
+    );
+    return abi.decode(data, (uint256));
+  }
+
+  function unstakeHarness(
+    address _yieldProvider,
+    bytes memory _pubkeys,
+    uint64[] memory _amounts,
+    address _refundRecipient
+  ) external payable {
+    _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(
+        TestLidoStVaultYieldProvider.unstakeHarness,
+        (_yieldProvider, _pubkeys, _amounts, _refundRecipient)
+      )
+    );
+  }
+
+  function validateUnstakePermissionlessHarness(
+    address _yieldProvider,
+    bytes memory _pubkeys,
+    uint64[] memory _amounts,
+    bytes memory _withdrawalParamsProof
+  ) external returns (uint256) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(
+        TestLidoStVaultYieldProvider.validateUnstakePermissionlessHarness,
+        (_yieldProvider, _pubkeys, _amounts, _withdrawalParamsProof)
+      )
+    );
+    return abi.decode(data, (uint256));
+  }
+
+  function payMaximumPossibleLSTLiability(address _yieldProvider) external returns (uint256) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(TestLidoStVaultYieldProvider.payMaximumPossibleLSTLiability, (_yieldProvider))
+    );
+    return abi.decode(data, (uint256));
   }
 
   function withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(

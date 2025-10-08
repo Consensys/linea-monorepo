@@ -56,7 +56,6 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     stethAddress = await mockSTETH.getAddress();
     mockDashboardAddress = await mockDashboard.getAddress();
     mockStakingVaultAddress = await mockStakingVault.getAddress();
-    console.log(mockDashboardAddress);
   });
 
   describe("Constructor", () => {
@@ -161,7 +160,14 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   });
 
   describe("getEntrypointContract", () => {
-    it("If not ossified, should return the Dashboard address", async () => {});
-    it("If ossified, should return the Vault address", async () => {});
+    it("If not ossified, should return the Dashboard address", async () => {
+      const entryPoint = await yieldManager.getEntrypointContract.staticCall(yieldProviderAddress);
+      expect(entryPoint).eq(mockDashboardAddress);
+    });
+    it("If ossified, should return the Vault address", async () => {
+      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
+      const entryPoint = await yieldManager.getEntrypointContract.staticCall(yieldProviderAddress);
+      expect(entryPoint).eq(mockStakingVaultAddress);
+    });
   });
 });
