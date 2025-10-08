@@ -2,36 +2,38 @@ package utils
 
 import (
 	"errors"
+	"math/big"
+
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck"
-	"math/big"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
-func Copy[T any](dst []frontend.Variable, src []T) (n int) {
+func Copy[T any](dst []zk.WrappedVariable, src []T) (n int) {
 	n = min(len(dst), len(src))
 
 	for i := 0; i < n; i++ {
-		dst[i] = src[i]
+		dst[i] = zk.ValueOf(src[i])
 	}
 
 	return
 }
 
-func ToBytes(api frontend.API, x frontend.Variable) [32]frontend.Variable {
-	var res [32]frontend.Variable
+func ToBytes(api frontend.API, x zk.WrappedVariable) [32]zk.WrappedVariable {
+	var res [32]zk.WrappedVariable
 	d := decomposeIntoBytes(api, x, fr.Bits)
 	slack := 32 - len(d) // should be zero
 	copy(res[slack:], d)
 	for i := 0; i < slack; i++ {
-		res[i] = 0
+		res[i] = zk.ValueOf(0)
 	}
 	return res
 }
 
-func decomposeIntoBytes(api frontend.API, data frontend.Variable, nbBits int) []frontend.Variable {
+func decomposeIntoBytes(api frontend.API, data zk.WrappedVariable, nbBits int) []zk.WrappedVariable {
 	if nbBits == 0 {
 		nbBits = api.Compiler().FieldBitLen()
 	}
@@ -52,7 +54,11 @@ func decomposeIntoBytes(api frontend.API, data frontend.Variable, nbBits int) []
 		rc.Check(bytes[i], 8)
 	}
 
-	return bytes
+	res := make([]zk.WrappedVariable, len(bytes))
+	for i := 0; i < len(bytes); i++ {
+		res[i] = zk.ValueOf(bytes[i])
+	}
+	return res
 }
 
 func decomposeIntoBytesHint(_ *big.Int, ins, outs []*big.Int) error {
@@ -80,14 +86,15 @@ func RegisterHints() {
 }
 
 // ReduceBytes reduces given bytes modulo a given field. As a side effect, the "bytes" are range checked
-func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []frontend.Variable) []frontend.Variable {
-	f, err := emulated.NewField[T](api)
+func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.WrappedVariable) []zk.WrappedVariable {
+
+	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		panic(err)
 	}
 
-	bits := f.ToBits(NewElementFromBytes[T](api, bytes))
-	res := make([]frontend.Variable, (len(bits)+7)/8)
+	bits := apiGen.ToBinary(NewElementFromBytes[T](api, bytes))
+	res := make([]zk.WrappedVariable, (len(bits)+7)/8)
 	copy(bits[:], bits)
 	for i := len(bits); i < len(bits); i++ {
 		bits[i] = 0
@@ -98,23 +105,32 @@ func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []frontend.Vari
 		if i == 0 {
 			bitsEnd = len(bits)
 		}
-		res[i] = api.FromBinary(bits[bitsStart:bitsEnd]...)
+		res[i] = *apiGen.FromBinary(bits[bitsStart:bitsEnd]...)
 	}
 
 	return res
 }
 
 // NewElementFromBytes range checks the bytes and gives a reduced field element
-func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []frontend.Variable) *emulated.Element[T] {
-	bits := make([]frontend.Variable, 8*len(bytes))
-	for i := range bytes {
-		copy(bits[8*i:], api.ToBinary(bytes[len(bytes)-i-1], 8))
-	}
+// TODO @thomas fixme
+func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.WrappedVariable) *zk.WrappedVariable {
 
-	f, err := emulated.NewField[T](api)
+	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		panic(err)
 	}
 
-	return f.Reduce(f.Add(f.FromBits(bits...), f.Zero()))
+	bits := make([]frontend.Variable, 8*len(bytes))
+	for i := range bytes {
+		copy(bits[8*i:], apiGen.ToBinary(bytes[len(bytes)-i-1], 8))
+	}
+
+	// f, err := emulated.NewField[T](api)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// return f.Reduce(f.Add(f.FromBits(bits...), f.Zero()))
+
+	return nil
 }
