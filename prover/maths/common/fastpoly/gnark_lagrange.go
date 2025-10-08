@@ -34,13 +34,15 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []zk.WrappedVariable, x g
 	var accw, one field.Element
 	one.SetOne()
 	accw.SetOne()
-	wAccW := gnarkfext.NewE4GenFromBase(accw)
 	dens := make([]gnarkfext.E4Gen, size) // [x-1, x-ω, x-ω², ...]
 	for i := 0; i < size; i++ {
+		wAccW := gnarkfext.NewE4GenFromBase(accw)
 		dens[i] = *e4Api.Sub(&x, &wAccW)
 		accw.Mul(&accw, &omega)
 	}
+
 	invdens := make([]gnarkfext.E4Gen, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
+
 	for i := 0; i < size; i++ {
 		invdens[i] = *e4Api.Inverse(&dens[i])
 	}
@@ -58,7 +60,7 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []zk.WrappedVariable, x g
 	res := gnarkfext.NewE4GenFromBase(0)
 	wOmega := gnarkfext.NewE4GenFromBase(omega)
 	for i := 0; i < size; i++ {
-		wPolyi := gnarkfext.NewE4GenFromBase(poly[i])
+		wPolyi := gnarkfext.FromBase(poly[i])
 		li = *e4Api.Mul(&li, &invdens[i])
 		tmp = *e4Api.Mul(&li, &wPolyi) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
 		res = *e4Api.Add(&res, &tmp)
