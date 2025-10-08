@@ -3,6 +3,7 @@ package vortex
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto"
@@ -86,6 +87,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		ctx.processStatusPrecomputed()
 
 		// registers all the commitments
+		commitTime := time.Now()
 		for round := 0; round <= lastRound; round++ {
 			ctx.compileRound(round)
 			comp.RegisterProverAction(round, &ColumnAssignmentProverAction{
@@ -93,6 +95,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 				Round: round,
 			})
 		}
+		logrus.WithField("took", time.Since(commitTime).String()).Info("committed all rounds")
 
 		ctx.generateVortexParams()
 		// Commit to precomputed columnsù
@@ -101,6 +104,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		}
 		ctx.registerOpeningProof(lastRound)
 
+		openingTime := time.Now()
 		// Registers the prover and verifier steps
 		comp.RegisterProverAction(lastRound+1, &LinearCombinationComputationProverAction{
 			Ctx: ctx,
@@ -108,6 +112,9 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		comp.RegisterProverAction(lastRound+2, &OpenSelectedColumnsProverAction{
 			Ctx: ctx,
 		})
+		logrus.WithField("took", time.Since(openingTime).String()).Info("registered opening proof")
+
+		verifTime := time.Now()
 		// This is separated from GnarkVerify because, when doing full-recursion
 		// , we want to recurse this verifier step but not [ctx.Verify] which is
 		// already handled by the self-recursion mechanism.
@@ -118,6 +125,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 			Ctx: ctx,
 		})
 
+		logrus.WithField("took", time.Since(verifTime).String()).Info("registered verifier steps")
 		if ctx.AddMerkleRootToPublicInputsOpt.Enabled {
 
 			for _, round := range ctx.AddMerkleRootToPublicInputsOpt.Round {
