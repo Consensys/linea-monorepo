@@ -2,201 +2,259 @@ package assets
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
-	"runtime"
+	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
+	"unsafe"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
+// Per-job sync.Once registry
+var (
+	onceMap sync.Map // map[string]*sync.Once
+	// keep mappings so GC doesn't drop them and to keep pages "active"
+	residentMu       sync.Mutex
+	residentMappings = make([][]byte, 0, 64)
+)
+
+// PrefetchOptions controls behaviour; tune for your environment
 type PrefetchOptions struct {
-	Parallelism        int   // 0 -> runtime.GOMAXPROCS(0)
-	ChunkSize          int64 // bytes chunk for mmap fallback, e.g. 64<<20
-	LargeFileThreshold int64 // bytes; if file >= threshold, only fadvise is used
-	PerFileTimeout     time.Duration
+	Parallelism        int           // not used by mmap path here, but kept for compatibility
+	ChunkSize          int64         // chunk size when doing fallback mapping-touch
+	LargeFileThreshold int64         // >= this size we use fadvise instead of mmap-populate
+	PerFileTimeout     time.Duration // timeout per file (used by fallbacks)
+	Populate           bool          // whether to use MAP_POPULATE for mmap path
 }
 
-// Default ChunkSize: 64MiB
-// Default LargeFileThreshold: 10GiB
 func DefaultPrefetchOptions() *PrefetchOptions {
 	return &PrefetchOptions{
 		Parallelism:        4,
 		ChunkSize:          64 << 20, // 64 MiB
 		LargeFileThreshold: 10 << 30, // 10 GiB
-		PerFileTimeout:     90 * time.Second,
+		PerFileTimeout:     120 * time.Second,
+		Populate:           true, // use MAP_POPULATE for mmap
 	}
 }
 
-// PrefetchFiles warms the kernel page cache for the given paths.
-// It uses posix_fadvise(FADV_WILLNEED) first and falls back to chunked mmap + touch.
-// ctx can cancel the prefetching.
-func PrefetchFiles(ctx context.Context, paths []string, opts *PrefetchOptions) error {
-	if len(paths) == 0 {
-		return nil
+// PrefetchForJobOnce will prefetch (mmap-populate or fadvise) only once per jobName
+// when called concurrently multiple times only the first caller will execute the work.
+// cfgRoot is the base assets dir (e.g. cfg.PathForSetup("execution-limitless"))
+// resolverFn should return the list of asset paths for that jobName.
+// logger is optional (nil => uses default logrus.StandardLogger).
+func PrefetchForJobOnce(
+	ctx context.Context, jobName string,
+	resolverFn func() ([]string, []string, error),
+	opts *PrefetchOptions, logger *logrus.Entry,
+) error {
+	if jobName == "" {
+		return fmt.Errorf("empty jobName")
 	}
 	if opts == nil {
 		opts = DefaultPrefetchOptions()
 	}
-	if opts.Parallelism <= 0 {
-		opts.Parallelism = runtime.GOMAXPROCS(0)
-	}
-	type job struct{ path string }
-	type res struct {
-		path string
-		err  error
-	}
-	jobs := make(chan job)
-	results := make(chan res)
-
-	var wg sync.WaitGroup
-	for i := 0; i < opts.Parallelism; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := range jobs {
-				rctx := ctx
-				var cancel func()
-				if opts.PerFileTimeout > 0 {
-					rctx, cancel = context.WithTimeout(ctx, opts.PerFileTimeout)
-				}
-				err := prefetchSingle(rctx, j.path, opts)
-				if cancel != nil {
-					cancel()
-				}
-				select {
-				case results <- res{path: j.path, err: err}:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
+	if logger == nil {
+		logger = logrus.NewEntry(logrus.StandardLogger())
 	}
 
-	go func() {
-	outer1:
+	val, _ := onceMap.LoadOrStore(jobName, &sync.Once{})
+	once := val.(*sync.Once)
+
+	var preErr error
+	once.Do(func() {
+		paths, critical, err := resolverFn()
+		if err != nil {
+			preErr = fmt.Errorf("resolver error for job %s: %w", jobName, err)
+			return
+		}
+		if len(paths) == 0 {
+			logger.Infof("no assets to prefetch for job %s", jobName)
+			return
+		}
+
+		logger.Infof("Prefetch (once) starting for job=%s: total assets=%d critical=%d",
+			jobName, len(paths), len(critical))
+
 		for _, p := range paths {
 			select {
-			case jobs <- job{path: p}:
 			case <-ctx.Done():
-				// break out of the loop entirely if context canceled
-				break outer1
+				preErr = fmt.Errorf("prefetch canceled for job %s: %w", jobName, ctx.Err())
+				return
+			default:
 			}
-		}
-		close(jobs)
-	}()
 
-	var aggErr error
-	expected := len(paths)
-outer2:
-	for i := 0; i < expected; i++ {
-		select {
-		case r := <-results:
-			if r.err != nil {
-				if aggErr == nil {
-					aggErr = fmt.Errorf("%s: %w", r.path, r.err)
-				} else {
-					aggErr = fmt.Errorf("%v; %s: %w", aggErr, r.path, r.err)
-				}
+			p = filepath.Clean(p)
+
+			fi, err := os.Stat(p)
+			if err != nil {
+				logger.Warnf("prefetch: stat failed %s: %v", p, err)
+				continue
 			}
-		case <-ctx.Done():
-			aggErr = fmt.Errorf("prefetch canceled")
-			// break out of the loop entirely if context canceled
-			break outer2
+			size := fi.Size()
+			if size == 0 {
+				logger.Debugf("prefetch: skipping empty file %s", p)
+				continue
+			}
+
+			// Large file → fadvise
+			if opts.LargeFileThreshold > 0 && size >= opts.LargeFileThreshold {
+				if err := prefetchLargeWithFadvise(p); err != nil {
+					logger.Warnf("prefetch: fadvise failed for %s: %v", p, err)
+				} else {
+					logger.Infof("prefetch: fadvise(WILLNEED) applied on %s (size=%d)", p, size)
+					// Check residency after fadvise
+					if frac, err := residentFractionForPath(p); err == nil {
+						logger.Infof("prefetch: residency after fadvise %s: %.1f%%", p, frac*100)
+					}
+				}
+				continue
+			}
+
+			// Otherwise → mmap+MAP_POPULATE
+			if opts.Populate {
+				if err := prefetchWithMmapPopulate(p); err != nil {
+					logger.Warnf("prefetch: mmap-populate failed for %s: %v", p, err)
+					if err2 := prefetchLargeWithFadvise(p); err2 != nil {
+						logger.Warnf("prefetch: fallback fadvise also failed for %s: %v", p, err2)
+					} else {
+						logger.Infof("prefetch: fallback fadvise succeeded for %s", p)
+						if frac, err := residentFractionForPath(p); err == nil {
+							logger.Infof("prefetch: residency after fallback %s: %.1f%%", p, frac*100)
+						}
+					}
+				} else {
+					logger.Infof("prefetch: mmap-populate succeeded for %s (size=%d)", p, size)
+					// Check residency after mmap populate
+					if frac, err := residentFractionForPath(p); err == nil {
+						logger.Infof("prefetch: residency after mmap %s: %.1f%%", p, frac*100)
+					}
+				}
+				continue
+			}
+
+			// If Populate disabled, use fadvise
+			if err := prefetchLargeWithFadvise(p); err != nil {
+				logger.Warnf("prefetch: fadvise failed for %s: %v", p, err)
+			} else if frac, err := residentFractionForPath(p); err == nil {
+				logger.Infof("prefetch: residency after fadvise %s: %.1f%%", p, frac*100)
+			}
 		}
-	}
-	wg.Wait()
-	close(results)
-	return aggErr
+
+		logger.Infof("Prefetch (once) finished for job=%s", jobName)
+	})
+
+	return preErr
 }
 
-// prefetchSingle is a best-effort file prefetcher and warms the OS page cache for a given file
-// It requests OS(Linux) to read the file’s data into memory now, so that later reads will hit RAM instead of disk
-func prefetchSingle(ctx context.Context, path string, opts *PrefetchOptions) error {
-	if path == "" {
-		return errors.New("empty path")
-	}
+// prefetchLargeWithFadvise tries posix_fadvise(FADV_WILLNEED).
+// Best-effort: returns nil if it succeeds, returns error if syscall returns error.
+func prefetchLargeWithFadvise(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("open %s: %w", path, err)
+		return fmt.Errorf("open: %w", err)
+	}
+	defer f.Close()
+	fd := int(f.Fd())
+	// unix.Fadvise returns error only on failure; treat SUCCEED -> nil
+	if err := unix.Fadvise(fd, 0, 0, unix.FADV_WILLNEED); err != nil {
+		return fmt.Errorf("fadvise WILLNEED: %w", err)
+	}
+	return nil
+}
+
+// prefetchWithMmapPopulate mmap()s the whole file with MAP_POPULATE,
+// stores the mapping in a global slice (to keep it alive) and returns nil on success.
+// The mapping is intentionally NOT unmapped so the mapping stays present until process exit.
+// This keeps pages resident and prevents GC from dropping the slice.
+func prefetchWithMmapPopulate(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("open: %w", err)
+	}
+	// do NOT defer f.Close() — we can close file descriptor after mmap
+	fi, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return fmt.Errorf("stat: %w", err)
+	}
+	size := int(fi.Size())
+	if size == 0 {
+		_ = f.Close()
+		return nil
+	}
+
+	// mmap with MAP_POPULATE to fault pages in immediately.
+	flags := unix.MAP_SHARED
+	flags |= unix.MAP_POPULATE
+	data, err := unix.Mmap(int(f.Fd()), 0, size, unix.PROT_READ, flags)
+	// once mmap'd, we can close the fd safely; the mapping remains valid.
+	_ = f.Close()
+	if err != nil {
+		return fmt.Errorf("mmap: %w", err)
+	}
+
+	// store mapping so it is not GC'd and to keep pages pinned by active mapping
+	residentMu.Lock()
+	residentMappings = append(residentMappings, data)
+	residentMu.Unlock()
+	return nil
+}
+
+func residentFractionForPath(p string) (float64, error) {
+	f, err := os.Open(p)
+	if err != nil {
+		return 0, err
 	}
 	defer f.Close()
 
 	fi, err := f.Stat()
 	if err != nil {
-		return fmt.Errorf("stat %s: %w", path, err)
+		return 0, err
 	}
-	size := fi.Size()
-	if size == 0 {
-		return nil
-	}
-
-	fd := int(f.Fd())
-
-	// Try FADV_WILLNEED. Best-effort: The underscore _ = ignores any error because it’s best-effort:
-	// some filesystems (or container environments) may not support it.
-	// This tells the kernel: the user plans to read this file soon and requests reading it into page cache in background
-	// It is asynchronous and non-blocking — it just hints to the kernel.
-	// Effect: the kernel may start prefetching pages in background via readahead.
-	_ = unix.Fadvise(fd, 0, 0, unix.FADV_WILLNEED)
-
-	// If file is very large, avoid doing mapping-touch in controller; rely on fadvise
-	if opts.LargeFileThreshold > 0 && size >= opts.LargeFileThreshold {
-		// Return successfully even if fadvise failed; child will fetch pages on demand.
-		return nil
+	if fi.Size() == 0 {
+		return 0, nil
 	}
 
-	// Fallback: chunked mmap + touch pages
-	chunk := opts.ChunkSize
-	if chunk <= 0 {
-		chunk = 64 << 20 // default to 64MIB
+	data, err := unix.Mmap(int(f.Fd()), 0, int(fi.Size()), unix.PROT_READ, unix.MAP_SHARED)
+	if err != nil {
+		return 0, err
 	}
-	page := int64(os.Getpagesize())
+	defer unix.Munmap(data)
 
-	for offset := int64(0); offset < size; offset += chunk {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
+	return residentFraction(data)
+}
 
-		end := offset + chunk
-		if end > size {
-			end = size
-		}
-		length := int(end - offset)
+// residentFraction reports how many pages of 'mapped' are resident in RAM (0–1).
+// Optional helper useful for diagnostics; returns fraction [0..1] or an error.
+func residentFraction(mapped []byte) (float64, error) {
+	if len(mapped) == 0 {
+		return 0, fmt.Errorf("empty mapping")
+	}
+	pageSize := os.Getpagesize()
+	npages := (len(mapped) + pageSize - 1) / pageSize
+	vec := make([]byte, npages)
 
-		// map must be page-aligned: align offset down to page boundary
-		aligned := (offset / page) * page
-		prefix := offset - aligned
-		// map length must cover prefix + length
-		mapLen := int(prefix) + length
-		if mapLen <= 0 {
-			continue
-		}
+	// mincore(void *addr, size_t length, unsigned char *vec)
+	// It uses the mincore(2) syscall directly, since unix.Mincore may not be defined
+	// in all Go versions. Safe no-op if mincore unavailable.
+	_, _, errno := syscall.Syscall(syscall.SYS_MINCORE,
+		uintptr((uintptr)(unsafe.Pointer(&mapped[0]))),
+		uintptr(len(mapped)),
+		uintptr(unsafe.Pointer(&vec[0])),
+	)
+	if errno != 0 {
+		return 0, fmt.Errorf("mincore syscall failed: %v", errno)
+	}
 
-		// Map a segment of the file into the process’s address space (read-only).
-		// OS won’t actually read data yet — it will lazily page-fault when you touch those pages.
-		data, err := unix.Mmap(fd, aligned, mapLen, unix.PROT_READ, unix.MAP_SHARED)
-		if err != nil {
-			return fmt.Errorf("m-map fallback failed for %s offset %d len %d: %w", path, aligned, mapLen, err)
-		}
-
-		// Touch pages by reading one byte per page starting at prefix
-		// Accessing one byte per page forces the kernel to fault in that page (read it from disk into memory).
-		// Doing this once per page is enough to bring the entire chunk into page cache.
-		// It doesn’t copy or store data — just reads, so it’s fast (bounded by disk speed).
-		for i := int64(prefix); i < int64(mapLen); i += page {
-			_ = data[i]
-		}
-
-		// Releases the mapped region from process address space.
-		// The data remains cached in the kernel, so future reads are still fast.
-		if err := unix.Munmap(data); err != nil {
-			return fmt.Errorf("m-unmap failed for %s: %w", path, err)
+	var resident int
+	for _, b := range vec {
+		if b&1 == 1 {
+			resident++
 		}
 	}
-	return nil
+	return float64(resident) / float64(npages), nil
 }
