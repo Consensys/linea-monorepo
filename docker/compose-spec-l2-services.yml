@@ -16,7 +16,7 @@ services:
     image: consensys/maru:${MARU_TAG:-54b73d9}
     hostname: maru
     container_name: maru
-    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "debug", "linea-besu" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -40,7 +40,7 @@ services:
     hostname: sequencer
     container_name: sequencer
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc11-20251004063519-a5c4c31}
-    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "debug", "linea-besu" ]
     depends_on:
       l2-genesis-initialization:
         condition: service_completed_successfully
@@ -118,7 +118,7 @@ services:
     hostname: l2-node-besu
     container_name: l2-node-besu
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc11-20251004063519-a5c4c31}
-    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "debug", "linea-besu" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -162,7 +162,7 @@ services:
     hostname: l2-node-besu-follower
     container_name: l2-node-besu-follower
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc11-20251004063519-a5c4c31}
-    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "debug", "linea-besu" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -206,7 +206,7 @@ services:
     hostname: traces-node
     container_name: traces-node
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc11-20251004063519-a5c4c31}
-    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "debug", "linea-besu" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -386,7 +386,7 @@ services:
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc11-20251004063519-a5c4c31}
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
-    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "linea-besu" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -431,7 +431,7 @@ services:
     image: consensys/linea-shomei:2.3.0
     hostname: shomei
     container_name: shomei
-    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "linea-besu" ]
     depends_on:
       zkbesu-shomei:
         condition: service_started
@@ -466,7 +466,7 @@ services:
     image: consensys/linea-shomei:2.3.0
     hostname: shomei-frontend
     container_name: shomei-frontend
-    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
+    profiles: [ "l2", "l2-bc", "linea-besu" ]
     depends_on:
       zkbesu-shomei:
         condition: service_started
@@ -603,7 +603,7 @@ services:
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc11-20251004063519-a5c4c31}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
-    profiles: [ "external-to-monorepo", "staterecovery" ]
+    profiles: [ "staterecovery", "linea-besu" ]
     privileged: true
     user: root
     ports:
@@ -660,7 +660,7 @@ services:
     image: consensys/linea-shomei:2.3.0
     hostname: shomei-sr
     container_name: shomei-sr
-    profiles: [ "external-to-monorepo", "staterecovery" ]
+    profiles: [ "staterecovery", "linea-besu" ]
     depends_on:
       zkbesu-shomei-sr:
         condition: service_started

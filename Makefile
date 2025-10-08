@@ -3,6 +3,9 @@ include makefile-contracts.mk
 docker-pull-images-external-to-monorepo:
 		docker compose -f docker/compose-tracing-v2-ci-extension.yml --profile external-to-monorepo pull
 
+docker-pull-images-linea-besu:
+		docker compose -f docker/compose-tracing-v2-ci-extension.yml --profile linea-besu pull
+
 clean-local-folders:
 		make clean-smc-folders
 		rm -rf tmp/local/* || true # ignore failure if folders do not exist already
