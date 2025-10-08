@@ -1,6 +1,6 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { deployAndAddSingleLidoStVaultYieldProvider, incrementBalance } from "../helpers";
+import { deployAndAddSingleLidoStVaultYieldProvider, incrementBalance, ossifyYieldProvider } from "../helpers";
 import {
   LidoStVaultYieldProvider,
   MockVaultHub,
@@ -148,9 +148,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
     it("If ossified, should return staking vault balance", async () => {
       // Arrange - Ossify
-      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
-      expect(await yieldManager.isOssified(yieldProviderAddress)).to.be.true;
+      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
       // Arrange - Set Staking Vault Balance
       const expectedWithdrawableValue = 99n;
       await incrementBalance(mockStakingVaultAddress, expectedWithdrawableValue);
@@ -160,5 +158,10 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       // Assert
       expect(withdrawableValue).eq(expectedWithdrawableValue);
     });
+  });
+
+  describe("getEntrypointContract", () => {
+    it("If not ossified, should return the Dashboard address", async () => {});
+    it("If ossified, should return the Vault address", async () => {});
   });
 });

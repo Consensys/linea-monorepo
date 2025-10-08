@@ -1,4 +1,5 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { expect } from "chai";
 import { MockYieldProvider, TestYieldManager } from "contracts/typechain-types";
 import { ethers } from "hardhat";
 
@@ -47,4 +48,14 @@ export const setWithdrawalReserveToMinimum = async (testYieldManager: TestYieldM
   const minimumReserve = await testYieldManager.getEffectiveMinimumWithdrawalReserve();
   await setWithdrawalReserveBalance(testYieldManager, minimumReserve);
   return minimumReserve;
+};
+
+export const ossifyYieldProvider = async (
+  yieldManager: TestYieldManager,
+  yieldProviderAddress: string,
+  securityCouncil: SignerWithAddress,
+) => {
+  await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+  await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+  expect(await yieldManager.isOssified(yieldProviderAddress)).to.be.true;
 };
