@@ -96,12 +96,6 @@ func (r *AssetResolver) glAssets(module string) ([]string, []string, error) {
 		all = append(all, compiled)
 	}
 
-	// Include default compiled if present
-	// def := filepath.Join(r.SetupDir, "dw-compiled-default.bin")
-	// if _, err := os.Stat(def); err == nil {
-	// 	all = append(all, def)
-	// }
-
 	all = uniqueSorted(all)
 	// if compiled present, consider it critical (caller can decide behaviour)
 	return all, all, nil
@@ -113,10 +107,7 @@ func (r *AssetResolver) lppAssets(module string) ([]string, []string, error) {
 	if _, err := os.Stat(compiled); err == nil {
 		all = append(all, compiled)
 	}
-	// def := filepath.Join(r.SetupDir, "dw-compiled-default.bin")
-	// if _, err := os.Stat(def); err == nil {
-	// 	all = append(all, def)
-	// }
+
 	all = uniqueSorted(all)
 	return all, all, nil
 }

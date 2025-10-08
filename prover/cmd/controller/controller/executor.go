@@ -368,7 +368,7 @@ func (e *Executor) preLoadStaticAssets(ctx context.Context, job *Job) error {
 	}
 
 	// Pass a logger entry for better logs
-	logger := e.Logger.WithField("component", "asset-prefetch")
+	logger := e.Logger.WithField("component", "assets-cacher")
 
 	// Use tuned options for your infra
 	opts := &assets.PrefetchOptions{
