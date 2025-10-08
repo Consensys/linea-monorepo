@@ -302,7 +302,7 @@ func (disc *StandardModuleDiscoverer) analyzeBasic(comp *wizard.CompiledIOP) {
 			continue
 		}
 
-		if distNext > distPrev {
+		if distNext > distPrev && currWeightSum > 0 {
 			groups = append(groups, []*QueryBasedModule{})
 			currWeightSum = 0
 		}
@@ -358,6 +358,10 @@ func (disc *StandardModuleDiscoverer) analyzeBasic(comp *wizard.CompiledIOP) {
 					panic("the 'reduction' is bounded by the min number of rows so it should not be smaller than 1")
 				}
 				currWeight += groups[i][j].Weight(comp, numRow)
+			}
+
+			if currWeight == 0 {
+				utils.Panic("currWeight == 0, for module %v, index %d", disc.Modules[i].ModuleName, i)
 			}
 
 			currDist := utils.Abs(currWeight - disc.TargetWeight)
