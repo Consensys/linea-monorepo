@@ -52,7 +52,7 @@ export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) 
 });
 
 export async function findAccountIndexByAddress(metamask: MetaMask, accountAddress: string) {
-  const accountNames = await getAllAcccountNamesAndLocators(
+  const accountNames = await getAllAcccountNames(
     metamask.homePage.page,
     metamask.homePage.selectors.accountMenu.accountButton,
     metamask.homePage.selectors.accountMenu.accountNames,
@@ -69,11 +69,7 @@ export async function findAccountIndexByAddress(metamask: MetaMask, accountAddre
   throw new Error(`Account with address ${accountAddress} not found`);
 }
 
-async function getAllAcccountNamesAndLocators(
-  page: Page,
-  accountButtonSelector: string,
-  accountMenuAccountNamesSelector: string,
-) {
+async function getAllAcccountNames(page: Page, accountButtonSelector: string, accountMenuAccountNamesSelector: string) {
   const menuLocator = page.locator(accountButtonSelector);
   await menuLocator.click();
   const accountNamesLocators = await page.locator(accountMenuAccountNamesSelector).all();
