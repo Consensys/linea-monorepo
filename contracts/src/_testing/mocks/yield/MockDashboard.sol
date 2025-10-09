@@ -12,9 +12,14 @@ contract MockDashboard is IDashboard {
   uint256 private withdrawableValueReturn;
   uint256 private nodeOperatorDisbursableFeeReturn;
   bool isRebalanceVaultWithSharesWithdrawingFromVault;
+  bool isDisburseNodeOperatorFeeWithdrawingFromVault;
 
   function setRebalanceVaultWithSharesWithdrawingFromVault(bool _value) external {
     isRebalanceVaultWithSharesWithdrawingFromVault = _value;
+  }
+
+  function setIsDisburseNodeOperatorFeeWithdrawingFromVault(bool _value) external {
+    isDisburseNodeOperatorFeeWithdrawingFromVault = _value;
   }
 
   function setStakingVaultReturn(IStakingVault _value) external {
@@ -72,7 +77,12 @@ contract MockDashboard is IDashboard {
     return nodeOperatorDisbursableFeeReturn;
   }
 
-  function disburseNodeOperatorFee() external override {}
+  function disburseNodeOperatorFee() external override {
+    if (isDisburseNodeOperatorFeeWithdrawingFromVault) {
+      ICommonVaultOperations vault = ICommonVaultOperations(stakingVaultReturn);
+      vault.withdraw(address(0), nodeOperatorDisbursableFeeReturn);
+    }
+  }
 
   function reconnectToVaultHub() external override {}
 
@@ -84,8 +94,8 @@ contract MockDashboard is IDashboard {
   error MockWithdrawFailed();
 
   function withdraw(address _recipient, uint256 _amount) external override {
-    ICommonVaultOperations stakingVault = ICommonVaultOperations(stakingVaultReturn);
-    stakingVault.withdraw(_recipient, _amount);
+    ICommonVaultOperations vault = ICommonVaultOperations(stakingVaultReturn);
+    vault.withdraw(_recipient, _amount);
   }
 
   receive() external payable {}

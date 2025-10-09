@@ -17,6 +17,7 @@ import {
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ONE_ETHER, ZERO_VALUE } from "../../common/constants";
+import { ethers } from "hardhat";
 
 describe("LidoStVaultYieldProvider contract - yield operations", () => {
   let yieldProvider: TestLidoStVaultYieldProvider;
@@ -60,11 +61,9 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
     mockStakingVaultAddress = await mockStakingVault.getAddress();
 
     console.log(l1MessageServiceAddress);
-    console.log(yieldManagerAddress);
     console.log(vaultHubAddress);
     console.log(stethAddress);
     console.log(mockDashboardAddress);
-    console.log(mockStakingVaultAddress);
   });
 
   describe("syncExternalLiabilitySettlement", () => {
@@ -514,6 +513,91 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       // Assert
       expect(expectedObligationsPaid).eq(obligationsPaid);
       const expectedNegativeYieldIncrement = obligationsPaid - availableYield;
+      expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(
+        negativeYieldBefore + expectedNegativeYieldIncrement,
+      );
+    });
+  });
+
+  describe("payNodeOperatorFees", () => {
+    it("If 0 available yield, no-op", async () => {
+      const amountAvailable = ZERO_VALUE;
+      const nodeOperatorFeesPaid = await yieldManager
+        .connect(securityCouncil)
+        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
+      expect(nodeOperatorFeesPaid).eq(0);
+    });
+    it("If vault balance < current fees, no-op", async () => {
+      // Arrange - Set up Vault balance
+      const vaultBalance = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
+      // Arrange - Set up current fees
+      const operatorFees = ONE_ETHER * 2n;
+      await mockDashboard.setNodeOperatorDisbursableFeeReturn(operatorFees);
+      // Arrange - Get before figures
+      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
+      const negativeYieldBefore = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
+
+      // Act
+      const amountAvailable = ONE_ETHER;
+      const nodeOperatorFeesPaid = await yieldManager
+        .connect(securityCouncil)
+        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
+
+      // Assert
+      expect(nodeOperatorFeesPaid).eq(0);
+      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore);
+      expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(negativeYieldBefore);
+    });
+    it("If vault balance > current fees, and feesPaid <= availableYield, succeed without mutating negative yield", async () => {
+      // Arrange - Set up Vault balance
+      const vaultBalance = ONE_ETHER * 2n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
+      // Arrange - Set up current fees
+      const operatorFees = ONE_ETHER;
+      await mockDashboard.setNodeOperatorDisbursableFeeReturn(operatorFees);
+      await mockDashboard.setIsDisburseNodeOperatorFeeWithdrawingFromVault(true);
+      // Arrange - Get before figures
+      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
+      const negativeYieldBefore = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
+
+      // Act
+      const amountAvailable = (ONE_ETHER * 3n) / 2n;
+      const nodeOperatorFeesPaid = await yieldManager
+        .connect(securityCouncil)
+        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
+
+      // Assert
+      expect(nodeOperatorFeesPaid).eq(operatorFees);
+      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - operatorFees);
+      expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(negativeYieldBefore);
+    });
+    it("If vault balance > current fees, and feesPaid > availableYield, succeed with increment of negative yield", async () => {
+      // Arrange - Set up Vault balance
+      const vaultBalance = ONE_ETHER * 2n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
+      // Arrange - Set up current fees
+      const operatorFees = ONE_ETHER;
+      await mockDashboard.setNodeOperatorDisbursableFeeReturn(operatorFees);
+      await mockDashboard.setIsDisburseNodeOperatorFeeWithdrawingFromVault(true);
+      // Arrange - Get before figures
+      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
+      const negativeYieldBefore = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
+
+      // Act
+      const amountAvailable = 1n;
+      const nodeOperatorFeesPaid = await yieldManager
+        .connect(securityCouncil)
+        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
+
+      // Assert
+      expect(nodeOperatorFeesPaid).eq(operatorFees);
+      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - operatorFees);
+      const expectedNegativeYieldIncrement = nodeOperatorFeesPaid - amountAvailable;
       expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(
         negativeYieldBefore + expectedNegativeYieldIncrement,
       );
