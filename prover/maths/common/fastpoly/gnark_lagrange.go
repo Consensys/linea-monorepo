@@ -31,42 +31,35 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []zk.WrappedVariable, x g
 		panic(err)
 	}
 
-	var accw, one field.Element
-	one.SetOne()
-	accw.SetOne()
-	dens := make([]gnarkfext.E4Gen, size) // [x-1, x-ω, x-ω², ...]
-	for i := 0; i < size; i++ {
-		wAccW := gnarkfext.NewE4GenFromBase(accw)
-		dens[i] = *e4Api.Sub(&x, &wAccW)
-		accw.Mul(&accw, &omega)
+	dens := make([]gnarkfext.E4Gen, size)
+
+	omega.Inverse(&omega)
+	wInvOmega := gnarkfext.NewE4GenFromBase(omega)
+	dens[0] = x
+	for i := 1; i < size; i++ {
+		dens[i] = *e4Api.Mul(&dens[i-1], &wInvOmega)
 	}
 
-	invdens := make([]gnarkfext.E4Gen, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
-
+	wOne := gnarkfext.NewE4GenFromBase(1)
 	for i := 0; i < size; i++ {
-		invdens[i] = *e4Api.Inverse(&dens[i])
+		dens[i] = *e4Api.Sub(&dens[i], &wOne)
+		dens[i] = *e4Api.Inverse(&dens[i])
+	}
+
+	res := gnarkfext.NewE4GenFromBase(0)
+	for i := 0; i < size; i++ {
+		tmp := *e4Api.MulByFp(&dens[i], &poly[i])
+		res = *e4Api.Add(&res, &tmp)
 	}
 
 	var tmp gnarkfext.E4Gen
-	wOne := gnarkfext.NewE4GenFromBase(field.One())
 	tmp = gnarkutil.ExpExt(api, x, size)
 	tmp = *e4Api.Sub(&tmp, &wOne) // xⁿ-1
 	var invSize field.Element
-	invSize.SetUint64(uint64(size))
-	invSize.Inverse(&invSize)
-	li := gnarkfext.NewE4GenFromBase(invSize)
-	li = *e4Api.Mul(&tmp, &li) // 1/n * (xⁿ-1)
-
-	res := gnarkfext.NewE4GenFromBase(0)
-	wOmega := gnarkfext.NewE4GenFromBase(omega)
-	for i := 0; i < size; i++ {
-		wPolyi := gnarkfext.FromBase(poly[i])
-		li = *e4Api.Mul(&li, &invdens[i])
-		tmp = *e4Api.Mul(&li, &wPolyi) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
-		res = *e4Api.Add(&res, &tmp)
-		li = *e4Api.Mul(&li, &dens[i])
-		li = *e4Api.Mul(&li, &wOmega)
-	}
+	invSize.SetUint64(uint64(size)).Inverse(&invSize)
+	wInvSize := zk.ValueOf(invSize)
+	tmp = *e4Api.MulByFp(&tmp, &wInvSize)
+	res = *e4Api.Mul(&res, &tmp)
 
 	return res
 

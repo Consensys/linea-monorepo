@@ -45,6 +45,7 @@ func getWitnessAndCircuit(t zk.VType) (EvaluateLagrangeCircuit, EvaluateLagrange
 	x.SetRandom()
 
 	// eval lagrange
+	// r, err := vortex.EvalBasePolyLagrange(poly, x)
 	r, err := vortex.EvalBasePolyLagrange(poly, x)
 	if err != nil {
 		panic(err)
