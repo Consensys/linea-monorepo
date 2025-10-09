@@ -36,7 +36,7 @@ setup("Global setup", async () => {
 
 async function generateL2Traffic() {
   // FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-  const pollingAccount = privateKeyToAccount("0xb17202c37cce9498e6f7dcdc1abd207802d09b5eee96677ea219ac867a198b91");
+  const pollingAccount = privateKeyToAccount("0xb35972d9380d1be620a2c61da77f68f127ef248ec55e1bc6033d20a7e13ef3fa");
 
   const walletClient = createWalletClient({
     chain: localL2Network,
