@@ -221,12 +221,13 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     YieldProviderStorage storage $$,
     uint256 _availableYield
   ) internal returns (uint256 obligationsPaid) {
+    if (_availableYield == 0) return 0;
     address vault = $$.ossifiedEntrypoint;
     uint256 beforeVaultBalance = vault.balance;
     // Unfortunately, there is no function on VaultHub to specify how much obligation we want to repay.
     VAULT_HUB.settleVaultObligations(vault);
     uint256 afterVaultBalance = vault.balance;
-    obligationsPaid = afterVaultBalance - beforeVaultBalance;
+    obligationsPaid = beforeVaultBalance - afterVaultBalance;
     if (obligationsPaid > _availableYield) {
       $$.currentNegativeYield += (obligationsPaid - _availableYield);
     }

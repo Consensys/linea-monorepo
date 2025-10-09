@@ -61,8 +61,8 @@ contract MockDashboard is IDashboard {
 
   function rebalanceVaultWithShares(uint256 _amount) external override {
     if (isRebalanceVaultWithSharesWithdrawingFromVault) {
-      ICommonVaultOperations stakingVault = ICommonVaultOperations(stakingVaultReturn);
-      stakingVault.withdraw(address(0), _amount);
+      ICommonVaultOperations vault = ICommonVaultOperations(stakingVaultReturn);
+      vault.withdraw(address(0), _amount);
     }
   }
 
@@ -77,8 +77,8 @@ contract MockDashboard is IDashboard {
   function reconnectToVaultHub() external override {}
 
   function fund() external payable override {
-    ICommonVaultOperations stakingVault = ICommonVaultOperations(stakingVaultReturn);
-    stakingVault.fund{ value: msg.value }();
+    ICommonVaultOperations vault = ICommonVaultOperations(stakingVaultReturn);
+    vault.fund{ value: msg.value }();
   }
 
   error MockWithdrawFailed();

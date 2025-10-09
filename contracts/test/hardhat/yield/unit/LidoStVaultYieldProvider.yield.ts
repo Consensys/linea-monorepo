@@ -1,6 +1,10 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { getAccountsFixture } from "../../common/helpers";
-import { deployAndAddSingleLidoStVaultYieldProvider, getWithdrawLSTCall } from "../helpers";
+import {
+  deployAndAddSingleLidoStVaultYieldProvider,
+  fundLidoStVaultYieldProvider,
+  getWithdrawLSTCall,
+} from "../helpers";
 import {
   MockVaultHub,
   MockSTETH,
@@ -454,6 +458,64 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore - expectedExternalLiabilitySettlement);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
         liabilityPrincipalBefore - expectedExternalLiabilitySettlement - lstLiabilityPaid,
+      );
+    });
+  });
+
+  describe("payObligations", () => {
+    it("If 0 available yield, no-op", async () => {
+      const amountAvailable = ZERO_VALUE;
+      const obligationsPaid = await yieldManager
+        .connect(securityCouncil)
+        .payObligations.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress, amountAvailable);
+      expect(obligationsPaid).eq(0);
+    });
+    it("If obligationsPaid <= availableYield, succeed without mutating negative yield", async () => {
+      // Arrange - Set up Vault balance
+      const vaultBalance = ONE_ETHER * 2n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
+      // Arrange - Obligations paid
+      const expectedObligationsPaid = ONE_ETHER;
+      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
+      // Arrange - Get before figures
+      const negativeYieldBefore = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
+
+      // Act
+      const availableYield = ONE_ETHER * 2n;
+      const obligationsPaid = await yieldManager
+        .connect(securityCouncil)
+        .payObligations.staticCall(yieldProviderAddress, availableYield);
+
+      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress, availableYield);
+      // Assert
+      expect(expectedObligationsPaid).eq(obligationsPaid);
+      expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(negativeYieldBefore);
+    });
+    it("If obligationsPaid > availableYield, succeed with increment of negative yield", async () => {
+      // Arrange - Set up Vault balance
+      const vaultBalance = ONE_ETHER * 2n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
+      // Arrange - Obligations paid
+      const expectedObligationsPaid = ONE_ETHER * 2n;
+      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
+      // Arrange - Get before figures
+      const negativeYieldBefore = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
+
+      // Act
+      const availableYield = ONE_ETHER;
+      const obligationsPaid = await yieldManager
+        .connect(securityCouncil)
+        .payObligations.staticCall(yieldProviderAddress, availableYield);
+
+      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress, availableYield);
+      // Assert
+      expect(expectedObligationsPaid).eq(obligationsPaid);
+      const expectedNegativeYieldIncrement = obligationsPaid - availableYield;
+      expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(
+        negativeYieldBefore + expectedNegativeYieldIncrement,
       );
     });
   });
