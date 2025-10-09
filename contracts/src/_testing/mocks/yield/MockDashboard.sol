@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { IDashboard } from "../../../yield/interfaces/vendor/lido/IDashboard.sol";
+import { ICommonVaultOperations } from "../../../yield/interfaces/vendor/lido/ICommonVaultOperations.sol";
 import { IStakingVault } from "../../../yield/interfaces/vendor/lido/IStakingVault.sol";
 
 contract MockDashboard is IDashboard {
@@ -65,9 +66,19 @@ contract MockDashboard is IDashboard {
 
   function reconnectToVaultHub() external override {}
 
-  function fund() external payable override {}
+  function fund() external payable override {
+    ICommonVaultOperations stakingVault = ICommonVaultOperations(stakingVaultReturn);
+    stakingVault.fund{ value: msg.value }();
+  }
 
-  function withdraw(address, uint256) external override {}
+  error MockWithdrawFailed();
+
+  function withdraw(address _recipient, uint256 _amount) external override {
+    ICommonVaultOperations stakingVault = ICommonVaultOperations(stakingVaultReturn);
+    stakingVault.withdraw(_recipient, _amount);
+  }
+
+  receive() external payable {}
 
   function pauseBeaconChainDeposits() external override {}
 

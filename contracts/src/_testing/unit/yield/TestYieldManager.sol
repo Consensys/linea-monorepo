@@ -9,12 +9,6 @@ import { TestLidoStVaultYieldProvider } from "./TestLidoStVaultYieldProvider.sol
 contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   constructor(address _l1MessageService) YieldManager(_l1MessageService) {}
 
-  bool public skipFundReserveForTests;
-
-  function setSkipFundReserveForTests(bool _skip) external {
-    skipFundReserveForTests = _skip;
-  }
-
   function setTransientReceiveCaller(address _caller) external {
     TRANSIENT_RECEIVE_CALLER = _caller;
   }
@@ -185,13 +179,6 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
 
   function setYieldProviderLstLiabilityPrincipal(address _yieldProvider, uint256 _lstLiabilityPrincipal) external {
     _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal = _lstLiabilityPrincipal;
-  }
-
-  function _fundReserve(uint256 _amount) internal override {
-    if (skipFundReserveForTests) {
-      return;
-    }
-    super._fundReserve(_amount);
   }
 
   function delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {

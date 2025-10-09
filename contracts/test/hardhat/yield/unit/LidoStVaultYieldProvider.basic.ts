@@ -5,6 +5,7 @@ import {
   fundLidoStVaultYieldProvider,
   incrementBalance,
   ossifyYieldProvider,
+  // setWithdrawalReserveToMinimum,
 } from "../helpers";
 import {
   MockVaultHub,
@@ -19,7 +20,13 @@ import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import { ZeroAddress } from "ethers";
-import { GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT, ONE_ETHER } from "../../common/constants";
+import {
+  GI_FIRST_VALIDATOR,
+  GI_FIRST_VALIDATOR_AFTER_CHANGE,
+  CHANGE_SLOT,
+  ONE_ETHER,
+  ZERO_VALUE,
+} from "../../common/constants";
 
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let yieldProvider: TestLidoStVaultYieldProvider;
@@ -191,11 +198,15 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   });
 
   describe("fund YieldProvider", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).fundYieldProvider(yieldProviderAddress, ZERO_VALUE);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
     it("If not ossified, should fund the Dashboard", async () => {
-      const beforeDashboardBalance = await ethers.provider.getBalance(mockDashboardAddress);
+      const beforeVaultBalance = await ethers.provider.getBalance(mockStakingVaultAddress);
       const fundAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
-      expect(await ethers.provider.getBalance(mockDashboardAddress)).eq(beforeDashboardBalance + fundAmount);
+      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
     });
     it("If ossified, should fund the StakingVault", async () => {
       await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
@@ -203,6 +214,39 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const fundAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
       expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
+    });
+  });
+
+  describe("withdraw from YieldProvider", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).withdrawFromYieldProvider(yieldProviderAddress, ZERO_VALUE);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should successfully withdraw when not ossifed", async () => {
+      const withdrawAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+      await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+    });
+    it("Should successfully withdraw when ossifed", async () => {
+      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
+      const withdrawAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+      await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+    });
+
+    describe("pause staking", () => {
+      it("Should revert if not invoked via delegatecall", async () => {
+        const call = yieldProvider.connect(securityCouncil).pauseStaking(yieldProviderAddress);
+        await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+      });
+      it("Should successfully pause when not ossifed", async () => {
+        await yieldManager.connect(securityCouncil).pauseStaking(yieldProviderAddress);
+      });
+      // it("Should successfully pause when ossifed", async () => {
+      //   await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
+      //   await setWithdrawalReserveToMinimum(yieldManager);
+      //   await yieldManager.connect(securityCouncil).unpauseStaking(yieldProviderAddress)
+      // });
     });
   });
 });

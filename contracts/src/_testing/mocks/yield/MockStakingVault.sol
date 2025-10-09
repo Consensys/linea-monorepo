@@ -10,7 +10,22 @@ contract MockStakingVault is IStakingVault {
 
   function fund() external payable override {}
 
-  function withdraw(address, uint256) external override {}
+  error MockWithdrawFailed();
+
+  function withdraw(address _recipient, uint256 _amount) external override {
+    (bool success, bytes memory returnData) = _recipient.call{ value: _amount }("");
+    if (!success) {
+      if (returnData.length > 0) {
+        /// @solidity memory-safe-assembly
+        assembly {
+          revert(add(32, returnData), mload(returnData))
+        }
+      }
+      revert MockWithdrawFailed();
+    }
+  }
+
+  receive() external payable {}
 
   function pauseBeaconChainDeposits() external override {}
 
