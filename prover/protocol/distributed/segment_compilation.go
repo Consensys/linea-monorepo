@@ -316,12 +316,30 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
 		segmentModuleIndex = m.SegmentModuleIndex
+
+		if m.ModuleIndex != r.ModuleLPP.DefinitionInput.ModuleIndex {
+			utils.Panic("m.ModuleIndex: %v != r.ModuleLPP.ModuleIndex: %v", m.ModuleIndex, r.ModuleLPP.DefinitionInput.ModuleIndex)
+		}
+
+		if m.ModuleName != r.ModuleLPP.DefinitionInput.ModuleName {
+			utils.Panic("m.ModuleName: %v != r.ModuleLPP.ModuleName: %v", m.ModuleName, r.ModuleLPP.DefinitionInput.ModuleName)
+		}
+
 	case *ModuleWitnessGL:
 		comp = r.ModuleGL.Wiop
 		proverStep = r.ModuleGL.GetMainProverStep(m)
 		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
 		segmentModuleIndex = m.SegmentModuleIndex
+
+		if m.ModuleIndex != r.ModuleGL.DefinitionInput.ModuleIndex {
+			utils.Panic("m.ModuleIndex: %v != r.ModuleGL.ModuleIndex: %v", m.ModuleIndex, r.ModuleGL.DefinitionInput.ModuleIndex)
+		}
+
+		if m.ModuleName != r.ModuleGL.DefinitionInput.ModuleName {
+			utils.Panic("m.ModuleName: %v != r.ModuleGL.ModuleName: %v", m.ModuleName, r.ModuleGL.DefinitionInput.ModuleName)
+		}
+
 	default:
 		utils.Panic("unexpected type")
 	}
