@@ -372,7 +372,7 @@ func (e *Executor) preLoadStaticAssets(ctx context.Context, job *Job) error {
 
 	// Use tuned options for your infra
 	opts := &assets.PreloadOptions{
-		LargeFileThreshold: 20 << 30, // 20 GiB
+		LargeFileThreshold: 10 << 30, // 10 GiB
 		PerFileTimeout:     150 * time.Second,
 		Populate:           true,
 	}
