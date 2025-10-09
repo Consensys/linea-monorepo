@@ -108,7 +108,7 @@ configFiles:
         "1683325137": {
           "type": "qbft",
           "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
-          "blockTimeSeconds": 2,
+          "blockTimeSeconds": 1,
           "feeRecipient": "0x0000000000000000000000000000000000000000",
           "elFork": "Prague"
         }
@@ -127,7 +127,7 @@ configFiles:
       <Logger name="tech.pegasys.teku" level="INFO"/>
       <Logger name="maru" level="INFO"/>
       <Logger name="maru.syncing" level="DEBUG"/>
-      <Logger name="maru.clients" level="TRACE"/>
+      <Logger name="maru.clients" level="DEBUG"/>
       <Root level="INFO">
         <AppenderRef ref="Console"/>
       </Root>

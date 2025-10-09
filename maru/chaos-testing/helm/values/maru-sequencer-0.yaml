@@ -11,3 +11,26 @@ configFiles:
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://besu-sequencer-0-0.besu-sequencer-0.default.svc.cluster.local:8550" }
     eth-api-endpoint = { endpoint = "http://besu-sequencer-0-0.besu-sequencer-0.default.svc.cluster.local:8545" }
+
+  genesisJson: |
+    {
+      "chainId": 1337,
+      "config": {
+        "0": {
+          "type": "difficultyAwareQbft",
+          "blockTimeSeconds": 2,
+          "postTtdConfig": {
+            "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
+            "elFork": "Paris"
+          },
+          "terminalTotalDifficulty": 10
+        },
+        "1683325137": {
+          "type": "qbft",
+          "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
+          "blockTimeSeconds": 2,
+          "feeRecipient": "0x0000000000000000000000000000000000000000",
+          "elFork": "Prague"
+        }
+      }
+    }
