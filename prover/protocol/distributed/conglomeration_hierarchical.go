@@ -35,7 +35,7 @@ const (
 	targetNbSegmentPublicInputBase          = "TARGET_NB_SEGMENTS"
 	segmentCountLPPPublicInputBase          = "GL_SEGMENT_COUNT"
 	segmentCountGLPublicInputBase           = "LPP_SEGMENT_COUNT"
-	generalMultiSetPublicInputBase          = "GENERAL_MULTI_SET"
+	GeneralMultiSetPublicInputBase          = "GENERAL_MULTI_SET"
 	sharedRandomnessMultiSetPublicInputBase = "SHARED_RANDOMNESS_MULTI_SET"
 	VkMerkleProofBase                       = "VK_MERKLE_PROOF"
 	InitialRandomnessPublicInput            = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
@@ -227,7 +227,7 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 	c.PublicInputs.TargetNbSegments = declareListOfPiColumns(c.Wiop, 0, targetNbSegmentPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountGL = declareListOfPiColumns(c.Wiop, 0, segmentCountGLPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, 0, segmentCountLPPPublicInputBase, c.ModuleNumber)
-	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, 0, generalMultiSetPublicInputBase, mimc.MSetHashSize)
+	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, 0, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
 	c.PublicInputs.VerifyingKey[0] = declarePiColumn(c.Wiop, verifyingKeyPublicInput)
 	c.PublicInputs.VerifyingKey[1] = declarePiColumn(c.Wiop, verifyingKey2PublicInput)
 	c.PublicInputs.LogDerivativeSum = declarePiColumn(c.Wiop, LogDerivativeSumPublicInput)
@@ -519,9 +519,12 @@ func getPublicInputListOfInstance(rec *recursion.Recursion, run wizard.Runtime, 
 	return res
 }
 
-// getPublicInputList returns a list of public input of the provided name for the
+// GetPublicInputList returns a list of public input of the provided name for the
 // current WIOP (e.g. not the for the children instance).
-func getPublicInputList(run wizard.Runtime, name string, nb int) []field.Element {
+//
+// @alex: would be interesting to make that a utility function in the wizard
+// package because it helps whenever we want to encode stuffs as public inputs.
+func GetPublicInputList(run wizard.Runtime, name string, nb int) []field.Element {
 	var res []field.Element
 	for i := 0; i < nb; i++ {
 		res = append(res, run.GetPublicInput(name+"_"+strconv.Itoa(i)))
@@ -546,7 +549,7 @@ func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.
 		TargetNbSegments:    getPublicInputListOfInstance(c.Recursion, run, targetNbSegmentPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountGL:      getPublicInputListOfInstance(c.Recursion, run, segmentCountGLPublicInputBase, instance, c.ModuleNumber),
 		SegmentCountLPP:     getPublicInputListOfInstance(c.Recursion, run, segmentCountLPPPublicInputBase, instance, c.ModuleNumber),
-		GeneralMultiSetHash: getPublicInputListOfInstance(c.Recursion, run, generalMultiSetPublicInputBase, instance, mimc.MSetHashSize),
+		GeneralMultiSetHash: getPublicInputListOfInstance(c.Recursion, run, GeneralMultiSetPublicInputBase, instance, mimc.MSetHashSize),
 		VerifyingKey: [2]field.Element{
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKeyPublicInput, instance),
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, instance),
@@ -569,10 +572,10 @@ func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.
 func (c ConglomerationHierarchical) collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Element] {
 
 	res := LimitlessPublicInput[field.Element]{
-		TargetNbSegments:    getPublicInputList(run, targetNbSegmentPublicInputBase, c.ModuleNumber),
-		SegmentCountGL:      getPublicInputList(run, segmentCountGLPublicInputBase, c.ModuleNumber),
-		SegmentCountLPP:     getPublicInputList(run, segmentCountLPPPublicInputBase, c.ModuleNumber),
-		GeneralMultiSetHash: getPublicInputList(run, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		TargetNbSegments:    GetPublicInputList(run, targetNbSegmentPublicInputBase, c.ModuleNumber),
+		SegmentCountGL:      GetPublicInputList(run, segmentCountGLPublicInputBase, c.ModuleNumber),
+		SegmentCountLPP:     GetPublicInputList(run, segmentCountLPPPublicInputBase, c.ModuleNumber),
+		GeneralMultiSetHash: GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
 		VerifyingKey: [2]field.Element{
 			run.GetPublicInput(verifyingKeyPublicInput),
 			run.GetPublicInput(verifyingKey2PublicInput),

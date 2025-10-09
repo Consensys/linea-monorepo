@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -64,6 +65,7 @@ func TestDistributedWizardBasic(t *testing.T) {
 		allGrandProduct     = field.NewElement(1)
 		allLogDerivativeSum = field.Element{}
 		allHornerSum        = field.Element{}
+		generalMSet         = mimc.MSetHash{}
 	)
 
 	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
@@ -98,14 +100,18 @@ func TestDistributedWizardBasic(t *testing.T) {
 		}
 
 		var (
-			proverRunGL = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
-			proofGL     = proverRunGL.ExtractProof()
-			_, verGLErr = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
+			proverRunGL         = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
+			proofGL             = proverRunGL.ExtractProof()
+			verRun, verGLErr    = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
+			generalMSetFromGLFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
+			generalMSetFromGL   = mimc.MSetHash(generalMSetFromGLFr)
 		)
 
 		if verGLErr != nil {
 			t.Errorf("verifier failed for segment %v, reason=%v", i, verGLErr)
 		}
+
+		generalMSet.Add(generalMSetFromGL)
 	}
 
 	for i := range witnessLPPs {
@@ -123,17 +129,21 @@ func TestDistributedWizardBasic(t *testing.T) {
 		var (
 			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP))
 			proofLPP             = proverRunLPP.ExtractProof()
-			verLPPRun, verLPPErr = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
+			verRun, verLPPErr    = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
+			generalMSetFromLPPFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
+			generalMSetFromLPP   = mimc.MSetHash(generalMSetFromLPPFr)
 		)
 
 		if verLPPErr != nil {
 			t.Errorf("verifier failed for segment %v, reason=%v", i, verLPPErr)
 		}
 
+		generalMSet.Add(generalMSetFromLPP)
+
 		var (
-			logDerivativeSum = verLPPRun.GetPublicInput(distributed.LogDerivativeSumPublicInput)
-			grandProduct     = verLPPRun.GetPublicInput(distributed.GrandProductPublicInput)
-			hornerSum        = verLPPRun.GetPublicInput(distributed.HornerPublicInput)
+			logDerivativeSum = verRun.GetPublicInput(distributed.LogDerivativeSumPublicInput)
+			grandProduct     = verRun.GetPublicInput(distributed.GrandProductPublicInput)
+			hornerSum        = verRun.GetPublicInput(distributed.HornerPublicInput)
 		)
 
 		t.Logf("log-derivative-sum=%v grand-product=%v horner-sum=%v", logDerivativeSum.String(), grandProduct.String(), hornerSum.String())
@@ -153,6 +163,12 @@ func TestDistributedWizardBasic(t *testing.T) {
 
 	if !allLogDerivativeSum.IsZero() {
 		t.Errorf("log-derivative-sum does not cancel. Has %v", allLogDerivativeSum.String())
+	}
+
+	for i := 0; i < len(generalMSet); i++ {
+		if !generalMSet.IsEmpty() {
+			t.Errorf("generalMSet does not cancel: ")
+		}
 	}
 }
 

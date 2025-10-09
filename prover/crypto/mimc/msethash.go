@@ -49,6 +49,16 @@ func (m *MSetHash) Sub(other MSetHash) {
 	}
 }
 
+// IsEmpty returns true if the MSetHash is empty.
+func (m *MSetHash) IsEmpty() bool {
+	for i := 0; i < MSetHashSize; i++ {
+		if !m[i].IsZero() {
+			return false
+		}
+	}
+	return true
+}
+
 // update adds or removes an element from the multisets hash.
 func (m *MSetHash) update(rem bool, msgs ...field.Element) {
 

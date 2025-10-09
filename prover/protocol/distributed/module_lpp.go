@@ -506,7 +506,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 		TargetNbSegments:             declareListOfPiColumns(modLPP.Wiop, 0, targetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:               declareListOfConstantPi(modLPP.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:              declareListOfConstantPi(modLPP.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
-		GeneralMultiSetHash:          declareListOfPiColumns(modLPP.Wiop, 1, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash:          declareListOfPiColumns(modLPP.Wiop, 1, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
 		SharedRandomnessMultiSetHash: declareListOfConstantPi(modLPP.Wiop, sharedRandomnessMultiSetPublicInputBase, make([]field.Element, mimc.MSetHashSize)),
 	}
 
@@ -609,7 +609,7 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 		mset.Remove(moduleIndex, prevSegmentIndex, typeOfProof, n0Hash)
 	}
 
-	assignListOfPiColumns(run, generalMultiSetPublicInputBase, mset[:])
+	assignListOfPiColumns(run, GeneralMultiSetPublicInputBase, mset[:])
 }
 
 // checkLPPCommitmentMSetGL checks that the LPP commitment MSet is correctly
@@ -617,7 +617,7 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
-		targetMSet             = getPublicInputList(run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSet             = GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
@@ -666,7 +666,7 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
 
 	var (
-		targetMSetGeneral      = getPublicInputListGnark(api, run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetGeneral      = getPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments         = run.GetPublicInput(api, lppMerkleRootPublicInput)
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
