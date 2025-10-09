@@ -446,6 +446,16 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
     }
 
     /**
+     * @notice Returns the actual token balance of an account.
+     * @dev This value excludes virtual Karma distributed by reward distributors.
+     * @param account The account to get the token balance of.
+     * @return The actual token balance of the account.
+     */
+    function actualTokenBalanceOf(address account) public view returns (uint256) {
+        return super.balanceOf(account);
+    }
+
+    /**
      * @notice Returns the balance of a reward distributor.
      * @dev The balance of a reward distributor is the balance of the actual tokens held by the distributor.
      * @param distributor The address of the reward distributor.

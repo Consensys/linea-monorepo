@@ -136,6 +136,28 @@ contract KarmaTest is Test {
         assertEq(balance, expectedBalance);
     }
 
+    function testActualTokenBalanceOf() public {
+        vm.startBroadcast(owner);
+        karma.setReward(address(distributor1), 1000 ether, 1000);
+        karma.setReward(address(distributor2), 2000 ether, 2000);
+        vm.stopBroadcast();
+
+        distributor1.setTotalKarmaShares(1000 ether);
+        distributor2.setTotalKarmaShares(2000 ether);
+
+        distributor1.setUserKarmaShare(alice, 1000e18);
+        distributor2.setUserKarmaShare(alice, 2000e18);
+
+        vm.prank(owner);
+        karma.mint(alice, 500e18);
+
+        uint256 balance = karma.balanceOf(alice);
+        uint256 actualBalance = karma.actualTokenBalanceOf(alice);
+
+        assertEq(balance, 3500e18);
+        assertEq(actualBalance, 500e18);
+    }
+
     function testMintOnlyAdmin() public {
         vm.startBroadcast(owner);
         karma.setReward(address(distributor1), 1000 ether, 1000);
