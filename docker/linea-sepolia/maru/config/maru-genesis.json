@@ -22,7 +22,7 @@
       "blockTimeSeconds": 2,
       "elFork": "Cancun"
     },
-    "1759838400": {
+    "1760004000": {
       "type": "qbft",
       "validatorSet": ["0x20e2654209c3f5a7b4728fb228778f1261f1013f"],
       "blockTimeSeconds": 2,
