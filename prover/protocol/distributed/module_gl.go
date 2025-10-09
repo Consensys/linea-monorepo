@@ -793,7 +793,7 @@ func (modGl *ModuleGL) declarePublicInput() {
 		TargetNbSegments:             declareListOfPiColumns(modGl.Wiop, 0, targetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:               declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:              declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
-		GeneralMultiSetHash:          declareListOfPiColumns(modGl.Wiop, 1, generalMultiSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash:          declareListOfPiColumns(modGl.Wiop, 1, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
 		SharedRandomnessMultiSetHash: declareListOfPiColumns(modGl.Wiop, 1, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
 	}
 
@@ -893,7 +893,7 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 		multiSetGeneral.Remove(moduleIndex, prevSegmentIndex, typeOfProof, globalRcvdHash)
 	}
 
-	assignListOfPiColumns(run, generalMultiSetPublicInputBase, multiSetGeneral[:])
+	assignListOfPiColumns(run, GeneralMultiSetPublicInputBase, multiSetGeneral[:])
 	assignListOfPiColumns(run, sharedRandomnessMultiSetPublicInputBase, multiSetSharedRandomness[:])
 }
 
@@ -903,8 +903,8 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
-		targetMSetGeneral          = getPublicInputList(run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
-		targetMSetSharedRandomness = getPublicInputList(run, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetGeneral          = GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetSharedRandomness = GetPublicInputList(run, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments             = run.GetPublicInput(lppMerkleRootPublicInput)
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
@@ -978,7 +978,7 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
 
 	var (
-		targetMSetGeneral          = getPublicInputListGnark(api, run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetGeneral          = getPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
 		targetMSetSharedRandomness = getPublicInputListGnark(api, run, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments             = run.GetPublicInput(api, lppMerkleRootPublicInput)
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
