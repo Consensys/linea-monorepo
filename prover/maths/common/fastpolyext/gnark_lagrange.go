@@ -7,7 +7,9 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext" // Assuming gnarkfext has the Exp function
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 // EvaluateLagrangeGnark evaluates a polynomial in lagrange basis on a gnark circuit
@@ -17,6 +19,11 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
 
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
 	size := len(poly)
 	omega, err := fft.Generator(uint64(size))
 	if err != nil {
@@ -24,34 +31,35 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext
 		panic(err)
 	}
 
-	var accw, one field.Element
-	one.SetOne()
-	accw.SetOne()
-	dens := make([]gnarkfext.E4Gen, size) // [x-1, x-ω, x-ω², ...]
-	for i := 0; i < size; i++ {
-		dens[i] = x
-		dens[i].B0.A0 = api.Sub(x.B0.A0, accw) // accw lives in the base field
-		accw.Mul(&accw, &omega)
-	}
-	invdens := make([]gnarkfext.E4Gen, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
-	for i := 0; i < size; i++ {
-		invdens[i].Inverse(api, dens[i])
+	dens := make([]gnarkfext.E4Gen, size)
+
+	omega.Inverse(&omega)
+	wInvOmega := gnarkfext.NewE4GenFromBase(omega)
+	dens[0] = x
+	for i := 1; i < size; i++ {
+		dens[i] = *e4Api.Mul(&dens[i-1], &wInvOmega)
 	}
 
-	tmp := gnarkfext.Exp(api, x, size)
-	tmp.B0.A0 = api.Sub(tmp.B0.A0, one) // xⁿ-1
-	li := api.Inverse(size)
-	liExt := gnarkfext.FromBaseField(li)
-	liExt.Mul(api, tmp, liExt) // 1/n * (xⁿ-1)
-
-	res := gnarkfext.FromBaseField(0)
+	wOne := gnarkfext.NewE4GenFromBase(1)
 	for i := 0; i < size; i++ {
-		liExt.Mul(api, liExt, invdens[i])
-		tmp.Mul(api, liExt, poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
-		res.Add(api, res, tmp)
-		liExt.Mul(api, liExt, dens[i])
-		liExt.MulByFp(api, liExt, omega)
+		dens[i] = *e4Api.Sub(&dens[i], &wOne)
+		dens[i] = *e4Api.Inverse(&dens[i])
 	}
+
+	res := gnarkfext.NewE4GenFromBase(0)
+	for i := 0; i < size; i++ {
+		tmp := *e4Api.Mul(&dens[i], &poly[i])
+		res = *e4Api.Add(&res, &tmp)
+	}
+
+	var tmp gnarkfext.E4Gen
+	tmp = gnarkutil.ExpExt(api, x, size)
+	tmp = *e4Api.Sub(&tmp, &wOne) // xⁿ-1
+	var invSize field.Element
+	invSize.SetUint64(uint64(size)).Inverse(&invSize)
+	wInvSize := zk.ValueOf(invSize)
+	tmp = *e4Api.MulByFp(&tmp, &wInvSize)
+	res = *e4Api.Mul(&res, &tmp)
 
 	return res
 
@@ -67,52 +75,43 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.E4Gen, x g
 		return []gnarkfext.E4Gen{}
 	}
 
-	var (
-		sizes            = listOfDifferentSizes(polys)
-		maxSize          = sizes[len(sizes)-1]
-		xNs              = raiseToPowersOfTwosExt(api, x, sizes)
-		powersOfOmegaInv = powerVectorOfOmegaInv(maxSize)
-		one              gnarkfext.E4Gen
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 
-		// innerProductTerms lists a sequence of term computed as
-		// \frac{1}{x \omega^{-i} - 1}. These will be used to compute
-		// an inner-product between the polys to obtain an unscaled
-		// result. The unscaled result will then be scaled by (x^n - 1)/n
-		// to obtain the result of the Lagrange interpolation.
-		innerProductTerms = make([]gnarkfext.E4Gen, maxSize)
+	sizes := listOfDifferentSizes(polys)
+	maxSize := sizes[len(sizes)-1]
+	xNs := raiseToPowersOfTwosExt(api, x, sizes)
+	powersOfOmegaInv := powerVectorOfOmegaInv(maxSize)
+	one := gnarkfext.NewE4GenFromBase(1)
 
-		// scalingTerms lists a sequence of term computed as (x^n - 1)/n
-		// where n stands for all the different sizes of the polys in
-		// increasing order. (as found in "sizes"). The used to derive
-		// the final result of the evaluations.
-		scalingTerms = make([]gnarkfext.E4Gen, len(sizes))
+	innerProductTerms := make([]gnarkfext.E4Gen, maxSize)
+	scalingTerms := make([]gnarkfext.E4Gen, len(sizes))
 
-		// res stores the final result of the interpolation
-		res = make([]gnarkfext.E4Gen, len(polys))
-	)
-	one.SetOne()
+	// res stores the final result of the interpolation
+	res := make([]gnarkfext.E4Gen, len(polys))
+
 	for i := range innerProductTerms {
-		innerProductTerms[i].MulByFp(api, x, powersOfOmegaInv[i])
-		innerProductTerms[i].Sub(api, innerProductTerms[i], one)
-		innerProductTerms[i].Inverse(api, innerProductTerms[i])
+		innerProductTerms[i] = *e4Api.MulByFp(&x, &powersOfOmegaInv[i])
+		innerProductTerms[i] = *e4Api.Sub(&innerProductTerms[i], &one)
+		innerProductTerms[i] = *e4Api.Inverse(&innerProductTerms[i])
 	}
 
 	for i, n := range sizes {
 		var nField field.Element
 		nField.SetInt64(int64(n))
-		scalingTerms[i].Sub(api, xNs[i], one)
-		scalingTerms[i].DivByBase(api, scalingTerms[i], n)
+		scalingTerms[i] = *e4Api.Sub(&xNs[i], &one)
+		wn := zk.ValueOf(n)
+		scalingTerms[i] = *e4Api.DivByBase(&scalingTerms[i], &wn)
 	}
 
 	for i := range polys {
 
-		var (
-			poly          = polys[i]
-			n             = len(poly)
-			scalingFactor gnarkfext.E4Gen
-			yUnscaled     gnarkfext.E4Gen
-			tmp           gnarkfext.E4Gen
-		)
+		poly := polys[i]
+		n := len(poly)
+		var scalingFactor gnarkfext.E4Gen
+		var tmp gnarkfext.E4Gen
 
 		for j := range sizes {
 			if sizes[j] == n {
@@ -120,31 +119,22 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.E4Gen, x g
 			}
 		}
 
-		// That would be completely unexpectedly wrong if that happened since
-		// the sizes are deduplicated and sorted from the sizes found in poly
-		// in the first place.
-		if scalingFactor.B0.A0 == nil {
+		if scalingFactor.B0.A0.IsEmpty() {
 			utils.Panic("could not find scaling factor for poly of size %v", n)
 		}
 
-		yUnscaled.SetZero()
-
+		yUnscaled := gnarkfext.NewE4GenFromBase(0)
 		for k := 0; k < n; k++ {
+			// TOOD @thomas restore this optim
+			// if isConstantZeroGnarkVariable(api, poly[k]) {
+			// 	continue
+			// }
 
-			// This optimization saves constraints when dealing with a polynomial
-			// that is precomputed and raised as a Proof object in the wizard. When
-			// that happens, it will contain constant values (very often actually)
-			// and when they contain zeroes we can just skip the related
-			// computation. The saving was not negligible in practice.
-			if isConstantZeroGnarkVariable(api, poly[k]) {
-				continue
-			}
-
-			tmp.Mul(api, innerProductTerms[k*maxSize/n], poly[k])
-			yUnscaled.Add(api, tmp, yUnscaled)
+			tmp = *e4Api.Mul(&innerProductTerms[k*maxSize/n], &poly[k])
+			yUnscaled = *e4Api.Add(&tmp, &yUnscaled)
 		}
 
-		res[i].Mul(api, yUnscaled, scalingFactor)
+		res[i] = *e4Api.Mul(&yUnscaled, &scalingFactor)
 	}
 
 	return res
@@ -171,11 +161,14 @@ func listOfDifferentSizes(polys [][]gnarkfext.E4Gen) []int {
 // powers of two.
 func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.E4Gen, ns []int) []gnarkfext.E4Gen {
 
-	var (
-		res   = make([]gnarkfext.E4Gen, len(ns))
-		curr  = x
-		currN = 1
-	)
+	res := make([]gnarkfext.E4Gen, len(ns))
+	curr := x
+	currN := 1
+
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 
 	for i, n := range ns {
 
@@ -184,7 +177,7 @@ func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.E4Gen, ns []int) []gna
 		}
 
 		for currN < n {
-			curr.Mul(api, curr, curr)
+			curr = *e4Api.Mul(&curr, &curr)
 			currN *= 2
 		}
 
@@ -199,16 +192,14 @@ func raiseToPowersOfTwosExt(api frontend.API, x gnarkfext.E4Gen, ns []int) []gna
 // is the inverse of the generator of the subgroup of root of unity of order 4.
 func powerVectorOfOmegaInv(n int) []zk.WrappedVariable {
 
-	var (
-		resField = field.One()
-		res      = make([]zk.WrappedVariable, n)
-		w, _     = fft.Generator(uint64(n))
-	)
+	resField := field.One()
+	res := make([]zk.WrappedVariable, n)
+	w, _ := fft.Generator(uint64(n))
 
 	w.Inverse(&w)
 
 	for i := 0; i < n; i++ {
-		res[i] = resField
+		res[i] = zk.ValueOf(resField)
 		resField.Mul(&resField, &w)
 	}
 
