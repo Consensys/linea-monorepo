@@ -181,11 +181,20 @@ export class L2MessageServiceClient
     const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
     const l2FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
 
-    const contract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
+    const claimingContract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
 
-    return await contract.claimMessage(messageSender, destination, fee, value, l2FeeRecipient, calldata, messageNonce, {
-      ...opts.overrides,
-    });
+    return await claimingContract.claimMessage(
+      messageSender,
+      destination,
+      fee,
+      value,
+      l2FeeRecipient,
+      calldata,
+      messageNonce,
+      {
+        ...opts.overrides,
+      },
+    );
   }
 
   /**

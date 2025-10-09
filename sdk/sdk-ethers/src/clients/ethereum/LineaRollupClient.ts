@@ -371,9 +371,9 @@ export class LineaRollupClient
 
     const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(message.messageHash);
 
-    const contract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
+    const claimingContract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
 
-    return await contract.claimMessageWithProof(
+    return await claimingContract.claimMessageWithProof(
       {
         from: messageSender,
         to: destination,
