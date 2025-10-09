@@ -205,6 +205,11 @@ type ExecutionDataCollector struct {
 	// SelectorAbsTxIDDiff[i]=1 if (edc.AbsTxID[i]=edc.AbsTxID[i+1]), used to enforce constant constraints inside a transaction segment.
 	SelectorAbsTxIDDiff        ifaces.Column
 	ComputeSelectorAbsTxIDDiff wizard.ProverAction
+
+	// the following two columns are used to detect blocks that have zero user transactions
+	// which is a special edge case that needs to be handled separately.
+	SelectorBlockHasZeroUserTx        ifaces.Column
+	ComputeSelectorBlockHasZeroUserTx wizard.ProverAction
 }
 
 // NewExecutionDataCollector instantiates an ExecutionDataCollector with unconstrained columns.
@@ -442,6 +447,7 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	// From IsBlockHashLo[i]=1, we can only transition to IsAddrHi[i+1]=1 on the next row.
 	// The converse direction does not necessarily hold,
 	// we do NOT have that IsAddrHi[i+1]=1 implies that IsBlockHashLo[i]=1.
+	// special case: if the block has zero user transactions, we transition directly from IsBlockHashLo to IsNoTx
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_BLOCKHASH_LO_TO_IS_ADDR_HI", name),
 		sym.Mul(
@@ -449,6 +455,13 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 			sym.Sub(
 				column.Shift(edc.IsBlockHashLo, -1),
 				edc.IsAddrHi,
+			),
+			// add the special case indicator
+			// the constraints above should only be active when the current block has user transactions
+			// and is not empty
+			sym.Sub(
+				1,
+				column.Shift(edc.SelectorBlockHasZeroUserTx, -4), // if this selector is 0, the enclosing term becomes 1
 			),
 		),
 	)
@@ -487,7 +500,7 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 		sym.Mul(
 			sym.Sub(1,
 				edc.EndOfRlpSegment,
-			), // we are inside an RLP segment
+			),           // we are inside an RLP segment
 			edc.IsTxRLP, // if IsTxRLP is 1 then on the next row IsTxRLP will be 1 if we are inside the block
 			sym.Sub(
 				1,
@@ -547,6 +560,23 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 			column.Shift(edc.IsActive, 1), // all the above forces isActive to be 0 on the next position
 		),
 	)
+
+	// special case: if the block has zero user transactions, we transition directly from IsBlockHashLo to IsNoTx
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_BLOCKHASH_LO_TO_IS_NO_TX_FOR_EMPTY_BLOCKS", name),
+		sym.Mul(
+			column.Shift(edc.IsBlockHashLo, -1), // this constraint says if IsBlockHashLo[i-1] = 1 then ....
+			sym.Sub(
+				// this term enforces that IsBlockHashLo[i-1] = 1 must be equal to IsNoTx = 1 (when the other outside conditions are true)
+				column.Shift(edc.IsBlockHashLo, -1),
+				edc.IsNoTx,
+			),
+			// add the special case indicator
+			// the constraints above should only be active when the current block has NO user transactions
+			// and is empty
+			column.Shift(edc.SelectorBlockHasZeroUserTx, -4), // if this selector is 1, then there are no user transactions in the block
+		),
+	)
 }
 
 // DefineIndicatorConverseOrder constrains the converse order of load operations.
@@ -561,6 +591,13 @@ func DefineIndicatorConverseOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 			sym.Sub(
 				edc.IsTxRLP,
 				column.Shift(edc.IsNoTx, 1),
+			), // either this term is 0, or we are in the next edge case
+			sym.Mul(
+				column.Shift(edc.SelectorBlockHasZeroUserTx, -3), // if this selector is 1, then there are no user transactions in the block
+				sym.Sub( // IsBlockHashLo is equal to isNoTx[i+1] because we had an empty block
+					edc.IsBlockHashLo,
+					column.Shift(edc.IsNoTx, 1),
+				),
 			),
 		),
 	)
@@ -592,7 +629,7 @@ func DefineIndicatorConverseOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 			),
 		),
 	)
-	// isActive[i+1]=0 and isActive[i]=1 ->IsTxRLP[i]=1
+	// isActive[i+1]=0 and isActive[i]=1 -> (either IsTxRLP[i]=1 or isBlockHashLo[i]=1)
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_CONVERSE_IS_ACTIVE_TO_IS_TX_RLP", name),
 		sym.Mul(
@@ -601,6 +638,10 @@ func DefineIndicatorConverseOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 			sym.Sub(
 				1,
 				column.Shift(edc.IsTxRLP, -1),
+			),
+			sym.Sub( // or we were in an ampty block and transitioned directly from IsBlockHashLo
+				1,
+				column.Shift(edc.IsBlockHashLo, -1),
 			),
 		),
 	)
@@ -989,6 +1030,11 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 		),
 	).GetColumnAndProverAction()
 
+	edc.SelectorBlockHasZeroUserTx, edc.ComputeSelectorBlockHasZeroUserTx = dedicated.IsZero(
+		comp,
+		ifaces.ColumnAsVariable(edc.TotalNoTxBlock),
+	).GetColumnAndProverAction()
+
 	// edc.EndOfRlpSegment is partially constrained in the projection queries, on areas where edc.IsTxRLP = 1
 	// it is also constrained in DefineZeroizationConstraints.
 	// here we require that when edc.IsTxRLP = 0, we have EndOfRlpSegment = 0
@@ -1363,6 +1409,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 	edc.ComputeSelectorLastTxBlock.Run(run)
 	edc.ComputeSelectorEndOfAllTx.Run(run)
 	edc.ComputeSelectorAbsTxIDDiff.Run(run)
+	edc.ComputeSelectorBlockHasZeroUserTx.Run(run)
 }
 
 // AssignExecutionDataColumns uses the helper struct ExecutionDataCollectorVectors to assign the columns of

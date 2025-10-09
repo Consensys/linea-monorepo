@@ -113,6 +113,7 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				RelBlock:        getCol("txndata.REL_BLOCK"),
 				RelTxNum:        getCol("txndata.REL_TX_NUM"),
 				RelTxNumMax:     getCol("txndata.REL_TX_NUM_MAX"),
+				USER:            getCol("txndata.USER"),
 			},
 			RlpTxn: &arith.RlpTxn{
 				AbsTxNum:       getCol("rlptxn.ABS_TX_NUM"),
@@ -120,8 +121,8 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				ToHashByProver: getCol("rlptxn.TO_HASH_BY_PROVER"),
 				Limb:           getCol("rlptxn.LIMB"),
 				NBytes:         getCol("rlptxn.nBYTES"),
-				Done:           getCol("rlptxn.DONE"),
-				IsPhaseChainID: getCol("rlptxn.IS_PHASE_CHAIN_ID"),
+				TxnPerspective: getCol("rlptxn.TXN"),
+				ChainID:        getCol("rlptxn.txnCHAIN_ID"),
 			},
 			LogCols: logs.LogColumns{
 				IsLog0:       getCol("loginfo.IS_LOG_X_0"),
