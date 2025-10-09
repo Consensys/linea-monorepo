@@ -11,6 +11,7 @@ package maru.p2p
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.util.Optional
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -168,7 +169,7 @@ class P2PNetworkImpl(
     )
   private val delayedExecutor =
     SafeFuture.delayedExecutor(p2pConfig.reconnectDelay.inWholeMilliseconds, TimeUnit.MILLISECONDS, executor)
-  private val staticPeerMap = mutableMapOf<NodeId, MultiaddrPeerAddress>()
+  private val staticPeerMap = ConcurrentHashMap<NodeId, MultiaddrPeerAddress>()
 
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String>
@@ -311,15 +312,15 @@ class P2PNetworkImpl(
       .whenComplete { peer: Peer?, t: Throwable? ->
         if (t != null) {
           if (t.cause is PeerAlreadyConnectedException) {
-            log.trace("Already connected to peer={}. Error={}", peerAddress, t.message)
+            log.trace("Already connected to peer={}. errorMessage={}", peerAddress, t.message)
             reconnectWhenDisconnected(peer!!, peerAddress)
           } else {
-            log.trace(
-              "Failed to connect to static peer={}, retrying after {} ms. Error={}, StackTrace={}",
+            log.debug(
+              "failed to connect to static peer={} retrying after {}. errorMessage={}",
               peerAddress,
               p2pConfig.reconnectDelay,
               t.message,
-              t.stackTraceToString(),
+              t,
             )
             if (t.cause?.message != "Transport is closed") {
               SafeFuture
