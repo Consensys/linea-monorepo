@@ -889,7 +889,7 @@ class P2PTest {
 
   private fun getMockedBeaconChain(): BeaconChain {
     val mockedBeaconChain = mock<BeaconChain>(RETURNS_DEEP_STUBS)
-    whenever(mockedBeaconChain.getSealedBeaconBlocks(any(), any())).thenThrow(
+    whenever(mockedBeaconChain.getSealedBeaconBlock(any<ULong>())).thenThrow(
       IllegalStateException("Missing sealed beacon block"),
     )
     return mockedBeaconChain
