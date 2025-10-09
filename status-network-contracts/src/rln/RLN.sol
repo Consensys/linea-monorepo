@@ -15,6 +15,7 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
     error RLN__IdCommitmentAlreadyRegistered();
     error RLN__SetIsFull();
     error RLN__Unauthorized();
+    error RLN__InvalidCommitment();
 
     /// @dev Emmited when a new member registered.
     /// @param identityCommitment: `identityCommitment`;
@@ -51,6 +52,9 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
 
     /// @dev Poseidon hasher contract.
     IPoseidonHasher public poseidonHasher;
+
+    /// @dev Slash commitments mapping for the commit-reveal scheme.
+    mapping(bytes32 hash => bool commited) public slashCommitments;
 
     constructor() {
         _disableInitializers();
@@ -120,7 +124,7 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
     /// @dev Slashes identity with privateKey.
     /// @param privateKey: RLN private key as bytes32;
     /// @param rewardRecipient: Address that will receive the slash reward;
-    function slash(bytes32 privateKey, address rewardRecipient) external onlyRole(SLASHER_ROLE) {
+    function slash(bytes32 privateKey, address rewardRecipient) public onlyRole(SLASHER_ROLE) {
         // Hash the private key using Poseidon to get identityCommitment
         uint256 identityCommitment = poseidonHasher.hash(uint256(privateKey));
 
@@ -132,5 +136,35 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
         delete members[identityCommitment];
 
         emit MemberSlashed(member.index, msg.sender);
+    }
+
+    /// @dev Commits to a future slash operation using a hash.
+    /// @notice This is the first step of the commit-reveal scheme for slashing.
+    /// The slasher must first commit to a hash of (privateKey, rewardRecipient) before revealing
+    /// the actual values. This prevents front-running attacks where others could observe the
+    /// privateKey in the mempool and slash the member themselves with a different reward recipient.
+    ///
+    /// @param hash: keccak256 hash of abi.encodePacked(privateKey, rewardRecipient).
+    function slashCommit(bytes32 hash) external onlyRole(SLASHER_ROLE) {
+        slashCommitments[hash] = true;
+    }
+
+    /// @dev Reveals and executes a previously committed slash operation.
+    /// @notice This is the second step of the commit-reveal scheme for slashing.
+    /// After committing the hash, the slasher reveals the actual privateKey and rewardRecipient.
+    /// The function verifies that these values match a previously committed hash, then executes
+    /// the slash. This two-step process prevents front-running while ensuring the slasher cannot
+    /// change the parameters after commitment.
+    ///
+    /// @param privateKey: RLN private key as bytes32.
+    /// @param rewardRecipient: Address that will receive the slash reward from the Karma contract.
+    function slashReveal(bytes32 privateKey, address rewardRecipient) external onlyRole(SLASHER_ROLE) {
+        bytes32 hash = keccak256(abi.encodePacked(privateKey, rewardRecipient));
+        if (!slashCommitments[hash]) {
+            revert RLN__InvalidCommitment();
+        }
+
+        delete slashCommitments[hash];
+        slash(privateKey, rewardRecipient);
     }
 }

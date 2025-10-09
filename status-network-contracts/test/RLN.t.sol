@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { RLN } from "../src/rln/RLN.sol";
@@ -115,7 +116,7 @@ contract RLNTest is Test {
         // Register first identity
         uint256 indexBefore = rln.identityCommitmentIndex();
         vm.startPrank(registerAddr);
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit(true, true, true, true);
         emit RLN.MemberRegistered(identityCommitment0, indexBefore);
         rln.register(identityCommitment0, user1Addr);
         vm.stopPrank();
@@ -128,7 +129,7 @@ contract RLNTest is Test {
         // Register second identity
         indexBefore = rln.identityCommitmentIndex();
         vm.startPrank(registerAddr);
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit(true, true, true, true);
         emit RLN.MemberRegistered(identityCommitment1, indexBefore);
         rln.register(identityCommitment1, user2Addr);
         vm.stopPrank();
@@ -188,15 +189,15 @@ contract RLNTest is Test {
         (, uint256 index1) = _memberData(identityCommitment1);
 
         // burn event
-        vm.expectEmit(false, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit IERC20Upgradeable.Transfer(user2Addr, address(0), 5 ether);
 
         // reward mint event
-        vm.expectEmit(false, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit IERC20Upgradeable.Transfer(address(0), rewardRecipientAddr, 0.5 ether);
 
         // slash event
-        vm.expectEmit(false, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit RLN.MemberSlashed(index1, slasherAddr);
 
         vm.prank(slasherAddr);
@@ -214,6 +215,104 @@ contract RLNTest is Test {
         vm.expectRevert(RLN.RLN__MemberNotFound.selector);
         rln.slash(privateKey0, rewardRecipientAddr);
         vm.stopPrank();
+    }
+
+    /* ---------- SLASH COMMIT/REVEAL ---------- */
+
+    function test_SlashCommitRevertsIfNoSlashRole() public {
+        bytes32 hash = keccak256(abi.encodePacked(privateKey0, rewardRecipientAddr));
+
+        // Attempt to commit without slash role
+        vm.expectRevert(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(uint160(user1Addr)),
+                " is missing role ",
+                Strings.toHexString(uint256(rln.SLASHER_ROLE()), 32)
+            )
+        );
+        vm.prank(user1Addr);
+        rln.slashCommit(hash);
+    }
+
+    function test_SlashCommitAddsNewHashWithSlashRole() public {
+        bytes32 hash = keccak256(abi.encodePacked(privateKey0, rewardRecipientAddr));
+
+        // Verify commitment doesn't exist yet
+        assertFalse(rln.slashCommitments(hash));
+
+        // Commit with slash role
+        vm.prank(slasherAddr);
+        rln.slashCommit(hash);
+
+        // Verify commitment was added
+        assertTrue(rln.slashCommitments(hash));
+    }
+
+    function test_SlashRevealRevertsIfNoSlashRole() public {
+        bytes32 hash = keccak256(abi.encodePacked(privateKey0, rewardRecipientAddr));
+
+        // Attempt to reveal without slash role
+        vm.expectRevert(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(uint160(user1Addr)),
+                " is missing role ",
+                Strings.toHexString(uint256(rln.SLASHER_ROLE()), 32)
+            )
+        );
+        vm.prank(user1Addr);
+        rln.slashReveal(privateKey0, rewardRecipientAddr);
+    }
+
+    function test_SlashRevealRevertsIfCommitmentDoesntExist() public {
+        // Attempt to reveal without committing first
+        vm.expectRevert(RLN.RLN__InvalidCommitment.selector);
+        vm.prank(slasherAddr);
+        rln.slashReveal("1234", rewardRecipientAddr);
+    }
+
+    function test_SlashRevealSlashesAccountAndRemovesHash() public {
+        vm.prank(owner);
+        karma.mint(user1Addr, 10 ether);
+
+        vm.prank(registerAddr);
+        rln.register(identityCommitment0, user1Addr);
+
+        // Retrieve the assigned index
+        (, uint256 index0) = _memberData(identityCommitment0);
+
+        // Commit the slash
+        bytes32 hash = keccak256(abi.encodePacked(privateKey0, rewardRecipientAddr));
+        vm.prank(slasherAddr);
+        rln.slashCommit(hash);
+
+        // Verify commitment exists
+        assertTrue(rln.slashCommitments(hash));
+
+        // Burn event
+        vm.expectEmit(true, true, true, true);
+        emit IERC20Upgradeable.Transfer(user1Addr, address(0), 5 ether);
+
+        // Reward mint event
+        vm.expectEmit(true, true, true, true);
+        emit IERC20Upgradeable.Transfer(address(0), rewardRecipientAddr, 0.5 ether);
+
+        // Slash event
+        vm.expectEmit(true, true, true, true);
+        emit RLN.MemberSlashed(index0, slasherAddr);
+
+        // Reveal and slash
+        vm.prank(slasherAddr);
+        rln.slashReveal(privateKey0, rewardRecipientAddr);
+
+        // Verify commitment was removed
+        assertFalse(rln.slashCommitments(hash));
+
+        // Verify member was slashed
+        (address userAddress, uint256 userIndex) = _memberData(identityCommitment0);
+        assertEq(userAddress, address(0));
+        assertEq(userIndex, 0);
     }
 
     /* ========== HELPERS ========== */
