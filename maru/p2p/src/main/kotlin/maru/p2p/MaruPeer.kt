@@ -136,7 +136,7 @@ class DefaultMaruPeer(
 
   override fun updateStatus(newStatus: Status) {
     scheduledDisconnect.ifPresent { it.cancel(false) }
-    if (!statusManager.check(newStatus)) {
+    if (!statusManager.isValidForPeering(newStatus)) {
       disconnectCleanly(DisconnectReason.IRRELEVANT_NETWORK)
       return
     }

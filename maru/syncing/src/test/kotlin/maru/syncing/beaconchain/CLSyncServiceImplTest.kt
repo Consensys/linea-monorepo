@@ -14,16 +14,13 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
-import maru.config.SyncingConfig
+import maru.consensus.ChainFork
+import maru.consensus.ClFork
 import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkIdManagerFactory
-import maru.consensus.ForkSpec
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.DelayedQbftBlockCreator
@@ -34,7 +31,6 @@ import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics.TestMetricsFacade
 import maru.core.ext.metrics.TestMetrics.TestMetricsSystemAdapter
-import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
@@ -42,8 +38,8 @@ import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.PeerLookup
+import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
-import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
@@ -110,7 +106,7 @@ class CLSyncServiceImplTest {
         override fun getCLSyncTarget(): ULong = 0UL
       }
 
-    fun createForkIdHashProvider(beaconChain: BeaconChain): ForkIdHashManager {
+    fun createForkIdHashProvider(beaconChain: BeaconChain): ForkPeeringManager {
       val consensusConfig: ConsensusConfig =
         QbftConsensusConfig(
           validatorSet =
@@ -118,14 +114,14 @@ class CLSyncServiceImplTest {
               Validator(ByteArray(20) { 0 }),
               Validator(ByteArray(20) { 1 }),
             ),
-          elFork = ElFork.Prague,
+          fork = ChainFork(ClFork.QBFT_PHASE0, elFork = ElFork.Prague),
         )
 
       return ForkIdManagerFactory.createForkIdHashManager(
         chainId = CHAIN_ID,
         beaconChain = beaconChain,
         elFork = ElFork.Prague,
-        forks = listOf(ForkSpec(0UL, 1U, consensusConfig)),
+        consensusConfig = consensusConfig,
       )
     }
   }
@@ -440,15 +436,8 @@ class CLSyncServiceImplTest {
         metricsSystem = TestMetricsSystemAdapter,
         forkIdHashManager = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
-        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
         p2PState = p2PState,
         syncStatusProviderProvider = { getSyncStatusProvider() },
-        syncConfig =
-          SyncingConfig(
-            peerChainHeightPollingInterval = 1.minutes,
-            syncTargetSelection = SyncingConfig.SyncTargetSelection.Highest,
-            elSyncStatusRefreshInterval = 1.seconds,
-          ),
       )
     return p2pNetworkImpl
   }

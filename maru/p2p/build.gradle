@@ -49,7 +49,7 @@ dependencies {
   implementation(project(":core"))
 
   testImplementation(testFixtures(project(":core")))
-  testImplementation(project(":serialization"))
-
+  testFixturesImplementation(project(":serialization"))
+  testFixturesImplementation(project(":crypto"))
   testFixturesImplementation(testImplementation(testFixtures(project(":core"))))
 }

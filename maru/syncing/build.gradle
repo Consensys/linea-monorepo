@@ -41,6 +41,7 @@ dependencies {
   testImplementation project(':observability')
   testImplementation project(':serialization')
   testImplementation(testFixtures(project(":core")))
+  testImplementation(testFixtures(project(":p2p")))
   testImplementation(project(":jvm-libs:test-utils"))
   testImplementation 'org.mockito:mockito-core'
   testImplementation 'org.mockito.kotlin:mockito-kotlin'

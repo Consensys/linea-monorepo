@@ -24,6 +24,8 @@ import kotlin.collections.component2
 import kotlin.collections.map
 import kotlin.collections.toSet
 import kotlin.reflect.KType
+import maru.consensus.ChainFork
+import maru.consensus.ClFork
 import maru.consensus.ConsensusConfig
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
@@ -74,8 +76,13 @@ object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
         require(postTtdQbftSpec is QbftConsensusConfig) {
           "DifficultyAwareQbft only supports QBFT as the post TTD protocol"
         }
-        DifficultyAwareQbftConfig(postTtdQbftSpec, terminalTotalDifficulty).valid()
+        // Override CLFork to Phase0
+        DifficultyAwareQbftConfig(
+          postTtdConfig = postTtdQbftSpec.copy(fork = postTtdQbftSpec.fork.copy(clFork = ClFork.QBFT_PHASE0)),
+          terminalTotalDifficulty,
+        ).valid()
       }
+
       "qbft" ->
         QbftConsensusConfig(
           validatorSet =
@@ -86,7 +93,11 @@ object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
                   it.valueOrNull()!!.fromHexToByteArray(),
                 )
               }.toSet(),
-          elFork = ElFork.valueOf(obj.getString("elfork")),
+          fork =
+            ChainFork(
+              clFork = ClFork.QBFT_PHASE0,
+              elFork = ElFork.valueOf(obj.getString("elfork")),
+            ),
         ).valid()
 
       else -> (ConfigFailure.UnsupportedCollectionType(obj, "Unsupported fork type $type!") as ConfigFailure).invalid()

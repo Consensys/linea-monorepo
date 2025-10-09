@@ -6,31 +6,33 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package maru.serialization
+package maru.p2p.fork
 
 import java.nio.ByteBuffer
+import linea.kotlin.encodeHex
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.QbftConsensusConfig
-import maru.extensions.encodeHex
+import maru.serialization.Serializer
 
-object QbftConsensusConfigSerializer : Serializer<QbftConsensusConfig> {
+object QbftConsensusConfigDigester : Serializer<QbftConsensusConfig> {
   override fun serialize(value: QbftConsensusConfig): ByteArray {
     // Sort validators deterministically by address hex
     val validatorsSorted = value.validatorSet.sortedBy { it.address.encodeHex(prefix = false) }
-    // Allocate buffer: 20 bytes per validator + 4 for elFork.ordinal
-    val buffer = ByteBuffer.allocate(validatorsSorted.size * 20 + 4)
+    // Allocate buffer: 20 bytes per validator + 2 bytes (ClFork + ELFork)
+    val buffer = ByteBuffer.allocate(validatorsSorted.size * 20 + 2)
     for (validator in validatorsSorted) {
       buffer.put(validator.address)
     }
-    buffer.putInt(value.elFork.ordinal)
+    buffer.put(value.fork.clFork.version)
+    buffer.put(value.fork.elFork.version)
     return buffer.array()
   }
 }
 
-object DifficultyAwareQbftConfigSerializer : Serializer<DifficultyAwareQbftConfig> {
+object DifficultyAwareQbftConfigDigester : Serializer<DifficultyAwareQbftConfig> {
   override fun serialize(value: DifficultyAwareQbftConfig): ByteArray {
-    val postTtdConfigBytes = QbftConsensusConfigSerializer.serialize(value.postTtdConfig)
+    val postTtdConfigBytes = QbftConsensusConfigDigester.serialize(value.postTtdConfig)
     val buffer = ByteBuffer.allocate(postTtdConfigBytes.size + 8)
     buffer.putLong(value.terminalTotalDifficulty.toLong())
     buffer.put(postTtdConfigBytes)
@@ -38,22 +40,21 @@ object DifficultyAwareQbftConfigSerializer : Serializer<DifficultyAwareQbftConfi
   }
 }
 
-object ForkSpecSerializer : Serializer<ForkSpec> {
+object ForkSpecDigester : Serializer<ForkSpec> {
   override fun serialize(value: ForkSpec): ByteArray {
     val serializedConsensusConfig =
       when (value.configuration) {
         is QbftConsensusConfig ->
-          QbftConsensusConfigSerializer.serialize(value.configuration as QbftConsensusConfig)
+          QbftConsensusConfigDigester.serialize(value.configuration as QbftConsensusConfig)
 
         is DifficultyAwareQbftConfig ->
-          DifficultyAwareQbftConfigSerializer.serialize(value.configuration as DifficultyAwareQbftConfig)
+          DifficultyAwareQbftConfigDigester.serialize(value.configuration as DifficultyAwareQbftConfig)
 
         else -> throw IllegalArgumentException("${value.configuration.javaClass.simpleName} is not supported!")
       }
 
     return ByteBuffer
-      .allocate(4 + 8 + serializedConsensusConfig.size)
-      .putInt(value.blockTimeSeconds.toInt())
+      .allocate(8 + serializedConsensusConfig.size)
       .putLong(value.timestampSeconds.toLong())
       .put(serializedConsensusConfig)
       .array()

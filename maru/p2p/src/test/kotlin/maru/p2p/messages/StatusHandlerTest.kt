@@ -41,7 +41,7 @@ class StatusHandlerTest {
         ),
       )
     whenever(statusManager.createStatusMessage()).thenReturn(localStatusMessage)
-    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.isValidForPeering(any())).thenReturn(true)
 
     val peer = mock<MaruPeer>()
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
@@ -77,7 +77,7 @@ class StatusHandlerTest {
         latestBlockNumber = remoteBeaconState.beaconBlockHeader.number,
       )
 
-    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.isValidForPeering(any())).thenReturn(true)
     whenever(statusManager.createStatusMessage()).thenReturn(statusMessage)
     whenever(statusMessage.payload).thenReturn(status)
 
@@ -114,7 +114,7 @@ class StatusHandlerTest {
       )
 
     whenever(statusManager.createStatusMessage()).thenReturn(statusMessage)
-    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.isValidForPeering(any())).thenReturn(true)
     whenever(statusMessage.payload).thenReturn(status)
 
     val peer = mock<MaruPeer>()
@@ -134,7 +134,7 @@ class StatusHandlerTest {
   @Test
   fun `handles request with Rpc exception`() {
     val statusManager = mock<StatusManager>()
-    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.isValidForPeering(any())).thenReturn(true)
     whenever(statusManager.createStatusMessage()).thenAnswer {
       throw RpcException(RpcResponseStatus.RESOURCE_UNAVAILABLE, "createStatusMessage exception testing")
     }
@@ -183,7 +183,7 @@ class StatusHandlerTest {
       )
 
     whenever(statusManager.createStatusMessage()).thenReturn(statusMessage)
-    whenever(statusManager.check(any())).thenReturn(false)
+    whenever(statusManager.isValidForPeering(any())).thenReturn(false)
     whenever(statusMessage.payload).thenReturn(status)
 
     val peer = mock<MaruPeer>()
@@ -203,7 +203,7 @@ class StatusHandlerTest {
   @Test
   fun `handles request with exception`() {
     val statusManager = mock<StatusManager>()
-    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.isValidForPeering(any())).thenReturn(true)
     whenever(statusManager.createStatusMessage()).thenThrow(
       IllegalStateException("createStatusMessage exception testing"),
     )
@@ -249,7 +249,7 @@ class StatusHandlerTest {
         ),
       )
     whenever(statusManager.createStatusMessage()).thenReturn(localStatusMessage)
-    whenever(statusManager.check(any())).thenReturn(false)
+    whenever(statusManager.isValidForPeering(any())).thenReturn(false)
 
     val peer = mock<MaruPeer>()
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()

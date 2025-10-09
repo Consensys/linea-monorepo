@@ -53,7 +53,7 @@ class DefaultMaruPeerTest {
   fun `updateStatus sets the status`() {
     val status = mock<Status>()
     whenever(delegatePeer.address).thenReturn(mock())
-    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.isValidForPeering(any())).thenReturn(true)
 
     maruPeer.updateStatus(status)
 
@@ -192,7 +192,7 @@ class DefaultMaruPeerTest {
   fun `updateStatus sets status and cancels scheduled disconnect`() {
     val status = mock<Status>()
     whenever(delegatePeer.address).thenReturn(mock())
-    whenever(statusManager.check(any())).thenReturn(true)
+    whenever(statusManager.isValidForPeering(any())).thenReturn(true)
 
     maruPeer.scheduleDisconnectIfStatusNotReceived(1.seconds)
     maruPeer.updateStatus(status)

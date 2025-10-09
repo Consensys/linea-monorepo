@@ -13,7 +13,11 @@ import maru.serialization.SerDe
 typealias HeaderHashFunction = (BeaconBlockHeader) -> ByteArray
 
 fun interface Hasher {
-  fun hash(serializedBytes: ByteArray): ByteArray
+  fun hash(input: ByteArray): ByteArray
+}
+
+fun interface ObjHasher<T> {
+  fun hash(obj: T): ByteArray
 }
 
 /**

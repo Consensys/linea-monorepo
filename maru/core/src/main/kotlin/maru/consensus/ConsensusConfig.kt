@@ -8,4 +8,6 @@
  */
 package maru.consensus
 
-interface ConsensusConfig
+interface ConsensusConfig {
+  val fork: ChainFork
+}
