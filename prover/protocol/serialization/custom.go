@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/utils/unsafe"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
@@ -89,6 +90,12 @@ func init() {
 		Des:  unmarshalRingSisKey,
 	}
 
+	CustomCodexes[TypeOfGnarkFFTDomainPtr] = CustomCodex{
+		Type: TypeOfGnarkFFTDomainPtr,
+		Ser:  marshalGnarkFFTDomain,
+		Des:  unmarshalGnarkFFtDomain,
+	}
+
 	CustomCodexes[reflect.TypeOf(smartvectors.Regular{})] = CustomCodex{
 		Type: reflect.TypeOf(smartvectors.Regular{}),
 		Ser:  marshalArrayOfFieldElement,
@@ -100,6 +107,7 @@ func init() {
 		Ser:  marshalAsEmptyStruct,
 		Des:  makeNewObject,
 	}
+
 }
 
 func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
@@ -108,6 +116,45 @@ func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
 		return nil, newSerdeErrorf("illegal cast of val of type %T to %v", val, TypeOfRingSisKeyPtr)
 	}
 	return key.KeyGen.MaxNumFieldToHash, nil
+}
+
+func marshalGnarkFFTDomain(ser *Serializer, val reflect.Value) (any, *serdeError) {
+	domain := val.Interface().(*fft.Domain)
+
+	if domain == nil {
+		return nil, nil
+	}
+
+	var buf bytes.Buffer
+	if _, err := domain.WriteTo(&buf); err != nil {
+		return nil, newSerdeErrorf("could not marshal fft.Domain: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+func unmarshalGnarkFFtDomain(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
+
+	// nil case
+	if val == nil {
+		return reflect.Zero(TypeOfGnarkFFTDomainPtr), nil
+	}
+
+	// Expect a []byte coming from CBOR decoding
+	var b []byte
+	switch v := val.(type) {
+	case []byte:
+		b = v
+	default:
+		// defensive: CBOR typically decodes bytes to []byte, but return a helpful error if not.
+		return reflect.Value{}, newSerdeErrorf("expected []byte for fft.Domain deserialization, got %T", val)
+	}
+
+	d := &fft.Domain{}
+	if _, err := d.ReadFrom(bytes.NewReader(b)); err != nil {
+		return reflect.Value{}, newSerdeErrorf("could not unmarshal fft.Domain: %w", err)
+	}
+
+	return reflect.ValueOf(d), nil
 }
 
 func unmarshalRingSisKey(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
