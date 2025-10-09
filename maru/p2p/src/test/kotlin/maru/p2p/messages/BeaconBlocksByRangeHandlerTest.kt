@@ -18,8 +18,10 @@ import maru.p2p.messages.BeaconBlocksByRangeHandler.Companion.MAX_BLOCKS_PER_REQ
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.networking.eth2.rpc.core.ResponseCallback
@@ -121,6 +123,55 @@ class BeaconBlocksByRangeHandlerTest {
 
     // Verify that the handler limited the request to 64 blocks
     verify(beaconChain).getSealedBeaconBlocks(0UL, MAX_BLOCKS_PER_REQUEST)
+  }
+
+  @Test
+  fun `handles and returns subset of requested blocks for request with blocks that would exceed the size limit`() {
+    handler =
+      BeaconBlocksByRangeHandler(
+        beaconChain = beaconChain,
+        blockRetrievalStrategy = SizeLimitBlockRetrievalStrategy(sizeLimit = 9000),
+      )
+
+    val request = BeaconBlocksByRangeRequest(startBlockNumber = 0UL, count = 10UL)
+    val message =
+      Message(
+        type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
+        version = Version.V1,
+        payload = request,
+      )
+
+    val limitedBlocks =
+      (0UL until 10UL).map { i ->
+        DataGenerators.randomSealedBeaconBlock(number = i)
+      }
+
+    var startBlockNumber = 0UL
+    whenever(beaconChain.getSealedBeaconBlock(any<ULong>()))
+      .thenAnswer {
+        limitedBlocks[(startBlockNumber++).toInt()]
+      }
+
+    handler.handleIncomingMessage(peer, message, callback)
+
+    val responseCaptor = argumentCaptor<Message<BeaconBlocksByRangeResponse, RpcMessageType>>()
+    verify(callback).respondAndCompleteSuccessfully(responseCaptor.capture())
+
+    // The response should return 4 blocks out of 10, given that the compressed serialized size of
+    // each block is around 2000 bytes, and we'd set the size limit as 9000 bytes
+    val response = responseCaptor.firstValue
+    assertThat(response.payload.blocks).hasSize(4)
+
+    // Verify that getSealedBeaconBlock of block number 0 to 5 had been called
+    // block number 5 was called but the block was not returned due to over-sized
+    (0UL until 5UL).map { i ->
+      verify(beaconChain).getSealedBeaconBlock(i)
+    }
+
+    // Verify that getSealedBeaconBlock of block number 6 to 10 had never been called
+    (6UL until 10UL).map { i ->
+      verify(beaconChain, never()).getSealedBeaconBlock(i)
+    }
   }
 
   @Test
