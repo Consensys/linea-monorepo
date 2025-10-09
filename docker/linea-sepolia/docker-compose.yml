@@ -69,7 +69,7 @@ services:
   maru-node:
     hostname: linea-maru
     container_name: linea-maru
-    image: consensys/maru:8f66353
+    image: consensys/maru:552c94e
     restart: unless-stopped
     depends_on:
       - besu-node
