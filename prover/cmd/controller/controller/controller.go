@@ -12,6 +12,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/cmd/controller/controller/metrics"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/config/assets"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -44,6 +45,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 	// SIGTERM is received, there would be no log entry about the signal
 	// until the proof completes.
 	go logCancellationOnSignal(ctx, cfg, cLog)
+
+	// If any files are locked to RAM unlock it before exiting
+	defer assets.UnlockAllLockedFiles()
 
 	// Main loop
 	for {

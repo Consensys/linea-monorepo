@@ -26,16 +26,16 @@ var (
 
 // PreloadOptions controls behaviour; tune for your environment
 type PreloadOptions struct {
-	LargeFileThreshold int64         // >= this size we use fadvise instead of mmap-populate
+	LargeFileThreshold int64         // file size greater than threshold will use fadvise instead of mmap-populate
 	PerFileTimeout     time.Duration // timeout per file (used by fallbacks)
-	Populate           bool          // whether to use MAP_POPULATE for mmap path
+	LockFileToRAM      bool          // Locks critical assets for a job to the RAM
 }
 
 func DefaultPreloadOptions() *PreloadOptions {
 	return &PreloadOptions{
 		LargeFileThreshold: 10 << 30, // 10 GiB
-		PerFileTimeout:     120 * time.Second,
-		Populate:           true, // use MAP_POPULATE for mmap
+		PerFileTimeout:     150 * time.Second,
+		LockFileToRAM:      false,
 	}
 }
 
@@ -43,127 +43,132 @@ func DefaultPreloadOptions() *PreloadOptions {
 // when called concurrently multiple times only the first caller will execute the work.
 // resolverFn should return the list of asset paths for that jobName.
 func PreloadOnceForJob(
-	ctx context.Context, jobName string,
+	ctx context.Context,
+	jobName string,
 	resolverFn func() ([]string, []string, error),
-	opts *PreloadOptions, logger *logrus.Entry,
+	opts *PreloadOptions,
+	logger *logrus.Entry,
 ) error {
+	// ---- Basic input validation ----
 	if jobName == "" {
 		return fmt.Errorf("empty jobName")
 	}
+
 	if opts == nil {
 		opts = DefaultPreloadOptions()
 	}
+
 	if logger == nil {
 		logger = logrus.NewEntry(logrus.StandardLogger())
 	}
 
+	// ---- Get or create the sync.Once for this job ----
 	val, _ := onceMap.LoadOrStore(jobName, &sync.Once{})
 	once, ok := val.(*sync.Once)
 	if !ok {
-		return errors.New("cannot cast to *sync.Once")
+		return errors.New("invalid type: expected *sync.Once")
 	}
 
-	var preErr error
+	var preloadErr error
+
+	// ---- Perform the preload operation once ----
 	once.Do(func() {
 		paths, critical, err := resolverFn()
 		if err != nil {
-			preErr = fmt.Errorf("resolver error for job %s: %w", jobName, err)
-			return
-		}
-		if len(paths) == 0 {
-			logger.Infof("no assets to preload for job %s", jobName)
+			preloadErr = fmt.Errorf("resolver error for job %q: %w", jobName, err)
 			return
 		}
 
-		logger.Infof("preload (once) starting for job=%s: total assets=%d critical=%d",
+		if len(paths) == 0 {
+			logger.Infof("no assets to preload for job=%s", jobName)
+			return
+		}
+
+		logger.Infof("preload (once) starting for job=%s: total=%d critical=%d",
 			jobName, len(paths), len(critical))
 
-		for _, p := range paths {
-			// Context cancellation
-			select {
-			case <-ctx.Done():
-				preErr = fmt.Errorf("preload canceled for job %s: %w", jobName, ctx.Err())
+		// ---- Handle critical assets (lock into RAM if requested) ----
+		if opts.LockFileToRAM {
+			for _, path := range critical {
+				if ctx.Err() != nil {
+					preloadErr = fmt.Errorf("lockFileToRAM canceled for job %q: %w", jobName, ctx.Err())
+					return
+				}
+
+				if err := lockFileIntoRAM(path, logger); err != nil {
+					logger.Warnf("LockFileIntoRAM failed for %s: %v; falling back to preload Path", path, err)
+					if fallbackErr := preloadPath(path, opts, logger); fallbackErr != nil {
+						logger.Warnf("Fallback preload failed for %s: %v", path, fallbackErr)
+					}
+				} else {
+					logger.Infof("preload: successfully locked critical asset %s for job:%s", path, jobName)
+				}
+			}
+		}
+
+		// ---- Preload all asset paths ----
+		for _, path := range paths {
+			if ctx.Err() != nil {
+				preloadErr = fmt.Errorf("preload canceled for job %q: %w", jobName, ctx.Err())
 				return
-			default:
 			}
 
-			if err := preloadPath(p, opts, logger); err != nil {
-				logger.Warnf("preload failed for %s: %v", p, err)
+			if err := preloadPath(path, opts, logger); err != nil {
+				logger.Warnf("preload failed for %s: %v", path, err)
 			}
 		}
 
 		logger.Infof("preload (once) finished for job=%s", jobName)
 	})
 
-	return preErr
+	return preloadErr
 }
 
 // preloadPath applies the correct preload strategy for a single file.
 // It keeps the same logic as before but isolates it for readability.
-func preloadPath(p string, opts *PreloadOptions, logger *logrus.Entry) error {
-	p = filepath.Clean(p)
+func preloadPath(path string, opts *PreloadOptions, logger *logrus.Entry) error {
+	path = filepath.Clean(path)
 
-	fi, err := os.Stat(p)
+	fi, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("stat failed: %w", err)
 	}
 	size := fi.Size()
 	if size == 0 {
-		logger.Debugf("preload: skipping empty file %s", p)
+		logger.Debugf("preload: skipping empty file %s", path)
 		return nil
 	}
 
-	// 1. Large file → fadvise
+	// 1. If Lock to RAM is false and file >> Threshold size => Use fadvise
 	if opts.LargeFileThreshold > 0 && size >= opts.LargeFileThreshold {
-		if err := preloadLarge(p, logger); err != nil {
+		if err := preloadFadv(path); err != nil {
 			return fmt.Errorf("fadvise failed: %w", err)
 		}
-		logger.Infof("preload: fadvise(WILLNEED) applied on %s (size=%d)", p, size)
-		logResidency(p, "fadvise", logger)
+		logger.Infof("preload: fadvise(WILLNEED) applied on %s (size=%d)", path, size)
+		logResidency(path, "fadvise", logger)
 		return nil
 	}
 
-	// 2. Otherwise → mmap+MAP_POPULATE (if enabled)
-	if opts.Populate {
-		if err := preLoadNormal(p); err != nil {
-			logger.Warnf("preload: mmap-populate failed for %s: %v", p, err)
-
-			// fallback → fadvise
-			if err2 := preloadLarge(p, logger); err2 != nil {
-				return fmt.Errorf("fallback fadvise failed: %v (original mmap error: %v)", err2, err)
-			}
-			logger.Infof("preload: fallback fadvise succeeded for %s", p)
-			logResidency(p, "fallback", logger)
-			return nil
+	// 2. Default fallback → mmap+MAP_POPULATE
+	if err := preLoadMmap(path); err != nil {
+		logger.Warnf("preload: mmap-populate failed for %s: %v", path, err)
+		// Fallback → fadvise
+		if err2 := preloadFadv(path); err2 != nil {
+			return fmt.Errorf("fallback fadvise failed: %v (original mmap error: %v)", err2, err)
 		}
-
-		logger.Infof("preload: mmap-populate succeeded for %s (size=%d)", p, size)
-		logResidency(p, "mmap", logger)
+		logger.Infof("preload: fallback fadvise succeeded for %s", path)
+		logResidency(path, "fallback", logger)
 		return nil
+	} else {
+		logger.Infof("preload: mmap-populate succeeded for %s (size=%d)", path, size)
+		logResidency(path, "mmap", logger)
 	}
-
-	// 3. Populate disabled → fadvise only
-	if err := preloadLarge(p, logger); err != nil {
-		return fmt.Errorf("fadvise failed: %w", err)
-	}
-	logResidency(p, "fadvise", logger)
 	return nil
 }
 
-// preloadLarge tries posix_fadvise(FADV_WILLNEED).
+// preloadFadv tries posix_fadvise(FADV_WILLNEED).
 // Best-effort: returns nil if it succeeds, returns error if syscall returns error.
-func preloadLarge(path string, logger *logrus.Entry) error {
-
-	base := filepath.Base(path)
-	if base == "dw-compiled-conglomeration.bin" {
-		if err := LockFileIntoRAM(path, logger); err != nil {
-			logger.Warnf("LockFileIntoRAM failed for %s: %v; falling back to fadvise", path, err)
-			// fallback to fadvise (existing behavior)
-		} else {
-			logger.Infof("prefetch: successfully locked critical conglomeration asset %s", path)
-			return nil
-		}
-	}
+func preloadFadv(path string) error {
 
 	f, err := os.Open(path)
 	if err != nil {
@@ -182,11 +187,11 @@ func preloadLarge(path string, logger *logrus.Entry) error {
 	return nil
 }
 
-// preLoadNormal mmap()s the whole file with MAP_POPULATE,
+// preLoadMmap mmap()s the whole file with MAP_POPULATE,
 // stores the mapping in a global slice (to keep it alive) and returns nil on success.
 // The mapping is intentionally NOT unmapped so the mapping stays present until process exit.
 // This keeps pages resident and prevents GC from dropping the slice.
-func preLoadNormal(path string) error {
+func preLoadMmap(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
