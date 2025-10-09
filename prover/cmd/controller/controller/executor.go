@@ -370,11 +370,11 @@ func (e *Executor) preLoadStaticAssets(ctx context.Context, job *Job) error {
 	// Pass a logger entry for better logs
 	logger := e.Logger.WithField("component", "assets-cacher")
 
-	// Use tuned options for your infra
-	opts := &assets.PreloadOptions{
-		LargeFileThreshold: 10 << 30, // 10 GiB
-		PerFileTimeout:     150 * time.Second,
-		Populate:           true,
+	var opts *assets.PreloadOptions
+	if job.Def.Name == jobNameConglomeration {
+		opts = &assets.PreloadOptions{
+			LockFileToRAM: true,
+		}
 	}
 
 	// Do the once-per-job prefetch (non-blocking risk: it's blocking, but run before spawning child)

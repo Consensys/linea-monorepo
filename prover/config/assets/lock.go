@@ -17,7 +17,24 @@ var (
 	lockedMappings sync.Map // map[string][]byte
 )
 
-// LockFileIntoRAM mmaps the whole file read-only and mlock()s it so pages are
+// UnlockAllLockedFiles - unlocks all the locked files to the RAM
+func UnlockAllLockedFiles() error {
+	lockedPaths := getLockedMappingKeys()
+
+	if len(lockedPaths) == 0 {
+		return nil
+	}
+
+	logger := logrus.NewEntry(logrus.StandardLogger())
+	for _, lockedPath := range lockedPaths {
+		if err := unlockFileFromRAM(lockedPath, logger); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// lockFileIntoRAM mmaps the whole file read-only and mlock()s it so pages are
 // pinned in RAM. On success the mapping is kept in memory (and in lockedMappings).
 //
 // If mlock is not possible (insufficient RLIMIT_MEMLOCK, missing capability),
@@ -25,7 +42,7 @@ var (
 //
 // Important: the process must have enough RLIMIT_MEMLOCK (or CAP_IPC_LOCK).
 // For very large files (e.g. 15GiB) you must increase the limit (see notes).
-func LockFileIntoRAM(path string, logger *logrus.Entry) error {
+func lockFileIntoRAM(path string, logger *logrus.Entry) error {
 	if logger == nil {
 		logger = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -90,9 +107,9 @@ func LockFileIntoRAM(path string, logger *logrus.Entry) error {
 	return nil
 }
 
-// UnlockFileFromRAM will munlock and munmap the previously-locked mapping.
+// unlockFileFromRAM will munlock and munmap the previously-locked mapping.
 // It is safe to call even if the file was not locked.
-func UnlockFileFromRAM(path string, logger *logrus.Entry) error {
+func unlockFileFromRAM(path string, logger *logrus.Entry) error {
 	if logger == nil {
 		logger = logrus.NewEntry(logrus.StandardLogger())
 	}
@@ -106,7 +123,7 @@ func UnlockFileFromRAM(path string, logger *logrus.Entry) error {
 
 	v, ok := lockedMappings.Load(path)
 	if !ok {
-		logger.Debugf("UnlockFileFromRAM: not locked: %s", path)
+		logger.Infof("UnlockFileFromRAM: not locked: %s", path)
 		return nil
 	}
 	data := v.([]byte)
@@ -122,4 +139,15 @@ func UnlockFileFromRAM(path string, logger *logrus.Entry) error {
 	lockedMappings.Delete(path)
 	logger.Infof("Unlocked and unmapped file: %s", path)
 	return nil
+}
+
+func getLockedMappingKeys() []string {
+	var keys []string
+	lockedMappings.Range(func(key, value any) bool {
+		if s, ok := key.(string); ok {
+			keys = append(keys, s)
+		}
+		return true // continue iteration
+	})
+	return keys
 }
