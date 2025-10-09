@@ -1,5 +1,5 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { getAccountsFixture } from "../../common/helpers";
+import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
   deployAndAddSingleLidoStVaultYieldProvider,
   fundLidoStVaultYieldProvider,
@@ -16,13 +16,14 @@ import {
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { ONE_ETHER, ZERO_VALUE } from "../../common/constants";
+import { ONE_ETHER, REPORT_YIELD_OPERATION_TYPE, ZERO_VALUE } from "../../common/constants";
 import { ethers } from "hardhat";
 
 describe("LidoStVaultYieldProvider contract - yield operations", () => {
   let yieldProvider: TestLidoStVaultYieldProvider;
   let nativeYieldOperator: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
+  let l2YieldRecipient: SignerWithAddress;
   let mockVaultHub: MockVaultHub;
   let mockSTETH: MockSTETH;
   let mockLineaRollup: MockLineaRollup;
@@ -33,8 +34,11 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
   let yieldManagerAddress: string;
   let mockStakingVaultAddress: string;
   let yieldProviderAddress: string;
+  let l2YieldRecipientAddress: string;
+
   before(async () => {
-    ({ nativeYieldOperator, securityCouncil } = await loadFixture(getAccountsFixture));
+    ({ nativeYieldOperator, securityCouncil, l2YieldRecipient } = await loadFixture(getAccountsFixture));
+    l2YieldRecipientAddress = await l2YieldRecipient.getAddress();
   });
 
   beforeEach(async () => {
@@ -599,7 +603,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
     });
   });
 
-  describe("handlePostiveYieldAccounting", () => {
+  describe("handlePositiveYieldAccounting", () => {
     it("If 0 negative yield, LST liability, obligations or node operator fees, should report full _availableAmount", async () => {
       // Act
       const availableYield = ONE_ETHER;
@@ -875,6 +879,57 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore - expectedExternalLiabilitySettlement);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
         lstLiabilityPrincipalBefore - expectedExternalLiabilitySettlement,
+      );
+    });
+  });
+
+  describe("reportYield", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).reportYield(yieldProviderAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should revert if ossified", async () => {
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+      const call = yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
+        REPORT_YIELD_OPERATION_TYPE,
+      ]);
+    });
+    it("If vault value > user funds, should report positive yield", async () => {
+      // Arrange
+      const userFunds = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, userFunds);
+      const vaultValue = ONE_ETHER * 2n;
+      await mockDashboard.setTotalValueReturn(vaultValue);
+
+      // Act
+      const newReportedYield = await yieldManager
+        .connect(nativeYieldOperator)
+        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
+
+      // Assert
+      expect(newReportedYield).eq(vaultValue - userFunds);
+    });
+    it("If vault value <= user funds, should report 0 yield and increment negative yield", async () => {
+      // Arrange
+      const userFunds = ONE_ETHER * 2n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, userFunds);
+      const vaultValue = ONE_ETHER;
+      await mockDashboard.setTotalValueReturn(vaultValue);
+      const negativeYieldBefore = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
+
+      // Act
+      const newReportedYield = await yieldManager
+        .connect(nativeYieldOperator)
+        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
+
+      // Assert
+      expect(newReportedYield).eq(0);
+      expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(
+        negativeYieldBefore + userFunds - vaultValue,
       );
     });
   });
