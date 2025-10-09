@@ -28,7 +28,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "*.mypinata.cloud",
+        hostname: "harlequin-reluctant-parrotfish-147.mypinata.cloud",
         pathname: "/ipfs/**",
       },
     ],
