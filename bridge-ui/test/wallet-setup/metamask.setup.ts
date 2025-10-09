@@ -19,10 +19,10 @@ export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) 
   await metamask.importWallet(METAMASK_SEED_PHRASE);
 
   // Importing the L1 account
-  // Metamask name: Account 2
+  // Metamask name: Account 3
   await metamask.importWalletFromPrivateKey(L1_ACCOUNT_PRIVATE_KEY);
   // Importing the L2 account
-  // Metamask name: Account 3
+  // Metamask name: Account 4
   await metamask.importWalletFromPrivateKey(L2_ACCOUNT_PRIVATE_KEY);
 
   await metamask.openSettings();
@@ -37,5 +37,7 @@ export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) 
 
   await metamask.switchNetwork("Local L1 network", true);
 
-  await metamask.switchAccount("Account 2");
+  // Change the account number when tests are using wrong accounts
+  // It is a known issue with Metamask setup using synpress
+  await metamask.switchAccount("Account 3");
 });
