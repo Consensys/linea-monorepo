@@ -832,7 +832,7 @@ func (modGl *ModuleGL) declarePublicInput() {
 
 	modGl.PublicInputs.GrandProduct = modGl.Wiop.InsertPublicInput(
 		GrandProductPublicInput,
-		accessors.NewConstant(field.Zero()),
+		accessors.NewConstant(field.One()),
 	)
 
 }

@@ -214,7 +214,6 @@ func segmentModuleLPP(
 ) (witnessesLPP []*ModuleWitnessLPP) {
 
 	var (
-		cols          = runtime.Spec.Columns.AllKeys()
 		n0            = make([]int, len(moduleLPP.NextN0SelectorRoots))
 		columnsLPPSet = make(map[ifaces.ColID]struct{})
 	)
@@ -239,15 +238,13 @@ func segmentModuleLPP(
 			N0Values:           n0,
 		}
 
-		for _, col := range cols {
+		witnessCols := make([]ifaces.ColID, 0)
 
-			if _, ok := columnsLPPSet[col]; !ok {
-				continue
-			}
-
+		for _, col := range moduleLPP.LPPColumnSets {
 			col := runtime.Spec.Columns.GetHandle(col)
 			segment := SegmentOfColumn(runtime, disc, col, segment, nbSegmentModule)
 			moduleWitnessLPP.Columns[col.GetColID()] = segment
+			witnessCols = append(witnessCols, col.GetColID())
 		}
 
 		witnessesLPPs[segment] = moduleWitnessLPP
@@ -483,6 +480,7 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 
 	res := ModuleSegmentationBlueprint{
 		ModuleName:               moduleLPP.ModuleName(),
+		ModuleIndex:              moduleLPP.Disc.IndexOf(moduleLPP.DefinitionInput.ModuleName),
 		NextN0SelectorRoots:      make([][]ifaces.ColID, numHornerPart),
 		NextN0SelectorIsConsts:   make([][]bool, numHornerPart),
 		NextN0SelectorConsts:     make([][]field.Element, numHornerPart),

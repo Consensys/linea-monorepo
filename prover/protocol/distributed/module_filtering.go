@@ -122,6 +122,14 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 		queryNoParamsName = comp.QueriesNoParams.AllUnignoredKeys()
 	)
 
+	// This sets the correct module index
+	for i, name := range mf.Disc.ModuleList() {
+		if name == mf.Module {
+			fmi.ModuleIndex = i
+			break
+		}
+	}
+
 	for _, columnName := range columnNames {
 
 		col := comp.Columns.GetHandle(columnName)

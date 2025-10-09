@@ -175,7 +175,6 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 
 	moduleLPP.declarePublicInput()
 
-	moduleLPP.Wiop.RegisterProverAction(0, LppWitnessAssignment{ModuleLPP: *moduleLPP, Round: 0})
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
 	moduleLPP.Wiop.FiatShamirHooksPreSampling.AppendToInner(1, &SetInitialFSHash{ModuleLPP: *moduleLPP})
@@ -226,6 +225,14 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 		round           = a.Round
 		definitionInput = m.DefinitionInput
 	)
+
+	if witness.ModuleIndex != m.DefinitionInput.ModuleIndex {
+		utils.Panic("witness.ModuleIndex: %v != m.DefinitionInput.ModuleIndex: %v", witness.ModuleIndex, m.DefinitionInput.ModuleIndex)
+	}
+
+	if witness.ModuleName != m.DefinitionInput.ModuleName {
+		utils.Panic("witness.ModuleName: %v != m.DefinitionInput.ModuleName: %v", witness.ModuleName, m.DefinitionInput.ModuleName)
+	}
 
 	// [definitionInput.Columns] stores the list of columns to assign.
 	// Though, it stores the columns as in the origin CompiledIOP so we
@@ -545,7 +552,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	} else {
 		modLPP.PublicInputs.GrandProduct = modLPP.Wiop.InsertPublicInput(
 			GrandProductPublicInput,
-			accessors.NewConstant(field.Zero()),
+			accessors.NewConstant(field.One()),
 		)
 	}
 }
@@ -610,7 +617,7 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
-		targetMSet             = getPublicInputList(run, generalMultiSetPublicInputBase, 1)
+		targetMSet             = getPublicInputList(run, generalMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
