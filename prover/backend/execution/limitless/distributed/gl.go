@@ -29,7 +29,7 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("[PANIC] GL prover crashed for witness %s: %v\n%s", req.WitnessGLFile, r, debug.Stack())
-			return
+			os.Exit(2)
 		}
 	}()
 
