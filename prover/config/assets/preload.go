@@ -115,7 +115,7 @@ func preloadPath(p string, opts *PreloadOptions, logger *logrus.Entry) error {
 
 	// 1. Large file → fadvise
 	if opts.LargeFileThreshold > 0 && size >= opts.LargeFileThreshold {
-		if err := preloadLarge(p); err != nil {
+		if err := preloadLarge(p, logger); err != nil {
 			return fmt.Errorf("fadvise failed: %w", err)
 		}
 		logger.Infof("preload: fadvise(WILLNEED) applied on %s (size=%d)", p, size)
@@ -129,7 +129,7 @@ func preloadPath(p string, opts *PreloadOptions, logger *logrus.Entry) error {
 			logger.Warnf("preload: mmap-populate failed for %s: %v", p, err)
 
 			// fallback → fadvise
-			if err2 := preloadLarge(p); err2 != nil {
+			if err2 := preloadLarge(p, logger); err2 != nil {
 				return fmt.Errorf("fallback fadvise failed: %v (original mmap error: %v)", err2, err)
 			}
 			logger.Infof("preload: fallback fadvise succeeded for %s", p)
@@ -143,7 +143,7 @@ func preloadPath(p string, opts *PreloadOptions, logger *logrus.Entry) error {
 	}
 
 	// 3. Populate disabled → fadvise only
-	if err := preloadLarge(p); err != nil {
+	if err := preloadLarge(p, logger); err != nil {
 		return fmt.Errorf("fadvise failed: %w", err)
 	}
 	logResidency(p, "fadvise", logger)
@@ -152,7 +152,19 @@ func preloadPath(p string, opts *PreloadOptions, logger *logrus.Entry) error {
 
 // preloadLarge tries posix_fadvise(FADV_WILLNEED).
 // Best-effort: returns nil if it succeeds, returns error if syscall returns error.
-func preloadLarge(path string) error {
+func preloadLarge(path string, logger *logrus.Entry) error {
+
+	base := filepath.Base(path)
+	if base == "dw-compiled-conglomeration.bin" {
+		if err := LockFileIntoRAM(path, logger); err != nil {
+			logger.Warnf("LockFileIntoRAM failed for %s: %v; falling back to fadvise", path, err)
+			// fallback to fadvise (existing behavior)
+		} else {
+			logger.Infof("prefetch: successfully locked critical conglomeration asset %s", path)
+			return nil
+		}
+	}
+
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
