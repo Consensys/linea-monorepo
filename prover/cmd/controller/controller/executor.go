@@ -23,6 +23,7 @@ import (
 // These includes, CodeFatal, CodeTooManyRetries and CodeCantRunCommand.
 const (
 	CodeSuccess        int = 0    // Success code
+	CodeStdErr         int = 2    // Std. non-zero exit code indicating error and manual investigation
 	CodeTraceLimit     int = 77   // The traces are overflown
 	CodeOom            int = 137  // When the process exits on OOM
 	CodeFatal          int = 14   // When the process could not start
@@ -320,10 +321,14 @@ func runCmd(ctx context.Context, cmd string, job *Job, retry bool) Status {
 		switch status.ExitCode {
 		case CodeSuccess:
 			status.What = "success"
+		case CodeStdErr:
+			status.What = "standard error: requires manual investigation"
 		case CodeOom:
 			status.What = "out of memory error"
 		case CodeTraceLimit:
 			status.What = "trace limit overflow"
+		case CodeKilledByUs:
+			status.What = "received a kill signal from user"
 		}
 
 		metrics.CollectPostProcess(job.Def.Name, status.ExitCode, processingTime, retry)
