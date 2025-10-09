@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -34,6 +35,9 @@ var (
 )
 
 func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Response, err error) {
+
+	// Set MonitorParams before conglomeration
+	profiling.SetMonitorParams(cfg)
 
 	logrus.Infof("Starting conglomerator for conflation request %s-%s", req.StartBlock, req.EndBlock)
 

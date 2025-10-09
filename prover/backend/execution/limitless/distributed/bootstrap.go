@@ -45,7 +45,7 @@ type Metadata struct {
 
 func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata *Metadata) (*Metadata, error) {
 
-	// Set MonitorParams before any proving happens
+	// Set MonitorParams before any bootstrapping happens
 	profiling.SetMonitorParams(cfg)
 
 	// Recover wrapper for panics
