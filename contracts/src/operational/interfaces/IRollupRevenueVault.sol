@@ -64,6 +64,16 @@ interface IRollupRevenueVault {
   error ExistingAddressTheSame();
 
   /**
+   * @dev Thrown when the DEX swap fails.
+   */
+  error DexSwapFailed();
+
+  /**
+   * @dev Thrown when zero LINEA tokens are received from the DEX swap.
+   */
+  error ZeroLineaTokensReceived();
+
+  /**
    * @dev Emitted when an invoice is processed.
    * @dev If amountRequested < amountPaid, the difference is previous unpaid invoice amount.
    * @param receiver The address of the invoice receiver.
@@ -95,11 +105,11 @@ interface IRollupRevenueVault {
   event L1LineaTokenBurnerUpdated(address previousValue, address newValue);
 
   /**
-   * @dev Emitted when the V3 DEX contract address is updated.
-   * @param previousValue The previous V3 DEX contract address.
-   * @param newValue The new V3 DEX contract address.
+   * @dev Emitted when the DEX contract address is updated.
+   * @param previousValue The previous DEX contract address.
+   * @param newValue The new DEX contract address.
    */
-  event V3DexUpdated(address previousValue, address newValue);
+  event DexUpdated(address previousValue, address newValue);
 
   /**
    * @dev Emitted when ETH is received.

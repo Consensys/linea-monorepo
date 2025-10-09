@@ -3,7 +3,14 @@ import { expect } from "chai";
 import { toChecksumAddress } from "@ethereumjs/util";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { V3DexSwap, L2MessageService, RollupRevenueVault, TestERC20, TokenBridge } from "../../../typechain-types";
+import {
+  L2MessageService,
+  RollupRevenueVault,
+  TestERC20,
+  TokenBridge,
+  TestDexSwap,
+  TestDexSwap__factory,
+} from "../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./helpers/before";
 import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
 import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_DAY_IN_SECONDS } from "../common/constants";
@@ -21,7 +28,7 @@ describe("RollupRevenueVault", () => {
   let l2LineaToken: TestERC20;
   let tokenBridge: TokenBridge;
   let messageService: L2MessageService;
-  let dex: V3DexSwap;
+  let dex: TestDexSwap;
 
   let admin: SignerWithAddress;
   let invoiceSubmitter: SignerWithAddress;
@@ -302,7 +309,7 @@ describe("RollupRevenueVault", () => {
       expect(await rollupRevenueVault.messageService()).to.equal(await messageService.getAddress());
       expect(await rollupRevenueVault.l1LineaTokenBurner()).to.equal(l1LineaTokenBurner.address);
       expect(await rollupRevenueVault.lineaToken()).to.equal(await l2LineaToken.getAddress());
-      expect(await rollupRevenueVault.v3Dex()).to.equal(await dex.getAddress());
+      expect(await rollupRevenueVault.dex()).to.equal(await dex.getAddress());
     });
   });
 
@@ -584,14 +591,12 @@ describe("RollupRevenueVault", () => {
 
     it("Should update Dex address", async () => {
       const randomAddress = toChecksumAddress(generateRandomBytes(20));
-      await expectEvent(
-        rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateDex(randomAddress),
-        "V3DexUpdated",
-        [await dex.getAddress(), randomAddress],
-      );
+      await expectEvent(rollupRevenueVault, rollupRevenueVault.connect(admin).updateDex(randomAddress), "DexUpdated", [
+        await dex.getAddress(),
+        randomAddress,
+      ]);
 
-      expect(await rollupRevenueVault.v3Dex()).to.equal(randomAddress);
+      expect(await rollupRevenueVault.dex()).to.equal(randomAddress);
     });
   });
 
@@ -646,8 +651,14 @@ describe("RollupRevenueVault", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
+      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+        minLineaOut,
+        deadline,
+        0n,
+      ]);
+
       await expectRevertWithReason(
-        rollupRevenueVault.connect(nonAuthorizedAccount).burnAndBridge(minLineaOut, deadline, 0n),
+        rollupRevenueVault.connect(nonAuthorizedAccount).burnAndBridge(encodedSwapData),
         "AccessControl: account " +
           nonAuthorizedAccount.address.toLowerCase() +
           " is missing role " +
@@ -666,10 +677,15 @@ describe("RollupRevenueVault", () => {
 
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
+      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+        minLineaOut,
+        deadline,
+        0n,
+      ]);
 
       await expectRevertWithCustomError(
         rollupRevenueVault,
-        rollupRevenueVault.connect(burner).burnAndBridge(minLineaOut, deadline, 0n),
+        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
         "InvoiceInArrears",
       );
     });
@@ -689,10 +705,59 @@ describe("RollupRevenueVault", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
+      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+        minLineaOut,
+        deadline,
+        0n,
+      ]);
+
       await expectRevertWithCustomError(
         rollupRevenueVault,
-        rollupRevenueVault.connect(burner).burnAndBridge(minLineaOut, deadline, 0n),
+        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
         "InsufficientBalance",
+      );
+    });
+
+    it("Should revert if swap call fails", async () => {
+      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
+      const startTimestamp = lastInvoiceDate + 1n;
+      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
+
+      await rollupRevenueVault
+        .connect(invoiceSubmitter)
+        .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("0.5"));
+
+      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("testRevertSwap", [0, 0, 0]);
+
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
+        "DexSwapFailed",
+      );
+    });
+
+    it("Should revert if swap returns 0 linea tokens", async () => {
+      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
+      const startTimestamp = lastInvoiceDate + 1n;
+      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
+
+      await rollupRevenueVault
+        .connect(invoiceSubmitter)
+        .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("0.5"));
+
+      const minLineaOut = 200n;
+      const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
+
+      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("testZeroAmountOutSwap", [
+        minLineaOut,
+        deadline,
+        0n,
+      ]);
+
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
+        "ZeroLineaTokensReceived",
       );
     });
 
@@ -713,9 +778,15 @@ describe("RollupRevenueVault", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
+      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+        minLineaOut,
+        deadline,
+        0n,
+      ]);
+
       await expectEvent(
         rollupRevenueVault,
-        rollupRevenueVault.connect(burner).burnAndBridge(minLineaOut, deadline, 0n),
+        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
         "EthBurntSwappedAndBridged",
         [ethToBurn, (balanceAvailable - ethToBurn) * 2n], // We mock the swap to return amountIn * 2
       );

@@ -6,7 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { L2MessageService } from "../messaging/l2/L2MessageService.sol";
 import { TokenBridge } from "../bridging/token/TokenBridge.sol";
 import { IRollupRevenueVault } from "./interfaces/IRollupRevenueVault.sol";
-import { IV3DexSwap } from "./interfaces/IV3DexSwap.sol";
 
 /**
  * @title Upgradeable Rollup Revenue Vault Contract.
@@ -22,7 +21,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   uint256 public constant ETH_BURNT_PERCENTAGE = 20;
 
   /// @notice Decentralized exchange contract for swapping ETH to LINEA tokens.
-  IV3DexSwap public v3Dex;
+  address public dex;
   /// @notice Address to receive invoice payments.
   address public invoicePaymentReceiver;
   /// @notice Amount of invoice arrears.
@@ -54,7 +53,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @param _messageService Address of the L2 message service contract.
    * @param _l1LineaTokenBurner Address of the L1 LINEA token burner contract.
    * @param _lineaToken Address of the LINEA token contract.
-   * @param _v3Dex Address of the V3 DEX contract.
+   * @param _dex Address of the DEX contract.
    */
   function initialize(
     uint256 _lastInvoiceDate,
@@ -66,7 +65,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _messageService,
     address _l1LineaTokenBurner,
     address _lineaToken,
-    address _v3Dex
+    address _dex
   ) external initializer {
     __AccessControl_init();
     __RollupRevenueVault_init(
@@ -79,7 +78,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       _messageService,
       _l1LineaTokenBurner,
       _lineaToken,
-      _v3Dex
+      _dex
     );
   }
 
@@ -94,7 +93,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @param _messageService Address of the L2 message service contract.
    * @param _l1LineaTokenBurner Address of the L1 LINEA token burner contract.
    * @param _lineaToken Address of the LINEA token contract.
-   * @param _v3Dex Address of the V3 DEX contract.
+   * @param _dex Address of the DEX contract.
    */
   function initializeRolesAndStorageVariables(
     uint256 _lastInvoiceDate,
@@ -106,7 +105,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _messageService,
     address _l1LineaTokenBurner,
     address _lineaToken,
-    address _v3Dex
+    address _dex
   ) external reinitializer(2) {
     __AccessControl_init();
     __RollupRevenueVault_init(
@@ -119,7 +118,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       _messageService,
       _l1LineaTokenBurner,
       _lineaToken,
-      _v3Dex
+      _dex
     );
   }
 
@@ -133,7 +132,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _messageService,
     address _l1LineaTokenBurner,
     address _lineaToken,
-    address _v3Dex
+    address _dex
   ) internal onlyInitializing {
     require(_lastInvoiceDate != 0, ZeroTimestampNotAllowed());
     require(_defaultAdmin != address(0), ZeroAddressNotAllowed());
@@ -144,7 +143,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     require(_messageService != address(0), ZeroAddressNotAllowed());
     require(_l1LineaTokenBurner != address(0), ZeroAddressNotAllowed());
     require(_lineaToken != address(0), ZeroAddressNotAllowed());
-    require(_v3Dex != address(0), ZeroAddressNotAllowed());
+    require(_dex != address(0), ZeroAddressNotAllowed());
 
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
     _grantRole(INVOICE_SUBMITTER_ROLE, _invoiceSubmitter);
@@ -157,7 +156,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     messageService = L2MessageService(_messageService);
     l1LineaTokenBurner = _l1LineaTokenBurner;
     lineaToken = _lineaToken;
-    v3Dex = IV3DexSwap(_v3Dex);
+    dex = _dex;
   }
 
   /**
@@ -194,15 +193,9 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
   /**
    * @notice Burns 20% of the ETH balance and uses the rest to buy LINEA tokens which are then bridged to L1 to be burned.
-   * @param _minLineaOut Number of LINEA tokens to receive as a minimum (slippage protection). Computed off-chain just prior to execution.
-   * @param _deadline Time after which the transaction will revert if not yet processed.
-   * @param _sqrtPriceLimitX96 Price limit of the swap as a Q64.96 value.
+   * @param _swapData Encoded calldata for the DEX swap function.
    */
-  function burnAndBridge(
-    uint256 _minLineaOut,
-    uint256 _deadline,
-    uint160 _sqrtPriceLimitX96
-  ) external onlyRole(BURNER_ROLE) {
+  function burnAndBridge(bytes calldata _swapData) external onlyRole(BURNER_ROLE) {
     require(invoiceArrears == 0, InvoiceInArrears());
 
     uint256 minimumFee = messageService.minimumFeeInWei();
@@ -215,11 +208,11 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     (bool success, ) = address(0).call{ value: ethToBurn }("");
     require(success, EthBurnFailed());
 
-    uint256 numLineaTokens = v3Dex.swap{ value: balanceAvailable - ethToBurn }(
-      _minLineaOut,
-      _deadline,
-      _sqrtPriceLimitX96
-    );
+    (bool swapSuccess, bytes memory returnData) = dex.call{ value: balanceAvailable - ethToBurn }(_swapData);
+    require(swapSuccess, DexSwapFailed());
+
+    uint256 numLineaTokens = abi.decode(returnData, (uint256));
+    require(numLineaTokens > 0, ZeroLineaTokensReceived());
 
     IERC20(lineaToken).approve(address(tokenBridge), numLineaTokens);
 
@@ -273,17 +266,17 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   }
 
   /**
-   * @notice Updates the address of the V3 DEX contract.
-   * @param _newV3Dex Address of the new V3 DEX contract.
+   * @notice Updates the address of the DEX contract.
+   * @param _newDex Address of the new DEX contract.
    */
-  function updateDex(address _newV3Dex) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    require(_newV3Dex != address(0), ZeroAddressNotAllowed());
+  function updateDex(address _newDex) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    require(_newDex != address(0), ZeroAddressNotAllowed());
 
-    address currentV3Dex = address(v3Dex);
-    require(_newV3Dex != currentV3Dex, ExistingAddressTheSame());
+    address currentDex = dex;
+    require(_newDex != currentDex, ExistingAddressTheSame());
 
-    v3Dex = IV3DexSwap(_newV3Dex);
-    emit V3DexUpdated(currentV3Dex, _newV3Dex);
+    dex = _newDex;
+    emit DexUpdated(currentDex, _newDex);
   }
 
   /**

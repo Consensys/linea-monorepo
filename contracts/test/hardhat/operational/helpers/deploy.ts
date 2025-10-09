@@ -2,7 +2,7 @@ import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "hardhat";
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
 import { ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE } from "../constants";
-import { V3DexSwap, L2MessageService, RollupRevenueVault, TestERC20 } from "../../../../typechain-types";
+import { L2MessageService, RollupRevenueVault, TestERC20, TestDexSwap } from "../../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./before";
 import { deployTokenBridge } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { INITIAL_WITHDRAW_LIMIT, L1_L2_MESSAGE_SETTER_ROLE, ONE_DAY_IN_SECONDS } from "../../common/constants";
@@ -40,11 +40,11 @@ async function deployL2MessageService(adminAddress: string, l1l2MessageSetterAdd
   return messageService as unknown as L2MessageService;
 }
 
-export async function deployV3DexSwapFixture(lineaTokenAddress: string) {
+export async function deployTestDexSwapFixture(lineaTokenAddress: string) {
   const testWETH9 = await loadFixture(deployWETH9Fixture);
   const router = await deployFromFactory("TestDexRouter");
-  const dexSwap = await deployFromFactory("V3DexSwap", await router.getAddress(), testWETH9, lineaTokenAddress, 50);
-  return dexSwap as V3DexSwap;
+  const dexSwap = await deployFromFactory("TestDexSwap", await router.getAddress(), testWETH9, lineaTokenAddress, 50);
+  return dexSwap as TestDexSwap;
 }
 
 export async function deployRollupRevenueVaultFixture() {
@@ -61,7 +61,7 @@ export async function deployRollupRevenueVaultFixture() {
 
   const l2LineaToken = await loadFixture(l2LineaTokenFn);
 
-  const dexFn = async () => await deployV3DexSwapFixture(await l2LineaToken.getAddress());
+  const dexFn = async () => await deployTestDexSwapFixture(await l2LineaToken.getAddress());
   const dex = await loadFixture(dexFn);
 
   const rollupRevenueVaultFn = async () =>
