@@ -82,7 +82,10 @@ object TestEnvironment {
     ) + gethExecutionEngineClients
 
   val followerExecutionClientsPostMerge =
-    (mapOf("follower-geth" to geth1ExecutionEngineClient) + followerExecutionEngineClients - "follower-geth-2")
+    (
+      mapOf("follower-geth" to geth1ExecutionEngineClient) +
+        (followerExecutionEngineClients - "follower-geth-2" - "follower-nethermind")
+    )
 
   private fun buildWeb3Client(
     rpcUrl: String,
