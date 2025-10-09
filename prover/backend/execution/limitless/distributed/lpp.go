@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
@@ -27,6 +28,9 @@ type LPPRequest struct {
 }
 
 func RunLPP(cfg *config.Config, req *LPPRequest) error {
+
+	// Set MonitorParams before LPP-proving
+	profiling.SetMonitorParams(cfg)
 
 	logrus.Infof("Starting LPP-prover from witnessLPP file path %v", req.WitnessLPPFile)
 
