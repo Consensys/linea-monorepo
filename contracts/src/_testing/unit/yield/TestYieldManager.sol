@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import { YieldManager } from "../../../yield/YieldManager.sol";
 import { MockYieldProviderStorageLayout } from "../../mocks/yield/MockYieldProviderStorageLayout.sol";
 import { TestLidoStVaultYieldProvider } from "./TestLidoStVaultYieldProvider.sol";
+import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
@@ -244,6 +245,14 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(TestLidoStVaultYieldProvider.payNodeOperatorFees, (_yieldProvider, _availableYield))
+    );
+    return abi.decode(data, (uint256));
+  }
+
+  function payLSTPrincipalExternal(address _yieldProvider, uint256 _availableFunds) external returns (uint256) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _availableFunds))
     );
     return abi.decode(data, (uint256));
   }

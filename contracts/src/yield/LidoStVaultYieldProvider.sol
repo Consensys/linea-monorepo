@@ -289,7 +289,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     YieldProviderStorage storage $$,
     uint256 _availableFunds
   ) internal returns (uint256 lstPrincipalPaid) {
-    if ($$.isOssified) return 0;
     uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
     if (lstLiabilityPrincipalCached == 0) return 0;
     IDashboard dashboard = _getDashboard($$);
@@ -298,12 +297,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       dashboard.liabilityShares(),
       lstLiabilityPrincipalCached
     );
-    uint256 rebalanceAmount = Math256.min(lstLiabilityPrincipalSynced, _availableFunds);
-    if (rebalanceAmount > 0) {
-      dashboard.rebalanceVaultWithEther(rebalanceAmount);
+    lstPrincipalPaid = Math256.min(lstLiabilityPrincipalSynced, _availableFunds);
+    if (lstPrincipalPaid > 0) {
+      dashboard.rebalanceVaultWithEther(lstPrincipalPaid);
+      $$.lstLiabilityPrincipal -= lstPrincipalPaid;
     }
-    $$.lstLiabilityPrincipal -= rebalanceAmount;
-    lstPrincipalPaid = rebalanceAmount;
   }
 
   /**
