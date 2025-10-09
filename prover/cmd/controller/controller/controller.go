@@ -29,12 +29,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
 	defer stop()
 
-	// cmdContext is the context we provide for the command execution. In
-	// spot-instance mode, the context is subordinated to the ctx.
-	cmdContext := context.Background()
-	if cfg.Controller.SpotInstanceMode {
-		cmdContext = ctx
-	}
+	// cmdContext is the context we provide for the command execution. Regardless
+	// of the spot-instance/on-demand instance, the context is subordinated to the ctx
+	// so that requests that are interrupted are automatically requeued and retried.
+	cmdContext := ctx
 
 	// log cancellation requests immediately when received
 	// This goroutine's raison d'etre is to log a message immediately when a
@@ -59,7 +57,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// allows the ctx.Done channel to be read multiple times, which, in
 			// our scenario, ensures cancellation requests are effectively
 			// detected and handled.
-			cLog.Infoln("Context canceled by caller or SIGTERM. Exiting")
+			cLog.Infoln("Context cancelled by caller or SIGTERM. Exiting")
 			metrics.ShutdownServer(ctx)
 			return
 
@@ -90,8 +88,8 @@ func handleJobResult(cfg *config.Config, cLog *logrus.Entry, job *Job, status St
 	case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
 		handleDeferToLarge(cLog, job, status)
 
-	case status.ExitCode == CodeKilledByUs:
-		handleJobKilledByUs(cfg, cLog, job)
+	case status.ExitCode == CodeKilledBySigTERM:
+		handleJobKilledBySIGTERM(cfg, cLog, job)
 
 	default:
 		handleJobFailure(cfg, cLog, job, status)
@@ -99,7 +97,6 @@ func handleJobResult(cfg *config.Config, cLog *logrus.Entry, job *Job, status St
 }
 
 // handleJobSuccess moves response and in-progress files to their final locations.
-
 func handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 
 	if job.Def.WritesToDevNull() {
@@ -190,9 +187,10 @@ func handleDeferToLarge(cLog *logrus.Entry, job *Job, status Status) {
 	}
 }
 
-// handleJobKilledByUs puts the job back in the request folder and cleans up tmp files.
-func handleJobKilledByUs(cfg *config.Config, cLog *logrus.Entry, job *Job) {
-	cLog.Infof("Job %v was killed by us. Reputting it in the request folder", job.OriginalFile)
+// handleJobKilledBySIGTERM puts the job back in the request folder and cleans up tmp files.
+func handleJobKilledBySIGTERM(cfg *config.Config, cLog *logrus.Entry, job *Job) {
+	cLog.Infof("Job %v was killed by us. Spot instance mode: %v", job.OriginalFile, cfg.Controller.SpotInstanceMode)
+	cLog.Infof("Re-queuing the request:%s back to the request folder", job.OriginalFile)
 
 	if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
 		cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), job.OriginalPath(), err)
