@@ -18,7 +18,7 @@ import {
 
 // TODO: Dynamically generate a valid merkle proof for testing instead of using a hardcoded one.
 // Should trigger a call to the token bridge to mint tokens on L1 to the burner address as part of the test setup.
-describe.only("L1LineaTokenBurner", () => {
+describe("L1LineaTokenBurner", () => {
   let l1LineaTokenBurner: L1LineaTokenBurner;
   let admin: SignerWithAddress;
   let lineaToken: MockL1LineaToken;
