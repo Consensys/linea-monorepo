@@ -32,6 +32,9 @@ setup("Global setup", async () => {
 
   console.log("Sending ERC20 token to account...");
   await sendERC20TokenToAccount();
+
+  console.log("Sending ETH to L2 account on L1...");
+  await sendETHToL2Account();
 });
 
 async function generateL2Traffic() {
@@ -200,4 +203,34 @@ async function sendERC20TokenToAccount() {
 
   console.log(`L1 Token balance after minting: ${formatEther(l1Balance)} tokens`);
   console.log(`L2 Token balance after minting: ${formatEther(l2Balance)} tokens`);
+}
+
+async function sendETHToL2Account() {
+  const l1Account = mnemonicToAccount(process.env.E2E_TEST_SEED_PHRASE, { accountIndex: 0, addressIndex: 6 });
+
+  const walletClient = createWalletClient({
+    chain: localL1Network,
+    transport: http(LOCAL_L1_NETWORK.rpcUrl),
+    account: l1Account,
+  });
+
+  const publicClient = createPublicClient({
+    chain: localL1Network,
+    transport: http(LOCAL_L1_NETWORK.rpcUrl),
+  });
+
+  const { maxPriorityFeePerGas, maxFeePerGas } = await publicClient.estimateFeesPerGas({ type: "eip1559" });
+  const l2Account = privateKeyToAccount(L2_ACCOUNT_PRIVATE_KEY);
+
+  const transactionHash = await walletClient.sendTransaction({
+    to: l2Account.address,
+    value: parseEther("100"),
+    maxPriorityFeePerGas,
+    maxFeePerGas,
+  });
+
+  await waitForTransactionReceipt(walletClient, { hash: transactionHash, confirmations: 1 });
+
+  const balance = await publicClient.getBalance({ address: l2Account.address });
+  console.log(`L2 account ETH balance on L1: ${formatEther(balance)} ETH`);
 }
