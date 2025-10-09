@@ -29,7 +29,7 @@ class StatusHandler(
     callback: ResponseCallback<Message<Status, RpcMessageType>>,
   ) {
     try {
-      if (!statusManager.check(message.payload)) {
+      if (!statusManager.isValidForPeering(message.payload)) {
         log.warn(
           "Disconnecting peer=${peer.id} due to fork ID mismatch.",
         )

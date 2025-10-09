@@ -18,22 +18,18 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import maru.config.P2PConfig
-import maru.config.SyncingConfig
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
-import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
+import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusManager
-import maru.serialization.ForkIdSerializer
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
@@ -91,12 +87,6 @@ class P2PTest {
     private val key2 = "0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1".fromHex()
     private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
     private val p2PState = InMemoryP2PState()
-    private val syncConfig =
-      SyncingConfig(
-        peerChainHeightPollingInterval = 1.minutes,
-        syncTargetSelection = SyncingConfig.SyncTargetSelection.Highest,
-        elSyncStatusRefreshInterval = 1.seconds,
-      )
 
     private fun getSyncStatusProvider(): SyncStatusProvider =
       object : SyncStatusProvider {
@@ -121,9 +111,8 @@ class P2PTest {
         override fun getCLSyncTarget(): ULong = 100UL
       }
 
-    private val beaconChain: InMemoryBeaconChain =
-      InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
-    private val forkIdHashManager: ForkIdHashManager =
+    private val beaconChain: InMemoryBeaconChain = InMemoryBeaconChain.fromGenesis()
+    private val forkIdHashManager: ForkPeeringManager =
       createForkIdHashManager(
         chainId = chainId,
         beaconChain = beaconChain,
@@ -200,10 +189,8 @@ class P2PTest {
         metricsSystem = NoOpMetricsSystem(),
         forkIdHashManager = forkIdHashManager,
         isBlockImportEnabledProvider = { true },
-        forkIdHasher = ForkIdHasher(ForkIdSerializer, Hashing::shortShaHash),
         p2PState = p2PState,
         syncStatusProviderProvider = { getSyncStatusProvider() },
-        syncConfig = syncConfig,
       )
   }
 
@@ -421,7 +408,7 @@ class P2PTest {
       val latestBeaconBlockHeader = beaconChain.getLatestBeaconState().beaconBlockHeader
       val expectedStatus =
         Status(
-          forkIdHash = forkIdHashManager.currentHash(),
+          forkIdHash = forkIdHashManager.currentForkHash(),
           latestStateRoot = latestBeaconBlockHeader.hash,
           latestBlockNumber = latestBeaconBlockHeader.number,
         )

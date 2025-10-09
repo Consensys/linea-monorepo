@@ -72,12 +72,12 @@ class PeerDiscoveryTask(
         .orTimeout(Duration.ofSeconds(30L))
         .whenComplete { availablePeers, throwable ->
           if (throwable != null) {
-            log.trace("Finished searching for peers with error.")
+            log.debug("finished searching for peers with error={}", throwable.message)
           } else {
             log.trace(
-              "Finished searching for peers. Found {} peers. Currently connected to {} peers.",
+              "finished searching for peers: connectionCount={} discoveredPeers={}",
+              getPeerCount(),
               availablePeers,
-              getPeerCount,
             )
             availablePeers.forEach { peer -> tryToConnect(peer) }
           }

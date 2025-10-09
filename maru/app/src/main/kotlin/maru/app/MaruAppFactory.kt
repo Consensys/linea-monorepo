@@ -30,9 +30,6 @@ import maru.config.MaruConfig
 import maru.config.P2PConfig
 import maru.config.SyncingConfig
 import maru.consensus.ElFork
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHashManagerImpl
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
@@ -40,7 +37,6 @@ import maru.consensus.blockimport.ElForkAwareBlockImporter
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.InstantFinalizationProvider
 import maru.core.SealedBeaconBlock
-import maru.crypto.Hashing
 import maru.database.BeaconChain
 import maru.database.P2PState
 import maru.database.kv.KvDatabaseFactory
@@ -55,8 +51,9 @@ import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkDataProvider
 import maru.p2p.P2PNetworkImpl
 import maru.p2p.P2PPeersHeadBlockProvider
+import maru.p2p.fork.ForkPeeringManager
+import maru.p2p.fork.LenientForkPeeringManager
 import maru.p2p.messages.StatusManager
-import maru.serialization.ForkIdSerializer
 import maru.serialization.SerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.AlwaysSyncedController
@@ -98,12 +95,10 @@ class MaruAppFactory {
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
-      ForkIdHasher,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
-      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     log.info("configs={}", config)
@@ -142,31 +137,11 @@ class MaruAppFactory {
     val qbftFork = beaconGenesisConfig.getForkByConfigType(QbftConsensusConfig::class)
     val qbftConfig = qbftFork.configuration as QbftConsensusConfig
 
-    val forkIdHasher =
-      ForkIdHasher(
-        ForkIdSerializer,
-        Hashing::shortShaHash,
-      )
-    val forkIdHashProvider =
-      ForkIdHashManagerImpl(
-        chainId = beaconGenesisConfig.chainId,
-        beaconChain = kvDatabase,
-        forksSchedule = beaconGenesisConfig,
-        forkIdHasher = forkIdHasher,
-        clock = clock,
-        allowedTimeWindowSeconds =
-          config.p2p
-            ?.forkidAllowedTimeWindowSeconds
-            ?.inWholeSeconds
-            ?.toULong() ?: 20U,
-      )
     val ethereumJsonRpcClient =
       Helpers.createWeb3jClient(
         apiEndpointConfig = config.validatorElNode.ethApiEndpoint,
         log = LogManager.getLogger("maru.clients.el.ethapi"),
       )
-
-    val statusManager = StatusManager(kvDatabase, forkIdHashProvider)
 
     val engineApiWeb3jClient =
       Helpers.createWeb3jClient(
@@ -187,17 +162,15 @@ class MaruAppFactory {
 
     // Because of the circular dependency between SyncStatusProvider, P2PNetwork and P2PPeersHeadBlockProvider
     var syncControllerImpl: SyncController? = null
-
     val p2pNetwork =
       overridingP2PNetwork ?: setupP2PNetwork(
+        forkSchedule = beaconGenesisConfig,
         p2pConfig = config.p2p,
         privateKey = privateKey,
         chainId = beaconGenesisConfig.chainId,
         beaconChain = kvDatabase,
         metricsFacade = metricsFacade,
-        statusManager = statusManager,
         besuMetricsSystem = besuMetricsSystemAdapter,
-        forkIdHashManager = forkIdHashProvider,
         isBlockImportEnabledProvider = {
           if (config.validatorElNode.payloadValidationEnabled) {
             syncControllerImpl!!.isNodeFullInSync()
@@ -205,10 +178,9 @@ class MaruAppFactory {
             syncControllerImpl!!.isBeaconChainSynced()
           }
         },
-        forkIdHasher = forkIdHasher,
         p2PState = kvDatabase,
         syncStatusProviderProvider = { syncControllerImpl!! },
-        syncConfig = config.syncing,
+        clock = clock,
         p2pNetworkFactory = p2pNetworkFactory,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
@@ -349,19 +321,17 @@ class MaruAppFactory {
         } ?: InstantFinalizationProvider
 
     private fun setupP2PNetwork(
+      forkSchedule: ForksSchedule,
       p2pConfig: P2PConfig?,
       privateKey: ByteArray,
       chainId: UInt,
       beaconChain: BeaconChain,
       isBlockImportEnabledProvider: () -> Boolean,
       metricsFacade: MetricsFacade,
-      statusManager: StatusManager,
       besuMetricsSystem: BesuMetricsSystem,
-      forkIdHashManager: ForkIdHashManager,
-      forkIdHasher: ForkIdHasher,
+      clock: Clock,
       p2PState: P2PState,
       syncStatusProviderProvider: () -> SyncStatusProvider,
-      syncConfig: SyncingConfig,
       p2pNetworkFactory: (
         ByteArray,
         P2PConfig,
@@ -371,40 +341,46 @@ class MaruAppFactory {
         BesuMetricsSystem,
         StatusManager,
         BeaconChain,
-        ForkIdHashManager,
-        ForkIdHasher,
+        ForkPeeringManager,
         () -> Boolean,
         P2PState,
         () -> SyncStatusProvider,
-        SyncingConfig,
       ) -> P2PNetworkImpl = ::P2PNetworkImpl,
-    ): P2PNetwork =
-      p2pConfig?.let {
-        p2pNetworkFactory(
-          privateKey,
-          NetworkHelper
-            .selectIpV4ForP2P(
-              targetIpV4 = p2pConfig.ipAddress,
-              excludeLoopback = true,
-            ).also { log.info("using p2p ip={}", it) }
-            .let { p2pConfig.copy(ipAddress = it) },
-          chainId,
-          RLPSerializers.SealedBeaconBlockCompressorSerializer,
-          metricsFacade,
-          besuMetricsSystem,
-          statusManager,
-          beaconChain,
-          forkIdHashManager,
-          forkIdHasher,
-          isBlockImportEnabledProvider,
-          p2PState,
-          syncStatusProviderProvider,
-          syncConfig,
-        )
-      } ?: run {
+    ): P2PNetwork {
+      if (p2pConfig == null) {
         log.info("No P2P configuration provided, using NoOpP2PNetwork")
-        NoOpP2PNetwork
+        return NoOpP2PNetwork
       }
+      val forkIdHashManager =
+        LenientForkPeeringManager.create(
+          chainId = chainId,
+          beaconChain = beaconChain,
+          forks = forkSchedule.forks.toList(),
+          peeringForkMismatchLeewayTime = p2pConfig.peeringForkMismatchLeewayTime,
+          clock = clock,
+        )
+      val statusManager = StatusManager(beaconChain, forkIdHashManager)
+
+      return p2pNetworkFactory(
+        privateKey,
+        NetworkHelper
+          .selectIpV4ForP2P(
+            targetIpV4 = p2pConfig.ipAddress,
+            excludeLoopback = true,
+          ).also { log.info("using p2p ip={}", it) }
+          .let { p2pConfig.copy(ipAddress = it) },
+        chainId,
+        RLPSerializers.SealedBeaconBlockCompressorSerializer,
+        metricsFacade,
+        besuMetricsSystem,
+        statusManager,
+        beaconChain,
+        forkIdHashManager,
+        isBlockImportEnabledProvider,
+        p2PState,
+        syncStatusProviderProvider,
+      )
+    }
 
     private fun createSyncTargetSelector(config: SyncingConfig.SyncTargetSelection): SyncTargetSelector =
       when (config) {

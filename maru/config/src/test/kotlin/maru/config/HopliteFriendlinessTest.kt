@@ -42,7 +42,7 @@ class HopliteFriendlinessTest {
     ip-address = "10.11.12.13"
     static-peers = ["/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"]
     reconnect-delay = "500 ms"
-    forkid-allowed-time-window-seconds = "10 seconds"
+    peering-fork-mismatch-leeway-time = "10 seconds"
 
     [p2p.discovery]
     port = 3324
@@ -107,7 +107,7 @@ class HopliteFriendlinessTest {
           "/dns4/bootnode.linea.build/tcp/3322/p2p/16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg",
         ),
       reconnectDelay = 500.milliseconds,
-      forkidAllowedTimeWindowSeconds = 10.seconds,
+      peeringForkMismatchLeewayTime = 10.seconds,
       discovery =
         P2PConfig.Discovery(
           port = 3324u,

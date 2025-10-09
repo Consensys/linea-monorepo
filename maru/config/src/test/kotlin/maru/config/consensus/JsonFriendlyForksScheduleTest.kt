@@ -9,6 +9,8 @@
 package maru.config.consensus
 
 import maru.config.MaruConfigLoader.parseBeaconChainConfig
+import maru.consensus.ChainFork
+import maru.consensus.ClFork
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
@@ -61,7 +63,7 @@ class JsonFriendlyForksScheduleTest {
             DifficultyAwareQbftConfig(
               QbftConsensusConfig(
                 validatorSet = setOf(Validator("0x121212ec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
-                elFork = ElFork.Paris,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
               ),
               terminalTotalDifficulty = 12U,
             ),
@@ -72,7 +74,7 @@ class JsonFriendlyForksScheduleTest {
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
-                elFork = ElFork.Prague,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
               ),
           ),
         ),

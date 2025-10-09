@@ -48,9 +48,15 @@ class ProtocolStarterTest {
   private lateinit var protocol1: StubProtocol
   private lateinit var protocol2: StubProtocol
 
-  private val protocolConfig1 = object : ConsensusConfig {}
+  private val protocolConfig1 =
+    object : ConsensusConfig {
+      override val fork: ChainFork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai)
+    }
+  private val protocolConfig2 =
+    object : ConsensusConfig {
+      override val fork: ChainFork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague)
+    }
   private val forkSpec1 = ForkSpec(0UL, 5u, protocolConfig1)
-  private val protocolConfig2 = object : ConsensusConfig {}
   private val forkSpec2 = ForkSpec(15UL, 2u, protocolConfig2)
 
   private val mockSyncStatusProvider = mock<SyncStatusProvider>()

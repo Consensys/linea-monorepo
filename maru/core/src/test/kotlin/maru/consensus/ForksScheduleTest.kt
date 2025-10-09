@@ -13,9 +13,18 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class ForksScheduleTest {
-  private val consensusConfig = object : ConsensusConfig {}
-  private val qbftConsensusConfig = object : ConsensusConfig {}
-  private val otherConsensusConfig = object : ConsensusConfig {}
+  private val consensusConfig =
+    object : ConsensusConfig {
+      override val fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague)
+    }
+  private val qbftConsensusConfig =
+    object : ConsensusConfig {
+      override val fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai)
+    }
+  private val otherConsensusConfig =
+    object : ConsensusConfig {
+      override val fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun)
+    }
   private val expectedChainId = 1337u
 
   @Test

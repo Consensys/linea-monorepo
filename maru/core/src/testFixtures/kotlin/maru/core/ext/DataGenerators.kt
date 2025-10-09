@@ -39,9 +39,19 @@ import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.ethereum.core.Transaction
 
 object DataGenerators {
+  val defaultValidatorSet: Set<Validator> =
+    setOf(
+      Validator(GENESIS_EXECUTION_PAYLOAD.feeRecipient),
+    )
+
   fun genesisState(
-    genesisTimestamp: ULong,
-    validators: Set<Validator>,
+    genesisTimestamp: ULong =
+      java.time.Clock
+        .systemUTC()
+        .instant()
+        .epochSecond
+        .toULong(),
+    validators: Set<Validator> = defaultValidatorSet,
   ): Pair<BeaconState, SealedBeaconBlock> {
     val genesisExecutionPayload = GENESIS_EXECUTION_PAYLOAD
     val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = genesisExecutionPayload)

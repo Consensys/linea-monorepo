@@ -37,10 +37,10 @@ import maru.config.QbftConfig
 import maru.config.SyncingConfig
 import maru.config.SyncingConfig.SyncTargetSelection
 import maru.config.ValidatorElNode
+import maru.consensus.ChainFork
+import maru.consensus.ClFork
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ElFork
-import maru.consensus.ForkIdHashManager
-import maru.consensus.ForkIdHasher
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.QbftConsensusConfig
@@ -54,6 +54,7 @@ import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 import maru.p2p.P2PNetworkImpl
+import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
@@ -133,7 +134,7 @@ class MaruFactory(
               DifficultyAwareQbftConfig(
                 QbftConsensusConfig(
                   validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                  elFork = ElFork.Paris,
+                  fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
                 ),
                 terminalTotalDifficulty = ttd!!,
               ),
@@ -144,7 +145,7 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Shanghai,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
               ),
           ),
           ForkSpec(
@@ -153,7 +154,7 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Cancun,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
               ),
           ),
           ForkSpec(
@@ -162,7 +163,7 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Prague,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
               ),
           ),
         ),
@@ -177,7 +178,7 @@ class MaruFactory(
             configuration =
               QbftConsensusConfig(
                 validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
-                elFork = ElFork.Prague,
+                fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
               ),
           ),
         ),
@@ -323,12 +324,10 @@ class MaruFactory(
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
-      ForkIdHasher,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
-      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp =
     MaruAppFactory().create(
@@ -421,12 +420,10 @@ class MaruFactory(
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
-      ForkIdHasher,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
-      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(p2pPort = p2pPort)
@@ -484,12 +481,10 @@ class MaruFactory(
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
-      ForkIdHasher,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
-      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =
@@ -554,12 +549,10 @@ class MaruFactory(
       BesuMetricsSystem,
       StatusManager,
       BeaconChain,
-      ForkIdHashManager,
-      ForkIdHasher,
+      ForkPeeringManager,
       () -> Boolean,
       P2PState,
       () -> SyncStatusProvider,
-      SyncingConfig,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =

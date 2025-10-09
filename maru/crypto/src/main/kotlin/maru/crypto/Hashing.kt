@@ -9,6 +9,7 @@
 package maru.crypto
 
 import java.security.MessageDigest
+import maru.core.Hasher
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.datatypes.Hash
 
@@ -21,4 +22,8 @@ object Hashing {
   }
 
   fun keccak(serializedBytes: ByteArray): ByteArray = Hash.hash(Bytes.wrap(serializedBytes)).toArray()
+}
+
+object Keccak256Hasher : Hasher {
+  override fun hash(input: ByteArray): ByteArray = Hash.hash(Bytes.wrap(input)).toArray()
 }
