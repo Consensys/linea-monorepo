@@ -3,7 +3,7 @@ services:
     container_name: l1-el-node
     hostname: l1-el-node
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc11-20251004063519-a5c4c31}
-    profiles: [ "l1", "debug", "linea-besu" ]
+    profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-node-genesis-generator:
         condition: service_completed_successfully
@@ -41,7 +41,7 @@ services:
     container_name: l1-cl-node
     hostname: l1-cl-node
     image: consensys/teku:25.1.0
-    profiles: [ "l1", "debug", "linea-besu" ]
+    profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-el-node:
         condition: service_started
@@ -73,7 +73,7 @@ services:
 
   l1-node-genesis-generator:
     image: ethpandaops/ethereum-genesis-generator:4.0.0
-    profiles: [ "l1", "debug", "external-to-monorepo", "linea-besu" ]
+    profiles: [ "l1", "debug", "external-to-monorepo" ]
     entrypoint:
       - /bin/bash
       - -c
