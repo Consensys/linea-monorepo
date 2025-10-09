@@ -22,10 +22,10 @@ uint256 ETH_BURNT_PERCENTAGE
 
 Percentage of ETH to be burnt when performing the burn and bridge operation.
 
-### v3Dex
+### dex
 
 ```solidity
-contract IV3DexSwap v3Dex
+address dex
 ```
 
 Decentralized exchange contract for swapping ETH to LINEA tokens.
@@ -95,7 +95,7 @@ constructor() public
 ### initialize
 
 ```solidity
-function initialize(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _v3Dex) external
+function initialize(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _dex) external
 ```
 
 Initializes the contract state.
@@ -113,12 +113,12 @@ Initializes the contract state.
 | _messageService | address | Address of the L2 message service contract. |
 | _l1LineaTokenBurner | address | Address of the L1 LINEA token burner contract. |
 | _lineaToken | address | Address of the LINEA token contract. |
-| _v3Dex | address | Address of the V3 DEX contract. |
+| _dex | address | Address of the DEX contract. |
 
 ### initializeRolesAndStorageVariables
 
 ```solidity
-function initializeRolesAndStorageVariables(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _v3Dex) external
+function initializeRolesAndStorageVariables(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _dex) external
 ```
 
 Reinitializes the contract state for upgrade.
@@ -136,12 +136,12 @@ Reinitializes the contract state for upgrade.
 | _messageService | address | Address of the L2 message service contract. |
 | _l1LineaTokenBurner | address | Address of the L1 LINEA token burner contract. |
 | _lineaToken | address | Address of the LINEA token contract. |
-| _v3Dex | address | Address of the V3 DEX contract. |
+| _dex | address | Address of the DEX contract. |
 
 ### __RollupRevenueVault_init
 
 ```solidity
-function __RollupRevenueVault_init(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _v3Dex) internal
+function __RollupRevenueVault_init(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _dex) internal
 ```
 
 ### submitInvoice
@@ -163,7 +163,7 @@ Submit invoice to pay to the designated receiver.
 ### burnAndBridge
 
 ```solidity
-function burnAndBridge(uint256 _minLineaOut, uint256 _deadline, uint160 _sqrtPriceLimitX96) external
+function burnAndBridge(bytes _swapData) external
 ```
 
 Burns 20% of the ETH balance and uses the rest to buy LINEA tokens which are then bridged to L1 to be burned.
@@ -172,9 +172,7 @@ Burns 20% of the ETH balance and uses the rest to buy LINEA tokens which are the
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _minLineaOut | uint256 | Number of LINEA tokens to receive as a minimum (slippage protection). Computed off-chain just prior to execution. |
-| _deadline | uint256 | Time after which the transaction will revert if not yet processed. |
-| _sqrtPriceLimitX96 | uint160 | Price limit of the swap as a Q64.96 value. |
+| _swapData | bytes | Encoded calldata for the DEX swap function. |
 
 ### updateInvoicePaymentReceiver
 
@@ -222,16 +220,16 @@ Updates the address of the L1 LINEA token burner contract.
 ### updateDex
 
 ```solidity
-function updateDex(address _newV3Dex) external
+function updateDex(address _newDex) external
 ```
 
-Updates the address of the V3 DEX contract.
+Updates the address of the DEX contract.
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _newV3Dex | address | Address of the new V3 DEX contract. |
+| _newDex | address | Address of the new DEX contract. |
 
 ### fallback
 

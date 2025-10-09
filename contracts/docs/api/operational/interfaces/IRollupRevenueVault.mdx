@@ -90,6 +90,22 @@ error ExistingAddressTheSame()
 
 _Thrown when the provided address is the same as the existing address._
 
+### DexSwapFailed
+
+```solidity
+error DexSwapFailed()
+```
+
+_Thrown when the DEX swap fails._
+
+### ZeroLineaTokensReceived
+
+```solidity
+error ZeroLineaTokensReceived()
+```
+
+_Thrown when zero LINEA tokens are received from the DEX swap._
+
 ### InvoiceProcessed
 
 ```solidity
@@ -139,20 +155,20 @@ _Emitted when the L1 LINEA token burner contract address is updated._
 | previousValue | address | The previous L1 LINEA token burner contract address. |
 | newValue | address | The new L1 LINEA token burner contract address. |
 
-### V3DexUpdated
+### DexUpdated
 
 ```solidity
-event V3DexUpdated(address previousValue, address newValue)
+event DexUpdated(address previousValue, address newValue)
 ```
 
-_Emitted when the V3 DEX contract address is updated._
+_Emitted when the DEX contract address is updated._
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| previousValue | address | The previous V3 DEX contract address. |
-| newValue | address | The new V3 DEX contract address. |
+| previousValue | address | The previous DEX contract address. |
+| newValue | address | The new DEX contract address. |
 
 ### EthReceived
 
