@@ -34,7 +34,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("[PANIC] LPP prover crashed for witness %s: %v\n%s", req.WitnessLPPFile, r, debug.Stack())
-			return
+			os.Exit(2)
 		}
 	}()
 

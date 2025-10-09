@@ -41,7 +41,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("[PANIC] Conglomerator crashed for conflation request %s:%s\n%s", req.StartBlock, req.EndBlock, debug.Stack())
-			return
+			os.Exit(2)
 		}
 	}()
 
