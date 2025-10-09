@@ -33,6 +33,7 @@ import {
   UNUSED_YIELD_PROVIDER_VENDOR,
   LIDO_DASHBOARD_NOT_LINKED_TO_VAULT,
   LIDO_VAULT_IS_EXPECTED_RECEIVE_CALLER_AND_OSSIFIED_ENTRYPOINT,
+  EMPTY_CALLDATA,
 } from "../../common/constants";
 
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
@@ -443,5 +444,66 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager.connect(securityCouncil).unstake(yieldProviderAddress, withdrawalParams);
       await call;
     });
+  });
+
+  describe("unstakePermissionless", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const mockWithdrawalParams = ethers.hexlify(ethers.randomBytes(8));
+      const mockWithdrawalParamsProof = ethers.hexlify(ethers.randomBytes(8));
+      const call = yieldProvider
+        .connect(securityCouncil)
+        .unstakePermissionless(yieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should revert if incorrect withdrawal params type", async () => {
+      const mockWithdrawalParams = ethers.hexlify(ethers.randomBytes(8));
+      const mockWithdrawalParamsProof = ethers.hexlify(ethers.randomBytes(8));
+      const call = yieldManager
+        .connect(securityCouncil)
+        .unstakePermissionless(yieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof);
+      await expect(call).to.be.reverted;
+    });
+    it("Should succeed and emit the expected event", async () => {});
+  });
+
+  describe("validateUnstakePermissionless", () => {
+    it("Should revert if pubkeys argument is not 48 bytes exactly", async () => {
+      const invalidPubkeys = "0x" + "22".repeat(32);
+      const call = yieldManager
+        .connect(securityCouncil)
+        .validateUnstakePermissionlessHarness(yieldProviderAddress, invalidPubkeys, [1n], EMPTY_CALLDATA);
+
+      await expectRevertWithCustomError(yieldProvider, call, "SingleValidatorOnlyForUnstakePermissionless");
+    });
+
+    it("Should revert if more than a single amounts element is provided", async () => {
+      const pubkeys = "0x" + "11".repeat(48);
+      const amounts = [1n, 1n];
+      const call = yieldManager
+        .connect(securityCouncil)
+        .validateUnstakePermissionlessHarness(yieldProviderAddress, pubkeys, amounts, EMPTY_CALLDATA);
+
+      await expectRevertWithCustomError(yieldProvider, call, "SingleValidatorOnlyForUnstakePermissionless");
+    });
+
+    it("Should revert if 0 amount is provided", async () => {
+      const pubkeys = "0x" + "11".repeat(48);
+      const call = yieldManager
+        .connect(securityCouncil)
+        .validateUnstakePermissionlessHarness(yieldProviderAddress, pubkeys, [0n], EMPTY_CALLDATA);
+
+      await expectRevertWithCustomError(yieldProvider, call, "NoValidatorExitForUnstakePermissionless");
+    });
+
+    it("Should revert if incorrect type is provided for proof", async () => {
+      const pubkeys = "0x" + "11".repeat(48);
+      const call = yieldManager
+        .connect(securityCouncil)
+        .validateUnstakePermissionlessHarness(yieldProviderAddress, pubkeys, [1n], EMPTY_CALLDATA);
+
+      await expect(call).to.be.reverted;
+    });
+    it("If withdrawal amount leaves validator < activation balance, return maximum available unstake", async () => {});
+    it("If withdrawal amount leaves validator > activation balance, return amount", async () => {});
   });
 });
