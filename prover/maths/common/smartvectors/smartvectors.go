@@ -182,12 +182,12 @@ func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.E4Gen {
 	if err == nil {
 		for i := range res {
 			elem, _ := sv.GetBase(i)
-			res[i] = gnarkfext.NewFromBase(elem)
+			res[i] = gnarkfext.NewE4GenFromBase(elem)
 		}
 	} else {
 		for i := range res {
 			elem := sv.GetExt(i)
-			res[i].Assign(elem)
+			res[i] = gnarkfext.NewE4GenFromBase(elem)
 		}
 	}
 	return res
