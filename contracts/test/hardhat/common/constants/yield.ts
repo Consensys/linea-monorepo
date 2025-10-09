@@ -14,3 +14,7 @@ export const CHANGE_SLOT = 0;
 // YieldProviderVendor enum
 export const UNUSED_YIELD_PROVIDER_VENDOR = 0;
 export const LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR = 1;
+
+// YieldProviderRegistrationError enum
+export const LIDO_DASHBOARD_NOT_LINKED_TO_VAULT = 0;
+export const LIDO_VAULT_IS_EXPECTED_RECEIVE_CALLER_AND_OSSIFIED_ENTRYPOINT = 1;

@@ -29,6 +29,9 @@ interface IYieldProvider {
   /// @notice Raised when the YieldManager attempts to add a yield provider with an unexpected vendor identifier.
   error UnknownYieldProviderVendor();
 
+  /// @notice Raised when unpause staking is attempted when ossification is complete.
+  error UnpauseStakingForbiddenWhenOssified();
+
   /// @notice Raised when LST minting is attempted while ossification is either pending or complete.
   error MintLSTDisabledDuringOssification();
 
@@ -123,6 +126,7 @@ interface IYieldProvider {
   /**
    * @notice Resumes beacon chain deposits for the provider after a pause.
    * @param _yieldProvider The yield provider address.
+   * @dev Whether to allow staking during ossification is a vendor-specific detail.
    */
   function unpauseStaking(address _yieldProvider) external;
 

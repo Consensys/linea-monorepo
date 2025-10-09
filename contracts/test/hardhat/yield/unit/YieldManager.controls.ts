@@ -256,21 +256,7 @@ describe("YieldManager contract - control operations", () => {
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).unpauseStaking(mockYieldProviderAddress),
-        "UnpauseStakingForbiddenDuringOssification",
-      );
-    });
-
-    it("Should revert if ossification has completed", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      await yieldManager.connect(nativeYieldOperator).pauseStaking(mockYieldProviderAddress);
-      await setWithdrawalReserveToMinimum(yieldManager);
-      await yieldManager.setYieldProviderIsOssified(mockYieldProviderAddress, true);
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(nativeYieldOperator).unpauseStaking(mockYieldProviderAddress),
-        "UnpauseStakingForbiddenDuringOssification",
+        "UnpauseStakingForbiddenDuringPendingOssification",
       );
     });
 

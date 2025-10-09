@@ -297,9 +297,9 @@ interface IYieldManager {
   error UnpauseStakingForbiddenWithCurrentLSTLiability();
 
   /**
-   * @dev Thrown when attempting to unpause staking when ossification has been initiated or finalized.
+   * @dev Thrown when attempting to unpause staking when ossification has been initiated.
    */
-  error UnpauseStakingForbiddenDuringOssification();
+  error UnpauseStakingForbiddenDuringPendingOssification();
 
   /**
    * @dev Thrown when LST withdrawal is attempted through another route other than L1MessageService.claimMessageWithProofAndWithdrawLST.

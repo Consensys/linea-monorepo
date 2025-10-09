@@ -449,8 +449,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   /**
    * @notice Resumes beacon chain deposits for the provider after a pause.
    * @param _yieldProvider The yield provider address.
+   * @dev Whether to allow staking during ossification is a vendor-specific detail.
    */
   function unpauseStaking(address _yieldProvider) external onlyDelegateCall {
+    if (_getYieldProviderStorage(_yieldProvider).isOssified) revert UnpauseStakingForbiddenWhenOssified();
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).resumeBeaconChainDeposits();
   }
 

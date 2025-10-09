@@ -849,8 +849,8 @@ contract YieldManager is
     if ($$.lstLiabilityPrincipal > 0) {
       revert UnpauseStakingForbiddenWithCurrentLSTLiability();
     }
-    if ($$.isOssificationInitiated || $$.isOssified) {
-      revert UnpauseStakingForbiddenDuringOssification();
+    if ($$.isOssificationInitiated) {
+      revert UnpauseStakingForbiddenDuringPendingOssification();
     }
     _unpauseStaking(_yieldProvider);
     emit YieldProviderStakingUnpaused(_yieldProvider);
@@ -861,7 +861,7 @@ contract YieldManager is
    * @param _yieldProvider The yield provider address.
    */
   function _unpauseStaking(address _yieldProvider) internal {
-    _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)));
+    _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.unpauseStaking, (_yieldProvider)));
     _getYieldProviderStorage(_yieldProvider).isStakingPaused = false;
   }
 

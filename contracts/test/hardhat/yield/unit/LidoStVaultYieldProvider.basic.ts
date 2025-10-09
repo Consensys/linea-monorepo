@@ -2,10 +2,12 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
   deployAndAddSingleLidoStVaultYieldProvider,
+  deployMockStakingVault,
   fundLidoStVaultYieldProvider,
   incrementBalance,
   ossifyYieldProvider,
-  // setWithdrawalReserveToMinimum,
+  setWithdrawalReserveToMinimum,
+  YieldProviderRegistration,
 } from "../helpers";
 import {
   MockVaultHub,
@@ -26,6 +28,10 @@ import {
   CHANGE_SLOT,
   ONE_ETHER,
   ZERO_VALUE,
+  LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
+  UNUSED_YIELD_PROVIDER_VENDOR,
+  LIDO_DASHBOARD_NOT_LINKED_TO_VAULT,
+  LIDO_VAULT_IS_EXPECTED_RECEIVE_CALLER_AND_OSSIFIED_ENTRYPOINT,
 } from "../../common/constants";
 
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
@@ -233,20 +239,192 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
       await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
     });
+  });
 
-    describe("pause staking", () => {
-      it("Should revert if not invoked via delegatecall", async () => {
-        const call = yieldProvider.connect(securityCouncil).pauseStaking(yieldProviderAddress);
-        await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
-      });
-      it("Should successfully pause when not ossifed", async () => {
-        await yieldManager.connect(securityCouncil).pauseStaking(yieldProviderAddress);
-      });
-      // it("Should successfully pause when ossifed", async () => {
-      //   await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
-      //   await setWithdrawalReserveToMinimum(yieldManager);
-      //   await yieldManager.connect(securityCouncil).unpauseStaking(yieldProviderAddress)
-      // });
+  describe("pause staking", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).pauseStaking(yieldProviderAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should successfully pause when not ossifed", async () => {
+      await yieldManager.connect(securityCouncil).pauseStaking(yieldProviderAddress);
+    });
+    it("Should successfully pause when ossifed", async () => {
+      await yieldManager.connect(securityCouncil).setYieldProviderIsOssified(yieldProviderAddress, true);
+      await yieldManager.connect(securityCouncil).pauseStaking(yieldProviderAddress);
+    });
+  });
+
+  describe("unpause staking", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).unpauseStaking(yieldProviderAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should successfully unpause when not ossifed", async () => {
+      await yieldManager.connect(securityCouncil).pauseStaking(yieldProviderAddress);
+      await setWithdrawalReserveToMinimum(yieldManager);
+      await yieldManager.connect(securityCouncil).unpauseStaking(yieldProviderAddress);
+    });
+    it("Should revert unpause when ossifed", async () => {
+      await yieldManager.connect(securityCouncil).pauseStaking(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).setYieldProviderIsOssified(yieldProviderAddress, true);
+      await setWithdrawalReserveToMinimum(yieldManager);
+      const call = yieldManager.connect(securityCouncil).unpauseStaking(yieldProviderAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "UnpauseStakingForbiddenWhenOssified");
+    });
+  });
+
+  describe("withdraw LST", () => {
+    const getWithdrawLSTCall = async () => {
+      const withdrawAmount = ONE_ETHER;
+      const recipient = ethers.Wallet.createRandom().address;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+
+      // Add gas fees
+      const l1MessageService = await mockLineaRollup.getAddress();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+
+      return yieldManager.connect(l1Signer).withdrawLST(yieldProviderAddress, withdrawAmount, recipient);
+    };
+
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).withdrawLST(yieldProviderAddress, ZERO_VALUE, ZeroAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should successfully withdraw LST when not ossifed, and update state", async () => {
+      const withdrawAmount = ONE_ETHER;
+      const lstPrincipalLiabilityBefore =
+        await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
+      const call = getWithdrawLSTCall();
+      await call;
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(
+        lstPrincipalLiabilityBefore + withdrawAmount,
+      );
+    });
+    it("Should revert withdraw LST when ossification pending", async () => {
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      const call = getWithdrawLSTCall();
+      await expectRevertWithCustomError(yieldProvider, call, "MintLSTDisabledDuringOssification");
+    });
+    it("Should revert withdraw LST when ossifed", async () => {
+      await yieldManager.connect(securityCouncil).setYieldProviderIsOssified(yieldProviderAddress, true);
+      const call = getWithdrawLSTCall();
+      await expectRevertWithCustomError(yieldProvider, call, "MintLSTDisabledDuringOssification");
+    });
+  });
+
+  describe("undoInitiateOssification", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).undoInitiateOssification(yieldProviderAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should succeed when vault is connected", async () => {
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await mockVaultHub.connect(securityCouncil).setIsVaultConnectedReturn(true);
+      await yieldManager.connect(securityCouncil).undoInitiateOssification(yieldProviderAddress);
+    });
+    it("Should succeed when vault is not connected", async () => {
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await mockVaultHub.connect(securityCouncil).setIsVaultConnectedReturn(false);
+      await yieldManager.connect(securityCouncil).undoInitiateOssification(yieldProviderAddress);
+    });
+  });
+
+  describe("process pending ossification", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should succeed", async () => {
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+    });
+  });
+
+  describe("validateAdditionToYieldManager", () => {
+    it("Should revert if registration is for unknown YieldProvider Vendor", async () => {
+      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+
+      const registration: YieldProviderRegistration = {
+        yieldProviderVendor: UNUSED_YIELD_PROVIDER_VENDOR,
+        primaryEntrypoint: mockDashboardAddress,
+        ossifiedEntrypoint: mockStakingVaultAddress,
+        receiveCaller: mockStakingVaultAddress,
+      };
+
+      const call = yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
+      await expectRevertWithCustomError(yieldProvider, call, "UnknownYieldProviderVendor");
+    });
+    it("Should revert if dashboard is not linked to staking vault", async () => {
+      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+
+      const newVault = await deployMockStakingVault();
+
+      const registration: YieldProviderRegistration = {
+        yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
+        primaryEntrypoint: mockDashboardAddress,
+        ossifiedEntrypoint: await newVault.getAddress(),
+        receiveCaller: mockStakingVaultAddress,
+      };
+
+      const call = yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
+      await expectRevertWithCustomError(yieldProvider, call, "InvalidYieldProviderRegistration", [
+        LIDO_DASHBOARD_NOT_LINKED_TO_VAULT,
+      ]);
+    });
+    it("Should revert if receiveCaller is not set to the staking vault", async () => {
+      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+
+      const registration: YieldProviderRegistration = {
+        yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
+        primaryEntrypoint: mockDashboardAddress,
+        ossifiedEntrypoint: mockStakingVaultAddress,
+        receiveCaller: mockDashboardAddress,
+      };
+
+      const call = yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
+      await expectRevertWithCustomError(yieldProvider, call, "InvalidYieldProviderRegistration", [
+        LIDO_VAULT_IS_EXPECTED_RECEIVE_CALLER_AND_OSSIFIED_ENTRYPOINT,
+      ]);
+    });
+    it("Should succeed for a correct registration", async () => {
+      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+
+      const registration: YieldProviderRegistration = {
+        yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
+        primaryEntrypoint: mockDashboardAddress,
+        ossifiedEntrypoint: mockStakingVaultAddress,
+        receiveCaller: mockStakingVaultAddress,
+      };
+
+      await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
+    });
+  });
+
+  describe("unstake", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const mockWithdrawalParams = ethers.hexlify(ethers.randomBytes(8));
+      const call = yieldProvider.connect(securityCouncil).unstake(yieldProviderAddress, mockWithdrawalParams);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should revert if incorrect withdrawal params type", async () => {
+      const mockWithdrawalParams = ethers.hexlify(ethers.randomBytes(8));
+      const call = yieldManager.connect(securityCouncil).unstake(yieldProviderAddress, mockWithdrawalParams);
+      await expect(call).to.be.reverted;
+    });
+    it("Should succeed with valid withdrawal params type", async () => {
+      const pubkey = "0x" + "a".repeat(96); // 48 bytes
+      const amounts = [32000000000n]; // 32 ETH in Gwei
+      const refundRecipient = nativeYieldOperator.address;
+      const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["bytes", "uint64[]", "address"],
+        [pubkey, amounts, refundRecipient],
+      );
+
+      const call = yieldManager.connect(securityCouncil).unstake(yieldProviderAddress, withdrawalParams);
+      await call;
     });
   });
 });
