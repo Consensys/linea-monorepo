@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/circuits"
@@ -59,7 +58,6 @@ func (r *AssetResolver) bootstrapAssets() ([]string, []string, error) {
 	all := append([]string{}, required...)
 	all = append(all, glBlueprints...)
 	all = append(all, lppBlueprints...)
-	all = uniqueSorted(all)
 
 	// check critical exist
 	var missing []string
@@ -81,7 +79,7 @@ func (r *AssetResolver) conglomerationAssets() ([]string, []string, error) {
 		filepath.Join(r.SetupDir, "verifying_key.bin"),
 		filepath.Join(r.SetupDir, "manifest.json"),
 	}
-	all = uniqueSorted(all)
+
 	// compiled conglomeration critical
 	critical := []string{all[0]}
 	if _, err := os.Stat(critical[0]); os.IsNotExist(err) {
@@ -97,7 +95,6 @@ func (r *AssetResolver) glAssets(module string) ([]string, []string, error) {
 		all = append(all, compiled)
 	}
 
-	all = uniqueSorted(all)
 	// if compiled present, consider it critical (caller can decide behaviour)
 	return all, all, nil
 }
@@ -109,23 +106,5 @@ func (r *AssetResolver) lppAssets(module string) ([]string, []string, error) {
 		all = append(all, compiled)
 	}
 
-	all = uniqueSorted(all)
 	return all, all, nil
-}
-
-func uniqueSorted(in []string) []string {
-	seen := make(map[string]struct{}, len(in))
-	out := make([]string, 0, len(in))
-	for _, p := range in {
-		if p == "" {
-			continue
-		}
-		if _, ok := seen[p]; ok {
-			continue
-		}
-		seen[p] = struct{}{}
-		out = append(out, p)
-	}
-	sort.Strings(out)
-	return out
 }
