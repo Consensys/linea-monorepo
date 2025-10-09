@@ -11,13 +11,20 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 /// @title Rate-Limiting Nullifier registry contract
 /// @dev This contract allows you to register RLN commitment and withdraw/slash.
 contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
-    bytes32 public constant SLASHER_ROLE = keccak256("SLASHER_ROLE");
-    bytes32 public constant REGISTER_ROLE = keccak256("REGISTER_ROLE");
-
     error RLN__MemberNotFound();
     error RLN__IdCommitmentAlreadyRegistered();
     error RLN__SetIsFull();
     error RLN__Unauthorized();
+
+    /// @dev Emmited when a new member registered.
+    /// @param identityCommitment: `identityCommitment`;
+    /// @param index: idCommitmentIndex value.
+    event MemberRegistered(uint256 identityCommitment, uint256 index);
+
+    /// @dev Emmited when a member was slashed.
+    /// @param index: index of `identityCommitment`;
+    /// @param slasher: address of slasher (msg.sender).
+    event MemberSlashed(uint256 index, address slasher);
 
     /// @dev User metadata struct.
     /// @param userAddress: address of depositor;
@@ -25,6 +32,9 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
         address userAddress;
         uint256 index;
     }
+
+    bytes32 public constant SLASHER_ROLE = keccak256("SLASHER_ROLE");
+    bytes32 public constant REGISTER_ROLE = keccak256("REGISTER_ROLE");
 
     /// @dev Registry set size (1 << DEPTH).
     uint256 public SET_SIZE;
@@ -41,16 +51,6 @@ contract RLN is Initializable, UUPSUpgradeable, AccessControlUpgradeable {
 
     /// @dev Poseidon hasher contract.
     IPoseidonHasher public poseidonHasher;
-
-    /// @dev Emmited when a new member registered.
-    /// @param identityCommitment: `identityCommitment`;
-    /// @param index: idCommitmentIndex value.
-    event MemberRegistered(uint256 identityCommitment, uint256 index);
-
-    /// @dev Emmited when a member was slashed.
-    /// @param index: index of `identityCommitment`;
-    /// @param slasher: address of slasher (msg.sender).
-    event MemberSlashed(uint256 index, address slasher);
 
     constructor() {
         _disableInitializers();
