@@ -8,6 +8,9 @@ permissions:
 on:
   workflow_call:
     inputs:
+      has-changes-requiring-build:
+        required: true
+        type: string
       coordinator_changed:
         required: true
         type: string
@@ -21,6 +24,12 @@ on:
         required: true
         type: string
     outputs:
+      commit_tag:
+        value: ${{ jobs.check_image_tags_exist.outputs.commit_tag }}
+      last_commit_tag:
+        value: ${{ jobs.check_image_tags_exist.outputs.last_commit_tag }}
+      develop_tag:
+        value: ${{ jobs.check_image_tags_exist.outputs.develop_tag }}
       image_tagged_coordinator:
         value: ${{ jobs.image_tag_push.outputs.image_tagged_coordinator }}
       image_tagged_prover:
@@ -29,12 +38,6 @@ on:
         value: ${{ jobs.image_tag_push.outputs.image_tagged_postman }}
       image_tagged_transaction_exclusion_api:
         value: ${{ jobs.image_tag_push.outputs.image_tagged_transaction_exclusion_api }}
-      commit_tag:
-        value: ${{ jobs.check_image_tags_exist.outputs.commit_tag }}
-      last_commit_tag:
-        value: ${{ jobs.check_image_tags_exist.outputs.last_commit_tag }}
-      develop_tag:
-        value: ${{ jobs.check_image_tags_exist.outputs.develop_tag }}
     secrets:
       DOCKERHUB_USERNAME:
         required: false
@@ -117,7 +120,7 @@ jobs:
 
   image_tag_push:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/main' && inputs.has-changes-requiring-build == 'true' }}
     name: Tag and push images
     needs: [ check_image_tags_exist ]
     outputs:
