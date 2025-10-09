@@ -220,23 +220,25 @@ class HopliteFriendlinessTest {
           useUnconditionalRandomDownloadPeer = true,
         ),
     )
+  private val expectedEmptyFollowersBase =
+    MaruConfigDtoToml(
+      protocolTransitionPollingInterval = protocolTransitionPollingInterval,
+      allowEmptyBlocks = false,
+      persistence = persistence,
+      qbft = qbftOptions,
+      p2p = p2pConfig,
+      payloadValidator = payloadValidator,
+      followerEngineApis = null,
+      observability = ObservabilityConfig(port = 9090u),
+      api = ApiConfig(port = 8080u),
+      syncing = syncingConfig,
+    )
 
   @Test
   fun appConfigFileIsParseable() {
     val config = parseConfig<MaruConfigDtoToml>(rawConfigToml)
     assertThat(config).isEqualTo(
-      MaruConfigDtoToml(
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        allowEmptyBlocks = false,
-        persistence = persistence,
-        qbft = qbftOptions,
-        p2p = p2pConfig,
-        payloadValidator = payloadValidator,
-        followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2),
-        observability = ObservabilityConfig(port = 9090u),
-        api = ApiConfig(port = 8080u),
-        syncing = syncingConfig,
-      ),
+      expectedEmptyFollowersBase.copy(followerEngineApis = mapOf("follower1" to follower1, "follower2" to follower2)),
     )
   }
 
@@ -244,18 +246,7 @@ class HopliteFriendlinessTest {
   fun supportsEmptyFollowers() {
     val config = parseConfig<MaruConfigDtoToml>(emptyFollowersConfigToml)
     assertThat(config).isEqualTo(
-      MaruConfigDtoToml(
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        allowEmptyBlocks = false,
-        persistence = persistence,
-        qbft = qbftOptions,
-        p2p = p2pConfig,
-        payloadValidator = payloadValidator,
-        followerEngineApis = null,
-        observability = ObservabilityConfig(port = 9090u),
-        api = ApiConfig(port = 8080u),
-        syncing = syncingConfig,
-      ),
+      expectedEmptyFollowersBase,
     )
   }
 
@@ -464,18 +455,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
     assertThat(config).isEqualTo(
-      MaruConfigDtoToml(
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        allowEmptyBlocks = true,
-        persistence = persistence,
-        qbft = qbftOptions,
-        p2p = p2pConfig,
-        payloadValidator = payloadValidator,
-        followerEngineApis = null,
-        observability = ObservabilityConfig(port = 9090u),
-        api = ApiConfig(port = 8080u),
-        syncing = syncingConfig,
-      ),
+      expectedEmptyFollowersBase.copy(allowEmptyBlocks = true),
     )
 
     assertThat(config.domainFriendly()).isEqualTo(
@@ -537,18 +517,7 @@ class HopliteFriendlinessTest {
     val config = parseConfig<MaruConfigDtoToml>(configToml)
 
     assertThat(config).isEqualTo(
-      MaruConfigDtoToml(
-        linea = expectedTomlConfig,
-        protocolTransitionPollingInterval = protocolTransitionPollingInterval,
-        persistence = persistence,
-        qbft = qbftOptions,
-        p2p = p2pConfig,
-        payloadValidator = payloadValidator,
-        observability = ObservabilityConfig(port = 9090u),
-        api = ApiConfig(port = 8080u),
-        syncing = syncingConfig,
-        followerEngineApis = null,
-      ),
+      expectedEmptyFollowersBase.copy(linea = expectedTomlConfig),
     )
 
     assertThat(config.domainFriendly()).isEqualTo(
@@ -568,6 +537,118 @@ class HopliteFriendlinessTest {
         observability = ObservabilityConfig(port = 9090u),
         api = ApiConfig(port = 8080u),
         syncing = syncingConfig,
+      ),
+    )
+  }
+
+  @Test
+  fun `gossiping config can be overridden`() {
+    val customGossipingConfig =
+      """
+      [p2p.gossiping]
+      d = 12
+      d-low = 10
+      d-high = 16
+      d-lazy = 10
+      fanout-ttl = "120 seconds"
+      gossip-size = 6
+      history = 10
+      heartbeat-interval = "600 milliseconds"
+      seen-ttl = "1200 seconds"
+      flood-publish-max-message-size-threshold = 65536
+      gossip-factor = 0.5
+      """.trimIndent()
+    val configToml = "$emptyFollowersConfigToml\n$customGossipingConfig"
+    val config = parseConfig<MaruConfigDtoToml>(configToml)
+
+    assertThat(config).isEqualTo(
+      expectedEmptyFollowersBase.copy(
+        p2p =
+          p2pConfig.copy(
+            gossiping =
+              P2PConfig.Gossiping(
+                d = 12,
+                dLow = 10,
+                dHigh = 16,
+                dLazy = 10,
+                fanoutTTL = 120.seconds,
+                gossipSize = 6,
+                history = 10,
+                heartbeatInterval = 600.milliseconds,
+                seenTTL = 1200.seconds,
+                floodPublishMaxMessageSizeThreshold = 65536,
+                gossipFactor = 0.5,
+              ),
+          ),
+      ),
+    )
+  }
+
+  @Test
+  fun `gossiping config can be partially overridden with defaults for unspecified fields`() {
+    val partialGossipingConfig =
+      """
+      [p2p.gossiping]
+      d = 12
+      heartbeat-interval = "600 milliseconds"
+      """.trimIndent()
+    val configToml = "$emptyFollowersConfigToml\n$partialGossipingConfig"
+    val config = parseConfig<MaruConfigDtoToml>(configToml)
+
+    assertThat(config).isEqualTo(
+      expectedEmptyFollowersBase.copy(
+        p2p =
+          p2pConfig.copy(
+            gossiping =
+              P2PConfig.Gossiping(
+                d = 12,
+                dLow = 6, // default
+                dHigh = 24, // default (d * 2)
+                dLazy = 6, // default
+                fanoutTTL = 60.seconds, // default
+                gossipSize = 3, // default
+                history = 6, // default
+                heartbeatInterval = 600.milliseconds,
+                seenTTL = 700.milliseconds * 1115, // default
+                floodPublishMaxMessageSizeThreshold = 16384, // default
+                gossipFactor = 0.25, // default
+              ),
+          ),
+      ),
+    )
+  }
+
+  @Test
+  fun `gossiping config is parseable as standalone`() {
+    val gossipingToml =
+      """
+      d = 10
+      d-low = 8
+      d-high = 14
+      d-lazy = 8
+      fanout-ttl = "90 seconds"
+      gossip-size = 5
+      history = 8
+      heartbeat-interval = "500 milliseconds"
+      seen-ttl = "1000 seconds"
+      flood-publish-max-message-size-threshold = 32768
+      gossip-factor = 0.3
+      """.trimIndent()
+    val config = parseConfig<P2PConfig.Gossiping>(gossipingToml)
+
+    assertThat(config).isEqualTo(
+      P2PConfig.Gossiping(
+        d = 10,
+        dLow = 8,
+        dHigh = 14,
+        dLazy = 8,
+        fanoutTTL = 90.seconds,
+        gossipSize = 5,
+        history = 8,
+        heartbeatInterval = 500.milliseconds,
+        seenTTL = 1000.seconds,
+        floodPublishMaxMessageSizeThreshold = 32768,
+        gossipFactor = 0.3,
       ),
     )
   }

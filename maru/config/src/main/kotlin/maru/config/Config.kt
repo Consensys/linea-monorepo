@@ -49,6 +49,7 @@ data class P2PConfig(
   val statusUpdate: StatusUpdate = StatusUpdate(),
   val reputation: Reputation = Reputation(),
   val forkidAllowedTimeWindowSeconds: Duration = 20.seconds,
+  val gossiping: Gossiping = Gossiping(),
 ) {
   init {
     // just a sanity check to ensure the IP address is valid
@@ -81,6 +82,24 @@ data class P2PConfig(
     val maxReputation: Int = 2 * largeChange,
     val cooldownPeriod: Duration = 2.minutes,
     val banPeriod: Duration = 1.hours,
+  )
+
+  /**
+   * Gossip options wrapping Teku's tech.pegasys.teku.networking.p2p.gossip.config.GossipConfig
+   * https://github.com/ethereum/consensus-specs/blob/v0.11.1/specs/phase0/p2p-interface.md#the-gossip-domain-gossipsub
+   */
+  data class Gossiping(
+    val d: Int = 8,
+    val dLow: Int = 6,
+    val dHigh: Int = d * 2,
+    val dLazy: Int = 6,
+    val fanoutTTL: Duration = 60.seconds,
+    val gossipSize: Int = 3,
+    val history: Int = 6,
+    val heartbeatInterval: Duration = 700.milliseconds,
+    val seenTTL: Duration = 700.milliseconds * 1115,
+    val floodPublishMaxMessageSizeThreshold: Int = 1 shl 14, // 16KiB
+    val gossipFactor: Double = 0.25,
   )
 }
 

@@ -141,6 +141,7 @@ class P2PNetworkImpl(
       metricsSystem = besuMetricsSystem,
       asyncRunner = asyncRunner,
       reputationManager = reputationManager,
+      gossipingConfig = p2pConfig.gossiping,
     )
   }
 
