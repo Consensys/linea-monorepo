@@ -574,46 +574,45 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 // The function also assigns the [SentValueGlobal] local openings.
 func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 
-	if len(a.ReceivedValuesGlobalMap) == 0 {
-		return
+	if len(a.ReceivedValuesGlobalMap) > 0 {
+
+		hashSend := field.Element{}
+
+		for i := range a.SentValuesGlobal {
+			lo := a.SentValuesGlobal[i]
+			v := lo.Pol.GetColAssignmentAt(run, 0)
+			run.AssignLocalPoint(lo.ID, v)
+			hashSend = mimc.BlockCompression(hashSend, v)
+		}
+
+		run.AssignColumn(
+			a.SentValuesGlobalHash.GetColID(),
+			smartvectors.NewConstant(hashSend, 1),
+		)
+
+		witness := run.State.MustGet(moduleWitnessKey).(*ModuleWitnessGL)
+		rcvData := witness.ReceivedValuesGlobal
+
+		if len(rcvData) != len(a.ReceivedValuesGlobalAccs) {
+			utils.Panic("len(rcvData: %v) != len(a.ReceivedValuesGlobalAccs: %v)", len(rcvData), len(a.ReceivedValuesGlobalAccs))
+		}
+
+		run.AssignColumn(
+			a.ReceivedValuesGlobal.GetColID(),
+			smartvectors.RightZeroPadded(rcvData, a.ReceivedValuesGlobal.Size()),
+		)
+
+		hashRcv := field.Element{}
+		for i := range rcvData {
+			v := rcvData[i]
+			hashRcv = mimc.BlockCompression(hashRcv, v)
+		}
+
+		run.AssignColumn(
+			a.ReceivedValuesGlobalHash.GetColID(),
+			smartvectors.NewConstant(hashRcv, 1),
+		)
 	}
-
-	hashSend := field.Element{}
-
-	for i := range a.SentValuesGlobal {
-		lo := a.SentValuesGlobal[i]
-		v := lo.Pol.GetColAssignmentAt(run, 0)
-		run.AssignLocalPoint(lo.ID, v)
-		hashSend = mimc.BlockCompression(hashSend, v)
-	}
-
-	run.AssignColumn(
-		a.SentValuesGlobalHash.GetColID(),
-		smartvectors.NewConstant(hashSend, 1),
-	)
-
-	witness := run.State.MustGet(moduleWitnessKey).(*ModuleWitnessGL)
-	rcvData := witness.ReceivedValuesGlobal
-
-	if len(rcvData) != len(a.ReceivedValuesGlobalAccs) {
-		utils.Panic("len(rcvData: %v) != len(a.ReceivedValuesGlobalAccs: %v)", len(rcvData), len(a.ReceivedValuesGlobalAccs))
-	}
-
-	run.AssignColumn(
-		a.ReceivedValuesGlobal.GetColID(),
-		smartvectors.RightZeroPadded(rcvData, a.ReceivedValuesGlobal.Size()),
-	)
-
-	hashRcv := field.Element{}
-	for i := range rcvData {
-		v := rcvData[i]
-		hashRcv = mimc.BlockCompression(hashRcv, v)
-	}
-
-	run.AssignColumn(
-		a.ReceivedValuesGlobalHash.GetColID(),
-		smartvectors.NewConstant(hashRcv, 1),
-	)
 
 	a.ModuleGL.assignMultiSetHash(run)
 }
@@ -860,8 +859,7 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 		lppCommitments           = run.GetPublicInput(lppMerkleRootPublicInput)
 		segmentIndex             = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof              = field.NewElement(uint64(proofTypeGL))
-		globalSentHash           = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
-		globalRcvdHash           = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
+		hasSentOrReceive         = len(modGL.ReceivedValuesGlobalMap) > 0
 		multiSetGeneral          = mimc.MSetHash{}
 		multiSetSharedRandomness = mimc.MSetHash{}
 		defInp                   = modGL.DefinitionInput
@@ -876,18 +874,19 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
-	if segmentIndexInt < numSegmentOfLastModule.Uint64()-1 {
-		// This is a local module
+	if hasSentOrReceive && segmentIndexInt < numSegmentOfLastModule.Uint64()-1 {
+		globalSentHash := modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
 		multiSetGeneral.Insert(moduleIndex, segmentIndex, typeOfProof, globalSentHash)
 	}
 
 	// If the segment is not the first one of its module, we add the received
 	// value in the multiset
-	if !segmentIndex.IsZero() {
+	if hasSentOrReceive && !segmentIndex.IsZero() {
 
 		var (
 			prevSegmentIndex field.Element
 			one              = field.One()
+			globalRcvdHash   = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
 		)
 
 		prevSegmentIndex.Sub(&segmentIndex, &one)
@@ -909,8 +908,7 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 		lppCommitments             = run.GetPublicInput(lppMerkleRootPublicInput)
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
-		globalSentHash             = modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
-		globalRcvdHash             = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
+		hasSentOrReceive           = len(modGL.ReceivedValuesGlobalMap) > 0
 		multiSetGeneral            = mimc.MSetHash{}
 		multiSetSharedRandomness   = mimc.MSetHash{}
 		defInp                     = modGL.DefinitionInput
@@ -944,18 +942,20 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
-	if segmentIndexInt < numSegmentOfCurrModule.Uint64()-1 {
+	if hasSentOrReceive && segmentIndexInt < numSegmentOfCurrModule.Uint64()-1 {
+		globalSentHash := modGL.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
 		// This is a local module
 		multiSetGeneral.Insert(moduleIndex, segmentIndex, typeOfProof, globalSentHash)
 	}
 
 	// If the segment is not the first one of its module, we add the received
 	// value in the multiset
-	if !segmentIndex.IsZero() {
+	if hasSentOrReceive && !segmentIndex.IsZero() {
 
 		var (
 			prevSegmentIndex field.Element
 			one              = field.One()
+			globalRcvdHash   = modGL.ReceivedValuesGlobalHash.GetColAssignmentAt(run, 0)
 		)
 
 		prevSegmentIndex.Sub(&segmentIndex, &one)
@@ -983,8 +983,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		lppCommitments             = run.GetPublicInput(api, lppMerkleRootPublicInput)
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
-		globalSentHash             = modGL.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		globalRcvdHash             = modGL.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
+		hasSentOrReceive           = len(modGL.ReceivedValuesGlobalMap) > 0
 		multiSetGeneral            = mimc.EmptyMSetHashGnark()
 		multiSetSharedRandomness   = mimc.EmptyMSetHashGnark()
 		defInp                     = modGL.DefinitionInput
@@ -1007,19 +1006,23 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
-	mSetOfSentGlobal := mimc.MsetOfSingletonGnark(api, segmentIndex, typeOfProof, globalSentHash)
-	for i := range mSetOfSentGlobal {
-		mSetOfSentGlobal[i] = api.Mul(mSetOfSentGlobal[i], api.Sub(1, isLast))
-		multiSetGeneral[i] = api.Add(multiSetGeneral[i], mSetOfSentGlobal[i])
-	}
+	if hasSentOrReceive {
+		globalSentHash := modGL.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
+		mSetOfSentGlobal := mimc.MsetOfSingletonGnark(api, segmentIndex, typeOfProof, globalSentHash)
+		for i := range mSetOfSentGlobal {
+			mSetOfSentGlobal[i] = api.Mul(mSetOfSentGlobal[i], api.Sub(1, isLast))
+			multiSetGeneral[i] = api.Add(multiSetGeneral[i], mSetOfSentGlobal[i])
+		}
 
-	// If the segment is not the first one of its module, we add the received
-	// value in the multiset. If the segment index is zero, the singleton hash
-	// will be zero-ed out by the "1 - isFirst" term
-	mSetOfReceivedGlobal := mimc.MsetOfSingletonGnark(api, api.Sub(segmentIndex, 1), typeOfProof, globalRcvdHash)
-	for i := range mSetOfReceivedGlobal {
-		mSetOfReceivedGlobal[i] = api.Mul(mSetOfReceivedGlobal[i], api.Sub(1, isFirst))
-		multiSetGeneral[i] = api.Sub(multiSetGeneral[i], mSetOfReceivedGlobal[i])
+		// If the segment is not the first one of its module, we add the received
+		// value in the multiset. If the segment index is zero, the singleton hash
+		// will be zero-ed out by the "1 - isFirst" term
+		globalRcvdHash := modGL.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
+		mSetOfReceivedGlobal := mimc.MsetOfSingletonGnark(api, api.Sub(segmentIndex, 1), typeOfProof, globalRcvdHash)
+		for i := range mSetOfReceivedGlobal {
+			mSetOfReceivedGlobal[i] = api.Mul(mSetOfReceivedGlobal[i], api.Sub(1, isFirst))
+			multiSetGeneral[i] = api.Sub(multiSetGeneral[i], mSetOfReceivedGlobal[i])
+		}
 	}
 
 	for i := range multiSetGeneral {
