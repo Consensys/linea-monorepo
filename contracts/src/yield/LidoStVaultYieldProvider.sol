@@ -157,7 +157,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     YieldProviderStorage storage $$,
     uint256 _availableYield
   ) internal returns (uint256 newReportedYield) {
-    // First pay negative yield
+    // 1. Pay negative yield
     newReportedYield = _availableYield;
     uint256 currentNegativeYield = $$.currentNegativeYield;
     if (currentNegativeYield > 0) {
@@ -165,17 +165,19 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       $$.currentNegativeYield -= negativeYieldReduction;
       newReportedYield -= negativeYieldReduction;
     }
-    // Then pay liabilities
+    // 2. Pay liabilities
     uint256 lstLiabilityPayment = _payMaximumPossibleLSTLiability($$);
     if (lstLiabilityPayment > newReportedYield) {
       $$.currentNegativeYield += (lstLiabilityPayment - newReportedYield);
       return 0;
     }
     newReportedYield = Math256.safeSub(newReportedYield, lstLiabilityPayment);
-    // Then pay obligations
-    newReportedYield -= _payObligations($$, newReportedYield);
-    // Then pay node operator fee(s)
-    newReportedYield -= _payNodeOperatorFees($$, newReportedYield);
+    // 3. Pay obligations
+    uint256 obligationsPaid = _payObligations($$, newReportedYield);
+    newReportedYield = Math256.safeSub(newReportedYield, obligationsPaid);
+    // 4. Pay node operator fees
+    uint256 nodeOperatorFeesPaid = _payNodeOperatorFees($$, newReportedYield);
+    newReportedYield = Math256.safeSub(newReportedYield, nodeOperatorFeesPaid);
   }
 
   /**
