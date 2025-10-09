@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
@@ -22,6 +23,9 @@ type GLRequest struct {
 }
 
 func RunGL(cfg *config.Config, req *GLRequest) error {
+
+	// Set MonitorParams before GL-proving
+	profiling.SetMonitorParams(cfg)
 
 	logrus.Infof("Starting GL-prover from witnessGL file path %v", req.WitnessGLFile)
 
