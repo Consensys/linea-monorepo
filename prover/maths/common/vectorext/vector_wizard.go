@@ -200,7 +200,7 @@ func PowerVec(x fext.Element, n int) Vector {
 func IntoGnarkAssignment(msgData Vector) []gnarkfext.E4Gen {
 	assignedMsg := []gnarkfext.E4Gen{}
 	for _, x := range msgData {
-		assignedMsg = append(assignedMsg, gnarkfext.FromValue(x))
+		assignedMsg = append(assignedMsg, gnarkfext.NewE4Gen(x))
 	}
 	return assignedMsg
 }
