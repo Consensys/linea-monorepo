@@ -199,7 +199,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(_liabilityShares);
     // If true, this means an external actor settled liabilities.
     if (liabilityETH < _lstLiabilityPrincipalCached) {
-      uint256 lstLiabilityPrincipalDecrement = liabilityETH - _lstLiabilityPrincipalCached;
+      uint256 lstLiabilityPrincipalDecrement = _lstLiabilityPrincipalCached - liabilityETH;
       // Any decrement in lstLiabilityPrincipal must be 1:1 matched with decrements in userFunds and _userFundsInYieldProvidersTotal.
       _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= lstLiabilityPrincipalDecrement;
       $$.userFunds -= lstLiabilityPrincipalDecrement;

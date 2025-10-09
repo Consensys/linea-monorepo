@@ -11,6 +11,11 @@ contract MockDashboard is IDashboard {
   uint256 private liabilitySharesReturn;
   uint256 private withdrawableValueReturn;
   uint256 private nodeOperatorDisbursableFeeReturn;
+  bool isRebalanceVaultWithSharesWithdrawingFromVault;
+
+  function setRebalanceVaultWithSharesWithdrawingFromVault(bool _value) external {
+    isRebalanceVaultWithSharesWithdrawingFromVault = _value;
+  }
 
   function setStakingVaultReturn(IStakingVault _value) external {
     stakingVaultReturn = _value;
@@ -54,7 +59,12 @@ contract MockDashboard is IDashboard {
 
   function mintStETH(address, uint256) external payable override {}
 
-  function rebalanceVaultWithShares(uint256) external override {}
+  function rebalanceVaultWithShares(uint256 _amount) external override {
+    if (isRebalanceVaultWithSharesWithdrawingFromVault) {
+      ICommonVaultOperations stakingVault = ICommonVaultOperations(stakingVaultReturn);
+      stakingVault.withdraw(address(0), _amount);
+    }
+  }
 
   function rebalanceVaultWithEther(uint256) external payable override {}
 

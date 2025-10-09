@@ -1,7 +1,13 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { MockYieldProvider, TestLidoStVaultYieldProvider, TestYieldManager } from "contracts/typechain-types";
+import {
+  MockLineaRollup,
+  MockYieldProvider,
+  TestLidoStVaultYieldProvider,
+  TestYieldManager,
+} from "contracts/typechain-types";
 import { ethers } from "hardhat";
+import { ONE_ETHER } from "../../common/constants";
 
 export const setupReceiveCallerForSuccessfulYieldProviderWithdrawal = async (
   testYieldManager: TestYieldManager,
@@ -74,4 +80,23 @@ export const fundLidoStVaultYieldProvider = async (
   await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, ethers.toBeHex(minimumReserveAmount)]);
   await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(withdrawAmount)]);
   await testYieldManager.connect(signer).fundYieldProvider(yieldProviderAddress, withdrawAmount);
+};
+
+export const getWithdrawLSTCall = async (
+  mockLineaRollup: MockLineaRollup,
+  yieldManager: TestYieldManager,
+  yieldProvider: TestLidoStVaultYieldProvider,
+  signer: SignerWithAddress,
+  withdrawAmount: bigint,
+) => {
+  const recipient = ethers.Wallet.createRandom().address;
+  await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, signer, withdrawAmount);
+
+  // Add gas fees
+  const l1MessageService = await yieldManager.L1_MESSAGE_SERVICE();
+  await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+  const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+  await mockLineaRollup.setWithdrawLSTAllowed(true);
+
+  return yieldManager.connect(l1Signer).withdrawLST(await yieldProvider.getAddress(), withdrawAmount, recipient);
 };

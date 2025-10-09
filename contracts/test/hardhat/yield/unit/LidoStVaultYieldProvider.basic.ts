@@ -4,6 +4,7 @@ import {
   deployAndAddSingleLidoStVaultYieldProvider,
   deployMockStakingVault,
   fundLidoStVaultYieldProvider,
+  getWithdrawLSTCall,
   incrementBalance,
   ossifyYieldProvider,
   setWithdrawalReserveToMinimum,
@@ -275,20 +276,6 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   });
 
   describe("withdraw LST", () => {
-    const getWithdrawLSTCall = async () => {
-      const withdrawAmount = ONE_ETHER;
-      const recipient = ethers.Wallet.createRandom().address;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
-
-      // Add gas fees
-      const l1MessageService = await mockLineaRollup.getAddress();
-      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
-      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
-      await mockLineaRollup.setWithdrawLSTAllowed(true);
-
-      return yieldManager.connect(l1Signer).withdrawLST(yieldProviderAddress, withdrawAmount, recipient);
-    };
-
     it("Should revert if not invoked via delegatecall", async () => {
       const call = yieldProvider.connect(securityCouncil).withdrawLST(yieldProviderAddress, ZERO_VALUE, ZeroAddress);
       await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
@@ -297,21 +284,51 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const withdrawAmount = ONE_ETHER;
       const lstPrincipalLiabilityBefore =
         await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
-      const call = getWithdrawLSTCall();
+      const call = getWithdrawLSTCall(
+        mockLineaRollup,
+        yieldManager,
+        yieldProvider,
+        nativeYieldOperator,
+        withdrawAmount,
+      );
       await call;
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(
         lstPrincipalLiabilityBefore + withdrawAmount,
       );
     });
     it("Should revert withdraw LST when ossification pending", async () => {
+      const withdrawAmount = ONE_ETHER;
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      const call = getWithdrawLSTCall();
+      const call = getWithdrawLSTCall(
+        mockLineaRollup,
+        yieldManager,
+        yieldProvider,
+        nativeYieldOperator,
+        withdrawAmount,
+      );
       await expectRevertWithCustomError(yieldProvider, call, "MintLSTDisabledDuringOssification");
     });
     it("Should revert withdraw LST when ossifed", async () => {
+      const withdrawAmount = ONE_ETHER;
       await yieldManager.connect(securityCouncil).setYieldProviderIsOssified(yieldProviderAddress, true);
-      const call = getWithdrawLSTCall();
+      const call = getWithdrawLSTCall(
+        mockLineaRollup,
+        yieldManager,
+        yieldProvider,
+        nativeYieldOperator,
+        withdrawAmount,
+      );
       await expectRevertWithCustomError(yieldProvider, call, "MintLSTDisabledDuringOssification");
+    });
+  });
+
+  describe("initiate ossification", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should succeed", async () => {
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
     });
   });
 
