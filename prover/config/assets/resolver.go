@@ -82,7 +82,8 @@ func (r *AssetResolver) conglomerationAssets() ([]string, []string, error) {
 		filepath.Join(r.SetupDir, "manifest.json"),
 	}
 	all = uniqueSorted(all)
-	critical := []string{all[0]} // compiled conglomeration most critical
+	// compiled conglomeration critical
+	critical := []string{all[0]}
 	if _, err := os.Stat(critical[0]); os.IsNotExist(err) {
 		return all, critical, fmt.Errorf("missing critical conglomeration asset: %s", critical[0])
 	}
