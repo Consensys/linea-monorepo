@@ -460,7 +460,13 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 // one and also declare a public input from that column with the same provided
 // name.
 func declarePiColumn(comp *wizard.CompiledIOP, name string) wizard.PublicInput {
-	col := comp.InsertProof(0, ifaces.ColID(name+"_PI_COLUMN"), 1)
+	return declarePiColumnAtRound(comp, 0, name)
+}
+
+// declarePiColumn at round declares a column at the requested round to generate
+// a public input with the requested name.
+func declarePiColumnAtRound(comp *wizard.CompiledIOP, round int, name string) wizard.PublicInput {
+	col := comp.InsertProof(round, ifaces.ColID(name+"_PI_COLUMN"), 1)
 	return comp.InsertPublicInput(name, accessors.NewFromPublicColumn(col, 0))
 }
 
@@ -478,7 +484,7 @@ func assignPiColumn(run *wizard.ProverRuntime, name string, val field.Element) {
 func declareListOfPiColumns(comp *wizard.CompiledIOP, round int, name string, length int) []wizard.PublicInput {
 	var cols []wizard.PublicInput
 	for i := 0; i < length; i++ {
-		cols = append(cols, declarePiColumn(comp, name+"_"+strconv.Itoa(i)))
+		cols = append(cols, declarePiColumnAtRound(comp, round, name+"_"+strconv.Itoa(i)))
 	}
 	return cols
 }
