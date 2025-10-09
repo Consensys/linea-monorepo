@@ -785,6 +785,9 @@ abstract contract LineaRollupBase is
     if (_params.value < address(this).balance) {
       revert LSTWithdrawalRequiresDeficit();
     }
+    if (msg.sender != _params.to) {
+      revert CallerNotLSTWithdrawalRecipient();
+    }
     bytes32 messageLeafHash = _validateAndConsumeMessageProof(_params);
     IS_WITHDRAW_LST_ALLOWED = true;
     IYieldManager(yieldManager()).withdrawLST(_yieldProvider, _params.value, _params.to);

@@ -58,6 +58,11 @@ interface ILineaRollupYieldExtension {
   error LSTWithdrawalRequiresDeficit();
 
   /**
+   * @dev Thrown when an LST withdrawal is attempted and the caller is not the recipient.
+   */
+  error CallerNotLSTWithdrawalRecipient();
+
+  /**
    * @notice Report native yield earned for L2 distribution by emitting a synthetic `MessageSent` event.
    * @dev Callable only by the registered YieldManager.
    * @param _amount The net earned yield.

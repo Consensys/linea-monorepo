@@ -394,6 +394,28 @@ describe("Linea Rollup contract", () => {
       expect(await ethers.provider.getBalance(await lineaRollup.getAddress())).to.equal(preFundAmount);
     });
 
+    it("Should revert if caller is not the LST withdrawal recipient", async () => {
+      const preFundAmount = ethers.parseEther("1");
+      await lineaRollup.connect(securityCouncil).fund({ value: preFundAmount });
+
+      const params = {
+        proof: [] as string[],
+        messageNumber: 0n,
+        leafIndex: 0,
+        from: admin.address,
+        to: nonAuthorizedAccount.address,
+        fee: 0n,
+        value: ethers.parseEther("0.5"),
+        feeRecipient: admin.address,
+        merkleRoot: ethers.ZeroHash,
+        data: EMPTY_CALLDATA,
+      };
+
+      const claimCall = lineaRollup.connect(admin).claimMessageWithProofAndWithdrawLST(params, operator.address);
+
+      await expectRevertWithCustomError(lineaRollup, claimCall, "LSTWithdrawalRequiresDeficit");
+    });
+
     it("Should revert on reentry", async () => {
       const lineaRollupAddress = await lineaRollup.getAddress();
 
