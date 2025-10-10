@@ -134,6 +134,7 @@ func StoreToDisk(filePath string, asset any, withCompression bool) error {
 
 	// --- Atomic write via temp + rename ---
 	dir := filepath.Dir(filePath)
+	_ = os.MkdirAll(dir, 0755)
 	base := filepath.Base(filePath)
 
 	tmpF, err := os.CreateTemp(dir, base+".tmp.*")
