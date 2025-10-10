@@ -60,6 +60,14 @@ type RecursedSegmentCompilation struct {
 	Recursion *recursion.Recursion
 }
 
+// SegmentProof stores a proof for a segment or for the conglomeration proof
+type SegmentProof struct {
+	Witness      recursion.Witness
+	ProofType    ProofType
+	ModuleIndex  int
+	SegmentIndex int
+}
+
 // CompileSegment applies all the compilation steps required to compile an LPP
 // or a GL module of the protocol. The function accepts either a *[ModuleLPP]
 // or a *[ModuleGL].
@@ -68,7 +76,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	var (
 		modIOP    *wizard.CompiledIOP
 		res       = &RecursedSegmentCompilation{}
-		isLPP     bool
+		proofType ProofType
 		subscript string
 	)
 
@@ -77,15 +85,17 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		modIOP = m.Wiop
 		res.ModuleGL = m
 		subscript = string(m.DefinitionInput.ModuleName)
+		proofType = proofTypeGL
 	case *ModuleLPP:
 		modIOP = m.Wiop
 		res.ModuleLPP = m
-		isLPP = true
+		proofType = proofTypeLPP
 		subscript = string(m.ModuleName())
 	case *ConglomerationHierarchical:
 		modIOP = m.Wiop
 		res.HierarchicalConglomeration = m
 		subscript = "hierarchical-conglomeration"
+		proofType = proofTypeConglo
 
 	default:
 		utils.Panic("unexpected type: %T", mod)
@@ -94,12 +104,12 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
-		// This ensures that all the public inputs are declared in the same order to
-		// prevent bugs in the conglomeration. This will not affect the future position
-		// of the public inputs we declare afterwards.
+		// This ensures that all the public inputs are declared in the same
+		// order to prevent bugs in the conglomeration. This will not affect the
+		// future position of the public inputs we declare afterwards.
 		sortPublicInput,
-		// @alex: unsure why we need to compile with MiMC since it should be done
-		// pre-bootstrapping.
+		// @alex: unsure if/why we need to compile with MiMC since it should be
+		// done pre-bootstrapping.
 		mimc.CompileMiMC,
 		// The reason why 1 works is because it will work for all the GL modules
 		// and because the LPP module do not have Plonk-in-wizards query.
@@ -134,7 +144,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	logrus.Infof("[Before first Vortex] module=%v numCellsCommitted=%v numCellsPrecomputed=%v numCellsProof=%v",
 		subscript, initialWizardStats.NumCellsCommitted, initialWizardStats.NumCellsPrecomputed, initialWizardStats.NumCellsProof)
 
-	if !isLPP {
+	if proofType == proofTypeGL {
 
 		wizard.ContinueCompilation(modIOP,
 			vortex.Compile(
@@ -145,9 +155,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				vortex.WithOptionalSISHashingThreshold(64),
 			),
 		)
-
-		modIOP.InsertPublicInput(lppMerkleRootPublicInput, accessors.NewConstant(field.Zero()))
-
 	} else {
 
 		wizard.ContinueCompilation(modIOP,
@@ -155,7 +162,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				2,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
-				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
 				vortex.WithOptionalSISHashingThreshold(64),
 			),
 		)
@@ -299,7 +305,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 }
 
 // ProveSegment runs the prover for a segment of the protocol
-func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime {
+func (r *RecursedSegmentCompilation) ProveSegment(wit any) (SegmentProof, *wizard.ProverRuntime) {
 
 	var (
 		comp               *wizard.CompiledIOP
@@ -307,6 +313,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		moduleName         any
 		moduleIndex        int
 		segmentModuleIndex int
+		proofType          ProofType
 	)
 
 	switch m := wit.(type) {
@@ -316,6 +323,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
 		segmentModuleIndex = m.SegmentModuleIndex
+		proofType = proofTypeLPP
 
 		if m.ModuleIndex != r.ModuleLPP.DefinitionInput.ModuleIndex {
 			utils.Panic("m.ModuleIndex: %v != r.ModuleLPP.ModuleIndex: %v", m.ModuleIndex, r.ModuleLPP.DefinitionInput.ModuleIndex)
@@ -331,6 +339,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
 		segmentModuleIndex = m.SegmentModuleIndex
+		proofType = proofTypeGL
 
 		if m.ModuleIndex != r.ModuleGL.DefinitionInput.ModuleIndex {
 			utils.Panic("m.ModuleIndex: %v != r.ModuleGL.ModuleIndex: %v", m.ModuleIndex, r.ModuleGL.DefinitionInput.ModuleIndex)
@@ -387,7 +396,12 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		WithField("segment-type", fmt.Sprintf("%T", wit)).
 		Infof("Ran prover segment")
 
-	return run
+	return SegmentProof{
+		ModuleIndex:  moduleIndex,
+		SegmentIndex: segmentModuleIndex,
+		ProofType:    proofType,
+		Witness:      recursion.ExtractWitness(run),
+	}, run
 }
 
 // sortPublicInput is small compiler sorting the public inputs by name.

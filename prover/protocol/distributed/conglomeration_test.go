@@ -1,76 +1,59 @@
 package distributed_test
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// import (
-// 	"encoding/json"
-// 	"testing"
-// 	"time"
+// TestConglomerationBasic generates a conglomeration proof and checks if it is valid
+func TestConglomerationBasic(t *testing.T) {
 
-// 	"github.com/consensys/linea-monorepo/prover/backend/execution"
-// 	"github.com/consensys/linea-monorepo/prover/backend/files"
-// 	"github.com/consensys/linea-monorepo/prover/config"
-// 	"github.com/consensys/linea-monorepo/prover/maths/field"
-// 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
-// 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-// 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-// 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
-// 	"github.com/consensys/linea-monorepo/prover/zkevm"
-// )
+	var (
+		numRow = 1 << 10
+		tc     = DistributeTestCase{numRow: numRow}
+		disc   = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 3 * numRow / 2,
+			Predivision:  1,
+		}
+		comp = wizard.Compile(func(build *wizard.Builder) {
+			tc.Define(build.CompiledIOP)
+		})
 
-// // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
-// func TestConglomerationBasic(t *testing.T) {
+		// This tests the compilation of the compiled-IOP
+		_ = distributed.DistributeWizard(comp, disc).
+			CompileSegments().
+			Conglomerate()
+	)
 
-// 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// 	runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
+	// 	witnessGLs, witnessLPPs = distributed.SegmentRuntime(
+	// 		runtimeBoot,
+	// 		distWizard.Disc,
+	// 		distWizard.BlueprintGLs,
+	// 		distWizard.BlueprintLPPs,
+	// 	)
+	// 	runGLs = runProverGLs(t, distWizard, witnessGLs)
+	// )
 
-// 	var (
-// 		numRow = 1 << 10
-// 		tc     = DistributeTestCase{numRow: numRow}
-// 		disc   = &distributed.StandardModuleDiscoverer{
-// 			TargetWeight: 3 * numRow / 2,
-// 			Predivision:  1,
-// 		}
-// 		comp = wizard.Compile(func(build *wizard.Builder) {
-// 			tc.Define(build.CompiledIOP)
-// 		})
+	// for i := range runGLs {
+	// 	t.Logf("sanity-checking runGLs[%d]\n", i)
+	// 	sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
+	// }
 
-// 		// This tests the compilation of the compiled-IOP
-// 		distWizard = distributed.DistributeWizard(comp, disc).
-// 				CompileSegments().
-// 				Conglomerate(20)
+	// var (
+	// 	sharedRandomness = getSharedRandomness(runGLs)
+	// 	runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
+	// )
 
-// 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
-// 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
-// 			runtimeBoot,
-// 			distWizard.Disc,
-// 			distWizard.BlueprintGLs,
-// 			distWizard.BlueprintLPPs,
-// 		)
-// 		runGLs = runProverGLs(t, distWizard, witnessGLs)
-// 	)
+	// for i := range runLPPs {
+	// 	t.Logf("sanity-checking runLPPs[%d]\n", i)
+	// 	sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
+	// }
 
-// 	for i := range runGLs {
-// 		t.Logf("sanity-checking runGLs[%d]\n", i)
-// 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
-// 	}
-
-// 	var (
-// 		sharedRandomness = getSharedRandomness(runGLs)
-// 		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
-// 	)
-
-// 	for i := range runLPPs {
-// 		t.Logf("sanity-checking runLPPs[%d]\n", i)
-// 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
-// 	}
-
-// 	runConglomerationProver(t, distWizard.CompiledConglomeration, runGLs, runLPPs)
-// }
+	// runConglomerationProver(t, distWizard.CompiledConglomeration, runGLs, runLPPs)
+}
 
 // // TestConglomeration generates a conglomeration proof and checks if it is valid
 // func TestConglomeration(t *testing.T) {
@@ -88,7 +71,7 @@ import (
 // 		// This tests the compilation of the compiled-IOP
 // 		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).
 // 				CompileSegments().
-// 				Conglomerate(20)
+// 				Conglomerate()
 // 	)
 
 // 	var (
@@ -145,21 +128,6 @@ import (
 
 // 	runConglomerationProver(t, distWizard.CompiledConglomeration, runGLs, runLPPs)
 // }
-
-// getSharedRandomness computes the shared randomnesses from the runtime
-func getSharedRandomness(runs []*wizard.ProverRuntime) field.Element {
-	witnesses := make([]recursion.Witness, len(runs))
-	for i := range runs {
-		witnesses[i] = recursion.ExtractWitness(runs[i])
-	}
-
-	comps := make([]*wizard.CompiledIOP, len(runs))
-	for i := range runs {
-		comps[i] = runs[i].Spec
-	}
-
-	return distributed.GetSharedRandomnessFromWitnesses(comps, witnesses)
-}
 
 // // Sanity-check for conglomeration compilation.
 // func sanityCheckConglomeration(t *testing.T, cong *distributed.ConglomeratorCompilation, run *wizard.ProverRuntime) {
