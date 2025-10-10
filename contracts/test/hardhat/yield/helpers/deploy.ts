@@ -26,6 +26,7 @@ import {
   MockDashboard,
   MockStakingVault,
   TestLidoStVaultYieldProvider,
+  TestCLProofVerifier,
 } from "contracts/typechain-types";
 import { YieldManagerInitializationData, YieldProviderRegistration } from "./types";
 
@@ -70,6 +71,13 @@ export async function deployMockYieldProvider(): Promise<MockYieldProvider> {
   const mockYieldManager = await mockYieldManagerFactory.deploy();
   await mockYieldManager.waitForDeployment();
   return await mockYieldManager;
+}
+
+export async function deployTestCLProofVerifier(): Promise<TestCLProofVerifier> {
+  const factory = await ethers.getContractFactory("TestCLProofVerifier");
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT);
+  await contract.waitForDeployment();
+  return contract;
 }
 
 // Deploys with MockLineaRollup and MockYieldProvider

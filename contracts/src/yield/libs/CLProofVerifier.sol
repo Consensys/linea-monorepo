@@ -188,7 +188,7 @@ abstract contract CLProofVerifier {
     // verifies user provided slot against user provided proof
     // proof verification is done in `SSZ.verifyProof` and is not affected by slot
     _verifySlot(_witness);
-    _validationActivationEpoch(_witness);
+    _validateActivationEpoch(_witness);
 
     Validator memory validator = Validator({
       pubkey: _witness.pubkey,
@@ -234,7 +234,7 @@ abstract contract CLProofVerifier {
     }
   }
 
-  function _validationActivationEpoch(ValidatorWitness memory _witness) internal pure {
+  function _validateActivationEpoch(ValidatorWitness memory _witness) internal pure {
     uint256 epoch = _witness.slot / SLOTS_PER_EPOCH;
     if (epoch < _witness.activationEpoch + SHARD_COMMITTEE_PERIOD) {
       revert ValidatorNotActiveForLongEnough();

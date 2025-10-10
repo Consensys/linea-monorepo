@@ -1,3 +1,5 @@
+import { SecretKey } from "@chainsafe/blst";
+
 export interface YieldManagerInitializationData {
   pauseTypeRoles: { pauseType: number; role: string }[];
   unpauseTypeRoles: { pauseType: number; role: string }[];
@@ -26,4 +28,29 @@ export interface ValidatorContainer {
   activationEpoch: bigint;
   exitEpoch: bigint;
   withdrawableEpoch: bigint;
+}
+
+export interface Validator {
+  container: ValidatorContainer;
+  blsPrivateKey: SecretKey;
+}
+
+export interface BeaconBlockHeader {
+  slot: bigint;
+  proposerIndex: bigint;
+  parentRoot: string;
+  stateRoot: string;
+  bodyRoot: string;
+}
+
+export interface ValidatorWitness {
+  proof: string[];
+  pubkey: string;
+  validatorIndex: bigint;
+  effectiveBalance: bigint;
+  childBlockTimestamp: bigint;
+  slot: bigint;
+  proposerIndex: bigint;
+  activationEpoch: bigint;
+  activationEligibilityEpoch: bigint;
 }
