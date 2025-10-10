@@ -22,6 +22,7 @@ import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.zkevm.LongRunningService
+import net.consensys.zkevm.coordinator.app.DisabledLongRunningService
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.cleanupDbDataAfterBlockNumbers
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeAggregationFrom
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
@@ -88,10 +89,14 @@ class ConflationApp(
 ) : LongRunningService {
   private val log = LogManager.getLogger("conflation.app")
 
-  private val lastProcessedBlockNumber = resumeConflationFrom(
-    aggregationsRepository,
-    lastFinalizedBlock,
-  ).get()
+  //private val lastProcessedBlockNumber = resumeConflationFrom(
+  //  aggregationsRepository,
+  //  lastFinalizedBlock,
+  //).get()
+
+  // First Shanghai block 8814442 on devnet
+  private val lastProcessedBlockNumber = 8814441uL
+
   private val lastConsecutiveAggregatedBlockNumber = resumeAggregationFrom(
     aggregationsRepository,
     lastFinalizedBlock,
@@ -424,17 +429,22 @@ class ConflationApp(
   }
 
   override fun start(): CompletableFuture<Unit> {
-    return cleanupDbDataAfterBlockNumbers(
-      lastProcessedBlockNumber = lastProcessedBlockNumber,
-      lastConsecutiveAggregatedBlockNumber = lastConsecutiveAggregatedBlockNumber,
-      batchesRepository = batchesRepository,
-      blobsRepository = blobsRepository,
-      aggregationsRepository = aggregationsRepository,
-    )
-      .thenCompose { proofAggregationCoordinatorService.start() }
-      .thenCompose { deadlineConflationCalculatorRunner?.start() ?: SafeFuture.completedFuture(Unit) }
-      .thenCompose { blockCreationMonitor.start() }
-      .thenCompose { blobCompressionProofCoordinator.start() }
+    //return cleanupDbDataAfterBlockNumbers(
+    //  lastProcessedBlockNumber = lastProcessedBlockNumber,
+    //  lastConsecutiveAggregatedBlockNumber = lastConsecutiveAggregatedBlockNumber,
+    //  batchesRepository = batchesRepository,
+    //  blobsRepository = blobsRepository,
+    //  aggregationsRepository = aggregationsRepository,
+    //)
+    //  .thenCompose { proofAggregationCoordinatorService.start() }
+    //  .thenCompose { deadlineConflationCalculatorRunner?.start() ?: SafeFuture.completedFuture(Unit) }
+    //  .thenCompose { blockCreationMonitor.start() }
+    //  .thenCompose { blobCompressionProofCoordinator.start() }
+    //  .thenPeek {
+    //    log.info("Conflation started")
+    //  }
+
+    return blockCreationMonitor.start()
       .thenPeek {
         log.info("Conflation started")
       }
@@ -442,10 +452,10 @@ class ConflationApp(
 
   override fun stop(): CompletableFuture<Unit> {
     return SafeFuture.allOf(
-      proofAggregationCoordinatorService.stop(),
+      //proofAggregationCoordinatorService.stop(),
       blockCreationMonitor.stop(),
-      deadlineConflationCalculatorRunner?.stop() ?: SafeFuture.completedFuture(Unit),
-      blobCompressionProofCoordinator.stop(),
+      //deadlineConflationCalculatorRunner?.stop() ?: SafeFuture.completedFuture(Unit),
+      //blobCompressionProofCoordinator.stop(),
     )
       .thenApply { log.info("Conflation Stopped") }
   }
