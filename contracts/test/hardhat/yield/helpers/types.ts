@@ -16,3 +16,14 @@ export interface YieldProviderRegistration {
   ossifiedEntrypoint: string;
   receiveCaller: string;
 }
+
+export interface ValidatorContainer {
+  pubkey: string;
+  withdrawalCredentials: string;
+  effectiveBalance: bigint;
+  slashed: boolean;
+  activationEligibilityEpoch: bigint;
+  activationEpoch: bigint;
+  exitEpoch: bigint;
+  withdrawableEpoch: bigint;
+}
