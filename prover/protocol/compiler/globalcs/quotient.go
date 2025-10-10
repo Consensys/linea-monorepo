@@ -163,39 +163,32 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 // Run implements the [wizard.ProverAction] interface and embeds the logic to
 // compute the quotient shares.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
-
 	start := time.Now()
-	// Initial step is to compute the FFTs for all committed vectors
-	pool := mempool.CreateFromSyncPool(symbolic.MaxChunkSize).Prewarm(runtime.GOMAXPROCS(0) * ctx.MaxNbExprNode)
+
+	// Prewarm memory pool for parallel evaluation
+	pool := mempool.CreateFromSyncPool(symbolic.MaxChunkSize).
+		Prewarm(runtime.GOMAXPROCS(0) * ctx.MaxNbExprNode)
 
 	if ctx.DomainSize >= GC_DOMAIN_SIZE {
-		// Force the GC to run
 		runtime.GC()
 	}
 
-	// Take the max quotient degree
 	maxRatio := utils.Max(ctx.Ratios...)
 
-	// for all involved roots, count the one we need some memory for
-	// loops mirror the computing loop below.
+	// Estimate maximum allocations needed for arena
 	maxNbAllocs := 0
 	for i := 0; i < maxRatio; i++ {
-		nbAllocs := int64(0)
+		nbAllocs := 0
 		for j, ratio := range ctx.Ratios {
 			if i%(maxRatio/ratio) != 0 {
 				continue
 			}
-
-			roots := ctx.RootsForRatio[j]
-			for k := range roots {
-				root := roots[k]
+			for _, root := range ctx.RootsForRatio[j] {
 				name := root.GetColID()
-				var witness sv.SmartVector
 				witness, isNatural := run.Columns.TryGet(name)
 				if !isNatural {
 					witness = root.GetColAssignment(run)
 				}
-
 				switch witness.(type) {
 				case *sv.Constant, *sv.PaddedCircularWindow:
 					continue
@@ -203,98 +196,67 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				nbAllocs++
 			}
 		}
-		maxNbAllocs = max(maxNbAllocs, int(nbAllocs))
+		if nbAllocs > maxNbAllocs {
+			maxNbAllocs = nbAllocs
+		}
 	}
+
 	domain := fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache())
+	vArena := arena.NewVectorArena[field.Element](maxNbAllocs * ctx.DomainSize)
 
-	// we need up to maxNbAllocs allocations of size ctx.DomainSize at a given time
-	vArena := arena.NewVectorArena[field.Element](int(maxNbAllocs) * ctx.DomainSize)
-
-	/*
-		For the quotient, we precompute the values of (wQ^N - 1)^-1 for w in H, the
-		larger domain.
-
-		Those values are D-periodic, thus we only compute a single period.
-		(Where D is the ratio of the sizes of the larger and the smaller domain)
-
-		The first value is ignored because it correspond to the case where w^N = 1
-		(i.e. w is in the smaller subgroup)
-	*/
+	// Precompute annulator inverses for all cosets
 	annulatorInvVals := fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
 	annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
 
 	for i := 0; i < maxRatio; i++ {
-
-		// use sync map to store the coset evaluated polynomials
-		computedReeval := sync.Map{}
+		var computedReeval sync.Map
 		vArena.Reset(0)
 
 		for j, ratio := range ctx.Ratios {
-
-			// For instance, if deg = 2 and max deg 8, we enter only if
-			// i = 0 or 4 because this corresponds to the cosets we are
-			// interested in.
 			if i%(maxRatio/ratio) != 0 {
 				continue
 			}
 
-			// With the above example, if we are in the ratio = 2 and maxRatio = 8
-			// and i = 1 (it can only be 0 <= i < ratio).
-			var (
-				share     = i * ratio / maxRatio
-				roots     = ctx.RootsForRatio[j]
-				board     = ctx.AggregateExpressionsBoard[j]
-				metadatas = board.ListVariableMetadata()
-			)
+			share := i * ratio / maxRatio
+			roots := ctx.RootsForRatio[j]
+			board := ctx.AggregateExpressionsBoard[j]
+			metadatas := board.ListVariableMetadata()
 
 			shift := computeShift(uint64(ctx.DomainSize), ratio, share)
 			domainCoset := fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache(), fft.WithShift(shift))
 
+			// Reevaluate roots on coset in parallel
 			ppool.ExecutePoolChunky(len(roots), func(k int) {
-
 				root := roots[k]
 				name := root.GetColID()
 				if _, found := computedReeval.Load(name); found {
-					// it was already computed in a previous iteration of `j`
 					return
 				}
-
-				// get the column value
 				v, isNatural := run.Columns.TryGet(name)
 				if !isNatural {
 					v = root.GetColAssignment(run)
 				}
-
-				// now we re-evaluate on the coset
 				reevaledRoot := reevalOnCoset(v, vArena, domain, domainCoset)
 				computedReeval.Store(name, reevaledRoot)
 			})
 
-			// Evaluates the constraint expression on the coset
+			// Prepare evaluation inputs for the constraint expression
 			evalInputs := make([]sv.SmartVector, len(metadatas))
-
 			ppool.ExecutePoolChunky(len(metadatas), func(k int) {
-				metadataInterface := metadatas[k]
-				switch metadata := metadataInterface.(type) {
+				switch metadata := metadatas[k].(type) {
 				case ifaces.Column:
 					root := column.RootParents(metadata)
 					rootName := root.GetColID()
-
 					reevaledRoot, found := computedReeval.Load(rootName)
 					if !found {
-						// it is expected to computed in the above loop
 						utils.Panic("did not find the reevaluation of %v", rootName)
 					}
-
 					if !metadata.IsComposite() {
-						// natural and verifier columns.
 						evalInputs[k] = reevaledRoot.(sv.SmartVector)
 						return
 					}
-
-					if shifted, isShifted := metadata.(column.Shifted); isShifted {
-						reevaledRoot = sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
-						evalInputs[k] = reevaledRoot.(sv.SmartVector)
+					if shifted, ok := metadata.(column.Shifted); ok {
+						evalInputs[k] = sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
 						return
 					}
 					utils.Panic("unexpected composite column type %T", metadata)
@@ -307,24 +269,21 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				case ifaces.Accessor:
 					evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.DomainSize)
 				default:
-					utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
+					utils.Panic("Not a variable type %v", reflect.TypeOf(metadatas[k]))
 				}
 			})
 
-			// Note that this will panic if the expression contains "no commitment"
-			// This should be caught already by the constructor of the constraint.
+			// Evaluate and assign quotient share
 			quotientShare := board.Evaluate(evalInputs, pool)
 			quotientShare = sv.ScalarMul(quotientShare, annulatorInvVals[i])
 			run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
-
 		}
-
 	}
 
+	// Release arena memory
 	vArena = nil
 
 	if ctx.DomainSize >= GC_DOMAIN_SIZE {
-		// Force the GC to run
 		runtime.GC()
 	}
 
