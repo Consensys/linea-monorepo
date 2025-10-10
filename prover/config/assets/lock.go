@@ -88,13 +88,20 @@ func lockFileIntoRAM(path string, logger *logrus.Entry) error {
 		logger.Warnf("could not read RLIMIT_MEMLOCK: %v (will still try mlock)", err)
 	}
 
-	// Map the whole file (read-only, shared)
-	data, err := unix.Mmap(int(f.Fd()), 0, int(size), unix.PROT_READ, unix.MAP_SHARED)
+	flags := unix.MAP_SHARED
+
+	// MAP_POPULATE tells the kernel reads in all the necessary pages from the file to memory,
+	// reducing page faults later when the memory is actually accessed.
+	flags |= unix.MAP_POPULATE
+
+	// Map the whole file (read-only, shared, populate)
+	data, err := unix.Mmap(int(f.Fd()), 0, int(size), unix.PROT_READ, flags)
 	if err != nil {
 		return fmt.Errorf("mmap %s: %w", path, err)
 	}
 
-	// Try mlock the mapped region
+	// Try mlock the mapped region to lock a region of a process’s virtual memory into RAM, which prevents that memory from
+	// being swapped out to disk by the operating system’s kernel memory manage
 	if err := unix.Mlock(data); err != nil {
 		// cleanup the mapping if mlock fails
 		_ = unix.Munmap(data)
