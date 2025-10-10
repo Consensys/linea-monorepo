@@ -118,6 +118,15 @@ func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
 	return key.KeyGen.MaxNumFieldToHash, nil
 }
 
+func unmarshalRingSisKey(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
+	maxNumFieldToHash, ok := val.(uint64)
+	if !ok {
+		return reflect.Value{}, newSerdeErrorf("illegal cast of val of type %T to int", val)
+	}
+	ringSiskey := ringsis.GenerateKey(ringsis.StdParams, int(maxNumFieldToHash))
+	return reflect.ValueOf(ringSiskey), nil
+}
+
 func marshalGnarkFFTDomain(ser *Serializer, val reflect.Value) (any, *serdeError) {
 	domain := val.Interface().(*fft.Domain)
 
@@ -155,15 +164,6 @@ func unmarshalGnarkFFtDomain(des *Deserializer, val any, _ reflect.Type) (reflec
 	}
 
 	return reflect.ValueOf(d), nil
-}
-
-func unmarshalRingSisKey(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
-	maxNumFieldToHash, ok := val.(uint64)
-	if !ok {
-		return reflect.Value{}, newSerdeErrorf("illegal cast of val of type %T to int", val)
-	}
-	ringSiskey := ringsis.GenerateKey(ringsis.StdParams, int(maxNumFieldToHash))
-	return reflect.ValueOf(ringSiskey), nil
 }
 
 func marshalFieldElement(_ *Serializer, val reflect.Value) (any, *serdeError) {
