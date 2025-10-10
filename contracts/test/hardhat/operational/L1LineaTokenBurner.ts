@@ -112,7 +112,7 @@ describe("L1LineaTokenBurner", () => {
       );
     });
 
-    it("Should do nothing when message is already claimed and burner contract balance == 0", async () => {
+    it("Should revert when burner contract balance == 0", async () => {
       await messageService.setL2L1MessageToClaimed(1);
 
       const burnerBalanceBefore = await lineaToken.balanceOf(await l1LineaTokenBurner.getAddress());
@@ -130,8 +130,7 @@ describe("L1LineaTokenBurner", () => {
         merkleRoot: VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot,
         data: EMPTY_CALLDATA,
       });
-      await expect(txPromise).to.not.emit(lineaToken, "Transfer");
-      await expect(txPromise).to.not.emit(lineaToken, "L1TotalSupplySyncStarted");
+      await expectRevertWithCustomError(l1LineaTokenBurner, txPromise, "NoTokensToBurn");
     });
 
     it("Should only burn LINEA tokens and syncTotalSupplyToL2 when message is already claimed and burner contract balance > 0", async () => {
@@ -219,42 +218,6 @@ describe("L1LineaTokenBurner", () => {
           args: [INITIAL_LINEA_TOKEN_SUPPLY],
         },
       ]);
-    });
-
-    it("Should only claim message when message is not yet claimed and burner contract balance == 0", async () => {
-      await messageService.addFunds({ value: INITIAL_WITHDRAW_LIMIT * 2n });
-
-      const burnerBalanceBefore = await lineaToken.balanceOf(await l1LineaTokenBurner.getAddress());
-      expect(burnerBalanceBefore).to.equal(0);
-
-      await messageService.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot],
-        VALID_MERKLE_PROOF_WITH_ZERO_FEE.proof.length,
-      );
-
-      const txPromise = l1LineaTokenBurner.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF_WITH_ZERO_FEE.proof,
-        messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF_WITH_ZERO_FEE.index,
-        from: admin.address,
-        to: admin.address,
-        fee: 0n,
-        value: MESSAGE_VALUE_1ETH,
-        feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF_WITH_ZERO_FEE.merkleRoot,
-        data: EMPTY_CALLDATA,
-      });
-
-      const messageLeafHash = ethers.keccak256(
-        ethers.AbiCoder.defaultAbiCoder().encode(
-          ["address", "address", "uint256", "uint256", "uint256", "bytes"],
-          [admin.address, admin.address, 0n, MESSAGE_VALUE_1ETH, "1", EMPTY_CALLDATA],
-        ),
-      );
-
-      await expectEvent(messageService, txPromise, "MessageClaimed", [messageLeafHash]);
-      await expect(txPromise).to.not.emit(lineaToken, "Transfer");
-      await expect(txPromise).to.not.emit(lineaToken, "L1TotalSupplySyncStarted");
     });
   });
 });

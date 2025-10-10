@@ -37,9 +37,9 @@ contract L1LineaTokenBurner is IL1LineaTokenBurner, IGenericErrors {
     }
 
     uint256 balance = IL1LineaToken(LINEA_TOKEN).balanceOf(address(this));
-    if (balance > 0) {
-      IL1LineaToken(LINEA_TOKEN).burn(balance);
-      IL1LineaToken(LINEA_TOKEN).syncTotalSupplyToL2();
-    }
+    require(balance > 0, NoTokensToBurn());
+
+    IL1LineaToken(LINEA_TOKEN).burn(balance);
+    IL1LineaToken(LINEA_TOKEN).syncTotalSupplyToL2();
   }
 }
