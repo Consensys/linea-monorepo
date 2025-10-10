@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -534,14 +535,14 @@ func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
 /*
 GnarkEval evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
 
 	/*
 		First, build a buffer to store the intermediate results
 	*/
-	intermediateRes := make([][]frontend.Variable, len(b.Nodes))
+	intermediateRes := make([][]zk.WrappedVariable, len(b.Nodes))
 	for level := range b.Nodes {
-		intermediateRes[level] = make([]frontend.Variable, len(b.Nodes[level]))
+		intermediateRes[level] = make([]zk.WrappedVariable, len(b.Nodes[level]))
 	}
 
 	/*
@@ -552,7 +553,8 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 	for i := range b.Nodes[0] {
 		switch op := b.Nodes[0][i].Operator.(type) {
 		case Constant:
-			intermediateRes[0][i] = op.Val
+			tmp := op.Val.GetExt()
+			intermediateRes[0][i] = zk.ValueOf(tmp) // @thomas ext or base ?
 		case Variable:
 			intermediateRes[0][i] = inputs[inputCursor]
 			inputCursor++
@@ -567,7 +569,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 			/*
 				Collect the inputs of the current node from the intermediateRes
 			*/
-			nodeInputs := make([]frontend.Variable, len(node.Children))
+			nodeInputs := make([]zk.WrappedVariable, len(node.Children))
 			for i, childID := range node.Children {
 				nodeInputs[i] = intermediateRes[childID.level()][childID.posInLevel()]
 			}
@@ -595,14 +597,14 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 /*
 GnarkEvalExt evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
 
 	/*
 		First, build a buffer to store the intermediate results
 	*/
-	intermediateRes := make([][]gnarkfext.Element, len(b.Nodes))
+	intermediateRes := make([][]gnarkfext.E4Gen, len(b.Nodes))
 	for level := range b.Nodes {
-		intermediateRes[level] = make([]gnarkfext.Element, len(b.Nodes[level]))
+		intermediateRes[level] = make([]gnarkfext.E4Gen, len(b.Nodes[level]))
 	}
 
 	/*
@@ -613,7 +615,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Elem
 	for i := range b.Nodes[0] {
 		switch op := b.Nodes[0][i].Operator.(type) {
 		case Constant:
-			intermediateRes[0][i].Assign(op.Val.GetExt())
+			intermediateRes[0][i] = gnarkfext.NewE4Gen(op.Val.GetExt())
 		case Variable:
 			intermediateRes[0][i] = inputs[inputCursor]
 			inputCursor++
@@ -628,7 +630,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Elem
 			/*
 				Collect the inputs of the current node from the intermediateRes
 			*/
-			nodeInputs := make([]gnarkfext.Element, len(node.Children))
+			nodeInputs := make([]gnarkfext.E4Gen, len(node.Children))
 			for i, childID := range node.Children {
 				nodeInputs[i] = intermediateRes[childID.level()][childID.posInLevel()]
 			}

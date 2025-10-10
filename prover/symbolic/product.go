@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -146,43 +147,44 @@ func (prod Product) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [Operator] interface.
-func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.WrappedVariable {
 
-	res := frontend.Variable(1)
+	res := zk.ValueOf(1)
 
-	// There should be as many inputs as there are coeffs
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+
 	if len(inputs) != len(prod.Exponents) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
 	}
 
-	/*
-		Accumulate the scalars
-	*/
 	for i, input := range inputs {
 		term := gnarkutil.Exp(api, input, prod.Exponents[i])
-		res = api.Mul(res, term)
+		res = *apiGen.Mul(&res, &term)
 	}
 
 	return res
 }
 
 // GnarkEval implements the [Operator] interface.
-func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
 
-	res := gnarkfext.NewFromBase(1)
+	res := gnarkfext.NewE4GenFromBase(1)
 
-	// There should be as many inputs as there are coeffs
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
 	if len(inputs) != len(prod.Exponents) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
 	}
 
-	// outerApi := gnarkfext.NewExtApi(api)
-	/*
-		Accumulate the scalars
-	*/
 	for i, input := range inputs {
-		term := gnarkfext.Exp(api, input, prod.Exponents[i])
-		res.Mul(api, res, term)
+		term := gnarkutil.ExpExt(api, input, prod.Exponents[i])
+		res = *e4Api.Mul(&res, &term)
 	}
 
 	return res
