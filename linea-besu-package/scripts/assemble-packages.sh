@@ -16,7 +16,7 @@ cp ../versions.env ./besu/versions.txt
 mkdir -p ./besu/plugins
 cd ./besu/plugins
 
-echo "downloading the plugins..."
+echo "downloading the plugins"
 echo "getting linea_sequencer_plugin_version: $LINEA_SEQUENCER_PLUGIN_VERSION"
 wget -nv https://github.com/Consensys/linea-monorepo/releases/download/linea-sequencer-v$LINEA_SEQUENCER_PLUGIN_VERSION/linea-sequencer-v$LINEA_SEQUENCER_PLUGIN_VERSION.zip
 unzip -j -o linea-sequencer-v$LINEA_SEQUENCER_PLUGIN_VERSION.zip
