@@ -45,6 +45,12 @@ class MaruDiscoveryService(
     require(p2pConfig.discovery != null) {
       "MaruDiscoveryService is being initialized without the discovery section in the P2P config!"
     }
+    require(p2pConfig.discovery!!.port != 0u) {
+      "MaruDiscoveryService requires discovery port to be set to a non zero value!"
+    }
+    require(p2pConfig.port != 0u) {
+      "MaruDiscoveryService requires p2p port to be set to a non zero value!"
+    }
   }
 
   companion object {

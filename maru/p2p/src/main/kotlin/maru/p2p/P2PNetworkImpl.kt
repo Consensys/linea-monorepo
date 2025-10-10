@@ -143,18 +143,12 @@ class P2PNetworkImpl(
 
   private val builtNetwork: TekuLibP2PNetwork = buildP2PNetwork(privateKeyBytes, p2pConfig, metricsSystem)
   internal val p2pNetwork = builtNetwork.p2PNetwork
-  private val discoveryService: MaruDiscoveryService? =
-    p2pConfig.discovery?.let {
-      MaruDiscoveryService(
-        privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
-        p2pConfig = p2pConfig,
-        forkIdHashManager = forkIdHashManager,
-        p2PState = p2PState,
-      )
-    }
+  private var discoveryService: MaruDiscoveryService? = null
 
   override val localNodeRecord: NodeRecord?
     get() = discoveryService?.getLocalNodeRecord()
+  override val enr: String?
+    get() = localNodeRecord?.asEnr()
 
   // TODO: We need to call the updateForkId method on the discovery service when the forkId changes internal
   private val peerLookup = builtNetwork.peerLookup
@@ -169,7 +163,6 @@ class P2PNetworkImpl(
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String>
     get() = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
-  override val enr: String? = discoveryService?.getLocalNodeRecord()?.asEnr()
   override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
 
   private fun logEnr(nodeRecord: NodeRecord) {
@@ -194,6 +187,15 @@ class P2PNetworkImpl(
             .createPeerAddress(peer)
             ?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
+        discoveryService =
+          p2pConfig.discovery?.let {
+            MaruDiscoveryService(
+              privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
+              p2pConfig = if (p2pConfig.port == 0u) p2pConfig.copy(port = port) else p2pConfig,
+              forkIdHashManager = forkIdHashManager,
+              p2PState = p2PState,
+            )
+          }
         discoveryService?.start()
         maruPeerManager.start(discoveryService, p2pNetwork)
         metricsFacade.createGauge(
@@ -214,11 +216,11 @@ class P2PNetworkImpl(
             privateKeyBytes = privateKeyBytes,
             seq = 0,
             ipv4 = it,
-            ipv4UdpPort = p2pConfig.discovery?.port?.toInt() ?: p2pConfig.port.toInt(),
-            ipv4TcpPort = p2pConfig.port.toInt(),
+            ipv4UdpPort = p2pConfig.discovery?.port?.toInt() ?: port.toInt(),
+            ipv4TcpPort = port.toInt(),
           )
         }
-    return enrs + listOfNotNull(discoveryService?.getLocalNodeRecord())
+    return enrs + listOfNotNull(localNodeRecord)
   }
 
   override fun stop(): SafeFuture<Unit> {
