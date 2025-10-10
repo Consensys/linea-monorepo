@@ -57,10 +57,6 @@ type DistributedWizard struct {
 	// each module.
 	Disc *StandardModuleDiscoverer
 
-	// CompiledDefault stores the compiled default module and is set by calling
-	// [DistributedWizard.Compile]
-	CompiledDefault *RecursedSegmentCompilation
-
 	// CompiledGLs stores the compiled GL modules and is set by calling
 	// [DistributedWizard.Compile]
 	CompiledGLs []*RecursedSegmentCompilation
@@ -71,7 +67,7 @@ type DistributedWizard struct {
 
 	// // CompiledConglomeration stores the compilation context of the
 	// // conglomeration wizard.
-	// CompiledConglomeration *ConglomeratorCompilation
+	CompiledConglomeration *RecursedSegmentCompilation
 }
 
 func init() {
@@ -85,8 +81,6 @@ func init() {
 	serialization.RegisterImplementation(ModuleGLAssignSendReceiveGlobal{})
 	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
 	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
-	// serialization.RegisterImplementation(ConglomerateHolisticCheck{})
-	// serialization.RegisterImplementation(ConglomerationAssignHolisticCheckColumn{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
@@ -218,17 +212,6 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	return dist
 }
 
-// // Conglomerate registers the conglomeration wizard and compiles it.
-// func (dist *DistributedWizard) Conglomerate(maxNumSegment int) *DistributedWizard {
-// 	dist.CompiledConglomeration = conglomerate(
-// 		maxNumSegment,
-// 		dist.CompiledGLs,
-// 		dist.CompiledLPPs,
-// 		dist.CompiledDefault,
-// 	)
-// 	return dist
-// }
-
 // GetSharedRandomness returns the shared randomness used by the protocol
 // to generate the LPP proofs. The LPP commitments are supposed to be the
 // one extractable from the [recursion.Witness] of the LPPs.
@@ -266,17 +249,19 @@ func GetLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
 // ensure that all of the queries that cannot be processed by the splitting phase
 // are removed from the compiled IOP.
 func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) *wizard.CompiledIOP {
-	mimc.CompileMiMC(comp)
-	// specialqueries.RangeProof(comp)
-	// specialqueries.CompileFixedPermutations(comp)
-	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
-		&LPPSegmentBoundaryCalculator{
-			Disc: disc,
-		},
-	)(comp)
-	permutation.CompileIntoGdProduct(comp)
-	horner.ProjectionToHorner(comp)
-	return comp
+
+	return wizard.ContinueCompilation(
+		comp,
+		mimc.CompileMiMC,
+		logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
+			&LPPSegmentBoundaryCalculator{
+				Disc: disc,
+			},
+		),
+		permutation.CompileIntoGdProduct,
+		horner.ProjectionToHorner,
+		tagFunctionalInputs,
+	)
 }
 
 // auditInitialWizard scans the initial compiled-IOP and checks if the provided
@@ -344,4 +329,12 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 	}
 
 	return err
+}
+
+// tagFunctionalInputs takes the public inputs of the original wizard and
+// changes their name to "functional". This is meant to help us recognize them
+func tagFunctionalInputs(comp *wizard.CompiledIOP) {
+	for i := range comp.PublicInputs {
+		comp.PublicInputs[i].Name = "functional." + comp.PublicInputs[i].Name
+	}
 }

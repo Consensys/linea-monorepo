@@ -488,10 +488,6 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Name:   bootstrapperFile,
 			Object: lz.DistWizard.Bootstrapper,
 		},
-		{
-			Name:   compiledDefaultFile,
-			Object: lz.DistWizard.CompiledDefault,
-		},
 	}
 
 	for _, modGl := range lz.DistWizard.CompiledGLs {

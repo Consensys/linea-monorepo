@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
@@ -58,8 +59,6 @@ const (
 type ConglomerationHierarchical struct {
 	// ModuleNumber gives the number of modules of the distributed prover
 	ModuleNumber int
-	// FunctionalName lists the name of the functional public-inputs
-	FunctionalName []string
 	// Wiop is the compiled IOP of the conglomeration wizard.
 	Wiop *wizard.CompiledIOP
 	// Recursion is the recursion context used to compile the conglomeration
@@ -80,6 +79,30 @@ type ConglomerationHierarchical struct {
 type VerificationKeyMerkleTree struct {
 	Tree             *smt.Tree
 	VerificationKeys [][2]field.Element
+}
+
+// ConglomerationHierarchicalVerifierAction implements the [wizard.VerifierAction]
+// interface for the conglomeration proof. It checks the consistency of the
+// public inputs with the children instance's public inputs.
+type ConglomerationHierarchicalVerifierAction struct {
+	ConglomerationHierarchical
+}
+
+// LimitlessPublicInput stores the columns totalling the
+// public inputs of a conglomeration node.
+type LimitlessPublicInput[T any] struct {
+	Functionals                  []T
+	TargetNbSegments             []T
+	SegmentCountGL               []T
+	SegmentCountLPP              []T
+	GeneralMultiSetHash          []T
+	SharedRandomnessMultiSetHash []T
+	VKeyMerkleRoot               T
+	VerifyingKey                 [2]T
+	LogDerivativeSum             T
+	HornerSum                    T
+	GrandProduct                 T
+	SharedRandomness             T
 }
 
 // BuildVerificationKeyMerkleTree builds the verification key merkle tree.
@@ -125,8 +148,25 @@ func BuildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompil
 }
 
 // GetVkMerkleProof return the merkle proof of a verification key
-func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(t ProofType, moduleIndex int) []field.Element {
-	proof := vmt.Tree.MustProve(moduleIndex)
+func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []field.Element {
+
+	var (
+		leafPosition = -1
+		numModule    = len(vmt.VerificationKeys)
+		moduleIndex  = segProof.ModuleIndex
+	)
+
+	switch segProof.ProofType {
+	// the instance is a conglomeration proof
+	case proofTypeConglo:
+		leafPosition = 2 * numModule
+	case proofTypeLPP:
+		leafPosition = moduleIndex + numModule
+	case proofTypeGL:
+		leafPosition = moduleIndex
+	}
+
+	proof := vmt.Tree.MustProve(leafPosition)
 	res := make([]field.Element, len(proof.Siblings))
 	for i, sibling := range proof.Siblings {
 		res[i].SetBytes(sibling[:])
@@ -183,28 +223,20 @@ func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.
 	return nil
 }
 
-// ConglomerationHierarchicalVerifierAction implements the [wizard.VerifierAction]
-// interface for the conglomeration proof. It checks the consistency of the
-// public inputs with the children instance's public inputs.
-type ConglomerationHierarchicalVerifierAction struct {
-	ConglomerationHierarchical
-}
+// Conglomerate runs the conglomeration compiler and returns a pointer to the
+// receiver of the method.
+func (d *DistributedWizard) Conglomerate() *DistributedWizard {
 
-// LimitlessPublicInput stores the columns totalling the
-// public inputs of a conglomeration node.
-type LimitlessPublicInput[T any] struct {
-	Functionals                  []T
-	TargetNbSegments             []T
-	SegmentCountGL               []T
-	SegmentCountLPP              []T
-	GeneralMultiSetHash          []T
-	SharedRandomnessMultiSetHash []T
-	VKeyMerkleRoot               T
-	VerifyingKey                 [2]T
-	LogDerivativeSum             T
-	HornerSum                    T
-	GrandProduct                 T
-	SharedRandomness             T
+	conglo := &ConglomerationHierarchical{
+		ModuleNumber: len(d.CompiledGLs),
+	}
+
+	comp := wizard.NewCompiledIOP()
+	conglo.Compile(comp, d.CompiledGLs[0].RecursionComp)
+
+	CompileSegment(conglo)
+
+	return d
 }
 
 // Compile compiles the conglomeration proof. The function first checks if the
@@ -220,16 +252,14 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 
 	c.Wiop = comp
 
-	for _, name := range c.FunctionalName {
-		c.PublicInputs.Functionals = append(c.PublicInputs.Functionals, declarePiColumn(c.Wiop, name))
+	for _, pi := range scanFunctionalInputs(moduleMod) {
+		c.PublicInputs.Functionals = append(c.PublicInputs.Functionals, declarePiColumn(c.Wiop, pi.Name))
 	}
 
 	c.PublicInputs.TargetNbSegments = declareListOfPiColumns(c.Wiop, 0, targetNbSegmentPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountGL = declareListOfPiColumns(c.Wiop, 0, segmentCountGLPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, 0, segmentCountLPPPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, 0, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-	c.PublicInputs.VerifyingKey[0] = declarePiColumn(c.Wiop, verifyingKeyPublicInput)
-	c.PublicInputs.VerifyingKey[1] = declarePiColumn(c.Wiop, verifyingKey2PublicInput)
 	c.PublicInputs.LogDerivativeSum = declarePiColumn(c.Wiop, LogDerivativeSumPublicInput)
 	c.PublicInputs.HornerSum = declarePiColumn(c.Wiop, HornerPublicInput)
 	c.PublicInputs.GrandProduct = declarePiColumn(c.Wiop, GrandProductPublicInput)
@@ -249,14 +279,29 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 
 // Assign assigns the public inputs for the conglomeration proof
 func (c *ConglomerationHierarchical) Assign(
+	mt *VerificationKeyMerkleTree,
 	run *wizard.ProverRuntime,
-	proofs []recursion.Witness,
+	proofs []SegmentProof,
 ) {
+
+	recursionWitnesses := []recursion.Witness{}
+
+	// This assigns the Merkle proofs in the verification key merkle tree
+	for i := range proofs {
+		mProof := mt.GetVkMerkleProof(proofs[i])
+		recursionWitnesses = append(recursionWitnesses, proofs[i].Witness)
+		for j := range mProof {
+			run.AssignColumn(
+				c.VerificationKeyMerkleProofs[i][j].GetColID(),
+				smartvectors.NewConstant(mProof[j], 1),
+			)
+		}
+	}
 
 	// This runs the recursion system. Expectedly, the filling input is never
 	// used because this is pairwise aggregation and we always pass exactly pass
 	// exactly 2 inputs.
-	c.Recursion.Assign(run, proofs, &proofs[0])
+	c.Recursion.Assign(run, recursionWitnesses, &recursionWitnesses[0])
 
 	// Now, it remains to assign the public inputs for the conglomeration proof.
 	var (
@@ -315,7 +360,7 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 		}
 
 		if summedUpValue != topPIs.Functionals[k] {
-			err = errors.Join(err, fmt.Errorf("public input mismatch for Functionals at index %d, name=%v", k, c.FunctionalName[k]))
+			err = errors.Join(err, fmt.Errorf("public input mismatch for Functionals at index %d, name=%v", k, c.PublicInputs.Functionals[k].Name))
 		}
 	}
 
@@ -560,8 +605,8 @@ func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.
 		SharedRandomness: c.Recursion.GetPublicInputOfInstance(run, InitialRandomnessPublicInput, instance),
 	}
 
-	for _, name := range c.FunctionalName {
-		res.Functionals = append(res.Functionals, c.Recursion.GetPublicInputOfInstance(run, name, instance))
+	for _, pi := range c.PublicInputs.Functionals {
+		res.Functionals = append(res.Functionals, c.Recursion.GetPublicInputOfInstance(run, pi.Name, instance))
 	}
 
 	return res
@@ -586,8 +631,8 @@ func (c ConglomerationHierarchical) collectAllPublicInputs(run wizard.Runtime) L
 		SharedRandomness: run.GetPublicInput(InitialRandomnessPublicInput),
 	}
 
-	for _, name := range c.FunctionalName {
-		res.Functionals = append(res.Functionals, run.GetPublicInput(name))
+	for _, pi := range scanFunctionalInputs(c.Recursion.InputCompiledIOP) {
+		res.Functionals = append(res.Functionals, run.GetPublicInput(pi.Name))
 	}
 
 	return res
@@ -639,4 +684,17 @@ func findProofTypeAndModule(instance LimitlessPublicInput[field.Element]) (Proof
 func getVerifyingKeyPair(wiop *wizard.CompiledIOP) (vkGL, vkLPP field.Element) {
 	return wiop.ExtraData[verifyingKeyPublicInput].(field.Element),
 		wiop.ExtraData[verifyingKey2PublicInput].(field.Element)
+}
+
+// scanFunctionalInputs returns a list of public inputs corresponding to
+// functional inputs. The function works by looking up the public inputs whose
+// name starts by the string "functional".
+func scanFunctionalInputs(comp *wizard.CompiledIOP) []wizard.PublicInput {
+	var res []wizard.PublicInput
+	for _, pub := range comp.PublicInputs {
+		if strings.HasPrefix(pub.Name, "functional.") {
+			res = append(res, pub)
+		}
+	}
+	return res
 }
