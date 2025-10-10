@@ -278,6 +278,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			quotientShare = sv.ScalarMul(quotientShare, annulatorInvVals[i])
 			run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
 		}
+
 	}
 
 	// Release arena memory
@@ -310,18 +311,19 @@ func reevalOnCoset(v sv.SmartVector, vArena *arena.VectorArena, domain, domainCo
 			constTerm.Mul(&constTerm, &x.Window_[0])
 			v = sv.NewConstant(constTerm, x.Len())
 			skipInverse = true
+			// TODO @gbotrel we may do better than the FFT on coset here
 		}
 	}
-
+	runtime.LockOSThread()
 	res := arena.Get[field.Element](vArena, v.Len())
 	v.WriteInSlice(res)
 
 	if !skipInverse {
-		domain.FFTInverse(res, fft.DIF, fft.WithNbTasks(2))
+		domain.FFTInverse(res, fft.DIF, fft.WithNbTasks(1))
 	}
 
-	domainCoset.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
-
+	domainCoset.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1))
+	runtime.UnlockOSThread()
 	return sv.NewRegular(res)
 }
 
