@@ -50,8 +50,8 @@ func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {
 
 func getTxnDataArithmetization(comp *wizard.CompiledIOP) *txnData {
 	td := &txnData{
-		FromHi: comp.Columns.GetHandle("txndata.FROM_HI"),
-		FromLo: comp.Columns.GetHandle("txndata.FROM_LO"),
+		FromHi: comp.Columns.GetHandle("txndata.hubFROM_ADDRESS_HI_xor_rlpCHAIN_ID"),
+		FromLo: comp.Columns.GetHandle("txndata.computationARG_1_LO_xor_hubFROM_ADDRESS_LO_xor_rlpTO_ADDRESS_LO"),
 		Ct:     comp.Columns.GetHandle("txndata.CT"),
 	}
 	return td
@@ -59,10 +59,10 @@ func getTxnDataArithmetization(comp *wizard.CompiledIOP) *txnData {
 
 func getRlpTxnArithmetization(comp *wizard.CompiledIOP) generic.GenDataModule {
 	return generic.GenDataModule{
-		HashNum: comp.Columns.GetHandle("rlptxn.ABS_TX_NUM"),
+		HashNum: comp.Columns.GetHandle("rlptxn.USER_TXN_NUMBER"),
 		Index:   comp.Columns.GetHandle("rlptxn.INDEX_LX"),
-		Limb:    comp.Columns.GetHandle("rlptxn.LIMB"),
-		NBytes:  comp.Columns.GetHandle("rlptxn.nBYTES"),
+		Limb:    comp.Columns.GetHandle("rlptxn.cmpLIMB"),
+		NBytes:  comp.Columns.GetHandle("rlptxn.cmpLIMB_SIZE"),
 		ToHash:  comp.Columns.GetHandle("rlptxn.TO_HASH_BY_PROVER"),
 	}
 }
