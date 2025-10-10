@@ -98,6 +98,9 @@ jobs:
     secrets: inherit
 
   linea_besu_package:
-    uses: ./.github/workflows/linea-besu-package-build-and-publish.yml
+    uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
     if: ${{ always() && (inputs.linea_besu_package_changed == 'true') }}
+    with:
+      release_tag_prefix: ''
+      with_besu_fleet_plugin: false
     secrets: inherit
