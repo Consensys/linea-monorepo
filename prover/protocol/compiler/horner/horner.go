@@ -9,6 +9,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -352,45 +354,54 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 
 func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	var (
-		hornerQuery  = c.Q
-		hornerParams = run.GetHornerParams(hornerQuery.ID)
-		res          = zk.WrappedVariable(0)
-	)
+	hornerQuery := c.Q
+	hornerParams := run.GetHornerParams(hornerQuery.ID)
+	res := zk.ValueOf(0)
+
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
 
 	for i := range c.Q.Parts {
 
-		var (
-			ipQuery  = c.CountingInnerProducts[i]
-			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-			ipCount  = zk.WrappedVariable(0)
-		)
+		ipQuery := c.CountingInnerProducts[i]
+		ipParams := run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
+		ipCount := gnarkfext.NewE4GenFromBase(0)
 
 		for k := range ipQuery.Bs {
-			ipCount = api.Add(ipCount, ipParams.Ys[k])
+			ipCount = *e4Api.Add(&ipCount, &ipParams.Ys[k])
 		}
 
-		api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
+		// api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
+		// TODO @thomas fixme (ext vs base)
+		extN0 := gnarkfext.FromBase(hornerParams.Parts[i].N0)
+		extN0 = *e4Api.Add(&extN0, &ipCount)
+		extN1 := gnarkfext.FromBase(hornerParams.Parts[i].N1)
+		e4Api.AssertIsEqual(&extN0, &extN1)
 	}
 
 	// This loop is responsible for checking that the final result is correctly
 	// computed by inspecting the local openings.
 	for i, lo := range c.LocOpenings {
 
-		var (
-			tmp = run.GetLocalPointEvalParams(lo.ID).BaseY
-			n0  = hornerParams.Parts[i].N0
-			x   = hornerQuery.Parts[i].X.GetFrontendVariable(api, run)
-		)
+		tmp := run.GetLocalPointEvalParams(lo.ID).BaseY
+		n0 := hornerParams.Parts[i].N0
+		x := hornerQuery.Parts[i].X.GetFrontendVariable(api, run)
 
 		xN0 := gnarkutil.ExpVariableExponent(api, x, n0, 64)
-		tmp = api.Mul(tmp, xN0)
+		tmp = *apiGen.Mul(&tmp, &xN0)
 
 		if hornerQuery.Parts[i].SignNegative {
-			tmp = api.Neg(tmp)
+			tmp = *apiGen.Neg(&tmp)
 		}
 
-		res = api.Add(res, tmp)
+		res = *apiGen.Add(&res, &tmp)
 	}
 
 	api.AssertIsEqual(res, hornerParams.FinalResult)
