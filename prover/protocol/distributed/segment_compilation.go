@@ -25,21 +25,22 @@ import (
 const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit   = 1 << 20
-	fixedNbRowExternalHasher = 1 << 17
+	fixedNbRowPlonkCircuit   = 1 << 18
+	fixedNbRowExternalHasher = 1 << 14
 
 	// initialCompilerSize sets the target number of rows of the first invokation
 	// of [compiler.Arcane] of the pre-recursion pass of [CompileSegment]. It is
 	// also the length of the column in the [DefaultModule].
-	initialCompilerSize int = 1 << 17
+	initialCompilerSize       int = 1 << 17
+	initialCompilerSizeConglo int = 1 << 13
 )
 
 var (
 	// numColumnProfileMpts tells the last invokation of Vortex prior to the self-
 	// recursion to use a plonk circuit with a fixed number of rows. The values
 	// are completely empirical and set to make the compilation work.
-	numColumnProfileMpts            = []int{17, 361, 42, 3, 9, 7, 0, 1}
-	numColumnProfileMptsPrecomputed = 36
+	numColumnProfileMpts            = []int{17, 310, 28, 3, 2, 15, 0, 1}
+	numColumnProfileMptsPrecomputed = 20
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -74,10 +75,11 @@ type SegmentProof struct {
 func CompileSegment(mod any) *RecursedSegmentCompilation {
 
 	var (
-		modIOP    *wizard.CompiledIOP
-		res       = &RecursedSegmentCompilation{}
-		proofType ProofType
-		subscript string
+		modIOP              *wizard.CompiledIOP
+		res                 = &RecursedSegmentCompilation{}
+		proofType           ProofType
+		subscript           string
+		initialCompilerSize = initialCompilerSize
 	)
 
 	switch m := mod.(type) {
@@ -96,6 +98,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		res.HierarchicalConglomeration = m
 		subscript = "hierarchical-conglomeration"
 		proofType = proofTypeConglo
+		initialCompilerSize = initialCompilerSizeConglo
 
 	default:
 		utils.Panic("unexpected type: %T", mod)
@@ -177,6 +180,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
+			compiler.WithStitcherMinSize(2),
 		),
 		vortex.Compile(
 			8,
@@ -188,7 +192,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<13),
+			compiler.WithTargetColSize(1<<14),
+			compiler.WithStitcherMinSize(2),
 		),
 		// This extra step is to ensure the tightness of the final wizard by
 		// adding an optional second layer of compilation when we have very
@@ -203,23 +208,13 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<13),
-		),
-		// This final step expectedly always generate always the same profile.
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(32),
-			vortex.WithSISParams(&sisInstance),
-			vortex.WithOptionalSISHashingThreshold(64),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<13),
+			compiler.WithTargetColSize(1<<14),
+			compiler.WithStitcherMinSize(2),
 			compiler.WithoutMpts(),
 		),
 		// This final step expectedly always generate always the same profile.
+		// Most of the time, it is ineffective and could be skipped so there is
+		// a pending optimization.
 		logdata.Log("just-before-recursion"),
 		mpts.Compile(mpts.WithNumColumnProfileOpt(numColumnProfileMpts, numColumnProfileMptsPrecomputed)),
 		vortex.Compile(
@@ -255,6 +250,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
+			compiler.WithStitcherMinSize(2),
 			// compiler.WithDebugMode("post-recursion-arcane"),
 		),
 		logdata.Log("just-after-recursion-expanded"),
@@ -269,21 +265,9 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<13),
+			compiler.WithTargetColSize(1<<14),
+			compiler.WithStitcherMinSize(2),
 			// compiler.WithDebugMode("post-recursion-arcane-2"),
-		),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(32),
-			vortex.WithSISParams(&sisInstance),
-			vortex.WithOptionalSISHashingThreshold(64),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<13),
-			// compiler.WithDebugMode("post-recursion-arcane-3"),
 		),
 		vortex.Compile(
 			8,
@@ -292,6 +276,23 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			vortex.PremarkAsSelfRecursed(),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
+		// @alex: commented out because we noticed that was not needed
+		//
+		// selfrecursion.SelfRecurse,
+		// cleanup.CleanUp,
+		// mimc.CompileMiMC,
+		// compiler.Arcane(
+		// 	compiler.WithTargetColSize(1<<14),
+		// 	compiler.WithStitcherMinSize(2),
+		// 	// compiler.WithDebugMode("post-recursion-arcane-3"),
+		// ),
+		// vortex.Compile(
+		// 	8,
+		// 	vortex.ForceNumOpenedColumns(32),
+		// 	vortex.WithSISParams(&sisInstance),
+		// 	vortex.PremarkAsSelfRecursed(),
+		// 	vortex.WithOptionalSISHashingThreshold(64),
+		// ),
 	)
 
 	res.Recursion = recCtx
