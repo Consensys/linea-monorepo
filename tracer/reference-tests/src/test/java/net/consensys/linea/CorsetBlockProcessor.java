@@ -96,7 +96,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
             protocolSpec,
             preExecutionProcessor.createBlockHashLookup(blockchain, blockHeader),
             OperationTracer.NO_TRACING);
-    preExecutionProcessor.process(blockProcessingContext);
+    preExecutionProcessor.process(blockProcessingContext, Optional.empty());
 
     for (final Transaction transaction : transactions) {
       if (!hasAvailableBlockBudget(blockHeader, transaction, currentGasUsed)) {
@@ -162,7 +162,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       try {
         maybeWithdrawalsProcessor
             .get()
-            .processWithdrawals(maybeWithdrawals.get(), worldState.updater());
+            .processWithdrawals(maybeWithdrawals.get(), worldState.updater(), Optional.empty());
       } catch (final Exception e) {
         log.error("failed processing withdrawals", e);
         return new BlockProcessingResult(Optional.empty(), e);
