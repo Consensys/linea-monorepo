@@ -11,7 +11,6 @@ import (
 type boardAssignment [][]nodeAssignment
 
 type nodeAssignment struct {
-	Addr            [2]int
 	Node            *Node
 	Value           sv.SmartVector
 	NumKnownParents int
@@ -59,7 +58,6 @@ func (b *ExpressionBoard) prepareNodeAssignments(inputs []sv.SmartVector) boardA
 			var (
 				node = nodeAssignment{
 					Node: &b.Nodes[lvl][pil],
-					Addr: [2]int{lvl, pil},
 				}
 				inputs  = nodeAssignments.inputOf(&node)
 				success = node.tryGuessEval(inputs)

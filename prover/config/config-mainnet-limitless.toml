@@ -7,9 +7,9 @@ log_level = 4                                  # TODO @gbotrel will be refactore
 retry_delays = [0, 1]
 
 [execution]
-prover_mode = "limitless"
-conflated_traces_dir = "/home/ubuntu/linea-prover-integration-test/download/traces"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
+prover_mode = "full"
+conflated_traces_dir = "/home/ubuntu/proverstuff/traces"
+requests_root_dir = "/home/ubuntu/proverstuff/execution"
 limitless_with_debug = true
 ignore_compatibility_check = true
 
