@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -256,14 +257,20 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 // Verifier step, evaluate the constraint and checks that
 func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
 
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
 	// Will be assigned to "X", the random point at which we check the constraint.
 	r := c.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
-	annulator := gnarkutil.Exp(api, r, ctx.DomainSize)
+	annulator := gnarkutil.ExpExt(api, r, ctx.DomainSize)
 	quotientYs := ctx.recombineQuotientSharesEvaluationGnark(api, c, r)
 	params := c.GetUnivariateParams(ctx.WitnessEval.QueryID)
 	univQuery := c.GetUnivariateEval(ctx.WitnessEval.QueryID)
 
-	annulator = api.Sub(annulator, zk.WrappedVariable(1))
+	wOneExt := gnarkfext.NewE4GenFromBase(1)
+	annulator = *e4Api.Sub(&annulator, &wOneExt)
 
 	// Get the parameters
 	api.AssertIsEqual(r, params.X) // check the evaluation is consistent with the other stuffs
@@ -291,12 +298,15 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 				if metadata.IsBase() {
 					evalInputs[k] = c.GetRandomCoinField(metadata.Name)
 				} else {
-					evalInputs[k] = c.GetRandomCoinFieldExt(metadata.Name)
+					tmp := c.GetRandomCoinFieldExt(metadata.Name)
+					evalInputs[k] = tmp.B0.A0 // TODO @thomas fixme (ext vs base)
 				}
 			case variables.X:
-				evalInputs[k] = r
+				// evalInputs[k] = r
+				evalInputs[k] = r.B0.A0 // TODO @thomas fixme (ext vs base)
 			case variables.PeriodicSample:
-				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
+				// evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
+				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r.B0.A0) // TODO @thomas fixme (ext vs base)
 			case ifaces.Accessor:
 				evalInputs[k] = metadata.GetFrontendVariable(api, c)
 			default:
@@ -410,41 +420,59 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 // on point r
 func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r gnarkfext.E4Gen) []gnarkfext.E4Gen {
 
-	var (
-		// res stores the list of the recombined quotient evaluations for each
-		// combination.
-		recombinedYs = make([]gnarkfext.E4Gen, len(ctx.Ratios))
-		// ys stores the values of the quotient shares ordered by ratio
-		qYs      = make([][]gnarkfext.E4Gen, utils.Max(ctx.Ratios...))
-		maxRatio = utils.Max(ctx.Ratios...)
-		// shiftedR = r / g where g is the generator of the multiplicative group
-		shiftedR gnarkfext.E4Gen
-		// mulGen is the generator of the multiplicative group
-		mulGenInv = fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
-		// omegaN is a root of unity generating the domain of size `domainSize
-		// * maxRatio`
-		omegaN, _ = fft.Generator(uint64(ctx.DomainSize * maxRatio))
-	)
+	// res stores the list of the recombined quotient evaluations for each
+	// combination.
+	recombinedYs := make([]gnarkfext.E4Gen, len(ctx.Ratios))
+	// ys stores the values of the quotient shares ordered by ratio
 
-	shiftedR.MulByFp(api, r, mulGenInv)
+	qYs := make([][]gnarkfext.E4Gen, utils.Max(ctx.Ratios...))
 
+	maxRatio := utils.Max(ctx.Ratios...)
+
+	// shiftedR = r / g where g is the generator of the multiplicative group
+	var shiftedR gnarkfext.E4Gen
+
+	// TODO @thomas kill fft domain generation
+	mulGenInv := fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
+
+	// omegaN is a root of unity generating the domain of size `domainSize
+	// * maxRatio`
+	omegaN, _ := fft.Generator(uint64(ctx.DomainSize * maxRatio))
+
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+
+	// shiftedR.MulByFp(api, r, mulGenInv)
+	wrappedMulGenInv := zk.ValueOf(mulGenInv)
+	shiftedR = *e4Api.MulByFp(&r, &wrappedMulGenInv)
+
+	var invOmegaN field.Element
+	invOmegaN.Inverse(&omegaN)
 	for i, q := range ctx.QuotientEvals {
 		params := run.GetUnivariateParams(q.Name())
 		qYs[i] = params.ExtYs
 
 		// Check that the provided value for x is the right one
 		providedX := params.X
-		var expectedX zk.WrappedVariable
-		expectedX = api.Inverse(omegaN)
-		expectedX = gnarkutil.Exp(api, expectedX, i)
-		expectedX = api.Mul(expectedX, shiftedR)
-		api.AssertIsEqual(providedX, expectedX)
+		var expectedX gnarkfext.E4Gen
+		expectedX = gnarkfext.NewE4GenFromBase(invOmegaN)
+		expectedX = gnarkutil.ExpExt(api, expectedX, i)
+		expectedX = *e4Api.Mul(&expectedX, &shiftedR)
+		// api.AssertIsEqual(providedX, expectedX)
+		apiGen.AssertIsEqual(&providedX, &expectedX.B0.A0) // TODO @thomas fixme (ext vs base)
 	}
 
 	for i, ratio := range ctx.Ratios {
 		var (
 			jumpBy = maxRatio / ratio
-			ys     = make([]zk.WrappedVariable, ratio)
+			ys     = make([]gnarkfext.E4Gen, ratio)
 		)
 
 		for j := range ctx.QuotientShares[i] {
@@ -452,38 +480,38 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			qYs[j*jumpBy] = qYs[j*jumpBy][1:]
 		}
 
-		var (
-			m             = ctx.DomainSize
-			n             = ctx.DomainSize * ratio
-			omegaRatio, _ = fft.Generator(uint64(ratio))
-			// outerFactor stores m/n*(r^n - 1)
-			one           = field.One()
-			omegaRatioInv field.Element
-			res           gnarkfext.E4Gen
-			ratioInvField = field.NewElement(uint64(ratio))
-		)
-		res.SetZero()
+		m := ctx.DomainSize
+		n := ctx.DomainSize * ratio
+		omegaRatio, _ := fft.Generator(uint64(ratio))
+		ratioInvField := field.NewElement(uint64(ratio))
+		var omegaRatioInv field.Element
+		res := gnarkfext.NewE4GenFromBase(0)
 
-		rPowM := gnarkutil.Exp(api, shiftedR, m)
+		rPowM := gnarkutil.ExpExt(api, shiftedR, m)
 		ratioInvField.Inverse(&ratioInvField)
 		omegaRatioInv.Inverse(&omegaRatio)
 
+		var wrappedOmegaInvPowK zk.WrappedVariable
+		wOne := gnarkfext.NewE4GenFromBase(1)
 		for k := range ys {
 
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
 			var omegaInvPowK field.Element
 			omegaInvPowK.Exp(omegaRatioInv, big.NewInt(int64(k)))
-			tmp := api.Mul(omegaInvPowK, rPowM)
-			tmp = api.Sub(tmp, one)
-			tmp = api.Div(ys[k], tmp)
+			wrappedOmegaInvPowK = zk.ValueOf(omegaInvPowK)
+			tmp := e4Api.MulByFp(&rPowM, &wrappedOmegaInvPowK)
+			tmp = e4Api.Sub(tmp, &wOne)
+			tmp = e4Api.Div(&ys[k], tmp)
 
-			res.MulByFp(api, res, tmp)
+			// res.MulByFp(api, res, tmp)
+			res = *e4Api.Mul(&res, tmp)
 		}
 
-		outerFactor := gnarkutil.Exp(api, shiftedR, n)
-		outerFactor = api.Sub(outerFactor, one)
-		outerFactor = api.Mul(outerFactor, ratioInvField)
-		res.MulByFp(api, res, outerFactor)
+		wrappedRatioInvField := zk.ValueOf(ratioInvField)
+		outerFactor := gnarkutil.ExpExt(api, shiftedR, n)
+		outerFactor = *e4Api.Sub(&outerFactor, &wOne)
+		outerFactor = *e4Api.MulByFp(&outerFactor, &wrappedRatioInvField)
+		res = *e4Api.Mul(&res, &outerFactor)
 		recombinedYs[i] = res
 	}
 
