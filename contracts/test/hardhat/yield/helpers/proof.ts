@@ -3,6 +3,7 @@ import { ethers } from "hardhat";
 import { BeaconBlockHeader, Validator, ValidatorContainer } from "./types";
 import { SecretKey } from "@chainsafe/blst";
 import { SSZMerkleTree } from "contracts/typechain-types";
+import { FAR_FUTURE_EXIT_EPOCH } from "../../common/constants";
 
 export const randomInt = (max: number): number => Math.floor(Math.random() * max);
 
@@ -34,8 +35,8 @@ export const generateValidator = (customWC?: string): Validator => {
       slashed: false,
       activationEligibilityEpoch: BigInt(randomInt(343300)),
       activationEpoch: BigInt(randomInt(343300)),
-      exitEpoch: BigInt(randomInt(343300)),
-      withdrawableEpoch: BigInt(randomInt(343300)),
+      exitEpoch: FAR_FUTURE_EXIT_EPOCH,
+      withdrawableEpoch: FAR_FUTURE_EXIT_EPOCH,
     },
   };
 };

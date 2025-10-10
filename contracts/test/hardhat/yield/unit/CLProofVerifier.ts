@@ -11,7 +11,6 @@ import {
   setBeaconBlockRoot,
 } from "../helpers/proof";
 import { ethers } from "hardhat";
-import { FAR_FUTURE_EXIT_EPOCH } from "../../common/constants/yield";
 
 describe("BLS", () => {
   let verifier: TestCLProofVerifier;
@@ -90,10 +89,6 @@ describe("BLS", () => {
 
   it("can verify against dynamic merkle tree", async () => {
     const validator = generateValidator();
-    // Hardcoded values in our fork of CLProofVerifier.sol
-    validator.container.exitEpoch = FAR_FUTURE_EXIT_EPOCH;
-    validator.container.withdrawableEpoch = FAR_FUTURE_EXIT_EPOCH;
-    validator.container.slashed = false;
 
     const validatorMerkle = await sszMerkleTree.getValidatorPubkeyWCParentProof(validator.container);
 
@@ -165,5 +160,104 @@ describe("BLS", () => {
     expect(await newVerifier.getValidatorGI(0n, pivotSlot - 1)).to.equal(giPrev);
     expect(await newVerifier.getValidatorGI(0n, pivotSlot)).to.equal(giCurr);
     expect(await newVerifier.getValidatorGI(0n, pivotSlot + 1)).to.equal(giCurr);
+  });
+
+  it("should validate proof with different gIndex", async () => {
+    const provenValidator = generateValidator();
+    const pivotSlot = 100000;
+    provenValidator.container.activationEpoch = BigInt(Math.floor(pivotSlot / 32) - 257);
+
+    const prepareCLState = async (gIndex: string, slot: number) => {
+      const {
+        sszMerkleTree: localTree,
+        gIFirstValidator,
+        firstValidatorLeafIndex: localFirstValidatorLeafIndex,
+      } = await prepareLocalMerkleTree(gIndex);
+      await localTree.addValidatorLeaf(provenValidator.container);
+
+      const gIndexProven = await localTree.getGeneralizedIndex(localFirstValidatorLeafIndex + 1n);
+      const stateProof = await localTree.getMerkleProof(localFirstValidatorLeafIndex + 1n);
+      const beaconHeader = generateBeaconHeader(await localTree.getMerkleRoot(), slot);
+      const beaconMerkle = await localTree.getBeaconBlockHeaderProof(beaconHeader);
+      const proof = [...stateProof, ...beaconMerkle.proof];
+
+      return {
+        localTree,
+        gIFirstValidator,
+        gIndexProven,
+        proof: [...proof],
+        beaconHeader,
+        beaconRoot: beaconMerkle.root,
+      };
+    };
+
+    const [prev, curr] = await Promise.all([
+      prepareCLState("0x0000000000000000000000000000000000000000000000000056000000000028", pivotSlot - 1),
+      prepareCLState("0x0000000000000000000000000000000000000000000000000096000000000028", pivotSlot + 1),
+    ]);
+
+    // current CL state
+    const factory = await ethers.getContractFactory("TestCLProofVerifier");
+    const newVerifier = await factory.deploy(prev.gIFirstValidator, curr.gIFirstValidator, pivotSlot);
+    await newVerifier.waitForDeployment();
+
+    expect(await newVerifier.getValidatorGI(1n, pivotSlot - 1)).to.equal(prev.gIndexProven);
+    expect(await newVerifier.getValidatorGI(1n, pivotSlot)).to.equal(curr.gIndexProven);
+    expect(await newVerifier.getValidatorGI(1n, pivotSlot + 1)).to.equal(curr.gIndexProven);
+
+    // // prev works
+    const timestampPrev = await setBeaconBlockRoot(prev.beaconRoot);
+    await newVerifier.validateValidatorContainerForPermissionlessUnstake(
+      {
+        proof: prev.proof,
+        validatorIndex: 1n,
+        pubkey: provenValidator.container.pubkey,
+        childBlockTimestamp: timestampPrev,
+        slot: prev.beaconHeader.slot,
+        proposerIndex: prev.beaconHeader.proposerIndex,
+        effectiveBalance: provenValidator.container.effectiveBalance,
+        activationEpoch: provenValidator.container.activationEpoch,
+        activationEligibilityEpoch: provenValidator.container.activationEligibilityEpoch,
+      },
+      provenValidator.container.withdrawalCredentials,
+    );
+
+    await ethers.provider.send("hardhat_mine", [ethers.toBeHex(1), ethers.toBeHex(1)]);
+
+    // curr works
+    const timestampCurr = await setBeaconBlockRoot(curr.beaconRoot);
+    await newVerifier.validateValidatorContainerForPermissionlessUnstake(
+      {
+        proof: curr.proof,
+        validatorIndex: 1n,
+        pubkey: provenValidator.container.pubkey,
+        childBlockTimestamp: timestampCurr,
+        slot: curr.beaconHeader.slot,
+        proposerIndex: curr.beaconHeader.proposerIndex,
+        effectiveBalance: provenValidator.container.effectiveBalance,
+        activationEpoch: provenValidator.container.activationEpoch,
+        activationEligibilityEpoch: provenValidator.container.activationEligibilityEpoch,
+      },
+      provenValidator.container.withdrawalCredentials,
+    );
+
+    // prev fails on curr slot
+    await expect(
+      newVerifier.validateValidatorContainerForPermissionlessUnstake(
+        {
+          proof: [...prev.proof],
+          validatorIndex: 1n,
+          pubkey: provenValidator.container.pubkey,
+          childBlockTimestamp: timestampCurr,
+          // invalid slot to get wrong GIndex
+          slot: curr.beaconHeader.slot,
+          proposerIndex: curr.beaconHeader.proposerIndex,
+          effectiveBalance: provenValidator.container.effectiveBalance,
+          activationEpoch: provenValidator.container.activationEpoch,
+          activationEligibilityEpoch: provenValidator.container.activationEligibilityEpoch,
+        },
+        provenValidator.container.withdrawalCredentials,
+      ),
+    ).to.be.revertedWithCustomError(newVerifier, "InvalidSlot");
   });
 });
