@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -114,7 +114,7 @@ func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (
 	if n.isBase {
 		return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size())), nil
 	} else {
-		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
+		return zk.ValueOf(0), fmt.Errorf("requested base elements but column defined over field extensions")
 	}
 
 }

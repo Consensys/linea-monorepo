@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -18,6 +19,11 @@ func GnarkDeriveEvaluationPoint(
 	cachedXs collection.Mapping[string, zk.WrappedVariable],
 	x zk.WrappedVariable,
 ) (xRes []zk.WrappedVariable) {
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
 
 	if !h.IsComposite() {
 		// Just return x and cache it if necessary
@@ -44,9 +50,9 @@ func GnarkDeriveEvaluationPoint(
 			if err != nil {
 				panic(err)
 			}
-			omegaN := zk.WrappedVariable(generator)
+			omegaN := zk.ValueOf(generator)
 			omegaN = gnarkutil.Exp(api, omegaN, inner.Offset)
-			derivedX = api.Mul(x, omegaN)
+			derivedX = *apiGen.Mul(&x, &omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
 		}
 		return GnarkDeriveEvaluationPoint(api, inner.Parent, newUpstream, cachedXs, derivedX)

@@ -5,8 +5,8 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -82,7 +82,8 @@ func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.
 		}
 
 		for i := len(f.Accessors); i < f.Size_; i++ {
-			res[i] = f.Padding
+			// res[i] = f.Padding
+			res[i] = zk.ValueOf(f.Padding.B0.A0) // @thomas fixme (should be ext)
 		}
 		return res, nil
 	}
@@ -96,7 +97,7 @@ func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnark
 	}
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
-		res[i] = gnarkfext.FromValue(f.Padding)
+		res[i] = gnarkfext.NewE4Gen(f.Padding)
 	}
 
 	return res
@@ -112,7 +113,9 @@ func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos 
 	}
 
 	if pos >= len(f.Accessors) {
-		return f.Padding, nil
+		// return f.Padding, nil
+		return zk.ValueOf(f.Padding.B0.A0), nil
+
 	}
 
 	return f.Accessors[pos].GetFrontendVariable(nil, run), nil
@@ -124,7 +127,7 @@ func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos i
 	}
 
 	if pos >= len(f.Accessors) {
-		return gnarkfext.FromValue(f.Padding)
+		return gnarkfext.NewE4Gen(f.Padding)
 	}
 
 	return f.Accessors[pos].GetFrontendVariableExt(nil, run)
@@ -189,7 +192,8 @@ func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.Wrapp
 	}
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
-		res[i] = f.Padding
+		// res[i] = f.Padding
+		res[i] = zk.ValueOf(f.Padding) // TODO @thomas fixme
 	}
 
 	return res
@@ -207,7 +211,8 @@ func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int)
 	}
 
 	if pos >= len(f.Accessors) {
-		return f.Padding
+		// return f.Padding
+		return zk.ValueOf(f.Padding.B0.A0) // TODO @thomas fixme
 	}
 
 	return f.Accessors[pos].GetFrontendVariable(nil, run)

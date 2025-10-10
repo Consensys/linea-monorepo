@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -201,12 +202,15 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 				if m.IsBase() {
 					inputs[i] = run.GetRandomCoinField(m.Name)
 				} else {
-					inputs[i] = run.GetRandomCoinFieldExt(m.Name)
+					tmp := run.GetRandomCoinFieldExt(m.Name)
+					// inputs[i] = run.GetRandomCoinFieldExt(m.Name)
+					inputs[i] = tmp.B0.A0 // @thomas fixme (ext vs base)
 				}
 			case ifaces.Accessor:
 				inputs[i] = m.GetFrontendVariable(api, run)
 			case variables.PeriodicSample:
-				inputs[i] = m.EvalAtOnDomain(k)
+				tmp := m.EvalAtOnDomain(k)
+				inputs[i] = zk.ValueOf(tmp)
 			case variables.X:
 				// there is no theoritical problem with this but there are
 				// no cases known where this happens so we just don't

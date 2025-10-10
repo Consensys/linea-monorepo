@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -136,9 +137,14 @@ func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) zk.Wrappe
 }
 
 func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x zk.WrappedVariable) zk.WrappedVariable {
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+
 	n := size
 	l := n / t.T
-	one := field.One()
 	lField := field.NewElement(uint64(l))
 	nField := field.NewElement(uint64(n))
 
@@ -148,17 +154,26 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x zk.
 		if err != nil {
 			panic(err)
 		}
-		x = api.Mul(x, gnarkutil.Exp(api, omegaN, -t.Offset))
+		e := -t.Offset
+		if e < 0 {
+			e = -e
+		}
+		omegaN.Exp(omegaN, big.NewInt(int64(e)))
+		wOmegaN := zk.ValueOf(omegaN)
+		x = *apiGen.Mul(&x, &wOmegaN)
 	}
 
 	denominator := gnarkutil.Exp(api, x, l)
-	denominator = api.Sub(denominator, one)
-	denominator = api.Mul(denominator, nField)
+	wOne := zk.ValueOf(1)
+	wnField := zk.ValueOf(nField)
+	wlField := zk.ValueOf(lField)
+	denominator = *apiGen.Sub(&denominator, &wOne)
+	denominator = *apiGen.Mul(&denominator, &wnField)
 	numerator := gnarkutil.Exp(api, x, n)
-	numerator = api.Sub(numerator, &one)
-	numerator = api.Mul(numerator, &lField)
+	numerator = *apiGen.Sub(&numerator, &wOne)
+	numerator = *apiGen.Mul(&numerator, &wlField)
 
-	return api.Div(numerator, denominator)
+	return *apiGen.Div(&numerator, &denominator)
 }
 
 // Returns the result in gnark form. This returns a vector of constant
@@ -167,7 +182,7 @@ func (t PeriodicSample) GnarkEvalNoCoset(size int) []zk.WrappedVariable {
 	res_ := t.EvalCoset(size, 0, 1, false)
 	res := make([]zk.WrappedVariable, res_.Len())
 	for i := range res {
-		res[i] = res_.Get(i)
+		res[i] = zk.ValueOf(res_.Get(i))
 	}
 	return res
 }

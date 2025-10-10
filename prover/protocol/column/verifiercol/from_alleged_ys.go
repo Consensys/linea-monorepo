@@ -5,8 +5,8 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -153,7 +153,7 @@ func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVar
 			res[i] = y
 		} else {
 			// Set it to zero explicitly
-			res[i] = zk.WrappedVariable(0)
+			res[i] = zk.ValueOf(0)
 		}
 	}
 

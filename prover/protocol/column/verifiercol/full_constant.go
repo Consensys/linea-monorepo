@@ -3,11 +3,11 @@ package verifiercol
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -94,7 +94,7 @@ func (cc ConstCol) GetColAssignmentAtExt(_ ifaces.Runtime, _ int) fext.Element {
 func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []zk.WrappedVariable {
 	res := make([]zk.WrappedVariable, cc.Size_)
 	for i := range res {
-		res[i] = cc.Base
+		res[i] = zk.ValueOf(cc.Base)
 	}
 	return res
 }
@@ -103,7 +103,7 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.Wrap
 	if cc.IsBaseFlag {
 		res := make([]zk.WrappedVariable, cc.Size_)
 		for i := range res {
-			res[i] = cc.Base
+			res[i] = zk.ValueOf(cc.Base)
 		}
 		return res, nil
 	} else {
@@ -114,8 +114,7 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.Wrap
 func (cc ConstCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
 	res := make([]gnarkfext.E4Gen, cc.Size_)
 	for i := range res {
-		var temp gnarkfext.E4Gen
-		temp.Assign(cc.Ext)
+		temp := gnarkfext.NewE4Gen(cc.Ext)
 		res[i] = temp
 	}
 	return res
@@ -129,7 +128,7 @@ func (cc ConstCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
 	if cc.IsBaseFlag {
-		return cc.Base
+		return zk.ValueOf(cc.Base)
 	} else {
 		panic("requested a base element from a verifier col over field extensions")
 	}
@@ -138,16 +137,15 @@ func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
 	if cc.IsBaseFlag {
-		return cc.Base, nil
+		return zk.ValueOf(cc.Base), nil
 	} else {
-		return field.Zero(), fmt.Errorf("requested a base element from a verifier col over field extensions")
+		return zk.ValueOf(0), fmt.Errorf("requested a base element from a verifier col over field extensions")
 	}
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
-	var temp gnarkfext.E4Gen
-	temp.Assign(cc.Ext)
+	temp := gnarkfext.NewE4Gen(cc.Ext)
 	return temp
 }
 
