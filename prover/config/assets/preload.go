@@ -145,7 +145,6 @@ func preloadPath(path string, opts *PreloadOptions, logger *logrus.Entry) error 
 			return fmt.Errorf("fadvise failed: %w", err)
 		}
 		logger.Infof("preload: fadvise(WILLNEED) applied on %s (size=%d)", path, size)
-		logResidency(path, "fadvise", logger)
 		return nil
 	}
 
@@ -157,11 +156,9 @@ func preloadPath(path string, opts *PreloadOptions, logger *logrus.Entry) error 
 			return fmt.Errorf("fallback fadvise failed: %v (original mmap error: %v)", err2, err)
 		}
 		logger.Infof("preload: fallback fadvise succeeded for %s", path)
-		logResidency(path, "fallback", logger)
 		return nil
 	} else {
 		logger.Infof("preload: mmap-populate succeeded for %s (size=%d)", path, size)
-		logResidency(path, "mmap", logger)
 	}
 	return nil
 }
@@ -228,14 +225,25 @@ func preLoadMmap(path string) error {
 	return nil
 }
 
-// logResidency logs how much of the file is currently resident in RAM.
-func logResidency(p, phase string, logger *logrus.Entry) {
-	if frac, err := residentFractionForPath(p); err == nil {
-		logger.Infof("preload: residency after %s %s: %.1f%%", phase, p, frac*100)
+func LogResMem(jobName string, resolverFn func() ([]string, []string, error), logger *logrus.Entry) {
+	paths, _, err := resolverFn()
+	if err != nil {
+		logger.Errorf("resolver error for job %q: %v", jobName, err)
+	}
+
+	for _, path := range paths {
+		logResMem(path, logger)
 	}
 }
 
-func residentFractionForPath(p string) (float64, error) {
+// logResMem logs how much of the file is currently resident in RAM.
+func logResMem(p string, logger *logrus.Entry) {
+	if frac, err := resMemForPath(p); err == nil {
+		logger.Infof("preload: residency after %s: %.1f%%", p, frac*100)
+	}
+}
+
+func resMemForPath(p string) (float64, error) {
 	f, err := os.Open(p)
 	if err != nil {
 		return 0, err
@@ -256,12 +264,12 @@ func residentFractionForPath(p string) (float64, error) {
 	}
 	defer unix.Munmap(data)
 
-	return residentFraction(data)
+	return resMem(data)
 }
 
-// residentFraction reports how many pages of 'mapped' are resident in RAM (0–1).
+// resMem reports how many pages of 'mapped' are resident in RAM (0–1).
 // Optional helper useful for diagnostics; returns fraction [0..1] or an error.
-func residentFraction(mapped []byte) (float64, error) {
+func resMem(mapped []byte) (float64, error) {
 	if len(mapped) == 0 {
 		return 0, fmt.Errorf("empty mapping")
 	}

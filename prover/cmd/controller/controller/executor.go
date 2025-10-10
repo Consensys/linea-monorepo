@@ -393,7 +393,7 @@ func (e *Executor) preLoadStaticAssets(ctx context.Context, job *Job) error {
 	}
 
 	// Log the residency fraction for every request useful for diagnostics purpose
-	assets.LogResidency(job.Def.Name, resolverFn, logger)
+	assets.LogResMem(job.Def.Name, resolverFn, logger)
 	return nil
 }
 
