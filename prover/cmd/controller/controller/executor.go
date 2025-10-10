@@ -105,8 +105,10 @@ func (e *Executor) Run(ctx context.Context, job *Job) (status Status) {
 	// Run the initial command
 	status = runCmd(ctx, cmd, job, false)
 
-	// Do not retry for blob decompression or aggregation jobs
-	if job.Def.Name == jobNameBlobDecompression || job.Def.Name == jobNameAggregation {
+	// Do not retry for blob decompression, aggregation or conglomeration jobs
+	if job.Def.Name == jobNameBlobDecompression ||
+		job.Def.Name == jobNameAggregation ||
+		job.Def.Name == jobNameConglomeration {
 		return status
 	}
 
@@ -389,6 +391,9 @@ func (e *Executor) preLoadStaticAssets(ctx context.Context, job *Job) error {
 		// decide policy: here we return error so job doesn't run; you may prefer to continue
 		return err
 	}
+
+	// Log the residency fraction for every request useful for diagnostics purpose
+	assets.LogResidency(job.Def.Name, resolverFn, logger)
 	return nil
 }
 
