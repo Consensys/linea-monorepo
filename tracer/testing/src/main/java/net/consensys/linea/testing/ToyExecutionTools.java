@@ -343,7 +343,7 @@ public class ToyExecutionTools {
               spec,
               preExecutionProcessor.createBlockHashLookup(blockchain, header),
               tracer);
-      preExecutionProcessor.process(context);
+      preExecutionProcessor.process(context, Optional.empty());
     }
   }
 }

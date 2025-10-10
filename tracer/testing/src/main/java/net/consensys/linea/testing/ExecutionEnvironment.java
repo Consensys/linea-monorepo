@@ -27,7 +27,6 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.OptionalLong;
 
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ChainConfig;
@@ -173,7 +172,7 @@ public class ExecutionEnvironment {
         new MainnetProtocolSpecFactory(
             Optional.of(chainId),
             true,
-            OptionalLong.empty(),
+            genesisConfigOptions,
             EvmConfiguration.DEFAULT,
             MiningConfiguration.MINING_DISABLED,
             false,
@@ -182,17 +181,17 @@ public class ExecutionEnvironment {
 
     final ProtocolSpecBuilder builder =
         switch (fork) {
-          case LONDON -> protocol.londonDefinition(genesisConfigOptions);
-          case PARIS -> protocol.parisDefinition(genesisConfigOptions);
-          case SHANGHAI -> protocol.shanghaiDefinition(genesisConfigOptions);
+          case LONDON -> protocol.londonDefinition();
+          case PARIS -> protocol.parisDefinition();
+          case SHANGHAI -> protocol.shanghaiDefinition();
           case CANCUN -> protocol
-              .cancunDefinition(genesisConfigOptions)
+              .cancunDefinition()
               .preExecutionProcessor(new CancunPreExecutionProcessor());
           case PRAGUE -> protocol
-              .pragueDefinition(genesisConfigOptions)
+              .pragueDefinition()
               .preExecutionProcessor(new PraguePreExecutionProcessor());
           case OSAKA -> protocol
-              .osakaDefinition(genesisConfigOptions)
+              .osakaDefinition()
               .preExecutionProcessor(new PraguePreExecutionProcessor());
           default -> throw new IllegalArgumentException("Unexpected fork value: " + fork);
         };
