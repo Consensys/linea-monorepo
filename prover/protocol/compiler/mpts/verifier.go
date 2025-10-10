@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -114,28 +115,34 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		rho    = run.GetRandomCoinFieldExt(va.LinCombCoeffRho.Name)
 	)
 
-	api.AssertIsEqual(r, rCoin)
+	e4Api, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 
-	var (
-		lambdaPowI gnarkfext.E4Gen
-		rhoK       gnarkfext.E4Gen
-		// res stores the right-hand of the equality check. Namely,
-		// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-		res gnarkfext.E4Gen
-	)
-	lambdaPowI.SetOne()
-	rhoK.SetOne()
-	res.SetZero()
+	e4Api.AssertIsEqual(&r, &rCoin)
+
+	lambdaPowI := gnarkfext.NewE4GenFromBase(1)
+	rhoK := gnarkfext.NewE4GenFromBase(1)
+
+	// res stores the right-hand of the equality check. Namely,
+	// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
+	res := gnarkfext.NewE4GenFromBase(0)
 
 	for i, q := range va.Queries {
 
 		xi := run.GetUnivariateParams(q.Name()).ExtX
-		zetasOfR[i].Sub(api, r, xi)
+		// zetasOfR[i].Sub(api, r, xi)
+		zetasOfR[i] = *e4Api.Sub(&r, &xi)
+
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
 		// but the native verifier time is not very important in this context.
-		zetasOfR[i].Inverse(api, zetasOfR[i])
-		zetasOfR[i].Mul(api, zetasOfR[i], lambdaPowI)
-		lambdaPowI.Mul(api, lambdaPowI, lambda)
+		// zetasOfR[i].Inverse(api, zetasOfR[i])
+		// zetasOfR[i].Mul(api, zetasOfR[i], lambdaPowI)
+		// lambdaPowI.Mul(api, lambdaPowI, lambda)
+		zetasOfR[i] = *e4Api.Inverse(&zetasOfR[i])
+		zetasOfR[i] = *e4Api.Mul(&zetasOfR[i], &lambdaPowI)
+		lambdaPowI = *e4Api.Mul(&lambdaPowI, &lambda)
 	}
 
 	// This loop computes the value of [res]
@@ -145,13 +152,18 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
-			tmp.Sub(api, pr, tmp) // Pk(r) - y_{ik}
-			tmp.Mul(api, tmp, zetasOfR[i])
-			tmp.Mul(api, tmp, rhoK)
-			res.Add(api, res, tmp)
+			// tmp.Sub(api, pr, tmp) // Pk(r) - y_{ik}
+			// tmp.Mul(api, tmp, zetasOfR[i])
+			// tmp.Mul(api, tmp, rhoK)
+			// res.Add(api, res, tmp)
+			tmp = *e4Api.Sub(&pr, &tmp)
+			tmp = *e4Api.Mul(&tmp, &zetasOfR[i])
+			tmp = *e4Api.Mul(&tmp, &rhoK)
+			res = *e4Api.Add(&res, &tmp)
 		}
 
-		rhoK.Mul(api, rhoK, rho)
+		// rhoK.Mul(api, rhoK, rho)
+		rhoK = *e4Api.Mul(&rhoK, &rho)
 	}
 
 	api.AssertIsEqual(res, qr)
