@@ -184,9 +184,9 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 	case verifiercol.VerifierCol:
 		scaling := ctx.MaxSize / col.Size()
 		// expand the veriferCol
-		stitchingCol = verifiercol.ExpandedVerifCol{
-			Verifiercol: m,
-			Expansion:   scaling,
+		stitchingCol = verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
+			Col:       m,
+			Expansion: scaling,
 		}
 		if len(option) != 0 {
 			// if it is a shifted veriferCol, set the offset for shifting the expanded column
