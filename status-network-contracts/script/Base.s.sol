@@ -38,4 +38,12 @@ abstract contract BaseScript is Script {
         _;
         vm.stopBroadcast();
     }
+
+    /**
+     * @dev Returns the address of the broadcaster.
+     * @return The address of the broadcaster.
+     */
+    function getDeployer() public returns (address) {
+        return broadcaster;
+    }
 }
