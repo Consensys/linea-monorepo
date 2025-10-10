@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { SSZMerkleTree, TestCLProofVerifier } from "contracts/typechain-types";
 import { deployTestCLProofVerifier, ValidatorWitness } from "../helpers";
 import {
-  ACTIVE_VALIDATOR,
+  ACTIVE_0X01_VALIDATOR,
   generateValidator,
   prepareLocalMerkleTree,
   randomBytes32,
@@ -38,39 +38,41 @@ describe("BLS", () => {
   });
 
   it("should verify precalclulated validator object in merkle tree", async () => {
-    const validatorMerkle = await sszMerkleTree.getValidatorPubkeyWCParentProof(ACTIVE_VALIDATOR.witness.validator);
-    const beaconHeaderMerkle = await sszMerkleTree.getBeaconBlockHeaderProof(ACTIVE_VALIDATOR.beaconBlockHeader);
-    const validatorGIndex = await verifier.getValidatorGI(ACTIVE_VALIDATOR.witness.validatorIndex, 0);
+    const validatorMerkle = await sszMerkleTree.getValidatorPubkeyWCParentProof(
+      ACTIVE_0X01_VALIDATOR.witness.validator,
+    );
+    const beaconHeaderMerkle = await sszMerkleTree.getBeaconBlockHeaderProof(ACTIVE_0X01_VALIDATOR.beaconBlockHeader);
+    const validatorGIndex = await verifier.getValidatorGI(ACTIVE_0X01_VALIDATOR.witness.validatorIndex, 0);
 
     // raw proof verification of (ValidatorContainer) leaf against (StateRoot) Merkle root
     await sszMerkleTree.verifyProof(
-      ACTIVE_VALIDATOR.witness.proof,
-      ACTIVE_VALIDATOR.beaconBlockHeader.stateRoot,
+      ACTIVE_0X01_VALIDATOR.witness.proof,
+      ACTIVE_0X01_VALIDATOR.beaconBlockHeader.stateRoot,
       validatorMerkle.root,
       validatorGIndex,
     );
 
     // concatentate all proofs to match PG style
-    const concatenatedProof = [...ACTIVE_VALIDATOR.witness.proof, ...beaconHeaderMerkle.proof];
+    const concatenatedProof = [...ACTIVE_0X01_VALIDATOR.witness.proof, ...beaconHeaderMerkle.proof];
 
-    const timestamp = await setBeaconBlockRoot(ACTIVE_VALIDATOR.blockRoot);
+    const timestamp = await setBeaconBlockRoot(ACTIVE_0X01_VALIDATOR.blockRoot);
 
     const validatorWitness: ValidatorWitness = {
       proof: concatenatedProof,
-      pubkey: ACTIVE_VALIDATOR.witness.validator.pubkey,
-      validatorIndex: ACTIVE_VALIDATOR.witness.validatorIndex,
+      pubkey: ACTIVE_0X01_VALIDATOR.witness.validator.pubkey,
+      validatorIndex: ACTIVE_0X01_VALIDATOR.witness.validatorIndex,
       childBlockTimestamp: BigInt(timestamp),
-      slot: BigInt(ACTIVE_VALIDATOR.beaconBlockHeader.slot),
-      proposerIndex: BigInt(ACTIVE_VALIDATOR.beaconBlockHeader.proposerIndex),
-      effectiveBalance: BigInt(ACTIVE_VALIDATOR.witness.validator.effectiveBalance),
-      activationEpoch: BigInt(ACTIVE_VALIDATOR.witness.validator.activationEpoch),
-      activationEligibilityEpoch: BigInt(ACTIVE_VALIDATOR.witness.validator.activationEligibilityEpoch),
+      slot: BigInt(ACTIVE_0X01_VALIDATOR.beaconBlockHeader.slot),
+      proposerIndex: BigInt(ACTIVE_0X01_VALIDATOR.beaconBlockHeader.proposerIndex),
+      effectiveBalance: BigInt(ACTIVE_0X01_VALIDATOR.witness.validator.effectiveBalance),
+      activationEpoch: BigInt(ACTIVE_0X01_VALIDATOR.witness.validator.activationEpoch),
+      activationEligibilityEpoch: BigInt(ACTIVE_0X01_VALIDATOR.witness.validator.activationEligibilityEpoch),
     };
 
     // PG style proof verification from PK+WC to BeaconBlockRoot
     await verifier.validateValidatorContainerForPermissionlessUnstake(
       validatorWitness,
-      ACTIVE_VALIDATOR.witness.validator.withdrawalCredentials,
+      ACTIVE_0X01_VALIDATOR.witness.validator.withdrawalCredentials,
     );
   });
 });

@@ -121,7 +121,7 @@ export const prepareLocalMerkleTree = async (
   };
 };
 
-export const ACTIVE_VALIDATOR = {
+export const ACTIVE_0X01_VALIDATOR = {
   blockRoot: "0xeb961eae87c614e11a7959a529a59db3c9d825d284dc30e0d12e43ba6daf4cca",
   gIFirstValidator: "0x0000000000000000000000000000000000000000000000000096000000000028",
   beaconBlockHeader: {
