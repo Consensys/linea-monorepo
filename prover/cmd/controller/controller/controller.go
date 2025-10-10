@@ -208,6 +208,7 @@ func handleJobKilledBySIGTERM(cfg *config.Config, cLog *logrus.Entry, job *Job) 
 }
 
 // handleJobFailure moves the failed job to the done directory with failure suffix.
+// TODO: handle failure case for conglomeration job
 func handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 	cLog.Infof("Moving %v with in %v with a failure suffix for code %v", job.OriginalFile, job.Def.dirDone(), status.ExitCode)
 
