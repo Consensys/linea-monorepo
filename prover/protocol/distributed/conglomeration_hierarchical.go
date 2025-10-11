@@ -3,16 +3,20 @@ package distributed
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
+	gmimc "github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -37,7 +41,7 @@ const (
 	segmentCountLPPPublicInputBase          = "GL_SEGMENT_COUNT"
 	segmentCountGLPublicInputBase           = "LPP_SEGMENT_COUNT"
 	GeneralMultiSetPublicInputBase          = "GENERAL_MULTI_SET"
-	sharedRandomnessMultiSetPublicInputBase = "SHARED_RANDOMNESS_MULTI_SET"
+	SharedRandomnessMultiSetPublicInputBase = "SHARED_RANDOMNESS_MULTI_SET"
 	VkMerkleProofBase                       = "VK_MERKLE_PROOF"
 	InitialRandomnessPublicInput            = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
 	LogDerivativeSumPublicInput             = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
@@ -47,6 +51,7 @@ const (
 	globalHashReceivedPublicInput           = "GLOBAL_HASH_RECEIVED"
 	verifyingKeyPublicInput                 = "VERIFYING_KEY"
 	verifyingKey2PublicInput                = "VERIFYING_KEY_2"
+	verifyingKeyMerkleRootPublicInput       = "VK_MERKLE_ROOT"
 	lppMerkleRootPublicInput                = "LPP_COLUMNS_MERKLE_ROOTS"
 
 	// The prerecursion prefix is a prefix to apply to the name of the public
@@ -223,6 +228,40 @@ func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.
 	return nil
 }
 
+// CheckMembershipGnark checks if a verification key is in the merkle tree.
+func checkVkMembershipGnark(
+	api frontend.API,
+	leafPosition frontend.Variable,
+	numModule int,
+	vk [2]frontend.Variable,
+	root frontend.Variable,
+	proofF []frontend.Variable,
+) {
+
+	// This part of the loop checks the membership of the VK as a member of
+	// the tree using the leafPosition from above.
+
+	var (
+		merkleDepth = utils.Log2Ceil(2*numModule + 1)
+		mProof      = smt.GnarkProof{
+			Path:     leafPosition,
+			Siblings: proofF,
+		}
+		leaf = mimc.GnarkHashVec(api, vk[:])
+	)
+
+	if merkleDepth != len(proofF) {
+		panic("merkleDepth != len(proofF)")
+	}
+
+	h, err := gmimc.NewMiMC(api)
+	if err != nil {
+		panic(err)
+	}
+
+	smt.GnarkVerifyMerkleProof(api, mProof, leaf, root, &h)
+}
+
 // Conglomerate runs the conglomeration compiler and returns a pointer to the
 // receiver of the method.
 func (d *DistributedWizard) Conglomerate() *DistributedWizard {
@@ -233,8 +272,8 @@ func (d *DistributedWizard) Conglomerate() *DistributedWizard {
 
 	comp := wizard.NewCompiledIOP()
 	conglo.Compile(comp, d.CompiledGLs[0].RecursionComp)
-
-	CompileSegment(conglo)
+	d.CompiledConglomeration = CompileSegment(conglo)
+	assertCompatibleIOPs(d)
 
 	return d
 }
@@ -260,10 +299,12 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 	c.PublicInputs.SegmentCountGL = declareListOfPiColumns(c.Wiop, 0, segmentCountGLPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, 0, segmentCountLPPPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, 0, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
+	c.PublicInputs.SharedRandomnessMultiSetHash = declareListOfPiColumns(c.Wiop, 0, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
 	c.PublicInputs.LogDerivativeSum = declarePiColumn(c.Wiop, LogDerivativeSumPublicInput)
 	c.PublicInputs.HornerSum = declarePiColumn(c.Wiop, HornerPublicInput)
 	c.PublicInputs.GrandProduct = declarePiColumn(c.Wiop, GrandProductPublicInput)
 	c.PublicInputs.SharedRandomness = declarePiColumn(c.Wiop, InitialRandomnessPublicInput)
+	c.PublicInputs.VKeyMerkleRoot = declarePiColumn(c.Wiop, verifyingKeyMerkleRootPublicInput)
 
 	// vkMerkleTreeDepth is the depth of the verification key merkle tree
 	vkMerkleTreeDepth := c.VKeyMTreeDepth()
@@ -275,6 +316,7 @@ func (c *ConglomerationHierarchical) Compile(comp *wizard.CompiledIOP, moduleMod
 		}
 	}
 
+	comp.RegisterVerifierAction(0, &ConglomerationHierarchicalVerifierAction{ConglomerationHierarchical: *c})
 }
 
 // Assign assigns the public inputs for the conglomeration proof
@@ -305,14 +347,23 @@ func (c *ConglomerationHierarchical) Assign(
 
 	// Now, it remains to assign the public inputs for the conglomeration proof.
 	var (
-		collectedPIs = [aggregationArity]LimitlessPublicInput[field.Element]{}
-		sumCountGLs  = []field.Element{}
-		sumCountLPPs = []field.Element{}
+		collectedPIs   = [aggregationArity]LimitlessPublicInput[field.Element]{}
+		sumCountGLs    = []field.Element{}
+		sumCountLPPs   = []field.Element{}
+		mSetSharedRand = mimc.MSetHash{}
+		mSetGeneral    = mimc.MSetHash{}
 	)
 
 	for instance := 0; instance < c.ModuleNumber; instance++ {
 		collectedPIs[instance] = c.collectAllPublicInputsOfInstance(run, instance)
+		subMSetGeneral := mimc.MSetHash(collectedPIs[instance].GeneralMultiSetHash)
+		subMSetSharedRand := mimc.MSetHash(collectedPIs[instance].SharedRandomnessMultiSetHash)
+		mSetGeneral.Add(subMSetGeneral)
+		mSetSharedRand.Add(subMSetSharedRand)
 	}
+
+	assignListOfPiColumns(run, GeneralMultiSetPublicInputBase, mSetGeneral[:])
+	assignListOfPiColumns(run, SharedRandomnessMultiSetPublicInputBase, mSetSharedRand[:])
 
 	for k := 0; k < c.ModuleNumber; k++ {
 
@@ -498,7 +549,125 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 
 // RunGnark implements the [wizard.VerifierAction] interface.
 func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	panic("unimplemented")
+
+	var (
+		collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable]{}
+		topPIs       = c.collectAllPublicInputsGnark(api, run)
+	)
+
+	for instance := 0; instance < aggregationArity; instance++ {
+		collectedPIs[instance] = c.collectAllPublicInputsOfInstanceGnark(api, run, instance)
+	}
+
+	// This checks that the functional public inputs are correctly conglomerated
+	// across all instances.
+	for k := range topPIs.Functionals {
+		summedUpValue := frontend.Variable(0)
+		for instance := 0; instance < aggregationArity; instance++ {
+			funcPI := collectedPIs[instance].Functionals[k]
+			summedUpValue = api.Add(summedUpValue, funcPI)
+		}
+		api.AssertIsEqual(summedUpValue, topPIs.Functionals[k])
+	}
+
+	for k := 0; k < c.ModuleNumber; k++ {
+
+		var (
+			sumCountGL  = frontend.Variable(0)
+			sumCountLPP = frontend.Variable(0)
+		)
+
+		for instance := 0; instance < aggregationArity; instance++ {
+
+			// This checks that the TargetNbSegments public inputs are the same for all
+			// the children instances and the current node.
+			api.AssertIsEqual(collectedPIs[instance].TargetNbSegments[k], topPIs.TargetNbSegments[k])
+
+			// This agglomerates the segment count for the GL and the LPPs modules. There
+			// is one GL and one LPP counter for each module that's why we do them in the
+			sumCountGL = api.Add(sumCountGL, collectedPIs[instance].SegmentCountGL[k])
+			sumCountLPP = api.Add(sumCountLPP, collectedPIs[instance].SegmentCountLPP[k])
+		}
+
+		api.AssertIsEqual(sumCountGL, topPIs.SegmentCountGL[k])
+		api.AssertIsEqual(sumCountLPP, topPIs.SegmentCountLPP[k])
+	}
+
+	// This agglomerates the multiset hashes
+	var (
+		generalSum = mimc.EmptyMSetHashGnark()
+		sharedSum  = mimc.EmptyMSetHashGnark()
+	)
+
+	for instance := 0; instance < c.ModuleNumber; instance++ {
+		generalSum.Add(api, mimc.MSetHashGnark(collectedPIs[instance].GeneralMultiSetHash))
+		sharedSum.Add(api, mimc.MSetHashGnark(collectedPIs[instance].SharedRandomnessMultiSetHash))
+	}
+
+	sharedSum.AssertEqual(api, mimc.MSetHashGnark(topPIs.SharedRandomnessMultiSetHash))
+	generalSum.AssertEqual(api, mimc.MSetHashGnark(topPIs.GeneralMultiSetHash))
+
+	// The loop below "aggregate" the public inputs: log-derivative-sum, gd-product,
+	// and horner sum of the sub-instances. The aggregation is done by multiplying/summing
+	// the values. The results are then compared the top-level public inputs.
+	var (
+		accGrandProduct = frontend.Variable(1)
+		accLogDeriv     = frontend.Variable(0)
+		accHornerSum    = frontend.Variable(0)
+	)
+
+	for instance := 0; instance < aggregationArity; instance++ {
+
+		// This agglomerates the horner N0 hash checker, the grand product, the
+		// log derivative sum and the horner sum.
+		accGrandProduct = api.Mul(accGrandProduct, collectedPIs[instance].GrandProduct)
+		accLogDeriv = api.Add(accLogDeriv, collectedPIs[instance].LogDerivativeSum)
+		accHornerSum = api.Add(accHornerSum, collectedPIs[instance].HornerSum)
+
+		api.AssertIsEqual(
+			api.Mul(
+				api.Sub(1, api.IsZero(collectedPIs[instance].SharedRandomness)),
+				api.Sub(collectedPIs[instance].SharedRandomness, topPIs.SharedRandomness),
+			),
+			0,
+		)
+
+		api.AssertIsEqual(collectedPIs[instance].VKeyMerkleRoot, topPIs.VKeyMerkleRoot)
+	}
+
+	api.AssertIsEqual(accGrandProduct, topPIs.GrandProduct)
+	api.AssertIsEqual(accLogDeriv, topPIs.LogDerivativeSum)
+	api.AssertIsEqual(accHornerSum, topPIs.HornerSum)
+
+	// This loop checks the VK membership in the tree. The merkle leaf position
+	// is deduced from the segment count public inputs in the following way;
+	//
+	// 	- If segment-count-sum of the GL position is one and LPP is zero, then
+	//  	the position is the position of the "count=1" GL input.
+	//
+	//  - If the segment segment-count-sum of the LPP positions is one and GL is
+	// 		zero, then the position is the position of the "count=1" LPP input +
+	// 		nb-module
+	//
+	// 	- Otherwise (the total sum is larger than 1), the position is 2*nb-module
+
+	for instance := 0; instance < aggregationArity; instance++ {
+
+		leafPosition := findVkPositionGnark(api, collectedPIs[instance])
+		mProof := make([]frontend.Variable, c.ConglomerationHierarchical.VKeyMTreeDepth())
+		for i := range mProof {
+			mProof[i] = c.VerificationKeyMerkleProofs[instance][i].GetColAssignmentGnarkAt(run, 0)
+		}
+
+		checkVkMembershipGnark(
+			api,
+			leafPosition,
+			c.ModuleNumber,
+			collectedPIs[instance].VerifyingKey,
+			collectedPIs[instance].VKeyMerkleRoot,
+			mProof,
+		)
+	}
 }
 
 // declarePi declares a column with the requested name as proof column and length
@@ -540,7 +709,8 @@ func declareListOfPiColumns(comp *wizard.CompiledIOP, round int, name string, le
 func declareListOfConstantPi(comp *wizard.CompiledIOP, name string, values []field.Element) []wizard.PublicInput {
 	res := make([]wizard.PublicInput, len(values))
 	for i, val := range values {
-		pub := comp.InsertPublicInput(name+"_"+strconv.Itoa(i), accessors.NewConstant(val))
+		name := name + "_" + strconv.Itoa(i)
+		pub := comp.InsertPublicInput(name, accessors.NewConstant(val))
 		res = append(res, pub)
 	}
 	return res
@@ -550,18 +720,9 @@ func declareListOfConstantPi(comp *wizard.CompiledIOP, name string, values []fie
 // the provided list of values.
 func assignListOfPiColumns(run *wizard.ProverRuntime, name string, values []field.Element) {
 	for i, val := range values {
-		assignPiColumn(run, name+"_"+strconv.Itoa(i), val)
+		name := name + "_" + strconv.Itoa(i)
+		assignPiColumn(run, name, val)
 	}
-}
-
-// getPublicInputListOfInstance returns a list of public inputs of the provided
-// name and instance.
-func getPublicInputListOfInstance(rec *recursion.Recursion, run wizard.Runtime, name string, instance int, nb int) []field.Element {
-	var res []field.Element
-	for i := 0; i < nb; i++ {
-		res = append(res, rec.GetPublicInputOfInstance(run, name, instance))
-	}
-	return res
 }
 
 // GetPublicInputList returns a list of public input of the provided name for the
@@ -572,7 +733,19 @@ func getPublicInputListOfInstance(rec *recursion.Recursion, run wizard.Runtime, 
 func GetPublicInputList(run wizard.Runtime, name string, nb int) []field.Element {
 	var res []field.Element
 	for i := 0; i < nb; i++ {
-		res = append(res, run.GetPublicInput(name+"_"+strconv.Itoa(i)))
+		name := name + "_" + strconv.Itoa(i)
+		res = append(res, run.GetPublicInput(name))
+	}
+	return res
+}
+
+// getPublicInputListOfInstance returns a list of public inputs of the provided
+// name and instance.
+func getPublicInputListOfInstance(rec *recursion.Recursion, run wizard.Runtime, name string, instance int, nb int) []field.Element {
+	var res []field.Element
+	for i := 0; i < nb; i++ {
+		name := name + "_" + strconv.Itoa(i)
+		res = append(res, rec.GetPublicInputOfInstance(run, name, instance))
 	}
 	return res
 }
@@ -581,7 +754,19 @@ func GetPublicInputList(run wizard.Runtime, name string, nb int) []field.Element
 func getPublicInputListGnark(api frontend.API, run wizard.GnarkRuntime, name string, nb int) []frontend.Variable {
 	var res []frontend.Variable
 	for i := 0; i < nb; i++ {
-		res = append(res, run.GetPublicInput(api, name+"_"+strconv.Itoa(i)))
+		name := name + "_" + strconv.Itoa(i)
+		res = append(res, run.GetPublicInput(api, name))
+	}
+	return res
+}
+
+// getPublicInputListOfInstance returns a list of public inputs of the provided
+// name and instance.
+func getPublicInputListOfInstanceGnark(rec *recursion.Recursion, api frontend.API, run wizard.GnarkRuntime, name string, instance int, nb int) []frontend.Variable {
+	var res []frontend.Variable
+	for i := 0; i < nb; i++ {
+		name := name + "_" + strconv.Itoa(i)
+		res = append(res, rec.GetPublicInputOfInstanceGnark(api, run, name, instance))
 	}
 	return res
 }
@@ -591,18 +776,20 @@ func getPublicInputListGnark(api frontend.API, run wizard.GnarkRuntime, name str
 func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.Runtime, instance int) LimitlessPublicInput[field.Element] {
 
 	res := LimitlessPublicInput[field.Element]{
-		TargetNbSegments:    getPublicInputListOfInstance(c.Recursion, run, targetNbSegmentPublicInputBase, instance, c.ModuleNumber),
-		SegmentCountGL:      getPublicInputListOfInstance(c.Recursion, run, segmentCountGLPublicInputBase, instance, c.ModuleNumber),
-		SegmentCountLPP:     getPublicInputListOfInstance(c.Recursion, run, segmentCountLPPPublicInputBase, instance, c.ModuleNumber),
-		GeneralMultiSetHash: getPublicInputListOfInstance(c.Recursion, run, GeneralMultiSetPublicInputBase, instance, mimc.MSetHashSize),
+		TargetNbSegments:             getPublicInputListOfInstance(c.Recursion, run, targetNbSegmentPublicInputBase, instance, c.ModuleNumber),
+		SegmentCountGL:               getPublicInputListOfInstance(c.Recursion, run, segmentCountGLPublicInputBase, instance, c.ModuleNumber),
+		SegmentCountLPP:              getPublicInputListOfInstance(c.Recursion, run, segmentCountLPPPublicInputBase, instance, c.ModuleNumber),
+		GeneralMultiSetHash:          getPublicInputListOfInstance(c.Recursion, run, GeneralMultiSetPublicInputBase, instance, mimc.MSetHashSize),
+		SharedRandomnessMultiSetHash: getPublicInputListOfInstance(c.Recursion, run, SharedRandomnessMultiSetPublicInputBase, instance, mimc.MSetHashSize),
+		LogDerivativeSum:             c.Recursion.GetPublicInputOfInstance(run, LogDerivativeSumPublicInput, instance),
+		HornerSum:                    c.Recursion.GetPublicInputOfInstance(run, HornerPublicInput, instance),
+		GrandProduct:                 c.Recursion.GetPublicInputOfInstance(run, GrandProductPublicInput, instance),
+		SharedRandomness:             c.Recursion.GetPublicInputOfInstance(run, InitialRandomnessPublicInput, instance),
+		VKeyMerkleRoot:               c.Recursion.GetPublicInputOfInstance(run, verifyingKeyMerkleRootPublicInput, instance),
 		VerifyingKey: [2]field.Element{
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKeyPublicInput, instance),
 			c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, instance),
 		},
-		LogDerivativeSum: c.Recursion.GetPublicInputOfInstance(run, LogDerivativeSumPublicInput, instance),
-		HornerSum:        c.Recursion.GetPublicInputOfInstance(run, HornerPublicInput, instance),
-		GrandProduct:     c.Recursion.GetPublicInputOfInstance(run, GrandProductPublicInput, instance),
-		SharedRandomness: c.Recursion.GetPublicInputOfInstance(run, InitialRandomnessPublicInput, instance),
 	}
 
 	for _, pi := range c.PublicInputs.Functionals {
@@ -617,22 +804,74 @@ func (c ConglomerationHierarchical) collectAllPublicInputsOfInstance(run wizard.
 func (c ConglomerationHierarchical) collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Element] {
 
 	res := LimitlessPublicInput[field.Element]{
-		TargetNbSegments:    GetPublicInputList(run, targetNbSegmentPublicInputBase, c.ModuleNumber),
-		SegmentCountGL:      GetPublicInputList(run, segmentCountGLPublicInputBase, c.ModuleNumber),
-		SegmentCountLPP:     GetPublicInputList(run, segmentCountLPPPublicInputBase, c.ModuleNumber),
-		GeneralMultiSetHash: GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
-		VerifyingKey: [2]field.Element{
-			run.GetPublicInput(verifyingKeyPublicInput),
-			run.GetPublicInput(verifyingKey2PublicInput),
-		},
-		LogDerivativeSum: run.GetPublicInput(LogDerivativeSumPublicInput),
-		HornerSum:        run.GetPublicInput(HornerPublicInput),
-		GrandProduct:     run.GetPublicInput(GrandProductPublicInput),
-		SharedRandomness: run.GetPublicInput(InitialRandomnessPublicInput),
+		TargetNbSegments:             GetPublicInputList(run, targetNbSegmentPublicInputBase, c.ModuleNumber),
+		SegmentCountGL:               GetPublicInputList(run, segmentCountGLPublicInputBase, c.ModuleNumber),
+		SegmentCountLPP:              GetPublicInputList(run, segmentCountLPPPublicInputBase, c.ModuleNumber),
+		GeneralMultiSetHash:          GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
+		SharedRandomnessMultiSetHash: GetPublicInputList(run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
+		LogDerivativeSum:             run.GetPublicInput(LogDerivativeSumPublicInput),
+		HornerSum:                    run.GetPublicInput(HornerPublicInput),
+		GrandProduct:                 run.GetPublicInput(GrandProductPublicInput),
+		SharedRandomness:             run.GetPublicInput(InitialRandomnessPublicInput),
+		VKeyMerkleRoot:               run.GetPublicInput(verifyingKeyMerkleRootPublicInput),
 	}
 
 	for _, pi := range scanFunctionalInputs(c.Recursion.InputCompiledIOP) {
 		res.Functionals = append(res.Functionals, run.GetPublicInput(pi.Name))
+	}
+
+	return res
+}
+
+// collectAllPublicInputsOfInstanceGnark returns a structured object representing
+// the public inputs of the given instance.
+func (c ConglomerationHierarchical) collectAllPublicInputsOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, instance int) LimitlessPublicInput[frontend.Variable] {
+
+	res := LimitlessPublicInput[frontend.Variable]{
+		TargetNbSegments:             getPublicInputListOfInstanceGnark(c.Recursion, api, run, targetNbSegmentPublicInputBase, instance, c.ModuleNumber),
+		SegmentCountGL:               getPublicInputListOfInstanceGnark(c.Recursion, api, run, segmentCountGLPublicInputBase, instance, c.ModuleNumber),
+		SegmentCountLPP:              getPublicInputListOfInstanceGnark(c.Recursion, api, run, segmentCountLPPPublicInputBase, instance, c.ModuleNumber),
+		GeneralMultiSetHash:          getPublicInputListOfInstanceGnark(c.Recursion, api, run, GeneralMultiSetPublicInputBase, instance, mimc.MSetHashSize),
+		SharedRandomnessMultiSetHash: getPublicInputListOfInstanceGnark(c.Recursion, api, run, SharedRandomnessMultiSetPublicInputBase, instance, mimc.MSetHashSize),
+		LogDerivativeSum:             c.Recursion.GetPublicInputOfInstanceGnark(api, run, LogDerivativeSumPublicInput, instance),
+		HornerSum:                    c.Recursion.GetPublicInputOfInstanceGnark(api, run, HornerPublicInput, instance),
+		GrandProduct:                 c.Recursion.GetPublicInputOfInstanceGnark(api, run, GrandProductPublicInput, instance),
+		SharedRandomness:             c.Recursion.GetPublicInputOfInstanceGnark(api, run, InitialRandomnessPublicInput, instance),
+		VKeyMerkleRoot:               c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKeyMerkleRootPublicInput, instance),
+		VerifyingKey: [2]frontend.Variable{
+			c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKeyPublicInput, instance),
+			c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, instance),
+		},
+	}
+
+	for _, pi := range c.PublicInputs.Functionals {
+		res.Functionals = append(res.Functionals, c.Recursion.GetPublicInputOfInstanceGnark(api, run, pi.Name, instance))
+	}
+
+	return res
+}
+
+// collectAllPublicInputsGnark returns a structured object representing the public
+// inputs of all the instances.
+//
+// In the returned object, the verifying key public inputs are not populated.
+func (c ConglomerationHierarchical) collectAllPublicInputsGnark(api frontend.API, run wizard.GnarkRuntime) LimitlessPublicInput[frontend.Variable] {
+
+	res := LimitlessPublicInput[frontend.Variable]{
+		TargetNbSegments:             getPublicInputListGnark(api, run, targetNbSegmentPublicInputBase, c.ModuleNumber),
+		SegmentCountGL:               getPublicInputListGnark(api, run, segmentCountGLPublicInputBase, c.ModuleNumber),
+		SegmentCountLPP:              getPublicInputListGnark(api, run, segmentCountLPPPublicInputBase, c.ModuleNumber),
+		GeneralMultiSetHash:          getPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
+		SharedRandomnessMultiSetHash: getPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
+		LogDerivativeSum:             run.GetPublicInput(api, LogDerivativeSumPublicInput),
+		HornerSum:                    run.GetPublicInput(api, HornerPublicInput),
+		GrandProduct:                 run.GetPublicInput(api, GrandProductPublicInput),
+		SharedRandomness:             run.GetPublicInput(api, InitialRandomnessPublicInput),
+		VKeyMerkleRoot:               run.GetPublicInput(api, verifyingKeyMerkleRootPublicInput),
+	}
+
+	for _, pi := range scanFunctionalInputs(c.Recursion.InputCompiledIOP) {
+		res.Functionals = append(res.Functionals, run.GetPublicInput(api, pi.Name))
 	}
 
 	return res
@@ -671,13 +910,62 @@ func findProofTypeAndModule(instance LimitlessPublicInput[field.Element]) (Proof
 	switch {
 	case sumGL+sumLPP > 1:
 		return proofTypeConglo, 0
-	case sumGL >= 1:
+	case sumGL == 1:
 		return proofTypeGL, moduleIndex
-	case sumLPP >= 1:
+	case sumLPP == 1:
 		return proofTypeLPP, moduleIndex
 	}
 
 	panic("unreachable")
+}
+
+func findVkPositionGnark(api frontend.API, instance LimitlessPublicInput[frontend.Variable]) frontend.Variable {
+
+	var (
+		sumGL, sumLPP = frontend.Variable(0), frontend.Variable(0)
+		moduleIndex   = frontend.Variable(-1) // can't be -1 at the end of the "mod" loop.
+		moduleNumber  = len(instance.SegmentCountGL)
+	)
+
+	for mod := 0; mod < moduleNumber; mod++ {
+
+		var (
+			segmentCountGL  = instance.SegmentCountGL[mod]
+			segmentCountLPP = instance.SegmentCountLPP[mod]
+		)
+
+		sumGL = api.Add(sumGL, segmentCountGL)
+		sumLPP = api.Add(sumLPP, segmentCountLPP)
+		moduleIndex = api.Select(
+			api.IsZero(api.Add(segmentCountGL, segmentCountLPP)),
+			moduleIndex,
+			frontend.Variable(mod),
+		)
+	}
+
+	var (
+		hasNothing = api.IsZero(
+			api.Add(sumGL, sumLPP),
+		)
+
+		isGL = api.Mul(
+			api.IsZero(sumLPP),
+			api.IsZero(api.Sub(sumGL, 1)),
+		)
+
+		isLPP = api.Mul(
+			api.IsZero(sumGL),
+			api.IsZero(api.Sub(sumLPP, 1)),
+		)
+	)
+
+	api.AssertIsEqual(hasNothing, 0)
+
+	return api.Select(isGL, moduleIndex, // when isGL
+		api.Select(isLPP, api.Add(moduleNumber, moduleIndex), // when isLPP
+			2*moduleNumber, // when conglomeration
+		),
+	)
 }
 
 // getVerifyingKeyPair extracts the verifyingKeys from the compiled IOP.
@@ -697,4 +985,69 @@ func scanFunctionalInputs(comp *wizard.CompiledIOP) []wizard.PublicInput {
 		}
 	}
 	return res
+}
+
+// assertCompatibleIOPs checks that all the compiled IOPs are compatible and
+// can be aggregated within the same conglomeration.
+func assertCompatibleIOPs(d *DistributedWizard) {
+
+	w0 := d.CompiledConglomeration.RecursionComp
+
+	for i := range d.CompiledGLs {
+		diff1, diff2 := cmpWizardIOP(w0, d.CompiledGLs[i].RecursionComp)
+		if len(diff1) > 0 || len(diff2) > 0 {
+			dumpWizardIOP(w0, fmt.Sprintf("conglomeration-debug/iop-conglo.csv"))
+			dumpWizardIOP(d.CompiledGLs[i].RecursionComp, fmt.Sprintf("conglomeration-debug/iop-gl-%d.csv", i))
+			utils.Panic("incompatible IOPs i=%v\n\t+++=%v\n\t---=%v", i, diff1, diff2)
+		}
+	}
+
+	for i := range d.CompiledLPPs {
+		diff1, diff2 := cmpWizardIOP(w0, d.CompiledLPPs[i].RecursionComp)
+		if len(diff1) > 0 || len(diff2) > 0 {
+			dumpWizardIOP(w0, fmt.Sprintf("conglomeration-debug/iop-conglomeration.csv"))
+			dumpWizardIOP(d.CompiledLPPs[i].RecursionComp, fmt.Sprintf("conglomeration-debug/iop-lpp-%d.csv", i))
+			utils.Panic("incompatible IOPs i=%v\n\t+++=%v\n\t---=%v", i, diff1, diff2)
+		}
+	}
+}
+
+// cmpWizardIOP compares two compiled IOPs. The function is here to help ensuring
+// that all the conglomerated wizard IOPs have the same structure and help
+// figuring out inconsistencies if there are.
+func cmpWizardIOP(c1, c2 *wizard.CompiledIOP) (diff1, diff2 []string) {
+
+	var (
+		stringB1 = &strings.Builder{}
+		stringB2 = &strings.Builder{}
+	)
+
+	logdata.GenCSV(stringB1, logdata.IncludeAllFilter)(c1)
+	logdata.GenCSV(stringB2, logdata.IncludeAllFilter)(c2)
+
+	var (
+		c1Formatted = strings.Split(stringB1.String(), "\n")
+		c2Formatted = strings.Split(stringB2.String(), "\n")
+	)
+
+	diff1, diff2 = utils.SetDiff(c1Formatted, c2Formatted)
+	lessFunc := func(a, b string) int {
+		if a < b {
+			return -1
+		} else if a > b {
+			return 1
+		} else {
+			return 0
+		}
+	}
+
+	slices.SortFunc(diff1, lessFunc)
+	slices.SortFunc(diff2, lessFunc)
+
+	return diff1, diff2
+}
+
+// dumpWizardIOP dumps a compiled IOP to a file.
+func dumpWizardIOP(c *wizard.CompiledIOP, name string) {
+	logdata.GenCSV(files.MustOverwrite(name), logdata.IncludeAllFilter)(c)
 }
