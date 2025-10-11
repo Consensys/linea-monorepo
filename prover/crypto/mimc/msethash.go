@@ -149,6 +149,13 @@ func (m *MSetHashGnark) Sub(api frontend.API, other MSetHashGnark) {
 	}
 }
 
+// AssertEqual asserts that the multisets hashes are equal.
+func (m *MSetHashGnark) AssertEqual(api frontend.API, other MSetHashGnark) {
+	for i := 0; i < MSetHashSize; i++ {
+		api.AssertIsEqual(m[i], other[i])
+	}
+}
+
 // MsetOfSingletonGnark returns the multiset vector of an entry
 func MsetOfSingletonGnark(api frontend.API, msg ...frontend.Variable) MSetHashGnark {
 	m := MSetHashGnark{}

@@ -790,11 +790,13 @@ func (modGl *ModuleGL) declarePublicInput() {
 	segmentCountGl[modGl.Disc.IndexOf(modGl.DefinitionInput.ModuleName)] = field.One()
 
 	modGl.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
+		VKeyMerkleRoot:               declarePiColumn(modGl.Wiop, verifyingKeyMerkleRootPublicInput),
 		TargetNbSegments:             declareListOfPiColumns(modGl.Wiop, 0, targetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:               declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:              declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
 		GeneralMultiSetHash:          declareListOfPiColumns(modGl.Wiop, 1, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
-		SharedRandomnessMultiSetHash: declareListOfPiColumns(modGl.Wiop, 1, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
+		SharedRandomnessMultiSetHash: declareListOfPiColumns(modGl.Wiop, 1, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
+		SharedRandomness:             modGl.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero())),
 	}
 
 	// This adds the functional inputs by multiplying them with the value of
@@ -894,7 +896,7 @@ func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 	}
 
 	assignListOfPiColumns(run, GeneralMultiSetPublicInputBase, multiSetGeneral[:])
-	assignListOfPiColumns(run, sharedRandomnessMultiSetPublicInputBase, multiSetSharedRandomness[:])
+	assignListOfPiColumns(run, SharedRandomnessMultiSetPublicInputBase, multiSetSharedRandomness[:])
 }
 
 // checkMultiSetHash checks that the LPP commitment MSet is correctly
@@ -904,7 +906,7 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
 		targetMSetGeneral          = GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-		targetMSetSharedRandomness = GetPublicInputList(run, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetSharedRandomness = GetPublicInputList(run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments             = run.GetPublicInput(lppMerkleRootPublicInput)
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
@@ -979,7 +981,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 	var (
 		targetMSetGeneral          = getPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-		targetMSetSharedRandomness = getPublicInputListGnark(api, run, sharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetSharedRandomness = getPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments             = run.GetPublicInput(api, lppMerkleRootPublicInput)
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))

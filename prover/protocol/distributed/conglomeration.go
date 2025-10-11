@@ -164,8 +164,8 @@ package distributed
 // 	return cong
 // }
 
-// // Compile compiles the conglomeration proof. The function first checks if the public
-// // inputs are compatible and then compiles the conglomeration proof.
+// Compile compiles the conglomeration proof. The function first checks if the public
+// inputs are compatible and then compiles the conglomeration proof.
 // func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 
 // 	var (
@@ -628,46 +628,6 @@ package distributed
 // 	run.AssignColumn(colToAssign[0].GetColID(), smartvectors.RightZeroPadded(assignment[0], colToAssign[0].Size()))
 // 	run.AssignColumn(colToAssign[1].GetColID(), smartvectors.RightZeroPadded(assignment[1], colToAssign[1].Size()))
 // 	run.AssignColumn(posToAssign.GetColID(), smartvectors.RightZeroPadded(lppColumnIndex, posToAssign.Size()))
-// }
-
-// // cmpWizardIOP compares two compiled IOPs. The function is here to help ensuring
-// // that all the conglomerated wizard IOPs have the same structure and help
-// // figuring out inconsistencies if there are.
-// func cmpWizardIOP(c1, c2 *wizard.CompiledIOP) (diff1, diff2 []string) {
-
-// 	var (
-// 		stringB1 = &strings.Builder{}
-// 		stringB2 = &strings.Builder{}
-// 	)
-
-// 	logdata.GenCSV(stringB1, logdata.IncludeAllFilter)(c1)
-// 	logdata.GenCSV(stringB2, logdata.IncludeAllFilter)(c2)
-
-// 	var (
-// 		c1Formatted = strings.Split(stringB1.String(), "\n")
-// 		c2Formatted = strings.Split(stringB2.String(), "\n")
-// 	)
-
-// 	diff1, diff2 = utils.SetDiff(c1Formatted, c2Formatted)
-// 	lessFunc := func(a, b string) int {
-// 		if a < b {
-// 			return -1
-// 		} else if a > b {
-// 			return 1
-// 		} else {
-// 			return 0
-// 		}
-// 	}
-
-// 	slices.SortFunc(diff1, lessFunc)
-// 	slices.SortFunc(diff2, lessFunc)
-
-// 	return diff1, diff2
-// }
-
-// // dumpWizardIOP dumps a compiled IOP to a file.
-// func dumpWizardIOP(c *wizard.CompiledIOP, name string) {
-// 	logdata.GenCSV(files.MustOverwrite(name), logdata.IncludeAllFilter)(c)
 // }
 
 // // precomputeToTheWhiteListVKeys declares the precomputed columns needed to

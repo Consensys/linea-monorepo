@@ -72,6 +72,9 @@ type ModuleWitnessGL struct {
 	// ReceivedValuesGlobal stores the received values (for the global
 	// constraints) of the current segment.
 	ReceivedValuesGlobal []field.Element
+	// VkMerkleRoot is the merkle root of a merkle tree storing the verification
+	// key.
+	VkMerkleRoot field.Element
 }
 
 // ModuleWitnessLPP is a structure collecting the witness of a module. The
@@ -95,6 +98,9 @@ type ModuleWitnessLPP struct {
 	N0Values []int
 	// Columns maps the column id to their witness values
 	Columns map[ifaces.ColID]smartvectors.SmartVector
+	// VkMerkleRoot is the merkle root of a merkle tree storing the verification
+	// key.
+	VkMerkleRoot field.Element
 }
 
 // SegmentRuntime scans a [wizard.ProverRuntime] and returns a list of

@@ -3,10 +3,9 @@ package distributed
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
@@ -147,14 +146,13 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	logrus.Infof("[Before first Vortex] module=%v numCellsCommitted=%v numCellsPrecomputed=%v numCellsProof=%v",
 		subscript, initialWizardStats.NumCellsCommitted, initialWizardStats.NumCellsPrecomputed, initialWizardStats.NumCellsProof)
 
-	if proofType == proofTypeGL {
+	if proofType == proofTypeConglo {
 
 		wizard.ContinueCompilation(modIOP,
 			vortex.Compile(
 				2,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
-				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
 				vortex.WithOptionalSISHashingThreshold(64),
 			),
 		)
@@ -165,13 +163,10 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				2,
 				vortex.ForceNumOpenedColumns(256),
 				vortex.WithSISParams(&sisInstance),
+				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
 				vortex.WithOptionalSISHashingThreshold(64),
 			),
 		)
-
-		modIOP.InsertPublicInput(
-			lppMerkleRootPublicInput,
-			accessors.NewConstant(field.Zero()))
 	}
 
 	wizard.ContinueCompilation(modIOP,
@@ -228,6 +223,27 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	)
 
 	var recCtx *recursion.Recursion
+	// The loops below are there to filter the public inputs so that
+	// Important: this must remain nil by default.
+	var publicInputRestriction []string
+
+	if proofType == proofTypeConglo {
+		for _, pi := range modIOP.PublicInputs {
+			if strings.HasPrefix(pi.Name, "conglomeration") {
+				continue
+			}
+			publicInputRestriction = append(publicInputRestriction, pi.Name)
+		}
+	}
+
+	if proofType == proofTypeLPP || proofType == proofTypeGL {
+		for _, pi := range modIOP.PublicInputs {
+			if strings.Contains(pi.Name, lppMerkleRootPublicInput) {
+				continue
+			}
+			publicInputRestriction = append(publicInputRestriction, pi.Name)
+		}
+	}
 
 	defineRecursion := func(build2 *wizard.Builder) {
 		recCtx = recursion.DefineRecursionOf(
@@ -241,6 +257,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				WithExternalHasherOpts: true,
 				ExternalHasherNbRows:   fixedNbRowExternalHasher,
 				Subscript:              subscript,
+				SkipRecursionPrefix:    true,
+				RestrictPublicInputs:   publicInputRestriction,
 			},
 		)
 	}
