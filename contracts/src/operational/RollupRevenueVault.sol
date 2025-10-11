@@ -178,7 +178,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     uint256 balanceAvailable = address(this).balance;
 
     uint256 totalAmountOwing = invoiceArrears + _invoiceAmount;
-    uint256 amountToPay = balanceAvailable < totalAmountOwing ? balanceAvailable : totalAmountOwing;
+    uint256 amountToPay = (balanceAvailable < totalAmountOwing) ? balanceAvailable : totalAmountOwing;
 
     invoiceArrears = totalAmountOwing - amountToPay;
     lastInvoiceDate = _endTimestamp;
