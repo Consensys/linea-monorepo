@@ -36,8 +36,8 @@ export interface Validator {
 }
 
 export interface BeaconBlockHeader {
-  slot: bigint;
-  proposerIndex: bigint;
+  slot: number;
+  proposerIndex: number;
   parentRoot: string;
   stateRoot: string;
   bodyRoot: string;
@@ -53,4 +53,19 @@ export interface ValidatorWitness {
   proposerIndex: bigint;
   activationEpoch: bigint;
   activationEligibilityEpoch: bigint;
+}
+
+export interface EIP4788Witness {
+  // Beacon block root
+  blockRoot: string;
+  // GI First Validator
+  gIFirstValidator: string;
+  beaconBlockHeader: BeaconBlockHeader;
+  witness: ValidatorContainerWitness;
+}
+
+export interface ValidatorContainerWitness {
+  validatorIndex: bigint;
+  validator: ValidatorContainer;
+  proof: string[];
 }

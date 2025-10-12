@@ -1,9 +1,9 @@
 import { hexlify, parseUnits, randomBytes } from "ethers";
 import { ethers } from "hardhat";
-import { BeaconBlockHeader, Validator, ValidatorContainer } from "./types";
+import { BeaconBlockHeader, EIP4788Witness, Validator, ValidatorContainer } from "./types";
 import { SecretKey } from "@chainsafe/blst";
-import { SSZMerkleTree } from "contracts/typechain-types";
-import { FAR_FUTURE_EXIT_EPOCH } from "../../common/constants";
+import { SSZMerkleTree, TestCLProofVerifier } from "contracts/typechain-types";
+import { FAR_FUTURE_EXIT_EPOCH, SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
 
 export const randomInt = (max: number): number => Math.floor(Math.random() * max);
 
@@ -25,6 +25,7 @@ let secretIndex = 0;
 
 export const generateValidator = (customWC?: string): Validator => {
   const secretKey = masterSecret.deriveChildEip2333(secretIndex++);
+  const activationEligibilityEpoch = BigInt(randomInt(343000));
 
   return {
     blsPrivateKey: secretKey,
@@ -33,8 +34,8 @@ export const generateValidator = (customWC?: string): Validator => {
       withdrawalCredentials: customWC ?? hexlify(randomBytes32()),
       effectiveBalance: parseUnits(randomInt(32).toString(), "gwei"),
       slashed: false,
-      activationEligibilityEpoch: BigInt(randomInt(343300)),
-      activationEpoch: BigInt(randomInt(343300)),
+      activationEligibilityEpoch: activationEligibilityEpoch,
+      activationEpoch: activationEligibilityEpoch + BigInt(randomInt(300)),
       exitEpoch: FAR_FUTURE_EXIT_EPOCH,
       withdrawableEpoch: FAR_FUTURE_EXIT_EPOCH,
     },
@@ -122,12 +123,12 @@ export const prepareLocalMerkleTree = async (
   };
 };
 
-export const ACTIVE_0X01_VALIDATOR = {
+export const ACTIVE_0X01_VALIDATOR_PROOF: EIP4788Witness = {
   blockRoot: "0xeb961eae87c614e11a7959a529a59db3c9d825d284dc30e0d12e43ba6daf4cca",
   gIFirstValidator: "0x0000000000000000000000000000000000000000000000000096000000000028",
   beaconBlockHeader: {
     slot: 22140000,
-    proposerIndex: "1337",
+    proposerIndex: 1337,
     parentRoot: "0x8576d3eb5ef5b3a460b85e5493d0d0510b7d1a2943a4e51add5227c9d3bffa0f",
     stateRoot: "0xa802c5f4f818564a2774a19937fdfafc0241f475d7f28312c3609c6e5995d980",
     bodyRoot: "0xca4f98890bc98a59f015d06375a5e00546b8f2ac1e88d31b1774ea28d4b3e7d1",
@@ -195,6 +196,65 @@ export const ACTIVE_0X01_VALIDATOR = {
       "0x1c4a401fbd320fd7b848c9fc6118444da8797c2e41c525eb475ff76dbf44500b",
     ],
   },
+};
+
+// Take the known working EIP4788 proof from ACTIVE_0X01_VALIDATOR_PROOF
+// Create a new 0x02 ValidatorContainer based on the address input
+// Re-hash back up the Merkle tree to derive a new state root and new beacon root
+// Fine for unit tests where we need to stub the hash values anyway
+export const generateEIP4478Witness = async (
+  address: string,
+  sszMerkleTree: SSZMerkleTree,
+  verifier: TestCLProofVerifier,
+) => {
+  const lowercaseAddress = address.toLowerCase().replace(/^0x/, "");
+  if (lowercaseAddress.length !== 40 || !/^[0-9a-f]+$/.test(lowercaseAddress)) {
+    throw new Error("Invalid address format");
+  }
+  // Create 0x02 withdrawal credentials
+  const withdrawalCredentials = `0x020000000000000000000000${lowercaseAddress}`;
+  const { container } = generateValidator(withdrawalCredentials);
+  const validatorWitness = {
+    validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
+    validator: container,
+    proof: [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof],
+  };
+
+  // Compute state root
+  const validatorMerkleSubtree = await sszMerkleTree.getValidatorPubkeyWCParentProof(container);
+  const validatorGIndex = await verifier.getValidatorGI(validatorWitness.validatorIndex, 0);
+  const stateRoot = await sszMerkleTree.getRoot(validatorWitness.proof, validatorMerkleSubtree.root, validatorGIndex);
+
+  // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
+  await sszMerkleTree.verifyProof(validatorWitness.proof, stateRoot, validatorMerkleSubtree.root, validatorGIndex);
+
+  // Generate beacon chain header
+  const slot = SLOTS_PER_EPOCH * (container.activationEpoch + SHARD_COMMITTEE_PERIOD) + 1n;
+  const beaconHeader = generateBeaconHeader(stateRoot, Number(slot));
+  const beaconHeaderMerkleSubtree = await sszMerkleTree.getBeaconBlockHeaderProof(beaconHeader);
+  const beaconRoot = await sszMerkleTree.getRoot(
+    [...beaconHeaderMerkleSubtree.proof],
+    stateRoot,
+    beaconHeaderMerkleSubtree.index,
+  );
+
+  // Verify computed beacon root
+  await sszMerkleTree.verifyProof(
+    [...beaconHeaderMerkleSubtree.proof],
+    beaconRoot,
+    stateRoot,
+    beaconHeaderMerkleSubtree.index,
+  );
+
+  // Generate witness
+  const eip4788Witness: EIP4788Witness = {
+    blockRoot: beaconRoot,
+    gIFirstValidator: ACTIVE_0X01_VALIDATOR_PROOF.gIFirstValidator,
+    beaconBlockHeader: beaconHeader,
+    witness: validatorWitness,
+  };
+
+  return eip4788Witness;
 };
 
 // Got from this tx - https://hoodi.etherscan.io/tx/0x765837701107347325179c5510959482686456b513776346977617062c294522
