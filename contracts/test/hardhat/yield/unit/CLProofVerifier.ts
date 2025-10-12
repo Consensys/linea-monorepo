@@ -9,9 +9,12 @@ import {
   generateValidator,
   prepareLocalMerkleTree,
   randomBytes32,
+  randomInt,
   setBeaconBlockRoot,
 } from "../helpers/proof";
 import { ethers } from "hardhat";
+import { SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
+import { expectRevertWithCustomError } from "../../common/helpers";
 
 describe("BLS", () => {
   let verifier: TestCLProofVerifier;
@@ -287,6 +290,31 @@ describe("BLS", () => {
     await verifier.validateValidatorContainerForPermissionlessUnstake(
       validatorWitness,
       eip4788Witness.witness.validator.withdrawalCredentials,
+    );
+  });
+
+  it("should revert for Validator that has not been active for long enough", async () => {
+    const slot = randomInt(1743359);
+    const epoch = BigInt(slot) / SLOTS_PER_EPOCH;
+    const activationEpoch = epoch - SHARD_COMMITTEE_PERIOD + 1n;
+
+    const { container } = generateValidator();
+    const validatorWitness: ValidatorWitness = {
+      proof: [],
+      validatorIndex: BigInt(randomInt(1743359)),
+      pubkey: container.pubkey,
+      effectiveBalance: container.effectiveBalance,
+      childBlockTimestamp: BigInt(randomInt(1743359)),
+      slot: BigInt(slot),
+      activationEpoch,
+      activationEligibilityEpoch: activationEpoch - 10n,
+      proposerIndex: BigInt(randomInt(1743359)),
+    };
+
+    await expectRevertWithCustomError(
+      verifier,
+      verifier.validateActivationEpoch(validatorWitness),
+      "ValidatorNotActiveForLongEnough",
     );
   });
 });
