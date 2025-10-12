@@ -205,9 +205,10 @@ export const ACTIVE_0X01_VALIDATOR_PROOF: EIP4788Witness = {
 // Re-hash back up the Merkle tree to derive a new state root and new beacon root
 // Fine for unit tests where we need to stub the hash values anyway
 export const generateEIP4478Witness = async (
-  address: string,
   sszMerkleTree: SSZMerkleTree,
   verifier: TestCLProofVerifier,
+  address: string,
+  effectiveBalance?: bigint,
 ) => {
   const lowercaseAddress = address.toLowerCase().replace(/^0x/, "");
   if (lowercaseAddress.length !== 40 || !/^[0-9a-f]+$/.test(lowercaseAddress)) {
@@ -216,6 +217,9 @@ export const generateEIP4478Witness = async (
   // Create 0x02 withdrawal credentials
   const withdrawalCredentials = `0x020000000000000000000000${lowercaseAddress}`;
   const { container } = generateValidator(withdrawalCredentials);
+  if (effectiveBalance) {
+    container.effectiveBalance = effectiveBalance;
+  }
   const validatorWitness = {
     validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
     validator: container,
@@ -259,13 +263,14 @@ export const generateEIP4478Witness = async (
   return { eip4788Witness, beaconHeaderMerkleSubtreeProof: [...beaconHeaderMerkleSubtree.proof] };
 };
 
-export const generateLidoUnstakePermissionlessWitness = async (address: string) => {
+export const generateLidoUnstakePermissionlessWitness = async (address: string, effectiveBalance?: bigint) => {
   const sszMerkleTree = await loadFixture(deploySSZMerkleTree);
   const verifier = await loadFixture(deployTestCLProofVerifier);
   const { eip4788Witness, beaconHeaderMerkleSubtreeProof } = await generateEIP4478Witness(
-    address,
     sszMerkleTree,
     verifier,
+    address,
+    effectiveBalance,
   );
   const concatenatedProof = [...eip4788Witness.witness.proof, ...beaconHeaderMerkleSubtreeProof];
   const timestamp = await setBeaconBlockRoot(eip4788Witness.blockRoot);

@@ -270,9 +270,9 @@ describe("BLS", () => {
   it("should verify fabricated 0x02 validator object in merkle tree", async () => {
     const randomAddress = ethers.Wallet.createRandom().address;
     const { eip4788Witness, beaconHeaderMerkleSubtreeProof } = await generateEIP4478Witness(
-      randomAddress,
       sszMerkleTree,
       verifier,
+      randomAddress,
     );
     const concatenatedProof = [...eip4788Witness.witness.proof, ...beaconHeaderMerkleSubtreeProof];
     const timestamp = await setBeaconBlockRoot(eip4788Witness.blockRoot);
