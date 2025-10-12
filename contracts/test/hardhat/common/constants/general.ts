@@ -13,5 +13,6 @@ export const BLS_CURVE_MODULUS = 52435875175126190479447740508185965837690552500
 
 export const BLOCK_COINBASE = "0xc014ba5ec014ba5ec014ba5ec014ba5ec014ba5e";
 
+export const ONE_GWEI = ethers.parseUnits("1", "gwei");
 export const ONE_ETHER = ethers.parseEther("1");
 export const ONE_THOUSAND_ETHER = ethers.parseEther("1000");

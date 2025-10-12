@@ -38,6 +38,7 @@ import {
   EMPTY_CALLDATA,
   VALIDATOR_WITNESS_TYPE,
   THIRTY_TWO_ETH_IN_GWEI,
+  ONE_GWEI,
 } from "../../common/constants";
 import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
@@ -505,7 +506,13 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       }
       await expect(call)
         .to.emit(yieldManager, "LidoVaultUnstakePermissionlessRequest")
-        .withArgs(mockStakingVaultAddress, refundAddress, maxUnstakeAmountGwei, validatorWitness.pubkey, unstakeAmount);
+        .withArgs(
+          mockStakingVaultAddress,
+          refundAddress,
+          maxUnstakeAmountGwei * ONE_GWEI,
+          validatorWitness.pubkey,
+          unstakeAmount,
+        );
     });
   });
 
@@ -560,7 +567,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       );
 
       // Act
-      const maxUnstakeAmountGwei = await yieldManager
+      const maxUnstakeAmount = await yieldManager
         .connect(securityCouncil)
         .validateUnstakePermissionlessHarness.staticCall(
           yieldProviderAddress,
@@ -575,7 +582,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
           ? validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI
           : 0n;
 
-      expect(expectedMaxUnstakeAmountGwei).eq(maxUnstakeAmountGwei);
+      expect(expectedMaxUnstakeAmountGwei * ONE_GWEI).eq(maxUnstakeAmount);
     });
     it("If withdrawal amount leaves validator > activation balance, return amount", async () => {
       const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
@@ -587,20 +594,21 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         [VALIDATOR_WITNESS_TYPE],
         [validatorWitness],
       );
-      const WITHDRAWAL_AMOUNT = validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei");
+      const WITHDRAWAL_AMOUNT_GWEI =
+        validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei");
 
       // Act
-      const maxUnstakeAmountGwei = await yieldManager
+      const maxUnstakeAmount = await yieldManager
         .connect(securityCouncil)
         .validateUnstakePermissionlessHarness.staticCall(
           yieldProviderAddress,
           validatorWitness.pubkey,
-          [WITHDRAWAL_AMOUNT],
+          [WITHDRAWAL_AMOUNT_GWEI],
           withdrawalParamsProof,
         );
 
       // Assert
-      expect(WITHDRAWAL_AMOUNT).eq(maxUnstakeAmountGwei);
+      expect(WITHDRAWAL_AMOUNT_GWEI * ONE_GWEI).eq(maxUnstakeAmount);
     });
     it("If effective balance < 32 ETH, return 0", async () => {
       const WITHDRAWAL_AMOUNT = parseUnits("2049", "gwei");
@@ -617,7 +625,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       );
 
       // Act
-      const maxUnstakeAmountGwei = await yieldManager
+      const maxUnstakeAmount = await yieldManager
         .connect(securityCouncil)
         .validateUnstakePermissionlessHarness.staticCall(
           yieldProviderAddress,
@@ -627,7 +635,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         );
 
       // Assert
-      expect(0).eq(maxUnstakeAmountGwei);
+      expect(0).eq(maxUnstakeAmount);
     });
   });
 });

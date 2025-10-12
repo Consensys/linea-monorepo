@@ -35,13 +35,13 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
   /// @param stakingVault The staking vault address.
   /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.
-  /// @param maxUnstakeAmountGwei Maximum ETH (in gwei) expected to be withdrawn for the request.
+  /// @param maxUnstakeAmount Maximum ETH expected to be withdrawn for the request.
   /// @param pubkeys Concatenated validator pubkeys.
   /// @param amounts Withdrawal request amount array (currently length 1).
   event LidoVaultUnstakePermissionlessRequest(
     address indexed stakingVault,
     address indexed refundRecipient,
-    uint256 maxUnstakeAmountGwei,
+    uint256 maxUnstakeAmount,
     bytes pubkeys,
     uint64[] amounts
   );
@@ -327,7 +327,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    * @notice Helper function to execute EIP-7002 withdrawal requests via Lido contracts.
    * @param _yieldProvider The yield provider address.
    * @param _pubkeys Concatenated validator public keys (48 bytes each).
-   * @param _amounts Withdrawal amounts in wei for each validator key and must match _pubkeys length.
+   * @param _amounts Withdrawal amounts in gwei for each validator key and must match _pubkeys length.
    *         Set amount to 0 for a full validator exit.
    *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation
    * @param _refundRecipient Address to receive any fee refunds, if zero, refunds go to msg.sender.
@@ -354,24 +354,24 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    * @param _yieldProvider The yield provider address.
    * @param _withdrawalParams ABI encoded provider parameters.
    * @param _withdrawalParamsProof Proof data (typically a beacon chain Merkle proof).
-   * @return maxUnstakeAmountGwei Maximum ETH amount (in gwei) expected to be withdrawn as a result of this request.
+   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */
   function unstakePermissionless(
     address _yieldProvider,
     bytes calldata _withdrawalParams,
     bytes calldata _withdrawalParamsProof
-  ) external payable onlyDelegateCall returns (uint256 maxUnstakeAmountGwei) {
+  ) external payable onlyDelegateCall returns (uint256 maxUnstakeAmount) {
     (bytes memory pubkeys, uint64[] memory amounts, address refundRecipient) = abi.decode(
       _withdrawalParams,
       (bytes, uint64[], address)
     );
-    maxUnstakeAmountGwei = _validateUnstakePermissionless(_yieldProvider, pubkeys, amounts, _withdrawalParamsProof);
+    maxUnstakeAmount = _validateUnstakePermissionless(_yieldProvider, pubkeys, amounts, _withdrawalParamsProof);
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
 
     emit LidoVaultUnstakePermissionlessRequest(
       _getYieldProviderStorage(_yieldProvider).ossifiedEntrypoint,
       refundRecipient,
-      maxUnstakeAmountGwei,
+      maxUnstakeAmount,
       pubkeys,
       amounts
     );
@@ -383,18 +383,18 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    * @dev Checks guided by consensus specs https://github.com/ethereum/consensus-specs/blob/834e40604ae4411e565bd6540da50b008b2496dc/specs/electra/beacon-chain.md#new-process_withdrawal_request
    * @param _yieldProvider The yield provider address.
    * @param _pubkeys Concatenated validator public keys (48 bytes each).
-   * @param _amounts Withdrawal amounts in wei for each validator key and must match _pubkeys length.
+   * @param _amounts Withdrawal amounts in gwei for each validator key and must match _pubkeys length.
    *         Set amount to 0 for a full validator exit.
    *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
-   * @return maxUnstakeAmountGwei Maximum ETH amount (in gwei) expected to be withdrawn as a result of this request.
+   * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */
   function _validateUnstakePermissionless(
     address _yieldProvider,
     bytes memory _pubkeys,
     uint64[] memory _amounts,
     bytes calldata _withdrawalParamsProof
-  ) internal view returns (uint256 maxUnstakeAmountGwei) {
+  ) internal view returns (uint256 maxUnstakeAmount) {
     // Length validator
     if (_pubkeys.length != PUBLIC_KEY_LENGTH || _amounts.length != 1) {
       revert SingleValidatorOnlyForUnstakePermissionless();
@@ -427,10 +427,12 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       We will not keep track of 'pending_balance_to_withdraw'.
       It is enough that $.pendingPermissionlessWithdrawal is decremented on every ETH transfer to L1MessageService.
     */
-    maxUnstakeAmountGwei = Math256.min(
+    uint256 maxUnstakeAmountGwei = Math256.min(
       amount,
       Math256.safeSub(witness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI)
     );
+    // Convert from Beacon Chain units of 'gwei' to execution layer units of 'wei'
+    maxUnstakeAmount = maxUnstakeAmountGwei * 1 gwei;
   }
 
   /**
