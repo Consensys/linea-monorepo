@@ -191,13 +191,41 @@ export async function deployLidoStVaultYieldProviderFactory() {
   return { mockLineaRollup, yieldManager, mockVaultHub, mockSTETH, lidoStVaultYieldProviderFactory };
 }
 
+async function deployLidoStVaultYieldProviderDependenciesFixture() {
+  const { securityCouncil } = await getAccountsFixture();
+  const { mockLineaRollup, yieldManager } = await deployYieldManagerForUnitTest();
+  const mockVaultHub = await deployMockVaultHub();
+  const mockSTETH = await deployMockSTETH();
+  const mockDashboard = await deployMockDashboard();
+  const mockStakingVault = await deployMockStakingVault();
+  const sszMerkleTree = await deploySSZMerkleTree();
+  const verifier = await deployTestCLProofVerifier();
+
+  return {
+    securityCouncil,
+    mockLineaRollup,
+    yieldManager,
+    mockVaultHub,
+    mockSTETH,
+    mockDashboard,
+    mockStakingVault,
+    sszMerkleTree,
+    verifier,
+  };
+}
+
 export async function deployAndAddSingleLidoStVaultYieldProvider() {
-  const { securityCouncil } = await loadFixture(getAccountsFixture);
-  const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTest);
-  const mockVaultHub = await loadFixture(deployMockVaultHub);
-  const mockSTETH = await loadFixture(deployMockSTETH);
-  const mockDashboard = await loadFixture(deployMockDashboard);
-  const mockStakingVault = await loadFixture(deployMockStakingVault);
+  const {
+    securityCouncil,
+    mockLineaRollup,
+    yieldManager,
+    mockVaultHub,
+    mockSTETH,
+    mockDashboard,
+    mockStakingVault,
+    sszMerkleTree,
+    verifier,
+  } = await loadFixture(deployLidoStVaultYieldProviderDependenciesFixture);
 
   const l1MessageServiceAddress = await mockLineaRollup.getAddress();
   const yieldManagerAddress = await yieldManager.getAddress();
@@ -246,5 +274,7 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
     mockVaultHub,
     mockSTETH,
     mockLineaRollup,
+    sszMerkleTree,
+    verifier,
   };
 }

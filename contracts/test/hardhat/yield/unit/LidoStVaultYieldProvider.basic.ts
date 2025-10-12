@@ -18,6 +18,8 @@ import {
   MockDashboard,
   MockStakingVault,
   TestLidoStVaultYieldProvider,
+  TestCLProofVerifier,
+  SSZMerkleTree,
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
@@ -49,6 +51,8 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let yieldManager: TestYieldManager;
   let mockDashboard: MockDashboard;
   let mockStakingVault: MockStakingVault;
+  let sszMerkleTree: SSZMerkleTree;
+  let verifier: TestCLProofVerifier;
 
   let l1MessageServiceAddress: string;
   let yieldManagerAddress: string;
@@ -71,6 +75,8 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       mockVaultHub,
       mockSTETH,
       mockLineaRollup,
+      sszMerkleTree,
+      verifier,
     } = await loadFixture(deployAndAddSingleLidoStVaultYieldProvider));
 
     l1MessageServiceAddress = await mockLineaRollup.getAddress();
@@ -467,7 +473,11 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await expect(call).to.be.reverted;
     });
     it("Should succeed and emit the expected event", async () => {
-      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(mockStakingVaultAddress);
+      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+        sszMerkleTree,
+        verifier,
+        mockStakingVaultAddress,
+      );
       const refundAddress = nativeYieldOperator.address;
       const unstakeAmount = [32000000000n];
       const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
@@ -539,7 +549,11 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("If withdrawal amount leaves validator < activation balance, return maximum available unstake", async () => {
       // Choose 2049 ETH which is > maximum effective balance of 2048 ETH.
       const EXCESSIVE_WITHDRAWAL_AMOUNT = parseUnits("2049", "gwei");
-      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(mockStakingVaultAddress);
+      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+        sszMerkleTree,
+        verifier,
+        mockStakingVaultAddress,
+      );
       const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
         [VALIDATOR_WITNESS_TYPE],
         [validatorWitness],
@@ -564,7 +578,11 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(expectedMaxUnstakeAmountGwei).eq(maxUnstakeAmountGwei);
     });
     it("If withdrawal amount leaves validator > activation balance, return amount", async () => {
-      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(mockStakingVaultAddress);
+      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+        sszMerkleTree,
+        verifier,
+        mockStakingVaultAddress,
+      );
       const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
         [VALIDATOR_WITNESS_TYPE],
         [validatorWitness],
@@ -588,6 +606,8 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const WITHDRAWAL_AMOUNT = parseUnits("2049", "gwei");
       const INSUFFICIENT_EFFECTIVE_BALANCE = parseUnits("31", "gwei");
       const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+        sszMerkleTree,
+        verifier,
         mockStakingVaultAddress,
         INSUFFICIENT_EFFECTIVE_BALANCE,
       );

@@ -4,8 +4,6 @@ import { BeaconBlockHeader, EIP4788Witness, Validator, ValidatorContainer, Valid
 import { SecretKey } from "@chainsafe/blst";
 import { SSZMerkleTree, TestCLProofVerifier } from "contracts/typechain-types";
 import { FAR_FUTURE_EXIT_EPOCH, SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { deploySSZMerkleTree, deployTestCLProofVerifier } from "./deploy";
 
 export const randomInt = (max: number): number => Math.floor(Math.random() * max);
 
@@ -263,9 +261,12 @@ export const generateEIP4478Witness = async (
   return { eip4788Witness, beaconHeaderMerkleSubtreeProof: [...beaconHeaderMerkleSubtree.proof] };
 };
 
-export const generateLidoUnstakePermissionlessWitness = async (address: string, effectiveBalance?: bigint) => {
-  const sszMerkleTree = await loadFixture(deploySSZMerkleTree);
-  const verifier = await loadFixture(deployTestCLProofVerifier);
+export const generateLidoUnstakePermissionlessWitness = async (
+  sszMerkleTree: SSZMerkleTree,
+  verifier: TestCLProofVerifier,
+  address: string,
+  effectiveBalance?: bigint,
+) => {
   const { eip4788Witness, beaconHeaderMerkleSubtreeProof } = await generateEIP4478Witness(
     sszMerkleTree,
     verifier,
