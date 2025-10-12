@@ -27,6 +27,7 @@ import {
   MockStakingVault,
   TestLidoStVaultYieldProvider,
   TestCLProofVerifier,
+  SSZMerkleTree,
 } from "contracts/typechain-types";
 import { YieldManagerInitializationData, YieldProviderRegistration } from "./types";
 
@@ -76,6 +77,13 @@ export async function deployMockYieldProvider(): Promise<MockYieldProvider> {
 export async function deployTestCLProofVerifier(): Promise<TestCLProofVerifier> {
   const factory = await ethers.getContractFactory("TestCLProofVerifier");
   const contract = await factory.deploy(GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT);
+  await contract.waitForDeployment();
+  return contract;
+}
+
+export async function deploySSZMerkleTree(): Promise<SSZMerkleTree> {
+  const factory = await ethers.getContractFactory("SSZMerkleTree");
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR);
   await contract.waitForDeployment();
   return contract;
 }

@@ -1,9 +1,11 @@
 import { hexlify, parseUnits, randomBytes } from "ethers";
 import { ethers } from "hardhat";
-import { BeaconBlockHeader, EIP4788Witness, Validator, ValidatorContainer } from "./types";
+import { BeaconBlockHeader, EIP4788Witness, Validator, ValidatorContainer, ValidatorWitness } from "./types";
 import { SecretKey } from "@chainsafe/blst";
 import { SSZMerkleTree, TestCLProofVerifier } from "contracts/typechain-types";
 import { FAR_FUTURE_EXIT_EPOCH, SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { deploySSZMerkleTree, deployTestCLProofVerifier } from "./deploy";
 
 export const randomInt = (max: number): number => Math.floor(Math.random() * max);
 
@@ -32,7 +34,7 @@ export const generateValidator = (customWC?: string): Validator => {
     container: {
       pubkey: secretKey.toPublicKey().toHex(true),
       withdrawalCredentials: customWC ?? hexlify(randomBytes32()),
-      effectiveBalance: parseUnits(randomInt(32).toString(), "gwei"),
+      effectiveBalance: parseUnits(randomInt(2048).toString(), "gwei"),
       slashed: false,
       activationEligibilityEpoch: activationEligibilityEpoch,
       activationEpoch: activationEligibilityEpoch + BigInt(randomInt(300)),
@@ -254,7 +256,33 @@ export const generateEIP4478Witness = async (
     witness: validatorWitness,
   };
 
-  return eip4788Witness;
+  return { eip4788Witness, beaconHeaderMerkleSubtreeProof: [...beaconHeaderMerkleSubtree.proof] };
+};
+
+export const generateLidoUnstakePermissionlessWitness = async (address: string) => {
+  const sszMerkleTree = await loadFixture(deploySSZMerkleTree);
+  const verifier = await loadFixture(deployTestCLProofVerifier);
+  const { eip4788Witness, beaconHeaderMerkleSubtreeProof } = await generateEIP4478Witness(
+    address,
+    sszMerkleTree,
+    verifier,
+  );
+  const concatenatedProof = [...eip4788Witness.witness.proof, ...beaconHeaderMerkleSubtreeProof];
+  const timestamp = await setBeaconBlockRoot(eip4788Witness.blockRoot);
+
+  const validatorWitness: ValidatorWitness = {
+    proof: concatenatedProof,
+    pubkey: eip4788Witness.witness.validator.pubkey,
+    validatorIndex: eip4788Witness.witness.validatorIndex,
+    childBlockTimestamp: BigInt(timestamp),
+    slot: BigInt(eip4788Witness.beaconBlockHeader.slot),
+    proposerIndex: BigInt(eip4788Witness.beaconBlockHeader.proposerIndex),
+    effectiveBalance: BigInt(eip4788Witness.witness.validator.effectiveBalance),
+    activationEpoch: BigInt(eip4788Witness.witness.validator.activationEpoch),
+    activationEligibilityEpoch: BigInt(eip4788Witness.witness.validator.activationEligibilityEpoch),
+  };
+
+  return { validatorWitness, eip4788Witness };
 };
 
 // Got from this tx - https://hoodi.etherscan.io/tx/0x765837701107347325179c5510959482686456b513776346977617062c294522

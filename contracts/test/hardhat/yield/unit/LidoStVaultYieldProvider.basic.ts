@@ -34,7 +34,10 @@ import {
   LIDO_DASHBOARD_NOT_LINKED_TO_VAULT,
   LIDO_VAULT_IS_EXPECTED_RECEIVE_CALLER_AND_OSSIFIED_ENTRYPOINT,
   EMPTY_CALLDATA,
+  VALIDATOR_WITNESS_TYPE,
+  THIRTY_TWO_ETH_IN_GWEI,
 } from "../../common/constants";
+import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let yieldProvider: TestLidoStVaultYieldProvider;
@@ -463,7 +466,33 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         .unstakePermissionless(yieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof);
       await expect(call).to.be.reverted;
     });
-    it("Should succeed and emit the expected event", async () => {});
+    it("Should succeed and emit the expected event", async () => {
+      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(mockStakingVaultAddress);
+      const refundAddress = nativeYieldOperator.address;
+      const unstakeAmount = [32000000000n];
+      const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["bytes", "uint64[]", "address"],
+        [validatorWitness.pubkey, unstakeAmount, refundAddress],
+      );
+      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
+        [VALIDATOR_WITNESS_TYPE],
+        [validatorWitness],
+      );
+
+      // Act
+      const call = yieldManager
+        .connect(securityCouncil)
+        .unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
+
+      // Assert
+      const maxUnstakeAmountGwei =
+        unstakeAmount[0] < validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI
+          ? unstakeAmount[0]
+          : validatorWitness.effectiveBalance;
+      await expect(call)
+        .to.emit(yieldManager, "LidoVaultUnstakePermissionlessRequest")
+        .withArgs(mockStakingVaultAddress, refundAddress, maxUnstakeAmountGwei, validatorWitness.pubkey, unstakeAmount);
+    });
   });
 
   describe("validateUnstakePermissionless", () => {

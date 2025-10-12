@@ -315,4 +315,18 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   function pauseStakingIfNotAlready(address _yieldProvider) external {
     _pauseStakingIfNotAlready(_yieldProvider);
   }
+
+  /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
+  /// @param stakingVault The staking vault address.
+  /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.
+  /// @param maxUnstakeAmountGwei Maximum ETH (in gwei) expected to be withdrawn for the request.
+  /// @param pubkeys Concatenated validator pubkeys.
+  /// @param amounts Withdrawal request amount array (currently length 1).
+  event LidoVaultUnstakePermissionlessRequest(
+    address indexed stakingVault,
+    address indexed refundRecipient,
+    uint256 maxUnstakeAmountGwei,
+    bytes pubkeys,
+    uint64[] amounts
+  );
 }
