@@ -43,7 +43,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external {
-    _getYieldManagerStorage()._minimumWithdrawalReserveAmount = uint128(_minimumWithdrawalReserveAmount);
+    _getYieldManagerStorage()._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
   }
 
   function getTargetWithdrawalReserveAmount() external view returns (uint256) {
@@ -51,7 +51,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function setTargetWithdrawalReserveAmount(uint256 _targetWithdrawalReserveAmount) external {
-    _getYieldManagerStorage()._targetWithdrawalReserveAmount = uint128(_targetWithdrawalReserveAmount);
+    _getYieldManagerStorage()._targetWithdrawalReserveAmount = _targetWithdrawalReserveAmount;
   }
 
   function getUserFundsInYieldProvidersTotal() external view returns (uint256) {
@@ -59,7 +59,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function setUserFundsInYieldProvidersTotal(uint256 _userFundsInYieldProvidersTotal) external {
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal = uint128(_userFundsInYieldProvidersTotal);
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal = _userFundsInYieldProvidersTotal;
   }
 
   function getPendingPermissionlessUnstake() external view returns (uint256) {
@@ -67,7 +67,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function setPendingPermissionlessUnstake(uint256 _pendingPermissionlessUnstake) external {
-    _getYieldManagerStorage()._pendingPermissionlessUnstake = uint128(_pendingPermissionlessUnstake);
+    _getYieldManagerStorage()._pendingPermissionlessUnstake = _pendingPermissionlessUnstake;
   }
 
   function decrementPendingPermissionlessUnstake(uint256 _amount) external {
@@ -155,7 +155,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function setYieldProviderUserFunds(address _yieldProvider, uint256 _userFunds) external {
-    _getYieldProviderStorage(_yieldProvider).userFunds = uint128(_userFunds);
+    _getYieldProviderStorage(_yieldProvider).userFunds = _userFunds;
   }
 
   function getYieldProviderYieldReportedCumulative(address _yieldProvider) external view returns (uint256) {
@@ -163,7 +163,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function setYieldProviderYieldReportedCumulative(address _yieldProvider, uint256 _yieldReportedCumulative) external {
-    _getYieldProviderStorage(_yieldProvider).yieldReportedCumulative = uint128(_yieldReportedCumulative);
+    _getYieldProviderStorage(_yieldProvider).yieldReportedCumulative = _yieldReportedCumulative;
   }
 
   function getYieldProviderCurrentNegativeYield(address _yieldProvider) external view returns (uint256) {
@@ -171,7 +171,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function setYieldProviderCurrentNegativeYield(address _yieldProvider, uint256 _currentNegativeYield) external {
-    _getYieldProviderStorage(_yieldProvider).currentNegativeYield = uint128(_currentNegativeYield);
+    _getYieldProviderStorage(_yieldProvider).currentNegativeYield = _currentNegativeYield;
   }
 
   function getYieldProviderLstLiabilityPrincipal(address _yieldProvider) external view returns (uint256) {
@@ -179,7 +179,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function setYieldProviderLstLiabilityPrincipal(address _yieldProvider, uint256 _lstLiabilityPrincipal) external {
-    _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal = uint128(_lstLiabilityPrincipal);
+    _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal = _lstLiabilityPrincipal;
   }
 
   function delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
