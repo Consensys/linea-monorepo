@@ -167,14 +167,15 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     maxPriorityFeePerGas: bigint,
     maxFeePerGas: bigint,
   ): Promise<void> {
-    const claimTxResponsePromise = this.messageServiceContract.claim(
-      {
-        ...message,
-        feeRecipient: this.config.feeRecipientAddress,
-      },
-      { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
-    );
-    await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise);
+    const claimTxFn = async () =>
+      this.messageServiceContract.claim(
+        {
+          ...message,
+          feeRecipient: this.config.feeRecipientAddress,
+        },
+        { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
+      );
+    await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxFn);
   }
 
   /**

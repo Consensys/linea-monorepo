@@ -274,7 +274,7 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
   async updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,
-    claimTxResponsePromise: Promise<ContractTransactionResponse>,
+    claimTxFn: () => Promise<ContractTransactionResponse>,
   ): Promise<void> {
     await this.manager.transaction(async (entityManager) => {
       await entityManager.update(
@@ -291,7 +291,7 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
       );
 
       const claimTxCreationDate = new Date();
-      const tx = await claimTxResponsePromise;
+      const tx = await claimTxFn();
 
       await entityManager.update(
         MessageEntity,
