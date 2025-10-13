@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -121,7 +121,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]zk.Wr
 	})
 
 	for _, shadowID := range shadowIDs {
-		ysMap[shadowID] = field.Zero()
+		ysMap[shadowID] = zk.ValueOf(0)
 	}
 
 	ys = [][]zk.WrappedVariable{}
@@ -138,7 +138,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]zk.Wr
 			if !yFound {
 				utils.Panic("was not found: %v", name)
 			}
-			if y == nil {
+			if y.IsEmpty() {
 				utils.Panic("found Y but it was nil: %v", name)
 			}
 			ysPrecomputed[i] = y
@@ -159,7 +159,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]zk.Wr
 				utils.Panic("was not found: %v", name)
 			}
 
-			if y == nil {
+			if y.IsEmpty() {
 				utils.Panic("found Y but it was nil: %v", name)
 			}
 
@@ -288,7 +288,8 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]zk.WrappedVariable, entryList []
 				utils.Panic("gnark SMT does not currently support hashes that are arrays of field elements")
 
 				// this will fail because we are setting a []zk.WrappedVariable
-				// to a zk.WrappedVariable
+				// to a zk.WrappedVariable (??)
+				// @thomas fixme
 				proof.Siblings[depth-k-1] = sv[curr]
 				curr++
 			}
