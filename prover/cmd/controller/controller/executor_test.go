@@ -93,7 +93,8 @@ func TestRetryWithLarge(t *testing.T) {
 	})
 
 	for i := range jobs {
-		status := e.Run(context.Background(), &jobs[i].Job)
+		state := NewControllerState()
+		status := e.Run(context.Background(), &jobs[i].Job, state)
 		assert.Equalf(t, jobs[i].ExpCode, status.ExitCode, "got status %++v", status)
 	}
 }
@@ -134,9 +135,13 @@ func TestEarlyExitOnSpotInstanceMode(t *testing.T) {
 		// The context auto-cancels after 2 seconds and will not let the original
 		// command finish.
 		ctx, cancelMainExpiration = context.WithTimeout(context.Background(), 2*time.Second)
+		state                     = NewControllerState()
 	)
 
-	status := e.Run(ctx, job)
+	// Mark as shutdown requested to simulate SIGTERM scenario
+	state.RequestShutdown(time.Now().Add(2 * time.Second))
+
+	status := e.Run(ctx, job, state)
 	cancelMainExpiration()
 
 	assert.Equal(t, CodeKilledByUs, status.ExitCode)
