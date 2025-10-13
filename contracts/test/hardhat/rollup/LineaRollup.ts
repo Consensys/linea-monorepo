@@ -9,11 +9,7 @@ import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.
 import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
 
-import {
-  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_ROLES,
-  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-} from "contracts/common/constants";
+import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
 import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
@@ -21,6 +17,7 @@ import {
   deployMockYieldManager,
   expectSuccessfulFinalizeViaCallForwarder,
   getRoleAddressesFixture,
+  reinitializeLineaRollupFixtureV7,
   sendBlobTransactionViaCallForwarder,
 } from "./helpers";
 import {
@@ -62,7 +59,8 @@ import {
   getAccountsFixture,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
-import { generateRoleAssignments } from "contracts/common/helpers";
+import { LineaRollupV7ReinitializationData } from "./helpers/types";
+import { ZeroAddress } from "ethers";
 
 kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 
@@ -354,36 +352,52 @@ describe("Linea Rollup contract", () => {
 
   describe("reinitializeLineaRollupV7", () => {
     it("Should revert if the YieldManager address is zero", async () => {
-      const reinitializeCall = lineaRollup.reinitializeLineaRollupV7(
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         roleAddresses,
-        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        ADDRESS_ZERO,
-      );
-
+        yieldManager: ZeroAddress,
+      };
+      const reinitializeCall = reinitializeLineaRollupFixtureV7(lineaRollup, reinitData);
       await expectRevertWithCustomError(lineaRollup, reinitializeCall, "ZeroAddressNotAllowed");
     });
 
     it("Should configure roles, set the YieldManager and emit version change events", async () => {
+      // Arrange - unfortunately 'upgrades.upgradeProxy' does not seem to expose the reinitialize call so we need to construct it manually
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, nonAuthorizedAccount.address)).to.be.false;
-
-      const updatedRoleAddresses = generateRoleAssignments(LINEA_ROLLUP_ROLES, securityCouncil.address, [
-        {
-          role: OPERATOR_ROLE,
-          addresses: [operator.address, nonAuthorizedAccount.address],
-        },
-      ]);
-
       const newYieldManager = await deployMockYieldManager();
 
-      const tx = await lineaRollup.reinitializeLineaRollupV7(
-        updatedRoleAddresses,
-        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        newYieldManager,
-      );
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        roleAddresses: [
+          ...roleAddresses,
+          {
+            role: OPERATOR_ROLE,
+            addressWithRole: nonAuthorizedAccount.address,
+          },
+        ],
+        yieldManager: newYieldManager,
+      };
 
-      await expect(tx)
+      const reinitArgs = [
+        reinitData.roleAddresses,
+        reinitData.pauseTypeRoles,
+        reinitData.unpauseTypeRoles,
+        reinitData.yieldManager,
+      ];
+
+      const rollupFactory = await ethers.getContractFactory("TestLineaRollup");
+      const newImplementation = await rollupFactory.deploy();
+      const proxyAdminAddr = await upgrades.erc1967.getAdminAddress(await lineaRollup.getAddress());
+      const proxyAdmin = await ethers.getContractAt("ProxyAdmin", proxyAdminAddr);
+      const calldata = lineaRollup.interface.encodeFunctionData("reinitializeLineaRollupV7", reinitArgs);
+
+      // Act
+      const reinitCall = proxyAdmin.upgradeAndCall(lineaRollup, await newImplementation.getAddress(), calldata);
+
+      // Assert
+      await expect(reinitCall)
         .to.emit(lineaRollup, "LineaRollupVersionChanged")
         .withArgs(VERSION_6_BYTES, VERSION_7_BYTES)
         .and.to.emit(lineaRollup, "YieldManagerChanged")
@@ -394,20 +408,19 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should revert if reinitializeLineaRollupV7 is invoked more than once", async () => {
-      const newYieldManager = await deployMockYieldManager();
-      await lineaRollup.reinitializeLineaRollupV7(
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         roleAddresses,
-        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        newYieldManager,
-      );
+        yieldManager: mockYieldManager,
+      };
+      await reinitializeLineaRollupFixtureV7(lineaRollup, reinitData);
 
-      const subsequentYieldManager = await deployMockYieldManager();
       const secondCall = lineaRollup.reinitializeLineaRollupV7(
         roleAddresses,
         LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        subsequentYieldManager,
+        mockYieldManager,
       );
 
       await expectRevertWithReason(secondCall, INITIALIZED_ALREADY_MESSAGE);

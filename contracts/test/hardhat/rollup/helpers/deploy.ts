@@ -1,5 +1,5 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 
@@ -15,6 +15,8 @@ import {
   ONE_DAY_IN_SECONDS,
 } from "../../common/constants";
 import { deployUpgradableFromFactory } from "../../common/deployment";
+import { LineaRollupV7ReinitializationData } from "./types";
+import { Contract } from "ethers";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
   const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
@@ -87,7 +89,22 @@ export async function deployLineaRollupFixture() {
     unsafeAllow: ["constructor", "incorrect-initializer-order"],
   })) as unknown as TestLineaRollup;
 
-  return { verifier, mockYieldManager, lineaRollup };
+  return { verifier, mockYieldManager, lineaRollup, roleAddresses };
+}
+
+export async function reinitializeLineaRollupFixtureV7(
+  lineaRollup: TestLineaRollup,
+  initData: LineaRollupV7ReinitializationData,
+): Promise<Contract> {
+  const rollupFactory = await ethers.getContractFactory("TestLineaRollup");
+
+  const initArgs = [initData.roleAddresses, initData.pauseTypeRoles, initData.unpauseTypeRoles, initData.yieldManager];
+
+  return upgrades.upgradeProxy(lineaRollup, rollupFactory, {
+    kind: "transparent",
+    call: { fn: "reinitializeLineaRollupV7", args: initArgs },
+    unsafeAllow: ["incorrect-initializer-order"],
+  });
 }
 
 async function deployTestPlonkVerifierForDataAggregation(): Promise<string> {
