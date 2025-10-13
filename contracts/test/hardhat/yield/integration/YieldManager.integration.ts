@@ -1,6 +1,6 @@
 // Test scenarios with LineaRollup + YieldManager + LidoStVaultYieldProvider
 import { loadFixture, setBalance } from "@nomicfoundation/hardhat-network-helpers";
-import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { encodeSendMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
   deployYieldManagerIntegrationTestFixture,
   fundLidoStVaultYieldProvider,
@@ -8,7 +8,12 @@ import {
   setupLineaRollupMessageMerkleTree,
   setWithdrawalReserveToMinimum,
 } from "../helpers";
-import { TestYieldManager, TestLineaRollup, TestLidoStVaultYieldProvider } from "contracts/typechain-types";
+import {
+  TestYieldManager,
+  TestLineaRollup,
+  TestLidoStVaultYieldProvider,
+  MockDashboard,
+} from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
@@ -18,20 +23,23 @@ import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE } from "../../common/constants";
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {
   let nativeYieldOperator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
+  let l2YieldRecipient: SignerWithAddress;
+
   let lineaRollup: TestLineaRollup;
   let yieldManager: TestYieldManager;
   let yieldProvider: TestLidoStVaultYieldProvider;
+  let mockDashboard: MockDashboard;
 
   let l1MessageServiceAddress: string;
   let yieldManagerAddress: string;
   let yieldProviderAddress: string;
 
   before(async () => {
-    ({ nativeYieldOperator, nonAuthorizedAccount } = await loadFixture(getAccountsFixture));
+    ({ nativeYieldOperator, nonAuthorizedAccount, l2YieldRecipient } = await loadFixture(getAccountsFixture));
   });
 
   beforeEach(async () => {
-    ({ lineaRollup, yieldProvider, yieldProviderAddress, yieldManager } = await loadFixture(
+    ({ lineaRollup, yieldProvider, yieldProviderAddress, yieldManager, mockDashboard } = await loadFixture(
       deployYieldManagerIntegrationTestFixture,
     ));
     l1MessageServiceAddress = await lineaRollup.getAddress();
@@ -98,5 +106,78 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
     });
   });
 
-  describe("Yield reporting", () => {});
+  describe("Yield reporting", () => {
+    it("Should report positive yield successfully", async () => {
+      // Arrange - setup user funds
+      const initialFundAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      // Arrange - Setup positive yield
+      const yieldEarned = ONE_ETHER / 10n;
+      await mockDashboard.setTotalValueReturn(initialFundAmount + yieldEarned);
+      // Arrange - Get message params
+      const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
+
+      const expectedBytes = await encodeSendMessage(
+        l1MessageServiceAddress,
+        await l2YieldRecipient.getAddress(),
+        0n,
+        yieldEarned,
+        nextMessageNumberBefore,
+        EMPTY_CALLDATA,
+      );
+      const messageHash = ethers.keccak256(expectedBytes);
+
+      // Act
+      const call = await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+
+      // Assert
+      await expect(call)
+        .to.emit(lineaRollup, "MessageSent")
+        .withArgs(
+          yieldManagerAddress,
+          l2YieldRecipient,
+          0,
+          yieldEarned,
+          nextMessageNumberBefore,
+          EMPTY_CALLDATA,
+          messageHash,
+        );
+    });
+    it("Should report negative yield successfully", async () => {
+      // Arrange - setup user funds
+      const initialFundAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      // Arrange - Setup negative yield
+      const yieldEarned = 0n;
+      await mockDashboard.setTotalValueReturn(yieldEarned);
+      // Arrange - Get message params
+      const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
+
+      const expectedBytes = await encodeSendMessage(
+        l1MessageServiceAddress,
+        await l2YieldRecipient.getAddress(),
+        0n,
+        yieldEarned,
+        nextMessageNumberBefore,
+        EMPTY_CALLDATA,
+      );
+      const messageHash = ethers.keccak256(expectedBytes);
+
+      // Act
+      const call = await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+
+      // Assert
+      await expect(call)
+        .to.emit(lineaRollup, "MessageSent")
+        .withArgs(
+          yieldManagerAddress,
+          l2YieldRecipient,
+          0,
+          yieldEarned,
+          nextMessageNumberBefore,
+          EMPTY_CALLDATA,
+          messageHash,
+        );
+    });
+  });
 });
