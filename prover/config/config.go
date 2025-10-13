@@ -208,6 +208,14 @@ type Controller struct {
 	// Default: 10 seconds
 	ChildProcessShutdownTimeout time.Duration `mapstructure:"child_process_shutdown_timeout"`
 
+	// TerminationTypeFile specifies the file path used to determine shutdown type.
+	// File contents:
+	//   - "NORMAL_SHUTDOWN": Graceful shutdown with full grace period
+	//   - "SPOT_RECLAIM": Immediate job requeue (spot instance termination)
+	//   - Missing file: Defaults to spot reclaim mode (safe default)
+	// Default: /tmp/termination-type
+	TerminationTypeFile string `mapstructure:"termination_type_file"`
+
 	// SpotInstanceMode tells the controller to gracefully exit as soon as it
 	// receives a SIGTERM. When enabled, it will now respect TerminationGracePeriod
 	// and attempt graceful shutdown of child processes.

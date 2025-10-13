@@ -14,10 +14,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const terminationTypeFile = "/tmp/termination-type"
+const defaultTerminationTypeFile = "/tmp/termination-type"
 
 // isSpotInstanceReclaim checks if the termination is due to spot instance reclamation.
-// It reads /tmp/termination-type file to determine the shutdown type:
+// It reads the configured termination type file to determine the shutdown type:
 //   - File missing or unreadable: ASSUME SPOT RECLAIM (safer default for spot instances)
 //   - File contains "SPOT_RECLAIM": Spot instance reclamation
 //   - File contains "NORMAL_SHUTDOWN": Normal K8s/manual shutdown
@@ -25,8 +25,13 @@ const terminationTypeFile = "/tmp/termination-type"
 //
 // To explicitly request normal shutdown, create the file with "NORMAL_SHUTDOWN":
 //
-//	echo "NORMAL_SHUTDOWN" > /tmp/termination-type
-func isSpotInstanceReclaim() bool {
+//	echo "NORMAL_SHUTDOWN" > /path/to/termination-type
+func isSpotInstanceReclaim(cfg *config.Config) bool {
+	terminationTypeFile := cfg.Controller.TerminationTypeFile
+	if terminationTypeFile == "" {
+		terminationTypeFile = defaultTerminationTypeFile
+	}
+
 	data, err := os.ReadFile(terminationTypeFile)
 	if err != nil {
 		// File doesn't exist or can't be read - assume spot reclaim for safety
@@ -83,7 +88,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 		<-ctx.Done()
 
 		// Check if this is a spot instance reclamation
-		isSpotReclaim := isSpotInstanceReclaim()
+		isSpotReclaim := isSpotInstanceReclaim(cfg)
 
 		if isSpotReclaim {
 			cLog.Warnln("Spot instance reclamation detected (SIGUSR1 or /tmp/termination-type=SPOT_RECLAIM)")
