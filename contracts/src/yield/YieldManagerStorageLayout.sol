@@ -72,12 +72,15 @@ abstract contract YieldManagerStorageLayout {
    *      We make these exceptions because the mutation of these state fields is highly specific to a vendor.
    */
   struct YieldProviderStorage {
+    // Slot 0
     YieldProviderVendor yieldProviderVendor;
     bool isStakingPaused;
     bool isOssificationInitiated;
     bool isOssified;
     address primaryEntrypoint;
+    // Slot 1
     address ossifiedEntrypoint;
+    // Slot 2
     address receiveCaller;
     uint96 yieldProviderIndex;
     uint256 userFunds;
