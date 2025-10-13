@@ -4,10 +4,14 @@ import {
   MockLineaRollup,
   MockYieldProvider,
   TestLidoStVaultYieldProvider,
+  TestLineaRollup,
   TestYieldManager,
 } from "contracts/typechain-types";
 import { ethers } from "hardhat";
-import { ONE_ETHER } from "../../common/constants";
+import { ADDRESS_ZERO, ONE_ETHER } from "../../common/constants";
+import { ClaimMessageWithProofParams } from "./types";
+import { randomBytes32 } from "./proof";
+import { encodeSendMessage } from "../../common/helpers";
 
 export const setupReceiveCallerForSuccessfulYieldProviderWithdrawal = async (
   testYieldManager: TestYieldManager,
@@ -103,4 +107,45 @@ export const getWithdrawLSTCall = async (
   await mockLineaRollup.setWithdrawLSTAllowed(true);
 
   return yieldManager.connect(l1Signer).withdrawLST(await yieldProvider.getAddress(), withdrawAmount, recipient);
+};
+
+let setupLineaRollupMessageMerkleTreeMessageNumber = 1n;
+
+export const setupLineaRollupMessageMerkleTree = async (
+  lineaRollup: TestLineaRollup,
+  from: string,
+  to: string,
+  value: bigint,
+  data: string,
+): Promise<ClaimMessageWithProofParams> => {
+  const expectedBytes = await encodeSendMessage(
+    from,
+    to,
+    0n,
+    value,
+    setupLineaRollupMessageMerkleTreeMessageNumber,
+    data,
+  );
+  setupLineaRollupMessageMerkleTreeMessageNumber = setupLineaRollupMessageMerkleTreeMessageNumber + 1n;
+
+  const messageHash = ethers.keccak256(expectedBytes);
+  const proof = Array.from({ length: 32 }, () => randomBytes32());
+  const leafIndex = 0n;
+  const root = await lineaRollup.generateMerkleRoot(messageHash, proof, leafIndex);
+  await lineaRollup.addL2MerkleRoots([root], proof.length);
+
+  const claimParams: ClaimMessageWithProofParams = {
+    proof,
+    messageNumber: 1n,
+    leafIndex,
+    from: from,
+    to: to,
+    fee: 0n,
+    value: value,
+    feeRecipient: ADDRESS_ZERO,
+    merkleRoot: root,
+    data: data,
+  };
+
+  return claimParams;
 };

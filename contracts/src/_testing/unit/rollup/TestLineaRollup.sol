@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import { LineaRollup } from "../../../rollup/LineaRollup.sol";
+import { EfficientLeftRightKeccak } from "../../../libraries/EfficientLeftRightKeccak.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestLineaRollup is LineaRollup {
@@ -47,5 +48,26 @@ contract TestLineaRollup is LineaRollup {
 
   function addL2MerkleRoots(bytes32[] calldata _newRoot, uint256 _treeDepth) external {
     _addL2MerkleRoots(_newRoot, _treeDepth);
+  }
+
+  // Adapted from SparseMerkleTreeVerifier._verifyMerkleProof to generate passing proof + root
+  function generateMerkleRoot(
+    bytes32 _leafHash,
+    bytes32[] calldata _proof,
+    uint32 _leafIndex
+  ) external pure returns (bytes32) {
+    require(_leafIndex < uint32((2 ** _proof.length) - 1), "leafIndex out of bounds");
+
+    bytes32 node = _leafHash;
+
+    for (uint256 height; height < _proof.length; ++height) {
+      if (((_leafIndex >> height) & 1) == 1) {
+        node = EfficientLeftRightKeccak._efficientKeccak(_proof[height], node);
+      } else {
+        node = EfficientLeftRightKeccak._efficientKeccak(node, _proof[height]);
+      }
+    }
+
+    return node;
   }
 }

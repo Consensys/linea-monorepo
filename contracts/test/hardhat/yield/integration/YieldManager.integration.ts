@@ -5,21 +5,14 @@ import {
   deployYieldManagerIntegrationTestFixture,
   fundLidoStVaultYieldProvider,
   incrementBalance,
+  setupLineaRollupMessageMerkleTree,
   setWithdrawalReserveToMinimum,
 } from "../helpers";
 import { TestYieldManager, TestLineaRollup, TestLidoStVaultYieldProvider } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import {
-  EMPTY_CALLDATA,
-  MESSAGE_FEE,
-  MESSAGE_VALUE_1ETH,
-  ONE_ETHER,
-  VALID_MERKLE_PROOF,
-  ZERO_VALUE,
-} from "../../common/constants";
-import { ZeroAddress } from "ethers";
+import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE } from "../../common/constants";
 // import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {
@@ -55,7 +48,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
     });
   });
 
-  describe("transferFundsForNativeYield", () => {
+  describe("Transfering to the YieldManager", () => {
     it("Should successfully transfer from LineaRollup to the YieldManager", async () => {
       const fundAmount = ONE_ETHER;
       await setWithdrawalReserveToMinimum(yieldManager);
@@ -87,29 +80,23 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Arrange - setup withdrawal reserve deficit
       await setBalance(l1MessageServiceAddress, ZERO_VALUE);
       // Arrange - setup L1MessageService message
-      await lineaRollup.addL2MerkleRoots([VALID_MERKLE_PROOF.merkleRoot], VALID_MERKLE_PROOF.proof.length);
-
-      // const withdrawAmount = ONE_ETHER / 2n;
-      const claimParams = {
-        proof: VALID_MERKLE_PROOF.proof,
-        messageNumber: 1n,
-        leafIndex: VALID_MERKLE_PROOF.index,
-        from: nonAuthorizedAccount.address,
-        to: nonAuthorizedAccount.address,
-        fee: MESSAGE_FEE,
-        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-        feeRecipient: ZeroAddress,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
-        data: EMPTY_CALLDATA,
-      };
-
-      console.log(claimParams);
+      const withdrawAmount = initialFundAmount / 2n;
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        withdrawAmount,
+        EMPTY_CALLDATA,
+      );
 
       // Act
-      // const claimCall = lineaRollup
-      //   .connect(nonAuthorizedAccount)
-      //   .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
-      // await claimCall;
+      const claimCall = lineaRollup
+        .connect(nonAuthorizedAccount)
+        .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
+      await expect(claimCall).to.not.be.reverted;
     });
   });
+
+  describe("Yield reporting", () => {});
 });

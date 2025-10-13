@@ -69,3 +69,16 @@ export interface ValidatorContainerWitness {
   validator: ValidatorContainer;
   proof: string[];
 }
+
+export interface ClaimMessageWithProofParams {
+  proof: string[];
+  messageNumber: bigint;
+  leafIndex: bigint;
+  from: string;
+  to: string;
+  fee: bigint;
+  value: bigint;
+  feeRecipient: string;
+  merkleRoot: string;
+  data: string;
+}
