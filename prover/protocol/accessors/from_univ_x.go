@@ -30,8 +30,7 @@ func (u *FromUnivXAccessor) IsBase() bool {
 }
 
 func (u *FromUnivXAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	//TODO implement me
-	panic("called GetValBase on a FromUnivXAccessor; this should be ")
+	panic("called GetValBase on a FromUnivXAccessor; GetValExt should be used instead")
 }
 
 func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {
