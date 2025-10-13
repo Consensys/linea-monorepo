@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
@@ -53,7 +54,7 @@ type RecursedSegmentCompilation struct {
 	ModuleLPP *ModuleLPP
 	// HierarchicalConglomeration is optional and is set if the segment is a
 	// conglomerated segment.
-	HierarchicalConglomeration *ConglomerationHierarchical
+	HierarchicalConglomeration *ModuleConglo
 	// RecursionComp is the compiled IOP of the recursed wizard.
 	RecursionComp *wizard.CompiledIOP
 	// Recursion is the wizard construction context of the recursed wizard.
@@ -66,6 +67,9 @@ type SegmentProof struct {
 	ProofType    ProofType
 	ModuleIndex  int
 	SegmentIndex int
+	// LppCommitment is the commitment of the LPP witness. It is only populated
+	// for a GL segment proof.
+	LppCommitment field.Element
 }
 
 // CompileSegment applies all the compilation steps required to compile an LPP
@@ -87,12 +91,14 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		res.ModuleGL = m
 		subscript = string(m.DefinitionInput.ModuleName)
 		proofType = proofTypeGL
+
 	case *ModuleLPP:
 		modIOP = m.Wiop
 		res.ModuleLPP = m
 		proofType = proofTypeLPP
 		subscript = string(m.ModuleName())
-	case *ConglomerationHierarchical:
+
+	case *ModuleConglo:
 		modIOP = m.Wiop
 		res.HierarchicalConglomeration = m
 		subscript = "hierarchical-conglomeration"
@@ -106,6 +112,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
+		// @alex: this is only used for debugging. Leaving it harms the perfs.
+		// dummy.CompileAtProverLvl(dummy.WithMsg("debug-"+subscript)),
 		// This ensures that all the public inputs are declared in the same
 		// order to prevent bugs in the conglomeration. This will not affect the
 		// future position of the public inputs we declare afterwards.
@@ -138,6 +146,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			// @alex: in principle, the value of 1 would be used only for the GL
 			// prover but AFAIK, the GL modules never have inner-products to compile.
 			compiler.WithInnerProductMinimalRound(1),
+			// Uncomment to enable the debugging mode
+			// compiler.WithDebugMode(subscript+"_initial"),
 		),
 		mpts.Compile(mpts.AddUnconstrainedColumns()),
 	)
@@ -176,6 +186,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
+			// Uncomment to enable the debugging mode
+			// compiler.WithDebugMode(subscript+"_0"),
 		),
 		vortex.Compile(
 			8,
@@ -189,6 +201,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
+			// Uncomment to enable the debugging mode
+			// compiler.WithDebugMode(subscript+"_1"),
 		),
 		// This extra step is to ensure the tightness of the final wizard by
 		// adding an optional second layer of compilation when we have very
@@ -206,6 +220,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			compiler.WithoutMpts(),
+			// Uncomment to enable the debugging mode
+			// compiler.WithDebugMode(subscript+"_2"),
 		),
 		// This final step expectedly always generate always the same profile.
 		// Most of the time, it is ineffective and could be skipped so there is
@@ -269,6 +285,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
+			// Uncomment to enable the debugging mode
 			// compiler.WithDebugMode("post-recursion-arcane"),
 		),
 		logdata.Log("just-after-recursion-expanded"),
@@ -285,6 +302,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
+			// Uncomment to enable the debugging mode
 			// compiler.WithDebugMode("post-recursion-arcane-2"),
 		),
 		vortex.Compile(
@@ -294,23 +312,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			vortex.PremarkAsSelfRecursed(),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
-		// @alex: commented out because we noticed that was not needed
-		//
-		// selfrecursion.SelfRecurse,
-		// cleanup.CleanUp,
-		// mimc.CompileMiMC,
-		// compiler.Arcane(
-		// 	compiler.WithTargetColSize(1<<14),
-		// 	compiler.WithStitcherMinSize(2),
-		// 	// compiler.WithDebugMode("post-recursion-arcane-3"),
-		// ),
-		// vortex.Compile(
-		// 	8,
-		// 	vortex.ForceNumOpenedColumns(32),
-		// 	vortex.WithSISParams(&sisInstance),
-		// 	vortex.PremarkAsSelfRecursed(),
-		// 	vortex.WithOptionalSISHashingThreshold(64),
-		// ),
 	)
 
 	res.Recursion = recCtx
@@ -324,7 +325,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 }
 
 // ProveSegment runs the prover for a segment of the protocol
-func (r *RecursedSegmentCompilation) ProveSegment(wit any) (SegmentProof, *wizard.ProverRuntime) {
+func (r *RecursedSegmentCompilation) ProveSegment(wit any) SegmentProof {
 
 	var (
 		comp               *wizard.CompiledIOP
@@ -336,6 +337,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) (SegmentProof, *wizar
 	)
 
 	switch m := wit.(type) {
+
 	case *ModuleWitnessLPP:
 		comp = r.ModuleLPP.Wiop
 		proverStep = r.ModuleLPP.GetMainProverStep(m)
@@ -367,6 +369,12 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) (SegmentProof, *wizar
 		if m.ModuleName != r.ModuleGL.DefinitionInput.ModuleName {
 			utils.Panic("m.ModuleName: %v != r.ModuleGL.ModuleName: %v", m.ModuleName, r.ModuleGL.DefinitionInput.ModuleName)
 		}
+
+	case *ModuleWitnessConglo:
+		comp = r.HierarchicalConglomeration.Wiop
+		proverStep = r.HierarchicalConglomeration.GetMainProverStep(m)
+		moduleName = "hierachical-conglo"
+		proofType = proofTypeConglo
 
 	default:
 		utils.Panic("unexpected type")
@@ -415,12 +423,18 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) (SegmentProof, *wizar
 		WithField("segment-type", fmt.Sprintf("%T", wit)).
 		Infof("Ran prover segment")
 
-	return SegmentProof{
+	segmentProof := SegmentProof{
 		ModuleIndex:  moduleIndex,
 		SegmentIndex: segmentModuleIndex,
 		ProofType:    proofType,
 		Witness:      recursion.ExtractWitness(run),
-	}, run
+	}
+
+	if proofType == proofTypeGL {
+		segmentProof.LppCommitment = GetLppCommitmentFromRuntime(proverRun)
+	}
+
+	return segmentProof
 }
 
 // sortPublicInput is small compiler sorting the public inputs by name.

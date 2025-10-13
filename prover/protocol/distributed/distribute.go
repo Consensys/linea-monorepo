@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -65,9 +64,12 @@ type DistributedWizard struct {
 	// [DistributedWizard.Compile]
 	CompiledLPPs []*RecursedSegmentCompilation
 
-	// // CompiledConglomeration stores the compilation context of the
-	// // conglomeration wizard.
+	// CompiledConglomeration stores the compilation context of the
+	// conglomeration wizard.
 	CompiledConglomeration *RecursedSegmentCompilation
+
+	// VerificationKeyMerkleTree
+	VerificationKeyMerkleTree VerificationKeyMerkleTree
 }
 
 func init() {
@@ -212,13 +214,13 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	return dist
 }
 
-// GetSharedRandomness returns the shared randomness used by the protocol
+// ComputeSharedRandomness returns the shared randomness used by the protocol
 // to generate the LPP proofs. The LPP commitments are supposed to be the
 // one extractable from the [recursion.Witness] of the LPPs.
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
-func GetSharedRandomness(lppCommitments []field.Element) field.Element {
+func ComputeSharedRandomness(lppCommitments []field.Element) field.Element {
 	return cmimc.HashVec(lppCommitments)
 }
 
@@ -228,20 +230,20 @@ func GetSharedRandomness(lppCommitments []field.Element) field.Element {
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
-func GetSharedRandomnessFromWitnesses(comp []*wizard.CompiledIOP, gLWitnesses []recursion.Witness) field.Element {
+func GetSharedRandomnessFromSegmentProofs(comp []*wizard.CompiledIOP, gLWitnesses []SegmentProof) field.Element {
 	lppCommitments := []field.Element{}
 	for i := range gLWitnesses {
 		name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
-		lpp := gLWitnesses[i].Proof.GetPublicInput(comp[i], preRecursionPrefix+name)
+		lpp := gLWitnesses[i].Witness.Proof.GetPublicInput(comp[i], preRecursionPrefix+name)
 		lppCommitments = append(lppCommitments, lpp)
 	}
-	return GetSharedRandomness(lppCommitments)
+	return ComputeSharedRandomness(lppCommitments)
 }
 
 // GetLppCommitmentFromRuntime returns the LPP commitment from the runtime
 func GetLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
 	name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
-	return runtime.GetPublicInput(preRecursionPrefix + name)
+	return runtime.GetPublicInput(name)
 }
 
 // PrecompileInitialWizard pre-compiles the initial wizard protocol by applying all the

@@ -293,6 +293,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		lz.DistWizard.Disc,
 		lz.DistWizard.BlueprintGLs,
 		lz.DistWizard.BlueprintLPPs,
+		lz.DistWizard.VerificationKeyMerkleTree.GetRoot(),
 	)
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))

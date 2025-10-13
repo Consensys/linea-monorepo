@@ -65,6 +65,7 @@ func TestDistributedWizardBasic(t *testing.T) {
 		distWizard.Disc,
 		distWizard.BlueprintGLs,
 		distWizard.BlueprintLPPs,
+		distWizard.VerificationKeyMerkleTree.GetRoot(),
 	)
 
 	for i := range witnessGLs {
@@ -224,12 +225,14 @@ func runProverGLs(
 	t *testing.T,
 	distWizard *distributed.DistributedWizard,
 	witnessGLs []*distributed.ModuleWitnessGL,
-) []distributed.SegmentProof {
+) (proofs []distributed.SegmentProof, lppCommitments []field.Element) {
 
 	var (
 		compiledGLs = distWizard.CompiledGLs
-		runs        = make([]distributed.SegmentProof, len(witnessGLs))
 	)
+
+	proofs = make([]distributed.SegmentProof, len(witnessGLs))
+	lppCommitments = make([]field.Element, len(witnessGLs))
 
 	for i := range witnessGLs {
 
@@ -251,11 +254,13 @@ func runProverGLs(
 		}
 
 		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
-		runs[i], _ = moduleGL.ProveSegment(witnessGL)
+		proofs[i] = moduleGL.ProveSegment(witnessGL)
 		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
+
+		lppCommitments[i] = proofs[i].LppCommitment
 	}
 
-	return runs
+	return proofs, lppCommitments
 }
 
 // runProverLPPs runs a prover for a LPP segment. It takes in a DistributedWizard
@@ -271,7 +276,7 @@ func runProverLPPs(
 ) []distributed.SegmentProof {
 
 	var (
-		runs = make([]distributed.SegmentProof, len(witnessLPPs))
+		proofs = make([]distributed.SegmentProof, len(witnessLPPs))
 	)
 
 	for i := range witnessLPPs {
@@ -287,9 +292,9 @@ func runProverLPPs(
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
 		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
-		runs[i], _ = moduleLPP.ProveSegment(witnessLPP)
+		proofs[i] = moduleLPP.ProveSegment(witnessLPP)
 		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
 	}
 
-	return runs
+	return proofs
 }

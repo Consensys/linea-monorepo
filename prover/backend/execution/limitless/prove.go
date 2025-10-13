@@ -134,7 +134,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	}
 
 	var (
-		sharedRandomness      = distributed.GetSharedRandomness(lppCommitments)
+		sharedRandomness      = distributed.ComputeSharedRandomness(lppCommitments)
 		contextLPP, cancelLPP = context.WithCancel(context.Background())
 	)
 

@@ -110,6 +110,7 @@ func SegmentRuntime(
 	runtime *wizard.ProverRuntime,
 	disc *StandardModuleDiscoverer,
 	blueprintGLs, blueprintLPPs []ModuleSegmentationBlueprint,
+	vkMerkleRoot field.Element,
 ) (
 	witnessesGL []*ModuleWitnessGL,
 	witnessesLPP []*ModuleWitnessLPP,
@@ -127,7 +128,7 @@ func SegmentRuntime(
 
 	for i := range blueprintGLs {
 
-		wGL := segmentModuleGL(runtime, disc, &blueprintGLs[i], totalSegmentCount)
+		wGL := segmentModuleGL(runtime, disc, &blueprintGLs[i], totalSegmentCount, vkMerkleRoot)
 		witnessesGL = append(witnessesGL, wGL...)
 
 		// Expectedly, the blueprintGLs[i] is for the disc.Module[i] as the
@@ -155,7 +156,7 @@ func SegmentRuntime(
 	}
 
 	for i := range blueprintLPPs {
-		wLPP := segmentModuleLPP(runtime, disc, &blueprintLPPs[i], totalSegmentCount)
+		wLPP := segmentModuleLPP(runtime, disc, &blueprintLPPs[i], totalSegmentCount, vkMerkleRoot)
 		witnessesLPP = append(witnessesLPP, wLPP...)
 	}
 
@@ -170,6 +171,7 @@ func segmentModuleGL(
 	disc *StandardModuleDiscoverer,
 	blueprintGL *ModuleSegmentationBlueprint,
 	totalNbSegment []int,
+	vkMerkleRoot field.Element,
 ) (witnessesGL []*ModuleWitnessGL) {
 
 	var (
@@ -190,6 +192,7 @@ func segmentModuleGL(
 			ReceivedValuesGlobal: receivedValuesGlobal,
 			SegmentModuleIndex:   moduleIndex,
 			TotalSegmentCount:    totalNbSegment,
+			VkMerkleRoot:         vkMerkleRoot,
 		}
 
 		for _, col := range cols {
@@ -217,6 +220,7 @@ func segmentModuleLPP(
 	disc *StandardModuleDiscoverer,
 	moduleLPP *ModuleSegmentationBlueprint,
 	totalNbSegment []int,
+	vkMerkleProof field.Element,
 ) (witnessesLPP []*ModuleWitnessLPP) {
 
 	var (
@@ -242,6 +246,7 @@ func segmentModuleLPP(
 			TotalSegmentCount:  totalNbSegment,
 			Columns:            make(map[ifaces.ColID]smartvectors.SmartVector),
 			N0Values:           n0,
+			VkMerkleRoot:       vkMerkleProof,
 		}
 
 		witnessCols := make([]ifaces.ColID, 0)

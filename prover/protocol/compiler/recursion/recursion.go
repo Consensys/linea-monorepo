@@ -180,8 +180,13 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		// pubInputOffset corresponds to the positions of the public inputs
 		// in the plonk-in-wizard public witness. They are at
 		// 		pubInputOffset:pubInputOffset+numPubs
-		pubInputOffset = 1 + numYs + numComs
+		pubInputOffset           = 1 + numYs + numComs
+		restrictedPublicInputSet = map[string]struct{}{}
 	)
+
+	for k := range params.RestrictPublicInputs {
+		restrictedPublicInputSet[params.RestrictPublicInputs[k]] = struct{}{}
+	}
 
 	for i := 0; i < params.MaxNumProof; i++ {
 
@@ -194,7 +199,13 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		vortexCtxs[i] = dstVortexCtx
 
 		if params.RestrictPublicInputs != nil {
-			for k, name := range params.RestrictPublicInputs {
+
+			for k := range inputComp.PublicInputs {
+
+				name := inputComp.PublicInputs[k].Name
+				if _, ok := restrictedPublicInputSet[name]; !ok {
+					continue
+				}
 
 				if !params.SkipRecursionPrefix {
 					name = addPrefixToID(translator.Prefix, name)
