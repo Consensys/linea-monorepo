@@ -20,60 +20,138 @@ func runController(ctx context.Context, cfg *config.Config) {
 		fsWatcher     = NewFsWatcher(cfg)
 		executor      = NewExecutor(cfg)
 		numRetrySoFar int
+		state         = NewControllerState() // Track controller state for graceful shutdown
 	)
 
-	// Start the metric server
+	// Start the metric server with readiness endpoint
 	if cfg.Controller.Prometheus.Enabled {
-		metrics.StartServer(
+		metrics.StartServerWithReadiness(
 			cfg.Controller.LocalID,
 			cfg.Controller.Prometheus.Route,
 			cfg.Controller.Prometheus.Port,
+			state,
 		)
 	}
 
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
 	defer stop()
 
-	// cmdContext is the context we provide for the command execution. In
-	// spot-instance mode, the context is subordinated to the ctx.
-	cmdContext := context.Background()
-	if cfg.Controller.SpotInstanceMode {
-		cmdContext = ctx
-	}
+	// cmdContext is the context we provide for the command execution.
+	// We always create a cancellable context now for graceful shutdown
+	cmdContext, cmdCancel := context.WithCancel(context.Background())
+	defer cmdCancel()
 
+	// Graceful shutdown handler
 	go func() {
-		// This goroutine's raison d'etre is to log a message immediately when a
-		// cancellation request (e.g., ctx expiration/cancellation, SIGTERM, etc.)
-		// is received. It ensures timely logging of the request's reception,
-		// which may be important for diagnostics. Without this
-		// goroutine, if the prover is busy with a proof when, for example, a
-		// SIGTERM is received, there would be no log entry about the signal
-		// until the proof completes.
 		<-ctx.Done()
 
-		if cfg.Controller.SpotInstanceMode {
-			cLog.Infoln("Received cancellation request. Killing the ongoing process and exiting immediately after.")
+		// Calculate shutdown deadline
+		gracePeriod := cfg.Controller.TerminationGracePeriod
+		if gracePeriod == 0 {
+			gracePeriod = 3550 * time.Second // Default if not set
+		}
+		deadline := time.Now().Add(gracePeriod)
+		state.RequestShutdown(deadline)
+
+		cLog.Infof(
+			"Received SIGTERM. Grace period: %v (until %v)",
+			gracePeriod,
+			deadline.Format(time.RFC3339),
+		)
+
+		if state.IsProcessing() {
+			job := state.GetCurrentJob()
+			if job != nil {
+				cLog.Infof(
+					"Job %v is currently processing. Will wait for completion or grace period expiry.",
+					job.OriginalFile,
+				)
+			}
 		} else {
-			cLog.Infoln("Received cancellation request, will exit as soon as possible or once current proof task is complete.")
+			cLog.Infoln("No job currently processing. Will exit after cleanup.")
+			// If no job is running, cancel immediately to exit fast
+			cmdCancel()
+			return
+		}
+
+		// If job is running, monitor it and only cancel when needed
+		// Leave some buffer time for cleanup (e.g., 10 seconds before deadline)
+		shutdownTimeout := cfg.Controller.ChildProcessShutdownTimeout
+		if shutdownTimeout == 0 {
+			shutdownTimeout = 10 * time.Second
+		}
+
+		// Cancel context when we're close to the deadline
+		gracefulDeadline := deadline.Add(-shutdownTimeout)
+
+		cLog.Infof(
+			"Will allow job to run until %v before initiating shutdown sequence",
+			gracefulDeadline.Format(time.RFC3339),
+		)
+
+		// Monitor job status and deadline
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				// Check if job finished
+				if !state.IsProcessing() {
+					cLog.Infoln("Job completed before grace period, cancelling context for cleanup")
+					cmdCancel()
+					return
+				}
+
+				// Check if we're approaching deadline
+				if time.Now().After(gracefulDeadline) {
+					cLog.Warnln("Grace period approaching end, initiating shutdown sequence")
+					cmdCancel()
+					return
+				}
+			}
 		}
 	}()
 
 	for {
 		select {
 		case <-ctx.Done():
-			// Graceful shutdown.
-			// This case captures both cancellations initiated by the caller
-			// through ctx and SIGTERM signals. Even if the cancellation
-			// request is first intercepted by the goroutine at line 34, Go
-			// allows the ctx.Done channel to be read multiple times, which, in
-			// our scenario, ensures cancellation requests are effectively
-			// detected and handled.
-			cLog.Infoln("Context canceled by caller or SIGTERM. Exiting")
-			metrics.ShutdownServer(ctx)
+			// Graceful shutdown
+			cLog.Infoln("Entering graceful shutdown phase")
+
+			// The shutdown handler goroutine is already monitoring the job
+			// and will call cmdCancel() when needed. We just need to wait
+			// for the job to finish (state will become not processing).
+
+			if state.IsProcessing() {
+				// Wait for shutdown handler to complete its work
+				// It will call cmdCancel() which will trigger job shutdown
+				cLog.Infoln("Waiting for shutdown handler to complete job termination")
+
+				// Simple wait loop - just check if processing stopped
+				ticker := time.NewTicker(1 * time.Second)
+				defer ticker.Stop()
+
+				for state.IsProcessing() {
+					<-ticker.C
+				}
+
+				cLog.Infoln("Job processing completed, proceeding with cleanup")
+			}
+
+			cLog.Infoln("Shutting down metrics server")
+			metrics.ShutdownServer(context.Background())
+			cLog.Infoln("Graceful shutdown complete")
 			return
 
 		// Processing a new job
 		case <-retryDelay(cfg.Controller.RetryDelays, numRetrySoFar):
+			// Check if shutdown was requested - don't pick up new jobs
+			if state.IsShutdownRequested() {
+				cLog.Infoln("Shutdown requested, not picking up new jobs")
+				continue
+			}
+
 			// Fetch the best block we can fetch
 			job := fsWatcher.GetBest()
 
@@ -92,8 +170,14 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// Else, reset the retry counter
 			numRetrySoFar = 0
 
+			// Mark job as processing
+			state.StartProcessing(job)
+
 			// Run the command (potentially retrying in large mode)
-			status := executor.Run(cmdContext, job)
+			status := executor.Run(cmdContext, job, state)
+
+			// Mark job as finished
+			state.StopProcessing()
 
 			// createColumns the job according to the status we got
 			switch {

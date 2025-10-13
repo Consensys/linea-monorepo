@@ -22,6 +22,55 @@ const (
 // Empty prometheus server
 var server *http.Server = nil
 
+// StateChecker interface for accessing controller state
+type StateChecker interface {
+	IsProcessing() bool
+	IsShutdownRequested() bool
+}
+
+// StartServerWithReadiness starts the metrics server with readiness and health endpoints
+func StartServerWithReadiness(worker_id string, route string, port int, state StateChecker) {
+	StartServer(worker_id, route, port)
+
+	// Add readiness and health endpoints
+	if server != nil {
+		mux, ok := server.Handler.(*http.ServeMux)
+		if !ok {
+			logrus.Warnln("Could not add readiness endpoint: server handler is not *http.ServeMux")
+			return
+		}
+
+		// Readiness endpoint - returns 503 if processing or shutting down
+		mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+			// Not ready if shutdown requested
+			if state.IsShutdownRequested() {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("shutting down"))
+				return
+			}
+
+			// Not ready if processing (busy with a job)
+			if state.IsProcessing() {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("processing job"))
+				return
+			}
+
+			// Ready if idle
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ready"))
+		})
+
+		// Health endpoint - always returns 200 unless server is dead
+		mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("healthy"))
+		})
+
+		logrus.Infof("Added readiness endpoint: /ready and health endpoint: /health on port %v", port)
+	}
+}
+
 // The server will
 func StartServer(worker_id string, route string, port int) {
 

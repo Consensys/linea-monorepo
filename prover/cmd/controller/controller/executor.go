@@ -63,9 +63,9 @@ func NewExecutor(cfg *config.Config) *Executor {
 
 // Run an execution proof job. Importantly, this code must NOT panic because no
 // matter what happens we want to be able to gracefully shutdown. When the
-// context is exited, the Run function will SIGKILL the process and the function
-// immediately exits.
-func (e *Executor) Run(ctx context.Context, job *Job) (status Status) {
+// context is exited, the Run function will attempt graceful shutdown with SIGTERM
+// before resorting to SIGKILL.
+func (e *Executor) Run(ctx context.Context, job *Job, state *ControllerState) (status Status) {
 
 	// The job should be locked
 	if len(job.LockedFile) == 0 {
@@ -90,7 +90,7 @@ func (e *Executor) Run(ctx context.Context, job *Job) (status Status) {
 	}
 
 	// Run the initial command
-	status = runCmd(ctx, cmd, job, false)
+	status = runCmd(ctx, cmd, job, false, e.Config, state)
 
 	// Do not retry for blob decompression or aggregation jobs
 	if job.Def.Name == jobNameBlobDecompression || job.Def.Name == jobNameAggregation {
@@ -113,7 +113,7 @@ func (e *Executor) Run(ctx context.Context, job *Job) (status Status) {
 	if isIn(status.ExitCode, retryableCodes) {
 		if largeRun {
 			// For large jobs, retry with the same large command
-			status = runCmd(ctx, cmd, job, true)
+			status = runCmd(ctx, cmd, job, true, e.Config, state)
 		} else {
 			// For regular jobs, retry with the large command
 			largeCmd, err := e.buildCmd(job, true)
@@ -124,7 +124,7 @@ func (e *Executor) Run(ctx context.Context, job *Job) (status Status) {
 					What:     "can't format the command",
 				}
 			}
-			status = runCmd(ctx, largeCmd, job, true)
+			status = runCmd(ctx, largeCmd, job, true, e.Config, state)
 		}
 	}
 
@@ -175,8 +175,8 @@ func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 }
 
 // Run a command and returns the status. Retry gives an indication on whether
-// this is a local retry or not.
-func runCmd(ctx context.Context, cmd string, job *Job, retry bool) Status {
+// this is a local retry or not. Implements graceful shutdown with SIGTERM before SIGKILL.
+func runCmd(ctx context.Context, cmd string, job *Job, retry bool, cfg *config.Config, state *ControllerState) Status {
 
 	// Split the command into a list of argvs that can be passed to the os
 	// package.
@@ -287,15 +287,68 @@ func runCmd(ctx context.Context, cmd string, job *Job, retry bool) Status {
 
 	select {
 	case <-ctx.Done():
-		logrus.Infof("The process %v is being killed by the controller", pname)
-		_ = curProcess.Kill()
+		// Graceful shutdown requested
+		logrus.Infof("Shutdown requested for process %v", pname)
 
-		// Not that we exit without providing post-execution metrics to
-		// prometheus as these would not be relevant anyway.
+		// Determine shutdown strategy based on remaining time
+		var deadline time.Time
+		if state != nil && state.IsShutdownRequested() {
+			deadline = state.GetShutdownDeadline()
+		} else {
+			// Fallback: give it 10 seconds
+			deadline = time.Now().Add(10 * time.Second)
+		}
+
+		shutdownTimeout := cfg.Controller.ChildProcessShutdownTimeout
+		if shutdownTimeout == 0 {
+			shutdownTimeout = 10 * time.Second
+		}
+
+		remainingTime := time.Until(deadline)
+		useGracefulShutdown := remainingTime > shutdownTimeout
+
+		if useGracefulShutdown {
+			logrus.Infof(
+				"Process %v: Attempting graceful shutdown with SIGTERM (timeout: %v, remaining grace: %v)",
+				pname, shutdownTimeout, remainingTime,
+			)
+
+			// Try SIGTERM first for graceful shutdown
+			if err := curProcess.Signal(syscall.SIGTERM); err != nil {
+				logrus.Warnf("Failed to send SIGTERM to process %v: %v", pname, err)
+				// Fallback to SIGKILL
+				_ = curProcess.Kill()
+			} else {
+				// Wait for process to exit gracefully or timeout
+				select {
+				case status := <-done:
+					logrus.Infof("Process %v exited gracefully after SIGTERM", pname)
+					return status
+				case <-time.After(shutdownTimeout):
+					logrus.Warnf("Process %v did not respond to SIGTERM within %v, sending SIGKILL", pname, shutdownTimeout)
+					_ = curProcess.Kill()
+				}
+			}
+		} else {
+			logrus.Warnf(
+				"Process %v: Insufficient time for graceful shutdown (remaining: %v), sending SIGKILL immediately",
+				pname, remainingTime,
+			)
+			_ = curProcess.Kill()
+		}
+
+		// Wait a bit for SIGKILL to take effect
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			logrus.Warnf("Process %v did not terminate after SIGKILL", pname)
+		}
+
 		return Status{
 			ExitCode: CodeKilledByUs,
 			What:     "the process was killed by the controller",
 		}
+
 	case status := <-done:
 		return status
 	}

@@ -35,6 +35,12 @@ func setDefaultValues() {
 	viper.SetDefault("controller.worker_cmd_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}")
 	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
 
+	// Set default grace period values for SIGTERM handling
+	// Default to 3550 seconds (leaves 50s buffer before K8s sends SIGKILL at 3600s)
+	viper.SetDefault("controller.termination_grace_period", 3550*time.Second)
+	// Default to 10 seconds for child process graceful shutdown attempt
+	viper.SetDefault("controller.child_process_shutdown_timeout", 10*time.Second)
+
 	viper.SetDefault("execution.ignore_compatibility_check", false)
 }
 

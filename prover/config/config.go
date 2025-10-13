@@ -197,8 +197,20 @@ type Controller struct {
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
 
+	// TerminationGracePeriod specifies how long to wait for graceful shutdown
+	// after receiving SIGTERM. Should match Kubernetes terminationGracePeriodSeconds
+	// minus a small buffer (e.g., 3550s for 3600s K8s grace period).
+	// Default: 3550 seconds
+	TerminationGracePeriod time.Duration `mapstructure:"termination_grace_period"`
+
+	// ChildProcessShutdownTimeout specifies how long to wait for child process
+	// to respond to SIGTERM before sending SIGKILL.
+	// Default: 10 seconds
+	ChildProcessShutdownTimeout time.Duration `mapstructure:"child_process_shutdown_timeout"`
+
 	// SpotInstanceMode tells the controller to gracefully exit as soon as it
-	// receives a SIGTERM.
+	// receives a SIGTERM. When enabled, it will now respect TerminationGracePeriod
+	// and attempt graceful shutdown of child processes.
 	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
 }
 

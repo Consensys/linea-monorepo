@@ -6,6 +6,13 @@ log_level = 4                                  # TODO @gbotrel will be refactore
 [controller]
 retry_delays = [0, 1]
 
+# Grace period for shutdown (should be less than K8s terminationGracePeriodSeconds)
+# Leaves 50s buffer for cleanup before K8s sends SIGKILL at 3600s
+termination_grace_period = "3550s"
+
+# How long to wait for child process to respond to SIGTERM before sending SIGKILL
+child_process_shutdown_timeout = "10s"
+
 [execution]
 prover_mode = "limitless"
 conflated_traces_dir = "/home/ubuntu/linea-prover-integration-test/download/traces"
