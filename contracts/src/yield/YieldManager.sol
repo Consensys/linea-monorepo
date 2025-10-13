@@ -438,7 +438,7 @@ contract YieldManager is
    */
   function transferFundsToReserve(
     uint256 _amount
-  ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_RESERVE_FUNDING) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING) {
     if (!hasRole(RESERVE_OPERATOR_ROLE, msg.sender) && !hasRole(YIELD_PROVIDER_FUNDER_ROLE, msg.sender)) {
       revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_FUNDER_ROLE);
     }
@@ -720,7 +720,7 @@ contract YieldManager is
     uint256 _amount
   )
     external
-    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_RESERVE_FUNDING)
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING)
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(RESERVE_OPERATOR_ROLE)
   {
@@ -986,7 +986,7 @@ contract YieldManager is
   )
     external
     payable
-    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_RESERVE_FUNDING)
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING)
     onlyKnownYieldProvider(_yieldProvider)
   {
     // decrement negative yield against donation

@@ -15,10 +15,10 @@ abstract contract YieldManagerPauseManager is PauseManager {
   /// @notice This is used to unpause native-yield driven funding of external strategies.
   bytes32 public constant UNPAUSE_NATIVE_YIELD_STAKING_ROLE = keccak256("UNPAUSE_NATIVE_YIELD_STAKING_ROLE");
 
-  /// @notice This is used to pause operator-led unstaking flows.
+  /// @notice This is used to pause operator-led unstaking flows and reserve funding to the L1MessageService.
   bytes32 public constant PAUSE_NATIVE_YIELD_UNSTAKING_ROLE = keccak256("PAUSE_NATIVE_YIELD_UNSTAKING_ROLE");
 
-  /// @notice This is used to unpause operator-led unstaking flows.
+  /// @notice This is used to unpause operator-led unstaking flows and reserve funding to the L1MessageService.
   bytes32 public constant UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE = keccak256("UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE");
 
   /// @notice This is used to pause permissionless actions such as unstaking requests and reserve replenishment flows.
@@ -28,14 +28,6 @@ abstract contract YieldManagerPauseManager is PauseManager {
   /// @notice This is used to unpause permissionless actions such as unstaking requests and reserve replenishment flows.
   bytes32 public constant UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE =
     keccak256("UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE");
-
-  /// @notice This is used to pause transfers from the YieldManager to the withdrawal reserve.
-  bytes32 public constant PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE =
-    keccak256("PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE");
-
-  /// @notice This is used to unpause transfers from the YieldManager to the withdrawal reserve.
-  bytes32 public constant UNPAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE =
-    keccak256("UNPAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE");
 
   /// @notice This is used to pause yield-reporting operations.
   bytes32 public constant PAUSE_NATIVE_YIELD_REPORTING_ROLE = keccak256("PAUSE_NATIVE_YIELD_REPORTING_ROLE");

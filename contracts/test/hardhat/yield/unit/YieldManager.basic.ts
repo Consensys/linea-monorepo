@@ -303,16 +303,6 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
     });
 
-    it("Should assign the PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE to securityCouncil address", async () => {
-      const role = await yieldManager.PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
-    });
-
-    it("Should assign the UNPAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE to securityCouncil address", async () => {
-      const role = await yieldManager.UNPAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
-    });
-
     it("Should assign the PAUSE_NATIVE_YIELD_REPORTING_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.PAUSE_NATIVE_YIELD_REPORTING_ROLE();
       expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
