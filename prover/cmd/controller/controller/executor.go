@@ -287,7 +287,27 @@ func runCmd(ctx context.Context, cmd string, job *Job, retry bool, cfg *config.C
 
 	select {
 	case <-ctx.Done():
-		// Graceful shutdown requested
+		// Check if this is spot instance reclamation
+		isSpotReclaim := state != nil && state.IsSpotReclaim()
+
+		if isSpotReclaim {
+			logrus.Warnf("Spot reclaim: Immediately killing process %v to requeue job", pname)
+			_ = curProcess.Kill()
+
+			// Wait briefly for kill to take effect
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				logrus.Warnf("Process %v did not terminate after SIGKILL", pname)
+			}
+
+			return Status{
+				ExitCode: CodeKilledByUs,
+				What:     "the process was killed due to spot instance reclamation",
+			}
+		}
+
+		// Graceful shutdown requested (normal case)
 		logrus.Infof("Shutdown requested for process %v", pname)
 
 		// Determine shutdown strategy based on remaining time

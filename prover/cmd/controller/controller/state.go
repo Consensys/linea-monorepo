@@ -14,6 +14,9 @@ type ControllerState struct {
 	// shutdownRequested indicates if SIGTERM has been received
 	shutdownRequested atomic.Bool
 
+	// isSpotReclaim indicates if shutdown is due to spot instance reclamation
+	isSpotReclaim atomic.Bool
+
 	// shutdownDeadline is when we must forcefully exit
 	shutdownDeadline atomic.Value // time.Time
 
@@ -49,9 +52,21 @@ func (s *ControllerState) RequestShutdown(deadline time.Time) {
 	s.shutdownDeadline.Store(deadline)
 }
 
+// RequestSpotReclaimShutdown marks that shutdown is due to spot instance reclamation
+func (s *ControllerState) RequestSpotReclaimShutdown(deadline time.Time) {
+	s.shutdownRequested.Store(true)
+	s.isSpotReclaim.Store(true)
+	s.shutdownDeadline.Store(deadline)
+}
+
 // IsShutdownRequested returns true if shutdown has been requested
 func (s *ControllerState) IsShutdownRequested() bool {
 	return s.shutdownRequested.Load()
+}
+
+// IsSpotReclaim returns true if shutdown is due to spot instance reclamation
+func (s *ControllerState) IsSpotReclaim() bool {
+	return s.isSpotReclaim.Load()
 }
 
 // GetShutdownDeadline returns the shutdown deadline

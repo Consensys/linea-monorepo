@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -12,6 +13,40 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
+
+const terminationTypeFile = "/tmp/termination-type"
+
+// isSpotInstanceReclaim checks if the termination is due to spot instance reclamation.
+// It reads /tmp/termination-type file to determine the shutdown type:
+//   - File missing or unreadable: ASSUME SPOT RECLAIM (safer default for spot instances)
+//   - File contains "SPOT_RECLAIM": Spot instance reclamation
+//   - File contains "NORMAL_SHUTDOWN": Normal K8s/manual shutdown
+//   - File contains anything else: Assume spot reclaim
+//
+// To explicitly request normal shutdown, create the file with "NORMAL_SHUTDOWN":
+//
+//	echo "NORMAL_SHUTDOWN" > /tmp/termination-type
+func isSpotInstanceReclaim() bool {
+	data, err := os.ReadFile(terminationTypeFile)
+	if err != nil {
+		// File doesn't exist or can't be read - assume spot reclaim for safety
+		// This prevents jobs from wasting time on doomed spot instances
+		logrus.Warnf("File %s not found, defaulting to spot instance reclaim mode", terminationTypeFile)
+		return true
+	}
+
+	content := strings.TrimSpace(string(data))
+
+	// Only explicit "NORMAL_SHUTDOWN" triggers graceful shutdown
+	if content == "NORMAL_SHUTDOWN" {
+		logrus.Infof("File %s contains NORMAL_SHUTDOWN, using graceful shutdown", terminationTypeFile)
+		return false
+	}
+
+	// Everything else (including "SPOT_RECLAIM" or empty) is treated as spot reclaim
+	logrus.Warnf("File %s contains '%s', treating as spot instance reclaim", terminationTypeFile, content)
+	return true
+}
 
 // function to run the controller
 func runController(ctx context.Context, cfg *config.Config) {
@@ -33,7 +68,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 		)
 	}
 
-	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
+	// Listen for both SIGTERM and SIGUSR1
+	// SIGUSR1 is sent by external spot reclaim detection scripts
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGUSR1)
 	defer stop()
 
 	// cmdContext is the context we provide for the command execution.
@@ -45,6 +82,23 @@ func runController(ctx context.Context, cfg *config.Config) {
 	go func() {
 		<-ctx.Done()
 
+		// Check if this is a spot instance reclamation
+		isSpotReclaim := isSpotInstanceReclaim()
+
+		if isSpotReclaim {
+			cLog.Warnln("Spot instance reclamation detected (SIGUSR1 or /tmp/termination-type=SPOT_RECLAIM)")
+			cLog.Warnln("Initiating immediate shutdown to requeue job before VM termination")
+
+			// Set a very short grace period for spot reclaim (just enough to cleanup)
+			deadline := time.Now().Add(10 * time.Second)
+			state.RequestSpotReclaimShutdown(deadline)
+
+			// Cancel immediately to trigger job requeuing
+			cmdCancel()
+			return
+		}
+
+		// Normal shutdown (K8s rolling update, manual shutdown, etc.)
 		// Calculate shutdown deadline
 		gracePeriod := cfg.Controller.TerminationGracePeriod
 		if gracePeriod == 0 {
