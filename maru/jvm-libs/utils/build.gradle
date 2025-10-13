@@ -24,6 +24,7 @@ dependencies {
   implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
   implementation("org.hyperledger.besu.internal:besu-crypto-services")
   implementation("org.hyperledger.besu.internal:besu-ethereum-core")
+  implementation "info.picocli:picocli"
   implementation("org.slf4j:slf4j-nop") {
     because "To suppress slf4j logs"
   }
@@ -31,12 +32,12 @@ dependencies {
 
 tasks.register('runDifficultyCalculator', JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
-  mainClass = 'DifficultyCalculator'
+  mainClass = 'linea.maru.DifficultyCalculator'
   standardOutput = System.out
 }
 
-tasks.register('runPrivateKeyGenerator', JavaExec) {
+tasks.register('keytool', JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
-  mainClass = 'PrivateKeyGenerator'
+  mainClass = 'linea.maru.KeyTool'
   standardOutput = System.out
 }
