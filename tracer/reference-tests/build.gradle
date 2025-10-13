@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+import de.undercouch.gradle.tasks.download.Download
 
 plugins {
   id "common-plugins"
@@ -35,8 +36,35 @@ configurations.configureEach {
 tasks.register("generateBlockchainReferenceTests", RefTestGenerationTask) {
   refTestTemplateFilePath = "src/test/resources/templates/BlockchainReferenceTest.java.template"
   refTests = "src/test/resources/ethereum-tests/BlockchainTests"
+  refTestsSrcPath = "src/test/resources/ethereum-tests/"
   refTestJsonParamsDirectory = "BlockchainTests"
   refTestJsonParamsExcludedPath = "BlockchainTests/InvalidBlocks/bcExpectSection" // exclude test for test filling tool
+  refTestNamePrefix = "BlockchainReferenceTest"
+  generatedRefTestsOutput = "src/test/java/net/consensys/linea/generated/blockchain"
+  failedTestsFilePath = System.getenv('FAILED_TEST_JSON_DIRECTORY') ?: "../tmp/local/"
+  failedModule = System.getenv('FAILED_MODULE') ?: ""
+  failedConstraint = System.getenv('FAILED_CONSTRAINT') ?: ""
+}
+
+tasks.register("downloadExecutionSpecFixtures", Download)
+        {
+  src "https://github.com/ethereum/execution-spec-tests/releases/download/v5.2.0/fixtures_develop.tar.gz"
+  dest "./build/fixtures_develop.tar.gz"
+  overwrite false
+}
+
+
+tasks.register("generateExecutionSpecBlockchainTests", RefTestGenerationTask) {
+  dependsOn "downloadExecutionSpecFixtures"
+  copy {
+    from tarTree("./build/fixtures_develop.tar.gz")
+    into "./build/execution-spec-tests"
+  }
+  refTestTemplateFilePath = "src/test/resources/templates/BlockchainReferenceTest.java.template"
+  refTests = "./build/execution-spec-tests/fixtures/blockchain_tests"
+  refTestsSrcPath = "./build/execution-spec-tests/"
+  refTestJsonParamsDirectory = "fixtures"
+  refTestJsonParamsExcludedPath = "blockchain_tests_engine_x" // exclude test for test filling tool
   refTestNamePrefix = "BlockchainReferenceTest"
   generatedRefTestsOutput = "src/test/java/net/consensys/linea/generated/blockchain"
   failedTestsFilePath = System.getenv('FAILED_TEST_JSON_DIRECTORY') ?: "../tmp/local/"
@@ -71,6 +99,33 @@ tasks.register('referenceBlockchainTests', Test) {
   }
 }
 
+tasks.register('referenceExecutionSpecBlockchainTests', Test) {
+  finalizedBy(jacocoReferenceExecutionSpecBlockchainTestsReport)
+  description = 'Runs ETH reference blockchain tests.'
+  dependsOn generateExecutionSpecBlockchainTests
+  environment.put("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "BlockchainReferenceTestOutcome.json")
+
+  it.configure {
+    // Configure resource limits
+    boolean isCiServer = System.getenv().containsKey("CI")
+    minHeapSize = "256m"
+    maxHeapSize = isCiServer ? "32g" : "8g"
+    // Configure parallelism
+    environment.put("blockchain", System.getenv("blockchain") ?: "Ethereum")
+    systemProperty("junit.jupiter.execution.timeout.default", "15 m")
+    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+            System.getenv().getOrDefault("REFERENCE_TESTS_PARALLELISM", "1").toInteger())
+  }
+
+  useJUnitPlatform {
+    includeTags("BlockchainReferenceTest")
+  }
+}
+
 tasks.register("jacocoReferenceBlockchainTestsReport", JacocoReport) {
   reports {
     xml.required = true
@@ -78,6 +133,15 @@ tasks.register("jacocoReferenceBlockchainTestsReport", JacocoReport) {
 
   sourceSets project(":arithmetization").sourceSets.main
   executionData(referenceBlockchainTests)
+}
+
+tasks.register("jacocoReferenceExecutionSpecBlockchainTestsReport", JacocoReport) {
+  reports {
+    xml.required = true
+  }
+
+  sourceSets project(":arithmetization").sourceSets.main
+  executionData(referenceExecutionSpecBlockchainTests)
 }
 
 dependencies {

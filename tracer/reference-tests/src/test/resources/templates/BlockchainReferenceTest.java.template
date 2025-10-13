@@ -44,15 +44,16 @@ public class %%TESTS_NAME%% {
   private static final String FAILED_MODULE = "%%FAILED_MODULE%%";
   private static final String FAILED_CONSTRAINT = "%%FAILED_CONSTRAINT%%";
   private static final String[] TEST_CONFIG_FILE_DIR_PATH = new String[] {%%TESTS_FILE%%};
+  private static final String TEST_SRC_PATH = "%%TESTS_SRC_PATH%%";
 
   public static Stream<Arguments> getTestParametersForConfig()
         throws ExecutionException, InterruptedException {
     if (FAILED_MODULE.isEmpty()) {
-    return generateTestParametersForConfig(TEST_CONFIG_FILE_DIR_PATH).stream().map(params ->
+    return generateTestParametersForConfig(TEST_CONFIG_FILE_DIR_PATH, TEST_SRC_PATH).stream().map(params ->
         Arguments.of(params[0], params[1], params[2])
         );
     } else {
-      return generateTestParametersForConfigForFailedTests(TEST_CONFIG_FILE_DIR_PATH, FAILED_MODULE, FAILED_CONSTRAINT).stream().map(params ->
+      return generateTestParametersForConfigForFailedTests(TEST_CONFIG_FILE_DIR_PATH, TEST_SRC_PATH, FAILED_MODULE, FAILED_CONSTRAINT).stream().map(params ->
           Arguments.of(params[0], params[1], params[2])
       );
     }
