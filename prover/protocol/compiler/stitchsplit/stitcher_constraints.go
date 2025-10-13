@@ -183,27 +183,28 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 	// case: verifier columns without shift
 	case verifiercol.VerifierCol:
 		scaling := ctx.MaxSize / col.Size()
-		// expand the veriferCol
 		stitchingCol = verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
 			Col:       m,
 			Expansion: scaling,
 		}
 		if len(option) != 0 {
 			// if it is a shifted veriferCol, set the offset for shifting the expanded column
-			newOffset = option[0] * col.Size()
+			newOffset = option[0] * scaling
 		}
 		return column.Shift(stitchingCol, newOffset)
+
 	case column.Natural:
 		// find the stitching column
 		switch m.Status() {
 		case column.Proof, column.VerifyingKey:
+			scaling := ctx.MaxSize / m.Size()
 			stitchingCol = verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
 				Col:       col,
-				Expansion: ctx.MaxSize / col.Size(),
+				Expansion: scaling,
 			}
 			if len(option) != 0 {
 				// if it is a shifted veriferCol, set the offset for shifting the expanded column
-				newOffset = option[0] * col.Size()
+				newOffset = option[0] * scaling
 			}
 			return column.Shift(stitchingCol, newOffset)
 		// reminder: subcols are ignored after stitching
@@ -212,7 +213,7 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 			stitchingCol = ctx.Comp.Columns.GetHandle(subColInfo.NameBigCol)
 			scaling := stitchingCol.Size() / col.Size()
 			if len(option) != 0 {
-				newOffset = scaling * option[0]
+				newOffset = option[0] * scaling
 			}
 			newOffset = newOffset + subColInfo.PosInBigCol
 			return column.Shift(stitchingCol, newOffset)
