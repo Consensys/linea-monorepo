@@ -41,7 +41,7 @@ func Prove(args ProverArgs) error {
 	var (
 		jobExecution         = strings.Contains(args.Input, "getZkProof")
 		jobBlobDecompression = strings.Contains(args.Input, "getZkBlobCompressionProof")
-		jobInvalidity        = strings.Contains(args.Input, "getZkInvalidityProof") // one file per aggregation
+		jobInvalidity        = strings.Contains(args.Input, "getZkInvalidityProof")
 		jobAggregation       = strings.Contains(args.Input, "getZkAggregatedProof")
 	)
 

@@ -96,7 +96,9 @@ func (cir *BadNonceBalanceCircuit) Allocate(config Config) {
 
 // Assign the circuit from [AssigningInputs], circuit is reinitialized
 func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
-
+	if assi.InvalidityType == 0 || assi.InvalidityType == 1 {
+		utils.Panic("yet unsupported, since consistency check between nonce and rlp is missing")
+	}
 	var (
 		txCost  = assi.Transaction.Cost()
 		balance = assi.AccountTrieInputs.Account.Balance
