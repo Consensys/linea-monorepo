@@ -847,6 +847,9 @@ func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *Mod
 		smartvectors.NewConstant(field.NewElement(uint64(witness.SegmentModuleIndex)), 1),
 	)
 
+	// This assigns the VKeyMerkleRoot
+	assignPiColumn(run, modGL.PublicInputs.VKeyMerkleRoot.Name, witness.VkMerkleRoot)
+
 	// This assigns the columns corresponding to the public input indicating
 	// the number of segments
 	assignListOfPiColumns(run, targetNbSegmentPublicInputBase, vector.ForTest(witness.TotalSegmentCount...))
@@ -858,7 +861,7 @@ func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *Mod
 func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 
 	var (
-		lppCommitments           = run.GetPublicInput(lppMerkleRootPublicInput)
+		lppCommitments           = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
 		segmentIndex             = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof              = field.NewElement(uint64(proofTypeGL))
 		hasSentOrReceive         = len(modGL.ReceivedValuesGlobalMap) > 0
@@ -907,7 +910,7 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 	var (
 		targetMSetGeneral          = GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
 		targetMSetSharedRandomness = GetPublicInputList(run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
-		lppCommitments             = run.GetPublicInput(lppMerkleRootPublicInput)
+		lppCommitments             = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
 		hasSentOrReceive           = len(modGL.ReceivedValuesGlobalMap) > 0

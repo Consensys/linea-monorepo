@@ -576,6 +576,9 @@ func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *M
 		smartvectors.NewConstant(field.NewElement(uint64(witness.SegmentModuleIndex)), 1),
 	)
 
+	// This assigns the VKeyMerkleRoot
+	assignPiColumn(run, modLPP.PublicInputs.VKeyMerkleRoot.Name, witness.VkMerkleRoot)
+
 	// This assigns the columns corresponding to the public input indicating
 	// the number of segments
 	assignListOfPiColumns(run, targetNbSegmentPublicInputBase, vector.ForTest(witness.TotalSegmentCount...))
@@ -586,7 +589,7 @@ func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *M
 func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 
 	var (
-		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
+		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
@@ -629,7 +632,7 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
 		targetMSet             = GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput)
+		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
