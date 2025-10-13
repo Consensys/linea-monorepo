@@ -76,8 +76,8 @@ import static net.consensys.linea.zktracer.module.stp.StpOperation.NB_ROWS_STP;
 import static net.consensys.linea.zktracer.module.txndata.cancun.transactions.SysfNoopTransaction.NB_ROWS_TXN_DATA_SYSF_NOOP;
 import static net.consensys.linea.zktracer.module.txndata.cancun.transactions.SysiEip2935Transaction.NB_ROWS_TXN_DATA_SYSI_EIP2935;
 import static net.consensys.linea.zktracer.module.txndata.cancun.transactions.SysiEip4788Transaction.NB_ROWS_TXN_DATA_SYSI_EIP4788;
-import static net.consensys.linea.zktracer.module.txndata.cancun.transactions.UserTransaction.NB_ROWS_TXN_DATA_USER_1559_SEMANTIC;
-import static net.consensys.linea.zktracer.module.txndata.cancun.transactions.UserTransaction.NB_ROWS_TXN_DATA_USER_NO_1559_SEMANTIC;
+import static net.consensys.linea.zktracer.module.txndata.osaka.OsakaUserTransaction.NB_ROWS_TXN_DATA_OSAKA_USER_1559_SEMANTIC;
+import static net.consensys.linea.zktracer.module.txndata.osaka.OsakaUserTransaction.NB_ROWS_TXN_DATA_OSAKA_USER_NO_1559_SEMANTIC;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.runtime.stack.Stack.MAX_STACK_SIZE;
 import static net.consensys.linea.zktracer.types.TransactionProcessingMetadata.computeRequiresEvmExecution;
@@ -416,8 +416,8 @@ public class ZkCounter implements LineCountingTracer {
         }
         txnData.updateTally(
             transactionHasEip1559GasSemantics(tx)
-                ? NB_ROWS_TXN_DATA_USER_1559_SEMANTIC
-                : NB_ROWS_TXN_DATA_USER_NO_1559_SEMANTIC);
+                ? NB_ROWS_TXN_DATA_OSAKA_USER_1559_SEMANTIC
+                : NB_ROWS_TXN_DATA_OSAKA_USER_NO_1559_SEMANTIC);
         // deploymentTransaction:
         if (tx.isContractCreation()) {
           rlpAddr.updateTally(NB_ROWS_RLPADDR_CREATE);
