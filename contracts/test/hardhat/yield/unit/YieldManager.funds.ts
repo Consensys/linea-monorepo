@@ -16,6 +16,7 @@ import {
   NATIVE_YIELD_REPORTING_PAUSE_TYPE,
   NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
   NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
+  NATIVE_YIELD_DONATION_PAUSE_TYPE,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { fundYieldProviderForWithdrawal, incrementBalance, setWithdrawalReserveBalance } from "../helpers";
@@ -1540,16 +1541,16 @@ describe("YieldManager contract - ETH transfer operations", () => {
       );
     });
 
-    it("Should revert when the NATIVE_YIELD_UNSTAKING pause type is activated", async () => {
+    it("Should revert when the NATIVE_YIELD_DONATION pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_DONATION_PAUSE_TYPE);
 
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).donate(mockYieldProviderAddress, { value: 1n }),
         "IsPaused",
-        [NATIVE_YIELD_UNSTAKING_PAUSE_TYPE],
+        [NATIVE_YIELD_DONATION_PAUSE_TYPE],
       );
     });
 

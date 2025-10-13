@@ -29,6 +29,12 @@ abstract contract YieldManagerPauseManager is PauseManager {
   bytes32 public constant UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE =
     keccak256("UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE");
 
+  /// @notice This is used to pause donation flows routed through the YieldManager.
+  bytes32 public constant PAUSE_NATIVE_YIELD_DONATION_ROLE = keccak256("PAUSE_NATIVE_YIELD_DONATION_ROLE");
+
+  /// @notice This is used to unpause donation flows routed through the YieldManager.
+  bytes32 public constant UNPAUSE_NATIVE_YIELD_DONATION_ROLE = keccak256("UNPAUSE_NATIVE_YIELD_DONATION_ROLE");
+
   /// @notice This is used to pause yield-reporting operations.
   bytes32 public constant PAUSE_NATIVE_YIELD_REPORTING_ROLE = keccak256("PAUSE_NATIVE_YIELD_REPORTING_ROLE");
 

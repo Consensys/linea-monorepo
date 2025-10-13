@@ -986,7 +986,7 @@ contract YieldManager is
   )
     external
     payable
-    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING)
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_DONATION)
     onlyKnownYieldProvider(_yieldProvider)
   {
     // decrement negative yield against donation

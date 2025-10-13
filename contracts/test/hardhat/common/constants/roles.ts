@@ -92,6 +92,16 @@ export const UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE = generateKeccak25
   ["UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE"],
   true,
 );
+export const PAUSE_NATIVE_YIELD_DONATION_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_NATIVE_YIELD_DONATION_ROLE"],
+  true,
+);
+export const UNPAUSE_NATIVE_YIELD_DONATION_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_NATIVE_YIELD_DONATION_ROLE"],
+  true,
+);
 export const PAUSE_NATIVE_YIELD_REPORTING_ROLE = generateKeccak256(
   ["string"],
   ["PAUSE_NATIVE_YIELD_REPORTING_ROLE"],

@@ -15,7 +15,9 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
   let yieldManager: TestYieldManager;
 
   let l1MessageServiceAddress: string;
+  // let yieldManagerAddress: string;
   let yieldProviderAddress: string;
+
   before(async () => {
     ({ nativeYieldOperator } = await loadFixture(getAccountsFixture));
   });
@@ -23,6 +25,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
   beforeEach(async () => {
     ({ lineaRollup, yieldProviderAddress, yieldManager } = await loadFixture(deployYieldManagerIntegrationTestFixture));
     l1MessageServiceAddress = await lineaRollup.getAddress();
+    // yieldManagerAddress = await yieldManager.getAddress();
   });
 
   describe("Donations", () => {
@@ -34,4 +37,15 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       expect(rollupBalanceAfter).eq(rollupBalanceBefore + donationAmount);
     });
   });
+
+  // describe("transferFundsForNativeYield", () => {
+  //   it("Transfer from LineaRollup should arrive at the YieldManager", async () => {
+  //     const rollupBalanceBefore = await ethers.provider.getBalance(l1MessageServiceAddress);
+  //     const yieldManagerBalanceBefore = await ethers.provider.getBalance(yieldManagerAddress);
+  //     const fundAmount = ONE_ETHER;
+  //     // await lineaRollup.connect(nativeYieldOperator).donate(yieldProviderAddress, { value: donationAmount });
+  //     // const rollupBalanceAfter = await ethers.provider.getBalance(l1MessageServiceAddress);
+  //     // expect(rollupBalanceAfter).eq(rollupBalanceBefore + donationAmount);
+  //   });
+  // });
 });
