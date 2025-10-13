@@ -364,7 +364,6 @@ describe("Linea Rollup contract", () => {
 
     it("Should configure roles, set the YieldManager and emit version change events", async () => {
       // Arrange - unfortunately 'upgrades.upgradeProxy' does not seem to expose the reinitialize call so we need to construct it manually
-      expect(await lineaRollup.hasRole(OPERATOR_ROLE, nonAuthorizedAccount.address)).to.be.false;
       const newYieldManager = await deployMockYieldManager();
 
       const reinitData: LineaRollupV7ReinitializationData = {
@@ -373,8 +372,8 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [
           ...roleAddresses,
           {
-            role: OPERATOR_ROLE,
-            addressWithRole: nonAuthorizedAccount.address,
+            role: FUNDER_ROLE,
+            addressWithRole: newYieldManager,
           },
         ],
         yieldManager: newYieldManager,
@@ -404,7 +403,7 @@ describe("Linea Rollup contract", () => {
         .withArgs(mockYieldManager, newYieldManager);
 
       expect(await lineaRollup.yieldManager()).to.equal(newYieldManager);
-      expect(await lineaRollup.hasRole(OPERATOR_ROLE, nonAuthorizedAccount.address)).to.be.true;
+      expect(await lineaRollup.hasRole(FUNDER_ROLE, newYieldManager)).to.be.true;
     });
 
     it("Should revert if reinitializeLineaRollupV7 is invoked more than once", async () => {
