@@ -87,12 +87,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
   });
 
   describe("sending ETH to the L1MessageService", () => {
-    it("Should revert when the caller is not the YIELD_PROVIDER_FUNDER_ROLE", async () => {
+    it("Should revert when the caller is not the YIELD_PROVIDER_STAKING_ROLE", async () => {
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.connect(nonAuthorizedAccount).transferFundsToReserve(1n),
         "CallerMissingRole",
-        [await yieldManager.RESERVE_OPERATOR_ROLE(), await yieldManager.YIELD_PROVIDER_FUNDER_ROLE()],
+        [await yieldManager.RESERVE_OPERATOR_ROLE(), await yieldManager.YIELD_PROVIDER_STAKING_ROLE()],
       );
     });
 
@@ -101,7 +101,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
         yieldManager,
         yieldManager.connect(nonAuthorizedAccount).transferFundsToReserve(1n),
         "CallerMissingRole",
-        [await yieldManager.RESERVE_OPERATOR_ROLE(), await yieldManager.YIELD_PROVIDER_FUNDER_ROLE()],
+        [await yieldManager.RESERVE_OPERATOR_ROLE(), await yieldManager.YIELD_PROVIDER_STAKING_ROLE()],
       );
     });
 
@@ -147,13 +147,13 @@ describe("YieldManager contract - ETH transfer operations", () => {
   });
 
   describe("sending ETH to a YieldProvider", () => {
-    it("Should revert when the caller is not the YIELD_PROVIDER_FUNDER_ROLE", async () => {
+    it("Should revert when the caller is not the YIELD_PROVIDER_STAKING_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
       await expect(
         yieldManager.connect(nonAuthorizedAccount).fundYieldProvider(mockYieldProviderAddress, 1n),
       ).to.be.revertedWith(
-        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_FUNDER_ROLE()),
+        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_STAKING_ROLE()),
       );
     });
 

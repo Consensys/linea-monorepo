@@ -190,8 +190,8 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.yieldProviderCount()).to.equal(ZERO_VALUE);
     });
 
-    it("Should assign the YIELD_PROVIDER_FUNDER_ROLE to nativeYieldOperator address", async () => {
-      const role = await yieldManager.YIELD_PROVIDER_FUNDER_ROLE();
+    it("Should assign the YIELD_PROVIDER_STAKING_ROLE to nativeYieldOperator address", async () => {
+      const role = await yieldManager.YIELD_PROVIDER_STAKING_ROLE();
       expect(await yieldManager.hasRole(role, nativeYieldOperator.address)).to.be.true;
     });
 
@@ -222,7 +222,7 @@ describe("YieldManager contract - basic operations", () => {
 
     it("Should also assign operator roles (except YIELD_REPORTER_ROLE) to securityCouncil address", async () => {
       const roles = [
-        await yieldManager.YIELD_PROVIDER_FUNDER_ROLE(),
+        await yieldManager.YIELD_PROVIDER_STAKING_ROLE(),
         await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE(),
         await yieldManager.STAKING_PAUSER_ROLE(),
         await yieldManager.STAKING_UNPAUSER_ROLE(),

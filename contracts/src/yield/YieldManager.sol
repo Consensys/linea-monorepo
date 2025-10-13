@@ -25,7 +25,7 @@ contract YieldManager is
   IYieldManager
 {
   /// @notice The role required to send ETH to a yield provider.
-  bytes32 public constant YIELD_PROVIDER_FUNDER_ROLE = keccak256("YIELD_PROVIDER_FUNDER_ROLE");
+  bytes32 public constant YIELD_PROVIDER_STAKING_ROLE = keccak256("YIELD_PROVIDER_STAKING_ROLE");
 
   /// @notice The role required to unstake ETH from a yield provider.
   bytes32 public constant YIELD_PROVIDER_UNSTAKER_ROLE = keccak256("YIELD_PROVIDER_UNSTAKER_ROLE");
@@ -433,14 +433,14 @@ contract YieldManager is
 
   /**
    * @notice Send ETH to the L1MessageService.
-   * @dev YIELD_PROVIDER_FUNDER_ROLE or YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_STAKING_ROLE or YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @param _amount        The amount of ETH to send.
    */
   function transferFundsToReserve(
     uint256 _amount
   ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING) {
-    if (!hasRole(RESERVE_OPERATOR_ROLE, msg.sender) && !hasRole(YIELD_PROVIDER_FUNDER_ROLE, msg.sender)) {
-      revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_FUNDER_ROLE);
+    if (!hasRole(RESERVE_OPERATOR_ROLE, msg.sender) && !hasRole(YIELD_PROVIDER_STAKING_ROLE, msg.sender)) {
+      revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_STAKING_ROLE);
     }
     _fundReserve(_amount);
     // Destination will emit the event.
@@ -448,7 +448,7 @@ contract YieldManager is
 
   /**
    * @notice Send ETH to the specified YieldProvider instance.
-   * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_STAKING_ROLE is required to execute.
    * @dev Reverts if the withdrawal reserve is below the minimum threshold.
    * @dev ETH sent to the YieldProvider will be eagerly used to settle any outstanding LST liabilities.
    * @param _yieldProvider The target yield provider contract.
@@ -461,7 +461,7 @@ contract YieldManager is
     external
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_STAKING)
     onlyKnownYieldProvider(_yieldProvider)
-    onlyRole(YIELD_PROVIDER_FUNDER_ROLE)
+    onlyRole(YIELD_PROVIDER_STAKING_ROLE)
   {
     if (isWithdrawalReserveBelowMinimum()) {
       revert InsufficientWithdrawalReserve();

@@ -489,14 +489,14 @@ interface IYieldManager {
 
   /**
    * @notice Send ETH to the L1MessageService.
-   * @dev YIELD_PROVIDER_FUNDER_ROLE or YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_STAKING_ROLE or YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
    * @param _amount        The amount of ETH to send.
    */
   function transferFundsToReserve(uint256 _amount) external;
 
   /**
    * @notice Send ETH to the specified YieldProvider instance.
-   * @dev YIELD_PROVIDER_FUNDER_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_STAKING_ROLE is required to execute.
    * @dev Reverts if the withdrawal reserve is below the minimum threshold.
    * @dev ETH sent to the YieldProvider will be eagerly used to settle any outstanding LST liabilities.
    * @param _yieldProvider The target yield provider contract.

@@ -93,7 +93,7 @@ export const UNPAUSE_NATIVE_YIELD_STAKING_ROLE = generateKeccak256(["string"], [
   encodePacked: true,
 });
 // Roles for YieldManager
-export const YIELD_PROVIDER_FUNDER_ROLE = generateKeccak256(["string"], ["YIELD_PROVIDER_FUNDER_ROLE"], {
+export const YIELD_PROVIDER_STAKING_ROLE = generateKeccak256(["string"], ["YIELD_PROVIDER_STAKING_ROLE"], {
   encodePacked: true,
 });
 export const YIELD_PROVIDER_UNSTAKER_ROLE = generateKeccak256(["string"], ["YIELD_PROVIDER_UNSTAKER_ROLE"], {
@@ -206,7 +206,7 @@ export const TOKEN_BRIDGE_ROLES = [
 
 // For NativeYieldCronJob
 export const YIELD_MANAGER_OPERATOR_ROLES = [
-  YIELD_PROVIDER_FUNDER_ROLE,
+  YIELD_PROVIDER_STAKING_ROLE,
   YIELD_PROVIDER_UNSTAKER_ROLE,
   YIELD_REPORTER_ROLE,
   STAKING_PAUSER_ROLE,
@@ -217,7 +217,7 @@ export const YIELD_MANAGER_OPERATOR_ROLES = [
 export const YIELD_MANAGER_SECURITY_COUNCIL_ROLES = [
   ...BASE_ROLES,
   // Duplicates of YieldManagerOperator roles
-  YIELD_PROVIDER_FUNDER_ROLE,
+  YIELD_PROVIDER_STAKING_ROLE,
   YIELD_PROVIDER_UNSTAKER_ROLE,
   STAKING_PAUSER_ROLE,
   STAKING_UNPAUSER_ROLE,
