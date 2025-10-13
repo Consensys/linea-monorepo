@@ -21,6 +21,16 @@ const nextConfig = {
         hostname: "assets.coingecko.com",
         pathname: "/coins/images/**",
       },
+      {
+        protocol: "https",
+        hostname: "linea.build",
+        pathname: "/icons/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.ctfassets.net",
+        pathname: `/${process.env.CONTENTFUL_SPACE_ID}/**`,
+      },
     ],
   },
   sassOptions: {
