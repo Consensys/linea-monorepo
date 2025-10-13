@@ -281,7 +281,6 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
         MessageEntity,
         { messageHash: message.messageHash, direction: message.direction },
         {
-          claimTxCreationDate: new Date(),
           claimTxNonce: nonce,
           status: MessageStatus.PENDING,
           ...(message.status === MessageStatus.FEE_UNDERPRICED
