@@ -210,6 +210,7 @@ export class PostmanServiceClient {
         maxNumberOfRetries: config.l2Config.claiming.maxNumberOfRetries,
         retryDelayInSeconds: config.l2Config.claiming.retryDelayInSeconds,
         maxClaimGasLimit: BigInt(config.l2Config.claiming.maxClaimGasLimit),
+        claimViaAddress: config.l2Config.claiming.claimViaAddress,
       },
       new WinstonLogger(`L2${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
@@ -336,6 +337,7 @@ export class PostmanServiceClient {
         maxNumberOfRetries: config.l1Config.claiming.maxNumberOfRetries,
         retryDelayInSeconds: config.l1Config.claiming.retryDelayInSeconds,
         maxClaimGasLimit: BigInt(config.l1Config.claiming.maxClaimGasLimit),
+        claimViaAddress: config.l1Config.claiming.claimViaAddress,
       },
       new WinstonLogger(`L1${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
