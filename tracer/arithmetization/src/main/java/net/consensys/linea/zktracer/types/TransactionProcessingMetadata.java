@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.TransactionUtils.transactionHasEip1559GasSemantics;
 import static org.hyperledger.besu.datatypes.TransactionType.FRONTIER;
 
 import java.math.BigInteger;
@@ -484,5 +485,9 @@ public class TransactionProcessingMetadata {
 
   public boolean isMessageCall() {
     return !isDeployment;
+  }
+
+  public boolean transactionTypeHasEip1559GasSemantics() {
+    return transactionHasEip1559GasSemantics(getBesuTransaction());
   }
 }

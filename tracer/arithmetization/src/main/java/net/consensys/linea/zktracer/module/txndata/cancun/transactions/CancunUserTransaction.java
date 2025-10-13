@@ -15,17 +15,14 @@
 package net.consensys.linea.zktracer.module.txndata.cancun.transactions;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.Fork.isPostPrague;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
 import static net.consensys.linea.zktracer.module.txndata.shanghai.ShanghaiTxndataOperation.MAX_INIT_CODE_SIZE_BYTES;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.types.TransactionUtils.transactionHasEip1559GasSemantics;
 
 import java.math.BigInteger;
 
 import lombok.Getter;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnDataOperation;
 import net.consensys.linea.zktracer.module.txndata.cancun.rows.RlpRow;
@@ -36,13 +33,12 @@ import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
-public class UserTransaction extends CancunTxnDataOperation {
-  public static final short NB_ROWS_TXN_DATA_USER_1559_SEMANTIC = 16;
-  public static final short NB_ROWS_TXN_DATA_USER_NO_1559_SEMANTIC = 14;
+public class CancunUserTransaction extends CancunTxnDataOperation {
+  public static final short NB_ROWS_TXN_DATA_CANCUN_USER_1559_SEMANTIC = 16;
+  public static final short NB_ROWS_TXN_DATA_CANCUN_USER_NO_1559_SEMANTIC = 14;
   private static final Bytes EIP_2681_MAX_NONCE = bigIntegerToBytes(EIP2681_MAX_NONCE);
   public final TransactionProcessingMetadata txn;
   public final ProcessableBlockHeader blockHeader;
-  public final Fork fork;
 
   public enum DominantCost {
     FLOOR_COST_DOMINATES,
@@ -51,20 +47,19 @@ public class UserTransaction extends CancunTxnDataOperation {
 
   @Getter private DominantCost dominantCost;
 
-  public UserTransaction(
+  public CancunUserTransaction(
       final CancunTxnData txnData, final TransactionProcessingMetadata txnMetadata) {
     super(txnData, USER);
 
     this.blockHeader = txnData.getCurrentBlockHeader();
     this.txn = txnMetadata;
-    this.fork = txnData.hub().fork;
 
     this.process();
   }
 
   /**
-   * Every line of function call in the {@link UserTransaction#process} method corresponds to a row
-   * in the USER transaction processing of the specification.
+   * Every line of function call in the {@link CancunUserTransaction#process} method corresponds to
+   * a row in the USER transaction processing of the specification.
    */
   private void process() {
 
@@ -75,6 +70,7 @@ public class UserTransaction extends CancunTxnDataOperation {
     maxInitCodeSizeCheckComputationRow();
     initCodePricingComputationRow();
     gasLimitMustCoverTheUpfrontGasCostComputationRow();
+    eip7825TransactionGasLimitCap();
     gasLimitMustCoverTheTransactionFloorCostComputationRow();
     final long upperLimitForGasRefunds = upperLimitForGasRefundsComputationRow();
     final long consumedGasAfterRefunds = effectiveRefundsComputationRow(upperLimitForGasRefunds);
@@ -83,7 +79,7 @@ public class UserTransaction extends CancunTxnDataOperation {
     comparingTheMaximumGasPriceToTheBaseFee();
     cumulativeGasConsumptionMustNotExceedBlockGasLimitComputationRow();
 
-    if (transactionTypeHasEip1559GasSemantics()) {
+    if (txn.transactionTypeHasEip1559GasSemantics()) {
       comparingMaxFeeToMaxPriorityFeeComputationRow();
       computingTheEffectiveGasPriceComputationRow();
     }
@@ -91,9 +87,9 @@ public class UserTransaction extends CancunTxnDataOperation {
 
   @Override
   protected int ctMax() {
-    return (transactionTypeHasEip1559GasSemantics()
-            ? NB_ROWS_TXN_DATA_USER_1559_SEMANTIC
-            : NB_ROWS_TXN_DATA_USER_NO_1559_SEMANTIC)
+    return (txn.transactionTypeHasEip1559GasSemantics()
+            ? NB_ROWS_TXN_DATA_CANCUN_USER_1559_SEMANTIC
+            : NB_ROWS_TXN_DATA_CANCUN_USER_NO_1559_SEMANTIC)
         - 1;
   }
 
@@ -122,7 +118,7 @@ public class UserTransaction extends CancunTxnDataOperation {
     final Bytes initialBalance = bigIntegerToBytes(txn.getInitialBalance());
     final BigInteger value = txn.getBesuTransaction().getValue().getAsBigInteger();
     final BigInteger maxGasPrice =
-        transactionTypeHasEip1559GasSemantics()
+        txn.transactionTypeHasEip1559GasSemantics()
             ? txn.getBesuTransaction().getMaxFeePerGas().get().getAsBigInteger()
             : txn.getBesuTransaction().getGasPrice().get().getAsBigInteger();
     final Bytes maxCostInWei =
@@ -175,6 +171,9 @@ public class UserTransaction extends CancunTxnDataOperation {
     rows.add(gasLimitMustCoverUpfrontGasCost);
   }
 
+  /** EIP-7825 is in Osaka and add a transaction gas limit cap */
+  protected void eip7825TransactionGasLimitCap() {}
+
   private void gasLimitMustCoverTheTransactionFloorCostComputationRow() {
     final long floorGasCost =
         txn.getFloorCostPrague(); // Always use the Prague floor cost, even for Cancun
@@ -183,15 +182,6 @@ public class UserTransaction extends CancunTxnDataOperation {
     final WcpRow gasLimitMustCoverFloorGasCost =
         WcpRow.smallCallToLeq(
             wcp, Bytes.ofUnsignedLong(floorGasCost), Bytes.ofUnsignedLong(gasLimit));
-
-    if (isPostPrague(fork)) {
-      checkArgument(
-          gasLimitMustCoverFloorGasCost.result(),
-          "Gas limit %s does not cover the transaction floor gas cost %s",
-          gasLimit,
-          floorGasCost);
-    }
-
     rows.add(gasLimitMustCoverFloorGasCost);
   }
 
@@ -248,13 +238,13 @@ public class UserTransaction extends CancunTxnDataOperation {
     final long gasPriceOrZero = txn.gasPrice().toLong();
     final long maxFeePerGasOrZero = txn.maxFeePerGas().toLong();
     final long maximumGasPrice =
-        transactionTypeHasEip1559GasSemantics() ? maxFeePerGasOrZero : gasPriceOrZero;
+        txn.transactionTypeHasEip1559GasSemantics() ? maxFeePerGasOrZero : gasPriceOrZero;
     final long baseFee = txn.getBaseFee();
 
     final WcpRow maximumGasPriceVsBaseFee = WcpRow.smallCallToLeq(wcp, baseFee, maximumGasPrice);
 
     final String errorMessage =
-        transactionTypeHasEip1559GasSemantics()
+        txn.transactionTypeHasEip1559GasSemantics()
             ? String.format(
                 "Maximum fee per gas %s is less than the block base fee %s",
                 maximumGasPrice, baseFee)
@@ -303,10 +293,6 @@ public class UserTransaction extends CancunTxnDataOperation {
         WcpRow.smallCallToLeq(wcp, maxPriorityFeePerGas + txn.getBaseFee(), maxFeePerGas);
 
     rows.add(computingTheEffectiveGasPrice);
-  }
-
-  private boolean transactionTypeHasEip1559GasSemantics() {
-    return transactionHasEip1559GasSemantics(txn.getBesuTransaction());
   }
 
   private int initCodeSize() {

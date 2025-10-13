@@ -26,7 +26,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.UserTransaction;
+import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.AccessListEntry;
@@ -51,7 +51,7 @@ public class NontrivialExecutionTests extends TracerTestBase {
   void adjustableByteCodeTest(
       Bytes byteCode,
       boolean provideAccessList,
-      UserTransaction.DominantCost dominantCostPrediction,
+      CancunUserTransaction.DominantCost dominantCostPrediction,
       TestInfo testInfo) {
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(byteCode);
     AccessListEntry accessListEntry =
@@ -61,8 +61,8 @@ public class NontrivialExecutionTests extends TracerTestBase {
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
-      UserTransaction userTransaction =
-          (UserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
+      CancunUserTransaction userTransaction =
+          (CancunUserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
       Preconditions.checkArgument(userTransaction.getDominantCost() == dominantCostPrediction);
     }
   }
@@ -74,16 +74,16 @@ public class NontrivialExecutionTests extends TracerTestBase {
         Arguments.of(
             buildProgram(
                 TransactionCategory.MESSAGE_CALL,
-                UserTransaction.DominantCost.FLOOR_COST_DOMINATES),
+                CancunUserTransaction.DominantCost.FLOOR_COST_DOMINATES),
             false,
-            UserTransaction.DominantCost.FLOOR_COST_DOMINATES));
+            CancunUserTransaction.DominantCost.FLOOR_COST_DOMINATES));
     arguments.add(
         Arguments.of(
             buildProgram(
                 TransactionCategory.MESSAGE_CALL,
-                UserTransaction.DominantCost.EXECUTION_COST_DOMINATES),
+                CancunUserTransaction.DominantCost.EXECUTION_COST_DOMINATES),
             false,
-            UserTransaction.DominantCost.EXECUTION_COST_DOMINATES));
+            CancunUserTransaction.DominantCost.EXECUTION_COST_DOMINATES));
 
     return arguments.stream();
   }
@@ -109,14 +109,16 @@ public class NontrivialExecutionTests extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("adjustableInitCodeTestSource")
   void adjustableInitCodeTest(
-      Bytes initCode, UserTransaction.DominantCost dominantCostPrediction, TestInfo testInfo) {
+      Bytes initCode,
+      CancunUserTransaction.DominantCost dominantCostPrediction,
+      TestInfo testInfo) {
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(initCode);
     bytecodeRunner.runInitCode(chainConfig, testInfo);
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
-      UserTransaction userTransaction =
-          (UserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
+      CancunUserTransaction userTransaction =
+          (CancunUserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
       Preconditions.checkArgument(userTransaction.getDominantCost() == dominantCostPrediction);
     }
   }
@@ -127,14 +129,15 @@ public class NontrivialExecutionTests extends TracerTestBase {
     arguments.add(
         Arguments.of(
             buildProgram(
-                TransactionCategory.DEPLOYMENT, UserTransaction.DominantCost.FLOOR_COST_DOMINATES),
-            UserTransaction.DominantCost.FLOOR_COST_DOMINATES));
+                TransactionCategory.DEPLOYMENT,
+                CancunUserTransaction.DominantCost.FLOOR_COST_DOMINATES),
+            CancunUserTransaction.DominantCost.FLOOR_COST_DOMINATES));
     arguments.add(
         Arguments.of(
             buildProgram(
                 TransactionCategory.DEPLOYMENT,
-                UserTransaction.DominantCost.EXECUTION_COST_DOMINATES),
-            UserTransaction.DominantCost.EXECUTION_COST_DOMINATES));
+                CancunUserTransaction.DominantCost.EXECUTION_COST_DOMINATES),
+            CancunUserTransaction.DominantCost.EXECUTION_COST_DOMINATES));
 
     return arguments.stream();
   }
@@ -146,7 +149,7 @@ public class NontrivialExecutionTests extends TracerTestBase {
   }
 
   private static Bytes buildProgram(
-      TransactionCategory transactionCategory, UserTransaction.DominantCost dominantCost) {
+      TransactionCategory transactionCategory, CancunUserTransaction.DominantCost dominantCost) {
     return switch (transactionCategory) {
       case MESSAGE_CALL -> {
         /**
@@ -157,7 +160,7 @@ public class NontrivialExecutionTests extends TracerTestBase {
         BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
         program.op(
             OpCode.JUMPDEST,
-            dominantCost == UserTransaction.DominantCost.EXECUTION_COST_DOMINATES ? 12 : 11);
+            dominantCost == CancunUserTransaction.DominantCost.EXECUTION_COST_DOMINATES ? 12 : 11);
         yield program.compile();
       }
       case DEPLOYMENT -> {
@@ -168,7 +171,9 @@ public class NontrivialExecutionTests extends TracerTestBase {
         BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
         program.op(
             OpCode.JUMPDEST,
-            dominantCost == UserTransaction.DominantCost.EXECUTION_COST_DOMINATES ? 1395 : 1396);
+            dominantCost == CancunUserTransaction.DominantCost.EXECUTION_COST_DOMINATES
+                ? 1395
+                : 1396);
         yield program.compile();
       }
     };

@@ -13,19 +13,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.module.txndata.osaka;
 
-import net.consensys.linea.zktracer.ChainConfig;
-import net.consensys.linea.zktracer.module.txndata.TxnData;
-import net.consensys.linea.zktracer.module.txndata.osaka.OsakaTxnData;
+import net.consensys.linea.zktracer.module.euc.Euc;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 
-public class OsakaHub extends PragueHub {
-  public OsakaHub(ChainConfig chain) {
-    super(chain);
+public class OsakaTxnData extends CancunTxnData {
+  public OsakaTxnData(Hub hub, Wcp wcp, Euc euc) {
+    super(hub, wcp, euc);
   }
 
   @Override
-  protected TxnData setTxnData() {
-    return new OsakaTxnData(this, wcp(), euc());
+  public void traceEndTx(TransactionProcessingMetadata tx) {
+    operations().add(new OsakaUserTransaction(this, tx));
   }
 }

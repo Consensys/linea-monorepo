@@ -26,8 +26,8 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.UserTransaction;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.UserTransaction.DominantCost;
+import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction;
+import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction.DominantCost;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.AccessListEntry;
@@ -58,8 +58,8 @@ public class TrivialExecutionTests extends TracerTestBase {
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
-      UserTransaction userTransaction =
-          (UserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
+      CancunUserTransaction userTransaction =
+          (CancunUserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
       Preconditions.checkArgument(userTransaction.getDominantCost() == dominantCostPrediction);
     }
   }
@@ -82,8 +82,8 @@ public class TrivialExecutionTests extends TracerTestBase {
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
-      UserTransaction userTransaction =
-          (UserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
+      CancunUserTransaction userTransaction =
+          (CancunUserTransaction) bytecodeRunner.getHub().txnData().operations().get(2);
       Preconditions.checkArgument(userTransaction.getDominantCost() == dominantCostPrediction);
     }
   }

@@ -105,7 +105,6 @@ import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.*;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
-import net.consensys.linea.zktracer.module.txndata.TxnDataOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -223,7 +222,7 @@ public abstract class Hub implements Module {
   private final Rom rom = new Rom(romLex);
   private final RlpTxn rlpTxn;
   private final Mmio mmio;
-  @Getter final TxnData<? extends TxnDataOperation> txnData = setTxnData();
+  @Getter final TxnData txnData = setTxnData();
   private final RlpTxnRcpt rlpTxnRcpt = new RlpTxnRcpt();
   private final LogInfo logInfo = new LogInfo(rlpTxnRcpt);
   private final LogData logData = new LogData(rlpTxnRcpt);
@@ -1166,7 +1165,7 @@ public abstract class Hub implements Module {
 
   protected abstract BlsRt setBlsRt();
 
-  protected abstract TxnData<? extends TxnDataOperation> setTxnData();
+  protected abstract TxnData setTxnData();
 
   protected abstract Mxp setMxp();
 

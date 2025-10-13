@@ -38,7 +38,7 @@ import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
-public class LondonTxnData extends TxnData<LondonTxnDataOperation> {
+public class LondonTxnData extends TxnData {
 
   private static final int NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST_LONDON = 7;
 

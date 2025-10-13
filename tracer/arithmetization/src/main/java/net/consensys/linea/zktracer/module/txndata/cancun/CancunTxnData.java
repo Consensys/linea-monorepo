@@ -20,19 +20,23 @@ import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionType;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
+import net.consensys.linea.zktracer.module.txndata.TxnDataOperation;
+import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction;
 import net.consensys.linea.zktracer.module.txndata.cancun.transactions.SysfNoopTransaction;
 import net.consensys.linea.zktracer.module.txndata.cancun.transactions.SysiEip2935Transaction;
 import net.consensys.linea.zktracer.module.txndata.cancun.transactions.SysiEip4788Transaction;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.UserTransaction;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
-public class CancunTxnData extends TxnData<CancunTxnDataOperation> {
+public class CancunTxnData extends TxnData {
 
   @Getter private ProcessableBlockHeader currentBlockHeader;
+  // Note: this info is used in tracing only, when the block is already built, no need to pop it
+  // when popping a tx
+  private short nbOfUserTxInCurrentBlock = 0;
 
   public CancunTxnData(Hub hub, Wcp wcp, Euc euc) {
     super(hub, wcp, euc);
@@ -44,31 +48,33 @@ public class CancunTxnData extends TxnData<CancunTxnDataOperation> {
       final ProcessableBlockHeader processableBlockHeader,
       final Address miningBeneficiary) {
     currentBlockHeader = processableBlockHeader;
+    nbOfUserTxInCurrentBlock = 0;
   }
 
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
-    operations().add(new UserTransaction(this, tx));
+    operations().add(new CancunUserTransaction(this, tx));
+    nbOfUserTxInCurrentBlock++;
   }
 
   @Override
   public int numberOfUserTransactionsInCurrentBlock() {
-    return 0;
+    return nbOfUserTxInCurrentBlock;
   }
 
   public void callTxnDataForSystemTransaction(final SystemTransactionType type) {
     switch (type) {
-      case SYSI_NOOP -> throw new IllegalArgumentException(
-          "Unsupported system transaction type: " + type);
       case SYSI_EIP_4788_BEACON_BLOCK_ROOT -> operations().add(new SysiEip4788Transaction(this));
       case SYSI_EIP_2935_HISTORICAL_HASH -> operations().add(new SysiEip2935Transaction(this));
       case SYSF_NOOP -> operations().add(new SysfNoopTransaction(this));
+      case SYSI_NOOP -> throw new IllegalArgumentException(
+          "Unsupported system transaction type: " + type);
     }
   }
 
   @Override
   public void commit(Trace trace) {
-    for (CancunTxnDataOperation tx : operations().getAll()) {
+    for (TxnDataOperation tx : operations().getAll()) {
       tx.traceTransaction(trace.txndata());
     }
   }

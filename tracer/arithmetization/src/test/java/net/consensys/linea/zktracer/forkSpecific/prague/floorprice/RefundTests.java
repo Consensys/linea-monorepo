@@ -30,8 +30,8 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.UserTransaction;
-import net.consensys.linea.zktracer.module.txndata.cancun.transactions.UserTransaction.DominantCost;
+import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction;
+import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction.DominantCost;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.AddressUtils;
 import org.apache.tuweni.bytes.Bytes;
@@ -121,8 +121,8 @@ public class RefundTests extends TracerTestBase {
     // transaction and the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
-      UserTransaction userTransaction =
-          (UserTransaction) toyExecutionEnvironmentV2.getHub().txnData().operations().get(3);
+      CancunUserTransaction userTransaction =
+          (CancunUserTransaction) toyExecutionEnvironmentV2.getHub().txnData().operations().get(3);
       Preconditions.checkArgument(userTransaction.getDominantCost() == dominantCostPrediction);
     }
   }
