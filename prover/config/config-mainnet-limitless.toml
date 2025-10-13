@@ -13,6 +13,10 @@ termination_grace_period = "3550s"
 # How long to wait for child process to respond to SIGTERM before sending SIGKILL
 child_process_shutdown_timeout = "10s"
 
+# File path to determine shutdown type (optional, defaults to /tmp/termination-type)
+# Contents: "NORMAL_SHUTDOWN" = graceful, "SPOT_RECLAIM" = immediate requeue, missing = spot mode
+# termination_type_file = "/tmp/termination-type"
+
 [execution]
 prover_mode = "limitless"
 conflated_traces_dir = "/home/ubuntu/linea-prover-integration-test/download/traces"
