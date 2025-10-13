@@ -5,13 +5,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Final circuit - commitment using Merkle trees
 type VerifyOpeningCircuitMerkleTree struct {
-	Proof      GProof                `gnark:",public"`
+	Proof      GProof                 `gnark:",public"`
 	Roots      []zk.WrappedVariable   `gnark:",public"`
 	X          zk.WrappedVariable     `gnark:",public"`
 	RandomCoin zk.WrappedVariable     `gnark:",public"`
@@ -68,13 +69,13 @@ func AssignCicuitVariablesWithMerkleTree(
 	frLinComb := make([]field.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSlice(frLinComb)
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		verifyCircuit.Proof.LinearCombination[i] = frLinComb[i].String()
+		verifyCircuit.Proof.LinearCombination[i] = zk.ValueOf(frLinComb[i])
 	}
 
 	for i := 0; i < len(proof.Columns); i++ {
 		for j := 0; j < len(proof.Columns[i]); j++ {
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
-				verifyCircuit.Proof.Columns[i][j][k] = proof.Columns[i][j][k].String()
+				verifyCircuit.Proof.Columns[i][j][k] = zk.ValueOf(proof.Columns[i][j][k])
 			}
 		}
 	}
@@ -82,27 +83,27 @@ func AssignCicuitVariablesWithMerkleTree(
 	var buf field.Element
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path
+			verifyCircuit.Proof.MerkleProofs[i][j].Path = zk.ValueOf(proof.MerkleProofs[i][j].Path)
 			for k := 0; k < len(proof.MerkleProofs[i][j].Siblings); k++ {
 				buf.SetBytes(proof.MerkleProofs[i][j].Siblings[k][:])
-				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = buf.String()
+				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = zk.ValueOf(buf)
 			}
 		}
 	}
 
 	for i := 0; i < len(entryList); i++ {
-		verifyCircuit.EntryList[i] = entryList[i]
+		verifyCircuit.EntryList[i] = zk.ValueOf(entryList[i])
 	}
 
 	for i := 0; i < len(ys); i++ {
 		for j := 0; j < len(ys[i]); j++ {
-			verifyCircuit.Ys[i][j] = ys[i][j].String()
+			verifyCircuit.Ys[i][j] = zk.ValueOf(ys[i][j])
 		}
 	}
 
 	for i := 0; i < len(roots); i++ {
 		buf.SetBytes(roots[i][:])
-		verifyCircuit.Roots[i] = buf.String()
+		verifyCircuit.Roots[i] = zk.ValueOf(buf)
 	}
 
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
@@ -62,7 +63,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 
 	// prepare witness
 	var witness ComputeLagrangeCircuit
-	witness.Zeta = zeta.String()
+	witness.Zeta = zk.ValueOf(zeta)
 	witness.Li = make([]zk.WrappedVariable, s)
 	for i := 0; i < s; i++ {
 		buf := make([]field.Element, s)
@@ -70,7 +71,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 		d.FFTInverse(buf, fft.DIF)
 		fft.BitReverse(buf)
 		li := evalPoly(buf, zeta)
-		witness.Li[i] = li.String()
+		witness.Li[i] = zk.ValueOf(li)
 	}
 
 	var circuit ComputeLagrangeCircuit
