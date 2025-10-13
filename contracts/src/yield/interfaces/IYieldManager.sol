@@ -489,7 +489,7 @@ interface IYieldManager {
 
   /**
    * @notice Send ETH to the L1MessageService.
-   * @dev YIELD_PROVIDER_STAKING_ROLE or YIELD_MANAGER_UNSTAKER_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @param _amount        The amount of ETH to send.
    */
   function transferFundsToReserve(uint256 _amount) external;
@@ -516,7 +516,7 @@ interface IYieldManager {
 
   /**
    * @notice Request beacon chain withdrawal from specified yield provider.
-   * @dev YIELD_MANAGER_UNSTAKER_ROLE or RESERVE_OPERATOR_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @param _yieldProvider      Yield provider address.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
@@ -563,7 +563,7 @@ interface IYieldManager {
 
   /**
    * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev RESERVE_OPERATOR_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_UNSTAKING_ROLE is required to execute.
    * @dev This function proactively allocates withdrawn funds in the following priority:
    *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
    *      to restore the deficit.

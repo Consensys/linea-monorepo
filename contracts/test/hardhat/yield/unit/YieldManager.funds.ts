@@ -87,21 +87,9 @@ describe("YieldManager contract - ETH transfer operations", () => {
   });
 
   describe("sending ETH to the L1MessageService", () => {
-    it("Should revert when the caller is not the YIELD_PROVIDER_STAKING_ROLE", async () => {
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(nonAuthorizedAccount).transferFundsToReserve(1n),
-        "CallerMissingRole",
-        [await yieldManager.RESERVE_OPERATOR_ROLE(), await yieldManager.YIELD_PROVIDER_STAKING_ROLE()],
-      );
-    });
-
-    it("Should revert when the caller is not the RESERVE_OPERATOR_ROLE", async () => {
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(nonAuthorizedAccount).transferFundsToReserve(1n),
-        "CallerMissingRole",
-        [await yieldManager.RESERVE_OPERATOR_ROLE(), await yieldManager.YIELD_PROVIDER_STAKING_ROLE()],
+    it("Should revert when the caller is not the YIELD_PROVIDER_UNSTAKER_ROLE", async () => {
+      await expect(yieldManager.connect(nonAuthorizedAccount).transferFundsToReserve(1n)).to.be.revertedWith(
+        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()),
       );
     });
 
@@ -326,25 +314,13 @@ describe("YieldManager contract - ETH transfer operations", () => {
   });
 
   describe("permissioned unstake", () => {
-    it("Should revert when the caller is not the RESERVE_OPERATOR_ROLE", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(nonAuthorizedAccount).unstake(mockYieldProviderAddress, mockWithdrawalParams),
-        "CallerMissingRole",
-        [await yieldManager.RESERVE_OPERATOR_ROLE(), await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()],
-      );
-    });
-
     it("Should revert when the caller is not the YIELD_PROVIDER_UNSTAKER_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expectRevertWithCustomError(
-        yieldManager,
+      await expect(
         yieldManager.connect(nonAuthorizedAccount).unstake(mockYieldProviderAddress, mockWithdrawalParams),
-        "CallerMissingRole",
-        [await yieldManager.RESERVE_OPERATOR_ROLE(), await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()],
+      ).to.be.revertedWith(
+        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()),
       );
     });
 
@@ -1025,11 +1001,13 @@ describe("YieldManager contract - ETH transfer operations", () => {
         "UnknownYieldProvider",
       );
     });
-    it("Should revert when the caller does not have RESERVE_OPERATOR_ROLE role", async () => {
+    it("Should revert when the caller does not have YIELD_PROVIDER_UNSTAKER_ROLE role", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       await expect(
         yieldManager.connect(nonAuthorizedAccount).addToWithdrawalReserve(mockYieldProviderAddress, 1n),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.RESERVE_OPERATOR_ROLE()));
+      ).to.be.revertedWith(
+        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()),
+      );
     });
     it("With YieldManager balance > _amount, will send _amount from YieldManager to reserve", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);

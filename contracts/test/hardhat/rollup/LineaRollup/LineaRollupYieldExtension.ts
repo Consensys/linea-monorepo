@@ -15,7 +15,7 @@ import {
   MESSAGE_FEE,
   MESSAGE_VALUE_1ETH,
   NATIVE_YIELD_STAKING_PAUSE_TYPE,
-  RESERVE_OPERATOR_ROLE,
+  YIELD_PROVIDER_STAKING_ROLE,
   SET_YIELD_MANAGER_ROLE,
   VALID_MERKLE_PROOF,
 } from "../../common/constants";
@@ -105,12 +105,15 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("transferFundsForNativeYield() to transfer funds to YieldManager", () => {
-    it("Should revert if the caller does not the RESERVE_OPERATOR_ROLE", async () => {
+    it("Should revert if the caller does not the YIELD_PROVIDER_STAKING_ROLE", async () => {
       const transferCall = lineaRollup
         .connect(nonAuthorizedAccount)
         .transferFundsForNativeYield(ethers.parseEther("1"));
 
-      await expectRevertWithReason(transferCall, buildAccessErrorMessage(nonAuthorizedAccount, RESERVE_OPERATOR_ROLE));
+      await expectRevertWithReason(
+        transferCall,
+        buildAccessErrorMessage(nonAuthorizedAccount, YIELD_PROVIDER_STAKING_ROLE),
+      );
     });
 
     it("Should revert if GENERAL_PAUSE_TYPE is enabled", async () => {

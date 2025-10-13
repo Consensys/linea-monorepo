@@ -63,6 +63,7 @@ export const SET_CUSTOM_CONTRACT_ROLE = generateKeccak256(["string"], ["SET_CUST
 export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESSAGE_SERVICE_ROLE"], true);
 export const SET_YIELD_MANAGER_ROLE = generateKeccak256(["string"], ["SET_YIELD_MANAGER_ROLE"], true);
 export const RESERVE_OPERATOR_ROLE = generateKeccak256(["string"], ["RESERVE_OPERATOR_ROLE"], true);
+export const YIELD_PROVIDER_STAKING_ROLE = generateKeccak256(["string"], ["YIELD_PROVIDER_STAKING_ROLE"], true);
 export const FUNDER_ROLE = generateKeccak256(["string"], ["FUNDER_ROLE"], true);
 
 // YieldManager related pause roles

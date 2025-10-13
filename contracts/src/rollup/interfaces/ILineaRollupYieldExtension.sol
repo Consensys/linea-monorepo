@@ -83,7 +83,7 @@ interface ILineaRollupYieldExtension {
 
   /**
    * @notice Transfer ETH to the registered YieldManager.
-   * @dev RESERVE_OPERATOR_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_STAKING_ROLE is required to execute.
    * @dev Enforces that, after transfer, the L1MessageService balance remains ≥ the configured effective minimum reserve.
    * @param _amount Amount of ETH to transfer.
    */

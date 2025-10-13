@@ -433,15 +433,12 @@ contract YieldManager is
 
   /**
    * @notice Send ETH to the L1MessageService.
-   * @dev YIELD_PROVIDER_STAKING_ROLE or YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @param _amount        The amount of ETH to send.
    */
   function transferFundsToReserve(
     uint256 _amount
-  ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING) {
-    if (!hasRole(RESERVE_OPERATOR_ROLE, msg.sender) && !hasRole(YIELD_PROVIDER_STAKING_ROLE, msg.sender)) {
-      revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_STAKING_ROLE);
-    }
+  ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING) onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE) {
     _fundReserve(_amount);
     // Destination will emit the event.
   }
@@ -532,7 +529,7 @@ contract YieldManager is
 
   /**
    * @notice Request beacon chain withdrawal from specified yield provider.
-   * @dev YIELD_PROVIDER_UNSTAKER_ROLE or RESERVE_OPERATOR_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @param _yieldProvider      Yield provider address.
    * @param _withdrawalParams   Provider-specific withdrawal parameters.
    */
@@ -544,10 +541,8 @@ contract YieldManager is
     payable
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING)
     onlyKnownYieldProvider(_yieldProvider)
+    onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
-    if (!hasRole(YIELD_PROVIDER_UNSTAKER_ROLE, msg.sender) && !hasRole(RESERVE_OPERATOR_ROLE, msg.sender)) {
-      revert CallerMissingRole(RESERVE_OPERATOR_ROLE, YIELD_PROVIDER_UNSTAKER_ROLE);
-    }
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstake, (_yieldProvider, _withdrawalParams))
@@ -706,7 +701,7 @@ contract YieldManager is
 
   /**
    * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev RESERVE_OPERATOR_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @dev This function proactively allocates withdrawn funds in the following priority:
    *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
    *      to restore the deficit.
@@ -722,7 +717,7 @@ contract YieldManager is
     external
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING)
     onlyKnownYieldProvider(_yieldProvider)
-    onlyRole(RESERVE_OPERATOR_ROLE)
+    onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
     // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;

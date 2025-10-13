@@ -19,7 +19,7 @@ abstract contract LineaRollupYieldExtension is
   IGenericErrors
 {
   /// @notice The role required to send ETH to the YieldManager.
-  bytes32 public constant RESERVE_OPERATOR_ROLE = keccak256("RESERVE_OPERATOR_ROLE");
+  bytes32 public constant YIELD_PROVIDER_STAKING_ROLE = keccak256("YIELD_PROVIDER_STAKING_ROLE");
 
   /// @notice The role required to call fund().
   bytes32 public constant FUNDER_ROLE = keccak256("FUNDER_ROLE");
@@ -65,13 +65,13 @@ abstract contract LineaRollupYieldExtension is
 
   /**
    * @notice Transfer ETH to the registered YieldManager.
-   * @dev RESERVE_OPERATOR_ROLE is required to execute.
+   * @dev YIELD_PROVIDER_STAKING_ROLE is required to execute.
    * @dev Enforces that, after transfer, the L1MessageService balance remains ≥ the configured effective minimum reserve.
    * @param _amount Amount of ETH to transfer.
    */
   function transferFundsForNativeYield(
     uint256 _amount
-  ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_STAKING) onlyRole(RESERVE_OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_STAKING) onlyRole(YIELD_PROVIDER_STAKING_ROLE) {
     IYieldManager(yieldManager()).receiveFundsFromReserve{ value: _amount }();
   }
 

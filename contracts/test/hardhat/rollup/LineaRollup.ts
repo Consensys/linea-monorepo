@@ -30,7 +30,7 @@ import {
   INITIAL_WITHDRAW_LIMIT,
   ONE_DAY_IN_SECONDS,
   OPERATOR_ROLE,
-  RESERVE_OPERATOR_ROLE,
+  YIELD_PROVIDER_STAKING_ROLE,
   VERIFIER_SETTER_ROLE,
   VERIFIER_UNSETTER_ROLE,
   GENESIS_L2_TIMESTAMP,
@@ -257,9 +257,9 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.hasRole(SET_YIELD_MANAGER_ROLE, securityCouncil.address)).to.be.true;
     });
 
-    it("Should assign the RESERVE_OPERATOR_ROLE to securityCouncil addresses", async () => {
+    it("Should assign the YIELD_PROVIDER_STAKING_ROLE to securityCouncil addresses", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.hasRole(RESERVE_OPERATOR_ROLE, securityCouncil.address)).to.be.true;
+      expect(await lineaRollup.hasRole(YIELD_PROVIDER_STAKING_ROLE, securityCouncil.address)).to.be.true;
     });
 
     it("Should assign the FUNDER_ROLE to securityCouncil addresses", async () => {
