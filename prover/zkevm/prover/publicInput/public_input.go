@@ -114,6 +114,7 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				RelTxNum:        getCol("txndata.prover___RELATIVE_USER_TXN_NUMBER"),
 				RelTxNumMax:     getCol("txndata.prover___RELATIVE_USER_TXN_NUMBER_MAX"),
 				USER:            getCol("txndata.USER"),
+				Selector:        getCol("txndata.HUB"),
 			},
 			RlpTxn: &arith.RlpTxn{
 				AbsTxNum:       getCol("rlptxn.USER_TXN_NUMBER"),

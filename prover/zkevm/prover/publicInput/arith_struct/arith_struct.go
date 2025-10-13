@@ -29,6 +29,7 @@ type TxnData struct {
 	RelBlock              ifaces.Column // Relative Block number inside the batch
 	Ct                    ifaces.Column
 	USER                  ifaces.Column // 1 if this is a user transaction, 0 otherwise
+	Selector              ifaces.Column // we require an additional selector to identify which data to fetch
 }
 
 // RlpTxn models the arithmetization's RlpTxn module
@@ -71,6 +72,7 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 			IsLastTxOfBlock: ctTxnData.GetCommit(b, "TD.IS_LAST_TX_OF_BLOCK"),
 			RelBlock:        ctTxnData.GetCommit(b, "TD.REL_BLOCK"),
 			USER:            ctTxnData.GetCommit(b, "TD.USER"),
+			Selector:        ctTxnData.GetCommit(b, "TD.SELECTOR"),
 		}
 	}
 	if ctRlpTxn != nil {
@@ -116,6 +118,7 @@ func AssignTestingArithModules(run *wizard.ProverRuntime, ctBlockData, ctTxnData
 			"TD.IS_LAST_TX_OF_BLOCK",
 			"TD.REL_BLOCK",
 			"TD.USER",
+			"TD.SELECTOR",
 		)
 	}
 	if ctRlpTxn != nil {

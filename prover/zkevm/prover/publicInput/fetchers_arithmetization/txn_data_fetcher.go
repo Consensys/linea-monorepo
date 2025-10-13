@@ -80,6 +80,7 @@ func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, nam
 			sym.Mul(
 				fetcher.SelectorFromAddress,
 				td.USER,
+				td.Selector,
 			),
 		),
 	)
@@ -116,6 +117,7 @@ func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td 
 		arithFromHi     = td.FromHi.GetColAssignment(run)
 		arithFromLo     = td.FromLo.GetColAssignment(run)
 		arithUser       = td.USER.GetColAssignment(run)
+		tdSelector      = td.Selector.GetColAssignment(run)
 		start, stop     = smartvectors.CoCompactRange(ct)
 		size            = td.Ct.Size()
 		density         = stop - start
@@ -139,9 +141,10 @@ func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td 
 			arithFromHi     = arithFromHi.GetPtr(i)
 			arithFromLo     = arithFromLo.GetPtr(i)
 			arithUser       = arithUser.GetPtr(i)
+			tdSelector      = tdSelector.GetPtr(i)
 		)
 
-		if ct.IsOne() && !fetchedAbsTxNum.IsZero() && arithUser.IsOne() { // absTxNum starts from 1, ct starts from 0 but always touches 1
+		if ct.IsOne() && !fetchedAbsTxNum.IsZero() && arithUser.IsOne() && tdSelector.IsOne() { // absTxNum starts from 1, ct starts from 0 but always touches 1
 			absTxNum[counter].Set(fetchedAbsTxNum)
 			relBlock[counter].Set(fetchedRelBlock)
 			fromHi[counter].Set(arithFromHi)
