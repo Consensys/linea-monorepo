@@ -1,6 +1,6 @@
-# `RollupFeeVault`
+# `UpgradeableWithdrawalQueuePredeploy`
 
-Accepts ETH for later economic functions.
+Implementation of EIP-7002 execution layer triggerable withdrawals
 
 ### constructor
 
@@ -14,7 +14,7 @@ constructor() public
 function initialize() external
 ```
 
-Initializes the contract state.
+Initializes the contract state
 
 ### fallback
 
@@ -22,7 +22,7 @@ Initializes the contract state.
 fallback() external payable
 ```
 
-Fallback function - Receives Funds.
+Fallback function - noop
 
 ### receive
 
@@ -30,5 +30,5 @@ Fallback function - Receives Funds.
 receive() external payable
 ```
 
-Receive function - Receives Funds.
+Receive function - noop
 

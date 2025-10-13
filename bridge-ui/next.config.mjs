@@ -26,6 +26,11 @@ const nextConfig = {
         hostname: "linea.build",
         pathname: "/icons/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.ctfassets.net",
+        pathname: `/${process.env.CONTENTFUL_SPACE_ID}/**`,
+      },
     ],
   },
   sassOptions: {
