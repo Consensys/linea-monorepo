@@ -2,7 +2,7 @@ package distributed
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -112,12 +112,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
-		// @alex: this is only used for debugging. Leaving it harms the perfs.
-		// dummy.CompileAtProverLvl(dummy.WithMsg("debug-"+subscript)),
-		// This ensures that all the public inputs are declared in the same
-		// order to prevent bugs in the conglomeration. This will not affect the
-		// future position of the public inputs we declare afterwards.
-		sortPublicInput,
 		// @alex: unsure if/why we need to compile with MiMC since it should be
 		// done pre-bootstrapping.
 		mimc.CompileMiMC,
@@ -260,6 +254,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			publicInputRestriction = append(publicInputRestriction, pi.Name)
 		}
 	}
+
+	sortPublicInput(modIOP, publicInputRestriction)
 
 	defineRecursion := func(build2 *wizard.Builder) {
 		recCtx = recursion.DefineRecursionOf(
@@ -439,15 +435,47 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) SegmentProof {
 
 // sortPublicInput is small compiler sorting the public inputs by name.
 // This helps ensuring that the order of public inputs is identical between all types
-// of module. This is to avoid errors in the conglomeration phase where public inputs
-// are only identified by their positions.
+// of module.
 //
-// Normally, they should already be declared in identical order so, in theory, this
-// function solves nothing but it's hard to debug when that changes so we keep the
-// function for "safety". Not that this will however change the initial ordering of
-// the public inputs.
-func sortPublicInput(comp *wizard.CompiledIOP) {
-	sort.Slice(comp.PublicInputs, func(i, j int) bool {
-		return comp.PublicInputs[i].Name < comp.PublicInputs[j].Name
-	})
+// The function additionally takes a "restriction" input list which contains
+// a list of "restricted" public inputs. They denote the public inputs that are
+// actually "bubbled up" to the next instance. If the provided list is non-nil
+// then, the public inputs are sorted based on whether they are in the list or
+// not and then by alphabetical order.
+func sortPublicInput(comp *wizard.CompiledIOP, restrictedList []string) {
+
+	cmpName := func(a, b wizard.PublicInput) int {
+		switch {
+		case a.Name < b.Name:
+			return -1
+		case a.Name > b.Name:
+			return 1
+		default:
+			return 0
+		}
+	}
+
+	if restrictedList == nil {
+		slices.SortStableFunc(comp.PublicInputs, cmpName)
+		return
+	}
+
+	var (
+		included = []wizard.PublicInput{}
+		excluded = []wizard.PublicInput{}
+	)
+
+	for _, pub := range comp.PublicInputs {
+		// This is a list scan per iteration. So this is O(n**2) in total but
+		// this is also not worth optimizing.
+		if slices.Contains(restrictedList, pub.Name) {
+			included = append(included, pub)
+		} else {
+			excluded = append(excluded, pub)
+		}
+	}
+
+	slices.SortStableFunc(included, cmpName)
+	slices.SortStableFunc(excluded, cmpName)
+	comp.PublicInputs = append(included, excluded...)
 }

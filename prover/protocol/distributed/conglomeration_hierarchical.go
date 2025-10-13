@@ -168,7 +168,7 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 
 	var (
 		leafPosition = -1
-		numModule    = utils.DivExact(len(vmt.VerificationKeys) - 1, 2)
+		numModule    = utils.DivExact(len(vmt.VerificationKeys)-1, 2)
 		moduleIndex  = segProof.ModuleIndex
 	)
 
@@ -424,7 +424,17 @@ func (c *ModuleConglo) Assign(
 	assignPiColumn(run, LogDerivativeSumPublicInput, sumLogDerivative)
 	assignPiColumn(run, HornerPublicInput, sumHorner)
 	assignPiColumn(run, GrandProductPublicInput, prodGrandProduct)
-	assignPiColumn(run, InitialRandomnessPublicInput, collectedPIs[0].SharedRandomness)
+
+	var sharedRandomness field.Element
+	for i := 0; i < aggregationArity; i++ {
+		r := collectedPIs[i].SharedRandomness
+		if !r.IsZero() {
+			sharedRandomness = r
+			break
+		}
+	}
+
+	assignPiColumn(run, InitialRandomnessPublicInput, sharedRandomness)
 	assignPiColumn(run, verifyingKeyMerkleRootPublicInput, collectedPIs[0].VKeyMerkleRoot)
 
 	for k := 0; k < c.ModuleNumber; k++ {
