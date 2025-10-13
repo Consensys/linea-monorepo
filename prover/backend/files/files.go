@@ -270,7 +270,7 @@ func WaitForAllFilesAtPath(ctx context.Context, files []string, reportMissing bo
 }
 
 // DoneFilePath replaces "requests" -> "requests-done" and
-// ".inprogress.<anything>" -> to given suffix (eg. ".success.bootstrap")
+// ".inprogress.<anything>" -> to given suffix (eg. ".success.parital.bootstrap")
 func DoneFilePath(inProgressPath, suffix string) string {
 	dir := filepath.Dir(inProgressPath)
 	base := filepath.Base(inProgressPath)

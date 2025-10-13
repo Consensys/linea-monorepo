@@ -227,11 +227,10 @@ func handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status S
 
 	// Upon failure for GL/LPP/Conglomeration jobs - replace the partial success bootstrap suffix
 	// with the failure suffix in the cfg.Execution.DirDone path
-	failSuffix := fmt.Sprintf("failure.%v_%v", config.FailSuffix, status.ExitCode)
 	if job.Def.Name == jobNameGL || job.Def.Name == jobNameLPP || job.Def.Name == jobNameConglomeration {
+		failSuffix := fmt.Sprintf("failure.%v_%v", config.FailSuffix, status.ExitCode)
 		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
 	}
-
 }
 
 // retryDelay returns the duration to wait before retrying to find a job in the queue.

@@ -88,10 +88,8 @@ func handleBootstrapJob(cfg *config.Config, args ProverArgs) error {
 		return err
 	}
 
-	// Build metadata from the request (example, you can adjust)
-	doneSuffix := fmt.Sprintf("%s.%s", config.SuccessSuffix, config.BootstrapSuffix)
 	metadata := &distributed.Metadata{
-		BootstrapRequestDoneFile: files.DoneFilePath(args.Input, doneSuffix),
+		BootstrapRequestDoneFile: files.DoneFilePath(args.Input, config.BootstrapPartialSucessSuffix),
 		StartBlock:               sbr,
 		EndBlock:                 ebr,
 	}
