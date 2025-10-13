@@ -473,8 +473,12 @@ contract YieldManager is
     // Do LST repayment
     uint256 lstPrincipalRepayment = _payLSTPrincipal(_yieldProvider, _amount);
     uint256 amountRemaining = _amount - lstPrincipalRepayment;
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += amountRemaining;
-    _getYieldProviderStorage(_yieldProvider).userFunds += amountRemaining;
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal =
+      _getYieldManagerStorage()._userFundsInYieldProvidersTotal +
+      uint128(amountRemaining);
+    _getYieldProviderStorage(_yieldProvider).userFunds =
+      _getYieldProviderStorage(_yieldProvider).userFunds +
+      uint128(amountRemaining);
     emit YieldProviderFunded(_yieldProvider, _amount, lstPrincipalRepayment, amountRemaining);
   }
 
@@ -493,8 +497,12 @@ contract YieldManager is
       abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _availableFunds))
     );
     lstPrincipalPaid = abi.decode(data, (uint256));
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= lstPrincipalPaid;
-    _getYieldProviderStorage(_yieldProvider).userFunds -= lstPrincipalPaid;
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal =
+      _getYieldManagerStorage()._userFundsInYieldProvidersTotal -
+      uint128(lstPrincipalPaid);
+    _getYieldProviderStorage(_yieldProvider).userFunds =
+      _getYieldProviderStorage(_yieldProvider).userFunds -
+      uint128(lstPrincipalPaid);
   }
 
   /**
@@ -522,10 +530,10 @@ contract YieldManager is
     );
     newReportedYield = abi.decode(data, (uint256));
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    $$.userFunds += newReportedYield;
-    $$.yieldReportedCumulative += newReportedYield;
+    $$.userFunds = $$.userFunds + uint128(newReportedYield);
+    $$.yieldReportedCumulative = $$.yieldReportedCumulative + uint128(newReportedYield);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    $._userFundsInYieldProvidersTotal += newReportedYield;
+    $._userFundsInYieldProvidersTotal = $._userFundsInYieldProvidersTotal + uint128(newReportedYield);
     ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).reportNativeYield(newReportedYield, _l2YieldRecipient);
     emit NativeYieldReported(_yieldProvider, _l2YieldRecipient, newReportedYield);
   }
@@ -603,7 +611,9 @@ contract YieldManager is
       revert PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
     }
 
-    _getYieldManagerStorage()._pendingPermissionlessUnstake += maxUnstakeAmount;
+    _getYieldManagerStorage()._pendingPermissionlessUnstake =
+      _getYieldManagerStorage()._pendingPermissionlessUnstake +
+      uint128(maxUnstakeAmount);
     // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
   }
 
@@ -691,17 +701,19 @@ contract YieldManager is
     // Edge case here where withdrawableValue > userFunds.
     // Cause some YieldProvider funds to become unwithdrawable temporarily.
     // This is tolerated because it is temporary until the next reportYield() call, where we assume the YieldManager reports new surplus as yield.
-    $$.userFunds -= _amount;
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
+    $$.userFunds = $$.userFunds - uint128(_amount);
+    _getYieldManagerStorage()._userFundsInYieldProvidersTotal =
+      _getYieldManagerStorage()._userFundsInYieldProvidersTotal -
+      uint128(_amount);
     // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
     _decrementPendingPermissionlessUnstake(_amount);
   }
 
   function _decrementPendingPermissionlessUnstake(uint256 _amount) internal {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    uint256 pendingPermissionlessUnstake = $._pendingPermissionlessUnstake;
-    if (pendingPermissionlessUnstake == 0) return;
-    $._pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
+    uint256 pendingPermissionlessUnstakeCached = $._pendingPermissionlessUnstake;
+    if (pendingPermissionlessUnstakeCached == 0) return;
+    $._pendingPermissionlessUnstake = uint128(Math256.safeSub(pendingPermissionlessUnstakeCached, _amount));
   }
 
   /**
@@ -987,9 +999,9 @@ contract YieldManager is
   {
     // decrement negative yield against donation
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    uint256 currentNegativeYield = $$.currentNegativeYield;
+    uint256 currentNegativeYield = uint256($$.currentNegativeYield);
     if (currentNegativeYield > 0) {
-      $$.currentNegativeYield -= Math256.min(currentNegativeYield, msg.value);
+      $$.currentNegativeYield = uint128(currentNegativeYield - Math256.min(currentNegativeYield, msg.value));
     }
     _decrementPendingPermissionlessUnstake(msg.value);
     _fundReserve(msg.value);
@@ -1163,8 +1175,8 @@ contract YieldManager is
       _params.targetWithdrawalReserveAmount
     );
     $._minimumWithdrawalReservePercentageBps = _params.minimumWithdrawalReservePercentageBps;
-    $._minimumWithdrawalReserveAmount = _params.minimumWithdrawalReserveAmount;
+    $._minimumWithdrawalReserveAmount = uint128(_params.minimumWithdrawalReserveAmount);
     $._targetWithdrawalReservePercentageBps = _params.targetWithdrawalReservePercentageBps;
-    $._targetWithdrawalReserveAmount = _params.targetWithdrawalReserveAmount;
+    $._targetWithdrawalReserveAmount = uint128(_params.targetWithdrawalReserveAmount);
   }
 }

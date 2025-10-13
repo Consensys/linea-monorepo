@@ -142,7 +142,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       // Gross negative yield
     } else {
       // If prev reportYield had negativeYield, this correctly accounts for both increase and reduction in negativeYield since
-      $$.currentNegativeYield = lastUserFunds - totalVaultFunds;
+      $$.currentNegativeYield = uint128(lastUserFunds - totalVaultFunds);
       newReportedYield = 0;
     }
   }
@@ -162,13 +162,13 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     uint256 currentNegativeYield = $$.currentNegativeYield;
     if (currentNegativeYield > 0) {
       uint256 negativeYieldReduction = Math256.min(currentNegativeYield, newReportedYield);
-      $$.currentNegativeYield -= negativeYieldReduction;
+      $$.currentNegativeYield = $$.currentNegativeYield - uint128(negativeYieldReduction);
       newReportedYield -= negativeYieldReduction;
     }
     // 2. Pay liabilities
     uint256 lstLiabilityPayment = _payMaximumPossibleLSTLiability($$);
     if (lstLiabilityPayment > newReportedYield) {
-      $$.currentNegativeYield += (lstLiabilityPayment - newReportedYield);
+      $$.currentNegativeYield = $$.currentNegativeYield + uint128(lstLiabilityPayment - newReportedYield);
       return 0;
     }
     newReportedYield = Math256.safeSub(newReportedYield, lstLiabilityPayment);
@@ -203,9 +203,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     if (liabilityETH < _lstLiabilityPrincipalCached) {
       uint256 lstLiabilityPrincipalDecrement = _lstLiabilityPrincipalCached - liabilityETH;
       // Any decrement in lstLiabilityPrincipal must be 1:1 matched with decrements in userFunds and _userFundsInYieldProvidersTotal.
-      _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= lstLiabilityPrincipalDecrement;
-      $$.userFunds -= lstLiabilityPrincipalDecrement;
-      $$.lstLiabilityPrincipal = liabilityETH;
+      _getYieldManagerStorage()._userFundsInYieldProvidersTotal =
+        _getYieldManagerStorage()._userFundsInYieldProvidersTotal -
+        uint128(lstLiabilityPrincipalDecrement);
+      $$.userFunds = $$.userFunds - uint128(lstLiabilityPrincipalDecrement);
+      $$.lstLiabilityPrincipal = uint128(liabilityETH);
       return (liabilityETH, true);
     } else {
       return (_lstLiabilityPrincipalCached, false);
@@ -231,7 +233,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     uint256 afterVaultBalance = vault.balance;
     obligationsPaid = beforeVaultBalance - afterVaultBalance;
     if (obligationsPaid > _availableYield) {
-      $$.currentNegativeYield += (obligationsPaid - _availableYield);
+      $$.currentNegativeYield = $$.currentNegativeYield + uint128(obligationsPaid - _availableYield);
     }
   }
 
@@ -255,7 +257,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       dashboard.disburseNodeOperatorFee();
       nodeOperatorFeesPaid = currentFees;
       if (nodeOperatorFeesPaid >= _availableYield) {
-        $$.currentNegativeYield += (nodeOperatorFeesPaid - _availableYield);
+        $$.currentNegativeYield = $$.currentNegativeYield + uint128(nodeOperatorFeesPaid - _availableYield);
       }
     }
   }
@@ -303,7 +305,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     lstPrincipalPaid = Math256.min(lstLiabilityPrincipalSynced, _availableFunds);
     if (lstPrincipalPaid > 0) {
       dashboard.rebalanceVaultWithEther(lstPrincipalPaid);
-      $$.lstLiabilityPrincipal -= lstPrincipalPaid;
+      $$.lstLiabilityPrincipal = $$.lstLiabilityPrincipal - uint128(lstPrincipalPaid);
     }
   }
 
@@ -475,7 +477,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       revert MintLSTDisabledDuringOssification();
     }
     IDashboard($$.primaryEntrypoint).mintStETH(_recipient, _amount);
-    $$.lstLiabilityPrincipal += _amount;
+    $$.lstLiabilityPrincipal = $$.lstLiabilityPrincipal + uint128(_amount);
   }
 
   /**

@@ -32,12 +32,15 @@ abstract contract YieldManagerStorageLayout {
 
   ///
   struct YieldManagerStorage {
+    // Slot 0
     uint16 _minimumWithdrawalReservePercentageBps;
     uint16 _targetWithdrawalReservePercentageBps;
-    uint256 _minimumWithdrawalReserveAmount;
-    uint256 _targetWithdrawalReserveAmount;
-    uint256 _userFundsInYieldProvidersTotal;
-    uint256 _pendingPermissionlessUnstake;
+    uint128 _minimumWithdrawalReserveAmount;
+    // Slot 1
+    uint128 _targetWithdrawalReserveAmount;
+    uint128 _userFundsInYieldProvidersTotal;
+    // Slot 2
+    uint128 _pendingPermissionlessUnstake;
     address[] _yieldProviders;
     mapping(address l2YieldRecipient => bool) _isL2YieldRecipientKnown;
     mapping(address yieldProvider => YieldProviderStorage) _yieldProviderStorage;
@@ -72,18 +75,23 @@ abstract contract YieldManagerStorageLayout {
    *      We make these exceptions because the mutation of these state fields is highly specific to a vendor.
    */
   struct YieldProviderStorage {
+    // Slot 0
     YieldProviderVendor yieldProviderVendor;
     bool isStakingPaused;
     bool isOssificationInitiated;
     bool isOssified;
     address primaryEntrypoint;
+    // Slot 1
     address ossifiedEntrypoint;
+    // Slot 2
     address receiveCaller;
     uint96 yieldProviderIndex;
-    uint256 userFunds;
-    uint256 yieldReportedCumulative;
-    uint256 currentNegativeYield;
-    uint256 lstLiabilityPrincipal;
+    // Slot 3
+    uint128 userFunds;
+    uint128 yieldReportedCumulative;
+    // Slot 4
+    uint128 currentNegativeYield;
+    uint128 lstLiabilityPrincipal;
   }
 
   /**
