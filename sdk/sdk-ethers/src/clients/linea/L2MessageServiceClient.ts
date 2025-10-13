@@ -133,7 +133,7 @@ export class L2MessageServiceClient
    * Estimates the gas required for the `claimMessage` transaction.
    *
    * @param {Message & { feeRecipient?: string }} message - The message information object.
-   * @param {Overrides} [opts={}] - Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [opts={}] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<bigint>} The `claimMessage` transaction gas estimation.
    */
   public async estimateClaimGasFees(
@@ -167,7 +167,7 @@ export class L2MessageServiceClient
    * Claims the message on L2.
    *
    * @param {Message & { feeRecipient?: string }} message - The message information object.
-   * @param {Overrides} [overrides] - Claiming options and -)àçtrdesq<=÷ =:; jhg‰'"é&@Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [opts] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<ContractTransactionResponse>} The claimMessage transaction info.
    */
   public async claim(
