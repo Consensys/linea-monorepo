@@ -98,6 +98,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       } = await this.transactionValidationService.evaluateTransaction(
         nextMessageToClaim,
         this.config.feeRecipientAddress,
+        this.config.claimViaAddress,
       );
 
       // If isForSponsorship = true, then we ignore hasZeroFee and isUnderPriced

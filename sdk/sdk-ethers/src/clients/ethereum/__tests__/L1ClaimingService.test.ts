@@ -572,7 +572,7 @@ describe("L1ClaimingService", () => {
           contractAddress: "",
           transactionHash: "",
         },
-        { overrides: {} },
+        {},
       );
     });
   });

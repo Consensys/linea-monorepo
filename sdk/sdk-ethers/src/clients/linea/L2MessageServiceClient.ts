@@ -133,12 +133,15 @@ export class L2MessageServiceClient
    * Estimates the gas required for the `claimMessage` transaction.
    *
    * @param {Message & { feeRecipient?: string }} message - The message information object.
-   * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [opts={}] - Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<bigint>} The `claimMessage` transaction gas estimation.
    */
   public async estimateClaimGasFees(
     message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    opts: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    } = {},
   ): Promise<LineaGasFees> {
     if (this.mode === "read-only") {
       throw makeBaseError("'EstimateClaimGasFees' function not callable using readOnly mode.");
@@ -153,7 +156,7 @@ export class L2MessageServiceClient
         to: await this.contract.getAddress(),
         value: 0n,
         data: transactionData,
-        ...overrides,
+        ...opts.overrides,
       })) as LineaGasFees;
     } catch (e) {
       throw makeBaseError(e, message);
@@ -164,7 +167,7 @@ export class L2MessageServiceClient
    * Claims the message on L2.
    *
    * @param {Message & { feeRecipient?: string }} message - The message information object.
-   * @param {Overrides} [overrides] - Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [overrides] - Claiming options and -)àçtrdesq<=÷ =:; jhg‰'"é&@Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<ContractTransactionResponse>} The claimMessage transaction info.
    */
   public async claim(
