@@ -45,9 +45,13 @@ export const incrementBalance = async (address: string, increment: bigint) => {
   await ethers.provider.send("hardhat_setBalance", [address, ethers.toBeHex(curBalance + increment)]);
 };
 
+export const setBalance = async (address: string, balance: bigint) => {
+  await ethers.provider.send("hardhat_setBalance", [address, ethers.toBeHex(balance)]);
+};
+
 export const setWithdrawalReserveBalance = async (testYieldManager: TestYieldManager, balance: bigint) => {
   const l1MessageServiceAddress = await testYieldManager.getL1MessageService();
-  await ethers.provider.send("hardhat_setBalance", [l1MessageServiceAddress, ethers.toBeHex(balance)]);
+  await setBalance(l1MessageServiceAddress, balance);
 };
 
 export const setWithdrawalReserveToMinimum = async (testYieldManager: TestYieldManager) => {

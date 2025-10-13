@@ -5,7 +5,8 @@ import { SecretKey } from "@chainsafe/blst";
 import { SSZMerkleTree, TestCLProofVerifier } from "contracts/typechain-types";
 import { FAR_FUTURE_EXIT_EPOCH, SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
 
-export const randomInt = (max: number): number => Math.floor(Math.random() * max);
+// min = 0 will cause flaky test with NoValidatorExitForUnstakePermissionless() error
+export const randomInt = (max: number, min = 1): number => Math.floor(Math.random() * (max - min)) + min;
 
 export const randomBytes32 = (): string => hexlify(randomBytes(32));
 

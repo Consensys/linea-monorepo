@@ -17,6 +17,7 @@ import {
   CHANGE_SLOT,
   LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
   FUNDER_ROLE,
+  YIELD_PROVIDER_STAKING_ROLE,
 } from "../../common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import { YIELD_MANAGER_OPERATOR_ROLES, YIELD_MANAGER_SECURITY_COUNCIL_ROLES } from "contracts/common/constants";
@@ -288,7 +289,7 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
 }
 
 export async function deployYieldManagerIntegrationTestFixture() {
-  const { securityCouncil, l2YieldRecipient } = await loadFixture(getAccountsFixture);
+  const { securityCouncil, l2YieldRecipient, nativeYieldOperator } = await loadFixture(getAccountsFixture);
   const yieldManagerRoleAddresses = await loadFixture(getYieldManagerRoleAddressesFixture);
   // Deploy LineaRollup
   const { lineaRollup, roleAddresses: lineaRollupRoleAddresses } = await loadFixture(deployLineaRollupFixture);
@@ -368,6 +369,10 @@ export async function deployYieldManagerIntegrationTestFixture() {
       {
         role: FUNDER_ROLE,
         addressWithRole: yieldManagerAddress,
+      },
+      {
+        role: YIELD_PROVIDER_STAKING_ROLE,
+        addressWithRole: await nativeYieldOperator.getAddress(),
       },
     ],
     yieldManager: yieldManagerAddress,

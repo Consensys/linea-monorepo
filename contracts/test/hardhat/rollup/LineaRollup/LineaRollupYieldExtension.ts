@@ -26,6 +26,7 @@ import {
   expectRevertWithReason,
   calculateRollingHash,
   getAccountsFixture,
+  encodeSendMessage,
 } from "../../common/helpers";
 
 describe("Linea Rollup contract", () => {
@@ -457,24 +458,18 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should claim successfully with correct MessageClaimed event emitted", async () => {
-      const lineaRollupAddress = await lineaRollup.getAddress();
-      const l2MerkleRootsDepthsSlot = 336n; // Storage slot for l2MerkleRootsDepths (forge inspect)
-      const storageSlot = ethers.keccak256(
-        ethers.AbiCoder.defaultAbiCoder().encode(
-          ["bytes32", "uint256"],
-          [VALID_MERKLE_PROOF.merkleRoot, l2MerkleRootsDepthsSlot],
-        ),
+      await lineaRollup.addL2MerkleRoots([VALID_MERKLE_PROOF.merkleRoot], VALID_MERKLE_PROOF.proof.length);
+
+      const expectedBytes = await encodeSendMessage(
+        admin.address,
+        admin.address,
+        MESSAGE_FEE,
+        MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        1n,
+        EMPTY_CALLDATA,
       );
 
-      await ethers.provider.send("hardhat_setStorageAt", [
-        lineaRollupAddress,
-        storageSlot,
-        ethers.zeroPadValue(ethers.toBeHex(BigInt(VALID_MERKLE_PROOF.proof.length)), 32),
-      ]);
-
-      expect(await lineaRollup.l2MerkleRootsDepths(VALID_MERKLE_PROOF.merkleRoot)).to.equal(
-        BigInt(VALID_MERKLE_PROOF.proof.length),
-      );
+      const messageHash = ethers.keccak256(expectedBytes);
 
       const claimParams = {
         proof: VALID_MERKLE_PROOF.proof,
@@ -489,24 +484,11 @@ describe("Linea Rollup contract", () => {
         data: EMPTY_CALLDATA,
       };
 
-      const messageLeafHash = ethers.keccak256(
-        ethers.AbiCoder.defaultAbiCoder().encode(
-          ["address", "address", "uint256", "uint256", "uint256", "bytes"],
-          [
-            claimParams.from,
-            claimParams.to,
-            claimParams.fee,
-            claimParams.value,
-            claimParams.messageNumber,
-            claimParams.data,
-          ],
-        ),
-      );
-
+      // Act
       const claimCall = lineaRollup.connect(admin).claimMessageWithProofAndWithdrawLST(claimParams, operator.address);
 
       // Assert MessageClaimed event emitted
-      await expectEvent(lineaRollup, claimCall, "MessageClaimed", [messageLeafHash]);
+      await expectEvent(lineaRollup, claimCall, "MessageClaimed", [messageHash]);
       const mockYieldManagerContract = MockYieldManager__factory.connect(mockYieldManager, securityCouncil);
       // Assert that isWithdrawLSTAllowed() flag is toggled on during the tx - use event on MockYieldManager
       await expectEvent(mockYieldManagerContract, claimCall, "LSTWithdrawalFlag", [true]);

@@ -120,10 +120,10 @@ describe("YieldManager contract - control operations", () => {
 
   // pauseStaking() unit tests
   describe("Pausing staking", () => {
-    it("Should revert when adding if the caller does not have the STAKING_PAUSER_ROLE", async () => {
+    it("Should revert when adding if the caller does not have the STAKING_PAUSE_CONTROLLER_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      const requiredRole = await yieldManager.STAKING_PAUSER_ROLE();
+      const requiredRole = await yieldManager.STAKING_PAUSE_CONTROLLER_ROLE();
 
       await expect(
         yieldManager.connect(nonAuthorizedAccount).pauseStaking(mockYieldProviderAddress),
@@ -185,10 +185,10 @@ describe("YieldManager contract - control operations", () => {
 
   // unpauseStaking() unit tests
   describe("Unpausing staking", () => {
-    it("Should revert when adding if the caller does not have the STAKING_UNPAUSER_ROLE", async () => {
+    it("Should revert when adding if the caller does not have the STAKING_PAUSE_CONTROLLER_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      const requiredRole = await yieldManager.STAKING_UNPAUSER_ROLE();
+      const requiredRole = await yieldManager.STAKING_PAUSE_CONTROLLER_ROLE();
 
       await expect(
         yieldManager.connect(nonAuthorizedAccount).unpauseStaking(mockYieldProviderAddress),

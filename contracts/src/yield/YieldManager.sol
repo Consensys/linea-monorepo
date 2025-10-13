@@ -36,11 +36,8 @@ contract YieldManager is
   /// @notice The role required to rebalance ETH between the withdrawal reserve and yield provider/s.
   bytes32 public constant RESERVE_OPERATOR_ROLE = keccak256("RESERVE_OPERATOR_ROLE");
 
-  /// @notice The role required to pause beacon chain staking for yield provider/s that support this operation.
-  bytes32 public constant STAKING_PAUSER_ROLE = keccak256("STAKING_PAUSER_ROLE");
-
-  /// @notice The role required to unpause beacon chain staking for yield provider/s that support this operation.
-  bytes32 public constant STAKING_UNPAUSER_ROLE = keccak256("STAKING_UNPAUSER_ROLE");
+  /// @notice The role required to pause and unpause beacon chain staking for yield provider/s that support this operation.
+  bytes32 public constant STAKING_PAUSE_CONTROLLER_ROLE = keccak256("STAKING_PAUSE_CONTROLLER_ROLE");
 
   /// @notice The role required to execute ossification functions.
   bytes32 public constant OSSIFIER_ROLE = keccak256("OSSIFIER_ROLE");
@@ -797,12 +794,12 @@ contract YieldManager is
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.
-   * @dev STAKING_PAUSER_ROLE is required to execute.
+   * @dev STAKING_PAUSE_CONTROLLER_ROLE is required to execute.
    * @param _yieldProvider The yield provider address.
    */
   function pauseStaking(
     address _yieldProvider
-  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(STAKING_PAUSER_ROLE) {
+  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(STAKING_PAUSE_CONTROLLER_ROLE) {
     if (_getYieldProviderStorage(_yieldProvider).isStakingPaused) {
       revert StakingAlreadyPaused();
     }
@@ -823,7 +820,7 @@ contract YieldManager is
 
   /**
    * @notice Unpauses beacon chain deposits for specified yield provider.
-   * @dev STAKING_UNPAUSER_ROLE is required to execute.
+   * @dev STAKING_PAUSE_CONTROLLER_ROLE is required to execute.
    * @dev Will revert if:
    *      - The withdrawal reserve is in deficit, or
    *      - There is an existing LST liability, or
@@ -832,7 +829,7 @@ contract YieldManager is
    */
   function unpauseStaking(
     address _yieldProvider
-  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(STAKING_UNPAUSER_ROLE) {
+  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(STAKING_PAUSE_CONTROLLER_ROLE) {
     // Other checks for unstaking
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if (!$$.isStakingPaused) {

@@ -585,14 +585,14 @@ interface IYieldManager {
 
   /**
    * @notice Pauses beacon chain deposits for specified yield provier.
-   * @dev STAKING_PAUSER_ROLE is required to execute.
+   * @dev STAKING_PAUSE_CONTROLLER_ROLE is required to execute.
    * @param _yieldProvider The yield provider address.
    */
   function pauseStaking(address _yieldProvider) external;
 
   /**
    * @notice Unpauses beacon chain deposits for specified yield provier.
-   * @dev STAKING_UNPAUSER_ROLE is required to execute.
+   * @dev STAKING_PAUSE_CONTROLLER_ROLE is required to execute.
    * @dev Will revert if:
    *      - The withdrawal reserve is in deficit, or
    *      - There is an existing LST liability, or

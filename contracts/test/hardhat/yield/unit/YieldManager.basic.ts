@@ -205,13 +205,8 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.hasRole(role, nativeYieldOperator.address)).to.be.true;
     });
 
-    it("Should assign the STAKING_PAUSER_ROLE to nativeYieldOperator address", async () => {
-      const role = await yieldManager.STAKING_PAUSER_ROLE();
-      expect(await yieldManager.hasRole(role, nativeYieldOperator.address)).to.be.true;
-    });
-
-    it("Should assign the STAKING_UNPAUSER_ROLE to nativeYieldOperator address", async () => {
-      const role = await yieldManager.STAKING_UNPAUSER_ROLE();
+    it("Should assign the STAKING_PAUSE_CONTROLLER_ROLE to nativeYieldOperator address", async () => {
+      const role = await yieldManager.STAKING_PAUSE_CONTROLLER_ROLE();
       expect(await yieldManager.hasRole(role, nativeYieldOperator.address)).to.be.true;
     });
 
@@ -219,8 +214,7 @@ describe("YieldManager contract - basic operations", () => {
       const roles = [
         await yieldManager.YIELD_PROVIDER_STAKING_ROLE(),
         await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE(),
-        await yieldManager.STAKING_PAUSER_ROLE(),
-        await yieldManager.STAKING_UNPAUSER_ROLE(),
+        await yieldManager.STAKING_PAUSE_CONTROLLER_ROLE(),
       ];
       await Promise.all(
         roles.map(async (role) => expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true),

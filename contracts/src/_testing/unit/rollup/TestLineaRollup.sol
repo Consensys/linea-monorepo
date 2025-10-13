@@ -44,4 +44,8 @@ contract TestLineaRollup is LineaRollup {
   function setLastFinalizedState(uint256 _messageNumber, bytes32 _rollingHash, uint256 _timestamp) external {
     currentFinalizedState = _computeLastFinalizedState(_messageNumber, _rollingHash, _timestamp);
   }
+
+  function addL2MerkleRoots(bytes32[] calldata _newRoot, uint256 _treeDepth) external {
+    _addL2MerkleRoots(_newRoot, _treeDepth);
+  }
 }
