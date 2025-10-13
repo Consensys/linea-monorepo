@@ -41,7 +41,7 @@ func StartServerWithReadiness(worker_id string, route string, port int, state St
 		}
 
 		// Readiness endpoint - returns 503 if processing or shutting down
-		mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {
 			// Not ready if shutdown requested
 			if state.IsShutdownRequested() {
 				w.WriteHeader(http.StatusServiceUnavailable)
@@ -61,13 +61,7 @@ func StartServerWithReadiness(worker_id string, route string, port int, state St
 			w.Write([]byte("ready"))
 		})
 
-		// Health endpoint - always returns 200 unless server is dead
-		mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("healthy"))
-		})
-
-		logrus.Infof("Added readiness endpoint: /ready and health endpoint: /health on port %v", port)
+		logrus.Infof("Added readiness endpoint: /readiness on port %v", port)
 	}
 }
 
