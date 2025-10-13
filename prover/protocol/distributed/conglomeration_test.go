@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/sirupsen/logrus"
 )
 
 // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
@@ -22,37 +23,30 @@ func TestConglomerationBasic(t *testing.T) {
 		})
 
 		// This tests the compilation of the compiled-IOP
-		_ = distributed.DistributeWizard(comp, disc).
-			CompileSegments().
-			Conglomerate()
+		distWizard = distributed.DistributeWizard(comp, disc).
+				CompileSegments().
+				Conglomerate()
+
+		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
+			runtimeBoot,
+			distWizard.Disc,
+			distWizard.BlueprintGLs,
+			distWizard.BlueprintLPPs,
+			distWizard.VerificationKeyMerkleTree.GetRoot(),
+		)
+		glProofs, lppCommitments = runProverGLs(t, distWizard, witnessGLs)
+		sharedRandomness         = distributed.ComputeSharedRandomness(lppCommitments)
+		runLPPs                  = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
 	)
 
-	// 	runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
-	// 	witnessGLs, witnessLPPs = distributed.SegmentRuntime(
-	// 		runtimeBoot,
-	// 		distWizard.Disc,
-	// 		distWizard.BlueprintGLs,
-	// 		distWizard.BlueprintLPPs,
-	// 	)
-	// 	runGLs = runProverGLs(t, distWizard, witnessGLs)
-	// )
-
-	// for i := range runGLs {
-	// 	t.Logf("sanity-checking runGLs[%d]\n", i)
-	// 	sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
-	// }
-
-	// var (
-	// 	sharedRandomness = getSharedRandomness(runGLs)
-	// 	runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
-	// )
-
-	// for i := range runLPPs {
-	// 	t.Logf("sanity-checking runLPPs[%d]\n", i)
-	// 	sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
-	// }
-
-	// runConglomerationProver(t, distWizard.CompiledConglomeration, runGLs, runLPPs)
+	runConglomerationProver(
+		t,
+		&distWizard.VerificationKeyMerkleTree,
+		distWizard.CompiledConglomeration,
+		glProofs,
+		runLPPs,
+	)
 }
 
 // // TestConglomeration generates a conglomeration proof and checks if it is valid
@@ -141,35 +135,66 @@ func TestConglomerationBasic(t *testing.T) {
 // 	}
 // }
 
-// // This function runs a prover for a conglomerator compilation. It takes in a ConglomeratorCompilation
-// // object and two slices of ProverRuntime objects, runGLs and runLPPs. It extracts witnesses from
-// // these runtimes, then uses the ConglomeratorCompilation object to prove the conglomerator,
-// // logging the start and end times of the proof process.
-// func runConglomerationProver(t *testing.T, cong *distributed.ConglomeratorCompilation, runGLs, runLPPs []*wizard.ProverRuntime) {
+// This function runs a prover for a conglomerator compilation. It takes in a ConglomeratorCompilation
+// object and two slices of ProverRuntime objects, runGLs and runLPPs. It extracts witnesses from
+// these runtimes, then uses the ConglomeratorCompilation object to prove the conglomerator,
+// logging the start and end times of the proof process.
+func runConglomerationProver(
+	t *testing.T,
+	mt *distributed.VerificationKeyMerkleTree,
+	cong *distributed.RecursedSegmentCompilation,
+	runGLs, runLPPs []distributed.SegmentProof,
+) distributed.SegmentProof {
 
-// 	var (
-// 		witLPPs = make([]recursion.Witness, len(runLPPs))
-// 		witGLs  = make([]recursion.Witness, len(runGLs))
-// 	)
+	// The channel is used as a FIFO queue to store the remaining proofs to be
+	// aggregated.
+	var (
+		remainingProofs = make(chan distributed.SegmentProof, len(runGLs)+len(runLPPs))
+	)
 
-// 	for i := range runLPPs {
-// 		witLPPs[i] = recursion.ExtractWitness(runLPPs[i])
-// 	}
+	// This populates the queue
+	for i := range runGLs {
+		remainingProofs <- runGLs[i]
+	}
 
-// 	for i := range runGLs {
-// 		witGLs[i] = recursion.ExtractWitness(runGLs[i])
-// 	}
+	for i := range runLPPs {
+		remainingProofs <- runLPPs[i]
+	}
 
-// 	t.Logf("[%v] Starting to prove conglomerator\n", time.Now())
-// 	proof := cong.Prove(witGLs, witLPPs)
-// 	t.Logf("[%v] Finished proving conglomerator\n", time.Now())
+	// TryPopQueue attempts to consume a proof from the queue or return false
+	// if the queue is empty.
+	tryPopQueue := func() (distributed.SegmentProof, bool) {
+		select {
+		case proof := <-remainingProofs:
+			return proof, true
+		default:
+			return distributed.SegmentProof{}, false
+		}
+	}
 
-// 	t.Logf("[%v] start sanity-checking proof\n", time.Now())
+	// This is the actual proof aggregation loop.
+	for {
+		a, ok := tryPopQueue()
+		if !ok {
+			panic("the queue cannot be empty here")
+		}
 
-// 	err := wizard.Verify(cong.Wiop, proof)
-// 	if err != nil {
-// 		t.Fatalf("could not verify proof: %v", err)
-// 	}
+		// If b cannot be found, it means that the queue contained only a single
+		// proof to aggregate which means it was the result of the function.
+		b, ok := tryPopQueue()
+		if !ok {
+			return a
+		}
 
-// 	t.Logf("[%v] done sanity-checking proof\n", time.Now())
-// }
+		logrus.Infof("AGGREGATING PROOF, remaining %v\n", len(remainingProofs))
+
+		new := cong.ProveSegment(&distributed.ModuleWitnessConglo{
+			SegmentProofs:             []distributed.SegmentProof{a, b},
+			VerificationKeyMerkleTree: *mt,
+		})
+
+		logrus.Infof("AGGREGATED PROOFS\n")
+
+		remainingProofs <- new
+	}
+}
