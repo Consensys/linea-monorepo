@@ -27,6 +27,9 @@ abstract class RefTestGenerationTask extends DefaultTask {
   abstract Property<String> getGeneratedRefTestsOutput();
 
   @Input
+  abstract Property<String> getRefTestsSrcPath();
+
+  @Input
   abstract Property<String> getRefTestNamePrefix();
 
   @Input
@@ -52,6 +55,7 @@ abstract class RefTestGenerationTask extends DefaultTask {
     def refTests = project.fileTree(getRefTests().get())
     def refTestTemplateFile = project.file(getRefTestTemplateFilePath().get())
     def refTestJsonParamsDirectory = getRefTestJsonParamsDirectory().get()
+    def refTestsSrcPath = getRefTestsSrcPath().get()
     def generatedTestsFilePath = getGeneratedRefTestsOutput().get()
     def refTestNamePrefix = getRefTestNamePrefix().get()
     def excludedPath = getRefTestJsonParamsExcludedPath().get() // exclude test for test filling tool
@@ -87,6 +91,7 @@ abstract class RefTestGenerationTask extends DefaultTask {
       def testFileContents = referenceTestTemplate
         .replaceAll("%%TESTS_FILE%%", allPaths)
         .replaceAll("%%TESTS_NAME%%", refTestNamePrefix + "_" + idx)
+        .replaceAll("%%TESTS_SRC_PATH%%", refTestsSrcPath)
         .replaceAll("%%FAILED_TEST_FILE_PATH%%", failedTestsFilePath)
         .replaceAll("%%FAILED_MODULE%%", failedModule)
         .replaceAll("%%FAILED_CONSTRAINT%%", failedConstraint)

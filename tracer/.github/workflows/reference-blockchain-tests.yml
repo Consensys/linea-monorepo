@@ -70,12 +70,109 @@ jobs:
       failed_constraint: ${{ inputs.failed_constraint || '' }}
       commit: ${{ inputs.commit || '' }}
 
+  # For Prague, we run blockchain tests coming from the execution spec tests
   blockchain-reference-tests-prague:
-    uses: ./.github/workflows/reusable-blockchain-tests.yml
-    secrets: inherit
-    with:
-      zkevm_fork: PRAGUE
-      test_filter: ${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}
-      failed_module: ${{ inputs.failed_module || '' }}
-      failed_constraint: ${{ inputs.failed_constraint || '' }}
-      commit: ${{ inputs.commit || '' }}
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          submodules: recursive
+      - name: get-branch-name
+        id: extract_branch
+        run: |
+          echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-environment
+
+      - name: Download execution spec fixtures
+        run: ./gradlew :reference-tests:downloadExecutionSpecFixtures
+        env:
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+
+      - name: Generate execution spec blockchain reference tests
+        run: ./gradlew :reference-tests:generateExecutionSpecBlockchainTests -Dorg.gradle.caching=true
+        env:
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+
+      - name: Download artifact
+        uses: dawidd6/action-download-artifact@ac66b43f0e6a346234dd65d4d0c8fbb31cb316e5 # v11
+        if: ${{ inputs.failed_module != '' }}
+        with:
+          name: failedBlockchainReferenceTests.json
+          path: ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          commit: ${{ inputs.commit || '' }}
+          if_no_artifact_found: ignore
+
+      - name: Rename filter input file
+        if: ${{ inputs.failed_module != '' }}
+        run: mv ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests.json ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests-input.json
+
+      - name: Run reference execution spec blockchain tests
+        run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew referenceExecutionSpecBlockchainTests -x spotlessCheck --tests "${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}"
+        timeout-minutes: 360
+        env:
+          REFERENCE_TESTS_PARALLELISM: 3
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+          GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
+          FAILED_TEST_JSON_DIRECTORY: ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/
+          FAILED_MODULE: ${{ inputs.failed_module || '' }}
+          FAILED_CONSTRAINT: ${{ inputs.failed_constraint || '' }}
+          REFERENCE_TEST_FILTER_INPUT: failedBlockchainReferenceTests.json
+          ZKEVM_FORK: PRAGUE
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: failedBlockchainReferenceTests-PRAGUE.json
+          path: ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: blockchain-reference-tests-report-PRAGUE
+          path: reference-tests/build/reports/tests/**/*
+
+      - name: Upload jacoco exec spec blockchain tests coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: jacoco-blockchain-tests-coverage-report-PRAGUE
+          path: reference-tests/build/reports/jacoco/jacocoReferenceExecutionSpecBlockchainTestsReport/**/*
+
+      - name: Upload jacoco blockchain tests exec file
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: jacoco-blockchain-tests-exec-file-PRAGUE
+          path: reference-tests/build/jacoco/referenceExecutionSpecBlockchainTests.exec
+
+      - name: Extract Metrics
+        if: ${{ failure() || cancelled() }}
+        run: |
+          # Gather metrics
+          SUCCESS_COUNTER=$(cat $JSON_REPORT | sed -e "s/.*\"successCounter\":\([0-9]*\).*/\1/")
+          FAILED_COUNTER=$(cat $JSON_REPORT | sed -e "s/.*\"failedCounter\":\([0-9]*\).*/\1/")
+          ABORTED_COUNTER=$(cat $JSON_REPORT | sed -e "s/.*\"abortedCounter\":\([0-9]*\).*/\1/")
+          DISABLED_COUNTER=$(cat $JSON_REPORT | sed -e "s/.*\"disabledCounter\":\([0-9]*\).*/\1/")
+          # Set environment variables
+          echo "SUCCESS=$SUCCESS_COUNTER" >> $GITHUB_ENV
+          echo "FAILED=$FAILED_COUNTER" >> $GITHUB_ENV
+          echo "ABORTED=$ABORTED_COUNTER" >> $GITHUB_ENV
+          echo "DISABLED=$DISABLED_COUNTER" >> $GITHUB_ENV
+        env:
+          JSON_REPORT: ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/BlockchainReferenceTestOutcome.json
+
+      - name: Failure Notification
+        if: github.ref == 'refs/heads/arith-dev' && (failure() || cancelled())
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: |
+            name: "Daily Blockchain"
+            status: "${{ env.SUCCESS }} successful, ${{ env.FAILED }} failed, ${{ env.ABORTED }} aborted, ${{ env.DISABLED }} disabled"

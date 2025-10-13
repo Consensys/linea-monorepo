@@ -39,7 +39,7 @@ jobs:
       - name: Setup Test Environment
         uses: ./.github/actions/setup-environment
 
-      - name: Generate block chain reference tests
+      - name: Generate blockchain reference tests
         run: ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.caching=true
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
@@ -82,7 +82,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: blockchain-refrence-tests-report-${{ inputs.zkevm_fork }}
+          name: blockchain-reference-tests-report-${{ inputs.zkevm_fork }}
           path: reference-tests/build/reports/tests/**/*
 
       - name: Upload jacoco blockchain tests coverage report
