@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
@@ -167,7 +168,7 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 
 	var (
 		leafPosition = -1
-		numModule    = len(vmt.VerificationKeys)
+		numModule    = utils.DivExact(len(vmt.VerificationKeys) - 1, 2)
 		moduleIndex  = segProof.ModuleIndex
 	)
 
@@ -188,6 +189,11 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 	for i, sibling := range proof.Siblings {
 		res[i].SetBytes(sibling[:])
 	}
+
+	fmt.Printf(
+		"[getMerkleProof] leaf position: %v, root: %v, leaf: %v, vk: %v\n",
+		leafPosition, vmt.Tree.Root.Hex(), vmt.Tree.OccupiedLeaves[leafPosition].Hex(),
+		vector.Prettify(vmt.VerificationKeys[leafPosition][:]))
 
 	return res
 }
@@ -244,6 +250,8 @@ func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.
 	}
 
 	root.SetField(rootF)
+
+	fmt.Printf("verified VK merkle proof: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf.Hex(), root.Hex())
 
 	if !mProof.Verify(smtCfg, leaf, root) {
 		return fmt.Errorf("VK is not a member of the tree: pos: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf.Hex(), root.Hex())
