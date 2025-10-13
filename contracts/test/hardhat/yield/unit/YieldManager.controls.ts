@@ -10,11 +10,9 @@ import {
   GENERAL_PAUSE_TYPE,
   NATIVE_YIELD_STAKING_PAUSE_TYPE,
   NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
-  NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE,
-  NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE,
+  NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
   NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE,
   NATIVE_YIELD_REPORTING_PAUSE_TYPE,
-  LST_WITHDRAWAL_PAUSE_TYPE,
 } from "../../common/constants";
 import { setWithdrawalReserveBalance, setWithdrawalReserveToMinimum } from "../helpers/setup";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
@@ -52,18 +50,11 @@ describe("YieldManager contract - control operations", () => {
       expect(await yieldManager.isPaused(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE)).to.be.true;
     });
 
-    it("Security council should be able to activate NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE", async () => {
-      await expect(yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE))
+    it("Security council should be able to activate NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE", async () => {
+      await expect(yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE))
         .to.emit(yieldManager, "Paused")
-        .withArgs(securityCouncil.address, NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE);
-      expect(await yieldManager.isPaused(NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE)).to.be.true;
-    });
-
-    it("Security council should be able to activate NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE", async () => {
-      await expect(yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE))
-        .to.emit(yieldManager, "Paused")
-        .withArgs(securityCouncil.address, NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE);
-      expect(await yieldManager.isPaused(NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE)).to.be.true;
+        .withArgs(securityCouncil.address, NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE);
+      expect(await yieldManager.isPaused(NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE)).to.be.true;
     });
 
     it("Security council should be able to activate NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE", async () => {
@@ -80,12 +71,7 @@ describe("YieldManager contract - control operations", () => {
       expect(await yieldManager.isPaused(NATIVE_YIELD_REPORTING_PAUSE_TYPE)).to.be.true;
     });
 
-    it("Security council should be able to activate LST_WITHDRAWAL_PAUSE_TYPE", async () => {
-      await expect(yieldManager.connect(securityCouncil).pauseByType(LST_WITHDRAWAL_PAUSE_TYPE))
-        .to.emit(yieldManager, "Paused")
-        .withArgs(securityCouncil.address, LST_WITHDRAWAL_PAUSE_TYPE);
-      expect(await yieldManager.isPaused(LST_WITHDRAWAL_PAUSE_TYPE)).to.be.true;
-    });
+    // LST withdrawals are now governed by NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE.
   });
 
   describe("unpausing", () => {
@@ -113,12 +99,8 @@ describe("YieldManager contract - control operations", () => {
       await pauseThenUnpause(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
     });
 
-    it("Security council should be able to unpause NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE", async () => {
-      await pauseThenUnpause(NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_PAUSE_TYPE);
-    });
-
-    it("Security council should be able to unpause NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE", async () => {
-      await pauseThenUnpause(NATIVE_YIELD_PERMISSIONLESS_REBALANCE_PAUSE_TYPE);
+    it("Security council should be able to unpause NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE", async () => {
+      await pauseThenUnpause(NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE);
     });
 
     it("Security council should be able to unpause NATIVE_YIELD_RESERVE_FUNDING_PAUSE_TYPE", async () => {
@@ -129,9 +111,7 @@ describe("YieldManager contract - control operations", () => {
       await pauseThenUnpause(NATIVE_YIELD_REPORTING_PAUSE_TYPE);
     });
 
-    it("Security council should be able to unpause LST_WITHDRAWAL_PAUSE_TYPE", async () => {
-      await pauseThenUnpause(LST_WITHDRAWAL_PAUSE_TYPE);
-    });
+    // LST withdrawal flow is covered by NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE.
   });
 
   beforeEach(async () => {

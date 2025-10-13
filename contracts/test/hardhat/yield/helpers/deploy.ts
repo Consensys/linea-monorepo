@@ -1,7 +1,12 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers, upgrades } from "hardhat";
 
-import { YIELD_MANAGER_PAUSE_TYPES_ROLES, YIELD_MANAGER_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
+import {
+  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+  YIELD_MANAGER_PAUSE_TYPES_ROLES,
+  YIELD_MANAGER_UNPAUSE_TYPES_ROLES,
+} from "contracts/common/constants";
 import {
   MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
@@ -11,6 +16,7 @@ import {
   GI_FIRST_VALIDATOR_AFTER_CHANGE,
   CHANGE_SLOT,
   LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
+  FUNDER_ROLE,
 } from "../../common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import { YIELD_MANAGER_OPERATOR_ROLES, YIELD_MANAGER_SECURITY_COUNCIL_ROLES } from "contracts/common/constants";
@@ -32,6 +38,8 @@ import {
 import { YieldManagerInitializationData, YieldProviderRegistration } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
+import { deployLineaRollupFixture, reinitializeLineaRollupFixtureV7 } from "../../rollup/helpers";
+import { LineaRollupV7ReinitializationData } from "../../rollup/helpers/types";
 
 async function getYieldManagerRoleAddressesFixture(): Promise<
   {
@@ -276,5 +284,105 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
     mockLineaRollup,
     sszMerkleTree,
     verifier,
+  };
+}
+
+export async function deployYieldManagerIntegrationTestFixture() {
+  const { securityCouncil, l2YieldRecipient } = await loadFixture(getAccountsFixture);
+  const yieldManagerRoleAddresses = await loadFixture(getYieldManagerRoleAddressesFixture);
+  // Deploy LineaRollup
+  const { lineaRollup, roleAddresses: lineaRollupRoleAddresses } = await loadFixture(deployLineaRollupFixture);
+  const l1MessageServiceAddress = await lineaRollup.getAddress();
+
+  // Deploy YieldManager
+  const initializationData: YieldManagerInitializationData = {
+    pauseTypeRoles: YIELD_MANAGER_PAUSE_TYPES_ROLES,
+    unpauseTypeRoles: YIELD_MANAGER_UNPAUSE_TYPES_ROLES,
+    roleAddresses: yieldManagerRoleAddresses,
+    initialL2YieldRecipients: [l2YieldRecipient.address],
+    defaultAdmin: securityCouncil.address,
+    initialMinimumWithdrawalReservePercentageBps: MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
+    initialTargetWithdrawalReservePercentageBps: TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
+    initialMinimumWithdrawalReserveAmount: MINIMUM_WITHDRAWAL_RESERVE_AMOUNT,
+    initialTargetWithdrawalReserveAmount: TARGET_WITHDRAWAL_RESERVE_AMOUNT,
+  };
+
+  upgrades.silenceWarnings();
+  const yieldManager = (await deployUpgradableWithConstructorArgs(
+    "TestYieldManager",
+    [l1MessageServiceAddress],
+    [initializationData],
+    {
+      initializer: YIELD_MANAGER_INITIALIZE_SIGNATURE,
+      unsafeAllow: ["constructor", "incorrect-initializer-order", "state-variable-immutable", "delegatecall"],
+    },
+  )) as unknown as TestYieldManager;
+
+  // Deploy LidoStVaultYieldProviderFactory
+  const mockVaultHub = await deployMockVaultHub();
+  const mockSTETH = await deployMockSTETH();
+  const mockDashboard = await deployMockDashboard();
+  const mockStakingVault = await deployMockStakingVault();
+
+  const yieldManagerAddress = await yieldManager.getAddress();
+  const mockVaultHubAddress = await mockVaultHub.getAddress();
+  const mockSTETHAddress = await mockSTETH.getAddress();
+
+  const yieldProviderFactoryFactory = await ethers.getContractFactory("TestLidoStVaultYieldProviderFactory");
+  const lidoStVaultYieldProviderFactory = await yieldProviderFactoryFactory.deploy(
+    l1MessageServiceAddress,
+    yieldManagerAddress,
+    mockVaultHubAddress,
+    mockSTETHAddress,
+    GI_FIRST_VALIDATOR,
+    GI_FIRST_VALIDATOR_AFTER_CHANGE,
+    CHANGE_SLOT,
+  );
+  await lidoStVaultYieldProviderFactory.waitForDeployment();
+
+  // Create YieldProvider
+  const yieldProviderAddress = await lidoStVaultYieldProviderFactory.createTestLidoStVaultYieldProvider.staticCall();
+  await lidoStVaultYieldProviderFactory.connect(securityCouncil).createTestLidoStVaultYieldProvider();
+  const yieldProvider = await ethers.getContractAt("TestLidoStVaultYieldProvider", yieldProviderAddress);
+
+  // Add YieldProvider
+  await mockDashboard.setStakingVaultReturn(await mockStakingVault.getAddress());
+  const mockDashboardAddress = await mockDashboard.getAddress();
+  const mockStakingVaultAddress = await mockStakingVault.getAddress();
+
+  const registration: YieldProviderRegistration = {
+    yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
+    primaryEntrypoint: mockDashboardAddress,
+    ossifiedEntrypoint: mockStakingVaultAddress,
+    receiveCaller: mockStakingVaultAddress,
+  };
+
+  await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
+
+  // Reinit LineaRollup with actual YieldManager
+  const reinitData: LineaRollupV7ReinitializationData = {
+    pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+    unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+    roleAddresses: [
+      ...lineaRollupRoleAddresses,
+      {
+        role: FUNDER_ROLE,
+        addressWithRole: yieldManagerAddress,
+      },
+    ],
+    yieldManager: yieldManagerAddress,
+  };
+  await reinitializeLineaRollupFixtureV7(lineaRollup, reinitData);
+
+  return {
+    lineaRollup,
+    yieldManager,
+    yieldManagerAddress,
+    yieldProvider,
+    yieldProviderAddress,
+    mockDashboard,
+    mockSTETH,
+    mockVaultHub,
+    mockStakingVault,
   };
 }

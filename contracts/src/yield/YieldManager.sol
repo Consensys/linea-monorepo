@@ -582,7 +582,7 @@ contract YieldManager is
   )
     external
     payable
-    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_UNSTAKING)
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
     returns (uint256 maxUnstakeAmount)
   {
@@ -764,7 +764,7 @@ contract YieldManager is
     address _yieldProvider
   )
     external
-    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_REBALANCE)
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
   {
     if (!isWithdrawalReserveBelowMinimum()) {
@@ -877,7 +877,11 @@ contract YieldManager is
     address _yieldProvider,
     uint256 _amount,
     address _recipient
-  ) external whenTypeAndGeneralNotPaused(PauseType.LST_WITHDRAWAL) onlyKnownYieldProvider(_yieldProvider) {
+  )
+    external
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
+    onlyKnownYieldProvider(_yieldProvider)
+  {
     if (msg.sender != L1_MESSAGE_SERVICE) {
       revert SenderNotL1MessageService();
     }

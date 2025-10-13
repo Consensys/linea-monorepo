@@ -21,21 +21,13 @@ abstract contract YieldManagerPauseManager is PauseManager {
   /// @notice This is used to unpause operator-led unstaking flows.
   bytes32 public constant UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE = keccak256("UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE");
 
-  /// @notice This is used to pause permissionless unstaking requests.
-  bytes32 public constant PAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE =
-    keccak256("PAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE");
+  /// @notice This is used to pause permissionless actions such as unstaking requests and reserve replenishment flows.
+  bytes32 public constant PAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE =
+    keccak256("PAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE");
 
-  /// @notice This is used to unpause permissionless unstaking requests.
-  bytes32 public constant UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE =
-    keccak256("UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE");
-
-  /// @notice This is used to pause permissionless reserve replenishment flows.
-  bytes32 public constant PAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE =
-    keccak256("PAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE");
-
-  /// @notice This is used to unpause permissionless reserve replenishment flows.
-  bytes32 public constant UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE =
-    keccak256("UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE");
+  /// @notice This is used to unpause permissionless actions such as unstaking requests and reserve replenishment flows.
+  bytes32 public constant UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE =
+    keccak256("UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE");
 
   /// @notice This is used to pause transfers from the YieldManager to the withdrawal reserve.
   bytes32 public constant PAUSE_NATIVE_YIELD_RESERVE_FUNDING_ROLE =
@@ -50,10 +42,4 @@ abstract contract YieldManagerPauseManager is PauseManager {
 
   /// @notice This is used to unpause yield-reporting operations.
   bytes32 public constant UNPAUSE_NATIVE_YIELD_REPORTING_ROLE = keccak256("UNPAUSE_NATIVE_YIELD_REPORTING_ROLE");
-
-  /// @notice This is used to pause LST withdrawals routed through the YieldManager.
-  bytes32 public constant PAUSE_LST_WITHDRAWAL_ROLE = keccak256("PAUSE_LST_WITHDRAWAL_ROLE");
-
-  /// @notice This is used to unpause LST withdrawals routed through the YieldManager.
-  bytes32 public constant UNPAUSE_LST_WITHDRAWAL_ROLE = keccak256("UNPAUSE_LST_WITHDRAWAL_ROLE");
 }

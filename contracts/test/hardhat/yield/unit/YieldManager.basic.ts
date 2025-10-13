@@ -293,23 +293,13 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
     });
 
-    it("Should assign the PAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE to securityCouncil address", async () => {
-      const role = await yieldManager.PAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE();
+    it("Should assign the PAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE to securityCouncil address", async () => {
+      const role = await yieldManager.PAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE();
       expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
     });
 
-    it("Should assign the UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE to securityCouncil address", async () => {
-      const role = await yieldManager.UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_UNSTAKING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
-    });
-
-    it("Should assign the PAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE to securityCouncil address", async () => {
-      const role = await yieldManager.PAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
-    });
-
-    it("Should assign the UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE to securityCouncil address", async () => {
-      const role = await yieldManager.UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_REBALANCE_ROLE();
+    it("Should assign the UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE to securityCouncil address", async () => {
+      const role = await yieldManager.UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE();
       expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
     });
 
@@ -330,16 +320,6 @@ describe("YieldManager contract - basic operations", () => {
 
     it("Should assign the UNPAUSE_NATIVE_YIELD_REPORTING_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.UNPAUSE_NATIVE_YIELD_REPORTING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
-    });
-
-    it("Should assign the PAUSE_LST_WITHDRAWAL_ROLE to securityCouncil address", async () => {
-      const role = await yieldManager.PAUSE_LST_WITHDRAWAL_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
-    });
-
-    it("Should assign the UNPAUSE_LST_WITHDRAWAL_ROLE to securityCouncil address", async () => {
-      const role = await yieldManager.UNPAUSE_LST_WITHDRAWAL_ROLE();
       expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
     });
   });
