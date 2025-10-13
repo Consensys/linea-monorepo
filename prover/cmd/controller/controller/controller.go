@@ -131,8 +131,8 @@ func handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status S
 		// at this moment only bootstrap is successful. The entire file
 		// should be moved only after conglomeration is successful. At this point, we should just trim the
 		// bootstrap suffix to indicate the entire request is successful.
-		jobDone = strings.Replace(jobDone, "-getZkProof.json.success", "-getZkProof.json.success.bootstrap", 1)
-		cLog.Info("Added .bootstrap suffix to indicate partial success (bootstrap phase only).")
+		jobDone = strings.Replace(jobDone, "-getZkProof.json."+config.SuccessSuffix, "-getZkProof.json."+config.BootstrapPartialSucessSuffix, 1)
+		cLog.Info("Added suffix to indicate partial success (bootstrap phase only).")
 	}
 
 	if err := os.Rename(job.InProgressPath(), jobDone); err != nil {
@@ -141,12 +141,12 @@ func handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status S
 
 	// --- After conglomeration finishes, trim the boostrap suffix marker to indicate full success ---
 	if job.Def.Name == jobNameConglomeration {
-		trimBootstrapSuffix(cfg, cLog, job)
+		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, config.SuccessSuffix)
 	}
 }
 
-func trimBootstrapSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job) {
-	pattern := filepath.Join(cfg.Execution.DirDone(), fmt.Sprintf("%d-%d-*.success.bootstrap", job.Start, job.End))
+func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {
+	pattern := filepath.Join(cfg.Execution.DirDone(), fmt.Sprintf("%d-%d-*.%s", job.Start, job.End, oldSuffix))
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		cLog.Errorf("Glob pattern failed for %v: %v", pattern, err)
@@ -154,22 +154,22 @@ func trimBootstrapSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job) {
 	}
 
 	if len(matches) == 0 {
-		cLog.Warnf("No bootstrap success file found matching %v (maybe already moved?)", pattern)
+		cLog.Warnf("No file found matching %v (maybe already moved?)", pattern)
 		return
 	}
 	if len(matches) > 1 {
-		cLog.Warnf("Multiple bootstrap success files match %v, using first: %v", pattern, matches)
+		cLog.Warnf("Multiple files match pattern %v, using first: %v", pattern, matches)
 	}
 
-	bootstrapFile := matches[0]
-	finalFile := strings.TrimSuffix(bootstrapFile, ".bootstrap")
+	oldFile := matches[0]
+	newFile := strings.TrimSuffix(oldFile, "."+oldSuffix) + "." + newSuffix
 
-	cLog.Infof("Renaming bootstrap success file → final success file: %v → %v", bootstrapFile, finalFile)
+	cLog.Infof("Renaming file: %v → %v", oldFile, newFile)
 
-	if err := os.Rename(bootstrapFile, finalFile); err != nil {
-		cLog.Errorf("Failed to rename %v → %v: %v", bootstrapFile, finalFile, err)
+	if err := os.Rename(oldFile, newFile); err != nil {
+		cLog.Errorf("Failed to rename %v → %v: %v", oldFile, newFile, err)
 	} else {
-		cLog.Infof("Successfully finalized conglomeration for %d-%d", job.Start, job.End)
+		cLog.Infof("Successfully replaced suffix %q → %q for %d-%d", oldSuffix, newSuffix, job.Start, job.End)
 	}
 }
 
@@ -208,6 +208,7 @@ func handleJobKilledBySIGTERM(cfg *config.Config, cLog *logrus.Entry, job *Job) 
 }
 
 // handleJobFailure moves the failed job to the done directory with failure suffix.
+// TODO: handle failure of the conglomeration. Rename bootstrap suffix.
 func handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 	cLog.Infof("Moving %v with in %v with a failure suffix for code %v", job.OriginalFile, job.Def.dirDone(), status.ExitCode)
 
@@ -223,6 +224,14 @@ func handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status S
 	} else {
 		cLog.Debugf("Job %s writes to /dev/null, skipping tmp-response cleanup", job.OriginalFile)
 	}
+
+	// Upon failure for GL/LPP/Conglomeration jobs - replace the partial success bootstrap suffix
+	// with the failure suffix in the cfg.Execution.DirDone path
+	failSuffix := fmt.Sprintf("failure.%v_%v", config.FailSuffix, status.ExitCode)
+	if job.Def.Name == jobNameGL || job.Def.Name == jobNameLPP || job.Def.Name == jobNameConglomeration {
+		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
+	}
+
 }
 
 // retryDelay returns the duration to wait before retrying to find a job in the queue.

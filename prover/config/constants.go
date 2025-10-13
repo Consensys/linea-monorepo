@@ -19,8 +19,9 @@ const (
 	LargeSuffix = "large"
 
 	// Limitless prover stuffs
-	BootstrapSuffix = "bootstrap"
-	WitnessDir      = "/tmp/witness"
+	BootstrapSuffix              = "bootstrap"
+	BootstrapPartialSucessSuffix = "success.partial.bootstrap"
+	WitnessDir                   = "/tmp/witness"
 )
 
 var (
