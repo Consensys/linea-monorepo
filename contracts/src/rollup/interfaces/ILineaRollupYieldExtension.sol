@@ -27,25 +27,8 @@ interface ILineaRollupYieldExtension {
    * @notice Emitted when a YieldManager address is set.
    * @param oldYieldManagerAddress The previous YieldManager address.
    * @param newYieldManagerAddress The new YieldManager address.
-   * @param caller Address which set the YieldManager address.
    */
-  event YieldManagerChanged(
-    address indexed oldYieldManagerAddress,
-    address indexed newYieldManagerAddress,
-    address indexed caller
-  );
-
-  /**
-   * @notice Emitted when the L2YieldRecipient address is set.
-   * @param oldL2YieldRecipientAddress The previous L2YieldRecipient address.
-   * @param newL2YieldRecipientAddress The new L2YieldRecipient address.
-   * @param caller Address which set the L2YieldRecipient address.
-   */
-  event L2YieldRecipientChanged(
-    address indexed oldL2YieldRecipientAddress,
-    address indexed newL2YieldRecipientAddress,
-    address indexed caller
-  );
+  event YieldManagerChanged(address indexed oldYieldManagerAddress, address indexed newYieldManagerAddress);
 
   /**
    * @dev Thrown when the caller is not the YieldManager.

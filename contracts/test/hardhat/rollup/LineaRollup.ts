@@ -260,6 +260,7 @@ describe("Linea Rollup contract", () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
       expect(await lineaRollup.hasRole(FUNDER_ROLE, securityCouncil.address)).to.be.true;
     });
+
     it("Should store the startingRootHash in storage for the first block number", async () => {
       const initializationData = {
         initialStateRootHash: parentStateRootHash,

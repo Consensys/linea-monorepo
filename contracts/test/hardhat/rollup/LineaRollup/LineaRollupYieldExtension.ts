@@ -76,7 +76,6 @@ describe("Linea Rollup contract", () => {
       await expectEvent(lineaRollup, setYieldManagerCall, "YieldManagerChanged", [
         oldYieldManagerAddress,
         newYieldManagerAddress,
-        securityCouncil.address,
       ]);
     });
   });

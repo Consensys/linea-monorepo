@@ -55,6 +55,7 @@ abstract contract LineaRollupYieldExtension is
    * @param _yieldManager YieldManager address.
    */
   function __LineaRollupYieldExtension_init(address _yieldManager) internal onlyInitializing {
+    emit YieldManagerChanged(_storage()._yieldManager, _yieldManager);
     _storage()._yieldManager = _yieldManager;
   }
 
@@ -90,7 +91,7 @@ abstract contract LineaRollupYieldExtension is
   function setYieldManager(address _newYieldManager) public onlyRole(SET_YIELD_MANAGER_ROLE) {
     require(_newYieldManager != address(0), ZeroAddressNotAllowed());
     LineaRollupYieldExtensionStorage storage $ = _storage();
-    emit YieldManagerChanged($._yieldManager, _newYieldManager, msg.sender);
+    emit YieldManagerChanged($._yieldManager, _newYieldManager);
     $._yieldManager = _newYieldManager;
   }
 }

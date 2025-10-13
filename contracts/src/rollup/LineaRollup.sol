@@ -23,4 +23,30 @@ contract LineaRollup is LineaRollupBase {
   function initialize(InitializationData calldata _initializationData) external initializer {
     __LineaRollup_init(_initializationData);
   }
+
+  /**
+   * @notice Sets the roles for a list of addresses, the PauseManager pauseType:role mappings and sets the YieldManager address.
+   * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
+   * @param _roleAddresses The list of addresses and roles to assign permissions to.
+   * @param _pauseTypeRoles The list of pause types to associate with roles.
+   * @param _unpauseTypeRoles The list of unpause types to associate with roles.
+   * @param _yieldManager The address of the YieldManager contract.
+   */
+  function reinitializeLineaRollupV7(
+    RoleAddress[] calldata _roleAddresses,
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles,
+    address _yieldManager
+  ) external reinitializer(7) {
+    __Permissions_init(_roleAddresses);
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+
+    if (_yieldManager == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+    __LineaRollupYieldExtension_init(_yieldManager);
+
+    /// @dev using the constants requires string memory and more complex code.
+    emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("7.0"));
+  }
 }
