@@ -201,6 +201,15 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    * @param {TransactionReceipt} receipt - The receipt of the claim transaction.
    */
   private async updateReceiptStatus(message: Message, receipt: TransactionReceipt): Promise<void> {
+    let processingTimeInSeconds: number | undefined;
+    if (this.config.direction === Direction.L1_TO_L2 && message.claimTxCreationDate) {
+      const block = await this.provider.getBlock(receipt.blockNumber);
+      if (block) {
+        processingTimeInSeconds = block.timestamp - message.claimTxCreationDate.getTime() / 1_000;
+        this.transactionMetricsUpdater.addTransactionProcessingTime(processingTimeInSeconds);
+      }
+    }
+
     if (receipt.status === 0) {
       const isRateLimitExceeded = await this.messageServiceContract.isRateLimitExceededError(receipt.hash);
 
@@ -225,6 +234,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         "Message claim transaction has been REVERTED: messageHash=%s transactionHash=%s",
         message.messageHash,
         receipt.hash,
+        { ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}) },
       );
       return;
     }
@@ -234,14 +244,6 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
     });
 
     await this.databaseService.updateMessage(message);
-
-    const block = await this.provider.getBlock(receipt.blockNumber);
-
-    let processingTimeInSeconds: number | undefined;
-    if (this.config.direction === Direction.L1_TO_L2 && block && message.claimTxCreationDate) {
-      processingTimeInSeconds = block.timestamp - message.claimTxCreationDate.getTime() / 1_000;
-      this.transactionMetricsUpdater.addTransactionProcessingTime(processingTimeInSeconds);
-    }
 
     if (message.isForSponsorship) {
       await this.sponsorshipMetricsUpdater.incrementSponsorshipFeePaid(

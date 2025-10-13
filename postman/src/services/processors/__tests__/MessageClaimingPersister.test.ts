@@ -260,6 +260,7 @@ describe("TestMessageClaimingPersister ", () => {
         "Message claim transaction has been REVERTED: messageHash=%s transactionHash=%s",
         expectedSavedMessage.messageHash,
         expectedSavedMessage.claimTxHash,
+        {},
       );
     });
 
