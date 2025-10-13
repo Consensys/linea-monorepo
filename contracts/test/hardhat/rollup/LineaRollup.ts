@@ -9,11 +9,16 @@ import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.
 import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
 
-import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
+import {
+  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_ROLES,
+  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+} from "contracts/common/constants";
 import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
   deployLineaRollupFixture,
+  deployMockYieldManager,
   expectSuccessfulFinalizeViaCallForwarder,
   getRoleAddressesFixture,
   sendBlobTransactionViaCallForwarder,
@@ -57,6 +62,7 @@ import {
   getAccountsFixture,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
+import { generateRoleAssignments } from "contracts/common/helpers";
 
 kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 
@@ -76,6 +82,8 @@ describe("Linea Rollup contract", () => {
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentStateRootHash } =
     firstCompressedDataContent;
   const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
+  const VERSION_6_BYTES = ethers.encodeBytes32String("6.0").slice(0, 18);
+  const VERSION_7_BYTES = ethers.encodeBytes32String("7.0").slice(0, 18);
 
   before(async () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount } = await loadFixture(getAccountsFixture));
@@ -341,6 +349,68 @@ describe("Linea Rollup contract", () => {
       });
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
+    });
+  });
+
+  describe("reinitializeLineaRollupV7", () => {
+    it("Should revert if the YieldManager address is zero", async () => {
+      const reinitializeCall = lineaRollup.reinitializeLineaRollupV7(
+        roleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        ADDRESS_ZERO,
+      );
+
+      await expectRevertWithCustomError(lineaRollup, reinitializeCall, "ZeroAddressNotAllowed");
+    });
+
+    it("Should configure roles, set the YieldManager and emit version change events", async () => {
+      expect(await lineaRollup.hasRole(OPERATOR_ROLE, nonAuthorizedAccount.address)).to.be.false;
+
+      const updatedRoleAddresses = generateRoleAssignments(LINEA_ROLLUP_ROLES, securityCouncil.address, [
+        {
+          role: OPERATOR_ROLE,
+          addresses: [operator.address, nonAuthorizedAccount.address],
+        },
+      ]);
+
+      const newYieldManager = await deployMockYieldManager();
+
+      const tx = await lineaRollup.reinitializeLineaRollupV7(
+        updatedRoleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        newYieldManager,
+      );
+
+      await expect(tx)
+        .to.emit(lineaRollup, "LineaRollupVersionChanged")
+        .withArgs(VERSION_6_BYTES, VERSION_7_BYTES)
+        .and.to.emit(lineaRollup, "YieldManagerChanged")
+        .withArgs(mockYieldManager, newYieldManager);
+
+      expect(await lineaRollup.yieldManager()).to.equal(newYieldManager);
+      expect(await lineaRollup.hasRole(OPERATOR_ROLE, nonAuthorizedAccount.address)).to.be.true;
+    });
+
+    it("Should revert if reinitializeLineaRollupV7 is invoked more than once", async () => {
+      const newYieldManager = await deployMockYieldManager();
+      await lineaRollup.reinitializeLineaRollupV7(
+        roleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        newYieldManager,
+      );
+
+      const subsequentYieldManager = await deployMockYieldManager();
+      const secondCall = lineaRollup.reinitializeLineaRollupV7(
+        roleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        subsequentYieldManager,
+      );
+
+      await expectRevertWithReason(secondCall, INITIALIZED_ALREADY_MESSAGE);
     });
   });
 

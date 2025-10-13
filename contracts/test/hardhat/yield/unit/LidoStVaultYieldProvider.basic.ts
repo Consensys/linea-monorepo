@@ -595,7 +595,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         [validatorWitness],
       );
       const WITHDRAWAL_AMOUNT_GWEI =
-        validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei");
+        validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei") > 0n
+          ? validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei")
+          : 0n;
 
       // Act
       const maxUnstakeAmount = await yieldManager
