@@ -18,16 +18,19 @@ type theta struct {
 	lookupMSB [2]ifaces.Column
 }
 
+// newTheta creates a new theta module, declares the columns and constraints and returns its pointer
 func newTheta(comp *wizard.CompiledIOP, maxNumKeccakf int, stateCurr state) *theta {
 	// declare the columns
 	declareColumnsTheta(comp, maxNumKeccakf)
 	return &theta{}
 }
+
+// assignTheta assigns the values to the columns of theta step
 func assignTheta(run *wizard.ProverRuntime, stateCurr state) theta {
 	return theta{stateCurr: stateCurr,
 		stateNext: state{}}
 }
 
-// it declares the intermediate columns generated during theta step
+// it declares the intermediate columns generated during theta step, including the new state.
 func declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int) {
 }
