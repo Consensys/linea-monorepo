@@ -26,6 +26,7 @@ import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigIn
 
 import java.math.BigInteger;
 
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnDataOperation;
 import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.EucRow;
@@ -84,4 +85,7 @@ public class SysiEip4788Transaction extends CancunTxnDataOperation {
   protected int ctMax() {
     return NB_ROWS_TXN_DATA_SYSI_EIP4788 - 1;
   }
+
+  @Override
+  public void traceTransaction(Trace.Txndata trace) {}
 }

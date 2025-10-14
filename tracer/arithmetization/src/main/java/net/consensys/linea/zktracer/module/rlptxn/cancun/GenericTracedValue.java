@@ -34,6 +34,7 @@ public class GenericTracedValue {
   private final boolean type4;
   private int rlpLtByteSize;
   private int rlpLxByteSize;
+  @Setter @Getter private int userTxnNumberMax;
 
   public GenericTracedValue(TransactionProcessingMetadata tx) {
     this.tx = tx;

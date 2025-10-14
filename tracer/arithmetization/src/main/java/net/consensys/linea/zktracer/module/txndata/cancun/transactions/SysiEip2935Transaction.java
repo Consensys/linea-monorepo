@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.HISTORY_SERVE_WINDOW;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
 import static net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.WcpRow.smallCallToIszero;
 
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnDataOperation;
 import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.EucRow;
@@ -87,4 +88,7 @@ public class SysiEip2935Transaction extends CancunTxnDataOperation {
   private Bytes previousBlockHash() {
     return currentBlockIsGenesisBlock() ? Bytes.EMPTY : blockHeader.getParentHash();
   }
+
+  @Override
+  public void traceTransaction(Trace.Txndata trace) {}
 }

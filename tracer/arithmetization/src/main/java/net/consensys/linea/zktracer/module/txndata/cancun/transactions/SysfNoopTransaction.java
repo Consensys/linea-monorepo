@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.txndata.cancun.transactions;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSF;
 import static net.consensys.linea.zktracer.module.txndata.cancun.rows.hubRows.Type.NOOP;
 
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnDataOperation;
 import net.consensys.linea.zktracer.module.txndata.cancun.rows.computationRows.NoopRow;
@@ -43,4 +44,7 @@ public class SysfNoopTransaction extends CancunTxnDataOperation {
     rows.add(new HubRowForSystemTransactions(txnData.getCurrentBlockHeader(), txnData.hub(), NOOP));
     rows.add(new NoopRow());
   }
+
+  @Override
+  public void traceTransaction(Trace.Txndata trace) {}
 }
