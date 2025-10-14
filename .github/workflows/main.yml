@@ -11,6 +11,7 @@ permissions:
   actions: read
   security-events: write
   packages: write
+  deployments: write
 
 jobs:
   filter-commit-changes:
