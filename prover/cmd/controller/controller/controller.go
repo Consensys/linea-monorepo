@@ -16,9 +16,13 @@ import (
 type shutdownSignal int
 
 const (
-	noShutdown       shutdownSignal = iota
-	gracefulShutdown                // SIGTERM
-	spotReclaim                     // SIGUSR1
+	noShutdown shutdownSignal = iota
+
+	// SIGTERM
+	gracefulShutdown
+
+	// SIGUSR1
+	spotReclaim
 )
 
 func runController(ctx context.Context, cfg *config.Config) {
@@ -68,6 +72,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 		}
 	}()
 
+	// cmdContext is the context we provide for the command execution. In
+	// spot-instance mode, the context is subordinated to the parent ctx so
+	// that the cancellation of parent ctx is propagated to the cmdContext.
 	cmdContext := context.Background()
 	if cfg.Controller.SpotInstanceMode {
 		cmdContext = ctx
