@@ -2,8 +2,9 @@ package plonkinternal
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"sync"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
