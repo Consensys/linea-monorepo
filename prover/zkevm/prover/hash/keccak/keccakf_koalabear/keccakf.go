@@ -1,6 +1,9 @@
 package keccakfkoalabear
 
-import "github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+import (
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+)
 
 const (
 	// Number of 64bits lanes in a keccak block
@@ -38,4 +41,54 @@ type Module struct {
 
 	// theta module, responsible for updating the state in the theta step of keccakf
 	theta theta
+	// rho pi module, responsible for updating the state in the rho and pi steps of keccakf
+	rohPi rho
+}
+
+// NewModule creates a new keccakf module, declares the columns and constraints and returns its pointer
+func NewModule(comp *wizard.CompiledIOP, maxNumKeccakf int, blocks [numLanesInBlock]lane) *Module {
+
+	// declare the columns
+	declareColumns(comp, maxNumKeccakf)
+	// initial state is zero
+	var state state
+	// assign the blocks of the message to the state
+
+	// create the theta module with the state including the message-blocks
+	theta := newTheta(comp, maxNumKeccakf, state)
+	// create the rho pi module with the state after theta
+	rho := newRho(comp, maxNumKeccakf, theta.stateNext)
+
+	return &Module{
+		maxNumKeccakf: maxNumKeccakf,
+		state:         state,
+		blocks:        blocks,
+		theta:         *theta,
+		rohPi:         *rho,
+	}
+}
+
+// Assign the values to the columns of the keccakf module.
+func Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [numLanesInBlock]lane) Module {
+	// initial state is zero
+	var state state
+	// assign the blocks of the message to the state
+
+	// assign the theta module with the state including the message-blocks
+	theta := assignTheta(run, state)
+	// assign the rho pi module with the state after theta
+	rho := assignRoh(run, theta.stateNext)
+
+	return Module{
+		maxNumKeccakf: numKeccakf,
+		state:         state,
+		blocks:        blocks,
+		//	isActive:      isActive,
+		theta: theta,
+		rohPi: rho,
+	}
+}
+
+// it declares the columns used in the keccakf module, including the state and the message blocks.
+func declareColumns(comp *wizard.CompiledIOP, maxNumKeccakf int) {
 }

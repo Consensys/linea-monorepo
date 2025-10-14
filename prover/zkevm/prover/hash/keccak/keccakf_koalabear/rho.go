@@ -5,7 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-type roha struct {
+// rho module, responsible for updating the state in the rho step of keccakf
+type rho struct {
 	// state before applying the rho step, in base dirty 12
 	stateCurr state
 	// state after applying the rho step, in base clean 11.
@@ -17,7 +18,8 @@ type roha struct {
 	// prover action to recompose the state after rotation
 }
 
-func newRoha(comp *wizard.CompiledIOP, numKeccakf int, stateCurr state) *roha {
+// newRoha creates a new rhoa module, declares the columns and constraints and returns its pointer
+func newRho(comp *wizard.CompiledIOP, numKeccakf int, stateCurr state) *rho {
 	// declare the columns
 	declareColumnsRho(comp, numKeccakf)
 	// base conversion object to convert the state from base dirty 12 to base clean 11
@@ -27,11 +29,15 @@ func newRoha(comp *wizard.CompiledIOP, numKeccakf int, stateCurr state) *roha {
 
 	// return to the [state] representation via recomposition of slices
 
-	return &roha{}
+	return &rho{}
 }
-func assignRoha(run *wizard.ProverRuntime, stateCurr state) roha {
-	return roha{stateCurr: stateCurr,
+
+// assignRoha assigns the values to the columns of rho step.
+func assignRoh(run *wizard.ProverRuntime, stateCurr state) rho {
+	return rho{stateCurr: stateCurr,
 		stateNext: state{}}
 }
+
+// it declares the intermediate columns generated during rho step, including the new state.
 func declareColumnsRho(comp *wizard.CompiledIOP, numKeccakf int) {
 }
