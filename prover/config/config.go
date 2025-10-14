@@ -197,8 +197,10 @@ type Controller struct {
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
 
-	// SpotInstanceMode tells the controller to gracefully exit as soon as it
-	// receives a SIGTERM.
+	// The number of seconds the controller should wait before killing a worker after receiving a SIGTERM
+	TerminationGracePeriod time.Duration `mapstructure:"termination_grace_period"`
+
+	// SpotInstanceMode tells the controller to gracefully exit as soon as it receives a SIGUSR1
 	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
 }
 

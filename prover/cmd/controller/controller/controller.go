@@ -106,9 +106,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 			switch shutdownType {
 			case spotReclaim:
-				<-time.After(2 * time.Minute)
+				<-time.After(config.SpotInstanceReclaimTime)
 			case gracefulShutdown:
-				<-time.After(20 * time.Minute)
+				<-time.After(cfg.Controller.TerminationGracePeriod.Abs())
 			default:
 				// immediate exit
 			}
