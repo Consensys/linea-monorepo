@@ -7,8 +7,9 @@ data-path="/opt/besu/data"
 sync-mode="FULL"
 data-storage-format="BONSAI"
 
+# Min gas price
 min-gas-price=1000000
-tx-pool-min-gas-price=0
+
 max-peers=50
 
 # Host allow list
