@@ -98,7 +98,7 @@ describe("Linea Rollup contract", () => {
       const amount = ethers.parseEther("1");
       const fundCall = lineaRollup.connect(securityCouncil).fund({ value: amount });
 
-      await expectEvent(lineaRollup, fundCall, "FundingReceived", [securityCouncil.address, amount]);
+      await expectEvent(lineaRollup, fundCall, "FundingReceived", [amount]);
 
       const lineaRollupBalance = await ethers.provider.getBalance(await lineaRollup.getAddress());
       expect(lineaRollupBalance).to.equal(amount);

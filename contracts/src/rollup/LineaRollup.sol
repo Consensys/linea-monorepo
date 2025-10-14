@@ -22,6 +22,10 @@ contract LineaRollup is LineaRollupYieldExtension {
    */
   function initialize(InitializationData calldata _initializationData) external initializer {
     __LineaRollup_init(_initializationData);
+    if (_initializationData.initialYieldManager == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+    __LineaRollupYieldExtension_init(_initializationData.initialYieldManager);
   }
 
   /**
