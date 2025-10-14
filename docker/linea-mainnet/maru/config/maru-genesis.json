@@ -1,5 +1,5 @@
 {
-  "chainId": 59141,
+  "chainId": 59144,
   "config": {
     "0": {
       "type": "difficultyAwareQbft",
@@ -13,14 +13,8 @@
     "1761127200": {
       "type": "qbft",
       "validatorSet": [],
-      "blockTimeSeconds": 2,
+      "blockTimeSeconds": 1,
       "elFork": "Shanghai"
-    },
-    "1761213600": {
-      "type": "qbft",
-      "validatorSet": [],
-      "blockTimeSeconds": 2,
-      "elFork": "Cancun"
     }
   }
 }
