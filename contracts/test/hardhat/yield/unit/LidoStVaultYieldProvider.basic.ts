@@ -39,6 +39,7 @@ import {
   VALIDATOR_WITNESS_TYPE,
   THIRTY_TWO_ETH_IN_GWEI,
   ONE_GWEI,
+  MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
 } from "../../common/constants";
 import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
@@ -589,15 +590,14 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         sszMerkleTree,
         verifier,
         mockStakingVaultAddress,
+        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
       );
       const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
         [VALIDATOR_WITNESS_TYPE],
         [validatorWitness],
       );
       const WITHDRAWAL_AMOUNT_GWEI =
-        validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei") > 0n
-          ? validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei")
-          : 0n;
+        validatorWitness.effectiveBalance - THIRTY_TWO_ETH_IN_GWEI - parseUnits("1", "gwei");
 
       // Act
       const maxUnstakeAmount = await yieldManager

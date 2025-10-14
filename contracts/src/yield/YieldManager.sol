@@ -487,8 +487,14 @@ contract YieldManager is
       abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _availableFunds))
     );
     lstPrincipalPaid = abi.decode(data, (uint256));
-    _getYieldManagerStorage().userFundsInYieldProvidersTotal -= lstPrincipalPaid;
-    _getYieldProviderStorage(_yieldProvider).userFunds -= lstPrincipalPaid;
+    _getYieldManagerStorage().userFundsInYieldProvidersTotal = Math256.safeSub(
+      _getYieldManagerStorage().userFundsInYieldProvidersTotal,
+      lstPrincipalPaid
+    );
+    _getYieldProviderStorage(_yieldProvider).userFunds = Math256.safeSub(
+      _getYieldProviderStorage(_yieldProvider).userFunds,
+      lstPrincipalPaid
+    );
   }
 
   /**
