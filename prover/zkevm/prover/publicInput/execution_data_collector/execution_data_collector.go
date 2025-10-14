@@ -362,6 +362,10 @@ func DefineAbsTxIdCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDat
 				edc.SelectorEndOfAllTx,
 			), // not at the end of all blocks
 			sym.Sub(
+				1,
+				edc.SelectorBlockHasZeroUserTx, // we do not have RLP segments when the block has no transactions
+			),
+			sym.Sub(
 				column.Shift(edc.AbsTxID, 1),
 				edc.AbsTxID,
 			),
@@ -1354,42 +1358,48 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			genericLoadFunction(loadBlockHashLo, fetchedBlockhashLo)
 			totalCt++
 
-			// iterate through transactions
-			for txIdInBlock := uint64(1); txIdInBlock <= totalTxBlock; txIdInBlock++ {
+			if fetchNoTx.IsZero() {
+				// there are no user transactions in this block
+				// we skip to the next block
+				continue
+			} else {
+				// iterate through transactions
+				for txIdInBlock := uint64(1); txIdInBlock <= totalTxBlock; txIdInBlock++ {
 
-				// load the sender address Hi
-				fetchedAddrHi := txnData.FromHi.GetColAssignmentAt(run, absTxCt-1)
-				vect.IsAddrHi[totalCt].SetOne()
-				vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrHi)
-				genericLoadFunction(loadSenderAddrHi, fetchedAddrHi)
-				totalCt++
-
-				// load the sender address Lo
-				fetchedAddrLo := txnData.FromLo.GetColAssignmentAt(run, absTxCt-1)
-				vect.IsAddrLo[totalCt].SetOne()
-				vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrLo)
-				genericLoadFunction(loadSenderAddrLo, fetchedAddrLo)
-				totalCt++
-
-				// load the RLP limbs
-				currentAbsTxId := field.NewElement(uint64(absTxCt))
-				rlpPointerAbsTxId := rlp.AbsTxNum.GetColAssignmentAt(run, rlpCt)
-				// add RLP limbs (multiple limbs)
-				for currentAbsTxId.Equal(&rlpPointerAbsTxId) {
-					// while currentAbsTxId is equal to rlpPointerAbsTxId, namely we are parsing the limbs for the same AbsTxID
-					rlpLimb := rlp.Limb.GetColAssignmentAt(run, rlpCt)
-					rlpNBytes := rlp.NBytes.GetColAssignmentAt(run, rlpCt)
-					vect.IsTxRLP[totalCt].SetOne()
-					vect.NoBytes[totalCt].Set(&rlpNBytes)
-					genericLoadFunction(loadRlp, rlpLimb)
+					// load the sender address Hi
+					fetchedAddrHi := txnData.FromHi.GetColAssignmentAt(run, absTxCt-1)
+					vect.IsAddrHi[totalCt].SetOne()
+					vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrHi)
+					genericLoadFunction(loadSenderAddrHi, fetchedAddrHi)
 					totalCt++
 
-					rlpCt++
-					rlpPointerAbsTxId = rlp.AbsTxNum.GetColAssignmentAt(run, rlpCt)
+					// load the sender address Lo
+					fetchedAddrLo := txnData.FromLo.GetColAssignmentAt(run, absTxCt-1)
+					vect.IsAddrLo[totalCt].SetOne()
+					vect.NoBytes[totalCt].SetInt64(noBytesSenderAddrLo)
+					genericLoadFunction(loadSenderAddrLo, fetchedAddrLo)
+					totalCt++
+
+					// load the RLP limbs
+					currentAbsTxId := field.NewElement(uint64(absTxCt))
+					rlpPointerAbsTxId := rlp.AbsTxNum.GetColAssignmentAt(run, rlpCt)
+					// add RLP limbs (multiple limbs)
+					for currentAbsTxId.Equal(&rlpPointerAbsTxId) {
+						// while currentAbsTxId is equal to rlpPointerAbsTxId, namely we are parsing the limbs for the same AbsTxID
+						rlpLimb := rlp.Limb.GetColAssignmentAt(run, rlpCt)
+						rlpNBytes := rlp.NBytes.GetColAssignmentAt(run, rlpCt)
+						vect.IsTxRLP[totalCt].SetOne()
+						vect.NoBytes[totalCt].Set(&rlpNBytes)
+						genericLoadFunction(loadRlp, rlpLimb)
+						totalCt++
+
+						rlpCt++
+						rlpPointerAbsTxId = rlp.AbsTxNum.GetColAssignmentAt(run, rlpCt)
+					}
+					vect.EndOfRlpSegment[totalCt-1].SetOne()
+					// increase transaction counter
+					absTxCt++
 				}
-				vect.EndOfRlpSegment[totalCt-1].SetOne()
-				// increase transaction counter
-				absTxCt++
 			}
 
 		} else {
