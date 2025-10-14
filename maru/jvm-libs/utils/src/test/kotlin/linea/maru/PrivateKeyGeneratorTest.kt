@@ -10,6 +10,7 @@ package linea.maru
 
 import linea.maru.PrivateKeyGenerator.generatePrivateKey
 import linea.maru.PrivateKeyGenerator.getKeyData
+import linea.maru.PrivateKeyGenerator.getKeyDataByPrefixedKey
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.RepeatedTest
 
@@ -17,7 +18,9 @@ class PrivateKeyGeneratorTest {
   @RepeatedTest(100)
   fun `should generator private key`() {
     val keyData = generatePrivateKey()
-    val recoveredData = getKeyData(privateKey = keyData.privateKey)
-    assertThat(keyData).isEqualTo(recoveredData)
+    val recoveredDataFromPrivKey = getKeyData(privateKey = keyData.privateKey)
+    val recoveredDataFromPrivKeyPrefixed = getKeyDataByPrefixedKey(prefixedPrivateKey = keyData.prefixedPrivateKey)
+    assertThat(keyData).isEqualTo(recoveredDataFromPrivKey)
+    assertThat(keyData).isEqualTo(recoveredDataFromPrivKeyPrefixed)
   }
 }

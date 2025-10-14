@@ -4,7 +4,36 @@ This module contains utility tools for Maru blockchain operations.
 
 ## Tools
 
-### 1. DifficultyCalculator
+### 1. PrivateKeyGenerator
+
+A utility tool to generate a prefixed private key and corresponding node ID, following the same pattern as used in MaruFactory for validator private keys.
+
+#### Purpose
+Generates cryptographic keys for Maru validators and P2P networking, displaying both the prefixed private key and the corresponding LibP2P node ID.
+
+#### Usage
+
+**Generate keys:**
+```bash
+./gradlew :jvm-libs:utils:keytool --args='generateKeys --numberOfKeys=5'
+```
+
+**Get Key Info:**
+```bash
+./gradlew :jvm-libs:utils:keytool --args='prefixedKeyInfo --privKey=0x08021220abcd1234...'
+```
+
+```bash
+./gradlew :jvm-libs:utils:keytool --args='secp256k1Info --privKey=0xabcd1234...'
+```
+
+**Help:**
+```bash
+./gradlew :jvm-libs:utils:keytool --args='--help'
+./gradlew :jvm-libs:utils:keytool --args='secp256k1Info --help'
+```
+
+### 2. DifficultyCalculator
 
 A utility tool to compute the expected difficulty at a given time for Clique blocks.
 
@@ -48,19 +77,7 @@ Expected result:
 Block: 1500, Difficulty: 3001, Timestamp: 1692001000
 ```
 
-### 2. PrivateKeyGenerator
 
-A utility tool to generate a prefixed private key and corresponding node ID, following the same pattern as used in MaruFactory for validator private keys.
-
-#### Purpose
-Generates cryptographic keys for Maru validators and P2P networking, displaying both the prefixed private key and the corresponding LibP2P node ID.
-
-#### Usage
-
-**Command Line:**
-```bash
-./gradlew -q :jvm-libs:utils:runPrivateKeyGenerator
-```
 
 **Example Output:**
 ```

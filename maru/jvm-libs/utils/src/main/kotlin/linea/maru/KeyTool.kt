@@ -31,7 +31,6 @@ class KeyTool {
     @CommandLine.Option(names = ["-n", "--numberOfKeys"], description = ["Number of keys to generate"])
     numberOfKeys: Int = 1,
   ): Int {
-    println("method invoked with $numberOfKeys keys")
     repeat(numberOfKeys) {
       PrivateKeyGenerator
         .generatePrivateKey()
