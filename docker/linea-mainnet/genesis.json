@@ -13,7 +13,6 @@
     "londonBlock": 0,
     "terminalTotalDifficulty": 49492771,
     "shanghaiTime": 1761127200,
-    "cancunTime": 1761213600,
     "depositContractAddress": "0x94d4a7449B968b839dcbc64A61F195CA300986ae",
     "withdrawalRequestContractAddress": "0x66355689a9f067eeb9dc9d899E4192676988279C",
     "consolidationRequestContractAddress": "0xF0e003F0dE2d583Ae28FA8cBF66aa096CdAce3ff",

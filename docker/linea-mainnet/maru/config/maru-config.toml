@@ -8,11 +8,6 @@ ip-address = "0.0.0.0"
 static-peers = [] # Missing from mainnet
 reconnect-delay = "500ms"
 
-[p2p.discovery]
-port = 9000
-bootnodes = []
-refresh-interval = "3s"
-
 [payload-validator]
 # Besu node as execution layer client
 engine-api-endpoint = { endpoint = "http://linea-besu:8550" }  # Match Besu port
