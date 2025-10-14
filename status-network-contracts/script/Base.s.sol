@@ -43,7 +43,7 @@ abstract contract BaseScript is Script {
      * @dev Returns the address of the broadcaster.
      * @return The address of the broadcaster.
      */
-    function getDeployer() public returns (address) {
+    function getDeployer() public view returns (address) {
         return broadcaster;
     }
 }
