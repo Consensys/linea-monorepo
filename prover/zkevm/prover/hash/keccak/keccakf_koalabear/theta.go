@@ -26,9 +26,7 @@ func newTheta(comp *wizard.CompiledIOP, maxNumKeccakf int, stateCurr state) *the
 }
 
 // assignTheta assigns the values to the columns of theta step
-func assignTheta(run *wizard.ProverRuntime, stateCurr state) theta {
-	return theta{stateCurr: stateCurr,
-		stateNext: state{}}
+func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 }
 
 // it declares the intermediate columns generated during theta step, including the new state.
