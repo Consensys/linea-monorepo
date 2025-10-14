@@ -17,30 +17,28 @@ abstract contract YieldManagerStorageLayout {
   /**
    * @notice ERC-7201 namespaced storage layout for a YieldProvider adaptor contract
    * @custom:storage-location erc7201:linea.storage.YieldManager
-   * @param _minimumWithdrawalReservePercentageBps Minimum withdrawal reserve expressed as basis points of total user funds.
-   * @param _targetWithdrawalReservePercentageBps Target withdrawal reserve expressed as basis points of total user funds.
-   * @param _minimumWithdrawalReserveAmount Minimum withdrawal reserve expressed as an absolute number.
-   * @param _targetWithdrawalReserveAmount Target withdrawal reserve expressed as an absolute number.
-   * @param _userFundsInYieldProvidersTotal Total amount of user funds currently deployed across YieldProviders.
+   * @param minimumWithdrawalReservePercentageBps Minimum withdrawal reserve expressed as basis points of total user funds.
+   * @param targetWithdrawalReservePercentageBps Target withdrawal reserve expressed as basis points of total user funds.
+   * @param minimumWithdrawalReserveAmount Minimum withdrawal reserve expressed as an absolute number.
+   * @param targetWithdrawalReserveAmount Target withdrawal reserve expressed as an absolute number.
+   * @param userFundsInYieldProvidersTotal Total amount of user funds currently deployed across YieldProviders.
    *                                        - Must increment and decrement 1:1 with YieldProviderStorage._userFunds.
-   * @param _pendingPermissionlessUnstake Pending ETH expected from permissionless beacon-chain withdrawal requests.
+   * @param pendingPermissionlessUnstake Pending ETH expected from permissionless beacon-chain withdrawal requests.
    *                                      - Greedily decremented on i.) Donations ii.) YieldProvider withdrawals.
-   * @param _yieldProviders Array of registered YieldProvider adaptor contracts.
-   * @param _isL2YieldRecipientKnown Mapping of added L2YieldRecipient addresses.
-   * @param _yieldProviderStorage YieldProvider-scoped storage scoped by the YieldProvider adaptor contract address.
+   * @param yieldProviders Array of registered YieldProvider adaptor contracts.
+   * @param isL2YieldRecipientKnown Mapping of added L2YieldRecipient addresses.
+   * @param yieldProviderStorage YieldProvider-scoped storage scoped by the YieldProvider adaptor contract address.
    */
-
-  ///
   struct YieldManagerStorage {
-    uint16 _minimumWithdrawalReservePercentageBps;
-    uint16 _targetWithdrawalReservePercentageBps;
-    uint256 _minimumWithdrawalReserveAmount;
-    uint256 _targetWithdrawalReserveAmount;
-    uint256 _userFundsInYieldProvidersTotal;
-    uint256 _pendingPermissionlessUnstake;
-    address[] _yieldProviders;
-    mapping(address l2YieldRecipient => bool) _isL2YieldRecipientKnown;
-    mapping(address yieldProvider => YieldProviderStorage) _yieldProviderStorage;
+    uint16 minimumWithdrawalReservePercentageBps;
+    uint16 targetWithdrawalReservePercentageBps;
+    uint256 minimumWithdrawalReserveAmount;
+    uint256 targetWithdrawalReserveAmount;
+    uint256 userFundsInYieldProvidersTotal;
+    uint256 pendingPermissionlessUnstake;
+    address[] yieldProviders;
+    mapping(address l2YieldRecipient => bool) isL2YieldRecipientKnown;
+    mapping(address yieldProvider => YieldProviderStorage) yieldProviderStorage;
   }
 
   /**
@@ -131,6 +129,6 @@ abstract contract YieldManagerStorageLayout {
    * @return $$ Storage pointer granting read/write access to the YieldProvider-scoped state.
    */
   function _getYieldProviderStorage(address _yieldProvider) internal view returns (YieldProviderStorage storage $$) {
-    $$ = _getYieldManagerStorage()._yieldProviderStorage[_yieldProvider];
+    $$ = _getYieldManagerStorage().yieldProviderStorage[_yieldProvider];
   }
 }

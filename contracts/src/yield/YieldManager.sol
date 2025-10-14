@@ -59,22 +59,22 @@ contract YieldManager is
 
   /// @notice Minimum withdrawal reserve percentage in bps.
   function minimumWithdrawalReservePercentageBps() public view returns (uint256) {
-    return _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps;
+    return _getYieldManagerStorage().minimumWithdrawalReservePercentageBps;
   }
 
   /// @notice Minimum withdrawal reserve by absolute amount.
   function minimumWithdrawalReserveAmount() public view returns (uint256) {
-    return _getYieldManagerStorage()._minimumWithdrawalReserveAmount;
+    return _getYieldManagerStorage().minimumWithdrawalReserveAmount;
   }
 
   /// @notice Target withdrawal reserve percentage in bps.
   function targetWithdrawalReservePercentageBps() public view returns (uint256) {
-    return _getYieldManagerStorage()._targetWithdrawalReservePercentageBps;
+    return _getYieldManagerStorage().targetWithdrawalReservePercentageBps;
   }
 
   /// @notice Target withdrawal reserve by absolute amount.
   function targetWithdrawalReserveAmount() public view returns (uint256) {
-    return _getYieldManagerStorage()._targetWithdrawalReserveAmount;
+    return _getYieldManagerStorage().targetWithdrawalReserveAmount;
   }
 
   constructor(address _l1MessageService) {
@@ -108,10 +108,10 @@ contract YieldManager is
     for (uint256 i; i < _initializationData.initialL2YieldRecipients.length; i++) {
       address l2YieldRecipient = _initializationData.initialL2YieldRecipients[i];
       ErrorUtils.revertIfZeroAddress(l2YieldRecipient);
-      $._isL2YieldRecipientKnown[l2YieldRecipient] = true;
+      $.isL2YieldRecipientKnown[l2YieldRecipient] = true;
     }
     // Ensure address(0) at index=0.
-    $._yieldProviders.push(address(0));
+    $.yieldProviders.push(address(0));
   }
 
   modifier onlyKnownYieldProvider(address _yieldProvider) {
@@ -122,7 +122,7 @@ contract YieldManager is
   }
 
   modifier onlyKnownL2YieldRecipient(address _l2YieldRecipient) {
-    if (!_getYieldManagerStorage()._isL2YieldRecipientKnown[_l2YieldRecipient]) {
+    if (!_getYieldManagerStorage().isL2YieldRecipientKnown[_l2YieldRecipient]) {
       revert UnknownL2YieldRecipient();
     }
     _;
@@ -150,7 +150,7 @@ contract YieldManager is
   {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     cachedL1MessageServiceBalance = L1_MESSAGE_SERVICE.balance;
-    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $._userFundsInYieldProvidersTotal;
+    totalSystemBalance = cachedL1MessageServiceBalance + address(this).balance + $.userFundsInYieldProvidersTotal;
   }
 
   /**
@@ -175,11 +175,11 @@ contract YieldManager is
     (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
     // Get minimumWithdrawalReserveByPercentage
     uint256 minimumWithdrawalReserveByPercentage = (totalSystemBalance *
-      _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps) / MAX_BPS;
+      _getYieldManagerStorage().minimumWithdrawalReservePercentageBps) / MAX_BPS;
     // Get minimumWithdrawalReserve
     minimumWithdrawalReserve = Math256.max(
       minimumWithdrawalReserveByPercentage,
-      _getYieldManagerStorage()._minimumWithdrawalReserveAmount
+      _getYieldManagerStorage().minimumWithdrawalReserveAmount
     );
   }
 
@@ -204,10 +204,10 @@ contract YieldManager is
     uint256 totalSystemBalance;
     (totalSystemBalance, cachedL1MessageServiceBalance) = _getTotalSystemBalance();
     uint256 targetWithdrawalReserveByPercentage = (totalSystemBalance *
-      _getYieldManagerStorage()._targetWithdrawalReservePercentageBps) / MAX_BPS;
+      _getYieldManagerStorage().targetWithdrawalReservePercentageBps) / MAX_BPS;
     targetWithdrawalReserve = Math256.max(
       targetWithdrawalReserveByPercentage,
-      _getYieldManagerStorage()._targetWithdrawalReserveAmount
+      _getYieldManagerStorage().targetWithdrawalReserveAmount
     );
   }
 
@@ -242,7 +242,7 @@ contract YieldManager is
    * @return bool True if the L2YieldRecipient is on the allowlist.
    */
   function isL2YieldRecipientKnown(address _l2YieldRecipient) external view returns (bool) {
-    return _getYieldManagerStorage()._isL2YieldRecipientKnown[_l2YieldRecipient];
+    return _getYieldManagerStorage().isL2YieldRecipientKnown[_l2YieldRecipient];
   }
 
   /**
@@ -258,7 +258,7 @@ contract YieldManager is
    * @return count Total number of yield providers tracked by the YieldManager.
    */
   function yieldProviderCount() external view override returns (uint256 count) {
-    count = _getYieldManagerStorage()._yieldProviders.length - 1;
+    count = _getYieldManagerStorage().yieldProviders.length - 1;
   }
 
   /**
@@ -271,7 +271,7 @@ contract YieldManager is
    */
   function yieldProviderByIndex(uint256 _index) external view override returns (address yieldProvider) {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    yieldProvider = $._yieldProviders[_index];
+    yieldProvider = $.yieldProviders[_index];
   }
 
   /**
@@ -354,7 +354,7 @@ contract YieldManager is
    * @return totalUserFunds Aggregate amount of user funds currently deployed across yield providers.
    */
   function userFundsInYieldProvidersTotal() external view override returns (uint256 totalUserFunds) {
-    totalUserFunds = _getYieldManagerStorage()._userFundsInYieldProvidersTotal;
+    totalUserFunds = _getYieldManagerStorage().userFundsInYieldProvidersTotal;
   }
 
   /**
@@ -362,7 +362,7 @@ contract YieldManager is
    * @return pendingUnstake Amount of ETH pending arrival from the beacon chain via permissionless unstaking.
    */
   function pendingPermissionlessUnstake() external view override returns (uint256 pendingUnstake) {
-    pendingUnstake = _getYieldManagerStorage()._pendingPermissionlessUnstake;
+    pendingUnstake = _getYieldManagerStorage().pendingPermissionlessUnstake;
   }
 
   /**
@@ -467,7 +467,7 @@ contract YieldManager is
     // Do LST repayment
     uint256 lstPrincipalRepayment = _payLSTPrincipal(_yieldProvider, _amount);
     uint256 amountRemaining = _amount - lstPrincipalRepayment;
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal += amountRemaining;
+    _getYieldManagerStorage().userFundsInYieldProvidersTotal += amountRemaining;
     _getYieldProviderStorage(_yieldProvider).userFunds += amountRemaining;
     emit YieldProviderFunded(_yieldProvider, _amount, lstPrincipalRepayment, amountRemaining);
   }
@@ -487,7 +487,7 @@ contract YieldManager is
       abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _availableFunds))
     );
     lstPrincipalPaid = abi.decode(data, (uint256));
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= lstPrincipalPaid;
+    _getYieldManagerStorage().userFundsInYieldProvidersTotal -= lstPrincipalPaid;
     _getYieldProviderStorage(_yieldProvider).userFunds -= lstPrincipalPaid;
   }
 
@@ -519,7 +519,7 @@ contract YieldManager is
     $$.userFunds += newReportedYield;
     $$.yieldReportedCumulative += newReportedYield;
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    $._userFundsInYieldProvidersTotal += newReportedYield;
+    $.userFundsInYieldProvidersTotal += newReportedYield;
     ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).reportNativeYield(newReportedYield, _l2YieldRecipient);
     emit NativeYieldReported(_yieldProvider, _l2YieldRecipient, newReportedYield);
   }
@@ -590,12 +590,12 @@ contract YieldManager is
     uint256 targetDeficit = getTargetReserveDeficit();
     uint256 availableFundsToSettleTargetDeficit = address(this).balance +
       withdrawableValue(_yieldProvider) +
-      _getYieldManagerStorage()._pendingPermissionlessUnstake;
+      _getYieldManagerStorage().pendingPermissionlessUnstake;
     if (availableFundsToSettleTargetDeficit + maxUnstakeAmount > targetDeficit) {
       revert PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
     }
 
-    _getYieldManagerStorage()._pendingPermissionlessUnstake += maxUnstakeAmount;
+    _getYieldManagerStorage().pendingPermissionlessUnstake += maxUnstakeAmount;
     // Event emitted by YieldProvider which has provider-specific decoding of _withdrawalParams
   }
 
@@ -684,16 +684,16 @@ contract YieldManager is
     // Cause some YieldProvider funds to become unwithdrawable temporarily.
     // This is tolerated because it is temporary until the next reportYield() call, where we assume the YieldManager reports new surplus as yield.
     $$.userFunds -= _amount;
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal -= _amount;
+    _getYieldManagerStorage().userFundsInYieldProvidersTotal -= _amount;
     // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
     _decrementPendingPermissionlessUnstake(_amount);
   }
 
   function _decrementPendingPermissionlessUnstake(uint256 _amount) internal {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    uint256 pendingPermissionlessUnstake = $._pendingPermissionlessUnstake;
+    uint256 pendingPermissionlessUnstake = $.pendingPermissionlessUnstake;
     if (pendingPermissionlessUnstake == 0) return;
-    $._pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
+    $.pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
   }
 
   /**
@@ -1022,9 +1022,9 @@ contract YieldManager is
     if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
       revert YieldProviderAlreadyAdded();
     }
-    uint96 yieldProviderIndex = uint96($._yieldProviders.length);
-    $._yieldProviders.push(_yieldProvider);
-    $._yieldProviderStorage[_yieldProvider] = YieldProviderStorage({
+    uint96 yieldProviderIndex = uint96($.yieldProviders.length);
+    $.yieldProviders.push(_yieldProvider);
+    $.yieldProviderStorage[_yieldProvider] = YieldProviderStorage({
       yieldProviderVendor: _registration.yieldProviderVendor,
       isStakingPaused: false,
       isOssificationInitiated: false,
@@ -1082,13 +1082,13 @@ contract YieldManager is
     YieldManagerStorage storage $ = _getYieldManagerStorage();
 
     uint96 yieldProviderIndex = _getYieldProviderStorage(_yieldProvider).yieldProviderIndex;
-    address lastYieldProvider = $._yieldProviders[$._yieldProviders.length - 1];
-    $._yieldProviderStorage[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
-    $._yieldProviders[yieldProviderIndex] = lastYieldProvider;
-    $._yieldProviders.pop();
+    address lastYieldProvider = $.yieldProviders[$.yieldProviders.length - 1];
+    $.yieldProviderStorage[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
+    $.yieldProviders[yieldProviderIndex] = lastYieldProvider;
+    $.yieldProviders.pop();
 
     // TODO - Does this actually wipe the whole struct, to delete the storage pointer?
-    delete $._yieldProviderStorage[_yieldProvider];
+    delete $.yieldProviderStorage[_yieldProvider];
   }
 
   /**
@@ -1099,11 +1099,11 @@ contract YieldManager is
   function addL2YieldRecipient(address _l2YieldRecipient) external onlyRole(SET_L2_YIELD_RECIPIENT_ROLE) {
     ErrorUtils.revertIfZeroAddress(_l2YieldRecipient);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    if ($._isL2YieldRecipientKnown[_l2YieldRecipient]) {
+    if ($.isL2YieldRecipientKnown[_l2YieldRecipient]) {
       revert L2YieldRecipientAlreadyAdded();
     }
     emit L2YieldRecipientAdded(_l2YieldRecipient);
-    $._isL2YieldRecipientKnown[_l2YieldRecipient] = true;
+    $.isL2YieldRecipientKnown[_l2YieldRecipient] = true;
   }
 
   /**
@@ -1116,7 +1116,7 @@ contract YieldManager is
   ) external onlyKnownL2YieldRecipient(_l2YieldRecipient) onlyRole(SET_L2_YIELD_RECIPIENT_ROLE) {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     emit L2YieldRecipientRemoved(_l2YieldRecipient);
-    $._isL2YieldRecipientKnown[_l2YieldRecipient] = false;
+    $.isL2YieldRecipientKnown[_l2YieldRecipient] = false;
   }
 
   /**
@@ -1149,18 +1149,18 @@ contract YieldManager is
     }
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     emit WithdrawalReserveParametersSet(
-      $._minimumWithdrawalReservePercentageBps,
+      $.minimumWithdrawalReservePercentageBps,
       _params.minimumWithdrawalReservePercentageBps,
-      $._minimumWithdrawalReserveAmount,
+      $.minimumWithdrawalReserveAmount,
       _params.minimumWithdrawalReserveAmount,
-      $._targetWithdrawalReservePercentageBps,
+      $.targetWithdrawalReservePercentageBps,
       _params.targetWithdrawalReservePercentageBps,
-      $._targetWithdrawalReserveAmount,
+      $.targetWithdrawalReserveAmount,
       _params.targetWithdrawalReserveAmount
     );
-    $._minimumWithdrawalReservePercentageBps = _params.minimumWithdrawalReservePercentageBps;
-    $._minimumWithdrawalReserveAmount = _params.minimumWithdrawalReserveAmount;
-    $._targetWithdrawalReservePercentageBps = _params.targetWithdrawalReservePercentageBps;
-    $._targetWithdrawalReserveAmount = _params.targetWithdrawalReserveAmount;
+    $.minimumWithdrawalReservePercentageBps = _params.minimumWithdrawalReservePercentageBps;
+    $.minimumWithdrawalReserveAmount = _params.minimumWithdrawalReserveAmount;
+    $.targetWithdrawalReservePercentageBps = _params.targetWithdrawalReservePercentageBps;
+    $.targetWithdrawalReserveAmount = _params.targetWithdrawalReserveAmount;
   }
 }

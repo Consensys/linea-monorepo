@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { LineaRollupBase } from "./LineaRollupBase.sol";
+import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is LineaRollupBase {
+contract LineaRollup is LineaRollupYieldExtension {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();

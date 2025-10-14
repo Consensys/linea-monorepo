@@ -6,10 +6,8 @@ import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
-import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 import { MessageHashing } from "../messaging/libraries/MessageHashing.sol";
-import { IYieldManager } from "../yield/interfaces/IYieldManager.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -21,7 +19,6 @@ abstract contract LineaRollupBase is
   ZkEvmV2,
   L1MessageService,
   PermissionsManager,
-  LineaRollupYieldExtension,
   ILineaRollup
 {
   using EfficientLeftRightKeccak for *;
@@ -119,11 +116,6 @@ abstract contract LineaRollupBase is
     _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
 
     __Permissions_init(_initializationData.roleAddresses);
-
-    if (_initializationData.initialYieldManager == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-    __LineaRollupYieldExtension_init(_initializationData.initialYieldManager);
 
     verifiers[0] = _initializationData.defaultVerifier;
 
@@ -732,66 +724,5 @@ abstract contract LineaRollupBase is
 
       publicInput := mod(keccak256(mPtr, 0x180), MODULO_R)
     }
-  }
-
-  /**
-   * @notice Report native yield earned for L2 distribution by emitting a synthetic `MessageSent` event.
-   * @dev Callable only by the registered YieldManager.
-   * @param _amount The net earned yield.
-   */
-  function reportNativeYield(
-    uint256 _amount,
-    address _l2YieldRecipient
-  ) external whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
-    if (msg.sender != yieldManager()) {
-      revert CallerIsNotYieldManager();
-    }
-    require(_l2YieldRecipient != address(0), ZeroAddressNotAllowed());
-
-    uint256 messageNumber = nextMessageNumber++;
-    bytes32 messageHash = MessageHashing._hashMessageWithEmptyCalldata(
-      address(this),
-      _l2YieldRecipient,
-      0,
-      _amount,
-      messageNumber
-    );
-
-    _addRollingHash(messageNumber, messageHash);
-
-    emit MessageSent(msg.sender, _l2YieldRecipient, 0, _amount, messageNumber, hex"", messageHash);
-  }
-
-  /**
-   * @notice Claims a cross-chain message using a Merkle proof, and withdraws LST from the specified yield provider
-   *         when the L1MessageService balance is insufficient to fulfill delivery.
-   *
-   * @dev Reverts if the L1MessageService has sufficient balance to fulfill the message delivery.
-   * @dev Differences from `claimMessageWithProof`:
-   *      - Does not deliver the message payload to the recipient, as the L1MessageService lacks sufficient balance.
-   *      - Does not provide a refund of the message fee.
-   * @dev Temporarily enables an alternate call path by toggling the `IS_WITHDRAW_LST_ALLOWED` flag,
-   *      which is unavailable via `claimMessageWithProof`.
-   * @dev Reverts with `L2MerkleRootDoesNotExist` if no Merkle tree exists at the specified depth.
-   * @dev Reverts with `ProofLengthDifferentThanMerkleDepth` if the provided proof size does not match the tree depth.
-   *
-   * @param _params Collection of claim data with proof and supporting data.
-   * @param _yieldProvider The yield provider address to withdraw LST from.
-   */
-  function claimMessageWithProofAndWithdrawLST(
-    ClaimMessageWithProofParams calldata _params,
-    address _yieldProvider
-  ) external nonReentrant {
-    if (_params.value < address(this).balance) {
-      revert LSTWithdrawalRequiresDeficit();
-    }
-    if (msg.sender != _params.to) {
-      revert CallerNotLSTWithdrawalRecipient();
-    }
-    bytes32 messageLeafHash = _validateAndConsumeMessageProof(_params);
-    IS_WITHDRAW_LST_ALLOWED = true;
-    IYieldManager(yieldManager()).withdrawLST(_yieldProvider, _params.value, _params.to);
-    IS_WITHDRAW_LST_ALLOWED = false;
-    emit MessageClaimed(messageLeafHash);
   }
 }

@@ -11,24 +11,16 @@ import { IL1MessageService } from "../../messaging/l1/interfaces/IL1MessageServi
 interface ILineaRollupYieldExtension {
   /**
    * @notice Emitted when ETH send from an authorized funder.
-   * @param funder Address which sent ETH.
    * @param amount Donation amount.
    */
-  event FundingReceived(address indexed funder, uint256 amount);
-
-  /**
-   * @notice Emitted when a permissionless ETH donation is received.
-   * @param donor Address which sent the donation.
-   * @param amount Donation amount.
-   */
-  event PermissionlessDonationReceived(address indexed donor, uint256 amount);
+  event FundingReceived(uint256 amount);
 
   /**
    * @notice Emitted when a YieldManager address is set.
    * @param oldYieldManagerAddress The previous YieldManager address.
    * @param newYieldManagerAddress The new YieldManager address.
    */
-  event YieldManagerChanged(address indexed oldYieldManagerAddress, address indexed newYieldManagerAddress);
+  event YieldManagerChanged(address oldYieldManagerAddress, address newYieldManagerAddress);
 
   /**
    * @dev Thrown when the caller is not the YieldManager.
@@ -98,6 +90,7 @@ interface ILineaRollupYieldExtension {
   /**
    * @notice Set YieldManager address.
    * @dev SET_YIELD_MANAGER_ROLE is required to execute.
+   * @dev If funds still exist on old YieldManager, it can still be withdrawn.
    * @param _newYieldManager YieldManager address.
    */
   function setYieldManager(address _newYieldManager) external;

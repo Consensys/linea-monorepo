@@ -23,51 +23,51 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function getMinimumWithdrawalReservePercentageBps() external view returns (uint16) {
-    return _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps;
+    return _getYieldManagerStorage().minimumWithdrawalReservePercentageBps;
   }
 
   function setMinimumWithdrawalReservePercentageBps(uint16 _minimumWithdrawalReservePercentageBps) external {
-    _getYieldManagerStorage()._minimumWithdrawalReservePercentageBps = _minimumWithdrawalReservePercentageBps;
+    _getYieldManagerStorage().minimumWithdrawalReservePercentageBps = _minimumWithdrawalReservePercentageBps;
   }
 
   function getTargetWithdrawalReservePercentageBps() external view returns (uint16) {
-    return _getYieldManagerStorage()._targetWithdrawalReservePercentageBps;
+    return _getYieldManagerStorage().targetWithdrawalReservePercentageBps;
   }
 
   function setTargetWithdrawalReservePercentageBps(uint16 _targetWithdrawalReservePercentageBps) external {
-    _getYieldManagerStorage()._targetWithdrawalReservePercentageBps = _targetWithdrawalReservePercentageBps;
+    _getYieldManagerStorage().targetWithdrawalReservePercentageBps = _targetWithdrawalReservePercentageBps;
   }
 
   function getMinimumWithdrawalReserveAmount() external view returns (uint256) {
-    return _getYieldManagerStorage()._minimumWithdrawalReserveAmount;
+    return _getYieldManagerStorage().minimumWithdrawalReserveAmount;
   }
 
   function setMinimumWithdrawalReserveAmount(uint256 _minimumWithdrawalReserveAmount) external {
-    _getYieldManagerStorage()._minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
+    _getYieldManagerStorage().minimumWithdrawalReserveAmount = _minimumWithdrawalReserveAmount;
   }
 
   function getTargetWithdrawalReserveAmount() external view returns (uint256) {
-    return _getYieldManagerStorage()._targetWithdrawalReserveAmount;
+    return _getYieldManagerStorage().targetWithdrawalReserveAmount;
   }
 
   function setTargetWithdrawalReserveAmount(uint256 _targetWithdrawalReserveAmount) external {
-    _getYieldManagerStorage()._targetWithdrawalReserveAmount = _targetWithdrawalReserveAmount;
+    _getYieldManagerStorage().targetWithdrawalReserveAmount = _targetWithdrawalReserveAmount;
   }
 
   function getUserFundsInYieldProvidersTotal() external view returns (uint256) {
-    return _getYieldManagerStorage()._userFundsInYieldProvidersTotal;
+    return _getYieldManagerStorage().userFundsInYieldProvidersTotal;
   }
 
   function setUserFundsInYieldProvidersTotal(uint256 _userFundsInYieldProvidersTotal) external {
-    _getYieldManagerStorage()._userFundsInYieldProvidersTotal = _userFundsInYieldProvidersTotal;
+    _getYieldManagerStorage().userFundsInYieldProvidersTotal = _userFundsInYieldProvidersTotal;
   }
 
   function getPendingPermissionlessUnstake() external view returns (uint256) {
-    return _getYieldManagerStorage()._pendingPermissionlessUnstake;
+    return _getYieldManagerStorage().pendingPermissionlessUnstake;
   }
 
   function setPendingPermissionlessUnstake(uint256 _pendingPermissionlessUnstake) external {
-    _getYieldManagerStorage()._pendingPermissionlessUnstake = _pendingPermissionlessUnstake;
+    _getYieldManagerStorage().pendingPermissionlessUnstake = _pendingPermissionlessUnstake;
   }
 
   function decrementPendingPermissionlessUnstake(uint256 _amount) external {
@@ -75,15 +75,15 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   }
 
   function getYieldProviders() external view returns (address[] memory) {
-    return _getYieldManagerStorage()._yieldProviders;
+    return _getYieldManagerStorage().yieldProviders;
   }
 
   function getIsL2YieldRecipientKnown(address _l2YieldRecipient) external view returns (bool) {
-    return _getYieldManagerStorage()._isL2YieldRecipientKnown[_l2YieldRecipient];
+    return _getYieldManagerStorage().isL2YieldRecipientKnown[_l2YieldRecipient];
   }
 
   function setIsL2YieldRecipientKnown(address _l2YieldRecipient, bool _isKnown) external {
-    _getYieldManagerStorage()._isL2YieldRecipientKnown[_l2YieldRecipient] = _isKnown;
+    _getYieldManagerStorage().isL2YieldRecipientKnown[_l2YieldRecipient] = _isKnown;
   }
 
   function getYieldProviderVendor(address _yieldProvider) external view returns (YieldProviderVendor) {
