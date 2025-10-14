@@ -3,7 +3,7 @@
   "config": {
     "0": {
       "type": "difficultyAwareQbft",
-      "blockTimeSeconds": 2,
+      "blockTimeSeconds": 1,
       "postTtdConfig": {
         "validatorSet": [],
         "elFork": "Paris"
