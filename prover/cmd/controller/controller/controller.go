@@ -243,9 +243,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// Run the command (potentially retrying in large mode)
 			status := executor.Run(cmdContext, job, state)
 
-			// Mark job as finished
-			state.StopProcessing()
-
+			// Process the job result BEFORE marking as finished
+			// This ensures file cleanup happens before shutdown proceeds
 			// createColumns the job according to the status we got
 			switch {
 
@@ -378,6 +377,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 					)
 				}
 			}
+
+			// Mark job as finished AFTER all file operations complete
+			// This ensures the shutdown handler waits for complete cleanup
+			state.StopProcessing()
 		}
 	}
 }
