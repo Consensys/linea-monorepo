@@ -12,6 +12,7 @@ package net.consensys.linea.rpc.services;
 import com.google.auto.service.AutoService;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.rpc.methods.LineaCancelBundle;
 import net.consensys.linea.rpc.methods.LineaSendBundle;
@@ -53,7 +54,8 @@ public class LineaBundleEndpointsPlugin extends AbstractLineaRequiredPlugin {
     final var validators =
         new PluginTransactionPoolValidator[] {
           new AllowedAddressValidator(
-              transactionPoolValidatorConfiguration().bundleDeniedAddresses()),
+              new AtomicReference<>(
+                  transactionPoolValidatorConfiguration().bundleDeniedAddresses())),
           new GasLimitValidator(transactionPoolValidatorConfiguration().maxTxGasLimit()),
           new CalldataValidator(transactionPoolValidatorConfiguration().maxTxCalldataSize())
         };
