@@ -180,6 +180,11 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 	)
 
 	switch m := col.(type) {
+
+	// case: constant column. The column may directly be expanded
+	case verifiercol.ConstCol:
+		return verifiercol.NewConstantCol(m.F, ctx.MaxSize, m.Name+"_STITCHED")
+
 	// case: verifier columns without shift
 	case verifiercol.VerifierCol:
 		scaling := ctx.MaxSize / col.Size()
