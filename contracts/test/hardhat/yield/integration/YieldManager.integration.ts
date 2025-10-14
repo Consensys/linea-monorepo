@@ -97,12 +97,68 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         withdrawAmount,
         EMPTY_CALLDATA,
       );
+      // Arrange - Get before figures
+      const lstPrincipalBefore = await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
 
       // Act
       const claimCall = lineaRollup
         .connect(nonAuthorizedAccount)
         .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
+
+      // Assert
       await expect(claimCall).to.not.be.reverted;
+      const lstPrincipalAfter = await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
+      expect(lstPrincipalAfter).eq(lstPrincipalBefore + withdrawAmount);
+    });
+    it("Should not be allowed from claimMessage", async () => {
+      // Arrange - setup user funds
+      const initialFundAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      // Arrange - setup withdrawal reserve deficit
+      await setBalance(l1MessageServiceAddress, ZERO_VALUE);
+      // Arrange - setup L1MessageService message
+      const withdrawAmount = 0n;
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const calldata = await yieldProvider.interface.encodeFunctionData("withdrawLST", [
+        yieldProviderAddress,
+        withdrawAmount,
+        recipientAddress,
+      ]);
+
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        yieldManagerAddress,
+        withdrawAmount,
+        calldata,
+      );
+
+      // Act
+      const claimCall = lineaRollup.connect(nonAuthorizedAccount).claimMessageWithProof(claimParams);
+      await expectRevertWithCustomError(yieldManager, claimCall, "LSTWithdrawalNotAllowed");
+    });
+    it("Should not allow LST withdrawal amount > fund amount", async () => {
+      // Arrange - setup user funds
+      const initialFundAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      // Arrange - setup withdrawal reserve deficit
+      await setBalance(l1MessageServiceAddress, ZERO_VALUE);
+      // Arrange - setup L1MessageService message
+      const withdrawAmount = initialFundAmount * 2n;
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        withdrawAmount,
+        EMPTY_CALLDATA,
+      );
+
+      // Act
+      const claimCall = lineaRollup
+        .connect(nonAuthorizedAccount)
+        .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
+      await expectRevertWithCustomError(yieldManager, claimCall, "LSTWithdrawalExceedsYieldProviderFunds");
     });
   });
 

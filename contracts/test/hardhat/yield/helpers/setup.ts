@@ -109,8 +109,6 @@ export const getWithdrawLSTCall = async (
   return yieldManager.connect(l1Signer).withdrawLST(await yieldProvider.getAddress(), withdrawAmount, recipient);
 };
 
-let setupLineaRollupMessageMerkleTreeMessageNumber = 1n;
-
 export const setupLineaRollupMessageMerkleTree = async (
   lineaRollup: TestLineaRollup,
   from: string,
@@ -118,15 +116,8 @@ export const setupLineaRollupMessageMerkleTree = async (
   value: bigint,
   data: string,
 ): Promise<ClaimMessageWithProofParams> => {
-  const expectedBytes = await encodeSendMessage(
-    from,
-    to,
-    0n,
-    value,
-    setupLineaRollupMessageMerkleTreeMessageNumber,
-    data,
-  );
-  setupLineaRollupMessageMerkleTreeMessageNumber = setupLineaRollupMessageMerkleTreeMessageNumber + 1n;
+  const messageNumber = await lineaRollup.nextMessageNumber();
+  const expectedBytes = await encodeSendMessage(from, to, 0n, value, messageNumber, data);
 
   const messageHash = ethers.keccak256(expectedBytes);
   const proof = Array.from({ length: 32 }, () => randomBytes32());
