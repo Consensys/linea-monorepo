@@ -44,7 +44,8 @@ tx-pool-no-local-priority=false
 api-gas-and-priority-fee-limiting-enabled=false
 api-gas-and-priority-fee-lower-bound-coefficient=120
 api-gas-and-priority-fee-upper-bound-coefficient=300
-poa-block-txs-selection-max-time=1000
+poa-block-txs-selection-max-time=80
+block-txs-selection-max-time=800
 
 # plugins
 plugins=["LineaEstimateGasEndpointPlugin","LineaL1FinalizationTagUpdaterPlugin","LineaExtraDataPlugin","LineaTransactionPoolValidatorPlugin","LineaBundleEndpointsPlugin","LineaSetExtraDataEndpointPlugin","LineaTransactionSelectorPlugin"]
