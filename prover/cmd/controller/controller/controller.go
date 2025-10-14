@@ -55,6 +55,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 			case syscall.SIGUSR1:
 				shutdownType = spotReclaim
 				cancel()
+				if cfg.Controller.Prometheus.Enabled {
+					metrics.IncSpotInterruption(cfg.Controller.LocalID) // or another label like instance_type
+				}
 				return
 			case syscall.SIGTERM:
 				shutdownType = gracefulShutdown
