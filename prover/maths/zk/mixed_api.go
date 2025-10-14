@@ -29,6 +29,13 @@ func (w *WrappedVariable) AsEmulated() *emulated.Element[emulated.KoalaBear] {
 	return &w.EV
 }
 
+func WrappFrontendVariable(v frontend.Variable) WrappedVariable {
+	var res WrappedVariable
+	res.V = v
+	res.EV = emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}
+	return res
+}
+
 func (w *WrappedVariable) IsEmpty() bool {
 	return w.V == nil && len(w.EV.Limbs) == 0
 }
