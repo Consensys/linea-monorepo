@@ -72,6 +72,44 @@ describe("YieldManager contract - control operations", () => {
     });
 
     // LST withdrawals are now governed by NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE.
+
+    const pauseRoleExpectations = [
+      { label: "GENERAL_PAUSE_TYPE", pauseType: GENERAL_PAUSE_TYPE, roleGetter: () => yieldManager.PAUSE_ALL_ROLE() },
+      {
+        label: "NATIVE_YIELD_STAKING_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_STAKING_PAUSE_TYPE,
+        roleGetter: () => yieldManager.PAUSE_NATIVE_YIELD_STAKING_ROLE(),
+      },
+      {
+        label: "NATIVE_YIELD_UNSTAKING_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
+        roleGetter: () => yieldManager.PAUSE_NATIVE_YIELD_UNSTAKING_ROLE(),
+      },
+      {
+        label: "NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
+        roleGetter: () => yieldManager.PAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE(),
+      },
+      {
+        label: "NATIVE_YIELD_REPORTING_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_REPORTING_PAUSE_TYPE,
+        roleGetter: () => yieldManager.PAUSE_NATIVE_YIELD_REPORTING_ROLE(),
+      },
+      {
+        label: "NATIVE_YIELD_DONATION_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_DONATION_PAUSE_TYPE,
+        roleGetter: () => yieldManager.PAUSE_NATIVE_YIELD_DONATION_ROLE(),
+      },
+    ] as const;
+
+    for (const { label, pauseType, roleGetter } of pauseRoleExpectations) {
+      it(`Non authorized account should not be able to activate ${label}`, async () => {
+        const requiredRole = await roleGetter();
+        await expect(yieldManager.connect(nonAuthorizedAccount).pauseByType(pauseType)).to.be.revertedWith(
+          buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+        );
+      });
+    }
   });
 
   describe("unpausing", () => {
@@ -112,6 +150,48 @@ describe("YieldManager contract - control operations", () => {
     });
 
     // LST withdrawal flow is covered by NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE.
+
+    const unpauseRoleExpectations = [
+      {
+        label: "GENERAL_PAUSE_TYPE",
+        pauseType: GENERAL_PAUSE_TYPE,
+        roleGetter: () => yieldManager.UNPAUSE_ALL_ROLE(),
+      },
+      {
+        label: "NATIVE_YIELD_STAKING_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_STAKING_PAUSE_TYPE,
+        roleGetter: () => yieldManager.UNPAUSE_NATIVE_YIELD_STAKING_ROLE(),
+      },
+      {
+        label: "NATIVE_YIELD_UNSTAKING_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
+        roleGetter: () => yieldManager.UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE(),
+      },
+      {
+        label: "NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
+        roleGetter: () => yieldManager.UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE(),
+      },
+      {
+        label: "NATIVE_YIELD_REPORTING_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_REPORTING_PAUSE_TYPE,
+        roleGetter: () => yieldManager.UNPAUSE_NATIVE_YIELD_REPORTING_ROLE(),
+      },
+      {
+        label: "NATIVE_YIELD_DONATION_PAUSE_TYPE",
+        pauseType: NATIVE_YIELD_DONATION_PAUSE_TYPE,
+        roleGetter: () => yieldManager.UNPAUSE_NATIVE_YIELD_DONATION_ROLE(),
+      },
+    ] as const;
+
+    for (const { label, pauseType, roleGetter } of unpauseRoleExpectations) {
+      it(`Non authorized account should not be able to unpause ${label}`, async () => {
+        const requiredRole = await roleGetter();
+        await expect(yieldManager.connect(nonAuthorizedAccount).unPauseByType(pauseType)).to.be.revertedWith(
+          buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+        );
+      });
+    }
   });
 
   beforeEach(async () => {
