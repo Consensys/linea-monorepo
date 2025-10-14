@@ -155,12 +155,10 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
 
   @Override
   public CompletableFuture<Void> reloadConfiguration() {
-    if (lineaTransactionPoolValidatorConfiguration.isPresent()
-        && lineaTransactionPoolValidatorFactory.isPresent()) {
+    var conf = this.lineaTransactionPoolValidatorConfiguration.orElseThrow(() -> new RuntimeException("LineaTransactionPoolValidatorConfiguration is not available, but reloadConfiguration called"));
+    if (lineaTransactionPoolValidatorFactory.isPresent()) {
       Set<Address> newDeniedAddresses =
-          LineaTransactionPoolValidatorCliOptions.create()
-              .parseDeniedAddresses(
-                  lineaTransactionPoolValidatorConfiguration.get().denyListPath());
+          LineaTransactionPoolValidatorCliOptions.create().parseDeniedAddresses(conf.denyListPath());
       lineaTransactionPoolValidatorFactory.get().setDeniedAddresses(newDeniedAddresses);
     }
     return CompletableFuture.completedFuture(null);

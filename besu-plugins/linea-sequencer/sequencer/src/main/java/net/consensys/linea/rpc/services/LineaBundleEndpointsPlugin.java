@@ -96,9 +96,8 @@ public class LineaBundleEndpointsPlugin extends AbstractLineaRequiredPlugin {
 
   @Override
   public CompletableFuture<Void> reloadConfiguration() {
-    lineaTransactionPoolValidatorConfiguration.ifPresent(
-        (conf) ->
-            LineaTransactionPoolValidatorCliOptions.create()
+    var conf = this.lineaTransactionPoolValidatorConfiguration.orElseThrow(() -> new RuntimeException("LineaTransactionPoolValidatorConfiguration is not available, but reloadConfiguration called"));
+    bundleDeniedAddresses.set(LineaTransactionPoolValidatorCliOptions.create()
                 .parseDeniedAddresses(conf.bundleOverridingDenyListPath()));
     return CompletableFuture.completedFuture(null);
   }
