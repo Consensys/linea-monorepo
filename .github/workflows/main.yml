@@ -11,7 +11,6 @@ permissions:
   actions: read
   security-events: write
   packages: write
-  deployments: write
 
 jobs:
   filter-commit-changes:
@@ -248,7 +247,7 @@ jobs:
 
   cleanup-deployments:
     needs: [ run-e2e-tests ]
-    if: ${{ always() }}
+    if: ${{ always() && github.event.pull_request.head.repo.fork != 'true' }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     permissions:
       contents: read
