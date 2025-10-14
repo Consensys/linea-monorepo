@@ -480,6 +480,9 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
+	// Only assign intermediate states for rounds 1 to fullRounds-2.
+	// The first (0) and last (fullRounds-1) rounds are excluded because
+	// their states are either initial or final and do not require assignment.
 	for round := 1; round < fullRounds-1; round++ {
 		for col := 0; col < width; col++ {
 			run.AssignColumn(
