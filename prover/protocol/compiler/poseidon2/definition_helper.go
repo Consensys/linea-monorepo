@@ -29,16 +29,14 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 	// Initial round
 	state = matMulExternalExpression(state)
 
-	interm := make([][]ifaces.Column, fullRounds)
+	interm := make([][]ifaces.Column, fullRounds/4-1)
 
 	// External rounds
-	for round := 1; round < 1+partialRounds; round++ {
+	for round := 1; round < partialRounds+1; round++ {
 		state = addRoundKeyExpression(round-1, state)
 		state = sBoxFullExpression(state)
 		state = matMulExternalExpression(state)
-		// cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, round), state)
-		// state = asExprs(cols)
-		// interm[round] = cols
+
 	}
 
 	// Internal rounds
@@ -46,14 +44,16 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 		state = addRoundKeyExpression(round-1, state)
 		state = sBoxPartialExpression(state)
 		state = matMulInternalExpression(state)
+
 		if round%4 == 0 {
-			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, round), state)
+			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, round/4), state)
 			state = asExprs(cols)
-			interm[round] = cols
+			interm[round/4-1] = cols
 		}
+
 	}
 
-	// External rounds
+	// // External rounds
 	for round := fullRounds - partialRounds; round < fullRounds; round++ {
 		state = addRoundKeyExpression(round-1, state)
 		state = sBoxFullExpression(state)

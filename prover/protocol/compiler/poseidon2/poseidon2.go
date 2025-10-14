@@ -481,11 +481,11 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 	})
 
 	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
-		if round%4 == 0 {
 
+		if round%4 == 0 {
 			for col := 0; col < width; col++ {
 				run.AssignColumn(
-					ctx.Interm[round][col].GetColID(),
+					ctx.Interm[round/4-1][col].GetColID(),
 					smartvectors.RightPadded(
 						intermediateStates[round][col][:effectiveSize],
 						intermediateStates[round][col][effectiveSize],
@@ -494,6 +494,7 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 				)
 			}
 		}
+
 	}
 }
 
