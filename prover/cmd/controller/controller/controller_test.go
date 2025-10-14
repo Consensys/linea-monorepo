@@ -491,7 +491,7 @@ func TestSpotInstanceMode(t *testing.T) {
 	// 3rd job.
 	time.Sleep(5 * time.Second)
 
-	if err := p.Signal(os.Signal(syscall.SIGTERM)); err != nil {
+	if err := p.Signal(os.Signal(syscall.SIGUSR1)); err != nil {
 		panic("panic could not self-send a SIGTERM")
 	}
 
