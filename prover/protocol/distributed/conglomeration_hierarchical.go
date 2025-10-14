@@ -402,7 +402,7 @@ func (c *ModuleConglo) Assign(
 		prodGrandProduct            = field.One()
 	)
 
-	for instance := 0; instance < c.ModuleNumber; instance++ {
+	for instance := 0; instance < aggregationArity; instance++ {
 
 		collectedPIs[instance] = c.collectAllPublicInputsOfInstance(run, instance)
 
@@ -525,7 +525,7 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 			sharedSum  = field.Element{}
 		)
 
-		for instance := 0; instance < c.ModuleNumber; instance++ {
+		for instance := 0; instance < aggregationArity; instance++ {
 			generalSum.Add(&generalSum, &collectedPIs[instance].GeneralMultiSetHash[k])
 			sharedSum.Add(&sharedSum, &collectedPIs[instance].SharedRandomnessMultiSetHash[k])
 		}
@@ -673,7 +673,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 		sharedSum  = mimc.EmptyMSetHashGnark()
 	)
 
-	for instance := 0; instance < c.ModuleNumber; instance++ {
+	for instance := 0; instance < aggregationArity; instance++ {
 		generalSum.Add(api, mimc.MSetHashGnark(collectedPIs[instance].GeneralMultiSetHash))
 		sharedSum.Add(api, mimc.MSetHashGnark(collectedPIs[instance].SharedRandomnessMultiSetHash))
 	}
