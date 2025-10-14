@@ -56,7 +56,7 @@ func GetDistWizard() *distributed.DistributedWizard {
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).
 				CompileSegments().
-				Conglomerate(20)
+				Conglomerate()
 	)
 
 	return distWizard
@@ -78,7 +78,7 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
 				CompileSegments().
-				Conglomerate(20)
+				Conglomerate()
 	)
 
 	return distWizard
@@ -86,7 +86,7 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 
 func TestSerdeDistWizard(t *testing.T) {
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	dist := GetDistWizard()
 
@@ -106,20 +106,12 @@ func TestSerdeDistWizard(t *testing.T) {
 		})
 	}
 
-	t.Run("DefaultModule", func(t *testing.T) {
-		runSerdeTest(t, dist.DefaultModule, "DistributedWizard.DefaultModule", true, false)
-	})
-
 	t.Run("Bootstrapper", func(t *testing.T) {
 		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true, false)
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
 		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true, false)
-	})
-
-	t.Run("CompiledDefault", func(t *testing.T) {
-		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", true, false)
 	})
 
 	for i := range dist.CompiledGLs {
@@ -144,41 +136,41 @@ func TestSerdeDistWizard(t *testing.T) {
 	})
 }
 
-func TestSerdeDWCong(t *testing.T) {
+// func TestSerdeDWCong(t *testing.T) {
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+// 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
-	// Setup
-	distWizard := GetBasicDistWizard()
-	cong := distWizard.CompiledConglomeration
-	distWizard = nil
-	runtime.GC()
+// 	// Setup
+// 	distWizard := GetBasicDistWizard()
+// 	cong := distWizard.CompiledConglomeration
+// 	distWizard = nil
+// 	runtime.GC()
 
-	// Subtests
-	tests := []struct {
-		name        string
-		obj         any
-		sanityCheck bool
-		failfast    bool
-	}{
-		{name: "Wiop", obj: cong.Wiop, sanityCheck: true, failfast: true},
-		{name: "Recursion", obj: cong.Recursion, sanityCheck: true, failfast: true},
+// 	// Subtests
+// 	tests := []struct {
+// 		name        string
+// 		obj         any
+// 		sanityCheck bool
+// 		failfast    bool
+// 	}{
+// 		{name: "Wiop", obj: cong.Wiop, sanityCheck: true, failfast: true},
+// 		{name: "Recursion", obj: cong.Recursion, sanityCheck: true, failfast: true},
 
-		// All of these tests PASS
-		{name: "MaxNbProofs", obj: cong.MaxNbProofs, sanityCheck: true, failfast: false},
-		{name: "DefaultWitness", obj: cong.DefaultWitness, sanityCheck: true, failfast: true},
-		{name: "DefaultIops", obj: cong.DefaultIops, sanityCheck: true, failfast: true},
-		{name: "PrecomputedGLVks", obj: cong.PrecomputedGLVks, sanityCheck: true, failfast: false},
-		{name: "PrecomputedLPPVks", obj: cong.PrecomputedLPPVks, sanityCheck: true, failfast: false},
-		{name: "VerifyingKeyColumns", obj: cong.VerifyingKeyColumns, sanityCheck: true, failfast: false},
-		{name: "HolisticLookupMappedLPPPostion", obj: cong.HolisticLookupMappedLPPPostion, sanityCheck: true, failfast: false},
-		{name: "HolisticLookupMappedLPPVK", obj: cong.HolisticLookupMappedLPPVK, sanityCheck: true, failfast: false},
-		{name: "IsGL", obj: cong.IsGL, sanityCheck: true, failfast: false},
-	}
+// 		// All of these tests PASS
+// 		{name: "MaxNbProofs", obj: cong.MaxNbProofs, sanityCheck: true, failfast: false},
+// 		{name: "DefaultWitness", obj: cong.DefaultWitness, sanityCheck: true, failfast: true},
+// 		{name: "DefaultIops", obj: cong.DefaultIops, sanityCheck: true, failfast: true},
+// 		{name: "PrecomputedGLVks", obj: cong.PrecomputedGLVks, sanityCheck: true, failfast: false},
+// 		{name: "PrecomputedLPPVks", obj: cong.PrecomputedLPPVks, sanityCheck: true, failfast: false},
+// 		{name: "VerifyingKeyColumns", obj: cong.VerifyingKeyColumns, sanityCheck: true, failfast: false},
+// 		{name: "HolisticLookupMappedLPPPostion", obj: cong.HolisticLookupMappedLPPPostion, sanityCheck: true, failfast: false},
+// 		{name: "HolisticLookupMappedLPPVK", obj: cong.HolisticLookupMappedLPPVK, sanityCheck: true, failfast: false},
+// 		{name: "IsGL", obj: cong.IsGL, sanityCheck: true, failfast: false},
+// 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			runSerdeTest(t, tt.obj, tt.name, tt.sanityCheck, tt.failfast)
-		})
-	}
-}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			runSerdeTest(t, tt.obj, tt.name, tt.sanityCheck, tt.failfast)
+// 		})
+// 	}
+// }

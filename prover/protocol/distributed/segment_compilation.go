@@ -25,13 +25,13 @@ import (
 const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit   = 1 << 18
-	fixedNbRowExternalHasher = 1 << 14
+	fixedNbRowPlonkCircuit   = 1 << 19
+	fixedNbRowExternalHasher = 1 << 15
 
 	// initialCompilerSize sets the target number of rows of the first invokation
 	// of [compiler.Arcane] of the pre-recursion pass of [CompileSegment]. It is
 	// also the length of the column in the [DefaultModule].
-	initialCompilerSize       int = 1 << 17
+	initialCompilerSize       int = 1 << 18
 	initialCompilerSizeConglo int = 1 << 13
 )
 
@@ -39,8 +39,8 @@ var (
 	// numColumnProfileMpts tells the last invokation of Vortex prior to the self-
 	// recursion to use a plonk circuit with a fixed number of rows. The values
 	// are completely empirical and set to make the compilation work.
-	numColumnProfileMpts            = []int{17, 310, 28, 3, 2, 15, 0, 1}
-	numColumnProfileMptsPrecomputed = 20
+	numColumnProfileMpts            = []int{17, 330, 36, 3, 3, 15, 0, 1}
+	numColumnProfileMptsPrecomputed = 21
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -89,14 +89,14 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	case *ModuleGL:
 		modIOP = m.Wiop
 		res.ModuleGL = m
-		subscript = string(m.DefinitionInput.ModuleName)
+		subscript = string(m.DefinitionInput.ModuleName) + "-GL"
 		proofType = proofTypeGL
 
 	case *ModuleLPP:
 		modIOP = m.Wiop
 		res.ModuleLPP = m
 		proofType = proofTypeLPP
-		subscript = string(m.ModuleName())
+		subscript = string(m.ModuleName()) + "-LPP"
 
 	case *ModuleConglo:
 		modIOP = m.Wiop
@@ -135,7 +135,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			//
 			// For now, the current solution is fine and we can update the value from
 			// time to time if not too frequent.
-			compiler.WithStitcherMinSize(1<<4),
+			compiler.WithStitcherMinSize(2),
 			compiler.WithoutMpts(),
 			// @alex: in principle, the value of 1 would be used only for the GL
 			// prover but AFAIK, the GL modules never have inner-products to compile.
