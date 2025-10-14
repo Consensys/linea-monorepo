@@ -33,9 +33,7 @@ func newRho(comp *wizard.CompiledIOP, numKeccakf int, stateCurr state) *rho {
 }
 
 // assignRoha assigns the values to the columns of rho step.
-func assignRoh(run *wizard.ProverRuntime, stateCurr state) rho {
-	return rho{stateCurr: stateCurr,
-		stateNext: state{}}
+func (rho *rho) assignRoh(run *wizard.ProverRuntime, stateCurr state) {
 }
 
 // it declares the intermediate columns generated during rho step, including the new state.
