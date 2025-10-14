@@ -7,6 +7,9 @@ data-path="/opt/besu/data"
 sync-mode="FULL"
 data-storage-format="BONSAI"
 
+cache-last-block-headers-preload-enabled=true
+cache-last-block-headers=50000
+
 # Min gas price
 min-gas-price=1000000
 

@@ -5,14 +5,14 @@
       "type": "difficultyAwareQbft",
       "blockTimeSeconds": 1,
       "postTtdConfig": {
-        "validatorSet": [],
+        "validatorSet": ["0xc9fc165457b74f958af2858e51a2b0d7d7ecb762"],
         "elFork": "Paris"
       },
       "terminalTotalDifficulty": 49492771
     },
     "1761127200": {
       "type": "qbft",
-      "validatorSet": [],
+      "validatorSet": ["0xc9fc165457b74f958af2858e51a2b0d7d7ecb762"],
       "blockTimeSeconds": 1,
       "elFork": "Shanghai"
     }
