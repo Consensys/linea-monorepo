@@ -69,24 +69,16 @@ func NewModule(comp *wizard.CompiledIOP, maxNumKeccakf int, blocks [numLanesInBl
 }
 
 // Assign the values to the columns of the keccakf module.
-func Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [numLanesInBlock]lane) Module {
+func (m *Module) Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [numLanesInBlock]lane) {
 	// initial state is zero
 	var state state
 	// assign the blocks of the message to the state
 
 	// assign the theta module with the state including the message-blocks
-	theta := assignTheta(run, state)
+	m.theta.assignTheta(run, state)
 	// assign the rho pi module with the state after theta
-	rho := assignRoh(run, theta.stateNext)
+	m.rohPi.assignRoh(run, m.theta.stateNext)
 
-	return Module{
-		maxNumKeccakf: numKeccakf,
-		state:         state,
-		blocks:        blocks,
-		//	isActive:      isActive,
-		theta: theta,
-		rohPi: rho,
-	}
 }
 
 // it declares the columns used in the keccakf module, including the state and the message blocks.
