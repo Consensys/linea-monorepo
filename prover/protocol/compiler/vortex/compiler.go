@@ -477,6 +477,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 			round,
 			ifaces.ColID(ctx.MerkleRootName(round, i)),
 			len(field.Element{}),
+			true,
 		)
 	}
 }
@@ -604,6 +605,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		lastRound+1,
 		ctx.LinCombName(),
 		ctx.NumEncodedCols(),
+		false,
 	)
 
 	// registers the random's verifier column selection
@@ -624,6 +626,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			lastRound+2,
 			ctx.SelectedColName(col),
 			numRows,
+			true,
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
 		if numRowsSIS != 0 {
@@ -631,6 +634,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 				lastRound+2,
 				ctx.SelectedColSISName(col),
 				numRowsSIS,
+				true,
 			)
 			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
 		}
@@ -639,6 +643,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 				lastRound+2,
 				ctx.SelectedColNonSISName(col),
 				numRowsNonSIS,
+				true,
 			)
 			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
 		}
@@ -653,6 +658,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			lastRound+2,
 			ifaces.ColID(ctx.MerkleProofName(i)),
 			ctx.MerkleProofSize(),
+			true,
 		)
 	}
 
@@ -942,6 +948,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 		ctx.Items.Precomputeds.MerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(
 			ctx.PrecomputedMerkleRootName(i),
 			smartvectors.NewConstant(rootOct[i], 1),
+			true,
 		)
 	}
 }

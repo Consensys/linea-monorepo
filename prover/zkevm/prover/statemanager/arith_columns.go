@@ -54,6 +54,7 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		combinedAddr := comp.InsertCommit(0,
 			"HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER",
 			size,
+			true,
 		)
 
 		// constrain the processed HUB addresses
@@ -130,6 +131,7 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		combinedAddr := comp.InsertCommit(0,
 			"HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER",
 			size,
+			true,
 		)
 
 		// constrain the processed HUB addresses

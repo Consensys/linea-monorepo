@@ -82,6 +82,7 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 			0,
 			ifaces.ColIDf("STATE_SUMMARY_ACCOUNTS_%v", subName),
 			size,
+			true,
 		)
 	}
 
@@ -172,6 +173,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 			0,
 			ifaces.ColIDf("STATE_SUMMARY_%v_%v", name, subName),
 			size,
+			true,
 		)
 	}
 

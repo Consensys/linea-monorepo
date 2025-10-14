@@ -65,11 +65,11 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 		size          = utils.NextPowerOfTwo(maxNbInstance * modexpNumRowsPerInstance)
 		mod           = &Module{
 			Input:       input,
-			IsActive:    comp.InsertCommit(0, "MODEXP_IS_ACTIVE", size),
-			Limbs:       comp.InsertCommit(0, "MODEXP_LIMBS", size),
-			IsSmall:     comp.InsertCommit(0, "MODEXP_IS_SMALL", size),
-			IsLarge:     comp.InsertCommit(0, "MODEXP_IS_LARGE", size),
-			ToSmallCirc: comp.InsertCommit(0, "MODEXP_TO_SMALL_CIRC", size),
+			IsActive:    comp.InsertCommit(0, "MODEXP_IS_ACTIVE", size, true),
+			Limbs:       comp.InsertCommit(0, "MODEXP_LIMBS", size, true),
+			IsSmall:     comp.InsertCommit(0, "MODEXP_IS_SMALL", size, true),
+			IsLarge:     comp.InsertCommit(0, "MODEXP_IS_LARGE", size, true),
+			ToSmallCirc: comp.InsertCommit(0, "MODEXP_TO_SMALL_CIRC", size, true),
 		}
 	)
 

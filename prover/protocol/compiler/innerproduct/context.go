@@ -71,6 +71,7 @@ func compileForSize(
 		round,
 		deriveName[ifaces.ColID]("SUMMATION", size, comp.SelfRecursionCount),
 		size,
+		false,
 	)
 
 	if hasMoreThan1Pair {

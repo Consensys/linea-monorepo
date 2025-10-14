@@ -157,12 +157,14 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 		round+1,
 		ifaces.ColIDf("%v_ACCUMULATOR_SMALL", name),
 		lenSmall,
+		false,
 	)
 
 	accLarge := comp.InsertCommit(
 		round+1,
 		ifaces.ColIDf("%v_ACCUMULATOR_LARGE", name),
 		lenLarge,
+		false,
 	)
 
 	// Also declares the queries on ResAcc and ExpectedResAcc

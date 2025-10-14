@@ -14,7 +14,7 @@ func CreateColFn(comp *wizard.CompiledIOP, rootName string, size int, withPragma
 	return func(name string, args ...interface{}) ifaces.Column {
 		s := []string{rootName, name}
 		v := strings.Join(s, "_")
-		col := comp.InsertCommit(0, ifaces.ColIDf(v, args...), size)
+		col := comp.InsertCommit(0, ifaces.ColIDf(v, args...), size, true)
 
 		switch withPragmas {
 		case pragmas.None:

@@ -13,7 +13,7 @@ import (
 
 func TestVariableMetaData(t *testing.T) {
 	store := column.NewStore()
-	V := store.AddToRound(0, ifaces.ColIDf("V"), 4, column.Committed)
+	V := store.AddToRound(0, ifaces.ColIDf("V"), 4, column.Committed, false)
 	v := ifaces.ColumnAsVariable(V)
 	vBoard := v.Board()
 
@@ -30,7 +30,7 @@ func TestVariableMetaData(t *testing.T) {
 func TestReprAndDerivation(t *testing.T) {
 
 	store := column.NewStore()
-	V := store.AddToRound(0, ifaces.ColID("V"), 4, column.Committed)
+	V := store.AddToRound(0, ifaces.ColID("V"), 4, column.Committed, false)
 	v := smartvectors.ForTest(1, 2, 3, 4)
 	x := fext.RandomElement()
 

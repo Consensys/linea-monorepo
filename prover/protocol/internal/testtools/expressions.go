@@ -17,9 +17,9 @@ var (
 	// to do anything with the columns: shifting or calling String() would
 	// panic.
 	_comp    = wizard.NewCompiledIOP()
-	columnA  = _comp.InsertColumn(0, "A", 8, column.Committed)
-	columnB  = _comp.InsertColumn(0, "B", 8, column.Committed)
-	columnC  = _comp.InsertColumn(0, "C", 8, column.Committed)
+	columnA  = _comp.InsertColumn(0, "A", 8, column.Committed, false)
+	columnB  = _comp.InsertColumn(0, "B", 8, column.Committed, false)
+	columnC  = _comp.InsertColumn(0, "C", 8, column.Committed, false)
 	coinCoin = coin.NewInfo("coinName", coin.FieldExt, 1)
 )
 
@@ -477,7 +477,7 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 			}
 
 			size := etc.Columns[m.GetColID()].Len()
-			col := comp.InsertCommit(0, realName, size)
+			col := comp.InsertCommit(0, realName, size, smartvectors.IsBase(etc.Columns[m.GetColID()]))
 			translationMap[rootCol.GetColID()] = col
 
 		case coin.Info:

@@ -86,7 +86,7 @@ func defineStateManagerColumns(comp *wizard.CompiledIOP, sampleType int, size in
 	// createCol is function to quickly create a column
 	createCol := func(name string) ifaces.Column {
 		sampleTypeString := mock.SampleTypeToString(sampleType)
-		return comp.InsertCommit(0, ifaces.ColIDf("ARITHM_%s_COL_%v", sampleTypeString, name), size)
+		return comp.InsertCommit(0, ifaces.ColIDf("ARITHM_%s_COL_%v", sampleTypeString, name), size, true)
 	}
 
 	res := HubColumnSet{

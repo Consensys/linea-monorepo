@@ -104,7 +104,7 @@ func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, handleName 
 		length   = column.ExprIsOnSameLengthHandles(&boarded)
 	)
 
-	res := comp.InsertCommit(maxRound, ifaces.ColID(handleName), length)
+	res := comp.InsertCommit(maxRound, ifaces.ColID(handleName), length, expr.IsBase)
 	comp.InsertGlobal(maxRound, ifaces.QueryID(handleName), expr.Sub(ifaces.ColumnAsVariable(res)))
 
 	comp.RegisterProverAction(maxRound, &ExprHandleProverAction{

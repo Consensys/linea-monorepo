@@ -20,9 +20,9 @@ func TestInnerProduct(t *testing.T) {
 	define := func(b *wizard.Builder) {
 		for i, c := range testCases {
 			bs := make([]ifaces.Column, len(c.bName))
-			a := b.RegisterCommit(c.aName, c.size)
+			a := b.RegisterCommitExt(c.aName, c.size)
 			for i, name := range c.bName {
-				bs[i] = b.RegisterCommit(name, c.size)
+				bs[i] = b.RegisterCommitExt(name, c.size)
 			}
 			b.InnerProduct(c.qName, a, bs...)
 			// go to the next round

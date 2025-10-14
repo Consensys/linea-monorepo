@@ -56,7 +56,7 @@ func (c *CyclicCounterTestcase) Define(comp *wizard.CompiledIOP) {
 
 	switch act := c.IsActive.(type) {
 	case smartvectors.SmartVector:
-		isActive = comp.InsertCommit(0, ifaces.ColID(c.name)+"_ACTIVE", act.Len())
+		isActive = comp.InsertCommit(0, ifaces.ColID(c.name)+"_ACTIVE", act.Len(), true)
 	case verifiercol.ConstCol:
 		isActive = act
 	default:

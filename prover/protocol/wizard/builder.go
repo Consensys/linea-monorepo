@@ -113,7 +113,14 @@ Registers a new column in the protocol
 */
 func (b *Builder) RegisterCommit(name ifaces.ColID, size int) ifaces.Column {
 	b.fsStateIsDirty = true
-	return b.CompiledIOP.InsertCommit(b.currRound, name, size)
+	return b.CompiledIOP.InsertCommit(b.currRound, name, size, true)
+}
+
+// RegisterCommitExt registers a new column in the protocol and specified the
+// column should contain field extensions.
+func (b *Builder) RegisterCommitExt(name ifaces.ColID, size int) ifaces.Column {
+	b.fsStateIsDirty = true
+	return b.CompiledIOP.InsertCommit(b.currRound, name, size, false)
 }
 
 /*

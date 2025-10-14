@@ -123,6 +123,7 @@ func NewLogColumns(comp *wizard.CompiledIOP, size int, name string) LogColumns {
 			0,
 			ifaces.ColIDf("LOG_COLUMNS_%v_%v", name, subName),
 			size,
+			true,
 		)
 	}
 

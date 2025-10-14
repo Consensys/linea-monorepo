@@ -173,6 +173,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		ctx.getNumRound(comp),
 		ifaces.ColIDf("MPTS_QUOTIENT_%v", comp.SelfRecursionCount),
 		ctx.NumRow,
+		false,
 	)
 
 	ctx.EvaluationPoint = comp.InsertCoin(

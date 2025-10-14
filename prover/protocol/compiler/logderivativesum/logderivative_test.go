@@ -84,15 +84,15 @@ func TestLogDerivativeSumMixed(t *testing.T) {
 			comp = b.CompiledIOP
 		)
 
-		p0 := b.RegisterCommit("Num_0", 4)
-		p1 := b.RegisterCommit("Num_1", 4)
-		p2 := b.RegisterCommit("Num_2", 4)
-		p3 := b.RegisterCommit("Num_3", 4)
+		p0 := b.RegisterCommitExt("Num_0", 4)
+		p1 := b.RegisterCommitExt("Num_1", 4)
+		p2 := b.RegisterCommitExt("Num_2", 4)
+		p3 := b.RegisterCommitExt("Num_3", 4)
 
-		q0 := b.RegisterCommit("Den_0", 4)
-		q1 := b.RegisterCommit("Den_1", 4)
-		q2 := b.RegisterCommit("Den_2", 4)
-		q3 := b.RegisterCommit("Den_3", 4)
+		q0 := b.RegisterCommitExt("Den_0", 4)
+		q1 := b.RegisterCommitExt("Den_1", 4)
+		q2 := b.RegisterCommitExt("Den_2", 4)
+		q3 := b.RegisterCommitExt("Den_3", 4)
 
 		numerators := []*symbolic.Expression{
 			ifaces.ColumnAsVariable(p0),
@@ -152,13 +152,13 @@ func TestLogDerivativeSumMixed2(t *testing.T) {
 			comp = b.CompiledIOP
 		)
 
-		p0 := b.RegisterCommit("Num_0", 4)
-		p1 := b.RegisterCommit("Num_1", 4)
-		p2 := b.RegisterCommit("Num_2", 4)
+		p0 := b.RegisterCommitExt("Num_0", 4)
+		p1 := b.RegisterCommitExt("Num_1", 4)
+		p2 := b.RegisterCommitExt("Num_2", 4)
 
-		q0 := b.RegisterCommit("Den_0", 4)
-		q1 := b.RegisterCommit("Den_1", 4)
-		q2 := b.RegisterCommit("Den_2", 4)
+		q0 := b.RegisterCommitExt("Den_0", 4)
+		q1 := b.RegisterCommitExt("Den_1", 4)
+		q2 := b.RegisterCommitExt("Den_2", 4)
 
 		numerators := []*symbolic.Expression{
 			symbolic.Mul(p0, -1),

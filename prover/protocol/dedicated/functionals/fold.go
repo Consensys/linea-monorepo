@@ -60,7 +60,7 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 
 	foldedSize := h.Size() / innerDegree
 	foldedName := ifaces.ColIDf("FOLDED_%v_%v_%v", h.GetColID(), x.Name(), innerDegree)
-	folded := comp.InsertCommit(round, foldedName, foldedSize)
+	folded := comp.InsertCommit(round, foldedName, foldedSize, false)
 
 	if x.Round() <= h.Round() {
 		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)

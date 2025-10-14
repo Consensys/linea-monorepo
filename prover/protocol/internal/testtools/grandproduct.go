@@ -164,12 +164,14 @@ func (t *GrandProductTestcase) Define(comp *wizard.CompiledIOP) {
 			0,
 			formatName[ifaces.ColID]("GrandProduct", t.NameStr, "Numerator", i),
 			t.Numerators[i].Len(),
+			smartvectors.IsBase(t.Numerators[i]),
 		)
 
 		denominators[i] = comp.InsertCommit(
 			0,
 			formatName[ifaces.ColID]("GrandProduct", t.NameStr, "Denominator", i),
 			t.Denominators[i].Len(),
+			smartvectors.IsBase(t.Denominators[i]),
 		)
 
 		size := numerators[i].Size()

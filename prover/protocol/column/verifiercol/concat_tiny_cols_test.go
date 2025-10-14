@@ -51,6 +51,7 @@ func TestConcatTinyColRange(t *testing.T) {
 							ifaces.ColIDf("P%v", i),
 							1,            // size of the column (must be 1 because of CTC)
 							column.Proof, // must be a public column
+							true,
 						)
 					}
 
@@ -129,6 +130,7 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 							ifaces.ColIDf("P%v", i),
 							1,            // size of the column (must be 1 because of CTC)
 							column.Proof, // must be a public column
+							true,
 						)
 					}
 

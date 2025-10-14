@@ -85,15 +85,15 @@ func defineContext(comp *wizard.CompiledIOP) *MimcContext {
 
 	ctx.StackedOldStates = comp.InsertCommit(round,
 		ifaces.ColIDf("MIMC_STACKED_OLD_STATES_%v_%v", comp.SelfRecursionCount, uniqueID(comp)),
-		totalSize)
+		totalSize, true)
 
 	ctx.StackedBlocks = comp.InsertCommit(round,
 		ifaces.ColIDf("MIMC_STACKED_BLOCKS_%v_%v", comp.SelfRecursionCount, uniqueID(comp)),
-		totalSize)
+		totalSize, true)
 
 	ctx.StackedNewStates = comp.InsertCommit(round,
 		ifaces.ColIDf("MIMC_STACKED_NEW_STATES_%v_%v", comp.SelfRecursionCount, uniqueID(comp)),
-		totalSize)
+		totalSize, true)
 
 	for i := 0; i < len(mimc.Constants); i++ {
 
@@ -108,13 +108,13 @@ func defineContext(comp *wizard.CompiledIOP) *MimcContext {
 
 		sp4 := comp.InsertCommit(round,
 			ifaces.ColIDf("MIMC_ROUND_%v_SUM_POW4_%v_%v", i, comp.SelfRecursionCount, uniqueID(comp)),
-			totalSize)
+			totalSize, true)
 
 		ctx.SumPow4s = append(ctx.SumPow4s, sp4)
 
 		rr := comp.InsertCommit(round,
 			ifaces.ColIDf("MIMC_ROUND_%v_RESULT_%v_%v", i, comp.SelfRecursionCount, uniqueID(comp)),
-			totalSize)
+			totalSize, true)
 
 		ctx.RoundResults = append(ctx.RoundResults, rr)
 

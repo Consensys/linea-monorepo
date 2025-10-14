@@ -60,7 +60,7 @@ func TestPocNewGlobalTestExt(t *testing.T) {
 
 		// Number of rows
 		n := 1 << 2
-		P := build.RegisterCommit(P, n) // overshadows P
+		P := build.RegisterCommitExt(P, n) // overshadows P
 
 		// P(X) = P(X/w) + P(X/w^2)
 

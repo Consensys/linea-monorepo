@@ -10,7 +10,7 @@ import (
 
 func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name string) ifaces.Column {
 	return func(name string) ifaces.Column {
-		res := comp.InsertCommit(roundNr, ifaces.ColIDf("%s_%s", rootName, name), size)
+		res := comp.InsertCommit(roundNr, ifaces.ColIDf("%s_%s", rootName, name), size, true)
 		pragmas.MarkRightPadded(res)
 		return res
 	}

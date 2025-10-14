@@ -32,7 +32,7 @@ func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny a
 			IsActive:    isActive,
 			Period:      period,
 			FullyActive: fullyActive,
-			Natural:     comp.InsertCommit(round, ifaces.ColID(name+"_COUNTER"), size).(column.Natural),
+			Natural:     comp.InsertCommit(round, ifaces.ColID(name+"_COUNTER"), size, true).(column.Natural),
 			ColumnSize:  size,
 		}
 	)

@@ -44,6 +44,7 @@ func NewStateDiff(comp *wizard.CompiledIOP, size int, moduleName, name string) S
 			0,
 			ifaces.ColIDf("%v_%v_%v", moduleName, name, subName),
 			size,
+			true,
 		)
 	}
 

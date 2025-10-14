@@ -44,7 +44,7 @@ func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, nam
 	var (
 		size = root.Size()
 		res  = ManuallyShifted{
-			Natural: comp.InsertCommit(root.Round(), ifaces.ColID(name)+"_COL", size).(column.Natural),
+			Natural: comp.InsertCommit(root.Round(), ifaces.ColID(name)+"_COL", size, root.IsBase()).(column.Natural),
 			Root:    root,
 			Offset:  offset,
 		}

@@ -98,7 +98,7 @@ func NewModule(comp *wizard.CompiledIOP, size int) Module {
 
 	// createCol is function to quickly create a column
 	createCol := func(name string) ifaces.Column {
-		return comp.InsertCommit(0, ifaces.ColIDf("STATE_SUMMARY_%v", name), size)
+		return comp.InsertCommit(0, ifaces.ColIDf("STATE_SUMMARY_%v", name), size, true)
 	}
 
 	res := Module{

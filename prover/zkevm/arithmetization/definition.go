@@ -2,10 +2,11 @@ package arithmetization
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"math/big"
 	"reflect"
 	"strings"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/consensys/go-corset/pkg/air"
 	"github.com/consensys/go-corset/pkg/schema"
@@ -88,7 +89,7 @@ func (s *schemaScanner) scanColumns() {
 		if size == 0 {
 			fmt.Printf(name)
 		}
-		col := s.Comp.InsertCommit(0, ifaces.ColID(name), size)
+		col := s.Comp.InsertCommit(0, ifaces.ColID(name), size, true)
 		pragmas.MarkLeftPadded(col)
 	}
 }

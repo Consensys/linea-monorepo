@@ -295,6 +295,16 @@ func groupedName(group []ifaces.Column) ifaces.ColID {
 	return ifaces.ColIDf("STITCHER_%v", strings.Join(fmtted, "_"))
 }
 
+// areAllBase returns true if all the columns are base
+func areAllBase(cols []ifaces.Column) bool {
+	for _, col := range cols {
+		if !col.IsBase() {
+			return false
+		}
+	}
+	return true
+}
+
 // for a group of sub columns it creates their stitching.
 func (ctx *StitchingContext) stitchGroup(s Alliance) {
 	var (
@@ -339,6 +349,7 @@ func (ctx *StitchingContext) stitchGroup(s Alliance) {
 			s.Round,
 			groupedName(s.SubCols),
 			ctx.MaxSize,
+			areAllBase(s.SubCols),
 		)
 
 	default:

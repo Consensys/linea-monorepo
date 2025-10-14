@@ -81,7 +81,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		IsAddress:            createCol("IS_ADDRESS"),
 		AddressHiUntrimmed:   createCol("ADRESSHI_UNTRIMMED"),
 		Col16:                verifiercol.NewConstantCol(field.NewElement(16), size, "ecdsa-col16"),
-		IsAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADRESS_HI_ECREC"), ecRecSize),
+		IsAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADRESS_HI_ECREC"), ecRecSize, true),
 		IsAddressFromEcRec:   createCol("ISADRESS_FROM_ECREC"),
 		IsAddressFromTxnData: createCol("ISADRESS_FROM_TXNDATA"),
 		HashNum:              createCol("HASH_NUM"),

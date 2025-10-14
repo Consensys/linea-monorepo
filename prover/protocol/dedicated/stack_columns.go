@@ -86,7 +86,7 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 		s_padded = s
 	}
 
-	col := comp.InsertCommit(round, ifaces.ColID(name), count_padded)
+	col := comp.InsertCommit(round, ifaces.ColID(name), count_padded, true)
 
 	comp.InsertFixedPermutation(
 		round,

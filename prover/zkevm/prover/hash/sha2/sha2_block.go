@@ -138,6 +138,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 				0,
 				ifaces.ColID(inp.Name+"_"+s),
 				colSize,
+				true,
 			)
 		}
 

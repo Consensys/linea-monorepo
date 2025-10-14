@@ -48,6 +48,7 @@ func Ternary(comp *wizard.CompiledIOP, condition, ifTrue, ifFalse ifaces.Column)
 		round,
 		ifaces.ColID(name),
 		ifTrue.Size(),
+		true,
 	)
 
 	comp.InsertGlobal(

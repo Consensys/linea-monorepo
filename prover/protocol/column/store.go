@@ -59,7 +59,8 @@ type storedColumnInfo struct {
 	// Pragmas is a free map that users can use to store whatever they want,
 	// it can be used to store compile-time information.
 	Pragmas map[string]interface{} `cbor:"g,omitempty"`
-
+	// IsBase indicates that the column is a base column
+	IsBase bool
 	// uuid is a unique identifier for the stored column. It is used for
 	// serialization.
 	uuid uuid.UUID `serde:"omit"`
@@ -70,7 +71,7 @@ type storedColumnInfo struct {
 //   - name must not be an empty string
 //   - round must be provided
 //   - name must not have been registered already
-func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status) ifaces.Column {
+func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status, isBase bool) ifaces.Column {
 
 	if len(name) == 0 {
 		utils.Panic("given an empty name")
@@ -88,7 +89,14 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 
 	// Constructing at the beginning does the validation early on
 	nat := newNatural(name, position, s)
-	infos := &storedColumnInfo{Size: size, ID: name, Status: status, uuid: uuid.New(), Pragmas: make(map[string]interface{})}
+	infos := &storedColumnInfo{
+		Size:    size,
+		ID:      name,
+		Status:  status,
+		uuid:    uuid.New(),
+		Pragmas: make(map[string]interface{}),
+		IsBase:  isBase,
+	}
 
 	// Panic if the entry already exist
 	s.indicesByNames.InsertNew(name, position)

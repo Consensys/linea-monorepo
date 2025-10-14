@@ -186,18 +186,21 @@ func (ctx *linearHashCtx) HashingCols() {
 			ctx.Round,
 			ifaces.ColID(prefixWithLinearHash(ctx.Comp, ctx.Name, "OLD_STATE_%v_%v", ctx.ToHash[i].GetColID(), i)),
 			ctx.ToHash[i].Size(),
+			true,
 		)
 
 		ctx.NewState[i] = ctx.Comp.InsertCommit(
 			ctx.Round,
 			ifaces.ColID(prefixWithLinearHash(ctx.Comp, ctx.Name, "NEW_STATE_%v_%v", ctx.ToHash[i].GetColID(), i)),
 			ctx.ToHash[i].Size(),
+			true,
 		)
 
 		ctx.NewStateClean[i] = ctx.Comp.InsertCommit(
 			ctx.Round,
 			ifaces.ColIDf("%s", prefixWithLinearHash(ctx.Comp, ctx.Name, "NEW_STATE_CLEAN_%v", ctx.ToHash[i].GetColID())),
 			ctx.ToHash[i].Size(),
+			true,
 		)
 	}
 	var olfStateID, newStateID, newStateCleanID [blockSize]ifaces.ColID

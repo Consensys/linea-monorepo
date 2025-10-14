@@ -50,6 +50,7 @@ func piChiIotaTestingModule(
 					round,
 					deriveName("A_RHO", x, y),
 					numRows(maxNumKeccakf),
+					true,
 				)
 			}
 		}

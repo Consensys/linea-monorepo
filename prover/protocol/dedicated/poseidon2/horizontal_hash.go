@@ -81,6 +81,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols [][blockSize]ifaces.Column) *Has
 				round,
 				ifaces.ColIDf("HASHING_%v_%v_%v", ctxID, i, j),
 				numRows,
+				true,
 			)
 		}
 

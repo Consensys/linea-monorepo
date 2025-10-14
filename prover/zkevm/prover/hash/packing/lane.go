@@ -62,7 +62,7 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 		Lanes:                createCol("Lane"),
 		IsFirstLaneOfNewHash: createCol("IsFirstLaneOfNewHash"),
 		IsLaneActive:         createCol("IsLaneActive"),
-		Coeff:                comp.InsertCommit(0, ifaces.ColIDf("Coefficient_"+pckInp.Name), spaghettiSize),
+		Coeff:                comp.InsertCommit(0, ifaces.ColIDf("Coefficient_"+pckInp.Name), spaghettiSize, true),
 
 		PAAccUpToMax:   pa,
 		IsLaneComplete: pa.IsMax,

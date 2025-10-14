@@ -19,6 +19,7 @@ func CreateCol(name, subName string, size int, comp *wizard.CompiledIOP) ifaces.
 		0,
 		ifaces.ColIDf("%s_%s", name, subName),
 		size,
+		true,
 	)
 }
 

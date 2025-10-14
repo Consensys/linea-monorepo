@@ -100,18 +100,21 @@ func (m *MiMCTestcase) Define(comp *wizard.CompiledIOP) {
 			0,
 			ifaces.ColIDf("%v_BLOCKS_%v", m.NameStr, i),
 			size,
+			true,
 		)
 
 		oldStates := comp.InsertCommit(
 			0,
 			ifaces.ColIDf("%v_OLD_STATES_%v", m.NameStr, i),
 			size,
+			true,
 		)
 
 		newStates := comp.InsertCommit(
 			0,
 			ifaces.ColIDf("%v_NEW_STATES_%v", m.NameStr, i),
 			size,
+			true,
 		)
 
 		comp.InsertMiMC(

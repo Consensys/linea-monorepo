@@ -292,12 +292,14 @@ func (t *HornerTestcase) Define(comp *wizard.CompiledIOP) {
 				0,
 				formatName[ifaces.ColID]("Horner", t.NameStr, "Coefficient", i, j),
 				t.Coefficients[i][j].Len(),
+				smartvectors.IsBase(t.Coefficients[i][j]),
 			))
 
 			parts[i].Selectors[j] = comp.InsertCommit(
 				0,
 				formatName[ifaces.ColID]("Horner", t.NameStr, "Selector", i, j),
 				t.Selectors[i][j].Len(),
+				true,
 			)
 		}
 	}

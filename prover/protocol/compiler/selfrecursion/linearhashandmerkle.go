@@ -63,23 +63,23 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	nonSisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundNonSis
 
 	// Register Merkle-related columns
-	ctx.Columns.MerkleProofPositions = ctx.Comp.InsertCommit(roundQ, ctx.merklePositionsName(), leavesSize)
+	ctx.Columns.MerkleProofPositions = ctx.Comp.InsertCommit(roundQ, ctx.merklePositionsName(), leavesSize, true)
 	for i := 0; i < blockSize; i++ {
-		ctx.Columns.MerkleProofsLeaves[i] = ctx.Comp.InsertCommit(roundQ, ctx.merkleLeavesName(i), leavesSize)
-		ctx.Columns.MerkleRoots[i] = ctx.Comp.InsertCommit(roundQ, ctx.merkleRootsName(i), leavesSize)
+		ctx.Columns.MerkleProofsLeaves[i] = ctx.Comp.InsertCommit(roundQ, ctx.merkleLeavesName(i), leavesSize, true)
+		ctx.Columns.MerkleRoots[i] = ctx.Comp.InsertCommit(roundQ, ctx.merkleRootsName(i), leavesSize, true)
 	}
 
 	// Register SIS-related columns if needed
 	// We commit to the below columns only if SIS is applied to any of the rounds including precomputed
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		ctx.Columns.ConcatenatedSisHashQ = ctx.Comp.InsertCommit(roundQ, ctx.ConcatenatedSisHashQ(), concatSisHashQSize)
+		ctx.Columns.ConcatenatedSisHashQ = ctx.Comp.InsertCommit(roundQ, ctx.ConcatenatedSisHashQ(), concatSisHashQSize, true)
 		for j := 0; j < blockSize; j++ {
-			ctx.Columns.SisHashToHash[j] = ctx.Comp.InsertCommit(roundQ, ctx.SisHashToHash(j), sisHashTotalChunks)
+			ctx.Columns.SisHashToHash[j] = ctx.Comp.InsertCommit(roundQ, ctx.SisHashToHash(j), sisHashTotalChunks, true)
 			ctx.Columns.SisRoundLeaves[j] = make([]ifaces.Column, 0, numRoundSis)
 			for i := 0; i < numRoundSis; i++ {
 				// Register the SIS round leaves
 				ctx.Columns.SisRoundLeaves[j] = append(ctx.Columns.SisRoundLeaves[j], ctx.Comp.InsertCommit(
-					roundQ, ctx.sisRoundLeavesName(i, j), ctx.VortexCtx.NbColsToOpen()))
+					roundQ, ctx.sisRoundLeavesName(i, j), ctx.VortexCtx.NbColsToOpen(), true))
 			}
 		}
 	}
@@ -195,6 +195,7 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 					round,
 					ctx.nonSisPrecomputedLeaves(j),
 					numLeaves,
+					true,
 				))
 		}
 
@@ -204,6 +205,7 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 				round,
 				ctx.nonSisPrecomputedPreimages(j),
 				precompPreimageChunksSize,
+				true,
 			)
 		}
 		ctx.NonSisMetaData.NonHashPreimages = append(ctx.NonSisMetaData.NonHashPreimages,
@@ -246,6 +248,7 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 						round,
 						ctx.nonSisLeaves(i-firstNonEmptyRound, j),
 						numLeaves,
+						true,
 					))
 
 			}
@@ -256,6 +259,7 @@ func (ctx *SelfRecursionCtx) registerNonSisMetaDataForNonSisRounds(
 					round,
 					ctx.nonSisPreimages(i-firstNonEmptyRound, j),
 					preimageChunksSize,
+					true,
 				)
 			}
 			ctx.NonSisMetaData.NonHashPreimages = append(ctx.NonSisMetaData.NonHashPreimages, hashPreimages)

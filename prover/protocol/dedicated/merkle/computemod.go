@@ -138,20 +138,20 @@ func (cm *ComputeMod) Define(comp *wizard.CompiledIOP, round int, name string, n
 	cm.defineIsInactive()
 	cm.defineZero()
 
-	cm.Cols.PosBit = comp.InsertCommit(cm.Round, cm.colname("POSBIT"), cm.NumRows)
-	cm.Cols.PosAcc = comp.InsertCommit(cm.Round, cm.colname("POSACC"), cm.NumRows)
+	cm.Cols.PosBit = comp.InsertCommit(cm.Round, cm.colname("POSBIT"), cm.NumRows, true)
+	cm.Cols.PosAcc = comp.InsertCommit(cm.Round, cm.colname("POSACC"), cm.NumRows, true)
 	for i := 0; i < blockSize; i++ {
-		cm.Cols.Root[i] = comp.InsertCommit(cm.Round, cm.colname("ROOT_%v", i), cm.NumRows)
-		cm.Cols.Curr[i] = comp.InsertCommit(cm.Round, cm.colname("CURR_%v", i), cm.NumRows)
-		cm.Cols.Left[i] = comp.InsertCommit(cm.Round, cm.colname("LEFT_%v", i), cm.NumRows)
-		cm.Cols.Interm[i] = comp.InsertCommit(cm.Round, cm.colname("INTERM_STATE_%v", i), cm.NumRows)
-		cm.Cols.Right[i] = comp.InsertCommit(cm.Round, cm.colname("RIGHT_%v", i), cm.NumRows)
-		cm.Cols.NodeHash[i] = comp.InsertCommit(cm.Round, cm.colname("NODE_HASH_%v", i), cm.NumRows)
+		cm.Cols.Root[i] = comp.InsertCommit(cm.Round, cm.colname("ROOT_%v", i), cm.NumRows, true)
+		cm.Cols.Curr[i] = comp.InsertCommit(cm.Round, cm.colname("CURR_%v", i), cm.NumRows, true)
+		cm.Cols.Left[i] = comp.InsertCommit(cm.Round, cm.colname("LEFT_%v", i), cm.NumRows, true)
+		cm.Cols.Interm[i] = comp.InsertCommit(cm.Round, cm.colname("INTERM_STATE_%v", i), cm.NumRows, true)
+		cm.Cols.Right[i] = comp.InsertCommit(cm.Round, cm.colname("RIGHT_%v", i), cm.NumRows, true)
+		cm.Cols.NodeHash[i] = comp.InsertCommit(cm.Round, cm.colname("NODE_HASH_%v", i), cm.NumRows, true)
 	}
 	if cm.WithOptProofReuseCheck {
-		cm.Cols.UseNextMerkleProofExpanded = comp.InsertCommit(cm.Round, cm.colname("USE_NEXT_MERKLE_PROOF_EXPANDED"), cm.NumRows)
-		cm.Cols.IsActiveExpanded = comp.InsertCommit(cm.Round, cm.colname("IS_ACTIVE_ACCUMULATOR_EXPANDED"), cm.NumRows)
-		cm.Cols.SegmentCounter = comp.InsertCommit(cm.Round, cm.colname("SEGMENT_COUNTER"), cm.NumRows)
+		cm.Cols.UseNextMerkleProofExpanded = comp.InsertCommit(cm.Round, cm.colname("USE_NEXT_MERKLE_PROOF_EXPANDED"), cm.NumRows, true)
+		cm.Cols.IsActiveExpanded = comp.InsertCommit(cm.Round, cm.colname("IS_ACTIVE_ACCUMULATOR_EXPANDED"), cm.NumRows, true)
+		cm.Cols.SegmentCounter = comp.InsertCommit(cm.Round, cm.colname("SEGMENT_COUNTER"), cm.NumRows, true)
 	}
 
 	// Initializes all the sugar, we will use for the

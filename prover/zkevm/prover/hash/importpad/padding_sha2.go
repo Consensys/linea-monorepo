@@ -84,6 +84,7 @@ func (ipad *Importation) newSha2Padder(comp *wizard.CompiledIOP) padder {
 			AccInsertedBytes: comp.InsertCommit(0,
 				ifaces.ColIDf("%v_SHA2_ACC_INSERTED_BYTES", ipad.Inputs.Name),
 				numRows,
+				true,
 			),
 		}
 	)
