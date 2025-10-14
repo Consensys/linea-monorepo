@@ -1,12 +1,11 @@
 package query
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // A gnark circuit version of the LocalOpeningResult
@@ -17,10 +16,10 @@ type GnarkLocalOpeningParams struct {
 }
 
 func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
-	var exty gnarkfext.E4Gen
-	exty.Assign(p.ExtY)
+
+	exty := gnarkfext.NewE4Gen(p.ExtY)
 	return GnarkLocalOpeningParams{
-		BaseY:  p.BaseY,
+		BaseY:  zk.ValueOf(p.BaseY),
 		ExtY:   exty,
 		IsBase: p.IsBase,
 	}
@@ -55,7 +54,9 @@ type GnarkHornerParams struct {
 }
 
 func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
-	return GnarkLogDerivSumParams{Sum: p.Sum}
+	// return GnarkLogDerivSumParams{Sum: p.Sum}
+	tmp := p.Sum.GetExt()
+	return GnarkLogDerivSumParams{Sum: zk.ValueOf(tmp)} // TODO @thomas fixme (ext vs base)
 }
 
 // A gnark circuit version of InnerProductParams
@@ -93,17 +94,17 @@ func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
 	if p.IsBase {
 		return GnarkUnivariateEvalParams{
 			Ys:    vector.IntoGnarkAssignment(p.Ys),
-			X:     p.X,
+			X:     zk.ValueOf(p.X),
 			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
-			ExtX:  gnarkfext.SetFromExt(p.ExtX),
+			ExtX:  gnarkfext.NewE4Gen(p.ExtX),
 		}
 	} else {
 		// extension query
 		return GnarkUnivariateEvalParams{
 			Ys:    nil,
-			X:     field.Zero(),
+			X:     zk.ValueOf(0),
 			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
-			ExtX:  gnarkfext.SetFromExt(p.ExtX),
+			ExtX:  gnarkfext.NewE4Gen(p.ExtX),
 		}
 	}
 }
@@ -121,13 +122,13 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 	parts := make([]HornerParamsPartGnark, len(p.Parts))
 	for i, part := range p.Parts {
 		parts[i] = HornerParamsPartGnark{
-			N0: part.N0,
-			N1: part.N1,
+			N0: zk.ValueOf(part.N0),
+			N1: zk.ValueOf(part.N1),
 		}
 	}
 
 	return GnarkHornerParams{
-		FinalResult: p.FinalResult,
+		FinalResult: zk.ValueOf(p.FinalResult),
 		Parts:       parts,
 	}
 }

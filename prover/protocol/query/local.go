@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -176,7 +177,9 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 			if metadata.IsBase() {
 				inputs[i] = run.GetRandomCoinField(metadata.Name)
 			} else {
-				inputs[i] = run.GetRandomCoinFieldExt(metadata.Name)
+				// TODO @thomas fixme
+				inputs[i] = run.GetRandomCoinField(metadata.Name)
+				// inputs[i] = run.GetRandomCoinFieldExt(metadata.Name)
 			}
 		case variables.X, variables.PeriodicSample:
 			utils.Panic("In local constraint %v, Local constraints using X are not handled so far", cs.ID)

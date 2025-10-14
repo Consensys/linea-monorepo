@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
@@ -105,11 +107,19 @@ func (r LocalOpening) Check(run ifaces.Runtime) error {
 func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.ID).(GnarkLocalOpeningParams)
 	if params.IsBase {
+		apiGen, err := zk.NewGenericApi(api)
+		if err != nil {
+			panic(err)
+		}
 		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
-		api.AssertIsEqual(params.BaseY, actualY)
+		apiGen.AssertIsEqual(&params.BaseY, &actualY)
 	} else {
+		e4Api, err := gnarkfext.NewExt4(api)
+		if err != nil {
+			panic(err)
+		}
 		actualY := r.Pol.GetColAssignmentGnarkAtExt(run, 0)
-		params.ExtY.AssertIsEqual(api, actualY)
+		e4Api.AssertIsEqual(&params.ExtY, &actualY)
 	}
 }
 

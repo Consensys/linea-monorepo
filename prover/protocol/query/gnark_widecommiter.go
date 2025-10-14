@@ -2,12 +2,14 @@ package query
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/logger"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"golang.org/x/crypto/sha3"
-	"math/big"
 )
 
 // wrappedBuilder mimics the behaviour of the backend which has wide commitment
@@ -46,8 +48,9 @@ func From(newBuilder frontend.NewBuilderU32) frontend.NewBuilderU32 {
 }
 
 func (w *wrappedBuilder) WideCommit(width int, toCommit ...zk.WrappedVariable) (commitment []zk.WrappedVariable, err error) {
-	res, err := w.Compiler().NewHint(mockedWideCommitHint, width, toCommit...)
-	return res, err
+	// res, err := w.Compiler().NewHint(mockedWideCommitHint, width, toCommit...)
+	// return res, err
+	return []zk.WrappedVariable{zk.ValueOf(0)}, err // TODO @thomas fixme
 }
 
 func (w *wrappedBuilder) Compiler() frontend.Compiler {
