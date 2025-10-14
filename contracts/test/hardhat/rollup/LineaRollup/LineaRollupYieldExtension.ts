@@ -138,6 +138,21 @@ describe("Linea Rollup contract", () => {
       await lineaRollup.connect(securityCouncil).unPauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
     });
 
+    it("Should revert when non-authorized account enacts NATIVE_YIELD_STAKING pause type", async () => {
+      const call = lineaRollup.connect(nonAuthorizedAccount).pauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
+      await expect(call).to.be.revertedWith(
+        buildAccessErrorMessage(nonAuthorizedAccount, await lineaRollup.PAUSE_NATIVE_YIELD_STAKING_ROLE()),
+      );
+    });
+
+    it("Should revert when non-authorized account unpauses NATIVE_YIELD_STAKING pause type", async () => {
+      await lineaRollup.connect(securityCouncil).pauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
+      const call = lineaRollup.connect(nonAuthorizedAccount).unPauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
+      await expect(call).to.be.revertedWith(
+        buildAccessErrorMessage(nonAuthorizedAccount, await lineaRollup.UNPAUSE_NATIVE_YIELD_STAKING_ROLE()),
+      );
+    });
+
     it("Should revert if LineaRollup has balance < _amount", async () => {
       const amount = ethers.parseEther("1");
       const transferCall = lineaRollup.connect(securityCouncil).transferFundsForNativeYield(amount);
