@@ -29,6 +29,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 		numRetrySoFar int
 	)
 
+	// Start the metric server
 	if cfg.Controller.Prometheus.Enabled {
 		metrics.StartServer(
 			cfg.Controller.LocalID,
@@ -87,6 +88,14 @@ func runController(ctx context.Context, cfg *config.Config) {
 	for {
 		select {
 		case <-ctx.Done():
+			// Graceful shutdown.
+			// This case captures both cancellations initiated by the caller
+			// through ctx and SIGTERM signals. Even if the cancellation
+			// request is first intercepted by the goroutine at line 34, Go
+			// allows the ctx.Done channel to be read multiple times, which, in
+			// our scenario, ensures cancellation requests are effectively
+			// detected and handled.
+			cLog.Infoln("Context cancelled by caller or externally triggered (SIGTERM/SIGUSR1). Exiting")
 			metrics.ShutdownServer(ctx)
 
 			// If spot reclaim and activeJob exists, requeue it safely exactly once
@@ -114,13 +123,17 @@ func runController(ctx context.Context, cfg *config.Config) {
 			}
 			return
 
+			// Processing a new job
 		case <-retryDelay(cfg.Controller.RetryDelays, numRetrySoFar):
 			// Prevent starting new jobs if shutdown started
 			if ctx.Err() != nil {
 				continue
 			}
 
+			// Fetch the best block we can fetch
 			job := fsWatcher.GetBest()
+
+			// No jobs, waiting a little before we retry
 			if job == nil {
 				numRetrySoFar++
 				noJobFoundMsg := "found no jobs in the queue"
@@ -131,11 +144,14 @@ func runController(ctx context.Context, cfg *config.Config) {
 				}
 				continue
 			}
+
+			// Reset the retry counter
 			numRetrySoFar = 0
 
 			// Set active job to current job
 			activeJob = job
 
+			// Run the command (potentially retrying in large mode)
 			status := executor.Run(cmdContext, job)
 
 			// Clear active job on completion
@@ -143,6 +159,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 			switch {
 			case status.ExitCode == CodeSuccess:
+				// NB: we already check that the response filename can be
+				// generated prior to running the command. So this actually
+				// will not panic.
 				respFile, err := job.ResponseFile()
 				tmpRespFile := job.TmpResponseFile(cfg)
 				if err != nil {
@@ -153,36 +172,76 @@ func runController(ctx context.Context, cfg *config.Config) {
 					tmpRespFile, respFile,
 				)
 				if err := os.Rename(tmpRespFile, respFile); err != nil {
+					// @Alex: it is unclear how the rename operation could fail
+					// here. If this happens, we prefer removing the tmp file.
+					// Note that the operation is an `rm -f`.
 					os.Remove(tmpRespFile)
 					cLog.Errorf("Error renaming %v to %v: %v, removed the tmp file", tmpRespFile, respFile, err)
 				}
 				cLog.Infof("Moving %v to %v with the success prefix", job.OriginalFile, job.Def.dirDone())
 				jobDone := job.DoneFile(status)
 				if err := os.Rename(job.InProgressPath(), jobDone); err != nil {
+					// When that happens, the only thing left to do is to log
+					// the error and let the inprogress file where it is. It
+					// will likely require a human intervention.
+					//
+					// Note: this is assumedly an unreachable code path.
 					cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), jobDone, err)
 				}
 
 			case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
 				cLog.Infof("Renaming %v for the large prover", job.OriginalFile)
+				// Move the inprogress file back in the from directory with the new suffix
 				toLargePath, err := job.DeferToLargeFile(status)
 				if err != nil {
+					// There are two possibilities of errors. (1), the status
+					// we success but the above cases prevents that. The other
+					// case is that the suffix was not provided. But, during
+					// the config validation, we check already that the suffix
+					// must be provided if the size of the list of
+					// deferToOtherLargeCodes is non-zero. If the size of the
+					// list was zero, then there would be no way to reach this
+					// portion of the code given that the current exit code
+					// cannot be part of the empty list. Thus, this section is
+					// unreachable.
 					cLog.Errorf("error deriving the to-large-name of %v: %v", job.InProgressPath(), err)
 				}
 				if err := os.Rename(job.InProgressPath(), toLargePath); err != nil {
+					// When that happens, the only thing left to do is to log
+					// the error and let the inprogress file where it is. It
+					// will likely require a human intervention.
 					cLog.Errorf("error renaming %v to %v: %v", job.InProgressPath(), toLargePath, err)
 				}
 
 			case status.ExitCode == CodeKilledByUs:
-				cLog.Infof("Job %v was killed by us. Requeuing it back to the request folder", job.OriginalFile)
+				cLog.Infof("Job %v was killed externally. Requeuing the request back to the request folder", job.OriginalFile)
 				if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
+					// When that happens, the only thing left to do is to log
+					// the error and let the inprogress file where it is. It
+					// will likely require a human intervention.
+					//
+					// Note: this is assumedly an unreachable code path.
 					cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), job.OriginalPath(), err)
 				}
+
+				// As an edge-case, it's possible (in theory) that the process
+				// completes exactly when we receive the kill signal. So we
+				// could end up in a situation where the tmp-response file
+				// exists. In that case, we simply delete it before exiting to
+				// keep the FS clean.
 				os.Remove(job.TmpResponseFile(cfg))
 
+			// Failure case
 			default:
 				cLog.Infof("Moving %v with in %v with a failure suffix for code %v", job.OriginalFile, job.Def.dirDone(), status.ExitCode)
 				jobFailed := job.DoneFile(status)
 				if err := os.Rename(job.InProgressPath(), jobFailed); err != nil {
+					// When that happens, the only thing left to do is to log
+					// the error and let the inprogress file where it is. It
+					// will likely require a human intervention.
+					//
+					// Note: this is assumedly an unreachable code path.
+
 					cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), jobFailed, err)
 				}
 			}
