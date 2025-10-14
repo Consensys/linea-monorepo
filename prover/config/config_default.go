@@ -41,6 +41,11 @@ func setDefaultValues() {
 	// Default to 10 seconds for child process graceful shutdown attempt
 	viper.SetDefault("controller.child_process_shutdown_timeout", 10*time.Second)
 
+	// Set default spot termination file path
+	// External systems can create this file to signal spot instance termination
+	// Users can override this with a custom path or set to empty string to disable spot detection
+	viper.SetDefault("controller.spot_termination_file", "/tmp/spot-termination")
+
 	viper.SetDefault("execution.ignore_compatibility_check", false)
 }
 
