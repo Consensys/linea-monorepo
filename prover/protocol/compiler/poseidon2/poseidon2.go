@@ -466,30 +466,33 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 				}
 			}
 
-			// external rounds
-			for round := fullRounds - partialRounds; round < fullRounds; round++ {
-				state = addRoundKeyCompute(round-1, state)
-				for col := 0; col < width; col++ {
-					state[col] = sBoxCompute(col, round, state)
-				}
-				_, _, _, state = matMulExternalInPlace(state)
-				for col := 0; col < width; col++ {
-					intermediateStates[round][col][row] = state[col]
-				}
-			}
+			// // external rounds
+			// for round := fullRounds - partialRounds; round < fullRounds; round++ {
+			// 	state = addRoundKeyCompute(round-1, state)
+			// 	for col := 0; col < width; col++ {
+			// 		state[col] = sBoxCompute(col, round, state)
+			// 	}
+			// 	_, _, _, state = matMulExternalInPlace(state)
+			// 	for col := 0; col < width; col++ {
+			// 		intermediateStates[round][col][row] = state[col]
+			// 	}
+			// }
 		}
 	})
 
-	for round := 1; round < fullRounds-1; round++ {
-		for col := 0; col < width; col++ {
-			run.AssignColumn(
-				ctx.Interm[round][col].GetColID(),
-				smartvectors.RightPadded(
-					intermediateStates[round][col][:effectiveSize],
-					intermediateStates[round][col][effectiveSize],
-					totalSize,
-				),
-			)
+	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
+		if round%4 == 0 {
+
+			for col := 0; col < width; col++ {
+				run.AssignColumn(
+					ctx.Interm[round][col].GetColID(),
+					smartvectors.RightPadded(
+						intermediateStates[round][col][:effectiveSize],
+						intermediateStates[round][col][effectiveSize],
+						totalSize,
+					),
+				)
+			}
 		}
 	}
 }
