@@ -2,6 +2,7 @@
 import { loadFixture, setBalance } from "@nomicfoundation/hardhat-network-helpers";
 import { encodeSendMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
+  decrementBalance,
   deployAndAddAdditionalLidoStVaultYieldProvider,
   deployYieldManagerIntegrationTestFixture,
   fundLidoStVaultYieldProvider,
@@ -73,16 +74,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
     l1MessageServiceAddress = await lineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
     mockStakingVaultAddress = await mockStakingVault.getAddress();
-  });
-
-  describe("Donations", () => {
-    it("Donations should arrive on the LineaRollup", async () => {
-      const rollupBalanceBefore = await ethers.provider.getBalance(l1MessageServiceAddress);
-      const donationAmount = ONE_ETHER;
-      await yieldManager.connect(nativeYieldOperator).donate(yieldProviderAddress, { value: donationAmount });
-      const rollupBalanceAfter = await ethers.provider.getBalance(l1MessageServiceAddress);
-      expect(rollupBalanceAfter).eq(rollupBalanceBefore + donationAmount);
-    });
   });
 
   describe("Transfering to the YieldManager", () => {
@@ -396,6 +387,125 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         call,
         "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
       );
+    });
+  });
+
+  describe("Native yield resilience scenarios", () => {
+    it("Should not reduce user funds after repeated negative yield reports", async () => {
+      // Arrange - setup user funds
+      const initialFundAmount = ONE_ETHER * 10n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      const userFundsInYieldProvidersTotalBefore = await yieldManager.userFundsInYieldProvidersTotal();
+      const userFundsBefore = await yieldManager.userFunds(yieldProviderAddress);
+      // Arrange - Setup first negative yield
+      const firstNegativeYield = ONE_ETHER * 5n;
+      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield);
+      // Arrange - Setup second negative yield
+      const secondNegativeYield = ONE_ETHER * 5n;
+      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield - secondNegativeYield);
+
+      // Act
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+
+      // Assert
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
+      expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFundsBefore);
+    });
+    it("Should be able to recover after temporary negative yield and max LST withdrawal", async () => {
+      // Initial funding with 10 ETH
+      const initialFundAmount = ONE_ETHER * 10n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+
+      // Negative yield event for -5 ETH
+      const firstNegativeYield = ONE_ETHER * 5n;
+      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield);
+      await decrementBalance(mockStakingVaultAddress, firstNegativeYield);
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+
+      // Drain all L1MessageService funds
+      await setBalance(l1MessageServiceAddress, ZERO_VALUE);
+
+      // Max LST withdrawal for 10 ETH
+      await lineaRollup.connect(securityCouncil).resetRateLimitAmount(ONE_ETHER * 100n);
+      const withdrawLSTAmount = initialFundAmount;
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        withdrawLSTAmount,
+        EMPTY_CALLDATA,
+      );
+      await lineaRollup
+        .connect(nonAuthorizedAccount)
+        .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
+
+      // Assert - Cannot do another LST withdrawal
+      const claimParams2 = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        1n,
+        EMPTY_CALLDATA,
+      );
+      const secondWithdrawLSTCall = lineaRollup
+        .connect(nonAuthorizedAccount)
+        .claimMessageWithProofAndWithdrawLST(claimParams2, yieldProviderAddress);
+      expectRevertWithCustomError(yieldManager, secondWithdrawLSTCall, "LSTWithdrawalExceedsYieldProviderFunds");
+      expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.replenishWithdrawalReserve(yieldProviderAddress),
+        "NoAvailableFundsToReplenishWithdrawalReserve",
+      );
+
+      // replenishWithdrawalReserve
+      const stakingVaultBalance = await ethers.provider.getBalance(mockStakingVaultAddress);
+      await mockDashboard.setWithdrawableValueReturn(stakingVaultBalance);
+      const l1MessageBalance = await ethers.provider.getBalance(l1MessageServiceAddress);
+      const userFunds = await yieldManager.userFunds(yieldProviderAddress);
+      await yieldManager.replenishWithdrawalReserve(yieldProviderAddress);
+      expect(await ethers.provider.getBalance(l1MessageServiceAddress)).eq(l1MessageBalance + stakingVaultBalance);
+      expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds - stakingVaultBalance);
+
+      // Donation for 3 ETH
+      // const donationAmount = ONE_ETHER * 6n;
+      // await yieldManager.donate(yieldProviderAddress, { value: donationAmount });
+      // expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(
+      // firstNegativeYield - donationAmount,
+      // );
+
+      // Another stroke of good luck - Earn 3 ETH positive yield
+      // const firstPositiveYield = ONE_ETHER * 3n;
+      // await incrementBalance(mockStakingVaultAddress, firstPositiveYield);
+      // console.log(await yieldManager.userFunds(yieldProviderAddress));
+      // console.log(await ethers.provider.getBalance(mockStakingVaultAddress));
+
+      // stakingVaultBalance = await ethers.provider.getBalance(mockStakingVaultAddress);
+      // await mockDashboard.setTotalValueReturn(stakingVaultBalance);
+      // userFunds = await yieldManager.userFunds(yieldProviderAddress);
+      // const negativeYield = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
+      // console.log(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress));
+      // console.log(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress));
+      // await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+      // console.log(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress));
+      // console.log(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress));
+      // expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(0);
+      // expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(
+      //   initialFundAmount - firstNegativeYield + firstPositiveYield - userFunds - negativeYield,
+      // );
+      // expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(
+      //   await yieldManager.userFunds(yieldProviderAddress),
+      // );
+      // expect(await yieldManager.userFunds(yieldProviderAddress)).eq(
+      //   userFunds + (await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)),
+      // );
+      // // Arrange - Add to withdrawal reserve will route to the L1MessageService
+      // userFunds = await yieldManager.userFunds(yieldProviderAddress);
+      // console.log(userFunds);
+      // console.log(await ethers.provider.getBalance(mockStakingVaultAddress));
+
+      // await yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(yieldProviderAddress, userFunds);
+      // userFunds = await yieldManager.userFunds(yieldProviderAddress);
     });
   });
 });

@@ -9,7 +9,6 @@ import { deployLineaRollupFixture } from "../helpers";
 import {
   ADDRESS_ZERO,
   EMPTY_CALLDATA,
-  FUNDER_ROLE,
   GENERAL_PAUSE_TYPE,
   L1_L2_PAUSE_TYPE,
   MESSAGE_FEE,
@@ -88,15 +87,9 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("fund() to receive funding", () => {
-    it("Should revert if the caller does not have the FUNDER_ROLE", async () => {
-      const fundCall = lineaRollup.connect(nonAuthorizedAccount).fund({ value: ethers.parseEther("1") });
-
-      await expectRevertWithReason(fundCall, buildAccessErrorMessage(nonAuthorizedAccount, FUNDER_ROLE));
-    });
-
-    it("Should succeed if the caller has the FUNDER_ROLE, and emit the correct event", async () => {
+    it("Should succeed and emit the correct event", async () => {
       const amount = ethers.parseEther("1");
-      const fundCall = lineaRollup.connect(securityCouncil).fund({ value: amount });
+      const fundCall = lineaRollup.fund({ value: amount });
 
       await expectEvent(lineaRollup, fundCall, "FundingReceived", [amount]);
 

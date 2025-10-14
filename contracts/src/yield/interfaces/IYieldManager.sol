@@ -282,6 +282,11 @@ interface IYieldManager {
   error PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit();
 
   /**
+   * @dev Thrown when there are no funds available to replenish the withdrawal reserve.
+   */
+  error NoAvailableFundsToReplenishWithdrawalReserve();
+
+  /**
    * @dev Thrown when pausing staking for a YieldProvider which is currently paused.
    */
   error StakingAlreadyPaused();
@@ -631,16 +636,6 @@ interface IYieldManager {
    * @return isOssificationComplete True if ossification is finalized.
    */
   function processPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
-
-  /**
-   * @notice Donate ETH that offsets a specified yield provider's negative yield.
-   * @dev Donations are forwarded to the withdrawal reserve.
-   * @dev The donate() function is located on the YieldManager because it is otherwise tricky to track donations
-   *      to offset negative yield for a specific yield provider.
-   * @dev `pendingPermissionlessUnstake` is greedily decremented against incoming donations.
-   * @param _yieldProvider The yield provider address.
-   */
-  function donate(address _yieldProvider) external payable;
 
   /**
    * @notice Register a new YieldProvider adaptor instance.

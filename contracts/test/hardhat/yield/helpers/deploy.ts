@@ -16,7 +16,6 @@ import {
   GI_FIRST_VALIDATOR_AFTER_CHANGE,
   CHANGE_SLOT,
   LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
-  FUNDER_ROLE,
   YIELD_PROVIDER_STAKING_ROLE,
 } from "../../common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
@@ -368,10 +367,6 @@ export async function deployYieldManagerIntegrationTestFixture() {
     unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
     roleAddresses: [
       ...lineaRollupRoleAddresses,
-      {
-        role: FUNDER_ROLE,
-        addressWithRole: yieldManagerAddress,
-      },
       {
         role: YIELD_PROVIDER_STAKING_ROLE,
         addressWithRole: await nativeYieldOperator.getAddress(),

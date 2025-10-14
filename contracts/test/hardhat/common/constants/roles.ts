@@ -64,7 +64,6 @@ export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESS
 export const SET_YIELD_MANAGER_ROLE = generateKeccak256(["string"], ["SET_YIELD_MANAGER_ROLE"], true);
 export const RESERVE_OPERATOR_ROLE = generateKeccak256(["string"], ["RESERVE_OPERATOR_ROLE"], true);
 export const YIELD_PROVIDER_STAKING_ROLE = generateKeccak256(["string"], ["YIELD_PROVIDER_STAKING_ROLE"], true);
-export const FUNDER_ROLE = generateKeccak256(["string"], ["FUNDER_ROLE"], true);
 
 // YieldManager related pause roles
 export const PAUSE_NATIVE_YIELD_STAKING_ROLE = generateKeccak256(["string"], ["PAUSE_NATIVE_YIELD_STAKING_ROLE"], true);
@@ -91,16 +90,6 @@ export const PAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE = generateKeccak256(
 export const UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE = generateKeccak256(
   ["string"],
   ["UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE"],
-  true,
-);
-export const PAUSE_NATIVE_YIELD_DONATION_ROLE = generateKeccak256(
-  ["string"],
-  ["PAUSE_NATIVE_YIELD_DONATION_ROLE"],
-  true,
-);
-export const UNPAUSE_NATIVE_YIELD_DONATION_ROLE = generateKeccak256(
-  ["string"],
-  ["UNPAUSE_NATIVE_YIELD_DONATION_ROLE"],
   true,
 );
 export const PAUSE_NATIVE_YIELD_REPORTING_ROLE = generateKeccak256(

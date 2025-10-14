@@ -83,9 +83,6 @@ export const SET_YIELD_MANAGER_ROLE = generateKeccak256(["string"], ["SET_YIELD_
 export const RESERVE_OPERATOR_ROLE = generateKeccak256(["string"], ["RESERVE_OPERATOR_ROLE"], {
   encodePacked: true,
 });
-export const FUNDER_ROLE = generateKeccak256(["string"], ["FUNDER_ROLE"], {
-  encodePacked: true,
-});
 export const PAUSE_NATIVE_YIELD_STAKING_ROLE = generateKeccak256(["string"], ["PAUSE_NATIVE_YIELD_STAKING_ROLE"], {
   encodePacked: true,
 });
@@ -135,14 +132,6 @@ export const UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE = generateKeccak25
   ["UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE"],
   { encodePacked: true },
 );
-export const PAUSE_NATIVE_YIELD_DONATION_ROLE = generateKeccak256(["string"], ["PAUSE_NATIVE_YIELD_DONATION_ROLE"], {
-  encodePacked: true,
-});
-export const UNPAUSE_NATIVE_YIELD_DONATION_ROLE = generateKeccak256(
-  ["string"],
-  ["UNPAUSE_NATIVE_YIELD_DONATION_ROLE"],
-  { encodePacked: true },
-);
 export const PAUSE_NATIVE_YIELD_REPORTING_ROLE = generateKeccak256(["string"], ["PAUSE_NATIVE_YIELD_REPORTING_ROLE"], {
   encodePacked: true,
 });
@@ -171,7 +160,6 @@ export const LINEA_ROLLUP_ROLES = [
   // New roles introduced with YieldManager
   SET_YIELD_MANAGER_ROLE,
   YIELD_PROVIDER_STAKING_ROLE,
-  FUNDER_ROLE,
   PAUSE_NATIVE_YIELD_STAKING_ROLE,
   UNPAUSE_NATIVE_YIELD_STAKING_ROLE,
 ];
@@ -227,8 +215,6 @@ export const YIELD_MANAGER_SECURITY_COUNCIL_ROLES = [
   UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE,
   PAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE,
   UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE,
-  PAUSE_NATIVE_YIELD_DONATION_ROLE,
-  UNPAUSE_NATIVE_YIELD_DONATION_ROLE,
   PAUSE_NATIVE_YIELD_REPORTING_ROLE,
   UNPAUSE_NATIVE_YIELD_REPORTING_ROLE,
 ];

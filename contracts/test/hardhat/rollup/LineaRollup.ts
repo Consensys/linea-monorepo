@@ -38,7 +38,6 @@ import {
   INITIALIZED_ALREADY_MESSAGE,
   CALLDATA_SUBMISSION_PAUSE_TYPE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
-  FUNDER_ROLE,
   SIX_MONTHS_IN_SECONDS,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   SET_YIELD_MANAGER_ROLE,
@@ -261,11 +260,6 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.hasRole(YIELD_PROVIDER_STAKING_ROLE, securityCouncil.address)).to.be.true;
     });
 
-    it("Should assign the FUNDER_ROLE to securityCouncil addresses", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.hasRole(FUNDER_ROLE, securityCouncil.address)).to.be.true;
-    });
-
     it("Should store the startingRootHash in storage for the first block number", async () => {
       const initializationData = {
         initialStateRootHash: parentStateRootHash,
@@ -368,13 +362,7 @@ describe("Linea Rollup contract", () => {
       const reinitData: LineaRollupV7ReinitializationData = {
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        roleAddresses: [
-          ...roleAddresses,
-          {
-            role: FUNDER_ROLE,
-            addressWithRole: newYieldManager,
-          },
-        ],
+        roleAddresses: [...roleAddresses],
         yieldManager: newYieldManager,
       };
 
@@ -402,7 +390,6 @@ describe("Linea Rollup contract", () => {
         .withArgs(mockYieldManager, newYieldManager);
 
       expect(await lineaRollup.yieldManager()).to.equal(newYieldManager);
-      expect(await lineaRollup.hasRole(FUNDER_ROLE, newYieldManager)).to.be.true;
     });
 
     it("Should revert if reinitializeLineaRollupV7 is invoked more than once", async () => {

@@ -71,9 +71,9 @@ abstract contract LineaRollupYieldExtension is LineaRollupBase, ILineaRollupYiel
 
   /**
    * @notice Send ETH to this contract.
-   * @dev FUNDER_ROLE is required to execute.
+   * @dev Accepts both permissionless donations and YieldManager withdrawals.
    */
-  function fund() external payable virtual onlyRole(FUNDER_ROLE) {
+  function fund() external payable virtual {
     emit FundingReceived(msg.value);
   }
 

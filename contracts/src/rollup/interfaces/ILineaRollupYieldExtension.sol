@@ -83,7 +83,7 @@ interface ILineaRollupYieldExtension {
 
   /**
    * @notice Send ETH to this contract.
-   * @dev FUNDER_ROLE is required to execute.
+   * @dev Accepts both permissionless donations and YieldManager withdrawals.
    */
   function fund() external payable;
 

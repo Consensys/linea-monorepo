@@ -16,10 +16,9 @@ import {
   NATIVE_YIELD_REPORTING_PAUSE_TYPE,
   NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
   NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
-  NATIVE_YIELD_DONATION_PAUSE_TYPE,
 } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { fundYieldProviderForWithdrawal, incrementBalance, setWithdrawalReserveBalance } from "../helpers";
+import { fundYieldProviderForWithdrawal, incrementBalance, setBalance } from "../helpers";
 
 describe("YieldManager contract - ETH transfer operations", () => {
   let yieldManager: TestYieldManager;
@@ -1235,6 +1234,23 @@ describe("YieldManager contract - ETH transfer operations", () => {
       );
     });
 
+    it("Should revert if there is 0 available balance on YieldManager and YieldProvider", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const yieldManagerAddress = await yieldManager.getAddress();
+
+      // Arrange balances
+      await setBalance(l1MessageService, 0n);
+      await setBalance(yieldManagerAddress, 0n);
+      await setBalance(mockYieldProviderAddress, 0n);
+
+      // Act
+      const call = yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress);
+
+      // Assert
+      expectRevertWithCustomError(yieldManager, call, "NoAvailableFundsToReplenishWithdrawalReserve");
+    });
+
     it("If YieldManager balance > targetDeficit, settle targetDeficit from YieldManager balance", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const l1MessageService = await mockLineaRollup.getAddress();
@@ -1482,6 +1498,28 @@ describe("YieldManager contract - ETH transfer operations", () => {
       await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);
     });
 
+    it("Should revert if lstPrincipalAmount + LST withdraw amount > userFunds for yield provider", async () => {
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const fundAmount = ONE_ETHER * 10n;
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, fundAmount);
+      // Arrange - Setup lstPrincipalAmount
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress, fundAmount - ONE_ETHER + 1n);
+      // Arrange - set gas funds for L1MessageService to be signer
+      const withdrawAmount = ONE_ETHER;
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(withdrawAmount)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(l1Signer).withdrawLST(mockYieldProviderAddress, withdrawAmount, ethers.ZeroAddress),
+        "LSTWithdrawalExceedsYieldProviderFunds",
+      );
+
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);
+    });
+
     it("Should successfully withdraw LST, pause staking and emit the expected event", async () => {
       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
       const l1MessageService = await mockLineaRollup.getAddress();
@@ -1502,93 +1540,6 @@ describe("YieldManager contract - ETH transfer operations", () => {
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
 
       await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);
-    });
-  });
-
-  describe("donations", () => {
-    it("Should revert when the GENERAL pause type is activated", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(nativeYieldOperator).donate(mockYieldProviderAddress, { value: 1n }),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
-      );
-    });
-
-    it("Should revert when the NATIVE_YIELD_DONATION pause type is activated", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_DONATION_PAUSE_TYPE);
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(nativeYieldOperator).donate(mockYieldProviderAddress, { value: 1n }),
-        "IsPaused",
-        [NATIVE_YIELD_DONATION_PAUSE_TYPE],
-      );
-    });
-
-    it("Should revert when donating to an unknown YieldProvider", async () => {
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(nativeYieldOperator).donate(ethers.Wallet.createRandom().address, { value: 1n }),
-        "UnknownYieldProvider",
-      );
-    });
-
-    it("Should successfully accept donation, decrement negative yield and pending permissionless unstake, and emit the expected event", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      const initialNegativeYield = ONE_ETHER * 5n;
-      const donationAmount = ONE_ETHER * 3n;
-      const pendingPermissionlessUnstakeBefore = ONE_ETHER * 2n;
-      const l1MessageService = await mockLineaRollup.getAddress();
-
-      await setWithdrawalReserveBalance(yieldManager, 0n);
-      const reserveBalanceBefore = await ethers.provider.getBalance(l1MessageService);
-      await yieldManager.setYieldProviderCurrentNegativeYield(mockYieldProviderAddress, initialNegativeYield);
-      await yieldManager.setPendingPermissionlessUnstake(pendingPermissionlessUnstakeBefore);
-
-      // Act
-      await expect(
-        yieldManager.connect(nativeYieldOperator).donate(mockYieldProviderAddress, { value: donationAmount }),
-      )
-        .to.emit(yieldManager, "DonationProcessed")
-        .withArgs(mockYieldProviderAddress, donationAmount);
-
-      const reserveBalanceAfter = await ethers.provider.getBalance(l1MessageService);
-      const negativeYieldAfter = await yieldManager.getYieldProviderCurrentNegativeYield(mockYieldProviderAddress);
-      const pendingPermissionlessUnstakeAfter = await yieldManager.getPendingPermissionlessUnstake();
-
-      expect(reserveBalanceAfter).to.equal(reserveBalanceBefore + donationAmount);
-      expect(negativeYieldAfter).to.equal(initialNegativeYield - donationAmount);
-      expect(pendingPermissionlessUnstakeAfter).to.equal(0n);
-    });
-
-    it("If negativeYield < donation, should successfully accept donation, reduce negative yield to 0, and emit the expected event", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      const initialNegativeYield = ONE_ETHER;
-      const donationAmount = ONE_ETHER * 3n;
-      const l1MessageService = await mockLineaRollup.getAddress();
-
-      await setWithdrawalReserveBalance(yieldManager, 0n);
-      await yieldManager.setYieldProviderCurrentNegativeYield(mockYieldProviderAddress, initialNegativeYield);
-      const reserveBalanceBefore = await ethers.provider.getBalance(l1MessageService);
-
-      await expect(
-        yieldManager.connect(nativeYieldOperator).donate(mockYieldProviderAddress, { value: donationAmount }),
-      )
-        .to.emit(yieldManager, "DonationProcessed")
-        .withArgs(mockYieldProviderAddress, donationAmount);
-
-      const reserveBalanceAfter = await ethers.provider.getBalance(l1MessageService);
-      const negativeYieldAfter = await yieldManager.getYieldProviderCurrentNegativeYield(mockYieldProviderAddress);
-
-      expect(reserveBalanceAfter).to.equal(reserveBalanceBefore + donationAmount);
-      expect(negativeYieldAfter).to.equal(0n);
     });
   });
 });

@@ -766,7 +766,7 @@ contract YieldManager is
 
     // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
-    if (yieldManagerBalance > targetDeficit) {
+    if (yieldManagerBalance >= targetDeficit) {
       _fundReserve(targetDeficit);
       emit WithdrawalReserveReplenished(_yieldProvider, targetDeficit, targetDeficit, targetDeficit, 0);
       return;
@@ -774,6 +774,7 @@ contract YieldManager is
 
     // Insufficient balance on YieldManager, must withdraw from YieldProvider
     uint256 yieldProviderBalance = withdrawableValue(_yieldProvider);
+    if (yieldProviderBalance == 0 && yieldManagerBalance == 0) revert NoAvailableFundsToReplenishWithdrawalReserve();
     uint256 withdrawAmount = Math256.min(yieldProviderBalance, targetDeficit - yieldManagerBalance);
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawAmount);
     _fundReserve(yieldManagerBalance + withdrawAmount);
@@ -881,7 +882,10 @@ contract YieldManager is
       revert LSTWithdrawalNotAllowed();
     }
     // Enshrine assumption that LST withdrawals are an advance on user withdrawal of funds already on a YieldProvider.
-    if (_amount > _getYieldProviderStorage(_yieldProvider).userFunds) {
+    if (
+      _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal + _amount >
+      _getYieldProviderStorage(_yieldProvider).userFunds
+    ) {
       revert LSTWithdrawalExceedsYieldProviderFunds();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
@@ -960,36 +964,6 @@ contract YieldManager is
       $$.isOssified = true;
     }
     emit YieldProviderOssificationProcessed(_yieldProvider, isOssificationComplete);
-  }
-
-  /**
-   * @notice Donate ETH that offsets a specified yield provider's negative yield.
-   * @dev Donations are forwarded to the withdrawal reserve.
-   * @dev The donate() function is located on the YieldManager because it is otherwise tricky to track donations
-   *      to offset negative yield for a specific yield provider.
-   * @dev We decrement currentNegativeYield here, but do not count any excess as yield. Reported yield is intended to
-   *      remain staked in the YieldProvider and be distributed as L2 ETH (Backed by newly earned yield). So if donations
-   *      are routed to the L1MessageService, it is not reportable yield.
-   * @dev `pendingPermissionlessUnstake` is greedily decremented against incoming donations.
-   * @param _yieldProvider The yield provider address.
-   */
-  function donate(
-    address _yieldProvider
-  )
-    external
-    payable
-    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_DONATION)
-    onlyKnownYieldProvider(_yieldProvider)
-  {
-    // decrement negative yield against donation
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    uint256 currentNegativeYield = $$.currentNegativeYield;
-    if (currentNegativeYield > 0) {
-      $$.currentNegativeYield -= Math256.min(currentNegativeYield, msg.value);
-    }
-    _decrementPendingPermissionlessUnstake(msg.value);
-    _fundReserve(msg.value);
-    emit DonationProcessed(_yieldProvider, msg.value);
   }
 
   /**

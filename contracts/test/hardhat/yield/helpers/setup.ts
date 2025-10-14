@@ -8,7 +8,7 @@ import {
   TestYieldManager,
 } from "contracts/typechain-types";
 import { ethers } from "hardhat";
-import { ADDRESS_ZERO, ONE_ETHER } from "../../common/constants";
+import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE } from "../../common/constants";
 import { ClaimMessageWithProofParams } from "./types";
 import { randomBytes32 } from "./proof";
 import { encodeSendMessage } from "../../common/helpers";
@@ -47,6 +47,11 @@ export const fundYieldProviderForWithdrawal = async (
 export const incrementBalance = async (address: string, increment: bigint) => {
   const curBalance = await ethers.provider.getBalance(address);
   await ethers.provider.send("hardhat_setBalance", [address, ethers.toBeHex(curBalance + increment)]);
+};
+
+export const decrementBalance = async (address: string, decrement: bigint) => {
+  const curBalance = await ethers.provider.getBalance(address);
+  await ethers.provider.send("hardhat_setBalance", [address, ethers.toBeHex(curBalance - decrement)]);
 };
 
 export const setBalance = async (address: string, balance: bigint) => {
@@ -133,7 +138,7 @@ export const setupLineaRollupMessageMerkleTree = async (
 
   const claimParams: ClaimMessageWithProofParams = {
     proof,
-    messageNumber: 1n,
+    messageNumber: messageNumber,
     leafIndex,
     from: from,
     to: to,
@@ -143,6 +148,9 @@ export const setupLineaRollupMessageMerkleTree = async (
     merkleRoot: root,
     data: data,
   };
+
+  // Send empty message to increment the messageNumber
+  await lineaRollup.sendMessage(ethers.Wallet.createRandom().address, ZERO_VALUE, EMPTY_CALLDATA);
 
   return claimParams;
 };
