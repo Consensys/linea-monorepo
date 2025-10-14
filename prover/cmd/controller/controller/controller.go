@@ -27,9 +27,18 @@ const (
 
 func runController(ctx context.Context, cfg *config.Config) {
 	var (
-		cLog          = cfg.Logger().WithField("component", "main-loop")
-		fsWatcher     = NewFsWatcher(cfg)
-		executor      = NewExecutor(cfg)
+		cLog      = cfg.Logger().WithField("component", "main-loop")
+		fsWatcher = NewFsWatcher(cfg)
+		executor  = NewExecutor(cfg)
+
+		signalChan = make(chan os.Signal, 2)
+
+		// Default shutdown type
+		shutdownType = noShutdown
+
+		// Track currently active job for safe requeue
+		activeJob *Job
+
 		numRetrySoFar int
 	)
 
@@ -42,17 +51,11 @@ func runController(ctx context.Context, cfg *config.Config) {
 		)
 	}
 
-	signalChan := make(chan os.Signal, 2)
 	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGUSR1)
 	defer signal.Stop(signalChan)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
-	shutdownType := noShutdown
-
-	// Track currently active job for safe requeue
-	var activeJob *Job
 
 	go func() {
 		for sig := range signalChan {
@@ -84,7 +87,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 		<-ctx.Done()
 		switch shutdownType {
 		case spotReclaim:
-			cLog.Infof("Received spot reclaim (SIGUSR1). Will abort and requeue ASAP (max %s)...", config.SpotInstanceReclaimTime)
+			cLog.Infof("Received spot reclaim (SIGUSR1). Will abort ASAP (max %s)...", config.SpotInstanceReclaimTime)
 		case gracefulShutdown:
 			cLog.Infof("Received SIGTERM. Finishing in-flight proof (if any) and then shutting down gracefully (max %s)...", cfg.Controller.TerminationGracePeriod)
 		default:
