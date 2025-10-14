@@ -225,14 +225,13 @@ func runProverGLs(
 	t *testing.T,
 	distWizard *distributed.DistributedWizard,
 	witnessGLs []*distributed.ModuleWitnessGL,
-) (proofs []distributed.SegmentProof, lppCommitments []field.Element) {
+) (proofs []distributed.SegmentProof) {
 
 	var (
 		compiledGLs = distWizard.CompiledGLs
 	)
 
 	proofs = make([]distributed.SegmentProof, len(witnessGLs))
-	lppCommitments = make([]field.Element, len(witnessGLs))
 
 	for i := range witnessGLs {
 
@@ -257,10 +256,9 @@ func runProverGLs(
 		proofs[i] = moduleGL.ProveSegment(witnessGL)
 		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
 
-		lppCommitments[i] = proofs[i].LppCommitment
 	}
 
-	return proofs, lppCommitments
+	return proofs
 }
 
 // runProverLPPs runs a prover for a LPP segment. It takes in a DistributedWizard

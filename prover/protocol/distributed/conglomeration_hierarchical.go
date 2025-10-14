@@ -464,7 +464,7 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 	var (
 		err          error
 		collectedPIs = [aggregationArity]LimitlessPublicInput[field.Element]{}
-		topPIs       = c.collectAllPublicInputs(run)
+		topPIs       = collectAllPublicInputs(run)
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
@@ -875,12 +875,26 @@ func (c ModuleConglo) collectAllPublicInputsOfInstance(run wizard.Runtime, insta
 
 // collectAllPublicInputs returns a structured object representing the public
 // inputs of all the instances.
-func (c ModuleConglo) collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Element] {
+func collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Element] {
+
+	// This function auto-detects the number of module. It counts the number of
+	// public inputs with the [targetNbSegmentPublicInputBase] prefix in their
+	// name.
+	var (
+		moduleNumber int
+		pubs         = run.GetSpec().PublicInputs
+	)
+
+	for _, pub := range pubs {
+		if strings.Contains(pub.Name, targetNbSegmentPublicInputBase) {
+			moduleNumber++
+		}
+	}
 
 	res := LimitlessPublicInput[field.Element]{
-		TargetNbSegments:             GetPublicInputList(run, targetNbSegmentPublicInputBase, c.ModuleNumber),
-		SegmentCountGL:               GetPublicInputList(run, segmentCountGLPublicInputBase, c.ModuleNumber),
-		SegmentCountLPP:              GetPublicInputList(run, segmentCountLPPPublicInputBase, c.ModuleNumber),
+		TargetNbSegments:             GetPublicInputList(run, targetNbSegmentPublicInputBase, moduleNumber),
+		SegmentCountGL:               GetPublicInputList(run, segmentCountGLPublicInputBase, moduleNumber),
+		SegmentCountLPP:              GetPublicInputList(run, segmentCountLPPPublicInputBase, moduleNumber),
 		GeneralMultiSetHash:          GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
 		SharedRandomnessMultiSetHash: GetPublicInputList(run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
 		LogDerivativeSum:             run.GetPublicInput(LogDerivativeSumPublicInput),
@@ -890,7 +904,7 @@ func (c ModuleConglo) collectAllPublicInputs(run wizard.Runtime) LimitlessPublic
 		VKeyMerkleRoot:               run.GetPublicInput(verifyingKeyMerkleRootPublicInput),
 	}
 
-	for _, pi := range scanFunctionalInputs(c.Recursion.InputCompiledIOP) {
+	for _, pi := range scanFunctionalInputs(run.GetSpec()) {
 		res.Functionals = append(res.Functionals, run.GetPublicInput(pi.Name))
 	}
 
@@ -1124,4 +1138,56 @@ func cmpWizardIOP(c1, c2 *wizard.CompiledIOP) (diff1, diff2 []string) {
 // dumpWizardIOP dumps a compiled IOP to a file.
 func dumpWizardIOP(c *wizard.CompiledIOP, name string) {
 	logdata.GenCSV(files.MustOverwrite(name), logdata.IncludeAllFilter)(c)
+}
+
+// SanityCheckPublicInputsForConglo checks that a list of runtime is compatible
+// with each other. The function will perform the same checks that the
+// conglomerator but can be used on debugging-circuits.
+func SanityCheckPublicInputsForConglo(wiop *wizard.CompiledIOP, proofs SegmentProof) error {
+
+	var (
+		mainErr error
+		run, _  = wizard.VerifyWithRuntime(wiop, proofs.Witness.Proof)
+		pi      = collectAllPublicInputs(run)
+	)
+
+	if !pi.GrandProduct.IsOne() {
+		mainErr = errors.Join(mainErr, errors.New("grand product is not 1"))
+	}
+
+	if !pi.LogDerivativeSum.IsZero() {
+		mainErr = errors.Join(mainErr, errors.New("log derivative sum is not 0"))
+	}
+
+	if !pi.HornerSum.IsZero() {
+		mainErr = errors.Join(mainErr, errors.New("horner sum is not 0"))
+	}
+
+	for i := range pi.GeneralMultiSetHash {
+		if !pi.GeneralMultiSetHash[i].IsZero() {
+			mainErr = errors.Join(mainErr, errors.New("general multi set hash is not 0"))
+			break
+		}
+	}
+
+	for i := range pi.TargetNbSegments {
+		if !pi.TargetNbSegments[i].Equal(&pi.SegmentCountGL[i]) {
+			mainErr = errors.Join(mainErr, errors.New("target nb segments is not equal to segment count gl"))
+		}
+
+		if !pi.TargetNbSegments[i].Equal(&pi.SegmentCountLPP[i]) {
+			mainErr = errors.Join(mainErr, errors.New("target nb segments is not equal to segment count lpp"))
+		}
+	}
+
+	sharedRandSum := mimc.HashVec(pi.SharedRandomnessMultiSetHash)
+	if sharedRandSum != pi.SharedRandomness {
+		mainErr = errors.Join(mainErr, errors.New("shared randomness sum is not equal to shared randomness multi set hash"))
+	}
+
+	if mainErr != nil {
+		fmt.Printf("conglomeration failed: err=%v\n", mainErr)
+	}
+
+	return mainErr
 }

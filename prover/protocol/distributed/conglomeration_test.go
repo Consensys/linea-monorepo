@@ -35,9 +35,9 @@ func TestConglomerationBasic(t *testing.T) {
 			distWizard.BlueprintLPPs,
 			distWizard.VerificationKeyMerkleTree.GetRoot(),
 		)
-		glProofs, lppCommitments = runProverGLs(t, distWizard, witnessGLs)
-		sharedRandomness         = distributed.ComputeSharedRandomness(lppCommitments)
-		runLPPs                  = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
+		glProofs         = runProverGLs(t, distWizard, witnessGLs)
+		sharedRandomness = distributed.GetSharedRandomnessFromSegmentProofs(glProofs)
+		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
 	)
 
 	runConglomerationProver(

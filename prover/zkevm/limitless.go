@@ -22,20 +22,21 @@ import (
 )
 
 var (
-	bootstrapperFile       = "dw-bootstrapper.bin"
-	discFile               = "disc.bin"
-	zkevmFile              = "zkevm-wiop.bin"
-	compiledDefaultFile    = "dw-compiled-default.bin"
-	blueprintGLPrefix      = "dw-blueprint-gl"
-	blueprintLppPrefix     = "dw-blueprint-lpp"
-	blueprintGLTemplate    = blueprintGLPrefix + "-%d.bin"
-	blueprintLppTemplate   = blueprintLppPrefix + "-%d.bin"
-	compileLppTemplate     = "dw-compiled-lpp-%v.bin"
-	compileGlTemplate      = "dw-compiled-gl-%v.bin"
-	debugLppTemplate       = "dw-debug-lpp-%v.bin"
-	debugGlTemplate        = "dw-debug-gl-%v.bin"
-	conglomerationFile     = "dw-compiled-conglomeration.bin"
-	executionLimitlessPath = "execution-limitless"
+	bootstrapperFile          = "dw-bootstrapper.bin"
+	discFile                  = "disc.bin"
+	zkevmFile                 = "zkevm-wiop.bin"
+	compiledDefaultFile       = "dw-compiled-default.bin"
+	blueprintGLPrefix         = "dw-blueprint-gl"
+	blueprintLppPrefix        = "dw-blueprint-lpp"
+	blueprintGLTemplate       = blueprintGLPrefix + "-%d.bin"
+	blueprintLppTemplate      = blueprintLppPrefix + "-%d.bin"
+	compileLppTemplate        = "dw-compiled-lpp-%v.bin"
+	compileGlTemplate         = "dw-compiled-gl-%v.bin"
+	debugLppTemplate          = "dw-debug-lpp-%v.bin"
+	debugGlTemplate           = "dw-debug-gl-%v.bin"
+	conglomerationFile        = "dw-compiled-conglomeration.bin"
+	executionLimitlessPath    = "execution-limitless"
+	verificationKeyMerkleTree = "verification-key-merkle-tree.bin"
 )
 
 // GetTestZkEVM returns a ZkEVM object configured for testing.
@@ -175,10 +176,7 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	)
 
 	// These are the slow and expensive operations.
-	panic("uncomment the limitless")
-	// dw.CompileSegments().Conglomerate(100)
-
-	// decorateWithPublicInputs(dw.CompiledConglomeration)
+	dw.CompileSegments().Conglomerate()
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
@@ -376,15 +374,6 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 		runtimes = append(runtimes, rt)
 	}
-
-	logrus.Infof("Running SanityCheckPublicInputsForConglo")
-
-	panic("uncomment me")
-	// if err := distributed.SanityCheckPublicInputsForConglo(runtimes); err != nil {
-	// 	utils.Panic("Sanity-check for conglo failed: %v", err)
-	// }
-
-	logrus.Infof("Done running SanityCheckPublicInputsForConglo")
 }
 
 // runBootstrapperWithRescaling runs the bootstrapper and returns the resulting
@@ -489,6 +478,14 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Name:   bootstrapperFile,
 			Object: lz.DistWizard.Bootstrapper,
 		},
+		{
+			Name:   conglomerationFile,
+			Object: *lz.DistWizard.CompiledConglomeration,
+		},
+		{
+			Name:   verificationKeyMerkleTree,
+			Object: lz.DistWizard.VerificationKeyMerkleTree,
+		},
 	}
 
 	for _, modGl := range lz.DistWizard.CompiledGLs {
@@ -512,42 +509,35 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 		})
 	}
 
-	panic("not implemented")
-	// for _, modLpp := range lz.DistWizard.CompiledLPPs {
-	// 	assets = append(assets, asset{
-	// 		Name:   fmt.Sprintf(compileLppTemplate, modLpp.ModuleLPP.ModuleNames()),
-	// 		Object: *modLpp,
-	// 	})
-	// }
+	for _, modLpp := range lz.DistWizard.CompiledLPPs {
+		assets = append(assets, asset{
+			Name:   fmt.Sprintf(compileLppTemplate, modLpp.ModuleLPP.ModuleName()),
+			Object: *modLpp,
+		})
+	}
 
-	// for i, blueprintLPP := range lz.DistWizard.BlueprintLPPs {
-	// 	assets = append(assets, asset{
-	// 		Name:   fmt.Sprintf(blueprintLppTemplate, i),
-	// 		Object: blueprintLPP,
-	// 	})
-	// }
+	for i, blueprintLPP := range lz.DistWizard.BlueprintLPPs {
+		assets = append(assets, asset{
+			Name:   fmt.Sprintf(blueprintLppTemplate, i),
+			Object: blueprintLPP,
+		})
+	}
 
-	// for _, debugLPP := range lz.DistWizard.DebugLPPs {
-	// 	assets = append(assets, asset{
-	// 		Name:   fmt.Sprintf(debugLppTemplate, debugLPP.ModuleNames()),
-	// 		Object: debugLPP,
-	// 	})
-	// }
+	for _, debugLPP := range lz.DistWizard.DebugLPPs {
+		assets = append(assets, asset{
+			Name:   fmt.Sprintf(debugLppTemplate, debugLPP.ModuleName()),
+			Object: debugLPP,
+		})
+	}
 
-	// assets = append(assets, struct {
-	// 	Name   string
-	// 	Object any
-	// }{
-	// 	Name:   conglomerationFile,
-	// 	Object: *lz.DistWizard.CompiledConglomeration,
-	// })
+	assets = append(assets)
 
-	// for _, asset := range assets {
-	// 	logrus.Infof("writing %s to disk", asset.Name)
-	// 	if err := serialization.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
-	// 		return err
-	// 	}
-	// }
+	for _, asset := range assets {
+		logrus.Infof("writing %s to disk", asset.Name)
+		if err := serialization.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
+			return err
+		}
+	}
 
 	logrus.Info("limitless prover assets written to disk")
 	return nil
@@ -813,11 +803,3 @@ func LogPublicInputs(vr wizard.Runtime) {
 		fmt.Printf("[public input] %s: %v\n", name, x)
 	}
 }
-
-// // decorateWithPublicInputs decorates the [LimitlessZkEVM] with the public inputs from
-// // the initial zkevm.
-// func decorateWithPublicInputs(cong *distributed.ConglomeratorCompilation) {
-// 	for _, name := range publicInputNames {
-// 		cong.BubbleUpPublicInput(name)
-// 	}
-// }

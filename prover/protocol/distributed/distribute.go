@@ -214,30 +214,28 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	return dist
 }
 
-// ComputeSharedRandomness returns the shared randomness used by the protocol
-// to generate the LPP proofs. The LPP commitments are supposed to be the
-// one extractable from the [recursion.Witness] of the LPPs.
-//
-// The result of this function is to be used as the shared randomness for
-// the LPP provers.
-func ComputeSharedRandomness(lppCommitments []field.Element) field.Element {
-	return cmimc.HashVec(lppCommitments)
-}
-
 // GetSharedRandomnessFromRuntime returns the shared randomness used by the protocol
 // to generate the LPP proofs. The LPP commitments are supposed to be the
 // one extractable from the [recursion.Witness] of the LPPs.
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
-func GetSharedRandomnessFromSegmentProofs(comp []*wizard.CompiledIOP, gLWitnesses []SegmentProof) field.Element {
-	lppCommitments := []field.Element{}
+func GetSharedRandomnessFromSegmentProofs(gLWitnesses []SegmentProof) field.Element {
+
+	mset := cmimc.MSetHash{}
+
 	for i := range gLWitnesses {
-		name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
-		lpp := gLWitnesses[i].Witness.Proof.GetPublicInput(comp[i], preRecursionPrefix+name)
-		lppCommitments = append(lppCommitments, lpp)
+
+		var (
+			moduleIndex, _  = new(field.Element).SetInterface(gLWitnesses[i].ModuleIndex)
+			segmentIndex, _ = new(field.Element).SetInterface(gLWitnesses[i].SegmentIndex)
+			lppCommitment   = gLWitnesses[i].LppCommitment
+		)
+
+		mset.Insert(*moduleIndex, *segmentIndex, lppCommitment)
 	}
-	return ComputeSharedRandomness(lppCommitments)
+
+	return cmimc.HashVec(mset[:])
 }
 
 // GetLppCommitmentFromRuntime returns the LPP commitment from the runtime
