@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
@@ -74,11 +75,16 @@ type DummyAlignmentCircuitInstance struct {
 }
 
 func (c *DummyAlignmentCircuit) Define(api frontend.API) error {
-	var counter zk.WrappedVariable = 1
+	counter := zk.ValueOf(1)
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		return err
+	}
+	wOne := zk.ValueOf(1)
 	for i := range c.Instances {
 		for j := range c.Instances[i].Vars {
-			api.AssertIsEqual(c.Instances[i].Vars[j], counter)
-			counter = api.Add(counter, 1)
+			apiGen.AssertIsEqual(&c.Instances[i].Vars[j], &counter)
+			counter = *apiGen.Add(&counter, &wOne)
 		}
 	}
 	return nil
