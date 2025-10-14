@@ -76,9 +76,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 		<-ctx.Done()
 		switch shutdownType {
 		case spotReclaim:
-			cLog.Infoln("Received spot reclaim (SIGUSR1). Will abort and requeue ASAP (max 2min)...")
+			cLog.Infof("Received spot reclaim (SIGUSR1). Will abort and requeue ASAP (max %s)...", config.SpotInstanceReclaimTime)
 		case gracefulShutdown:
-			cLog.Infoln("Received SIGTERM. Finishing in-flight proof (if any) then shutting down gracefully (max 20min)...")
+			cLog.Infof("Received SIGTERM. Finishing in-flight proof (if any) and then shutting down gracefully (max %s)...", cfg.Controller.TerminationGracePeriod)
 		default:
 			cLog.Infoln("Received cancellation request.")
 		}
