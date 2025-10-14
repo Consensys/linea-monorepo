@@ -29,7 +29,7 @@ func (w *WrappedVariable) AsEmulated() *emulated.Element[emulated.KoalaBear] {
 	return &w.EV
 }
 
-func WrappFrontendVariable(v frontend.Variable) WrappedVariable {
+func WrapFrontendVariable(v frontend.Variable) WrappedVariable {
 	var res WrappedVariable
 	res.V = v
 	res.EV = emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}
@@ -79,6 +79,13 @@ func (g *GenericApi) Type() VType {
 		return Native
 	}
 	return Emulated
+}
+
+func (g *GenericApi) GetFrontendVariable(v WrappedVariable) frontend.Variable {
+	if g.emulatedApi == nil {
+		return v.V
+	}
+	return v.EV.Limbs[0]
 }
 
 func (g *GenericApi) Mul(a, b *WrappedVariable) *WrappedVariable {
