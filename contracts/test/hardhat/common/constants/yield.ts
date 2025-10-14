@@ -1,3 +1,4 @@
+import { parseUnits } from "ethers";
 import { ethers } from "hardhat";
 
 export const MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS = 2000;
@@ -27,6 +28,7 @@ export const SHARD_COMMITTEE_PERIOD = 256n;
 export const SLOTS_PER_EPOCH = 32n;
 
 export const THIRTY_TWO_ETH_IN_GWEI = 32000000000n;
+export const MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI = parseUnits("2048", "gwei");
 
 export const VALIDATOR_WITNESS_TYPE =
   "tuple(bytes32[] proof, bytes pubkey, uint256 validatorIndex, uint64 effectiveBalance, uint64 childBlockTimestamp, uint64 slot, uint64 proposerIndex, uint64 activationEpoch, uint64 activationEligibilityEpoch)";

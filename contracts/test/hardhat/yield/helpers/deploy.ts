@@ -35,12 +35,14 @@ import {
   TestLidoStVaultYieldProvider,
   TestCLProofVerifier,
   SSZMerkleTree,
+  TestLidoStVaultYieldProviderFactory,
 } from "contracts/typechain-types";
 import { YieldManagerInitializationData, YieldProviderRegistration } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
 import { deployLineaRollupFixture, reinitializeLineaRollupFixtureV7 } from "../../rollup/helpers";
 import { LineaRollupV7ReinitializationData } from "../../rollup/helpers/types";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 async function getYieldManagerRoleAddressesFixture(): Promise<
   {
@@ -379,6 +381,10 @@ export async function deployYieldManagerIntegrationTestFixture() {
   };
   await reinitializeLineaRollupFixtureV7(lineaRollup, reinitData);
 
+  // Deploy EIP-4788 Beacon Proof utils
+  const sszMerkleTree = await deploySSZMerkleTree();
+  const verifier = await deployTestCLProofVerifier();
+
   return {
     lineaRollup,
     yieldManager,
@@ -389,5 +395,45 @@ export async function deployYieldManagerIntegrationTestFixture() {
     mockSTETH,
     mockVaultHub,
     mockStakingVault,
+    lidoStVaultYieldProviderFactory,
+    sszMerkleTree,
+    verifier,
+  };
+}
+
+// Not for use in loadFixture, to add additional YieldProviders
+export async function deployAndAddAdditionalLidoStVaultYieldProvider(
+  factory: TestLidoStVaultYieldProviderFactory,
+  yieldManager: TestYieldManager,
+  securityCouncil: SignerWithAddress,
+) {
+  // Create YieldProvider
+  const yieldProviderAddress = await factory.createTestLidoStVaultYieldProvider.staticCall();
+  await factory.createTestLidoStVaultYieldProvider();
+  const yieldProvider: TestLidoStVaultYieldProvider = (
+    await ethers.getContractFactory("TestLidoStVaultYieldProvider")
+  ).attach(yieldProviderAddress);
+
+  // Add YieldProvider
+  const mockDashboard = await deployMockDashboard();
+  const mockStakingVault = await deployMockStakingVault();
+  await mockDashboard.setStakingVaultReturn(await mockStakingVault.getAddress());
+  const mockDashboardAddress = await mockDashboard.getAddress();
+  const mockStakingVaultAddress = await mockStakingVault.getAddress();
+
+  const registration: YieldProviderRegistration = {
+    yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
+    primaryEntrypoint: mockDashboardAddress,
+    ossifiedEntrypoint: mockStakingVaultAddress,
+    receiveCaller: mockStakingVaultAddress,
+  };
+
+  await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
+  return {
+    mockDashboard,
+    mockStakingVault,
+    mockStakingVaultAddress,
+    yieldProvider,
+    yieldProviderAddress,
   };
 }

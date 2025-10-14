@@ -64,6 +64,12 @@ export const setWithdrawalReserveToMinimum = async (testYieldManager: TestYieldM
   return minimumReserve;
 };
 
+export const setWithdrawalReserveToTarget = async (testYieldManager: TestYieldManager) => {
+  const targetReserve = await testYieldManager.getEffectiveTargetWithdrawalReserve();
+  await setWithdrawalReserveBalance(testYieldManager, targetReserve);
+  return targetReserve;
+};
+
 export const ossifyYieldProvider = async (
   yieldManager: TestYieldManager,
   yieldProviderAddress: string,

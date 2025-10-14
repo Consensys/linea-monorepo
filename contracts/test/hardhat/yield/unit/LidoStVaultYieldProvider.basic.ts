@@ -245,7 +245,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
       await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
     });
-    it("Should successfully withdraw when ossifed", async () => {
+    it("Should successfully withdraw when ossified", async () => {
       await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
       const withdrawAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);

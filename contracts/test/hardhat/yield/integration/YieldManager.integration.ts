@@ -2,48 +2,77 @@
 import { loadFixture, setBalance } from "@nomicfoundation/hardhat-network-helpers";
 import { encodeSendMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
+  deployAndAddAdditionalLidoStVaultYieldProvider,
   deployYieldManagerIntegrationTestFixture,
   fundLidoStVaultYieldProvider,
   incrementBalance,
   setupLineaRollupMessageMerkleTree,
   setWithdrawalReserveToMinimum,
+  setWithdrawalReserveToTarget,
 } from "../helpers";
 import {
   TestYieldManager,
   TestLineaRollup,
   TestLidoStVaultYieldProvider,
   MockDashboard,
+  MockStakingVault,
+  TestLidoStVaultYieldProviderFactory,
+  SSZMerkleTree,
+  TestCLProofVerifier,
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE } from "../../common/constants";
-// import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
+import {
+  EMPTY_CALLDATA,
+  MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+  ONE_ETHER,
+  ONE_GWEI,
+  VALIDATOR_WITNESS_TYPE,
+  ZERO_VALUE,
+} from "../../common/constants";
+import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {
   let nativeYieldOperator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
   let l2YieldRecipient: SignerWithAddress;
+  let securityCouncil: SignerWithAddress;
 
   let lineaRollup: TestLineaRollup;
   let yieldManager: TestYieldManager;
   let yieldProvider: TestLidoStVaultYieldProvider;
   let mockDashboard: MockDashboard;
+  let mockStakingVault: MockStakingVault;
+  let lidoStVaultYieldProviderFactory: TestLidoStVaultYieldProviderFactory;
+  let sszMerkleTree: SSZMerkleTree;
+  let verifier: TestCLProofVerifier;
 
   let l1MessageServiceAddress: string;
   let yieldManagerAddress: string;
   let yieldProviderAddress: string;
+  let mockStakingVaultAddress: string;
 
   before(async () => {
-    ({ nativeYieldOperator, nonAuthorizedAccount, l2YieldRecipient } = await loadFixture(getAccountsFixture));
+    ({ nativeYieldOperator, nonAuthorizedAccount, l2YieldRecipient, securityCouncil } =
+      await loadFixture(getAccountsFixture));
   });
 
   beforeEach(async () => {
-    ({ lineaRollup, yieldProvider, yieldProviderAddress, yieldManager, mockDashboard } = await loadFixture(
-      deployYieldManagerIntegrationTestFixture,
-    ));
+    ({
+      lineaRollup,
+      yieldProvider,
+      yieldProviderAddress,
+      yieldManager,
+      mockDashboard,
+      mockStakingVault,
+      lidoStVaultYieldProviderFactory,
+      sszMerkleTree,
+      verifier,
+    } = await loadFixture(deployYieldManagerIntegrationTestFixture));
     l1MessageServiceAddress = await lineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
+    mockStakingVaultAddress = await mockStakingVault.getAddress();
   });
 
   describe("Donations", () => {
@@ -218,6 +247,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         EMPTY_CALLDATA,
       );
       const messageHash = ethers.keccak256(expectedBytes);
+      const negativeYieldBefore = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
 
       // Act
       const call = await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
@@ -234,6 +264,113 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
           EMPTY_CALLDATA,
           messageHash,
         );
+
+      const negativeYieldAfter = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
+      expect(negativeYieldAfter).eq(negativeYieldBefore + initialFundAmount - yieldEarned);
+    });
+  });
+
+  describe("Migrating yield providers", () => {
+    it("Cannot remove a yield provider with funds", async () => {
+      // Arrange - fund a single vault
+      const initialFundAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      // Arrange - single positive vault report
+      const yieldEarned = ONE_ETHER;
+      await mockDashboard.setTotalValueReturn(initialFundAmount + yieldEarned);
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+
+      // Act
+      const call = yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+
+      // Assert
+      await expectRevertWithCustomError(yieldManager, call, "YieldProviderHasRemainingFunds");
+    });
+    it("Can migrate funds successfully to a new YieldProvider", async () => {
+      // Arrange - fund a single vault
+      const initialFundAmount = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      // Arrange - single positive vault report
+      const yieldEarned = ONE_ETHER;
+      await mockDashboard.setTotalValueReturn(initialFundAmount + yieldEarned);
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+      // Arrange - withdraw vault funds
+      await incrementBalance(await mockStakingVault.getAddress(), ONE_ETHER);
+      await setWithdrawalReserveToTarget(yieldManager);
+      await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, ONE_ETHER * 2n);
+      // Arrange - Remove yield provider
+      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+      // Arrange - Add new yield provider
+      const { yieldProviderAddress: yieldProvider2Address } = await deployAndAddAdditionalLidoStVaultYieldProvider(
+        lidoStVaultYieldProviderFactory,
+        yieldManager,
+        securityCouncil,
+      );
+
+      // Act - Move funds to new YieldProvider
+      await yieldManager.connect(nativeYieldOperator).fundYieldProvider(yieldProvider2Address, ONE_ETHER);
+    });
+  });
+
+  describe("Multiple yield providers", () => {
+    it("Unstake permissionless cap should be shared globally across all yield providers", async () => {
+      // Arrange - add additional yield provider
+      const { yieldProviderAddress: yieldProvider2Address, mockStakingVaultAddress: mockStakingVault2Address } =
+        await deployAndAddAdditionalLidoStVaultYieldProvider(
+          lidoStVaultYieldProviderFactory,
+          yieldManager,
+          securityCouncil,
+        );
+      // Arrange - Prepare first unstakePermissionless
+      const targetDeficit = await yieldManager.getTargetReserveDeficit();
+      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+        sszMerkleTree,
+        verifier,
+        mockStakingVaultAddress,
+        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+      );
+      const refundAddress = nativeYieldOperator.address;
+      const unstakeAmount = [targetDeficit / ONE_GWEI];
+      const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["bytes", "uint64[]", "address"],
+        [validatorWitness.pubkey, unstakeAmount, refundAddress],
+      );
+      const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
+        [VALIDATOR_WITNESS_TYPE],
+        [validatorWitness],
+      );
+      // Arrange - first unstake
+      await yieldManager.unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
+      expect(await yieldManager.pendingPermissionlessUnstake()).eq(targetDeficit);
+
+      // Arrange - Prepare second unstakePermissionless
+      const { validatorWitness: validatorWitness2 } = await generateLidoUnstakePermissionlessWitness(
+        sszMerkleTree,
+        verifier,
+        mockStakingVault2Address,
+        MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+      );
+
+      const secondWithdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
+        ["bytes", "uint64[]", "address"],
+        [validatorWitness2.pubkey, [1n], refundAddress],
+      );
+      const secondWithdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
+        [VALIDATOR_WITNESS_TYPE],
+        [validatorWitness2],
+      );
+
+      // Act
+      const call = yieldManager.unstakePermissionless(
+        yieldProvider2Address,
+        secondWithdrawalParams,
+        secondWithdrawalParamsProof,
+      );
+      await expectRevertWithCustomError(
+        yieldManager,
+        call,
+        "PermissionlessUnstakeRequestPlusAvailableFundsExceedsTargetDeficit",
+      );
     });
   });
 });
