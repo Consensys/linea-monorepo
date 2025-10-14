@@ -20,13 +20,6 @@
       "createemptyblocks": true,
       "period": 1,
       "epoch": 30000
-    },
-    "blobSchedule": {
-      "cancun": {
-        "target": 0,
-        "max": 0,
-        "baseFeeUpdateFraction": 3338477
-      }
     }
   },
   "nonce": "0x0",
