@@ -705,21 +705,30 @@ func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*dis
 	return res, nil
 }
 
-// // LoadConglomeration loads the conglomeration assets from disk
-// func LoadConglomeration(cfg *config.Config) (*distributed.ConglomeratorCompilation, error) {
+// LoadConglomeration loads the conglomeration assets from disk
+func LoadConglomeration(cfg *config.Config) (
+	*distributed.ModuleConglo,
+	*distributed.VerificationKeyMerkleTree,
+	error,
+) {
 
-// 	var (
-// 		assetDir = cfg.PathForSetup(executionLimitlessPath)
-// 		filePath = path.Join(assetDir, conglomerationFile)
-// 		res      = &distributed.ConglomeratorCompilation{}
-// 	)
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, conglomerationFile)
+		conglo   = &distributed.ModuleConglo{}
+		mt       = &distributed.VerificationKeyMerkleTree{}
+	)
 
-// 	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
-// 		return nil, err
-// 	}
+	if err := serialization.LoadFromDisk(filePath, conglo, true); err != nil {
+		return nil, nil, err
+	}
 
-// 	return res, nil
-// }
+	if err := serialization.LoadFromDisk(filePath, mt, true); err != nil {
+		return nil, nil, err
+	}
+
+	return conglo, mt, nil
+}
 
 // GetAffinities returns a list of affinities for the following modules. This
 // affinities regroup how the modules are grouped.

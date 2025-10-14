@@ -158,7 +158,7 @@ func (m *MSetHashGnark) AssertEqual(api frontend.API, other MSetHashGnark) {
 
 // MsetOfSingletonGnark returns the multiset vector of an entry
 func MsetOfSingletonGnark(api frontend.API, msg ...frontend.Variable) MSetHashGnark {
-	m := MSetHashGnark{}
+	m := EmptyMSetHashGnark()
 	m.update(api, false, msg)
 	return m
 }

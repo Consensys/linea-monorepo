@@ -985,7 +985,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	var (
 		targetMSetGeneral          = getPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
 		targetMSetSharedRandomness = getPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
-		lppCommitments             = run.GetPublicInput(api, lppMerkleRootPublicInput)
+		lppCommitments             = run.GetPublicInput(api, lppMerkleRootPublicInput+"_0")
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
 		hasSentOrReceive           = len(modGL.ReceivedValuesGlobalMap) > 0

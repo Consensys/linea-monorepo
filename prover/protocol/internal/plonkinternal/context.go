@@ -154,8 +154,6 @@ func createCtx(
 
 	if activateGnarkProfiling {
 
-		logrus.Infof("Activating gnark profiling")
-
 		fname := name
 
 		if len(ctx.Subscript) > 0 {
@@ -164,6 +162,8 @@ func createCtx(
 
 		// This adds a nice pprof suffix
 		fname = "profiling/" + fname + ".pprof"
+
+		logrus.Infof("Activating gnark profiling, into: %v", fname)
 		pro = profile.Start(profile.WithPath(fname))
 	}
 
