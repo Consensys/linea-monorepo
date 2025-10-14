@@ -14,8 +14,12 @@ bootnodes = []
 refresh-interval = "3s"
 
 [payload-validator]
+# Besu node as execution layer client
 engine-api-endpoint = { endpoint = "http://linea-besu:8550" }  # Match Besu port
 eth-api-endpoint = { endpoint = "http://linea-besu:8545" }
+# Geth node as execution layer client
+# engine-api-endpoint = { endpoint = "http://geth-node:8550", jwt-secret-path = "/opt/consensys/maru/configs/jwt.hex" }
+# eth-api-endpoint = { endpoint = "http://geth-node:8545" }
 
 [observability]
 port = 9090
