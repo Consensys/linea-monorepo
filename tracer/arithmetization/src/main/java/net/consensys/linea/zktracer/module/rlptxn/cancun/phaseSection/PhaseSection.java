@@ -80,7 +80,8 @@ public abstract class PhaseSection {
         .replayProtection(tracedValues.tx().replayProtection())
         .yParity(tracedValues.tx().yParity())
         .requiresEvmExecution(tracedValues.tx().requiresEvmExecution())
-        .isDeployment(tracedValues.tx().isDeployment());
+        .isDeployment(tracedValues.tx().isDeployment())
+        .proverUserTxnNumberMax(tracedValues.userTxnNumberMax());
   }
 
   public void tracePostValues(Trace.Rlptxn trace, GenericTracedValue tracedValues) {

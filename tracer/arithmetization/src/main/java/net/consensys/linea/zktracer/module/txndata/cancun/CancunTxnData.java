@@ -14,11 +14,15 @@
  */
 package net.consensys.linea.zktracer.module.txndata.cancun;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.Getter;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.system.SystemTransactionType;
+import net.consensys.linea.zktracer.module.txndata.BlockSnapshot;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.TxnDataOperation;
 import net.consensys.linea.zktracer.module.txndata.cancun.transactions.CancunUserTransaction;
@@ -29,14 +33,14 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.plugin.data.BlockBody;
+import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class CancunTxnData extends TxnData {
 
+  @Getter private final List<BlockSnapshot> blocks = new ArrayList<>();
   @Getter private ProcessableBlockHeader currentBlockHeader;
-  // Note: this info is used in tracing only, when the block is already built, no need to pop it
-  // when popping a tx
-  private short nbOfUserTxInCurrentBlock = 0;
 
   public CancunTxnData(Hub hub, Wcp wcp, Euc euc) {
     super(hub, wcp, euc);
@@ -47,19 +51,23 @@ public class CancunTxnData extends TxnData {
       WorldView world,
       final ProcessableBlockHeader processableBlockHeader,
       final Address miningBeneficiary) {
+    blocks.add(new BlockSnapshot(processableBlockHeader));
     currentBlockHeader = processableBlockHeader;
-    nbOfUserTxInCurrentBlock = 0;
+  }
+
+  @Override
+  public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
+    blocks.getLast().setNbOfTxsInBlock(blockBody.getTransactions().size());
   }
 
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
     operations().add(new CancunUserTransaction(this, tx));
-    nbOfUserTxInCurrentBlock++;
   }
 
   @Override
   public int numberOfUserTransactionsInCurrentBlock() {
-    return nbOfUserTxInCurrentBlock;
+    return blocks.getLast().getNbOfTxsInBlock();
   }
 
   public void callTxnDataForSystemTransaction(final SystemTransactionType type) {
@@ -72,10 +80,15 @@ public class CancunTxnData extends TxnData {
     }
   }
 
+  public long totalNumberOfUserTransactions() {
+    return operations().stream().filter(op -> op instanceof CancunUserTransaction).count();
+  }
+
   @Override
   public void commit(Trace trace) {
     for (TxnDataOperation tx : operations().getAll()) {
-      tx.traceTransaction(trace.txndata());
+      CancunTxnDataOperation cancunTx = (CancunTxnDataOperation) tx;
+      cancunTx.traceTransaction(trace.txndata(), totalNumberOfUserTransactions());
     }
   }
 }
