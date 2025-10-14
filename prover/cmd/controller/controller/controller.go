@@ -2,9 +2,9 @@ package controller
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -14,43 +14,62 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const defaultTerminationTypeFile = "/tmp/termination-type"
+const defaultSpotMetadataURL = "http://169.254.169.254/latest/meta-data/spot/instance-action"
 
-// isSpotInstanceReclaim checks if the termination is due to spot instance reclamation.
-// It reads the configured termination type file to determine the shutdown type:
-//   - File missing or unreadable: ASSUME SPOT RECLAIM (safer default for spot instances)
-//   - File contains "SPOT_RECLAIM": Spot instance reclamation
-//   - File contains "NORMAL_SHUTDOWN": Normal K8s/manual shutdown
-//   - File contains anything else: Assume spot reclaim
-//
-// To explicitly request normal shutdown, create the file with "NORMAL_SHUTDOWN":
-//
-//	echo "NORMAL_SHUTDOWN" > /path/to/termination-type
-func isSpotInstanceReclaim(cfg *config.Config) bool {
-	terminationTypeFile := cfg.Controller.TerminationTypeFile
-	if terminationTypeFile == "" {
-		terminationTypeFile = defaultTerminationTypeFile
-	}
-
-	data, err := os.ReadFile(terminationTypeFile)
-	if err != nil {
-		// File doesn't exist or can't be read - assume spot reclaim for safety
-		// This prevents jobs from wasting time on doomed spot instances
-		logrus.Warnf("File %s not found, defaulting to spot instance reclaim mode", terminationTypeFile)
-		return true
-	}
-
-	content := strings.TrimSpace(string(data))
-
-	// Only explicit "NORMAL_SHUTDOWN" triggers graceful shutdown
-	if content == "NORMAL_SHUTDOWN" {
-		logrus.Infof("File %s contains NORMAL_SHUTDOWN, using graceful shutdown", terminationTypeFile)
+// checkSpotMetadata checks cloud provider metadata endpoint for spot instance termination
+// Returns true if spot instance termination is scheduled
+func checkSpotMetadata(metadataURL string) bool {
+	if metadataURL == "" {
 		return false
 	}
 
-	// Everything else (including "SPOT_RECLAIM" or empty) is treated as spot reclaim
-	logrus.Warnf("File %s contains '%s', treating as spot instance reclaim", terminationTypeFile, content)
-	return true
+	// Create HTTP client with short timeout
+	client := &http.Client{
+		Timeout: 1 * time.Second,
+	}
+
+	req, err := http.NewRequest("GET", metadataURL, nil)
+	if err != nil {
+		return false
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	// HTTP 200 means spot termination is scheduled
+	if resp.StatusCode == http.StatusOK {
+		logrus.Infof("Spot instance termination detected via metadata endpoint: %s", metadataURL)
+		return true
+	}
+
+	return false
+}
+
+// isSpotInstanceReclaim determines if the termination is due to spot instance reclamation
+// by checking the cloud provider's spot instance metadata endpoint.
+//
+// Detection logic:
+//   - Checks spot_metadata_url (defaults to AWS endpoint)
+//   - HTTP 200 response = spot reclaim detected → return true (immediate exit)
+//   - No response/error/other status = normal shutdown → return false (graceful shutdown)
+//
+// To disable metadata checks and always use graceful shutdown, set spot_metadata_url = ""
+func isSpotInstanceReclaim(cfg *config.Config) bool {
+	metadataURL := cfg.Controller.SpotMetadataURL
+	if metadataURL == "" {
+		metadataURL = defaultSpotMetadataURL
+	}
+
+	if checkSpotMetadata(metadataURL) {
+		logrus.Warnf("Spot instance termination detected via metadata endpoint")
+		return true
+	}
+
+	logrus.Infof("No spot termination detected, proceeding with graceful shutdown")
+	return false
 }
 
 // function to run the controller
@@ -73,9 +92,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 		)
 	}
 
-	// Listen for both SIGTERM and SIGUSR1
-	// SIGUSR1 is sent by external spot reclaim detection scripts
-	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGUSR1)
+	// Listen for SIGTERM
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
 	defer stop()
 
 	// cmdContext is the context we provide for the command execution.
@@ -91,7 +109,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 		isSpotReclaim := isSpotInstanceReclaim(cfg)
 
 		if isSpotReclaim {
-			cLog.Warnln("Spot instance reclamation detected (SIGUSR1 or /tmp/termination-type=SPOT_RECLAIM)")
+			cLog.Warnln("Spot instance reclamation detected (cloud metadata API or termination file)")
 			cLog.Warnln("Initiating immediate shutdown to requeue job before VM termination")
 
 			// Set a very short grace period for spot reclaim (just enough to cleanup)

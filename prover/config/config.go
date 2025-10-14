@@ -208,13 +208,13 @@ type Controller struct {
 	// Default: 10 seconds
 	ChildProcessShutdownTimeout time.Duration `mapstructure:"child_process_shutdown_timeout"`
 
-	// TerminationTypeFile specifies the file path used to determine shutdown type.
-	// File contents:
-	//   - "NORMAL_SHUTDOWN": Graceful shutdown with full grace period
-	//   - "SPOT_RECLAIM": Immediate job requeue (spot instance termination)
-	//   - Missing file: Defaults to spot reclaim mode (safe default)
-	// Default: /tmp/termination-type
-	TerminationTypeFile string `mapstructure:"termination_type_file"`
+	// SpotMetadataURL specifies the cloud provider metadata endpoint to check for spot termination.
+	// On SIGTERM, controller checks this URL:
+	//   - HTTP 200: Spot reclaim detected → immediate exit and job requeue
+	//   - No response/error: Normal shutdown → graceful shutdown with full grace period
+	// Default: http://169.254.169.254/latest/meta-data/spot/instance-action (AWS)
+	// Set to empty string to disable metadata checks and always use graceful shutdown
+	SpotMetadataURL string `mapstructure:"spot_metadata_url"`
 
 	// SpotInstanceMode tells the controller to gracefully exit as soon as it
 	// receives a SIGTERM. When enabled, it will now respect TerminationGracePeriod

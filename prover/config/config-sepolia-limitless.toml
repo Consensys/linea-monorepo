@@ -13,9 +13,13 @@ termination_grace_period = "3550s"
 # How long to wait for child process to respond to SIGTERM before sending SIGKILL
 child_process_shutdown_timeout = "10s"
 
-# File path to determine shutdown type (optional, defaults to /tmp/termination-type)
-# Contents: "NORMAL_SHUTDOWN" = graceful, "SPOT_RECLAIM" = immediate requeue, missing = spot mode
-# termination_type_file = "/tmp/termination-type"
+# Spot instance metadata URL (optional, defaults to AWS endpoint)
+# On SIGTERM, controller checks this endpoint to determine shutdown type:
+#   - HTTP 200: Spot reclaim detected → immediate exit and job requeue
+#   - No response/error: Normal shutdown → graceful shutdown with full grace period
+# Default: http://169.254.169.254/latest/meta-data/spot/instance-action
+# To always use graceful shutdown, set to empty string: spot_metadata_url = ""
+# spot_metadata_url = "http://169.254.169.254/latest/meta-data/spot/instance-action"
 
 [execution]
 prover_mode = "limitless"

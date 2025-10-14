@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
 	"syscall"
@@ -546,4 +548,196 @@ func setupFsTestSpotInstance(t *testing.T) (cfg *config.Config) {
 	}
 
 	return cfg
+}
+
+// TestCheckSpotMetadata tests the checkSpotMetadata function with various scenarios
+func TestCheckSpotMetadata(t *testing.T) {
+	tests := []struct {
+		name           string
+		url            string
+		serverSetup    func() (string, func()) // returns URL and cleanup function
+		expectedResult bool
+		description    string
+	}{
+		{
+			name: "empty_url_returns_false",
+			url:  "",
+			serverSetup: func() (string, func()) {
+				return "", func() {}
+			},
+			expectedResult: false,
+			description:    "Empty URL should return false (graceful shutdown)",
+		},
+		{
+			name: "http_200_returns_true",
+			url:  "placeholder",
+			serverSetup: func() (string, func()) {
+				server := setupTestHTTPServer(t, 200, "spot termination scheduled")
+				return server.URL, server.Close
+			},
+			expectedResult: true,
+			description:    "HTTP 200 indicates spot termination",
+		},
+		{
+			name: "http_404_returns_false",
+			url:  "placeholder",
+			serverSetup: func() (string, func()) {
+				server := setupTestHTTPServer(t, 404, "not found")
+				return server.URL, server.Close
+			},
+			expectedResult: false,
+			description:    "HTTP 404 indicates no spot termination",
+		},
+		{
+			name: "http_500_returns_false",
+			url:  "placeholder",
+			serverSetup: func() (string, func()) {
+				server := setupTestHTTPServer(t, 500, "internal error")
+				return server.URL, server.Close
+			},
+			expectedResult: false,
+			description:    "HTTP 500 should trigger graceful shutdown",
+		},
+		{
+			name: "invalid_url_returns_false",
+			url:  "://invalid-url",
+			serverSetup: func() (string, func()) {
+				return "://invalid-url", func() {}
+			},
+			expectedResult: false,
+			description:    "Invalid URL should return false",
+		},
+		{
+			name: "unreachable_host_returns_false",
+			url:  "http://192.0.2.1:9999", // TEST-NET-1, guaranteed to be unreachable
+			serverSetup: func() (string, func()) {
+				return "http://192.0.2.1:9999", func() {}
+			},
+			expectedResult: false,
+			description:    "Unreachable host should timeout and return false",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url, cleanup := tt.serverSetup()
+			defer cleanup()
+
+			// Use the server URL if placeholder
+			testURL := tt.url
+			if tt.url == "placeholder" {
+				testURL = url
+			}
+
+			result := checkSpotMetadata(testURL)
+			assert.Equal(t, tt.expectedResult, result, tt.description)
+		})
+	}
+}
+
+// TestIsSpotInstanceReclaim tests the isSpotInstanceReclaim function
+func TestIsSpotInstanceReclaim(t *testing.T) {
+	tests := []struct {
+		name           string
+		configURL      string
+		serverSetup    func() (string, func())
+		expectedResult bool
+		description    string
+	}{
+		{
+			name:      "spot_termination_detected",
+			configURL: "placeholder",
+			serverSetup: func() (string, func()) {
+				server := setupTestHTTPServer(t, 200, "terminating")
+				return server.URL, server.Close
+			},
+			expectedResult: true,
+			description:    "Should detect spot termination when metadata returns 200",
+		},
+		{
+			name:      "normal_shutdown_no_spot_termination",
+			configURL: "placeholder",
+			serverSetup: func() (string, func()) {
+				server := setupTestHTTPServer(t, 404, "not found")
+				return server.URL, server.Close
+			},
+			expectedResult: false,
+			description:    "Should use graceful shutdown when metadata returns 404",
+		},
+		{
+			name:      "empty_config_uses_default_url",
+			configURL: "",
+			serverSetup: func() (string, func()) {
+				// When config is empty, it uses the default AWS URL
+				// In real world, this would timeout, returning false
+				return "", func() {}
+			},
+			expectedResult: false,
+			description:    "Empty config should use default AWS URL (which times out in test)",
+		},
+		{
+			name:      "metadata_endpoint_unreachable",
+			configURL: "http://192.0.2.1:9999",
+			serverSetup: func() (string, func()) {
+				return "http://192.0.2.1:9999", func() {}
+			},
+			expectedResult: false,
+			description:    "Unreachable endpoint should default to graceful shutdown",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			serverURL, cleanup := tt.serverSetup()
+			defer cleanup()
+
+			// Use server URL if placeholder
+			configURL := tt.configURL
+			if tt.configURL == "placeholder" {
+				configURL = serverURL
+			}
+
+			cfg := &config.Config{
+				Controller: config.Controller{
+					SpotMetadataURL: configURL,
+				},
+			}
+
+			result := isSpotInstanceReclaim(cfg)
+			assert.Equal(t, tt.expectedResult, result, tt.description)
+		})
+	}
+}
+
+// TestSpotMetadataTimeout tests that the metadata check respects the timeout
+func TestSpotMetadataTimeout(t *testing.T) {
+	// Create a server that delays response beyond timeout
+	server := setupDelayedHTTPServer(t, 2*time.Second, 200)
+	defer server.Close()
+
+	start := time.Now()
+	result := checkSpotMetadata(server.URL)
+	duration := time.Since(start)
+
+	// Should timeout and return false
+	assert.False(t, result, "Should return false on timeout")
+	assert.Less(t, duration, 2*time.Second, "Should timeout before server response")
+	assert.Greater(t, duration, 500*time.Millisecond, "Should wait for at least some time")
+}
+
+// setupTestHTTPServer creates a test HTTP server that returns the specified status code
+func setupTestHTTPServer(t *testing.T, statusCode int, body string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(statusCode)
+		w.Write([]byte(body))
+	}))
+}
+
+// setupDelayedHTTPServer creates a test HTTP server that delays before responding
+func setupDelayedHTTPServer(t *testing.T, delay time.Duration, statusCode int) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(delay)
+		w.WriteHeader(statusCode)
+		w.Write([]byte("delayed response"))
+	}))
 }
