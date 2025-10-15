@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -15,16 +16,16 @@ import (
 // FunctionalPublicInputQSnark the information on this execution that cannot be
 // extracted from other input in the same aggregation batch
 type FunctionalPublicInputQSnark struct {
-	DataChecksum                 frontend.Variable
+	DataChecksum                 zk.WrappedVariable
 	L2MessageHashes              L2MessageHashes
-	InitialBlockTimestamp        frontend.Variable
-	FinalStateRootHash           frontend.Variable
-	FinalBlockNumber             frontend.Variable
-	FinalBlockTimestamp          frontend.Variable
-	InitialRollingHashUpdate     [32]frontend.Variable
-	FirstRollingHashUpdateNumber frontend.Variable
-	FinalRollingHashUpdate       [32]frontend.Variable
-	LastRollingHashUpdateNumber  frontend.Variable
+	InitialBlockTimestamp        zk.WrappedVariable
+	FinalStateRootHash           zk.WrappedVariable
+	FinalBlockNumber             zk.WrappedVariable
+	FinalBlockTimestamp          zk.WrappedVariable
+	InitialRollingHashUpdate     [32]zk.WrappedVariable
+	FirstRollingHashUpdateNumber zk.WrappedVariable
+	FinalRollingHashUpdate       [32]zk.WrappedVariable
+	LastRollingHashUpdateNumber  zk.WrappedVariable
 }
 
 // L2MessageHashes is a wrapper for [Var32Slice] it is use to instantiate the
@@ -68,13 +69,13 @@ func (s *L2MessageHashes) RangeCheck(api frontend.API) {
 // @alex: it would be nice to make that function compatible with the GKR hasher
 // factory though in practice this function will only create 32 calls to the
 // MiMC permutation which makes it a non-issue.
-func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
+func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) zk.WrappedVariable {
 
 	var (
 		// sumIsUsed is used to count the number of non-zero hashes that we
 		// found in s. It is to be tested against s.Length.
-		sumIsUsed = frontend.Variable(0)
-		res       = frontend.Variable(0)
+		sumIsUsed = zk.WrappedVariable(0)
+		res       = zk.WrappedVariable(0)
 	)
 
 	for i := range s.Values {
@@ -103,10 +104,10 @@ func (s *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
 
 type FunctionalPublicInputSnark struct {
 	FunctionalPublicInputQSnark
-	InitialStateRootHash frontend.Variable
-	InitialBlockNumber   frontend.Variable
-	ChainID              frontend.Variable
-	L2MessageServiceAddr frontend.Variable
+	InitialStateRootHash zk.WrappedVariable
+	InitialBlockNumber   zk.WrappedVariable
+	ChainID              zk.WrappedVariable
+	L2MessageServiceAddr zk.WrappedVariable
 }
 
 // RangeCheck checks that values are within range
@@ -130,7 +131,7 @@ func (spiq *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 	spiq.L2MessageHashes.RangeCheck(api)
 }
 
-func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
+func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) zk.WrappedVariable {
 
 	var (
 		finalRollingHash   = internal.CombineBytesIntoElements(api, spi.FinalRollingHashUpdate)
@@ -149,23 +150,23 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.Field
 
 func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error {
 
-	spi.InitialStateRootHash = pi.InitialStateRootHash[:]
-	spi.InitialBlockNumber = pi.InitialBlockNumber
-	spi.ChainID = pi.ChainID
-	spi.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
+	spi.InitialStateRootHash = zk.ValueOf(pi.InitialStateRootHash[:])
+	spi.InitialBlockNumber = zk.ValueOf(pi.InitialBlockNumber)
+	spi.ChainID = zk.ValueOf(pi.ChainID)
+	spi.L2MessageServiceAddr = zk.ValueOf(pi.L2MessageServiceAddr[:])
 
 	return spi.FunctionalPublicInputQSnark.Assign(pi)
 }
 
 func (spiq *FunctionalPublicInputQSnark) Assign(pi *public_input.Execution) error {
 
-	spiq.DataChecksum = pi.DataChecksum[:]
-	spiq.InitialBlockTimestamp = pi.InitialBlockTimestamp
-	spiq.FinalStateRootHash = pi.FinalStateRootHash[:]
-	spiq.FinalBlockNumber = pi.FinalBlockNumber
-	spiq.FinalBlockTimestamp = pi.FinalBlockTimestamp
-	spiq.FirstRollingHashUpdateNumber = pi.FirstRollingHashUpdateNumber
-	spiq.LastRollingHashUpdateNumber = pi.LastRollingHashUpdateNumber
+	spiq.DataChecksum = zk.ValueOf(pi.DataChecksum[:])
+	spiq.InitialBlockTimestamp = zk.ValueOf(pi.InitialBlockTimestamp)
+	spiq.FinalStateRootHash = zk.ValueOf(pi.FinalStateRootHash[:])
+	spiq.FinalBlockNumber = zk.ValueOf(pi.FinalBlockNumber)
+	spiq.FinalBlockTimestamp = zk.ValueOf(pi.FinalBlockTimestamp)
+	spiq.FirstRollingHashUpdateNumber = zk.ValueOf(pi.FirstRollingHashUpdateNumber)
+	spiq.LastRollingHashUpdateNumber = zk.ValueOf(pi.LastRollingHashUpdateNumber)
 
 	utils.Copy(spiq.FinalRollingHashUpdate[:], pi.LastRollingHashUpdate[:])
 	utils.Copy(spiq.InitialRollingHashUpdate[:], pi.InitialRollingHashUpdate[:])
