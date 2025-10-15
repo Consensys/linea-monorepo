@@ -119,7 +119,6 @@ func TestEarlyExitOnSpotInstanceMode(t *testing.T) {
 				template.New("test-cmd").
 					Parse("/bin/sh {{.InFile}}"),
 			),
-			SpotInstanceMode: true,
 		},
 	})
 
