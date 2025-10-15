@@ -6,10 +6,13 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,20 +67,20 @@ var testCasesKey = []struct {
 
 func TestHashModXnMinusOne(t *testing.T) {
 
-	runTest := func(t *testing.T, key *Key, limbs []field.Element) {
+	runTest := func(t *testing.T, key *Key, limbs []fext.Element) {
 
 		var (
 			dualHash       = key.HashModXnMinus1(limbs)
-			recomputedHash = []field.Element{}
+			recomputedHash = []fext.Element{}
 			flattenedKey   = key.FlattenedKey() // accounts for the Montgommery skip
 		)
 
 		for i := range key.GnarkInternal.A {
 			ai := flattenedKey[i*key.OutputSize() : (i+1)*key.OutputSize()]
-			si := make([]field.Element, key.OutputSize())
+			si := make([]fext.Element, key.OutputSize())
 			copy(si, limbs[i*key.OutputSize():])
-			tmp := poly.Mul(ai, si)
-			recomputedHash = poly.Add(recomputedHash, tmp)
+			tmp := polyext.MulByElement(si, ai)
+			recomputedHash = polyext.Add(recomputedHash, tmp)
 		}
 
 		for i := key.OutputSize(); i < len(recomputedHash); i++ {
@@ -94,7 +97,7 @@ func TestHashModXnMinusOne(t *testing.T) {
 		key := GenerateKey(testCasesKey[i].Params, testCase.Size)
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones", i), func(t *testing.T) {
-			runTest(t, key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
+			runTest(t, key, vectorext.Repeat(fext.One(), key.maxNumLimbsHashable()))
 		})
 
 	}

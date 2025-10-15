@@ -4,13 +4,13 @@ go 1.24.0
 
 require (
 	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.13.1-0.20250808202721-87bf7b083403
+	github.com/consensys/gnark v0.14.1-0.20250919145051-3da3d76bbe3e
 	github.com/consensys/gnark-crypto v0.19.1-0.20250919185810-d7ecdb060877
 	github.com/consensys/go-corset v1.0.12-0.20250729080012-3d83adbcfe23
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
 	github.com/dnlo/struct2csv v0.0.0-20190928115744-2f584471b24e
-	github.com/fxamacker/cbor/v2 v2.8.0
+	github.com/fxamacker/cbor/v2 v2.9.0
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/gofrs/flock v0.12.0
@@ -49,7 +49,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
-	github.com/google/pprof v0.0.0-20250607225305-033d6d78b36a // indirect
+	github.com/google/pprof v0.0.0-20250820193118-f64d9cf942d6 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect
@@ -94,7 +94,7 @@ require (
 	github.com/ethereum/go-ethereum v1.14.13
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476
+	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
 	golang.org/x/sys v0.35.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

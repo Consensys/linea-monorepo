@@ -33,8 +33,10 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
-		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-		roots = append(roots, precompRootSv[0])
+		for i := 0; i < blockSize; i++ {
+			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
+			roots = append(roots, precompRootSv[0])
+		}
 	}
 
 	// Collect all the commitments : rounds by rounds
@@ -42,8 +44,10 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue // skip the dry rounds
 		}
-		rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector
-		roots = append(roots, rootSv[0])
+		for i := 0; i < blockSize; i++ {
+			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i)) // len 1 smart vector
+			roots = append(roots, rootSv[0])
+		}
 	}
 
 	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())

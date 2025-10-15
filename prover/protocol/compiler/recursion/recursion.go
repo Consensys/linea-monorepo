@@ -21,6 +21,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+const blockSize = 8
+
 // Recursion is a collection of wizard items composing a wizard circuit
 // for recursion. The recursion operates over a wizard proof for a
 // protocol featuring the [vortex.Compile] such that the runtime only
@@ -260,7 +262,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 
 		// Uses the assignment to assigns the merkle-roots columns.
 		for j := range assign.Commitments {
-			colName := addPrefixToID(prefix, assign.MerkleRoots[j].GetColID())
+			colName := addPrefixToID(prefix, assign.MerkleRoots[j/blockSize][j%blockSize].GetColID())
 
 			// One of the Merkle root may be the root to the precomputed
 			// polynomials and it may be of type precomputed ("may be", not
@@ -379,22 +381,31 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		// precomputed column. In this case, we cannot use the same function of
 		// the translator to add the column in the dst compilation context.
 		mRootCol := srcVortexCtx.Items.Precomputeds.MerkleRoot
-		if srcComp.Precomputed.Exists(mRootCol.GetColID()) {
-			dstVortexCtx.Items.Precomputeds.MerkleRoot = translator.AddPrecomputed(srcComp, mRootCol)
-		} else {
-			dstVortexCtx.Items.Precomputeds.MerkleRoot = translator.AddColumnAtRound(mRootCol, false, 0)
+		for i := 0; i < blockSize; i++ {
+			if srcComp.Precomputed.Exists(mRootCol[i].GetColID()) {
+				dstVortexCtx.Items.Precomputeds.MerkleRoot[i] = translator.AddPrecomputed(srcComp, mRootCol[i])
+			} else {
+				dstVortexCtx.Items.Precomputeds.MerkleRoot[i] = translator.AddColumnAtRound(mRootCol[i], false, 0)
+			}
 		}
-
 		dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix
 		dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
 		dstVortexCtx.Items.Precomputeds.Tree = srcVortexCtx.Items.Precomputeds.Tree
 	}
 
-	dstVortexCtx.Items.MerkleRoots = translator.AddColumnList(srcVortexCtx.Items.MerkleRoots, false, 0)
+	for round := 0; round <= dstVortexCtx.MaxCommittedRound; round++ {
+		for i := 0; i < blockSize; i++ {
+			dstVortexCtx.Items.MerkleRoots[round][i] = translator.AddColumnAtRound(srcVortexCtx.Items.MerkleRoots[round][i], false, 0)
+
+		}
+	}
+	// dstVortexCtx.Items.MerkleRoots = translator.AddColumnList(srcVortexCtx.Items.MerkleRoots, false, 0)
 	dstVortexCtx.Items.Alpha = translator.AddCoinAtRound(srcVortexCtx.Items.Alpha, 1)
 	dstVortexCtx.Items.Ualpha = translator.AddColumnAtRound(srcVortexCtx.Items.Ualpha, false, 1)
 	dstVortexCtx.Items.Q = translator.AddCoinAtRound(srcVortexCtx.Items.Q, 2)
-	dstVortexCtx.Items.MerkleProofs = translator.AddColumnAtRound(srcVortexCtx.Items.MerkleProofs, false, 2)
+	for i := 0; i < blockSize; i++ {
+		dstVortexCtx.Items.MerkleProofs[i] = translator.AddColumnAtRound(srcVortexCtx.Items.MerkleProofs[i], false, 2)
+	}
 	dstVortexCtx.Items.OpenedColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedColumns, false, 2)
 	dstVortexCtx.Items.OpenedSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedSISColumns, false, 2)
 	dstVortexCtx.Items.OpenedNonSISColumns = translator.AddColumnList(srcVortexCtx.Items.OpenedNonSISColumns, false, 2)

@@ -14,7 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -127,7 +127,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 			}
 
 			if round < tc.NumRound-1 {
-				b.RegisterRandomCoin(dummyCoinName(round), coin.Field)
+				b.RegisterRandomCoin(dummyCoinName(round), coin.FieldExt)
 			}
 		}
 
@@ -234,7 +234,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
@@ -243,7 +243,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
@@ -313,7 +313,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
@@ -322,7 +322,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
@@ -364,7 +364,7 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 		comp = wizard.ContinueCompilation(
 			comp,
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13),
 			),
@@ -405,7 +405,7 @@ func TestSelfRecursionManyLayersWithSerde(t *testing.T) {
 		comp = wizard.ContinueCompilation(
 			comp,
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13),
 			),

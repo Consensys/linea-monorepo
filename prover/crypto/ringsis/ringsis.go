@@ -5,6 +5,8 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/sis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -111,7 +113,7 @@ func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 // of a batch of SIS hashes.
 //
 // The vector of limbs has to be provided in Montgommery form.
-func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
+func (s Key) HashModXnMinus1(limbs []fext.Element) []fext.Element {
 
 	// inputReader is a subslice of `limbs` and it is meant to be used as a
 	// reader. We periodically pop the first element by reassigning the input
@@ -136,9 +138,9 @@ func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
 	*/
 
 	domain := s.GnarkInternal.Domain
-	k := make([]field.Element, s.modulusDegree())
+	k := make([]fext.Element, s.modulusDegree())
 	a := make([]field.Element, s.modulusDegree())
-	r := make([]field.Element, s.OutputSize())
+	r := make([]fext.Element, s.OutputSize())
 
 	for i := 0; i < nbPolyUsed; i++ {
 		copy(a, s.GnarkInternal.A[i])
@@ -156,12 +158,12 @@ func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
 			inputReader = nil
 		}
 
-		domain.FFT(k, fft.DIF)
+		domain.FFTExt(k, fft.DIF)
 		domain.FFT(a, fft.DIF)
 
-		var tmp field.Element
+		var tmp fext.Element
 		for i := range r {
-			tmp.Mul(&k[i], &a[i])
+			tmp.MulByElement(&k[i], &a[i])
 			r[i].Add(&r[i], &tmp)
 		}
 	}
@@ -171,12 +173,12 @@ func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
 	}
 
 	// by linearity, we defer the fft inverse at the end
-	domain.FFTInverse(r, fft.DIT)
+	domain.FFTInverseExt(r, fft.DIT)
 
 	// also account for the Montgommery issue : in gnark's implementation
 	// the key is implictly multiplied by RInv
 	for i := range r {
-		r[i] = field.MulRInv(r[i])
+		r[i] = fext.MulRInv(r[i])
 	}
 
 	return r

@@ -29,8 +29,8 @@ func (l *FromLocalOpeningYAccessor) IsBase() bool {
 }
 
 func (l *FromLocalOpeningYAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
+	return params.BaseY, nil
 }
 
 func (l *FromLocalOpeningYAccessor) GetValExt(run ifaces.Runtime) fext.Element {

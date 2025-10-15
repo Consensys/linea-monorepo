@@ -121,7 +121,7 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
 
 	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]fext.Element{} // TODO@yao:check fext or field?
+	yMap := map[ifaces.ColID]fext.Element{}
 	for i, polName := range fys.Query.Pols {
 		yMap[polName.GetColID()] = queryParams.ExtYs[i]
 	}

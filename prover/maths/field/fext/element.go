@@ -188,3 +188,10 @@ func ParBatchInvert(a []Element, numCPU int) []Element {
 
 	return res
 }
+
+// MulRInv multiplies the field element by R^-1, where R is the Montgommery constant
+func MulRInv(x Element) Element {
+	var res Element
+	res.MulByElement(&x, &field.MontConstantInv)
+	return res
+}

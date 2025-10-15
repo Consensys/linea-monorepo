@@ -89,7 +89,7 @@ func TestCompiler(t *testing.T) {
 				for round := 0; round < numRounds; round++ {
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
-						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 					}
 					// Compute the offsetIndex
 					offsetIndex := nPols * round
@@ -112,7 +112,7 @@ func TestCompiler(t *testing.T) {
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
-						_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+						_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 					}
 					// Compute the offsetIndex
 					offsetIndex := nPols * round
@@ -130,13 +130,13 @@ func TestCompiler(t *testing.T) {
 			Explainer: "Multiple round w/o pre-computed column starting at round2",
 			Define: func(b *wizard.Builder) {
 				for round := 1; round < 2; round++ {
-					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 				}
 				for round := 2; round < numRounds+2; round++ {
 					var offsetIndex = 0
 					// trigger the creation of a new round by declaring a dummy coin
 
-					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 					// Compute the offsetIndex
 					for i := 2; i < round; i++ {
 						offsetIndex += nPols
@@ -162,7 +162,7 @@ func TestCompiler(t *testing.T) {
 
 					// let the prover know that it is free to go to the next
 					// round by sampling the coin.
-					_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+					_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 					// Compute the offsetIndex
 					offsetIndex = nPols * (round - 2)
 
@@ -183,7 +183,7 @@ func TestCompiler(t *testing.T) {
 					var offsetIndex = 0
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
-						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsNoSIS
@@ -210,7 +210,7 @@ func TestCompiler(t *testing.T) {
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
-						_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+						_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 						// Compute the offsetIndex
 						offsetIndex = nPolsNoSIS * round
 					}
@@ -430,7 +430,7 @@ func TestCompiler(t *testing.T) {
 					var offsetIndex = 0
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
-						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRoundEmpty[i]
@@ -470,7 +470,7 @@ func TestCompiler(t *testing.T) {
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
-						_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+						_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRoundEmpty[i]

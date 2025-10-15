@@ -31,10 +31,10 @@ type RecursionCircuit struct {
 	Commitments        []zk.WrappedVariable `gnark:",public"`
 	Pubs               []zk.WrappedVariable `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit
-	withoutGkr         bool                 `gnark:"-"`
-	withExternalHasher bool                 `gnark:"-"`
-	PolyQuery          query.UnivariateEval `gnark:"-"`
-	MerkleRoots        []ifaces.Column      `gnark:"-"`
+	withoutGkr         bool                       `gnark:"-"`
+	withExternalHasher bool                       `gnark:"-"`
+	PolyQuery          query.UnivariateEval       `gnark:"-"`
+	MerkleRoots        [][blockSize]ifaces.Column `gnark:"-"`
 }
 
 // AllocRecursionCircuit allocates a new RecursionCircuit with the
@@ -45,15 +45,15 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		pcsCtx      = comp.PcsCtxs.(*vortex.Ctx)
 		polyQuery   = pcsCtx.Query
 		numRound    = comp.QueriesParams.Round(polyQuery.QueryID) + 1
-		merkleRoots = []ifaces.Column{}
+		merkleRoots = [][blockSize]ifaces.Column{}
 	)
 
-	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
+	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		merkleRoots = append(merkleRoots, pcsCtx.Items.Precomputeds.MerkleRoot)
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
-		if pcsCtx.Items.MerkleRoots[i] != nil {
+		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			merkleRoots = append(merkleRoots, pcsCtx.Items.MerkleRoots[i])
 		}
 	}
@@ -100,7 +100,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	for i := range r.Commitments {
-		api.AssertIsEqual(r.Commitments[i], r.MerkleRoots[i].GetColAssignmentGnarkAt(w, 0))
+		api.AssertIsEqual(r.Commitments[i], r.MerkleRoots[i/blockSize][i%blockSize].GetColAssignmentGnarkAt(w, 0))
 	}
 
 	return nil
@@ -125,17 +125,21 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		}
 	)
 
-	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
+	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
 		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-		circuit.Commitments = append(circuit.Commitments, mRoot.GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+		for i := 0; i < blockSize; i++ {
+			circuit.Commitments = append(circuit.Commitments, mRoot[i].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+		}
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
-		if pcsCtx.Items.MerkleRoots[i] != nil {
+		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			mRoot := pcsCtx.Items.MerkleRoots[i]
 			circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-			circuit.Commitments = append(circuit.Commitments, mRoot.GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+			for j := 0; j < blockSize; j++ {
+				circuit.Commitments = append(circuit.Commitments, mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+			}
 		}
 	}
 
@@ -144,7 +148,8 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 
 // SplitPublicInputs parses a vector of field elements and returns the
 // parsed arguments.
-func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x T, ys, mRoots, pubs []T) {
+// TODO@yao : check
+func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []T) {
 
 	var (
 		numPubs     = len(r.InputCompiledIOP.PublicInputs)
@@ -154,12 +159,12 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x T, ys, mRoots, pubs 
 		allPubDrain = allPubs
 	)
 
-	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
+	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		numMRoots++
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
-		if pcsCtx.Items.MerkleRoots[i] != nil {
+		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			numMRoots++
 		}
 	}
@@ -167,14 +172,15 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x T, ys, mRoots, pubs 
 	// The order below is based on the field declaration order for the
 	// circuit struct.
 	//
-	// X              zk.WrappedVariable   `gnark:",public"`
-	// Ys             []zk.WrappedVariable `gnark:",public"`
-	// Commitments    []zk.WrappedVariable `gnark:",public"`
-	// Pubs           []zk.WrappedVariable `gnark:",public"`
+	// X                          [4]frontend.Variable   `gnark:",public"`
+	// Ys                         [4*numYs]frontend.Variable `gnark:",public"`
+	// Commitments/merkleRoots    [8*numMRoots]frontend.Variable `gnark:",public"`
+	// Pubs                       []frontend.Variable `gnark:",public"`
+
 	//
-	x, allPubDrain = allPubDrain[0], allPubDrain[1:]
-	ys, allPubDrain = allPubDrain[:numYs], allPubDrain[numYs:]
-	mRoots, allPubDrain = allPubDrain[:numMRoots], allPubDrain[numMRoots:]
+	x, allPubDrain = allPubDrain[:4], allPubDrain[4:]
+	ys, allPubDrain = allPubDrain[:4*numYs], allPubDrain[4*numYs:]
+	mRoots, allPubDrain = allPubDrain[:8*numMRoots], allPubDrain[8*numMRoots:]
 	pubs, _ = allPubDrain[:numPubs], allPubDrain[numPubs:]
 
 	return x, ys, mRoots, pubs

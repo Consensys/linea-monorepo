@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
@@ -188,7 +189,7 @@ func (r Inclusion) Check(run ifaces.Runtime) error {
 		Sample a random element alpha, usefull for multivalued inclusion checks
 		It allows to reference multiple number through a linear combination
 	*/
-	var alpha field.Element
+	var alpha fext.Element
 	_, err := alpha.SetRandom()
 	if err != nil {
 		// Cannot happen unless the entropy was exhausted
@@ -198,7 +199,7 @@ func (r Inclusion) Check(run ifaces.Runtime) error {
 	// Gather the elements of including in a set. Randomly combining the columns
 	// so that the rows can be summed up by a single field element, easier to
 	// look up in the map.
-	inclusionSet := make(map[field.Element]struct{})
+	inclusionSet := make(map[fext.Element]struct{})
 	for frag := range r.Including {
 		for row := 0; row < r.Including[frag][0].Size(); row++ {
 			if !r.IsFilteredOnIncluding() || filterIncluding[frag].Get(row) == field.One() {

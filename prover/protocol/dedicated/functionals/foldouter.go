@@ -24,14 +24,14 @@ type FoldOuterProverAction struct {
 
 func (a *FoldOuterProverAction) Run(assi *wizard.ProverRuntime) {
 	h := a.H.GetColAssignment(assi)
-	x := a.X.GetVal(assi)
+	x := a.X.GetValExt(assi)
 
 	innerChunks := make([]smartvectors.SmartVector, a.OuterDegree)
 	for i := range innerChunks {
 		innerChunks[i] = h.SubVector(i*a.InnerDegree, (i+1)*a.InnerDegree)
 	}
 
-	foldedVal := smartvectors.LinearCombination(innerChunks, x)
+	foldedVal := smartvectors.LinearCombinationExt(innerChunks, x)
 	assi.AssignColumn(a.FoldedName, foldedVal)
 }
 
