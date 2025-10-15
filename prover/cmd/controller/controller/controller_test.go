@@ -465,13 +465,14 @@ func createTestInputFile(
 }
 
 func TestSpotInstanceMode(t *testing.T) {
-
 	t.Skipf("this breaks the CI pipeline")
 
 	var (
 		cfg    = setupFsTestSpotInstance(t)
 		nbTest = 5
 	)
+
+	cfg.Controller.SpotInstanceReclaimTime = 5 * time.Second // Ensure sleep after SIGUSR1 to receive SIGTERM
 
 	for i := 0; i < nbTest; i++ {
 		// Create the input file
@@ -485,14 +486,31 @@ func TestSpotInstanceMode(t *testing.T) {
 		panic("could not find the current process")
 	}
 
-	go runController(context.Background(), cfg)
+	done := make(chan struct{})
+	go func() {
+		runController(context.Background(), cfg)
+		close(done)
+	}()
 
 	// Wait for the controller to process 2 jobs and be in the middle of the
-	// 3rd job.
+	// 3rd job. Adjust based on ~2s per job.
 	time.Sleep(5 * time.Second)
 
 	if err := p.Signal(os.Signal(syscall.SIGUSR1)); err != nil {
 		panic("panic could not self-send a SIGUSR1")
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	if err := p.Signal(os.Signal(syscall.SIGTERM)); err != nil {
+		panic("panic could not self-send a SIGTERM")
+	}
+
+	// Wait for controller to exit
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("controller did not exit within timeout")
 	}
 
 	var (
@@ -548,7 +566,7 @@ func setupFsTestSpotInstance(t *testing.T) (cfg *config.Config) {
 	return cfg
 }
 
-// helper: poll until condition() is true or timeout elapses
+// Helper: poll until condition() is true or timeout elapses
 func waitFor(t *testing.T, timeout time.Duration, interval time.Duration, condition func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
@@ -564,7 +582,7 @@ func waitFor(t *testing.T, timeout time.Duration, interval time.Duration, condit
 }
 
 // Test that on SIGTERM (graceful) the controller lets the job finish and the result is in the done folder.
-func TestGracefulShutdown(t *testing.T) {
+func TestSIGTERMGracefulShutdown(t *testing.T) {
 	confM, _ := setupFsTest(t)
 
 	// Create a single input file. This file contains a short script that exits 0 and touches the out file.

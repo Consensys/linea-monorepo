@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -11,18 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
-)
-
-type shutdownSignal int
-
-const (
-	noShutdown shutdownSignal = iota
-
-	// SIGTERM
-	gracefulShutdown
-
-	// SIGUSR1
-	spotReclaim
 )
 
 func runController(ctx context.Context, cfg *config.Config) {
@@ -33,13 +22,15 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 		signalChan = make(chan os.Signal, 2)
 
-		// Default shutdown type
-		shutdownType = noShutdown
-
 		// Track currently active job for safe requeue
 		activeJob *Job
 
+		// Track the number of retries so far
 		numRetrySoFar int
+
+		// Atomic coordination flags
+		spotReclaimDetected       atomic.Bool
+		gracefulShutdownRequested atomic.Bool
 	)
 
 	// Start the metric server
@@ -57,40 +48,65 @@ func runController(ctx context.Context, cfg *config.Config) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	go func() {
-		for sig := range signalChan {
-			switch sig {
-			case syscall.SIGUSR1:
-				shutdownType = spotReclaim
-				cancel()
-				if cfg.Controller.Prometheus.Enabled {
-					metrics.IncSpotInterruption(cfg.Controller.LocalID) // or another label like instance_type
-				}
-				return
-			case syscall.SIGTERM:
-				shutdownType = gracefulShutdown
-				cancel()
-				return
-			}
-		}
-	}()
-
 	// cmdContext is the context we provide for the command execution. In
-	// spot-instance mode, the context is subordinated to the parent ctx so
-	// that the cancellation of parent ctx is propagated to the cmdContext.
+	// spot-instance mode, the context is subordinated to the ctx.
 	cmdContext := context.Background()
 	if cfg.Controller.SpotInstanceMode {
 		cmdContext = ctx
 	}
 
+	// Signal handler goroutine — race-safe with atomic flags
+	// We never stop listening since it is possible to receive more than one signals
+	// For ex: spot reclaim => SIGUSR1 -> SIGTERM
+	go func() {
+		for sig := range signalChan {
+			switch sig {
+			case syscall.SIGUSR1:
+				spotReclaimDetected.Store(true)
+				if !gracefulShutdownRequested.Load() {
+					cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context")
+					cancel()
+					if cfg.Controller.Prometheus.Enabled {
+						metrics.IncSpotInterruption(cfg.Controller.LocalID)
+					}
+				} else {
+					cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
+				}
+
+				if activeJob != nil {
+					cLog.Infof("Spot reclaim detected. REQUEUE active job: %v", activeJob.OriginalFile)
+					_ = os.Remove(activeJob.TmpResponseFile(cfg))
+					if err := os.Rename(activeJob.InProgressPath(), activeJob.OriginalPath()); err != nil {
+						cLog.Errorf("Failed to requeue job %v: %v", activeJob.InProgressPath(), err)
+					}
+					activeJob = nil
+				}
+			case syscall.SIGTERM:
+				gracefulShutdownRequested.Store(true)
+				if !spotReclaimDetected.Load() {
+					cLog.Info("Received SIGTERM: graceful shutdown requested")
+				} else {
+					cLog.Info("Received SIGTERM after SIGUSR1: will use spot reclaim timeout")
+				}
+				cancel()
+			}
+		}
+	}()
+
+	// This goroutine's raison d'etre is to log a message immediately when a
+	// cancellation request (e.g., ctx expiration/cancellation, SIGTERM, etc.)
+	// is received. It ensures timely logging of the request's reception,
+	// which may be important for diagnostics. Without this
+	// goroutine, if the prover is busy with a proof when, for example, a
+	// SIGTERM is received, there would be no log entry about the signal
+	// until the proof completes.
 	go func() {
 		<-ctx.Done()
-		switch shutdownType {
-		case spotReclaim:
-			cLog.Infof("Received spot reclaim (SIGUSR1). Will abort ASAP (max %s)...", config.SpotInstanceReclaimTime)
-		case gracefulShutdown:
+		if spotReclaimDetected.Load() {
+			cLog.Infof("Received SIGUSR1 (spot reclaim). Will abort ASAP (max %s)...", cfg.Controller.SpotInstanceReclaimTime)
+		} else if gracefulShutdownRequested.Load() {
 			cLog.Infof("Received SIGTERM. Finishing in-flight proof (if any) and then shutting down gracefully (max %s)...", cfg.Controller.TerminationGracePeriod)
-		default:
+		} else {
 			cLog.Infoln("Received cancellation request.")
 		}
 	}()
@@ -98,36 +114,25 @@ func runController(ctx context.Context, cfg *config.Config) {
 	for {
 		select {
 		case <-ctx.Done():
-			// Graceful shutdown.
-			// This case captures both cancellations initiated by the caller
-			// through ctx and SIGTERM signals. Even if the cancellation
-			// request is first intercepted by the goroutine at line 34, Go
-			// allows the ctx.Done channel to be read multiple times, which, in
-			// our scenario, ensures cancellation requests are effectively
-			// detected and handled.
-			cLog.Infoln("Context cancelled by caller or externally triggered (SIGTERM/SIGUSR1). Exiting")
+			cLog.Infoln("Context cancelled by caller or externally triggered (SIGTERM/SIGUSR1). Exiting...")
 			metrics.ShutdownServer(ctx)
 
-			// If spot reclaim and activeJob exists, requeue it safely exactly once
-			if shutdownType == spotReclaim && activeJob != nil {
-				cLog.Infof("Spot reclaim: requeuing active job %v", activeJob.OriginalFile)
-				// Remove temp response file if exists
+			// Defensive: if controller is killed while a job is somehow still active!
+			if spotReclaimDetected.Load() && activeJob != nil {
+				cLog.Infof("Spot reclaim (shutdown branch): requeuing active job %v", activeJob.OriginalFile)
 				_ = os.Remove(activeJob.TmpResponseFile(cfg))
-
-				// Move .inprogress file back to original request path
-				err := os.Rename(activeJob.InProgressPath(), activeJob.OriginalPath())
-				if err != nil {
+				if err := os.Rename(activeJob.InProgressPath(), activeJob.OriginalPath()); err != nil {
 					cLog.Errorf("Failed to requeue job %v: %v", activeJob.InProgressPath(), err)
 				}
-				// Prevent double requeue
 				activeJob = nil
 			}
 
-			switch shutdownType {
-			case spotReclaim:
-				<-time.After(config.SpotInstanceReclaimTime)
-			case gracefulShutdown:
-				<-time.After(cfg.Controller.TerminationGracePeriod.Abs())
+			// Apply appropriate grace period
+			switch {
+			case spotReclaimDetected.Load():
+				time.Sleep(cfg.Controller.SpotInstanceReclaimTime)
+			case gracefulShutdownRequested.Load():
+				time.Sleep(cfg.Controller.TerminationGracePeriod.Abs())
 			default:
 				// immediate exit
 			}
@@ -155,18 +160,15 @@ func runController(ctx context.Context, cfg *config.Config) {
 				continue
 			}
 
-			// Reset the retry counter
 			numRetrySoFar = 0
 
-			// Set active job to current job
+			// Important: Set the active job to the current job for safe requeue in case of spot-reclaim
 			activeJob = job
 
 			// Run the command (potentially retrying in large mode)
 			status := executor.Run(cmdContext, job)
 
-			// Clear active job on completion
-			activeJob = nil
-
+			// CreateColumns the job according to the status we got
 			switch {
 			case status.ExitCode == CodeSuccess:
 				// NB: we already check that the response filename can be
@@ -175,33 +177,38 @@ func runController(ctx context.Context, cfg *config.Config) {
 				respFile, err := job.ResponseFile()
 				tmpRespFile := job.TmpResponseFile(cfg)
 				if err != nil {
-					utils.Panic("Could not generate the response file: %v (original request file: %v)", err, job.OriginalFile)
+					formatStr := "Could not generate the response file: %v (original request file: %v)"
+					utils.Panic(formatStr, err, job.OriginalFile)
 				}
-				logrus.Infof(
-					"Moving the response file from the tmp response file `%v`, to the final response file: `%v`",
-					tmpRespFile, respFile,
-				)
+				logrus.Infof("Moving tmp response file %v to final response file: %v", tmpRespFile, respFile)
 				if err := os.Rename(tmpRespFile, respFile); err != nil {
-					// @Alex: it is unclear how the rename operation could fail
+					// It is unclear how the rename operation could fail
 					// here. If this happens, we prefer removing the tmp file.
 					// Note that the operation is an `rm -f`.
 					os.Remove(tmpRespFile)
-					cLog.Errorf("Error renaming %v to %v: %v, removed the tmp file", tmpRespFile, respFile, err)
+					cLog.Errorf("Error renaming %v to %v: %v, removed tmp file", tmpRespFile, respFile, err)
 				}
-				cLog.Infof("Moving %v to %v with the success prefix", job.OriginalFile, job.Def.dirDone())
+
+				// Move the inprogress to the done directory
+				cLog.Infof("Moving %v to %v with success prefix", job.OriginalFile, job.Def.dirDone())
 				jobDone := job.DoneFile(status)
 				if err := os.Rename(job.InProgressPath(), jobDone); err != nil {
 					// When that happens, the only thing left to do is to log
 					// the error and let the inprogress file where it is. It
 					// will likely require a human intervention.
 					//
-					// Note: this is assumedly an unreachable code path.
+					// Note: this is assumedly an unreachable code path
 					cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), jobDone, err)
 				}
 
+				// Set active job to nil once the job is successful
+				activeJob = nil
+
+			// Defer to the large prover: We do not set active job to nil, because the job is not complete yet
 			case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
 				cLog.Infof("Renaming %v for the large prover", job.OriginalFile)
-				// Move the inprogress file back in the from directory with the new suffix
+				// Move the inprogress file back in the from directory with
+				// the new suffix
 				toLargePath, err := job.DeferToLargeFile(status)
 				if err != nil {
 					// There are two possibilities of errors. (1), the status
@@ -214,25 +221,20 @@ func runController(ctx context.Context, cfg *config.Config) {
 					// portion of the code given that the current exit code
 					// cannot be part of the empty list. Thus, this section is
 					// unreachable.
-					cLog.Errorf("error deriving the to-large-name of %v: %v", job.InProgressPath(), err)
+					cLog.Errorf("Error deriving large name for %v: %v", job.InProgressPath(), err)
 				}
 				if err := os.Rename(job.InProgressPath(), toLargePath); err != nil {
-					// When that happens, the only thing left to do is to log
-					// the error and let the inprogress file where it is. It
-					// will likely require a human intervention.
-					cLog.Errorf("error renaming %v to %v: %v", job.InProgressPath(), toLargePath, err)
+					cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), toLargePath, err)
 				}
 
+			// Controller killed the job via external signal handlers
 			case status.ExitCode == CodeKilledByUs:
-				cLog.Infof("Job %v was killed externally. Requeuing the request back to the request folder", job.OriginalFile)
-				if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
-					// When that happens, the only thing left to do is to log
-					// the error and let the inprogress file where it is. It
-					// will likely require a human intervention.
-					//
-					// Note: this is assumedly an unreachable code path.
-					cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), job.OriginalPath(), err)
-				}
+				// When receiving the killed-by-us code, the prover will put back the file in the request queue
+				// only spot reclaim is detected. For graceful shutdown (only SIGTERM),
+				// the proof will be continue until terminationGracePeriod is reached and will not be requeued.
+				// REMARK: In case the proof fails to complete before terminationGracePeriod is reached, the file
+				// will have to be manually requeued.
+				cLog.Infof("Active job %v killed by us. Requeue the job only if spot reclaim detected.", job.OriginalFile)
 
 				// As an edge-case, it's possible (in theory) that the process
 				// completes exactly when we receive the kill signal. So we
@@ -243,17 +245,16 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 			// Failure case
 			default:
-				cLog.Infof("Moving %v with in %v with a failure suffix for code %v", job.OriginalFile, job.Def.dirDone(), status.ExitCode)
+				// Move the inprogress to the done directory
+				cLog.Infof("Moving %v with failure suffix (code %v)", job.OriginalFile, status.ExitCode)
 				jobFailed := job.DoneFile(status)
 				if err := os.Rename(job.InProgressPath(), jobFailed); err != nil {
-					// When that happens, the only thing left to do is to log
-					// the error and let the inprogress file where it is. It
-					// will likely require a human intervention.
-					//
-					// Note: this is assumedly an unreachable code path.
-
+					// When that happens, the only thing left to do is to log and will require human intervention
 					cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), jobFailed, err)
 				}
+
+				// Set active job to nil as there is nothing more to retry
+				activeJob = nil
 			}
 		}
 	}
