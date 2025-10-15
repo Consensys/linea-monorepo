@@ -296,6 +296,10 @@ func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool
 	return
 }
 
+func init() {
+	registerHints()
+}
+
 func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
 
 	fpi, dict, err := AssignFPI(blobBytes, dictStore, eip4844Enabled, x, y)
@@ -323,8 +327,6 @@ func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x
 		PublicInput: publicInput,
 		FuncPI:      sfpi,
 	}
-
-	registerHints() // @Alexandre.Belling right place for this? TODO make sure this covers all hints used
 
 	return
 }

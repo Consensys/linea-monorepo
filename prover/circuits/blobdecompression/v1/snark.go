@@ -222,9 +222,8 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 			internal.AssertEqualIf(api, startNext, batchSum, partialSumsT.Lookup(batchI)[0]) // if we're done with the current checksum, check that the claimed one from the table is equal to it
 			// THIS STEP REQUIRES THAT NO BATCH SHOULD BE SMALLER THAN 31 BYTES
 			//
-			// @alex: this is always the case in practice since a batch contains
-			// at least one block and one block stores a root hash which is is
-			// already more than 31 bytes.
+			// This is always the case in practice since a batch contains
+			// at least one block which in turn contains a 32 byte root hash.
 			batchSum = api.Select(startNext, inputAt31B.Lookup(end)[0], batchSum) // if the next one starts, the sum is the 31 byte "prefix" of the next batch; assumes any batch is at least 31 bytes long
 
 		}
@@ -246,7 +245,7 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 }
 
 func partialChecksumBatchesPackedHint(_ *big.Int, ins []*big.Int, outs []*big.Int) error {
-	return gnarkutil.PartialChecksumBatchesPackedHint(MaxNbBatches)(nil, ins, outs)
+	return gnarkutil.PartialMiMCChecksumBatchesPackedHint(MaxNbBatches)(nil, ins, outs)
 }
 
 func registerHints() {

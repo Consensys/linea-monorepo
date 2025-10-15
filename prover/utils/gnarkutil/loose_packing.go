@@ -1,6 +1,7 @@
 package gnarkutil
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	hashinterface "hash"
@@ -11,11 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// ins: nbBatches, [end byte positions], payload...
-// the result for each batch is <data (31 bytes)> ... <data (31 bytes)>
-// for soundness some kind of length indicator must later be incorporated.
-func PartialChecksumBatchesPackedHint(maxNbBatches int) solver.Hint {
-
+func PartialChecksumBatchesPackedHint(maxNbBatches int, compressor hash.Compressor) solver.Hint {
 	return func(_ *big.Int, ins []*big.Int, outs []*big.Int) error {
 		if len(outs) != maxNbBatches {
 			return errors.New("expected exactly maxNbBatches outputs")
@@ -25,22 +22,30 @@ func PartialChecksumBatchesPackedHint(maxNbBatches int) solver.Hint {
 		ends := utils.BigsToInts(ins[1 : 1+maxNbBatches])
 		in := append(utils.BigsToBytes(ins[1+maxNbBatches:]), make([]byte, 31)...) // pad with 31 bytes to avoid out of range panic TODO try removing this
 
-		hsh := hash.MIMC_BLS12_377.New()
 		buf := make([]byte, 32)
 		batchStart := 0
 
 		for i := range outs[:nbBatches] {
-			partialChecksumLooselyPackedBytes(in[batchStart:ends[i]], buf, hsh)
+			partialChecksumLooselyPackedBytes(in[batchStart:ends[i]], buf, compressor)
 			outs[i].SetBytes(buf)
 			batchStart = ends[i]
 		}
 
 		return nil
 	}
-
 }
 
-func partialChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Hash) {
+// ins: nbBatches, [end byte positions], payload...
+// the result for each batch is <data (31 bytes)> ... <data (31 bytes)>
+// for soundness some kind of length indicator must later be incorporated.
+func PartialMiMCChecksumBatchesPackedHint(maxNbBatches int) solver.Hint {
+	return PartialChecksumBatchesPackedHint(maxNbBatches, HashAsCompressor(hash.MIMC_BLS12_377.New()))
+}
+
+func partialChecksumLooselyPackedBytes(b []byte, buf []byte, h hash.Compressor) []byte {
+	if len(buf) != h.BlockSize() {
+		panic("invalid buffer size")
+	}
 	pack := func(b []byte, buffStartIndex int) {
 		for i := range buf[:buffStartIndex] {
 			buf[i] = 0
@@ -52,13 +57,15 @@ func partialChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Has
 	}
 
 	pack(b, 1)
+	prev := bytes.Clone(buf)
+	var err error
 	for i := len(buf) - 1; i < len(b); i += len(buf) - 1 {
-		h.Reset()
-		h.Write(buf)
 		pack(b[i:], 1)
-		h.Write(buf)
-		pack(h.Sum(nil), 0)
+		if prev, err = h.Compress(prev, buf[:]); err != nil {
+			panic(err) // it should be catastrophically rare for a compression function to error
+		}
 	}
+	return prev
 }
 
 // ChecksumLooselyPackedBytes produces the results expected by CheckBatchesSums, but more generalized
@@ -66,7 +73,7 @@ func partialChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Has
 // the first bytes of the result are put in buf.
 // if b consists of only one "element", the result is not hashed
 func ChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Hash) {
-	partialChecksumLooselyPackedBytes(b, buf, h)
+	partialChecksumLooselyPackedBytes(b, buf, HashAsCompressor(h))
 
 	// hash the length along with the partial sum
 	var numBuf [8]byte
@@ -77,7 +84,7 @@ func ChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Hash) {
 
 	res := h.Sum(nil)
 
-	for i := 0; i < len(buf)-len(res); i++ { // one final "packing"
+	for i := range len(buf) - len(res) { // one final "packing"
 		buf[i] = 0
 	}
 

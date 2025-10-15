@@ -20,9 +20,9 @@ The blob consists of two main parts: the Header (uncompressed) and the Body (com
 The header contains the following elements:
 
 ```
-|--------------------------- Header ---------------------------|
+|----------------------------------- Header ----------------------------------|
 | Blob Version | Dictionary Checksum | Number of Batches |  Batch Lengths...  |
-|--------------|-----------------|-------------------|--------------------|
+|--------------|---------------------|-------------------|--------------------|
 |    2 bytes   |       32 bytes      |      2 bytes      |        ...         |
 
 |- Batch Length (in bytes) -|
