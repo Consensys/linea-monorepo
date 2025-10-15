@@ -45,7 +45,7 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 	}
 
 	// Internal rounds
-	for round := 1 + partialRounds; round < 10; round++ {
+	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
 		state = addRoundKeyExpression(round-1, state)
 		state[0] = sBoxPartialExpression(state)[0]
 
@@ -66,31 +66,31 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 
 	}
 
-	// // // External rounds
-	// for round := fullRounds - partialRounds; round < fullRounds; round++ {
-	// 	state = addRoundKeyExpression(round-1, state)
-	// 	state = sBoxFullExpression(state)
-	// 	state = matMulExternalExpression(state)
+	// // External rounds
+	for round := fullRounds - partialRounds; round < fullRounds; round++ {
+		state = addRoundKeyExpression(round-1, state)
+		state = sBoxFullExpression(state)
+		state = matMulExternalExpression(state)
 
-	// 	if round < fullRounds-1 && round%externalPackedSize == 0 {
-	// 		cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
-	// 		state = asExprs(cols)
-	// 		interm[counter] = cols
-	// 		counter++
-	// 	}
-	// }
+		if round < fullRounds-1 && round%externalPackedSize == 0 {
+			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
+			state = asExprs(cols)
+			interm[counter] = cols
+			counter++
+		}
+	}
 
-	// // Final round; feed-forward and compare against output
-	// _, round, _ := wizardutils.AsExpr(newState[0])
-	// for i := range newState {
-	// 	newState[i] = symbolic.Add(newState[i], state[8+i])
+	// Final round; feed-forward and compare against output
+	_, round, _ := wizardutils.AsExpr(newState[0])
+	for i := range newState {
+		newState[i] = symbolic.Add(newState[i], state[8+i])
 
-	// 	comp.InsertGlobal(
-	// 		round,
-	// 		ifaces.QueryIDf("POSEIDON2_OUTPUT_%v_%v", comp.SelfRecursionCount, i),
-	// 		symbolic.Sub(newState[i], output[i]),
-	// 	)
-	// }
+		comp.InsertGlobal(
+			round,
+			ifaces.QueryIDf("POSEIDON2_OUTPUT_%v_%v", comp.SelfRecursionCount, i),
+			symbolic.Sub(newState[i], output[i]),
+		)
+	}
 
 	return interm
 }
