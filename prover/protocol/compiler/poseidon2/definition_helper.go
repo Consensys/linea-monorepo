@@ -36,56 +36,61 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 		state = addRoundKeyExpression(round-1, state)
 		state = sBoxFullExpression(state)
 		state = matMulExternalExpression(state)
-		if round%externalPackedSize == 0 {
 
-			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
-			state = asExprs(cols)
-			interm[counter] = cols
-			counter++
-		}
+		cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
+		state = asExprs(cols)
+		interm[counter] = cols
+		counter++
 
 	}
 
 	// Internal rounds
-	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
+	for round := 1 + partialRounds; round < 10; round++ {
 		state = addRoundKeyExpression(round-1, state)
-		state = sBoxPartialExpression(state)
-		state = matMulInternalExpression(state)
+		state[0] = sBoxPartialExpression(state)[0]
 
 		if round%internalPackedSize == 0 {
 			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
 			state = asExprs(cols)
 			interm[counter] = cols
 			counter++
-		}
-
-	}
-
-	// // External rounds
-	for round := fullRounds - partialRounds; round < fullRounds; round++ {
-		state = addRoundKeyExpression(round-1, state)
-		state = sBoxFullExpression(state)
-		state = matMulExternalExpression(state)
-
-		if round < fullRounds-1 && round%externalPackedSize == 0 {
-			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
-			state = asExprs(cols)
+		} else {
+			/// Reduce columns to only the first one
+			cols := anchorPartialColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
+			state[0] = asExprs(cols)[0]
 			interm[counter] = cols
 			counter++
 		}
+
+		state = matMulInternalExpression(state)
+
 	}
 
-	// Final round; feed-forward and compare against output
-	_, round, _ := wizardutils.AsExpr(newState[0])
-	for i := range newState {
-		newState[i] = symbolic.Add(newState[i], state[8+i])
+	// // // External rounds
+	// for round := fullRounds - partialRounds; round < fullRounds; round++ {
+	// 	state = addRoundKeyExpression(round-1, state)
+	// 	state = sBoxFullExpression(state)
+	// 	state = matMulExternalExpression(state)
 
-		comp.InsertGlobal(
-			round,
-			ifaces.QueryIDf("POSEIDON2_OUTPUT_%v_%v", comp.SelfRecursionCount, i),
-			symbolic.Sub(newState[i], output[i]),
-		)
-	}
+	// 	if round < fullRounds-1 && round%externalPackedSize == 0 {
+	// 		cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
+	// 		state = asExprs(cols)
+	// 		interm[counter] = cols
+	// 		counter++
+	// 	}
+	// }
+
+	// // Final round; feed-forward and compare against output
+	// _, round, _ := wizardutils.AsExpr(newState[0])
+	// for i := range newState {
+	// 	newState[i] = symbolic.Add(newState[i], state[8+i])
+
+	// 	comp.InsertGlobal(
+	// 		round,
+	// 		ifaces.QueryIDf("POSEIDON2_OUTPUT_%v_%v", comp.SelfRecursionCount, i),
+	// 		symbolic.Sub(newState[i], output[i]),
+	// 	)
+	// }
 
 	return interm
 }
@@ -113,7 +118,7 @@ func sBoxPartialExpression(input []*symbolic.Expression) []*symbolic.Expression 
 
 	res := make([]*symbolic.Expression, width)
 	res[0] = symbolic.Mul(input[0], input[0], input[0])
-	copy(res[1:], input[1:])
+	// copy(res[1:], input[1:])
 	return res
 }
 
@@ -268,6 +273,32 @@ func asExprs(columns []ifaces.Column) []*symbolic.Expression {
 		res[i] = symbolic.NewVariable(column)
 	}
 	return res
+}
+
+func anchorPartialColumns(comp *wizard.CompiledIOP, name string, columns []*symbolic.Expression) []ifaces.Column {
+
+	_, round, size := wizardutils.AsExpr(columns[0])
+
+	news := make([]ifaces.Column, 1)
+	for i, column := range columns {
+		if i == 0 {
+			news[i] = comp.InsertCommit(
+				round,
+				ifaces.ColIDf("%v_%v", name, i),
+				size,
+				true,
+			)
+
+			comp.InsertGlobal(
+				round,
+				ifaces.QueryIDf("%v_%v_GLOBAL", name, i),
+				symbolic.Sub(column, news[i]),
+			)
+		}
+
+	}
+
+	return news
 }
 
 // makeArrayOfZeroes returns an array of zero expressions.
