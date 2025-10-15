@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -20,8 +21,6 @@ func runController(ctx context.Context, cfg *config.Config) {
 		fsWatcher = NewFsWatcher(cfg)
 		executor  = NewExecutor(cfg)
 
-		signalChan = make(chan os.Signal, 2)
-
 		// Track currently active job for safe requeue
 		activeJob *Job
 
@@ -31,7 +30,33 @@ func runController(ctx context.Context, cfg *config.Config) {
 		// Atomic coordination flags
 		spotReclaimDetected       atomic.Bool
 		gracefulShutdownRequested atomic.Bool
+
+		// Channel to receive signals
+		signalChan = make(chan os.Signal, 2)
+
+		// Channel to notify job completion for SIGTERM handler
+		jobDoneChan   chan struct{}
+		jobDoneChanMu sync.Mutex
 	)
+
+	// Helper to signal job completion
+	notifyJobDone := func() {
+		jobDoneChanMu.Lock()
+		if jobDoneChan != nil {
+			close(jobDoneChan)
+			jobDoneChan = nil
+		}
+		jobDoneChanMu.Unlock()
+	}
+
+	// Helper to requeue a job
+	requeueJob := func(job *Job) {
+		_ = os.Remove(job.TmpResponseFile(cfg))
+		if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
+			cLog.Errorf("Failed to requeue job %v: %v", job.InProgressPath(), err)
+		}
+		cLog.Infof("REQUEUED job: %v", job.OriginalFile)
+	}
 
 	// Start the metric server
 	if cfg.Controller.Prometheus.Enabled {
@@ -69,12 +94,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 				// Requeue active job immediately for spot reclaim
 				if activeJob != nil {
-					cLog.Infof("Spot reclaim detected. REQUEUE active job: %v", activeJob.OriginalFile)
-					_ = os.Remove(activeJob.TmpResponseFile(cfg))
-					if err := os.Rename(activeJob.InProgressPath(), activeJob.OriginalPath()); err != nil {
-						cLog.Errorf("Failed to requeue job %v: %v", activeJob.InProgressPath(), err)
-					}
+					cLog.Infof("Spot reclaim detected during job: %v", activeJob.OriginalFile)
+					requeueJob(activeJob)
 					activeJob = nil
+					notifyJobDone()
 				}
 			case syscall.SIGTERM:
 				gracefulShutdownRequested.Store(true)
@@ -84,11 +107,28 @@ func runController(ctx context.Context, cfg *config.Config) {
 				// NOTE: DO NOT call cancel() here to respect the termination grace period
 				// If there's an active job, start a timer to enforce grace period
 				if activeJob != nil {
+					jobDoneChanMu.Lock()
+					if jobDoneChan == nil {
+						jobDoneChan = make(chan struct{})
+					}
+					// Using a local copy prevents subtle bugs and race conditions that can happen if the global jobDoneChan
+					// is modified from elsewhere
+					localJobDoneChan := jobDoneChan
+					jobDoneChanMu.Unlock()
 					go func() {
 						cLog.Infof("Allowing in-flight job to finish (max %s)...", cfg.Controller.TerminationGracePeriod)
-						time.Sleep(cfg.Controller.TerminationGracePeriod)
-						cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
-						cancel()
+						select {
+						case <-time.After(cfg.Controller.TerminationGracePeriod):
+							cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
+							cancel()
+
+						// Closing the done channel immediately  succeeds in reading (returning zero value)
+						// This case is triggered when the running job is done and the channel is closed—letting the
+						// shutdown happen promptly instead of waiting out the whole grace period.
+						case <-localJobDoneChan:
+							cLog.Info("Job finished before grace period expired. Cancelling context to exit immediately...")
+							cancel()
+						}
 					}()
 				} else {
 					cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
@@ -134,12 +174,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// For graceful shutdown, do not sleep here and requeue only if
 			// the job is still active (timer already slept in signal handler) - See signal handler go routine
 			if !spotReclaimDetected.Load() && gracefulShutdownRequested.Load() && activeJob != nil {
-				cLog.Infof("Job did not finish before termination grace period: requeuing unfinished job %v", activeJob.OriginalFile)
-				_ = os.Remove(activeJob.TmpResponseFile(cfg))
-				if err := os.Rename(activeJob.InProgressPath(), activeJob.OriginalPath()); err != nil {
-					cLog.Errorf("Failed to requeue job %v: %v", activeJob.InProgressPath(), err)
-				}
+				cLog.Infof("Job %v did not finish before termination grace period. Requeuing...", activeJob.OriginalFile)
+				requeueJob(activeJob)
 				activeJob = nil
+				notifyJobDone()
 			}
 
 			return
@@ -221,6 +259,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 				// Set active job to nil once the job is successful
 				activeJob = nil
+				notifyJobDone()
 
 			// Defer to the large prover:
 			case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
@@ -246,9 +285,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 				}
 
 				// From the controller perspective, it has completed its job by renaming and
-				//  moving it to the large prover’s queue. Setting activeJob to nil prevents
+				// moving it to the large prover’s queue. Setting activeJob to nil prevents
 				// incorrect requeuing during shutdown, avoiding filesystem errors
 				activeJob = nil
+				notifyJobDone()
 
 			// Controller killed the job via external signal handlers
 			// Important not to set active job to nil so that it can re-queued again if necessary
@@ -256,7 +296,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 				// When receiving the killed-by-us code, the prover will put back the file in the request queue
 				// automatically if spot reclaim is detected. For graceful shutdown (only SIGTERM), the proof will be
 				// continue until terminationGracePeriod is reached and if the job is not finished it is automatically rqueued again.
-				cLog.Infof("Active job %v killed by external signal. Requeue the job only if spot reclaim detected or if the job did not finish within terminationGracePeriod:%v under graceful shutdown", job.OriginalFile, cfg.Controller.TerminationGracePeriod)
+				cLog.Infof("Active job %v killed by external signal handler: Job requeued for either spot-reclaim or if job is not finished within %v (graceful shutdown)", job.OriginalFile, cfg.Controller.TerminationGracePeriod)
 
 				// As an edge-case, it's possible (in theory) that the process
 				// completes exactly when we receive the kill signal. So we
@@ -277,6 +317,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 				// Set active job to nil as there is nothing more to retry
 				activeJob = nil
+				notifyJobDone()
 			}
 		}
 	}
