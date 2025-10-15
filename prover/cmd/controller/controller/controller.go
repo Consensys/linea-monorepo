@@ -42,18 +42,12 @@ func runController(ctx context.Context, cfg *config.Config) {
 		)
 	}
 
-	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGUSR1)
-	defer signal.Stop(signalChan)
-
-	ctx, cancel := context.WithCancel(ctx)
+	// Derive the command context with a cancel function
+	cmdCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// cmdContext is the context we provide for the command execution. In
-	// spot-instance mode, the context is subordinated to the ctx.
-	cmdContext := context.Background()
-	if cfg.Controller.SpotInstanceMode {
-		cmdContext = ctx
-	}
+	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGUSR1)
+	defer signal.Stop(signalChan)
 
 	// Signal handler goroutine — race-safe with atomic flags
 	// We never stop listening since it is possible to receive more than one signals
@@ -64,7 +58,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			case syscall.SIGUSR1:
 				spotReclaimDetected.Store(true)
 				if !gracefulShutdownRequested.Load() {
-					cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context")
+					cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP...")
 					cancel()
 					if cfg.Controller.Prometheus.Enabled {
 						metrics.IncSpotInterruption(cfg.Controller.LocalID)
@@ -73,6 +67,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 					cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
 				}
 
+				// Requeue active job immediately for spot reclaim
 				if activeJob != nil {
 					cLog.Infof("Spot reclaim detected. REQUEUE active job: %v", activeJob.OriginalFile)
 					_ = os.Remove(activeJob.TmpResponseFile(cfg))
@@ -85,15 +80,25 @@ func runController(ctx context.Context, cfg *config.Config) {
 				gracefulShutdownRequested.Store(true)
 				if !spotReclaimDetected.Load() {
 					cLog.Info("Received SIGTERM: graceful shutdown requested")
-				} else {
-					cLog.Info("Received SIGTERM after SIGUSR1: will use spot reclaim timeout")
 				}
-				cancel()
+				// NOTE: DO NOT call cancel() here to respect the termination grace period
+				// If there's an active job, start a timer to enforce grace period
+				if activeJob != nil {
+					go func() {
+						cLog.Infof("Allowing in-flight job to finish (max %s)...", cfg.Controller.TerminationGracePeriod)
+						time.Sleep(cfg.Controller.TerminationGracePeriod)
+						cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
+						cancel()
+					}()
+				} else {
+					cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
+					cancel()
+				}
 			}
 		}
 	}()
 
-	// This goroutine's raison d'etre is to log a message immediately when a
+	// This goroutine's purpose is to log a message immediately when a
 	// cancellation request (e.g., ctx expiration/cancellation, SIGTERM, etc.)
 	// is received. It ensures timely logging of the request's reception,
 	// which may be important for diagnostics. Without this
@@ -101,25 +106,35 @@ func runController(ctx context.Context, cfg *config.Config) {
 	// SIGTERM is received, there would be no log entry about the signal
 	// until the proof completes.
 	go func() {
-		<-ctx.Done()
+		<-cmdCtx.Done()
 		if spotReclaimDetected.Load() {
-			cLog.Infof("Received SIGUSR1 (spot reclaim). Will abort ASAP (max %s)...", cfg.Controller.SpotInstanceReclaimTime)
+			cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %s)...", cfg.Controller.SpotInstanceReclaimTime)
 		} else if gracefulShutdownRequested.Load() {
-			cLog.Infof("Received SIGTERM. Finishing in-flight proof (if any) and then shutting down gracefully (max %s)...", cfg.Controller.TerminationGracePeriod)
+			if activeJob != nil {
+				cLog.Infof("Context done: grace period expired, forcing shutdown")
+			} else {
+				cLog.Info("Context done: graceful shutdown complete")
+			}
 		} else {
-			cLog.Infoln("Received cancellation request.")
+			cLog.Infoln("Context done due to cancellation request.")
 		}
 	}()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-cmdCtx.Done():
 			cLog.Infoln("Context cancelled by caller or externally triggered (SIGTERM/SIGUSR1). Exiting...")
-			metrics.ShutdownServer(ctx)
+			metrics.ShutdownServer(cmdCtx)
 
-			// Defensive: if controller is killed while a job is somehow still active!
-			if spotReclaimDetected.Load() && activeJob != nil {
-				cLog.Infof("Spot reclaim (shutdown branch): requeuing active job %v", activeJob.OriginalFile)
+			if spotReclaimDetected.Load() {
+				cLog.Infof("Waiting up to %s for spot reclaim...", cfg.Controller.SpotInstanceReclaimTime)
+				time.Sleep(cfg.Controller.SpotInstanceReclaimTime)
+			}
+
+			// For graceful shutdown, do not sleep here and requeue only if
+			// the job is still active (timer already slept in signal handler) - See signal handler go routine
+			if !spotReclaimDetected.Load() && gracefulShutdownRequested.Load() && activeJob != nil {
+				cLog.Infof("Job did not finish before termination grace period: requeuing unfinished job %v", activeJob.OriginalFile)
 				_ = os.Remove(activeJob.TmpResponseFile(cfg))
 				if err := os.Rename(activeJob.InProgressPath(), activeJob.OriginalPath()); err != nil {
 					cLog.Errorf("Failed to requeue job %v: %v", activeJob.InProgressPath(), err)
@@ -127,21 +142,24 @@ func runController(ctx context.Context, cfg *config.Config) {
 				activeJob = nil
 			}
 
-			// Apply appropriate grace period
-			switch {
-			case spotReclaimDetected.Load():
-				time.Sleep(cfg.Controller.SpotInstanceReclaimTime)
-			case gracefulShutdownRequested.Load():
-				time.Sleep(cfg.Controller.TerminationGracePeriod.Abs())
-			default:
-				// immediate exit
-			}
 			return
 
 			// Processing a new job
 		case <-retryDelay(cfg.Controller.RetryDelays, numRetrySoFar):
 			// Prevent starting new jobs if shutdown started
-			if ctx.Err() != nil {
+			if cmdCtx.Err() != nil {
+				continue
+			}
+
+			//  Skip fetching new jobs if graceful shutdown or spot reclaim is in progress
+			if gracefulShutdownRequested.Load() || spotReclaimDetected.Load() {
+				numRetrySoFar++
+				noJobFoundMsg := "Shutdown in progress, skipping new jobs"
+				if numRetrySoFar > 5 {
+					cLog.Debug(noJobFoundMsg)
+				} else {
+					cLog.Info(noJobFoundMsg)
+				}
 				continue
 			}
 
@@ -162,11 +180,11 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 			numRetrySoFar = 0
 
-			// Important: Set the active job to the current job for safe requeue in case of spot-reclaim
+			// Important: Set the active job to the current job for safe requeue mechanism
 			activeJob = job
 
 			// Run the command (potentially retrying in large mode)
-			status := executor.Run(cmdContext, job)
+			status := executor.Run(cmdCtx, job)
 
 			// CreateColumns the job according to the status we got
 			switch {
@@ -228,13 +246,12 @@ func runController(ctx context.Context, cfg *config.Config) {
 				}
 
 			// Controller killed the job via external signal handlers
+			// Important not to set active job to nil so that it can re-queued again if necessary
 			case status.ExitCode == CodeKilledByUs:
 				// When receiving the killed-by-us code, the prover will put back the file in the request queue
-				// only spot reclaim is detected. For graceful shutdown (only SIGTERM),
-				// the proof will be continue until terminationGracePeriod is reached and will not be requeued.
-				// REMARK: In case the proof fails to complete before terminationGracePeriod is reached, the file
-				// will have to be manually requeued.
-				cLog.Infof("Active job %v killed by us. Requeue the job only if spot reclaim detected.", job.OriginalFile)
+				// automatically if spot reclaim is detected. For graceful shutdown (only SIGTERM), the proof will be
+				// continue until terminationGracePeriod is reached and if the job is not finished it is automatically rqueued again.
+				cLog.Infof("Active job %v killed by external signal. Requeue the job only if spot reclaim detected or if the job did not finish within terminationGracePeriod:%v under graceful shutdown", job.OriginalFile, cfg.Controller.TerminationGracePeriod)
 
 				// As an edge-case, it's possible (in theory) that the process
 				// completes exactly when we receive the kill signal. So we
