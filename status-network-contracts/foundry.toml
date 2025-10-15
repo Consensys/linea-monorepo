@@ -42,7 +42,7 @@
   tab_width = 4
   wrap_comments = true
 
-[lint]
+[profile.lint]
 lint_on_build = false # Since we are using our own linting solution, we can disable built in one
 
 [rpc_endpoints]
