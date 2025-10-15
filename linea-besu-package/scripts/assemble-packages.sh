@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Enable fail-fast behavior
-#set -e
+set -e
 
 source ./versions.env
 
