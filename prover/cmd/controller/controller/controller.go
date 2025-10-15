@@ -222,7 +222,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 				// Set active job to nil once the job is successful
 				activeJob = nil
 
-			// Defer to the large prover: We do not set active job to nil, because the job is not complete yet
+			// Defer to the large prover:
 			case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
 				cLog.Infof("Renaming %v for the large prover", job.OriginalFile)
 				// Move the inprogress file back in the from directory with
@@ -244,6 +244,11 @@ func runController(ctx context.Context, cfg *config.Config) {
 				if err := os.Rename(job.InProgressPath(), toLargePath); err != nil {
 					cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), toLargePath, err)
 				}
+
+				// From the controller perspective, it has completed its job by renaming and
+				//  moving it to the large prover’s queue. Setting activeJob to nil prevents
+				// incorrect requeuing during shutdown, avoiding filesystem errors
+				activeJob = nil
 
 			// Controller killed the job via external signal handlers
 			// Important not to set active job to nil so that it can re-queued again if necessary
