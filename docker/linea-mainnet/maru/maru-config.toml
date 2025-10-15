@@ -1,6 +1,6 @@
 # Uncomment the below [linea] section for finalized L2 block tag
 # [linea]
-# contract-address = "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5"
+# contract-address = "0xd19d4B5d358258f05D7B411E21A1460D11B0876F"
 # l1-eth-api = { endpoint = "please provide an L1 RPC endpoint here" }
 # l1-polling-interval = "6 seconds"
 # l1-highest-block-tag = "finalized"
@@ -13,22 +13,18 @@ private-key-path = "/opt/maru/private-key"
 port = 9000  # Default port (can be same as discovery)
 ip-address = "0.0.0.0"
 static-peers = [
-  "/ip4/3.129.120.128/tcp/31005/p2p/16Uiu2HAmR33t8RZiAHovuH9iH2UuUrajrbfyYowiYDAQo3D5Y9wg",
-  "/ip4/3.129.120.128/tcp/31006/p2p/16Uiu2HAm9HB5oNmnmj8yY6T7dfhLVidVzYqa8QVDtEthkMr6b8tx"
-]
+  "/ip4/18.223.198.165/tcp/31005/p2p/16Uiu2HAmSJSpgBxVoMcRZ4u8CQbTgfPrbw6u7xH1BnMgwAQZAm91",
+  "/ip4/13.50.94.193/tcp/31003/p2p/16Uiu2HAmVcX8oB9KxmJdVAGybMyxuqtbY959i6uaew1agDBv9wk3",
+  "/ip4/3.1.142.64/tcp/31000/p2p/16Uiu2HAkuaxfz8ftqSSfG6hKG7B7MCUD9boXvawxKXz9eq7R6Tmi"
+ ]
 reconnect-delay = "500ms"
-
-[p2p.discovery]
-port = 9000
-bootnodes = []
-refresh-interval = "3s"
 
 [payload-validator]
 # Besu node as execution layer client
-engine-api-endpoint = { endpoint = "http://linea-besu:8550" }  # Match Besu port
-eth-api-endpoint = { endpoint = "http://linea-besu:8545" }
+ engine-api-endpoint = { endpoint = "http://linea-besu:8550" }  # Match Besu port
+ eth-api-endpoint = { endpoint = "http://linea-besu:8545" }
 # Geth node as execution layer client
-# engine-api-endpoint = { endpoint = "http://geth-node:8550", jwt-secret-path = "/opt/consensys/maru/configs/jwt.hex" }
+# engine-api-endpoint = { endpoint = "http://geth-node:8550", jwt-secret-path = "/opt/consensys/maru/configs/jwt" }
 # eth-api-endpoint = { endpoint = "http://geth-node:8545" }
 
 [observability]
