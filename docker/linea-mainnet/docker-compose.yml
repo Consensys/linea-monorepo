@@ -122,7 +122,7 @@ services:
       - --authrpc.addr=0.0.0.0
       - --authrpc.port=8550
       - --authrpc.vhosts=*
-      - --authrpc.jwtsecret=/root/.ethereum/jwt
+      - --authrpc.jwtsecret=/jwt
     ports:
       - 30303:30303
       - 30303:30303/udp
@@ -131,7 +131,7 @@ services:
       - 8550:8550
     volumes:
       - ./geth/geth-genesis.json:/genesis.json:ro
-      - ./engine-jwt:/root/.ethereum/jwt:ro
+      - ./engine-jwt:/jwt:ro
       - ./execution-layer-static-nodes.json:/root/.ethereum/static-nodes.json:ro # Loaded automatically by Geth if present
       - linea-mainnet-geth:/root/.ethereum
 
