@@ -18,6 +18,12 @@ mechanisms. The staking system is one of several reward distributors in the broa
 
 For a detailed system overview, please refer to the [System Overview](docs/system-overview.md) document.
 
+## Formal Verification and Invariants
+
+The Status Network contracts have been formally verified using Certora. All verified properties and invariants are
+documented in [PROPERTIES.md](PROPERTIES.md). Auditors should review these invariants to understand the formally
+verified security properties of the system.
+
 ## System Actors
 
 The Status Network operates with several distinct actor types, each with specific roles and permissions:
