@@ -197,6 +197,9 @@ type Controller struct {
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
 
+	// The number of seconds infra (AWS) waits before reclaiming a spot instance
+	SpotInstanceReclaimTime time.Duration `mapstructure:"spot_instance_reclaim_time"`
+
 	// The number of seconds the controller should wait before killing a worker after receiving a SIGTERM
 	TerminationGracePeriod time.Duration `mapstructure:"termination_grace_period"`
 

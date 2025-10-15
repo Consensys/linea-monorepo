@@ -30,6 +30,7 @@ func setDefaultValues() {
 	viper.SetDefault("controller.defer_to_other_large_codes", DefaultDeferToOtherLargeCodes)
 	viper.SetDefault("controller.retry_locally_with_large_codes", DefaultRetryLocallyWithLargeCodes)
 
+	viper.SetDefault("controller.spot_instance_reclaim_time", time.Duration(120)*time.Second)
 	viper.SetDefault("controller.termination_grace_period", time.Duration(1800)*time.Second)
 
 	// Set default for cmdTmpl and cmdLargeTmpl

@@ -1,7 +1,5 @@
 package config
 
-import "time"
-
 const (
 	VerifyingKeyFileName      = "verifying_key.bin"
 	CircuitFileName           = "circuit.bin"
@@ -19,7 +17,4 @@ const (
 
 	// Extension to add in order to defer the job to the large prover
 	LargeSuffix = "large"
-
-	// Infra- related: AWS-Spot Instance reclaim time
-	SpotInstanceReclaimTime = time.Duration(120) * time.Second
 )
