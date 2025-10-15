@@ -228,7 +228,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
-			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKeyPublicInput),
+			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKeyPublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 	)
@@ -291,7 +291,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			8,
 			vortex.ForceNumOpenedColumns(32),
 			vortex.WithSISParams(&sisInstance),
-			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKey2PublicInput),
+			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
@@ -317,7 +317,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 
 	// It is necessary to add the extradata from the compiled IOP to the
 	// recursed one otherwise, it will not be found.
-	res.RecursionComp.ExtraData[verifyingKeyPublicInput] = modIOP.ExtraData[verifyingKeyPublicInput]
+	res.RecursionComp.ExtraData[VerifyingKeyPublicInput] = modIOP.ExtraData[VerifyingKeyPublicInput]
 
 	return res
 }
@@ -433,6 +433,12 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) SegmentProof {
 	}
 
 	return segmentProof
+}
+
+// GetVerifyingKeyPair returns the verifying keys of the compiled segment.
+func (c *RecursedSegmentCompilation) GetVerifyingKeyPair() [2]field.Element {
+	vk0, vk1 := getVerifyingKeyPair(c.RecursionComp)
+	return [2]field.Element{vk0, vk1}
 }
 
 // sortPublicInput is small compiler sorting the public inputs by name.
