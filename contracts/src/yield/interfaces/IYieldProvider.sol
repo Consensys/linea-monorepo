@@ -70,8 +70,11 @@ interface IYieldProvider {
    *      YieldProvider state.
    * @param _yieldProvider The yield provider address.
    * @return newReportedYield New net yield (denominated in ETH) since the prior report.
+   * @return outstandingNegativeYield Amount of outstanding negative yield.
    */
-  function reportYield(address _yieldProvider) external returns (uint256 newReportedYield);
+  function reportYield(
+    address _yieldProvider
+  ) external returns (uint256 newReportedYield, uint256 outstandingNegativeYield);
 
   /**
    * @notice Reduces the outstanding LST liability principal.

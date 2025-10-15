@@ -22,8 +22,13 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
     }
   }
 
-  function reportYield(address _yieldProvider) external returns (uint256 newReportedYield) {
-    return reportYieldReturnVal(_yieldProvider);
+  function reportYield(
+    address _yieldProvider
+  ) external returns (uint256 newReportedYield, uint256 outstandingNegativeYield) {
+    return (
+      reportYieldReturnVal_NewReportedYield(_yieldProvider),
+      reportYieldReturnVal_OutstandingNegativeYield(_yieldProvider)
+    );
   }
 
   function payLSTPrincipal(

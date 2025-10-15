@@ -127,8 +127,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    *      - Node operator fees
    * @param _yieldProvider The yield provider address.
    * @return newReportedYield New net yield (denominated in ETH) since the prior report.
+   * @return outstandingNegativeYield Amount of outstanding negative yield.
    */
-  function reportYield(address _yieldProvider) external onlyDelegateCall returns (uint256 newReportedYield) {
+  function reportYield(
+    address _yieldProvider
+  ) external onlyDelegateCall returns (uint256 newReportedYield, uint256 outstandingNegativeYield) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if ($$.isOssified) {
       revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
@@ -138,33 +141,26 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     uint256 totalVaultFunds = _getDashboard($$).totalValue();
     // Gross positive yield
     if (totalVaultFunds > lastUserFunds) {
-      newReportedYield = _handlePostiveYieldAccounting($$, totalVaultFunds - lastUserFunds);
+      newReportedYield = totalVaultFunds - lastUserFunds;
+      // 1. Pay liabilities
+      uint256 lstLiabilityPayment = _payMaximumPossibleLSTLiability($$);
+      newReportedYield = Math256.safeSub(newReportedYield, lstLiabilityPayment);
+      // 2. Pay obligations
+      uint256 obligationsPaid = _payObligations($$, newReportedYield);
+      newReportedYield = Math256.safeSub(newReportedYield, obligationsPaid);
+      // 3. Pay node operator fees
+      uint256 nodeOperatorFeesPaid = _payNodeOperatorFees($$, newReportedYield);
+      newReportedYield = Math256.safeSub(newReportedYield, nodeOperatorFeesPaid);
+
+      outstandingNegativeYield = Math256.safeSub(
+        lstLiabilityPayment + obligationsPaid + nodeOperatorFeesPaid,
+        totalVaultFunds - lastUserFunds
+      );
       // Gross negative yield
     } else {
       newReportedYield = 0;
+      outstandingNegativeYield = lastUserFunds - totalVaultFunds;
     }
-  }
-
-  /**
-   * @notice Helper function to handle state updates in the case of remaining yield after clearing previously incurred negative yield.
-   * @param $$ Storage pointer for the YieldProvider-scoped storage.
-   * @param _availableYield Amount of yield available after clearing previous negative yield.
-   * @return newReportedYield New net yield (denominated in ETH) since the prior report.
-   */
-  function _handlePostiveYieldAccounting(
-    YieldProviderStorage storage $$,
-    uint256 _availableYield
-  ) internal returns (uint256 newReportedYield) {
-    newReportedYield = _availableYield;
-    // 1. Pay liabilities
-    uint256 lstLiabilityPayment = _payMaximumPossibleLSTLiability($$);
-    newReportedYield = Math256.safeSub(newReportedYield, lstLiabilityPayment);
-    // 2. Pay obligations
-    uint256 obligationsPaid = _payObligations($$, newReportedYield);
-    newReportedYield = Math256.safeSub(newReportedYield, obligationsPaid);
-    // 3. Pay node operator fees
-    uint256 nodeOperatorFeesPaid = _payNodeOperatorFees($$, newReportedYield);
-    newReportedYield = Math256.safeSub(newReportedYield, nodeOperatorFeesPaid);
   }
 
   /**

@@ -14,7 +14,8 @@ abstract contract MockYieldProviderStorageLayout {
 
   struct MockYieldProviderStorage {
     uint256 withdrawableValueReturnVal;
-    uint256 reportYieldReturnVal;
+    uint256 reportYieldReturnVal_NewReportedYield;
+    uint256 reportYieldReturnVal_OutstandingNegativeYield;
     uint256 payLSTPrincipalReturnVal;
     uint256 unstakePermissionlessReturnVal;
     bool processPendingOssificationReturnVal;
@@ -43,8 +44,12 @@ abstract contract MockYieldProviderStorageLayout {
     _getMockYieldProviderStorage(_yieldProvider).withdrawableValueReturnVal = _val;
   }
 
-  function setReportYieldReturnVal(address _yieldProvider, uint256 _val) external {
-    _getMockYieldProviderStorage(_yieldProvider).reportYieldReturnVal = _val;
+  function setReportYieldReturnVal_NewReportedYield(address _yieldProvider, uint256 _val) external {
+    _getMockYieldProviderStorage(_yieldProvider).reportYieldReturnVal_NewReportedYield = _val;
+  }
+
+  function setReportYieldReturnVal_OutstandingNegativeYield(address _yieldProvider, uint256 _val) external {
+    _getMockYieldProviderStorage(_yieldProvider).reportYieldReturnVal_OutstandingNegativeYield = _val;
   }
 
   function setPayLSTPrincipalReturnVal(address _yieldProvider, uint256 _val) external {
@@ -67,8 +72,12 @@ abstract contract MockYieldProviderStorageLayout {
     return _getMockYieldProviderStorage(_yieldProvider).withdrawableValueReturnVal;
   }
 
-  function reportYieldReturnVal(address _yieldProvider) public view returns (uint256) {
-    return _getMockYieldProviderStorage(_yieldProvider).reportYieldReturnVal;
+  function reportYieldReturnVal_NewReportedYield(address _yieldProvider) public view returns (uint256) {
+    return _getMockYieldProviderStorage(_yieldProvider).reportYieldReturnVal_NewReportedYield;
+  }
+
+  function reportYieldReturnVal_OutstandingNegativeYield(address _yieldProvider) public view returns (uint256) {
+    return _getMockYieldProviderStorage(_yieldProvider).reportYieldReturnVal_OutstandingNegativeYield;
   }
 
   function payLSTPrincipalReturnVal(address _yieldProvider) public view returns (uint256) {

@@ -295,14 +295,21 @@ describe("YieldManager contract - ETH transfer operations", () => {
       // ARRANGE
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const reportedYield = ONE_ETHER;
-      await yieldManager.connect(nativeYieldOperator).setReportYieldReturnVal(mockYieldProviderAddress, reportedYield);
+      const outstandingNegativeYield = ONE_ETHER * 2n;
+
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setReportYieldReturnVal_NewReportedYield(mockYieldProviderAddress, reportedYield);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setReportYieldReturnVal_OutstandingNegativeYield(mockYieldProviderAddress, outstandingNegativeYield);
 
       // ACT + ASSERT
       await expect(
         yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
       )
         .to.emit(yieldManager, "NativeYieldReported")
-        .withArgs(mockYieldProviderAddress, l2YieldRecipient.address, reportedYield);
+        .withArgs(mockYieldProviderAddress, l2YieldRecipient.address, reportedYield, outstandingNegativeYield);
 
       const providerData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
       expect(providerData.userFunds).to.equal(reportedYield);

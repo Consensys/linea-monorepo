@@ -74,8 +74,14 @@ interface IYieldManager {
    * @param yieldProvider The yield provider address.
    * @param l2YieldRecipient The L2 address receiving the yield.
    * @param yieldAmount Reported amount of new earned yield.
+   * @param outstandingNegativeYield Reported amount of outstanding negative yield.
    */
-  event NativeYieldReported(address indexed yieldProvider, address indexed l2YieldRecipient, uint256 yieldAmount);
+  event NativeYieldReported(
+    address indexed yieldProvider,
+    address indexed l2YieldRecipient,
+    uint256 yieldAmount,
+    uint256 outstandingNegativeYield
+  );
 
   /**
    * @notice Emitted when ETH is requested from a yield provider.
@@ -516,8 +522,12 @@ interface IYieldManager {
    * @param _yieldProvider      The yield provider address.
    * @param _l2YieldRecipient   The L2YieldRecipient address.
    * @return newReportedYield New net yield (denominated in ETH) since the prior report.
+   * @return outstandingNegativeYield Amount of outstanding negative yield.
    */
-  function reportYield(address _yieldProvider, address _l2YieldRecipient) external returns (uint256 newReportedYield);
+  function reportYield(
+    address _yieldProvider,
+    address _l2YieldRecipient
+  ) external returns (uint256 newReportedYield, uint256 outstandingNegativeYield);
 
   /**
    * @notice Request beacon chain withdrawal from specified yield provider.

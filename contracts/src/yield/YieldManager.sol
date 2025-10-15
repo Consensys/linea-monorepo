@@ -503,6 +503,7 @@ contract YieldManager is
    * @param _yieldProvider      The yield provider address.
    * @param _l2YieldRecipient   The L2YieldRecipient address.
    * @return newReportedYield New net yield (denominated in ETH) since the prior report.
+   * @return outstandingNegativeYield Amount of outstanding negative yield.
    */
   function reportYield(
     address _yieldProvider,
@@ -513,20 +514,20 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyKnownL2YieldRecipient(_l2YieldRecipient)
     onlyRole(YIELD_REPORTER_ROLE)
-    returns (uint256 newReportedYield)
+    returns (uint256 newReportedYield, uint256 outstandingNegativeYield)
   {
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.reportYield, (_yieldProvider))
     );
-    newReportedYield = abi.decode(data, (uint256));
+    (newReportedYield, outstandingNegativeYield) = abi.decode(data, (uint256, uint256));
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     $$.userFunds += newReportedYield;
     $$.yieldReportedCumulative += newReportedYield;
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     $.userFundsInYieldProvidersTotal += newReportedYield;
     ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).reportNativeYield(newReportedYield, _l2YieldRecipient);
-    emit NativeYieldReported(_yieldProvider, _l2YieldRecipient, newReportedYield);
+    emit NativeYieldReported(_yieldProvider, _l2YieldRecipient, newReportedYield, outstandingNegativeYield);
   }
 
   /**

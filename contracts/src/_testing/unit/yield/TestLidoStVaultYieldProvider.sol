@@ -40,11 +40,6 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     return address(_getVault($$));
   }
 
-  function handlePostiveYieldAccounting(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return _handlePostiveYieldAccounting($$, _availableYield);
-  }
-
   function syncExternalLiabilitySettlement(
     address _yieldProvider,
     uint256 _liabilityShares,
