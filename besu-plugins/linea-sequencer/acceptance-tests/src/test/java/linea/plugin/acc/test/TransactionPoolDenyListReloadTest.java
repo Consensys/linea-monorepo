@@ -16,6 +16,7 @@ package linea.plugin.acc.test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -59,7 +60,7 @@ public class TransactionPoolDenyListReloadTest extends LineaPluginTestBase {
   }
 
   @Test
-  public void emptyDenyList() throws Exception {
+  public void testEmptyDenyList() throws Exception {
     Credentials allowedCredentials = Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY);
     final Web3j miner = minerNode.nodeRequests().eth();
 
@@ -69,7 +70,7 @@ public class TransactionPoolDenyListReloadTest extends LineaPluginTestBase {
   }
 
   @Test
-  public void emptyDenyList_thenDenySender_cannotAddTxToPool() throws Exception {
+  public void testEmptyDenyList_thenDenySender_cannotAddTxToPool() throws Exception {
     Credentials willBeDenied = Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY);
     final Web3j miner = minerNode.nodeRequests().eth();
     RawTransactionManager transactionManager =
@@ -83,8 +84,31 @@ public class TransactionPoolDenyListReloadTest extends LineaPluginTestBase {
     assertAddressNotAllowed(transactionManager, willBeDenied.getAddress());
   }
 
+  @Test
+  public void testDenySender_cannotAddTxToPool_thenAllowSender() throws Exception {
+    Credentials willBeDenied = Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY);
+    final Web3j miner = minerNode.nodeRequests().eth();
+    RawTransactionManager transactionManager =
+      new RawTransactionManager(miner, willBeDenied, CHAIN_ID);
+
+    addAddressToDenyList(willBeDenied.getAddress());
+    reloadPluginConfig();
+    assertAddressNotAllowed(transactionManager, willBeDenied.getAddress());
+
+    emptyDenyList();
+    reloadPluginConfig();
+    assertAddressAllowed(transactionManager, willBeDenied.getAddress());
+  }
+
   private void addAddressToDenyList(final String address) throws IOException {
     Files.writeString(tempDenyList, address);
+  }
+
+  private void emptyDenyList() throws IOException {
+    FileOutputStream fileOutputStream = new FileOutputStream(tempDenyList.toFile(), false);
+    fileOutputStream.write(new byte[]{});
+    fileOutputStream.flush();
+    fileOutputStream.close();
   }
 
   private void assertAddressAllowed(
