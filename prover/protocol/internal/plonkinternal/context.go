@@ -101,6 +101,13 @@ type compilationCtx struct {
 		NbRow   int
 	}
 
+	// FixedNbPublicInputOption is used to specify a fixed number of public
+	// inputs in the CompilationCtx via the [WithFixedNbPublicInputs] option.
+	FixedNbPublicInputOption struct {
+		Enabled bool
+		NbPI    int
+	}
+
 	// ExternalHasherOption is used to specify an external hasher
 	// for the CompilationCtx via the [WithExternalHasher] option.
 	ExternalHasherOption struct {
@@ -275,9 +282,14 @@ func (ctx *compilationCtx) DomainSizePlonk() int {
 }
 
 // Returns the size of the public input tiny column
-func tinyPISize(spr *cs.SparseR1CS) int {
+func (ctx *compilationCtx) tinyPISize() int {
+
+	if ctx.FixedNbPublicInputOption.Enabled {
+		return ctx.FixedNbPublicInputOption.NbPI
+	}
+
 	return utils.NextPowerOfTwo(
-		spr.GetNbPublicVariables(),
+		ctx.Plonk.SPR.GetNbPublicVariables(),
 	)
 }
 
@@ -380,10 +392,11 @@ func (ctx compilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
 
 func (ctx compilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
 	return GenericPlonkProverAction{
-		Name:           ctx.Name,
-		SPR:            ctx.Plonk.SPR,
-		MaxNbInstances: ctx.MaxNbInstances,
-		DomainSize:     ctx.DomainSize(),
+		Name:               ctx.Name,
+		SPR:                ctx.Plonk.SPR,
+		MaxNbInstances:     ctx.MaxNbInstances,
+		FixedNbPublicInput: ctx.tinyPISize(),
+		DomainSize:         ctx.DomainSize(),
 		Columns: struct {
 			L          []ifaces.Column
 			R          []ifaces.Column
@@ -479,5 +492,6 @@ type GenericPlonkProverAction struct {
 		PosOldState, PosBlock, PosNewState ifaces.Column
 		OldStates, Blocks, NewStates       []ifaces.Column
 	}
-	FixedNbRows int
+	FixedNbRows        int
+	FixedNbPublicInput int
 }

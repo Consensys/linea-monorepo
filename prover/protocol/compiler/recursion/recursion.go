@@ -119,6 +119,10 @@ type Parameters struct {
 	// be built with a fixed number of rows.
 	FixedNbRowPlonkCircuit int
 
+	// FixedNbPublicInput is a flag indicating that the Plonk circuit should
+	// be built with a fixed number of public inputs.
+	FixedNbPublicInput int
+
 	// ExternalHasherNbRows is a flag indicating that the MiMC circuit should
 	// be built with a fixed number of rows.
 	ExternalHasherNbRows int
@@ -165,6 +169,10 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 
 	if len(params.Subscript) > 0 {
 		plonkOpts = append(plonkOpts, plonkinternal.WithSubscript(params.Subscript))
+	}
+
+	if params.FixedNbPublicInput > 0 {
+		plonkOpts = append(plonkOpts, plonkinternal.WithFixedNbPublicInput(params.FixedNbPublicInput))
 	}
 
 	if !params.WithoutGkr && params.WithExternalHasherOpts {

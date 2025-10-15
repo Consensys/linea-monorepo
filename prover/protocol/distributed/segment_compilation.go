@@ -27,6 +27,7 @@ const (
 	// the value is empirical and corresponds to the lowest value that works.
 	fixedNbRowPlonkCircuit   = 1 << 19
 	fixedNbRowExternalHasher = 1 << 15
+	fixedNbPublicInput       = 1 << 10
 
 	// initialCompilerSize sets the target number of rows of the first invokation
 	// of [compiler.Arcane] of the pre-recursion pass of [CompileSegment]. It is
@@ -268,6 +269,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				FixedNbRowPlonkCircuit: fixedNbRowPlonkCircuit,
 				WithExternalHasherOpts: true,
 				ExternalHasherNbRows:   fixedNbRowExternalHasher,
+				FixedNbPublicInput:     fixedNbPublicInput,
 				Subscript:              subscript,
 				SkipRecursionPrefix:    true,
 				RestrictPublicInputs:   publicInputRestriction,
