@@ -17,7 +17,7 @@ static-peers = [
   "/ip4/18.190.136.59/tcp/31006/p2p/16Uiu2HAm5DpcTYVLzZf45unDDrY9wYVbqeFnPo4CrpnF3tyXV3o8",
   "/ip4/13.50.94.193/tcp/31003/p2p/16Uiu2HAmVcX8oB9KxmJdVAGybMyxuqtbY959i6uaew1agDBv9wk3",
   "/ip4/3.1.142.64/tcp/31000/p2p/16Uiu2HAkuaxfz8ftqSSfG6hKG7B7MCUD9boXvawxKXz9eq7R6Tmi",
-  "/ip4/52.77.66.99/tcp/31000/p2p/16Uiu2HAmGNP9fqUnfCb5v8VAWczW12qmsEnYhNUw2v652Px9Kz5V"
+  "/ip4/52.77.66.99/tcp/31001/p2p/16Uiu2HAmGNP9fqUnfCb5v8VAWczW12qmsEnYhNUw2v652Px9Kz5V"
 ]
 reconnect-delay = "500ms"
 
