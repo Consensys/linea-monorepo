@@ -4,7 +4,7 @@ genesis-file="/var/lib/besu/genesis.json"
 data-path="/opt/besu/data"
 
 # Sync mode and data layer implementation
-sync-mode="FULL"
+sync-mode="SNAP"
 data-storage-format="BONSAI"
 
 cache-last-block-headers-preload-enabled=true
@@ -21,7 +21,8 @@ host-allowlist=["*"]
 # engine
 engine-host-allowlist=["*"]
 engine-rpc-port=8550
-engine-jwt-disabled=true
+engine-jwt-disabled=false # set to true if want to disable jwt
+engine-jwt-secret="/var/lib/besu/jwt"
 
 # rpc
 rpc-http-enabled=true

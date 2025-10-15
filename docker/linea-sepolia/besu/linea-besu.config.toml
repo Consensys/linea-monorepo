@@ -22,7 +22,8 @@ host-allowlist=["*"]
 # engine
 engine-host-allowlist=["*"]
 engine-rpc-port=8550
-engine-jwt-disabled=true
+engine-jwt-disabled=false # set to true if want to disable jwt
+engine-jwt-secret="/var/lib/besu/jwt"
 
 # rpc
 rpc-http-enabled=true
