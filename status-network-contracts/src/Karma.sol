@@ -201,11 +201,7 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
      * @param amount The amount of rewards to set.
      * @param duration The duration of the rewards.
      */
-    function setReward(
-        address rewardsDistributor,
-        uint256 amount,
-        uint256 duration
-    )
+    function setReward(address rewardsDistributor, uint256 amount, uint256 duration)
         public
         virtual
         onlyAdminOrOperator

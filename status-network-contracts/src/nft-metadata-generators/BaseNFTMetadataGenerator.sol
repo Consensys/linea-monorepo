@@ -55,10 +55,7 @@ abstract contract BaseNFTMetadataGenerator is INFTMetadataGenerator, Ownable {
      * @param account The address of the NFT owner
      * @param balance The balance of the NFT owner
      */
-    function generateImageURI(
-        address account,
-        uint256 balance
-    )
+    function generateImageURI(address account, uint256 balance)
         internal
         view
         virtual

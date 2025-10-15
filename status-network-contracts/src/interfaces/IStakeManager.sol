@@ -73,13 +73,7 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
      * @param _currentLockUntil The current lock end time of the vault
      * @return _lockUntil The new lock end time of the vault
      */
-    function stake(
-        uint256 _amount,
-        uint256 _seconds,
-        uint256 _currentLockUntil
-    )
-        external
-        returns (uint256 _lockUntil);
+    function stake(uint256 _amount, uint256 _seconds, uint256 _currentLockUntil) external returns (uint256 _lockUntil);
 
     /**
      * @notice Allows users to lock their staked balance for a specified duration.

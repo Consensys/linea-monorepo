@@ -45,11 +45,7 @@ contract StackOverflowStakeManager is UUPSUpgradeable, IStakeManager, TrustedCod
         // implementation
     }
     // solhint-disable-next-line
-    function stake(
-        uint256 _amount,
-        uint256 _seconds,
-        uint256 _currentLockUntil
-    )
+    function stake(uint256 _amount, uint256 _seconds, uint256 _currentLockUntil)
         external
         override
         returns (uint256 _lockUntil)

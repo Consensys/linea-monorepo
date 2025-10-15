@@ -398,7 +398,7 @@ contract IntegrationTest is StakeManagerTest {
                 stakingBalance: 40e18,
                 rewardBalance: 1000e18,
                 rewardIndex: 125e17 // 1000 rewards / (40 staked + 40 MP) = 12.5
-             })
+            })
         );
 
         checkVault(
@@ -731,7 +731,7 @@ contract StakeTest is StakeManagerTest {
                 stakingBalance: 10e18,
                 rewardBalance: 1000e18,
                 rewardIndex: 50e18 // (1000 rewards / (10 staked + 10 MP)) = 50
-             })
+            })
         );
     }
 
@@ -1023,8 +1023,8 @@ contract StakeTest is StakeManagerTest {
 
         // new bonus = old bonus + bonus increase for old stake + bonus for new stake + bonus for new stake
         expectedBonus = expectedBonus + _bonusMP(stakeAmount, lockUpIncrease) + _bonusMP(stakeAmount, lockUpIncrease)
-        // This is the bonus for the new stake on the previous lock up
-        + _bonusMP(stakeAmount, YEAR);
+            // This is the bonus for the new stake on the previous lock up
+            + _bonusMP(stakeAmount, YEAR);
         expectedMP = expectedMP + stakeAmount;
         expectedMaxMP = expectedMP + expectedBonus + ((stakeAmount * 2) * streamer.MAX_MULTIPLIER());
 
@@ -1162,7 +1162,7 @@ contract StakeTest is StakeManagerTest {
                 stakingBalance: 40e18,
                 rewardBalance: 1000e18,
                 rewardIndex: 125e17 // (1000 rewards / (40 staked + 40 MP)) = 12,5
-             })
+            })
         );
     }
 
@@ -1521,7 +1521,7 @@ contract UnstakeTest is StakeTest {
                 totalStaked: stakeAmount,
                 totalMPStaked: (stakeAmount + expectedBonusMP) + stakeAmount,
                 totalMPAccrued: (stakeAmount + expectedBonusMP) + stakeAmount, // we do `+ stakeAmount` we've accrued
-                // `stakeAmount` after 1 year
+                    // `stakeAmount` after 1 year
                 totalMaxMP: _maxTotalMP(stakeAmount, lockUpPeriod),
                 stakingBalance: 10e18,
                 rewardBalance: 0,
@@ -1625,8 +1625,9 @@ contract UnstakeTest is StakeTest {
             predictedBonusMP[stage] = (totalStaked[stage] * predictedBonusMP[stage - 1]) / totalStaked[stage - 1];
             predictedTotalMaxMP[stage] = (totalStaked[stage] * predictedTotalMaxMP[stage - 1]) / totalStaked[stage - 1];
             increasedAccuredMP[stage] = 0; //no accuredMP in third stage;
-            //total accuredMP from this stage is a proportion from the difference of remainingStake and amountStaked
-            //if the account reduced 50% of its stake, the accuredMP should be reduced by 50%
+                //total accuredMP from this stage is a proportion from the difference of remainingStake and
+                // amountStaked
+                //if the account reduced 50% of its stake, the accuredMP should be reduced by 50%
             predictedAccuredMP[stage] = (totalStaked[stage] * predictedAccuredMP[stage - 1]) / totalStaked[stage - 1];
             predictedTotalMP[stage] = predictedBonusMP[stage] + predictedAccuredMP[stage];
         }
@@ -1735,7 +1736,7 @@ contract UnstakeTest is StakeTest {
                 // alice owned a 25% of the pool, so 25% of the rewards are paid out to alice (250)
                 rewardBalance: 750e18,
                 rewardIndex: 125e17 // reward index remains unchanged
-             })
+            })
         );
 
         checkVault(
@@ -2943,7 +2944,9 @@ contract MultipleVaultsStakeTest is StakeManagerTest {
         );
 
         checkUserTotals(
-            CheckUserTotalsParams({ user: alice, totalStakedBalance: 90e18, totalMPAccrued: 90e18, totalMaxMP: 450e18 })
+            CheckUserTotalsParams({
+                user: alice, totalStakedBalance: 90e18, totalMPAccrued: 90e18, totalMaxMP: 450e18
+            })
         );
     }
 }
@@ -3336,9 +3339,9 @@ contract FuzzTests is StakeManagerTest {
     function _expectStake(address account, uint256 stakeAmount, uint256 lockUpPeriod) internal {
         CheckVaultParams storage expectedAccountParams = expectedAccountState[account];
         expectedAccountParams.account = vaults[account];
-        uint256 calcLockEnd = Math.max(
-            expectedVaultLockState[expectedAccountParams.account].lockEnd, vm.getBlockTimestamp()
-        ) + lockUpPeriod;
+        uint256 calcLockEnd =
+            Math.max(expectedVaultLockState[expectedAccountParams.account].lockEnd, vm.getBlockTimestamp())
+            + lockUpPeriod;
         uint256 calcLockUpPeriod = calcLockEnd - vm.getBlockTimestamp(); //increased lock + remaining current lock
         if (lockUpPeriod == 0 || (lockUpPeriod >= MIN_LOCKUP_PERIOD && lockUpPeriod <= MAX_LOCKUP_PERIOD)) {
             //valid raw input
@@ -3394,9 +3397,9 @@ contract FuzzTests is StakeManagerTest {
             return;
         }
 
-        uint256 calcLockEnd = Math.max(
-            expectedVaultLockState[expectedAccountParams.account].lockEnd, vm.getBlockTimestamp()
-        ) + lockUpPeriod;
+        uint256 calcLockEnd =
+            Math.max(expectedVaultLockState[expectedAccountParams.account].lockEnd, vm.getBlockTimestamp())
+            + lockUpPeriod;
         uint256 calcLockUpPeriod = calcLockEnd - vm.getBlockTimestamp();
         if (!(calcLockUpPeriod >= MIN_LOCKUP_PERIOD && calcLockUpPeriod <= MAX_LOCKUP_PERIOD)) {
             expectedRevert = FuzzTests__UndefinedError.selector;
@@ -3502,12 +3505,7 @@ contract FuzzTests is StakeManagerTest {
         check("Lock: ", alice);
     }
 
-    function testFuzz_Unstake(
-        uint128 stakeAmount,
-        uint64 lockUpPeriod,
-        uint16 accruedTime,
-        uint128 unstakeAmount
-    )
+    function testFuzz_Unstake(uint128 stakeAmount, uint64 lockUpPeriod, uint16 accruedTime, uint128 unstakeAmount)
         public
     {
         vm.assume(stakeAmount > 0 && stakeAmount <= MAX_BALANCE);

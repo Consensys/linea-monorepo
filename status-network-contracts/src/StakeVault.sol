@@ -263,11 +263,7 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _amount The amount of tokens to withdraw.
      * @param _destination The address to receive the tokens.
      */
-    function withdraw(
-        IERC20 _token,
-        uint256 _amount,
-        address _destination
-    )
+    function withdraw(IERC20 _token, uint256 _amount, address _destination)
         external
         onlyOwner
         validDestination(_destination)

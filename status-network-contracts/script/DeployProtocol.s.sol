@@ -99,18 +99,14 @@ contract DeployProtocolScript is BaseScript {
     {
         deploymentConfig = new DeploymentConfig(broadcaster);
         (
-            karma,
-            /* karmaImpl */
-            ,
-            metadataGenerator,
-            karmaNFT,
-            stakeManager,
-            /* stakeManagerImpl */
-            ,
-            vaultFactory,
-            vaultImpl,
-            /* vaultProxyClone */
-        ) = _run(stakingToken);
+                karma,/* karmaImpl */,
+                metadataGenerator,
+                karmaNFT,
+                stakeManager,/* stakeManagerImpl */,
+                vaultFactory,
+                vaultImpl,
+                /* vaultProxyClone */
+            ) = _run(stakingToken);
     }
 
     /**

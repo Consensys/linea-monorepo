@@ -34,15 +34,7 @@ contract NFTMetadataGeneratorURL is BaseNFTMetadataGenerator {
      * @notice Generates the image URI for the NFT based on the owner's address and balance
      * @param account The address of the NFT owner
      */
-    function generateImageURI(
-        address account,
-        uint256
-    )
-        internal
-        view
-        override
-        returns (string memory, string memory)
-    {
+    function generateImageURI(address account, uint256) internal view override returns (string memory, string memory) {
         return ("image", string.concat(urlPrefix, Strings.toHexString(account), urlSuffix));
     }
 }

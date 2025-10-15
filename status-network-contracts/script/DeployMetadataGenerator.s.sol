@@ -13,7 +13,7 @@ import { INFTMetadataGenerator } from "../src/interfaces/INFTMetadataGenerator.s
 contract DeployMetadataGeneratorScript is BaseScript {
     string public svgPrefix =
     // solhint-disable-next-line
-        "<svg width=\"200\" height=\"200\" viewBox=\"0 0 200 200\"><rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" stroke=\"black\" stroke-width=\"3px\" fill=\"white\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\">";
+    "<svg width=\"200\" height=\"200\" viewBox=\"0 0 200 200\"><rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" stroke=\"black\" stroke-width=\"3px\" fill=\"white\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\">";
     string public svgSuffix = "</text></svg>";
 
     /**
@@ -33,10 +33,7 @@ contract DeployMetadataGeneratorScript is BaseScript {
      * @return metadataGenerator The deployed NFT metadata generator contract instance.
      * @return deploymentConfig The DeploymentConfig instance for the current network.
      */
-    function runForTest(
-        string memory _svgPrefix,
-        string memory _svgSuffix
-    )
+    function runForTest(string memory _svgPrefix, string memory _svgSuffix)
         public
         returns (INFTMetadataGenerator metadataGenerator, DeploymentConfig deploymentConfig)
     {

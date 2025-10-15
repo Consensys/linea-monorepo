@@ -32,7 +32,7 @@ contract NFTMetadataGeneratorSVGTest is Test {
         string memory expectedName = "KarmaNFT 0x328809bc894f92807417d2dad6b7c998c1afdac6";
         string memory expectedDescription =
         // solhint-disable-next-line
-            "This is a KarmaNFT for address 0x328809bc894f92807417d2dad6b7c998c1afdac6 with balance 10000000000000000000";
+        "This is a KarmaNFT for address 0x328809bc894f92807417d2dad6b7c998c1afdac6 with balance 10000000000000000000";
         string memory encodedImage = Base64.encode(abi.encodePacked("<svg>10</svg>"));
         string memory expectedImage = string(abi.encodePacked("data:image/svg+xml;base64,", encodedImage));
 

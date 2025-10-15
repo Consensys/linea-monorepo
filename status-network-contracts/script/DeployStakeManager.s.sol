@@ -59,11 +59,7 @@ contract DeployStakeManagerScript is BaseScript {
      * @return proxy The deployed StakeManager proxy contract instance.
      * @return impl The address of the StakeManager logic contract.
      */
-    function deploy(
-        address deployer,
-        address stakingToken,
-        address rewardToken
-    )
+    function deploy(address deployer, address stakingToken, address rewardToken)
         public
         returns (StakeManager proxy, address impl)
     {

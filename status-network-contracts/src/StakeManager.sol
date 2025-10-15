@@ -197,11 +197,7 @@ contract StakeManager is
      * @param currentLockUntil The current lock end time of the vault
      * @return newLockUntil The new lock end time of the vault
      */
-    function stake(
-        uint256 amount,
-        uint256 lockPeriod,
-        uint256 currentLockUntil
-    )
+    function stake(uint256 amount, uint256 lockPeriod, uint256 currentLockUntil)
         external
         onlyNotEmergencyMode
         whenNotPaused
@@ -246,10 +242,7 @@ contract StakeManager is
      * @param currentLockUntil The current lock end time of the vault
      * @return newLockUntil The new lock end time of the vault
      */
-    function lock(
-        uint256 lockPeriod,
-        uint256 currentLockUntil
-    )
+    function lock(uint256 lockPeriod, uint256 currentLockUntil)
         external
         onlyNotEmergencyMode
         whenNotPaused
@@ -353,10 +346,7 @@ contract StakeManager is
      * @param amount The amount of rewards to distribute.
      * @param duration The duration of the reward period.
      */
-    function setReward(
-        uint256 amount,
-        uint256 duration
-    )
+    function setReward(uint256 amount, uint256 duration)
         external
         onlyNotEmergencyMode
         whenNotPaused
