@@ -141,8 +141,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       newReportedYield = _handlePostiveYieldAccounting($$, totalVaultFunds - lastUserFunds);
       // Gross negative yield
     } else {
-      // If prev reportYield had negativeYield, this correctly accounts for both increase and reduction in negativeYield since
-      $$.currentNegativeYield = lastUserFunds - totalVaultFunds;
       newReportedYield = 0;
     }
   }
@@ -157,25 +155,14 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     YieldProviderStorage storage $$,
     uint256 _availableYield
   ) internal returns (uint256 newReportedYield) {
-    // 1. Pay negative yield
     newReportedYield = _availableYield;
-    uint256 currentNegativeYield = $$.currentNegativeYield;
-    if (currentNegativeYield > 0) {
-      uint256 negativeYieldReduction = Math256.min(currentNegativeYield, newReportedYield);
-      $$.currentNegativeYield -= negativeYieldReduction;
-      newReportedYield -= negativeYieldReduction;
-    }
-    // 2. Pay liabilities
+    // 1. Pay liabilities
     uint256 lstLiabilityPayment = _payMaximumPossibleLSTLiability($$);
-    if (lstLiabilityPayment > newReportedYield) {
-      $$.currentNegativeYield += (lstLiabilityPayment - newReportedYield);
-      return 0;
-    }
     newReportedYield = Math256.safeSub(newReportedYield, lstLiabilityPayment);
-    // 3. Pay obligations
+    // 2. Pay obligations
     uint256 obligationsPaid = _payObligations($$, newReportedYield);
     newReportedYield = Math256.safeSub(newReportedYield, obligationsPaid);
-    // 4. Pay node operator fees
+    // 3. Pay node operator fees
     uint256 nodeOperatorFeesPaid = _payNodeOperatorFees($$, newReportedYield);
     newReportedYield = Math256.safeSub(newReportedYield, nodeOperatorFeesPaid);
   }
@@ -233,9 +220,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     VAULT_HUB.settleVaultObligations(vault);
     uint256 afterVaultBalance = vault.balance;
     obligationsPaid = beforeVaultBalance - afterVaultBalance;
-    if (obligationsPaid > _availableYield) {
-      $$.currentNegativeYield += (obligationsPaid - _availableYield);
-    }
   }
 
   /**
@@ -257,9 +241,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     if (vaultBalance > currentFees) {
       dashboard.disburseNodeOperatorFee();
       nodeOperatorFeesPaid = currentFees;
-      if (nodeOperatorFeesPaid >= _availableYield) {
-        $$.currentNegativeYield += (nodeOperatorFeesPaid - _availableYield);
-      }
     }
   }
 

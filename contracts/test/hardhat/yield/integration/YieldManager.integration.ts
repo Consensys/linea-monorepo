@@ -6,6 +6,7 @@ import {
   deployAndAddAdditionalLidoStVaultYieldProvider,
   deployYieldManagerIntegrationTestFixture,
   fundLidoStVaultYieldProvider,
+  getBalance,
   incrementBalance,
   setupLineaRollupMessageMerkleTree,
   setWithdrawalReserveToMinimum,
@@ -21,6 +22,7 @@ import {
   SSZMerkleTree,
   TestCLProofVerifier,
   MockSTETH,
+  MockVaultHub,
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
@@ -47,6 +49,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
   let mockDashboard: MockDashboard;
   let mockStakingVault: MockStakingVault;
   let mockSTETH: MockSTETH;
+  let mockVaultHub: MockVaultHub;
   let lidoStVaultYieldProviderFactory: TestLidoStVaultYieldProviderFactory;
   let sszMerkleTree: SSZMerkleTree;
   let verifier: TestCLProofVerifier;
@@ -70,6 +73,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       mockDashboard,
       mockStakingVault,
       mockSTETH,
+      mockVaultHub,
       lidoStVaultYieldProviderFactory,
       sszMerkleTree,
       verifier,
@@ -266,7 +270,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         EMPTY_CALLDATA,
       );
       const messageHash = ethers.keccak256(expectedBytes);
-      const negativeYieldBefore = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
 
       // Act
       const call = await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
@@ -283,9 +286,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
           EMPTY_CALLDATA,
           messageHash,
         );
-
-      const negativeYieldAfter = await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress);
-      expect(negativeYieldAfter).eq(negativeYieldBefore + initialFundAmount - yieldEarned);
     });
   });
 
@@ -414,6 +414,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
       expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFundsBefore);
     });
+
     it("Should be able to recover after temporary negative yield and max LST withdrawal", async () => {
       // Initial funding with 10 ETH
       const initialFundAmount = ONE_ETHER * 10n;
@@ -478,9 +479,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await mockDashboard.setTotalValueReturn(stakingVaultBalance);
       userFunds = await yieldManager.userFunds(yieldProviderAddress);
       await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
-      expect(await yieldManager.getYieldProviderCurrentNegativeYield(yieldProviderAddress)).eq(
-        firstNegativeYield - firstPositiveYield,
-      );
       expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(0);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(
@@ -503,6 +501,46 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(secondFundAmount);
       await yieldManager.connect(nativeYieldOperator).fundYieldProvider(yieldProviderAddress, secondFundAmount);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
+    });
+
+    it("Should be able to safely handle different yield report situations", async () => {
+      // Initial funding with 10 ETH
+      const initialFundAmount = ONE_ETHER * 10n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+
+      // First negative yield event for -5 ETH
+      const firstNegativeYield = ONE_ETHER * 5n;
+      await mockDashboard.setTotalValueReturn(initialFundAmount - firstNegativeYield);
+      await decrementBalance(mockStakingVaultAddress, firstNegativeYield);
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+
+      // Second negative yield event for -1 ETH, with -2 ETH for obligation settlement
+      // Expect obligations not paid
+      const secondNegativeYield = ONE_ETHER;
+      await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - secondNegativeYield);
+      await decrementBalance(mockStakingVaultAddress, secondNegativeYield);
+      const firstObligationsPaid = ONE_ETHER * 2n;
+      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setSettleVaultObligationAmount(firstObligationsPaid);
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+      expect(await yieldManager.userFunds(yieldProviderAddress)).eq(initialFundAmount);
+      expect(await getBalance(mockStakingVault)).eq(initialFundAmount - firstNegativeYield - secondNegativeYield);
+
+      // First positive yield of 4 ETH, not enough to recover from all negative yield incurred so far
+      const firstPositiveYield = ONE_ETHER * 4n;
+      await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) + firstPositiveYield);
+      await incrementBalance(mockStakingVaultAddress, firstPositiveYield);
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+      expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(0n);
+
+      // Second positive yield of 3 ETH
+      // +1 ETH in Vault relative to start, with -2 ETH of obligations
+      const secondPositiveYield = ONE_ETHER * 3n;
+      await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) + secondPositiveYield);
+      await incrementBalance(mockStakingVaultAddress, secondPositiveYield);
+
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+      expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(0n);
     });
   });
 });

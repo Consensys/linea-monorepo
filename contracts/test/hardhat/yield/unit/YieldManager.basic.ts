@@ -832,7 +832,6 @@ describe("YieldManager contract - basic operations", () => {
       expect(yieldProviderData.yieldProviderIndex).to.equal(1n);
       expect(yieldProviderData.userFunds).to.equal(0n);
       expect(yieldProviderData.yieldReportedCumulative).to.equal(0n);
-      expect(yieldProviderData.currentNegativeYield).to.equal(0n);
       expect(yieldProviderData.lstLiabilityPrincipal).to.equal(0n);
 
       expect(await yieldManager.isYieldProviderKnown(providerAddress)).to.equal(true);
@@ -927,18 +926,6 @@ describe("YieldManager contract - basic operations", () => {
       );
     });
 
-    it("Should revert when the yield provider has remaining negative yield", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      await yieldManager.setYieldProviderCurrentNegativeYield(mockYieldProviderAddress, 1n);
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress),
-        "YieldProviderHasRemainingNegativeYield",
-      );
-    });
-
     it("Should successfully remove the yield provider, emit the correct event and wipe the yield provider state", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
@@ -988,7 +975,6 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.getYieldProviderIndex(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);
-      expect(await yieldManager.getYieldProviderCurrentNegativeYield(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress)).to.equal(0n);
     });
 
@@ -1051,11 +1037,10 @@ describe("YieldManager contract - basic operations", () => {
       );
     });
 
-    it("Should successfully remove the yield provider with outstanding userFunds and negativeYield, emit the correct event and wipe the yield provider state", async () => {
+    it("Should successfully remove the yield provider with outstanding userFunds, emit the correct event and wipe the yield provider state", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
       await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, 1n);
-      await yieldManager.setYieldProviderCurrentNegativeYield(mockYieldProviderAddress, 1n);
 
       await expect(yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(mockYieldProviderAddress))
         .to.emit(yieldManager, "YieldProviderRemoved")
@@ -1101,7 +1086,6 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.getYieldProviderIndex(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);
-      expect(await yieldManager.getYieldProviderCurrentNegativeYield(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress)).to.equal(0n);
     });
 

@@ -12,6 +12,7 @@ import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE } from "../../commo
 import { ClaimMessageWithProofParams } from "./types";
 import { randomBytes32 } from "./proof";
 import { encodeSendMessage } from "../../common/helpers";
+import { BaseContract } from "ethers";
 
 export const setupReceiveCallerForSuccessfulYieldProviderWithdrawal = async (
   testYieldManager: TestYieldManager,
@@ -56,6 +57,10 @@ export const decrementBalance = async (address: string, decrement: bigint) => {
 
 export const setBalance = async (address: string, balance: bigint) => {
   await ethers.provider.send("hardhat_setBalance", [address, ethers.toBeHex(balance)]);
+};
+
+export const getBalance = async (contract: BaseContract) => {
+  return await ethers.provider.getBalance(await contract.getAddress());
 };
 
 export const setWithdrawalReserveBalance = async (testYieldManager: TestYieldManager, balance: bigint) => {

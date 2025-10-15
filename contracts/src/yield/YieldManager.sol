@@ -300,7 +300,6 @@ contract YieldManager is
       yieldProviderIndex: $$.yieldProviderIndex,
       userFunds: $$.userFunds,
       yieldReportedCumulative: $$.yieldReportedCumulative,
-      currentNegativeYield: $$.currentNegativeYield,
       lstLiabilityPrincipal: $$.lstLiabilityPrincipal
     });
   }
@@ -1015,7 +1014,6 @@ contract YieldManager is
       yieldProviderIndex: yieldProviderIndex,
       userFunds: 0,
       yieldReportedCumulative: 0,
-      currentNegativeYield: 0,
       lstLiabilityPrincipal: 0
     });
     emit YieldProviderAdded(
@@ -1035,12 +1033,8 @@ contract YieldManager is
   function removeYieldProvider(
     address _yieldProvider
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
-    // We assume that 'currentNegativeYield' must be 0, before 'userFunds' can be 0.
     if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
       revert YieldProviderHasRemainingFunds();
-    }
-    if (_getYieldProviderStorage(_yieldProvider).currentNegativeYield != 0) {
-      revert YieldProviderHasRemainingNegativeYield();
     }
     _removeYieldProvider(_yieldProvider);
     emit YieldProviderRemoved(_yieldProvider, false);

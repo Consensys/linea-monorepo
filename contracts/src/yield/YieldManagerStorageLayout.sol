@@ -57,17 +57,11 @@ abstract contract YieldManagerStorageLayout {
    *                  - Must increment and decrement 1:1 with _userFundsInYieldProvidersTotal.
    * @param yieldReportedCumulative Cumulative positive yield (denominated in ETH) reported back to the YieldManager.
    *                                - Increases 1:1 with userFunds, as reported yield is distributed to users.
-   * @param currentNegativeYield Negative yield (denominated in ETH) as of the last yield report.
-   *                             - YieldProvider contract will mutate this field.
-   *                             - In catastrophic failure, can be used to socialize losses across users.
    * @param lstLiabilityPrincipal LST Liability Principal (denominated in ETH) as of the last yield report
    *                              - YieldProvider contract will mutate this field
    *                              - All decrements of 'lstLiabilityPrincipal' are matched 1:1 with decrements of `userFunds`
    *                                and `_userFundsInYieldProvidersTotal`. This is because `lstLiabilityPrincipal` was initially
    *                                incremented by providing a user an advance on staked funds.
-   *
-   * @dev All fields except `currentNegativeYield` and `lstLiabilityPrincipal` will be mutated by the YieldManager
-   *      We make these exceptions because the mutation of these state fields is highly specific to a vendor.
    */
   struct YieldProviderStorage {
     // Slot 0
@@ -83,7 +77,6 @@ abstract contract YieldManagerStorageLayout {
     uint96 yieldProviderIndex;
     uint256 userFunds;
     uint256 yieldReportedCumulative;
-    uint256 currentNegativeYield;
     uint256 lstLiabilityPrincipal;
   }
 
