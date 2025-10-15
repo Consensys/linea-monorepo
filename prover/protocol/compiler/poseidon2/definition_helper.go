@@ -44,6 +44,13 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 	}
 
 	// Internal rounds
+	// The Key Optimizations: avoid the high cost of creating new columns every single round, but also reset the expressions before their fan-in becomes high enough to slow down the prover
+	//
+	// - 1. Partial S-Box: instead of constraining the full S-Box every round, we only apply it on the first element of the state.
+	// For most internal rounds, we generate 1 constraint/column instead of 16.
+	// This dramatically reduces the total number of columns and constraints the compiler has to manage.
+	// - 2. Batched Anchoring: instead of anchoring every round, we do it every `internalPackedSize` rounds. we fully anchor the entire state every internalPackedSize rounds
+	// (e.g., the optimial choice is every 3 rounds), we "collapse" the growing linear expressions for state[1] through state[15] back into simple variables.
 	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
 		state = addRoundKeyExpression(round-1, state)
 		state[0] = sBoxPartialExpression(state)[0]
