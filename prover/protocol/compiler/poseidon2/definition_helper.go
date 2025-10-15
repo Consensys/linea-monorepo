@@ -36,7 +36,6 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 		state = addRoundKeyExpression(round-1, state)
 		state = sBoxFullExpression(state)
 		state = matMulExternalExpression(state)
-
 		cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
 		state = asExprs(cols)
 		interm[counter] = cols
@@ -72,7 +71,7 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 		state = sBoxFullExpression(state)
 		state = matMulExternalExpression(state)
 
-		if round < fullRounds-1 && round%externalPackedSize == 0 {
+		if round < fullRounds-1 {
 			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
 			state = asExprs(cols)
 			interm[counter] = cols
