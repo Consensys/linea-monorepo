@@ -12,6 +12,40 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+// SubStringsHashHint takes the following input:
+//  - len(substrings)
+//  - substring ends [0 .. maxNbSubStrings]
+//  - inputBytes ...
+// It returns H(inputBytes[: ends[0]]), H(inputBytes[ends[0], ends[1]]), ...
+func SubStringsHashHint(maxNbSubStrings int, hsh hashinterface.Hash) solver.Hint {
+	return func(_ *big.Int, ins []*big.Int, outs []*big.Int) error {
+		if len(outs) != maxNbSubStrings {
+			return errors.New("expected exactly maxNbBatches outputs")
+		}
+
+		nbBatches := ins[0].Int64()
+		ends := utils.BigsToInts(ins[1 : 1+maxNbSubStrings])
+		in := append(utils.BigsToBytes(ins[1+maxNbSubStrings:]), make([]byte, 31)...) // pad with 31 bytes to avoid out of range panic TODO try removing this
+
+		subStart := 0
+		zeros := make([]byte, hsh.BlockSize())
+
+		for i := range outs[:nbBatches] {
+			hsh.Reset()
+			hsh.Write(in[subStart:ends[i]])
+
+			subLen := ends[i] - subStart
+			nbTrailingZeros := (subLen-1)/31*31 + 31 // ⌈subLen/31⌉ * 31
+			hsh.Write(zeros[:nbTrailingZeros])
+
+			outs[i].SetBytes(hsh.Sum(nil))
+			subStart = ends[i]
+		}
+
+		return nil
+	}
+}
+
 func PartialChecksumBatchesPackedHint(maxNbBatches int, compressor hash.Compressor) solver.Hint {
 	return func(_ *big.Int, ins []*big.Int, outs []*big.Int) error {
 		if len(outs) != maxNbBatches {
