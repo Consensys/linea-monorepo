@@ -264,7 +264,7 @@ contract Karma is Initializable, ERC20VotesUpgradeable, UUPSUpgradeable, AccessC
                            INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////////////////*/
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal view override {
+    function _beforeTokenTransfer(address from, address to, uint256) internal view override {
         if (from != address(0) && to != address(0)) {
             if (!allowedToTransfer[msg.sender]) {
                 revert Karma__TransfersNotAllowed();

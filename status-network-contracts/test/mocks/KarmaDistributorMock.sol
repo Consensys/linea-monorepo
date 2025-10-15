@@ -32,7 +32,7 @@ contract KarmaDistributorMock is IRewardDistributor {
     }
 
     // solhint-disable-next-line
-    function setReward(uint256 amount, uint256 duration) external override {
+    function setReward(uint256 amount, uint256) external override {
         totalRewardsSupply = amount;
     }
 

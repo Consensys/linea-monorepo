@@ -97,7 +97,7 @@ contract RLNTest is Test {
 
     /* ---------- INITIAL STATE ---------- */
 
-    function test_initial_state() public {
+    function test_initial_state() public view {
         // SET_SIZE should be 2^DEPTH = 4
         assertEq(rln.SET_SIZE(), uint256(1) << DEPTH);
 
@@ -250,8 +250,6 @@ contract RLNTest is Test {
     }
 
     function test_SlashRevealRevertsIfNoSlashRole() public {
-        bytes32 hash = keccak256(abi.encodePacked(privateKey0, rewardRecipientAddr));
-
         // Attempt to reveal without slash role
         vm.expectRevert(
             abi.encodePacked(
