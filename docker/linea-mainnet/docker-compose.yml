@@ -88,7 +88,7 @@ services:
 
   # Geth initialization
   geth-init:
-    image: ethereum/client-go:v1.16.4
+    image: ethereum/client-go:v1.13.15
     command:
       - init
       - /genesis.json
@@ -100,7 +100,7 @@ services:
   geth-node:
     hostname: el-client
     container_name: geth-node
-    image: ethereum/client-go:v1.16.4
+    image: ethereum/client-go:v1.13.15
     pull_policy: always
     restart: unless-stopped
     stop_grace_period: 30s
@@ -133,7 +133,6 @@ services:
       - ./geth/geth-genesis.json:/genesis.json:ro
       - ./engine-jwt:/root/.ethereum/jwt:ro
       - ./execution-layer-static-nodes.json:/root/.ethereum/static-nodes.json:ro # Loaded automatically by Geth if present
-      - linea-mainnet-geth:/root/.ethereum
 
   # Erigon initialization
   erigon-init:
