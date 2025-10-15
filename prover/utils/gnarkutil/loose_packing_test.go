@@ -20,14 +20,13 @@ func TestPartialChecksumBatchesPacked(t *testing.T) {
 		b[i] = uint8(i)
 	}
 	var buf [32]byte
-	compressor := HashAsCompressor(hash.MIMC_BLS12_377.New())
 	for i := range sizes {
-		res := partialChecksumLooselyPackedBytes(b[:sizes[i]], buf[:], compressor)
+		partialChecksumLooselyPackedBytes(b[:sizes[i]], buf[:], hash.MIMC_BLS12_377.New())
 		b = b[sizes[i]:]
 		expectedHashPrefix, err := hexutil.Decode(expectedHashPrefixesHex[i])
 		require.NoError(t, err)
-		if !bytes.HasPrefix(res, expectedHashPrefix) {
-			t.Fatalf("expected checksum 0x%s..., got 0x%x", expectedHashPrefixesHex[i], res)
+		if !bytes.HasPrefix(buf[:], expectedHashPrefix) {
+			t.Fatalf("expected checksum 0x%s..., got 0x%x", expectedHashPrefixesHex[i], buf[:])
 		}
 	}
 }
