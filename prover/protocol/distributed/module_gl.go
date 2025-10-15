@@ -790,10 +790,10 @@ func (modGl *ModuleGL) declarePublicInput() {
 	segmentCountGl[modGl.Disc.IndexOf(modGl.DefinitionInput.ModuleName)] = field.One()
 
 	modGl.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
-		VKeyMerkleRoot:               declarePiColumn(modGl.Wiop, verifyingKeyMerkleRootPublicInput),
-		TargetNbSegments:             declareListOfPiColumns(modGl.Wiop, 0, targetNbSegmentPublicInputBase, nbModules),
-		SegmentCountGL:               declareListOfConstantPi(modGl.Wiop, segmentCountGLPublicInputBase, segmentCountGl),
-		SegmentCountLPP:              declareListOfConstantPi(modGl.Wiop, segmentCountLPPPublicInputBase, segmentCountLpp),
+		VKeyMerkleRoot:               declarePiColumn(modGl.Wiop, VerifyingKeyMerkleRootPublicInput),
+		TargetNbSegments:             declareListOfPiColumns(modGl.Wiop, 0, TargetNbSegmentPublicInputBase, nbModules),
+		SegmentCountGL:               declareListOfConstantPi(modGl.Wiop, SegmentCountGLPublicInputBase, segmentCountGl),
+		SegmentCountLPP:              declareListOfConstantPi(modGl.Wiop, SegmentCountLPPPublicInputBase, segmentCountLpp),
 		GeneralMultiSetHash:          declareListOfPiColumns(modGl.Wiop, 1, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
 		SharedRandomnessMultiSetHash: declareListOfPiColumns(modGl.Wiop, 1, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize),
 		SharedRandomness:             modGl.Wiop.InsertPublicInput(InitialRandomnessPublicInput, accessors.NewConstant(field.Zero())),
@@ -852,7 +852,7 @@ func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *Mod
 
 	// This assigns the columns corresponding to the public input indicating
 	// the number of segments
-	assignListOfPiColumns(run, targetNbSegmentPublicInputBase, vector.ForTest(witness.TotalSegmentCount...))
+	assignListOfPiColumns(run, TargetNbSegmentPublicInputBase, vector.ForTest(witness.TotalSegmentCount...))
 }
 
 // assignLPPCommitmentMSetGL assigns the LPP commitment MSet. It is meant to be
@@ -983,8 +983,8 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
 
 	var (
-		targetMSetGeneral          = getPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-		targetMSetSharedRandomness = getPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetGeneral          = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetSharedRandomness = GetPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments             = run.GetPublicInput(api, lppMerkleRootPublicInput+"_0")
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
