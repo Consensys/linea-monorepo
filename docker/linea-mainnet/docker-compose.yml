@@ -133,6 +133,7 @@ services:
       - ./geth/geth-genesis.json:/genesis.json:ro
       - ./engine-jwt:/root/.ethereum/jwt:ro
       - ./execution-layer-static-nodes.json:/root/.ethereum/static-nodes.json:ro # Loaded automatically by Geth if present
+      - linea-mainnet-geth:/root/.ethereum
 
   # Erigon initialization
   erigon-init:
