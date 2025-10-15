@@ -27,12 +27,11 @@ catalog:
   yargs: 17.7.2
   viem: 2.31.3
 
-onlyBuiltDependencies:
+ignoredBuiltDependencies:
   - "@arbitrum/nitro-contracts"
   - "better-sqlite3"
   - "bigint-buffer"
   - "bufferutil"
-  - "c-kzg"
   - "es5-ext"
   - "esbuild"
   - "keccak"
@@ -44,3 +43,7 @@ onlyBuiltDependencies:
   - "web3-bzz"
   - "web3-shh"
   - "yarn"
+  - "tiny-secp256k1"
+
+onlyBuiltDependencies:
+  - "c-kzg"
