@@ -27,6 +27,7 @@ func TestHeaderByteSize(t *testing.T) {
 		header := v1.Header{
 			BatchSizes:         batchSizes,
 			CurrBatchBlocksLen: currBatchBlocksLen,
+			Version:            1,
 		}
 
 		bb.Reset()

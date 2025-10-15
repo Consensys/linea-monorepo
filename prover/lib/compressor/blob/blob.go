@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	v2 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -44,6 +45,11 @@ func DecompressBlob(blob []byte, dictStore dictionary.Store) ([]byte, error) {
 		blockDecoder = v0.DecodeBlockFromUncompressed
 	case 1:
 		r, _err := v1.DecompressBlob(blob, dictStore)
+		blocks = r.Blocks
+		err = _err
+		blockDecoder = v1.DecodeBlockFromUncompressed
+	case 2:
+		r, _err := v2.DecompressBlob(blob, dictStore)
 		blocks = r.Blocks
 		err = _err
 		blockDecoder = v1.DecodeBlockFromUncompressed

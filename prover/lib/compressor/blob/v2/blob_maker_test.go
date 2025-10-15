@@ -1,25 +1,29 @@
 //go:build !fuzzlight
 
-package v1_test
+package v2_test
 
 import (
 	"bytes"
 	cRand "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"math/big"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
-	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
-	v1Testing "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	v2 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2"
+	v2Testing "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2/test_utils"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 
@@ -36,6 +40,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testDictPath = "../../compressor_dict.bin"
+
 func TestCompressorOneBlock(t *testing.T) { // most basic test just to see if block encoding/decoding works
 	testCompressorSingleSmallBatch(t, testBlocks[1:2])
 }
@@ -45,7 +51,7 @@ func TestCompressorTwoBlocks(t *testing.T) { // most basic test just to see if b
 }
 
 func testCompressorSingleSmallBatch(t *testing.T, blocks [][]byte) {
-	bm, err := v1.NewBlobMaker(64*1024, testDictPath)
+	bm, err := v2.NewBlobMaker(64*1024, testDictPath)
 	assert.NoError(t, err, "init should succeed")
 
 	for _, block := range blocks {
@@ -56,8 +62,8 @@ func testCompressorSingleSmallBatch(t *testing.T, blocks [][]byte) {
 
 	dict, err := os.ReadFile(testDictPath)
 	assert.NoError(t, err)
-	dictStore, err := dictionary.SingletonStore(dict, 1)
-	r, err := v1.DecompressBlob(bm.Bytes(), dictStore)
+	dictStore, err := dictionary.SingletonStore(dict, 2)
+	r, err := v2.DecompressBlob(bm.Bytes(), dictStore)
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), len(r.Blocks), "number of blocks should match")
 	// TODO compare the blocks
@@ -67,7 +73,7 @@ func TestCompressorNoBatches(t *testing.T) {
 	assert := require.New(t)
 
 	// Init bm
-	bm, err := v1.NewBlobMaker(64*1024, testDictPath)
+	bm, err := v2.NewBlobMaker(64*1024, testDictPath)
 	assert.NoError(err, "init should succeed")
 
 	// Compress blocks
@@ -144,7 +150,7 @@ func TestCanWrite(t *testing.T) {
 	assert := require.New(t)
 
 	// Init bm
-	bm, err := v1.NewBlobMaker(64*1024, testDictPath)
+	bm, err := v2.NewBlobMaker(64*1024, testDictPath)
 	assert.NoError(err, "init should succeed")
 
 	// Compress blocks
@@ -228,7 +234,7 @@ func TestCompressorWithBatches(t *testing.T) {
 	assert := require.New(t)
 
 	// Init bm
-	bm, err := v1.NewBlobMaker(120*1024, testDictPath)
+	bm, err := v2.NewBlobMaker(120*1024, testDictPath)
 	assert.NoError(err, "init should succeed")
 
 	// Compress blocks
@@ -328,7 +334,7 @@ func TestCompressorWithExpandingTx(t *testing.T) {
 	assert := require.New(t)
 
 	// Init bm
-	bm, err := v1.NewBlobMaker(blobSizeLimit, testDictPath)
+	bm, err := v2.NewBlobMaker(blobSizeLimit, testDictPath)
 	assert.NoError(err, "init should succeed")
 	dict, err := os.ReadFile(testDictPath)
 	assert.NoError(err)
@@ -411,11 +417,11 @@ func TestCompressorWithDecompressorLimit(t *testing.T) {
 	assert := require.New(t)
 
 	// Init bm
-	bm, err := v1.NewBlobMaker(120*1024, testDictPath)
+	bm, err := v2.NewBlobMaker(120*1024, testDictPath)
 	assert.NoError(err, "init should succeed")
 
 	// get a block that should compress very well and should fit in the blob.
-	targetSize := (v1.MaxUncompressedBytes) / 8
+	targetSize := (v2.MaxUncompressedBytes) / 8
 	assert.Less(targetSize, bm.Limit)
 	block1 := makeFakeBlock(int(targetSize))
 
@@ -423,9 +429,9 @@ func TestCompressorWithDecompressorLimit(t *testing.T) {
 	// get the uncompressed size of the block
 	v1.EncodeBlockForCompression(block1, &buf)
 	rawLen := buf.Len()
-	assert.Less(rawLen, int(v1.MaxUncompressedBytes), "block1 should be smaller than MaxBlobPayloadBytes")
+	assert.Less(rawLen, int(v2.MaxUncompressedBytes), "block1 should be smaller than MaxBlobPayloadBytes")
 
-	assert.Greater(rawLen*8, int(v1.MaxUncompressedBytes))
+	assert.Greater(rawLen*8, int(v2.MaxUncompressedBytes))
 
 	// RLP encode it to simulate a valid input to the bm
 	buf.Reset()
@@ -464,7 +470,7 @@ func BenchmarkWrite(b *testing.B) {
 
 	// Init bm
 	// Init bm
-	bm, err := v1.NewBlobMaker(120*1024, testDictPath)
+	bm, err := v2.NewBlobMaker(120*1024, testDictPath)
 	if err != nil {
 		b.Fatal("init should succeed", err.Error())
 	}
@@ -486,7 +492,7 @@ func init() {
 		panic(err)
 	}
 
-	if testBlocks, err = v1Testing.LoadTestBlocks(filepath.Join(rootPath, "testdata/prover-v2/prover-execution/requests")); err != nil {
+	if testBlocks, err = v2Testing.LoadTestBlocks(filepath.Join(rootPath, "testdata/prover-v2/prover-execution/requests")); err != nil {
 		panic(err)
 	}
 
@@ -637,4 +643,45 @@ func TestPack(t *testing.T) {
 
 		runTest(s1, s2)
 	}
+}
+
+func decompressBlob(b []byte) ([][][]byte, error) {
+
+	// we should be able to hash the blob with MiMC with no errors;
+	// this is a good indicator that the blob is valid.
+	if len(b)%fr.Bytes != 0 {
+		return nil, errors.New("invalid blob length; not a multiple of 32")
+	}
+
+	dict, err := os.ReadFile(testDictPath)
+	if err != nil {
+		return nil, fmt.Errorf("can't read dict: %w", err)
+	}
+	dictStore, err := dictionary.SingletonStore(dict, 2)
+	if err != nil {
+		return nil, err
+	}
+	r, err := v2.DecompressBlob(b, dictStore)
+	if err != nil {
+		return nil, fmt.Errorf("can't decompress blob: %w", err)
+	}
+
+	batches := make([][][]byte, len(r.Header.BatchSizes))
+	for i, batchNbBytes := range r.Header.BatchSizes {
+		batches[i] = make([][]byte, 0)
+		batchLenYet := 0
+		for batchLenYet < batchNbBytes {
+			batches[i] = append(batches[i], r.Blocks[0])
+			batchLenYet += len(r.Blocks[0])
+			r.Blocks = r.Blocks[1:]
+		}
+		if batchLenYet != batchNbBytes {
+			return nil, errors.New("invalid batch size")
+		}
+	}
+	if len(r.Blocks) != 0 {
+		return nil, errors.New("not all blocks were consumed")
+	}
+
+	return batches, nil
 }
