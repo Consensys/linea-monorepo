@@ -262,7 +262,7 @@ func Deserialize(bytes []byte, v any) error {
 // Returns the serialized value or an error.
 func (s *Serializer) PackValue(v reflect.Value) (any, *serdeError) {
 	// This captures the case where the value is nil to begin with
-	if !v.IsValid() || v.Interface() == nil {
+	if !v.IsValid() || v.Interface() == nil || (v.Kind() == reflect.Ptr && v.IsNil()) {
 		return nil, nil
 	}
 
