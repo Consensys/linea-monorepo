@@ -53,7 +53,7 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 			state = asExprs(cols)
 			interm[counter] = cols
 			counter++
-		} else {
+		} else if partialSBox {
 			/// Reduce columns to only the first one
 			cols := anchorPartialColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
 			state[0] = asExprs(cols)[0]
