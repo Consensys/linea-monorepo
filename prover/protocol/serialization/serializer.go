@@ -404,6 +404,13 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e *
 // PackColumn serializes a column.Natural, returning a BackReference to its index in PackedObject.Columns.
 // It ensures columns are serialized once, using UUIDs for deduplication.
 func (s *Serializer) PackColumn(c column.Natural) (BackReference, *serdeError) {
+
+	// The error must be reported before we access the UUID otherwise, it will
+	// panic.
+	if c.ID == "" {
+		return 0, newSerdeErrorf("empty column ID")
+	}
+
 	cid := c.UUID()
 
 	if _, ok := s.columnMap[cid]; !ok {
