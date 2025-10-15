@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -25,8 +26,8 @@ import (
 // Alex: please don't change the ordering of the arguments as this
 // affects the parsing of the witness.
 type RecursionCircuit struct {
-	X                  gnarkfext.E4Gen   `gnark:",public"`
-	Ys                 []gnarkfext.E4Gen `gnark:",public"`
+	X                  gnarkfext.E4Gen      `gnark:",public"`
+	Ys                 []gnarkfext.E4Gen    `gnark:",public"`
 	Commitments        []zk.WrappedVariable `gnark:",public"`
 	Pubs               []zk.WrappedVariable `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit

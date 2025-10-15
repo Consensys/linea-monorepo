@@ -6,11 +6,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/consensys/gnark/std/compress"
 	"math/big"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/consensys/gnark/std/compress"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
@@ -37,14 +38,14 @@ func printAsHexHint(_ *big.Int, ins, outs []*big.Int) error {
 	return nil
 }
 
-func PrintBytesAsHex(api frontend.API, v []frontend.Variable) {
+func PrintBytesAsHex(api frontend.API, v []zk.WrappedVariable) {
 	if _, err := api.Compiler().NewHint(printAsHexHint, 1, v...); err != nil {
 		panic(err)
 	}
 }
 
-func PrintBlocksAsHex(api frontend.API, blocks ...[32]frontend.Variable) {
-	ins := make([]frontend.Variable, len(blocks)*32)
+func PrintBlocksAsHex(api frontend.API, blocks ...[32]zk.WrappedVariable) {
+	ins := make([]zk.WrappedVariable, len(blocks)*32)
 	k := 0
 	for i := range blocks {
 		for j := range blocks[i] {
@@ -58,11 +59,11 @@ func PrintBlocksAsHex(api frontend.API, blocks ...[32]frontend.Variable) {
 }
 
 // PrintVarAsHex decomposes x into bytes and prints the whole thing
-func PrintVarAsHex(api frontend.API, x frontend.Variable) {
+func PrintVarAsHex(api frontend.API, x zk.WrappedVariable) {
 	bits := api.ToBinary(x) // turn into bytes, inefficiently
 	slices.Reverse(bits)
 	n0 := len(bits) % 8
-	bytes := make([]frontend.Variable, 1, (len(bits)+7)/8)
+	bytes := make([]zk.WrappedVariable, 1, (len(bits)+7)/8)
 	two := big.NewInt(2)
 	bytes[0] = compress.ReadNum(api, bits[:n0], two)
 	bits = bits[n0:]
@@ -120,10 +121,10 @@ func (r *ProgressReporter) Update(i int) {
 	}
 }
 
-var snarkFunctionStore = make(map[uint64]func(frontend.API) []frontend.Variable) // todo make thread safe
+var snarkFunctionStore = make(map[uint64]func(frontend.API) []zk.WrappedVariable) // todo make thread safe
 
 type snarkFunctionTestCircuit struct {
-	Outs   []frontend.Variable
+	Outs   []zk.WrappedVariable
 	funcId uint64 // this workaround is necessary because deepEquals fails on objects with function fields
 }
 
@@ -141,12 +142,12 @@ func (c *snarkFunctionTestCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func SnarkFunctionTest(f func(frontend.API) []frontend.Variable, outs ...frontend.Variable) func(*testing.T) {
+func SnarkFunctionTest(f func(frontend.API) []zk.WrappedVariable, outs ...zk.WrappedVariable) func(*testing.T) {
 
 	return func(t *testing.T) {
 
 		c := snarkFunctionTestCircuit{
-			Outs: make([]frontend.Variable, len(outs)),
+			Outs: make([]zk.WrappedVariable, len(outs)),
 		}
 		var b [8]byte
 		_, err := rand.Read(b[:])

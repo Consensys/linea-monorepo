@@ -1,7 +1,6 @@
 package gkrmimc
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/gkrapi/gkr"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -14,7 +13,7 @@ import (
 // intermediate rounds and then adds twice the initial state and once the block
 // to the result before returning.
 type FinalRoundGate struct {
-	Ark frontend.Variable
+	Ark zk.WrappedVariable
 }
 
 // NewFinalRoundGateGnark creates a new FinalRoundGate using the provided
@@ -26,7 +25,7 @@ func NewFinalRoundGateGnark(ark field.Element) FinalRoundGate {
 	}
 }
 
-func (m FinalRoundGate) Evaluate(api gkr.GateAPI, input ...frontend.Variable) frontend.Variable {
+func (m FinalRoundGate) Evaluate(api gkr.GateAPI, input ...zk.WrappedVariable) zk.WrappedVariable {
 
 	if len(input) != 3 {
 		utils.Panic("expected fan-in of 3, got %v", len(input))

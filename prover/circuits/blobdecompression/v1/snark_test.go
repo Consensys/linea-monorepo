@@ -42,7 +42,7 @@ func TestParseHeader(t *testing.T) {
 	}
 
 	circuit := testParseHeaderCircuit{
-		Blob: make([]frontend.Variable, maxBlobSize),
+		Blob: make([]zk.WrappedVariable, maxBlobSize),
 	}
 
 	options := []test.TestingOption{
@@ -142,10 +142,10 @@ func TestChecksumBatchesSimple(t *testing.T) {
 func testChecksumBatches(t *testing.T, blob []byte, batchEndss ...[]int) {
 	hsh := hash.MIMC_BLS12_377.New()
 	circuit := testChecksumCircuit{
-		Blob: make([]frontend.Variable, len(blob)),
+		Blob: make([]zk.WrappedVariable, len(blob)),
 	}
 	for _, batchEnds := range batchEndss {
-		var sums, lengths [MaxNbBatches]frontend.Variable
+		var sums, lengths [MaxNbBatches]zk.WrappedVariable
 		batchStart := 0
 		buf := make([]byte, 32)
 
@@ -176,9 +176,9 @@ func testChecksumBatches(t *testing.T, blob []byte, batchEndss ...[]int) {
 }
 
 type testParseHeaderCircuit struct {
-	Blob                          []frontend.Variable
-	BlocksPerBatch                [MaxNbBatches]frontend.Variable
-	HeaderLen, NbBatches, BlobLen frontend.Variable
+	Blob                          []zk.WrappedVariable
+	BlocksPerBatch                [MaxNbBatches]zk.WrappedVariable
+	HeaderLen, NbBatches, BlobLen zk.WrappedVariable
 }
 
 func (c *testParseHeaderCircuit) Define(api frontend.API) error {
@@ -195,9 +195,9 @@ func (c *testParseHeaderCircuit) Define(api frontend.API) error {
 }
 
 type testChecksumCircuit struct {
-	Blob          []frontend.Variable
-	Lengths, Sums [MaxNbBatches]frontend.Variable
-	NbBatches     frontend.Variable
+	Blob          []zk.WrappedVariable
+	Lengths, Sums [MaxNbBatches]zk.WrappedVariable
+	NbBatches     zk.WrappedVariable
 }
 
 func (c *testChecksumCircuit) Define(api frontend.API) error {
@@ -233,8 +233,8 @@ func TestUnpackCircuit(t *testing.T) {
 		assert.NoError(t, err)
 
 		circuit := unpackCircuit{
-			PackedBytes: make([]frontend.Variable, packedBuf.Len()),
-			Bytes:       make([]frontend.Variable, len(b)),
+			PackedBytes: make([]zk.WrappedVariable, packedBuf.Len()),
+			Bytes:       make([]zk.WrappedVariable, len(b)),
 		}
 
 		assignment := unpackCircuit{
@@ -257,11 +257,11 @@ func TestUnpackCircuit(t *testing.T) {
 
 type unpackCircuit struct {
 	// "real-world" circuit input
-	PackedBytes []frontend.Variable
+	PackedBytes []zk.WrappedVariable
 
 	// expected results
-	Bytes       []frontend.Variable
-	NbUsedBytes frontend.Variable
+	Bytes       []zk.WrappedVariable
+	NbUsedBytes zk.WrappedVariable
 }
 
 func (c *unpackCircuit) Define(api frontend.API) error {
@@ -304,7 +304,7 @@ func TestBlobChecksum(t *testing.T) { // aka "snark hash"
 		nPadded := (n + fr381.Bytes - 1) / fr381.Bytes * fr381.Bytes
 
 		circuit := testDataChecksumCircuit{
-			DataBytes: make([]frontend.Variable, nPadded),
+			DataBytes: make([]zk.WrappedVariable, nPadded),
 		}
 
 		dataPadded[n-1] = data[n-1]
@@ -321,8 +321,8 @@ func TestBlobChecksum(t *testing.T) { // aka "snark hash"
 }
 
 type testDataChecksumCircuit struct {
-	DataBytes []frontend.Variable
-	Checksum  frontend.Variable
+	DataBytes []zk.WrappedVariable
+	Checksum  zk.WrappedVariable
 }
 
 func (c *testDataChecksumCircuit) Define(api frontend.API) error {
@@ -351,7 +351,7 @@ func TestDictHash(t *testing.T) {
 	assert.NoError(t, err)
 
 	circuit := testDataDictHashCircuit{
-		DictBytes: make([]frontend.Variable, len(dict)),
+		DictBytes: make([]zk.WrappedVariable, len(dict)),
 	}
 	assignment := testDataDictHashCircuit{
 		DictBytes: utils.ToVariableSlice(dict),
@@ -362,8 +362,8 @@ func TestDictHash(t *testing.T) {
 }
 
 type testDataDictHashCircuit struct {
-	DictBytes []frontend.Variable
-	Checksum  frontend.Variable
+	DictBytes []zk.WrappedVariable
+	Checksum  zk.WrappedVariable
 }
 
 func (c *testDataDictHashCircuit) Define(api frontend.API) error {

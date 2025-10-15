@@ -4,27 +4,27 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/backend/witness"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 /*
 Allocate a slice of field element
 */
-func AllocateSlice(n int) []frontend.Variable {
-	return make([]frontend.Variable, n)
-}
+// func AllocateSlice(n int) []zk.WrappedVariable {
+// 	return make([]zk.WrappedVariable, n)
+// }
 
 /*
 AllocateSliceExt allocates a slice of field extension elements
 */
-func AllocateSliceExt(n int) []gnarkfext.Element {
-	return make([]gnarkfext.Element, n)
+func AllocateSliceExt(n int) []gnarkfext.E4Gen {
+	return make([]gnarkfext.E4Gen, n)
 }
 
 // AsWitness converts a slice of field elements to a slice of witness variables
 // of the same length with only public inputs.
-func AsWitnessPublic(v []frontend.Variable) witness.Witness {
+func AsWitnessPublic(v []zk.WrappedVariable) witness.Witness {
 
 	var (
 		wit, _  = witness.New(ecc.BLS12_377.ScalarField())
@@ -46,7 +46,7 @@ func AsWitnessPublic(v []frontend.Variable) witness.Witness {
 
 // AsWitnessPublicSmallField converts a slice of base field elements to a slice of witness variables
 // of the same length with only public inputs.
-func AsWitnessPublicSmallField(v []frontend.Variable) witness.Witness {
+func AsWitnessPublicSmallField(v []zk.WrappedVariable) witness.Witness {
 
 	var (
 		wit, _  = witness.New(koalabear.Modulus())

@@ -9,12 +9,13 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/crypto/blake2b"
 )
 
 // GnarkFiatShamir mirrors [State] in a gnark circuit. It provides analogous
-// methods for every of [State]'s method and works over [frontend.Variable]
+// methods for every of [State]'s method and works over [zk.WrappedVariable]
 // instead of [field.Element].
 //
 // This implementation design eases the task of writing a gnark circuit version
@@ -45,11 +46,11 @@ func NewGnarkFiatShamir(api frontend.API, factory locmimc.HasherFactory) *GnarkF
 }
 
 // SetState mutates the fiat-shamir state of
-func (fs *GnarkFiatShamir) SetState(state []frontend.Variable) {
+func (fs *GnarkFiatShamir) SetState(state []zk.WrappedVariable) {
 
 	switch hsh := fs.hasher.(type) {
 	case interface {
-		SetState([]frontend.Variable) error
+		SetState([]zk.WrappedVariable) error
 	}:
 		fs.hasher.Reset()
 		if err := hsh.SetState(state); err != nil {
@@ -62,11 +63,11 @@ func (fs *GnarkFiatShamir) SetState(state []frontend.Variable) {
 
 // State mutates returns the state of the fiat-shamir hasher. The
 // function will also updates its own state with unprocessed inputs.
-func (fs *GnarkFiatShamir) State() []frontend.Variable {
+func (fs *GnarkFiatShamir) State() []zk.WrappedVariable {
 
 	switch hsh := fs.hasher.(type) {
 	case interface {
-		State() []frontend.Variable
+		State() []zk.WrappedVariable
 	}:
 		return hsh.State()
 	default:
@@ -74,9 +75,9 @@ func (fs *GnarkFiatShamir) State() []frontend.Variable {
 	}
 }
 
-// Update updates the Fiat-Shamir state with a vector of frontend.Variable
+// Update updates the Fiat-Shamir state with a vector of zk.WrappedVariable
 // representing field element each.
-func (fs *GnarkFiatShamir) Update(vec ...frontend.Variable) {
+func (fs *GnarkFiatShamir) Update(vec ...zk.WrappedVariable) {
 	// Safeguard against nil
 	for _, x := range vec {
 		if x == nil {
@@ -87,15 +88,15 @@ func (fs *GnarkFiatShamir) Update(vec ...frontend.Variable) {
 }
 
 // UpdateVec updates the Fiat-Shamir state with a matrix of field element.
-func (fs *GnarkFiatShamir) UpdateVec(mat ...[]frontend.Variable) {
+func (fs *GnarkFiatShamir) UpdateVec(mat ...[]zk.WrappedVariable) {
 	for i := range mat {
 		fs.Update(mat[i]...)
 	}
 }
 
-// Update updates the Fiat-Shamir state with a vector of frontend.Variable
+// Update updates the Fiat-Shamir state with a vector of zk.WrappedVariable
 // representing field element each.
-func (fs *GnarkFiatShamir) UpdateExt(vec ...gnarkfext.Element) {
+func (fs *GnarkFiatShamir) UpdateExt(vec ...gnarkfext.E4Gen) {
 	// Safeguard against nil
 	for i := range vec {
 		fs.Update(vec[i].B0.A0)
@@ -107,20 +108,20 @@ func (fs *GnarkFiatShamir) UpdateExt(vec ...gnarkfext.Element) {
 }
 
 // UpdateVec updates the Fiat-Shamir state with a matrix of field element.
-func (fs *GnarkFiatShamir) UpdateVecExt(mat ...[]gnarkfext.Element) {
+func (fs *GnarkFiatShamir) UpdateVecExt(mat ...[]gnarkfext.E4Gen) {
 	for i := range mat {
 		fs.UpdateExt(mat[i]...)
 	}
 }
 
 // RandomField returns a single valued fiat-shamir hash
-func (fs *GnarkFiatShamir) RandomField() frontend.Variable {
+func (fs *GnarkFiatShamir) RandomField() zk.WrappedVariable {
 	defer fs.safeguardUpdate()
 	return fs.hasher.Sum()
 }
 
 // RandomManyIntegers returns a vector of variable that will contain small integers
-func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Variable {
+func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []zk.WrappedVariable {
 
 	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
@@ -132,7 +133,7 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Va
 	}
 
 	if num == 0 {
-		return []frontend.Variable{}
+		return []zk.WrappedVariable{}
 	}
 
 	defer fs.safeguardUpdate()
@@ -144,7 +145,7 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Va
 		// the division is rounded-down)
 		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
 		// res stores the function result
-		res = make([]frontend.Variable, 0, num)
+		res = make([]zk.WrappedVariable, 0, num)
 		// challCount stores the number of generated small integers
 		challCount = 0
 	)
@@ -182,7 +183,7 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Va
 // RandomFieldFromSeed generates a new field element from the given seed
 // and a name. The 'fs' is left unchanged by the call (aside from the
 // underlying [frontend.API]).
-func (fs *GnarkFiatShamir) RandomFieldFromSeed(seed frontend.Variable, name string) frontend.Variable {
+func (fs *GnarkFiatShamir) RandomFieldFromSeed(seed zk.WrappedVariable, name string) zk.WrappedVariable {
 
 	// The first step encodes the 'name' into a single field element. The
 	// field element is obtained by hashing and taking the modulo of the
@@ -198,7 +199,7 @@ func (fs *GnarkFiatShamir) RandomFieldFromSeed(seed frontend.Variable, name stri
 	oldState := fs.State()
 	defer fs.SetState(oldState)
 
-	fs.SetState([]frontend.Variable{seed})
+	fs.SetState([]zk.WrappedVariable{seed})
 	fs.hasher.Write(nameField)
 
 	return fs.hasher.Sum()

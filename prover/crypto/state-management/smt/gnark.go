@@ -3,12 +3,13 @@ package smt
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // GnarkProof mirrors [Proof] in a gnark circuit.
 type GnarkProof struct {
-	Path     frontend.Variable
-	Siblings []frontend.Variable
+	Path     zk.WrappedVariable
+	Siblings []zk.WrappedVariable
 }
 
 // GnarkRecoverRoot is as [RecoverRoot] in a gnark circuit. The provided
@@ -17,8 +18,8 @@ type GnarkProof struct {
 func GnarkRecoverRoot(
 	api frontend.API,
 	proof GnarkProof,
-	leaf frontend.Variable,
-	h hash.FieldHasher) frontend.Variable {
+	leaf zk.WrappedVariable,
+	h hash.FieldHasher) zk.WrappedVariable {
 
 	current := leaf
 	nbBits := len(proof.Siblings)
@@ -38,8 +39,8 @@ func GnarkRecoverRoot(
 func GnarkVerifyMerkleProof(
 	api frontend.API,
 	proof GnarkProof,
-	leaf frontend.Variable,
-	root frontend.Variable,
+	leaf zk.WrappedVariable,
+	root zk.WrappedVariable,
 	h hash.FieldHasher) {
 
 	r := GnarkRecoverRoot(api, proof, leaf, h)

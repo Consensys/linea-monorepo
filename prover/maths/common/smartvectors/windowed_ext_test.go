@@ -1,9 +1,10 @@
 package smartvectors
 
 import (
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"testing"
 
 	"github.com/stretchr/testify/require"
 )

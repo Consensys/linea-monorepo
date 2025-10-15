@@ -7,12 +7,13 @@ import (
 	cRand "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"math/big"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"

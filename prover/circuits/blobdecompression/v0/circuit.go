@@ -50,28 +50,28 @@ type Circuit struct {
 	// made available on L1 when we submit a blob of transactions. The circuit
 	// proves that these two correspond to the same data. The uncompressed
 	// data is then passed to the EVM execution circuit.
-	BlobPackedBytes []frontend.Variable `gnark:",secret"`
+	BlobPackedBytes []zk.WrappedVariable `gnark:",secret"`
 	// Clen is an advice variable indicating the size of the compressed data.
-	BlobBytesLen             frontend.Variable `gnark:",secret"`
+	BlobBytesLen             zk.WrappedVariable `gnark:",secret"`
 	PayloadMaxPackedBytesLen int
-	BlobHeaderBytesLen       frontend.Variable `gnark:",secret"`
+	BlobHeaderBytesLen       zk.WrappedVariable `gnark:",secret"`
 
 	// The final public input. It is the hash of
 	// 	- the hash of the uncompressed message.
 	// 	- the hash of the compressed message. aka the SnarKHash on the contract
 	// 	- the X and Y evaluation points claimed on the contract
 	//  TODO - whether we are using Eip4844
-	PublicInput frontend.Variable `gnark:",public"`
+	PublicInput zk.WrappedVariable `gnark:",public"`
 
 	// The X and Y evaluation point that are "claimed" by the contract. The
 	// circuit will verify that the polynomial describing the compressed data
 	// does evaluate to Y when evaluated at point X. This needed to ensure that
 	// both the keccak hash of the compressed data (claimed on the contract) and
 	// later the blob-hash (when we support EIP4844). TODO update this comment
-	X              [2]frontend.Variable `gnark:",secret"`
-	Y              [2]frontend.Variable `gnark:",secret"`
-	SnarkHash      frontend.Variable
-	Eip4844Enabled frontend.Variable
+	X              [2]zk.WrappedVariable `gnark:",secret"`
+	Y              [2]zk.WrappedVariable `gnark:",secret"`
+	SnarkHash      zk.WrappedVariable
+	Eip4844Enabled zk.WrappedVariable
 }
 
 // Allocates the outer-proof circuit
@@ -82,7 +82,7 @@ func Allocate(
 	return Circuit{
 		Dict:                     dictBytes,
 		PayloadMaxPackedBytesLen: blob.MaxUncompressedBytes,
-		BlobPackedBytes:          make([]frontend.Variable, blob.MaxUsableBytes),
+		BlobPackedBytes:          make([]zk.WrappedVariable, blob.MaxUsableBytes),
 	}
 }
 
@@ -125,7 +125,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	blobCrumbs := internal.PackedBytesToCrumbs(api, c.BlobPackedBytes, fr377.Bits-1)
 	// Check the evaluation part of the
 	const crumbsPer381 = (fr381.Bits - 1) / 2
-	blobCrumbsPadded381 := make([]frontend.Variable, 4096*crumbsPer381) // public_input.VerifyBlobConsistency expects fr381.Bits - 1 bits per field element, where we have fr377.Bits - 1. Padding needed.
+	blobCrumbsPadded381 := make([]zk.WrappedVariable, 4096*crumbsPer381) // public_input.VerifyBlobConsistency expects fr381.Bits - 1 bits per field element, where we have fr377.Bits - 1. Padding needed.
 
 	for i := 0; i < 4096; i++ {
 		const frDelta = (fr381.Bits - fr377.Bits) / 2
@@ -188,7 +188,7 @@ func mimcHashAnyGnark(
 	api frontend.API,
 	hasherFactory *gkrmimc.HasherFactory,
 	fs ...any,
-) frontend.Variable {
+) zk.WrappedVariable {
 	h := hasherFactory.NewHasher()
 
 	for i := range fs {
@@ -197,11 +197,11 @@ func mimcHashAnyGnark(
 			// In this case, we need to split the field element into two parts
 			// each encoding a 128 bit number. This is needed because the 381
 			// field is a little bit larger than the 377 one.
-			x := packVarLimbsBE(api, []frontend.Variable{f.Limbs[3], f.Limbs[2]})
+			x := packVarLimbsBE(api, []zk.WrappedVariable{f.Limbs[3], f.Limbs[2]})
 			h.Write(x)
-			x = packVarLimbsBE(api, []frontend.Variable{f.Limbs[1], f.Limbs[0]})
+			x = packVarLimbsBE(api, []zk.WrappedVariable{f.Limbs[1], f.Limbs[0]})
 			h.Write(x)
-		case frontend.Variable:
+		case zk.WrappedVariable:
 			h.Write(f)
 		}
 	}

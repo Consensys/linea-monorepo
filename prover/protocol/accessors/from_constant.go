@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -75,7 +76,7 @@ func (c *FromConstAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 
 func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRuntime) zk.WrappedVariable {
 	if c.IsBaseFlag {
-		return c.Base
+		return zk.ValueOf(c.Base)
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
@@ -83,15 +84,14 @@ func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRu
 
 func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
 	if c.IsBaseFlag {
-		return c.Base, nil
+		return zk.ValueOf(c.Base), nil
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
 }
 
 func (c *FromConstAccessor) GetFrontendVariableExt(_ frontend.API, _ ifaces.GnarkRuntime) gnarkfext.E4Gen {
-	var e gnarkfext.E4Gen
-	e.Assign(c.Ext)
+	e := gnarkfext.NewE4Gen(c.Ext)
 	return e
 }
 

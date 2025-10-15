@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 func TestCountVariables(t *testing.T) {
@@ -15,32 +15,32 @@ func TestCountVariables(t *testing.T) {
 	}{
 		{
 			Circ: struct {
-				A frontend.Variable `gnark:",public"`
-				B frontend.Variable `gnark:",secret"`
+				A zk.WrappedVariable `gnark:",public"`
+				B zk.WrappedVariable `gnark:",secret"`
 			}{},
 			NbPub: 1,
 			NbSec: 1,
 		},
 		{
 			Circ: struct {
-				A frontend.Variable `gnark:",secret"`
-				B frontend.Variable `gnark:",public"`
+				A zk.WrappedVariable `gnark:",secret"`
+				B zk.WrappedVariable `gnark:",public"`
 			}{},
 			NbPub: 1,
 			NbSec: 1,
 		},
 		{
 			Circ: struct {
-				A [3]frontend.Variable `gnark:",secret"`
-				B frontend.Variable    `gnark:",public"`
+				A [3]zk.WrappedVariable `gnark:",secret"`
+				B zk.WrappedVariable    `gnark:",public"`
 			}{},
 			NbPub: 1,
 			NbSec: 3,
 		},
 		{
 			Circ: struct {
-				A frontend.Variable    `gnark:",secret"`
-				B [3]frontend.Variable `gnark:",public"`
+				A zk.WrappedVariable    `gnark:",secret"`
+				B [3]zk.WrappedVariable `gnark:",public"`
 			}{},
 			NbPub: 3,
 			NbSec: 1,

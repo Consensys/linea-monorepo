@@ -16,8 +16,8 @@ import (
 // it is on the caller to ensure that the dictionary is correct; in particular it must consist of bytes. Decompress does not check this.
 // it is recommended to pack the dictionary using compress.Pack and take a MiMC checksum of it.
 // d will consist of bytes
-// It returns the length of d as a frontend.Variable; if the decompressed stream doesn't fit in d, dLength will be "-1"
-func Decompress(api frontend.API, c []frontend.Variable, cLength frontend.Variable, d, dict []frontend.Variable, level lzss.Level) (dLength frontend.Variable, err error) {
+// It returns the length of d as a zk.WrappedVariable; if the decompressed stream doesn't fit in d, dLength will be "-1"
+func Decompress(api frontend.API, c []zk.WrappedVariable, cLength zk.WrappedVariable, d, dict []zk.WrappedVariable, level lzss.Level) (dLength zk.WrappedVariable, err error) {
 
 	api.AssertIsLessOrEqual(cLength, len(c)) // sanity check
 
@@ -43,7 +43,7 @@ func Decompress(api frontend.API, c []frontend.Variable, cLength frontend.Variab
 	// check that the input is in range and convert into small words
 	rangeChecker := internal.NewRangeChecker(api)
 
-	bytes := make([]frontend.Variable, len(c)-sizeHeader+1)
+	bytes := make([]zk.WrappedVariable, len(c)-sizeHeader+1)
 	copy(bytes, c[sizeHeader:])
 	bytes[len(bytes)-1] = 0                                             // pad with a zero to avoid out of range errors
 	c, bytes = rangeChecker.BreakUpBytesIntoWords(wordNbBits, bytes...) // from this point on c is in words
@@ -61,10 +61,10 @@ func Decompress(api frontend.API, c []frontend.Variable, cLength frontend.Variab
 	addrTable := initAddrTable(api, bytes, c, wordNbBits, []lzss.BackrefType{shortBackRefType, longBackRefType, dictBackRefType})
 
 	// state variables
-	inI := frontend.Variable(0)
-	copyLen := frontend.Variable(0) // remaining length of the current copy
-	copyLen01 := frontend.Variable(1)
-	eof := frontend.Variable(0)
+	inI := zk.WrappedVariable(0)
+	copyLen := zk.WrappedVariable(0) // remaining length of the current copy
+	copyLen01 := zk.WrappedVariable(1)
+	eof := zk.WrappedVariable(0)
 	dLength = -1 // if the following loop ends before hitting eof, we will get the "error" value -1 for dLength
 
 	for outI := range d {
@@ -126,7 +126,7 @@ func Decompress(api frontend.API, c []frontend.Variable, cLength frontend.Variab
 	return dLength, nil
 }
 
-func initAddrTable(api frontend.API, bytes, c []frontend.Variable, wordNbBits int, backrefs []lzss.BackrefType) logderivlookup.Table {
+func initAddrTable(api frontend.API, bytes, c []zk.WrappedVariable, wordNbBits int, backrefs []lzss.BackrefType) logderivlookup.Table {
 	for i := range backrefs {
 		if backrefs[i].NbBitsLength != backrefs[0].NbBitsLength {
 			panic("all backref types must have the same length size")
@@ -135,7 +135,7 @@ func initAddrTable(api frontend.API, bytes, c []frontend.Variable, wordNbBits in
 	readers := make([]*compress.NumReader, len(backrefs))
 	delimAndLenNbWords := int(8+backrefs[0].NbBitsLength) / wordNbBits // #nosec G115 -- not a problem on any architecture with word size > 8 bits
 	for i := range backrefs {
-		var readerC []frontend.Variable
+		var readerC []zk.WrappedVariable
 		if len(c) >= delimAndLenNbWords {
 			readerC = c[delimAndLenNbWords:]
 		}
@@ -146,7 +146,7 @@ func initAddrTable(api frontend.API, bytes, c []frontend.Variable, wordNbBits in
 	res := logderivlookup.New(api)
 
 	for i := range c {
-		entry := frontend.Variable(0)
+		entry := zk.WrappedVariable(0)
 		for j := range backrefs {
 			isSymb := api.IsZero(api.Sub(bytes[i], backrefs[j].Delimiter))
 			entry = api.MulAcc(entry, isSymb, readers[j].Next())

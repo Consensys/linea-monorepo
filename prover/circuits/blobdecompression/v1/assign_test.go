@@ -5,8 +5,9 @@ package v1_test
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -59,8 +60,8 @@ func prepare(t require.TestingT, blobBytes []byte) (c *v1.Circuit, a frontend.Ci
 	assert.Equal(t, resp.SnarkHash[2:], hex.EncodeToString(snarkHash))
 
 	return &v1.Circuit{
-		Dict:                  make([]frontend.Variable, len(r.Dict)),
-		BlobBytes:             make([]frontend.Variable, blobcompressorv1.MaxUsableBytes),
+		Dict:                  make([]zk.WrappedVariable, len(r.Dict)),
+		BlobBytes:             make([]zk.WrappedVariable, blobcompressorv1.MaxUsableBytes),
 		MaxBlobPayloadNbBytes: len(r.RawPayload) * 3 / 2, // small max blobcompressorv1 size so it compiles in manageable time
 	}, a
 }

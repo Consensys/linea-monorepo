@@ -41,9 +41,9 @@ func getMerkleProof(t *testing.T) ([]Proof, []Bytes32, Bytes32) {
 }
 
 type MerkleProofCircuit struct {
-	Proofs []GnarkProof        `gnark:",public"`
-	Leafs  []frontend.Variable `gnark:",public"`
-	Root   frontend.Variable
+	Proofs []GnarkProof         `gnark:",public"`
+	Leafs  []zk.WrappedVariable `gnark:",public"`
+	Root   zk.WrappedVariable
 }
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
@@ -65,10 +65,10 @@ func TestMerkleProofGnark(t *testing.T) {
 	nbProofs := len(proofs)
 	var witness MerkleProofCircuit
 	witness.Proofs = make([]GnarkProof, nbProofs)
-	witness.Leafs = make([]frontend.Variable, nbProofs)
+	witness.Leafs = make([]zk.WrappedVariable, nbProofs)
 	var buf fr.Element
 	for i := 0; i < nbProofs; i++ {
-		witness.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
+		witness.Proofs[i].Siblings = make([]zk.WrappedVariable, len(proofs[i].Siblings))
 		for j := 0; j < len(proofs[i].Siblings); j++ {
 			buf.SetBytes(proofs[i].Siblings[j][:])
 			witness.Proofs[i].Siblings[j] = buf.String()
@@ -83,9 +83,9 @@ func TestMerkleProofGnark(t *testing.T) {
 	// compile circuit
 	var circuit MerkleProofCircuit
 	circuit.Proofs = make([]GnarkProof, nbProofs)
-	circuit.Leafs = make([]frontend.Variable, nbProofs)
+	circuit.Leafs = make([]zk.WrappedVariable, nbProofs)
 	for i := 0; i < nbProofs; i++ {
-		circuit.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
+		circuit.Proofs[i].Siblings = make([]zk.WrappedVariable, len(proofs[i].Siblings))
 	}
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 	if err != nil {

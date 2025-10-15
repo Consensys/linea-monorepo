@@ -70,7 +70,7 @@ func TestGnarkSafeGuardUpdate(t *testing.T) {
 // 		y1 := fs.RandomFext()
 
 // 		fs2 := NewGnarkFiatShamir(api, nil)
-// 		fs2.UpdateVec([]frontend.Variable{2, 2, 1, 2})
+// 		fs2.UpdateVec([]zk.WrappedVariable{2, 2, 1, 2})
 // 		y2 := fs2.RandomField()
 
 // 		api.AssertIsEqual(y1, y2)

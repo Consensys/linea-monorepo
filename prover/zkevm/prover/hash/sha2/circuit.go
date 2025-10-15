@@ -31,11 +31,11 @@ func (sc *SHA2Circuit) Define(api frontend.API) error {
 // sha2BlockPermutationInstance represents a instance of the sha2 block permutation.
 type sha2BlockPermutationInstance struct {
 	// prevDigest is the previous digest formatted as 8 uint32
-	PrevDigest [2]frontend.Variable
+	PrevDigest [2]zk.WrappedVariable
 	// the block formatted as [16]uint32
-	Block [16]frontend.Variable
+	Block [16]zk.WrappedVariable
 	// the current digest on 8 x uint32
-	NewDigest [2]frontend.Variable
+	NewDigest [2]zk.WrappedVariable
 }
 
 // checkSha2Permutation adds the constraints ensuring the correctness of the
@@ -86,7 +86,7 @@ func (sbpi *sha2BlockPermutationInstance) checkSha2Permutation(api frontend.API)
 	}
 }
 
-func cast2xu128To8xU32s(api frontend.API, v [2]frontend.Variable) [8]uints.U32 {
+func cast2xu128To8xU32s(api frontend.API, v [2]zk.WrappedVariable) [8]uints.U32 {
 
 	var (
 		u8Vars = append(

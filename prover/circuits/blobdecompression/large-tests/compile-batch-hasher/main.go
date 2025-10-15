@@ -8,6 +8,7 @@ import (
 	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 func main() {
@@ -20,10 +21,10 @@ func main() {
 }
 
 type circuit struct {
-	NbBatches    frontend.Variable
-	BlobPayload  [blob.MaxUncompressedBytes]frontend.Variable
-	BatchEnds    [v1.MaxNbBatches]frontend.Variable
-	ExpectedSums [v1.MaxNbBatches]frontend.Variable
+	NbBatches    zk.WrappedVariable
+	BlobPayload  [blob.MaxUncompressedBytes]zk.WrappedVariable
+	BatchEnds    [v1.MaxNbBatches]zk.WrappedVariable
+	ExpectedSums [v1.MaxNbBatches]zk.WrappedVariable
 }
 
 func (c *circuit) Define(api frontend.API) error {

@@ -20,6 +20,24 @@ func NewE4Gen(v fext.Element) E4Gen {
 	}
 }
 
+func NewE4GenFromBase(v any) E4Gen {
+	var res E4Gen
+	res.B0.A0 = zk.ValueOf(v)
+	res.B0.A1 = zk.ValueOf(0)
+	res.B1.A0 = zk.ValueOf(0)
+	res.B1.A1 = zk.ValueOf(0)
+	return res
+}
+
+func FromBase(v zk.WrappedVariable) E4Gen {
+	var res E4Gen
+	res.B0.A0 = v
+	res.B0.A1 = zk.ValueOf(0)
+	res.B1.A0 = zk.ValueOf(0)
+	res.B1.A1 = zk.ValueOf(0)
+	return res
+}
+
 // Ext4 contains  the ext4 koalabear operations
 type Ext4 struct {
 	mixedAPI zk.GenericApi
@@ -206,7 +224,7 @@ func (ext4 *Ext4) Conjugate(e1 E4Gen) *E4Gen {
 }
 
 // Select sets e to r1 if b=1, r2 otherwise
-func (ext4 *Ext4) Select(b frontend.Variable, r1, r2 *E4Gen) *E4Gen {
+func (ext4 *Ext4) Select(b zk.WrappedVariable, r1, r2 *E4Gen) *E4Gen {
 	return &E4Gen{
 		B0: *ext4.Ext2.Select(b, &r1.B0, &r2.B0),
 		B1: *ext4.Ext2.Select(b, &r1.B1, &r2.B1),

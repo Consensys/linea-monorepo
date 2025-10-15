@@ -22,13 +22,13 @@ type (
 
 // G1ElementWizard represents G1 element as Wizard limbs (2 limbs of 128 bits)
 type G1ElementWizard struct {
-	P [nbG1Limbs]frontend.Variable
+	P [nbG1Limbs]zk.WrappedVariable
 }
 
 // ToG1Element converts G1ElementWizard to G1Affine used in circuit
 func (c *G1ElementWizard) ToG1Element(api frontend.API, fp *emulated.Field[sw_bn254.BaseField]) sw_bn254.G1Affine {
-	PXlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	PYlimbs := make([]frontend.Variable, fpParams.NbLimbs())
+	PXlimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	PYlimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
 	PXlimbs[2], PXlimbs[3] = bitslice.Partition(api, c.P[0], 64, bitslice.WithNbDigits(128))
 	PXlimbs[0], PXlimbs[1] = bitslice.Partition(api, c.P[1], 64, bitslice.WithNbDigits(128))
 	PYlimbs[2], PYlimbs[3] = bitslice.Partition(api, c.P[2], 64, bitslice.WithNbDigits(128))
@@ -44,15 +44,15 @@ func (c *G1ElementWizard) ToG1Element(api frontend.API, fp *emulated.Field[sw_bn
 
 // G2ElementWizard represents G2 element as Wizard limbs (4 limbs of 128 bits)
 type G2ElementWizard struct {
-	Q [nbG2Limbs]frontend.Variable
+	Q [nbG2Limbs]zk.WrappedVariable
 }
 
 // ToG2Element converts G2ElementWizard to G2Affine used in circuit
 func (c *G2ElementWizard) ToG2Element(api frontend.API, fp *emulated.Field[sw_bn254.BaseField]) sw_bn254.G2Affine {
-	QXAlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	QXBlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	QYAlimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	QYBlimbs := make([]frontend.Variable, fpParams.NbLimbs())
+	QXAlimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	QXBlimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	QYAlimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	QYBlimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
 
 	// arithmetization provides G2 coordinates in the following order:
 	//   X_Im, X_Re, Y_Im, Y_Re
@@ -90,23 +90,23 @@ func (c *G2ElementWizard) ToG2Element(api frontend.API, fp *emulated.Field[sw_bn
 
 // GtElementWizard represents Gt element as Wizard limbs (24 limbs of 128 bits)
 type GtElementWizard struct {
-	T [nbGtLimbs]frontend.Variable
+	T [nbGtLimbs]zk.WrappedVariable
 }
 
 // ToGtElement converts GtElementWizard to target group element used in circuit
 func (c *GtElementWizard) ToGtElement(api frontend.API, fp *emulated.Field[sw_bn254.BaseField]) sw_bn254.GTEl {
-	C0B0XLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C0B0YLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C0B1XLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C0B1YLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C0B2XLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C0B2YLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C1B0XLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C1B0YLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C1B1XLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C1B1YLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C1B2XLimbs := make([]frontend.Variable, fpParams.NbLimbs())
-	C1B2YLimbs := make([]frontend.Variable, fpParams.NbLimbs())
+	C0B0XLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C0B0YLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C0B1XLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C0B1YLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C0B2XLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C0B2YLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C1B0XLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C1B0YLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C1B1XLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C1B1YLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C1B2XLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
+	C1B2YLimbs := make([]zk.WrappedVariable, fpParams.NbLimbs())
 
 	C0B0XLimbs[2], C0B0XLimbs[3] = bitslice.Partition(api, c.T[0], 64, bitslice.WithNbDigits(128))
 	C0B0XLimbs[0], C0B0XLimbs[1] = bitslice.Partition(api, c.T[1], 64, bitslice.WithNbDigits(128))
@@ -184,7 +184,7 @@ func (c *MultiG2GroupcheckCircuit) Define(api frontend.API) error {
 // G2GroupCheckInstance is a single instance of G2 group check.
 type G2GroupCheckInstance struct {
 	Q         G2ElementWizard
-	IsSuccess frontend.Variable
+	IsSuccess zk.WrappedVariable
 }
 
 func (c *G2GroupCheckInstance) Check(api frontend.API, fp *emulated.Field[sw_bn254.BaseField], pairing *sw_bn254.Pairing) error {
@@ -277,7 +277,7 @@ type MillerLoopFinalExpInstance struct {
 	Prev     GtElementWizard
 	P        G1ElementWizard
 	Q        G2ElementWizard
-	Expected [2]frontend.Variable
+	Expected [2]zk.WrappedVariable
 }
 
 func (c *MillerLoopFinalExpInstance) Check(api frontend.API, fp *emulated.Field[sw_bn254.BaseField], pairing *sw_bn254.Pairing) error {

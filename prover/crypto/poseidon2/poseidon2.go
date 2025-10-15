@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -65,7 +66,7 @@ func Poseidon2SpongeElement(x []field.Element) (newState [blockSize]field.Elemen
 
 // GnarkBlockCompression applies the MiMC permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
-func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]frontend.Variable) (newState [blockSize]frontend.Variable) {
+func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]zk.WrappedVariable) (newState [blockSize]zk.WrappedVariable) {
 	panic("unimplemented")
 }
 

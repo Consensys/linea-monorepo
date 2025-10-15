@@ -97,17 +97,17 @@ type MultiECAddCircuit struct {
 
 type ECAddInstance struct {
 	// First input to addition
-	P_X_hi, P_X_lo frontend.Variable `gnark:",public"`
-	P_Y_hi, P_Y_lo frontend.Variable `gnark:",public"`
+	P_X_hi, P_X_lo zk.WrappedVariable `gnark:",public"`
+	P_Y_hi, P_Y_lo zk.WrappedVariable `gnark:",public"`
 
 	// Second input to addition
-	Q_X_hi, Q_X_lo frontend.Variable `gnark:",public"`
-	Q_Y_hi, Q_Y_lo frontend.Variable `gnark:",public"`
+	Q_X_hi, Q_X_lo zk.WrappedVariable `gnark:",public"`
+	Q_Y_hi, Q_Y_lo zk.WrappedVariable `gnark:",public"`
 
 	// The result of the addition. Is provided non-deterministically by the
 	// caller, we have to ensure that the result is correct.
-	R_X_hi, R_X_lo frontend.Variable `gnark:",public"`
-	R_Y_hi, R_Y_lo frontend.Variable `gnark:",public"`
+	R_X_hi, R_X_lo zk.WrappedVariable `gnark:",public"`
+	R_Y_hi, R_Y_lo zk.WrappedVariable `gnark:",public"`
 }
 
 // NewECMulCircuit creates a new circuit for verifying the EC_MUL precompile
@@ -133,11 +133,11 @@ func (c *MultiECAddCircuit) Define(api frontend.API) error {
 	Rs := make([]sw_bn254.G1Affine, nbInstances)
 	for i := range c.Instances {
 
-		PXlimbs := make([]frontend.Variable, 4)
+		PXlimbs := make([]zk.WrappedVariable, 4)
 		PXlimbs[2], PXlimbs[3] = bitslice.Partition(api, c.Instances[i].P_X_hi, 64, bitslice.WithNbDigits(128))
 		PXlimbs[0], PXlimbs[1] = bitslice.Partition(api, c.Instances[i].P_X_lo, 64, bitslice.WithNbDigits(128))
 		PX := f.NewElement(PXlimbs)
-		PYlimbs := make([]frontend.Variable, 4)
+		PYlimbs := make([]zk.WrappedVariable, 4)
 		PYlimbs[2], PYlimbs[3] = bitslice.Partition(api, c.Instances[i].P_Y_hi, 64, bitslice.WithNbDigits(128))
 		PYlimbs[0], PYlimbs[1] = bitslice.Partition(api, c.Instances[i].P_Y_lo, 64, bitslice.WithNbDigits(128))
 		PY := f.NewElement(PYlimbs)
@@ -146,11 +146,11 @@ func (c *MultiECAddCircuit) Define(api frontend.API) error {
 			Y: *PY,
 		}
 
-		QXlimbs := make([]frontend.Variable, 4)
+		QXlimbs := make([]zk.WrappedVariable, 4)
 		QXlimbs[2], QXlimbs[3] = bitslice.Partition(api, c.Instances[i].Q_X_hi, 64, bitslice.WithNbDigits(128))
 		QXlimbs[0], QXlimbs[1] = bitslice.Partition(api, c.Instances[i].Q_X_lo, 64, bitslice.WithNbDigits(128))
 		QX := f.NewElement(QXlimbs)
-		QYlimbs := make([]frontend.Variable, 4)
+		QYlimbs := make([]zk.WrappedVariable, 4)
 		QYlimbs[2], QYlimbs[3] = bitslice.Partition(api, c.Instances[i].Q_Y_hi, 64, bitslice.WithNbDigits(128))
 		QYlimbs[0], QYlimbs[1] = bitslice.Partition(api, c.Instances[i].Q_Y_lo, 64, bitslice.WithNbDigits(128))
 		QY := f.NewElement(QYlimbs)
@@ -159,11 +159,11 @@ func (c *MultiECAddCircuit) Define(api frontend.API) error {
 			Y: *QY,
 		}
 
-		RXlimbs := make([]frontend.Variable, 4)
+		RXlimbs := make([]zk.WrappedVariable, 4)
 		RXlimbs[2], RXlimbs[3] = bitslice.Partition(api, c.Instances[i].R_X_hi, 64, bitslice.WithNbDigits(128))
 		RXlimbs[0], RXlimbs[1] = bitslice.Partition(api, c.Instances[i].R_X_lo, 64, bitslice.WithNbDigits(128))
 		RX := f.NewElement(RXlimbs)
-		RYlimbs := make([]frontend.Variable, 4)
+		RYlimbs := make([]zk.WrappedVariable, 4)
 		RYlimbs[2], RYlimbs[3] = bitslice.Partition(api, c.Instances[i].R_Y_hi, 64, bitslice.WithNbDigits(128))
 		RYlimbs[0], RYlimbs[1] = bitslice.Partition(api, c.Instances[i].R_Y_lo, 64, bitslice.WithNbDigits(128))
 		RY := f.NewElement(RYlimbs)

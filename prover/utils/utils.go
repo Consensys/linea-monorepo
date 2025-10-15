@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"golang.org/x/exp/constraints"
 )
 
@@ -249,8 +249,8 @@ func ToUint16[T ~int | ~uint](i T) uint16 {
 	return uint16(i) // #nosec G115 -- Checked for overflow
 }
 
-func ToVariableSlice[X any](s []X) []frontend.Variable {
-	res := make([]frontend.Variable, len(s))
+func ToVariableSlice[X any](s []X) []zk.WrappedVariable {
+	res := make([]zk.WrappedVariable, len(s))
 	Copy(res, s)
 	return res
 }

@@ -101,7 +101,7 @@ type VerifierCircuit struct {
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
 	Columns    [][]zk.WrappedVariable `gnark:",secret"`
-	ColumnsExt [][]gnarkfext.E4Gen  `gnark:",secret"`
+	ColumnsExt [][]gnarkfext.E4Gen    `gnark:",secret"`
 	// UnivariateParams stores an assignment for each [query.UnivariateParams]
 	// from the proof. This is part of the witness of the gnark circuit.
 	UnivariateParams []query.GnarkUnivariateEvalParams `gnark:",secret"`
@@ -471,7 +471,7 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen 
 	// intermediary use case, should be removed when all coins become field extensions
 	if infos.Type == coin.Field || infos.Type == coin.FieldFromSeed || infos.Type == coin.FieldExt {
 		res := c.Coins.MustGet(name).(zk.WrappedVariable)
-		return gnarkfext.NewFromBase(res)
+		return gnarkfext.NewE4GenFromBase(res)
 	}
 
 	if infos.Type != coin.FieldExt {
@@ -584,10 +584,11 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
 		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		res := gnarkutil.AllocateSlice(len(val))
+		// res := gnarkutil.AllocateSlice(len(val))
+		res := make([]zk.WrappedVariable, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = val[i]
+			res[i] = zk.ValueOf(val[i])
 		}
 		return res, nil
 	}
@@ -611,7 +612,8 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.E4Gen {
 		res := gnarkutil.AllocateSliceExt(len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i].Assign(val[i])
+			// res[i].Assign(val[i])
+			res[i] = gnarkfext.NewE4Gen(val[i])
 		}
 		return res
 	}

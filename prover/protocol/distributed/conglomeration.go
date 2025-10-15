@@ -6,12 +6,13 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
-	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
@@ -346,46 +347,50 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 // RunGnark is as [Run] but in a gnark circuit
 func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	var (
-		allGrandProduct           = zk.WrappedVariable(1)
-		allLogDerivativeSum       = zk.WrappedVariable(0)
-		allHornerSum              = zk.WrappedVariable(0)
-		prevGlobalSent            = zk.WrappedVariable(0)
-		prevHornerN1Hash          = zk.WrappedVariable(0)
-		usedSharedRandomness      = zk.WrappedVariable(0)
-		usedSharedRandomnessFound = zk.WrappedVariable(0)
-		accumulativeLppHash       = zk.WrappedVariable(0)
-	)
+	allGrandProduct := zk.ValueOf(1)
+	allLogDerivativeSum := zk.ValueOf(0)
+	allHornerSum := zk.ValueOf(0)
+	prevGlobalSent := zk.ValueOf(0)
+	prevHornerN1Hash := zk.ValueOf(0)
+	usedSharedRandomness := zk.ValueOf(0)
+	usedSharedRandomnessFound := zk.ValueOf(0)
+	accumulativeLppHash := zk.ValueOf(0)
 
 	for i := 0; i < c.MaxNbProofs; i++ {
 
-		var (
-			lppCommitment    = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
-			sharedRandomness = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+InitialRandomnessPublicInput, i)
-			verifyingKey     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+verifyingKeyPublicInput, i)
-			verifyingKey2    = c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, i)
-			logDerivativeSum = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+LogDerivativeSumPublicInput, i)
-			grandProduct     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GrandProductPublicInput, i)
-			hornerSum        = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerPublicInput, i)
-			hornerN0Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerN0HashPublicInput, i)
-			hornerN1Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerN1HashPublicInput, i)
-			globalReceived   = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GlobalReceiverPublicInput, i)
-			globalSent       = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GlobalSenderPublicInput, i)
-			isFirst          = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsFirstPublicInput, i)
-			isLast           = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLastPublicInput, i)
-			isLPP            = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLppPublicInput, i)
-			isGL             = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsGlPublicInput, i)
+		lppCommitment := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
+		sharedRandomness := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+InitialRandomnessPublicInput, i)
+		verifyingKey := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+verifyingKeyPublicInput, i)
+		verifyingKey2 := c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, i)
+		logDerivativeSum := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+LogDerivativeSumPublicInput, i)
+		grandProduct := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GrandProductPublicInput, i)
+		hornerSum := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerPublicInput, i)
+		hornerN0Hash := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerN0HashPublicInput, i)
+		hornerN1Hash := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+HornerN1HashPublicInput, i)
+		globalReceived := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GlobalReceiverPublicInput, i)
+		globalSent := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+GlobalSenderPublicInput, i)
+		isFirst := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsFirstPublicInput, i)
+		isLast := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLastPublicInput, i)
+		isLPP := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsLppPublicInput, i)
+		isGL := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+IsGlPublicInput, i)
 
-			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext = zk.WrappedVariable(0), zk.WrappedVariable(0)
-		)
+		// sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext = zk.ValueOf(0), zk.ValueOf(0)
+		var sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext frontend.Variable
+
+		apiGen, err := zk.NewGenericApi(api)
+		if err != nil {
+			panic(err)
+		}
 
 		if i > 0 {
 			prevVerifyingKey := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+verifyingKeyPublicInput, i-1)
 			prevVerifyingKey2 := c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, i-1)
 
+			tmp1 := apiGen.Sub(&prevVerifyingKey, &verifyingKey)
+			tmp2 := apiGen.Sub(&prevVerifyingKey2, &verifyingKey2)
 			sameVerifyingKeyAsPrev = api.Mul(
-				api.IsZero(api.Sub(prevVerifyingKey, verifyingKey)),
-				api.IsZero(api.Sub(prevVerifyingKey2, verifyingKey2)),
+				apiGen.IsZero(tmp1),
+				apiGen.IsZero(tmp2),
 			)
 		}
 
@@ -393,9 +398,11 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 			nextVerifyingKey := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+verifyingKeyPublicInput, i+1)
 			nextVerifyingKey2 := c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, i+1)
 
+			tmp1 := apiGen.Sub(&nextVerifyingKey, &verifyingKey)
+			tmp2 := apiGen.Sub(&nextVerifyingKey2, &verifyingKey2)
 			sameVerifyingKeyAsNext = api.Mul(
-				api.IsZero(api.Sub(nextVerifyingKey, verifyingKey)),
-				api.IsZero(api.Sub(nextVerifyingKey2, verifyingKey2)),
+				apiGen.IsZero(tmp1),
+				apiGen.IsZero(tmp2),
 			)
 		}
 
@@ -404,58 +411,44 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 		// if isLPP.IsOne() && sameVerifyingKeyAsPrev && hornerN0Hash != prevHornerN1Hash {
 		// 	mainErr = errors.Join(mainErr, errors.New("horner-n0-hash mismatch"))
 		// }
-		api.AssertIsEqual(0,
-			api.Mul(
-				isLPP,
-				sameVerifyingKeyAsPrev,
-				api.Sub(hornerN0Hash, prevHornerN1Hash),
-			),
-		)
+		wSameVerifyingKeyAsPrev := zk.WrapFrontendVariable(sameVerifyingKeyAsPrev)
+		tmp := apiGen.Sub(&hornerN0Hash, &prevHornerN1Hash)
+		tmp = apiGen.Mul(&wSameVerifyingKeyAsPrev, tmp)
+		tmp = apiGen.Mul(&isLPP, tmp)
+		wZero := zk.ValueOf(0)
+		apiGen.AssertIsEqual(tmp, &wZero)
 
 		// This emulates the following check:
 		//
 		// if isGL.IsOne() && !sameVerifyingKeyAsPrev != isFirst.IsOne() {
 		// 	mainErr = errors.Join(mainErr, errors.New("isFirst is inconsistent with the verifying keys"))
 		// }
-		api.AssertIsEqual(0,
-			api.Mul(
-				isGL,
-				// these are already ensured to be boolean, that's why the check
-				// works. sameVerifyingKeyAsPrev is boolean as the product of two booleans
-				// and isFirst is enforced to be boolean thanks to being a public input
-				// of a whitelisted circuit which enforces it to be a boolean.
-				api.Sub(1, sameVerifyingKeyAsPrev, isFirst),
-			),
-		)
+		wOne := zk.ValueOf(1)
+		tmp = apiGen.Sub(&wOne, &wSameVerifyingKeyAsPrev)
+		tmp = apiGen.Sub(tmp, &isFirst)
+		tmp = apiGen.Mul(tmp, &isGL)
+		apiGen.AssertIsEqual(&wZero, tmp)
 
 		// This emulates the following check:
 		//
 		// if isGL.IsOne() && !sameVerifyingKeyAsNext != isLast.IsOne() {
 		// 	mainErr = errors.Join(mainErr, errors.New("isLast is inconsistent with the verifying keys"))
 		// }
-		api.AssertIsEqual(0,
-			api.Mul(
-				isGL,
-				// these are already ensured to be boolean, that's why the check
-				// works. sameVerifyingKeyAsNext is boolean as the product of two booleans
-				// and isLast is enforced to be boolean thanks to being a public input
-				// of a whitelisted circuit which enforces it to be a boolean.
-				api.Sub(1, sameVerifyingKeyAsNext, isLast),
-			),
-		)
+		wSameVerifyingKeyAsNext := zk.WrapFrontendVariable(sameVerifyingKeyAsNext)
+		tmp = apiGen.Sub(&wOne, &wSameVerifyingKeyAsNext)
+		tmp = apiGen.Sub(tmp, &isLast)
+		tmp = apiGen.Mul(&isGL, tmp)
+		apiGen.AssertIsEqual(tmp, &wZero)
 
 		// This emulates the following check:
 		//
 		// if isGL.IsOne() && sameVerifyingKeyAsPrev && globalReceived != prevGlobalSent {
 		// 	mainErr = errors.Join(mainErr, errors.New("global sent and receive don't match"))
 		// }
-		api.AssertIsEqual(0,
-			api.Mul(
-				isGL,
-				sameVerifyingKeyAsPrev,
-				api.Sub(globalReceived, prevGlobalSent),
-			),
-		)
+		tmp = apiGen.Sub(&globalReceived, &prevGlobalSent)
+		tmp = apiGen.Mul(tmp, &wSameVerifyingKeyAsPrev)
+		tmp = apiGen.Mul(tmp, &isGL)
+		apiGen.AssertIsEqual(&wZero, tmp)
 
 		// This emulates the following conditional updates:
 		//
@@ -463,9 +456,11 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 		// 	usedSharedRandomness = sharedRandomness
 		// 	usedSharedRandomnessFound = true
 		// }
-		isFirstUseOfRandomness := api.Mul(isLPP, api.Sub(1, usedSharedRandomnessFound))
-		usedSharedRandomness = api.Select(isFirstUseOfRandomness, sharedRandomness, usedSharedRandomness)
-		usedSharedRandomnessFound = api.Add(usedSharedRandomnessFound, isFirstUseOfRandomness)
+		// isFirstUseOfRandomness := api.Mul(isLPP, api.Sub(1, usedSharedRandomnessFound))
+		// usedSharedRandomness = api.Select(isFirstUseOfRandomness, sharedRandomness, usedSharedRandomness)
+		// usedSharedRandomnessFound = api.Add(usedSharedRandomnessFound, isFirstUseOfRandomness)
+		tmp = apiGen.Sub(&wOne, &usedSharedRandomnessFound)
+		isFirstUseOfRandomness := apiGen.Mul(&isLPP, tmp)
 
 		// This emulates the following check:
 		//
@@ -489,7 +484,8 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 		// if isGL.IsOne() {
 		// 	collectedLPPCommitments = append(collectedLPPCommitments, lppCommitment)
 		// }
-		newAccIfUpdateNeeded := cmimc.GnarkBlockCompression(api, accumulativeLppHash, lppCommitment)
+		// newAccIfUpdateNeeded := cmimc.GnarkBlockCompression(api, accumulativeLppHash, lppCommitment)
+		newAccIfUpdateNeeded := zk.ValueOf(3) // TODO @thomas fixme
 		accumulativeLppHash = api.Select(isGL, newAccIfUpdateNeeded, accumulativeLppHash)
 
 		prevHornerN1Hash = hornerN1Hash
@@ -799,15 +795,14 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 	// Declare columns for the collected accessors
 	//
 
-	var (
-		vkColums = [2]ifaces.Column{
-			verifiercol.NewFromAccessors(effectiveVksAccessors[0], field.Zero(), effectiveColumnSize),
-			verifiercol.NewFromAccessors(effectiveVksAccessors[1], field.Zero(), effectiveColumnSize),
-		}
+	var zero extensions.E4
+	vkColums := [2]ifaces.Column{
+		verifiercol.NewFromAccessors(effectiveVksAccessors[0], zero, effectiveColumnSize),
+		verifiercol.NewFromAccessors(effectiveVksAccessors[1], zero, effectiveColumnSize),
+	}
 
-		isGLCol  = verifiercol.NewFromAccessors(isGLAccessors, field.Zero(), effectiveColumnSize)
-		isLPPCol = verifiercol.NewFromAccessors(isLPPAccessors, field.Zero(), effectiveColumnSize)
-	)
+	isGLCol := verifiercol.NewFromAccessors(isGLAccessors, zero, effectiveColumnSize)
+	isLPPCol := verifiercol.NewFromAccessors(isLPPAccessors, zero, effectiveColumnSize)
 
 	cong.IsGL = isGLCol
 	cong.VerifyingKeyColumns = vkColums
@@ -833,7 +828,7 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 
 		includingLppLookup = append(includingLppLookup, []ifaces.Column{
 			verifiercol.NewConstantCol(field.NewElement(uint64(j)), effectiveColumnSize, ""),
-			verifiercol.NewFromAccessors(lppColumnsAccessors[j], field.Zero(), effectiveColumnSize),
+			verifiercol.NewFromAccessors(lppColumnsAccessors[j], zero, effectiveColumnSize),
 			vkColums[0],
 			vkColums[1],
 		})
@@ -847,7 +842,7 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 		includingLppLookup,
 		[]ifaces.Column{
 			cong.HolisticLookupMappedLPPPostion,
-			verifiercol.NewFromAccessors(lppColumnsAccessors[0], field.Zero(), effectiveColumnSize),
+			verifiercol.NewFromAccessors(lppColumnsAccessors[0], zero, effectiveColumnSize),
 			cong.HolisticLookupMappedLPPVK[0],
 			cong.HolisticLookupMappedLPPVK[1],
 		},

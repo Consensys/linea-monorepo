@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	cs "github.com/consensys/gnark/constraint/bls12-377"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"

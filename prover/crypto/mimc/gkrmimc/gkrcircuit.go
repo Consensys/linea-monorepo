@@ -103,7 +103,7 @@ func registerGates() {
 // The returned object symbolizees the last layer of the GKR circuit and formally
 // contains the result of the MiMC block compression as computed by the GKR
 // circuit.
-func gkrMiMC(gkr *gkrapi.API, initStates, blocks []frontend.Variable) (apiGkr.Variable, error) {
+func gkrMiMC(gkr *gkrapi.API, initStates, blocks []zk.WrappedVariable) (apiGkr.Variable, error) {
 
 	var err error
 	v := make([]apiGkr.Variable, numGates-1)
@@ -133,7 +133,7 @@ func gkrMiMC(gkr *gkrapi.API, initStates, blocks []frontend.Variable) (apiGkr.Va
 //
 // Toy compression: just summing them up. TODO: Replace with actual compression
 // instances are the inner indexes
-func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []frontend.Variable) {
+func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []zk.WrappedVariable) {
 
 	gkr := gkrapi.New()
 
@@ -156,7 +156,7 @@ func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []fronte
 
 	multicommit.WithCommitment(
 		api,
-		func(api frontend.API, initialChallenge frontend.Variable) error {
+		func(api frontend.API, initialChallenge zk.WrappedVariable) error {
 
 			// "mimc" means that we are using MiMC hashes to compute the FS challenges
 			// this part is responsible for verifying the GKR proof.
