@@ -185,9 +185,7 @@ public class PrecompileUtils extends TracerTestBase {
   public static int getBlsG1MsmCost(int cds) {
     final int numInputs = cds / PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G1_MSM;
     final int discount = BlsRt.getMsmDiscount(OOB_INST_BLS_G1_MSM, numInputs);
-    return numInputs
-        * PRC_BLS_G1_MSM_MULTIPLICATION_COST
-        * discount
+    return (numInputs * PRC_BLS_G1_MSM_MULTIPLICATION_COST * discount)
         / PRC_BLS_MULTIPLICATION_MULTIPLIER;
   }
 
@@ -198,9 +196,7 @@ public class PrecompileUtils extends TracerTestBase {
   public static int getBlsG2MsmCost(int cds) {
     final int numInputs = cds / PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G2_MSM;
     final int discount = BlsRt.getMsmDiscount(OOB_INST_BLS_G2_MSM, numInputs);
-    return numInputs
-        * PRC_BLS_G2_MSM_MULTIPLICATION_COST
-        * discount
+    return (numInputs * PRC_BLS_G2_MSM_MULTIPLICATION_COST * discount)
         / PRC_BLS_MULTIPLICATION_MULTIPLIER;
   }
 

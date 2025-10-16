@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.com
 
 import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G1_MSM;
 import static net.consensys.linea.zktracer.Trace.PRC_BLS_G1_MSM_MAX_DISCOUNT;
-import static net.consensys.linea.zktracer.Trace.PRC_BLS_MULTIPLICATION_MULTIPLIER;
+import static net.consensys.linea.zktracer.Trace.PRC_BLS_G1_MSM_MULTIPLICATION_COST;
 import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G1_MSM;
 import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_BLS_G1_MSM;
 
@@ -57,6 +57,6 @@ public class BlsG1MsmOobCall extends BlsMsmOobCall {
 
   @Override
   int msmMultiplicationCost() {
-    return PRC_BLS_MULTIPLICATION_MULTIPLIER;
+    return PRC_BLS_G1_MSM_MULTIPLICATION_COST;
   }
 }

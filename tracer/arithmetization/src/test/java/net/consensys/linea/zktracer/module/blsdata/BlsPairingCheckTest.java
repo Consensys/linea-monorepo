@@ -15,13 +15,17 @@
 
 package net.consensys.linea.zktracer.module.blsdata;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
-import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.INVALID_G2_POINT_NOT_ON_CURVE;
 import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.LARGE_POINTS;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.SMALL_POINTS;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.VALID_G1_POINT;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.VALID_G2_POINT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
@@ -40,17 +44,26 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class BlsG2AddTest extends TracerTestBase {
+public class BlsPairingCheckTest extends TracerTestBase {
 
   /**
    * The following test tests the BLS_DATA module's ability to recognize malformed points and, for
-   * well-formed points, to offload curve membership test to gnark, in a way which is in accordance
-   * with the EVM and the return bit of the underlying <b>CALL</b>.
+   * well-formed points, to offload curve membership and subgroup membership tests to gnark, in a
+   * way which is in accordance with the EVM and the return bit of the underlying <b>CALL</b>.
    */
   @ParameterizedTest
-  @MethodSource("blsG2AddSource")
-  void testBlsG2Add(String a, String b, TestInfo testInfo) {
-    final Bytes input = Bytes.concatenate(Bytes.fromHexString(a), Bytes.fromHexString(b));
+  @MethodSource("blsPairingCheckSource")
+  void testBlsPairingCheckTest(
+      List<String> smallPoints, List<String> largePoints, TestInfo testInfo) {
+    checkArgument(smallPoints.size() == largePoints.size());
+    Bytes input =
+        IntStream.range(0, smallPoints.size())
+            .mapToObj(
+                i ->
+                    Bytes.concatenate(
+                        Bytes.fromHexString(smallPoints.get(i)),
+                        Bytes.fromHexString(largePoints.get(i))))
+            .reduce(Bytes.EMPTY, Bytes::concatenate);
 
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
@@ -75,30 +88,41 @@ public class BlsG2AddTest extends TracerTestBase {
 
     // Do the call
     program
-        .push(256) // retSize
+        .push(32) // retSize
         .push(input.size()) // retOffset
         .push(input.size()) // argSize
         .push(0) // argOffset
-        .push(Address.BLS12_G2ADD) // address
+        .push(Address.BLS12_PAIRING) // address
         .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
         .op(OpCode.STATICCALL);
-    final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(List.of(codeOwnerAccount), chainConfig, testInfo);
 
     if (isPostPrague(fork)) {
       final boolean failureIsExpected =
-          a.equals(INVALID_G2_POINT_NOT_ON_CURVE) || b.equals(INVALID_G2_POINT_NOT_ON_CURVE);
+          smallPoints.stream().anyMatch(p -> !p.equals(VALID_G1_POINT))
+              || largePoints.stream().anyMatch(p -> !p.equals(VALID_G2_POINT));
       final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
       assertEquals(failureIsExpected, blsdata.blsDataOperation().malformedDataExternal());
       assertEquals(failureIsExpected, !blsdata.blsDataOperation().successBit());
     }
   }
 
-  private static Stream<Arguments> blsG2AddSource() {
+  private static Stream<Arguments> blsPairingCheckSource() {
     List<Arguments> arguments = new ArrayList<>();
-    for (String a : LARGE_POINTS) {
-      for (String b : LARGE_POINTS) {
-        arguments.add(Arguments.of(a, b));
+    for (String s1 : SMALL_POINTS) {
+      for (String l1 : LARGE_POINTS) {
+        arguments.add(Arguments.of(List.of(s1), List.of(l1)));
+        for (String s2 : SMALL_POINTS) {
+          for (String l2 : LARGE_POINTS) {
+            arguments.add(Arguments.of(List.of(s1, s2), List.of(l1, l2)));
+            for (String s3 : SMALL_POINTS) {
+              for (String l3 : LARGE_POINTS) {
+                arguments.add(Arguments.of(List.of(s1, s2, s3), List.of(l1, l2, l3)));
+              }
+            }
+          }
+        }
       }
     }
     return arguments.stream();

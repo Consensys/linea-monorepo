@@ -15,7 +15,10 @@
 
 package net.consensys.linea.zktracer.module.blsdata;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.Fork.isPostPrague;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.INVALID_G1_POINT_NOT_ON_CURVE;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.SMALL_POINTS;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,45 +42,25 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class BlsG1AddTest extends TracerTestBase {
 
-  // Valid G1 point - 128 bytes (256 hex chars)
-  private static final String VALID_G1_POINT =
-      "0000000000000000000000000000000012196c5a43d69224d8713389285f26b98f86ee910ab3dd668e413738282003cc5b7357af9a7af54bb713d62255e80f56"
-          + "0000000000000000000000000000000006ba8102bfbeea4416b710c73e8cce3032c31c6269c44906f8ac4f7874ce99fb17559992486528963884ce429a992fee";
-
-  // Invalid G1 point (not on curve)
-  private static final String INVALID_G1_POINT_NOT_ON_CURVE =
-      "00000000000000000000000000000000177b39d2b8d31753ee35033df55a1f891be9196aec9cd8f512e9069d21a8bdbf693bd2e826e792cd12cb554287adf4ca"
-          + "0000000000000000000000000000000003c0f5770509862f754fc474cb163c41790d844f52939e2dec87b97c2a707831a4043ab47014d501f67862e95842ba5a";
-
-  // G1 point that's on curve but not in subgroup
-  private static final String G1_POINT_NOT_IN_SUBGROUP =
-      "00000000000000000000000000000000054a4326bbddbdbbca126659e6686984046d2fa49270742e5b6d9017734acf2801f370eebe7af29dfc8d50483609dc00"
-          + "000000000000000000000000000000001713e9ef64254fe96d874d16e33636f186e30d7e476db9f49a16698b771f10e0f8f08e5d8dba621b887c0d257cbd8eac";
-
-  // Invalid padding (non-zero leading bytes)
-  private static final String INVALID_G1_PADDING =
-      "0100000000000000000000000000000012196c5a43d69224d8713389285f26b98f86ee910ab3dd668e413738282003cc5b7357af9a7af54bb713d62255e80f56"
-          + "0000000000000000000000000000000006ba8102bfbeea4416b710c73e8cce3032c31c6269c44906f8ac4f7874ce99fb17559992486528963884ce429a992fee";
-
-  // Invalid length input
-  private static final String INVALID_LENGTH_INPUT = "0001020304";
-
+  /**
+   * The following test tests the BLS_DATA module's ability to recognize malformed points and, for
+   * well-formed points, to offload curve membership test to gnark, in a way which is in accordance
+   * with the EVM and the return bit of the underlying <b>CALL</b>.
+   */
   @ParameterizedTest
   @MethodSource("blsG1AddSource")
   void testBlsG1Add(String a, String b, TestInfo testInfo) {
-    checkArgument(a.length() == 256, "G1 point 'a' must be 256 hex chars");
-    checkArgument(b.length() == 256, "G1 point 'b' must be 256 hex chars");
+    final Bytes input = Bytes.concatenate(Bytes.fromHexString(a), Bytes.fromHexString(b));
 
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
-    // TODO: extract method for that
     final Address codeOwnerAddress = Address.fromHexString("0xC0DE");
     final ToyAccount codeOwnerAccount =
         ToyAccount.builder()
             .balance(Wei.of(0))
             .nonce(1)
             .address(codeOwnerAddress)
-            .code(Bytes.concatenate(Bytes.fromHexString(a), Bytes.fromHexString(b)))
+            .code(input)
             .build();
 
     // First place the parameters in memory
@@ -92,20 +75,32 @@ public class BlsG1AddTest extends TracerTestBase {
 
     // Do the call
     program
-        .push(0x80) // retSize
-        .push(0x100) // retOffset
-        .push(0x100) // argSize
+        .push(128) // retSize
+        .push(input.size()) // retOffset
+        .push(input.size()) // argSize
         .push(0) // argOffset
-        .push(11) // address
+        .push(Address.BLS12_G1ADD) // address
         .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
         .op(OpCode.STATICCALL);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(List.of(codeOwnerAccount), chainConfig, testInfo);
+
+    if (isPostPrague(fork)) {
+      final boolean failureIsExpected =
+          a.equals(INVALID_G1_POINT_NOT_ON_CURVE) || b.equals(INVALID_G1_POINT_NOT_ON_CURVE);
+      final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
+      assertEquals(failureIsExpected, blsdata.blsDataOperation().malformedDataExternal());
+      assertEquals(failureIsExpected, !blsdata.blsDataOperation().successBit());
+    }
   }
 
   private static Stream<Arguments> blsG1AddSource() {
     List<Arguments> arguments = new ArrayList<>();
-    arguments.add(Arguments.of(VALID_G1_POINT, VALID_G1_POINT));
+    for (String a : SMALL_POINTS) {
+      for (String b : SMALL_POINTS) {
+        arguments.add(Arguments.of(a, b));
+      }
+    }
     return arguments.stream();
   }
 }

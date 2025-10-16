@@ -86,6 +86,15 @@ public class PrecompileScenarioFragment implements TraceFragment {
     PRC_BLS_MAP_FP_TO_G1,
     PRC_BLS_MAP_FP2_TO_G2;
 
+    public Address getAddress() {
+      return ADDRESS_TO_FLAG_MAP.entrySet().stream()
+          .filter(entry -> entry.getValue() == this)
+          .map(Map.Entry::getKey)
+          .findFirst()
+          .orElseThrow(
+              () -> new IllegalArgumentException("Precompile not included in ADDRESS_TO_FLAG_MAP"));
+    }
+
     private static final Map<Address, PrecompileFlag> ADDRESS_TO_FLAG_MAP =
         Map.ofEntries(
             entry(Address.ECREC, PRC_ECRECOVER),
@@ -148,7 +157,8 @@ public class PrecompileScenarioFragment implements TraceFragment {
 
     public static PrecompileFlag addressToPrecompileFlag(Address precompileAddress) {
       if (!ADDRESS_TO_FLAG_MAP.containsKey(precompileAddress)) {
-        throw new IllegalArgumentException("Not valid London precompile address");
+        throw new IllegalArgumentException(
+            "Not valid precompile address: " + precompileAddress.toString());
       }
       return ADDRESS_TO_FLAG_MAP.get(precompileAddress);
     }

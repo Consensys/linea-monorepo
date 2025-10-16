@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.module.blsdata.BlsDataOperation.POINT
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigInteger;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.platform.commons.util.Preconditions;
 
 @ExtendWith(UnitTestWatcher.class)
 public class PointEvaluationTest extends TracerTestBase {
@@ -60,8 +62,8 @@ public class PointEvaluationTest extends TracerTestBase {
             testInfo);
     if (isPostCancun(fork)) {
       final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
-      assertFalse(blsdata.blsDataOperation().mint());
-      assertFalse(blsdata.blsDataOperation().mext());
+      assertFalse(blsdata.blsDataOperation().malformedDataInternal());
+      assertFalse(blsdata.blsDataOperation().malformedDataExternal());
       assertTrue(blsdata.blsDataOperation().successBit());
     }
   }
@@ -78,27 +80,9 @@ public class PointEvaluationTest extends TracerTestBase {
             testInfo);
     if (isPostCancun(fork)) {
       final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
-      assertTrue(blsdata.blsDataOperation().mint());
-      assertFalse(blsdata.blsDataOperation().mext());
+      assertTrue(blsdata.blsDataOperation().malformedDataInternal());
+      assertFalse(blsdata.blsDataOperation().malformedDataExternal());
       assertFalse(blsdata.blsDataOperation().successBit());
-    }
-  }
-
-  @Test
-  void accidentallyValidInputTemporaryTest(TestInfo testInfo) {
-    BytecodeRunner bytecodeRunner =
-        pointEvaluationProgram(
-            "010657f37554c781402a22917dee2f75def7ab966d7b770905398eba3c444014",
-            "73eda753299d7d483339d80809a1d805" + "1b4d2c3f4b6a0c7e8f3f5a0e9d1b2c3f",
-            "0000000000000000000000000000000000000000000000000000000000000000",
-            "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-            "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-            testInfo);
-    if (isPostCancun(fork)) {
-      final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
-      assertFalse(blsdata.blsDataOperation().mint());
-      assertFalse(blsdata.blsDataOperation().mext());
-      assertTrue(blsdata.blsDataOperation().successBit()); // TODO: why?
     }
   }
 
@@ -114,8 +98,8 @@ public class PointEvaluationTest extends TracerTestBase {
             testInfo);
     if (isPostCancun(fork)) {
       final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
-      assertTrue(blsdata.blsDataOperation().mint());
-      assertFalse(blsdata.blsDataOperation().mext());
+      assertTrue(blsdata.blsDataOperation().malformedDataInternal());
+      assertFalse(blsdata.blsDataOperation().malformedDataExternal());
       assertFalse(blsdata.blsDataOperation().successBit());
     }
   }
@@ -132,8 +116,38 @@ public class PointEvaluationTest extends TracerTestBase {
             testInfo);
     if (isPostCancun(fork)) {
       final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
-      assertTrue(blsdata.blsDataOperation().mint());
-      assertFalse(blsdata.blsDataOperation().mext());
+      assertTrue(blsdata.blsDataOperation().malformedDataInternal());
+      assertFalse(blsdata.blsDataOperation().malformedDataExternal());
+      assertFalse(blsdata.blsDataOperation().successBit());
+    }
+  }
+
+  @Test
+  void mextTest(TestInfo testInfo) {
+    final String z = "65cec67f404f8c81ef4ff3b08dc93a7f643c84e31d2cf39d094e9fbfcab15c9a";
+    final String y = "00371c441de8235d2d858ade58d833ac6c5c9460fd369aea0c9918b6d007ed47";
+    Preconditions.condition(
+        (new BigInteger(z, 16))
+                .compareTo(new BigInteger(POINT_EVALUATION_PRIME.toHexString().substring(2), 16))
+            < 0,
+        "z not in range");
+    Preconditions.condition(
+        (new BigInteger(y, 16))
+                .compareTo(new BigInteger(POINT_EVALUATION_PRIME.toHexString().substring(2), 16))
+            < 0,
+        "y not in range");
+    BytecodeRunner bytecodeRunner =
+        pointEvaluationProgram(
+            "0125681886f7d39de0938c4f5d2fb4d94abac545d2c51d242b930c6d667982e4",
+            z,
+            y,
+            "87b470976941e342dba3361216d38797f94a249c89ab8fd29a9512b8cf0be7722eb93ca08dbc33f3bef4b8204f19098e",
+            "8870e88b46732c642dc29b2a101fe309285300471f82de8adb40548918b5bcb7e8d9d126a3aa9d80f3559a39baa66a3d",
+            testInfo);
+    if (isPostCancun(fork)) {
+      final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
+      assertFalse(blsdata.blsDataOperation().malformedDataInternal());
+      assertTrue(blsdata.blsDataOperation().malformedDataExternal());
       assertFalse(blsdata.blsDataOperation().successBit());
     }
   }

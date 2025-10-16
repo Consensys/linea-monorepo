@@ -104,10 +104,10 @@ public class BlsDataOperation extends ModuleOperation {
   private final List<Boolean> isInfinity;
   private final List<Boolean> nontrivialPairOfPointsBit;
 
-  @Getter private boolean mint;
-  @Getter private boolean mext;
-  @Getter private boolean wtrv;
-  @Getter private boolean wnon;
+  @Getter private boolean malformedDataInternal;
+  @Getter private boolean malformedDataExternal;
+  @Getter private boolean wellformedDataTrivial;
+  @Getter private boolean wellformedDataNonTrivial;
   @Getter private boolean firstPointNotInSubgroupIsSmall;
   @Getter private int nontrivialPopCounter;
   @Getter private int trivialPopDueToG2PointCounter; // Counting trivial pairs of the form (P,inf)
@@ -133,6 +133,7 @@ public class BlsDataOperation extends ModuleOperation {
         precompileFlag.isBlsPrecompile(),
         "BlsDataOperation: precompile %s isn't of BLS type",
         precompileFlag);
+    checkArgument(!callData.isEmpty(), "BlsDataOperation: callData is empty");
 
     this.precompileFlag = precompileFlag;
     this.callData = callData;
@@ -215,12 +216,19 @@ public class BlsDataOperation extends ModuleOperation {
   }
 
   private void handleGlobalColumns() {
-    mint = mintBit.stream().reduce(false, Boolean::logicalOr);
-    mext = mextBit.stream().reduce(false, Boolean::logicalOr);
+    malformedDataInternal = mintBit.stream().reduce(false, Boolean::logicalOr);
+    malformedDataExternal = mextBit.stream().reduce(false, Boolean::logicalOr);
     final boolean nonTrivialPairOfPointsTot =
         nontrivialPairOfPointsBit.stream().reduce(false, Boolean::logicalOr);
-    wtrv = !mint && !mext && precompileFlag == PRC_BLS_PAIRING_CHECK && !nonTrivialPairOfPointsTot;
-    wnon = !mint && !mext && (precompileFlag != PRC_BLS_PAIRING_CHECK || nonTrivialPairOfPointsTot);
+    wellformedDataTrivial =
+        !malformedDataInternal
+            && !malformedDataExternal
+            && precompileFlag == PRC_BLS_PAIRING_CHECK
+            && !nonTrivialPairOfPointsTot;
+    wellformedDataNonTrivial =
+        !malformedDataInternal
+            && !malformedDataExternal
+            && (precompileFlag != PRC_BLS_PAIRING_CHECK || nonTrivialPairOfPointsTot);
   }
 
   private void handlePointEvaluation() {
@@ -249,16 +257,11 @@ public class BlsDataOperation extends ModuleOperation {
       final int sizeOffset = k * SIZE_SMALL_POINT;
       final int indexOffset = k * (CT_MAX_SMALL_POINT + 1);
 
-      // Extract inputs
-      final Bytes aX = callData.slice(sizeOffset, 4 * LLARGE);
-      final Bytes aY = callData.slice(4 * LLARGE + sizeOffset, 4 * LLARGE);
-
-      final boolean wellFormedCoordinate = wellFormedFpCoordinate(indexOffset, aX, aY);
+      final boolean wellFormedCoordinate =
+          wellFormedFpCoordinate(indexOffset, callData.slice(sizeOffset, SIZE_SMALL_POINT));
       final boolean isSmallPointOnCurve =
           isSmallPointOnCurve(indexOffset, callData.slice(sizeOffset, SIZE_SMALL_POINT));
       final boolean mextBit = wellFormedCoordinate && !isSmallPointOnCurve;
-      Preconditions.checkArgument(
-          mextBit == (wellFormedCoordinate && !successBit), "BLS_G1ADD: mext bit inconsistency");
 
       if (mextBit && !mextBitIsSet) {
         for (int j = 0; j <= CT_MAX_SMALL_POINT; j++) {
@@ -277,16 +280,11 @@ public class BlsDataOperation extends ModuleOperation {
       final int sizeOffset = k * (SIZE_SMALL_POINT + SIZE_SCALAR);
       final int indexOffset = k * (CT_MAX_SMALL_POINT + 1 + CT_MAX_SCALAR + 1);
 
-      // Extract inputs
-      final Bytes aX = callData.slice(sizeOffset, 4 * LLARGE);
-      final Bytes aY = callData.slice(4 * LLARGE + sizeOffset, 4 * LLARGE);
-
-      final boolean wellFormedCoordinate = wellFormedFpCoordinate(indexOffset, aX, aY);
+      final boolean wellFormedCoordinate =
+          wellFormedFpCoordinate(indexOffset, callData.slice(sizeOffset, SIZE_SMALL_POINT));
       final boolean isSmallPointInSubgroup =
           isSmallPointInSubGroup(indexOffset, callData.slice(sizeOffset, SIZE_SMALL_POINT));
       final boolean mextBit = wellFormedCoordinate && !isSmallPointInSubgroup;
-      Preconditions.checkArgument(
-          mextBit == (wellFormedCoordinate && !successBit), "BLS_G1MSM: mext bit inconsistency");
 
       if (mextBit && !mextBitIsSet) {
         for (int j = 0; j <= CT_MAX_SMALL_POINT; j++) {
@@ -305,19 +303,12 @@ public class BlsDataOperation extends ModuleOperation {
       final int indexOffset = k * (CT_MAX_LARGE_POINT + 1);
 
       // Extract inputs
-      final Bytes aXIm = callData.slice(sizeOffset, 4 * LLARGE);
-      final Bytes aXRe = callData.slice(4 * LLARGE + sizeOffset, 4 * LLARGE);
-      final Bytes aYIm = callData.slice(8 * LLARGE + sizeOffset, 4 * LLARGE);
-      final Bytes aYRe = callData.slice(12 * LLARGE + sizeOffset, 4 * LLARGE);
-
       final boolean wellFormedCoordinate =
-          wellFormedFp2Coordinate(indexOffset, aXIm, aXRe, aYIm, aYRe);
+          wellFormedFp2Coordinate(indexOffset, callData.slice(sizeOffset, SIZE_LARGE_POINT));
 
       final boolean isLargePointOnCurve =
           isLargePointOnCurve(indexOffset, callData.slice(sizeOffset, SIZE_LARGE_POINT));
       final boolean mextBit = wellFormedCoordinate && !isLargePointOnCurve;
-      Preconditions.checkArgument(
-          mextBit == (wellFormedCoordinate && !successBit), "BLS_G2ADD: mext bit inconsistency");
 
       if (mextBit && !mextBitIsSet) {
         for (int j = 0; j <= CT_MAX_LARGE_POINT; j++) {
@@ -336,20 +327,12 @@ public class BlsDataOperation extends ModuleOperation {
       final int sizeOffset = k * (SIZE_LARGE_POINT + SIZE_SCALAR);
       final int indexOffset = k * (CT_MAX_LARGE_POINT + 1 + CT_MAX_SCALAR + 1);
 
-      // Extract inputs
-      final Bytes aXIm = callData.slice(sizeOffset, 4 * LLARGE);
-      final Bytes aXRe = callData.slice(4 * LLARGE + sizeOffset, 4 * LLARGE);
-      final Bytes aYIm = callData.slice(8 * LLARGE + sizeOffset, 4 * LLARGE);
-      final Bytes aYRe = callData.slice(12 * LLARGE + sizeOffset, 4 * LLARGE);
-
       final boolean wellFormedCoordinate =
-          wellFormedFp2Coordinate(indexOffset, aXIm, aXRe, aYIm, aYRe);
+          wellFormedFp2Coordinate(indexOffset, callData.slice(sizeOffset, SIZE_LARGE_POINT));
 
       final boolean isLargePointInSubgroup =
           isLargePointInSubGroup(indexOffset, callData.slice(sizeOffset, SIZE_LARGE_POINT));
       final boolean mextBit = wellFormedCoordinate && !isLargePointInSubgroup;
-      Preconditions.checkArgument(
-          mextBit == (wellFormedCoordinate && !successBit), "BLS_G2MSM: mext bit inconsistency");
 
       if (mextBit && !mextBitIsSet) {
         for (int j = 0; j <= CT_MAX_LARGE_POINT; j++) {
@@ -368,23 +351,11 @@ public class BlsDataOperation extends ModuleOperation {
       final int sizeOffset = k * (SIZE_SMALL_POINT + SIZE_LARGE_POINT);
       final int indexOffset = k * (CT_MAX_SMALL_POINT + 1 + CT_MAX_LARGE_POINT + 1);
 
-      // Extract inputs
-      // Small point
-      final Bytes aX = callData.slice(sizeOffset, 4 * LLARGE);
-      final Bytes aY = callData.slice(4 * LLARGE + sizeOffset, 4 * LLARGE);
-      // Large point
-      final Bytes bXIm = callData.slice(8 * LLARGE + sizeOffset, 4 * LLARGE);
-      final Bytes bXRe = callData.slice(12 * LLARGE + sizeOffset, 4 * LLARGE);
-      final Bytes bYIm = callData.slice(16 * LLARGE + sizeOffset, 4 * LLARGE);
-      final Bytes bYRe = callData.slice(20 * LLARGE + sizeOffset, 4 * LLARGE);
-
-      final boolean wellFormedFpCoordinate = wellFormedFpCoordinate(indexOffset, aX, aY);
+      final boolean wellFormedFpCoordinate =
+          wellFormedFpCoordinate(indexOffset, callData.slice(sizeOffset, SIZE_SMALL_POINT));
       final boolean isSmallPointInSubgroup =
           isSmallPointInSubGroup(indexOffset, callData.slice(sizeOffset, SIZE_SMALL_POINT));
       final boolean mextBitSmall = wellFormedFpCoordinate && !isSmallPointInSubgroup;
-      Preconditions.checkArgument(
-          mextBitSmall == (wellFormedFpCoordinate && !successBit),
-          "BLS_PAIRING_CHECK: mext bit inconsistency for small point");
 
       if (mextBitSmall && !mextBitIsSet) {
         for (int j = 0; j <= CT_MAX_SMALL_POINT; j++) {
@@ -395,15 +366,13 @@ public class BlsDataOperation extends ModuleOperation {
       }
 
       final boolean wellFormedFp2Coordinate =
-          wellFormedFp2Coordinate(8 + indexOffset, bXIm, bXRe, bYIm, bYRe);
+          wellFormedFp2Coordinate(
+              8 + indexOffset, callData.slice(8 * LLARGE + sizeOffset, SIZE_LARGE_POINT));
 
       final boolean isLargePointInSubgroup =
           isLargePointInSubGroup(
               8 + indexOffset, callData.slice(8 * LLARGE + sizeOffset, SIZE_LARGE_POINT));
       final boolean mextBitLarge = wellFormedFp2Coordinate && !isLargePointInSubgroup;
-      Preconditions.checkArgument(
-          mextBitLarge == (wellFormedFp2Coordinate && !successBit),
-          "BLS_PAIRING_CHECK: mext bit inconsistency for large point");
 
       if (mextBitLarge && !mextBitIsSet) {
         for (int j = 0; j <= CT_MAX_LARGE_POINT; j++) {
@@ -443,14 +412,14 @@ public class BlsDataOperation extends ModuleOperation {
 
   private void handleBlsMapFp2ToG2() {
     // Extract inputs
-    final Bytes eIm = callData.slice(0, 4 * LLARGE);
-    final Bytes eRe = callData.slice(4 * LLARGE, 4 * LLARGE);
+    final Bytes eRe = callData.slice(0, 4 * LLARGE);
+    final Bytes eIm = callData.slice(4 * LLARGE, 4 * LLARGE);
 
-    final boolean eImIsInRange = callToLTBlsPrime(0, eIm);
+    final boolean eReIsInRange = callToLTBlsPrime(0, eRe);
 
-    final boolean eReIsInRange = callToLTBlsPrime(4, eRe);
+    final boolean eImIsInRange = callToLTBlsPrime(4, eIm);
 
-    final boolean internalChecksPassed = eImIsInRange && eReIsInRange;
+    final boolean internalChecksPassed = eReIsInRange && eImIsInRange;
 
     for (int j = 0; j <= CT_MAX_MAP_FP2_TO_G2; j++) {
       this.mintBit.set(j, !internalChecksPassed);
@@ -585,7 +554,9 @@ public class BlsDataOperation extends ModuleOperation {
         EWord.of(bigIntegerToBytes(BLS_PRIME_1), bigIntegerToBytes(BLS_PRIME_0)));
   }
 
-  private boolean wellFormedFpCoordinate(int i, Bytes pX, Bytes pY) {
+  private boolean wellFormedFpCoordinate(int i, Bytes smallPoint) {
+    final Bytes pX = smallPoint.slice(0, 4 * LLARGE);
+    final Bytes pY = smallPoint.slice(4 * LLARGE, 4 * LLARGE);
     final boolean pXIsInRange = callToLTBlsPrime(i, pX);
     final boolean pYIsInRange = callToLTBlsPrime(i + 4, pY);
 
@@ -598,14 +569,18 @@ public class BlsDataOperation extends ModuleOperation {
     return wellFormedCoordinate;
   }
 
-  private boolean wellFormedFp2Coordinate(int i, Bytes pXIm, Bytes pXRe, Bytes pYIm, Bytes pYRe) {
-    final boolean pXImIsInRange = callToLTBlsPrime(i, pXIm);
-    final boolean pXReIsInRange = callToLTBlsPrime(i + 4, pXRe);
-    final boolean pYImIsInRange = callToLTBlsPrime(i + 8, pYIm);
-    final boolean pYReIsInRange = callToLTBlsPrime(i + 12, pYRe);
+  private boolean wellFormedFp2Coordinate(int i, Bytes largePoint) {
+    final Bytes pXRe = largePoint.slice(0, 4 * LLARGE);
+    final Bytes pXIm = largePoint.slice(4 * LLARGE, 4 * LLARGE);
+    final Bytes pYRe = largePoint.slice(8 * LLARGE, 4 * LLARGE);
+    final Bytes pYIm = largePoint.slice(12 * LLARGE, 4 * LLARGE);
+    final boolean pXReIsInRange = callToLTBlsPrime(i, pXRe);
+    final boolean pXImIsInRange = callToLTBlsPrime(i + 4, pXIm);
+    final boolean pYReIsInRange = callToLTBlsPrime(i + 8, pYRe);
+    final boolean pYImIsInRange = callToLTBlsPrime(i + 12, pYIm);
 
     final boolean wellFormedCoordinate =
-        pXImIsInRange && pXReIsInRange && pYImIsInRange && pYReIsInRange;
+        pXReIsInRange && pXImIsInRange && pYReIsInRange && pYImIsInRange;
 
     for (int j = 0; j <= CT_MAX_LARGE_POINT; j++) {
       this.mintBit.set(i + j, !wellFormedCoordinate);
@@ -721,22 +696,22 @@ public class BlsDataOperation extends ModuleOperation {
           .rsltBlsPairingCheckFlag(precompileFlag == PRC_BLS_PAIRING_CHECK && !isData)
           .rsltBlsMapFpToG1Flag(precompileFlag == PRC_BLS_MAP_FP_TO_G1 && !isData)
           .rsltBlsMapFp2ToG2Flag(precompileFlag == PRC_BLS_MAP_FP2_TO_G2 && !isData)
-          .accInputs(accInputs)
+          .accInputs(isData ? accInputs : 0)
           .byteDelta(
               i < nBYTES_OF_DELTA_BYTES ? UnsignedByte.of(deltaByte.get(i)) : UnsignedByte.of(0))
           .malformedDataInternalBit(mintBit.get(i) && isData)
           .malformedDataInternalAcc(mintBitAcc && isData)
-          .malformedDataInternalAccTot(mint)
+          .malformedDataInternalAccTot(malformedDataInternal)
           .malformedDataExternalBit(mextBit.get(i) && isData)
           .malformedDataExternalAcc(mextBitAcc && isData)
-          .malformedDataExternalAccTot(mext)
-          .wellformedDataTrivial(wtrv)
-          .wellformedDataNontrivial(wnon)
+          .malformedDataExternalAccTot(malformedDataExternal)
+          .wellformedDataTrivial(wellformedDataTrivial)
+          .wellformedDataNontrivial(wellformedDataNonTrivial)
           .isFirstInput(isFirstInput && isData)
           .isSecondInput(!isFirstInput && isData)
           .isInfinity(isInfinity.get(i))
           .nontrivialPairOfPointsBit(nontrivialPairOfPointsBit.get(i))
-          .nontrivialPairOfPointsAcc(nontrivialPairOfPointsAcc)
+          .nontrivialPairOfPointsAcc(nontrivialPairOfPointsAcc && isData)
           .wcpFlag(wcpFlag.get(i))
           .wcpArg1Hi(wcpArg1Hi.get(i))
           .wcpArg1Lo(wcpArg1Lo.get(i))

@@ -95,10 +95,6 @@ public class BlockchainReferenceTestTools {
 
     if (isPostPrague(fork)) {
 
-      // REENABLE once BLS ref table calls fix is merged
-      PARAMS.ignore(
-          "stSpecialTest/failed_tx_xcf416c53_ParisFiller.json::failed_tx_xcf416c53_Paris\\[fork_Prague-blockchain_test_from_state_test-\\]");
-
       // TODO: should be re-enabled for Prague v2.0
       PARAMS.ignore("/prague/eip2537_bls_12_381_precompiles/");
       PARAMS.ignore("/prague/eip7702_set_code_tx/");
