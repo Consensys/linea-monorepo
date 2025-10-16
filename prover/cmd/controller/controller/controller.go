@@ -62,8 +62,11 @@ func runController(ctx context.Context, cfg *config.Config) {
 	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGUSR1)
 	defer signal.Stop(signalChan)
 
-	state.handleSignals(cancel, cLog, cfg, signalChan, &spotReclaimDetected, &gracefulShutdownRequested)
-	state.logOnContextDone(cmdCtx, cLog, &spotReclaimDetected, &gracefulShutdownRequested, cfg)
+	// Spin up the signal handler go routine to handle SIGTERM and SIGUSR1 signals
+	go state.handleSignals(cancel, cLog, cfg, signalChan, &spotReclaimDetected, &gracefulShutdownRequested)
+
+	// Spin up the log on context done go routine for prompt logging and diagnostics
+	go state.logOnCtxDone(cmdCtx, cLog, &spotReclaimDetected, &gracefulShutdownRequested, cfg)
 
 	// If any files are locked to RAM unlock it before exiting
 	defer assets.UnlockAllLockedFiles()
@@ -71,7 +74,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 	// Main loop
 	for {
 		select {
-		case <-ctx.Done():
+		case <-cmdCtx.Done():
 			cLog.Infoln("Context cancelled by caller or externally triggered (SIGTERM/SIGUSR1). Exiting...")
 			metrics.ShutdownServer(cmdCtx)
 
@@ -176,56 +179,56 @@ func (s *ControllerState) handleSignals(
 	spotReclaimDetected *atomic.Bool,
 	gracefulShutdownRequested *atomic.Bool,
 ) {
-	go func() {
-		for sig := range signalChan {
-			switch sig {
-			case syscall.SIGUSR1:
-				spotReclaimDetected.Store(true)
-				if !gracefulShutdownRequested.Load() {
-					cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP...")
-					cancel()
-					if cfg.Controller.Prometheus.Enabled {
-						metrics.IncSpotInterruption(cfg.Controller.LocalID)
+
+	for sig := range signalChan {
+		switch sig {
+		case syscall.SIGUSR1:
+			spotReclaimDetected.Store(true)
+			if !gracefulShutdownRequested.Load() {
+				cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP...")
+				cancel()
+				if cfg.Controller.Prometheus.Enabled {
+					metrics.IncSpotInterruption(cfg.Controller.LocalID)
+				}
+			} else {
+				cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
+			}
+
+			// Requeue active job immediately
+			s.requeueJob(cfg, cLog)
+
+		case syscall.SIGTERM:
+			gracefulShutdownRequested.Store(true)
+			if !spotReclaimDetected.Load() {
+				cLog.Info("Received SIGTERM: graceful shutdown requested")
+			}
+
+			if s.activeJob != nil {
+				s.jobDoneChanMu.Lock()
+				if s.jobDoneChan == nil {
+					s.jobDoneChan = make(chan struct{})
+				}
+				localJobDoneChan := s.jobDoneChan
+				s.jobDoneChanMu.Unlock()
+
+				go func() {
+					cLog.Infof("Allowing in-flight job to finish (max %ds)...", cfg.Controller.TerminationGracePeriod)
+					select {
+					case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
+						cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
+						cancel()
+					case <-localJobDoneChan:
+						cLog.Info("Job finished before grace period expired. Cancelling context to exit immediately...")
+						cancel()
 					}
-				} else {
-					cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
-				}
-
-				// Requeue active job immediately
-				s.requeueJob(cfg, cLog)
-
-			case syscall.SIGTERM:
-				gracefulShutdownRequested.Store(true)
-				if !spotReclaimDetected.Load() {
-					cLog.Info("Received SIGTERM: graceful shutdown requested")
-				}
-
-				if s.activeJob != nil {
-					s.jobDoneChanMu.Lock()
-					if s.jobDoneChan == nil {
-						s.jobDoneChan = make(chan struct{})
-					}
-					localJobDoneChan := s.jobDoneChan
-					s.jobDoneChanMu.Unlock()
-
-					go func() {
-						cLog.Infof("Allowing in-flight job to finish (max %ds)...", cfg.Controller.TerminationGracePeriod)
-						select {
-						case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
-							cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
-							cancel()
-						case <-localJobDoneChan:
-							cLog.Info("Job finished before grace period expired. Cancelling context to exit immediately...")
-							cancel()
-						}
-					}()
-				} else {
-					cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
-					cancel()
-				}
+				}()
+			} else {
+				cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
+				cancel()
 			}
 		}
-	}()
+	}
+
 }
 
 // handleJobResult processes a job according to its exit status.
@@ -293,7 +296,7 @@ func (state *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.
 		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, config.SuccessSuffix)
 	}
 
-	// Set active job to nil once the job is successful
+	// Set active job to nil once the job is successful and notify the job is done
 	state.activeJob = nil
 	state.notifyJobDone()
 }
@@ -363,27 +366,27 @@ func (state *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.
 		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
 	}
 
-	// Set active job to nil as there is nothing more to retry
+	// Set active job to nil as there is nothing more to retry and notify the job is done
 	state.activeJob = nil
 	state.notifyJobDone()
 }
 
-func (s *ControllerState) logOnContextDone(cmdCtx context.Context, cLog *logrus.Entry,
+func (s *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Entry,
 	spotReclaimDetected *atomic.Bool, gracefulShutdownRequested *atomic.Bool, cfg *config.Config) {
-	go func() {
-		<-cmdCtx.Done()
-		if spotReclaimDetected.Load() {
-			cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
-		} else if gracefulShutdownRequested.Load() {
-			if s.activeJob != nil {
-				cLog.Infof("Context done: grace period expired, forcing shutdown")
-			} else {
-				cLog.Info("Context done: graceful shutdown complete")
-			}
+
+	<-cmdCtx.Done()
+	if spotReclaimDetected.Load() {
+		cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
+	} else if gracefulShutdownRequested.Load() {
+		if s.activeJob != nil {
+			cLog.Infof("Context done: grace period expired, forcing shutdown")
 		} else {
-			cLog.Infoln("Context done due to cancellation request.")
+			cLog.Info("Context done: graceful shutdown complete")
 		}
-	}()
+	} else {
+		cLog.Infoln("Context done due to cancellation request.")
+	}
+
 }
 
 func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {
