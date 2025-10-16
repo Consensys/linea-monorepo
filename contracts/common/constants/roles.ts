@@ -80,9 +80,6 @@ export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESS
 export const SET_YIELD_MANAGER_ROLE = generateKeccak256(["string"], ["SET_YIELD_MANAGER_ROLE"], {
   encodePacked: true,
 });
-export const RESERVE_OPERATOR_ROLE = generateKeccak256(["string"], ["RESERVE_OPERATOR_ROLE"], {
-  encodePacked: true,
-});
 export const PAUSE_NATIVE_YIELD_STAKING_ROLE = generateKeccak256(["string"], ["PAUSE_NATIVE_YIELD_STAKING_ROLE"], {
   encodePacked: true,
 });

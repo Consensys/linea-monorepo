@@ -33,9 +33,6 @@ contract YieldManager is
   /// @notice The role required to request a yield report.
   bytes32 public constant YIELD_REPORTER_ROLE = keccak256("YIELD_REPORTER_ROLE");
 
-  /// @notice The role required to rebalance ETH between the withdrawal reserve and yield provider/s.
-  bytes32 public constant RESERVE_OPERATOR_ROLE = keccak256("RESERVE_OPERATOR_ROLE");
-
   /// @notice The role required to pause and unpause beacon chain staking for yield provider/s that support this operation.
   bytes32 public constant STAKING_PAUSE_CONTROLLER_ROLE = keccak256("STAKING_PAUSE_CONTROLLER_ROLE");
 
