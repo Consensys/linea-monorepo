@@ -149,12 +149,6 @@ interface IYieldProvider {
   function initiateOssification(address _yieldProvider) external;
 
   /**
-   * @notice Reverts a previously initiated ossification request.
-   * @param _yieldProvider The yield provider address.
-   */
-  function undoInitiateOssification(address _yieldProvider) external;
-
-  /**
    * @notice Process a previously initiated ossification process.
    * @param _yieldProvider The yield provider address.
    * @return isOssificationComplete True if the provider is now in the ossified state.

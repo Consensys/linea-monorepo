@@ -344,23 +344,6 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
   });
 
-  describe("undoInitiateOssification", () => {
-    it("Should revert if not invoked via delegatecall", async () => {
-      const call = yieldProvider.connect(securityCouncil).undoInitiateOssification(yieldProviderAddress);
-      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
-    });
-    it("Should succeed when vault is connected", async () => {
-      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      await mockVaultHub.connect(securityCouncil).setIsVaultConnectedReturn(true);
-      await yieldManager.connect(securityCouncil).undoInitiateOssification(yieldProviderAddress);
-    });
-    it("Should succeed when vault is not connected", async () => {
-      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      await mockVaultHub.connect(securityCouncil).setIsVaultConnectedReturn(false);
-      await yieldManager.connect(securityCouncil).undoInitiateOssification(yieldProviderAddress);
-    });
-  });
-
   describe("process pending ossification", () => {
     it("Should revert if not invoked via delegatecall", async () => {
       const call = yieldProvider.connect(securityCouncil).processPendingOssification(yieldProviderAddress);

@@ -160,12 +160,6 @@ interface IYieldManager {
   event YieldProviderOssificationInitiated(address indexed yieldProvider);
 
   /**
-   * @notice Emitted when ossification initiation is undone.
-   * @param yieldProvider The yield provider address.
-   */
-  event YieldProviderOssificationReverted(address indexed yieldProvider);
-
-  /**
    * @notice Emitted when a previously initiated ossification has progressed to the next stage.
    * @param yieldProvider The yield provider address.
    * @param isOssified Whether ossification has finalized.
@@ -630,15 +624,10 @@ interface IYieldManager {
    * @notice Initiate the ossification sequence for a provider.
    * @dev Will pause beacon chain staking and LST withdrawals.
    * @dev Re-calling this function after a prior initiation is allowed.
+   * @dev WARNING: This operation irreversibly pauses beacon chain deposits.
    * @param _yieldProvider The yield provider address.
    */
   function initiateOssification(address _yieldProvider) external;
-
-  /**
-   * @notice Revert a previously initiated ossification.
-   * @param _yieldProvider The yield provider address.
-   */
-  function undoInitiateOssification(address _yieldProvider) external;
 
   /**
    * @notice Progress an initiated ossification process.

@@ -480,27 +480,14 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   /**
    * @notice Begins the provider-specific ossification workflow.
    * @param _yieldProvider The yield provider address.
+   * @dev WARNING: This operation irreversibly pauses beacon chain deposits and LST withdrawals.
    */
   function initiateOssification(address _yieldProvider) external onlyDelegateCall {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     _payMaximumPossibleLSTLiability($$);
-    // Lido implementation handles Lido fee payment, and revert on fresh report
-    // This will fail if any existing liabilities or obligations
+    // This will revert if i.) There is no fresh report ii.) liabilities > 0
+    // This will also force repay obligations, and revert if it cannot pay off in full
     IDashboard(_getYieldProviderStorage(_yieldProvider).primaryEntrypoint).voluntaryDisconnect();
-  }
-
-  /**
-   * @notice Reverts a previously initiated ossification request.
-   * @dev In Lido's case, this is only available for a limited time after initiateOssification.
-   *      If there is subsequent accounting report is applied and no liabilities or obligations
-   *      are outstanding, the vault will be disconnected which will be
-   * @param _yieldProvider The yield provider address.
-   */
-  function undoInitiateOssification(address _yieldProvider) external onlyDelegateCall {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if (!VAULT_HUB.isVaultConnected(address(_getVault($$)))) {
-      _getDashboard($$).reconnectToVaultHub();
-    }
   }
 
   /**

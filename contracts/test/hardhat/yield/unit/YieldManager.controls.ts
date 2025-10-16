@@ -370,63 +370,6 @@ describe("YieldManager contract - control operations", () => {
     });
   });
 
-  // undoInitiateOssification() unit tests
-  describe("Undo initiate ossification", () => {
-    it("Should revert when adding if the caller does not have the OSSIFIER_ROLE", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      const requiredRole = await yieldManager.OSSIFIER_ROLE();
-
-      await expect(
-        yieldManager.connect(nativeYieldOperator).undoInitiateOssification(mockYieldProviderAddress),
-      ).to.be.revertedWith(buildAccessErrorMessage(nativeYieldOperator, requiredRole));
-    });
-
-    it("Should revert when requesting for an unknown yield provider", async () => {
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(securityCouncil).undoInitiateOssification(ethers.Wallet.createRandom().address),
-        "UnknownYieldProvider",
-      );
-    });
-
-    it("Should revert if ossification not initiated", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(securityCouncil).undoInitiateOssification(mockYieldProviderAddress),
-        "OssificationNotInitiated",
-      );
-    });
-
-    it("Should revert if ossification completed", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      await yieldManager.setYieldProviderIsOssificationInitiated(mockYieldProviderAddress, true);
-      await yieldManager.setYieldProviderIsOssified(mockYieldProviderAddress, true);
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(securityCouncil).undoInitiateOssification(mockYieldProviderAddress),
-        "AlreadyOssified",
-      );
-    });
-
-    it("Should successfully revert previous ossification initiation, unpause staking and emit the correct event", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
-
-      await expect(yieldManager.connect(securityCouncil).undoInitiateOssification(mockYieldProviderAddress))
-        .to.emit(yieldManager, "YieldProviderOssificationReverted")
-        .withArgs(mockYieldProviderAddress);
-
-      expect(await yieldManager.isOssificationInitiated(mockYieldProviderAddress)).to.be.false;
-      expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
-    });
-  });
-
   // processPendingOssification() unit tests
   describe("Process pending ossification", () => {
     it("Should revert when adding if the caller does not have the OSSIFIER_ROLE", async () => {
