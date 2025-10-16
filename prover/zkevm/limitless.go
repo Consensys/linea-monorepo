@@ -25,7 +25,6 @@ var (
 	bootstrapperFile          = "dw-bootstrapper.bin"
 	discFile                  = "disc.bin"
 	zkevmFile                 = "zkevm-wiop.bin"
-	compiledDefaultFile       = "dw-compiled-default.bin"
 	blueprintGLPrefix         = "dw-blueprint-gl"
 	blueprintLppPrefix        = "dw-blueprint-lpp"
 	blueprintGLTemplate       = blueprintGLPrefix + "-%d.bin"
@@ -344,7 +343,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 			debugLPP *distributed.ModuleLPP
 		)
 
-		for _ = range lz.DistWizard.DebugLPPs {
+		for range lz.DistWizard.DebugLPPs {
 			panic("uncomment me")
 			// if reflect.DeepEqual(lz.DistWizard.DebugLPPs[i].ModuleNames(), moduleToFind) {
 			// 	debugLPP = lz.DistWizard.DebugLPPs[i]
@@ -525,8 +524,6 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Object: debugLPP,
 		})
 	}
-
-	assets = append(assets)
 
 	for _, asset := range assets {
 		logrus.Infof("writing %s to disk", asset.Name)
