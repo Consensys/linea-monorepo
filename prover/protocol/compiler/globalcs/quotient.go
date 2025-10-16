@@ -294,7 +294,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		cctx           = ctx.refineContext(run)
 		domain         = fft.NewDomain(uint64(ctx.DomainSize), fft.WithCache())
 		vArena         = arena.NewVectorArena[field.Element](cctx.maxNbAllocs * ctx.DomainSize)
-		vArenaEvaluate = arena.NewVectorArena[field.Element]((cctx.maxExprNodes * symbolic.MaxChunkSize) * runtime.GOMAXPROCS(0))
+		vArenaEvaluate = arena.NewVectorArena[field.Element]((cctx.maxExprNodes * symbolic.ChunkSize) * runtime.GOMAXPROCS(0))
 	)
 
 	// Precompute annulator inverses for all cosets
