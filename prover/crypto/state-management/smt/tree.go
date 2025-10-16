@@ -53,12 +53,11 @@ func EmptyLeaf() field.Octuplet {
 // taking H as the HashFunc of the config.
 func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
 	var d field.Octuplet
-	var toHash [16]field.Element
-	copy(toHash[0:8], nodeL[:])
-	copy(toHash[8:16], nodeR[:])
 	if config.HashFunc != nil {
 		hasher := config.HashFunc()
-		d = hasher.SumElements(toHash[:])
+		hasher.WriteElements(nodeL[:])
+		hasher.WriteElements(nodeR[:])
+		d = hasher.SumElement()
 	} else {
 		panic("missing a hash function")
 	}

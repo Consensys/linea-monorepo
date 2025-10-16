@@ -81,7 +81,10 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 		// colHashes stores the Poseidon2 hashes
 		// of the columns.
 		colHashesOcts := p.noSisTransversalHash(encodedMatrix)
-
+		colHashes = make([]field.Element, 0, len(colHashesOcts)*len(field.Octuplet{}))
+		for i := range colHashesOcts {
+			colHashes = append(colHashes, colHashesOcts[i][:]...)
+		}
 		tree = smt.BuildComplete(
 			colHashesOcts,
 			p.MerkleHashFunc,
@@ -187,38 +190,3 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 
 	return res
 }
-
-// // Uses the no-sis hash function to hash the columns. It uses the leafHasher
-// // function to hash the columns.
-// func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octuplet {
-
-// 	// Assert that all smart-vectors have the same numCols
-// 	numCols := v[0].Len()
-// 	for i := range v {
-// 		if v[i].Len() != numCols {
-// 			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
-// 				numCols, i, v[i].Len())
-// 		}
-// 	}
-
-// 	numRows := len(v)
-
-// 	res := make([]field.Octuplet, numCols)
-
-// 	parallel.ExecuteThreadAware(
-// 		numCols,
-// 		func(threadID int) {
-// 		},
-// 		func(col, threadID int) {
-// 			hasher := p.LeafHashFunc()
-// 			colElems := make([]field.Element, numRows)
-// 			for row := 0; row < numRows; row++ {
-// 				colElems[row] = v[row].Get(col)
-// 			}
-// 			res[col] = hasher.SumElements(colElems)
-
-// 		},
-// 	)
-
-// 	return res
-// }
