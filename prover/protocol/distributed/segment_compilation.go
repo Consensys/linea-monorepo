@@ -429,7 +429,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) SegmentProof {
 	}
 
 	if proofType == proofTypeGL {
-		segmentProof.LppCommitment = GetLppCommitmentFromRuntime(proverRun)
+		segmentProof.LppCommitment = getLppCommitmentFromRuntime(proverRun)
 	}
 
 	return segmentProof

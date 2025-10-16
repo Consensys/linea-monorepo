@@ -239,8 +239,8 @@ func GetSharedRandomnessFromSegmentProofs(gLWitnesses []SegmentProof) field.Elem
 	return cmimc.HashVec(mset[:])
 }
 
-// GetLppCommitmentFromRuntime returns the LPP commitment from the runtime
-func GetLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
+// getLppCommitmentFromRuntime returns the LPP commitment from the runtime
+func getLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
 	name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
 	return runtime.GetPublicInput(name)
 }
