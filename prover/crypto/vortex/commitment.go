@@ -160,6 +160,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 			hasher.Reset()
 			s := hasher.SumElements(colHashes[startChunk : startChunk+chunkSize])
 			sbytes := s.Bytes()
+
 			// Manually copies the hasher's digest into the leaves to
 			// skip a verbose type conversion.
 			copy(leaves[chunkID][:], sbytes[:])

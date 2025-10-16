@@ -135,13 +135,6 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 				zetaI      = field.Vector(zetas[i])
 			)
 
-			// TODO @gbotrel check performance of this lookup table,
-			// or rework getPositionOfPolyInQueryYs to be more efficient.
-			polsQuery := qa.Queries[i].Pols
-			posLookup := make(map[string]uint32, len(polsQuery))
-			for k := range polsQuery {
-				posLookup[string(polsQuery[k].GetColID())] = uint32(k)
-			}
 			for _, k := range qa.PolysOfEvalPoint[i] {
 
 				// Constant polys do not contribute to the quotient as their
@@ -153,7 +146,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 				var (
 					paramsI  = run.GetUnivariateParams(qa.Queries[i].Name())
-					posOfYik = posLookup[string(qa.Polys[k].GetColID())] // posOfYik = getPositionOfPolyInQueryYs(qa.Queries[i], qa.Polys[k])
+					posOfYik = getPositionOfPolyInQueryYs(qa.Queries[i], qa.Polys[k])
 					yik      = paramsI.Ys[posOfYik]
 				)
 

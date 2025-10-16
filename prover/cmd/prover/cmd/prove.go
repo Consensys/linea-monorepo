@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -57,6 +58,16 @@ func Prove(args ProverArgs) error {
 	}
 }
 
+func logMemStats() {
+	var m runtime.MemStats
+	for {
+		runtime.ReadMemStats(&m)
+		fmt.Printf("Alloc = %v MiB\tTotalAlloc = %v MiB\tSys = %v MiB\tNumGC = %v\n",
+			m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
+		time.Sleep(10 * time.Second)
+	}
+}
+
 // handleExecutionJob processes an execution job
 func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 	req := &execution.Request{}
@@ -66,6 +77,9 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 
 	var resp *execution.Response
 	var err error
+
+	// go logMemStats()
+
 	if cfg.Execution.ProverMode == config.ProverModeLimitless {
 		// Limitless execution mode
 		resp, err = limitless.Prove(cfg, req)
@@ -74,13 +88,11 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 		}
 	} else {
 		// Standard execution mode
-		start := time.Now()
 		large := args.Large || (strings.Contains(args.Input, "large") && cfg.Execution.CanRunFullLarge)
 		resp, err = execution.Prove(cfg, req, large)
 		if err != nil {
 			return fmt.Errorf("could not prove the execution: %w", err)
 		}
-		fmt.Printf("Execution time: %v\n", time.Since(start))
 	}
 
 	return writeResponse(args.Output, resp)
