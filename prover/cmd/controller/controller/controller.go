@@ -19,6 +19,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type ControllerState struct {
+	activeJob     *Job
+	jobDoneChan   chan struct{}
+	jobDoneChanMu sync.Mutex
+}
+
 // runController runs the controller main loop.
 func runController(ctx context.Context, cfg *config.Config) {
 	var (
@@ -26,8 +32,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 		fsWatcher = NewFsWatcher(cfg)
 		executor  = NewExecutor(cfg)
 
-		// Track currently active job for safe requeue
-		activeJob *Job
+		// Tracks the controller for active job and job done channel
+		state = &ControllerState{}
 
 		// Track the number of retries so far
 		numRetrySoFar int
@@ -38,21 +44,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 		// Channel to receive signals
 		signalChan = make(chan os.Signal, 2)
-
-		// Channel to notify job completion for SIGTERM handler
-		jobDoneChan   chan struct{}
-		jobDoneChanMu sync.Mutex
 	)
-
-	// Helper to signal job completion
-	notifyJobDone := func() {
-		jobDoneChanMu.Lock()
-		if jobDoneChan != nil {
-			close(jobDoneChan)
-			jobDoneChan = nil
-		}
-		jobDoneChanMu.Unlock()
-	}
 
 	// Helper to requeue a job
 	requeueJob := func(job *Job) {
@@ -98,11 +90,11 @@ func runController(ctx context.Context, cfg *config.Config) {
 				}
 
 				// Requeue active job immediately for spot reclaim
-				if activeJob != nil {
-					cLog.Infof("Spot reclaim detected during job: %v", activeJob.OriginalFile)
-					requeueJob(activeJob)
-					activeJob = nil
-					notifyJobDone()
+				if state.activeJob != nil {
+					cLog.Infof("Spot reclaim detected during job: %v", state.activeJob.OriginalFile)
+					requeueJob(state.activeJob)
+					state.activeJob = nil
+					state.notifyJobDone()
 				}
 			case syscall.SIGTERM:
 				gracefulShutdownRequested.Store(true)
@@ -111,15 +103,15 @@ func runController(ctx context.Context, cfg *config.Config) {
 				}
 				// NOTE: DO NOT call cancel() here to respect the termination grace period
 				// If there's an active job, start a timer to enforce grace period
-				if activeJob != nil {
-					jobDoneChanMu.Lock()
-					if jobDoneChan == nil {
-						jobDoneChan = make(chan struct{})
+				if state.activeJob != nil {
+					state.jobDoneChanMu.Lock()
+					if state.jobDoneChan == nil {
+						state.jobDoneChan = make(chan struct{})
 					}
 					// Using a local copy prevents subtle bugs and race conditions that can happen if the global jobDoneChan
 					// is modified from elsewhere
-					localJobDoneChan := jobDoneChan
-					jobDoneChanMu.Unlock()
+					localJobDoneChan := state.jobDoneChan
+					state.jobDoneChanMu.Unlock()
 					go func() {
 						cLog.Infof("Allowing in-flight job to finish (max %ds)...", cfg.Controller.TerminationGracePeriod)
 						select {
@@ -155,7 +147,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 		if spotReclaimDetected.Load() {
 			cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
 		} else if gracefulShutdownRequested.Load() {
-			if activeJob != nil {
+			if state.activeJob != nil {
 				cLog.Infof("Context done: grace period expired, forcing shutdown")
 			} else {
 				cLog.Info("Context done: graceful shutdown complete")
@@ -172,53 +164,118 @@ func runController(ctx context.Context, cfg *config.Config) {
 	for {
 		select {
 		case <-ctx.Done():
-			// This case captures both cancellations initiated by the caller
-			// through ctx and SIGTERM signals. Even if the cancellation
-			// request is first intercepted by the goroutine at line 34, Go
-			// allows the ctx.Done channel to be read multiple times, which, in
-			// our scenario, ensures cancellation requests are effectively
-			// detected and handled.
-			cLog.Infoln("Context cancelled by caller or SIGTERM. Exiting")
-			metrics.ShutdownServer(ctx)
+			cLog.Infoln("Context cancelled by caller or externally triggered (SIGTERM/SIGUSR1). Exiting...")
+			metrics.ShutdownServer(cmdCtx)
+
+			if spotReclaimDetected.Load() {
+				cLog.Infof("Waiting up to %ds for spot reclaim...", cfg.Controller.SpotInstanceReclaimTime)
+				time.Sleep(time.Duration(cfg.Controller.SpotInstanceReclaimTime) * time.Second)
+			}
+
+			// For graceful shutdown, do not sleep here and requeue only if
+			// the job is still active (timer already slept in signal handler) - See signal handler go routine
+			if !spotReclaimDetected.Load() && gracefulShutdownRequested.Load() && state.activeJob != nil {
+				cLog.Infof("Job %v did not finish before termination grace period. Requeuing...", state.activeJob.OriginalFile)
+				requeueJob(state.activeJob)
+				state.activeJob = nil
+				state.notifyJobDone()
+			}
 			return
 
 			// Processing a new job
 		case <-retryDelay(cfg.Controller.RetryDelays, numRetrySoFar):
+			// Prevent starting new jobs if shutdown started
+			if cmdCtx.Err() != nil {
+				continue
+			}
+
+			//  Skip fetching new jobs if graceful shutdown or spot reclaim is in progress
+			if gracefulShutdownRequested.Load() || spotReclaimDetected.Load() {
+				numRetrySoFar++
+				noJobFoundMsg := "Shutdown in progress, skipping new jobs"
+				if numRetrySoFar > 5 {
+					cLog.Debug(noJobFoundMsg)
+				} else {
+					cLog.Info(noJobFoundMsg)
+				}
+				continue
+			}
+
+			// Fetch the best block we can fetch
 			job := fsWatcher.GetBest()
 
 			// No jobs, waiting a little before we retry
 			if job == nil {
 				numRetrySoFar++
-				logNoJobFound(cLog, numRetrySoFar)
+				noJobFoundMsg := "found no jobs in the queue"
+				if numRetrySoFar > 5 {
+					cLog.Debug(noJobFoundMsg)
+				} else {
+					cLog.Info(noJobFoundMsg)
+				}
 				continue
 			}
 
 			numRetrySoFar = 0
+
+			// Important: Set the active job to the current job for safe requeue mechanism
+			state.activeJob = job
+
+			// Run the command (potentially retrying in large mode)
 			status := executor.Run(cmdCtx, job)
-			handleJobResult(cfg, cLog, job, status)
+
+			state.handleJobResult(cfg, cLog, job, status)
 		}
 	}
 }
 
+// retryDelay returns the duration to wait before retrying to find a job in the queue.
+// This avoids spamming the FS with LS queries.
+func retryDelay(retryDelaysSec []int, numRetrySoFar int) <-chan time.Time {
+	retryDurations := make([]time.Duration, len(retryDelaysSec))
+	for i := range retryDelaysSec {
+		retryDurations[i] = time.Duration(retryDelaysSec[i]) * time.Second
+	}
+
+	// By default, take the last value
+	ttw := retryDurations[len(retryDurations)-1]
+
+	// If it does not overflow, take the value at `numRetrySoFar`
+	if numRetrySoFar < len(retryDurations) {
+		ttw = retryDurations[numRetrySoFar]
+	}
+
+	return time.After(ttw)
+}
+
+func (s *ControllerState) notifyJobDone() {
+	s.jobDoneChanMu.Lock()
+	if s.jobDoneChan != nil {
+		close(s.jobDoneChan)
+		s.jobDoneChan = nil
+	}
+	s.jobDoneChanMu.Unlock()
+}
+
 // handleJobResult processes a job according to its exit status.
-func handleJobResult(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
+func (state *ControllerState) handleJobResult(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 	switch {
 	case status.ExitCode == CodeSuccess:
-		handleJobSuccess(cfg, cLog, job, status)
+		state.handleJobSuccess(cfg, cLog, job, status)
 
 	case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
-		handleDeferToLarge(cLog, job, status)
+		state.handleDeferToLarge(cLog, job, status)
 
 	case status.ExitCode == CodeKilledByExtSig:
-		handleJobKilledByExtSig(cfg, cLog, job)
+		state.handleJobKilledByExtSig(cfg, cLog, job)
 
 	default:
-		handleJobFailure(cfg, cLog, job, status)
+		state.handleJobFailure(cfg, cLog, job, status)
 	}
 }
 
 // handleJobSuccess moves response and in-progress files to their final locations.
-func handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
+func (state *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 
 	if job.Def.WritesToDevNull() {
 		// Jobs that target /dev/null do not produce a response file.
@@ -264,6 +321,10 @@ func handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status S
 	if job.Def.Name == jobNameConglomeration {
 		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, config.SuccessSuffix)
 	}
+
+	// Set active job to nil once the job is successful
+	state.activeJob = nil
+	state.notifyJobDone()
 }
 
 func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {
@@ -295,7 +356,7 @@ func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, old
 }
 
 // handleDeferToLarge defers job execution to the large prover.
-func handleDeferToLarge(cLog *logrus.Entry, job *Job, status Status) {
+func (state *ControllerState) handleDeferToLarge(cLog *logrus.Entry, job *Job, status Status) {
 	cLog.Infof("Renaming %v for the large prover", job.OriginalFile)
 
 	toLargePath, err := job.DeferToLargeFile(status)
@@ -306,10 +367,16 @@ func handleDeferToLarge(cLog *logrus.Entry, job *Job, status Status) {
 	if err := os.Rename(job.InProgressPath(), toLargePath); err != nil {
 		cLog.Errorf("error renaming %v to %v: %v", job.InProgressPath(), toLargePath, err)
 	}
+
+	// From the controller perspective, it has completed its job by renaming and
+	// moving it to the large prover’s queue. Setting activeJob to nil prevents
+	// incorrect requeuing during shutdown, avoiding filesystem errors
+	state.activeJob = nil
+	state.notifyJobDone()
 }
 
 // handleJobKilledByExtSig puts the job back in the request folder and cleans up tmp files.
-func handleJobKilledByExtSig(cfg *config.Config, cLog *logrus.Entry, job *Job) {
+func (state *ControllerState) handleJobKilledByExtSig(cfg *config.Config, cLog *logrus.Entry, job *Job) {
 	cLog.Infof("Job %v was killed by user signal", job.OriginalFile)
 	cLog.Infof("Re-queuing the request:%s back to the request folder", job.OriginalFile)
 
@@ -330,7 +397,7 @@ func handleJobKilledByExtSig(cfg *config.Config, cLog *logrus.Entry, job *Job) {
 
 // handleJobFailure moves the failed job to the done directory with failure suffix.
 // TODO: handle failure of the conglomeration. Rename bootstrap suffix.
-func handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
+func (state *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 	cLog.Infof("Moving %v with in %v with a failure suffix for code %v", job.OriginalFile, job.Def.dirDone(), status.ExitCode)
 
 	jobFailed := job.DoneFile(status)
@@ -352,33 +419,8 @@ func handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status S
 		failSuffix := fmt.Sprintf("failure.%v_%v", config.FailSuffix, status.ExitCode)
 		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
 	}
-}
 
-// retryDelay returns the duration to wait before retrying to find a job in the queue.
-// This avoids spamming the FS with LS queries.
-func retryDelay(retryDelaysSec []int, numRetrySoFar int) <-chan time.Time {
-	retryDurations := make([]time.Duration, len(retryDelaysSec))
-	for i := range retryDelaysSec {
-		retryDurations[i] = time.Duration(retryDelaysSec[i]) * time.Second
-	}
-
-	// By default, take the last value
-	ttw := retryDurations[len(retryDurations)-1]
-
-	// If it does not overflow, take the value at `numRetrySoFar`
-	if numRetrySoFar < len(retryDurations) {
-		ttw = retryDurations[numRetrySoFar]
-	}
-
-	return time.After(ttw)
-}
-
-// logNoJobFound logs when no job is found, with reduced verbosity after 5 retries.
-func logNoJobFound(cLog *logrus.Entry, numRetrySoFar int) {
-	msg := "found no jobs in the queue"
-	if numRetrySoFar > 5 {
-		cLog.Debug(msg)
-	} else {
-		cLog.Info(msg)
-	}
+	// Set active job to nil as there is nothing more to retry
+	state.activeJob = nil
+	state.notifyJobDone()
 }
