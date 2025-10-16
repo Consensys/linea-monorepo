@@ -12,6 +12,23 @@ A consensus layer client implementing QBFT protocol adhering to Eth 2.0 CL / EL 
 docker-run-stack
 ```
 
+## Build from sources
+
+To build Maru from source code:
+
+```sh
+# Create a distribution ready to run
+./gradlew :app:installDist
+```
+
+After building, you can run Maru using:
+
+```sh
+./app/build/install/app/bin/app [options]
+```
+
+The distribution will be created in `app/build/install/app/` with all necessary dependencies included.
+
 ### Build Docker Image Locally
 
 ```sh

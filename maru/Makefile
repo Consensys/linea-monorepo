@@ -18,7 +18,7 @@ clean:
 
 docker-build-local-image:
 	./gradlew :app:installDist
-	docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./app/build/libs/ -t consensys/maru:local
+	docker build app --build-context=libs=./app/build/install/app/lib/ -t consensys/maru:local
 
 docker-run-stack:
 	CREATE_EMPTY_BLOCKS=true $(if $(MARU_TAG),MARU_TAG=$(MARU_TAG)) docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d
