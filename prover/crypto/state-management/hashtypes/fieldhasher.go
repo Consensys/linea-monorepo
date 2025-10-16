@@ -1,0 +1,107 @@
+package hashtypes
+
+import (
+	"errors"
+
+	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	"github.com/consensys/gnark-crypto/hash"
+
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+)
+
+// Hasher is an interface for a hash function that operates on field elements
+type FieldHasher interface {
+	hash.StateStorer
+	WriteElement(e field.Element)
+	WriteElements(elems []field.Element)
+	SumElement() field.Element
+	SumElements(elems []field.Element) field.Octuplet
+}
+
+// digest represents the partial evaluation of the checksum
+// along with the params of the mimc function
+type Poseidon2FieldHasherDigest struct {
+	hash.StateStorer
+
+	// Sponge construction state
+	h    field.Octuplet
+	data []field.Element // data to hash
+}
+
+// NewPoseidon2FieldHasher returns a FieldHasher (works with typed field elements, not bytes)
+func NewPoseidon2FieldHasher() Poseidon2FieldHasherDigest {
+	poseidon2FieldHasherDigest := Poseidon2FieldHasherDigest{
+		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
+		h:           field.Octuplet{},
+		data:        []field.Element{},
+	}
+	return poseidon2FieldHasherDigest
+}
+
+// Reset resets the Hash to its initial state.
+func (d *Poseidon2FieldHasherDigest) Reset() {
+	d.data = d.data[:0]
+	d.h = field.Octuplet{}
+}
+
+// WriteElement adds a field element to the running hash.
+func (d *Poseidon2FieldHasherDigest) WriteElement(e field.Element) {
+	d.data = append(d.data, e)
+}
+func (d *Poseidon2FieldHasherDigest) WriteElements(elems []field.Element) {
+	d.data = append(d.data, elems...)
+}
+
+// SumElement returns the current hash as a field element.
+func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
+	h := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
+	vector.Add(d.h[:], h[:], d.h[:])
+
+	d.data = d.data[:0]
+	return d.h
+}
+
+// SumElement returns the current hash as a field element.
+func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Octuplet {
+	h1 := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
+	vector.Add(d.h[:], h1[:], d.h[:])
+
+	h2 := poseidon2.Poseidon2Sponge(elems) // Poseidon2Sponge include the feedforward process
+	vector.Add(d.h[:], h2[:], d.h[:])
+
+	d.data = d.data[:0]
+	return d.h
+}
+func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
+	// we usually expect multiple of block size. But sometimes we hash short
+	// values (FS transcript). Instead of forcing to hash to field, we left-pad the
+	// input here.
+	BlockSize := field.Bytes // 4 bytes = 1 field element
+	if len(p) > 0 && len(p) < BlockSize {
+		pp := make([]byte, BlockSize)
+		copy(pp[len(pp)-len(p):], p)
+		p = pp
+	}
+
+	var start int
+	for start = 0; start < len(p); start += BlockSize {
+		var elem field.Element
+		elem.SetBytes(p[start : start+BlockSize])
+		d.data = append(d.data, elem)
+	}
+
+	if start != len(p) {
+		return 0, errors.New("invalid input length: must represent a list of field elements, expects a []byte of len m*BlockSize")
+	}
+	return len(p), nil
+}
+
+// Sum computes the poseidon2 hash of msg
+func (d *Poseidon2FieldHasherDigest) Sum(msg []byte) (types.Bytes32, error) {
+	h := d.SumElement()
+	bytes := types.HashToBytes32(h)
+	return bytes, nil
+}
