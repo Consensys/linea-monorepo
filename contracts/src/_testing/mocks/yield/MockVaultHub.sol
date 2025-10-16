@@ -6,7 +6,7 @@ import { ICommonVaultOperations } from "../../../yield/interfaces/vendor/lido/IC
 
 contract MockVaultHub is IVaultHub {
   bool isVaultConnectedReturn;
-  bool issettleLidoFeesWithdrawingFromVault;
+  bool isSettleLidoFeesWithdrawingFromVault;
   uint256 settleVaultObligationAmount;
 
   function setIsVaultConnectedReturn(bool _val) external {
@@ -14,7 +14,7 @@ contract MockVaultHub is IVaultHub {
   }
 
   function setIsSettleLidoFeesWithdrawingFromVault(bool _value) external {
-    issettleLidoFeesWithdrawingFromVault = _value;
+    isSettleLidoFeesWithdrawingFromVault = _value;
   }
 
   function setSettleVaultObligationAmount(uint256 _val) external {
@@ -22,7 +22,7 @@ contract MockVaultHub is IVaultHub {
   }
 
   function settleLidoFees(address _vault) external override {
-    if (issettleLidoFeesWithdrawingFromVault) {
+    if (isSettleLidoFeesWithdrawingFromVault) {
       ICommonVaultOperations vault = ICommonVaultOperations(_vault);
       vault.withdraw(address(0), settleVaultObligationAmount);
     }
