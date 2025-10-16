@@ -143,7 +143,7 @@ func TestEarlyExitOnSpotInstanceMode(t *testing.T) {
 	status := e.Run(ctx, job)
 	cancelMainExpiration()
 
-	assert.Equal(t, CodeKilledBySigTERM, status.ExitCode)
+	assert.Equal(t, CodeKilledByExtSig, status.ExitCode)
 
 	// We wait 3 more second to ensure all sub-process have exited
 	time.Sleep(3 * time.Second)

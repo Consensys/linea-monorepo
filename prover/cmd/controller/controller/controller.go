@@ -88,8 +88,8 @@ func handleJobResult(cfg *config.Config, cLog *logrus.Entry, job *Job, status St
 	case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
 		handleDeferToLarge(cLog, job, status)
 
-	case status.ExitCode == CodeKilledBySigTERM:
-		handleJobKilledBySIGTERM(cfg, cLog, job)
+	case status.ExitCode == CodeKilledByExtSig:
+		handleJobKilledByExtSig(cfg, cLog, job)
 
 	default:
 		handleJobFailure(cfg, cLog, job, status)
@@ -187,8 +187,8 @@ func handleDeferToLarge(cLog *logrus.Entry, job *Job, status Status) {
 	}
 }
 
-// handleJobKilledBySIGTERM puts the job back in the request folder and cleans up tmp files.
-func handleJobKilledBySIGTERM(cfg *config.Config, cLog *logrus.Entry, job *Job) {
+// handleJobKilledByExtSig puts the job back in the request folder and cleans up tmp files.
+func handleJobKilledByExtSig(cfg *config.Config, cLog *logrus.Entry, job *Job) {
 	cLog.Infof("Job %v was killed by us. Spot instance mode: %v", job.OriginalFile, cfg.Controller.SpotInstanceMode)
 	cLog.Infof("Re-queuing the request:%s back to the request folder", job.OriginalFile)
 
