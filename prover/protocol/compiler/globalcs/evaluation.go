@@ -201,7 +201,7 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 	for i, ratio := range ctx.Ratios {
 
-		board := ctx.AggregateExpressionsBoard[i]
+		board := ctx.AggregateExpressions[i].Board()
 		metadatas := board.ListVariableMetadata()
 
 		evalInputs := make([]sv.SmartVector, len(metadatas))
@@ -263,7 +263,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 
 	for i, ratio := range ctx.Ratios {
 
-		board := ctx.AggregateExpressionsBoard[i]
+		board := ctx.AggregateExpressions[i].Board()
 		metadatas := board.ListVariableMetadata()
 
 		evalInputs := make([]frontend.Variable, len(metadatas))

@@ -18,7 +18,9 @@ func ExecutePoolChunky(nbIterations int, work func(k int)) {
 	for i := 0; i < nbIterations; i++ {
 		k := i
 		queue <- func() {
+			runtime.LockOSThread()
 			work(k)
+			runtime.UnlockOSThread()
 			wg.Done()
 			available <- struct{}{}
 		}
