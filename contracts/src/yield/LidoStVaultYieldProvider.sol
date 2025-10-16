@@ -193,7 +193,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   }
 
   /**
-   * @notice Helper function to handle liability settlement executed by external actors (i.e. via permissionless VaultHub.settleVaultObligations)
+   * @notice Helper function to handle liability settlement executed by external actors (i.e. via permissionless VaultHub.settleLidoFees)
    * @dev Must be called before any function that LST liability by a specified amount. Otherwise we encounter the edge case
    *      that externally settled liabilities will block these operations and hence withdrawal functions that eagerly execute LST principal payment.
    * @dev Greedily assumes that externally settled liability was first allocated to lstLiabilityInterest, then the remainder to lstLiabilityPrincipal
@@ -242,7 +242,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     address vault = $$.ossifiedEntrypoint;
     uint256 beforeVaultBalance = vault.balance;
     // Unfortunately, there is no function on VaultHub to specify how much obligation we want to repay.
-    VAULT_HUB.settleVaultObligations(vault);
+    VAULT_HUB.settleLidoFees(vault);
     uint256 afterVaultBalance = vault.balance;
     obligationsPaid = beforeVaultBalance - afterVaultBalance;
   }
@@ -262,7 +262,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     IStakingVault vault = _getVault($$);
     uint256 currentFees = dashboard.nodeOperatorDisbursableFee();
     uint256 avalableVaultBalance = vault.availableBalance();
-    // Does not allow partial payment of node operator fees, unlike settleVaultObligations
+    // Does not allow partial payment of node operator fees, unlike settleLidoFees
     if (avalableVaultBalance > currentFees) {
       dashboard.disburseNodeOperatorFee();
       nodeOperatorFeesPaid = currentFees;

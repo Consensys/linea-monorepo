@@ -471,7 +471,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
       // Arrange - Obligations paid
       const expectedObligationsPaid = ONE_ETHER;
-      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
       await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
       // Arrange - Get before figures
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
@@ -493,7 +493,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
       // Arrange - Obligations paid
       const expectedObligationsPaid = ONE_ETHER * 2n;
-      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
       await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
       // Arrange - Get before figures
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
@@ -734,7 +734,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
       // Arrange - Obligations paid
       const expectedObligationsPaid = ONE_ETHER;
-      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
       await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
       // Arrange - Get before figures
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
@@ -760,7 +760,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
       // Arrange - Obligations paid
       const expectedObligationsPaid = ONE_ETHER * 3n;
-      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
       await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
       // Arrange - Get before figures
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
@@ -836,7 +836,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await mockDashboard.setIsDisburseNodeOperatorFeeWithdrawingFromVault(true);
       // Arrange - Setup obligations paid  = 1 ETH
       const expectedObligationsPaid = ONE_ETHER;
-      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
       await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
       // Arrange - Setup LST liability payment  = 1 ETH
       const expectedLiabilityPayment = ONE_ETHER;

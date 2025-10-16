@@ -6,6 +6,6 @@
 pragma solidity >=0.8.0;
 
 interface IVaultHub {
-  function settleVaultObligations(address _vault) external;
+  function settleLidoFees(address _vault) external;
   function isVaultConnected(address _vault) external view returns (bool);
 }

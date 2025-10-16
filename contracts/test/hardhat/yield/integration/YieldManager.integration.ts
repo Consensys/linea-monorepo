@@ -648,7 +648,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - secondNegativeYield);
       await decrementBalance(mockStakingVaultAddress, secondNegativeYield);
       const firstObligationsPaid = ONE_ETHER * 2n;
-      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
       await mockVaultHub.setSettleVaultObligationAmount(firstObligationsPaid);
       {
         const [newReportedYield, outstandingNegativeYield] = await yieldManager
@@ -699,7 +699,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const thirdPositiveYield = ONE_ETHER * 3n;
       await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) + thirdPositiveYield);
       await incrementBalance(mockStakingVaultAddress, thirdPositiveYield);
-      await mockVaultHub.setIsSettleVaultObligationsWithdrawingFromVault(true);
+      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
       await mockVaultHub.setSettleVaultObligationAmount(ONE_ETHER * 2n);
       await mockDashboard.setIsDisburseNodeOperatorFeeWithdrawingFromVault(true);
       await mockDashboard.setNodeOperatorDisbursableFeeReturn(ONE_ETHER * 2n);
