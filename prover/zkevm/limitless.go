@@ -25,7 +25,6 @@ var (
 	bootstrapperFile          = "dw-bootstrapper.bin"
 	discFile                  = "disc.bin"
 	zkevmFile                 = "zkevm-wiop.bin"
-	compiledDefaultFile       = "dw-compiled-default.bin"
 	blueprintGLPrefix         = "dw-blueprint-gl"
 	blueprintLppPrefix        = "dw-blueprint-lpp"
 	blueprintGLTemplate       = blueprintGLPrefix + "-%d.bin"
@@ -344,7 +343,23 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 		logrus.Infof("Checking LPP witness %v, module=%v", i, witness.ModuleName)
 
-		debugLPP := lz.DistWizard.DebugLPPs[witness.ModuleIndex]
+		var (
+			// moduleToFind = witness.ModuleName
+			debugLPP *distributed.ModuleLPP
+		)
+
+		for range lz.DistWizard.DebugLPPs {
+			panic("uncomment me")
+			// if reflect.DeepEqual(lz.DistWizard.DebugLPPs[i].ModuleNames(), moduleToFind) {
+			// 	debugLPP = lz.DistWizard.DebugLPPs[i]
+			// 	break
+			// }
+		}
+
+		if debugLPP == nil {
+			utils.Panic("debugLPP not found")
+		}
+
 		witness.InitialFiatShamirState = sharedRandomness
 
 		var (
@@ -514,8 +529,6 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Object: debugLPP,
 		})
 	}
-
-	assets = append(assets)
 
 	for _, asset := range assets {
 		logrus.Infof("writing %s to disk", asset.Name)
