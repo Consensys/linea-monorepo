@@ -21,7 +21,7 @@ func TestFieldHasher(t *testing.T) {
 	// test SumElements
 	dgst1 := h1.SumElements(randInputs)
 
-	// test Write
+	// test Write + Sum
 	for i := range randInputs {
 		h2.Write(randInputs[i].Marshal())
 	}
@@ -31,7 +31,7 @@ func TestFieldHasher(t *testing.T) {
 	copy(dgst2Byte32[:], dgst2[:])
 	assert.Equal(dgst1, types.Bytes32ToHash(dgst2Byte32), "hashes do not match")
 
-	// test SumElement
+	// test WriteElement + SumElement
 	for i := range randInputs {
 		h3.WriteElement(randInputs[i])
 	}

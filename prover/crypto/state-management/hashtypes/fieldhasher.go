@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-// Hasher is an interface for a hash function that operates on field elements
+// Poseidon2FieldHasher is an interface for a hash function that operates on both field elements and bytes
 type Poseidon2FieldHasher interface {
 	hash.StateStorer
 	WriteElement(e field.Element)
@@ -23,26 +23,25 @@ type Poseidon2FieldHasher interface {
 	MaxBytes32() types.Bytes32 // Returns the maximum representable value as Bytes32
 }
 
-// digest represents the partial evaluation of the checksum
-// along with the params of the mimc function
+// Poseidon2FieldHasherDigest implements a Poseidon2-based hasher that works with field elements
 type Poseidon2FieldHasherDigest struct {
 	hash.StateStorer
 
-	maxValue types.Bytes32
+	maxValue types.Bytes32 // TODO@yao: can we cleanup this value and MaxBytes32()?
 
 	// Sponge construction state
 	h    field.Octuplet
 	data []field.Element // data to hash
 }
 
-// Poseidon2 returns a FieldHasher (works with typed field elements, not bytes)
+// Poseidon2 returns a Poseidon2FieldHasher (works with typed field elements and bytes)
 func Poseidon2() Poseidon2FieldHasher {
 	var maxVal field.Octuplet // This stores the maximal value for each element
 	for i := range maxVal {
 		maxVal[i] = field.NewFromString("-1") // Initialize max field value (field modulus - 1)
 	}
 	poseidon2FieldHasherDigest := &Poseidon2FieldHasherDigest{
-		maxValue:    types.HashToBytes32(maxVal), // Convert the max value Octuplet to Bytes32 representation
+		maxValue:    types.HashToBytes32(maxVal),
 		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
 		h:           field.Octuplet{},
 		data:        []field.Element{},
@@ -61,11 +60,13 @@ func (d *Poseidon2FieldHasherDigest) Reset() {
 func (d *Poseidon2FieldHasherDigest) WriteElement(e field.Element) {
 	d.data = append(d.data, e)
 }
+
+// WriteElement adds a slice of field elements to the running hash.
 func (d *Poseidon2FieldHasherDigest) WriteElements(elems []field.Element) {
 	d.data = append(d.data, elems...)
 }
 
-// SumElement returns the current hash as a field element.
+// SumElement returns the current hash as a field Octuplet.
 func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
 	h := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
 	vector.Add(d.h[:], h[:], d.h[:])
@@ -73,7 +74,7 @@ func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
 	return d.h
 }
 
-// SumElement returns the current hash as a field element.
+// SumElement returns the current hash as a field Octuplet.
 func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Octuplet {
 	h1 := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
 	vector.Add(d.h[:], h1[:], d.h[:])
@@ -88,22 +89,22 @@ func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 	// we usually expect multiple of block size. But sometimes we hash short
 	// values (FS transcript). Instead of forcing to hash to field, we left-pad the
 	// input here.
-	BlockSize := field.Bytes // 4 bytes = 1 field element
-	if len(p) > 0 && len(p) < BlockSize {
-		pp := make([]byte, BlockSize)
+	elemByteSize := field.Bytes // 4 bytes = 1 field element
+	if len(p) > 0 && len(p) < elemByteSize {
+		pp := make([]byte, elemByteSize)
 		copy(pp[len(pp)-len(p):], p)
 		p = pp
 	}
 
 	var start int
-	for start = 0; start < len(p); start += BlockSize {
+	for start = 0; start < len(p); start += elemByteSize {
 		var elem field.Element
-		elem.SetBytes(p[start : start+BlockSize])
+		elem.SetBytes(p[start : start+elemByteSize])
 		d.data = append(d.data, elem)
 	}
 
 	if start != len(p) {
-		return 0, errors.New("invalid input length: must represent a list of field elements, expects a []byte of len m*BlockSize")
+		return 0, errors.New("invalid input length: must represent a list of field elements, expects a []byte of len m*elemByteSize")
 	}
 	return len(p), nil
 }
