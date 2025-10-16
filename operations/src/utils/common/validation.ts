@@ -1,7 +1,7 @@
-import { ethers } from "ethers";
+import { isAddress, isHex } from "viem";
 
 export function validateEthereumAddress(argName: string, input: string) {
-  if (!ethers.isAddress(input)) {
+  if (!isAddress(input)) {
     throw new Error(`${argName} is not a valid Ethereum address.`);
   }
   return input;
@@ -23,9 +23,9 @@ export function validateUrl(argName: string, input: string, allowedProtocols: st
   return input;
 }
 
-export function validateHexString(argName: string, input: string, expectedLength: number) {
-  if (!ethers.isHexString(input, expectedLength)) {
-    throw new Error(`${argName} must be hexadecimal string of length ${expectedLength}.`);
+export function validateHexString(argName: string, input: string) {
+  if (!isHex(input)) {
+    throw new Error(`${argName} must be a hexadecimal string.`);
   }
   return input;
 }

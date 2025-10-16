@@ -1,222 +1,305 @@
-import { ethers, TransactionLike } from "ethers";
 import { Command, Flags } from "@oclif/core";
-import { validateEthereumAddress, validateHexString, validateUrl, get1559Fees } from "../utils/common/index.js";
 import {
-  validateETHThreshold,
-  calculateRewards,
-  validateConfig,
-  estimateTransactionGas,
-  executeTransaction,
-  getWeb3SignerSignature,
-  DEFAULT_GAS_ESTIMATION_PERCENTILE,
-  DEFAULT_MAX_FEE_PER_GAS,
-  WEB3_SIGNER_PUBLIC_KEY_LENGTH,
-  getWeb3SignerHttpsAgent,
-} from "../utils/eth-transfer/index.js";
+  Address,
+  createPublicClient,
+  decodeErrorResult,
+  encodeFunctionData,
+  Hex,
+  http,
+  parseEventLogs,
+  parseSignature,
+  serializeTransaction,
+  TransactionSerializable,
+} from "viem";
+import { linea } from "viem/chains";
 import { Agent } from "https";
+import { formatDate } from "date-fns";
+import { computeInvoicePeriod } from "../utils/eth-transfer/time.js";
+import { generateQueryParameters, getDuneClient, runDuneQuery } from "../utils/common/dune.js";
+import { estimateTransactionGas } from "../utils/eth-transfer/transactions.js";
+import { getWeb3SignerSignature } from "../utils/common/signature.js";
+import {
+  INVOICE_PROCESSED_EVENT_ABI,
+  ROLLUP_REVENUE_VAULT_ERRORS_ABI,
+  SUBMIT_INVOICE_ABI,
+} from "../utils/eth-transfer/constants.js";
+import { getHttpsAgent } from "../utils/common/https-agent.js";
+import { createAwsCostExplorerClient, getDailyAwsCosts } from "../utils/common/aws.js";
+import { computeSubmitInvoiceCalldata, getLastInvoiceDate } from "../utils/eth-transfer/contract.js";
+import { validateEthereumAddress, validateHexString, validateUrl } from "../utils/common/validation.js";
+
+export const address = Flags.custom<Address>({
+  parse: async (input) => validateEthereumAddress("address", input),
+});
+
+export const hexString = Flags.custom<Hex>({
+  parse: async (input) => validateHexString("hex-string", input),
+});
 
 export default class EthTransfer extends Command {
   static examples = [
-    // Example 1: Basic usage with required flags
     `<%= config.bin %> <%= command.id %> 
       --sender-address=0xYourSenderAddress
-      --destination-address=0xYourDestinationAddress
-      --threshold=10
-      --blockchain-rpc-url=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
+      --contract-address=0xYourContractAddress
+      --period-days=10
+      --reporting-lag-days=2
+      --rpc-url=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
       --web3-signer-url=http://localhost:8545
       --web3-signer-public-key=0xYourWeb3SignerPublicKey
+      --dune-api-key=YOUR_DUNE_KEY
+      --dune-query-id=12345
       --tls
       --web3-signer-keystore-path=/path/to/keystore.p12
       --web3-signer-keystore-passphrase=yourPassphrase
       --web3-signer-trusted-store-path=/path/to/ca.p12
       --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
-      `,
-
-    // Example 2: Including optional flags with custom values
+    `,
+    // Dry run
     `<%= config.bin %> <%= command.id %>
       --sender-address=0xYourSenderAddress
-      --destination-address=0xYourDestinationAddress
-      --threshold=5
-      --blockchain-rpc-url=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
+      --contract-address=0xYourContractAddress
+      --period-days=10
+      --reporting-lag-days=2
+      --rpc-url=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
       --web3-signer-url=http://localhost:8545
       --web3-signer-public-key=0xYourWeb3SignerPublicKey
-      --max-fee-per-gas=150000000000
-      --gas-estimation-percentile=20
+      --dune-api-key=YOUR_DUNE_KEY
+      --dune-query-id=12345
       --tls
       --web3-signer-keystore-path=/path/to/keystore.p12
       --web3-signer-keystore-passphrase=yourPassphrase
       --web3-signer-trusted-store-path=/path/to/ca.p12
       --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
-      `,
-
-    // Example 3: Using the dry-run flag to simulate the transaction
-    `<%= config.bin %> <%= command.id %>
-      --sender-address=0xYourSenderAddress
-      --destination-address=0xYourDestinationAddress
-      --threshold=1.5
-      --blockchain-rpc-url=http://127.0.0.1:8545
-      --web3-signer-url=http://127.0.0.1:8546
-      --web3-signer-public-key=0xYourWeb3SignerPublicKey
       --dry-run
-      --tls
-      --web3-signer-keystore-path=/path/to/keystore.p12
-      --web3-signer-keystore-passphrase=yourPassphrase
-      --web3-signer-trusted-store-path=/path/to/ca.p12
-      --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
-      `,
+    `,
   ];
 
+  static strict = true;
+
   static flags = {
-    "sender-address": Flags.string({
+    senderAddress: address({
       char: "s",
       description: "Sender address",
       required: true,
-      parse: async (input) => validateEthereumAddress("sender-address", input),
       env: "ETH_TRANSFER_SENDER_ADDRESS",
     }),
-    "destination-address": Flags.string({
-      char: "d",
-      description: "Destination address",
+    contractAddress: address({
+      char: "c",
+      description: "Contract address",
       required: true,
-      parse: async (input) => validateEthereumAddress("destination-address", input),
-      env: "ETH_TRANSFER_DESTINATION_ADDRESS",
+      env: "ETH_TRANSFER_CONTRACT_ADDRESS",
     }),
-    threshold: Flags.string({
-      char: "t",
-      description: "Balance threshold of Validator address",
+    periodDays: Flags.integer({
+      char: "p",
+      description: "Period in days for invoice generation",
       required: true,
-      parse: async (input) => validateETHThreshold(input),
-      env: "ETH_TRANSFER_THRESHOLD",
+      parse: async (input) => parseInt(input),
+      env: "ETH_TRANSFER_PERIOD_DAYS",
     }),
-    "blockchain-rpc-url": Flags.string({
+    reportingLagDays: Flags.integer({
+      char: "r",
+      description: "Reporting lag in days for invoice generation",
+      required: true,
+      parse: async (input) => parseInt(input),
+      env: "ETH_TRANSFER_REPORTING_LAG_DAYS",
+    }),
+    rpcUrl: Flags.string({
       description: "Blockchain RPC URL",
       required: true,
       parse: async (input) => validateUrl("blockchain-rpc-url", input, ["http:", "https:"]),
       env: "ETH_TRANSFER_BLOCKCHAIN_RPC_URL",
     }),
-    "web3-signer-url": Flags.string({
+    web3SignerUrl: Flags.string({
       description: "Web3 Signer URL",
       required: true,
       parse: async (input) => validateUrl("web3-signer-url", input, ["http:", "https:"]),
       env: "ETH_TRANSFER_WEB3_SIGNER_URL",
     }),
-    "web3-signer-public-key": Flags.string({
+    web3SignerPublicKey: hexString({
       description: "Web3 Signer Public Key",
       required: true,
-      parse: async (input) => validateHexString("web3-signer-public-key", input, WEB3_SIGNER_PUBLIC_KEY_LENGTH),
       env: "ETH_TRANSFER_WEB3_SIGNER_PUBLIC_KEY",
     }),
-    "dry-run": Flags.boolean({
+    dryRun: Flags.boolean({
       description: "Dry run flag",
       required: false,
       default: false,
       env: "ETH_TRANSFER_DRY_RUN",
-    }),
-    "max-fee-per-gas": Flags.string({
-      description: "MaxFeePerGas in wei",
-      required: false,
-      default: DEFAULT_MAX_FEE_PER_GAS,
-      env: "ETH_TRANSFER_MAX_FEE_PER_GAS",
-    }),
-    "gas-estimation-percentile": Flags.integer({
-      description: "Gas estimation percentile (0-100)",
-      required: false,
-      default: DEFAULT_GAS_ESTIMATION_PERCENTILE,
-      env: "ETH_TRANSFER_GAS_ESTIMATION_PERCENTILE",
     }),
     tls: Flags.boolean({
       description: "Enable TLS",
       required: false,
       default: false,
       env: "ETH_TRANSFER_TLS",
+      relationships: [
+        {
+          type: "all",
+          flags: [
+            { name: "web3SignerKeystorePath", when: async (flags) => flags["tls"] === true },
+            { name: "web3SignerKeystorePassphrase", when: async (flags) => flags["tls"] === true },
+            { name: "web3SignerTrustedStorePath", when: async (flags) => flags["tls"] === true },
+            { name: "web3SignerTrustedStorePassphrase", when: async (flags) => flags["tls"] === true },
+          ],
+        },
+      ],
     }),
-    "web3-signer-keystore-path": Flags.string({
+    web3SignerKeystorePath: Flags.string({
       description: "Path to the web3 signer keystore file",
       required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PATH",
     }),
-    "web3-signer-keystore-passphrase": Flags.string({
+    web3SignerKeystorePassphrase: Flags.string({
       description: "Passphrase for the web3 signer keystore",
       required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PASSPHRASE",
     }),
-    "web3-signer-trusted-store-path": Flags.string({
+    web3SignerTrustedStorePath: Flags.string({
       description: "Path to the web3 signer trusted store file",
       required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_TRUSTED_STORE_PATH",
     }),
-    "web3-signer-trusted-store-passphrase": Flags.string({
+    web3SignerTrustedStorePassphrase: Flags.string({
       description: "Passphrase for the web3 signer trusted store file",
       required: false,
       env: "ETH_TRANSFER_WEB3_SIGNER_TRUSTED_STORE_PASSPHRASE",
+    }),
+    duneApiKey: Flags.string({
+      description: "Dune API Key",
+      required: true,
+      env: "ETH_TRANSFER_DUNE_API_KEY",
+    }),
+    duneQueryId: Flags.integer({
+      description: "Dune Query ID",
+      required: true,
+      parse: async (input) => parseInt(input),
+      env: "ETH_TRANSFER_DUNE_QUERY_ID",
     }),
   };
 
   public async run(): Promise<void> {
     const { flags } = await this.parse(EthTransfer);
-
     const {
       senderAddress,
-      destinationAddress,
-      threshold,
-      blockchainRpcUrl,
+      rpcUrl,
+      contractAddress,
+      periodDays,
+      reportingLagDays,
       web3SignerUrl,
       web3SignerPublicKey,
-      maxFeePerGas,
-      gasEstimationPercentile,
-      dryRun,
-      tls,
       web3SignerKeystorePath,
       web3SignerKeystorePassphrase,
       web3SignerTrustedStorePath,
       web3SignerTrustedStorePassphrase,
-    } = validateConfig(flags);
+      tls,
+      dryRun,
+    } = flags;
 
-    const provider = new ethers.JsonRpcProvider(blockchainRpcUrl);
+    const client = createPublicClient({
+      chain: linea,
+      transport: http(rpcUrl, { batch: true, retryCount: 3 }),
+    });
 
-    const [{ chainId }, senderBalance, fees, nonce] = await Promise.all([
-      provider.getNetwork(),
-      provider.getBalance(senderAddress),
-      get1559Fees(provider, maxFeePerGas, gasEstimationPercentile),
-      provider.getTransactionCount(senderAddress),
-    ]);
+    const lastInvoiceDate = await getLastInvoiceDate(client, contractAddress);
 
-    if (senderBalance <= ethers.parseEther(threshold)) {
-      this.log(`Sender balance (${ethers.formatEther(senderBalance)} ETH) is less than threshold. No action needed.`);
+    if (!lastInvoiceDate) {
+      this.error("Failed to retrieve the last invoice date from the contract.");
+    }
+
+    this.log(`Last invoice date (timestamp in seconds): ${lastInvoiceDate}`);
+
+    const currentTimestampInSeconds = Math.floor(Date.now() / 1000);
+    const invoicePeriod = computeInvoicePeriod(
+      Number(lastInvoiceDate),
+      currentTimestampInSeconds,
+      periodDays,
+      reportingLagDays,
+    );
+
+    if (!invoicePeriod) {
+      this.warn("No invoice to process at this time.");
       return;
     }
 
-    const rewards = calculateRewards(senderBalance);
+    this.log(
+      `Invoice period to process: from ${invoicePeriod.startDate.toISOString()} to ${invoicePeriod.endDate.toISOString()}`,
+    );
 
-    if (rewards === 0n) {
-      this.log(`No rewards to send.`);
+    const awsClient = createAwsCostExplorerClient({});
+    this.log(
+      `Fetching AWS costs for the invoice period from=${formatDate(invoicePeriod.startDate, "yyyy-MM-dd")} to=${formatDate(
+        invoicePeriod.endDate,
+        "yyyy-MM-dd",
+      )}`,
+    );
+    // TODO: refine the filter to specific tags
+    const { ResultsByTime } = await getDailyAwsCosts(awsClient, {
+      Filter: {},
+      Granularity: "DAILY",
+      GroupBy: [],
+      Metrics: ["AmortizedCost"],
+      TimePeriod: {
+        Start: formatDate(invoicePeriod.startDate, "yyyy-MM-dd"),
+        End: formatDate(invoicePeriod.endDate, "yyyy-MM-dd"),
+      },
+    });
+
+    if (!ResultsByTime || ResultsByTime.length === 0) {
+      this.error("No AWS cost data returned for the specified period.");
+    }
+
+    const awsCostsInUsd = ResultsByTime[0].Total?.AmortizedCost?.Amount
+      ? parseFloat(ResultsByTime[0].Total.AmortizedCost.Amount)
+      : 0;
+
+    const duneClient = getDuneClient(flags.duneApiKey);
+    const { result } = await runDuneQuery(
+      duneClient,
+      flags.duneQueryId,
+      generateQueryParameters({
+        fromDate: invoicePeriod.startDate,
+        toDate: invoicePeriod.endDate,
+      }),
+    );
+
+    const onChainCostsInEth = result?.rows[0]?.totalCost as number;
+
+    // TODO: convert awsCostsInUsd to ETH using some oracle or API
+    const awsCostsInEth = awsCostsInUsd;
+    const totalCostsInEth = awsCostsInEth + onChainCostsInEth;
+
+    if (totalCostsInEth === 0) {
+      this.warn("No costs to process at this time.");
+      this.warn("Please check your Dune query and AWS costs API calls.");
       return;
     }
 
-    const transactionRequest: TransactionLike = {
-      to: destinationAddress,
-      value: rewards,
-      type: 2,
-      chainId,
-      maxFeePerGas: fees.maxFeePerGas,
-      maxPriorityFeePerGas: fees.maxPriorityFeePerGas ?? null,
-      nonce: nonce,
-    };
+    this.log(`Total costs to invoice in ETH: ${totalCostsInEth}`);
 
-    const transactionGasLimit = await estimateTransactionGas(provider, {
-      ...transactionRequest,
-      from: senderAddress,
-    } as ethers.TransactionRequest);
-
-    const transaction: TransactionLike = {
-      ...transactionRequest,
-      gasLimit: transactionGasLimit,
-    };
+    const { gasLimit, baseFeePerGas, priorityFeePerGas } = await estimateTransactionGas(client, {
+      to: contractAddress,
+      account: senderAddress,
+      value: 0n,
+      data: encodeFunctionData({
+        abi: SUBMIT_INVOICE_ABI,
+        functionName: "submitInvoice",
+        args: [
+          BigInt(Math.floor(invoicePeriod.startDate.getTime() / 1000)),
+          BigInt(Math.floor(invoicePeriod.endDate.getTime() / 1000)),
+          BigInt(totalCostsInEth),
+        ],
+      }),
+    });
 
     let httpsAgent: Agent | undefined;
-    if (tls) {
+    if (
+      tls &&
+      web3SignerKeystorePath &&
+      web3SignerKeystorePassphrase &&
+      web3SignerTrustedStorePath &&
+      web3SignerTrustedStorePassphrase
+    ) {
       this.log(`Using TLS for secure communication with Web3 Signer.`);
-      httpsAgent = getWeb3SignerHttpsAgent(
+      httpsAgent = getHttpsAgent(
         web3SignerKeystorePath,
         web3SignerKeystorePassphrase,
         web3SignerTrustedStorePath,
@@ -224,30 +307,79 @@ export default class EthTransfer extends Command {
       );
     }
 
-    const signature = await getWeb3SignerSignature(web3SignerUrl, web3SignerPublicKey, transaction, httpsAgent);
+    const transactionToSerialize: TransactionSerializable = {
+      to: contractAddress,
+      type: "eip1559",
+      value: BigInt(totalCostsInEth),
+      data: computeSubmitInvoiceCalldata(
+        BigInt(Math.floor(invoicePeriod.startDate.getTime() / 1000)),
+        BigInt(Math.floor(invoicePeriod.endDate.getTime() / 1000)),
+        BigInt(totalCostsInEth),
+      ),
+      chainId: linea.id,
+      gas: gasLimit,
+      maxFeePerGas: baseFeePerGas + priorityFeePerGas,
+      maxPriorityFeePerGas: priorityFeePerGas,
+    };
+
+    const signature = await getWeb3SignerSignature(
+      web3SignerUrl,
+      web3SignerPublicKey,
+      transactionToSerialize,
+      httpsAgent,
+    );
+
+    const serializeSignedTransaction = serializeTransaction(transactionToSerialize, parseSignature(signature));
 
     if (dryRun) {
-      this.log("Dry run enabled: Skipping transaction submission to blockchain.");
-      this.log(`Here is the expected rewards: ${ethers.formatEther(rewards)} ETH`);
+      this.log(`Dry run mode - transaction not submitted.`);
       return;
     }
 
-    const receipt = await executeTransaction(provider, {
-      ...transaction,
-      signature,
+    this.log(`Broadcasting submitInvoice transaction to the network...`);
+    const txHash = await client.sendRawTransaction({
+      serializedTransaction: serializeSignedTransaction,
+    });
+    this.log(`Transaction submitted. transactionHash=${txHash}`);
+
+    const receipt = await client.waitForTransactionReceipt({ hash: txHash });
+
+    if (receipt.status === "success") {
+      const [event] = parseEventLogs({
+        abi: INVOICE_PROCESSED_EVENT_ABI,
+        logs: receipt.logs,
+        eventName: "InvoiceProcessed",
+      });
+
+      this.log(
+        `Invoice successfully submitted: eventName=${event.eventName} receiver=${event.args.receiver} startTimestamp=${event.args.startTimestamp} endTimestamp=${event.args.endTimestamp} amountPaid=${event.args.amountPaid} amountRequested=${event.args.amountRequested}`,
+      );
+      return;
+    }
+
+    const transaction = await client.getTransaction({ hash: txHash });
+    const { data } = await client.call({
+      to: transaction.to,
+      account: senderAddress,
+      data: transaction.input,
+      blockNumber: receipt.blockNumber,
+      value: transaction.value,
+      maxFeePerGas: transaction.maxFeePerGas,
+      maxPriorityFeePerGas: transaction.maxPriorityFeePerGas,
+      gas: receipt.gasUsed,
+      type: "eip1559",
     });
 
-    if (!receipt) {
-      throw new Error(`Transaction receipt not found for this transaction ${JSON.stringify(transaction)}`);
+    if (!data || data === "0x") {
+      this.error(`Invoice submission failed without a specific error message.`);
     }
 
-    if (receipt.status === 0) {
-      throw new Error(`Transaction reverted. Receipt: ${JSON.stringify(receipt)}`);
-    }
-
-    this.log(
-      `Transaction succeeded. Rewards sent: ${ethers.formatEther(rewards)} ETH. Receipt: ${JSON.stringify(receipt)}`,
+    const error = decodeErrorResult({
+      abi: ROLLUP_REVENUE_VAULT_ERRORS_ABI,
+      data,
+    });
+    this.error(
+      `Invoice submission failed with the following error: name=${error.errorName} args=${error.args.join(", ")}`,
     );
-    this.log(`Rewards sent: ${ethers.formatEther(rewards)} ETH`);
   }
 }
