@@ -64,7 +64,6 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 		localPartialQuotient := make(extensions.Vector, qa.getNumRow())
 		localRes := make(extensions.Vector, qa.getNumRow())
-		poly := make(extensions.Vector, qa.getNumRow())
 
 		for polyID := start; polyID < stop; polyID++ {
 
@@ -83,31 +82,31 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 			}
 
 			foundNonConstantPoly = true
-
-			polySV.WriteInSliceExt(poly)
 			pointsOfPoly := qa.EvalPointOfPolys[polyID]
 
-			if polySV.Len() < qa.getNumRow() {
-				_ldeOfExt(poly, polySV.Len(), qa.getNumRow())
-			}
-
-			for j, queryID := range pointsOfPoly {
-				zeta := zetas[queryID]
-
-				// For the first term, we do not need to add anything to accumulate
-				// but this is not just an optimization: since partialQuotient is
-				// allocated from the pool, we cannot assume it was already zeroed.
-				if j == 0 {
-					copy(localPartialQuotient, zeta)
-					continue
-				}
-
+			copy(localPartialQuotient, zetas[pointsOfPoly[0]])
+			for j := 1; j < len(pointsOfPoly); j++ {
+				zeta := zetas[pointsOfPoly[j]]
 				localPartialQuotient.Add(localPartialQuotient, zeta)
 			}
 
-			localPartialQuotient.Mul(localPartialQuotient, poly)
-			localPartialQuotient.ScalarMul(localPartialQuotient, &powersOfRho[polyID])
+			if polySV.Len() < qa.getNumRow() {
+				// TODO @gbotrel this does not seem to be tested.
+				poly := polySV.IntoRegVecSaveAllocExt()
+				_ldeOfExt(poly, polySV.Len(), qa.getNumRow())
+				localPartialQuotient.Mul(localPartialQuotient, poly)
+			} else {
+				switch v := polySV.(type) {
+				case *smartvectors.Regular:
+					poly := field.Vector(*v)
+					localPartialQuotient.MulByElement(localPartialQuotient, poly)
+				default:
+					poly := polySV.IntoRegVecSaveAllocExt()
+					localPartialQuotient.Mul(localPartialQuotient, poly)
+				}
+			}
 
+			localPartialQuotient.ScalarMul(localPartialQuotient, &powersOfRho[polyID])
 			localRes.Add(localRes, localPartialQuotient)
 		}
 

@@ -10,6 +10,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
@@ -126,15 +128,23 @@ var (
 	}
 )
 
-func BenchmarkCompiler(b *testing.B) {
+func BenchmarkCompilerWithoutSelfRecursion(b *testing.B) {
 	for _, bc := range benchCases {
 		b.Run(bc.Name, func(b *testing.B) {
-			benchmarkCompiler(b, bc)
+			benchmarkCompilerWithoutSelfRecursion(b, bc)
 		})
 	}
 }
 
-func benchmarkCompiler(b *testing.B, sbc StdBenchmarkCase) {
+func BenchmarkCompilerWithSelfRecursion(b *testing.B) {
+	for _, bc := range benchCases {
+		b.Run(bc.Name, func(b *testing.B) {
+			benchmarkCompilerWithSelfRecursion(b, bc)
+		})
+	}
+}
+
+func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 	comp := wizard.Compile(
 		sbc.Define,
@@ -145,6 +155,59 @@ func benchmarkCompiler(b *testing.B, sbc StdBenchmarkCase) {
 		vortex.Compile(
 			2,
 			vortex.WithOptionalSISHashingThreshold(0),
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+	)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = wizard.Prove(comp, sbc.NewAssigner(b))
+	}
+}
+
+func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
+
+	comp := wizard.Compile(
+
+		// Round of recursion 0
+		sbc.Define,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<18),
+			compiler.WithStitcherMinSize(1<<8),
+		),
+		vortex.Compile(
+			2,
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+		selfrecursion.SelfRecurse,
+
+		// Round of recursion 1
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<16),
+			compiler.WithStitcherMinSize(1<<8),
+		),
+		vortex.Compile(
+			8,
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+		selfrecursion.SelfRecurse,
+
+		// Round of recursion 2
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+			compiler.WithStitcherMinSize(1<<8),
+		),
+		vortex.Compile(
+			8,
+			vortex.WithOptionalSISHashingThreshold(512),
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&ringsis.StdParams),
 		),

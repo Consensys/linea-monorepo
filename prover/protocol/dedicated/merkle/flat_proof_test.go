@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 const (
@@ -104,7 +105,7 @@ func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleT
 				left[k] = ctx.ctx.Lefts[l][k].Result.GetColAssignmentAt(run, i)
 				right[k] = ctx.ctx.Rights[l][k].Result.GetColAssignmentAt(run, i)
 				node[k] = ctx.ctx.Nodes[l].Result()[k].GetColAssignmentAt(run, i)
-				// fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left[k].Text(16), right[k].Text(16), node[k].Text(16))
+				fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left[k].Text(16), right[k].Text(16), node[k].Text(16))
 			}
 
 		}
@@ -145,6 +146,7 @@ type merkleTestBuilderRow struct {
 func newMerkleTestBuilder(depth int) *merkleTestBuilder {
 	return &merkleTestBuilder{
 		tree: *smt.BuildComplete(make([]field.Octuplet, 1<<depth), hashtypes.Poseidon2),
+		tree: *smt.BuildComplete(make([]types.Bytes32, 1<<depth), hashtypes.Poseidon2),
 	}
 }
 
@@ -193,8 +195,8 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 	mt.counter = append(mt.counter, field.NewElement(uint64(len(mt.counter))))
 	mt.proofs = append(mt.proofs, row.proof)
 	mt.pos = append(mt.pos, field.NewElement(uint64(row.pos)))
-	leafOct := row.leaf
-	rootOct := row.root
+	leafOct := types.Bytes32ToHash(row.leaf)
+	rootOct := types.Bytes32ToHash(row.root)
 	for i := 0; i < blockSize; i++ {
 		mt.leaves[i] = append(mt.leaves[i], leafOct[i])
 		mt.roots[i] = append(mt.roots[i], rootOct[i])

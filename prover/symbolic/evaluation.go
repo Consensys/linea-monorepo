@@ -299,14 +299,16 @@ func evalNodeExt(solver *evaluation[fext.Element], na *evaluationNode[fext.Eleme
 
 	switch op := na.op.(type) {
 	case Product:
-		for i := range na.inputs {
+		vRes.Exp(na.inputs[0][:], int64(op.Exponents[0]))
+		for i := 1; i < len(na.inputs); i++ {
 			vInput := extensions.Vector(na.inputs[i][:])
-			if i == 0 {
-				vRes.Exp(vInput, int64(op.Exponents[i]))
-			} else {
-				vTmp.Exp(vInput, int64(op.Exponents[i]))
-				vRes.Mul(vRes, vTmp)
+			if op.Exponents[i] == 1 {
+				// common case
+				vRes.Mul(vRes, vInput)
+				continue
 			}
+			vTmp.Exp(vInput, int64(op.Exponents[i]))
+			vRes.Mul(vRes, vTmp)
 		}
 	case LinComb:
 		var t0 extensions.E4
