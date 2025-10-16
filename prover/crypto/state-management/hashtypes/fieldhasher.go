@@ -1,82 +1,122 @@
 package hashtypes
 
 import (
-	"hash"
+	"errors"
 
 	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	"github.com/consensys/gnark-crypto/hash"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	. "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-// ----- FieldHasher Interface ----- //
+// Hasher is an interface for a hash function that operates on field elements
+type Poseidon2FieldHasher interface {
+	hash.StateStorer
+	WriteElement(e field.Element)
+	WriteElements(elems []field.Element)
+	SumElement() field.Octuplet
+	SumElements(elems []field.Element) field.Octuplet
 
-// FieldHasher defines the interface for any field-element-based hashing algorithm
-type FieldHasher interface {
-	FieldHash(xs []field.Element) field.Octuplet // Hashes field elements into an Octuplet (e.g., Poseidon sponge)
-	MaxBytes32() Bytes32                         // Returns the maximum representable value as Bytes32
+	MaxBytes32() types.Bytes32 // Returns the maximum representable value as Bytes32
 }
 
-// ----- Hasher Struct ----- //
+// digest represents the partial evaluation of the checksum
+// along with the params of the mimc function
+type Poseidon2FieldHasherDigest struct {
+	hash.StateStorer
 
-// Hasher is a generic hashing implementation that takes a backend FieldHasher, and a standard hash.Hash
-type Hasher struct {
-	hash.Hash             // Any byte-stream hash implementation (e.g., Merkle-Damgard)
-	Backend   FieldHasher // Backend implementation of field-element-based hashing
-	MaxByte32 Bytes32     // Precomputed maximum field value from the backend
+	maxValue types.Bytes32
+
+	// Sponge construction state
+	h    field.Octuplet
+	data []field.Element // data to hash
 }
 
-// FieldHash delegates the field hashing operation to the backend FieldHasher
-func (f Hasher) FieldHash(xs []field.Element) field.Octuplet {
-	return f.Backend.FieldHash(xs)
-}
-
-// MaxBytes32 delegates the retrieval of max field value to the backend FieldHasher
-func (f Hasher) MaxBytes32() Bytes32 {
-	return f.MaxByte32
-}
-
-// Constructor for Hasher
-func NewHasher(backend FieldHasher, hasher hash.Hash) Hasher {
-	return Hasher{
-		Hash:      hasher,
-		Backend:   backend,
-		MaxByte32: backend.MaxBytes32(),
-	}
-}
-
-// ----- Poseidon2 Implementation ----- //
-
-// Poseidon2FieldHasher is a specific implementation of FieldHasher using the Poseidon2 function
-type Poseidon2FieldHasher struct {
-	maxValue Bytes32
-}
-
-// FieldHash computes the Poseidon2 Sponge hash based on field elements
-func (p Poseidon2FieldHasher) FieldHash(xs []field.Element) field.Octuplet {
-	return poseidon2.Poseidon2Sponge(xs)
-}
-
-// MaxBytes32 returns the maximal field value that Poseidon2 can work with
-func (p Poseidon2FieldHasher) MaxBytes32() Bytes32 {
-	return p.maxValue
-}
-
-// Constructor for Poseidon2FieldHasher, later be used as backend in Poseidon2 Hasher
-func NewPoseidon2Backend() Poseidon2FieldHasher {
+// Poseidon2 returns a FieldHasher (works with typed field elements, not bytes)
+func Poseidon2() Poseidon2FieldHasher {
 	var maxVal field.Octuplet // This stores the maximal value for each element
 	for i := range maxVal {
 		maxVal[i] = field.NewFromString("-1") // Initialize max field value (field modulus - 1)
 	}
-	return Poseidon2FieldHasher{
-		maxValue: HashToBytes32(maxVal), // Convert the max value Octuplet to Bytes32 representation
+	poseidon2FieldHasherDigest := &Poseidon2FieldHasherDigest{
+		maxValue:    types.HashToBytes32(maxVal), // Convert the max value Octuplet to Bytes32 representation
+		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
+		h:           field.Octuplet{},
+		data:        []field.Element{},
 	}
+
+	return poseidon2FieldHasherDigest
 }
 
-// Constructor for Poseidon2
-func Poseidon2() Hasher {
-	poseidonBackend := NewPoseidon2Backend()
-	fieldHasher := NewHasher(poseidonBackend, gnarkposeidon2.NewMerkleDamgardHasher())
-	return fieldHasher
+// Reset resets the Hash to its initial state.
+func (d *Poseidon2FieldHasherDigest) Reset() {
+	d.data = d.data[:0]
+	d.h = field.Octuplet{}
+}
+
+// WriteElement adds a field element to the running hash.
+func (d *Poseidon2FieldHasherDigest) WriteElement(e field.Element) {
+	d.data = append(d.data, e)
+}
+func (d *Poseidon2FieldHasherDigest) WriteElements(elems []field.Element) {
+	d.data = append(d.data, elems...)
+}
+
+// SumElement returns the current hash as a field element.
+func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
+	h := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
+	vector.Add(d.h[:], h[:], d.h[:])
+
+	d.data = d.data[:0]
+	return d.h
+}
+
+// SumElement returns the current hash as a field element.
+func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Octuplet {
+	h1 := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
+	vector.Add(d.h[:], h1[:], d.h[:])
+
+	h2 := poseidon2.Poseidon2Sponge(elems) // Poseidon2Sponge include the feedforward process
+	vector.Add(d.h[:], h2[:], d.h[:])
+
+	d.data = d.data[:0]
+	return d.h
+}
+func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
+	// we usually expect multiple of block size. But sometimes we hash short
+	// values (FS transcript). Instead of forcing to hash to field, we left-pad the
+	// input here.
+	BlockSize := field.Bytes // 4 bytes = 1 field element
+	if len(p) > 0 && len(p) < BlockSize {
+		pp := make([]byte, BlockSize)
+		copy(pp[len(pp)-len(p):], p)
+		p = pp
+	}
+
+	var start int
+	for start = 0; start < len(p); start += BlockSize {
+		var elem field.Element
+		elem.SetBytes(p[start : start+BlockSize])
+		d.data = append(d.data, elem)
+	}
+
+	if start != len(p) {
+		return 0, errors.New("invalid input length: must represent a list of field elements, expects a []byte of len m*BlockSize")
+	}
+	return len(p), nil
+}
+
+// Sum computes the poseidon2 hash of msg
+func (d *Poseidon2FieldHasherDigest) Sum(msg []byte) []byte {
+	h := d.SumElement()
+	bytes := types.HashToBytes32(h)
+	return bytes[:]
+}
+
+// MaxBytes32 returns the maximal field value that Poseidon2 can work with
+func (p Poseidon2FieldHasherDigest) MaxBytes32() types.Bytes32 {
+	return p.maxValue
 }

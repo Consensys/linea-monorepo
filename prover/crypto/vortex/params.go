@@ -37,10 +37,10 @@ type Params struct {
 	MaxNbRows int
 	// LeafHashFunc returns a `hash.Hash` which is used
 	// to compute the leaves of the Merkle tree.
-	LeafHashFunc func() hashtypes.Hasher
+	LeafHashFunc func() hashtypes.Poseidon2FieldHasher
 	// MerkleHashFunc returns a `hash.Hash` which is used
 	// to hash the nodes of the Merkle tree.
-	MerkleHashFunc func() hashtypes.Hasher
+	MerkleHashFunc func() hashtypes.Poseidon2FieldHasher
 
 	// Coset table of the small domain, bit reversed
 	CosetTableBitReverse field.Vector
@@ -61,8 +61,8 @@ func NewParams(
 	nbColumns int,
 	maxNbRows int,
 	sisParams ringsis.Params,
-	merkleHashFunc func() hashtypes.Hasher,
-	leafHashFunc func() hashtypes.Hasher,
+	merkleHashFunc func() hashtypes.Poseidon2FieldHasher,
+	leafHashFunc func() hashtypes.Poseidon2FieldHasher,
 ) *Params {
 
 	if !utils.IsPowerOfTwo(nbColumns) {
