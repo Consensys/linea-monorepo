@@ -149,7 +149,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       uint256 lstLiabilityPayment = _payMaximumPossibleLSTLiability($$);
       newReportedYield = Math256.safeSub(newReportedYield, lstLiabilityPayment);
       // 2. Pay obligations
-      uint256 obligationsPaid = _payObligations($$, newReportedYield);
+      uint256 obligationsPaid = _payObligations($$);
       newReportedYield = Math256.safeSub(newReportedYield, obligationsPaid);
       // 3. Pay node operator fees
       uint256 nodeOperatorFeesPaid = _payNodeOperatorFees($$, newReportedYield);
@@ -229,22 +229,21 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
 
   /**
    * @notice Helper function to pay obligations.
-   * @dev In Lido's system, a subfield of obligations is 'redemptions'. Redemptions are decremented 1:1 with liabilities.
+   * @dev Greedily pay fees. settleLidoFees is permissionless, so better to trigger it ourselves.
    * @param $$ Storage pointer for the YieldProvider-scoped storage.
-   * @param _availableYield Amount of yield available.
    * @return obligationsPaid Amount of ETH used to pay obligations.
    */
-  function _payObligations(
-    YieldProviderStorage storage $$,
-    uint256 _availableYield
-  ) internal returns (uint256 obligationsPaid) {
-    if (_availableYield == 0) return 0;
+  function _payObligations(YieldProviderStorage storage $$) internal returns (uint256 obligationsPaid) {
     address vault = $$.ossifiedEntrypoint;
     uint256 beforeVaultBalance = vault.balance;
-    // Unfortunately, there is no function on VaultHub to specify how much obligation we want to repay.
-    VAULT_HUB.settleLidoFees(vault);
-    uint256 afterVaultBalance = vault.balance;
-    obligationsPaid = beforeVaultBalance - afterVaultBalance;
+    // There are multiple revert conditions on the Lido implementation
+    // We just want to greedily attempt Lido fee payment
+    // We don't care if or how it fails
+    try VAULT_HUB.settleLidoFees(vault) {
+      obligationsPaid = beforeVaultBalance - vault.balance;
+    } catch {
+      return 0;
+    }
   }
 
   /**

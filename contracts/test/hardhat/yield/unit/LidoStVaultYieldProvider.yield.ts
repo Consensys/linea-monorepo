@@ -457,15 +457,15 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
   });
 
   describe("payObligations", () => {
-    it("If 0 available yield, no-op", async () => {
-      const amountAvailable = ZERO_VALUE;
+    it("If payLidoFees reverts, successfully return 0", async () => {
+      await mockVaultHub.setIsSettleLidoFeesReverting(true);
       const obligationsPaid = await yieldManager
         .connect(securityCouncil)
-        .payObligations.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress, amountAvailable);
+        .payObligations.staticCall(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress);
       expect(obligationsPaid).eq(0);
     });
-    it("If obligationsPaid <= availableYield, succeed", async () => {
+    it("If payLidoFees succeeds, return non-0", async () => {
       // Arrange - Set up Vault balance
       const vaultBalance = ONE_ETHER * 2n;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
@@ -477,37 +477,14 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
 
       // Act
-      const availableYield = ONE_ETHER * 2n;
       const obligationsPaid = await yieldManager
         .connect(securityCouncil)
-        .payObligations.staticCall(yieldProviderAddress, availableYield);
+        .payObligations.staticCall(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress);
 
-      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress, availableYield);
       // Assert
       expect(expectedObligationsPaid).eq(obligationsPaid);
       expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - obligationsPaid);
-    });
-    it("If obligationsPaid > availableYield, succeed", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER * 2n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Obligations paid
-      const expectedObligationsPaid = ONE_ETHER * 2n;
-      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
-      await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const availableYield = ONE_ETHER;
-      const obligationsPaid = await yieldManager
-        .connect(securityCouncil)
-        .payObligations.staticCall(yieldProviderAddress, availableYield);
-
-      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress, availableYield);
-      // Assert
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - obligationsPaid);
-      expect(expectedObligationsPaid).eq(obligationsPaid);
     });
   });
 
