@@ -74,7 +74,7 @@ func (s *schemaScanner) scanColumns() {
 			size = newSize
 		}
 		// #nosec G115 -- this bound will not overflow
-		if size == 0 {
+		if size == 0 && modDecl.Name() != "" {
 			logrus.Infof("Module %s has size 0", modDecl.Name())
 		}
 		// Iterate each register (i.e. column) in that module
