@@ -46,15 +46,6 @@ func runController(ctx context.Context, cfg *config.Config) {
 		signalChan = make(chan os.Signal, 2)
 	)
 
-	// Helper to requeue a job
-	requeueJob := func(job *Job) {
-		_ = os.Remove(job.TmpResponseFile(cfg))
-		if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
-			cLog.Errorf("Failed to requeue job %v: %v", job.InProgressPath(), err)
-		}
-		cLog.Infof("REQUEUED job: %v", job.OriginalFile)
-	}
-
 	// Start the metric server
 	if cfg.Controller.Prometheus.Enabled {
 		metrics.StartServer(
@@ -71,91 +62,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGUSR1)
 	defer signal.Stop(signalChan)
 
-	// Signal handler goroutine — race-safe with atomic flags
-	// We never stop listening since it is possible to receive more than one signals
-	// For ex: spot reclaim => SIGUSR1 -> SIGTERM
-	go func() {
-		for sig := range signalChan {
-			switch sig {
-			case syscall.SIGUSR1:
-				spotReclaimDetected.Store(true)
-				if !gracefulShutdownRequested.Load() {
-					cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP...")
-					cancel()
-					if cfg.Controller.Prometheus.Enabled {
-						metrics.IncSpotInterruption(cfg.Controller.LocalID)
-					}
-				} else {
-					cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
-				}
-
-				// Requeue active job immediately for spot reclaim
-				if state.activeJob != nil {
-					cLog.Infof("Spot reclaim detected during job: %v", state.activeJob.OriginalFile)
-					requeueJob(state.activeJob)
-					state.activeJob = nil
-					state.notifyJobDone()
-				}
-			case syscall.SIGTERM:
-				gracefulShutdownRequested.Store(true)
-				if !spotReclaimDetected.Load() {
-					cLog.Info("Received SIGTERM: graceful shutdown requested")
-				}
-				// NOTE: DO NOT call cancel() here to respect the termination grace period
-				// If there's an active job, start a timer to enforce grace period
-				if state.activeJob != nil {
-					state.jobDoneChanMu.Lock()
-					if state.jobDoneChan == nil {
-						state.jobDoneChan = make(chan struct{})
-					}
-					// Using a local copy prevents subtle bugs and race conditions that can happen if the global jobDoneChan
-					// is modified from elsewhere
-					localJobDoneChan := state.jobDoneChan
-					state.jobDoneChanMu.Unlock()
-					go func() {
-						cLog.Infof("Allowing in-flight job to finish (max %ds)...", cfg.Controller.TerminationGracePeriod)
-						select {
-						case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
-							cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
-							cancel()
-
-						// Closing the done channel immediately  succeeds in reading (returning zero value)
-						// This case is triggered when the running job is done and the channel is closed—letting the
-						// shutdown happen promptly instead of waiting out the whole grace period.
-						case <-localJobDoneChan:
-							cLog.Info("Job finished before grace period expired. Cancelling context to exit immediately...")
-							cancel()
-						}
-					}()
-				} else {
-					cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
-					cancel()
-				}
-			}
-		}
-	}()
-
-	// This goroutine's purpose is to log a message immediately when a
-	// cancellation request (e.g., ctx expiration/cancellation, SIGTERM, etc.)
-	// is received. It ensures timely logging of the request's reception,
-	// which may be important for diagnostics. Without this
-	// goroutine, if the prover is busy with a proof when, for example, a
-	// SIGTERM is received, there would be no log entry about the signal
-	// until the proof completes.
-	go func() {
-		<-cmdCtx.Done()
-		if spotReclaimDetected.Load() {
-			cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
-		} else if gracefulShutdownRequested.Load() {
-			if state.activeJob != nil {
-				cLog.Infof("Context done: grace period expired, forcing shutdown")
-			} else {
-				cLog.Info("Context done: graceful shutdown complete")
-			}
-		} else {
-			cLog.Infoln("Context done due to cancellation request.")
-		}
-	}()
+	state.handleSignals(cancel, cLog, cfg, signalChan, &spotReclaimDetected, &gracefulShutdownRequested)
+	state.logOnContextDone(cmdCtx, cLog, &spotReclaimDetected, &gracefulShutdownRequested, cfg)
 
 	// If any files are locked to RAM unlock it before exiting
 	defer assets.UnlockAllLockedFiles()
@@ -176,9 +84,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// the job is still active (timer already slept in signal handler) - See signal handler go routine
 			if !spotReclaimDetected.Load() && gracefulShutdownRequested.Load() && state.activeJob != nil {
 				cLog.Infof("Job %v did not finish before termination grace period. Requeuing...", state.activeJob.OriginalFile)
-				requeueJob(state.activeJob)
-				state.activeJob = nil
-				state.notifyJobDone()
+				state.requeueJob(cfg, cLog)
 			}
 			return
 
@@ -189,30 +95,18 @@ func runController(ctx context.Context, cfg *config.Config) {
 				continue
 			}
 
-			//  Skip fetching new jobs if graceful shutdown or spot reclaim is in progress
+			// Skip fetching new jobs if shutdown is in progress
 			if gracefulShutdownRequested.Load() || spotReclaimDetected.Load() {
 				numRetrySoFar++
-				noJobFoundMsg := "Shutdown in progress, skipping new jobs"
-				if numRetrySoFar > 5 {
-					cLog.Debug(noJobFoundMsg)
-				} else {
-					cLog.Info(noJobFoundMsg)
-				}
+				logRetryMessage(cLog, "Shutdown in progress, skipping new jobs", numRetrySoFar)
 				continue
 			}
 
-			// Fetch the best block we can fetch
+			// Fetch the best job available
 			job := fsWatcher.GetBest()
-
-			// No jobs, waiting a little before we retry
 			if job == nil {
 				numRetrySoFar++
-				noJobFoundMsg := "found no jobs in the queue"
-				if numRetrySoFar > 5 {
-					cLog.Debug(noJobFoundMsg)
-				} else {
-					cLog.Info(noJobFoundMsg)
-				}
+				logRetryMessage(cLog, "Found no jobs in the queue", numRetrySoFar)
 				continue
 			}
 
@@ -255,6 +149,83 @@ func (s *ControllerState) notifyJobDone() {
 		s.jobDoneChan = nil
 	}
 	s.jobDoneChanMu.Unlock()
+}
+
+func (s *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
+	if s.activeJob == nil {
+		return
+	}
+
+	job := s.activeJob
+	_ = os.Remove(job.TmpResponseFile(cfg))
+	if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
+		cLog.Errorf("Failed to requeue job %v: %v", job.InProgressPath(), err)
+	} else {
+		cLog.Infof("REQUEUED job: %v", job.OriginalFile)
+	}
+
+	s.activeJob = nil
+	s.notifyJobDone()
+}
+
+func (s *ControllerState) handleSignals(
+	cancel context.CancelFunc,
+	cLog *logrus.Entry,
+	cfg *config.Config,
+	signalChan <-chan os.Signal,
+	spotReclaimDetected *atomic.Bool,
+	gracefulShutdownRequested *atomic.Bool,
+) {
+	go func() {
+		for sig := range signalChan {
+			switch sig {
+			case syscall.SIGUSR1:
+				spotReclaimDetected.Store(true)
+				if !gracefulShutdownRequested.Load() {
+					cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP...")
+					cancel()
+					if cfg.Controller.Prometheus.Enabled {
+						metrics.IncSpotInterruption(cfg.Controller.LocalID)
+					}
+				} else {
+					cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
+				}
+
+				// Requeue active job immediately
+				s.requeueJob(cfg, cLog)
+
+			case syscall.SIGTERM:
+				gracefulShutdownRequested.Store(true)
+				if !spotReclaimDetected.Load() {
+					cLog.Info("Received SIGTERM: graceful shutdown requested")
+				}
+
+				if s.activeJob != nil {
+					s.jobDoneChanMu.Lock()
+					if s.jobDoneChan == nil {
+						s.jobDoneChan = make(chan struct{})
+					}
+					localJobDoneChan := s.jobDoneChan
+					s.jobDoneChanMu.Unlock()
+
+					go func() {
+						cLog.Infof("Allowing in-flight job to finish (max %ds)...", cfg.Controller.TerminationGracePeriod)
+						select {
+						case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
+							cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
+							cancel()
+						case <-localJobDoneChan:
+							cLog.Info("Job finished before grace period expired. Cancelling context to exit immediately...")
+							cancel()
+						}
+					}()
+				} else {
+					cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
+					cancel()
+				}
+			}
+		}
+	}()
 }
 
 // handleJobResult processes a job according to its exit status.
@@ -327,34 +298,6 @@ func (state *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.
 	state.notifyJobDone()
 }
 
-func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {
-	pattern := filepath.Join(cfg.Execution.DirDone(), fmt.Sprintf("%d-%d-*.%s", job.Start, job.End, oldSuffix))
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		cLog.Errorf("Glob pattern failed for %v: %v", pattern, err)
-		return
-	}
-
-	if len(matches) == 0 {
-		cLog.Warnf("No file found matching %v (maybe already moved?)", pattern)
-		return
-	}
-	if len(matches) > 1 {
-		cLog.Warnf("Multiple files match pattern %v, using first: %v", pattern, matches)
-	}
-
-	oldFile := matches[0]
-	newFile := strings.TrimSuffix(oldFile, "."+oldSuffix) + "." + newSuffix
-
-	cLog.Infof("Renaming file: %v → %v", oldFile, newFile)
-
-	if err := os.Rename(oldFile, newFile); err != nil {
-		cLog.Errorf("Failed to rename %v → %v: %v", oldFile, newFile, err)
-	} else {
-		cLog.Infof("Successfully replaced suffix %q → %q for %d-%d", oldSuffix, newSuffix, job.Start, job.End)
-	}
-}
-
 // handleDeferToLarge defers job execution to the large prover.
 func (state *ControllerState) handleDeferToLarge(cLog *logrus.Entry, job *Job, status Status) {
 	cLog.Infof("Renaming %v for the large prover", job.OriginalFile)
@@ -423,4 +366,58 @@ func (state *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.
 	// Set active job to nil as there is nothing more to retry
 	state.activeJob = nil
 	state.notifyJobDone()
+}
+
+func (s *ControllerState) logOnContextDone(cmdCtx context.Context, cLog *logrus.Entry,
+	spotReclaimDetected *atomic.Bool, gracefulShutdownRequested *atomic.Bool, cfg *config.Config) {
+	go func() {
+		<-cmdCtx.Done()
+		if spotReclaimDetected.Load() {
+			cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
+		} else if gracefulShutdownRequested.Load() {
+			if s.activeJob != nil {
+				cLog.Infof("Context done: grace period expired, forcing shutdown")
+			} else {
+				cLog.Info("Context done: graceful shutdown complete")
+			}
+		} else {
+			cLog.Infoln("Context done due to cancellation request.")
+		}
+	}()
+}
+
+func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {
+	pattern := filepath.Join(cfg.Execution.DirDone(), fmt.Sprintf("%d-%d-*.%s", job.Start, job.End, oldSuffix))
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		cLog.Errorf("Glob pattern failed for %v: %v", pattern, err)
+		return
+	}
+
+	if len(matches) == 0 {
+		cLog.Warnf("No file found matching %v (maybe already moved?)", pattern)
+		return
+	}
+	if len(matches) > 1 {
+		cLog.Warnf("Multiple files match pattern %v, using first: %v", pattern, matches)
+	}
+
+	oldFile := matches[0]
+	newFile := strings.TrimSuffix(oldFile, "."+oldSuffix) + "." + newSuffix
+
+	cLog.Infof("Renaming file: %v → %v", oldFile, newFile)
+
+	if err := os.Rename(oldFile, newFile); err != nil {
+		cLog.Errorf("Failed to rename %v → %v: %v", oldFile, newFile, err)
+	} else {
+		cLog.Infof("Successfully replaced suffix %q → %q for %d-%d", oldSuffix, newSuffix, job.Start, job.End)
+	}
+}
+
+func logRetryMessage(cLog *logrus.Entry, msg string, numRetry int) {
+	if numRetry > 5 {
+		cLog.Debug(msg)
+	} else {
+		cLog.Info(msg)
+	}
 }
