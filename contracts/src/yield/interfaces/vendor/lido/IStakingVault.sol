@@ -16,4 +16,6 @@ interface IStakingVault is ICommonVaultOperations {
   function acceptOwnership() external;
 
   function ossify() external;
+
+  function availableBalance() external view returns (uint256);
 }

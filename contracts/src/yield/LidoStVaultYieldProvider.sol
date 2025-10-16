@@ -104,7 +104,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    */
   function withdrawableValue(address _yieldProvider) external view onlyDelegateCall returns (uint256) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return $$.isOssified ? $$.ossifiedEntrypoint.balance : IDashboard($$.primaryEntrypoint).withdrawableValue();
+    return
+      $$.isOssified
+        ? IStakingVault($$.ossifiedEntrypoint).availableBalance()
+        : IDashboard($$.primaryEntrypoint).withdrawableValue();
   }
 
   /**
@@ -160,6 +163,32 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     } else {
       newReportedYield = 0;
       outstandingNegativeYield = lastUserFunds - totalVaultFunds;
+    }
+  }
+
+  /**
+   * @notice Helper function to pay the maximum possible outstanding LST liability.
+   * @param $$ Storage pointer for the YieldProvider-scoped storage.
+   * @dev Call _syncExternalLiabilitySettlement() after LST liability payment is done.
+   * @return liabilityPaidETH Amount of ETH used to pay liabilities.
+   */
+  function _payMaximumPossibleLSTLiability(
+    YieldProviderStorage storage $$
+  ) internal returns (uint256 liabilityPaidETH) {
+    if ($$.isOssified) return 0;
+    IDashboard dashboard = IDashboard($$.primaryEntrypoint);
+    address vault = $$.ossifiedEntrypoint;
+    uint256 availableVaultBalanceBeforeRebalance = IStakingVault(vault).availableBalance();
+    uint256 availableRebalanceShares = STETH.getSharesByPooledEth(availableVaultBalanceBeforeRebalance);
+    uint256 liabilityShares = dashboard.liabilityShares();
+    uint256 rebalanceShares = Math256.min(liabilityShares, availableRebalanceShares);
+    if (rebalanceShares > 0) {
+      // Cheaper lookup for before-after compare than availableBalance()
+      uint256 vaultBalanceBeforeRebalance = vault.balance;
+      dashboard.rebalanceVaultWithShares(rebalanceShares);
+      // Apply consistent accounting treatment that LST interest paid first, then LST principal
+      _syncExternalLiabilitySettlement($$, dashboard.liabilityShares(), $$.lstLiabilityPrincipal);
+      liabilityPaidETH = vaultBalanceBeforeRebalance - vault.balance;
     }
   }
 
@@ -232,9 +261,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     IDashboard dashboard = _getDashboard($$);
     IStakingVault vault = _getVault($$);
     uint256 currentFees = dashboard.nodeOperatorDisbursableFee();
-    uint256 vaultBalance = address(vault).balance;
+    uint256 avalableVaultBalance = vault.availableBalance();
     // Does not allow partial payment of node operator fees, unlike settleVaultObligations
-    if (vaultBalance > currentFees) {
+    if (avalableVaultBalance > currentFees) {
       dashboard.disburseNodeOperatorFee();
       nodeOperatorFeesPaid = currentFees;
     }
@@ -396,17 +425,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
 
     _validateValidatorContainerForPermissionlessUnstake(witness, withdrawalCredentials);
 
-    /** 
-      The consensus specs specify this as 
-    
-       to_withdraw = min(
-            state.balances[index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw,
-            amount
-        )    
-      
-      We will not keep track of 'pending_balance_to_withdraw'.
-      It is enough that $.pendingPermissionlessWithdrawal is decremented on every ETH transfer to L1MessageService.
-    */
+    // https://github.com/ethereum/consensus-specs/blob/master/specs/electra/beacon-chain.md#modified-get_expected_withdrawals
     uint256 maxUnstakeAmountGwei = Math256.min(
       amount,
       Math256.safeSub(witness.effectiveBalance, MIN_0X02_VALIDATOR_ACTIVATION_BALANCE_GWEI)
@@ -468,31 +487,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     // Lido implementation handles Lido fee payment, and revert on fresh report
     // This will fail if any existing liabilities or obligations
     IDashboard(_getYieldProviderStorage(_yieldProvider).primaryEntrypoint).voluntaryDisconnect();
-  }
-
-  /**
-   * @notice Helper function to pay the maximum possible outstanding LST liability.
-   * @param $$ Storage pointer for the YieldProvider-scoped storage.
-   * @dev Call _syncExternalLiabilitySettlement() after LST liability payment is done.
-   * @return liabilityPaidETH Amount of ETH used to pay liabilities.
-   */
-  function _payMaximumPossibleLSTLiability(
-    YieldProviderStorage storage $$
-  ) internal returns (uint256 liabilityPaidETH) {
-    if ($$.isOssified) return 0;
-    IDashboard dashboard = IDashboard($$.primaryEntrypoint);
-    address vault = $$.ossifiedEntrypoint;
-    // Assumption - this is maximum available for rebalance
-    uint256 vaultBalanceBeforeRebalance = vault.balance;
-    uint256 availableRebalanceShares = STETH.getSharesByPooledEth(vaultBalanceBeforeRebalance);
-    uint256 liabilityShares = dashboard.liabilityShares();
-    uint256 rebalanceShares = Math256.min(liabilityShares, availableRebalanceShares);
-    if (rebalanceShares > 0) {
-      dashboard.rebalanceVaultWithShares(rebalanceShares);
-      // Apply consistent accounting treatment that LST interest paid first, then LST principal
-      _syncExternalLiabilitySettlement($$, dashboard.liabilityShares(), $$.lstLiabilityPrincipal);
-      liabilityPaidETH = vaultBalanceBeforeRebalance - vault.balance;
-    }
   }
 
   /**

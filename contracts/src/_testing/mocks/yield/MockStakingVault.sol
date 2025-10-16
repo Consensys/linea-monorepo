@@ -27,6 +27,10 @@ contract MockStakingVault is IStakingVault {
 
   receive() external payable {}
 
+  function availableBalance() external view returns (uint256) {
+    return address(this).balance;
+  }
+
   function pauseBeaconChainDeposits() external override {}
 
   function resumeBeaconChainDeposits() external override {}
