@@ -16,10 +16,14 @@
 package net.consensys.linea.zktracer.module.blsdata;
 
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
-import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.INVALID_G2_POINT_NOT_ON_CURVE;
-import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.LARGE_POINTS;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.BLS_PRIME;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.leadFailure;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.leadSuccess;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.tailFailure;
+import static net.consensys.linea.zktracer.module.blsdata.BlsTestUtils.tailSuccess;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -40,17 +44,16 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class BlsG2AddTest extends TracerTestBase {
+public class BlsG1MapFpToG1Test extends TracerTestBase {
 
   /**
-   * The following test tests the BLS_DATA module's ability to recognize malformed points and, for
-   * well-formed points, to offload curve membership test to gnark, in a way which is in accordance
-   * with the EVM and the return bit of the underlying <b>CALL</b>.
+   * The following test tests the BLS_DATA module's ability to recognize malformed Fp elements in a
+   * way which is in accordance with the EVM and the return bit of the underlying <b>CALL</b>.
    */
   @ParameterizedTest
-  @MethodSource("blsG2AddSource")
-  void testBlsG2Add(String a, String b, TestInfo testInfo) {
-    final Bytes input = Bytes.concatenate(Bytes.fromHexString(a), Bytes.fromHexString(b));
+  @MethodSource({"blsG1MapFpToG1Source", "blsG1MapFpToG1SourceExploringLeadTailPossibilities"})
+  void testBlsG1MapFpToG1(String inputString, TestInfo testInfo) {
+    final Bytes input = Bytes.fromHexString(inputString);
 
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
@@ -75,30 +78,39 @@ public class BlsG2AddTest extends TracerTestBase {
 
     // Do the call
     program
-        .push(256) // retSize
+        .push(128) // retSize
         .push(input.size()) // retOffset
         .push(input.size()) // argSize
         .push(0) // argOffset
-        .push(Address.BLS12_G2ADD) // address
+        .push(Address.BLS12_MAP_FP_TO_G1) // address
         .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
         .op(OpCode.STATICCALL);
-    final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(List.of(codeOwnerAccount), chainConfig, testInfo);
 
     if (isPostPrague(fork)) {
-      final boolean failureIsExpected =
-          a.equals(INVALID_G2_POINT_NOT_ON_CURVE) || b.equals(INVALID_G2_POINT_NOT_ON_CURVE);
+      final boolean failureIsExpected = new BigInteger(inputString, 16).compareTo(BLS_PRIME) >= 0;
       final BlsData blsdata = (BlsData) bytecodeRunner.getHub().blsData();
-      assertEquals(failureIsExpected, blsdata.blsDataOperation().malformedDataExternal());
+      assertEquals(failureIsExpected, blsdata.blsDataOperation().malformedDataInternal());
       assertEquals(failureIsExpected, !blsdata.blsDataOperation().successBit());
     }
   }
 
-  private static Stream<Arguments> blsG2AddSource() {
+  private static Stream<Arguments> blsG1MapFpToG1Source() {
     List<Arguments> arguments = new ArrayList<>();
-    for (String a : LARGE_POINTS) {
-      for (String b : LARGE_POINTS) {
-        arguments.add(Arguments.of(a, b));
+    arguments.add(
+        // A random valid input in Fp
+        Arguments.of(
+            "0000000000000000000000000000000014f10c6ba2ffdf4d14eca5cb0af2470b9b42ba9d42bb5c4ae307784c04accde631e66119d25bf93a86baf0a435c23f14"));
+    return arguments.stream();
+  }
+
+  private static Stream<Arguments> blsG1MapFpToG1SourceExploringLeadTailPossibilities() {
+    // Some of these inputs to do not belong to Fp
+    List<Arguments> arguments = new ArrayList<>();
+    for (String lead : Stream.concat(leadSuccess.stream(), leadFailure.stream()).toList()) {
+      for (String tail : Stream.concat(tailSuccess.stream(), tailFailure.stream()).toList()) {
+        arguments.add(Arguments.of(lead + tail));
       }
     }
     return arguments.stream();

@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ChainConfig;
@@ -48,7 +49,7 @@ public final class BytecodeRunner {
   public static final long DEFAULT_GAS_LIMIT =
       EIP_7825_TRANSACTION_GAS_LIMIT_CAP; // = 0x1000000 max tx gas limit since EIP-7825 (OSAKA)
   private final Bytes byteCode;
-  ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2;
+  @Getter ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2;
 
   /**
    * @param byteCode the byte code to test
@@ -160,6 +161,19 @@ public final class BytecodeRunner {
       List<AccessListEntry> accessList,
       ChainConfig chainConfig,
       TestInfo testInfo) {
+    buildToyExecutionEnvironmentV2(
+        senderBalance, gasLimit, additionalAccounts, payload, accessList, chainConfig, testInfo);
+    toyExecutionEnvironmentV2.run();
+  }
+
+  private void buildToyExecutionEnvironmentV2(
+      Wei senderBalance,
+      Long gasLimit,
+      List<ToyAccount> additionalAccounts,
+      Bytes payload,
+      List<AccessListEntry> accessList,
+      ChainConfig chainConfig,
+      TestInfo testInfo) {
     checkArgument(byteCode != null, "byteCode cannot be empty");
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -209,7 +223,6 @@ public final class BytecodeRunner {
             .zkTracerValidator(zkTracerValidator)
             .transaction(tx)
             .build();
-    toyExecutionEnvironmentV2.run();
   }
 
   public void runInitCode(ChainConfig chainConfig, TestInfo testInfo) {

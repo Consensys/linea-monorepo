@@ -37,8 +37,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 public class CancunAndPraguePrecompilesExcludedTests extends TracerTestBase {
   // TODO: remove me when Linea supports Cancun & Prague precompiles
   @ParameterizedTest
-  @MethodSource("blsAndKzgInput")
-  void kzgExcluded(Address prc, TestInfo testInfo) {
+  @MethodSource("cancunAndPraguePrecompilesExclusionTestSource")
+  void cancunAndPraguePrecompilesExclusionTest(Address prc, TestInfo testInfo) {
     final Bytes bytecode =
         BytecodeCompiler.newProgram(chainConfig)
             .push(0)
@@ -67,7 +67,7 @@ public class CancunAndPraguePrecompilesExcludedTests extends TracerTestBase {
         bytecodeRunner.getHub().bls().lineCount());
   }
 
-  private static Stream<Arguments> blsAndKzgInput() {
+  private static Stream<Arguments> cancunAndPraguePrecompilesExclusionTestSource() {
     final List<Arguments> arguments = new ArrayList<>();
     for (Address address : BLS_PRECOMPILES) {
       arguments.add(Arguments.of(address));

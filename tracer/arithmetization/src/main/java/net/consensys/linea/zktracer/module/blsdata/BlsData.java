@@ -91,31 +91,32 @@ public class BlsData implements OperationListModule<BlsDataOperation> {
         BlsDataOperation.of(wcp, id, precompileFlag, callData, returnData, successBit);
     operations.add(blsDataOperation);
 
-    if (!blsDataOperation.mint()) {
+    if (!blsDataOperation.malformedDataInternal()) {
       // If data are detected to be malformed internally, all limits are implicitly 0
       switch (blsDataOperation.precompileFlag()) {
         case PRC_POINT_EVALUATION -> {
-          pointEvaluationEffectiveCall.updateTally(blsDataOperation.wnon());
-          pointEvaluationFailureCall.updateTally(blsDataOperation.mext());
+          pointEvaluationEffectiveCall.updateTally(blsDataOperation.wellformedDataNonTrivial());
+          pointEvaluationFailureCall.updateTally(blsDataOperation.malformedDataExternal());
         }
         case PRC_BLS_G1_ADD -> {
-          blsG1AddEffectiveCall.updateTally(blsDataOperation.wnon());
-          blsC1MembershipCalls.updateTally(blsDataOperation.mext());
+          blsG1AddEffectiveCall.updateTally(blsDataOperation.wellformedDataNonTrivial());
+          blsC1MembershipCalls.updateTally(blsDataOperation.malformedDataExternal());
         }
         case PRC_BLS_G1_MSM -> {
-          blsG1MsmEffectiveCall.updateTally(blsDataOperation.wnon());
-          blsG1MembershipCalls.updateTally(blsDataOperation.mext());
+          blsG1MsmEffectiveCall.updateTally(blsDataOperation.wellformedDataNonTrivial());
+          blsG1MembershipCalls.updateTally(blsDataOperation.malformedDataExternal());
         }
         case PRC_BLS_G2_ADD -> {
-          blsG2AddEffectiveCall.updateTally(blsDataOperation.wnon());
-          blsC2MembershipCalls.updateTally(blsDataOperation.mext());
+          blsG2AddEffectiveCall.updateTally(blsDataOperation.wellformedDataNonTrivial());
+          blsC2MembershipCalls.updateTally(blsDataOperation.malformedDataExternal());
         }
         case PRC_BLS_G2_MSM -> {
-          blsG2MsmEffectiveCall.updateTally(blsDataOperation.wnon());
-          blsG2MembershipCalls.updateTally(blsDataOperation.mext());
+          blsG2MsmEffectiveCall.updateTally(blsDataOperation.wellformedDataNonTrivial());
+          blsG2MembershipCalls.updateTally(blsDataOperation.malformedDataExternal());
         }
         case PRC_BLS_PAIRING_CHECK -> {
-          if (blsDataOperation.wtrv() || blsDataOperation.wnon()) {
+          if (blsDataOperation.wellformedDataTrivial()
+              || blsDataOperation.wellformedDataNonTrivial()) {
             /*
             G1  | G2  | Circuit
             P   | inf | G1 membership
@@ -125,19 +126,19 @@ public class BlsData implements OperationListModule<BlsDataOperation> {
 
             blsG1MembershipCalls.updateTally(blsDataOperation.trivialPopDueToG2PointCounter());
             blsG2MembershipCalls.updateTally(blsDataOperation.trivialPopDueToG1PointCounter());
-            if (blsDataOperation.wnon()) {
+            if (blsDataOperation.wellformedDataNonTrivial()) {
               blsPairingCheckMillerLoops.updateTally(blsDataOperation.nontrivialPopCounter());
               blsPairingCheckFinalExponentiations.updateTally(1);
             }
-          } else if (blsDataOperation.mext()) {
+          } else if (blsDataOperation.malformedDataExternal()) {
             blsG1MembershipCalls.updateTally(blsDataOperation.firstPointNotInSubgroupIsSmall());
             blsG2MembershipCalls.updateTally(!blsDataOperation.firstPointNotInSubgroupIsSmall());
           }
         }
         case PRC_BLS_MAP_FP_TO_G1 -> blsG1MapFpToG1EffectiveCall.updateTally(
-            blsDataOperation.wnon());
+            blsDataOperation.wellformedDataNonTrivial());
         case PRC_BLS_MAP_FP2_TO_G2 -> blsG1MapFp2ToG2EffectiveCall.updateTally(
-            blsDataOperation.wnon());
+            blsDataOperation.wellformedDataNonTrivial());
       }
     }
   }

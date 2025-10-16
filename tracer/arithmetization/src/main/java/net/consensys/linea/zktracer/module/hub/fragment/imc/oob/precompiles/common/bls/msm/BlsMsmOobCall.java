@@ -17,11 +17,13 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.com
 
 import static net.consensys.linea.zktracer.Trace.PRC_BLS_MULTIPLICATION_MULTIPLIER;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToBlsRefTable;
+import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToDIV;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToGT;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToIsZero;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToMOD;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.noCall;
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToInt;
 
@@ -52,10 +54,10 @@ public abstract class BlsMsmOobCall extends CommonPrecompileOobCall {
     super.callExoModulesAndSetOutputs(add, mod, wcp);
 
     // row i + 2
-    final OobExoCall remaninderCall =
+    final OobExoCall remainderCall =
         callToMOD(mod, getCds().toBytes(), Bytes.ofUnsignedLong(minMsmSize()));
-    exoCalls.add(remaninderCall);
-    final Bytes remainder = remaninderCall.result();
+    exoCalls.add(remainderCall);
+    final Bytes remainder = remainderCall.result();
 
     // row i + 3
     final OobExoCall cdsIsMultipleOfMinMsmSizeCall = callToIsZero(wcp, remainder);
@@ -65,20 +67,22 @@ public abstract class BlsMsmOobCall extends CommonPrecompileOobCall {
 
     final int numInputs = getCds().toInt() / minMsmSize();
 
+    final boolean validCds = !isCdsIsZero() && cdsIsMultipleOfMinMsmSize;
+
     // i + 4
     boolean numInputsLeq128 = false;
-    if (!cdsIsMultipleOfMinMsmSize) {
+    if (!validCds) {
       exoCalls.add(noCall());
     } else {
       final OobExoCall numInputsGt128Call =
           callToGT(wcp, Bytes.ofUnsignedLong(numInputs), Bytes.ofUnsignedInt(128));
-      exoCalls.add(cdsIsMultipleOfMinMsmSizeCall);
+      exoCalls.add(numInputsGt128Call);
       numInputsLeq128 = !bytesToBoolean(numInputsGt128Call.result());
     }
 
     // i + 5
     int discount = 0;
-    if (!cdsIsMultipleOfMinMsmSize) {
+    if (!validCds) {
       exoCalls.add(noCall());
     } else {
       if (numInputsLeq128) {
@@ -92,12 +96,27 @@ public abstract class BlsMsmOobCall extends CommonPrecompileOobCall {
     }
 
     // i + 6
-    boolean sufficientGas = false;
-    if (!cdsIsMultipleOfMinMsmSize) {
+    if (!validCds) {
       exoCalls.add(noCall());
     } else {
+      final OobExoCall precompileCostIntegerDivisionCall =
+          callToDIV(
+              mod,
+              bigIntegerToBytes(
+                  BigInteger.valueOf(numInputs)
+                      .multiply(BigInteger.valueOf(msmMultiplicationCost()))
+                      .multiply(BigInteger.valueOf(discount))),
+              Bytes.ofUnsignedLong(PRC_BLS_MULTIPLICATION_MULTIPLIER));
+      exoCalls.add(precompileCostIntegerDivisionCall);
       precompileCost =
-          numInputs * msmMultiplicationCost() * discount / PRC_BLS_MULTIPLICATION_MULTIPLIER;
+          precompileCostIntegerDivisionCall.result().toUnsignedBigInteger().longValue();
+    }
+
+    // i + 7
+    boolean sufficientGas = false;
+    if (!validCds) {
+      exoCalls.add(noCall());
+    } else {
       final OobExoCall insufficientGasCall =
           callToLT(wcp, getCalleeGas(), Bytes.ofUnsignedLong(precompileCost));
       exoCalls.add(insufficientGasCall);
@@ -105,7 +124,7 @@ public abstract class BlsMsmOobCall extends CommonPrecompileOobCall {
     }
 
     // Set hubSuccess
-    final boolean hubSuccess = !isCdsIsZero() && cdsIsMultipleOfMinMsmSize && sufficientGas;
+    final boolean hubSuccess = validCds && sufficientGas;
     setHubSuccess(hubSuccess);
 
     // Set returnGas

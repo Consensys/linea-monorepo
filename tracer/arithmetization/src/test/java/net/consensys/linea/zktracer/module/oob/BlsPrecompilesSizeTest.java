@@ -24,6 +24,14 @@ import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___POI
 import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G1_MSM;
 import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G2_MSM;
 import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_BLS_G1_ADD;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_BLS_G1_MSM;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_BLS_G2_ADD;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_BLS_G2_MSM;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_BLS_MAP_FP2_TO_G2;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_BLS_MAP_FP_TO_G1;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_BLS_PAIRING_CHECK;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_POINT_EVALUATION;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +43,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
+import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -52,7 +61,8 @@ public class BlsPrecompilesSizeTest extends TracerTestBase {
   @Tag("nightly")
   @ParameterizedTest
   @MethodSource("blsPrecompilesSizeTestSource")
-  void blsPrecompilesSizeTest(Address address, Integer size, TestInfo testInfo) {
+  void blsPrecompilesSizeTest(
+      PrecompileScenarioFragment.PrecompileFlag precompileFlag, Integer size, TestInfo testInfo) {
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     final Address codeOwnerAddress = Address.fromHexString("0xC0DE");
@@ -80,7 +90,7 @@ public class BlsPrecompilesSizeTest extends TracerTestBase {
         .push(0) // retOffset, note that we are really interested in the return data
         .push(size) // argSize
         .push(0) // argOffset
-        .push(address) // address
+        .push(precompileFlag.getAddress()) // address
         .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
         .op(OpCode.STATICCALL);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -88,38 +98,43 @@ public class BlsPrecompilesSizeTest extends TracerTestBase {
   }
 
   private static Stream<Arguments> blsPrecompilesSizeTestSource() {
-    final Map<Address, Integer> FIXED_SIZE_PRECOMPILE_ADDRESS_TO_SIZE =
-        Map.ofEntries(
-            entry(Address.KZG_POINT_EVAL, PRECOMPILE_CALL_DATA_SIZE___POINT_EVALUATION),
-            entry(Address.BLS12_G1ADD, PRECOMPILE_CALL_DATA_SIZE___G1_ADD),
-            entry(Address.BLS12_G2ADD, PRECOMPILE_CALL_DATA_SIZE___G2_ADD),
-            entry(Address.BLS12_MAP_FP_TO_G1, PRECOMPILE_CALL_DATA_SIZE___FP_TO_G1),
-            entry(Address.BLS12_MAP_FP2_TO_G2, PRECOMPILE_CALL_DATA_SIZE___FP2_TO_G2));
+    final Map<PrecompileScenarioFragment.PrecompileFlag, Integer>
+        FIXED_SIZE_PRECOMPILE_ADDRESS_TO_SIZE =
+            Map.ofEntries(
+                entry(PRC_POINT_EVALUATION, PRECOMPILE_CALL_DATA_SIZE___POINT_EVALUATION),
+                entry(PRC_BLS_G1_ADD, PRECOMPILE_CALL_DATA_SIZE___G1_ADD),
+                entry(PRC_BLS_G2_ADD, PRECOMPILE_CALL_DATA_SIZE___G2_ADD),
+                entry(PRC_BLS_MAP_FP_TO_G1, PRECOMPILE_CALL_DATA_SIZE___FP_TO_G1),
+                entry(PRC_BLS_MAP_FP2_TO_G2, PRECOMPILE_CALL_DATA_SIZE___FP2_TO_G2));
 
-    final Map<Address, Integer> VARIABLE_SIZE_PRECOMPILE_ADDRESS_TO_UNIT =
-        Map.ofEntries(
-            entry(Address.BLS12_G1MULTIEXP, PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G1_MSM),
-            entry(Address.BLS12_G2MULTIEXP, PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G2_MSM),
-            entry(Address.BLS12_PAIRING, PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK));
+    final Map<PrecompileScenarioFragment.PrecompileFlag, Integer>
+        VARIABLE_SIZE_PRECOMPILE_ADDRESS_TO_UNIT =
+            Map.ofEntries(
+                entry(PRC_BLS_G1_MSM, PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G1_MSM),
+                entry(PRC_BLS_G2_MSM, PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G2_MSM),
+                entry(PRC_BLS_PAIRING_CHECK, PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK));
 
     List<Arguments> arguments = new ArrayList<>();
 
-    for (Address address : FIXED_SIZE_PRECOMPILE_ADDRESS_TO_SIZE.keySet()) {
-      arguments.add(Arguments.of(address, 0));
-      arguments.add(Arguments.of(address, 1));
-      int size = FIXED_SIZE_PRECOMPILE_ADDRESS_TO_SIZE.get(address);
+    for (PrecompileScenarioFragment.PrecompileFlag precompileFlag :
+        FIXED_SIZE_PRECOMPILE_ADDRESS_TO_SIZE.keySet()) {
+      arguments.add(Arguments.of(precompileFlag, 0));
+      arguments.add(Arguments.of(precompileFlag, 1));
+      int size = FIXED_SIZE_PRECOMPILE_ADDRESS_TO_SIZE.get(precompileFlag);
       for (int cornerCase = -1; cornerCase <= 1; cornerCase++) {
-        arguments.add(Arguments.of(address, size + cornerCase));
+        arguments.add(Arguments.of(precompileFlag, size + cornerCase));
       }
     }
 
-    for (Address address : VARIABLE_SIZE_PRECOMPILE_ADDRESS_TO_UNIT.keySet()) {
-      arguments.add(Arguments.of(address, 0));
-      arguments.add(Arguments.of(address, 1));
-      int unit = VARIABLE_SIZE_PRECOMPILE_ADDRESS_TO_UNIT.get(address);
+    for (PrecompileScenarioFragment.PrecompileFlag precompileFlag :
+        VARIABLE_SIZE_PRECOMPILE_ADDRESS_TO_UNIT.keySet()) {
+      int unit = VARIABLE_SIZE_PRECOMPILE_ADDRESS_TO_UNIT.get(precompileFlag);
+      arguments.add(Arguments.of(precompileFlag, 0));
+      arguments.add(Arguments.of(precompileFlag, 1));
+      arguments.add(Arguments.of(precompileFlag, 256 * unit));
       for (int numberOfUnits = 1; numberOfUnits <= 128; numberOfUnits++) {
         for (int cornerCase = -1; cornerCase <= 1; cornerCase++) {
-          arguments.add(Arguments.of(address, numberOfUnits * unit + cornerCase));
+          arguments.add(Arguments.of(precompileFlag, numberOfUnits * unit + cornerCase));
         }
       }
     }
