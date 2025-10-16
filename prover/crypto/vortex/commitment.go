@@ -137,8 +137,10 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 			startChunk := chunkID * chunkSize
 
 			hasher := p.LeafHashFunc()
-			// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
-			leaves[chunkID] = hasher.SumElements(colHashes[startChunk : startChunk+chunkSize])
+			hasher.Reset()
+
+			hasher.WriteElements(colHashes[startChunk : startChunk+chunkSize])
+			leaves[chunkID] = hasher.SumElement()
 		}
 
 	})
@@ -172,13 +174,51 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 		},
 		func(col, threadID int) {
 			hasher := hashers[threadID]
+			hasher.Reset()
+
 			colElems := make([]field.Element, numRows)
 			for row := 0; row < numRows; row++ {
 				colElems[row] = v[row].Get(col)
+				hasher.WriteElement(colElems[row])
 			}
-			res[col] = hasher.SumElements(colElems)
+			res[col] = hasher.SumElement()
 		},
 	)
 
 	return res
 }
+
+// // Uses the no-sis hash function to hash the columns. It uses the leafHasher
+// // function to hash the columns.
+// func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octuplet {
+
+// 	// Assert that all smart-vectors have the same numCols
+// 	numCols := v[0].Len()
+// 	for i := range v {
+// 		if v[i].Len() != numCols {
+// 			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
+// 				numCols, i, v[i].Len())
+// 		}
+// 	}
+
+// 	numRows := len(v)
+
+// 	res := make([]field.Octuplet, numCols)
+
+// 	parallel.ExecuteThreadAware(
+// 		numCols,
+// 		func(threadID int) {
+// 		},
+// 		func(col, threadID int) {
+// 			hasher := p.LeafHashFunc()
+// 			colElems := make([]field.Element, numRows)
+// 			for row := 0; row < numRows; row++ {
+// 				colElems[row] = v[row].Get(col)
+// 			}
+// 			res[col] = hasher.SumElements(colElems)
+
+// 		},
+// 	)
+
+// 	return res
+// }

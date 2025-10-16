@@ -69,7 +69,6 @@ func (d *Poseidon2FieldHasherDigest) WriteElements(elems []field.Element) {
 func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
 	h := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
 	vector.Add(d.h[:], h[:], d.h[:])
-
 	d.data = d.data[:0]
 	return d.h
 }

@@ -190,19 +190,24 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 				mProof         = v.OpeningProof.MerkleProofs[i][j]
 			)
 
-			hasher := v.Params.LeafHashFunc()
-			// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
 			if !v.IsSISReplacedByPoseidon2[i] {
 				var (
 					// SIS hash of the current sub-column
 					sisHash = v.Params.Key.Hash(selectedSubCol)
+					// hasher used to hash the SIS hash (and thus not a hasher
+					// based on SIS)
+					hasher = v.Params.LeafHashFunc()
 				)
-				leaf = hasher.SumElements(sisHash)
+				hasher.Reset()
+				hasher.WriteElements(sisHash)
+				leaf = hasher.SumElement()
 			} else {
 				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
 				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
-				leaf = hasher.SumElements(selectedSubCol)
-
+				hasher := v.Params.LeafHashFunc()
+				hasher.Reset()
+				hasher.WriteElements(selectedSubCol)
+				leaf = hasher.SumElement()
 			}
 
 			// Check the Merkle-proof for the obtained leaf
