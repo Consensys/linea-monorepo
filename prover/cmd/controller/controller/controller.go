@@ -116,9 +116,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 					localJobDoneChan := jobDoneChan
 					jobDoneChanMu.Unlock()
 					go func() {
-						cLog.Infof("Allowing in-flight job to finish (max %s)...", cfg.Controller.TerminationGracePeriod)
+						cLog.Infof("Allowing in-flight job to finish (max %ds)...", cfg.Controller.TerminationGracePeriod)
 						select {
-						case <-time.After(cfg.Controller.TerminationGracePeriod):
+						case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
 							cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
 							cancel()
 
@@ -148,7 +148,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 	go func() {
 		<-cmdCtx.Done()
 		if spotReclaimDetected.Load() {
-			cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %s)...", cfg.Controller.SpotInstanceReclaimTime)
+			cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
 		} else if gracefulShutdownRequested.Load() {
 			if activeJob != nil {
 				cLog.Infof("Context done: grace period expired, forcing shutdown")
@@ -167,8 +167,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 			metrics.ShutdownServer(cmdCtx)
 
 			if spotReclaimDetected.Load() {
-				cLog.Infof("Waiting up to %s for spot reclaim...", cfg.Controller.SpotInstanceReclaimTime)
-				time.Sleep(cfg.Controller.SpotInstanceReclaimTime)
+				cLog.Infof("Waiting up to %ds for spot reclaim...", cfg.Controller.SpotInstanceReclaimTime)
+				time.Sleep(time.Duration(cfg.Controller.SpotInstanceReclaimTime) * time.Second)
 			}
 
 			// For graceful shutdown, do not sleep here and requeue only if

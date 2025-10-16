@@ -472,7 +472,7 @@ func TestSpotInstanceMode(t *testing.T) {
 		nbTest = 5
 	)
 
-	cfg.Controller.SpotInstanceReclaimTime = 5 * time.Second // Ensure sleep after SIGUSR1 to receive SIGTERM
+	cfg.Controller.SpotInstanceReclaimTime = 5 // Ensure sleep after SIGUSR1 to receive SIGTERM
 
 	for i := 0; i < nbTest; i++ {
 		// Create the input file
