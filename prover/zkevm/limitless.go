@@ -647,7 +647,7 @@ func LoadCompiledGL(cfg *config.Config, moduleName distributed.ModuleName) (*dis
 }
 
 // LoadCompiledLPP loads the compiled LPP from disk
-func LoadCompiledLPP(cfg *config.Config, moduleNames []distributed.ModuleName) (*distributed.RecursedSegmentCompilation, error) {
+func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*distributed.RecursedSegmentCompilation, error) {
 
 	var (
 		assetDir = cfg.PathForSetup(executionLimitlessPath)

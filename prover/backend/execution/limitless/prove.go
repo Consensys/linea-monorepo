@@ -11,7 +11,6 @@ import (
 	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -71,9 +70,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
 	var (
-		proofGLs            = make([]recursion.Witness, numGL)
-		proofLPPs           = make([]recursion.Witness, numGL)
-		lppCommitments      = make([]field.Element, numGL)
+		proofGLs            = make([]distributed.SegmentProof, numGL)
+		proofLPPs           = make([]distributed.SegmentProof, numGL)
 		errGroup            = &errgroup.Group{}
 		contextGL, cancelGL = context.WithCancel(context.Background())
 	)
@@ -89,9 +87,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			}
 
 			var (
-				jobErr        error
-				proofGL       *recursion.Witness
-				lppCommitment field.Element
+				jobErr  error
+				proofGL *distributed.SegmentProof
 			)
 
 			// RunGL may panic and therefore exit the goroutine without returning
@@ -108,7 +105,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				}()
 
 				var err error
-				proofGL, lppCommitment, err = RunGL(cfg, i)
+				proofGL, err = RunGL(cfg, i)
 				if err != nil {
 					jobErr = fmt.Errorf("could not run GL prover for witness index=%v: %w", i, err)
 				}
@@ -120,7 +117,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			}
 
 			proofGLs[i] = *proofGL
-			lppCommitments[i] = lppCommitment
 			return nil
 		})
 	}
@@ -134,7 +130,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	}
 
 	var (
-		sharedRandomness      = distributed.ComputeSharedRandomness(lppCommitments)
+		sharedRandomness      = distributed.GetSharedRandomnessFromSegmentProofs(proofGLs)
 		contextLPP, cancelLPP = context.WithCancel(context.Background())
 	)
 
@@ -148,7 +144,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 			var (
 				jobErr   error
-				proofLPP *recursion.Witness
+				proofLPP *distributed.SegmentProof
 			)
 
 			// RunLPP may panic and therefore exit the goroutine without returning
@@ -321,6 +317,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		assets.DistWizard.Disc,
 		assets.DistWizard.BlueprintGLs,
 		assets.DistWizard.BlueprintLPPs,
+		assets.DistWizard.VerificationKeyMerkleTree.GetRoot(),
 	)
 
 	logrus.Info("Saving the witnesses")
@@ -374,38 +371,34 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 }
 
 // RunGL runs the GL prover for the provided witness index
-func RunGL(cfg *config.Config, witnessIndex int) (proofGL *recursion.Witness, lppCommitments field.Element, err error) {
+func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the GL-prover for witness index=%v", witnessIndex)
 
 	witness := &distributed.ModuleWitnessGL{}
 	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
 	if err := serialization.LoadFromDisk(witnessFilePath, witness, true); err != nil {
-		return nil, field.Element{}, err
+		return nil, err
 	}
 
 	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
 	compiledGL, err := zkevm.LoadCompiledGL(cfg, witness.ModuleName)
 	if err != nil {
-		return nil, field.Element{}, fmt.Errorf("could not load compiled GL: %w", err)
+		return nil, fmt.Errorf("could not load compiled GL: %w", err)
 	}
 
 	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	run := compiledGL.ProveSegment(witness)
+	_proofGL := compiledGL.ProveSegment(witness)
 
 	logrus.Infof("Finished running the GL-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	_proofGL := recursion.ExtractWitness(run)
-
-	logrus.Infof("Extracted the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
-
-	return &_proofGL, distributed.GetLppCommitmentFromRuntime(run), nil
+	return &_proofGL, nil
 }
 
 // RunLPP runs the LPP prover for the provided witness index
-func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element) (proofLPP *recursion.Witness, err error) {
+func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element) (proofLPP *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
 
@@ -426,17 +419,14 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element
 
 	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	run := compiledLPP.ProveSegment(witness)
+	_proofLPP := compiledLPP.ProveSegment(witness)
 
 	logrus.Infof("Finished running the LPP-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
-
-	_proofLPP := recursion.ExtractWitness(run)
-
-	logrus.Infof("Extracted the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
 	return &_proofLPP, nil
 }
 
+/*
 // RunConglomeration runs the conglomeration prover for the provided subproofs
 func RunConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witness) (proof wizard.Proof, congloWIOP *wizard.CompiledIOP, err error) {
 
@@ -461,4 +451,4 @@ func RunConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witne
 	logrus.Infof("Successfully sanity-checked the conglomerator")
 
 	return proof, cong.Wiop, nil
-}
+} */
