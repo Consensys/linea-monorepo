@@ -258,6 +258,12 @@ type Controller struct {
 	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`
 	EnableAggregation       bool `mapstructure:"enable_aggregation"`
 
+	// The number of seconds infra (AWS) waits before reclaiming a spot instance
+	SpotInstanceReclaimTime int `mapstructure:"spot_instance_reclaim_time_seconds"`
+
+	// The number of seconds the controller should wait before killing a worker after receiving a SIGTERM
+	TerminationGracePeriod int `mapstructure:"termination_grace_period_seconds"`
+
 	// Limitless prover jobs
 	LimitlessJobs LimitlessJobs `mapstructure:"limitless_jobs"`
 
@@ -270,10 +276,6 @@ type Controller struct {
 
 	// LimitlessProver commands including the --phase flag
 	ProverPhaseCmd ProverPhaseCmd `mapstructure:"prover_phase"`
-
-	// SpotInstanceMode tells the controller to gracefully exit as soon as it
-	// receives a SIGTERM.
-	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
 }
 
 type LimitlessJobs struct {

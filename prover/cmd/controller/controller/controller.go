@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -19,30 +21,149 @@ import (
 
 // runController runs the controller main loop.
 func runController(ctx context.Context, cfg *config.Config) {
-	cLog := cfg.Logger().WithField("component", "main-loop")
+	var (
+		cLog      = cfg.Logger().WithField("component", "main-loop")
+		fsWatcher = NewFsWatcher(cfg)
+		executor  = NewExecutor(cfg)
 
-	fsWatcher := NewFsWatcher(cfg)
-	executor := NewExecutor(cfg)
-	numRetrySoFar := 0
+		// Track currently active job for safe requeue
+		activeJob *Job
 
-	startMetricsServer(cfg)
-	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
-	defer stop()
+		// Track the number of retries so far
+		numRetrySoFar int
 
-	// cmdContext is the context we provide for the command execution. Regardless
-	// of the spot-instance/on-demand instance, the context is subordinated to the ctx
-	// so that requests that are interrupted are automatically requeued and retried.
-	cmdContext := ctx
+		// Atomic coordination flags
+		spotReclaimDetected       atomic.Bool
+		gracefulShutdownRequested atomic.Bool
 
-	// log cancellation requests immediately when received
-	// This goroutine's raison d'etre is to log a message immediately when a
+		// Channel to receive signals
+		signalChan = make(chan os.Signal, 2)
+
+		// Channel to notify job completion for SIGTERM handler
+		jobDoneChan   chan struct{}
+		jobDoneChanMu sync.Mutex
+	)
+
+	// Helper to signal job completion
+	notifyJobDone := func() {
+		jobDoneChanMu.Lock()
+		if jobDoneChan != nil {
+			close(jobDoneChan)
+			jobDoneChan = nil
+		}
+		jobDoneChanMu.Unlock()
+	}
+
+	// Helper to requeue a job
+	requeueJob := func(job *Job) {
+		_ = os.Remove(job.TmpResponseFile(cfg))
+		if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
+			cLog.Errorf("Failed to requeue job %v: %v", job.InProgressPath(), err)
+		}
+		cLog.Infof("REQUEUED job: %v", job.OriginalFile)
+	}
+
+	// Start the metric server
+	if cfg.Controller.Prometheus.Enabled {
+		metrics.StartServer(
+			cfg.Controller.LocalID,
+			cfg.Controller.Prometheus.Route,
+			cfg.Controller.Prometheus.Port,
+		)
+	}
+
+	// Derive the command context with a cancel function
+	cmdCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGUSR1)
+	defer signal.Stop(signalChan)
+
+	// Signal handler goroutine — race-safe with atomic flags
+	// We never stop listening since it is possible to receive more than one signals
+	// For ex: spot reclaim => SIGUSR1 -> SIGTERM
+	go func() {
+		for sig := range signalChan {
+			switch sig {
+			case syscall.SIGUSR1:
+				spotReclaimDetected.Store(true)
+				if !gracefulShutdownRequested.Load() {
+					cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP...")
+					cancel()
+					if cfg.Controller.Prometheus.Enabled {
+						metrics.IncSpotInterruption(cfg.Controller.LocalID)
+					}
+				} else {
+					cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
+				}
+
+				// Requeue active job immediately for spot reclaim
+				if activeJob != nil {
+					cLog.Infof("Spot reclaim detected during job: %v", activeJob.OriginalFile)
+					requeueJob(activeJob)
+					activeJob = nil
+					notifyJobDone()
+				}
+			case syscall.SIGTERM:
+				gracefulShutdownRequested.Store(true)
+				if !spotReclaimDetected.Load() {
+					cLog.Info("Received SIGTERM: graceful shutdown requested")
+				}
+				// NOTE: DO NOT call cancel() here to respect the termination grace period
+				// If there's an active job, start a timer to enforce grace period
+				if activeJob != nil {
+					jobDoneChanMu.Lock()
+					if jobDoneChan == nil {
+						jobDoneChan = make(chan struct{})
+					}
+					// Using a local copy prevents subtle bugs and race conditions that can happen if the global jobDoneChan
+					// is modified from elsewhere
+					localJobDoneChan := jobDoneChan
+					jobDoneChanMu.Unlock()
+					go func() {
+						cLog.Infof("Allowing in-flight job to finish (max %ds)...", cfg.Controller.TerminationGracePeriod)
+						select {
+						case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
+							cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
+							cancel()
+
+						// Closing the done channel immediately  succeeds in reading (returning zero value)
+						// This case is triggered when the running job is done and the channel is closed—letting the
+						// shutdown happen promptly instead of waiting out the whole grace period.
+						case <-localJobDoneChan:
+							cLog.Info("Job finished before grace period expired. Cancelling context to exit immediately...")
+							cancel()
+						}
+					}()
+				} else {
+					cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
+					cancel()
+				}
+			}
+		}
+	}()
+
+	// This goroutine's purpose is to log a message immediately when a
 	// cancellation request (e.g., ctx expiration/cancellation, SIGTERM, etc.)
 	// is received. It ensures timely logging of the request's reception,
 	// which may be important for diagnostics. Without this
 	// goroutine, if the prover is busy with a proof when, for example, a
 	// SIGTERM is received, there would be no log entry about the signal
 	// until the proof completes.
-	go logCancellationOnSignal(ctx, cfg, cLog)
+	go func() {
+		<-cmdCtx.Done()
+		if spotReclaimDetected.Load() {
+			cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
+		} else if gracefulShutdownRequested.Load() {
+			if activeJob != nil {
+				cLog.Infof("Context done: grace period expired, forcing shutdown")
+			} else {
+				cLog.Info("Context done: graceful shutdown complete")
+			}
+		} else {
+			cLog.Infoln("Context done due to cancellation request.")
+		}
+	}()
 
 	// If any files are locked to RAM unlock it before exiting
 	defer assets.UnlockAllLockedFiles()
@@ -73,7 +194,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			}
 
 			numRetrySoFar = 0
-			status := executor.Run(cmdContext, job)
+			status := executor.Run(cmdCtx, job)
 			handleJobResult(cfg, cLog, job, status)
 		}
 	}
@@ -189,7 +310,7 @@ func handleDeferToLarge(cLog *logrus.Entry, job *Job, status Status) {
 
 // handleJobKilledByExtSig puts the job back in the request folder and cleans up tmp files.
 func handleJobKilledByExtSig(cfg *config.Config, cLog *logrus.Entry, job *Job) {
-	cLog.Infof("Job %v was killed by us. Spot instance mode: %v", job.OriginalFile, cfg.Controller.SpotInstanceMode)
+	cLog.Infof("Job %v was killed by user signal", job.OriginalFile)
 	cLog.Infof("Re-queuing the request:%s back to the request folder", job.OriginalFile)
 
 	if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
@@ -250,27 +371,6 @@ func retryDelay(retryDelaysSec []int, numRetrySoFar int) <-chan time.Time {
 	}
 
 	return time.After(ttw)
-}
-
-// startMetricsServer starts Prometheus metrics server if enabled.
-func startMetricsServer(cfg *config.Config) {
-	if cfg.Controller.Prometheus.Enabled {
-		metrics.StartServer(
-			cfg.Controller.LocalID,
-			cfg.Controller.Prometheus.Route,
-			cfg.Controller.Prometheus.Port,
-		)
-	}
-}
-
-// logCancellationOnSignal logs immediately when a cancellation request is received.
-func logCancellationOnSignal(ctx context.Context, cfg *config.Config, cLog *logrus.Entry) {
-	<-ctx.Done()
-	if cfg.Controller.SpotInstanceMode {
-		cLog.Infoln("Received cancellation request. Killing the ongoing process and exiting immediately after.")
-	} else {
-		cLog.Infoln("Received cancellation request, will exit as soon as possible or once current proof task is complete.")
-	}
 }
 
 // logNoJobFound logs when no job is found, with reduced verbosity after 5 retries.
