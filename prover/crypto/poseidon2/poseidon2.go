@@ -34,8 +34,8 @@ func Poseidon2BlockCompression(oldState, block [blockSize]field.Element) (newSta
 }
 
 // Poseidon2Sponge returns a Poseidon2 hash of an array of field elements
-func Poseidon2Sponge(x []field.Element) (newState [blockSize]field.Element) {
-	var state, xBlock [blockSize]field.Element
+func Poseidon2Sponge(x []field.Element) (newState field.Octuplet) {
+	var state, xBlock field.Octuplet
 	for len(x) != 0 {
 		if len(x) < blockSize {
 			x = cloneLeftPadded(x, blockSize)
