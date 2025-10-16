@@ -79,13 +79,13 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, vArena ...*arena.Vec
 			a = arena.NewVectorArena[field.Element](nbNodes * chunkSize)
 		}
 
-		eval := newEvaluation(b, inputs, chunkSize, a)
+		eval := newEvaluation(b, chunkSize, a)
 		for chunkID := start; chunkID < stop; chunkID++ {
 
 			chunkStart := chunkID * chunkSize
 			chunkStop := (chunkID + 1) * chunkSize
 
-			eval.reset(inputs, chunkStart, chunkStop, b, a)
+			eval.reset(inputs, chunkStart, chunkStop, a)
 			eval.evaluate()
 
 			copy(res[chunkStart:chunkStop], eval.nodes[len(eval.nodes)-1].value[:])
@@ -114,7 +114,7 @@ func areAllConstants(inp []sv.SmartVector) bool {
 	return true
 }
 
-func newEvaluation(b *ExpressionBoard, inputs []sv.SmartVector, chunkSize int, vArena *arena.VectorArena) evaluation {
+func newEvaluation(b *ExpressionBoard, chunkSize int, vArena *arena.VectorArena) evaluation {
 	eval := evaluation{
 		scratch:     make([]field.Element, chunkSize),
 		chunkSize:   chunkSize,
@@ -156,7 +156,7 @@ func newEvaluation(b *ExpressionBoard, inputs []sv.SmartVector, chunkSize int, v
 				na.value = make([]field.Element, 1)
 				na.value[0] = op.Val
 			case Variable:
-				// na.value = arena.Get[field.Element](eval.vectorArena, chunkSize)
+				// we don't allocate for variables since we try to re-use the input vectors
 				inputCursor++
 			default:
 				na.value = arena.Get[field.Element](eval.vectorArena, chunkSize)
@@ -179,7 +179,7 @@ func newEvaluation(b *ExpressionBoard, inputs []sv.SmartVector, chunkSize int, v
 }
 
 func getIndex(id nodeID, b *ExpressionBoard) uint32 {
-	// TODO terribly inneficient, temporary for refactor.
+	// note: quite inneficient, but it's only during initialization
 	lvl := id.level()
 	pos := id.posInLevel()
 	cum := 0
@@ -189,7 +189,7 @@ func getIndex(id nodeID, b *ExpressionBoard) uint32 {
 	return uint32(cum + pos)
 }
 
-func (e *evaluation) reset(inputs []sv.SmartVector, chunkStart, chunkStop int, b *ExpressionBoard, vArena *arena.VectorArena) {
+func (e *evaluation) reset(inputs []sv.SmartVector, chunkStart, chunkStop int, vArena *arena.VectorArena) {
 	inputCursor := 0
 	chunkLen := chunkStop - chunkStart // can be < MaxChunkSize
 
