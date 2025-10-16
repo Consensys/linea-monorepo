@@ -102,7 +102,7 @@ func Setup(ctx context.Context, args SetupArgs) error {
 			// we skip aggregation/emulation circuits in this first loop since the setup is more complex
 			continue
 		}
-		logrus.Infof("Setting up circuit %s", c)
+		logrus.Infof("--- Start of circuit %s setup ---", c)
 
 		// Build the circuit
 		builder, extraFlags, err := createCircuitBuilder(c, cfg, args)
@@ -215,7 +215,7 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 		return fmt.Errorf("failed to write assets for circuit %s: %w", circuit, err)
 	}
 	logrus.Infof("Successfully wrote circuit %s to %s", circuit, setupPath)
-	logrus.Info("---------- Circuit %s setup complete ----------", circuit)
+	logrus.Infof("--- End of circuit %s setup ---", circuit)
 	return nil
 }
 
