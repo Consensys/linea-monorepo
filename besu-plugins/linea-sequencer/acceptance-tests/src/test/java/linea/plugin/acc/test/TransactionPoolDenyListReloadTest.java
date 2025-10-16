@@ -89,7 +89,7 @@ public class TransactionPoolDenyListReloadTest extends LineaPluginTestBase {
     Credentials willBeDenied = Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY);
     final Web3j miner = minerNode.nodeRequests().eth();
     RawTransactionManager transactionManager =
-      new RawTransactionManager(miner, willBeDenied, CHAIN_ID);
+        new RawTransactionManager(miner, willBeDenied, CHAIN_ID);
 
     addAddressToDenyList(willBeDenied.getAddress());
     reloadPluginConfig();
@@ -106,7 +106,7 @@ public class TransactionPoolDenyListReloadTest extends LineaPluginTestBase {
 
   private void emptyDenyList() throws IOException {
     FileOutputStream fileOutputStream = new FileOutputStream(tempDenyList.toFile(), false);
-    fileOutputStream.write(new byte[]{});
+    fileOutputStream.write(new byte[] {});
     fileOutputStream.flush();
     fileOutputStream.close();
   }
