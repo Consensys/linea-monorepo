@@ -4,7 +4,6 @@ FROM eclipse-temurin:21-jre-noble
 WORKDIR /opt/consensys/maru
 
 COPY --from=libs ./** ./
-COPY --from=maru ./** ./
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
