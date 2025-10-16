@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 const (
@@ -146,7 +145,6 @@ type merkleTestBuilderRow struct {
 func newMerkleTestBuilder(depth int) *merkleTestBuilder {
 	return &merkleTestBuilder{
 		tree: *smt.BuildComplete(make([]field.Octuplet, 1<<depth), hashtypes.Poseidon2),
-		tree: *smt.BuildComplete(make([]types.Bytes32, 1<<depth), hashtypes.Poseidon2),
 	}
 }
 
@@ -195,8 +193,8 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 	mt.counter = append(mt.counter, field.NewElement(uint64(len(mt.counter))))
 	mt.proofs = append(mt.proofs, row.proof)
 	mt.pos = append(mt.pos, field.NewElement(uint64(row.pos)))
-	leafOct := types.Bytes32ToHash(row.leaf)
-	rootOct := types.Bytes32ToHash(row.root)
+	leafOct := row.leaf
+	rootOct := row.root
 	for i := 0; i < blockSize; i++ {
 		mt.leaves[i] = append(mt.leaves[i], leafOct[i])
 		mt.roots[i] = append(mt.roots[i], rootOct[i])
