@@ -181,7 +181,9 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 	// Derive the asset paths
 	setupPath := cfg.PathForSetup(string(circuit))
 	manifestPath := filepath.Join(setupPath, config.ManifestFileName)
+	logrus.Infof("Manifest path: %s", manifestPath)
 
+	// check if setup can be skipped
 	if !force {
 		// we may want to skip setup if the files already exist
 		// and the checksums match
@@ -192,6 +194,7 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 				return fmt.Errorf("failed to compute circuit digest for circuit %s: %w", circuit, err)
 			}
 
+			logrus.Infof("Manifest checksum: %s, Computed circuit digest: %s", manifest.Checksums.Circuit, circuitDigest)
 			if manifest.Checksums.Circuit == circuitDigest {
 				logrus.Infof("skipping %s (already setup)", circuit)
 				return nil
@@ -206,8 +209,14 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 		return fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
 	}
 
-	logrus.Infof("writing assets for %s", circuit)
-	return setup.WriteTo(setupPath)
+	// write the assets
+	err = setup.WriteTo(setupPath)
+	if err != nil {
+		return fmt.Errorf("failed to write assets for circuit %s: %w", circuit, err)
+	}
+	logrus.Infof("Successfully wrote circuit %s to %s", circuit, setupPath)
+	logrus.Info("---------- Circuit %s setup complete ----------", circuit)
+	return nil
 }
 
 // parseCircuitInputs: Converts the comma-separated circuit string into a map of enabled circuits.
@@ -231,13 +240,16 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 ) (circuits.Builder, map[string]any, error) {
 	extraFlags := make(map[string]any)
 	switch c {
-	case circuits.ExecutionCircuitID, circuits.ExecutionLargeCircuitID:
+	case circuits.ExecutionCircuitID:
 		limits := cfg.TracesLimits
-		if c == circuits.ExecutionLargeCircuitID {
-			limits = cfg.TracesLimitsLarge
-		}
 		extraFlags["cfg_checksum"] = limits.Checksum()
-		zkEvm := zkevm.FullZkEvm(&limits, cfg)
+		zkEvm := zkevm.FullZkEvmSetup(&limits, cfg)
+		return execution.NewBuilder(zkEvm), extraFlags, nil
+
+	case circuits.ExecutionLargeCircuitID:
+		limits := cfg.TracesLimitsLarge
+		extraFlags["cfg_checksum"] = limits.Checksum()
+		zkEvm := zkevm.FullZkEvmSetupLarge(&limits, cfg)
 		return execution.NewBuilder(zkEvm), extraFlags, nil
 
 	case circuits.ExecutionLimitlessCircuitID:
