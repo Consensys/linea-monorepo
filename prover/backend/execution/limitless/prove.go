@@ -76,9 +76,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	var (
 		proofGLs = make([]distributed.SegmentProof, numGL)
 
-		// proofLPPs = make([]distributed.SegmentProof, numLPP)s
-		//errGroup            = &errgroup.Group{}
-
 		glErrGroup  = &errgroup.Group{}
 		lppErrGroup = &errgroup.Group{}
 
@@ -90,11 +87,13 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 		// Conglomeration proof pipeline setup: have a buffered channel of capacity 2
 		proofStream = make(chan distributed.SegmentProof, 2)
+		resultCh    = make(chan distributed.SegmentProof, 1)
 	)
 
 	// -- 2. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more proofs come in
 	go func() {
-		RunConglomerationHierarchical(&mt, cong, proofStream, totalProofs)
+		result := RunConglomerationHierarchical(&mt, cong, proofStream, totalProofs)
+		resultCh <- result
 	}()
 
 	// -- 3. Launch GL proof jobs, sending each result to proofStream
@@ -235,12 +234,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		close(chSetupDone)
 	}()
 
-	// -- 6. Wait for conglomerated proof pipeline to finish
-	//  this is the final proof after pipeline completes
+	//-- 8. Wait for hierarchical aggregation to finish (final proof root)
+	congProofRoot := <-resultCh
 
-	congProofRoot := <-proofStream
-
-	// -- 7. We wait for setup to be loaded. It should already be loaded normally so we
+	// -- 9. We wait for setup to be loaded. It should already be loaded normally so we
 	// do not expect to actually wait here.
 	<-chSetupDone
 	if errSetup != nil {
@@ -480,12 +477,8 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element
 	return &_proofLPP, nil
 }
 
-func RunConglomerationHierarchical(
-	mt *distributed.VerificationKeyMerkleTree,
-	cong *distributed.RecursedSegmentCompilation,
-	proofStream <-chan distributed.SegmentProof,
-	totalProofs int,
-) distributed.SegmentProof {
+func RunConglomerationHierarchical(mt *distributed.VerificationKeyMerkleTree, cong *distributed.RecursedSegmentCompilation,
+	proofStream <-chan distributed.SegmentProof, totalProofs int) distributed.SegmentProof {
 
 	resultCh := make(chan distributed.SegmentProof, 1)
 	// Aggregation workers:
@@ -498,8 +491,9 @@ func RunConglomerationHierarchical(
 		for proofsReceived < totalProofs || len(stack) > 1 {
 			select {
 			// Receive new proof from main proof stream
-			case p := <-proofStream:
-				stack = append(stack, p)
+			case proof := <-proofStream:
+				logrus.Infof("Received proof for module index:%d and segment index:%d", proof.ModuleIndex, proof.SegmentIndex)
+				stack = append(stack, proof)
 				proofsReceived++
 			// Whenever 2 proofs are ready, conglomerate them
 			default:
