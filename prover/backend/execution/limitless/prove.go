@@ -51,9 +51,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// Setup execution witness and output response
 	var (
-		out           = execution.CraftProverOutput(cfg, req)
-		witness       = execution.NewWitness(cfg, req, &out)
-		numGL, numLPP int
+		out     = execution.CraftProverOutput(cfg, req)
+		witness = execution.NewWitness(cfg, req, &out)
 	)
 
 	if cfg.Execution.LimitlessWithDebug {
@@ -63,24 +62,47 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		return &out, nil
 	}
 
+	// -- 1. Launch bootstrapper
+
 	logrus.Info("Starting to run the bootstrapper")
-
-	numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM)
-
+	var (
+		bootstrapperResp = RunBootstrapper(cfg, witness.ZkEVM)
+		numGL, numLPP    = bootstrapperResp.numGL, bootstrapperResp.numLPP
+		mt               = bootstrapperResp.mt
+		cong             = bootstrapperResp.cong
+	)
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
 	var (
-		proofGLs            = make([]distributed.SegmentProof, numGL)
-		proofLPPs           = make([]distributed.SegmentProof, numGL)
-		errGroup            = &errgroup.Group{}
+		proofGLs = make([]distributed.SegmentProof, numGL)
+
+		// proofLPPs = make([]distributed.SegmentProof, numLPP)s
+		//errGroup            = &errgroup.Group{}
+
+		glErrGroup  = &errgroup.Group{}
+		lppErrGroup = &errgroup.Group{}
+
 		contextGL, cancelGL = context.WithCancel(context.Background())
+
+		err error
+
+		totalProofs = numGL + numLPP
+
+		// Conglomeration proof pipeline setup: have a buffered channel of capacity 2
+		proofStream = make(chan distributed.SegmentProof, 2)
 	)
 
-	errGroup.SetLimit(numConcurrentSubProverJobs)
+	// -- 2. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more proofs come in
+	go func() {
+		RunConglomerationHierarchical(&mt, cong, proofStream, totalProofs)
+	}()
 
+	// -- 3. Launch GL proof jobs, sending each result to proofStream
+	glErrGroup.SetLimit(numConcurrentSubProverJobs)
 	for i := 0; i < numGL; i++ {
 
-		errGroup.Go(func() error {
+		i := i // local copy for closure
+		glErrGroup.Go(func() error {
 
 			if contextGL.Err() != nil {
 				return nil
@@ -117,11 +139,17 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			}
 
 			proofGLs[i] = *proofGL
+			// Send to pipeline as soon as ready
+			proofStream <- *proofGL
 			return nil
 		})
 	}
 
-	err := errGroup.Wait()
+	if err := glErrGroup.Wait(); err != nil {
+		close(proofStream)
+		return nil, err
+	}
+
 	// This context cancellation is here to ensure the context is wiped-out in
 	// every branches.
 	cancelGL()
@@ -134,9 +162,13 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		contextLPP, cancelLPP = context.WithCancel(context.Background())
 	)
 
+	// -- 4. Launch LPP proof jobs, streaming each proof to pipeline
+	lppErrGroup.SetLimit(numConcurrentSubProverJobs)
+
 	for i := 0; i < numLPP; i++ {
 
-		errGroup.Go(func() error {
+		i := i // local copy for closure
+		lppErrGroup.Go(func() error {
 
 			if contextLPP.Err() != nil {
 				return nil
@@ -172,12 +204,16 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				return fmt.Errorf("could not run LPP prover for witness index=%v: %w", i, jobErr)
 			}
 
-			proofLPPs[i] = *proofLPP
+			proofStream <- *proofLPP
 			return nil
 		})
 	}
 
-	err = errGroup.Wait()
+	if err := lppErrGroup.Wait(); err != nil {
+		close(proofStream)
+		return nil, err
+	}
+
 	// This context cancellation is here to ensure the context is wiped-out in
 	// every branches.
 	cancelLPP()
@@ -199,12 +235,12 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		close(chSetupDone)
 	}()
 
-	proofConglo, congloWIOP, err := RunConglomeration(cfg, proofGLs, proofLPPs)
-	if err != nil {
-		return nil, fmt.Errorf("could not run conglomeration prover: %w", err)
-	}
+	// -- 6. Wait for conglomerated proof pipeline to finish
+	//  this is the final proof after pipeline completes
 
-	// wait for setup to be loaded. It should already be loaded normally so we
+	congProofRoot := <-proofStream
+
+	// -- 7. We wait for setup to be loaded. It should already be loaded normally so we
 	// do not expect to actually wait here.
 	<-chSetupDone
 	if errSetup != nil {
@@ -214,8 +250,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	out.Proof = execCirc.MakeProof(
 		&cfg.TracesLimits,
 		setup,
-		congloWIOP,
-		proofConglo,
+		cong.HierarchicalConglomeration.Wiop,
+		congProofRoot,
 		*witness.FuncInp,
 	)
 
@@ -224,11 +260,18 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	return &out, nil
 }
 
+type bootstrapResp struct {
+	numGL  int
+	numLPP int
+	mt     distributed.VerificationKeyMerkleTree
+	cong   *distributed.RecursedSegmentCompilation
+}
+
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,
 // the function then performs the module segmentation and saves each module
 // witness in the /tmp directory.
 func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
-) (numWitnessGL, numWitnessLPP int) {
+) *bootstrapResp {
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
@@ -304,6 +347,12 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 	// This frees the memory from the assets that are no longer needed. We don't
 	// need to do that for the module GLs and LPPs because they are thrown away
 	// when the current function returns.
+
+	var (
+		mt   = assets.DistWizard.VerificationKeyMerkleTree
+		cong = assets.DistWizard.CompiledConglomeration
+	)
+
 	assets.Zkevm = nil
 	assets.DistWizard.Bootstrapper = nil
 
@@ -367,7 +416,12 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		utils.Panic("could not save witnesses: %v", err)
 	}
 
-	return len(witnessGLs), len(witnessLPPs)
+	return &bootstrapResp{
+		mt:     mt,
+		cong:   cong,
+		numGL:  len(witnessGLs),
+		numLPP: len(witnessLPPs),
+	}
 }
 
 // RunGL runs the GL prover for the provided witness index
@@ -424,6 +478,57 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element
 	logrus.Infof("Finished running the LPP-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
 	return &_proofLPP, nil
+}
+
+func RunConglomerationHierarchical(
+	mt *distributed.VerificationKeyMerkleTree,
+	cong *distributed.RecursedSegmentCompilation,
+	proofStream <-chan distributed.SegmentProof,
+	totalProofs int,
+) distributed.SegmentProof {
+
+	resultCh := make(chan distributed.SegmentProof, 1)
+	// Aggregation workers:
+	go func() {
+		// Stack is a slice for channel-based pairing logic
+		var stack []distributed.SegmentProof
+		proofsReceived := 0
+
+		// Continuously pull proofs from the stream or from aggregation itself
+		for proofsReceived < totalProofs || len(stack) > 1 {
+			select {
+			// Receive new proof from main proof stream
+			case p := <-proofStream:
+				stack = append(stack, p)
+				proofsReceived++
+			// Whenever 2 proofs are ready, conglomerate them
+			default:
+				// Keep aggregating while there are at least 2
+				for len(stack) >= 2 {
+					_proof1 := stack[len(stack)-1]
+					_proof2 := stack[len(stack)-2]
+					stack = stack[:len(stack)-2]
+					// Conglomerate in background
+					aggregated := cong.ProveSegment(&distributed.ModuleWitnessConglo{
+						SegmentProofs:             []distributed.SegmentProof{_proof1, _proof2},
+						VerificationKeyMerkleTree: *mt,
+					})
+					// Put back into stack for further aggregation
+					stack = append(stack, aggregated)
+				}
+			}
+		}
+		// The last item is the final proof
+		if len(stack) == 1 {
+			resultCh <- stack[0]
+		} else {
+			panic("RunConglomerationHierarchical: stack does not have 1 final proof")
+		}
+	}()
+	// Wait for result
+	final := <-resultCh
+	close(resultCh)
+	return final
 }
 
 /*
