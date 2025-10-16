@@ -18,7 +18,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
-import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.rpc.methods.LineaCancelBundle;
 import net.consensys.linea.rpc.methods.LineaSendBundle;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.AllowedAddressValidator;
@@ -34,8 +33,6 @@ public class LineaBundleEndpointsPlugin extends AbstractLineaRequiredPlugin {
   private LineaSendBundle lineaSendBundleMethod;
   private LineaCancelBundle lineaCancelBundleMethod;
 
-  private Optional<LineaTransactionPoolValidatorConfiguration>
-      lineaTransactionPoolValidatorConfiguration = Optional.empty();
   private final AtomicReference<Set<Address>> bundleDeniedAddresses =
       new AtomicReference<>(Collections.emptySet());
 
@@ -88,17 +85,15 @@ public class LineaBundleEndpointsPlugin extends AbstractLineaRequiredPlugin {
     lineaSendBundleMethod.init(bundlePoolService, createTransactionValidator());
     lineaCancelBundleMethod.init(bundlePoolService);
 
-    lineaTransactionPoolValidatorConfiguration =
-        Optional.of(transactionPoolValidatorConfiguration());
-    bundleDeniedAddresses.set(
-        lineaTransactionPoolValidatorConfiguration.get().bundleDeniedAddresses());
+    bundleDeniedAddresses.set(transactionPoolValidatorConfiguration().bundleDeniedAddresses());
   }
 
   @Override
   public CompletableFuture<Void> reloadConfiguration() {
-    var conf = this.lineaTransactionPoolValidatorConfiguration.orElseThrow(() -> new RuntimeException("LineaTransactionPoolValidatorConfiguration is not available, but reloadConfiguration called"));
-    bundleDeniedAddresses.set(LineaTransactionPoolValidatorCliOptions.create()
-                .parseDeniedAddresses(conf.bundleOverridingDenyListPath()));
+    bundleDeniedAddresses.set(
+        LineaTransactionPoolValidatorCliOptions.create()
+            .parseDeniedAddresses(
+                transactionPoolValidatorConfiguration().bundleOverridingDenyListPath()));
     return CompletableFuture.completedFuture(null);
   }
 
