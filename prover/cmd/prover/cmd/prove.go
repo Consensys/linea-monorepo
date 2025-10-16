@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
@@ -65,7 +66,6 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 
 	var resp *execution.Response
 	var err error
-
 	if cfg.Execution.ProverMode == config.ProverModeLimitless {
 		// Limitless execution mode
 		resp, err = limitless.Prove(cfg, req)
@@ -74,11 +74,13 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 		}
 	} else {
 		// Standard execution mode
+		start := time.Now()
 		large := args.Large || (strings.Contains(args.Input, "large") && cfg.Execution.CanRunFullLarge)
 		resp, err = execution.Prove(cfg, req, large)
 		if err != nil {
 			return fmt.Errorf("could not prove the execution: %w", err)
 		}
+		fmt.Printf("Execution time: %v\n", time.Since(start))
 	}
 
 	return writeResponse(args.Output, resp)
