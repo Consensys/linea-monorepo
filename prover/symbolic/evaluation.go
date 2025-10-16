@@ -11,8 +11,11 @@ import (
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 )
 
-// note, 1 << 9 is slightly faster, but 1 << 8  allow for less memory usage
-const MaxChunkSize = 1 << 8
+// ChunkSize is the size of the chunks we use to evaluate the expression board.
+// 1 << 9 is optimal for compute
+// but 1 << 8 enable us to run with less memory.
+// TODO should be configurable in config file or env var, no need to be a constant.
+const ChunkSize = 1 << 8
 
 // evaluation is a helper to evaluate an expression board on chunks of data.
 type evaluation struct {
@@ -52,7 +55,7 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, vArena ...*arena.Vec
 		panic("inputs all have size 0")
 	}
 
-	chunkSize := min(MaxChunkSize, totalSize) // default chunk size
+	chunkSize := min(ChunkSize, totalSize) // default chunk size
 	if totalSize%chunkSize != 0 {
 		panic("chunk size should divide total size")
 	}
