@@ -116,7 +116,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 					localJobDoneChan := jobDoneChan
 					jobDoneChanMu.Unlock()
 					go func() {
-						cLog.Infof("Allowing in-flight job to finish (max %ds)...", cfg.Controller.TerminationGracePeriod)
+						cLog.Infof("Allowing in-flight job %s to finish (max %ds)...", activeJob.OriginalFile, cfg.Controller.TerminationGracePeriod)
 						select {
 						case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
 							cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
