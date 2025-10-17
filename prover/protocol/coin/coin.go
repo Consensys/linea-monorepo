@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
@@ -105,14 +105,13 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs hash.StateStorer, seed field.Element) interface{} {
+func (info *Info) Sample(fs hashtypes.Poseidon2FieldHasher, seed field.Element) interface{} {
 	switch info.Type {
 	case Field:
 		return fiatshamir.RandomField(fs)
 	case IntegerVec:
 		return fiatshamir.RandomManyIntegers(fs, info.Size, info.UpperBound)
-	case FieldFromSeed:
-		return fiatshamir.RandomFieldFromSeed(fs, seed, string(info.Name))
+
 	case FieldExt:
 		return fiatshamir.RandomFext(fs)
 	}

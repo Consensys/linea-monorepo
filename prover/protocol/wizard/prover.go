@@ -7,7 +7,6 @@ import (
 	"path"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"strconv"
@@ -148,7 +147,7 @@ type ProverRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS hash.StateStorer
+	FS hashtypes.Poseidon2FieldHasher
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
@@ -1092,7 +1091,7 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() hash.StateStorer {
+func (run *ProverRuntime) Fs() hashtypes.Poseidon2FieldHasher {
 	return run.FS
 }
 

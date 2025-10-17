@@ -3,10 +3,9 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/hash"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -117,11 +116,11 @@ func (g GrandProduct) Name() ifaces.QueryID {
 }
 
 // Updates a Fiat-Shamir state
-func (gp GrandProductParams) UpdateFS(fs hash.StateStorer) {
+func (gp GrandProductParams) UpdateFS(fs hashtypes.Poseidon2FieldHasher) {
 	fiatshamir.Update(fs, gp.BaseY)
 }
 
-func (gp GrandProductParams) UpdateFSExt(fs hash.StateStorer) {
+func (gp GrandProductParams) UpdateFSExt(fs hashtypes.Poseidon2FieldHasher) {
 	fiatshamir.UpdateExt(fs, gp.ExtY)
 }
 
