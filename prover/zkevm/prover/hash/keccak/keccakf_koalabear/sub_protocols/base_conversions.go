@@ -1,6 +1,8 @@
 package protocols
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -29,8 +31,6 @@ type baseConversion struct {
 
 // newBaseConversion creates a new base conversion module, declares the columns and constraints and returns its pointer
 func NewBaseConversion(comp *wizard.CompiledIOP, numKeccakf int, stateCurr [5][5]lane) *baseConversion {
-	// declare the columns
-	declareColumnsBaseConv(comp, numKeccakf)
 
 	return &baseConversion{}
 }
@@ -42,4 +42,17 @@ func (bc *baseConversion) Run(run *wizard.ProverRuntime) baseConversion {
 
 // it declares the intermediate columns generated during base conversion step, including the new state.
 func declareColumnsBaseConv(comp *wizard.CompiledIOP, numKeccakf int) {
+}
+
+// DecomposeBase12TwoLimbs decomposes n into two limbs in base 12,
+// each limb encoding 4 base-12 digits:
+// n = A0 + A1 * (12^4)
+func DecomposeBase12TwoLimbs(n *big.Int) (A0, A1 *big.Int) {
+	base := big.NewInt(12)
+	base4 := new(big.Int).Exp(base, big.NewInt(4), nil) // 12^4 = 20736
+
+	A0 = new(big.Int).Mod(n, base4) // low limb
+	A1 = new(big.Int).Div(n, base4) // high limb
+
+	return A0, A1
 }
