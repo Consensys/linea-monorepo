@@ -22,6 +22,13 @@ func factorExpressionList(exprList []*symbolic.Expression) []*symbolic.Expressio
 	}
 
 	wg.Wait()
+
+	// for i := range res {
+	// 	fmt.Printf("============================\n")
+	// 	fmt.Printf("Expression: %v\n", i)
+	// 	simplify.ProfileExpression(res[i])
+	// }
+
 	return res
 }
 

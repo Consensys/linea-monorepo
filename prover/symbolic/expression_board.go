@@ -31,9 +31,9 @@ func emptyBoard() ExpressionBoard {
 	}
 }
 
-// getNode returns a node from an ID
-func (b *ExpressionBoard) getNode(id nodeID) *Node {
-	return &b.Nodes[id.level()][id.posInLevel()]
+// GetNode returns a node from an ID
+func (b *ExpressionBoard) GetNode(id nodeID) *Node {
+	return &b.Nodes[id.Level()][id.PosInLevel()]
 }
 
 /*
@@ -71,14 +71,14 @@ func (n *Node) addParent(p nodeID) {
 	n.Parents = append(n.Parents, p)
 }
 
-// posInLevel returns the position in the level from a NodeID
-func (i nodeID) posInLevel() int {
+// PosInLevel returns the position in the level from a NodeID
+func (i nodeID) PosInLevel() int {
 	res := i & ((1 << 32) - 1)
 	return utils.ToInt(res)
 }
 
-// level returns the level from a NodeID
-func (i nodeID) level() int {
+// Level returns the Level from a NodeID
+func (i nodeID) Level() int {
 	return utils.ToInt(i >> 32)
 }
 

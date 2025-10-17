@@ -152,7 +152,7 @@ func TestFactorization(t *testing.T) {
 			factored := factorizeExpression(testCase.Origin, 10)
 			require.Equal(t, testCase.Origin.ESHash.String(), factored.ESHash.String())
 			require.NoError(t, factored.Validate())
-			assert.Equal(t, evaluateCostStat(testCase.Factored), evaluateCostStat(factored))
+			assert.Equal(t, EvaluateCostStat(testCase.Factored), EvaluateCostStat(factored))
 		})
 	}
 }
@@ -215,7 +215,7 @@ func TestFactorLinCompFromGroup(t *testing.T) {
 			}
 
 			require.NoError(t, factored.Validate())
-			assert.Equal(t, evaluateCostStat(testCase.Res), evaluateCostStat(factored))
+			assert.Equal(t, EvaluateCostStat(testCase.Res), EvaluateCostStat(factored))
 
 			if t.Failed() {
 				fmt.Printf("res=%v\n", testCase.Res.MarshalJSONString())

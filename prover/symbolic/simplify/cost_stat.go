@@ -20,7 +20,7 @@ func (s *costStats) add(cost costStats) {
 }
 
 // Returns the cost stats of a boarded expression
-func evaluateCostStat(expr *sym.Expression) (s costStats) {
+func EvaluateCostStat(expr *sym.Expression) (s costStats) {
 	board := expr.Board()
 	var wg sync.WaitGroup
 	var mu sync.Mutex

@@ -1,6 +1,7 @@
 package globalcs
 
 import (
+	"fmt"
 	"math/big"
 	"reflect"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/symbolic/simplify"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -126,6 +128,14 @@ func (ctx *mergingCtx) registerCs(cs query.GlobalConstraint) {
 		ctx.Ratios = append(ctx.Ratios, ratio)
 	}
 
+	var (
+		costStats      = simplify.EvaluateCostStat(cs.Expression)
+		costStatsBound = simplify.EvaluateCostStat(bndCancelledExpr)
+		board          = cs.Expression.Board()
+	)
+
+	fmt.Printf("ratio=%v, degree=%v, offset=[%++v], costStats=%++v, bndCostStats=%++v, cs=%v\n", ratio, board.Degree(getDegreeSimple()), query.MinMaxOffset(cs.Expression), costStats, costStatsBound, cs.Name())
+
 	ctx.RatioBuckets[ratio] = append(ctx.RatioBuckets[ratio], bndCancelledExpr)
 }
 
@@ -200,6 +210,12 @@ func getExprRatio(expr *symbolic.Expression) int {
 		ratio        = utils.DivCeil(quotientSize, domainSize)
 	)
 	return utils.NextPowerOfTwo(max(1, ratio))
+}
+
+func getDegreeSimple() func(any) int {
+	return func(any) int {
+		return 1
+	}
 }
 
 // GetDegree is a generator returning a DegreeGetter that can be passed to

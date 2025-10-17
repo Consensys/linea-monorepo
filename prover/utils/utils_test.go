@@ -2,6 +2,7 @@ package utils_test
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -74,4 +75,21 @@ func TestNextPowerOfTwoExample(t *testing.T) {
 			assert.Equal(t, test.expected, result)
 		})
 	}
+}
+
+func TestRandChooseWeighted(t *testing.T) {
+
+	weights := []float64{1, 2, 3}
+	rng := rand.New(rand.NewChaCha8([32]byte{}))
+
+	counts := []int{0, 0, 0}
+
+	for i := 0; i < 1_000_000; i++ {
+		choice := utils.RandChooseWeighted(rng, weights)
+		counts[choice]++
+	}
+
+	fmt.Printf("Counts: %v\n", counts)
+
+	t.Fail()
 }

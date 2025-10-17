@@ -58,7 +58,7 @@ func TestCostStat(t *testing.T) {
 	}
 
 	for _, c := range testcases {
-		actual := evaluateCostStat(c.Expr)
+		actual := EvaluateCostStat(c.Expr)
 		assert.Equalf(t, c.CostStats, actual, "wrong cost stat obtained")
 	}
 

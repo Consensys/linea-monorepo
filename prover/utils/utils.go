@@ -11,6 +11,7 @@ import (
 	"iter"
 	"math"
 	"math/big"
+	"math/rand/v2"
 	"os"
 	"reflect"
 	"sort"
@@ -629,4 +630,24 @@ func GrowSliceSize[T any](slice []T, size int) []T {
 		slice = append(slice, t)
 	}
 	return slice
+}
+
+// RandChooseWeighted picks a random element from a weighted distribution
+func RandChooseWeighted(rng *rand.Rand, weights []float64) int {
+
+	var total float64
+	for _, w := range weights {
+		total += w
+	}
+
+	r := rng.Float64() * total
+	var acc float64
+	for i, w := range weights {
+		acc += w
+		if r < acc {
+			return i
+		}
+	}
+
+	panic("should not reach here")
 }
