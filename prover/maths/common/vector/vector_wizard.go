@@ -254,3 +254,12 @@ func PseudoRand(rng *rand.Rand, size int) []field.Element {
 	}
 	return slice
 }
+
+// Zero creates a vector of given size filled with zeroes.
+func Zero(size int) []field.Element {
+	slice := make([]field.Element, size)
+	for i := range slice {
+		slice[i].SetZero()
+	}
+	return slice
+}
