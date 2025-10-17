@@ -210,24 +210,31 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.hasRole(role, nativeYieldOperator.address)).to.be.true;
     });
 
-    it("Should also assign operator roles (except YIELD_REPORTER_ROLE) to securityCouncil address", async () => {
+    it("Should assign the OSSIFICATION_PROCESSOR_ROLE to nativeYieldOperator address", async () => {
+      const ossifierRole = await yieldManager.OSSIFICATION_PROCESSOR_ROLE();
+      expect(await yieldManager.hasRole(ossifierRole, nativeYieldOperator.address)).to.be.true;
+    });
+
+    it("Should also assign operator roles to securityCouncil address", async () => {
       const roles = [
         await yieldManager.YIELD_PROVIDER_STAKING_ROLE(),
         await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE(),
         await yieldManager.STAKING_PAUSE_CONTROLLER_ROLE(),
+        await yieldManager.OSSIFICATION_PROCESSOR_ROLE(),
+        await yieldManager.YIELD_REPORTER_ROLE(),
       ];
       await Promise.all(
         roles.map(async (role) => expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true),
       );
     });
 
-    it("Should assign the OSSIFIER_ROLE to securityCouncil address", async () => {
-      const ossifierRole = await yieldManager.OSSIFIER_ROLE();
+    it("Should assign the OSSIFICATION_INITIATOR_ROLE to securityCouncil address", async () => {
+      const ossifierRole = await yieldManager.OSSIFICATION_INITIATOR_ROLE();
       expect(await yieldManager.hasRole(ossifierRole, securityCouncil.address)).to.be.true;
     });
 
-    it("Should not assign the OSSIFIER_ROLE to nativeYieldOperator address", async () => {
-      const ossifierRole = await yieldManager.OSSIFIER_ROLE();
+    it("Should not assign the OSSIFICATION_INITIATOR_ROLE to nativeYieldOperator address", async () => {
+      const ossifierRole = await yieldManager.OSSIFICATION_INITIATOR_ROLE();
       expect(await yieldManager.hasRole(ossifierRole, nativeYieldOperator.address)).to.be.false;
     });
 

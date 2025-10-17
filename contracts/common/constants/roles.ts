@@ -99,7 +99,10 @@ export const YIELD_REPORTER_ROLE = generateKeccak256(["string"], ["YIELD_REPORTE
 export const STAKING_PAUSE_CONTROLLER_ROLE = generateKeccak256(["string"], ["STAKING_PAUSE_CONTROLLER_ROLE"], {
   encodePacked: true,
 });
-export const OSSIFIER_ROLE = generateKeccak256(["string"], ["OSSIFIER_ROLE"], {
+export const OSSIFICATION_INITIATOR_ROLE = generateKeccak256(["string"], ["OSSIFICATION_INITIATOR_ROLE"], {
+  encodePacked: true,
+});
+export const OSSIFICATION_PROCESSOR_ROLE = generateKeccak256(["string"], ["OSSIFICATION_PROCESSOR_ROLE"], {
   encodePacked: true,
 });
 export const WITHDRAWAL_RESERVE_SETTER_ROLE = generateKeccak256(["string"], ["WITHDRAWAL_RESERVE_SETTER_ROLE"], {
@@ -192,16 +195,14 @@ export const YIELD_MANAGER_OPERATOR_ROLES = [
   YIELD_PROVIDER_UNSTAKER_ROLE,
   YIELD_REPORTER_ROLE,
   STAKING_PAUSE_CONTROLLER_ROLE,
+  OSSIFICATION_PROCESSOR_ROLE,
 ];
 
 export const YIELD_MANAGER_SECURITY_COUNCIL_ROLES = [
   ...BASE_ROLES,
-  // Duplicates of YieldManagerOperator roles
-  YIELD_PROVIDER_STAKING_ROLE,
-  YIELD_PROVIDER_UNSTAKER_ROLE,
-  STAKING_PAUSE_CONTROLLER_ROLE,
+  ...YIELD_MANAGER_OPERATOR_ROLES,
   // Operational roles unique to Security Council
-  OSSIFIER_ROLE,
+  OSSIFICATION_INITIATOR_ROLE,
   SET_YIELD_PROVIDER_ROLE,
   SET_L2_YIELD_RECIPIENT_ROLE,
   WITHDRAWAL_RESERVE_SETTER_ROLE,

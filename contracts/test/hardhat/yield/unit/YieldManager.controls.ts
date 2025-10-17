@@ -328,10 +328,10 @@ describe("YieldManager contract - control operations", () => {
 
   // initiateOssification() unit tests
   describe("Initiate ossification", () => {
-    it("Should revert when adding if the caller does not have the OSSIFIER_ROLE", async () => {
+    it("Should revert when adding if the caller does not have the OSSIFICATION_INITIATOR_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      const requiredRole = await yieldManager.OSSIFIER_ROLE();
+      const requiredRole = await yieldManager.OSSIFICATION_INITIATOR_ROLE();
 
       await expect(
         yieldManager.connect(nativeYieldOperator).initiateOssification(mockYieldProviderAddress),
@@ -372,14 +372,14 @@ describe("YieldManager contract - control operations", () => {
 
   // processPendingOssification() unit tests
   describe("Process pending ossification", () => {
-    it("Should revert when adding if the caller does not have the OSSIFIER_ROLE", async () => {
+    it("Should revert when adding if the caller does not have the OSSIFICATION_PROCESSOR_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      const requiredRole = await yieldManager.OSSIFIER_ROLE();
+      const requiredRole = await yieldManager.OSSIFICATION_PROCESSOR_ROLE();
 
       await expect(
-        yieldManager.connect(nativeYieldOperator).processPendingOssification(mockYieldProviderAddress),
-      ).to.be.revertedWith(buildAccessErrorMessage(nativeYieldOperator, requiredRole));
+        yieldManager.connect(nonAuthorizedAccount).processPendingOssification(mockYieldProviderAddress),
+      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
 
     it("Should revert when requesting for an unknown yield provider", async () => {

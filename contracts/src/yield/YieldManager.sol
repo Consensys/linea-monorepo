@@ -36,8 +36,11 @@ contract YieldManager is
   /// @notice The role required to pause and unpause beacon chain staking for yield provider/s that support this operation.
   bytes32 public constant STAKING_PAUSE_CONTROLLER_ROLE = keccak256("STAKING_PAUSE_CONTROLLER_ROLE");
 
-  /// @notice The role required to execute ossification functions.
-  bytes32 public constant OSSIFIER_ROLE = keccak256("OSSIFIER_ROLE");
+  /// @notice The role required to initiate ossification.
+  bytes32 public constant OSSIFICATION_INITIATOR_ROLE = keccak256("OSSIFICATION_INITIATOR_ROLE");
+
+  /// @notice The role required to initiate ossification.
+  bytes32 public constant OSSIFICATION_PROCESSOR_ROLE = keccak256("OSSIFICATION_PROCESSOR_ROLE");
 
   /// @notice The role required to set withdrawal reserve parameters.
   bytes32 public constant WITHDRAWAL_RESERVE_SETTER_ROLE = keccak256("WITHDRAWAL_RESERVE_SETTER_ROLE");
@@ -908,7 +911,7 @@ contract YieldManager is
    */
   function initiateOssification(
     address _yieldProvider
-  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(OSSIFIER_ROLE) {
+  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(OSSIFICATION_INITIATOR_ROLE) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if ($$.isOssified) {
       revert AlreadyOssified();
@@ -926,7 +929,12 @@ contract YieldManager is
    */
   function processPendingOssification(
     address _yieldProvider
-  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(OSSIFIER_ROLE) returns (bool isOssificationComplete) {
+  )
+    external
+    onlyKnownYieldProvider(_yieldProvider)
+    onlyRole(OSSIFICATION_PROCESSOR_ROLE)
+    returns (bool isOssificationComplete)
+  {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if (!$$.isOssificationInitiated) {
       revert OssificationNotInitiated();
