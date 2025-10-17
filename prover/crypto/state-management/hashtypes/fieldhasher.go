@@ -41,7 +41,7 @@ func Poseidon2() Poseidon2FieldHasher {
 		maxValue:    types.HashToBytes32(maxVal),
 		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
 		h:           field.Octuplet{},
-		data:        []field.Element{},
+		data:        make([]field.Element, 0),
 	}
 
 	return poseidon2FieldHasherDigest
@@ -63,19 +63,6 @@ func (d *Poseidon2FieldHasherDigest) WriteElements(elems []field.Element) {
 	d.data = append(d.data, elems...)
 }
 
-// SumElements returns the current hash as a field Octuplet.
-func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Octuplet {
-	h1 := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
-	vector.Add(d.h[:], h1[:], d.h[:])
-
-	if elems != nil {
-		h2 := poseidon2.Poseidon2Sponge(elems) // Poseidon2Sponge include the feedforward process
-		vector.Add(d.h[:], h2[:], d.h[:])
-	}
-
-	d.data = d.data[:0]
-	return d.h
-}
 func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 
 	elemByteSize := field.Bytes // 4 bytes = 1 field element
@@ -85,7 +72,7 @@ func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 		end := start + elemByteSize
 		var chunk []byte
 
-		if end < len(p) {
+		if end <= len(p) {
 			// full chunk, take as-is
 			chunk = p[start:end]
 		} else {
@@ -101,6 +88,19 @@ func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 		start += elemByteSize
 	}
 	return len(p), nil
+}
+
+// SumElements returns the current hash as a field Octuplet.
+func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Octuplet {
+	if elems != nil {
+		d.data = append(d.data, elems...)
+	}
+
+	h1 := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
+	vector.Add(d.h[:], h1[:], d.h[:])
+
+	d.data = d.data[:0]
+	return d.h
 }
 
 // Sum computes the poseidon2 hash of msg
