@@ -92,12 +92,13 @@ func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 
 // SumElements returns the current hash as a field Octuplet.
 func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Octuplet {
-	if elems != nil {
-		d.data = append(d.data, elems...)
-	}
-
 	h1 := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
 	vector.Add(d.h[:], h1[:], d.h[:])
+
+	if elems != nil {
+		h2 := poseidon2.Poseidon2Sponge(elems) // Poseidon2Sponge include the feedforward process
+		vector.Add(d.h[:], h2[:], d.h[:])
+	}
 
 	d.data = d.data[:0]
 	return d.h
