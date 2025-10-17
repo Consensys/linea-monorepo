@@ -20,8 +20,8 @@ type Poseidon2FieldHasher interface {
 	MaxBytes32() types.Bytes32 // Returns the maximum representable value as Bytes32
 }
 
-// Poseidon2FieldHasherDigest implements a Poseidon2-based hasher that works with field elements
-type Poseidon2FieldHasherDigest struct {
+// poseidon2FieldHasherDigest implements a Poseidon2-based hasher that works with field elements
+type poseidon2FieldHasherDigest struct {
 	hash.StateStorer
 
 	maxValue types.Bytes32
@@ -37,7 +37,7 @@ func Poseidon2() Poseidon2FieldHasher {
 	for i := range maxVal {
 		maxVal[i] = field.NewFromString("-1") // Initialize max field value (field modulus - 1)
 	}
-	poseidon2FieldHasherDigest := &Poseidon2FieldHasherDigest{
+	poseidon2FieldHasherDigest := &poseidon2FieldHasherDigest{
 		maxValue:    types.HashToBytes32(maxVal),
 		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
 		h:           field.Octuplet{},
@@ -48,22 +48,22 @@ func Poseidon2() Poseidon2FieldHasher {
 }
 
 // Reset resets the Hash to its initial state.
-func (d *Poseidon2FieldHasherDigest) Reset() {
+func (d *poseidon2FieldHasherDigest) Reset() {
 	d.data = d.data[:0]
 	d.h = field.Octuplet{}
 }
 
 // WriteElement adds a field element to the running hash.
-func (d *Poseidon2FieldHasherDigest) WriteElement(e field.Element) {
+func (d *poseidon2FieldHasherDigest) WriteElement(e field.Element) {
 	d.data = append(d.data, e)
 }
 
 // WriteElements adds a slice of field elements to the running hash.
-func (d *Poseidon2FieldHasherDigest) WriteElements(elems []field.Element) {
+func (d *poseidon2FieldHasherDigest) WriteElements(elems []field.Element) {
 	d.data = append(d.data, elems...)
 }
 
-func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
+func (d *poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 
 	elemByteSize := field.Bytes // 4 bytes = 1 field element
 
@@ -91,7 +91,16 @@ func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 }
 
 // SumElements returns the current hash as a field Octuplet.
-func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Octuplet {
+// It is equivalent to:
+//
+//	for _, e := range elems {
+//	    h.WriteElement(e)
+//	}
+//	return h.SumElements(nil)
+//
+// This avoids copying the elements into the data slice and
+// is more efficient.
+func (d *poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Octuplet {
 	h1 := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
 	vector.Add(d.h[:], h1[:], d.h[:])
 
@@ -105,13 +114,14 @@ func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Oc
 }
 
 // Sum computes the poseidon2 hash of msg
-func (d *Poseidon2FieldHasherDigest) Sum(msg []byte) []byte {
+func (d *poseidon2FieldHasherDigest) Sum(msg []byte) []byte {
+	d.Write(msg)
 	h := d.SumElements(nil)
 	bytes := types.HashToBytes32(h)
 	return bytes[:]
 }
 
 // MaxBytes32 returns the maximal field value that Poseidon2 can work with
-func (p Poseidon2FieldHasherDigest) MaxBytes32() types.Bytes32 {
+func (p poseidon2FieldHasherDigest) MaxBytes32() types.Bytes32 {
 	return p.maxValue
 }
