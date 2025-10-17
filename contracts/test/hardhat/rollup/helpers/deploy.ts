@@ -24,7 +24,7 @@ export async function deployRevertingVerifier(scenario: bigint): Promise<string>
 
 export async function deployPlonkVerifierSepoliaFull(): Promise<string> {
   const plonkVerifierSepoliaFull = await ethers.getContractFactory(
-    "src/verifiers/paris/PlonkVerifierSepoliaFull.sol:PlonkVerifierSepoliaFull",
+    "src/verifiers/PlonkVerifierSepoliaFull.sol:PlonkVerifierSepoliaFull",
   );
   const verifier = await plonkVerifierSepoliaFull.deploy();
   await verifier.waitForDeployment();
@@ -33,7 +33,7 @@ export async function deployPlonkVerifierSepoliaFull(): Promise<string> {
 
 export async function deployPlonkVerifierMainnetFull(): Promise<string> {
   const plonkVerifierMainnetFull = await ethers.getContractFactory(
-    "src/verifiers/paris/PlonkVerifierMainnetFull.sol:PlonkVerifierMainnetFull",
+    "src/verifiers/PlonkVerifierMainnetFull.sol:PlonkVerifierMainnetFull",
   );
   const verifier = await plonkVerifierMainnetFull.deploy();
   await verifier.waitForDeployment();
