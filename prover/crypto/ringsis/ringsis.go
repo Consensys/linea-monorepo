@@ -27,6 +27,10 @@ type Key struct {
 	// degree etc)
 	*KeyGen
 
+	// gnarkInternal stores the SIS key itself and some precomputed domain
+	// twiddles.
+	gnarkInternal *sis.RSis `serde:"omit"`
+
 	// twiddleCosets stores the list of twiddles that we use to implement the
 	// SIS parameters. The twiddleAreInternally are only used when dealing with
 	// the parameters modulusDegree=64 and logTwoBound=8 and is passed as input
