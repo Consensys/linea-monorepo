@@ -43,8 +43,6 @@ interface EthApiClient : EthLogsClient {
   fun ethChainId(): SafeFuture<ULong>
   fun ethProtocolVersion(): SafeFuture<Int>
 
-  // fun ethSyncing(): SafeFuture<Any> // Returns false or sync status object
-  // fun ethHashrate(): SafeFuture<BigInteger>
   fun ethCoinbase(): SafeFuture<ByteArray>
   fun ethMining(): SafeFuture<Boolean>
   fun ethGasPrice(): SafeFuture<BigInteger>
