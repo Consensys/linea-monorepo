@@ -13,12 +13,16 @@ import static net.consensys.linea.metrics.LineaMetricCategory.TX_POOL_PROFITABIL
 
 import com.google.auto.service.AutoService;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
+import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txpoolvalidation.metrics.TransactionPoolProfitabilityMetrics;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuEvents;
@@ -39,6 +43,8 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
   private TransactionPoolValidatorService transactionPoolValidatorService;
   private TransactionSimulationService transactionSimulationService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
+  private Optional<LineaTransactionPoolValidatorFactory> lineaTransactionPoolValidatorFactory =
+      Optional.empty();
 
   @Override
   public void doRegister(final ServiceManager serviceManager) {
@@ -51,7 +57,6 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
                 () ->
                     new RuntimeException(
                         "Failed to obtain TransactionPoolValidationService from the ServiceManager."));
-
     transactionSimulationService =
         serviceManager
             .getService(TransactionSimulationService.class)
@@ -82,19 +87,21 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
                               besuConfiguration.getDataPath(),
                               lineaRejectedTxReportingConfiguration)
                           .start());
-
+      lineaTransactionPoolValidatorFactory =
+          Optional.of(
+              new LineaTransactionPoolValidatorFactory(
+                  besuConfiguration,
+                  blockchainService,
+                  worldStateService,
+                  transactionSimulationService,
+                  transactionPoolValidatorConfiguration(),
+                  profitabilityConfiguration(),
+                  tracerConfiguration(),
+                  l1L2BridgeSharedConfiguration(),
+                  rejectedTxJsonRpcManager,
+                  getInvalidTransactionByLineCountCache()));
       transactionPoolValidatorService.registerPluginTransactionValidatorFactory(
-          new LineaTransactionPoolValidatorFactory(
-              besuConfiguration,
-              blockchainService,
-              worldStateService,
-              transactionSimulationService,
-              transactionPoolValidatorConfiguration(),
-              profitabilityConfiguration(),
-              tracerConfiguration(),
-              l1L2BridgeSharedConfiguration(),
-              rejectedTxJsonRpcManager,
-              getInvalidTransactionByLineCountCache()));
+          lineaTransactionPoolValidatorFactory.get());
 
       if (metricCategoryRegistry.isMetricCategoryEnabled(TX_POOL_PROFITABILITY)) {
         final var besuEventsService =
@@ -139,6 +146,20 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public CompletableFuture<Void> reloadConfiguration() {
+    var lineaTransactionPoolValidatorFactory =
+        this.lineaTransactionPoolValidatorFactory.orElseThrow(
+            () ->
+                new RuntimeException(
+                    "LineaTransactionPoolValidatorFactory is not available, but reloadConfiguration called"));
+    Set<Address> newDeniedAddresses =
+        LineaTransactionPoolValidatorCliOptions.create()
+            .parseDeniedAddresses(transactionPoolValidatorConfiguration().denyListPath());
+    lineaTransactionPoolValidatorFactory.setDeniedAddresses(newDeniedAddresses);
+    return CompletableFuture.completedFuture(null);
   }
 
   @Override
