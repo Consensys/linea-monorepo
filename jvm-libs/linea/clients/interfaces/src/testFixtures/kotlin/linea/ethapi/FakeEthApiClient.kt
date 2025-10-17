@@ -207,6 +207,7 @@ class FakeEthApiClient(
   override fun ethCall(
     transaction: TransactionForEthCall,
     blockParameter: BlockParameter,
+    stateOverride: StateOverride?,
   ): SafeFuture<ByteArray> {
     TODO("Not yet implemented")
   }

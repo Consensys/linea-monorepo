@@ -25,13 +25,8 @@ interface EthApiClient : EthLogsClient {
       block ?: throw IllegalArgumentException("block=$blockParameter not found!")
     }
   }
-
-  fun findBlockByNumberWithoutTransactionsData(
-    blockParameter: BlockParameter,
-  ): SafeFuture<BlockWithTxHashes?> = ethGetBlockByNumberTxHashes(blockParameter)
-
   fun getBlockByNumberWithoutTransactionsData(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes> {
-    return findBlockByNumberWithoutTransactionsData(blockParameter).thenApply { block ->
+    return ethGetBlockByNumberTxHashes(blockParameter).thenApply { block ->
       block ?: throw IllegalArgumentException("block=$blockParameter not found!")
     }
   }
