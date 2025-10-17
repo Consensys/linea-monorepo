@@ -1,7 +1,6 @@
 package poseidon2_test
 
 import (
-	"fmt"
 	"math/rand/v2"
 	"testing"
 
@@ -87,7 +86,6 @@ func TestPoseidon2SpongeConsistency(t *testing.T) {
 					inputBytes = append(inputBytes, bytes[:]...)
 				}
 
-				fmt.Printf("len inputBytes: %d\n", len(inputBytes))
 				// Compute hash using the Poseidon2Sponge function.
 				state := poseidon2.Poseidon2Sponge(input)
 
