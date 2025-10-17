@@ -23,7 +23,3 @@ export type CctpFeeApiResponse = {
   finalityThreshold: number;
   minimumFee: number;
 }[];
-
-export type Test = {
-  sample: string;
-};
