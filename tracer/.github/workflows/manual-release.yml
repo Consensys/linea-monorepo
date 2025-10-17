@@ -1,6 +1,8 @@
 # The purpose of this workflow is to upload the necessary assets when
 # a release is made manually on github.
 name: Manual Release Assets
+permissions:
+  contents: read
 
 on:
   release:
@@ -13,6 +15,9 @@ on:
         default: "v1.2.3"
 
 jobs:
+  # ==================================================================
+  # Build - for release and for tests
+  # ==================================================================
   build:
     runs-on: ubuntu-latest
     steps:
@@ -45,10 +50,118 @@ jobs:
           jar_asset: ${{ github.workspace }}/plugins/build/libs/linea-tracer-${{ steps.config.outputs.TAG }}.jar
           zip_asset: ${{ github.workspace }}/plugins/build/distributions/linea-tracer-${{ steps.config.outputs.TAG }}.zip
           GH_TOKEN: ${{ github.token }}
+
+      - name: Set up GCC
+        uses: egor-tensin/setup-gcc@eaa888eb19115a521fa72b65cd94fe1f25bbcaac #v1.3
+
+      - name: Build without tests
+        run: ./gradlew build -x test -x spotlessCheck
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+
+      - name: Store distribution artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: distributions
+          path: arithmetization/build/libs
+
+      - name: Run spotless
+        run: ./gradlew --no-daemon --parallel clean spotlessCheck
+
+  # ==================================================================
+  # Unit Tests
+  # ==================================================================
+  unit-tests-london:
+    needs: [ build ]
+    uses: ./.github/workflows/reusable-unit-tests.yml
+    with:
+      zkevm_fork: LONDON
+      tests-with-ssh: false
+
+  unit-tests-paris:
+    needs: [ build ]
+    uses: ./.github/workflows/reusable-unit-tests.yml
+    with:
+      zkevm_fork: PARIS
+      tests-with-ssh: false
+
+  unit-tests-shanghai:
+    needs: [ build ]
+    uses: ./.github/workflows/reusable-unit-tests.yml
+    with:
+      zkevm_fork: SHANGHAI
+      tests-with-ssh: false
+
+  unit-tests-cancun:
+    needs: [ build ]
+    uses: ./.github/workflows/reusable-unit-tests.yml
+    with:
+      zkevm_fork: CANCUN
+      tests-with-ssh: false
+
+  unit-tests-prague:
+    needs: [ build ]
+    uses: ./.github/workflows/reusable-unit-tests.yml
+    with:
+      zkevm_fork: PRAGUE
+      tests-with-ssh: false
+
+  # ==================================================================
+  # Fast Replay Tests
+  # ==================================================================
+  replay-tests:
+    needs: [ build ]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          submodules: false
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-environment
+        with:
+          enable-ssh: false
+
+      - name: Run replay tests
+        run: GOMEMLIMIT=26GiB ./gradlew :arithmetization:fastReplayTests
+        env:
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+          REPLAY_TESTS_PARALLELISM: 4
+          GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
+          ZKEVM_FORK: LONDON
+
+      - name: Upload test report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: replay-tests-report
+          path: arithmetization/build/reports/tests/**/*
+
+      - name: Upload jacoco fast replay tests coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: jacoco-fast-replay-tests-coverage-report
+          path: arithmetization/build/reports/jacoco/jacocoFastReplayTestsReport/**/*
+
+      - name: Upload jacoco fast replay tests exec file
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: jacoco-fast-replay-tests-exec-file
+          path: arithmetization/build/jacoco/fastReplayTests.exec
+
+  # ==================================================================
+  # Publish release post tests
+  # ==================================================================
   publish:
-    needs: build
+    needs: [build, unit-tests-london, unit-tests-paris, unit-tests-shanghai, unit-tests-cancun, unit-tests-prague, replay-tests]
     if: github.event_name != 'pull_request'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    permissions:
+      contents: write
+      packages: write
     env:
       architecture: "amd64"
       GRADLE_OPTS: "-Xmx6g -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4"
