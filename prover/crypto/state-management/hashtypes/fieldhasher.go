@@ -1,8 +1,6 @@
 package hashtypes
 
 import (
-	"errors"
-
 	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/hash"
 
@@ -26,7 +24,7 @@ type Poseidon2FieldHasher interface {
 type Poseidon2FieldHasherDigest struct {
 	hash.StateStorer
 
-	maxValue types.Bytes32 // TODO@yao: can we cleanup this value and MaxBytes32()?
+	maxValue types.Bytes32
 
 	// Sponge construction state
 	h    field.Octuplet
@@ -60,7 +58,7 @@ func (d *Poseidon2FieldHasherDigest) WriteElement(e field.Element) {
 	d.data = append(d.data, e)
 }
 
-// WriteElement adds a slice of field elements to the running hash.
+// WriteElements adds a slice of field elements to the running hash.
 func (d *Poseidon2FieldHasherDigest) WriteElements(elems []field.Element) {
 	d.data = append(d.data, elems...)
 }
@@ -79,25 +77,28 @@ func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Oc
 	return d.h
 }
 func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
-	// we usually expect multiple of block size. But sometimes we hash short
-	// values (FS transcript). Instead of forcing to hash to field, we left-pad the
-	// input here.
+
 	elemByteSize := field.Bytes // 4 bytes = 1 field element
-	if len(p) > 0 && len(p) < elemByteSize {
-		pp := make([]byte, elemByteSize)
-		copy(pp[len(pp)-len(p):], p)
-		p = pp
-	}
 
-	var start int
-	for start = 0; start < len(p); start += elemByteSize {
+	start := 0
+	for start < len(p) {
+		end := start + elemByteSize
+		var chunk []byte
+
+		if end < len(p) {
+			// full chunk, take as-is
+			chunk = p[start:end]
+		} else {
+			// last chunk is short, left-pad with zeroes
+			chunk = make([]byte, elemByteSize)
+			copy(chunk[elemByteSize-(len(p)-start):], p[start:]) // left-pad
+		}
+
 		var elem field.Element
-		elem.SetBytes(p[start : start+elemByteSize])
+		elem.SetBytes(chunk)
 		d.data = append(d.data, elem)
-	}
 
-	if start != len(p) {
-		return 0, errors.New("invalid input length: must represent a list of field elements, expects a []byte of len m*elemByteSize")
+		start += elemByteSize
 	}
 	return len(p), nil
 }

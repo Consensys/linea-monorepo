@@ -111,7 +111,6 @@ func (info *Info) Sample(fs hashtypes.Poseidon2FieldHasher, seed field.Element) 
 		return fiatshamir.RandomField(fs)
 	case IntegerVec:
 		return fiatshamir.RandomManyIntegers(fs, info.Size, info.UpperBound)
-
 	case FieldExt:
 		return fiatshamir.RandomFext(fs)
 	}
