@@ -1,11 +1,11 @@
 package keccakfkoalabear
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bits"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 	protocols "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/sub_protocols"
 )
 
@@ -19,24 +19,21 @@ type rho struct {
 	paBaseConversion wizard.ProverAction
 	// prover actions for bit decomposition of binary state
 	paBitDecomposition [5][5][16]wizard.ProverAction
-	// prover action for bit rotation of binary state
-	paBitRotation wizard.ProverAction
-	// prover action for recomposition of state in base clean 11.
-	paStateRecomposition wizard.ProverAction
+	// state after bit rotation, in bits
+	stateBitRotation *stateInBits
+	// prover actions for recomposition to base clean 11
+	paRecomposition [5][5][8]wizard.ProverAction
 }
 
 // newRoha creates a new rho module, declares the columns and constraints and returns its pointer
 func newRho(comp *wizard.CompiledIOP, numKeccakf int, stateCurr state) *rho {
 
 	var (
-		bitDecompose     [5][5][16]*bits.BitDecomposed
-		stateBitRotation stateInBits // state after bit rotation, in bits
+		bitDecompose [5][5][16]*bits.BitDecomposed
 	)
 	rho := &rho{
 		stateCurr: stateCurr,
 	}
-	// declare the columns
-	declareColumnsRho(comp, numKeccakf)
 	// base conversion object to convert the state from base dirty 12 to base 2.
 	// at this step state has [stateBaseConversion] representation.
 	bc := protocols.NewBaseConversion(comp, numKeccakf, stateCurr)
@@ -49,14 +46,15 @@ func newRho(comp *wizard.CompiledIOP, numKeccakf int, stateCurr state) *rho {
 				rho.paBitDecomposition[x][y][z] = bitDecompose[x][y][z]
 			}
 			// perform the rotation on the current lane and update the new state
-			rotation(&stateBitRotation, x, y, bitDecompose[x][y])
+			rotation(rho.stateBitRotation, x, y, bitDecompose[x][y])
 
 			// return to the [state] representation in base clean 11 via recomposition of slices.
 			for z := 0; z < 64; z = +8 {
-				stateNext := BaseRecompose(stateBitRotation[x][y][z:z+8], 11)
-				// check  that rho state is set to stateNext
-				comp.InsertGlobal(0, ifaces.QueryIDf("RHO_NEW_STATE_IS-CORRECT_%d_%d_%d", x, y, z/8),
-					symbolic.Sub(rho.stateNext[x][y][z/8], stateNext))
+				name := fmt.Sprintf("%v_%v_%v", x, y, z/8)
+				br := protocols.LinearCombination(comp, name, rho.stateBitRotation[x][y][z:z+8], 11)
+				rho.paRecomposition[x][y][z/8] = br
+				// set the corresponding column of rho.stateNext
+				rho.stateNext[x][y][z/8] = br.CombinationRes
 
 			}
 
@@ -77,26 +75,19 @@ func (rho *rho) assignRoh(run *wizard.ProverRuntime, stateCurr state) {
 			}
 		}
 	}
-	// rotate the state which is in bits
-
-	// recompose the state into base clean 11.
-}
-
-// it declares the intermediate columns generated during rho step, including the new state.
-func declareColumnsRho(comp *wizard.CompiledIOP, numKeccakf int) {
-}
-
-type stateRotation struct {
-	// position of the lane that is subjected to rotation
-	x, y int
-	// bit decomposition of all 4-bit slices of the lane
-	bitDecomposition [16]*bits.BitDecomposed
-	// state after the current rotation, in bits
-	rotatedState *stateInBits
+	// recomposition: after rotation of bits,
+	// each 8 bits are recomposed into a base clean 11 slice.
+	for x := 0; x < 5; x++ {
+		for y := 0; y < 5; y++ {
+			for z := 0; z < 64; z = +8 {
+				rho.paRecomposition[x][y][z/8].Run(run)
+			}
+		}
+	}
 }
 
 // rotation performs the bit rotation in the rho step of keccakf
-func rotation(stateBitRotation *stateInBits, x, y int, bitDec [16]*bits.BitDecomposed) *stateRotation {
+func rotation(stateBitRotation *stateInBits, x, y int, bitDec [16]*bits.BitDecomposed) {
 	for z := 0; z < 16; z++ {
 		bits := bitDec[z].Bits
 		// find the new position of each bit after rotation
@@ -105,11 +96,5 @@ func rotation(stateBitRotation *stateInBits, x, y int, bitDec [16]*bits.BitDecom
 			// assign the bit to the new position
 			stateBitRotation[x][y][newPos] = bits[i]
 		}
-	}
-	return &stateRotation{
-		x:                x,
-		y:                y,
-		bitDecomposition: bitDec,
-		rotatedState:     stateBitRotation,
 	}
 }
