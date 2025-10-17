@@ -215,22 +215,22 @@ interface IYieldManager {
   /**
    * @notice Emitted when the minimum withdrawal reserve parameters are updated.
    * @param oldMinimumWithdrawalReservePercentageBps Previous minimum expressed in basis points.
-   * @param newMinimumWithdrawalReservePercentageBps New minimum expressed in basis points.
    * @param oldMinimumWithdrawalReserveAmount Previous minimum reserve in wei.
-   * @param newMinimumWithdrawalReserveAmount New minimum reserve in wei.
    * @param oldTargetWithdrawalReservePercentageBps Previous target in basis points.
-   * @param newTargetWithdrawalReservePercentageBps New target in basis points.
    * @param oldTargetWithdrawalReserveAmount Previous target amount.
+   * @param newMinimumWithdrawalReservePercentageBps New minimum expressed in basis points.
+   * @param newMinimumWithdrawalReserveAmount New minimum reserve in wei.
+   * @param newTargetWithdrawalReservePercentageBps New target in basis points.
    * @param newTargetWithdrawalReserveAmount New target amount.
    */
   event WithdrawalReserveParametersSet(
     uint256 oldMinimumWithdrawalReservePercentageBps,
-    uint256 newMinimumWithdrawalReservePercentageBps,
     uint256 oldMinimumWithdrawalReserveAmount,
-    uint256 newMinimumWithdrawalReserveAmount,
     uint256 oldTargetWithdrawalReservePercentageBps,
-    uint256 newTargetWithdrawalReservePercentageBps,
     uint256 oldTargetWithdrawalReserveAmount,
+    uint256 newMinimumWithdrawalReservePercentageBps,
+    uint256 newMinimumWithdrawalReserveAmount,
+    uint256 newTargetWithdrawalReservePercentageBps,
     uint256 newTargetWithdrawalReserveAmount
   );
 

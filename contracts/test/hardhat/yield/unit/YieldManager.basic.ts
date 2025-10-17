@@ -439,12 +439,12 @@ describe("YieldManager contract - basic operations", () => {
         .to.emit(yieldManager, "WithdrawalReserveParametersSet")
         .withArgs(
           prevMinPct,
-          params.minimumWithdrawalReservePercentageBps,
           prevMinAmount,
-          params.minimumWithdrawalReserveAmount,
           prevTargetPct,
-          params.targetWithdrawalReservePercentageBps,
           prevTargetAmount,
+          params.minimumWithdrawalReservePercentageBps,
+          params.minimumWithdrawalReserveAmount,
+          params.targetWithdrawalReservePercentageBps,
           params.targetWithdrawalReserveAmount,
         );
 

@@ -1100,12 +1100,12 @@ contract YieldManager is
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     emit WithdrawalReserveParametersSet(
       $.minimumWithdrawalReservePercentageBps,
-      _params.minimumWithdrawalReservePercentageBps,
       $.minimumWithdrawalReserveAmount,
-      _params.minimumWithdrawalReserveAmount,
       $.targetWithdrawalReservePercentageBps,
-      _params.targetWithdrawalReservePercentageBps,
       $.targetWithdrawalReserveAmount,
+      _params.minimumWithdrawalReservePercentageBps,
+      _params.minimumWithdrawalReserveAmount,
+      _params.targetWithdrawalReservePercentageBps,
       _params.targetWithdrawalReserveAmount
     );
     $.minimumWithdrawalReservePercentageBps = _params.minimumWithdrawalReservePercentageBps;
