@@ -143,7 +143,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 			hasher.Reset()
 
 			hasher.WriteElements(colHashes[startChunk : startChunk+chunkSize])
-			leaves[chunkID] = hasher.SumElement()
+			leaves[chunkID] = hasher.SumElements(nil)
 		}
 
 	})
@@ -184,7 +184,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 				colElems[row] = v[row].Get(col)
 				hasher.WriteElement(colElems[row])
 			}
-			res[col] = hasher.SumElement()
+			res[col] = hasher.SumElements(nil)
 		},
 	)
 

@@ -50,8 +50,11 @@ func UpdateGeneric(h hashtypes.Poseidon2FieldHasher, vec ...fext.GenericFieldEle
 
 	// Marshal the elements in a vector of bytes
 	for _, f := range vec {
-		elems := f.GenericElements()
-		h.WriteElements(elems)
+		if f.GetIsBase() {
+			Update(h, f.Base)
+		} else {
+			UpdateExt(h, f.Ext)
+		}
 	}
 }
 func UpdateVec(h hashtypes.Poseidon2FieldHasher, vecs ...[]field.Element) {
@@ -83,12 +86,12 @@ func UpdateSV(h hashtypes.Poseidon2FieldHasher, sv smartvectors.SmartVector) {
 // RandomField generates and returns a single field element from the Fiat-Shamir
 // transcript.
 func RandomField(h hashtypes.Poseidon2FieldHasher) field.Octuplet {
-	s := h.SumElement()
+	s := h.SumElements(nil)
 	return s
 }
 
 func RandomFext(h hashtypes.Poseidon2FieldHasher) fext.Element {
-	s := h.SumElement()
+	s := h.SumElements(nil)
 	var res fext.Element
 	res.B0.A0 = s[0]
 	res.B0.A1 = s[1]

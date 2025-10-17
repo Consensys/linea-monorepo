@@ -35,7 +35,7 @@ func TestFieldHasher(t *testing.T) {
 	for i := range randInputs {
 		h3.WriteElement(randInputs[i])
 	}
-	dgst3 := h3.SumElement()
+	dgst3 := h3.SumElements(nil)
 	assert.Equal(dgst1, dgst3, "hashes do not match")
 
 }

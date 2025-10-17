@@ -299,18 +299,6 @@ func (z *GenericFieldElem) GenericBytes() []byte {
 	}
 }
 
-func (z *GenericFieldElem) GenericElements() []field.Element {
-	var res []field.Element
-	if z.GetIsBase() {
-		res[0] = z.Base
-	} else {
-		res[0] = z.Ext.B0.A0
-		res[1] = z.Ext.B0.A1
-		res[2] = z.Ext.B1.A0
-		res[3] = z.Ext.B1.A1
-	}
-	return res
-}
 func (z *GenericFieldElem) Inverse(x *GenericFieldElem) *GenericFieldElem {
 	if x.GetIsBase() {
 		z.Base.Inverse(&x.Base)

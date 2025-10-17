@@ -17,7 +17,6 @@ type Poseidon2FieldHasher interface {
 	hash.StateStorer
 	WriteElement(e field.Element)
 	WriteElements(elems []field.Element)
-	SumElement() field.Octuplet
 	SumElements(elems []field.Element) field.Octuplet
 
 	MaxBytes32() types.Bytes32 // Returns the maximum representable value as Bytes32
@@ -66,21 +65,15 @@ func (d *Poseidon2FieldHasherDigest) WriteElements(elems []field.Element) {
 	d.data = append(d.data, elems...)
 }
 
-// SumElement returns the current hash as a field Octuplet.
-func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
-	h := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
-	vector.Add(d.h[:], h[:], d.h[:])
-	d.data = d.data[:0]
-	return d.h
-}
-
-// SumElement returns the current hash as a field Octuplet.
+// SumElements returns the current hash as a field Octuplet.
 func (d *Poseidon2FieldHasherDigest) SumElements(elems []field.Element) field.Octuplet {
 	h1 := poseidon2.Poseidon2Sponge(d.data) // Poseidon2Sponge include the feedforward process
 	vector.Add(d.h[:], h1[:], d.h[:])
 
-	h2 := poseidon2.Poseidon2Sponge(elems) // Poseidon2Sponge include the feedforward process
-	vector.Add(d.h[:], h2[:], d.h[:])
+	if elems != nil {
+		h2 := poseidon2.Poseidon2Sponge(elems) // Poseidon2Sponge include the feedforward process
+		vector.Add(d.h[:], h2[:], d.h[:])
+	}
 
 	d.data = d.data[:0]
 	return d.h
@@ -111,7 +104,7 @@ func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 
 // Sum computes the poseidon2 hash of msg
 func (d *Poseidon2FieldHasherDigest) Sum(msg []byte) []byte {
-	h := d.SumElement()
+	h := d.SumElements(nil)
 	bytes := types.HashToBytes32(h)
 	return bytes[:]
 }
