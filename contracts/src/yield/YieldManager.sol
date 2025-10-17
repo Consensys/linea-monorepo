@@ -843,7 +843,7 @@ contract YieldManager is
     if ($$.lstLiabilityPrincipal > 0) {
       revert UnpauseStakingForbiddenWithCurrentLSTLiability();
     }
-    if ($$.isOssificationInitiated) {
+    if ($$.isOssificationInitiated && !$$.isOssified) {
       revert UnpauseStakingForbiddenDuringPendingOssification();
     }
     _unpauseStaking(_yieldProvider);

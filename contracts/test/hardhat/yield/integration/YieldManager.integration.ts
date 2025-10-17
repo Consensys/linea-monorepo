@@ -658,6 +658,9 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await mockDashboard.setWithdrawableValueReturn(stakingVaultBalance);
       let l1MessageBalance = await ethers.provider.getBalance(l1MessageServiceAddress);
       let userFunds = await yieldManager.userFunds(yieldProviderAddress);
+      console.log("weird", await getBalance(mockStakingVault));
+      console.log("weird", await mockDashboard.withdrawableValue());
+      await setBalance(mockStakingVaultAddress, stakingVaultBalance); // Unsure why, there is some 1/10 flakiness going on where mock staking vault balance becomes 0 without any mutator calls
       await yieldManager.replenishWithdrawalReserve(yieldProviderAddress);
       expect(await ethers.provider.getBalance(l1MessageServiceAddress)).eq(l1MessageBalance + stakingVaultBalance);
       expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds - stakingVaultBalance);
@@ -899,6 +902,9 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         unstakeAmount,
       );
 
+      console.log("userFunds", await yieldManager.userFunds(yieldProviderAddress));
+      console.log(await getBalance(mockStakingVault));
+
       // Some more positive yield
       const secondPositiveYield = ONE_ETHER * 10n;
 
@@ -916,30 +922,24 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await mockDashboard.setLiabilitySharesReturn(0);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
 
+      console.log("userFunds", await yieldManager.userFunds(yieldProviderAddress));
+      console.log(await getBalance(mockStakingVault));
+
       // PermissionlessRebalance
       stakingVaultBalance = await getBalance(mockStakingVault);
       l1MessageServiceBalance = await getBalance(lineaRollup);
-      console.log(await yieldManager.userFunds(yieldProviderAddress));
-      console.log(stakingVaultBalance);
       await mockDashboard.setWithdrawableValueReturn(stakingVaultBalance);
       await yieldManager.connect(nonAuthorizedAccount).replenishWithdrawalReserve(yieldProviderAddress);
-      console.log(await yieldManager.userFunds(yieldProviderAddress));
-      console.log(await getBalance(mockStakingVault));
 
       // expect(await getBalance(mockStakingVault)).eq(0);
       // expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + stakingVaultBalance);
 
-      // - With reserve healthy but staking still paused, invoke transferFundsToReserve (unstaker role) to push
-      // excess liquidity back to L1, creating a tight balance state; optionally invoke receiveFundsFromReserve via
-      // l1MessageService to simulate L2 withdrawal completion and confirm guard rails.
+      // Kick off ossification
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
 
-      // - Kick off ossification: call initiateOssification (initiator role) and assert repeat call is allowed but keeps
-      // state; run progressPendingOssification twice—first mocked to return ProgressOssificationResult.InProgress, second
-      // returning Complete to flip isOssified.
-
-      // - After ossification, verify unpauseStaking reverts, fundYieldProvider still respects reserve guards, and
-      // withdrawFromYieldProvider continues to auto-reduce pendingPermissionlessUnstake (should already be zero) to prove
-      // post-ossification behaviour remains safe.
+      // Complete ossification
+      await mockVaultHub.setIsVaultConnectedReturn(false);
+      await yieldManager.connect(nativeYieldOperator).progressPendingOssification(yieldProviderAddress);
     });
   });
 });

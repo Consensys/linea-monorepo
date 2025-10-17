@@ -285,7 +285,7 @@ describe("YieldManager contract - control operations", () => {
       );
     });
 
-    it("Should revert if ossification has been initiated", async () => {
+    it("Should revert if ossification has been initiated but not completed", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
       await yieldManager.connect(nativeYieldOperator).pauseStaking(mockYieldProviderAddress);
@@ -297,6 +297,18 @@ describe("YieldManager contract - control operations", () => {
         yieldManager.connect(nativeYieldOperator).unpauseStaking(mockYieldProviderAddress),
         "UnpauseStakingForbiddenDuringPendingOssification",
       );
+    });
+
+    it("Should succeed if ossification has been completed", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.connect(nativeYieldOperator).pauseStaking(mockYieldProviderAddress);
+      await setWithdrawalReserveToMinimum(yieldManager);
+      await yieldManager.setYieldProviderIsOssificationInitiated(mockYieldProviderAddress, true);
+      await yieldManager.setYieldProviderIsOssified(mockYieldProviderAddress, true);
+
+      const tx = yieldManager.connect(nativeYieldOperator).unpauseStaking(mockYieldProviderAddress);
+      await expect(tx).to.not.be.reverted;
     });
 
     it("Should revert if there is a current lst liability", async () => {
