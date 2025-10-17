@@ -5,10 +5,15 @@ import linea.domain.Block
 import linea.domain.BlockParameter
 import linea.domain.BlockWithTxHashes
 import linea.domain.EthLog
+import linea.domain.FeeHistory
 import linea.domain.RetryConfig
+import linea.domain.Transaction
+import linea.domain.TransactionForEthCall
+import linea.domain.TransactionReceipt
 import linea.ethapi.EthApiClient
 import net.consensys.linea.async.AsyncRetryer
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.math.BigInteger
 import java.util.function.Predicate
 
 class Web3jEthApiClientWithRetries(
@@ -53,28 +58,6 @@ class Web3jEthApiClientWithRetries(
     }
   }
 
-  override fun getChainId(): SafeFuture<ULong> {
-    return retry { ethApiClient.getChainId() }
-  }
-
-  override fun blockNumber(): SafeFuture<ULong> {
-    return retry { ethApiClient.blockNumber() }
-  }
-
-  override fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
-    return retry(stopRetriesPredicateForTag(blockParameter)) { ethApiClient.findBlockByNumber(blockParameter) }
-  }
-
-  override fun findBlockByNumberWithoutTransactionsData(
-    blockParameter: BlockParameter,
-  ): SafeFuture<BlockWithTxHashes?> {
-    return retry(stopRetriesPredicateForTag(blockParameter)) {
-      ethApiClient.findBlockByNumberWithoutTransactionsData(
-        blockParameter,
-      )
-    }
-  }
-
   override fun getLogs(
     fromBlock: BlockParameter,
     toBlock: BlockParameter,
@@ -82,5 +65,101 @@ class Web3jEthApiClientWithRetries(
     topics: List<String?>,
   ): SafeFuture<List<EthLog>> {
     return retry { ethApiClient.getLogs(fromBlock, toBlock, address, topics) }
+  }
+
+  override fun ethChainId(): SafeFuture<ULong> {
+    return retry { ethApiClient.ethChainId() }
+  }
+
+  override fun ethProtocolVersion(): SafeFuture<Int> {
+    return retry { ethApiClient.ethProtocolVersion() }
+  }
+
+  override fun ethCoinbase(): SafeFuture<ByteArray> {
+    return retry { ethApiClient.ethCoinbase() }
+  }
+
+  override fun ethMining(): SafeFuture<Boolean> {
+    return retry { ethApiClient.ethMining() }
+  }
+
+  override fun ethGasPrice(): SafeFuture<BigInteger> {
+    return retry { ethApiClient.ethGasPrice() }
+  }
+
+  override fun ethMaxPriorityFeePerGas(): SafeFuture<BigInteger> {
+    return retry { ethApiClient.ethMaxPriorityFeePerGas() }
+  }
+
+  override fun ethFeeHistory(
+    blockCount: Int,
+    newestBlock: BlockParameter,
+    rewardPercentiles: List<Double>,
+  ): SafeFuture<FeeHistory> {
+    return retry(stopRetriesPredicateForTag(newestBlock)) {
+      ethApiClient.ethFeeHistory(blockCount, newestBlock, rewardPercentiles)
+    }
+  }
+
+  override fun ethBlockNumber(): SafeFuture<ULong> {
+    return retry { ethApiClient.ethBlockNumber() }
+  }
+
+  override fun ethGetBalance(
+    address: ByteArray,
+    blockParameter: BlockParameter,
+  ): SafeFuture<BigInteger> {
+    return retry(stopRetriesPredicateForTag(blockParameter)) {
+      ethApiClient.ethGetBalance(address, blockParameter)
+    }
+  }
+
+  override fun ethGetTransactionCount(
+    address: ByteArray,
+    blockParameter: BlockParameter,
+  ): SafeFuture<ULong> {
+    return retry(stopRetriesPredicateForTag(blockParameter)) {
+      ethApiClient.ethGetTransactionCount(address, blockParameter)
+    }
+  }
+
+  override fun ethGetBlockByNumberFullTxs(blockParameter: BlockParameter): SafeFuture<Block?> {
+    return retry(stopRetriesPredicateForTag(blockParameter)) {
+      ethApiClient.ethGetBlockByNumberFullTxs(blockParameter)
+    }
+  }
+
+  override fun ethGetBlockByNumberTxHashes(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
+    return retry(stopRetriesPredicateForTag(blockParameter)) {
+      ethApiClient.ethGetBlockByNumberTxHashes(blockParameter)
+    }
+  }
+
+  override fun ethGetTransactionByHash(transactionHash: ByteArray): SafeFuture<Transaction?> {
+    return retry { ethApiClient.ethGetTransactionByHash(transactionHash) }
+  }
+
+  override fun ethGetTransactionReceipt(transactionHash: ByteArray): SafeFuture<TransactionReceipt?> {
+    return retry { ethApiClient.ethGetTransactionReceipt(transactionHash) }
+  }
+
+  override fun ethSendRawTransaction(signedTransactionData: ByteArray): SafeFuture<ByteArray> {
+    return retry { ethApiClient.ethSendRawTransaction(signedTransactionData) }
+  }
+
+  override fun ethCall(
+    transaction: TransactionForEthCall,
+    blockParameter: BlockParameter,
+  ): SafeFuture<ByteArray> {
+    // FIXME: stop retry when revert reason is returned as JSON RPC error
+    return retry(stopRetriesPredicateForTag(blockParameter)) {
+      ethApiClient.ethCall(transaction, blockParameter)
+    }
+  }
+
+  override fun ethEstimateGas(
+    transaction: TransactionForEthCall,
+  ): SafeFuture<BigInteger> {
+    return retry { ethApiClient.ethEstimateGas(transaction) }
   }
 }

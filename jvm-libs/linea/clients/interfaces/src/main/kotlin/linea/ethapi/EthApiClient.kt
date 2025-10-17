@@ -3,37 +3,80 @@ package linea.ethapi
 import linea.domain.Block
 import linea.domain.BlockParameter
 import linea.domain.BlockWithTxHashes
+import linea.domain.FeeHistory
+import linea.domain.Transaction
+import linea.domain.TransactionForEthCall
+import linea.domain.TransactionReceipt
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.math.BigInteger
 
 /**
  * Failed requests with JSON-RPC error responses will be rejected with JsonRpcErrorResponseException
  */
 interface EthApiClient : EthLogsClient {
-  fun getChainId(): SafeFuture<ULong>
-
-  fun blockNumber(): SafeFuture<ULong>
-
-  fun findBlockByNumber(
-    blockParameter: BlockParameter,
-  ): SafeFuture<Block?>
-
-  fun getBlockByNumber(
-    blockParameter: BlockParameter,
-  ): SafeFuture<Block> {
+  // Legacy methods (keeping existing)
+  // to avoid compolation errors until we refactor usage
+  fun getChainId(): SafeFuture<ULong> = ethChainId()
+  fun blockNumber(): SafeFuture<ULong> = ethBlockNumber()
+  fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> = ethGetBlockByNumberFullTxs(blockParameter)
+  fun getBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block> {
     return findBlockByNumber(blockParameter).thenApply { block ->
       block ?: throw IllegalArgumentException("block=$blockParameter not found!")
     }
   }
-
   fun findBlockByNumberWithoutTransactionsData(
     blockParameter: BlockParameter,
-  ): SafeFuture<BlockWithTxHashes?>
-
-  fun getBlockByNumberWithoutTransactionsData(
-    blockParameter: BlockParameter,
-  ): SafeFuture<BlockWithTxHashes> {
+  ): SafeFuture<BlockWithTxHashes?> = ethGetBlockByNumberTxHashes(blockParameter)
+  fun getBlockByNumberWithoutTransactionsData(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes> {
     return findBlockByNumberWithoutTransactionsData(blockParameter).thenApply { block ->
       block ?: throw IllegalArgumentException("block=$blockParameter not found!")
     }
   }
+
+  // Ethereum JSON-RPC API methods with eth prefix
+  // Protocol version and chain information
+  fun ethChainId(): SafeFuture<ULong>
+  fun ethProtocolVersion(): SafeFuture<Int>
+
+  // fun ethSyncing(): SafeFuture<Any> // Returns false or sync status object
+  // fun ethHashrate(): SafeFuture<BigInteger>
+  fun ethCoinbase(): SafeFuture<ByteArray>
+  fun ethMining(): SafeFuture<Boolean>
+  fun ethGasPrice(): SafeFuture<BigInteger>
+  fun ethMaxPriorityFeePerGas(): SafeFuture<BigInteger>
+  fun ethFeeHistory(
+    blockCount: Int,
+    newestBlock: BlockParameter,
+    rewardPercentiles: List<Double>,
+  ): SafeFuture<FeeHistory>
+  // fun ethAccounts(): SafeFuture<List<ByteArray>>
+
+  // Count methods
+  fun ethBlockNumber(): SafeFuture<ULong>
+  fun ethGetBalance(address: ByteArray, blockParameter: BlockParameter): SafeFuture<BigInteger>
+  fun ethGetTransactionCount(address: ByteArray, blockParameter: BlockParameter): SafeFuture<ULong>
+  // fun ethGetCode(address: ByteArray, blockParameter: BlockParameter): SafeFuture<ByteArray>
+  // fun ethGetStorageAt(address: ByteArray, position: BigInteger, blockParameter: BlockParameter): SafeFuture<ByteArray>
+  // fun ethGetBlockTransactionCountByHash(blockHash: ByteArray): SafeFuture<ULong?>
+  // fun ethGetBlockTransactionCountByNumber(blockParameter: BlockParameter): SafeFuture<ULong?>
+
+  // Block retrieval methods
+  fun ethGetBlockByNumberFullTxs(blockParameter: BlockParameter): SafeFuture<Block?>
+  fun ethGetBlockByNumberTxHashes(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?>
+  // fun ethGetBlockByHashFullTxs(blockHash: ByteArray): SafeFuture<Block?>
+  // fun ethGetBlockByHashTxHashes(blockHash: ByteArray): SafeFuture<BlockWithTxHashes?>
+
+  // Transaction methods
+  fun ethGetTransactionByHash(transactionHash: ByteArray): SafeFuture<Transaction?>
+  fun ethGetTransactionReceipt(transactionHash: ByteArray): SafeFuture<TransactionReceipt?>
+  // fun ethGetTransactionByBlockHashAndIndex(blockHash: ByteArray, transactionIndex: ULong): SafeFuture<Transaction?>
+  // fun ethGetTransactionByBlockNumberAndIndex(blockParameter: BlockParameter, transactionIndex: ULong): SafeFuture<Transaction?>
+
+  // Transaction submission and estimation
+  fun ethSendRawTransaction(signedTransactionData: ByteArray): SafeFuture<ByteArray>
+  fun ethCall(transaction: TransactionForEthCall, blockParameter: BlockParameter): SafeFuture<ByteArray>
+  fun ethEstimateGas(transaction: TransactionForEthCall): SafeFuture<BigInteger>
+
+  // Proof methods
+  // fun ethGetProof(address: ByteArray, storageKeys: List<ByteArray>, blockParameter: BlockParameter): SafeFuture<Any> // Proof type not available
 }
