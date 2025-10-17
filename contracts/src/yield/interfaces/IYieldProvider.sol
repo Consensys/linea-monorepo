@@ -153,7 +153,7 @@ interface IYieldProvider {
    * @param _yieldProvider The yield provider address.
    * @return isOssificationComplete True if the provider is now in the ossified state.
    */
-  function processPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
+  function progressPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
 
   /**
    * @notice Performs vendor-specific validation before the provider is registered by the YieldManager.

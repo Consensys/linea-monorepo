@@ -346,12 +346,12 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
 
   describe("process pending ossification", () => {
     it("Should revert if not invoked via delegatecall", async () => {
-      const call = yieldProvider.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+      const call = yieldProvider.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
       await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
     });
     it("Should succeed", async () => {
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
     });
   });
 

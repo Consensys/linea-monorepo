@@ -18,7 +18,7 @@ abstract contract MockYieldProviderStorageLayout {
     uint256 reportYieldReturnVal_OutstandingNegativeYield;
     uint256 payLSTPrincipalReturnVal;
     uint256 unstakePermissionlessReturnVal;
-    bool processPendingOssificationReturnVal;
+    bool progressPendingOssificationReturnVal;
     address mockWithdrawTarget;
   }
 
@@ -60,8 +60,8 @@ abstract contract MockYieldProviderStorageLayout {
     _getMockYieldProviderStorage(_yieldProvider).unstakePermissionlessReturnVal = _val;
   }
 
-  function setProcessPendingOssificationReturnVal(address _yieldProvider, bool _val) external {
-    _getMockYieldProviderStorage(_yieldProvider).processPendingOssificationReturnVal = _val;
+  function setprogressPendingOssificationReturnVal(address _yieldProvider, bool _val) external {
+    _getMockYieldProviderStorage(_yieldProvider).progressPendingOssificationReturnVal = _val;
   }
 
   function getMockWithdrawTarget(address _yieldProvider) public view returns (address) {
@@ -88,7 +88,7 @@ abstract contract MockYieldProviderStorageLayout {
     return _getMockYieldProviderStorage(_yieldProvider).unstakePermissionlessReturnVal;
   }
 
-  function getProcessPendingOssificationReturnVal(address _yieldProvider) public view returns (bool) {
-    return _getMockYieldProviderStorage(_yieldProvider).processPendingOssificationReturnVal;
+  function getprogressPendingOssificationReturnVal(address _yieldProvider) public view returns (bool) {
+    return _getMockYieldProviderStorage(_yieldProvider).progressPendingOssificationReturnVal;
   }
 }

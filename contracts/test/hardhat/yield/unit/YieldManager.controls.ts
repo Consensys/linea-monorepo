@@ -370,7 +370,7 @@ describe("YieldManager contract - control operations", () => {
     });
   });
 
-  // processPendingOssification() unit tests
+  // progressPendingOssification() unit tests
   describe("Process pending ossification", () => {
     it("Should revert when adding if the caller does not have the OSSIFICATION_PROCESSOR_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
@@ -378,14 +378,14 @@ describe("YieldManager contract - control operations", () => {
       const requiredRole = await yieldManager.OSSIFICATION_PROCESSOR_ROLE();
 
       await expect(
-        yieldManager.connect(nonAuthorizedAccount).processPendingOssification(mockYieldProviderAddress),
+        yieldManager.connect(nonAuthorizedAccount).progressPendingOssification(mockYieldProviderAddress),
       ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
 
     it("Should revert when requesting for an unknown yield provider", async () => {
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).processPendingOssification(ethers.Wallet.createRandom().address),
+        yieldManager.connect(securityCouncil).progressPendingOssification(ethers.Wallet.createRandom().address),
         "UnknownYieldProvider",
       );
     });
@@ -395,7 +395,7 @@ describe("YieldManager contract - control operations", () => {
 
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).processPendingOssification(mockYieldProviderAddress),
+        yieldManager.connect(securityCouncil).progressPendingOssification(mockYieldProviderAddress),
         "OssificationNotInitiated",
       );
     });
@@ -408,7 +408,7 @@ describe("YieldManager contract - control operations", () => {
 
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).processPendingOssification(mockYieldProviderAddress),
+        yieldManager.connect(securityCouncil).progressPendingOssification(mockYieldProviderAddress),
         "AlreadyOssified",
       );
     });
@@ -419,14 +419,14 @@ describe("YieldManager contract - control operations", () => {
       await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
       await yieldManager
         .connect(securityCouncil)
-        .setProcessPendingOssificationReturnVal(mockYieldProviderAddress, false);
+        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, false);
 
       const isOssificationComplete = await yieldManager
         .connect(securityCouncil)
-        .processPendingOssification.staticCall(mockYieldProviderAddress);
+        .progressPendingOssification.staticCall(mockYieldProviderAddress);
       expect(isOssificationComplete).to.be.false;
 
-      await expect(yieldManager.connect(securityCouncil).processPendingOssification(mockYieldProviderAddress))
+      await expect(yieldManager.connect(securityCouncil).progressPendingOssification(mockYieldProviderAddress))
         .to.emit(yieldManager, "YieldProviderOssificationProcessed")
         .withArgs(mockYieldProviderAddress, false);
 
@@ -440,14 +440,14 @@ describe("YieldManager contract - control operations", () => {
       await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
       await yieldManager
         .connect(securityCouncil)
-        .setProcessPendingOssificationReturnVal(mockYieldProviderAddress, true);
+        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, true);
 
       const isOssificationComplete = await yieldManager
         .connect(securityCouncil)
-        .processPendingOssification.staticCall(mockYieldProviderAddress);
+        .progressPendingOssification.staticCall(mockYieldProviderAddress);
       expect(isOssificationComplete).to.be.true;
 
-      await expect(yieldManager.connect(securityCouncil).processPendingOssification(mockYieldProviderAddress))
+      await expect(yieldManager.connect(securityCouncil).progressPendingOssification(mockYieldProviderAddress))
         .to.emit(yieldManager, "YieldProviderOssificationProcessed")
         .withArgs(mockYieldProviderAddress, true);
 

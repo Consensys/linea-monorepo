@@ -634,7 +634,7 @@ interface IYieldManager {
    * @param _yieldProvider The yield provider address.
    * @return isOssificationComplete True if ossification is finalized.
    */
-  function processPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
+  function progressPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
 
   /**
    * @notice Register a new YieldProvider adaptor instance.

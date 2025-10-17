@@ -143,9 +143,9 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const userFundsInYieldProvidersTotalBefore = await yieldManager.userFundsInYieldProvidersTotal();
       const userFundsBefore = await yieldManager.userFunds(yieldProvider);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
-      // Arrange - setup ossified. Note with real Lido contracts 'processPendingOssification' will not succeed with an LST liability
+      // Arrange - setup ossified. Note with real Lido contracts 'progressPendingOssification' will not succeed with an LST liability
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProvider);
-      await yieldManager.connect(securityCouncil).processPendingOssification(yieldProvider);
+      await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProvider);
       // Act
       const liabilityPaidETH = await yieldManager
         .connect(securityCouncil)
@@ -329,7 +329,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
 
     it("Should return 0 if ossified", async () => {
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
       const lstPrincipalPaid = await yieldManager
         .connect(securityCouncil)
         .payLSTPrincipalExternal.staticCall(yieldProviderAddress, ONE_ETHER);
@@ -571,7 +571,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
     });
     it("Should revert if ossified", async () => {
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
       const call = yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
       await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
         REPORT_YIELD_OPERATION_TYPE,

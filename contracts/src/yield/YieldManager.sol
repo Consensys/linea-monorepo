@@ -927,7 +927,7 @@ contract YieldManager is
    * @param _yieldProvider The yield provider address.
    * @return isOssificationComplete True if ossification is finalized.
    */
-  function processPendingOssification(
+  function progressPendingOssification(
     address _yieldProvider
   )
     external
@@ -944,7 +944,7 @@ contract YieldManager is
     }
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
-      abi.encodeCall(IYieldProvider.processPendingOssification, (_yieldProvider))
+      abi.encodeCall(IYieldProvider.progressPendingOssification, (_yieldProvider))
     );
     isOssificationComplete = abi.decode(data, (bool));
     if (isOssificationComplete) {

@@ -86,7 +86,7 @@ export const ossifyYieldProvider = async (
   securityCouncil: SignerWithAddress,
 ) => {
   await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-  await yieldManager.connect(securityCouncil).processPendingOssification(yieldProviderAddress);
+  await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
   expect(await yieldManager.isOssified(yieldProviderAddress)).to.be.true;
 };
 

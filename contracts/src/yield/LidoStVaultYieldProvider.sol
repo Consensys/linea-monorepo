@@ -494,7 +494,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    * @param _yieldProvider The yield provider address.
    * @return isOssificationComplete True if the provider is now in the ossified state.
    */
-  function processPendingOssification(
+  function progressPendingOssification(
     address _yieldProvider
   ) external onlyDelegateCall returns (bool isOssificationComplete) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
