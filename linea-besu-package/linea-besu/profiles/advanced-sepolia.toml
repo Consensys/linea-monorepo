@@ -30,11 +30,6 @@ tx-pool-min-gas-price="10000000"
 tx-pool-layer-max-capacity="100000000"
 tx-pool-no-local-priority=true
 
-# engine
-engine-host-allowlist=["*"]
-engine-rpc-port=8550
-engine-jwt-disabled=true
-
 ### RPC and API configuration ###
 rpc-http-enabled=true
 rpc-http-host="0.0.0.0"
@@ -69,8 +64,8 @@ metrics-port=9545
 ### JWT and Engine Configuration ###
 engine-jwt-disabled=false
 engine-jwt-secret="/etc/jwt-secret.hex"
-engine-rpc-enabled=false
-engine-rpc-port=8551
+engine-rpc-enabled=true
+engine-rpc-port=8550
 engine-host-allowlist=["*"]
 
 ### Gas and Block Limit Configuration ###
