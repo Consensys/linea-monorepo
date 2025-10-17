@@ -439,6 +439,7 @@ services:
     user: root
     ports:
       - "8998:8888"
+      - "9888:9888"
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /data/shomei/LOCK ]\"" ]
       interval: 1s
@@ -458,6 +459,8 @@ services:
       - --min-confirmations-before-importing=0
       - --trace-start-block-number=0
       - --data-path=/data/shomei
+      - --metrics-http-host=0.0.0.0
+      - --metrics-http-port=9888
     volumes:
       - ./config/shomei/log4j.xml:/log4j.xml:ro
   #      - ../tmp/local/shomei:/data/shomei/:z
