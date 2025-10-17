@@ -176,8 +176,6 @@ func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 
 // Run a command and returns the status. Retry gives an indication on whether
 // this is a local retry or not.
-// Run a command and returns the status. Retry gives an indication on whether
-// this is a local retry or not.
 func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	logrus.Infof("The executor is about to run the command: %s", cmdStr)
 
