@@ -377,10 +377,10 @@ importers:
         version: 6.13.7(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       jest:
         specifier: 'catalog:'
-        version: 29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))
+        version: 29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))
       ts-jest:
         specifier: 'catalog:'
-        version: 29.3.4(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5)
+        version: 29.3.4(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(esbuild@0.25.5)(jest@29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5)))(typescript@5.4.5)
       typechain:
         specifier: 'catalog:'
         version: 8.3.2(typescript@5.4.5)
@@ -417,6 +417,9 @@ importers:
       ethers:
         specifier: 'catalog:'
         version: 6.13.7(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      neverthrow:
+        specifier: 8.2.0
+        version: 8.2.0
       node-forge:
         specifier: 1.3.1
         version: 1.3.1
@@ -438,16 +441,16 @@ importers:
         version: 1.3.14
       jest:
         specifier: 'catalog:'
-        version: 29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))
+        version: 29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))
       jest-mock-extended:
         specifier: 'catalog:'
-        version: 3.0.7(jest@29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5)))(typescript@5.4.5)
+        version: 3.0.7(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5)
       shx:
         specifier: 0.3.4
         version: 0.3.4
       ts-jest:
         specifier: 29.4.5
-        version: 29.4.5(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5)))(typescript@5.4.5)
+        version: 29.4.5(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5)
 
   postman:
     dependencies:
@@ -9697,6 +9700,10 @@ packages:
 
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
+
+  neverthrow@8.2.0:
+    resolution: {integrity: sha512-kOCT/1MCPAxY5iUV3wytNFUMUolzuwd/VF/1KCx7kf6CutrOsTie+84zTGTpgQycjvfLdBBdvBvFLqFD2c0wkQ==}
+    engines: {node: '>=18'}
 
   new-date@1.0.3:
     resolution: {integrity: sha512-0fsVvQPbo2I18DT2zVHpezmeeNYV2JaJSrseiHLc17GNOxJzUdx5mvSigPu8LtIfZSij5i1wXnXFspEs2CD6hA==}
@@ -25292,6 +25299,12 @@ snapshots:
       slash: 3.0.0
       stack-utils: 2.0.6
 
+  jest-mock-extended@3.0.7(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5):
+    dependencies:
+      jest: 29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))
+      ts-essentials: 10.0.4(typescript@5.4.5)
+      typescript: 5.4.5
+
   jest-mock-extended@3.0.7(jest@29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5)))(typescript@5.4.5):
     dependencies:
       jest: 29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))
@@ -26341,6 +26354,10 @@ snapshots:
   negotiator@1.0.0: {}
 
   neo-async@2.6.2: {}
+
+  neverthrow@8.2.0:
+    optionalDependencies:
+      '@rollup/rollup-linux-x64-gnu': 4.44.0
 
   new-date@1.0.3:
     dependencies:
@@ -28805,32 +28822,12 @@ snapshots:
       babel-jest: 29.7.0(@babel/core@7.25.7)
       esbuild: 0.25.5
 
-  ts-jest@29.3.4(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5):
-    dependencies:
-      bs-logger: 0.2.6
-      ejs: 3.1.10
-      fast-json-stable-stringify: 2.1.0
-      jest: 29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))
-      jest-util: 29.7.0
-      json5: 2.2.3
-      lodash.memoize: 4.1.2
-      make-error: 1.3.6
-      semver: 7.7.2
-      type-fest: 4.41.0
-      typescript: 5.4.5
-      yargs-parser: 21.1.1
-    optionalDependencies:
-      '@babel/core': 7.25.7
-      '@jest/transform': 29.7.0
-      '@jest/types': 29.6.3
-      babel-jest: 29.7.0(@babel/core@7.25.7)
-
-  ts-jest@29.4.5(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5)))(typescript@5.4.5):
+  ts-jest@29.4.5(@babel/core@7.25.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.25.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5)))(typescript@5.4.5):
     dependencies:
       bs-logger: 0.2.6
       fast-json-stable-stringify: 2.1.0
       handlebars: 4.7.8
-      jest: 29.7.0(@types/node@22.7.5)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))
+      jest: 29.7.0(@types/node@20.12.7)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5))
       json5: 2.2.3
       lodash.memoize: 4.1.2
       make-error: 1.3.6

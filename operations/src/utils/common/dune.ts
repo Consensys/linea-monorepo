@@ -1,4 +1,5 @@
-import { QueryParameter, DuneClient } from "@duneanalytics/client-sdk";
+import { QueryParameter, DuneClient, ResultsResponse, DuneError } from "@duneanalytics/client-sdk";
+import { err, ok, Result } from "neverthrow";
 
 export function getDuneClient(duneApiKey: string): DuneClient {
   return new DuneClient(duneApiKey);
@@ -24,9 +25,18 @@ export function generateQueryParameters(params: Record<string, string | number |
   return Object.entries(params).map(([key, value]) => generateQueryParameter(key, value));
 }
 
-export function runDuneQuery(duneClient: DuneClient, duneQueryId: number, params: QueryParameter[] = []) {
-  return duneClient.runQuery({
-    queryId: duneQueryId,
-    query_parameters: params,
-  });
+export async function runDuneQuery(
+  duneClient: DuneClient,
+  duneQueryId: number,
+  params: QueryParameter[] = [],
+): Promise<Result<ResultsResponse, DuneError>> {
+  try {
+    const response = await duneClient.runQuery({
+      queryId: duneQueryId,
+      query_parameters: params,
+    });
+    return ok(response);
+  } catch (error) {
+    return err(error as DuneError);
+  }
 }

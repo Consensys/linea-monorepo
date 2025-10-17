@@ -1,31 +1,37 @@
-import { BaseError, Client } from "viem";
+import { BaseError, Client, Hex, TransactionReceipt } from "viem";
 import { estimateGas, EstimateGasParameters, EstimateGasReturnType } from "viem/linea";
-import { ethers, TransactionLike } from "ethers";
+import { err, ok, Result } from "neverthrow";
+import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 
 export async function estimateTransactionGas(
   client: Client,
   params: EstimateGasParameters,
-): Promise<EstimateGasReturnType> {
+): Promise<Result<EstimateGasReturnType, BaseError>> {
   try {
-    return await estimateGas(client, params);
+    const response = await estimateGas(client, params);
+    return ok(response);
   } catch (error) {
     if (error instanceof BaseError) {
-      const err = (error.walk((err) => "data" in (err as BaseError)) || error.walk()) as BaseError;
-      console.log("Gas estimation failed with the following error:", err.message);
+      const decodedError = (error.walk((err) => "data" in (err as BaseError)) || error.walk()) as BaseError;
+      return err(decodedError);
     }
-    throw error;
+    return err(error as BaseError);
   }
 }
 
-export async function executeTransaction(
-  provider: ethers.JsonRpcProvider,
-  transaction: TransactionLike,
-): Promise<ethers.TransactionReceipt | null> {
+export async function sendTransaction(
+  client: Client,
+  serializedTransaction: Hex,
+): Promise<Result<TransactionReceipt, BaseError>> {
   try {
-    const tx = await provider.broadcastTransaction(ethers.Transaction.from(transaction).serialized);
-    return await tx.wait();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    throw new Error(`TransactionError: ${JSON.stringify(error.message)}`);
+    const txHash = await sendRawTransaction(client, { serializedTransaction });
+    const receipt = await waitForTransactionReceipt(client, { hash: txHash });
+    return ok(receipt);
+  } catch (error) {
+    if (error instanceof BaseError) {
+      const decodedError = error.walk();
+      return err(decodedError as BaseError);
+    }
+    return err(error as BaseError);
   }
 }

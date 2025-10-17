@@ -2,7 +2,6 @@ import { Command, Flags } from "@oclif/core";
 import {
   Address,
   createPublicClient,
-  decodeErrorResult,
   encodeFunctionData,
   Hex,
   http,
@@ -16,13 +15,9 @@ import { Agent } from "https";
 import { formatDate } from "date-fns";
 import { computeInvoicePeriod } from "../utils/eth-transfer/time.js";
 import { generateQueryParameters, getDuneClient, runDuneQuery } from "../utils/common/dune.js";
-import { estimateTransactionGas } from "../utils/eth-transfer/transactions.js";
+import { estimateTransactionGas, sendTransaction } from "../utils/eth-transfer/transactions.js";
 import { getWeb3SignerSignature } from "../utils/common/signature.js";
-import {
-  INVOICE_PROCESSED_EVENT_ABI,
-  ROLLUP_REVENUE_VAULT_ERRORS_ABI,
-  SUBMIT_INVOICE_ABI,
-} from "../utils/eth-transfer/constants.js";
+import { INVOICE_PROCESSED_EVENT_ABI, SUBMIT_INVOICE_ABI } from "../utils/eth-transfer/constants.js";
 import { getHttpsAgent } from "../utils/common/https-agent.js";
 import { createAwsCostExplorerClient, getDailyAwsCosts } from "../utils/common/aws.js";
 import { computeSubmitInvoiceCalldata, getLastInvoiceDate } from "../utils/eth-transfer/contract.js";
@@ -201,15 +196,15 @@ export default class EthTransfer extends Command {
 
     const lastInvoiceDate = await getLastInvoiceDate(client, contractAddress);
 
-    if (!lastInvoiceDate) {
-      this.error("Failed to retrieve the last invoice date from the contract.");
+    if (lastInvoiceDate.isErr()) {
+      this.error(`Failed to retrieve the last invoice date from the contract: ${lastInvoiceDate.error.message}`);
     }
 
-    this.log(`Last invoice date (timestamp in seconds): ${lastInvoiceDate}`);
+    this.log(`Last invoice date (timestamp in seconds): ${lastInvoiceDate.value}`);
 
     const currentTimestampInSeconds = Math.floor(Date.now() / 1000);
     const invoicePeriod = computeInvoicePeriod(
-      Number(lastInvoiceDate),
+      Number(lastInvoiceDate.value),
       currentTimestampInSeconds,
       periodDays,
       reportingLagDays,
@@ -232,7 +227,7 @@ export default class EthTransfer extends Command {
       )}`,
     );
     // TODO: refine the filter to specific tags
-    const { ResultsByTime } = await getDailyAwsCosts(awsClient, {
+    const awsCostsResult = await getDailyAwsCosts(awsClient, {
       Filter: {},
       Granularity: "DAILY",
       GroupBy: [],
@@ -243,16 +238,23 @@ export default class EthTransfer extends Command {
       },
     });
 
-    if (!ResultsByTime || ResultsByTime.length === 0) {
-      this.error("No AWS cost data returned for the specified period.");
-    }
+    const awsCostsInUsd = awsCostsResult.match(
+      (value) => {
+        const { ResultsByTime } = value;
 
-    const awsCostsInUsd = ResultsByTime[0].Total?.AmortizedCost?.Amount
-      ? parseFloat(ResultsByTime[0].Total.AmortizedCost.Amount)
-      : 0;
+        if (!ResultsByTime || ResultsByTime.length === 0) {
+          this.error("No AWS cost data returned for the specified period.");
+        }
+
+        return ResultsByTime[0].Total?.AmortizedCost?.Amount
+          ? parseFloat(ResultsByTime[0].Total.AmortizedCost.Amount)
+          : 0;
+      },
+      (error) => this.error(`Failed to fetch AWS costs: ${error.message}`),
+    );
 
     const duneClient = getDuneClient(flags.duneApiKey);
-    const { result } = await runDuneQuery(
+    const onChainCostsResult = await runDuneQuery(
       duneClient,
       flags.duneQueryId,
       generateQueryParameters({
@@ -261,7 +263,16 @@ export default class EthTransfer extends Command {
       }),
     );
 
-    const onChainCostsInEth = result?.rows[0]?.totalCost as number;
+    const onChainCostsInEth = onChainCostsResult.match(
+      (value) => {
+        const { result } = value;
+        if (!result || !result.rows || result.rows.length === 0) {
+          this.error("No Dune query result returned for the specified period.");
+        }
+        return result.rows.reduce((acc, row) => acc + (row.totalCost as number), 0);
+      },
+      (error) => this.error(`Failed to run Dune query: ${error.message}`),
+    );
 
     // TODO: convert awsCostsInUsd to ETH using some oracle or API
     const awsCostsInEth = awsCostsInUsd;
@@ -275,7 +286,7 @@ export default class EthTransfer extends Command {
 
     this.log(`Total costs to invoice in ETH: ${totalCostsInEth}`);
 
-    const { gasLimit, baseFeePerGas, priorityFeePerGas } = await estimateTransactionGas(client, {
+    const gasEstimationResult = await estimateTransactionGas(client, {
       to: contractAddress,
       account: senderAddress,
       value: 0n,
@@ -289,6 +300,11 @@ export default class EthTransfer extends Command {
         ],
       }),
     });
+
+    const { gasLimit, baseFeePerGas, priorityFeePerGas } = gasEstimationResult.match(
+      (value) => value,
+      (error) => this.error(`Failed to estimate gas: ${error.message}`),
+    );
 
     let httpsAgent: Agent | undefined;
     if (
@@ -329,7 +345,11 @@ export default class EthTransfer extends Command {
       httpsAgent,
     );
 
-    const serializeSignedTransaction = serializeTransaction(transactionToSerialize, parseSignature(signature));
+    if (signature.isErr()) {
+      this.error(`Failed to get signature from Web3 Signer: ${signature.error.message}`);
+    }
+
+    const serializeSignedTransaction = serializeTransaction(transactionToSerialize, parseSignature(signature.value));
 
     if (dryRun) {
       this.log(`Dry run mode - transaction not submitted.`);
@@ -337,12 +357,11 @@ export default class EthTransfer extends Command {
     }
 
     this.log(`Broadcasting submitInvoice transaction to the network...`);
-    const txHash = await client.sendRawTransaction({
-      serializedTransaction: serializeSignedTransaction,
-    });
-    this.log(`Transaction submitted. transactionHash=${txHash}`);
-
-    const receipt = await client.waitForTransactionReceipt({ hash: txHash });
+    const transactionResult = await sendTransaction(client, serializeSignedTransaction);
+    const receipt = transactionResult.match(
+      (value) => value,
+      (error) => this.error(`Failed to send transaction: ${error.message}`),
+    );
 
     if (receipt.status === "success") {
       const [event] = parseEventLogs({
@@ -352,34 +371,11 @@ export default class EthTransfer extends Command {
       });
 
       this.log(
-        `Invoice successfully submitted: eventName=${event.eventName} receiver=${event.args.receiver} startTimestamp=${event.args.startTimestamp} endTimestamp=${event.args.endTimestamp} amountPaid=${event.args.amountPaid} amountRequested=${event.args.amountRequested}`,
+        `Invoice successfully submitted: transactionHash=${receipt.transactionHash} eventName=${event.eventName} receiver=${event.args.receiver} startTimestamp=${event.args.startTimestamp} endTimestamp=${event.args.endTimestamp} amountPaid=${event.args.amountPaid} amountRequested=${event.args.amountRequested}`,
       );
       return;
     }
 
-    const transaction = await client.getTransaction({ hash: txHash });
-    const { data } = await client.call({
-      to: transaction.to,
-      account: senderAddress,
-      data: transaction.input,
-      blockNumber: receipt.blockNumber,
-      value: transaction.value,
-      maxFeePerGas: transaction.maxFeePerGas,
-      maxPriorityFeePerGas: transaction.maxPriorityFeePerGas,
-      gas: receipt.gasUsed,
-      type: "eip1559",
-    });
-
-    if (!data || data === "0x") {
-      this.error(`Invoice submission failed without a specific error message.`);
-    }
-
-    const error = decodeErrorResult({
-      abi: ROLLUP_REVENUE_VAULT_ERRORS_ABI,
-      data,
-    });
-    this.error(
-      `Invoice submission failed with the following error: name=${error.errorName} args=${error.args.join(", ")}`,
-    );
+    this.error(`Invoice submission failed. transactionHash=${receipt.transactionHash}`);
   }
 }

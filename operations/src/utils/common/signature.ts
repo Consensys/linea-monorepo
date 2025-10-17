@@ -1,5 +1,6 @@
 import axios from "axios";
 import { Agent } from "https";
+import { err, ok, Result } from "neverthrow";
 import { Hex, serializeTransaction, TransactionSerializable } from "viem";
 
 export async function getWeb3SignerSignature(
@@ -7,7 +8,7 @@ export async function getWeb3SignerSignature(
   web3SignerPublicKey: string,
   transaction: TransactionSerializable,
   agent?: Agent,
-): Promise<Hex> {
+): Promise<Result<Hex, Error>> {
   try {
     const { data } = await axios.post(
       `${web3SignerUrl}/api/v1/eth1/sign/${web3SignerPublicKey}`,
@@ -16,11 +17,8 @@ export async function getWeb3SignerSignature(
       },
       { httpsAgent: agent },
     );
-    return data;
+    return ok(data);
   } catch (error) {
-    if (error instanceof Error) {
-      console.log(`Web3SignerError: ${JSON.stringify(error.message)}`);
-    }
-    throw error;
+    return err(error as Error);
   }
 }

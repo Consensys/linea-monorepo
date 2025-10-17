@@ -1,8 +1,9 @@
 import { Address, BaseError, Client, encodeFunctionData, Hex } from "viem";
 import { readContract } from "viem/actions";
 import { SUBMIT_INVOICE_ABI } from "./constants.js";
+import { err, ok, Result } from "neverthrow";
 
-export async function getLastInvoiceDate(client: Client, contractAddress: Address): Promise<bigint | null> {
+export async function getLastInvoiceDate(client: Client, contractAddress: Address): Promise<Result<bigint, BaseError>> {
   try {
     const lastInvoiceDate = await readContract(client, {
       address: contractAddress,
@@ -23,13 +24,13 @@ export async function getLastInvoiceDate(client: Client, contractAddress: Addres
       ],
       functionName: "lastInvoiceDate",
     });
-    return lastInvoiceDate;
+    return ok(lastInvoiceDate);
   } catch (error) {
     if (error instanceof BaseError) {
-      const err = error.walk();
-      console.log("Get last invoice date failed with the following error:", err.message);
+      const decodedError = error.walk();
+      return err(decodedError as BaseError);
     }
-    return null;
+    return err(error as BaseError);
   }
 }
 
