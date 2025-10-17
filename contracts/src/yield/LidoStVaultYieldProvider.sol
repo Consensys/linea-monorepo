@@ -7,12 +7,15 @@ import { ICommonVaultOperations } from "./interfaces/vendor/lido/ICommonVaultOpe
 import { IDashboard } from "./interfaces/vendor/lido/IDashboard.sol";
 import { IStETH } from "./interfaces/vendor/lido/IStETH.sol";
 import { IVaultHub } from "./interfaces/vendor/lido/IVaultHub.sol";
+import { IVaultFactory } from "./interfaces/vendor/lido/IVaultFactory.sol";
 import { IStakingVault } from "./interfaces/vendor/lido/IStakingVault.sol";
 import { Math256 } from "../libraries/Math256.sol";
 import { CLProofVerifier } from "./libs/CLProofVerifier.sol";
 import { GIndex } from "./libs/vendor/lido/GIndex.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ErrorUtils } from "../libraries/ErrorUtils.sol";
+import { IPermissionsManager } from "../security/access/interfaces/IPermissionsManager.sol";
+import { ProgressOssificationResult, YieldProviderRegistration, YieldProviderVendor } from "./interfaces/YieldTypes.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
@@ -28,6 +31,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
 
   /// @notice Address of the Lido VaultHub.
   IVaultHub public immutable VAULT_HUB;
+
+  /// @notice Address of the Lido VaultFactory.
+  IVaultFactory public immutable VAULT_FACTORY;
 
   /// @notice Address of the Lido stETH contract.
   IStETH public immutable STETH;
@@ -50,6 +56,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve.
   /// @param _yieldManager The Linea YieldManager.
   /// @param _vaultHub Lido VaultHub contract.
+  /// @param _vaultFactory Lido VaultFactory contract.
   /// @param _steth Lido stETH contract.
   /// @param _gIFirstValidator Packed generalized index for the first validator before the pivot slot.
   /// @param _gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
@@ -58,6 +65,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     address _l1MessageService,
     address _yieldManager,
     address _vaultHub,
+    address _vaultFactory,
     address _steth,
     GIndex _gIFirstValidator,
     GIndex _gIFirstValidatorAfterChange,
@@ -69,8 +77,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     ErrorUtils.revertIfZeroAddress(_l1MessageService);
     ErrorUtils.revertIfZeroAddress(_yieldManager);
     ErrorUtils.revertIfZeroAddress(_vaultHub);
+    ErrorUtils.revertIfZeroAddress(_vaultFactory);
     ErrorUtils.revertIfZeroAddress(_steth);
     VAULT_HUB = IVaultHub(_vaultHub);
+    VAULT_FACTORY = IVaultFactory(_vaultFactory);
     STETH = IStETH(_steth);
     _disableInitializers();
   }
@@ -529,17 +539,38 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   }
 
   /**
-   * @notice Performs vendor-specific validation before the provider is registered by the YieldManager.
-   * @param _registration Registration payload for the yield provider.
+   * @notice Performs vendor-specific initialization logic.
+   * @param _vendorInitializationData Vendor-specific initialization data.
+   * @return registrationData Data required to register a new YieldProvider with the YieldManager.
    */
-  function validateAdditionToYieldManager(YieldProviderRegistration calldata _registration) external view {
-    if (_registration.yieldProviderVendor != YieldProviderVendor.LIDO_STVAULT) {
-      revert UnknownYieldProviderVendor();
-    }
-    IDashboard dashboard = IDashboard(_registration.primaryEntrypoint);
-    address expectedVault = address(dashboard.stakingVault());
-    if (expectedVault != _registration.ossifiedEntrypoint) {
-      revert InvalidYieldProviderRegistration(YieldProviderRegistrationError.LidoDashboardNotLinkedToVault);
-    }
+  function initializeVendorContracts(
+    bytes memory _vendorInitializationData
+  ) external onlyDelegateCall returns (YieldProviderRegistration memory registrationData) {
+    (
+      address defaultAdmin,
+      address nodeOperator,
+      address nodeOperatorManager,
+      uint256 nodeOperatorFeeBP,
+      uint256 confirmExpiry,
+      IPermissionsManager.RoleAddress[] memory roleAssignments
+    ) = abi.decode(
+        _vendorInitializationData,
+        (address, address, address, uint256, uint256, IPermissionsManager.RoleAddress[])
+      );
+
+    (address vault, address dashboard) = VAULT_FACTORY.createVaultWithDashboard(
+      defaultAdmin,
+      nodeOperator,
+      nodeOperatorManager,
+      nodeOperatorFeeBP,
+      confirmExpiry,
+      roleAssignments
+    );
+
+    registrationData = YieldProviderRegistration({
+      yieldProviderVendor: YieldProviderVendor.LIDO_STVAULT,
+      primaryEntrypoint: dashboard,
+      ossifiedEntrypoint: vault
+    });
   }
 }

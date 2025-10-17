@@ -5,6 +5,7 @@ import { YieldManager } from "../../../yield/YieldManager.sol";
 import { MockYieldProviderStorageLayout } from "../../mocks/yield/MockYieldProviderStorageLayout.sol";
 import { TestLidoStVaultYieldProvider } from "./TestLidoStVaultYieldProvider.sol";
 import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
+import { YieldProviderVendor } from "../../../yield/interfaces/YieldTypes.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {

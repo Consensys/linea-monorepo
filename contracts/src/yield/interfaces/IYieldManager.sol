@@ -5,6 +5,7 @@ import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
 import { IPauseManager } from "../../security/pausing/interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "../../security/access/interfaces/IPermissionsManager.sol";
 import { IYieldProvider } from "./IYieldProvider.sol";
+import { ProgressOssificationResult, YieldProviderVendor } from "./YieldTypes.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -167,7 +168,7 @@ interface IYieldManager {
    */
   event YieldProviderOssificationProcessed(
     address indexed yieldProvider,
-    IYieldProvider.ProgressOssificationResult progressOssificationResult
+    ProgressOssificationResult progressOssificationResult
   );
 
   /**
@@ -186,7 +187,7 @@ interface IYieldManager {
    */
   event YieldProviderAdded(
     address indexed yieldProvider,
-    YieldManagerStorageLayout.YieldProviderVendor indexed yieldProviderVendor,
+    YieldProviderVendor indexed yieldProviderVendor,
     address primaryEntrypoint,
     address indexed ossifiedEntrypoint
   );
@@ -633,17 +634,14 @@ interface IYieldManager {
    */
   function progressPendingOssification(
     address _yieldProvider
-  ) external returns (IYieldProvider.ProgressOssificationResult progressOssificationResult);
+  ) external returns (ProgressOssificationResult progressOssificationResult);
 
   /**
    * @notice Register a new YieldProvider adaptor instance.
    * @param _yieldProvider The yield provider address.
-   * @param _registration Struct representing expected information to add a YieldProvider adaptor instance.
+   * @param _vendorInitializationData Vendor-specific initialization data.
    */
-  function addYieldProvider(
-    address _yieldProvider,
-    YieldManagerStorageLayout.YieldProviderRegistration calldata _registration
-  ) external;
+  function addYieldProvider(address _yieldProvider, bytes memory _vendorInitializationData) external;
 
   /**
    * @notice Remove a YieldProvider instance from the YieldManager.

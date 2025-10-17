@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
+import { ProgressOssificationResult, YieldProviderRegistration } from "./YieldTypes.sol";
 
 /**
  * @title Interface for a YieldProvider adaptor contract to handle vendor-specific interactions.
@@ -12,18 +13,6 @@ interface IYieldProvider {
   /// @notice Enumerates operations that can be paused during ossification depending on the yield provider vendor.
   enum OperationType {
     ReportYield
-  }
-
-  /// @notice Enum defining the specific type of YieldProvider registration error.
-  enum YieldProviderRegistrationError {
-    LidoDashboardNotLinkedToVault
-  }
-
-  /// @notice Enum defining the outcome of progressPendingOssification
-  enum ProgressOssificationResult {
-    Reinitiated,
-    Noop,
-    Complete
   }
 
   /// @notice Thrown when an operation is blocked because ossification is either pending or complete.
@@ -47,10 +36,6 @@ interface IYieldProvider {
 
   /// @notice Raised when a function is called outside of a `delegatecall` from the YieldManager.
   error ContextIsNotYieldManager();
-
-  /// @notice Thrown when a YieldProvider registration is invalid.
-  /// @param error Specific error details.
-  error InvalidYieldProviderRegistration(YieldProviderRegistrationError error);
 
   /**
    * @notice Returns the amount of ETH the provider can immediately remit back to the YieldManager.
@@ -162,10 +147,11 @@ interface IYieldProvider {
   ) external returns (ProgressOssificationResult progressOssificationResult);
 
   /**
-   * @notice Performs vendor-specific validation before the provider is registered by the YieldManager.
-   * @param _registration Registration payload for the yield provider.
+   * @notice Performs vendor-specific initialization logic.
+   * @param _vendorInitializationData Vendor-specific initialization data.
+   * @return registrationData Data required to register a new YieldProvider with the YieldManager.
    */
-  function validateAdditionToYieldManager(
-    YieldManagerStorageLayout.YieldProviderRegistration calldata _registration
-  ) external view;
+  function initializeVendorContracts(
+    bytes memory _vendorInitializationData
+  ) external returns (YieldProviderRegistration memory registrationData);
 }

@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
+import { ProgressOssificationResult, YieldProviderRegistration, YieldProviderVendor } from "../../../yield/interfaces/YieldTypes.sol";
+
 import { YieldManagerStorageLayout } from "../../../yield/YieldManagerStorageLayout.sol";
 import { MockYieldProviderStorageLayout } from "./MockYieldProviderStorageLayout.sol";
 import { IMockWithdrawTarget } from "./MockWithdrawTarget.sol";
@@ -63,11 +65,17 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
 
   function progressPendingOssification(
     address _yieldProvider
-  ) external returns (IYieldProvider.ProgressOssificationResult progressOssificationResult) {
-    return getprogressPendingOssificationReturnVal(_yieldProvider);
+  ) external returns (ProgressOssificationResult progressOssificationResult) {
+    return getProgressPendingOssificationReturnVal(_yieldProvider);
   }
 
-  function validateAdditionToYieldManager(
-    YieldManagerStorageLayout.YieldProviderRegistration calldata _registration
-  ) external view {}
+  function initializeVendorContracts(
+    bytes memory _vendorInitializationData
+  ) external returns (YieldProviderRegistration memory registrationData) {
+    registrationData = YieldProviderRegistration({
+      yieldProviderVendor: YieldProviderVendor.LIDO_STVAULT,
+      primaryEntrypoint: address(0),
+      ossifiedEntrypoint: address(0)
+    });
+  }
 }

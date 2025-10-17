@@ -25,6 +25,9 @@ contract LidoStVaultYieldProviderFactory {
   /// @notice Lido VaultHub contract.
   address public immutable VAULT_HUB;
 
+  /// @notice Lido VaultFactory contract.
+  address public immutable VAULT_FACTORY;
+
   /// @notice Lido stETH contract.
   address public immutable STETH;
 
@@ -41,6 +44,7 @@ contract LidoStVaultYieldProviderFactory {
   /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve.
   /// @param _yieldManager The Linea YieldManager.
   /// @param _vaultHub Lido VaultHub contract.
+  /// @param _vaultFactory Lido VaultFactory contract.
   /// @param _steth Lido stETH contract.
   /// @param _gIFirstValidator Packed generalized index for the first validator before the pivot slot.
   /// @param _gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
@@ -49,6 +53,7 @@ contract LidoStVaultYieldProviderFactory {
     address _l1MessageService,
     address _yieldManager,
     address _vaultHub,
+    address _vaultFactory,
     address _steth,
     GIndex _gIFirstValidator,
     GIndex _gIFirstValidatorAfterChange,
@@ -57,10 +62,12 @@ contract LidoStVaultYieldProviderFactory {
     ErrorUtils.revertIfZeroAddress(_l1MessageService);
     ErrorUtils.revertIfZeroAddress(_yieldManager);
     ErrorUtils.revertIfZeroAddress(_vaultHub);
+    ErrorUtils.revertIfZeroAddress(_vaultFactory);
     ErrorUtils.revertIfZeroAddress(_steth);
     L1_MESSAGE_SERVICE = _l1MessageService;
     YIELD_MANAGER = _yieldManager;
     VAULT_HUB = _vaultHub;
+    VAULT_FACTORY = _vaultFactory;
     STETH = _steth;
     GI_FIRST_VALIDATOR = _gIFirstValidator;
     GI_FIRST_VALIDATOR_AFTER_CHANGE = _gIFirstValidatorAfterChange;
@@ -78,6 +85,7 @@ contract LidoStVaultYieldProviderFactory {
         L1_MESSAGE_SERVICE,
         YIELD_MANAGER,
         VAULT_HUB,
+        VAULT_FACTORY,
         STETH,
         GI_FIRST_VALIDATOR,
         GI_FIRST_VALIDATOR_AFTER_CHANGE,

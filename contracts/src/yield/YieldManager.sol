@@ -10,6 +10,7 @@ import { Math256 } from "../libraries/Math256.sol";
 import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
+import { ProgressOssificationResult, YieldProviderVendor, YieldProviderRegistration } from "./interfaces/YieldTypes.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -927,7 +928,7 @@ contract YieldManager is
     external
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(OSSIFICATION_PROCESSOR_ROLE)
-    returns (IYieldProvider.ProgressOssificationResult progressOssificationResult)
+    returns (ProgressOssificationResult progressOssificationResult)
   {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if (!$$.isOssificationInitiated) {
@@ -940,8 +941,8 @@ contract YieldManager is
       _yieldProvider,
       abi.encodeCall(IYieldProvider.progressPendingOssification, (_yieldProvider))
     );
-    progressOssificationResult = abi.decode(data, (IYieldProvider.ProgressOssificationResult));
-    if (progressOssificationResult == IYieldProvider.ProgressOssificationResult.Complete) {
+    progressOssificationResult = abi.decode(data, (ProgressOssificationResult));
+    if (progressOssificationResult == ProgressOssificationResult.Complete) {
       $$.isOssified = true;
     }
     emit YieldProviderOssificationProcessed(_yieldProvider, progressOssificationResult);
@@ -953,30 +954,29 @@ contract YieldManager is
   /**
    * @notice Register a new YieldProvider adaptor instance.
    * @param _yieldProvider The yield provider address.
-   * @param _registration Struct representing expected information to add a YieldProvider adaptor instance.
+   * @param _vendorInitializationData Vendor-specific initialization data.
    */
   function addYieldProvider(
     address _yieldProvider,
-    YieldProviderRegistration calldata _registration
+    bytes memory _vendorInitializationData
   ) external onlyRole(SET_YIELD_PROVIDER_ROLE) {
     ErrorUtils.revertIfZeroAddress(_yieldProvider);
-    ErrorUtils.revertIfZeroAddress(_registration.primaryEntrypoint);
-    ErrorUtils.revertIfZeroAddress(_registration.ossifiedEntrypoint);
-    IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_registration);
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.initializeVendorContracts, (_vendorInitializationData))
+    );
+    YieldProviderRegistration memory registrationData = abi.decode(data, (YieldProviderRegistration));
 
-    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
-      revert YieldProviderAlreadyAdded();
-    }
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint96 yieldProviderIndex = uint96($.yieldProviders.length);
     $.yieldProviders.push(_yieldProvider);
     $.yieldProviderStorage[_yieldProvider] = YieldProviderStorage({
-      yieldProviderVendor: _registration.yieldProviderVendor,
+      yieldProviderVendor: registrationData.yieldProviderVendor,
       isStakingPaused: false,
       isOssificationInitiated: false,
       isOssified: false,
-      primaryEntrypoint: _registration.primaryEntrypoint,
-      ossifiedEntrypoint: _registration.ossifiedEntrypoint,
+      primaryEntrypoint: registrationData.primaryEntrypoint,
+      ossifiedEntrypoint: registrationData.ossifiedEntrypoint,
       yieldProviderIndex: yieldProviderIndex,
       userFunds: 0,
       yieldReportedCumulative: 0,
@@ -984,9 +984,9 @@ contract YieldManager is
     });
     emit YieldProviderAdded(
       _yieldProvider,
-      _registration.yieldProviderVendor,
-      _registration.primaryEntrypoint,
-      _registration.ossifiedEntrypoint
+      registrationData.yieldProviderVendor,
+      registrationData.primaryEntrypoint,
+      registrationData.ossifiedEntrypoint
     );
   }
 
