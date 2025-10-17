@@ -9,6 +9,7 @@ import (
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 )
@@ -56,7 +57,7 @@ func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 	p.Data.Update(i, tuple)
 
 	newLeaf := tuple.LeafOpening.Hash(p.Config())
-	p.Tree.Update(int(i), newLeaf)
+	p.Tree.Update(int(i), types.Bytes32ToHash(newLeaf))
 
 	return UpdateTrace[K, V]{
 		Location:        p.Location,
@@ -96,7 +97,7 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 		return errors.WithMessage(err, "read update verifier failed")
 	}
 
-	if !trace.Proof.Verify(v.Config, leaf, trace.OldSubRoot) {
+	if !trace.Proof.Verify(v.Config, types.Bytes32ToHash(leaf), types.Bytes32ToHash(trace.OldSubRoot)) {
 		return fmt.Errorf("merkle proof verification failed")
 	}
 

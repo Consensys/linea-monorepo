@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 const (
@@ -163,9 +162,8 @@ func PackMerkleProofs(proofs []smt.Proof) [blockSize]smartvectors.SmartVector {
 				utils.Panic("expected depth %v, got %v", depth, len(proofs[i].Siblings))
 			}
 			proofentry := proofs[i].Siblings[depth-j-1]
-			hashOct := types.Bytes32ToHash(proofentry)
 			for coord := range res {
-				res[coord][numProofWritten*depth+j] = hashOct[coord]
+				res[coord][numProofWritten*depth+j] = proofentry[coord]
 			}
 		}
 		numProofWritten++

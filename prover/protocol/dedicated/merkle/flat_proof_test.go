@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 const (
@@ -25,8 +24,7 @@ var testcases = [][]merkleTestCaseInstance{
 		{
 			IsWrite: true,
 			Pos:     0,
-			Leaf:    types.Bytes32{1, 2, 3, 4},
-		},
+			Leaf:    field.RandomOctuplet()},
 		{
 			Pos: 1,
 		},
@@ -119,7 +117,7 @@ type merkleTestCaseInstance struct {
 	IsWrite bool
 	Pos     int
 	// Leaf is only taken into consideration if Write is true
-	Leaf types.Bytes32
+	Leaf field.Octuplet
 }
 
 // merkleTestBuilder is used to build the assignment of merkle proofs
@@ -139,14 +137,14 @@ type merkleTestBuilder struct {
 type merkleTestBuilderRow struct {
 	proof              smt.Proof
 	pos                int
-	leaf               types.Bytes32
-	root               types.Bytes32
+	leaf               field.Octuplet
+	root               field.Octuplet
 	useNextMerkleProof bool
 }
 
 func newMerkleTestBuilder(depth int) *merkleTestBuilder {
 	return &merkleTestBuilder{
-		tree: *smt.BuildComplete(make([]types.Bytes32, 1<<depth), hashtypes.Poseidon2),
+		tree: *smt.BuildComplete(make([]field.Octuplet, 1<<depth), hashtypes.Poseidon2),
 	}
 }
 
@@ -168,7 +166,7 @@ func (mt *merkleTestBuilder) AddRead(pos int) {
 	})
 }
 
-func (mt *merkleTestBuilder) AddWrite(pos int, newLeaf types.Bytes32) {
+func (mt *merkleTestBuilder) AddWrite(pos int, newLeaf field.Octuplet) {
 
 	proof := mt.tree.MustProve(pos)
 
@@ -195,8 +193,8 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 	mt.counter = append(mt.counter, field.NewElement(uint64(len(mt.counter))))
 	mt.proofs = append(mt.proofs, row.proof)
 	mt.pos = append(mt.pos, field.NewElement(uint64(row.pos)))
-	leafOct := types.Bytes32ToHash(row.leaf)
-	rootOct := types.Bytes32ToHash(row.root)
+	leafOct := row.leaf
+	rootOct := row.root
 	for i := 0; i < blockSize; i++ {
 		mt.leaves[i] = append(mt.leaves[i], leafOct[i])
 		mt.roots[i] = append(mt.roots[i], rootOct[i])

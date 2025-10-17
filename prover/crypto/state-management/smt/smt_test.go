@@ -6,25 +6,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
-
-// Deterministically creates random Bytes32s
-func RandBytes32(pos int) Bytes32 {
-	res := Bytes32{}
-	for i := range res {
-		res[i] = byte(pos ^ (i + pos*156) ^ (pos + i*256) ^ (i * pos))
-	}
-	return res
-}
 
 // Creates a empty SMT, test its root hash in hard and tests that
 // all the leaves are zero.
 func TestTreeInitialization(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -39,7 +29,7 @@ func TestTreeInitialization(t *testing.T) {
 
 func TestTreeUpdateLeaf(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -47,17 +37,18 @@ func TestTreeUpdateLeaf(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		// Make a valid Bytes32
-		newLeaf := RandBytes32(pos)
+		var newLeaf field.Octuplet
+		for i := range newLeaf {
+			newLeaf[i] = field.RandomElement()
+		}
 		tree.Update(pos, newLeaf)
 		recovered, _ := tree.GetLeaf(pos)
 		require.Equal(t, newLeaf, recovered)
 	}
 }
-
 func TestMerkleProofNative(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -65,7 +56,6 @@ func TestMerkleProofNative(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		// Make a valid Bytes32
 		oldLeaf, _ := tree.GetLeaf(pos)
 		proof, _ := tree.Prove(pos)
 
@@ -77,7 +67,7 @@ func TestMerkleProofNative(t *testing.T) {
 
 func TestMerkleProofWithUpdate(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -89,7 +79,10 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 
 		// Updat the leaf with a random-looking value before
 		// checking the proof
-		newLeaf := RandBytes32(pos)
+		var newLeaf field.Octuplet
+		for i := range newLeaf {
+			newLeaf[i] = field.RandomElement()
+		}
 		tree.Update(pos, newLeaf)
 
 		// After updating the old proof should still be valid
@@ -102,22 +95,22 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 func TestBuildFromScratch(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.Keccak,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    8,
 	}
 
-	// Generate random field elements and cast them into Bytes32es
+	// Generate random field elements and cast them into field.Octuplet
 	// every 8 field elements forms a leaf
 	leavesFr := make([]field.Element, 8*(1<<config.Depth))
 	for i := 0; i < len(leavesFr); i++ {
 		leavesFr[i] = field.RandomElement()
 	}
 
-	leaves := make([]Bytes32, len(leavesFr)/8)
+	leaves := make([]field.Octuplet, len(leavesFr)/8)
 	for i := range leaves {
 		var arr [8]field.Element
 		copy(arr[:], leavesFr[8*i:8*i+8])
-		leaves[i] = HashToBytes32(arr)
+		leaves[i] = arr
 	}
 
 	// And generate the
@@ -140,6 +133,6 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// We should obtain the same roots
-	require.Equal(t, oneByoneTree.Root.Hex(), tree.Root.Hex())
+	require.Equal(t, oneByoneTree.Root, tree.Root)
 
 }

@@ -5,15 +5,12 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 var (
@@ -36,7 +33,7 @@ type VerifierInputs struct {
 	// Params are the public parameters
 	Params Params
 	// MerkleRoots are the commitment to verify the opening for
-	MerkleRoots []types.Bytes32
+	MerkleRoots []field.Octuplet
 	// X is the univariate evaluation point
 	X fext.Element
 	// Ys are the alleged evaluation at point X
@@ -171,10 +168,8 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 	var (
 		mTreeHashConfig = &smt.Config{
-			HashFunc: func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: v.Params.MerkleHashFunc()}
-			},
-			Depth: utils.Log2Ceil(v.Params.NumEncodedCols()),
+			HashFunc: v.Params.MerkleHashFunc,
+			Depth:    utils.Log2Ceil(v.Params.NumEncodedCols()),
 		}
 	)
 
@@ -189,61 +184,28 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			var (
 				// Selected columns #j contained in the commitment #i.
 				selectedSubCol = v.OpeningProof.Columns[i][j]
-				leaf           types.Bytes32
+				leaf           field.Octuplet
 				entry          = v.EntryList[j]
 				root           = v.MerkleRoots[i]
 				mProof         = v.OpeningProof.MerkleProofs[i][j]
 			)
-			if v.Params.LeafHashFunc != nil {
-				// We verify the SIS hash of the current sub-column
-				// only if the SIS hash is applied for the current round.
-				if !v.IsSISReplacedByPoseidon2[i] {
-					var (
-						// SIS hash of the current sub-column
-						sisHash = v.Params.Key.Hash(selectedSubCol)
-						// hasher used to hash the SIS hash (and thus not a hasher
-						// based on SIS)
-						hasher = v.Params.LeafHashFunc()
-					)
 
-					hasher.Reset()
-					// Convert the sisHash chunk to a byte slice
-					xCol := make([]byte, len(sisHash)*field.Bytes)
-					for i, x := range sisHash {
-						startIndex := i * field.Bytes
-						xBytes := x.Bytes()
-						copy(xCol[startIndex:], xBytes[:])
-					}
-					hasher.Write(xCol[:])
-					copy(leaf[:], hasher.Sum(nil))
-
-				} else {
-					// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
-					// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
-					hasher := v.Params.LeafHashFunc()
-					hasher.Reset()
-					xCol := make([]byte, len(selectedSubCol)*field.Bytes)
-					for k := range selectedSubCol {
-						startIndex := k * field.Bytes
-						xBytes := selectedSubCol[k].Bytes()
-						copy(xCol[startIndex:], xBytes[:])
-					}
-					hasher.Write(xCol[:])
-					copy(leaf[:], hasher.Sum(nil))
-				}
+			if !v.IsSISReplacedByPoseidon2[i] {
+				var (
+					// SIS hash of the current sub-column
+					sisHash = v.Params.Key.Hash(selectedSubCol)
+					// hasher used to hash the SIS hash (and thus not a hasher
+					// based on SIS)
+					hasher = v.Params.LeafHashFunc()
+				)
+				hasher.Reset()
+				leaf = hasher.SumElements(sisHash)
 			} else {
-				// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
-				if !v.IsSISReplacedByPoseidon2[i] {
-					var (
-						// SIS hash of the current sub-column
-						sisHash = v.Params.Key.Hash(selectedSubCol)
-					)
-					leaf = types.HashToBytes32(poseidon2.Poseidon2Sponge(sisHash))
-				} else {
-					// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
-					// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
-					leaf = types.HashToBytes32(poseidon2.Poseidon2Sponge(selectedSubCol))
-				}
+				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
+				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
+				hasher := v.Params.LeafHashFunc()
+				hasher.Reset()
+				leaf = hasher.SumElements(selectedSubCol)
 			}
 
 			// Check the Merkle-proof for the obtained leaf

@@ -6,19 +6,18 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -303,14 +302,14 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	x fext.Element,
 	yLists [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32,
+	roots []field.Octuplet,
 ) {
 
 	x = fext.RandomElement()
 	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
 
-	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2.NewMerkleDamgardHasher, nil)
+	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
 	yLists = make([][]fext.Element, nCommitments)
@@ -327,7 +326,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	}
 
 	// Commits to it
-	roots = make([]types.Bytes32, nCommitments)
+	roots = make([]field.Octuplet, nCommitments)
 	trees := make([]*smt.Tree, nCommitments)
 	committedMatrices := make([]EncodedMatrix, nCommitments)
 	isSISReplacedByPoseidon2 := make([]bool, nCommitments)

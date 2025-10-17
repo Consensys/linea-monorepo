@@ -9,6 +9,7 @@ import (
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -149,7 +150,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 		HVal: hash(v.Config, trace.Val),
 	}.Hash(v.Config)
 
-	currentRoot, err = updateCheckRoot(v.Config, trace.ProofNew, currentRoot, smt.EmptyLeaf(), newLeaf)
+	currentRoot, err = updateCheckRoot(v.Config, trace.ProofNew, currentRoot, types.HashToBytes32(smt.EmptyLeaf()), newLeaf)
 	if err != nil {
 		return fmt.Errorf("audit of the update of the middle leaf failed %v", err)
 	}
@@ -205,7 +206,7 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 		HVal: hash(config, trace.Val),
 	}.Hash(config)
 
-	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofNew, currentRoot, smt.EmptyLeaf(), newLeaf, appendTo)
+	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofNew, currentRoot, types.HashToBytes32(smt.EmptyLeaf()), newLeaf, appendTo)
 
 	// Audit the update of the "plus"
 	oldLeafPlus := trace.OldOpenPlus.Hash(config)

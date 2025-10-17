@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -50,14 +49,14 @@ func newMerkleTestBuilder(numProofs int) *merkleTestBuilder {
 // assignProofs is a low level function to be used by each test to assign values to
 // the various columns for testing
 func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reusePos, numNonReUseProofs int) {
-	leaves := make([]types.Bytes32, 1<<depth)
+	leaves := make([]field.Octuplet, 1<<depth)
 	for i := range leaves {
 		// #nosec G404 -- no need for a cryptographically strong PRNG for testing purposes
 		var x vortex.Hash
-		for i := 0; i < 8; i++ {
-			x[i].SetRandom()
+		for j := 0; j < 8; j++ {
+			x[j].SetRandom()
 		}
-		leaves[i] = types.HashToBytes32(x)
+		leaves[i] = x
 	}
 	tree := smt.BuildComplete(leaves, hashtypes.Poseidon2)
 	root := tree.Root
@@ -67,8 +66,8 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 			proof := tree.MustProve(i)
 			b.proofs = append(b.proofs, proof)
 			var po field.Element
-			le := types.Bytes32ToHash(leaves[i])
-			ro := types.Bytes32ToHash(root)
+			le := leaves[i]
+			ro := root
 			po.SetUint64(uint64(i))
 			b.leaves = append(b.leaves, le)
 			b.roots = append(b.roots, ro)
@@ -90,8 +89,8 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.proofs = append(b.proofs, proof_old)
 
 				var po field.Element
-				le := types.Bytes32ToHash(leaves[j])
-				ro := types.Bytes32ToHash(root_old)
+				le := leaves[j]
+				ro := root_old
 				po.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le)
 				b.roots = append(b.roots, ro)
@@ -106,15 +105,15 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 					newVal[i].SetRandom()
 				}
 
-				tree.Update(j, types.HashToBytes32(newVal))
-				leaves[j] = types.HashToBytes32(newVal)
+				tree.Update(j, newVal)
+				leaves[j] = newVal
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
 
 				var po_2 field.Element
-				le_2 := types.Bytes32ToHash(leaves[j])
-				ro_2 := types.Bytes32ToHash(root_new)
+				le_2 := leaves[j]
+				ro_2 := root_new
 				po_2.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le_2)
 				b.pos = append(b.pos, po_2)
@@ -132,8 +131,8 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.proofs = append(b.proofs, proof)
 
 				var po field.Element
-				le := types.Bytes32ToHash(leaves[i])
-				ro := types.Bytes32ToHash(root)
+				le := leaves[i]
+				ro := root
 				po.SetUint64(uint64(i))
 				b.leaves = append(b.leaves, le)
 				b.roots = append(b.roots, ro)
@@ -152,8 +151,8 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.proofs = append(b.proofs, proof)
 
 				var po field.Element
-				le := types.Bytes32ToHash(leaves[i])
-				ro := types.Bytes32ToHash(root)
+				le := leaves[i]
+				ro := root
 				po.SetUint64(uint64(i))
 				b.leaves = append(b.leaves, le)
 				b.roots = append(b.roots, ro)
@@ -170,8 +169,8 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.proofs = append(b.proofs, proof_old)
 
 				var po field.Element
-				le := types.Bytes32ToHash(leaves[j])
-				ro := types.Bytes32ToHash(root_old)
+				le := leaves[j]
+				ro := root_old
 				po.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le)
 				b.roots = append(b.roots, ro)
@@ -187,15 +186,15 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 					newVal[i].SetRandom()
 				}
 
-				tree.Update(j, types.HashToBytes32(newVal))
-				leaves[j] = types.HashToBytes32(newVal)
+				tree.Update(j, newVal)
+				leaves[j] = newVal
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
 
 				var po_2 field.Element
-				le_2 := types.Bytes32ToHash(leaves[j])
-				ro_2 := types.Bytes32ToHash(root_new)
+				le_2 := leaves[j]
+				ro_2 := root_new
 				po_2.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le_2)
 				b.roots = append(b.roots, ro_2)
@@ -215,8 +214,8 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.proofs = append(b.proofs, proof_old)
 
 				var po field.Element
-				le := types.Bytes32ToHash(leaves[j])
-				ro := types.Bytes32ToHash(root_old)
+				le := leaves[j]
+				ro := root_old
 				po.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le)
 				b.roots = append(b.roots, ro)
@@ -232,15 +231,15 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 					newVal[i].SetRandom()
 				}
 
-				tree.Update(j, types.HashToBytes32(newVal))
-				leaves[j] = types.HashToBytes32(newVal)
+				tree.Update(j, newVal)
+				leaves[j] = newVal
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
 
 				var po_2 field.Element
-				le_2 := types.Bytes32ToHash(leaves[j])
-				ro_2 := types.Bytes32ToHash(root_new)
+				le_2 := leaves[j]
+				ro_2 := root_new
 				po_2.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le_2)
 				b.roots = append(b.roots, ro_2)
@@ -258,8 +257,8 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.proofs = append(b.proofs, proof)
 
 				var po field.Element
-				le := types.Bytes32ToHash(leaves[i])
-				ro := types.Bytes32ToHash(root)
+				le := leaves[i]
+				ro := root
 				po.SetUint64(uint64(i))
 				b.leaves = append(b.leaves, le)
 				b.roots = append(b.roots, ro)
@@ -276,8 +275,8 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 				b.proofs = append(b.proofs, proof_old)
 
 				var po field.Element
-				le := types.Bytes32ToHash(leaves[j])
-				ro := types.Bytes32ToHash(root_old)
+				le := leaves[j]
+				ro := root_old
 				po.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le)
 				b.roots = append(b.roots, ro)
@@ -293,15 +292,15 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 					newVal[i].SetRandom()
 				}
 
-				tree.Update(j, types.HashToBytes32(newVal))
-				leaves[j] = types.HashToBytes32(newVal)
+				tree.Update(j, newVal)
+				leaves[j] = newVal
 				proof_new := tree.MustProve(j)
 				root_new := tree.Root
 				b.proofs = append(b.proofs, proof_new)
 
 				var po_2 field.Element
-				le_2 := types.Bytes32ToHash(leaves[j])
-				ro_2 := types.Bytes32ToHash(root_new)
+				le_2 := leaves[j]
+				ro_2 := root_new
 				po_2.SetUint64(uint64(j))
 				b.leaves = append(b.leaves, le_2)
 				b.roots = append(b.roots, ro_2)
