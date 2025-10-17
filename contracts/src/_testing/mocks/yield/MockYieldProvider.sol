@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
 import { ProgressOssificationResult, YieldProviderRegistration, YieldProviderVendor } from "../../../yield/interfaces/YieldTypes.sol";
+import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
 
 import { YieldManagerStorageLayout } from "../../../yield/YieldManagerStorageLayout.sol";
 import { MockYieldProviderStorageLayout } from "./MockYieldProviderStorageLayout.sol";
@@ -72,10 +73,6 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
   function initializeVendorContracts(
     bytes memory _vendorInitializationData
   ) external returns (YieldProviderRegistration memory registrationData) {
-    registrationData = YieldProviderRegistration({
-      yieldProviderVendor: YieldProviderVendor.LIDO_STVAULT,
-      primaryEntrypoint: address(0),
-      ossifiedEntrypoint: address(0)
-    });
+    return getInitializeVendorContractsReturnVal();
   }
 }

@@ -13,8 +13,13 @@ export const GI_FIRST_VALIDATOR_AFTER_CHANGE = "0x000000000000000000000000000000
 export const CHANGE_SLOT = 0;
 
 // YieldProviderVendor enum
-export const UNUSED_YIELD_PROVIDER_VENDOR = 0;
-export const LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR = 1;
+// export const UNUSED_YIELD_PROVIDER_VENDOR = 0;
+// export const LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR = 1;
+
+export const enum YieldProviderVendor {
+  UNUSED_YIELD_PROVIDER_VENDOR = 0,
+  LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR = 1,
+}
 
 // ProgressOssificationResult enum
 export const enum ProgressOssificationResult {

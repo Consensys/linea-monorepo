@@ -754,51 +754,30 @@ describe("YieldManager contract - basic operations", () => {
   describe("adding yield providers", () => {
     it("Should revert when the caller does not have the SET_YIELD_PROVIDER_ROLE role", async () => {
       const mockYieldProvider = await deployMockYieldProvider();
-      const registration = buildMockYieldProviderRegistration();
       const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
 
       await expect(
-        yieldManager.connect(nonAuthorizedAccount).addYieldProvider(await mockYieldProvider.getAddress(), registration),
+        yieldManager
+          .connect(nonAuthorizedAccount)
+          .addYieldProvider(await mockYieldProvider.getAddress(), EMPTY_CALLDATA),
       ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
-
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {
-      const registration = buildMockYieldProviderRegistration();
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).addYieldProvider(ZeroAddress, registration),
+        yieldManager.connect(securityCouncil).addYieldProvider(ZeroAddress, EMPTY_CALLDATA),
         "ZeroAddressNotAllowed",
       );
     });
-
-    it("Should revert when 0 address is provided for the primaryEntrypoint", async () => {
-      const mockYieldProvider = await deployMockYieldProvider();
-      const registration = buildMockYieldProviderRegistration({ primaryEntrypoint: ZeroAddress });
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(securityCouncil).addYieldProvider(await mockYieldProvider.getAddress(), registration),
-        "ZeroAddressNotAllowed",
-      );
-    });
-
-    it("Should revert when 0 address is provided for the ossifiedEntrypoint", async () => {
-      const mockYieldProvider = await deployMockYieldProvider();
-      const registration = buildMockYieldProviderRegistration({ ossifiedEntrypoint: ZeroAddress });
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(securityCouncil).addYieldProvider(await mockYieldProvider.getAddress(), registration),
-        "ZeroAddressNotAllowed",
-      );
-    });
-
     it("Should successfully add a yield provider, change state to expected and emit correct event", async () => {
       const mockYieldProvider = await deployMockYieldProvider();
       const registration = buildMockYieldProviderRegistration();
       const providerAddress = await mockYieldProvider.getAddress();
+      await yieldManager.setInitializeVendorContractsReturnVal(registration);
 
-      const addYieldProviderTx = yieldManager.connect(securityCouncil).addYieldProvider(providerAddress, registration);
+      const addYieldProviderTx = yieldManager
+        .connect(securityCouncil)
+        .addYieldProvider(providerAddress, EMPTY_CALLDATA);
 
       await expect(addYieldProviderTx)
         .to.emit(yieldManager, "YieldProviderAdded")
@@ -836,40 +815,42 @@ describe("YieldManager contract - basic operations", () => {
       const mockYieldProvider = await deployMockYieldProvider();
       const providerAddress = await mockYieldProvider.getAddress();
       const registration = buildMockYieldProviderRegistration();
+      await yieldManager.setInitializeVendorContractsReturnVal(registration);
 
-      await yieldManager.connect(securityCouncil).addYieldProvider(providerAddress, registration);
+      await yieldManager.connect(securityCouncil).addYieldProvider(providerAddress, EMPTY_CALLDATA);
 
       expect(await yieldManager.yieldProviderCount()).to.equal(1n);
       const yieldProviderData = await yieldManager.getYieldProviderData(providerAddress);
       expect(yieldProviderData.yieldProviderIndex).to.equal(1n);
     });
-    it("Second yield provider successfully added, should have yieldProviderIndex 1", async () => {
+    it("Second yield provider successfully added, should have yieldProviderIndex 2", async () => {
       // Add first yield provider
       const mockYieldProvider = await deployMockYieldProvider();
       const providerAddress = await mockYieldProvider.getAddress();
       const registration = buildMockYieldProviderRegistration();
-      await yieldManager.connect(securityCouncil).addYieldProvider(providerAddress, registration);
+      await yieldManager.setInitializeVendorContractsReturnVal(registration);
+
+      await yieldManager.connect(securityCouncil).addYieldProvider(providerAddress, EMPTY_CALLDATA);
       // Add second yield provider
       const mockYieldProvider2 = await deployMockYieldProvider();
       const providerAddress2 = await mockYieldProvider2.getAddress();
       const registration2 = buildMockYieldProviderRegistration();
-      await yieldManager.connect(securityCouncil).addYieldProvider(providerAddress2, registration2);
+      await yieldManager.setInitializeVendorContractsReturnVal(registration2);
+      await yieldManager.connect(securityCouncil).addYieldProvider(providerAddress2, EMPTY_CALLDATA);
       // Assert
       expect(await yieldManager.isYieldProviderKnown(providerAddress2)).to.equal(true);
       expect(await yieldManager.yieldProviderCount()).to.equal(2n);
       expect(await yieldManager.yieldProviderByIndex(2)).to.equal(mockYieldProvider2);
     });
-
     it("Should revert when the yieldProvider has been previously added", async () => {
       const mockYieldProvider = await deployMockYieldProvider();
       const providerAddress = await mockYieldProvider.getAddress();
-      const registration = buildMockYieldProviderRegistration();
 
-      await yieldManager.connect(securityCouncil).addYieldProvider(providerAddress, registration);
+      await yieldManager.connect(securityCouncil).addYieldProvider(providerAddress, EMPTY_CALLDATA);
 
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).addYieldProvider(providerAddress, registration),
+        yieldManager.connect(securityCouncil).addYieldProvider(providerAddress, EMPTY_CALLDATA),
         "YieldProviderAlreadyAdded",
       );
     });

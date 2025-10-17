@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { YieldManagerStorageLayout } from "../../../yield/YieldManagerStorageLayout.sol";
 import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
-import { ProgressOssificationResult } from "../../../yield/interfaces/YieldTypes.sol";
+import { ProgressOssificationResult, YieldProviderRegistration } from "../../../yield/interfaces/YieldTypes.sol";
 
 abstract contract MockYieldProviderStorageLayout {
   /// @dev keccak256(abi.encode(uint256(keccak256("linea.storage.MockYieldProviderStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -21,6 +21,7 @@ abstract contract MockYieldProviderStorageLayout {
     uint256 payLSTPrincipalReturnVal;
     uint256 unstakePermissionlessReturnVal;
     ProgressOssificationResult progressPendingOssificationReturnVal;
+    YieldProviderRegistration initializeVendorContractsReturnVal;
     address mockWithdrawTarget;
   }
 
@@ -62,7 +63,7 @@ abstract contract MockYieldProviderStorageLayout {
     _getMockYieldProviderStorage(_yieldProvider).unstakePermissionlessReturnVal = _val;
   }
 
-  function setprogressPendingOssificationReturnVal(address _yieldProvider, ProgressOssificationResult _val) external {
+  function setProgressPendingOssificationReturnVal(address _yieldProvider, ProgressOssificationResult _val) external {
     _getMockYieldProviderStorage(_yieldProvider).progressPendingOssificationReturnVal = _val;
   }
 
@@ -94,5 +95,13 @@ abstract contract MockYieldProviderStorageLayout {
     address _yieldProvider
   ) public view returns (ProgressOssificationResult) {
     return _getMockYieldProviderStorage(_yieldProvider).progressPendingOssificationReturnVal;
+  }
+
+  function getInitializeVendorContractsReturnVal() public view returns (YieldProviderRegistration memory) {
+    return _getMockYieldProviderStorage(address(0)).initializeVendorContractsReturnVal;
+  }
+
+  function setInitializeVendorContractsReturnVal(YieldProviderRegistration memory registration) public {
+    _getMockYieldProviderStorage(address(0)).initializeVendorContractsReturnVal = registration;
   }
 }

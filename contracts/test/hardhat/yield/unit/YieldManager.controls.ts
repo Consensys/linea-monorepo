@@ -420,7 +420,7 @@ describe("YieldManager contract - control operations", () => {
       await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
       await yieldManager
         .connect(securityCouncil)
-        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, ProgressOssificationResult.NOOP);
+        .setProgressPendingOssificationReturnVal(mockYieldProviderAddress, ProgressOssificationResult.NOOP);
 
       const progressOssificationResult = await yieldManager
         .connect(securityCouncil)
@@ -441,7 +441,7 @@ describe("YieldManager contract - control operations", () => {
       await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
       await yieldManager
         .connect(securityCouncil)
-        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, ProgressOssificationResult.REINITIATED);
+        .setProgressPendingOssificationReturnVal(mockYieldProviderAddress, ProgressOssificationResult.REINITIATED);
 
       const progressOssificationResult = await yieldManager
         .connect(securityCouncil)
@@ -462,7 +462,7 @@ describe("YieldManager contract - control operations", () => {
       await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
       await yieldManager
         .connect(securityCouncil)
-        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, ProgressOssificationResult.COMPLETE);
+        .setProgressPendingOssificationReturnVal(mockYieldProviderAddress, ProgressOssificationResult.COMPLETE);
 
       const progressOssificationResult = await yieldManager
         .connect(securityCouncil)

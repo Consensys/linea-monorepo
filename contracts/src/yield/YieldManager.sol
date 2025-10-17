@@ -961,6 +961,10 @@ contract YieldManager is
     bytes memory _vendorInitializationData
   ) external onlyRole(SET_YIELD_PROVIDER_ROLE) {
     ErrorUtils.revertIfZeroAddress(_yieldProvider);
+    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex != 0) {
+      revert YieldProviderAlreadyAdded();
+    }
+
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.initializeVendorContracts, (_vendorInitializationData))

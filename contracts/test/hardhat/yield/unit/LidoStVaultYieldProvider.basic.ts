@@ -1,17 +1,17 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
+  buildVendorInitializationData,
   deployAndAddSingleLidoStVaultYieldProvider,
-  deployMockStakingVault,
   fundLidoStVaultYieldProvider,
   getWithdrawLSTCall,
   incrementBalance,
   ossifyYieldProvider,
   setWithdrawalReserveToMinimum,
-  YieldProviderRegistration,
 } from "../helpers";
 import {
   MockVaultHub,
+  MockVaultFactory,
   MockSTETH,
   MockLineaRollup,
   TestYieldManager,
@@ -31,15 +31,13 @@ import {
   CHANGE_SLOT,
   ONE_ETHER,
   ZERO_VALUE,
-  LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
-  UNUSED_YIELD_PROVIDER_VENDOR,
-  LIDO_DASHBOARD_NOT_LINKED_TO_VAULT,
   EMPTY_CALLDATA,
   VALIDATOR_WITNESS_TYPE,
   THIRTY_TWO_ETH_IN_GWEI,
   ONE_GWEI,
   MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
   ProgressOssificationResult,
+  YieldProviderVendor,
 } from "../../common/constants";
 import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
@@ -48,6 +46,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let nativeYieldOperator: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let mockVaultHub: MockVaultHub;
+  let mockVaultFactory: MockVaultFactory;
   let mockSTETH: MockSTETH;
   let mockLineaRollup: MockLineaRollup;
   let yieldManager: TestYieldManager;
@@ -59,6 +58,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let l1MessageServiceAddress: string;
   let yieldManagerAddress: string;
   let vaultHubAddress: string;
+  let vaultFactoryAddress: string;
   let stethAddress: string;
   let mockDashboardAddress: string;
   let mockStakingVaultAddress: string;
@@ -75,6 +75,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       mockStakingVault,
       yieldManager,
       mockVaultHub,
+      mockVaultFactory,
       mockSTETH,
       mockLineaRollup,
       sszMerkleTree,
@@ -84,6 +85,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     l1MessageServiceAddress = await mockLineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
     vaultHubAddress = await mockVaultHub.getAddress();
+    vaultFactoryAddress = await mockVaultFactory.getAddress();
     stethAddress = await mockSTETH.getAddress();
     mockDashboardAddress = await mockDashboard.getAddress();
     mockStakingVaultAddress = await mockStakingVault.getAddress();
@@ -96,6 +98,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         ZeroAddress,
         yieldManagerAddress,
         vaultHubAddress,
+        vaultFactoryAddress,
         stethAddress,
         GI_FIRST_VALIDATOR,
         GI_FIRST_VALIDATOR_AFTER_CHANGE,
@@ -111,6 +114,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
           l1MessageServiceAddress,
           ZeroAddress,
           vaultHubAddress,
+          vaultFactoryAddress,
           stethAddress,
           GI_FIRST_VALIDATOR,
           GI_FIRST_VALIDATOR_AFTER_CHANGE,
@@ -124,6 +128,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         l1MessageServiceAddress,
         yieldManagerAddress,
         ZeroAddress,
+        vaultFactoryAddress,
         stethAddress,
         GI_FIRST_VALIDATOR,
         GI_FIRST_VALIDATOR_AFTER_CHANGE,
@@ -131,12 +136,28 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
+    it("Should revert if 0 address provided for _vaultFactory", async () => {
+      const contractFactory = await ethers.getContractFactory("TestLidoStVaultYieldProvider");
+      const call = contractFactory.deploy(
+        l1MessageServiceAddress,
+        yieldManagerAddress,
+        vaultHubAddress,
+        ZeroAddress,
+        stethAddress,
+        GI_FIRST_VALIDATOR,
+        GI_FIRST_VALIDATOR_AFTER_CHANGE,
+        CHANGE_SLOT,
+      );
+      await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
+    });
+
     it("Should revert if 0 address provided for _steth", async () => {
       const contractFactory = await ethers.getContractFactory("TestLidoStVaultYieldProvider");
       const call = contractFactory.deploy(
         l1MessageServiceAddress,
         yieldManagerAddress,
         vaultHubAddress,
+        vaultFactoryAddress,
         ZeroAddress,
         GI_FIRST_VALIDATOR,
         GI_FIRST_VALIDATOR_AFTER_CHANGE,
@@ -395,45 +416,34 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
   });
 
-  describe("validateAdditionToYieldManager", () => {
-    it("Should revert if registration is for unknown YieldProvider Vendor", async () => {
-      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
-
-      const registration: YieldProviderRegistration = {
-        yieldProviderVendor: UNUSED_YIELD_PROVIDER_VENDOR,
-        primaryEntrypoint: mockDashboardAddress,
-        ossifiedEntrypoint: mockStakingVaultAddress,
-      };
-
-      const call = yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
-      await expectRevertWithCustomError(yieldProvider, call, "UnknownYieldProviderVendor");
+  describe("vendor initialization", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).initializeVendorContracts(EMPTY_CALLDATA);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
     });
-    it("Should revert if dashboard is not linked to staking vault", async () => {
-      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
-
-      const newVault = await deployMockStakingVault();
-
-      const registration: YieldProviderRegistration = {
-        yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
-        primaryEntrypoint: mockDashboardAddress,
-        ossifiedEntrypoint: await newVault.getAddress(),
-      };
-
-      const call = yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
-      await expectRevertWithCustomError(yieldProvider, call, "InvalidYieldProviderRegistration", [
-        LIDO_DASHBOARD_NOT_LINKED_TO_VAULT,
-      ]);
+    it("Should revert if incorrect type for _vendorInitializationData", async () => {
+      const call = yieldManager
+        .connect(securityCouncil)
+        .initializeVendorContracts(yieldProviderAddress, EMPTY_CALLDATA);
+      await expect(call).to.be.reverted;
     });
-    it("Should succeed for a correct registration", async () => {
+    it("Should succeed with expected return values", async () => {
       await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+      const expectedVaultAddress = ethers.Wallet.createRandom().address;
+      const expectedDashboardAddress = ethers.Wallet.createRandom().address;
+      await mockVaultFactory.setReturnValues(expectedVaultAddress, expectedDashboardAddress);
 
-      const registration: YieldProviderRegistration = {
-        yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
-        primaryEntrypoint: mockDashboardAddress,
-        ossifiedEntrypoint: mockStakingVaultAddress,
-      };
+      const registrationData = await yieldManager
+        .connect(securityCouncil)
+        .initializeVendorContracts.staticCall(yieldProviderAddress, buildVendorInitializationData());
 
-      await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
+      const call = yieldManager
+        .connect(securityCouncil)
+        .initializeVendorContracts(yieldProviderAddress, buildVendorInitializationData());
+      await expect(call).to.not.be.reverted;
+      expect(registrationData[0]).eq(YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR);
+      expect(registrationData[1]).eq(expectedDashboardAddress);
+      expect(registrationData[2]).eq(expectedVaultAddress);
     });
   });
 

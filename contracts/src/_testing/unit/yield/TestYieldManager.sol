@@ -5,7 +5,7 @@ import { YieldManager } from "../../../yield/YieldManager.sol";
 import { MockYieldProviderStorageLayout } from "../../mocks/yield/MockYieldProviderStorageLayout.sol";
 import { TestLidoStVaultYieldProvider } from "./TestLidoStVaultYieldProvider.sol";
 import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
-import { YieldProviderVendor } from "../../../yield/interfaces/YieldTypes.sol";
+import { YieldProviderVendor, YieldProviderRegistration } from "../../../yield/interfaces/YieldTypes.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
@@ -283,6 +283,17 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
 
   function pauseStakingIfNotAlready(address _yieldProvider) external {
     _pauseStakingIfNotAlready(_yieldProvider);
+  }
+
+  function initializeVendorContracts(
+    address _yieldProvider,
+    bytes memory _vendorInitializationData
+  ) external returns (YieldProviderRegistration memory registrationData) {
+    bytes memory data = _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.initializeVendorContracts, (_vendorInitializationData))
+    );
+    return abi.decode(data, (YieldProviderRegistration));
   }
 
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.

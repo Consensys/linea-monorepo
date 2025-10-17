@@ -23,6 +23,7 @@ import {
   TestCLProofVerifier,
   MockSTETH,
   MockVaultHub,
+  MockVaultFactory,
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
@@ -50,6 +51,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
   let mockStakingVault: MockStakingVault;
   let mockSTETH: MockSTETH;
   let mockVaultHub: MockVaultHub;
+  let mockVaultFactory: MockVaultFactory;
   let lidoStVaultYieldProviderFactory: TestLidoStVaultYieldProviderFactory;
   let sszMerkleTree: SSZMerkleTree;
   let verifier: TestCLProofVerifier;
@@ -74,6 +76,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       mockStakingVault,
       mockSTETH,
       mockVaultHub,
+      mockVaultFactory,
       lidoStVaultYieldProviderFactory,
       sszMerkleTree,
       verifier,
@@ -426,6 +429,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         lidoStVaultYieldProviderFactory,
         yieldManager,
         securityCouncil,
+        mockVaultFactory,
       );
 
       // Act - Move funds to new YieldProvider
@@ -441,6 +445,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
           lidoStVaultYieldProviderFactory,
           yieldManager,
           securityCouncil,
+          mockVaultFactory,
         );
       // Arrange - Prepare first unstakePermissionless
       const targetDeficit = await yieldManager.getTargetReserveDeficit();
