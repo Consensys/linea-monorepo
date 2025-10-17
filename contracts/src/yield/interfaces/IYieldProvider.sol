@@ -154,4 +154,11 @@ interface IYieldProvider {
   function initializeVendorContracts(
     bytes memory _vendorInitializationData
   ) external returns (YieldProviderRegistration memory registrationData);
+
+  /**
+   * @notice Performs vendor-specific exit logic.
+   * @param _yieldProvider The yield provider address.
+   * @param _vendorExitData Vendor-specific exit data.
+   */
+  function exitVendorContracts(address _yieldProvider, bytes memory _vendorExitData) external;
 }

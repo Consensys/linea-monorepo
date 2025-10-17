@@ -863,14 +863,14 @@ describe("YieldManager contract - basic operations", () => {
       const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
 
       await expect(
-        yieldManager.connect(nonAuthorizedAccount).removeYieldProvider(mockYieldProviderAddress),
+        yieldManager.connect(nonAuthorizedAccount).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
       ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
 
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).removeYieldProvider(ZeroAddress),
+        yieldManager.connect(securityCouncil).removeYieldProvider(ZeroAddress, EMPTY_CALLDATA),
         "UnknownYieldProvider",
       );
     });
@@ -880,7 +880,7 @@ describe("YieldManager contract - basic operations", () => {
 
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).removeYieldProvider(unknownYieldProvider),
+        yieldManager.connect(securityCouncil).removeYieldProvider(unknownYieldProvider, EMPTY_CALLDATA),
         "UnknownYieldProvider",
       );
     });
@@ -892,7 +892,7 @@ describe("YieldManager contract - basic operations", () => {
 
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress),
+        yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
         "YieldProviderHasRemainingFunds",
       );
     });
@@ -900,7 +900,7 @@ describe("YieldManager contract - basic operations", () => {
     it("Should successfully remove the yield provider, emit the correct event and wipe the yield provider state", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expect(yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress))
+      await expect(yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA))
         .to.emit(yieldManager, "YieldProviderRemoved")
         .withArgs(mockYieldProviderAddress, false);
 
@@ -958,7 +958,7 @@ describe("YieldManager contract - basic operations", () => {
       expect(providerTwoDataBefore.yieldProviderIndex).to.equal(2n);
 
       // Act
-      await yieldManager.connect(securityCouncil).removeYieldProvider(providerOne);
+      await yieldManager.connect(securityCouncil).removeYieldProvider(providerOne, EMPTY_CALLDATA);
 
       // Assert
       expect(await yieldManager.isYieldProviderKnown(providerOne)).to.equal(false);
@@ -985,14 +985,16 @@ describe("YieldManager contract - basic operations", () => {
       const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
 
       await expect(
-        yieldManager.connect(nonAuthorizedAccount).emergencyRemoveYieldProvider(mockYieldProviderAddress),
+        yieldManager
+          .connect(nonAuthorizedAccount)
+          .emergencyRemoveYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
       ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
     });
 
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(ZeroAddress),
+        yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(ZeroAddress, EMPTY_CALLDATA),
         "UnknownYieldProvider",
       );
     });
@@ -1002,7 +1004,7 @@ describe("YieldManager contract - basic operations", () => {
 
       await expectRevertWithCustomError(
         yieldManager,
-        yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(unknownYieldProvider),
+        yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(unknownYieldProvider, EMPTY_CALLDATA),
         "UnknownYieldProvider",
       );
     });
@@ -1012,7 +1014,9 @@ describe("YieldManager contract - basic operations", () => {
 
       await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, 1n);
 
-      await expect(yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(mockYieldProviderAddress))
+      await expect(
+        yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
+      )
         .to.emit(yieldManager, "YieldProviderRemoved")
         .withArgs(mockYieldProviderAddress, true);
 
@@ -1066,7 +1070,7 @@ describe("YieldManager contract - basic operations", () => {
       const providerTwoDataBefore = await yieldManager.getYieldProviderData(providerTwo);
       expect(providerTwoDataBefore.yieldProviderIndex).to.equal(2n);
 
-      await yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(providerOne);
+      await yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(providerOne, EMPTY_CALLDATA);
 
       const providerTwoDataAfter = await yieldManager.getYieldProviderData(providerTwo);
       expect(providerTwoDataAfter.yieldProviderIndex).to.equal(2n);

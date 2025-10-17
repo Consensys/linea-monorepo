@@ -38,4 +38,6 @@ interface IDashboard is ICommonVaultOperations {
   function disburseNodeOperatorFee() external;
 
   function reconnectToVaultHub() external;
+
+  function transferVaultOwnership(address _newOwner) external;
 }

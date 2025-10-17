@@ -998,14 +998,16 @@ contract YieldManager is
    * @notice Remove a YieldProvider instance from the YieldManager.
    * @dev Has safety checks to ensure that there is no remaining user funds or negative yield on the YieldProvider.
    * @param _yieldProvider The yield provider address.
+   * @param _vendorExitData Vendor-specific exit data.
    */
   function removeYieldProvider(
-    address _yieldProvider
+    address _yieldProvider,
+    bytes memory _vendorExitData
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
     if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
       revert YieldProviderHasRemainingFunds();
     }
-    _removeYieldProvider(_yieldProvider);
+    _removeYieldProvider(_yieldProvider, _vendorExitData);
     emit YieldProviderRemoved(_yieldProvider, false);
   }
 
@@ -1013,24 +1015,29 @@ contract YieldManager is
    * @notice Emergency remove a YieldProvider instance from the YieldManager, skipping the regular safety checks.
    * @dev Without this function, newly reported yield can prevent deregistration of the YieldProvider.
    * @param _yieldProvider The yield provider address.
+   * @param _vendorExitData Vendor-specific exit data.
    */
   function emergencyRemoveYieldProvider(
-    address _yieldProvider
+    address _yieldProvider,
+    bytes memory _vendorExitData
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
-    _removeYieldProvider(_yieldProvider);
+    _removeYieldProvider(_yieldProvider, _vendorExitData);
     emit YieldProviderRemoved(_yieldProvider, true);
   }
 
-  function _removeYieldProvider(address _yieldProvider) internal {
-    YieldManagerStorage storage $ = _getYieldManagerStorage();
+  function _removeYieldProvider(address _yieldProvider, bytes memory _vendorExitData) internal {
+    _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.exitVendorContracts, (_yieldProvider, _vendorExitData))
+    );
 
+    YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint96 yieldProviderIndex = _getYieldProviderStorage(_yieldProvider).yieldProviderIndex;
     address lastYieldProvider = $.yieldProviders[$.yieldProviders.length - 1];
     $.yieldProviderStorage[lastYieldProvider].yieldProviderIndex = yieldProviderIndex;
     $.yieldProviders[yieldProviderIndex] = lastYieldProvider;
     $.yieldProviders.pop();
 
-    // TODO - Does this actually wipe the whole struct, to delete the storage pointer?
     delete $.yieldProviderStorage[_yieldProvider];
   }
 

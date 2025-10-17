@@ -430,7 +430,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
 
       // Act
-      const call = yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+      const call = yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, EMPTY_CALLDATA);
 
       // Assert
       await expectRevertWithCustomError(yieldManager, call, "YieldProviderHasRemainingFunds");
@@ -448,7 +448,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await setWithdrawalReserveToTarget(yieldManager);
       await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, ONE_ETHER * 2n);
       // Arrange - Remove yield provider
-      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, EMPTY_CALLDATA);
       // Arrange - Add new yield provider
       const { yieldProviderAddress: yieldProvider2Address } = await deployAndAddAdditionalLidoStVaultYieldProvider(
         lidoStVaultYieldProviderFactory,

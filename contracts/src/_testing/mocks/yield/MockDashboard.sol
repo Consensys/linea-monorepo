@@ -105,4 +105,10 @@ contract MockDashboard is IDashboard {
   function resumeBeaconChainDeposits() external override {}
 
   function triggerValidatorWithdrawals(bytes calldata, uint64[] calldata, address) external payable override {}
+
+  uint256 public transferVaultOwnershipCallCount;
+
+  function transferVaultOwnership(address _newOwner) external {
+    transferVaultOwnershipCallCount += 1;
+  }
 }

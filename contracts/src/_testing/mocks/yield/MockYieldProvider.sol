@@ -75,4 +75,6 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
   ) external returns (YieldProviderRegistration memory registrationData) {
     return getInitializeVendorContractsReturnVal();
   }
+
+  function exitVendorContracts(address _yieldProvider, bytes memory _vendorExitData) external {}
 }

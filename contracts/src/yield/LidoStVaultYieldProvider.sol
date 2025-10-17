@@ -573,4 +573,18 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
       ossifiedEntrypoint: vault
     });
   }
+
+  /**
+   * @notice Performs vendor-specific exit logic.
+   * @param _vendorExitData Vendor-specific exit data.
+   */
+  function exitVendorContracts(address _yieldProvider, bytes memory _vendorExitData) external onlyDelegateCall {
+    if (_vendorExitData.length == 0) return;
+    address newVaultOwner = abi.decode(_vendorExitData, (address));
+    ErrorUtils.revertIfZeroAddress(newVaultOwner);
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    $$.isOssified
+      ? _getVault($$).transferOwnership(newVaultOwner)
+      : _getDashboard($$).transferVaultOwnership(newVaultOwner);
+  }
 }

@@ -42,4 +42,10 @@ contract MockStakingVault is IStakingVault {
   function stagedBalance() external view returns (uint256) {}
 
   function unstage(uint256 _ether) external {}
+
+  uint256 public transferOwnershipCallCount;
+
+  function transferOwnership(address _newOwner) external {
+    transferOwnershipCallCount += 1;
+  }
 }

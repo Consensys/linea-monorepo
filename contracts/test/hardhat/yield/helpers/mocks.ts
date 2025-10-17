@@ -21,6 +21,18 @@ export const buildMockYieldProviderRegistration = (
   ossifiedEntrypoint: overrides.ossifiedEntrypoint ?? ethers.Wallet.createRandom().address,
 });
 
+export const buildVendorExitData = (
+  overrides: Partial<{
+    newVaultOwner: string;
+  }> = {},
+) => {
+  const params = {
+    newVaultOwner: overrides.newVaultOwner ?? ethers.Wallet.createRandom().address,
+  };
+
+  return ethers.AbiCoder.defaultAbiCoder().encode(["address"], [params.newVaultOwner]);
+};
+
 export const buildVendorInitializationData = (
   overrides: Partial<{
     defaultAdmin: string;

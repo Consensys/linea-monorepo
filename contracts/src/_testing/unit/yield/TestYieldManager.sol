@@ -296,6 +296,13 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     return abi.decode(data, (YieldProviderRegistration));
   }
 
+  function exitVendorContracts(address _yieldProvider, bytes memory _vendorInitializationData) external {
+    _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.exitVendorContracts, (_yieldProvider, _vendorInitializationData))
+    );
+  }
+
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
   /// @param stakingVault The staking vault address.
   /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.

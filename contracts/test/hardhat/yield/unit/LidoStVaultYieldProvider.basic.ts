@@ -1,6 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
+  buildVendorExitData,
   buildVendorInitializationData,
   deployAndAddSingleLidoStVaultYieldProvider,
   fundLidoStVaultYieldProvider,
@@ -428,7 +429,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await expect(call).to.be.reverted;
     });
     it("Should succeed with expected return values", async () => {
-      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, buildVendorExitData());
       const expectedVaultAddress = ethers.Wallet.createRandom().address;
       const expectedDashboardAddress = ethers.Wallet.createRandom().address;
       await mockVaultFactory.setReturnValues(expectedVaultAddress, expectedDashboardAddress);
@@ -444,6 +445,41 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(registrationData[0]).eq(YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR);
       expect(registrationData[1]).eq(expectedDashboardAddress);
       expect(registrationData[2]).eq(expectedVaultAddress);
+    });
+  });
+
+  describe("vendor exit", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      const call = yieldProvider.connect(securityCouncil).exitVendorContracts(yieldProviderAddress, EMPTY_CALLDATA);
+      await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
+    });
+    it("Should succeed with empty vendorExitData", async () => {
+      const call = yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, EMPTY_CALLDATA);
+      await expect(call).to.not.be.reverted;
+    });
+    it("Should revert if newVaultAddress = 0", async () => {
+      const call = yieldManager
+        .connect(securityCouncil)
+        .exitVendorContracts(yieldProviderAddress, buildVendorExitData({ newVaultOwner: ZeroAddress }));
+      expectRevertWithCustomError(yieldManager, call, "ZeroAddressNotAllowed");
+    });
+    it("When non-ossified, should succeed with call to Dashboard", async () => {
+      await yieldManager.setYieldProviderIsOssified(yieldProviderAddress, false);
+      const call = yieldManager
+        .connect(securityCouncil)
+        .removeYieldProvider(yieldProviderAddress, buildVendorExitData());
+      await expect(call).to.not.be.reverted;
+      expect(await mockDashboard.transferVaultOwnershipCallCount()).eq(1);
+      expect(await mockStakingVault.transferOwnershipCallCount()).eq(0);
+    });
+    it("When ossified, should succeed with call to StakingVault", async () => {
+      await yieldManager.setYieldProviderIsOssified(yieldProviderAddress, true);
+      const call = yieldManager
+        .connect(securityCouncil)
+        .removeYieldProvider(yieldProviderAddress, buildVendorExitData());
+      await expect(call).to.not.be.reverted;
+      expect(await mockDashboard.transferVaultOwnershipCallCount()).eq(0);
+      expect(await mockStakingVault.transferOwnershipCallCount()).eq(1);
     });
   });
 
