@@ -96,6 +96,8 @@ func declareUnivariateQueries(
 // [wizard.ProverAction] interface.
 func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 
+	// TODO @gbotrel this use a lot of memory, investigate why.
+
 	var (
 		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
 		r         = run.GetRandomCoinField(pa.EvalCoin.Name)

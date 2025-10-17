@@ -243,6 +243,10 @@ func SoftRotate(v SmartVector, offset int) SmartVector {
 
 }
 
+// WriteSubVectorInSlice writes the subvector [start:stop) into the provided
+// slice s. The slice s must be of length stop-start.
+// This is equivalent to doing r.SubVector(start, stop).WriteInSlice(s) but
+// avoids an allocation.
 func (r *Rotated) WriteSubVectorInSlice(start, stop int, s []field.Element) {
 	// sanity checks on start / stop / len(s)
 	if start < 0 || stop > r.Len() || stop <= start || len(s) != stop-start {

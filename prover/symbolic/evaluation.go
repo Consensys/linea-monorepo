@@ -94,24 +94,10 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, vArena ...*arena.Vec
 	})
 
 	if areAllConstants(inputs) {
-		// TODO @gbotrel we are wasting compute if this is a common case.
-		// in standard_benchmark, this happens only once (not with base, with ext)
 		return sv.NewConstant(res[0], totalSize)
 	}
 
 	return sv.NewRegular(res)
-}
-
-func areAllConstants(inp []sv.SmartVector) bool {
-	for _, v := range inp {
-		// must be sv.Constant or sv.ConstantExt
-		switch v.(type) {
-		case *sv.Constant:
-		default:
-			return false
-		}
-	}
-	return true
 }
 
 func newEvaluation(b *ExpressionBoard, chunkSize int, vArena *arena.VectorArena) evaluation {
@@ -123,6 +109,7 @@ func newEvaluation(b *ExpressionBoard, chunkSize int, vArena *arena.VectorArena)
 		vectorArena: vArena,
 	}
 
+	// count total number of children to allocate inputs arrays
 	totalNbChildren := 0
 	for i := range b.Nodes {
 		if i == 0 {
@@ -134,9 +121,8 @@ func newEvaluation(b *ExpressionBoard, chunkSize int, vArena *arena.VectorArena)
 	}
 	inputsArena := arena.NewVectorArena[uint32](totalNbChildren)
 
-	inputCursor := 0
-
 	// Init the constants and inputs.
+	inputCursor := 0
 	nodeIndex := 0
 	for i := range b.Nodes {
 		for j := range b.Nodes[i] {
@@ -171,10 +157,6 @@ func newEvaluation(b *ExpressionBoard, chunkSize int, vArena *arena.VectorArena)
 		}
 	}
 
-	// we can propagate constants here, since it will be useful for all chunks and done only once.
-	// starting from level 1 since level 0 are inputs/constants,
-	// if all my inputs are constant, I can compute my value, and be a constant too.
-	// but in practice it never happens so we omit this part.
 	return eval
 }
 
@@ -207,7 +189,6 @@ func (e *evaluation) reset(inputs []sv.SmartVector, chunkStart, chunkStop int, v
 			input := inputs[inputCursor]
 			switch rv := input.(type) {
 			case *sv.Regular:
-				// copy(na.value[:chunkLen], (*rv)[chunkStart:chunkStop])
 				na.value = (*rv)[chunkStart:chunkStop]
 			case *sv.Rotated:
 				if na.value == nil {
@@ -568,4 +549,16 @@ func (b *ExpressionBoard) CountNodesFilterConstants() int {
 		}
 	}
 	return res
+}
+
+func areAllConstants(inp []sv.SmartVector) bool {
+	for _, v := range inp {
+		// must be sv.Constant or sv.ConstantExt
+		switch v.(type) {
+		case *sv.Constant:
+		default:
+			return false
+		}
+	}
+	return true
 }

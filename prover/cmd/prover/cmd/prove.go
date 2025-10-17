@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
-	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
@@ -58,16 +56,6 @@ func Prove(args ProverArgs) error {
 	}
 }
 
-func logMemStats() {
-	var m runtime.MemStats
-	for {
-		runtime.ReadMemStats(&m)
-		fmt.Printf("Alloc = %v MiB\tTotalAlloc = %v MiB\tSys = %v MiB\tNumGC = %v\n",
-			m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
-		time.Sleep(10 * time.Second)
-	}
-}
-
 // handleExecutionJob processes an execution job
 func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 	req := &execution.Request{}
@@ -77,8 +65,6 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 
 	var resp *execution.Response
 	var err error
-
-	// go logMemStats()
 
 	if cfg.Execution.ProverMode == config.ProverModeLimitless {
 		// Limitless execution mode

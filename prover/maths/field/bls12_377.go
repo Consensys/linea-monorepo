@@ -158,9 +158,7 @@ func FromBool(b bool) Element {
 	return Zero()
 }
 
-// TODO @gbotrel change after update to latest gnark-crypto
-
-// Exp sets vector[i] = a[i]ᵏ for all i
+// ExpVec sets vector[i] = a[i]ᵏ for all i
 func ExpVec(vector, a Vector, k int64) {
 	N := len(a)
 	if N != len(vector) {

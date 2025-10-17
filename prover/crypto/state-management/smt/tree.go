@@ -264,6 +264,9 @@ func (t *Tree) reserveLevel(level, newSize int) {
 //
 // It panics if the number of leaves is a non-power of 2.
 func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tree {
+	// TODO @gbotrel this accumulates to 50sec of runtime for proof creation
+	// plenty of innefficenies to optimize for.
+	// it also stores a lot of data in memory, investigate why.
 
 	numLeaves := len(leaves)
 
