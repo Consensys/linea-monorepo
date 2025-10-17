@@ -132,7 +132,6 @@ public class EngineAPIService {
       if (isPostCancun(fork)) {
         blobsBundle = (ObjectNode) result.get("blobsBundle");
         executionRequests = (ArrayNode) result.get("executionRequests");
-        parentBeaconBlockRoot = executionPayload.remove("parentBeaconBlockRoot").asText();
         // Transform KZG commitments to versioned hashes
         for (JsonNode kzgCommitment : blobsBundle.get("commitments")) {
           Bytes kzgBytes = Bytes.fromHexString(kzgCommitment.asText());
