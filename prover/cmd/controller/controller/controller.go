@@ -324,11 +324,6 @@ func (state *ControllerState) handleDeferToLarge(cLog *logrus.Entry, job *Job, s
 // handleJobKilledByExtSig puts the job back in the request folder and cleans up tmp files.
 func (state *ControllerState) handleJobKilledByExtSig(cfg *config.Config, cLog *logrus.Entry, job *Job) {
 	cLog.Infof("Job %v was killed by user signal", job.OriginalFile)
-	cLog.Infof("Re-queuing the request:%s back to the request folder", job.OriginalFile)
-
-	if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
-		cLog.Errorf("Error renaming %v to %v: %v", job.InProgressPath(), job.OriginalPath(), err)
-	}
 
 	// Remove tmp-response only if we produce a response file for this job.
 	if !job.Def.WritesToDevNull() {
