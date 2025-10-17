@@ -142,8 +142,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 			hasher := p.LeafHashFunc()
 			hasher.Reset()
 
-			hasher.WriteElements(colHashes[startChunk : startChunk+chunkSize])
-			leaves[chunkID] = hasher.SumElements(nil)
+			leaves[chunkID] = hasher.SumElements(colHashes[startChunk : startChunk+chunkSize])
 		}
 
 	})
