@@ -145,7 +145,8 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 				}
 
 				var (
-					paramsI  = run.GetUnivariateParams(qa.Queries[i].Name())
+					paramsI = run.GetUnivariateParams(qa.Queries[i].Name())
+					// TODO @gbotrel this slows thing down, build a smart lookup or improve search.
 					posOfYik = getPositionOfPolyInQueryYs(qa.Queries[i], qa.Polys[k])
 					yik      = paramsI.Ys[posOfYik]
 				)
