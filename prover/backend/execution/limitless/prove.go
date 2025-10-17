@@ -241,7 +241,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	if res.err != nil {
 		return nil, fmt.Errorf("conglomeration failed: %w", res.err)
 	}
-	congProofRoot := res.proof
+	congFinalproof := res.proof
+
+	// TODO: Sanity check the final conglomerated proof using wizard.VerifyRuntime
+	// For that we should be able to extract a wizard.proof from segment proof
 
 	// -- 5. Load setup (in background started earlier maybe)
 	var (
@@ -265,7 +268,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		&cfg.TracesLimits,
 		setup,
 		cong.HierarchicalConglomeration.Wiop,
-		congProofRoot,
+		congFinalproof,
 		*witness.FuncInp,
 	)
 
@@ -525,8 +528,11 @@ func RunConglomerationHierarchical(ctx context.Context,
 		if proofsReceived >= totalProofs {
 			// Last item is the final proof
 			if len(stack) == 1 {
-				logrus.Infoln("Successfully finished running conglomeration prover and returning final proof.")
-				return stack[0], nil
+				logrus.Infoln("Successfully finished running conglomeration prover.")
+				finalProof := stack[0]
+				// Clear stack
+				stack = nil
+				return finalProof, nil
 			}
 			return distributed.SegmentProof{}, fmt.Errorf("conglomeration finished but stack size=%d (expected 1)", len(stack))
 		}
