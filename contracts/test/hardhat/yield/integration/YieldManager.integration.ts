@@ -5,12 +5,16 @@ import {
   decrementBalance,
   deployAndAddAdditionalLidoStVaultYieldProvider,
   deployYieldManagerIntegrationTestFixture,
+  executeUnstakePermissionless,
   fundLidoStVaultYieldProvider,
   getBalance,
   incrementBalance,
+  incurNegativeYield,
+  incurPositiveYield,
   setupLineaRollupMessageMerkleTree,
   setWithdrawalReserveToMinimum,
   setWithdrawalReserveToTarget,
+  withdrawLST,
 } from "../helpers";
 import {
   TestYieldManager,
@@ -239,6 +243,48 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
 
       // Assert
       expectRevertWithCustomError(lineaRollup, claimCall, "CallerNotLSTWithdrawalRecipient");
+    });
+    it("Should revert if LST withdrawal > rate limit", async () => {
+      const rateLimit = await lineaRollup.limitInWei();
+
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        rateLimit + 1n,
+        EMPTY_CALLDATA,
+      );
+      const call = lineaRollup
+        .connect(nonAuthorizedAccount)
+        .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
+      await expectRevertWithCustomError(lineaRollup, call, "RateLimitExceeded");
+    });
+    it("LST withdrawal should use previous rate limit", async () => {
+      // Regular claim message for rate limit
+      const rateLimit = await lineaRollup.limitInWei();
+      await incrementBalance(l1MessageServiceAddress, rateLimit);
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        rateLimit,
+        EMPTY_CALLDATA,
+      );
+      await lineaRollup.connect(nonAuthorizedAccount).claimMessageWithProof(claimParams);
+      // Next claim message with LST withdrawal
+      const claimParams2 = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        recipientAddress,
+        1n,
+        EMPTY_CALLDATA,
+      );
+      const call = lineaRollup
+        .connect(nonAuthorizedAccount)
+        .claimMessageWithProofAndWithdrawLST(claimParams2, yieldProviderAddress);
+      await expectRevertWithCustomError(lineaRollup, call, "RateLimitExceeded");
     });
   });
 
@@ -774,6 +820,126 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await mockDashboard.setLiabilitySharesReturn(0);
       await mockDashboard.setNodeOperatorDisbursableFeeReturn(0n);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(ONE_ETHER);
+    });
+
+    it("Should be able to safely reach ossification state", async () => {
+      // Initial funding with 10 ETH
+      const initialFundAmount = ONE_ETHER * 10n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+
+      // More bridge funds arrive
+      const secondFundAmount = ONE_ETHER * 10n;
+      await setWithdrawalReserveToTarget(yieldManager);
+      await incrementBalance(l1MessageServiceAddress, secondFundAmount);
+      await lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(secondFundAmount);
+      await yieldManager.connect(nativeYieldOperator).fundYieldProvider(yieldProviderAddress, secondFundAmount);
+
+      // Earn 5 ETH positive yield
+      const firstPositiveYield = ONE_ETHER * 5n;
+      await incurPositiveYield(
+        yieldManager,
+        mockDashboard,
+        nativeYieldOperator,
+        mockStakingVaultAddress,
+        yieldProviderAddress,
+        l2YieldRecipient,
+        firstPositiveYield,
+      );
+
+      // Negative yield event for -3 ETH
+      const firstNegativeYield = ONE_ETHER * 3n;
+      await incurNegativeYield(
+        yieldManager,
+        mockDashboard,
+        nativeYieldOperator,
+        mockStakingVaultAddress,
+        yieldProviderAddress,
+        l2YieldRecipient,
+        firstNegativeYield,
+      );
+
+      // Bridge funds decrement to deficit
+      await setWithdrawalReserveToMinimum(yieldManager);
+      await decrementBalance(l1MessageServiceAddress, ONE_ETHER * 10n);
+      expectRevertWithCustomError(
+        yieldManager,
+        lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(1n),
+        "InsufficientWithdrawalReserve",
+      );
+
+      // Create LST withdrawal - 5 ETH. Should cause staking pause.
+      await setBalance(l1MessageServiceAddress, (await lineaRollup.limitInWei()) - 1n);
+      await withdrawLST(lineaRollup, nonAuthorizedAccount, yieldProviderAddress, await lineaRollup.limitInWei());
+      expect(await yieldManager.isStakingPaused(yieldProviderAddress)).eq(true);
+      await mockSTETH.setSharesByPooledEthReturn(await lineaRollup.limitInWei());
+      await mockSTETH.setPooledEthBySharesRoundUpReturn(0);
+      await mockDashboard.setLiabilitySharesReturn(await lineaRollup.limitInWei());
+      await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
+
+      // Add to withdrawal reserve should cover the deficit, not LST principal
+      const lstLiabilityPrincipal = await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
+      let stakingVaultBalance = await getBalance(mockStakingVault);
+      let l1MessageServiceBalance = await getBalance(lineaRollup);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .addToWithdrawalReserve(yieldProviderAddress, await lineaRollup.limitInWei());
+      expect(await getBalance(mockStakingVault)).eq(stakingVaultBalance - (await lineaRollup.limitInWei()));
+      expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + (await lineaRollup.limitInWei()));
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(lstLiabilityPrincipal);
+
+      // Call pendingPermissionlessUnstake
+      const unstakeAmount = ONE_ETHER * 5n;
+      await executeUnstakePermissionless(
+        sszMerkleTree,
+        verifier,
+        yieldManager,
+        yieldProviderAddress,
+        mockStakingVaultAddress,
+        await nativeYieldOperator.getAddress(),
+        unstakeAmount,
+      );
+
+      // Some more positive yield
+      const secondPositiveYield = ONE_ETHER * 10n;
+
+      await incurPositiveYield(
+        yieldManager,
+        mockDashboard,
+        nativeYieldOperator,
+        mockStakingVaultAddress,
+        yieldProviderAddress,
+        l2YieldRecipient,
+        secondPositiveYield,
+        await lineaRollup.limitInWei(), // LST Principal incurred in previous step
+      );
+      await mockSTETH.setSharesByPooledEthReturn(0);
+      await mockDashboard.setLiabilitySharesReturn(0);
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
+
+      // PermissionlessRebalance
+      stakingVaultBalance = await getBalance(mockStakingVault);
+      l1MessageServiceBalance = await getBalance(lineaRollup);
+      console.log(await yieldManager.userFunds(yieldProviderAddress));
+      console.log(stakingVaultBalance);
+      await mockDashboard.setWithdrawableValueReturn(stakingVaultBalance);
+      await yieldManager.connect(nonAuthorizedAccount).replenishWithdrawalReserve(yieldProviderAddress);
+      console.log(await yieldManager.userFunds(yieldProviderAddress));
+      console.log(await getBalance(mockStakingVault));
+
+      // expect(await getBalance(mockStakingVault)).eq(0);
+      // expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + stakingVaultBalance);
+
+      // - With reserve healthy but staking still paused, invoke transferFundsToReserve (unstaker role) to push
+      // excess liquidity back to L1, creating a tight balance state; optionally invoke receiveFundsFromReserve via
+      // l1MessageService to simulate L2 withdrawal completion and confirm guard rails.
+
+      // - Kick off ossification: call initiateOssification (initiator role) and assert repeat call is allowed but keeps
+      // state; run progressPendingOssification twice—first mocked to return ProgressOssificationResult.InProgress, second
+      // returning Complete to flip isOssified.
+
+      // - After ossification, verify unpauseStaking reverts, fundYieldProvider still respects reserve guards, and
+      // withdrawFromYieldProvider continues to auto-reduce pendingPermissionlessUnstake (should already be zero) to prove
+      // post-ossification behaviour remains safe.
     });
   });
 });

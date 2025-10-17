@@ -1,16 +1,28 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 import {
+  MockDashboard,
   MockLineaRollup,
   MockYieldProvider,
+  SSZMerkleTree,
+  TestCLProofVerifier,
   TestLidoStVaultYieldProvider,
   TestLineaRollup,
   TestYieldManager,
+  YieldManager,
 } from "contracts/typechain-types";
 import { ethers } from "hardhat";
-import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE } from "../../common/constants";
+import {
+  ADDRESS_ZERO,
+  EMPTY_CALLDATA,
+  MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+  ONE_ETHER,
+  ONE_GWEI,
+  VALIDATOR_WITNESS_TYPE,
+  ZERO_VALUE,
+} from "../../common/constants";
 import { ClaimMessageWithProofParams } from "./types";
-import { randomBytes32 } from "./proof";
+import { generateLidoUnstakePermissionlessWitness, randomBytes32 } from "./proof";
 import { encodeSendMessage } from "../../common/helpers";
 import { BaseContract } from "ethers";
 
@@ -146,4 +158,109 @@ export const setupLineaRollupMessageMerkleTree = async (
   await lineaRollup.sendMessage(ethers.Wallet.createRandom().address, ZERO_VALUE, EMPTY_CALLDATA);
 
   return claimParams;
+};
+
+export const incurPositiveYield = async (
+  yieldManager: TestYieldManager,
+  mockDashboard: MockDashboard,
+  nativeYieldOperator: SignerWithAddress,
+  mockStakingVaultAddress: string,
+  yieldProviderAddress: string,
+  l2YieldRecipient: SignerWithAddress,
+  positiveYield: bigint,
+  lstPrincipalPaid: bigint = 0n,
+) => {
+  await incrementBalance(mockStakingVaultAddress, positiveYield);
+  const userFunds = await yieldManager.userFunds(yieldProviderAddress);
+  await mockDashboard.setTotalValueReturn(userFunds + positiveYield);
+  const yieldProviderYieldReportedCumulativePrev =
+    await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress);
+  {
+    const [newReportedYield, outstandingNegativeYield] = await yieldManager
+      .connect(nativeYieldOperator)
+      .reportYield.staticCall(yieldProviderAddress, l2YieldRecipient);
+    expect(newReportedYield).eq(positiveYield - lstPrincipalPaid);
+    expect(outstandingNegativeYield).eq(0);
+  }
+  await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+  // Obligations paid
+  expect(await yieldManager.userFunds(yieldProviderAddress)).eq(
+    userFunds + positiveYield - lstPrincipalPaid - lstPrincipalPaid,
+  );
+  expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(
+    yieldProviderYieldReportedCumulativePrev + positiveYield - lstPrincipalPaid,
+  );
+  expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(await yieldManager.userFunds(yieldProviderAddress));
+};
+
+export const incurNegativeYield = async (
+  yieldManager: TestYieldManager,
+  mockDashboard: MockDashboard,
+  nativeYieldOperator: SignerWithAddress,
+  mockStakingVaultAddress: string,
+  yieldProviderAddress: string,
+  l2YieldRecipient: SignerWithAddress,
+  negativeYield: bigint,
+) => {
+  await decrementBalance(mockStakingVaultAddress, negativeYield);
+  await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - negativeYield);
+  const userFunds = await yieldManager.userFunds(yieldProviderAddress);
+  const yieldProviderYieldReportedCumulativePrev =
+    await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress);
+  {
+    const [newReportedYield, outstandingNegativeYield] = await yieldManager
+      .connect(nativeYieldOperator)
+      .reportYield.staticCall(yieldProviderAddress, l2YieldRecipient);
+    expect(newReportedYield).eq(0);
+    expect(outstandingNegativeYield).eq(negativeYield);
+  }
+  await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+  expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds);
+  expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(await yieldManager.userFunds(yieldProviderAddress));
+  expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(
+    yieldProviderYieldReportedCumulativePrev,
+  );
+};
+
+export const withdrawLST = async (
+  lineaRollup: TestLineaRollup,
+  nonAuthorizedAccount: SignerWithAddress,
+  yieldProviderAddress: string,
+  amount: bigint,
+) => {
+  const recipientAddress = await nonAuthorizedAccount.getAddress();
+  const claimParams = await setupLineaRollupMessageMerkleTree(
+    lineaRollup,
+    recipientAddress,
+    recipientAddress,
+    amount,
+    EMPTY_CALLDATA,
+  );
+  await lineaRollup
+    .connect(nonAuthorizedAccount)
+    .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
+};
+
+export const executeUnstakePermissionless = async (
+  sszMerkleTree: SSZMerkleTree,
+  verifier: TestCLProofVerifier,
+  yieldManager: YieldManager,
+  yieldProviderAddress: string,
+  mockStakingVaultAddress: string,
+  refundAddress: string,
+  unstakeAmount: bigint,
+) => {
+  const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+    sszMerkleTree,
+    verifier,
+    mockStakingVaultAddress,
+    MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+  );
+  const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
+    ["bytes", "uint64[]", "address"],
+    [validatorWitness.pubkey, [unstakeAmount / ONE_GWEI], refundAddress],
+  );
+  const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode([VALIDATOR_WITNESS_TYPE], [validatorWitness]);
+  // Arrange - first unstake
+  await yieldManager.unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
 };
