@@ -9,6 +9,7 @@ import linea.domain.Transaction
 import linea.domain.TransactionForEthCall
 import linea.domain.TransactionReceipt
 import linea.ethapi.EthApiClient
+import linea.ethapi.StateOverride
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import linea.kotlin.toULong
@@ -137,7 +138,9 @@ class Web3jEthApiClient(
   override fun ethCall(
     transaction: TransactionForEthCall,
     blockParameter: BlockParameter,
+    stateOverride: StateOverride?,
   ): SafeFuture<ByteArray> {
+    require(stateOverride == null) { "web3j eth_call does not support stateOverrides" }
     return web3jClient
       .ethCall(transaction.toWeb3j(), blockParameter.toWeb3j())
       .requestAsync { resp -> resp.value.decodeHex() }
