@@ -14,8 +14,9 @@ import java.math.BigInteger
  * Failed requests with JSON-RPC error responses will be rejected with JsonRpcErrorResponseException
  */
 interface EthApiClient : EthLogsClient {
+  // ==============================================================================
   // Legacy methods (keeping existing)
-  // to avoid compolation errors until we refactor usage
+  // to avoid compilation errors until we aggree on final interface and refactor usage
   fun getChainId(): SafeFuture<ULong> = ethChainId()
   fun blockNumber(): SafeFuture<ULong> = ethBlockNumber()
   fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> = ethGetBlockByNumberFullTxs(blockParameter)
@@ -24,14 +25,18 @@ interface EthApiClient : EthLogsClient {
       block ?: throw IllegalArgumentException("block=$blockParameter not found!")
     }
   }
+
   fun findBlockByNumberWithoutTransactionsData(
     blockParameter: BlockParameter,
   ): SafeFuture<BlockWithTxHashes?> = ethGetBlockByNumberTxHashes(blockParameter)
+
   fun getBlockByNumberWithoutTransactionsData(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes> {
     return findBlockByNumberWithoutTransactionsData(blockParameter).thenApply { block ->
       block ?: throw IllegalArgumentException("block=$blockParameter not found!")
     }
   }
+  // ==============================================================================
+  // ==============================================================================
 
   // Ethereum JSON-RPC API methods with eth prefix
   // Protocol version and chain information
@@ -76,7 +81,4 @@ interface EthApiClient : EthLogsClient {
   fun ethSendRawTransaction(signedTransactionData: ByteArray): SafeFuture<ByteArray>
   fun ethCall(transaction: TransactionForEthCall, blockParameter: BlockParameter): SafeFuture<ByteArray>
   fun ethEstimateGas(transaction: TransactionForEthCall): SafeFuture<BigInteger>
-
-  // Proof methods
-  // fun ethGetProof(address: ByteArray, storageKeys: List<ByteArray>, blockParameter: BlockParameter): SafeFuture<Any> // Proof type not available
 }
