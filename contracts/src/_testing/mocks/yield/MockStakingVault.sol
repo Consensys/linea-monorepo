@@ -36,4 +36,10 @@ contract MockStakingVault is IStakingVault {
   function resumeBeaconChainDeposits() external override {}
 
   function triggerValidatorWithdrawals(bytes calldata, uint64[] calldata, address) external payable override {}
+
+  function setDepositor(address _depositor) external {}
+
+  function stagedBalance() external view returns (uint256) {}
+
+  function unstage(uint256 _ether) external {}
 }

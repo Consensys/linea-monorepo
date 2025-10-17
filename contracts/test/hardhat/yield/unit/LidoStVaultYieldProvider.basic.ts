@@ -34,12 +34,12 @@ import {
   LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
   UNUSED_YIELD_PROVIDER_VENDOR,
   LIDO_DASHBOARD_NOT_LINKED_TO_VAULT,
-  LIDO_VAULT_IS_EXPECTED_RECEIVE_CALLER_AND_OSSIFIED_ENTRYPOINT,
   EMPTY_CALLDATA,
   VALIDATOR_WITNESS_TYPE,
   THIRTY_TWO_ETH_IN_GWEI,
   ONE_GWEI,
   MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+  ProgressOssificationResult,
 } from "../../common/constants";
 import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
@@ -344,14 +344,54 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
   });
 
-  describe("process pending ossification", () => {
+  describe("progress pending ossification", () => {
     it("Should revert if not invoked via delegatecall", async () => {
       const call = yieldProvider.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
       await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
     });
-    it("Should succeed", async () => {
+    it("If vault is disconnected, should succeed and return complete", async () => {
+      // Arrange
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
+      await mockVaultHub.setIsVaultConnectedReturn(false);
+      // Act
+      const isOssificationComplete = await yieldManager
+        .connect(securityCouncil)
+        .progressPendingOssification.staticCall(yieldProviderAddress);
+      const call = yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
+
+      // Assert
+      await expect(call).to.not.be.reverted;
+      expect(isOssificationComplete).eq(ProgressOssificationResult.COMPLETE);
+    });
+    it("If vault is connected and pending disconnect, should succeed with no-op and return false", async () => {
+      // Arrange
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await mockVaultHub.setIsVaultConnectedReturn(true);
+      await mockVaultHub.setIsPendingDisconnectReturn(true);
+      // Act
+      const isOssificationComplete = await yieldManager
+        .connect(securityCouncil)
+        .progressPendingOssification.staticCall(yieldProviderAddress);
+      const call = yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
+
+      // Assert
+      await expect(call).to.not.be.reverted;
+      expect(isOssificationComplete).eq(ProgressOssificationResult.NOOP);
+    });
+    it("If vault is connected and not pending disconnect, should successfully redo initiate ossification and return false", async () => {
+      // Arrange
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await mockVaultHub.setIsVaultConnectedReturn(true);
+      await mockVaultHub.setIsPendingDisconnectReturn(false);
+      // Act
+      const isOssificationComplete = await yieldManager
+        .connect(securityCouncil)
+        .progressPendingOssification.staticCall(yieldProviderAddress);
+      const call = yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
+
+      // Assert
+      await expect(call).to.not.be.reverted;
+      expect(isOssificationComplete).eq(ProgressOssificationResult.REINITIATED);
     });
   });
 
@@ -363,7 +403,6 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         yieldProviderVendor: UNUSED_YIELD_PROVIDER_VENDOR,
         primaryEntrypoint: mockDashboardAddress,
         ossifiedEntrypoint: mockStakingVaultAddress,
-        receiveCaller: mockStakingVaultAddress,
       };
 
       const call = yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
@@ -378,27 +417,11 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
         primaryEntrypoint: mockDashboardAddress,
         ossifiedEntrypoint: await newVault.getAddress(),
-        receiveCaller: mockStakingVaultAddress,
       };
 
       const call = yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
       await expectRevertWithCustomError(yieldProvider, call, "InvalidYieldProviderRegistration", [
         LIDO_DASHBOARD_NOT_LINKED_TO_VAULT,
-      ]);
-    });
-    it("Should revert if receiveCaller is not set to the staking vault", async () => {
-      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress);
-
-      const registration: YieldProviderRegistration = {
-        yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
-        primaryEntrypoint: mockDashboardAddress,
-        ossifiedEntrypoint: mockStakingVaultAddress,
-        receiveCaller: mockDashboardAddress,
-      };
-
-      const call = yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
-      await expectRevertWithCustomError(yieldProvider, call, "InvalidYieldProviderRegistration", [
-        LIDO_VAULT_IS_EXPECTED_RECEIVE_CALLER_AND_OSSIFIED_ENTRYPOINT,
       ]);
     });
     it("Should succeed for a correct registration", async () => {
@@ -408,7 +431,6 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
         primaryEntrypoint: mockDashboardAddress,
         ossifiedEntrypoint: mockStakingVaultAddress,
-        receiveCaller: mockStakingVaultAddress,
       };
 
       await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);

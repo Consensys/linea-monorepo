@@ -12,6 +12,7 @@ import {
   NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
   NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
   NATIVE_YIELD_REPORTING_PAUSE_TYPE,
+  ProgressOssificationResult,
 } from "../../common/constants";
 import { setWithdrawalReserveBalance, setWithdrawalReserveToMinimum } from "../helpers/setup";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
@@ -413,22 +414,43 @@ describe("YieldManager contract - control operations", () => {
       );
     });
 
-    it("If YieldProvider does not return completed ossification, should not complete ossification and emit the correct event", async () => {
+    it("If YieldProvider does no-op for progress pending, should not complete ossification and emit the correct event", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
       await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
       await yieldManager
         .connect(securityCouncil)
-        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, false);
+        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, ProgressOssificationResult.NOOP);
 
-      const isOssificationComplete = await yieldManager
+      const progressOssificationResult = await yieldManager
         .connect(securityCouncil)
         .progressPendingOssification.staticCall(mockYieldProviderAddress);
-      expect(isOssificationComplete).to.be.false;
+      expect(progressOssificationResult).to.eq(ProgressOssificationResult.NOOP);
 
       await expect(yieldManager.connect(securityCouncil).progressPendingOssification(mockYieldProviderAddress))
         .to.emit(yieldManager, "YieldProviderOssificationProcessed")
-        .withArgs(mockYieldProviderAddress, false);
+        .withArgs(mockYieldProviderAddress, ProgressOssificationResult.NOOP);
+
+      expect(await yieldManager.isOssificationInitiated(mockYieldProviderAddress)).to.be.true;
+      expect(await yieldManager.isOssified(mockYieldProviderAddress)).to.be.false;
+    });
+
+    it("If YieldProvider does reinitiate ossification for progress, should not complete ossification and emit the correct event", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
+      await yieldManager
+        .connect(securityCouncil)
+        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, ProgressOssificationResult.REINITIATED);
+
+      const progressOssificationResult = await yieldManager
+        .connect(securityCouncil)
+        .progressPendingOssification.staticCall(mockYieldProviderAddress);
+      expect(progressOssificationResult).to.eq(ProgressOssificationResult.REINITIATED);
+
+      await expect(yieldManager.connect(securityCouncil).progressPendingOssification(mockYieldProviderAddress))
+        .to.emit(yieldManager, "YieldProviderOssificationProcessed")
+        .withArgs(mockYieldProviderAddress, ProgressOssificationResult.REINITIATED);
 
       expect(await yieldManager.isOssificationInitiated(mockYieldProviderAddress)).to.be.true;
       expect(await yieldManager.isOssified(mockYieldProviderAddress)).to.be.false;
@@ -440,16 +462,16 @@ describe("YieldManager contract - control operations", () => {
       await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
       await yieldManager
         .connect(securityCouncil)
-        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, true);
+        .setprogressPendingOssificationReturnVal(mockYieldProviderAddress, ProgressOssificationResult.COMPLETE);
 
-      const isOssificationComplete = await yieldManager
+      const progressOssificationResult = await yieldManager
         .connect(securityCouncil)
         .progressPendingOssification.staticCall(mockYieldProviderAddress);
-      expect(isOssificationComplete).to.be.true;
+      expect(progressOssificationResult).to.eq(ProgressOssificationResult.COMPLETE);
 
       await expect(yieldManager.connect(securityCouncil).progressPendingOssification(mockYieldProviderAddress))
         .to.emit(yieldManager, "YieldProviderOssificationProcessed")
-        .withArgs(mockYieldProviderAddress, true);
+        .withArgs(mockYieldProviderAddress, ProgressOssificationResult.COMPLETE);
 
       expect(await yieldManager.isOssified(mockYieldProviderAddress)).to.be.true;
     });

@@ -49,7 +49,6 @@ abstract contract YieldManagerStorageLayout {
    * @param isOssified True if ossification has been finalized.
    * @param primaryEntrypoint Contract used for operations when not-ossified.
    * @param ossifiedEntrypoint Contract used for operations once ossification is finalized.
-   * @param receiveCaller Contract which is expected to .call() the YieldManager during withdrawals.
    * @param yieldProviderIndex Index for the YieldProvider.
    * @param userFunds User funds currently in the YieldProvider.
    *                  - Only decremented during withdraw operations.
@@ -72,8 +71,6 @@ abstract contract YieldManagerStorageLayout {
     address primaryEntrypoint;
     // Slot 1
     address ossifiedEntrypoint;
-    // Slot 2
-    address receiveCaller;
     uint96 yieldProviderIndex;
     uint256 userFunds;
     uint256 yieldReportedCumulative;
@@ -93,13 +90,11 @@ abstract contract YieldManagerStorageLayout {
    * @param yieldProviderVendor Specific type of YieldProvider adaptor.
    * @param primaryEntrypoint Contract used for operations when not-ossified.
    * @param ossifiedEntrypoint Contract used for operations once ossification is finalized.
-   * @param receiveCaller Contract which is expected to .call() the YieldManager during withdrawals.
    */
   struct YieldProviderRegistration {
     YieldProviderVendor yieldProviderVendor;
     address primaryEntrypoint;
     address ossifiedEntrypoint;
-    address receiveCaller;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))

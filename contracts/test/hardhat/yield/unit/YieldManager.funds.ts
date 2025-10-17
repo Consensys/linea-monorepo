@@ -545,13 +545,6 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await expect(call).to.be.revertedWithCustomError(mockWithdrawTarget, "MockWithdrawFailed");
     });
-    it("Should revert if receiveCaller not configured correctly", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      const call = yieldManager
-        .connect(nativeYieldOperator)
-        .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, 0n);
-      await expectRevertWithCustomError(yieldManager, call, "UnexpectedReceiveCaller");
-    });
 
     it("Delegatecalls successfully and makes correct state transitions", async () => {
       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);

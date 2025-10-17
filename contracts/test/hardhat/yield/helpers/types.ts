@@ -16,7 +16,6 @@ export interface YieldProviderRegistration {
   yieldProviderVendor: number;
   primaryEntrypoint: string;
   ossifiedEntrypoint: string;
-  receiveCaller: string;
 }
 
 export interface ValidatorContainer {

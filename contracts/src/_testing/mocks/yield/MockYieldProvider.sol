@@ -61,7 +61,9 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
 
   function initiateOssification(address _yieldProvider) external {}
 
-  function progressPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete) {
+  function progressPendingOssification(
+    address _yieldProvider
+  ) external returns (IYieldProvider.ProgressOssificationResult progressOssificationResult) {
     return getprogressPendingOssificationReturnVal(_yieldProvider);
   }
 

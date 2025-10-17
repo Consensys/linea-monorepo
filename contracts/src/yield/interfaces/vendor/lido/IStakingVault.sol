@@ -18,4 +18,8 @@ interface IStakingVault is ICommonVaultOperations {
   function ossify() external;
 
   function availableBalance() external view returns (uint256);
+
+  function setDepositor(address _depositor) external;
+  function stagedBalance() external view returns (uint256);
+  function unstage(uint256 _ether) external;
 }

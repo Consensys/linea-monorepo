@@ -14,17 +14,6 @@ import { randomBytes32 } from "./proof";
 import { encodeSendMessage } from "../../common/helpers";
 import { BaseContract } from "ethers";
 
-export const setupReceiveCallerForSuccessfulYieldProviderWithdrawal = async (
-  testYieldManager: TestYieldManager,
-  mockYieldProvider: MockYieldProvider,
-  signer: SignerWithAddress,
-) => {
-  // const testYieldManagerAddress = await testYieldManager.getAddress();
-  const mockYieldProviderAddress = await mockYieldProvider.getAddress();
-  const mockWithdrawTarget = await testYieldManager.getMockWithdrawTarget(mockYieldProviderAddress);
-  await testYieldManager.connect(signer).setYieldProviderReceiveCaller(mockYieldProviderAddress, mockWithdrawTarget);
-};
-
 // TODO - Existence of this setup function means that YieldManager has invariants that withdraw cannot underflow for userFunds and userFundsInYieldProvidersTotal
 // Caution - assumes it will only be used once, will not work for consecutive uses in its current form
 export const fundYieldProviderForWithdrawal = async (
@@ -33,7 +22,6 @@ export const fundYieldProviderForWithdrawal = async (
   signer: SignerWithAddress,
   withdrawAmount: bigint,
 ) => {
-  await setupReceiveCallerForSuccessfulYieldProviderWithdrawal(testYieldManager, mockYieldProvider, signer);
   const mockYieldProviderAddress = await mockYieldProvider.getAddress();
   const yieldManagerAddress = await testYieldManager.getAddress();
   // Funding cannot happen if withdrawal reserve in deficit

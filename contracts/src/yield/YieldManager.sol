@@ -54,9 +54,6 @@ contract YieldManager is
   /// @notice 100% in BPS.
   uint256 constant MAX_BPS = 10000;
 
-  /// @notice Address expected to call() into the YieldManager while withdrawing ETH from a YieldProvider.
-  address transient TRANSIENT_RECEIVE_CALLER;
-
   /// @notice Minimum withdrawal reserve percentage in bps.
   function minimumWithdrawalReservePercentageBps() public view returns (uint256) {
     return _getYieldManagerStorage().minimumWithdrawalReservePercentageBps;
@@ -296,7 +293,6 @@ contract YieldManager is
       isOssified: $$.isOssified,
       primaryEntrypoint: $$.primaryEntrypoint,
       ossifiedEntrypoint: $$.ossifiedEntrypoint,
-      receiveCaller: $$.receiveCaller,
       yieldProviderIndex: $$.yieldProviderIndex,
       userFunds: $$.userFunds,
       yieldReportedCumulative: $$.yieldReportedCumulative,
@@ -680,12 +676,10 @@ contract YieldManager is
    */
   function _delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) internal {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    TRANSIENT_RECEIVE_CALLER = $$.receiveCaller;
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount))
     );
-    TRANSIENT_RECEIVE_CALLER = address(0);
     // Edge case here where withdrawableValue > userFunds.
     // Cause some YieldProvider funds to become unwithdrawable temporarily.
     // This is tolerated because it is temporary until the next reportYield() call, where we assume the YieldManager reports new surplus as yield.
@@ -925,7 +919,7 @@ contract YieldManager is
   /**
    * @notice Progress an initiated ossification process.
    * @param _yieldProvider The yield provider address.
-   * @return isOssificationComplete True if ossification is finalized.
+   * @return progressOssificationResult The operation result.
    */
   function progressPendingOssification(
     address _yieldProvider
@@ -933,7 +927,7 @@ contract YieldManager is
     external
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(OSSIFICATION_PROCESSOR_ROLE)
-    returns (bool isOssificationComplete)
+    returns (IYieldProvider.ProgressOssificationResult progressOssificationResult)
   {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if (!$$.isOssificationInitiated) {
@@ -946,23 +940,15 @@ contract YieldManager is
       _yieldProvider,
       abi.encodeCall(IYieldProvider.progressPendingOssification, (_yieldProvider))
     );
-    isOssificationComplete = abi.decode(data, (bool));
-    if (isOssificationComplete) {
+    progressOssificationResult = abi.decode(data, (IYieldProvider.ProgressOssificationResult));
+    if (progressOssificationResult == IYieldProvider.ProgressOssificationResult.Complete) {
       $$.isOssified = true;
     }
-    emit YieldProviderOssificationProcessed(_yieldProvider, isOssificationComplete);
+    emit YieldProviderOssificationProcessed(_yieldProvider, progressOssificationResult);
   }
 
-  /**
-   * @notice Function to receive a basic ETH transfer.
-   * @dev Intended to receive ETH from YieldProvider withdrawals only. Will revert if the sender is unexpected.
-   * @dev Donations are available through a dedicated donate() function.
-   */
-  receive() external payable {
-    if (TRANSIENT_RECEIVE_CALLER != msg.sender) {
-      revert UnexpectedReceiveCaller();
-    }
-  }
+  /// @notice Function to receive a basic ETH transfer.
+  receive() external payable {}
 
   /**
    * @notice Register a new YieldProvider adaptor instance.
@@ -976,7 +962,6 @@ contract YieldManager is
     ErrorUtils.revertIfZeroAddress(_yieldProvider);
     ErrorUtils.revertIfZeroAddress(_registration.primaryEntrypoint);
     ErrorUtils.revertIfZeroAddress(_registration.ossifiedEntrypoint);
-    ErrorUtils.revertIfZeroAddress(_registration.receiveCaller);
     IYieldProvider(_yieldProvider).validateAdditionToYieldManager(_registration);
     YieldManagerStorage storage $ = _getYieldManagerStorage();
 
@@ -992,7 +977,6 @@ contract YieldManager is
       isOssified: false,
       primaryEntrypoint: _registration.primaryEntrypoint,
       ossifiedEntrypoint: _registration.ossifiedEntrypoint,
-      receiveCaller: _registration.receiveCaller,
       yieldProviderIndex: yieldProviderIndex,
       userFunds: 0,
       yieldReportedCumulative: 0,
@@ -1002,8 +986,7 @@ contract YieldManager is
       _yieldProvider,
       _registration.yieldProviderVendor,
       _registration.primaryEntrypoint,
-      _registration.ossifiedEntrypoint,
-      _registration.receiveCaller
+      _registration.ossifiedEntrypoint
     );
   }
 

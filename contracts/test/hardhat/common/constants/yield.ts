@@ -18,7 +18,13 @@ export const LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR = 1;
 
 // YieldProviderRegistrationError enum
 export const LIDO_DASHBOARD_NOT_LINKED_TO_VAULT = 0;
-export const LIDO_VAULT_IS_EXPECTED_RECEIVE_CALLER_AND_OSSIFIED_ENTRYPOINT = 1;
+
+// ProgressOssificationResult enum
+export const enum ProgressOssificationResult {
+  REINITIATED = 0,
+  NOOP = 1,
+  COMPLETE = 2,
+}
 
 // OperationType enum
 export const REPORT_YIELD_OPERATION_TYPE = 0;

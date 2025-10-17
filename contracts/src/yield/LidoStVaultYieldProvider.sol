@@ -483,27 +483,49 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
    */
   function initiateOssification(address _yieldProvider) external onlyDelegateCall {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    _initiateOssification($$);
+  }
+
+  /**
+   * @notice Internal helper function to initiate ossification.
+   * @param $$ Storage pointer for the YieldProvider-scoped storage.
+   */
+  function _initiateOssification(YieldProviderStorage storage $$) internal {
     _payMaximumPossibleLSTLiability($$);
     // This will revert if i.) There is no fresh report ii.) liabilities > 0
     // This will also force repay obligations, and revert if it cannot pay off in full
-    IDashboard(_getYieldProviderStorage(_yieldProvider).primaryEntrypoint).voluntaryDisconnect();
+    _getDashboard($$).voluntaryDisconnect();
   }
 
   /**
    * @notice Process a previously initiated ossification process.
    * @param _yieldProvider The yield provider address.
-   * @return isOssificationComplete True if the provider is now in the ossified state.
+   * @return progressOssificationResult The operation result.
    */
   function progressPendingOssification(
     address _yieldProvider
-  ) external onlyDelegateCall returns (bool isOssificationComplete) {
+  ) external onlyDelegateCall returns (ProgressOssificationResult progressOssificationResult) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    // Give ownership to YieldManager
-    IDashboard($$.primaryEntrypoint).abandonDashboard(address(this));
-    IStakingVault vault = IStakingVault($$.ossifiedEntrypoint);
-    vault.acceptOwnership();
-    vault.ossify();
-    isOssificationComplete = true;
+    IStakingVault vault = _getVault($$);
+    if (!VAULT_HUB.isVaultConnected(address(vault))) {
+      // Disconnected, can complete ossification
+      // Transfer StakingVault ownership to YieldManager
+      IDashboard($$.primaryEntrypoint).abandonDashboard(address(this));
+      vault.acceptOwnership();
+      // Ossify
+      vault.ossify();
+      // Unstage all ETH
+      vault.setDepositor(address(this));
+      vault.unstage(vault.stagedBalance());
+      progressOssificationResult = ProgressOssificationResult.Complete;
+    } else if (VAULT_HUB.isPendingDisconnect(address(vault))) {
+      // No-op, needs accounting report to progress
+      progressOssificationResult = ProgressOssificationResult.Noop;
+    } else {
+      // Previous disconnect attempt has aborted, must re-execute
+      _initiateOssification($$);
+      progressOssificationResult = ProgressOssificationResult.Reinitiated;
+    }
   }
 
   /**
@@ -518,11 +540,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     address expectedVault = address(dashboard.stakingVault());
     if (expectedVault != _registration.ossifiedEntrypoint) {
       revert InvalidYieldProviderRegistration(YieldProviderRegistrationError.LidoDashboardNotLinkedToVault);
-    }
-    if (_registration.receiveCaller != _registration.ossifiedEntrypoint) {
-      revert InvalidYieldProviderRegistration(
-        YieldProviderRegistrationError.LidoVaultIsExpectedReceiveCallerAndOssifiedEntrypoint
-      );
     }
   }
 }

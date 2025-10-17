@@ -14,12 +14,16 @@ interface IYieldProvider {
     ReportYield
   }
 
-  /**
-   * @notice Enum defining the specific type of YieldProvider registration error.
-   */
+  /// @notice Enum defining the specific type of YieldProvider registration error.
   enum YieldProviderRegistrationError {
-    LidoDashboardNotLinkedToVault,
-    LidoVaultIsExpectedReceiveCallerAndOssifiedEntrypoint
+    LidoDashboardNotLinkedToVault
+  }
+
+  /// @notice Enum defining the outcome of progressPendingOssification
+  enum ProgressOssificationResult {
+    Reinitiated,
+    Noop,
+    Complete
   }
 
   /// @notice Thrown when an operation is blocked because ossification is either pending or complete.
@@ -151,9 +155,11 @@ interface IYieldProvider {
   /**
    * @notice Process a previously initiated ossification process.
    * @param _yieldProvider The yield provider address.
-   * @return isOssificationComplete True if the provider is now in the ossified state.
+   * @return progressOssificationResult The operation result.
    */
-  function progressPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
+  function progressPendingOssification(
+    address _yieldProvider
+  ) external returns (ProgressOssificationResult progressOssificationResult);
 
   /**
    * @notice Performs vendor-specific validation before the provider is registered by the YieldManager.

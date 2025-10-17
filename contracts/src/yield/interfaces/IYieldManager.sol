@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import { YieldManagerStorageLayout } from "../YieldManagerStorageLayout.sol";
 import { IPauseManager } from "../../security/pausing/interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "../../security/access/interfaces/IPermissionsManager.sol";
+import { IYieldProvider } from "./IYieldProvider.sol";
 
 /**
  * @title Contract to handle native yield operations.
@@ -162,9 +163,12 @@ interface IYieldManager {
   /**
    * @notice Emitted when a previously initiated ossification has progressed to the next stage.
    * @param yieldProvider The yield provider address.
-   * @param isOssified Whether ossification has finalized.
+   * @return progressOssificationResult The operation result.
    */
-  event YieldProviderOssificationProcessed(address indexed yieldProvider, bool isOssified);
+  event YieldProviderOssificationProcessed(
+    address indexed yieldProvider,
+    IYieldProvider.ProgressOssificationResult progressOssificationResult
+  );
 
   /**
    * @notice Emitted when a donation is received.
@@ -179,14 +183,12 @@ interface IYieldManager {
    * @param yieldProviderVendor Specific type of YieldProvider adaptor.
    * @param primaryEntrypoint Contract used for operations when not-ossified.
    * @param ossifiedEntrypoint Contract used for operations once ossification is finalized.
-   * @param receiveCaller Contract which is expected to .call() the YieldManager during withdrawals.
    */
   event YieldProviderAdded(
     address indexed yieldProvider,
     YieldManagerStorageLayout.YieldProviderVendor indexed yieldProviderVendor,
     address primaryEntrypoint,
-    address indexed ossifiedEntrypoint,
-    address receiveCaller
+    address indexed ossifiedEntrypoint
   );
 
   /**
@@ -325,11 +327,6 @@ interface IYieldManager {
    * @dev Thrown when attempting to initiate or progress the ossification process for a YieldProvider that is already ossified.
    */
   error AlreadyOssified();
-
-  /**
-   * @dev Thrown when the YieldManager receives ETH from an unexpected sender.
-   */
-  error UnexpectedReceiveCaller();
 
   /**
    * @dev Thrown when adding a YieldProvider instance that was previously registered
@@ -632,9 +629,11 @@ interface IYieldManager {
   /**
    * @notice Progress an initiated ossification process.
    * @param _yieldProvider The yield provider address.
-   * @return isOssificationComplete True if ossification is finalized.
+   * @return progressOssificationResult The operation result.
    */
-  function progressPendingOssification(address _yieldProvider) external returns (bool isOssificationComplete);
+  function progressPendingOssification(
+    address _yieldProvider
+  ) external returns (IYieldProvider.ProgressOssificationResult progressOssificationResult);
 
   /**
    * @notice Register a new YieldProvider adaptor instance.

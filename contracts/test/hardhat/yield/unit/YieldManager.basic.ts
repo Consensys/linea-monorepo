@@ -45,13 +45,8 @@ describe("YieldManager contract - basic operations", () => {
       await expect(sendEthToContract("0x1234")).to.be.reverted;
     });
 
-    it("Should fail to send eth to the yieldManager contract through the receive caller when unexpected", async () => {
-      await expectRevertWithCustomError(yieldManager, sendEthToContract(EMPTY_CALLDATA), "UnexpectedReceiveCaller");
-    });
-
-    it("Should keep rejecting receive calls when the transient caller is not set within the same transaction", async () => {
-      await yieldManager.setTransientReceiveCaller(nativeYieldOperator.address);
-      await expectRevertWithCustomError(yieldManager, sendEthToContract(EMPTY_CALLDATA), "UnexpectedReceiveCaller");
+    it("Should successfully accept ETH via receive() fn", async () => {
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.reverted;
     });
   });
 
@@ -798,16 +793,6 @@ describe("YieldManager contract - basic operations", () => {
       );
     });
 
-    it("Should revert when 0 address is provided for the receiveCaller", async () => {
-      const mockYieldProvider = await deployMockYieldProvider();
-      const registration = buildMockYieldProviderRegistration({ receiveCaller: ZeroAddress });
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(securityCouncil).addYieldProvider(await mockYieldProvider.getAddress(), registration),
-        "ZeroAddressNotAllowed",
-      );
-    });
     it("Should successfully add a yield provider, change state to expected and emit correct event", async () => {
       const mockYieldProvider = await deployMockYieldProvider();
       const registration = buildMockYieldProviderRegistration();
@@ -822,7 +807,6 @@ describe("YieldManager contract - basic operations", () => {
           registration.yieldProviderVendor,
           registration.primaryEntrypoint,
           registration.ossifiedEntrypoint,
-          registration.receiveCaller,
         );
 
       expect(await yieldManager.isYieldProviderKnown(providerAddress)).to.be.true;
@@ -835,7 +819,6 @@ describe("YieldManager contract - basic operations", () => {
       expect(yieldProviderData.isOssified).to.be.false;
       expect(yieldProviderData.primaryEntrypoint).to.equal(registration.primaryEntrypoint);
       expect(yieldProviderData.ossifiedEntrypoint).to.equal(registration.ossifiedEntrypoint);
-      expect(yieldProviderData.receiveCaller).to.equal(registration.receiveCaller);
       expect(yieldProviderData.yieldProviderIndex).to.equal(1n);
       expect(yieldProviderData.userFunds).to.equal(0n);
       expect(yieldProviderData.yieldReportedCumulative).to.equal(0n);
@@ -978,7 +961,6 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.getYieldProviderIsOssified(mockYieldProviderAddress)).to.equal(false);
       expect(await yieldManager.getYieldProviderPrimaryEntrypoint(mockYieldProviderAddress)).to.equal(ZeroAddress);
       expect(await yieldManager.getYieldProviderOssifiedEntrypoint(mockYieldProviderAddress)).to.equal(ZeroAddress);
-      expect(await yieldManager.getYieldProviderReceiveCaller(mockYieldProviderAddress)).to.equal(ZeroAddress);
       expect(await yieldManager.getYieldProviderIndex(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);
@@ -1089,7 +1071,6 @@ describe("YieldManager contract - basic operations", () => {
       expect(await yieldManager.getYieldProviderIsOssified(mockYieldProviderAddress)).to.equal(false);
       expect(await yieldManager.getYieldProviderPrimaryEntrypoint(mockYieldProviderAddress)).to.equal(ZeroAddress);
       expect(await yieldManager.getYieldProviderOssifiedEntrypoint(mockYieldProviderAddress)).to.equal(ZeroAddress);
-      expect(await yieldManager.getYieldProviderReceiveCaller(mockYieldProviderAddress)).to.equal(ZeroAddress);
       expect(await yieldManager.getYieldProviderIndex(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderUserFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.getYieldProviderYieldReportedCumulative(mockYieldProviderAddress)).to.equal(0n);

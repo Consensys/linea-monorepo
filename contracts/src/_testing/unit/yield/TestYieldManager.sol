@@ -10,14 +10,6 @@ import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
 contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
   constructor(address _l1MessageService) YieldManager(_l1MessageService) {}
 
-  function setTransientReceiveCaller(address _caller) external {
-    TRANSIENT_RECEIVE_CALLER = _caller;
-  }
-
-  function getTransientReceiveCaller() external view returns (address) {
-    return TRANSIENT_RECEIVE_CALLER;
-  }
-
   function getL1MessageService() external view returns (address) {
     return L1_MESSAGE_SERVICE;
   }
@@ -132,14 +124,6 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
 
   function setYieldProviderOssifiedEntrypoint(address _yieldProvider, address _ossifiedEntrypoint) external {
     _getYieldProviderStorage(_yieldProvider).ossifiedEntrypoint = _ossifiedEntrypoint;
-  }
-
-  function getYieldProviderReceiveCaller(address _yieldProvider) external view returns (address) {
-    return _getYieldProviderStorage(_yieldProvider).receiveCaller;
-  }
-
-  function setYieldProviderReceiveCaller(address _yieldProvider, address _receiveCaller) external {
-    _getYieldProviderStorage(_yieldProvider).receiveCaller = _receiveCaller;
   }
 
   function getYieldProviderIndex(address _yieldProvider) external view returns (uint96) {

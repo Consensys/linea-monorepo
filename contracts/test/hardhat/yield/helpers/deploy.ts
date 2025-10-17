@@ -271,7 +271,6 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
     yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
     primaryEntrypoint: mockDashboardAddress,
     ossifiedEntrypoint: mockStakingVaultAddress,
-    receiveCaller: mockStakingVaultAddress,
   };
 
   await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
@@ -356,7 +355,6 @@ export async function deployYieldManagerIntegrationTestFixture() {
     yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
     primaryEntrypoint: mockDashboardAddress,
     ossifiedEntrypoint: mockStakingVaultAddress,
-    receiveCaller: mockStakingVaultAddress,
   };
 
   await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);
@@ -420,7 +418,6 @@ export async function deployAndAddAdditionalLidoStVaultYieldProvider(
     yieldProviderVendor: LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
     primaryEntrypoint: mockDashboardAddress,
     ossifiedEntrypoint: mockStakingVaultAddress,
-    receiveCaller: mockStakingVaultAddress,
   };
 
   await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, registration);

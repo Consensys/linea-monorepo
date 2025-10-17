@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { YieldManagerStorageLayout } from "../../../yield/YieldManagerStorageLayout.sol";
+import { IYieldProvider } from "../../../yield/interfaces/IYieldProvider.sol";
 
 abstract contract MockYieldProviderStorageLayout {
   /// @dev keccak256(abi.encode(uint256(keccak256("linea.storage.MockYieldProviderStorage")) - 1)) & ~bytes32(uint256(0xff))
@@ -18,7 +19,7 @@ abstract contract MockYieldProviderStorageLayout {
     uint256 reportYieldReturnVal_OutstandingNegativeYield;
     uint256 payLSTPrincipalReturnVal;
     uint256 unstakePermissionlessReturnVal;
-    bool progressPendingOssificationReturnVal;
+    IYieldProvider.ProgressOssificationResult progressPendingOssificationReturnVal;
     address mockWithdrawTarget;
   }
 
@@ -60,7 +61,10 @@ abstract contract MockYieldProviderStorageLayout {
     _getMockYieldProviderStorage(_yieldProvider).unstakePermissionlessReturnVal = _val;
   }
 
-  function setprogressPendingOssificationReturnVal(address _yieldProvider, bool _val) external {
+  function setprogressPendingOssificationReturnVal(
+    address _yieldProvider,
+    IYieldProvider.ProgressOssificationResult _val
+  ) external {
     _getMockYieldProviderStorage(_yieldProvider).progressPendingOssificationReturnVal = _val;
   }
 
@@ -88,7 +92,9 @@ abstract contract MockYieldProviderStorageLayout {
     return _getMockYieldProviderStorage(_yieldProvider).unstakePermissionlessReturnVal;
   }
 
-  function getprogressPendingOssificationReturnVal(address _yieldProvider) public view returns (bool) {
+  function getprogressPendingOssificationReturnVal(
+    address _yieldProvider
+  ) public view returns (IYieldProvider.ProgressOssificationResult) {
     return _getMockYieldProviderStorage(_yieldProvider).progressPendingOssificationReturnVal;
   }
 }
