@@ -214,24 +214,8 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 		// goroutine, we can safely close it.
 		defer close(done)
 
-		// Lock on the process until it finishes
-		err := cmd.Wait()
-
-		if err != nil {
-			// Here it means, the "os/exec" package could not "wait" the process. It
-			// can happen for many different reasons essentially pertaining to
-			// the initialization of the process. It may be that some of theses
-			// errors are retryables but it remains to see which one. Until then
-			// we exited with a fatal code and the files will need to be
-			// manually reprocessed.
-			logrus.Errorf("unexpected : got an error trying to lock on %v : %v", pname, err)
-			done <- Status{
-				ExitCode: CodeFatal,
-				What:     "got an error waiting for the process",
-				Err:      err,
-			}
-			return
-		}
+		// Wait until the process finishes
+		_ = cmd.Wait()
 		processingTime := time.Since(startTime)
 		exitcode, codeErr := unixExitCode(cmd.ProcessState)
 		if codeErr != nil {
