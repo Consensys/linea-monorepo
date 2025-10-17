@@ -196,7 +196,7 @@ type Config struct {
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput        `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 	Debug                      Debug              `mapstructure:"debug"`
-	ExecutionLimitless         ExecutionLimitless `mapstructure:"execution_limitless"`
+	ExecutionLimitless         ExecutionLimitless `mapstructure:"exec_limitless"`
 
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.

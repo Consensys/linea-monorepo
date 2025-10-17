@@ -68,16 +68,16 @@ func setDefaultPaths() {
 }
 
 func setDefaultExecLimitlessParams() {
-	viper.SetDefault("execution_limitless.preload_assets", true)
-	viper.SetDefault("execution_limitless.metadata_dir", "/tmp/exec-limitless/metadata")
-	viper.SetDefault("execution_limitless.witness_dir", "/tmp/exec-limitless/witness")
-	viper.SetDefault("execution_limitless.subproofs_dir", "/tmp/exec-limitless/subproofs")
-	viper.SetDefault("execution_limitless.commits_dir", "/tmp/exec-limitless/commits")
-	viper.SetDefault("execution_limitless.shared_rnd_dir", "/tmp/exec-limitless/commit")
+	viper.SetDefault("exec_limitless.preload_assets", true)
+	viper.SetDefault("exec_limitless.metadata_dir", "/tmp/exec-limitless/metadata")
+	viper.SetDefault("exec_limitless.witness_dir", "/tmp/exec-limitless/witness")
+	viper.SetDefault("exec_limitless.subproofs_dir", "/tmp/exec-limitless/subproofs")
+	viper.SetDefault("exec_limitless.commits_dir", "/tmp/exec-limitless/commits")
+	viper.SetDefault("exec_limitless.shared_rnd_dir", "/tmp/exec-limitless/commit")
 
-	viper.SetDefault("execution_limitless.gl_subproofs_timeout", 1800)
-	viper.SetDefault("execution_limitless.lpp_subproofs_timeout", 2400)
-	viper.SetDefault("execution_limitless.rnd_beacon_timeout", 1900)
+	viper.SetDefault("exec_limitless.gl_subproofs_timeout", 1800)
+	viper.SetDefault("exec_limitless.lpp_subproofs_timeout", 2400)
+	viper.SetDefault("exec_limitless.rnd_beacon_timeout", 1900)
 }
 
 func setDefaultDebugFlags() {
