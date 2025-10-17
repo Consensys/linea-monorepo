@@ -108,6 +108,31 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Assert
       await expectRevertWithCustomError(yieldManager, call, "InsufficientWithdrawalReserve");
     });
+    it("Should successfully accept cross-chain user transfer via receiveFundsFromReserve", async () => {
+      // Arrange - Setup L1MessageService balance
+      const transferAmount = ONE_ETHER;
+      await setWithdrawalReserveToMinimum(yieldManager);
+      await incrementBalance(l1MessageServiceAddress, transferAmount);
+      // Arrange - setup L1MessageService message
+      const recipientAddress = await nonAuthorizedAccount.getAddress();
+      const calldata = await yieldManager.interface.encodeFunctionData("receiveFundsFromReserve", []);
+      const reserveBalanceBefore = await getBalance(lineaRollup);
+      const yieldManagerBalanceBefore = await getBalance(yieldManager);
+
+      const claimParams = await setupLineaRollupMessageMerkleTree(
+        lineaRollup,
+        recipientAddress,
+        yieldManagerAddress,
+        transferAmount,
+        calldata,
+      );
+
+      // Act
+      const claimCall = lineaRollup.connect(nonAuthorizedAccount).claimMessageWithProof(claimParams);
+      await expect(claimCall).to.not.be.reverted;
+      expect(await getBalance(lineaRollup)).eq(reserveBalanceBefore - transferAmount);
+      expect(await getBalance(yieldManager)).eq(yieldManagerBalanceBefore + transferAmount);
+    });
   });
 
   describe("Withdraw LST", () => {

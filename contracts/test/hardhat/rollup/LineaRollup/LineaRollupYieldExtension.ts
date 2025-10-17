@@ -87,9 +87,9 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("fund() to receive funding", () => {
-    it("Should succeed and emit the correct event", async () => {
+    it("Should succeed with permissionless call and emit the correct event", async () => {
       const amount = ethers.parseEther("1");
-      const fundCall = lineaRollup.fund({ value: amount });
+      const fundCall = lineaRollup.connect(nonAuthorizedAccount).fund({ value: amount });
 
       await expectEvent(lineaRollup, fundCall, "FundingReceived", [amount]);
 
