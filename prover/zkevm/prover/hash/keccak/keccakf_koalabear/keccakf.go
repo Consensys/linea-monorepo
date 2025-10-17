@@ -12,14 +12,16 @@ const (
 	numLanesInBlock = 17
 )
 
-// each lane is 64 bits, represented as 8 bytes.
-type lane [8]ifaces.Column
-
-// keccakf state is a 5x5 matrix of lanes.
-type state [5][5]lane
-
-// state after each base conversion, each lane is decomposed into 16 slices of 4 bits each.
-type stateBaseConversion [5][5][16]ifaces.Column
+type (
+	//  each lane is 64 bits, represented as 8 bytes.
+	lane = [8]ifaces.Column
+	// keccakf state is a 5x5 matrix of lanes.
+	state = [5][5]lane
+	// state after each base conversion, each lane is decomposed into 16 slices of 4 bits each.
+	stateIn4Bits = [5][5][16]ifaces.Column
+	// state after bit rotation, each lane is decomposed into 64 bits.
+	stateInBits = [5][5][64]ifaces.Column
+)
 
 // inputs to the keccakf module
 type keccakfInputs struct {
