@@ -357,9 +357,12 @@ func runCmd(ctx context.Context, cmd string, job *Job, retry bool) Status {
 // preLoadStaticAssets: preloads the static prover assets relevant for the job and keeps
 // it in the controller mememory and loads it on-demand
 func (e *Executor) preLoadStaticAssets(ctx context.Context, job *Job) error {
-	if job.Def == nil {
+
+	// Return immediately if preload is disabled
+	if !e.Config.ExecutionLimitless.PreLoadAssets || job.Def == nil {
 		return nil
 	}
+
 	// Only handle known limitless jobs
 	if job.Def.Name != jobNameBootstrap &&
 		job.Def.Name != jobNameConglomeration &&

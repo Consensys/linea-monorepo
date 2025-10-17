@@ -312,6 +312,7 @@ type Prometheus struct {
 }
 
 type ExecutionLimitless struct {
+	PreLoadAssets       bool   `mapstructure:"preload_assets"`
 	MetadataDir         string `mapstructure:"metadata_dir"`
 	WitnessDir          string `mapstructure:"witness_dir"`
 	SubproofsDir        string `mapstructure:"subproofs_dir"`

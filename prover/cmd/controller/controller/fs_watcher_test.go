@@ -295,7 +295,7 @@ func setupFsTestLimitless(t *testing.T) *config.Config {
 	conf := &config.Config{
 		Execution: config.Execution{
 			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: filepath.Join(tmpRoot, "requests-root"),
+				RequestsRootDir: filepath.Join(tmpRoot, "prover-execution"),
 			},
 		},
 		ExecutionLimitless: config.ExecutionLimitless{
