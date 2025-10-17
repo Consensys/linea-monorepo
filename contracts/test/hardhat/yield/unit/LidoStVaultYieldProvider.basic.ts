@@ -5,6 +5,7 @@ import {
   buildVendorInitializationData,
   deployAndAddSingleLidoStVaultYieldProvider,
   fundLidoStVaultYieldProvider,
+  getBalance,
   getWithdrawLSTCall,
   incrementBalance,
   ossifyYieldProvider,
@@ -428,11 +429,14 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         .initializeVendorContracts(yieldProviderAddress, EMPTY_CALLDATA);
       await expect(call).to.be.reverted;
     });
-    it("Should succeed with expected return values", async () => {
+    it("Should succeed with expected return values, and transfer 1 ether to Lido contracts", async () => {
       await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, buildVendorExitData());
       const expectedVaultAddress = ethers.Wallet.createRandom().address;
       const expectedDashboardAddress = ethers.Wallet.createRandom().address;
       await mockVaultFactory.setReturnValues(expectedVaultAddress, expectedDashboardAddress);
+      await incrementBalance(yieldManagerAddress, ONE_ETHER);
+      const beforeYieldManagerBalance = await getBalance(yieldManager);
+      const beforeVaultFactoryBalance = await getBalance(mockVaultFactory);
 
       const registrationData = await yieldManager
         .connect(securityCouncil)
@@ -445,6 +449,20 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(registrationData[0]).eq(YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR);
       expect(registrationData[1]).eq(expectedDashboardAddress);
       expect(registrationData[2]).eq(expectedVaultAddress);
+      console.log(await getBalance(yieldManager));
+      expect(await getBalance(yieldManager)).eq(beforeYieldManagerBalance - ONE_ETHER);
+      expect(await getBalance(mockVaultFactory)).eq(beforeVaultFactoryBalance + ONE_ETHER);
+    });
+    it("Should revert if YieldManager lacks the CONNECT_DEPOSIT of 1 ether", async () => {
+      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, buildVendorExitData());
+      const expectedVaultAddress = ethers.Wallet.createRandom().address;
+      const expectedDashboardAddress = ethers.Wallet.createRandom().address;
+      await mockVaultFactory.setReturnValues(expectedVaultAddress, expectedDashboardAddress);
+
+      const call = yieldManager
+        .connect(securityCouncil)
+        .initializeVendorContracts(yieldProviderAddress, buildVendorInitializationData());
+      await expect(call).to.be.reverted;
     });
   });
 

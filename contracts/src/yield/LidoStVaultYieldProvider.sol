@@ -38,6 +38,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
   /// @notice Address of the Lido stETH contract.
   IStETH public immutable STETH;
 
+  /// @notice amount of ETH that is locked on the vault on connect and can be withdrawn on disconnect only
+  uint256 public constant CONNECT_DEPOSIT = 1 ether;
+
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
   /// @param stakingVault The staking vault address.
   /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.
@@ -558,7 +561,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
         (address, address, address, uint256, uint256, IPermissionsManager.RoleAddress[])
       );
 
-    (address vault, address dashboard) = VAULT_FACTORY.createVaultWithDashboard(
+    (address vault, address dashboard) = VAULT_FACTORY.createVaultWithDashboard{ value: CONNECT_DEPOSIT }(
       defaultAdmin,
       nodeOperator,
       nodeOperatorManager,

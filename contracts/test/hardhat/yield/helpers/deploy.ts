@@ -16,6 +16,7 @@ import {
   GI_FIRST_VALIDATOR_AFTER_CHANGE,
   CHANGE_SLOT,
   YIELD_PROVIDER_STAKING_ROLE,
+  ONE_ETHER,
 } from "../../common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import { YIELD_MANAGER_OPERATOR_ROLES, YIELD_MANAGER_SECURITY_COUNCIL_ROLES } from "contracts/common/constants";
@@ -43,6 +44,7 @@ import { deployLineaRollupFixture, reinitializeLineaRollupFixtureV7 } from "../.
 import { LineaRollupV7ReinitializationData } from "../../rollup/helpers/types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { buildVendorInitializationData } from "./mocks";
+import { incrementBalance } from "./setup";
 
 async function getYieldManagerRoleAddressesFixture(): Promise<
   {
@@ -284,7 +286,7 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
   const mockStakingVaultAddress = await mockStakingVault.getAddress();
 
   await mockVaultFactory.setReturnValues(mockStakingVaultAddress, mockDashboardAddress);
-
+  await incrementBalance(yieldManagerAddress, ONE_ETHER); // Connect Deposit
   await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, buildVendorInitializationData());
   return {
     mockDashboard,
@@ -368,6 +370,7 @@ export async function deployYieldManagerIntegrationTestFixture() {
   const mockStakingVaultAddress = await mockStakingVault.getAddress();
 
   await mockVaultFactory.setReturnValues(mockStakingVaultAddress, mockDashboardAddress);
+  await incrementBalance(yieldManagerAddress, ONE_ETHER); // Connect Deposit
   await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, buildVendorInitializationData());
 
   // Reinit LineaRollup with actual YieldManager
@@ -428,6 +431,7 @@ export async function deployAndAddAdditionalLidoStVaultYieldProvider(
   const mockStakingVaultAddress = await mockStakingVault.getAddress();
 
   await mockVaultFactory.setReturnValues(mockStakingVaultAddress, mockDashboardAddress);
+  await incrementBalance(await yieldManager.getAddress(), ONE_ETHER); // Connect Deposit
   await yieldManager.connect(securityCouncil).addYieldProvider(yieldProviderAddress, buildVendorInitializationData());
   return {
     mockDashboard,
