@@ -11,6 +11,7 @@ import linea.domain.Transaction
 import linea.domain.TransactionForEthCall
 import linea.domain.TransactionReceipt
 import linea.ethapi.EthApiClient
+import linea.ethapi.StateOverride
 import net.consensys.linea.async.AsyncRetryer
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
@@ -150,10 +151,11 @@ class Web3jEthApiClientWithRetries(
   override fun ethCall(
     transaction: TransactionForEthCall,
     blockParameter: BlockParameter,
+    stateOverride: StateOverride?,
   ): SafeFuture<ByteArray> {
     // FIXME: stop retry when revert reason is returned as JSON RPC error
     return retry(stopRetriesPredicateForTag(blockParameter)) {
-      ethApiClient.ethCall(transaction, blockParameter)
+      ethApiClient.ethCall(transaction, blockParameter, stateOverride)
     }
   }
 
