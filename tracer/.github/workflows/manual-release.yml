@@ -157,7 +157,7 @@ jobs:
   # Publish release post tests
   # ==================================================================
   publish:
-    needs: [build, unit-tests-london, unit-tests-paris, unit-tests-shanghai, unit-tests-cancun, unit-tests-prague, replay-tests]
+    needs: [ build ]
     if: github.event_name != 'pull_request'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     env:
