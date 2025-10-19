@@ -252,13 +252,17 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	select {
 
 	case <-ctx.Done():
-		logrus.Infof("The process %v is being killed by the controller", pname)
+		logrus.Infof("The process %v is being terminated by the controller", pname)
 		if cmd.Process != nil {
 			pgid := cmd.Process.Pid
 
-			// Set negative id to kill the whole process group
-			_ = syscall.Kill(-pgid, syscall.SIGTERM)
-			_ = cmd.Process.Kill()
+			// Set negative id to kill the whole process group and attempt to terminate process gracefully first
+			// by sending SIGTERM
+			err := syscall.Kill(-pgid, syscall.SIGTERM)
+			if err != nil {
+				logrus.Warnf("failed to send SIGTERM to process group %v: %v. KILLING it immediately", pgid, err)
+				_ = cmd.Process.Kill()
+			}
 		} else {
 			logrus.Warnf("cmd.Process is nil, nothing to kill for %v", pname)
 		}
