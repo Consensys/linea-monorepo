@@ -182,8 +182,10 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	// Build exec.Command so we can set process group
 	cmd := exec.Command("sh", "-c", cmdStr)
 
-	// Pipe the child process's stdin/stdout/stderr into the current process
+	// Setpgid sets the process group ID of the child to Pgid, or, if Pgid == 0, to the new child's process ID.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// Pipe the child process's stdin/stdout/stderr into the current process
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -248,15 +250,23 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	}()
 
 	select {
-	case <-ctx.Done():
-		pgid := cmd.Process.Pid
-		logrus.Infof("The process group %v is being killed by the controller", pgid)
-		_ = syscall.Kill(-pgid, syscall.SIGTERM) // negative for process group
 
+	case <-ctx.Done():
+		logrus.Infof("The process %v is being killed by the controller", pname)
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+			pgid := cmd.Process.Pid
+
+			// Set negative id to kill the whole process group
+			_ = syscall.Kill(-pgid, syscall.SIGTERM)
+		} else {
+			logrus.Warnf("cmd.Process is nil, nothing to kill for %v", pname)
+		}
 		return Status{
 			ExitCode: CodeKilledByUs,
-			What:     "the process group was killed by the controller",
+			What:     "the process was requested to be killed by the controller (process may not have started)",
 		}
+
 	case status := <-done:
 		return status
 	}
