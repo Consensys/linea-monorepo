@@ -83,7 +83,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			case syscall.SIGUSR1:
 				spotReclaimDetected.Store(true)
 				if !gracefulShutdownRequested.Load() {
-					cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP...")
+					cLog.Infof("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP (max %ds)", cfg.Controller.SpotInstanceReclaimTime)
 					cancel()
 					if cfg.Controller.Prometheus.Enabled {
 						metrics.IncSpotInterruption(cfg.Controller.LocalID)

@@ -256,10 +256,9 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 		if cmd.Process != nil {
 			pgid := cmd.Process.Pid
 
-			_ = cmd.Process.Kill()
-
 			// Set negative id to kill the whole process group
 			_ = syscall.Kill(-pgid, syscall.SIGTERM)
+			_ = cmd.Process.Kill()
 		} else {
 			logrus.Warnf("cmd.Process is nil, nothing to kill for %v", pname)
 		}
