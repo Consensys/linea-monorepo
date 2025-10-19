@@ -90,11 +90,15 @@ public class LineaBundleEndpointsPlugin extends AbstractLineaRequiredPlugin {
 
   @Override
   public CompletableFuture<Void> reloadConfiguration() {
-    bundleDeniedAddresses.set(
-        LineaTransactionPoolValidatorCliOptions.create()
-            .parseDeniedAddresses(
-                transactionPoolValidatorConfiguration().bundleOverridingDenyListPath()));
-    return CompletableFuture.completedFuture(null);
+    try {
+      bundleDeniedAddresses.set(
+          LineaTransactionPoolValidatorCliOptions.create()
+              .parseDeniedAddresses(
+                  transactionPoolValidatorConfiguration().bundleOverridingDenyListPath()));
+      return CompletableFuture.completedFuture(null);
+    } catch (Exception e) {
+      return CompletableFuture.failedFuture(e);
+    }
   }
 
   @Override
