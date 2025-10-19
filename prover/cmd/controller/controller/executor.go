@@ -254,8 +254,9 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	case <-ctx.Done():
 		logrus.Infof("The process %v is being killed by the controller", pname)
 		if cmd.Process != nil {
-			_ = cmd.Process.Kill()
 			pgid := cmd.Process.Pid
+
+			_ = cmd.Process.Kill()
 
 			// Set negative id to kill the whole process group
 			_ = syscall.Kill(-pgid, syscall.SIGTERM)
