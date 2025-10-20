@@ -1,7 +1,6 @@
 package globalcs
 
 import (
-	"fmt"
 	"math/big"
 	"reflect"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/symbolic/simplify"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -127,14 +125,6 @@ func (ctx *mergingCtx) registerCs(cs query.GlobalConstraint) {
 		ctx.RatioBuckets[ratio] = []*symbolic.Expression{}
 		ctx.Ratios = append(ctx.Ratios, ratio)
 	}
-
-	var (
-		costStats      = simplify.EvaluateCostStat(cs.Expression)
-		costStatsBound = simplify.EvaluateCostStat(bndCancelledExpr)
-		board          = cs.Expression.Board()
-	)
-
-	fmt.Printf("ratio=%v, degree=%v, offset=[%++v], costStats=%++v, bndCostStats=%++v, cs=%v\n", ratio, board.Degree(getDegreeSimple()), query.MinMaxOffset(cs.Expression), costStats, costStatsBound, cs.Name())
 
 	ctx.RatioBuckets[ratio] = append(ctx.RatioBuckets[ratio], bndCancelledExpr)
 }
