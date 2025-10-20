@@ -20,8 +20,8 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   /// @notice Percentage of ETH to be burnt when performing the burn and bridge operation.
   uint256 public constant ETH_BURNT_PERCENTAGE = 20;
 
-  /// @notice Decentralized exchange contract for swapping ETH to LINEA tokens.
-  address public dex;
+  /// @notice Decentralized exchange adapter contract for swapping ETH to LINEA tokens.
+  address public dexAdapter;
   /// @notice Address to receive invoice payments.
   address public invoicePaymentReceiver;
   /// @notice Amount of invoice arrears.
@@ -43,46 +43,6 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   }
 
   /**
-   * @notice Initializes the contract state.
-   * @param _lastInvoiceDate The default or starting timestamp for invoices less 1 second.
-   * @param _defaultAdmin Address to be granted the default admin role.
-   * @param _invoiceSubmitter Address to be granted the invoice submitter role.
-   * @param _burner Address to be granted the burner role.
-   * @param _invoicePaymentReceiver Address to receive invoice payments.
-   * @param _tokenBridge Address of the token bridge contract.
-   * @param _messageService Address of the L2 message service contract.
-   * @param _l1LineaTokenBurner Address of the L1 LINEA token burner contract.
-   * @param _lineaToken Address of the LINEA token contract.
-   * @param _dex Address of the DEX contract.
-   */
-  function initialize(
-    uint256 _lastInvoiceDate,
-    address _defaultAdmin,
-    address _invoiceSubmitter,
-    address _burner,
-    address _invoicePaymentReceiver,
-    address _tokenBridge,
-    address _messageService,
-    address _l1LineaTokenBurner,
-    address _lineaToken,
-    address _dex
-  ) external initializer {
-    __AccessControl_init();
-    __RollupRevenueVault_init(
-      _lastInvoiceDate,
-      _defaultAdmin,
-      _invoiceSubmitter,
-      _burner,
-      _invoicePaymentReceiver,
-      _tokenBridge,
-      _messageService,
-      _l1LineaTokenBurner,
-      _lineaToken,
-      _dex
-    );
-  }
-
-  /**
    * @notice Reinitializes the contract state for upgrade.
    * @param _lastInvoiceDate The default or starting timestamp for invoices less 1 second.
    * @param _defaultAdmin Address to be granted the default admin role.
@@ -93,7 +53,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @param _messageService Address of the L2 message service contract.
    * @param _l1LineaTokenBurner Address of the L1 LINEA token burner contract.
    * @param _lineaToken Address of the LINEA token contract.
-   * @param _dex Address of the DEX contract.
+   * @param _dexAdapter Address of the DEX adapter contract.
    */
   function initializeRolesAndStorageVariables(
     uint256 _lastInvoiceDate,
@@ -105,7 +65,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _messageService,
     address _l1LineaTokenBurner,
     address _lineaToken,
-    address _dex
+    address _dexAdapter
   ) external reinitializer(2) {
     __AccessControl_init();
     __RollupRevenueVault_init(
@@ -118,7 +78,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       _messageService,
       _l1LineaTokenBurner,
       _lineaToken,
-      _dex
+      _dexAdapter
     );
   }
 
@@ -132,7 +92,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _messageService,
     address _l1LineaTokenBurner,
     address _lineaToken,
-    address _dex
+    address _dexAdapter
   ) internal onlyInitializing {
     require(_lastInvoiceDate != 0, ZeroTimestampNotAllowed());
     require(_defaultAdmin != address(0), ZeroAddressNotAllowed());
@@ -143,7 +103,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     require(_messageService != address(0), ZeroAddressNotAllowed());
     require(_l1LineaTokenBurner != address(0), ZeroAddressNotAllowed());
     require(_lineaToken != address(0), ZeroAddressNotAllowed());
-    require(_dex != address(0), ZeroAddressNotAllowed());
+    require(_dexAdapter != address(0), ZeroAddressNotAllowed());
 
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
     _grantRole(INVOICE_SUBMITTER_ROLE, _invoiceSubmitter);
@@ -156,7 +116,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     messageService = L2MessageService(_messageService);
     l1LineaTokenBurner = _l1LineaTokenBurner;
     lineaToken = _lineaToken;
-    dex = _dex;
+    dexAdapter = _dexAdapter;
 
     emit RollupRevenueVaultInitialized(
       _lastInvoiceDate,
@@ -165,7 +125,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       _messageService,
       _l1LineaTokenBurner,
       _lineaToken,
-      _dex
+      _dexAdapter
     );
   }
 
@@ -218,7 +178,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     (bool success, ) = address(0).call{ value: ethToBurn }("");
     require(success, EthBurnFailed());
 
-    (bool swapSuccess, bytes memory returnData) = dex.call{ value: balanceAvailable - ethToBurn }(_swapData);
+    (bool swapSuccess, bytes memory returnData) = dexAdapter.call{ value: balanceAvailable - ethToBurn }(_swapData);
     require(swapSuccess, DexSwapFailed());
 
     uint256 numLineaTokens = abi.decode(returnData, (uint256));
@@ -279,17 +239,17 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   }
 
   /**
-   * @notice Updates the address of the DEX contract.
-   * @param _newDex Address of the new DEX contract.
+   * @notice Updates the address of the DEX adapter contract.
+   * @param _newDexAdapter Address of the new DEX adapter contract.
    */
-  function updateDex(address _newDex) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    require(_newDex != address(0), ZeroAddressNotAllowed());
+  function updateDexAdapter(address _newDexAdapter) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    require(_newDexAdapter != address(0), ZeroAddressNotAllowed());
 
-    address currentDex = dex;
-    require(_newDex != currentDex, ExistingAddressTheSame());
+    address currentDexAdapter = dexAdapter;
+    require(_newDexAdapter != currentDexAdapter, ExistingAddressTheSame());
 
-    dex = _newDex;
-    emit DexUpdated(currentDex, _newDex);
+    dexAdapter = _newDexAdapter;
+    emit DexAdapterUpdated(currentDexAdapter, _newDexAdapter);
   }
 
   /**

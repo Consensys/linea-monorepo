@@ -2,12 +2,12 @@
 pragma solidity 0.8.30;
 
 /**
- * @title Interface for the V3DexSwap contract.
+ * @title Interface for the V3DexAdapter contract.
  * @dev A contract for swapping tokens on the V3 decentralized exchange.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface IV3DexSwap {
+interface IV3DexAdapter {
   /**
    * @dev Thrown when no ETH is sent with the swap call.
    */

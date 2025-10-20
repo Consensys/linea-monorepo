@@ -105,11 +105,11 @@ interface IRollupRevenueVault {
   event L1LineaTokenBurnerUpdated(address previousValue, address newValue);
 
   /**
-   * @dev Emitted when the DEX contract address is updated.
-   * @param previousValue The previous DEX contract address.
-   * @param newValue The new DEX contract address.
+   * @dev Emitted when the DEX adapter contract address is updated.
+   * @param previousValue The previous DEX adapter contract address.
+   * @param newValue The new DEX adapter contract address.
    */
-  event DexUpdated(address previousValue, address newValue);
+  event DexAdapterUpdated(address previousValue, address newValue);
 
   /**
    * @dev Emitted when ETH is received.
