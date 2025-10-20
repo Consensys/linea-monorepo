@@ -139,7 +139,7 @@ interface IRollupRevenueVault {
    * @param messageService The address of the message service contract.
    * @param l1LineaTokenBurner The address of the L1 LINEA token burner contract.
    * @param lineaToken The address of the LINEA token contract.
-   * @param dex The address of the DEX contract.
+   * @param dexAdapter The address of the DEX adapter contract.
    */
   event RollupRevenueVaultInitialized(
     uint256 lastInvoiceDate,
@@ -148,6 +148,6 @@ interface IRollupRevenueVault {
     address messageService,
     address l1LineaTokenBurner,
     address lineaToken,
-    address dex
+    address dexAdapter
   );
 }

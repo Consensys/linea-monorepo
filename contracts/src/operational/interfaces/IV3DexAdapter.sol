@@ -34,13 +34,13 @@ interface IV3DexAdapter {
   error DeadlineInThePast();
 
   /**
-   * @notice Emitted when the V3DexSwap contract is initialized.
+   * @notice Emitted when the V3DexAdapter contract is initialized.
    * @param router The address of the Router contract.
    * @param wethToken The address of the WETH token contract.
    * @param lineaToken The address of the LINEA token contract.
    * @param poolTickSpacing Tick spacing of the pool.
    */
-  event V3DexSwapInitialized(address router, address wethToken, address lineaToken, uint24 poolTickSpacing);
+  event V3DexAdapterInitialized(address router, address wethToken, address lineaToken, uint24 poolTickSpacing);
 
   /** @notice Swap ETH into LINEA tokens.
    * @dev The msg.sender will be the recipient of the LINEA tokens, and WETH is swapped 1:1 with `msg.value`.

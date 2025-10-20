@@ -39,7 +39,7 @@ contract V3DexAdapter is IV3DexAdapter {
     LINEA_TOKEN = _lineaToken;
     POOL_TICK_SPACING = _poolTickSpacing;
 
-    emit V3DexSwapInitialized(_router, _wethToken, _lineaToken, _poolTickSpacing);
+    emit V3DexAdapterInitialized(_router, _wethToken, _lineaToken, _poolTickSpacing);
   }
 
   /** @notice Swap ETH into LINEA tokens.
