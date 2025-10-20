@@ -3,7 +3,6 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
-  injectWorkspacePackages: true
 
 catalogs:
   default:
@@ -119,7 +118,7 @@ importers:
         version: 0.3.1(@tanstack/query-core@5.87.4)(@tanstack/react-query@5.87.4(react@18.3.1))(@types/react@18.3.11)(bs58@6.0.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.4.5)(use-sync-external-store@1.4.0(react@18.3.1))
       '@consensys/linea-sdk-viem':
         specifier: workspace:*
-        version: file:sdk/sdk-viem(typescript@5.4.5)(viem@2.31.3(bufferutil@4.0.8)(typescript@5.4.5)(utf-8-validate@5.0.10)(zod@3.24.2))(zod@3.24.2)
+        version: link:../sdk/sdk-viem
       '@gsap/react':
         specifier: ^2.1.2
         version: 2.1.2(gsap@3.13.0)(react@18.3.1)
@@ -562,7 +561,7 @@ importers:
     dependencies:
       '@consensys/linea-sdk-core':
         specifier: workspace:*
-        version: file:sdk/sdk-core(typescript@5.4.5)(zod@3.25.76)
+        version: link:../sdk-core
     devDependencies:
       '@types/jest':
         specifier: 'catalog:'
@@ -1571,14 +1570,6 @@ packages:
   '@colors/colors@1.6.0':
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
     engines: {node: '>=0.1.90'}
-
-  '@consensys/linea-sdk-core@file:sdk/sdk-core':
-    resolution: {directory: sdk/sdk-core, type: directory}
-
-  '@consensys/linea-sdk-viem@file:sdk/sdk-viem':
-    resolution: {directory: sdk/sdk-viem, type: directory}
-    peerDependencies:
-      viem: '>=2.22.0'
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -13991,28 +13982,6 @@ snapshots:
     optional: true
 
   '@colors/colors@1.6.0': {}
-
-  '@consensys/linea-sdk-core@file:sdk/sdk-core(typescript@5.4.5)(zod@3.24.2)':
-    dependencies:
-      abitype: 1.1.0(typescript@5.4.5)(zod@3.24.2)
-    transitivePeerDependencies:
-      - typescript
-      - zod
-
-  '@consensys/linea-sdk-core@file:sdk/sdk-core(typescript@5.4.5)(zod@3.25.76)':
-    dependencies:
-      abitype: 1.1.0(typescript@5.4.5)(zod@3.25.76)
-    transitivePeerDependencies:
-      - typescript
-      - zod
-
-  '@consensys/linea-sdk-viem@file:sdk/sdk-viem(typescript@5.4.5)(viem@2.31.3(bufferutil@4.0.8)(typescript@5.4.5)(utf-8-validate@5.0.10)(zod@3.24.2))(zod@3.24.2)':
-    dependencies:
-      '@consensys/linea-sdk-core': file:sdk/sdk-core(typescript@5.4.5)(zod@3.24.2)
-      viem: 2.31.3(bufferutil@4.0.8)(typescript@5.4.5)(utf-8-validate@5.0.10)(zod@3.24.2)
-    transitivePeerDependencies:
-      - typescript
-      - zod
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
