@@ -692,11 +692,6 @@ contract YieldManager is
   /**
    * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
-   * @dev This function proactively allocates withdrawn funds in the following priority:
-   *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
-   *      to restore the deficit.
-   *      2. If there is no remaining target deficit and there is an outstanding LST liability, it will be paid.
-   *      3. The remainder will be sent to the withdrawal reserve.
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
    */
@@ -709,6 +704,44 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
+    _addToWithdrawalReserve(_yieldProvider, _amount);
+  }
+
+  /**
+   * @notice Safely rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
+   * @dev Caps the rebalance amount to the provider's current withdrawable value.
+   *      This is to mitigate frontrunning that depletes the withdrawable value,
+   *      which would result in revert of the regular `addToWithdrawalReserve` function.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
+   * @param _yieldProvider          Yield provider address.
+   * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
+   */
+  function safeAddToWithdrawalReserve(
+    address _yieldProvider,
+    uint256 _amount
+  )
+    external
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING)
+    onlyKnownYieldProvider(_yieldProvider)
+    onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
+  {
+    _addToWithdrawalReserve(
+      _yieldProvider,
+      Math256.min(withdrawableValue(_yieldProvider) + address(this).balance, _amount)
+    );
+  }
+
+  /**
+   * @notice Helper function to rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
+   * @dev This function proactively allocates withdrawn funds in the following priority:
+   *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
+   *      to restore the deficit.
+   *      2. If there is no remaining target deficit and there is an outstanding LST liability, it will be paid.
+   *      3. The remainder will be sent to the withdrawal reserve.
+   * @param _yieldProvider          Yield provider address.
+   * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
+   */
+  function _addToWithdrawalReserve(address _yieldProvider, uint256 _amount) internal {
     // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance >= _amount) {
