@@ -62,7 +62,7 @@ export async function deployRollupRevenueVaultFixture() {
   const l2LineaToken = await loadFixture(l2LineaTokenFn);
 
   const dexFn = async () => await deployTestDexSwapFixture(await l2LineaToken.getAddress());
-  const dex = await loadFixture(dexFn);
+  const dexAdapter = await loadFixture(dexFn);
 
   const rollupRevenueVaultFn = async () =>
     (await deployUpgradableFromFactory(
@@ -77,7 +77,7 @@ export async function deployRollupRevenueVaultFixture() {
         await messageService.getAddress(),
         l1LineaTokenBurner.address,
         await l2LineaToken.getAddress(),
-        await dex.getAddress(),
+        await dexAdapter.getAddress(),
       ],
       {
         initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -87,5 +87,5 @@ export async function deployRollupRevenueVaultFixture() {
 
   const rollupRevenueVault = await loadFixture(rollupRevenueVaultFn);
 
-  return { rollupRevenueVault, l2LineaToken, tokenBridge, l1LineaTokenBurner, messageService, dex };
+  return { rollupRevenueVault, l2LineaToken, tokenBridge, l1LineaTokenBurner, messageService, dexAdapter };
 }

@@ -28,7 +28,7 @@ describe("RollupRevenueVault", () => {
   let l2LineaToken: TestERC20;
   let tokenBridge: TokenBridge;
   let messageService: L2MessageService;
-  let dex: TestDexSwap;
+  let dexAdapter: TestDexSwap;
 
   let admin: SignerWithAddress;
   let invoiceSubmitter: SignerWithAddress;
@@ -44,7 +44,7 @@ describe("RollupRevenueVault", () => {
   });
 
   beforeEach(async () => {
-    ({ rollupRevenueVault, l2LineaToken, tokenBridge, messageService, dex } = await loadFixture(
+    ({ rollupRevenueVault, l2LineaToken, tokenBridge, messageService, dexAdapter } = await loadFixture(
       deployRollupRevenueVaultFixture,
     ));
   });
@@ -79,7 +79,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -102,7 +102,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -125,7 +125,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -148,7 +148,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -171,7 +171,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -194,7 +194,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -217,7 +217,7 @@ describe("RollupRevenueVault", () => {
           ADDRESS_ZERO,
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -240,7 +240,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           ADDRESS_ZERO,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -263,7 +263,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           ADDRESS_ZERO,
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
@@ -309,7 +309,7 @@ describe("RollupRevenueVault", () => {
       expect(await rollupRevenueVault.messageService()).to.equal(await messageService.getAddress());
       expect(await rollupRevenueVault.l1LineaTokenBurner()).to.equal(l1LineaTokenBurner.address);
       expect(await rollupRevenueVault.lineaToken()).to.equal(await l2LineaToken.getAddress());
-      expect(await rollupRevenueVault.dex()).to.equal(await dex.getAddress());
+      expect(await rollupRevenueVault.dexAdapter()).to.equal(await dexAdapter.getAddress());
     });
   });
 
@@ -325,7 +325,7 @@ describe("RollupRevenueVault", () => {
         await messageService.getAddress(),
         l1LineaTokenBurner.address,
         await l2LineaToken.getAddress(),
-        await dex.getAddress(),
+        await dexAdapter.getAddress(),
       );
 
       await expectEvent(rollupRevenueVault, txPromise, "Initialized", [2n]);
@@ -341,7 +341,7 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ),
         "Initializable: contract is already initialized",
       );
@@ -358,7 +358,7 @@ describe("RollupRevenueVault", () => {
         await messageService.getAddress(),
         l1LineaTokenBurner.address,
         await l2LineaToken.getAddress(),
-        await dex.getAddress(),
+        await dexAdapter.getAddress(),
       );
 
       await expectEvent(rollupRevenueVault, txPromise, "Initialized", [2n]);
@@ -561,11 +561,11 @@ describe("RollupRevenueVault", () => {
     });
   });
 
-  describe("updateDex", () => {
+  describe("updateDexAdapter", () => {
     it("Should revert if caller is not admin", async () => {
       const dexAddress = generateRandomBytes(20);
       await expectRevertWithReason(
-        rollupRevenueVault.connect(nonAuthorizedAccount).updateDex(dexAddress),
+        rollupRevenueVault.connect(nonAuthorizedAccount).updateDexAdapter(dexAddress),
         "AccessControl: account " +
           nonAuthorizedAccount.address.toLowerCase() +
           " is missing role " +
@@ -576,27 +576,29 @@ describe("RollupRevenueVault", () => {
     it("Should revert if Dex address is zero address", async () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateDex(ADDRESS_ZERO),
+        rollupRevenueVault.connect(admin).updateDexAdapter(ADDRESS_ZERO),
         "ZeroAddressNotAllowed",
       );
     });
 
-    it("Should revert if Dex address is already setup", async () => {
+    it("Should revert if Dex adapter address is already setup", async () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateDex(await dex.getAddress()),
+        rollupRevenueVault.connect(admin).updateDexAdapter(await dexAdapter.getAddress()),
         "ExistingAddressTheSame",
       );
     });
 
     it("Should update Dex address", async () => {
       const randomAddress = toChecksumAddress(generateRandomBytes(20));
-      await expectEvent(rollupRevenueVault, rollupRevenueVault.connect(admin).updateDex(randomAddress), "DexUpdated", [
-        await dex.getAddress(),
-        randomAddress,
-      ]);
+      await expectEvent(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(admin).updateDexAdapter(randomAddress),
+        "DexAdapterUpdated",
+        [await dexAdapter.getAddress(), randomAddress],
+      );
 
-      expect(await rollupRevenueVault.dex()).to.equal(randomAddress);
+      expect(await rollupRevenueVault.dexAdapter()).to.equal(randomAddress);
     });
   });
 
