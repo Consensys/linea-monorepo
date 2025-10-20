@@ -620,7 +620,6 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       await expectRevertWithReason(
@@ -646,7 +645,6 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       await expectRevertWithCustomError(
@@ -674,7 +672,6 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       await expectRevertWithCustomError(
@@ -747,7 +744,6 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       await expectEvent(
