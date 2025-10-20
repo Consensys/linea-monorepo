@@ -328,10 +328,10 @@ describe("RollupRevenueVault", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dex.getAddress(),
+          await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -354,7 +354,7 @@ describe("RollupRevenueVault", () => {
       expect(event?.args.messageService).to.equal(await messageService.getAddress());
       expect(event?.args.l1LineaTokenBurner).to.equal(l1LineaTokenBurner.address);
       expect(event?.args.lineaToken).to.equal(await l2LineaToken.getAddress());
-      expect(event?.args.dex).to.equal(await dex.getAddress());
+      expect(event?.args.dexAdapter).to.equal(await dexAdapter.getAddress());
     });
 
     it("Should initialize correctly the contract", async () => {

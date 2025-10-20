@@ -92,7 +92,7 @@ describe("V3DexAdapter", () => {
 
     it("Should emit an event when initialized", async () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
-      const contract = await deployFromFactory("V3DexSwap", randomnAddress, randomnAddress, randomnAddress, 50);
+      const contract = await deployFromFactory("V3DexAdapter", randomnAddress, randomnAddress, randomnAddress, 50);
 
       const receipt = await contract.deploymentTransaction()?.wait();
       const logs = receipt?.logs;
