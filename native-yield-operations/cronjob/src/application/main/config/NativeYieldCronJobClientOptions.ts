@@ -17,6 +17,10 @@ export const toClientOptions = (env: Config) => ({
     },
   },
   apiOptions: env.API_PORT,
+  trigger: {
+    triggerEventPollingTimeSeconds: env.TRIGGER_EVENT_POLLING_TIME_SECONDS,
+    triggerFallbackDelaySeconds: env.TRIGGER_FALLBACK_DELAY_SECONDS,
+  },
   loggerOptions: {
     level: "info",
     transports: [new transports.Console()],
