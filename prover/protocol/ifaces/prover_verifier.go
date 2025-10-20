@@ -18,8 +18,7 @@ type Runtime interface {
 	GetColumnAt(ColID, int) field.Element
 	GetColumnAtBase(ColID, int) (field.Element, error)
 	GetColumnAtExt(ColID, int) fext.Element
-	// GetRandomCoinField returns the value of a random challenge coin
-	GetRandomCoinField(name coin.Name) field.Element
+	// GetRandomCoinFieldExt returns the value of a random challenge coin
 	GetRandomCoinFieldExt(name coin.Name) fext.Element
 	// GetRandomCoinIntegerVec returns the value of a coin.IntegerVec coin
 	GetRandomCoinIntegerVec(name coin.Name) []int
@@ -38,8 +37,7 @@ type GnarkRuntime interface {
 	GetColumnAt(ColID, int) frontend.Variable
 	GetColumnAtBase(ColID, int) (frontend.Variable, error)
 	GetColumnAtExt(ColID, int) gnarkfext.Element
-	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
-	GetRandomCoinField(name coin.Name) frontend.Variable
+	// GetRandomCoinFieldExt is as [Runtime.GetRandomCoinFieldExt] but in a gnark circuit
 	GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element
 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
 	GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable

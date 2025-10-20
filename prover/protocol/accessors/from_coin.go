@@ -49,11 +49,11 @@ func (c *FromCoinAccessor) String() string {
 
 // GetVal implements [ifaces.Accessor]
 func (c *FromCoinAccessor) GetVal(run ifaces.Runtime) field.Element {
-	return run.GetRandomCoinField(c.Info.Name)
+	panic("unsupported, coins are always over field extensions")
 }
 
 func (c *FromCoinAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	return run.GetRandomCoinField(c.Info.Name), nil
+	panic("unsupported, coins are always over field extensions")
 }
 
 func (c *FromCoinAccessor) GetValExt(run ifaces.Runtime) fext.Element {
@@ -62,11 +62,11 @@ func (c *FromCoinAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
-	return circ.GetRandomCoinField(c.Info.Name)
+	panic("unsupported, coins are always over field extensions")
 }
 
 func (c *FromCoinAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
-	return circ.GetRandomCoinField(c.Info.Name), nil
+	panic("unsupported, coins are always over field extensions")
 }
 
 func (c *FromCoinAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
