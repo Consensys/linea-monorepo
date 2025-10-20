@@ -74,6 +74,11 @@ interface IRollupRevenueVault {
   error ZeroLineaTokensReceived();
 
   /**
+   * @dev Thrown when the timestamp is in the future.
+   */
+  error TimestampInTheFutureNotAllowed();
+
+  /**
    * @dev Emitted when an invoice is processed.
    * @dev If amountRequested < amountPaid, the difference is previous unpaid invoice amount.
    * @param receiver The address of the invoice receiver.
