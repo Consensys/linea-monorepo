@@ -25,6 +25,7 @@ import maru.core.Protocol
 import maru.core.Validator
 import maru.crypto.Crypto
 import maru.database.BeaconChain
+import maru.extensions.encodeHex
 import maru.finalization.LineaFinalizationProvider
 import maru.metrics.MaruMetricsCategory
 import maru.p2p.P2PNetwork
@@ -66,7 +67,7 @@ class MaruApp(
       log.info("Qbft options are not defined. nodeRole=follower")
     } else {
       val localValidator = Crypto.privateKeyToValidator(getPrivateKeyWithoutPrefix())
-      log.info("Qbft options are defined. nodeRole=validator with address={}", localValidator.address)
+      log.info("Qbft options are defined. nodeRole=validator with address={}", localValidator.address.encodeHex())
       // TODO: This may be not needed when we use dynamic validator set from a smart contract
       warnIfValidatorIsNotInTheGenesis(localValidator)
     }
