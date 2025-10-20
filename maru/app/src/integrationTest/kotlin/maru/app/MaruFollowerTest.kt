@@ -405,7 +405,7 @@ class MaruFollowerTest {
     // This is here mainly to wait until block propagation is complete
     checkValidatorAndFollowerBlocks(blocksToProduce)
 
-    val followerP2PNetwork = followerStack.maruApp.p2pNetwork()
+    val followerP2PNetwork = followerStack.maruApp.p2pNetwork
     val peers = followerP2PNetwork.getPeers()
     peers.forEach {
       followerP2PNetwork.dropPeer(it)
