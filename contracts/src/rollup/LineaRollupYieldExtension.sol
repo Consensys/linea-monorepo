@@ -31,7 +31,7 @@ abstract contract LineaRollupYieldExtension is LineaRollupBase, ILineaRollupYiel
 
   // keccak256(abi.encode(uint256(keccak256("linea.storage.LineaRollupYieldExtensionStorage")) - 1)) & ~bytes32(uint256(0xff))
   bytes32 private constant LineaRollupYieldExtensionStorageLocation =
-    0x1ca1eef1e96a909fae6702b42f1bcde6999f4e0fc09e0e51d048b197a65a8f00;
+    0x594904a11ae10ad7613c91ac3c92c7c3bba397934d377ce6d3e0aaffbc17df00;
 
   function _storage() private pure returns (LineaRollupYieldExtensionStorage storage $) {
     assembly {
