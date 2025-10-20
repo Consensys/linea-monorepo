@@ -2,6 +2,8 @@ package mimc
 
 import (
 	"github.com/consensys/gnark/frontend"
+	ghash "github.com/consensys/gnark/std/hash"
+	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
@@ -41,7 +43,10 @@ type MSetHash [MSetHashSize]field.Element
 // MSetHashGnark is a multisets hash (LtHash) instantiated using the MiMC
 // hash function. The zero value of this type is a valid multisets hash for
 // the empty set.
-type MSetHashGnark [MSetHashSize]frontend.Variable
+type MSetHashGnark struct {
+	Inner  [MSetHashSize]frontend.Variable
+	hasher ghash.StateStorer
+}
 
 // Insert adds the given messages to the multisets hash. The message can be an
 // array of field elements of any size. The function panics if given an empty
@@ -109,10 +114,12 @@ func (m *MSetHash) update(rem bool, msgs ...field.Element) {
 
 // EmptyMSetHashGnark returns an empty multisets hash pre-initialized with 0s.
 // Use that instead of `MSetHashGnark{}`
-func EmptyMSetHashGnark() MSetHashGnark {
-	res := MSetHashGnark{}
-	for i := range res {
-		res[i] = 0
+func EmptyMSetHashGnark(hasher ghash.StateStorer) MSetHashGnark {
+	res := MSetHashGnark{
+		hasher: hasher,
+	}
+	for i := range res.Inner {
+		res.Inner[i] = 0
 	}
 	return res
 }
@@ -120,25 +127,40 @@ func EmptyMSetHashGnark() MSetHashGnark {
 // updateGnark updates the multisets hash using the gnark library.
 func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs []frontend.Variable) {
 
-	state := frontend.Variable(0)
+	var hasher ghash.StateStorer
 
 	if len(msgs) == 0 {
 		panic("got provided an empty message")
 	}
 
-	for _, msg := range msgs {
-		state = GnarkBlockCompression(api, state, msg)
+	if m.hasher == nil {
+		hasherMimc, _ := gmimc.NewMiMC(api)
+		hasher = &hasherMimc
 	}
 
+	if m.hasher != nil {
+		hasher = m.hasher
+	}
+
+	hasher.Reset()
+	defer hasher.Reset()
+
+	// This populates the hasher's state with the message.
+	hasher.Write(msgs...)
+
+	// This squeezes the mset row of the element
 	for i := 0; i < MSetHashSize; i++ {
-		if i > 0 {
-			state = GnarkBlockCompression(api, state, 0)
+
+		tmp := hasher.State()[0]
+		if rem {
+			m.Inner[i] = api.Sub(m.Inner[i], tmp)
+		} else {
+			m.Inner[i] = api.Add(m.Inner[i], tmp)
 		}
 
-		if rem {
-			m[i] = api.Sub(m[i], state)
-		} else {
-			m[i] = api.Add(m[i], state)
+		// This updates the state so that we get a different value post-update.
+		if i < MSetHashSize-1 {
+			hasher.Write(0)
 		}
 	}
 }
@@ -160,27 +182,54 @@ func (m *MSetHashGnark) Remove(api frontend.API, msgs ...frontend.Variable) {
 // Add combines the two multisets hashes into a single multisets hash.
 func (m *MSetHashGnark) Add(api frontend.API, other MSetHashGnark) {
 	for i := 0; i < MSetHashSize; i++ {
-		m[i] = api.Add(m[i], other[i])
+		m.Inner[i] = api.Add(m.Inner[i], other.Inner[i])
+	}
+}
+
+// AddRaw adds in a sequence of value representing a multisets hash
+func (m *MSetHashGnark) AddRaw(api frontend.API, other []frontend.Variable) {
+
+	if len(m.Inner) != len(other) {
+		panic("MSetHashGnark.AddRaw: lengths of multisets hashes are different")
+	}
+
+	for i := 0; i < MSetHashSize; i++ {
+		m.Inner[i] = api.Add(m.Inner[i], other[i])
 	}
 }
 
 // Sub substracts the multiset "other" from "m"
 func (m *MSetHashGnark) Sub(api frontend.API, other MSetHashGnark) {
 	for i := 0; i < MSetHashSize; i++ {
-		m[i] = api.Sub(m[i], other[i])
+		m.Inner[i] = api.Sub(m.Inner[i], other.Inner[i])
 	}
 }
 
 // AssertEqual asserts that the multisets hashes are equal.
 func (m *MSetHashGnark) AssertEqual(api frontend.API, other MSetHashGnark) {
 	for i := 0; i < MSetHashSize; i++ {
-		api.AssertIsEqual(m[i], other[i])
+		api.AssertIsEqual(m.Inner[i], other.Inner[i])
 	}
 }
 
-// MsetOfSingletonGnark returns the multiset vector of an entry
-func MsetOfSingletonGnark(api frontend.API, msg ...frontend.Variable) MSetHashGnark {
-	m := EmptyMSetHashGnark()
+// AssertEqualRaw asserts that the multisets values are equal to the provided
+// array.
+func (m *MSetHashGnark) AssertEqualRaw(api frontend.API, other []frontend.Variable) {
+
+	if len(m.Inner) != len(other) {
+		panic("MSetHashGnark.AssertEqualRaw: lengths of multisets hashes are different")
+	}
+
+	for i := 0; i < MSetHashSize; i++ {
+		api.AssertIsEqual(m.Inner[i], other[i])
+	}
+}
+
+// MsetOfSingletonGnark returns the multiset vector of an entry. nil can be
+// passed to the hasher to tell the function to explicitly compute the hash
+// in circuit.
+func MsetOfSingletonGnark(api frontend.API, hasher ghash.StateStorer, msg ...frontend.Variable) MSetHashGnark {
+	m := EmptyMSetHashGnark(hasher)
 	m.update(api, false, msg)
 	return m
 }

@@ -627,6 +627,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 	var (
 		collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable]{}
 		topPIs       = c.collectAllPublicInputsGnark(api, run)
+		hasher       = run.GetHasherFactory().NewHasher()
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
@@ -669,17 +670,17 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 
 	// This agglomerates the multiset hashes
 	var (
-		generalSum = mimc.EmptyMSetHashGnark()
-		sharedSum  = mimc.EmptyMSetHashGnark()
+		generalSum = mimc.EmptyMSetHashGnark(hasher)
+		sharedSum  = mimc.EmptyMSetHashGnark(hasher)
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
-		generalSum.Add(api, mimc.MSetHashGnark(collectedPIs[instance].GeneralMultiSetHash))
-		sharedSum.Add(api, mimc.MSetHashGnark(collectedPIs[instance].SharedRandomnessMultiSetHash))
+		generalSum.AddRaw(api, collectedPIs[instance].GeneralMultiSetHash)
+		sharedSum.AddRaw(api, collectedPIs[instance].SharedRandomnessMultiSetHash)
 	}
 
-	sharedSum.AssertEqual(api, mimc.MSetHashGnark(topPIs.SharedRandomnessMultiSetHash))
-	generalSum.AssertEqual(api, mimc.MSetHashGnark(topPIs.GeneralMultiSetHash))
+	sharedSum.AssertEqualRaw(api, topPIs.SharedRandomnessMultiSetHash)
+	generalSum.AssertEqualRaw(api, topPIs.GeneralMultiSetHash)
 
 	// The loop below "aggregate" the public inputs: log-derivative-sum, gd-product,
 	// and horner sum of the sub-instances. The aggregation is done by multiplying/summing
@@ -886,7 +887,7 @@ func collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Eleme
 	)
 
 	for _, pub := range pubs {
-		if strings.Contains(pub.Name, TargetNbSegmentPublicInputBase) {
+		if strings.Contains(pub.Name, TargetNbSegmentPublicInputBase) && !strings.Contains(pub.Name, "conglomeration") {
 			moduleNumber++
 		}
 	}

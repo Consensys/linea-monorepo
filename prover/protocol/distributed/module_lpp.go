@@ -685,7 +685,8 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
-		multiSetGeneral        = mimc.EmptyMSetHashGnark()
+		hasher                 = run.GetHasherFactory().NewHasher()
+		multiSetGeneral        = mimc.EmptyMSetHashGnark(hasher)
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
@@ -700,24 +701,24 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		// If the segment is not the last one, we can add the "n1 hash" to the
 		// multiset.
 		n1Hash := modLPP.N1Hash.GetColAssignmentGnarkAt(run, 0)
-		n1HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, moduleIndex, segmentIndex, typeOfProof, n1Hash)
+		n1HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, hasher, moduleIndex, segmentIndex, typeOfProof, n1Hash)
 		for i := 0; i < mimc.MSetHashSize; i++ {
-			n1HashSingletonMsetHash[i] = api.Mul(n1HashSingletonMsetHash[i], api.Sub(1, isLast))
-			multiSetGeneral[i] = api.Add(multiSetGeneral[i], n1HashSingletonMsetHash[i])
+			n1HashSingletonMsetHash.Inner[i] = api.Mul(n1HashSingletonMsetHash.Inner[i], api.Sub(1, isLast))
+			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], n1HashSingletonMsetHash.Inner[i])
 		}
 
 		// If the segment is not the first one, we can remove the "n0 hash" from the
 		// multiset.
 		n0Hash := modLPP.N0Hash.GetColAssignmentGnarkAt(run, 0)
-		n0HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, moduleIndex, api.Sub(segmentIndex, 1), typeOfProof, n0Hash)
+		n0HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, hasher, moduleIndex, api.Sub(segmentIndex, 1), typeOfProof, n0Hash)
 		for i := 0; i < mimc.MSetHashSize; i++ {
-			n0HashSingletonMsetHash[i] = api.Mul(n0HashSingletonMsetHash[i], api.Sub(1, isFirst))
-			multiSetGeneral[i] = api.Sub(multiSetGeneral[i], n0HashSingletonMsetHash[i])
+			n0HashSingletonMsetHash.Inner[i] = api.Mul(n0HashSingletonMsetHash.Inner[i], api.Sub(1, isFirst))
+			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], n0HashSingletonMsetHash.Inner[i])
 		}
 	}
 
-	for i := range multiSetGeneral {
-		api.AssertIsEqual(multiSetGeneral[i], targetMSetGeneral[i])
+	for i := range multiSetGeneral.Inner {
+		api.AssertIsEqual(multiSetGeneral.Inner[i], targetMSetGeneral[i])
 	}
 
 	return nil

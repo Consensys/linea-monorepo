@@ -989,8 +989,9 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
 		hasSentOrReceive           = len(modGL.ReceivedValuesGlobalMap) > 0
-		multiSetGeneral            = mimc.EmptyMSetHashGnark()
-		multiSetSharedRandomness   = mimc.EmptyMSetHashGnark()
+		hasher                     = run.GetHasherFactory().NewHasher()
+		multiSetGeneral            = mimc.EmptyMSetHashGnark(hasher)
+		multiSetSharedRandomness   = mimc.EmptyMSetHashGnark(hasher)
 		defInp                     = modGL.DefinitionInput
 		moduleIndex                = frontend.Variable(defInp.ModuleIndex)
 		numSegmentOfCurrModule     = modGL.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
@@ -1013,26 +1014,26 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	// in the multiset.
 	if hasSentOrReceive {
 		globalSentHash := modGL.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		mSetOfSentGlobal := mimc.MsetOfSingletonGnark(api, segmentIndex, typeOfProof, globalSentHash)
-		for i := range mSetOfSentGlobal {
-			mSetOfSentGlobal[i] = api.Mul(mSetOfSentGlobal[i], api.Sub(1, isLast))
-			multiSetGeneral[i] = api.Add(multiSetGeneral[i], mSetOfSentGlobal[i])
+		mSetOfSentGlobal := mimc.MsetOfSingletonGnark(api, hasher, segmentIndex, typeOfProof, globalSentHash)
+		for i := range mSetOfSentGlobal.Inner {
+			mSetOfSentGlobal.Inner[i] = api.Mul(mSetOfSentGlobal.Inner[i], api.Sub(1, isLast))
+			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], mSetOfSentGlobal.Inner[i])
 		}
 
 		// If the segment is not the first one of its module, we add the received
 		// value in the multiset. If the segment index is zero, the singleton hash
 		// will be zero-ed out by the "1 - isFirst" term
 		globalRcvdHash := modGL.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		mSetOfReceivedGlobal := mimc.MsetOfSingletonGnark(api, api.Sub(segmentIndex, 1), typeOfProof, globalRcvdHash)
-		for i := range mSetOfReceivedGlobal {
-			mSetOfReceivedGlobal[i] = api.Mul(mSetOfReceivedGlobal[i], api.Sub(1, isFirst))
-			multiSetGeneral[i] = api.Sub(multiSetGeneral[i], mSetOfReceivedGlobal[i])
+		mSetOfReceivedGlobal := mimc.MsetOfSingletonGnark(api, hasher, api.Sub(segmentIndex, 1), typeOfProof, globalRcvdHash)
+		for i := range mSetOfReceivedGlobal.Inner {
+			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst))
+			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], mSetOfReceivedGlobal.Inner[i])
 		}
 	}
 
-	for i := range multiSetGeneral {
-		api.AssertIsEqual(multiSetGeneral[i], targetMSetGeneral[i])
-		api.AssertIsEqual(multiSetSharedRandomness[i], targetMSetSharedRandomness[i])
+	for i := range multiSetGeneral.Inner {
+		api.AssertIsEqual(multiSetGeneral.Inner[i], targetMSetGeneral[i])
+		api.AssertIsEqual(multiSetSharedRandomness.Inner[i], targetMSetSharedRandomness[i])
 	}
 
 	return nil
