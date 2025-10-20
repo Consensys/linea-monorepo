@@ -1,7 +1,0 @@
-goos: linux
-goarch: amd64
-pkg: github.com/consensys/linea-monorepo/prover/crypto/state-management/smt
-cpu: AMD EPYC 9R14
-BenchmarkBuildComplete-128     	       6	 185284604 ns/op	134341529 B/op	 3146893 allocs/op
-PASS
-ok  	github.com/consensys/linea-monorepo/prover/crypto/state-management/smt	1.833s
