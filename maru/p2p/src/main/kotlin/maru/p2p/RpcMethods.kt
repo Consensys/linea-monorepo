@@ -19,6 +19,7 @@ import maru.p2p.messages.SizeLimitBlockRetrievalStrategy
 import maru.p2p.messages.StatusHandler
 import maru.p2p.messages.StatusManager
 import maru.p2p.messages.StatusMessageSerDe
+import maru.p2p.messages.StatusRequestMessageSerDe
 import maru.p2p.messages.StatusSerDe
 import maru.serialization.rlp.MaruCompressorRLPSerDe
 import maru.serialization.rlp.RLPSerializers
@@ -31,11 +32,12 @@ open class RpcMethods(
   blockRetrievalStrategy: BlockRetrievalStrategy = SizeLimitBlockRetrievalStrategy(),
 ) {
   val statusMessageSerDe = StatusMessageSerDe(StatusSerDe())
+
   val statusRpcMethod =
     MaruRpcMethod(
       messageType = RpcMessageType.STATUS,
       rpcMessageHandler = StatusHandler(statusManager = statusManager),
-      requestMessageSerDe = statusMessageSerDe,
+      requestMessageSerDe = StatusRequestMessageSerDe(statusMessageSerDe),
       responseMessageSerDe = statusMessageSerDe,
       peerLookup = peerLookup,
       protocolIdGenerator = lineaRpcProtocolIdGenerator,

@@ -10,6 +10,7 @@ package maru.p2p.messages
 
 import maru.p2p.MaruPeer
 import maru.p2p.Message
+import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageHandler
 import maru.p2p.RpcMessageType
 import org.apache.logging.log4j.LogManager
@@ -20,12 +21,12 @@ import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
 
 class StatusHandler(
   private val statusManager: StatusManager,
-) : RpcMessageHandler<Message<Status, RpcMessageType>, Message<Status, RpcMessageType>> {
+) : RpcMessageHandler<RequestMessageAdapter<Status, RpcMessageType>, Message<Status, RpcMessageType>> {
   private val log = LogManager.getLogger(this.javaClass)
 
   override fun handleIncomingMessage(
     peer: MaruPeer,
-    message: Message<Status, RpcMessageType>,
+    message: RequestMessageAdapter<Status, RpcMessageType>,
     callback: ResponseCallback<Message<Status, RpcMessageType>>,
   ) {
     try {

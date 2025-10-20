@@ -13,14 +13,14 @@ import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 
-class MaruRpcMethod<TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>>(
+class MaruRpcMethod<TRequest : RequestMessageAdapter<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>>(
   private val messageType: RpcMessageType,
   private val rpcMessageHandler: RpcMessageHandler<TRequest, TResponse>,
   private val requestMessageSerDe: SerDe<TRequest>,
   private val responseMessageSerDe: SerDe<TResponse>,
   peerLookup: () -> PeerLookup,
   private val version: Version,
-  private val encoding: Encoding = Encoding.RLP,
+  encoding: Encoding = Encoding.RLP,
   protocolIdGenerator: MessageIdGenerator,
 ) : RpcMethod<MaruOutgoingRpcRequestHandler<TResponse>, TRequest, MaruRpcResponseHandler<TResponse>> {
   private val protocolId = protocolIdGenerator.id(messageType.name, version, encoding)

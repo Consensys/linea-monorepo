@@ -9,6 +9,7 @@
 package maru.p2p.messages
 
 import maru.p2p.Message
+import maru.p2p.MessageData
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.serialization.rlp.RLPSerDe
@@ -26,7 +27,7 @@ class BeaconBlocksByRangeResponseMessageSerDe(
   }
 
   override fun readFrom(rlpInput: RLPInput): Message<BeaconBlocksByRangeResponse, RpcMessageType> =
-    Message(
+    MessageData(
       RpcMessageType.BEACON_BLOCKS_BY_RANGE,
       Version.V1,
       beaconBlocksByRangeResponseSerDe.readFrom(rlpInput),
@@ -36,7 +37,7 @@ class BeaconBlocksByRangeResponseMessageSerDe(
     beaconBlocksByRangeResponseSerDe.serialize(value.payload)
 
   override fun deserialize(bytes: ByteArray): Message<BeaconBlocksByRangeResponse, RpcMessageType> =
-    Message(
+    MessageData(
       RpcMessageType.BEACON_BLOCKS_BY_RANGE,
       Version.V1,
       beaconBlocksByRangeResponseSerDe.deserialize(bytes),

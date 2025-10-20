@@ -9,6 +9,8 @@
 package maru.p2p.messages
 
 import maru.p2p.Message
+import maru.p2p.MessageData
+import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.serialization.rlp.RLPSerDe
@@ -16,7 +18,7 @@ import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class StatusMessageSerDe(
-  private val statusSerDe: RLPSerDe<Status>,
+  val statusSerDe: RLPSerDe<Status>,
 ) : RLPSerDe<Message<Status, RpcMessageType>> {
   override fun writeTo(
     value: Message<Status, RpcMessageType>,
@@ -27,11 +29,24 @@ class StatusMessageSerDe(
 
   override fun readFrom(rlpInput: RLPInput): Message<Status, RpcMessageType> {
     val status = statusSerDe.readFrom(rlpInput)
-
-    return Message(
+    return MessageData(
       RpcMessageType.STATUS,
       Version.V1,
       status,
     )
   }
+}
+
+class StatusRequestMessageSerDe(
+  val statusMessageSerDe: RLPSerDe<Message<Status, RpcMessageType>>,
+) : RLPSerDe<RequestMessageAdapter<Status, RpcMessageType>> {
+  override fun writeTo(
+    value: RequestMessageAdapter<Status, RpcMessageType>,
+    rlpOutput: RLPOutput,
+  ) {
+    statusMessageSerDe.writeTo(value.message, rlpOutput)
+  }
+
+  override fun readFrom(rlpInput: RLPInput): RequestMessageAdapter<Status, RpcMessageType> =
+    RequestMessageAdapter(statusMessageSerDe.readFrom(rlpInput))
 }

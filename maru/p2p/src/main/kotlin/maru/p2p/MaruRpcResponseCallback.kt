@@ -51,7 +51,7 @@ class MaruRpcResponseCallback<TResponse : Message<*, *>>(
   }
 
   override fun completeSuccessfully() {
-    rpcStream.closeWriteStream().ifExceptionGetsHereRaiseABug()
+    rpcStream.closeWriteStream().finishWarn(log)
   }
 
   override fun completeWithErrorResponse(error: RpcException) {
@@ -63,7 +63,7 @@ class MaruRpcResponseCallback<TResponse : Message<*, *>>(
             Bytes.of(error.responseCode),
             Bytes.wrap(rpcExceptionSerializer.serialize(error)),
           ),
-        ).ifExceptionGetsHereRaiseABug()
+        ).finishWarn(log)
     } catch (e: StreamClosedException) {
       log.debug(
         "Unable to send error message ({}) to peer, rpc stream already closed: {}",
@@ -71,7 +71,7 @@ class MaruRpcResponseCallback<TResponse : Message<*, *>>(
         rpcStream,
       )
     }
-    rpcStream.closeWriteStream().ifExceptionGetsHereRaiseABug()
+    rpcStream.closeWriteStream().finishWarn(log)
   }
 
   override fun completeWithUnexpectedError(error: Throwable) {
@@ -79,7 +79,7 @@ class MaruRpcResponseCallback<TResponse : Message<*, *>>(
       is PeerDisconnectedException -> {
         log.trace("Not sending RPC response as peer has already disconnected")
         // But close the stream just to be completely sure we don't leak any resources.
-        rpcStream.closeAbruptly().ifExceptionGetsHereRaiseABug()
+        rpcStream.closeAbruptly().finishWarn(log)
       }
 
       is RpcException -> {

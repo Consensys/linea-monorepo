@@ -11,6 +11,8 @@ package maru.p2p.messages
 import maru.database.BeaconChain
 import maru.p2p.MaruPeer
 import maru.p2p.Message
+import maru.p2p.MessageData
+import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageHandler
 import maru.p2p.RpcMessageType
 import org.apache.logging.log4j.LogManager
@@ -26,7 +28,7 @@ class BeaconBlocksByRangeHandler(
   private val beaconChain: BeaconChain,
   private val blockRetrievalStrategy: BlockRetrievalStrategy = DefaultBlockRetrievalStrategy(),
 ) : RpcMessageHandler<
-    Message<BeaconBlocksByRangeRequest, RpcMessageType>,
+    RequestMessageAdapter<BeaconBlocksByRangeRequest, RpcMessageType>,
     Message<BeaconBlocksByRangeResponse, RpcMessageType>,
   > {
   private val log = LogManager.getLogger(this.javaClass)
@@ -37,7 +39,7 @@ class BeaconBlocksByRangeHandler(
 
   override fun handleIncomingMessage(
     peer: MaruPeer,
-    message: Message<BeaconBlocksByRangeRequest, RpcMessageType>,
+    message: RequestMessageAdapter<BeaconBlocksByRangeRequest, RpcMessageType>,
     callback: ResponseCallback<Message<BeaconBlocksByRangeResponse, RpcMessageType>>,
   ) {
     try {
@@ -50,7 +52,7 @@ class BeaconBlocksByRangeHandler(
 
       val response = BeaconBlocksByRangeResponse(blocks = blocks)
       val responseMessage =
-        Message(
+        MessageData(
           type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
           payload = response,
         )

@@ -12,6 +12,8 @@ import kotlin.random.Random
 import maru.core.ext.DataGenerators
 import maru.p2p.MaruPeer
 import maru.p2p.Message
+import maru.p2p.MessageData
+import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import org.junit.jupiter.api.Test
@@ -31,7 +33,7 @@ class StatusHandlerTest {
     val localBeaconState = DataGenerators.randomBeaconState(0U)
     val forkIdHash = Random.nextBytes(32)
     val localStatusMessage =
-      Message(
+      MessageData(
         RpcMessageType.STATUS,
         Version.V1,
         Status(
@@ -48,13 +50,15 @@ class StatusHandlerTest {
     val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(0U)
     val remoteStatusMessage =
-      Message(
-        RpcMessageType.STATUS,
-        Version.V1,
-        Status(
-          forkIdHash,
-          remoteBeaconState.beaconBlockHeader.hash,
-          remoteBeaconState.beaconBlockHeader.number,
+      RequestMessageAdapter(
+        MessageData(
+          RpcMessageType.STATUS,
+          Version.V1,
+          Status(
+            forkIdHash,
+            remoteBeaconState.beaconBlockHeader.hash,
+            remoteBeaconState.beaconBlockHeader.number,
+          ),
         ),
       )
     statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
@@ -85,10 +89,12 @@ class StatusHandlerTest {
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
     val statusHandler = StatusHandler(statusManager)
     val remoteStatusMessage =
-      Message(
-        RpcMessageType.STATUS,
-        Version.V1,
-        payload,
+      RequestMessageAdapter(
+        MessageData(
+          RpcMessageType.STATUS,
+          Version.V1,
+          payload,
+        ),
       )
     statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
 
@@ -121,10 +127,12 @@ class StatusHandlerTest {
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
     val statusHandler = StatusHandler(statusManager)
     val remoteStatusMessage =
-      Message(
-        RpcMessageType.STATUS,
-        Version.V1,
-        payload,
+      RequestMessageAdapter(
+        MessageData(
+          RpcMessageType.STATUS,
+          Version.V1,
+          payload,
+        ),
       )
     statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
 
@@ -144,13 +152,15 @@ class StatusHandlerTest {
     val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(0U)
     val remoteStatusMessage =
-      Message(
-        RpcMessageType.STATUS,
-        Version.V1,
-        Status(
-          Random.nextBytes(32),
-          remoteBeaconState.beaconBlockHeader.hash,
-          remoteBeaconState.beaconBlockHeader.number,
+      RequestMessageAdapter(
+        MessageData(
+          RpcMessageType.STATUS,
+          Version.V1,
+          Status(
+            Random.nextBytes(32),
+            remoteBeaconState.beaconBlockHeader.hash,
+            remoteBeaconState.beaconBlockHeader.number,
+          ),
         ),
       )
 
@@ -190,10 +200,12 @@ class StatusHandlerTest {
     val callback = mock<ResponseCallback<Message<Status, RpcMessageType>>>()
     val statusHandler = StatusHandler(statusManager)
     val remoteStatusMessage =
-      Message(
-        RpcMessageType.STATUS,
-        Version.V1,
-        payload,
+      RequestMessageAdapter(
+        MessageData(
+          RpcMessageType.STATUS,
+          Version.V1,
+          payload,
+        ),
       )
     statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)
 
@@ -213,13 +225,15 @@ class StatusHandlerTest {
     val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(0U)
     val remoteStatusMessage =
-      Message(
-        RpcMessageType.STATUS,
-        Version.V1,
-        Status(
-          Random.nextBytes(32),
-          remoteBeaconState.beaconBlockHeader.hash,
-          remoteBeaconState.beaconBlockHeader.number,
+      RequestMessageAdapter(
+        MessageData(
+          RpcMessageType.STATUS,
+          Version.V1,
+          Status(
+            Random.nextBytes(32),
+            remoteBeaconState.beaconBlockHeader.hash,
+            remoteBeaconState.beaconBlockHeader.number,
+          ),
         ),
       )
 
@@ -239,7 +253,7 @@ class StatusHandlerTest {
     val localBeaconState = DataGenerators.randomBeaconState(0U)
     val forkIdHash = Random.nextBytes(32)
     val localStatusMessage =
-      Message(
+      MessageData(
         RpcMessageType.STATUS,
         Version.V1,
         Status(
@@ -256,13 +270,15 @@ class StatusHandlerTest {
     val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(0U)
     val remoteStatusMessage =
-      Message(
-        RpcMessageType.STATUS,
-        Version.V1,
-        Status(
-          forkIdHash,
-          remoteBeaconState.beaconBlockHeader.hash,
-          remoteBeaconState.beaconBlockHeader.number,
+      RequestMessageAdapter(
+        MessageData(
+          RpcMessageType.STATUS,
+          Version.V1,
+          Status(
+            forkIdHash,
+            remoteBeaconState.beaconBlockHeader.hash,
+            remoteBeaconState.beaconBlockHeader.number,
+          ),
         ),
       )
     statusHandler.handleIncomingMessage(peer, remoteStatusMessage, callback)

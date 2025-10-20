@@ -9,6 +9,7 @@
 package maru.p2p.discovery
 
 import java.net.InetSocketAddress
+import java.util.Optional
 import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.p2p.discovery.DiscoveryPeer
 
@@ -17,7 +18,7 @@ class MaruDiscoveryPeer(
   nodeId: Bytes,
   nodeAddress: InetSocketAddress,
   val forkIdBytes: Bytes,
-) : DiscoveryPeer(publicKeyBytes, nodeId, nodeAddress, null, null, null) {
+) : DiscoveryPeer(publicKeyBytes, nodeId, nodeAddress, null, null, null, Optional.empty(), Optional.empty()) {
   override fun toString(): String =
     "MaruDiscoveryPeer(nodeId=$nodeId, nodeAddress=$nodeAddress, maruForkId=$forkIdBytes)"
 }

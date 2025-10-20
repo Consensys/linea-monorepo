@@ -9,26 +9,45 @@
 package maru.p2p.messages
 
 import maru.core.ext.DataGenerators.randomStatus
-import maru.p2p.Message
+import maru.p2p.MessageData
+import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class StatusMessageSerDeTest {
-  private val serDe = StatusMessageSerDe(StatusSerDe())
+  private val responseMessageSerDe = StatusMessageSerDe(StatusSerDe())
+  private val requestMessageSerDe = StatusRequestMessageSerDe(responseMessageSerDe)
 
   @Test
-  fun `can serialize and deserialize same value`() {
+  fun `can serialize and deserialize same request value`() {
     val testValue =
-      Message(
+      RequestMessageAdapter(
+        MessageData(
+          RpcMessageType.STATUS,
+          Version.V1,
+          randomStatus(100U),
+        ),
+      )
+
+    val serializedData = requestMessageSerDe.serialize(testValue)
+    val deserializedValue = requestMessageSerDe.deserialize(serializedData)
+
+    assertThat(deserializedValue).isEqualTo(testValue)
+  }
+
+  @Test
+  fun `can serialize and deserialize same response value`() {
+    val testValue =
+      MessageData(
         RpcMessageType.STATUS,
         Version.V1,
         randomStatus(100U),
       )
 
-    val serializedData = serDe.serialize(testValue)
-    val deserializedValue = serDe.deserialize(serializedData)
+    val serializedData = responseMessageSerDe.serialize(testValue)
+    val deserializedValue = responseMessageSerDe.deserialize(serializedData)
 
     assertThat(deserializedValue).isEqualTo(testValue)
   }
