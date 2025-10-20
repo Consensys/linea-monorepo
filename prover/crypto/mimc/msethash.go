@@ -6,9 +6,31 @@ import (
 )
 
 const (
-	// The dimension 2 is obtained by simulating the CPW attack on this
-	// instantiation of SIS and finding it is resistant enough.
-	MSetHashSize = 2
+	// MSetHashSize has been obtained to guarantee security when the number of
+	// inputs do not exceed 2**12. It was obtained using lattice-estimator,
+	// guaranteeing at least 128 bits of security.
+	//
+	// ```
+	// 		from estimator import *
+	// 		from estimator.sis_parameters import *
+	//
+	//		// The modulus of the field (approximatively)
+	//		q = 2**252
+	//		// max_number is the maximal number of parts we can have in the hash
+	//		// We are looking for a SIS instance that is secure for an L1 norm
+	//		// of at most that. We use the bound L1(x) > L2(x), to reduce that
+	//		// to finding a SIS instance that is secure for the L2 norm.
+	//		max_number = 2**12
+	//		// an arbitrary big number to ensure the BKZ solver will find the
+	//		// optimal value to attack.
+	//		m = 2**20
+	//
+	// 		params = SISParameters(n=23, q=q, length_bound=max_number, m=m, norm=2, tag='MSET')
+	// 		SIS.estimate(params)
+	//		--------------------
+	//		>>> lattice  :: rop: ≈2^129.9, red: ≈2^129.9, δ: 1.004315, β: 356, d: 966, tag: euclidean
+	// ````
+	MSetHashSize = 23
 )
 
 // MSetHash represents a multisets hash (LtHash) instantiated using the MiMC
