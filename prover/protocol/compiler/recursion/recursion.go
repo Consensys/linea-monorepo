@@ -72,7 +72,7 @@ type Witness struct {
 	Pub []field.Element
 
 	// FinalFS is the final Fiat-Shamir state of the protocol
-	FinalFS field.Element
+	FinalFS field.Octuplet
 
 	// CommittedMatrices are the list of the Reed-Solomon matrices
 	// for each committed round. They are needed by the prover of the self-recursion.

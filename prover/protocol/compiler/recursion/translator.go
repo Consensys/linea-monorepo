@@ -129,8 +129,6 @@ func (comp *compTranslator) AddCoinAtRound(info coin.Info, round int) coin.Info 
 	switch info.Type {
 	case coin.IntegerVec:
 		return comp.Target.InsertCoin(round, name, info.Type, info.Size, info.UpperBound)
-	case coin.Field:
-		return comp.Target.InsertCoin(round, name, info.Type)
 	case coin.FieldExt:
 		return comp.Target.InsertCoin(round, name, info.Type)
 	default:

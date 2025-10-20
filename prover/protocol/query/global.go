@@ -148,7 +148,8 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 			evalInputs[k] = w
 		case coin.Info:
 			if meta.IsBase() {
-				evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+				utils.Panic("unsupported, coins are always over field extensions")
+
 			} else {
 				evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(meta.Name), cs.DomainSize)
 			}
@@ -364,7 +365,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			w := meta.GetColAssignmentGnark(run)
 			evalInputs[k] = w
 		case coin.Info:
-			evalInputs[k] = gnarkutil.RepeatedVariable(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+			utils.Panic("unsupported, coins are always over field extensions")
 		case variables.X:
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
 		case variables.PeriodicSample:

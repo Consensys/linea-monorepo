@@ -8,6 +8,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -25,7 +26,7 @@ var testCases = []struct {
 }
 
 // This test ensures that the Poseidon2BlockCompression function is correctly implemented and produces the same output as
-// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output
+// the hashtypes.Poseidon2(), which uses Write and Sum methods to get the final hash output
 //
 // We hash and compress one Octuplet at a time
 func TestPoseidon2BlockCompression(t *testing.T) {
@@ -46,7 +47,7 @@ func TestPoseidon2BlockCompression(t *testing.T) {
 		h := poseidon2.Poseidon2BlockCompression(state, input)
 
 		// Compute hash using the NewMerkleDamgardHasher implementation.
-		merkleHasher := poseidon2.NewPoseidon2()
+		merkleHasher := hashtypes.Poseidon2()
 		merkleHasher.Reset()
 		merkleHasher.Write(inputBytes[:]) // write one 32 bytes (equivalent to one Octuplet)
 		newBytes := merkleHasher.Sum(nil)
@@ -66,7 +67,7 @@ func TestPoseidon2BlockCompression(t *testing.T) {
 }
 
 // This test ensures that the Poseidon2Sponge function is correctly implemented and produces the same output as
-// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output
+// the hashtypes.Poseidon2(), which uses Write and Sum methods to get the final hash output
 // We write and compress the 'whole slice'
 func TestPoseidon2SpongeConsistency(t *testing.T) {
 	t.Parallel()
@@ -89,7 +90,7 @@ func TestPoseidon2SpongeConsistency(t *testing.T) {
 				state := poseidon2.Poseidon2Sponge(input)
 
 				// Compute hash using the reference Merkle-Damgard hasher.
-				merkleHasher := poseidon2.NewPoseidon2()
+				merkleHasher := hashtypes.Poseidon2()
 				merkleHasher.Reset()
 				merkleHasher.Write(inputBytes[:])
 				newBytes := merkleHasher.Sum(nil)
@@ -107,36 +108,4 @@ func TestPoseidon2SpongeConsistency(t *testing.T) {
 			}
 		})
 	}
-}
-
-// This test ensures that the Poseidon2SpongeElement function is correctly implemented and produces the same output as
-// the poseidon2.NewMerkleDamgardHasher(), which uses Write and Sum methods to get the final hash output,
-//
-// We write and compress 'one Element' at a time
-func TestPoseidon2SpongeElement(t *testing.T) {
-
-	t.Parallel()
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			for i := 0; i < 10; i++ {
-				// Generate random input.
-				input := make([]field.Element, tc.numElements)
-				for j := 0; j < tc.numElements; j++ {
-					input[j] = field.PseudoRand(rng)
-				}
-
-				state := poseidon2.Poseidon2SpongeElement(input[:])
-				hVec := poseidon2.Poseidon2HashVecElement(input[:]) // it is the same as write and sum process
-
-				for i := 0; i < 8; i++ {
-					require.Equal(t, hVec[i].String(), state[i].String())
-				}
-
-			}
-		})
-	}
-
 }

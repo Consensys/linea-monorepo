@@ -1,12 +1,12 @@
 package smt
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Update overwrites a leaf in the tree and updates the associated parent nodes.
-func (t *Tree) Update(pos int, newVal types.Bytes32) {
+func (t *Tree) Update(pos int, newVal field.Octuplet) {
 	depth := t.Config.Depth
 	current := newVal
 	idx := pos
