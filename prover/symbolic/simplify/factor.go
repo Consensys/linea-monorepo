@@ -20,11 +20,11 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 	alreadyWalked := sync.Map{}
 	factorMemo := sync.Map{}
 
-	logrus.Debugf("factoring expression : init stats %v", EvaluateCostStat(expr))
+	logrus.Debugf("factoring expression : init stats %v", evaluateCostStat(expr))
 
 	for i := 0; i < iteration; i++ {
 
-		scoreInit := EvaluateCostStat(res)
+		scoreInit := evaluateCostStat(res)
 
 		res = res.ReconstructBottomUp(func(lincomb *sym.Expression, newChildren []*sym.Expression) *sym.Expression {
 			// Time save, we reuse the results we got for that particular node.
@@ -85,7 +85,7 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 			panic("altered esh")
 		}
 
-		newScore := EvaluateCostStat(res)
+		newScore := evaluateCostStat(res)
 		logrus.Debugf("finished iteration : new stats %v", newScore)
 
 		if newScore.NumMul >= scoreInit.NumMul {

@@ -188,8 +188,8 @@ func (b boardAssignment) inputOf(na *nodeAssignment) []*nodeAssignment {
 
 	for i, childID := range na.Node.Children {
 		var (
-			lvl = childID.Level()
-			pil = childID.PosInLevel()
+			lvl = childID.level()
+			pil = childID.posInLevel()
 		)
 
 		nodeInputs[i] = &b[lvl][pil]
