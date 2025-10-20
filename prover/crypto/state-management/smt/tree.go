@@ -55,9 +55,10 @@ func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
 	var d field.Octuplet
 	if config.HashFunc != nil {
 		hasher := config.HashFunc()
-		hasher.WriteElements(nodeL[:])
-		hasher.WriteElements(nodeR[:])
-		d = hasher.SumElements(nil)
+		var toHash [16]field.Element
+		copy(toHash[0:8], nodeL[:])
+		copy(toHash[8:16], nodeR[:])
+		d = hasher.SumElements(toHash[:])
 	} else {
 		panic("missing a hash function")
 	}
