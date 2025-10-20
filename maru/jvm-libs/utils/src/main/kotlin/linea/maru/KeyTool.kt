@@ -34,7 +34,7 @@ class KeyTool {
     repeat(numberOfKeys) {
       PrivateKeyGenerator
         .generatePrivateKey()
-        .also { PrivateKeyGenerator.logKeyData(it) }
+        .also { logKeyData(it) }
     }
     return CommandLine.ExitCode.OK
   }
@@ -58,7 +58,6 @@ class KeyTool {
           println("failed to decode private key: $it")
           return CommandLine.ExitCode.USAGE
         }
-
     logKeyData(getKeyData(privKeyBytes))
 
     return CommandLine.ExitCode.OK

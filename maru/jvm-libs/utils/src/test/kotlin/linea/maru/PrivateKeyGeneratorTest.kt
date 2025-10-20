@@ -8,6 +8,7 @@
  */
 package linea.maru
 
+import linea.kotlin.decodeHex
 import linea.maru.PrivateKeyGenerator.generatePrivateKey
 import linea.maru.PrivateKeyGenerator.getKeyData
 import linea.maru.PrivateKeyGenerator.getKeyDataByPrefixedKey
@@ -22,5 +23,17 @@ class PrivateKeyGeneratorTest {
     val recoveredDataFromPrivKeyPrefixed = getKeyDataByPrefixedKey(prefixedPrivateKey = keyData.prefixedPrivateKey)
     assertThat(keyData).isEqualTo(recoveredDataFromPrivKey)
     assertThat(keyData).isEqualTo(recoveredDataFromPrivKeyPrefixed)
+  }
+
+  @RepeatedTest(100)
+  fun `should yield correct key data`() {
+    val prefixedPrivKey = "0x08021220289909347c7865907cabb5b0ed59f967ef31717b5cb01beee279f5aa73fe48a9".decodeHex()
+    val privKey = "0x289909347c7865907cabb5b0ed59f967ef31717b5cb01beee279f5aa73fe48a9".decodeHex()
+    val address = "0xa275d33b6d691cf5212850ff2d44643f02c30d37".decodeHex()
+
+    val keyInfo = getKeyData(privKey)
+    assertThat(keyInfo.prefixedPrivateKey).isEqualTo(prefixedPrivKey)
+    assertThat(keyInfo.privateKey).isEqualTo(privKey)
+    assertThat(keyInfo.address).isEqualTo(address)
   }
 }

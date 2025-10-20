@@ -14,12 +14,14 @@ import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.ethereum.core.Util
 
 object Crypto {
-  fun privateKeyToValidator(rawPrivateKey: ByteArray): Validator {
+  fun privateKeyToValidator(rawPrivateKey: ByteArray): Validator = Validator(privateKeyToAddress(rawPrivateKey))
+
+  fun privateKeyToAddress(rawPrivateKey: ByteArray): ByteArray {
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(rawPrivateKey))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
 
-    return Validator(Util.publicKeyToAddress(keyPair.publicKey).toArray())
+    return Util.publicKeyToAddress(keyPair.publicKey).toArray()
   }
 
   fun privateKeyBytesWithoutPrefix(privateKey: ByteArray) = privateKey.takeLast(32).toByteArray()
