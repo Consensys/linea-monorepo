@@ -95,13 +95,13 @@ func TestSerdeDistWizard(t *testing.T) {
 	})
 
 	for i := range dist.GLs {
-		t.Run(fmt.Sprintf("GLModule-%d", i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("GLModule-%v", dist.GLs[i].DefinitionInput.ModuleName), func(t *testing.T) {
 			runSerdeTest(t, dist.GLs[i], "DistributedWizard.GLs", true, false)
 		})
 	}
 
 	for i := range dist.LPPs {
-		t.Run(fmt.Sprintf("LPPModule-%d", i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("LPPModule-%v", dist.LPPs[i].ModuleName()), func(t *testing.T) {
 			runSerdeTest(t, dist.LPPs[i], "DistributedWizard.LPPs", true, false)
 		})
 	}
@@ -115,13 +115,13 @@ func TestSerdeDistWizard(t *testing.T) {
 	})
 
 	for i := range dist.CompiledGLs {
-		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("CompiledGL-%v", dist.CompiledGLs[i].ModuleGL.DefinitionInput.ModuleName), func(t *testing.T) {
 			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), true, false)
 		})
 	}
 
 	for i := range dist.CompiledLPPs {
-		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("CompiledLPP-%v", dist.CompiledLPPs[i].ModuleLPP.ModuleName()), func(t *testing.T) {
 			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), true, false)
 		})
 	}
