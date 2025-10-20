@@ -63,6 +63,7 @@ contract V3DexSwap is IV3DexSwap {
         deadline: _deadline,
         amountIn: msg.value,
         amountOutMinimum: _minLineaOut,
+        /// @dev Setting to 0 because _minLineaOut handles slippage protection.
         sqrtPriceLimitX96: 0
       })
     );
