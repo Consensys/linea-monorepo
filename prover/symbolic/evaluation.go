@@ -1,6 +1,9 @@
 package symbolic
 
 import (
+	"runtime/debug"
+	"sync"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/arena"
@@ -11,11 +14,28 @@ import (
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 )
 
+var onceChunkSize sync.Once
+var chunkSize int
+
 // ChunkSize is the size of the chunks we use to evaluate the expression board.
-// 1 << 9 is optimal for compute
-// but 1 << 8 enable us to run with less memory.
-// TODO should be configurable in config file or env var, no need to be a constant.
-const ChunkSize = 1 << 8
+// It is determined at runtime depending on the available memory, from
+// GOMEMLIMIT>700GiB -> 1<<9
+// GOMEMLIMIT<=700GiB -> 1<<8
+func ChunkSize() int {
+	onceChunkSize.Do(func() {
+		// get the memory limit
+		memLimit := debug.SetMemoryLimit(-1)
+
+		// if we are <= 700GB, use 1 << 8
+		// else use 1 << 9
+		if memLimit > 0 && memLimit <= 700*1024*1024*1024 {
+			chunkSize = 1 << 8
+		} else {
+			chunkSize = 1 << 9
+		}
+	})
+	return chunkSize
+}
 
 // evaluation is a helper to evaluate an expression board on chunks of data.
 type evaluation struct {
@@ -55,7 +75,7 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, vArena ...*arena.Vec
 		panic("inputs all have size 0")
 	}
 
-	chunkSize := min(ChunkSize, totalSize) // default chunk size
+	chunkSize := min(ChunkSize(), totalSize) // default chunk size
 	if totalSize%chunkSize != 0 {
 		panic("chunk size should divide total size")
 	}
