@@ -131,7 +131,7 @@ export class PostmanServiceClient {
     const ethereumMessageDBService = new EthereumMessageDBService(l1GasProvider, messageRepository);
 
     // Metrics services
-    this.singletonMetricsService = new SingletonMetricsService();
+    this.singletonMetricsService = new SingletonMetricsService<LineaPostmanMetrics>();
     this.messageMetricsUpdater = new MessageMetricsUpdater(this.db.manager, this.singletonMetricsService);
     this.sponsorshipMetricsUpdater = new SponsorshipMetricsUpdater(this.singletonMetricsService);
     this.transactionMetricsUpdater = new TransactionMetricsUpdater(this.singletonMetricsService);

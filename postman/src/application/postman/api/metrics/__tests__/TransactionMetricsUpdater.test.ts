@@ -4,10 +4,10 @@ import { TransactionMetricsUpdater } from "../TransactionMetricsUpdater";
 
 describe("TransactionMetricsUpdater", () => {
   let transactionMetricsUpdater: ITransactionMetricsUpdater;
-  let metricsService: SingletonMetricsService;
+  let metricsService: SingletonMetricsService<LineaPostmanMetrics>;
 
   beforeEach(() => {
-    metricsService = new SingletonMetricsService();
+    metricsService = new SingletonMetricsService<LineaPostmanMetrics>();
     transactionMetricsUpdater = new TransactionMetricsUpdater(metricsService);
   });
 

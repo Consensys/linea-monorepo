@@ -6,7 +6,7 @@ describe("SingletonMetricsService", () => {
   let metricService: IMetricsService<LineaPostmanMetrics>;
 
   beforeEach(() => {
-    metricService = new SingletonMetricsService();
+    metricService = new SingletonMetricsService<LineaPostmanMetrics>();
   });
 
   it("should create a counter", () => {

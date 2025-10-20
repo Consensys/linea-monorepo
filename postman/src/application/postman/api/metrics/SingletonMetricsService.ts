@@ -16,15 +16,17 @@ import { IMetricsService, LineaPostmanMetrics } from "../../../../core/metrics/I
  * MetricsService class that implements the IMetricsService interface.
  * This class provides methods to create and manage Prometheus metrics.
  */
-export class SingletonMetricsService implements IMetricsService<LineaPostmanMetrics> {
+export class SingletonMetricsService<TMetricName extends string = LineaPostmanMetrics>
+  implements IMetricsService<TMetricName>
+{
   private readonly registry: Registry;
-  private readonly counters: Map<LineaPostmanMetrics, Counter<string>>;
-  private readonly gauges: Map<LineaPostmanMetrics, Gauge<string>>;
-  private readonly histograms: Map<string, Histogram<string>>;
+  private readonly counters: Map<TMetricName, Counter<string>>;
+  private readonly gauges: Map<TMetricName, Gauge<string>>;
+  private readonly histograms: Map<TMetricName, Histogram<string>>;
 
-  constructor() {
+  constructor(defaultLabels: Record<string, string> = { app: "postman" }) {
     this.registry = new Registry();
-    this.registry.setDefaultLabels({ app: "postman" });
+    this.registry.setDefaultLabels(defaultLabels);
 
     this.counters = new Map();
     this.gauges = new Map();
@@ -42,7 +44,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
   /**
    * Creates counter metric
    */
-  public createCounter(name: LineaPostmanMetrics, help: string, labelNames: string[] = []): Counter<string> {
+  public createCounter(name: TMetricName, help: string, labelNames: string[] = []): Counter<string> {
     if (!this.counters.has(name)) {
       this.counters.set(
         name,
@@ -63,7 +65,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
    * @param labels - Labels for the metric
    * @returns Value of the counter metric
    */
-  public async getCounterValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined> {
+  public async getCounterValue(name: TMetricName, labels: Record<string, string>): Promise<number | undefined> {
     const counter = this.counters.get(name);
     if (counter === undefined) {
       return undefined;
@@ -84,7 +86,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
    * @param labelNames - Array of label names for the metric
    * @returns Gauge metric
    */
-  public createGauge(name: LineaPostmanMetrics, help: string, labelNames: string[] = []): Gauge<string> {
+  public createGauge(name: TMetricName, help: string, labelNames: string[] = []): Gauge<string> {
     if (!this.gauges.has(name)) {
       this.gauges.set(
         name,
@@ -105,7 +107,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
    * @param labels - Labels for the metric
    * @returns Value of the gauge metric
    */
-  public async getGaugeValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined> {
+  public async getGaugeValue(name: TMetricName, labels: Record<string, string>): Promise<number | undefined> {
     const gauge = this.gauges.get(name);
 
     if (gauge === undefined) {
@@ -127,7 +129,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
    * @param value - Value to increment by (default is 1)
    * @returns void
    */
-  public incrementCounter(name: LineaPostmanMetrics, labels: Record<string, string> = {}, value?: number): void {
+  public incrementCounter(name: TMetricName, labels: Record<string, string> = {}, value?: number): void {
     const counter = this.counters.get(name);
     if (counter !== undefined) {
       counter.inc(labels, value);
@@ -141,7 +143,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
    * @param value - Value to increment by (default is 1)
    * @returns void
    */
-  public incrementGauge(name: LineaPostmanMetrics, labels: Record<string, string> = {}, value?: number): void {
+  public incrementGauge(name: TMetricName, labels: Record<string, string> = {}, value?: number): void {
     const gauge = this.gauges.get(name);
     if (gauge !== undefined) {
       gauge.inc(labels, value);
@@ -155,7 +157,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
    * @param labels - Labels for the metric
    * @returns void
    */
-  public decrementGauge(name: LineaPostmanMetrics, labels: Record<string, string> = {}, value?: number): void {
+  public decrementGauge(name: TMetricName, labels: Record<string, string> = {}, value?: number): void {
     const gauge = this.gauges.get(name);
     if (gauge !== undefined) {
       gauge.dec(labels, value);
@@ -189,7 +191,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
    * @returns Histogram metric
    */
   public createHistogram(
-    name: LineaPostmanMetrics,
+    name: TMetricName,
     buckets: number[],
     help: string,
     labelNames: string[] = [],
@@ -215,7 +217,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
    * @returns Values of the histogram metric
    */
   public async getHistogramMetricsValues(
-    name: LineaPostmanMetrics,
+    name: TMetricName,
   ): Promise<MetricObjectWithValues<MetricValueWithName<string>> | undefined> {
     const histogram = this.histograms.get(name);
 
@@ -231,7 +233,7 @@ export class SingletonMetricsService implements IMetricsService<LineaPostmanMetr
    * @param value - Value to add to the histogram
    * @param labels - Labels for the metric
    */
-  public addValueToHistogram(name: LineaPostmanMetrics, value: number, labels: Record<string, string> = {}): void {
+  public addValueToHistogram(name: TMetricName, value: number, labels: Record<string, string> = {}): void {
     const histogram = this.histograms.get(name);
     if (histogram !== undefined) {
       histogram.observe(labels, value);
