@@ -90,6 +90,24 @@ describe("V3DexAdapter", () => {
       );
     });
 
+    it("Should emit an event when initialized", async () => {
+      const randomnAddress = toChecksumAddress(generateRandomBytes(20));
+      const contract = await deployFromFactory("V3DexAdapter", randomnAddress, randomnAddress, randomnAddress, 50);
+
+      const receipt = await contract.deploymentTransaction()?.wait();
+      const logs = receipt?.logs;
+
+      expect(logs).to.have.lengthOf(1);
+
+      const event = contract.interface.parseLog(logs![0]);
+      expect(event).is.not.null;
+      expect(event!.name).to.equal("V3DexAdapterInitialized");
+      expect(event!.args.router).to.equal(randomnAddress);
+      expect(event!.args.wethToken).to.equal(randomnAddress);
+      expect(event!.args.lineaToken).to.equal(randomnAddress);
+      expect(event!.args.poolTickSpacing).to.equal(50);
+    });
+
     it("Should set the correct addresses and values", async () => {
       const lineaTokenAddress = await dexAdapter.LINEA_TOKEN();
       const wethTokenAddress = await dexAdapter.WETH_TOKEN();

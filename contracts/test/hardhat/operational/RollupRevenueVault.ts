@@ -314,6 +314,49 @@ describe("RollupRevenueVault", () => {
       await expectRevertWithCustomError(rollupRevenueVault, deployCall, "ZeroAddressNotAllowed");
     });
 
+    it("should emit an event when initialized", async () => {
+      const lastInvoiceDate = await time.latest();
+      const contract = await deployUpgradableFromFactory(
+        "RollupRevenueVault",
+        [
+          lastInvoiceDate,
+          admin.address,
+          invoiceSubmitter.address,
+          burner.address,
+          invoicePaymentReceiver.address,
+          await tokenBridge.getAddress(),
+          await messageService.getAddress(),
+          l1LineaTokenBurner.address,
+          await l2LineaToken.getAddress(),
+          await dexAdapter.getAddress(),
+        ],
+        {
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
+          unsafeAllow: ["constructor"],
+        },
+      );
+      const receipt = await contract.deploymentTransaction()?.wait();
+      const logs = receipt?.logs;
+
+      expect(logs).to.have.lengthOf(7);
+
+      const eventTopic = contract.interface.getEvent("RollupRevenueVaultInitialized");
+      expect(eventTopic).to.not.be.null;
+      const log = logs?.find((l) => l.topics[0] === eventTopic!.topicHash);
+      expect(log).to.not.be.undefined;
+
+      const event = contract.interface.parseLog(log!);
+      expect(event).is.not.null;
+      expect(event?.name).to.equal("RollupRevenueVaultInitialized");
+      expect(event?.args.lastInvoiceDate).to.equal(lastInvoiceDate);
+      expect(event?.args.invoicePaymentReceiver).to.equal(invoicePaymentReceiver.address);
+      expect(event?.args.tokenBridge).to.equal(await tokenBridge.getAddress());
+      expect(event?.args.messageService).to.equal(await messageService.getAddress());
+      expect(event?.args.l1LineaTokenBurner).to.equal(l1LineaTokenBurner.address);
+      expect(event?.args.lineaToken).to.equal(await l2LineaToken.getAddress());
+      expect(event?.args.dexAdapter).to.equal(await dexAdapter.getAddress());
+    });
+
     it("Should initialize correctly the contract", async () => {
       expect(await rollupRevenueVault.hasRole(await rollupRevenueVault.DEFAULT_ADMIN_ROLE(), admin.address)).to.equal(
         true,

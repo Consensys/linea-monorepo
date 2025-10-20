@@ -33,9 +33,21 @@ interface IV3DexAdapter {
    */
   error DeadlineInThePast();
 
-  /** @notice Swap ETH into LINEA.
+  /**
+   * @notice Emitted when the V3DexAdapter contract is initialized.
+   * @param router The address of the Router contract.
+   * @param wethToken The address of the WETH token contract.
+   * @param lineaToken The address of the LINEA token contract.
+   * @param poolTickSpacing Tick spacing of the pool.
+   */
+  event V3DexAdapterInitialized(address router, address wethToken, address lineaToken, uint24 poolTickSpacing);
+
+  /** @notice Swap ETH into LINEA tokens.
+   * @dev The msg.sender will be the recipient of the LINEA tokens, and WETH is swapped 1:1 with `msg.value`.
+   * @dev No ETH is kept in the contract after the swap due to exactInputSingle swapping.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
+   * @return amountOut The amount of LINEA tokens received from the swap.
    */
   function swap(uint256 _minLineaOut, uint256 _deadline) external payable returns (uint256 amountOut);
 }

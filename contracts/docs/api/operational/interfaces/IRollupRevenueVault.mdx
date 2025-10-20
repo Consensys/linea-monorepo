@@ -214,3 +214,23 @@ _Emitted when the invoice payment receiver is updated._
 | previousValue | address | The previous invoice payment receiver address. |
 | newValue | address | The new invoice payment receiver address. |
 
+### RollupRevenueVaultInitialized
+
+```solidity
+event RollupRevenueVaultInitialized(uint256 lastInvoiceDate, address invoicePaymentReceiver, address tokenBridge, address messageService, address l1LineaTokenBurner, address lineaToken, address dexAdapter)
+```
+
+_Emitted when the Rollup Revenue Vault is initialized._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| lastInvoiceDate | uint256 | The default or starting timestamp for invoices less 1 second. |
+| invoicePaymentReceiver | address | The address that receives invoice payments. |
+| tokenBridge | address | The address of the token bridge contract. |
+| messageService | address | The address of the message service contract. |
+| l1LineaTokenBurner | address | The address of the L1 LINEA token burner contract. |
+| lineaToken | address | The address of the LINEA token contract. |
+| dexAdapter | address | The address of the DEX adapter contract. |
+

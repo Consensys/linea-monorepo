@@ -38,6 +38,8 @@ contract V3DexAdapter is IV3DexAdapter {
     WETH_TOKEN = _wethToken;
     LINEA_TOKEN = _lineaToken;
     POOL_TICK_SPACING = _poolTickSpacing;
+
+    emit V3DexAdapterInitialized(_router, _wethToken, _lineaToken, _poolTickSpacing);
   }
 
   /** @notice Swap ETH into LINEA tokens.
@@ -45,6 +47,7 @@ contract V3DexAdapter is IV3DexAdapter {
    * @dev No ETH is kept in the contract after the swap due to exactInputSingle swapping.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
+   * @return amountOut The amount of LINEA tokens received from the swap.
    */
   function swap(uint256 _minLineaOut, uint256 _deadline) external payable returns (uint256 amountOut) {
     require(msg.value > 0, NoEthSend());

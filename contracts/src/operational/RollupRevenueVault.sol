@@ -44,7 +44,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
   /**
    * @notice Reinitializes the contract state for upgrade.
-   * @param _lastInvoiceDate Timestamp of the last invoice.
+   * @param _lastInvoiceDate The default or starting timestamp for invoices less 1 second.
    * @param _defaultAdmin Address to be granted the default admin role.
    * @param _invoiceSubmitter Address to be granted the invoice submitter role.
    * @param _burner Address to be granted the burner role.
@@ -117,6 +117,16 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     l1LineaTokenBurner = _l1LineaTokenBurner;
     lineaToken = _lineaToken;
     dexAdapter = _dexAdapter;
+
+    emit RollupRevenueVaultInitialized(
+      _lastInvoiceDate,
+      _invoicePaymentReceiver,
+      _tokenBridge,
+      _messageService,
+      _l1LineaTokenBurner,
+      _lineaToken,
+      _dexAdapter
+    );
   }
 
   /**
@@ -174,9 +184,12 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     uint256 numLineaTokens = abi.decode(returnData, (uint256));
     require(numLineaTokens > 0, ZeroLineaTokensReceived());
 
-    IERC20(lineaToken).approve(address(tokenBridge), numLineaTokens);
+    address lineaTokenAddress = lineaToken;
+    TokenBridge tokenBridgeContract = tokenBridge;
 
-    tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, numLineaTokens, l1LineaTokenBurner);
+    IERC20(lineaTokenAddress).approve(address(tokenBridgeContract), numLineaTokens);
+
+    tokenBridgeContract.bridgeToken{ value: minimumFee }(lineaTokenAddress, numLineaTokens, l1LineaTokenBurner);
 
     emit EthBurntSwappedAndBridged(ethToBurn, numLineaTokens);
   }
