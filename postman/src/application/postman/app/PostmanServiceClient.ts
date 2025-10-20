@@ -1,6 +1,6 @@
 import { DataSource } from "typeorm";
 import { LineaSDK, Direction } from "@consensys/linea-sdk";
-import { ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
+import { ILogger } from "@consensys/linea-shared-utils";
 import { TypeOrmMessageRepository } from "../persistence/repositories/TypeOrmMessageRepository";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import {
@@ -27,6 +27,7 @@ import { EthereumTransactionValidationService } from "../../../services/Ethereum
 import { getConfig } from "./config/utils";
 import { Api } from "../api/Api";
 import { MessageStatusSubscriber } from "../persistence/subscribers/MessageStatusSubscriber";
+import { PostmanWinstonLogger } from "../../../utils/PostmanWinstonLogger";
 import { SingletonMetricsService } from "../api/metrics/SingletonMetricsService";
 import { MessageMetricsUpdater } from "../api/metrics/MessageMetricsUpdater";
 import {
@@ -78,7 +79,7 @@ export class PostmanServiceClient {
     const config = getConfig(options);
     this.config = config;
 
-    this.logger = new WinstonLogger(PostmanServiceClient.name, config.loggerOptions);
+    this.logger = new PostmanWinstonLogger(PostmanServiceClient.name, config.loggerOptions);
     this.l1L2AutoClaimEnabled = config.l1L2AutoClaimEnabled;
     this.l2L1AutoClaimEnabled = config.l2L1AutoClaimEnabled;
 
@@ -148,7 +149,7 @@ export class PostmanServiceClient {
         isCalldataEnabled: config.l1Config.isCalldataEnabled,
         eventFilters: config.l1Config.listener.eventFilters,
       },
-      new WinstonLogger(`L1${MessageSentEventProcessor.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L1${MessageSentEventProcessor.name}`, config.loggerOptions),
     );
 
     this.l1MessageSentEventPoller = new MessageSentEventPoller(
@@ -161,7 +162,7 @@ export class PostmanServiceClient {
         initialFromBlock: config.l1Config.listener.initialFromBlock,
         originContractAddress: config.l1Config.messageServiceContractAddress,
       },
-      new WinstonLogger(`L1${MessageSentEventPoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L1${MessageSentEventPoller.name}`, config.loggerOptions),
     );
 
     const l2MessageAnchoringProcessor = new MessageAnchoringProcessor(
@@ -172,7 +173,7 @@ export class PostmanServiceClient {
         maxFetchMessagesFromDb: config.l1Config.listener.maxFetchMessagesFromDb,
         originContractAddress: config.l1Config.messageServiceContractAddress,
       },
-      new WinstonLogger(`L2${MessageAnchoringProcessor.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L2${MessageAnchoringProcessor.name}`, config.loggerOptions),
     );
 
     this.l2MessageAnchoringPoller = new MessageAnchoringPoller(
@@ -181,7 +182,7 @@ export class PostmanServiceClient {
         direction: Direction.L1_TO_L2,
         pollingInterval: config.l2Config.listener.pollingInterval,
       },
-      new WinstonLogger(`L2${MessageAnchoringPoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L2${MessageAnchoringPoller.name}`, config.loggerOptions),
     );
 
     const l2TransactionValidationService = new LineaTransactionValidationService(
@@ -211,7 +212,7 @@ export class PostmanServiceClient {
         maxClaimGasLimit: BigInt(config.l2Config.claiming.maxClaimGasLimit),
         claimViaAddress: config.l2Config.claiming.claimViaAddress,
       },
-      new WinstonLogger(`L2${MessageClaimingProcessor.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L2${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
 
     this.l2MessageClaimingPoller = new MessageClaimingPoller(
@@ -220,7 +221,7 @@ export class PostmanServiceClient {
         direction: Direction.L1_TO_L2,
         pollingInterval: config.l2Config.listener.pollingInterval,
       },
-      new WinstonLogger(`L2${MessageClaimingPoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L2${MessageClaimingPoller.name}`, config.loggerOptions),
     );
 
     const l2MessageClaimingPersister = new MessageClaimingPersister(
@@ -234,7 +235,7 @@ export class PostmanServiceClient {
         messageSubmissionTimeout: config.l2Config.claiming.messageSubmissionTimeout,
         maxTxRetries: config.l2Config.claiming.maxTxRetries,
       },
-      new WinstonLogger(`L2${MessageClaimingPersister.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L2${MessageClaimingPersister.name}`, config.loggerOptions),
     );
 
     this.l2MessagePersistingPoller = new MessagePersistingPoller(
@@ -243,7 +244,7 @@ export class PostmanServiceClient {
         direction: Direction.L1_TO_L2,
         pollingInterval: config.l2Config.listener.pollingInterval,
       },
-      new WinstonLogger(`L2${MessagePersistingPoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L2${MessagePersistingPoller.name}`, config.loggerOptions),
     );
 
     const transactionSizeCalculator = new L2ClaimTransactionSizeCalculator(l2MessageServiceClient);
@@ -255,7 +256,7 @@ export class PostmanServiceClient {
         direction: Direction.L1_TO_L2,
         originContractAddress: config.l1Config.messageServiceContractAddress,
       },
-      new WinstonLogger(`${L2ClaimMessageTransactionSizeProcessor.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`${L2ClaimMessageTransactionSizeProcessor.name}`, config.loggerOptions),
     );
 
     this.l2ClaimMessageTransactionSizePoller = new L2ClaimMessageTransactionSizePoller(
@@ -263,7 +264,7 @@ export class PostmanServiceClient {
       {
         pollingInterval: config.l2Config.listener.pollingInterval,
       },
-      new WinstonLogger(`${L2ClaimMessageTransactionSizePoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`${L2ClaimMessageTransactionSizePoller.name}`, config.loggerOptions),
     );
 
     // L2 -> L1 flow
@@ -279,7 +280,7 @@ export class PostmanServiceClient {
         isCalldataEnabled: config.l2Config.isCalldataEnabled,
         eventFilters: config.l2Config.listener.eventFilters,
       },
-      new WinstonLogger(`L2${MessageSentEventProcessor.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L2${MessageSentEventProcessor.name}`, config.loggerOptions),
     );
 
     this.l2MessageSentEventPoller = new MessageSentEventPoller(
@@ -292,7 +293,7 @@ export class PostmanServiceClient {
         initialFromBlock: config.l2Config.listener.initialFromBlock,
         originContractAddress: config.l2Config.messageServiceContractAddress,
       },
-      new WinstonLogger(`L2${MessageSentEventPoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L2${MessageSentEventPoller.name}`, config.loggerOptions),
     );
 
     const l1MessageAnchoringProcessor = new MessageAnchoringProcessor(
@@ -303,7 +304,7 @@ export class PostmanServiceClient {
         maxFetchMessagesFromDb: config.l1Config.listener.maxFetchMessagesFromDb,
         originContractAddress: config.l2Config.messageServiceContractAddress,
       },
-      new WinstonLogger(`L1${MessageAnchoringProcessor.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L1${MessageAnchoringProcessor.name}`, config.loggerOptions),
     );
 
     this.l1MessageAnchoringPoller = new MessageAnchoringPoller(
@@ -312,7 +313,7 @@ export class PostmanServiceClient {
         direction: Direction.L2_TO_L1,
         pollingInterval: config.l1Config.listener.pollingInterval,
       },
-      new WinstonLogger(`L1${MessageAnchoringPoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L1${MessageAnchoringPoller.name}`, config.loggerOptions),
     );
 
     const l1TransactionValidationService = new EthereumTransactionValidationService(lineaRollupClient, l1GasProvider, {
@@ -338,7 +339,7 @@ export class PostmanServiceClient {
         maxClaimGasLimit: BigInt(config.l1Config.claiming.maxClaimGasLimit),
         claimViaAddress: config.l1Config.claiming.claimViaAddress,
       },
-      new WinstonLogger(`L1${MessageClaimingProcessor.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L1${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
 
     this.l1MessageClaimingPoller = new MessageClaimingPoller(
@@ -347,7 +348,7 @@ export class PostmanServiceClient {
         direction: Direction.L2_TO_L1,
         pollingInterval: config.l1Config.listener.pollingInterval,
       },
-      new WinstonLogger(`L1${MessageClaimingPoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L1${MessageClaimingPoller.name}`, config.loggerOptions),
     );
 
     const l1MessageClaimingPersister = new MessageClaimingPersister(
@@ -361,7 +362,7 @@ export class PostmanServiceClient {
         messageSubmissionTimeout: config.l1Config.claiming.messageSubmissionTimeout,
         maxTxRetries: config.l1Config.claiming.maxTxRetries,
       },
-      new WinstonLogger(`L1${MessageClaimingPersister.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L1${MessageClaimingPersister.name}`, config.loggerOptions),
     );
 
     this.l1MessagePersistingPoller = new MessagePersistingPoller(
@@ -370,18 +371,18 @@ export class PostmanServiceClient {
         direction: Direction.L2_TO_L1,
         pollingInterval: config.l1Config.listener.pollingInterval,
       },
-      new WinstonLogger(`L1${MessagePersistingPoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`L1${MessagePersistingPoller.name}`, config.loggerOptions),
     );
 
     // Database Cleaner
     const databaseCleaner = new DatabaseCleaner(
       ethereumMessageDBService,
-      new WinstonLogger(`${DatabaseCleaner.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`${DatabaseCleaner.name}`, config.loggerOptions),
     );
 
     this.databaseCleaningPoller = new DatabaseCleaningPoller(
       databaseCleaner,
-      new WinstonLogger(`${DatabaseCleaningPoller.name}`, config.loggerOptions),
+      new PostmanWinstonLogger(`${DatabaseCleaningPoller.name}`, config.loggerOptions),
       {
         enabled: config.databaseCleanerConfig.enabled,
         daysBeforeNowToDelete: config.databaseCleanerConfig.daysBeforeNowToDelete,
@@ -414,7 +415,7 @@ export class PostmanServiceClient {
       await this.messageMetricsUpdater.initialize();
       const messageStatusSubscriber = new MessageStatusSubscriber(
         this.messageMetricsUpdater,
-        new WinstonLogger(MessageStatusSubscriber.name),
+        new PostmanWinstonLogger(MessageStatusSubscriber.name),
       );
       this.db.subscribers.push(messageStatusSubscriber);
 
@@ -422,7 +423,7 @@ export class PostmanServiceClient {
       this.api = new Api(
         { port: this.config.apiConfig.port },
         this.singletonMetricsService,
-        new WinstonLogger(Api.name),
+        new PostmanWinstonLogger(Api.name),
       );
 
       this.logger.info("Metrics and API have been initialized successfully.");

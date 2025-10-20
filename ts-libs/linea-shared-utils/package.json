@@ -32,9 +32,6 @@
     "viem": "catalog:"
   },
   "dependencies": {
-    "@consensys/linea-sdk": "workspace:*",
-    "abitype": "^1.0.8",
-    "ethers": "catalog:",
     "winston": "catalog:"
   }
 }

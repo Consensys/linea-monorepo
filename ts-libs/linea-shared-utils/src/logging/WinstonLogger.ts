@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Logger as LoggerClass, LoggerOptions, createLogger, format, transports } from "winston";
-import { EthersError } from "ethers";
 import { serialize, isString } from "@consensys/linea-sdk";
 import { ILogger } from "./ILogger";
 
@@ -123,27 +122,15 @@ export class WinstonLogger implements ILogger {
   }
 
   /**
-   * Determines whether a given error should be logged as a `warning` instead of an `error`.
+   * Hook that determines whether a given payload should be logged as a warning instead of an error.
    *
-   * This decision is based on specific characteristics of the error, such as known error messages and codes that indicate a less severe issue.
+   * Packages extending the base logger can override this method to provide domain-specific logic.
    *
-   * @param {EthersError} error - The error object to evaluate.
-   * @returns {boolean} `true` if the error should be logged as a `warning`, `false` otherwise.
+   * @param {unknown} _error - The value provided to `warnOrError`.
+   * @returns {boolean} `true` to downgrade the entry to `warn`, `false` otherwise.
    */
-  private shouldLogErrorAsWarning(error: EthersError | Error): boolean {
-    const isEthersError = (error: any): error is EthersError => {
-      return (error as EthersError).shortMessage !== undefined || (error as EthersError).code !== undefined;
-    };
-
-    if (isEthersError(error)) {
-      return (
-        (error.shortMessage?.includes("processing response error") ||
-          error.info?.error?.message?.includes("processing response error")) &&
-        error.code === "SERVER_ERROR" &&
-        error.info?.error?.code === -32603
-      );
-    }
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected shouldLogErrorAsWarning(_error: unknown): boolean {
     return false;
   }
 }

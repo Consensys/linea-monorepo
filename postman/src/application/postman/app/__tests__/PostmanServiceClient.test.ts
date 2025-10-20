@@ -10,7 +10,7 @@ import {
   TEST_L2_SIGNER_PRIVATE_KEY,
   TEST_RPC_URL,
 } from "../../../../utils/testing/constants";
-import { WinstonLogger } from "@consensys/linea-shared-utils";
+import { PostmanWinstonLogger } from "../../../../utils/PostmanWinstonLogger";
 import { PostmanOptions } from "../config/config";
 import { MessageEntity } from "../../persistence/entities/Message.entity";
 import { InitialDatabaseSetup1685985945638 } from "../../persistence/migrations/1685985945638-InitialDatabaseSetup";
@@ -111,7 +111,7 @@ describe("PostmanServiceClient", () => {
 
   beforeEach(() => {
     postmanServiceClient = new PostmanServiceClient(postmanServiceClientOptions);
-    loggerSpy = jest.spyOn(WinstonLogger.prototype, "info");
+    loggerSpy = jest.spyOn(PostmanWinstonLogger.prototype, "info");
   });
 
   afterEach(() => {
