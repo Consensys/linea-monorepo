@@ -249,7 +249,7 @@ class P2PNetworkImpl(
       GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
-        val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload))
+        val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload as SealedBeaconBlock))
         p2pNetwork.gossip(
           topicIdGenerator.id(message.type.name, message.version, Encoding.RLP_SNAPPY),
           serializedSealedBeaconBlock,

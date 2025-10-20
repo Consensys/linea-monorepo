@@ -34,6 +34,8 @@ import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcResponseHandler
 import tech.pegasys.teku.networking.p2p.rpc.RpcStreamController
+import tech.pegasys.teku.spec.datastructures.networking.libp2p.rpc.RpcRequest
+import tech.pegasys.teku.spec.datastructures.networking.libp2p.rpc.bodyselector.RpcRequestBodySelector
 
 interface MaruPeer : Peer {
   fun getStatus(): Status?
@@ -101,7 +103,7 @@ class DefaultMaruPeer(
     try {
       val statusMessage = statusManager.createStatusMessage()
       val sendRpcMessage: SafeFuture<Message<Status, RpcMessageType>> =
-        sendRpcMessage(statusMessage, rpcMethods.status())
+        sendRpcMessage(RequestMessageAdapter(statusMessage), rpcMethods.status())
       scheduleDisconnectIfStatusNotReceived(p2pConfig.statusUpdate.timeout)
       return sendRpcMessage
         .thenApply { message -> message.payload }
@@ -181,12 +183,12 @@ class DefaultMaruPeer(
     count: ULong,
   ): SafeFuture<BeaconBlocksByRangeResponse> {
     val request = BeaconBlocksByRangeRequest(startBlockNumber, count)
-    val message = Message(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, request)
+    val message = RequestMessageAdapter(MessageData(RpcMessageType.BEACON_BLOCKS_BY_RANGE, Version.V1, request))
     return sendRpcMessage(message, rpcMethods.beaconBlocksByRange())
       .thenApply { responseMessage -> responseMessage.payload }
   }
 
-  fun <TRequest : Message<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
+  fun <TRequest : RequestMessageAdapter<*, RpcMessageType>, TResponse : Message<*, RpcMessageType>> sendRpcMessage(
     message: TRequest,
     rpcMethod: MaruRpcMethod<TRequest, TResponse>,
   ): SafeFuture<TResponse> {
@@ -225,11 +227,26 @@ class DefaultMaruPeer(
   override fun subscribeDisconnect(subscriber: PeerDisconnectedSubscriber) =
     delegatePeer.subscribeDisconnect(subscriber)
 
-  override fun <TOutgoingHandler : RpcRequestHandler, TRequest : Any, RespHandler : RpcResponseHandler<*>> sendRequest(
+  override fun <
+    TOutgoingHandler : RpcRequestHandler,
+    TRequest : RpcRequest,
+    RespHandler : RpcResponseHandler<*>,
+  > sendRequest(
     rpcMethod: RpcMethod<TOutgoingHandler, TRequest, RespHandler>,
     request: TRequest,
     responseHandler: RespHandler,
   ): SafeFuture<RpcStreamController<TOutgoingHandler>> = delegatePeer.sendRequest(rpcMethod, request, responseHandler)
+
+  override fun <
+    TOutgoingHandler : RpcRequestHandler,
+    TRequest : RpcRequest,
+    RespHandler : RpcResponseHandler<*>,
+  > sendRequest(
+    rpcMethod: RpcMethod<TOutgoingHandler, TRequest, RespHandler>,
+    rpcRequestBodySelector: RpcRequestBodySelector<TRequest>,
+    responseHandler: RespHandler,
+  ): SafeFuture<RpcStreamController<TOutgoingHandler>> =
+    delegatePeer.sendRequest(rpcMethod, rpcRequestBodySelector, responseHandler)
 
   override fun connectionInitiatedLocally(): Boolean = delegatePeer.connectionInitiatedLocally()
 

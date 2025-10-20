@@ -9,7 +9,7 @@
 package maru.p2p.messages
 
 import maru.core.ext.DataGenerators
-import maru.p2p.Message
+import maru.p2p.MessageData
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.serialization.rlp.RLPSerializers
@@ -30,7 +30,7 @@ class BeaconBlocksByRangeResponseMessageSerDeTest {
         blocks = listOf(DataGenerators.randomSealedBeaconBlock(number = 5UL)),
       )
     val message =
-      Message(
+      MessageData(
         type = RpcMessageType.BEACON_BLOCKS_BY_RANGE,
         version = Version.V1,
         payload = response,

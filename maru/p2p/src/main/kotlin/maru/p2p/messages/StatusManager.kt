@@ -10,6 +10,7 @@ package maru.p2p.messages
 
 import maru.database.BeaconChain
 import maru.p2p.Message
+import maru.p2p.MessageData
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.p2p.fork.ForkPeeringManager
@@ -27,7 +28,7 @@ class StatusManager(
         latestBlockNumber = latestBeaconBlockHeader.number,
       )
     val statusMessage =
-      Message(
+      MessageData(
         type = RpcMessageType.STATUS,
         version = Version.V1,
         payload = statusPayload,

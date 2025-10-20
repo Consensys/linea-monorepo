@@ -137,8 +137,9 @@ class DefaultMaruPeerTest {
 
   @Test
   fun `sendRequest delegates to underlying peer`() {
-    val rpcMethod = mock<RpcMethod<RpcRequestHandler, String, RpcResponseHandler<*>>>()
-    val request = "test-request"
+    val rpcMethod =
+      mock<RpcMethod<RpcRequestHandler, RequestMessageAdapter<String, RpcMessageType>, RpcResponseHandler<*>>>()
+    val request = RequestMessageAdapter(MessageData(RpcMessageType.STATUS, Version.V1, "test-request"))
     val responseHandler = mock<RpcResponseHandler<*>>()
     val expectedController = mock<RpcStreamController<RpcRequestHandler>>()
 
