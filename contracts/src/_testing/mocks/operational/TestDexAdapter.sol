@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
-import { V3DexSwap } from "../../../operational/V3DexSwap.sol";
+import { V3DexAdapter } from "../../../operational/V3DexAdapter.sol";
 
-contract TestDexSwap is V3DexSwap {
+contract TestDexAdapter is V3DexAdapter {
   error TestRevertFromSwap();
 
   constructor(
@@ -11,7 +11,7 @@ contract TestDexSwap is V3DexSwap {
     address _wethToken,
     address _lineaToken,
     uint24 _poolTickSpacing
-  ) V3DexSwap(_router, _wethToken, _lineaToken, _poolTickSpacing) {}
+  ) V3DexAdapter(_router, _wethToken, _lineaToken, _poolTickSpacing) {}
 
   function testRevertSwap(uint256, uint256, uint160) external payable returns (uint256) {
     revert TestRevertFromSwap();

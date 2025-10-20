@@ -8,8 +8,8 @@ import {
   RollupRevenueVault,
   TestERC20,
   TokenBridge,
-  TestDexSwap,
-  TestDexSwap__factory,
+  TestDexAdapter,
+  TestDexAdapter__factory,
 } from "../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./helpers/before";
 import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
@@ -28,7 +28,7 @@ describe("RollupRevenueVault", () => {
   let l2LineaToken: TestERC20;
   let tokenBridge: TokenBridge;
   let messageService: L2MessageService;
-  let dexAdapter: TestDexSwap;
+  let dexAdapter: TestDexAdapter;
 
   let admin: SignerWithAddress;
   let invoiceSubmitter: SignerWithAddress;
@@ -273,7 +273,7 @@ describe("RollupRevenueVault", () => {
       await expectRevertWithCustomError(rollupRevenueVault, deployCall, "ZeroAddressNotAllowed");
     });
 
-    it("Should revert if V3DexSwap contract address is zero address", async () => {
+    it("Should revert if V3DexAdapter contract address is zero address", async () => {
       const deployCall = deployUpgradableFromFactory(
         "RollupRevenueVault",
         [
@@ -653,7 +653,7 @@ describe("RollupRevenueVault", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
         0n,
@@ -679,7 +679,7 @@ describe("RollupRevenueVault", () => {
 
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
         0n,
@@ -707,7 +707,7 @@ describe("RollupRevenueVault", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
         0n,
@@ -729,7 +729,7 @@ describe("RollupRevenueVault", () => {
         .connect(invoiceSubmitter)
         .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("0.5"));
 
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("testRevertSwap", [0, 0, 0]);
+      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("testRevertSwap", [0, 0, 0]);
 
       await expectRevertWithCustomError(
         rollupRevenueVault,
@@ -750,7 +750,7 @@ describe("RollupRevenueVault", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("testZeroAmountOutSwap", [
+      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("testZeroAmountOutSwap", [
         minLineaOut,
         deadline,
         0n,
@@ -780,7 +780,7 @@ describe("RollupRevenueVault", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
         0n,
