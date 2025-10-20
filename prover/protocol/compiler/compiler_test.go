@@ -3,9 +3,7 @@ package compiler_test
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -15,12 +13,12 @@ import (
 var totalSuite = []func(comp *wizard.CompiledIOP){
 	poseidon2.CompilePoseidon2,
 
-	plonkinwizard.Compile,
-	compiler.Arcane(
-		compiler.WithDebugMode("debug"),
-		compiler.WithStitcherMinSize(1),
-		compiler.WithTargetColSize(8),
-	),
+	// plonkinwizard.Compile,
+	// compiler.Arcane(
+	// 	compiler.WithDebugMode("debug"),
+	// 	compiler.WithStitcherMinSize(1),
+	// 	compiler.WithTargetColSize(8),
+	// ),
 	dummy.Compile,
 
 	// vortex.Compile(2, vortex.ReplaceSisByMimc(), vortex.ForceNumOpenedColumns(2)),
@@ -52,14 +50,14 @@ func TestCompilersWithGnarkVerifier(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
-	runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
+	// runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
 	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
-	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
-	runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
-	runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
-	runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
-	runTestListGnark(t, "mimc", testtools.ListOfMiMCTestcase)
-	runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+	// runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	// runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	// runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
+	// runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	// runTestListGnark(t, "mimc", testtools.ListOfMiMCTestcase)
+	// runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
 }
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {

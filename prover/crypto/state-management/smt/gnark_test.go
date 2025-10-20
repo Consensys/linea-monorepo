@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
@@ -58,7 +59,7 @@ func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func TestMerkleProofGnark(t *testing.T) {
+func getCircuitAndWitness(t *testing.T) (MerkleProofCircuit, MerkleProofCircuit) {
 
 	// generate witness
 	proofs, leafs, root := getMerkleProof(t)
@@ -71,14 +72,14 @@ func TestMerkleProofGnark(t *testing.T) {
 		witness.Proofs[i].Siblings = make([]zk.WrappedVariable, len(proofs[i].Siblings))
 		for j := 0; j < len(proofs[i].Siblings); j++ {
 			buf.SetBytes(proofs[i].Siblings[j][:])
-			witness.Proofs[i].Siblings[j] = buf.String()
+			witness.Proofs[i].Siblings[j] = zk.ValueOf(buf)
 		}
-		witness.Proofs[i].Path = proofs[i].Path
+		witness.Proofs[i].Path = zk.ValueOf(proofs[i].Path)
 		buf.SetBytes(leafs[i][:])
-		witness.Leafs[i] = buf.String()
+		witness.Leafs[i] = zk.ValueOf(buf)
 	}
 	buf.SetBytes(root[:])
-	witness.Root = buf.String()
+	witness.Root = zk.ValueOf(buf)
 
 	// compile circuit
 	var circuit MerkleProofCircuit
@@ -87,19 +88,30 @@ func TestMerkleProofGnark(t *testing.T) {
 	for i := 0; i < nbProofs; i++ {
 		circuit.Proofs[i].Siblings = make([]zk.WrappedVariable, len(proofs[i].Siblings))
 	}
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
+	return circuit, witness
+
+}
+
+func TestMerkleProofGnark(t *testing.T) {
+
+	{
+		circuit, witness := getCircuitAndWitness(t)
+
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// solve the circuit
+		twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = ccs.IsSolved(twitness)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 }

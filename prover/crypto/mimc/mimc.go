@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // TODO@yao: check if mimc is still needed? or should we update U32 to U64

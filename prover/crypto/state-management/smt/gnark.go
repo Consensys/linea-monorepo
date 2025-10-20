@@ -21,15 +21,21 @@ func GnarkRecoverRoot(
 	leaf zk.WrappedVariable,
 	h hash.FieldHasher) zk.WrappedVariable {
 
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+
 	current := leaf
 	nbBits := len(proof.Siblings)
-	b := api.ToBinary(proof.Path, nbBits)
+	b := apiGen.ToBinary(&proof.Path, nbBits)
 	for i := 0; i < len(proof.Siblings); i++ {
 		h.Reset()
-		left := api.Select(b[i], proof.Siblings[i], current)
-		right := api.Select(b[i], current, proof.Siblings[i])
+		left := apiGen.Select(b[i], &proof.Siblings[i], &current)
+		right := apiGen.Select(b[i], &current, &proof.Siblings[i])
 		h.Write(left, right)
-		current = h.Sum()
+		tmp := h.Sum()
+		current = zk.WrapFrontendVariable(tmp)
 	}
 
 	return current
