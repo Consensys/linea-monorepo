@@ -17,7 +17,7 @@ contract TestDexSwap is V3DexSwap {
     revert TestRevertFromSwap();
   }
 
-  function testZeroAmountOutSwap(uint256, uint256, uint160) external payable returns (uint256) {
-    return 0;
+  function testInsufficientAmountOutSwap(uint256, uint256, uint160) external payable returns (uint256) {
+    return 1;
   }
 }

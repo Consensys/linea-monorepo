@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { L2MessageService } from "../messaging/l2/L2MessageService.sol";
 import { TokenBridge } from "../bridging/token/TokenBridge.sol";
 import { IRollupRevenueVault } from "./interfaces/IRollupRevenueVault.sol";
+import { IL2LineaToken } from "./interfaces/IL2LineaToken.sol";
 
 /**
  * @title Upgradeable Rollup Revenue Vault Contract.
@@ -208,17 +209,19 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     (bool success, ) = address(0).call{ value: ethToBurn }("");
     require(success, EthBurnFailed());
 
+    uint256 lineaTokenBalanceBefore = IL2LineaToken(lineaToken).balanceOf(address(this));
+
     (bool swapSuccess, bytes memory returnData) = dex.call{ value: balanceAvailable - ethToBurn }(_swapData);
     require(swapSuccess, DexSwapFailed());
-
     uint256 numLineaTokens = abi.decode(returnData, (uint256));
-    require(numLineaTokens > 0, ZeroLineaTokensReceived());
 
-    IERC20(lineaToken).approve(address(tokenBridge), numLineaTokens);
+    uint256 lineaTokenBalanceAfter = IL2LineaToken(lineaToken).balanceOf(address(this));
+    require(lineaTokenBalanceAfter - lineaTokenBalanceBefore >= numLineaTokens, InsufficientLineaTokensReceived());
 
-    tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, numLineaTokens, l1LineaTokenBurner);
+    IERC20(lineaToken).approve(address(tokenBridge), lineaTokenBalanceAfter);
+    tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, lineaTokenBalanceAfter, l1LineaTokenBurner);
 
-    emit EthBurntSwappedAndBridged(ethToBurn, numLineaTokens);
+    emit EthBurntSwappedAndBridged(ethToBurn, lineaTokenBalanceAfter);
   }
 
   /**
