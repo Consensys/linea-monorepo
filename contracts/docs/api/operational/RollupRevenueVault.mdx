@@ -92,29 +92,6 @@ Address of the LINEA token contract.
 constructor() public
 ```
 
-### initialize
-
-```solidity
-function initialize(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _dex) external
-```
-
-Initializes the contract state.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| _lastInvoiceDate | uint256 | Timestamp of the last invoice. |
-| _defaultAdmin | address | Address to be granted the default admin role. |
-| _invoiceSubmitter | address | Address to be granted the invoice submitter role. |
-| _burner | address | Address to be granted the burner role. |
-| _invoicePaymentReceiver | address | Address to receive invoice payments. |
-| _tokenBridge | address | Address of the token bridge contract. |
-| _messageService | address | Address of the L2 message service contract. |
-| _l1LineaTokenBurner | address | Address of the L1 LINEA token burner contract. |
-| _lineaToken | address | Address of the LINEA token contract. |
-| _dex | address | Address of the DEX contract. |
-
 ### initializeRolesAndStorageVariables
 
 ```solidity
