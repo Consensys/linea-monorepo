@@ -133,7 +133,7 @@ interface IRollupRevenueVault {
 
   /**
    * @dev Emitted when the Rollup Revenue Vault is initialized.
-   * @param lastInvoiceDate The timestamp of the last invoice processed.
+   * @param lastInvoiceDate The default or starting timestamp for invoices less 1 second.
    * @param invoicePaymentReceiver The address that receives invoice payments.
    * @param tokenBridge The address of the token bridge contract.
    * @param messageService The address of the message service contract.

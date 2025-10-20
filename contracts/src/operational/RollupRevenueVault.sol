@@ -44,7 +44,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
   /**
    * @notice Initializes the contract state.
-   * @param _lastInvoiceDate Timestamp of the last invoice.
+   * @param _lastInvoiceDate The default or starting timestamp for invoices less 1 second.
    * @param _defaultAdmin Address to be granted the default admin role.
    * @param _invoiceSubmitter Address to be granted the invoice submitter role.
    * @param _burner Address to be granted the burner role.
@@ -84,7 +84,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
   /**
    * @notice Reinitializes the contract state for upgrade.
-   * @param _lastInvoiceDate Timestamp of the last invoice.
+   * @param _lastInvoiceDate The default or starting timestamp for invoices less 1 second.
    * @param _defaultAdmin Address to be granted the default admin role.
    * @param _invoiceSubmitter Address to be granted the invoice submitter role.
    * @param _burner Address to be granted the burner role.
