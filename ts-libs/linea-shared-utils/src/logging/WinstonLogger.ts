@@ -2,7 +2,7 @@
 import { Logger as LoggerClass, LoggerOptions, createLogger, format, transports } from "winston";
 import { EthersError } from "ethers";
 import { serialize, isString } from "@consensys/linea-sdk";
-import { ILogger } from "../core/utils/logging/ILogger";
+import { ILogger } from "./ILogger";
 
 export class WinstonLogger implements ILogger {
   private logger: LoggerClass;
@@ -140,7 +140,7 @@ export class WinstonLogger implements ILogger {
         (error.shortMessage?.includes("processing response error") ||
           error.info?.error?.message?.includes("processing response error")) &&
         error.code === "SERVER_ERROR" &&
-        error.info?.error?.code === -32603 // Internal JSON-RPC error (EIP-1474)
+        error.info?.error?.code === -32603
       );
     }
 

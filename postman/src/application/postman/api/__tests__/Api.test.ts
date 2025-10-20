@@ -2,7 +2,7 @@ import { Registry } from "prom-client";
 import { mock } from "jest-mock-extended";
 import { Api } from "../Api";
 import { IMetricsService } from "../../../../core/metrics/IMetricsService";
-import { ILogger } from "../../../../core/utils/logging/ILogger";
+import { ILogger } from "@consensys/linea-shared-utils";
 
 describe("Api", () => {
   let api: Api;

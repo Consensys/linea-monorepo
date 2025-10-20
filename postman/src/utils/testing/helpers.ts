@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Direction } from "@consensys/linea-sdk";
-import { ILogger } from "../../core/utils/logging/ILogger";
+import { ILogger } from "@consensys/linea-shared-utils";
 import { TEST_ADDRESS_1, TEST_CONTRACT_ADDRESS_1, TEST_CONTRACT_ADDRESS_2, TEST_MESSAGE_HASH } from "./constants";
 import { MessageStatus } from "../../core/enums";
 import { Message, MessageProps } from "../../core/entities/Message";

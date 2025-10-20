@@ -1,8 +1,7 @@
 import { DataSource } from "typeorm";
 import { LineaSDK, Direction } from "@consensys/linea-sdk";
-import { ILogger } from "../../../core/utils/logging/ILogger";
+import { ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
 import { TypeOrmMessageRepository } from "../persistence/repositories/TypeOrmMessageRepository";
-import { WinstonLogger } from "../../../utils/WinstonLogger";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import {
   MessageAnchoringProcessor,
