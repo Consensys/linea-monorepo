@@ -17,7 +17,7 @@ import (
 var _ ifaces.Accessor = &FromCoinAccessor{}
 
 // FromCoinAccessor implements [ifaces.Accessor] and represents the value of a
-// [coin.Info] of type [coin.Field]. It is sometime used to supply a coin to
+// [coin.Info] of type [coin.FieldExt]. It is sometime used to supply a coin to
 // a function requiring an accessor explicitly. For [github.com/consensys/linea-monorepo/prover/symbolic.Expression]
 // this should not be necessary as [coin.Info] already implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata].
 type FromCoinAccessor struct {
@@ -26,7 +26,7 @@ type FromCoinAccessor struct {
 }
 
 // NewFromCoin returns an [ifaces.Accessor] object symbolizing a
-// [coin.Info]. The supplied [coin.Info] must be of type [coin.Field] or the
+// [coin.Info]. The supplied [coin.Info] must be of type [coin.FieldExt] or the
 // function panics.
 func NewFromCoin(info coin.Info) ifaces.Accessor {
 	if info.Type != coin.FieldExt {

@@ -132,7 +132,7 @@ func (ctx *CompilationCtx) commitGateColumns() {
 		}
 
 		// Second rounds, after sampling HCP
-		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.Round+1, coin.Name(ctx.Sprintf("HCP")), coin.Field)
+		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.Round+1, coin.Name(ctx.Sprintf("HCP")), coin.FieldExt)
 
 		// And assigns the LRO polynomials
 		for i := 0; i < ctx.MaxNbInstances; i++ {
