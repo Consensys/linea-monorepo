@@ -172,23 +172,26 @@ export const incurPositiveYield = async (
 ) => {
   await incrementBalance(mockStakingVaultAddress, positiveYield);
   const userFunds = await yieldManager.userFunds(yieldProviderAddress);
-  await mockDashboard.setTotalValueReturn(userFunds + positiveYield);
+  const mockDashboardTotalValuePrev = await mockDashboard.totalValue();
+  const prevNegativeYield = mockDashboardTotalValuePrev < userFunds ? userFunds - mockDashboardTotalValuePrev : 0n;
+  await incrementMockDashboardTotalValue(mockDashboard, positiveYield);
   const yieldProviderYieldReportedCumulativePrev =
     await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress);
-  {
-    const [newReportedYield, outstandingNegativeYield] = await yieldManager
-      .connect(nativeYieldOperator)
-      .reportYield.staticCall(yieldProviderAddress, l2YieldRecipient);
-    expect(newReportedYield).eq(positiveYield - lstPrincipalPaid);
-    expect(outstandingNegativeYield).eq(0);
-  }
+
+  // Act
+  const [newReportedYield, outstandingNegativeYield] = await yieldManager
+    .connect(nativeYieldOperator)
+    .reportYield.staticCall(yieldProviderAddress, l2YieldRecipient);
+  expect(newReportedYield).eq(positiveYield - lstPrincipalPaid - prevNegativeYield);
+  expect(outstandingNegativeYield).eq(0);
   await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+  if (lstPrincipalPaid > 0n) {
+    await decrementMockDashboardTotalValue(mockDashboard, lstPrincipalPaid);
+  }
   // Obligations paid
-  expect(await yieldManager.userFunds(yieldProviderAddress)).eq(
-    userFunds + positiveYield - lstPrincipalPaid - lstPrincipalPaid,
-  );
+  expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds + newReportedYield - lstPrincipalPaid);
   expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(
-    yieldProviderYieldReportedCumulativePrev + positiveYield - lstPrincipalPaid,
+    yieldProviderYieldReportedCumulativePrev + positiveYield - lstPrincipalPaid - prevNegativeYield,
   );
   expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(await yieldManager.userFunds(yieldProviderAddress));
 };
@@ -263,4 +266,12 @@ export const executeUnstakePermissionless = async (
   const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode([VALIDATOR_WITNESS_TYPE], [validatorWitness]);
   // Arrange - first unstake
   await yieldManager.unstakePermissionless(yieldProviderAddress, withdrawalParams, withdrawalParamsProof);
+};
+
+export const incrementMockDashboardTotalValue = async (mockDashboard: MockDashboard, amount: bigint) => {
+  await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) + amount);
+};
+
+export const decrementMockDashboardTotalValue = async (mockDashboard: MockDashboard, amount: bigint) => {
+  await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - amount);
 };

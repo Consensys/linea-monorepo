@@ -9,6 +9,8 @@ import {
   fundLidoStVaultYieldProvider,
   getBalance,
   incrementBalance,
+  decrementMockDashboardTotalValue,
+  incrementMockDashboardTotalValue,
   incurNegativeYield,
   incurPositiveYield,
   setupLineaRollupMessageMerkleTree,
@@ -658,8 +660,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await mockDashboard.setWithdrawableValueReturn(stakingVaultBalance);
       let l1MessageBalance = await ethers.provider.getBalance(l1MessageServiceAddress);
       let userFunds = await yieldManager.userFunds(yieldProviderAddress);
-      console.log("weird", await getBalance(mockStakingVault));
-      console.log("weird", await mockDashboard.withdrawableValue());
       await setBalance(mockStakingVaultAddress, stakingVaultBalance); // Unsure why, there is some 1/10 flakiness going on where mock staking vault balance becomes 0 without any mutator calls
       await yieldManager.replenishWithdrawalReserve(yieldProviderAddress);
       expect(await ethers.provider.getBalance(l1MessageServiceAddress)).eq(l1MessageBalance + stakingVaultBalance);
@@ -829,6 +829,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Initial funding with 10 ETH
       const initialFundAmount = ONE_ETHER * 10n;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      await incrementMockDashboardTotalValue(mockDashboard, initialFundAmount);
 
       // More bridge funds arrive
       const secondFundAmount = ONE_ETHER * 10n;
@@ -836,6 +837,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await incrementBalance(l1MessageServiceAddress, secondFundAmount);
       await lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(secondFundAmount);
       await yieldManager.connect(nativeYieldOperator).fundYieldProvider(yieldProviderAddress, secondFundAmount);
+      await incrementMockDashboardTotalValue(mockDashboard, secondFundAmount);
 
       // Earn 5 ETH positive yield
       const firstPositiveYield = ONE_ETHER * 5n;
@@ -848,7 +850,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         l2YieldRecipient,
         firstPositiveYield,
       );
-
       // Negative yield event for -3 ETH
       const firstNegativeYield = ONE_ETHER * 3n;
       await incurNegativeYield(
@@ -889,6 +890,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       expect(await getBalance(mockStakingVault)).eq(stakingVaultBalance - (await lineaRollup.limitInWei()));
       expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + (await lineaRollup.limitInWei()));
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(lstLiabilityPrincipal);
+      await decrementMockDashboardTotalValue(mockDashboard, await lineaRollup.limitInWei());
 
       // Call pendingPermissionlessUnstake
       const unstakeAmount = ONE_ETHER * 5n;
@@ -902,12 +904,8 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         unstakeAmount,
       );
 
-      console.log("userFunds", await yieldManager.userFunds(yieldProviderAddress));
-      console.log(await getBalance(mockStakingVault));
-
       // Some more positive yield
       const secondPositiveYield = ONE_ETHER * 10n;
-
       await incurPositiveYield(
         yieldManager,
         mockDashboard,
@@ -922,17 +920,26 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await mockDashboard.setLiabilitySharesReturn(0);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
 
-      console.log("userFunds", await yieldManager.userFunds(yieldProviderAddress));
-      console.log(await getBalance(mockStakingVault));
+      /**
+       * ACCOUNTING STATE NOTE:
+       * At this point userFunds < stakingVault balance
+       * In a state of positive yield, `userFunds` + total `LSTPrincipal` minted = stakingVault balance
+       * So it should be acceptable for userFunds < stakingVault balance because
+       * - LSTPrincipal is an advance of funds to the user, so the total amount of funds users have access to it `userFunds` + total `LSTPrincipal` minted
+       * - The additional stakingVault balance serves as a buffer for future negative yield?
+       * - But is it an issue that we cannot withdraw it?
+       * - Below the 'replenishWithdrawalReserve' can only withdraw up to `userFunds` and not the entire stakingVault balance
+       */
 
       // PermissionlessRebalance
       stakingVaultBalance = await getBalance(mockStakingVault);
       l1MessageServiceBalance = await getBalance(lineaRollup);
+      const userFunds = await yieldManager.userFunds(yieldProviderAddress);
       await mockDashboard.setWithdrawableValueReturn(stakingVaultBalance);
       await yieldManager.connect(nonAuthorizedAccount).replenishWithdrawalReserve(yieldProviderAddress);
 
-      // expect(await getBalance(mockStakingVault)).eq(0);
-      // expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + stakingVaultBalance);
+      expect(await getBalance(mockStakingVault)).eq(stakingVaultBalance - userFunds);
+      expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + userFunds);
 
       // Kick off ossification
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
