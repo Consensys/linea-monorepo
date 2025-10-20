@@ -946,6 +946,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 		ctx.Items.Precomputeds.MerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(
 			ctx.PrecomputedMerkleRootName(i),
 			smartvectors.NewConstant(tree.Root[i], 1),
+			true,
 		)
 	}
 }
