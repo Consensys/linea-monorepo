@@ -1,10 +1,8 @@
 package wizard
 
 import (
-	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -15,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Proof generically represents a proof obtained from the wizard. This object does not
@@ -54,7 +53,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() hash.StateStorer
+	Fs() *hashtypes.Poseidon2FieldHasherDigest
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -94,7 +93,7 @@ type VerifierRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS hash.StateStorer
+	FS *hashtypes.Poseidon2FieldHasherDigest
 
 	// State stores arbitrary data that can be used by the verifier. This
 	// can be used to communicate values between verifier states.
@@ -169,11 +168,11 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
 		QueriesParams: proof.QueriesParams,
-		FS:            poseidon2.NewMerkleDamgardHasher(),
+		FS:            hashtypes.Poseidon2(),
 		State:         make(map[string]interface{}),
 	}
 
-	fiatshamir.Update(runtime.FS, c.FiatShamirSetup)
+	fiatshamir.Update(runtime.FS, c.FiatShamirSetup[:]...)
 
 	/*
 		Insert the verifying key into the messages
@@ -269,9 +268,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 	}
 
-	seed := run.FS.State()
-	var kSeed koalabear.Element
-	kSeed.SetBytes(seed[:1]) // TODO @thomas why take only the first byte ?
+	seed := types.Bytes32ToHash(types.AsBytes32(run.FS.State()))
 
 	/*
 		Then assigns the coins for the new round. As the round incrementation
@@ -284,7 +281,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		value := info.Sample(run.FS, kSeed)
+		value := info.Sample(run.FS, seed)
 		run.Coins.InsertNew(myCoin, value)
 	}
 }
@@ -300,7 +297,7 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 		and that it has the correct type
 	*/
 	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed && infos.Type != coin.FieldExt {
+	if infos.Type != coin.FieldExt {
 		utils.Panic("Coin %v was registered with type %v but got %v", name, infos.Type, coin.Field)
 	}
 	// If this panics, it means we generates the coins wrongly
@@ -314,20 +311,6 @@ func (run *VerifierRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	}
 	// If this panics, it means we generates the coins wrongly
 	return run.Coins.MustGet(name).(fext.Element)
-}
-
-// GetRandomCoinFromSeed returns a field element random based on the seed.
-func (run *VerifierRuntime) GetRandomCoinFromSeed(name coin.Name) field.Element {
-	/*
-		Early check, ensures the coin has been registered at all
-		and that it has the correct type
-	*/
-	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.FieldFromSeed {
-		utils.Panic("Coin was registered as %v but expected %v", infos.Type, coin.FieldFromSeed)
-	}
-	// If this panics, it means we generates the coins wrongly
-	return run.Coins.MustGet(name).(field.Element)
 }
 
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The
@@ -518,7 +501,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() hash.StateStorer {
+func (run *VerifierRuntime) Fs() *hashtypes.Poseidon2FieldHasherDigest {
 	return run.FS
 }
 

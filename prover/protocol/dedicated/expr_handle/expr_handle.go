@@ -65,8 +65,8 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 			evalInputs[k] = w
 		case coin.Info:
 			if meta.IsBase() {
-				x := run.GetRandomCoinField(meta.Name)
-				evalInputs[k] = sv.NewConstant(x, a.DomainSize())
+				utils.Panic("unsupported, coins are always over field extensions")
+
 			} else {
 				x := run.GetRandomCoinFieldExt(meta.Name)
 				evalInputs[k] = sv.NewConstantExt(x, a.DomainSize())
