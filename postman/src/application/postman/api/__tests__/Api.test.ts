@@ -1,13 +1,13 @@
 import { Registry } from "prom-client";
 import { mock } from "jest-mock-extended";
 import { Api } from "../Api";
-import { IMetricsService } from "../../../../core/metrics/IMetricsService";
+import { IMetricsService, LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
 import { ILogger } from "@consensys/linea-shared-utils";
 
 describe("Api", () => {
   let api: Api;
   const mockConfig = { port: 3000 };
-  const mockMetricService = mock<IMetricsService>();
+  const mockMetricService = mock<IMetricsService<LineaPostmanMetrics>>();
   const mockLogger = mock<ILogger>();
 
   beforeEach(async () => {

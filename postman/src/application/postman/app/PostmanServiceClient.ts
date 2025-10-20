@@ -35,13 +35,14 @@ import {
   IMetricsService,
   ISponsorshipMetricsUpdater,
   ITransactionMetricsUpdater,
+  LineaPostmanMetrics,
 } from "../../../../src/core/metrics";
 import { SponsorshipMetricsUpdater } from "../api/metrics/SponsorshipMetricsUpdater";
 import { TransactionMetricsUpdater } from "../api/metrics/TransactionMetricsUpdater";
 
 export class PostmanServiceClient {
   // Metrics services
-  private singletonMetricsService: IMetricsService;
+  private singletonMetricsService: IMetricsService<LineaPostmanMetrics>;
   private messageMetricsUpdater: IMessageMetricsUpdater;
   private sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater;
   private transactionMetricsUpdater: ITransactionMetricsUpdater;

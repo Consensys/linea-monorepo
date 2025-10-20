@@ -16,7 +16,7 @@ import { IMetricsService, LineaPostmanMetrics } from "../../../../core/metrics/I
  * MetricsService class that implements the IMetricsService interface.
  * This class provides methods to create and manage Prometheus metrics.
  */
-export class SingletonMetricsService implements IMetricsService {
+export class SingletonMetricsService implements IMetricsService<LineaPostmanMetrics> {
   private readonly registry: Registry;
   private readonly counters: Map<LineaPostmanMetrics, Counter<string>>;
   private readonly gauges: Map<LineaPostmanMetrics, Gauge<string>>;
