@@ -60,9 +60,6 @@ abstract contract YieldManagerStorageLayout {
    *                                - Increases 1:1 with userFunds, as reported yield is distributed to users.
    * @param lstLiabilityPrincipal LST Liability Principal (denominated in ETH) as of the last yield report
    *                              - YieldProvider contract will mutate this field
-   *                              - All decrements of 'lstLiabilityPrincipal' are matched 1:1 with decrements of `userFunds`
-   *                                and `_userFundsInYieldProvidersTotal`. This is because `lstLiabilityPrincipal` was initially
-   *                                incremented by providing a user an advance on staked funds.
    */
   struct YieldProviderStorage {
     // Slot 0
@@ -76,6 +73,7 @@ abstract contract YieldManagerStorageLayout {
     uint96 yieldProviderIndex;
     uint256 userFunds;
     uint256 yieldReportedCumulative;
+    // Exclusively mutated by YieldProvider, not YieldManager.
     uint256 lstLiabilityPrincipal;
   }
 

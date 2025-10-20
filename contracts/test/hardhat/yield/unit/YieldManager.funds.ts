@@ -230,8 +230,8 @@ describe("YieldManager contract - ETH transfer operations", () => {
         .to.emit(yieldManager, "YieldProviderFunded")
         .withArgs(mockYieldProviderAddress, transferAmount, lstPrincipalPayment, transferAmount - lstPrincipalPayment);
 
-      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(transferAmount - lstPrincipalPayment);
-      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(transferAmount - lstPrincipalPayment);
+      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(transferAmount);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(transferAmount);
     });
   });
 
@@ -966,8 +966,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
         );
 
       expect(await ethers.provider.getBalance(l1MessageService)).to.equal(reserveBalanceBefore + targetDeficit);
-      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(0);
-      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0);
+      // LST principal payment is not counted as user funds decrement, but as negative yield in the next reportYield call.
+      // We tolerate userFunds > withdrawableValue, but not the other way round.
+      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(lstPrincipalPayment);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(lstPrincipalPayment);
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
     });
   });

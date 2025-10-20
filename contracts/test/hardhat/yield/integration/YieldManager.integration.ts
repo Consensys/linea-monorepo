@@ -920,26 +920,14 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await mockDashboard.setLiabilitySharesReturn(0);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
 
-      /**
-       * ACCOUNTING STATE NOTE:
-       * At this point userFunds < stakingVault balance
-       * In a state of positive yield, `userFunds` + total `LSTPrincipal` minted = stakingVault balance
-       * So it should be acceptable for userFunds < stakingVault balance because
-       * - LSTPrincipal is an advance of funds to the user, so the total amount of funds users have access to it `userFunds` + total `LSTPrincipal` minted
-       * - The additional stakingVault balance serves as a buffer for future negative yield?
-       * - But is it an issue that we cannot withdraw it?
-       * - Below the 'replenishWithdrawalReserve' can only withdraw up to `userFunds` and not the entire stakingVault balance
-       */
-
       // PermissionlessRebalance
       stakingVaultBalance = await getBalance(mockStakingVault);
       l1MessageServiceBalance = await getBalance(lineaRollup);
-      const userFunds = await yieldManager.userFunds(yieldProviderAddress);
       await mockDashboard.setWithdrawableValueReturn(stakingVaultBalance);
       await yieldManager.connect(nonAuthorizedAccount).replenishWithdrawalReserve(yieldProviderAddress);
 
-      expect(await getBalance(mockStakingVault)).eq(stakingVaultBalance - userFunds);
-      expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + userFunds);
+      expect(await getBalance(mockStakingVault)).eq(stakingVaultBalance - stakingVaultBalance);
+      expect(await getBalance(lineaRollup)).eq(l1MessageServiceBalance + stakingVaultBalance);
 
       // Kick off ossification
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);

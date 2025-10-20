@@ -119,10 +119,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(isLstLiabilityPrincipalChanged).eq(true);
       expect(lstLiabilityPrincipalSynced).eq(ethValueOfLidoLiabilityShares);
       const lstLiabilityPrincipalDecrement = liabilityPrincipalBefore - BigInt(ethValueOfLidoLiabilityShares);
-      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(
-        userFundsInYieldProvidersTotalBefore - lstLiabilityPrincipalDecrement,
-      );
-      expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore - lstLiabilityPrincipalDecrement);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
+      expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
         liabilityPrincipalBefore - lstLiabilityPrincipalDecrement,
       );
@@ -296,12 +294,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(liabilityPaidETH).eq(liabilityShares);
       const syncExternalLiabilitySettlementDifference =
         liabilityPrincipalBefore - ethValueOfLidoLiabilitySharesAfterRebalance;
-      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(
-        userFundsInYieldProvidersTotalBefore - syncExternalLiabilitySettlementDifference,
-      );
-      expect(await yieldManager.userFunds(yieldProvider)).eq(
-        userFundsBefore - syncExternalLiabilitySettlementDifference,
-      );
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
+      expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
         liabilityPrincipalBefore - syncExternalLiabilitySettlementDifference,
       );
@@ -446,10 +440,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       // Arrange
       expect(lstLiabilityPaid).eq(ONE_ETHER);
       const expectedExternalLiabilitySettlement = liabilityPrincipalBefore - ethValueOfLidoLiabilityShare;
-      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(
-        userFundsInYieldProvidersTotalBefore - expectedExternalLiabilitySettlement,
-      );
-      expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore - expectedExternalLiabilitySettlement);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
+      expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
         liabilityPrincipalBefore - expectedExternalLiabilitySettlement - lstLiabilityPaid,
       );
@@ -852,10 +844,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
         vaultBalanceBefore - operatorFees - expectedObligationsPaid - expectedLiabilityPayment,
       );
       const expectedExternalLiabilitySettlement = initialVaultBalance - ethValueOfLidoLiabilitySharesAfterRebalance;
-      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(
-        userFundsInYieldProvidersTotalBefore - expectedExternalLiabilitySettlement,
-      );
-      expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore - expectedExternalLiabilitySettlement);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
+      expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
         lstLiabilityPrincipalBefore - expectedExternalLiabilitySettlement,
       );

@@ -189,7 +189,7 @@ export const incurPositiveYield = async (
     await decrementMockDashboardTotalValue(mockDashboard, lstPrincipalPaid);
   }
   // Obligations paid
-  expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds + newReportedYield - lstPrincipalPaid);
+  expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds + newReportedYield);
   expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(
     yieldProviderYieldReportedCumulativePrev + positiveYield - lstPrincipalPaid - prevNegativeYield,
   );

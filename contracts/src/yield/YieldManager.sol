@@ -401,8 +401,8 @@ contract YieldManager is
       abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
     );
     uint256 fetchedWithdrawableAmount = abi.decode(data, (uint256));
-    // Avoid underflow with 'userFunds - withdrawableValue'.
-    // Assumption that funds on YieldProvider are eventually available for withdrawal after next reportYield.
+    // We tolerate userFunds > withdrawableValue, as this means we have incurred negative yield. We assume it is a temporary situation that is fixed with incoming yield.
+    // We don't tolerate the reverse, because it means existing funds on the YieldProvider are unavailable for withdrawal.
     withdrawableAmount = Math256.min(fetchedWithdrawableAmount, _getYieldProviderStorage(_yieldProvider).userFunds);
   }
 
@@ -483,14 +483,6 @@ contract YieldManager is
       abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _availableFunds))
     );
     lstPrincipalPaid = abi.decode(data, (uint256));
-    _getYieldManagerStorage().userFundsInYieldProvidersTotal = Math256.safeSub(
-      _getYieldManagerStorage().userFundsInYieldProvidersTotal,
-      lstPrincipalPaid
-    );
-    _getYieldProviderStorage(_yieldProvider).userFunds = Math256.safeSub(
-      _getYieldProviderStorage(_yieldProvider).userFunds,
-      lstPrincipalPaid
-    );
   }
 
   /**
