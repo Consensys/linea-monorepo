@@ -1,0 +1,39 @@
+{
+  "name": "@consensys/linea-native-yield-cron-job",
+  "version": "1.0.0",
+  "author": "Consensys Software Inc.",
+  "license": "(MIT OR Apache-2.0)",
+  "description": "",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "lint:ts": "npx eslint '**/*.ts'",
+    "lint:ts:fix": "npx eslint --fix '**/*.ts'",
+    "prettier": "prettier -c '**/*.ts'",
+    "prettier:fix": "prettier -w '**/*.ts'",
+    "clean": "rimraf dist node_modules coverage tsconfig.build.tsbuildinfo",
+    "build": "tsc -p tsconfig.build.json",
+    "build:runSdk": "tsc ./scripts/runSdk.ts",
+    "test": "npx jest --bail --detectOpenHandles --forceExit",
+    "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix",
+    "migration:create": "npx ts-node -P ./tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create ./src/application/postman/persistence/migrations/${MIGRATION_NAME}"
+  },
+  "dependencies": {
+    "@consensys/linea-sdk": "workspace:*",
+    "@consensys/linea-shared-utils": "workspace:*",
+    "dotenv": "catalog:",
+    "winston": "catalog:"
+  },
+  "devDependencies": {
+    "@jest/globals": "catalog:",
+    "@types/jest": "catalog:",
+    "@types/yargs": "catalog:",
+    "jest": "catalog:",
+    "jest-mock-extended": "catalog:",
+    "ts-jest": "catalog:",
+    "yargs": "catalog:"
+  },
+  "files": [
+    "dist/**/*"
+  ]
+}

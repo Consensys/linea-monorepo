@@ -9,6 +9,7 @@ packages:
   - 'e2e/**'
   - 'sdk/**'
   - 'postman/**'
+  - 'native-yield-operations/**'
   - 'operations/**'
   - 'bridge-ui/**'
   - 'ts-libs/**'
