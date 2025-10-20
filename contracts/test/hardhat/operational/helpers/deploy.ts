@@ -1,7 +1,7 @@
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "hardhat";
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
-import { ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE } from "../constants";
+import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "../constants";
 import { L2MessageService, RollupRevenueVault, TestERC20, TestDexAdapter } from "../../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./before";
 import { deployTokenBridge } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
@@ -86,7 +86,7 @@ export async function deployRollupRevenueVaultFixture() {
         await dexAdapter.getAddress(),
       ],
       {
-        initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+        initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor", "incorrect-initializer-order"],
       },
     )) as unknown as RollupRevenueVault;

@@ -21,7 +21,7 @@ import {
   generateRandomBytes,
 } from "../common/helpers";
 import { deployUpgradableFromFactory } from "../common/deployment";
-import { ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE } from "./constants";
+import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "./constants";
 
 describe("RollupRevenueVault", () => {
   let rollupRevenueVault: RollupRevenueVault;
@@ -65,7 +65,25 @@ describe("RollupRevenueVault", () => {
     });
   });
 
-  describe("Initialization", () => {
+  describe("initializeRolesAndStorageVariables", () => {
+    it("Should revert when reinitializing twice", async () => {
+      await expectRevertWithReason(
+        rollupRevenueVault.initializeRolesAndStorageVariables(
+          await time.latest(),
+          admin.address,
+          invoiceSubmitter.address,
+          burner.address,
+          invoicePaymentReceiver.address,
+          await tokenBridge.getAddress(),
+          await messageService.getAddress(),
+          l1LineaTokenBurner.address,
+          await l2LineaToken.getAddress(),
+          await dexAdapter.getAddress(),
+        ),
+        "Initializable: contract is already initialized",
+      );
+    });
+
     it("should revert if lastInvoiceDate is zero", async () => {
       const deployCall = deployUpgradableFromFactory(
         "RollupRevenueVault",
@@ -82,7 +100,7 @@ describe("RollupRevenueVault", () => {
           await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -105,7 +123,7 @@ describe("RollupRevenueVault", () => {
           await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -128,7 +146,7 @@ describe("RollupRevenueVault", () => {
           await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -151,7 +169,7 @@ describe("RollupRevenueVault", () => {
           await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -174,7 +192,7 @@ describe("RollupRevenueVault", () => {
           await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -197,7 +215,7 @@ describe("RollupRevenueVault", () => {
           await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -220,7 +238,7 @@ describe("RollupRevenueVault", () => {
           await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -243,7 +261,7 @@ describe("RollupRevenueVault", () => {
           await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -266,7 +284,7 @@ describe("RollupRevenueVault", () => {
           await dexAdapter.getAddress(),
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -289,7 +307,7 @@ describe("RollupRevenueVault", () => {
           ADDRESS_ZERO,
         ],
         {
-          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor"],
         },
       );
@@ -310,58 +328,6 @@ describe("RollupRevenueVault", () => {
       expect(await rollupRevenueVault.l1LineaTokenBurner()).to.equal(l1LineaTokenBurner.address);
       expect(await rollupRevenueVault.lineaToken()).to.equal(await l2LineaToken.getAddress());
       expect(await rollupRevenueVault.dexAdapter()).to.equal(await dexAdapter.getAddress());
-    });
-  });
-
-  describe("initializeRolesAndStorageVariables", () => {
-    it("Should revert when reinitializing twice", async () => {
-      const txPromise = rollupRevenueVault.initializeRolesAndStorageVariables(
-        await time.latest(),
-        admin.address,
-        invoiceSubmitter.address,
-        burner.address,
-        invoicePaymentReceiver.address,
-        await tokenBridge.getAddress(),
-        await messageService.getAddress(),
-        l1LineaTokenBurner.address,
-        await l2LineaToken.getAddress(),
-        await dexAdapter.getAddress(),
-      );
-
-      await expectEvent(rollupRevenueVault, txPromise, "Initialized", [2n]);
-
-      await expectRevertWithReason(
-        rollupRevenueVault.initializeRolesAndStorageVariables(
-          await time.latest(),
-          admin.address,
-          invoiceSubmitter.address,
-          burner.address,
-          invoicePaymentReceiver.address,
-          await tokenBridge.getAddress(),
-          await messageService.getAddress(),
-          l1LineaTokenBurner.address,
-          await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
-        ),
-        "Initializable: contract is already initialized",
-      );
-    });
-
-    it("Should reinitialize the contract", async () => {
-      const txPromise = rollupRevenueVault.initializeRolesAndStorageVariables(
-        await time.latest(),
-        admin.address,
-        invoiceSubmitter.address,
-        burner.address,
-        invoicePaymentReceiver.address,
-        await tokenBridge.getAddress(),
-        await messageService.getAddress(),
-        l1LineaTokenBurner.address,
-        await l2LineaToken.getAddress(),
-        await dexAdapter.getAddress(),
-      );
-
-      await expectEvent(rollupRevenueVault, txPromise, "Initialized", [2n]);
     });
   });
 
@@ -656,7 +622,6 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       await expectRevertWithReason(
@@ -682,7 +647,6 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       await expectRevertWithCustomError(
@@ -710,7 +674,6 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       await expectRevertWithCustomError(
@@ -783,7 +746,6 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       await expectEvent(

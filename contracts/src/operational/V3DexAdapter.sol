@@ -45,13 +45,8 @@ contract V3DexAdapter is IV3DexAdapter {
    * @dev No ETH is kept in the contract after the swap due to exactInputSingle swapping.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
-   * @param _sqrtPriceLimitX96 Price limit of the swap as a Q64.96 value.
    */
-  function swap(
-    uint256 _minLineaOut,
-    uint256 _deadline,
-    uint160 _sqrtPriceLimitX96
-  ) external payable returns (uint256 amountOut) {
+  function swap(uint256 _minLineaOut, uint256 _deadline) external payable returns (uint256 amountOut) {
     require(msg.value > 0, NoEthSend());
     require(_deadline > block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
@@ -68,7 +63,8 @@ contract V3DexAdapter is IV3DexAdapter {
         deadline: _deadline,
         amountIn: msg.value,
         amountOutMinimum: _minLineaOut,
-        sqrtPriceLimitX96: _sqrtPriceLimitX96
+        /// @dev Setting to 0 because _minLineaOut handles slippage protection.
+        sqrtPriceLimitX96: 0
       })
     );
   }

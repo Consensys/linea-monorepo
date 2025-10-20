@@ -43,46 +43,6 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   }
 
   /**
-   * @notice Initializes the contract state.
-   * @param _lastInvoiceDate Timestamp of the last invoice.
-   * @param _defaultAdmin Address to be granted the default admin role.
-   * @param _invoiceSubmitter Address to be granted the invoice submitter role.
-   * @param _burner Address to be granted the burner role.
-   * @param _invoicePaymentReceiver Address to receive invoice payments.
-   * @param _tokenBridge Address of the token bridge contract.
-   * @param _messageService Address of the L2 message service contract.
-   * @param _l1LineaTokenBurner Address of the L1 LINEA token burner contract.
-   * @param _lineaToken Address of the LINEA token contract.
-   * @param _dexAdapter Address of the DEX adapter contract.
-   */
-  function initialize(
-    uint256 _lastInvoiceDate,
-    address _defaultAdmin,
-    address _invoiceSubmitter,
-    address _burner,
-    address _invoicePaymentReceiver,
-    address _tokenBridge,
-    address _messageService,
-    address _l1LineaTokenBurner,
-    address _lineaToken,
-    address _dexAdapter
-  ) external initializer {
-    __AccessControl_init();
-    __RollupRevenueVault_init(
-      _lastInvoiceDate,
-      _defaultAdmin,
-      _invoiceSubmitter,
-      _burner,
-      _invoicePaymentReceiver,
-      _tokenBridge,
-      _messageService,
-      _l1LineaTokenBurner,
-      _lineaToken,
-      _dexAdapter
-    );
-  }
-
-  /**
    * @notice Reinitializes the contract state for upgrade.
    * @param _lastInvoiceDate Timestamp of the last invoice.
    * @param _defaultAdmin Address to be granted the default admin role.
