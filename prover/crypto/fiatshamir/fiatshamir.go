@@ -83,13 +83,6 @@ func UpdateSV(h *hashtypes.Poseidon2FieldHasherDigest, sv smartvectors.SmartVect
 	Update(h, vec...)
 }
 
-// RandomField generates and returns a single field element from the Fiat-Shamir
-// transcript.
-func RandomField(h *hashtypes.Poseidon2FieldHasherDigest) field.Element {
-	s := h.SumElements(nil)
-	return s[0]
-}
-
 func RandomFext(h *hashtypes.Poseidon2FieldHasherDigest) fext.Element {
 	s := h.SumElements(nil)
 	var res fext.Element
