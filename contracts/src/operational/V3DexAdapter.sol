@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
-import { IV3DexSwap } from "./interfaces/IV3DexSwap.sol";
+import { IV3DexAdapter } from "./interfaces/IV3DexAdapter.sol";
 import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
 
 /**
- * @title V3DexSwap.
+ * @title V3DexAdapter.
  * @dev A contract for swapping tokens on a decentralized exchange.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract V3DexSwap is IV3DexSwap {
+contract V3DexAdapter is IV3DexAdapter {
   /// @notice Tick spacing of the pool.
   uint24 public immutable POOL_TICK_SPACING;
   /// @notice Address of the Swap Router contract.
