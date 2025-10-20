@@ -25,8 +25,8 @@ import (
 const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit   = 1 << 19
-	fixedNbRowExternalHasher = 1 << 15
+	fixedNbRowPlonkCircuit   = 1 << 18
+	fixedNbRowExternalHasher = 1 << 14
 	fixedNbPublicInput       = 1 << 10
 
 	// initialCompilerSize sets the target number of rows of the first invokation
