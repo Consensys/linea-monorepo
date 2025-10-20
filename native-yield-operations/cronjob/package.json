@@ -22,16 +22,16 @@
     "@consensys/linea-sdk": "workspace:*",
     "@consensys/linea-shared-utils": "workspace:*",
     "dotenv": "catalog:",
-    "winston": "catalog:"
+    "winston": "catalog:",
+    "viem": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@jest/globals": "catalog:",
     "@types/jest": "catalog:",
-    "@types/yargs": "catalog:",
     "jest": "catalog:",
     "jest-mock-extended": "catalog:",
-    "ts-jest": "catalog:",
-    "yargs": "catalog:"
+    "ts-jest": "catalog:"
   },
   "files": [
     "dist/**/*"

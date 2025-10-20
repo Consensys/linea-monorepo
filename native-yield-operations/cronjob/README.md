@@ -1,5 +1,9 @@
 # Linea Native Yield Cron Job
 
+Trigger
+- Event-based on Lido contract
+- Fallback to cronjob
+
 TODO
 
 ## Overview
