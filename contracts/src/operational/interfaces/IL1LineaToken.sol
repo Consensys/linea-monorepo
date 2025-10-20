@@ -16,6 +16,7 @@ interface IL1LineaToken {
   /**
    * @dev Returns the amount of tokens owned by `account`.
    * @param account The address of the account to query.
+   * @return The amount of tokens owned by `account`.
    */
   function balanceOf(address account) external view returns (uint256);
 

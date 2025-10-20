@@ -83,6 +83,25 @@ describe("L1LineaTokenBurner", () => {
       );
     });
 
+    it("Should emit an event when initialized", async () => {
+      const contract = await deployFromFactory(
+        "L1LineaTokenBurner",
+        await messageService.getAddress(),
+        await lineaToken.getAddress(),
+      );
+
+      const receipt = await contract.deploymentTransaction()?.wait();
+      const logs = receipt?.logs;
+
+      expect(logs).to.have.lengthOf(1);
+
+      const event = l1LineaTokenBurner.interface.parseLog(logs![0]);
+      expect(event).is.not.null;
+      expect(event!.name).to.equal("L1LineaTokenBurnerInitialized");
+      expect(event!.args.messageService).to.equal(await messageService.getAddress());
+      expect(event!.args.lineaToken).to.equal(await lineaToken.getAddress());
+    });
+
     it("Should set the correct addresses", async () => {
       const lineaTokenAddress = await l1LineaTokenBurner.LINEA_TOKEN();
       const messageServiceAddress = await l1LineaTokenBurner.MESSAGE_SERVICE();

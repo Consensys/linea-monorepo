@@ -130,4 +130,24 @@ interface IRollupRevenueVault {
    * @param newValue The new invoice payment receiver address.
    */
   event InvoicePaymentReceiverUpdated(address previousValue, address newValue);
+
+  /**
+   * @dev Emitted when the Rollup Revenue Vault is initialized.
+   * @param lastInvoiceDate The timestamp of the last invoice processed.
+   * @param invoicePaymentReceiver The address that receives invoice payments.
+   * @param tokenBridge The address of the token bridge contract.
+   * @param messageService The address of the message service contract.
+   * @param l1LineaTokenBurner The address of the L1 LINEA token burner contract.
+   * @param lineaToken The address of the LINEA token contract.
+   * @param dex The address of the DEX contract.
+   */
+  event RollupRevenueVaultInitialized(
+    uint256 lastInvoiceDate,
+    address invoicePaymentReceiver,
+    address tokenBridge,
+    address messageService,
+    address l1LineaTokenBurner,
+    address lineaToken,
+    address dex
+  );
 }

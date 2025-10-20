@@ -157,6 +157,16 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     l1LineaTokenBurner = _l1LineaTokenBurner;
     lineaToken = _lineaToken;
     dex = _dex;
+
+    emit RollupRevenueVaultInitialized(
+      _lastInvoiceDate,
+      _invoicePaymentReceiver,
+      _tokenBridge,
+      _messageService,
+      _l1LineaTokenBurner,
+      _lineaToken,
+      _dex
+    );
   }
 
   /**
@@ -214,9 +224,12 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     uint256 numLineaTokens = abi.decode(returnData, (uint256));
     require(numLineaTokens > 0, ZeroLineaTokensReceived());
 
-    IERC20(lineaToken).approve(address(tokenBridge), numLineaTokens);
+    address lineaTokenAddress = lineaToken;
+    TokenBridge tokenBridgeContract = tokenBridge;
 
-    tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, numLineaTokens, l1LineaTokenBurner);
+    IERC20(lineaTokenAddress).approve(address(tokenBridgeContract), numLineaTokens);
+
+    tokenBridgeContract.bridgeToken{ value: minimumFee }(lineaTokenAddress, numLineaTokens, l1LineaTokenBurner);
 
     emit EthBurntSwappedAndBridged(ethToBurn, numLineaTokens);
   }
