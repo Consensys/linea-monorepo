@@ -102,7 +102,7 @@ describe("V3DexSwap", () => {
     it("Should revert when msg.value == 0", async () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_MINUTE_IN_SECONDS;
-      await expectRevertWithCustomError(dexSwap, dexSwap.swap(minLineaOut, deadline, 0n, { value: 0n }), "NoEthSend");
+      await expectRevertWithCustomError(dexSwap, dexSwap.swap(minLineaOut, deadline, { value: 0n }), "NoEthSend");
     });
 
     it("Should revert when deadline is in the past", async () => {
@@ -111,7 +111,7 @@ describe("V3DexSwap", () => {
       const ethValueToSwap = ethers.parseEther("1");
       await expectRevertWithCustomError(
         dexSwap,
-        dexSwap.swap(minLineaOut, deadline, 0n, { value: ethValueToSwap }),
+        dexSwap.swap(minLineaOut, deadline, { value: ethValueToSwap }),
         "DeadlineInThePast",
       );
     });
@@ -121,7 +121,7 @@ describe("V3DexSwap", () => {
       const ethValueToSwap = ethers.parseEther("1");
       await expectRevertWithCustomError(
         dexSwap,
-        dexSwap.swap(0n, deadline, 0n, { value: ethValueToSwap }),
+        dexSwap.swap(0n, deadline, { value: ethValueToSwap }),
         "ZeroMinLineaOutNotAllowed",
       );
     });
@@ -132,7 +132,7 @@ describe("V3DexSwap", () => {
 
       const ethValueToSwap = ethers.parseEther("1");
       const rollupRevenueVaultLineaTokensBalanceBefore = await lineaToken.balanceOf(rollupRevenueVault.address);
-      await dexSwap.connect(rollupRevenueVault).swap(minLineaOut, deadline, 0n, { value: ethValueToSwap });
+      await dexSwap.connect(rollupRevenueVault).swap(minLineaOut, deadline, { value: ethValueToSwap });
 
       const rollupRevenueVaultLineaTokensBalanceAfter = await lineaToken.balanceOf(rollupRevenueVault.address);
       expect(rollupRevenueVaultLineaTokensBalanceAfter).to.equal(
