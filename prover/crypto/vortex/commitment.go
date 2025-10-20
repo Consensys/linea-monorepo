@@ -120,6 +120,8 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 		}
 	})
 
+	// Free any temporary allocations that are now unreachable
+	runtime.GC()
 	return encodedMatrix
 }
 
