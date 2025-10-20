@@ -25,7 +25,7 @@ type Poseidon2FieldHasherDigest struct {
 func Poseidon2() *Poseidon2FieldHasherDigest {
 	var maxVal field.Octuplet // This stores the maximal value for each element
 	for i := range maxVal {
-		maxVal[i] = field.NewFromString("-1") // Initialize max field value (field modulus - 1)
+		maxVal[i] = field.MaxVal // Initialize max field value (field modulus - 1)
 	}
 	poseidon2FieldHasherDigest := &Poseidon2FieldHasherDigest{
 		maxValue:    types.HashToBytes32(maxVal),
