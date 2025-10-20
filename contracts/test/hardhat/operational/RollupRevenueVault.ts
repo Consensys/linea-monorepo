@@ -59,7 +59,12 @@ describe("RollupRevenueVault", () => {
       await expectEvent(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "EthReceived", [value]);
     });
 
-    it("Should fail to send eth to the rollupRevenueVault contract through the fallback function", async () => {
+    it("Should fail to send eth to the rollupRevenueVault contract through the fallback function when msg.value == 0", async () => {
+      const value = 0n;
+      await expectRevertWithCustomError(rollupRevenueVault, sendEthToContract(value, "0x1234"), "NoEthSent");
+    });
+
+    it("Should send eth to the rollupRevenueVault contract through the fallback function", async () => {
       const value = ethers.parseEther("1");
       await expectEvent(rollupRevenueVault, sendEthToContract(value, "0x1234"), "EthReceived", [value]);
     });

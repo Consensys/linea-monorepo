@@ -283,6 +283,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @notice Fallback function - Receives Funds.
    */
   fallback() external payable {
+    require(msg.value > 0, NoEthSent());
     emit EthReceived(msg.value);
   }
 
