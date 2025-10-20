@@ -105,7 +105,7 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs hashtypes.Poseidon2FieldHasher, seed field.Element) interface{} {
+func (info *Info) Sample(fs *hashtypes.Poseidon2FieldHasherDigest, seed field.Element) interface{} {
 	switch info.Type {
 	case Field:
 		return fiatshamir.RandomField(fs)

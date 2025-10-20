@@ -31,11 +31,11 @@ import (
 //
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 
-func Update(h hashtypes.Poseidon2FieldHasher, vec ...field.Element) {
+func Update(h *hashtypes.Poseidon2FieldHasherDigest, vec ...field.Element) {
 	h.WriteElements(vec)
 }
 
-func UpdateExt(h hashtypes.Poseidon2FieldHasher, vec ...fext.Element) {
+func UpdateExt(h *hashtypes.Poseidon2FieldHasherDigest, vec ...fext.Element) {
 	for _, f := range vec {
 		h.WriteElement(f.B0.A0)
 		h.WriteElement(f.B0.A1)
@@ -43,7 +43,7 @@ func UpdateExt(h hashtypes.Poseidon2FieldHasher, vec ...fext.Element) {
 		h.WriteElement(f.B1.A1)
 	}
 }
-func UpdateGeneric(h hashtypes.Poseidon2FieldHasher, vec ...fext.GenericFieldElem) {
+func UpdateGeneric(h *hashtypes.Poseidon2FieldHasherDigest, vec ...fext.GenericFieldElem) {
 	if len(vec) == 0 {
 		return
 	}
@@ -57,7 +57,7 @@ func UpdateGeneric(h hashtypes.Poseidon2FieldHasher, vec ...fext.GenericFieldEle
 		}
 	}
 }
-func UpdateVec(h hashtypes.Poseidon2FieldHasher, vecs ...[]field.Element) {
+func UpdateVec(h *hashtypes.Poseidon2FieldHasherDigest, vecs ...[]field.Element) {
 	for i := range vecs {
 		Update(h, vecs[i]...)
 	}
@@ -65,7 +65,7 @@ func UpdateVec(h hashtypes.Poseidon2FieldHasher, vecs ...[]field.Element) {
 
 // UpdateVec updates the Fiat-Shamir state by passing one of more slices of
 // field elements.
-func UpdateVecExt(h hashtypes.Poseidon2FieldHasher, vecs ...[]fext.Element) {
+func UpdateVecExt(h *hashtypes.Poseidon2FieldHasherDigest, vecs ...[]fext.Element) {
 	for i := range vecs {
 		UpdateExt(h, vecs[i]...)
 	}
@@ -73,7 +73,7 @@ func UpdateVecExt(h hashtypes.Poseidon2FieldHasher, vecs ...[]fext.Element) {
 
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
-func UpdateSV(h hashtypes.Poseidon2FieldHasher, sv smartvectors.SmartVector) {
+func UpdateSV(h *hashtypes.Poseidon2FieldHasherDigest, sv smartvectors.SmartVector) {
 	if sv.Len() == 0 {
 		return
 	}
@@ -85,12 +85,12 @@ func UpdateSV(h hashtypes.Poseidon2FieldHasher, sv smartvectors.SmartVector) {
 
 // RandomField generates and returns a single field element from the Fiat-Shamir
 // transcript.
-func RandomField(h hashtypes.Poseidon2FieldHasher) field.Element {
+func RandomField(h *hashtypes.Poseidon2FieldHasherDigest) field.Element {
 	s := h.SumElements(nil)
 	return s[0]
 }
 
-func RandomFext(h hashtypes.Poseidon2FieldHasher) fext.Element {
+func RandomFext(h *hashtypes.Poseidon2FieldHasherDigest) fext.Element {
 	s := h.SumElements(nil)
 	var res fext.Element
 	res.B0.A0 = s[0]
@@ -102,7 +102,7 @@ func RandomFext(h hashtypes.Poseidon2FieldHasher) fext.Element {
 	return res
 }
 
-func RandomManyIntegers(h hashtypes.Poseidon2FieldHasher, num, upperBound int) []int {
+func RandomManyIntegers(h *hashtypes.Poseidon2FieldHasherDigest, num, upperBound int) []int {
 
 	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
@@ -169,6 +169,6 @@ func RandomManyIntegers(h hashtypes.Poseidon2FieldHasher, num, upperBound int) [
 	}
 }
 
-func safeguardUpdate(h hashtypes.Poseidon2FieldHasher) {
+func safeguardUpdate(h *hashtypes.Poseidon2FieldHasherDigest) {
 	Update(h, field.NewElement(0))
 }

@@ -29,7 +29,7 @@ type LocalOpeningParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (lop LocalOpeningParams) UpdateFS(fs hashtypes.Poseidon2FieldHasher) {
+func (lop LocalOpeningParams) UpdateFS(fs *hashtypes.Poseidon2FieldHasherDigest) {
 	if lop.IsBase {
 		fiatshamir.Update(fs, lop.BaseY)
 	} else {
