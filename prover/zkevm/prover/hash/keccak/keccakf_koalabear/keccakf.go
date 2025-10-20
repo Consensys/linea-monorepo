@@ -4,12 +4,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	protocols "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/sub_protocols"
 )
 
 const (
 	// Number of 64bits lanes in a keccak block
 	numLanesInBlock = 17
+	numRounds       = 24
 )
 
 type (
@@ -50,8 +53,10 @@ type Module struct {
 	inputs keccakfInputs
 	// theta module, responsible for updating the state in the theta step of keccakf
 	theta *theta
+	// base conversion module, responsible for converting the state from base dirty 12 to base 2.
+	bc *protocols.BaseConversion
 	// rho pi module, responsible for updating the state in the rho and pi steps of keccakf
-	rohPi *rho
+	RhoPi *rho
 }
 
 // NewModule creates a new keccakf module, declares the columns and constraints and returns its pointer
@@ -103,14 +108,16 @@ func NewModule(comp *wizard.CompiledIOP, numKeccakf int, inp keccakfInputs) *Mod
 
 	// create the theta module with the state including the message-blocks
 	theta := newTheta(comp, numKeccakf, inp.state)
+	// @azam ask Arijit to add it to theta step.
+	bc := protocols.NewBaseConversion(comp, numKeccakf, theta.stateNext)
 	// create the rho module with the state after theta
-	rho := newRho(comp, numKeccakf, theta.stateNext)
+	rho := newRho(comp, numKeccakf, bc.StateNext)
 
 	return &Module{
 		maxNumKeccakf: numKeccakf,
 		inputs:        inp,
 		theta:         theta,
-		rohPi:         rho,
+		RhoPi:         rho,
 	}
 }
 
@@ -122,11 +129,20 @@ func (m *Module) Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [numLa
 
 	// assign the theta module with the state including the message-blocks
 	m.theta.assignTheta(run, state)
+	// assign the base conversion module with the state after theta
+	m.bc.Run(run)
 	// assign the rho pi module with the state after theta
-	m.rohPi.assignRoh(run, m.theta.stateNext)
+	m.RhoPi.assignRoh(run, m.bc.StateNext)
 
 }
 
 // it declares the columns used in the keccakf module, including the state and the message blocks.
 func declareColumns(comp *wizard.CompiledIOP, maxNumKeccakf int) {
+}
+
+// Returns the number of rows required to prove `numKeccakf` calls to the
+// permutation function. The result is padded to the next power of 2 in order to
+// satisfy the requirements of the Wizard to have only powers of 2.
+func numRows(numKeccakf int) int {
+	return utils.NextPowerOfTwo(numKeccakf * numRounds)
 }

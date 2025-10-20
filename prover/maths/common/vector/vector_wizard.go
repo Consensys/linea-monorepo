@@ -263,3 +263,19 @@ func Zero(size int) []field.Element {
 	}
 	return slice
 }
+
+func DivMod(n []field.Element, divisor field.Element) (quotient, remainder []field.Element) {
+	size := len(n)
+	quotient = make([]field.Element, size)
+	remainder = make([]field.Element, size)
+
+	var (
+		temp *field.Element
+	)
+
+	for i := 0; i < size; i++ {
+		quotient[i].Div(&n[i], &divisor)
+		remainder[i].Sub(&n[i], temp.Mul(&quotient[i], &divisor))
+	}
+	return quotient, remainder
+}
