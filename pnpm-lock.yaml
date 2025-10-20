@@ -619,15 +619,6 @@ importers:
 
   ts-libs/linea-shared-utils:
     dependencies:
-      '@consensys/linea-sdk':
-        specifier: workspace:*
-        version: link:../../sdk/sdk-ethers
-      abitype:
-        specifier: ^1.0.8
-        version: 1.1.0(typescript@5.4.5)(zod@3.25.76)
-      ethers:
-        specifier: 'catalog:'
-        version: 6.13.7(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       winston:
         specifier: 'catalog:'
         version: 3.17.0
