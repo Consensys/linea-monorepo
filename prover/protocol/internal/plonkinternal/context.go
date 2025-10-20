@@ -285,6 +285,11 @@ func (ctx *compilationCtx) DomainSizePlonk() int {
 func (ctx *compilationCtx) tinyPISize() int {
 
 	if ctx.FixedNbPublicInputOption.Enabled {
+
+		if ctx.FixedNbPublicInputOption.NbPI < ctx.Plonk.SPR.GetNbPublicVariables() {
+			utils.Panic("plonk-in-wizard: the number of public inputs is too small. fixed-nb-public-input=%v nb-public-input=%v", ctx.FixedNbPublicInputOption.NbPI, ctx.Plonk.SPR.GetNbPublicVariables())
+		}
+
 		return ctx.FixedNbPublicInputOption.NbPI
 	}
 
@@ -392,11 +397,11 @@ func (ctx compilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
 
 func (ctx compilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
 	return GenericPlonkProverAction{
-		Name:               ctx.Name,
-		SPR:                ctx.Plonk.SPR,
-		MaxNbInstances:     ctx.MaxNbInstances,
-		FixedNbPublicInput: ctx.tinyPISize(),
-		DomainSize:         ctx.DomainSize(),
+		Name:           ctx.Name,
+		SPR:            ctx.Plonk.SPR,
+		MaxNbInstances: ctx.MaxNbInstances,
+		NbPublicInputs: ctx.tinyPISize(),
+		DomainSize:     ctx.DomainSize(),
 		Columns: struct {
 			L          []ifaces.Column
 			R          []ifaces.Column
@@ -492,6 +497,6 @@ type GenericPlonkProverAction struct {
 		PosOldState, PosBlock, PosNewState ifaces.Column
 		OldStates, Blocks, NewStates       []ifaces.Column
 	}
-	FixedNbRows        int
-	FixedNbPublicInput int
+	FixedNbRows    int
+	NbPublicInputs int
 }
