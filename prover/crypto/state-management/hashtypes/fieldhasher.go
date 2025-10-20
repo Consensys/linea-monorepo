@@ -27,14 +27,13 @@ func Poseidon2() *Poseidon2FieldHasherDigest {
 	for i := range maxVal {
 		maxVal[i] = field.MaxVal // Initialize max field value (field modulus - 1)
 	}
-	poseidon2FieldHasherDigest := &Poseidon2FieldHasherDigest{
+
+	return &Poseidon2FieldHasherDigest{
 		maxValue:    types.HashToBytes32(maxVal),
 		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
 		h:           field.Octuplet{},
 		data:        make([]field.Element, 0),
 	}
-
-	return poseidon2FieldHasherDigest
 }
 
 // Reset resets the Hash to its initial state.
