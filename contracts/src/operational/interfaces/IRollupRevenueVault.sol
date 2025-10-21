@@ -74,6 +74,11 @@ interface IRollupRevenueVault {
   error ZeroLineaTokensReceived();
 
   /**
+   * @dev Thrown when no ETH is sent when the fallback function is reached.
+   */
+  error NoEthSent();
+
+  /**
    * @dev Emitted when an invoice is processed.
    * @dev If amountRequested < amountPaid, the difference is previous unpaid invoice amount.
    * @param receiver The address of the invoice receiver.
