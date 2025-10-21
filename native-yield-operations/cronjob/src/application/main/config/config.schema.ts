@@ -24,8 +24,8 @@ export const configSchema = z
     // L2 contract addresses
     L2_YIELD_RECIPIENT: Address,
     // Timing intervals
-    TRIGGER_EVENT_POLLING_TIME_SECONDS: z.coerce.number().int().positive(),
-    TRIGGER_MAX_INACTION_TIMEOUT_SECONDS: z.coerce.number().int().positive(),
+    TRIGGER_EVENT_POLL_INTERVAL_SECONDS: z.coerce.number().int().positive(),
+    TRIGGER_MAX_INACTION_SECONDS: z.coerce.number().int().positive(),
     CONTRACT_READ_RETRY_TIME_SECONDS: z.coerce.number().int().positive(),
 
     // Web3Signer

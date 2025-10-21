@@ -21,6 +21,7 @@
   "dependencies": {
     "@consensys/linea-sdk": "workspace:*",
     "@consensys/linea-shared-utils": "workspace:*",
+    "@lidofinance/lsv-cli": "1.0.0-alpha.62",
     "dotenv": "catalog:",
     "neverthrow": "catalog:",
     "winston": "catalog:",

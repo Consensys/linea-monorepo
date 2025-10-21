@@ -9,8 +9,9 @@ import {
 } from "viem";
 import { LineaRollupYieldExtensionABI } from "../core/abis/LineaRollupYieldExtension";
 import { ILineaRollup } from "../core/services/contracts/ILineaRollup";
+import { IBaseContractClient } from "../core/clients/IBaseContractClient";
 
-export class LineaRollupYieldExtensionContractClient implements ILineaRollup<TransactionReceipt> {
+export class LineaRollupYieldExtensionContractClient implements ILineaRollup<TransactionReceipt>, IBaseContractClient {
   private readonly contract: GetContractReturnType<typeof LineaRollupYieldExtensionABI, PublicClient, Address>;
 
   constructor(
@@ -22,6 +23,14 @@ export class LineaRollupYieldExtensionContractClient implements ILineaRollup<Tra
       address: contractAddress,
       client: contractClientLibrary.getBlockchainClient(),
     });
+  }
+
+  getAddress(): Address {
+    return this.contractAddress;
+  }
+
+  getContract(): GetContractReturnType {
+    return this.contract;
   }
 
   async transferFundsForNativeYield(amount: bigint): Promise<TransactionReceipt | null> {

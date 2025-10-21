@@ -9,12 +9,15 @@ import { YieldManagerContractClient } from "../../clients/YieldManagerContractCl
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
 import { IContractSignerService } from "ts-libs/linea-shared-utils/src/core/services/IContractSignerService";
 import { Web3SignerService } from "ts-libs/linea-shared-utils/src/services/signers/Web3SignerService";
+import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor";
+import { IBaseContractClient } from "../../core/clients/IBaseContractClient";
+
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
   private readonly logger: ILogger;
 
   private ethereumMainnetClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>;
-  private yieldManagerContractClient: IYieldManager<TransactionReceipt>;
+  private yieldManagerContractClient: IYieldManager<TransactionReceipt> & IBaseContractClient;
   private web3SignerService: IContractSignerService;
 
   private operationModeSelector: IOperationModeSelector;
@@ -40,10 +43,18 @@ export class NativeYieldCronJobClient {
       config.contractAddresses.yieldManagerAddress,
     );
 
+    const yieldReportingProcessor = new YieldReportingOperationModeProcessor(
+      this.yieldManagerContractClient,
+      this.ethereumMainnetClientLibrary,
+      new WinstonLogger(YieldReportingOperationModeProcessor.name, config.loggerOptions),
+      config.timing.trigger,
+    );
+
     this.operationModeSelector = new OperationModeSelector(
       config,
       new WinstonLogger(OperationModeSelector.name, config.loggerOptions),
       this.yieldManagerContractClient,
+      yieldReportingProcessor,
     );
   }
 
@@ -52,7 +63,7 @@ export class NativeYieldCronJobClient {
   }
 
   public startAllServices(): void {
-    this.operationModeSelector.start();
+    void this.operationModeSelector.start();
     this.logger.info("Native yield cron job started");
   }
 

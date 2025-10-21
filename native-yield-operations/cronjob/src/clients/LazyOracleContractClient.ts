@@ -11,8 +11,9 @@ import {
 import { LazyOracleABI } from "../core/abis/LazyOracle";
 import { ILazyOracle } from "../core/services/contracts/ILazyOracle";
 import { LazyOracleReportData } from "../core/entities";
+import { IBaseContractClient } from "../core/clients/IBaseContractClient";
 
-export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt> {
+export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>, IBaseContractClient {
   private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;
   constructor(
     private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
@@ -23,6 +24,14 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       address: contractAddress,
       client: contractClientLibrary.getBlockchainClient(),
     });
+  }
+
+  getAddress(): Address {
+    return this.contractAddress;
+  }
+
+  getContract(): GetContractReturnType {
+    return this.contract;
   }
 
   async latestReportData(): Promise<LazyOracleReportData> {

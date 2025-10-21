@@ -10,8 +10,9 @@ import {
 import { encodeLidoWithdrawalParams, LidoStakingVaultWithdrawalParams } from "../core/entities/YieldManager";
 import { YieldManagerABI } from "../core/abis/YieldManager";
 import { IYieldManager } from "../core/services/contracts/IYieldManager";
+import { IBaseContractClient } from "../core/clients/IBaseContractClient";
 
-export class YieldManagerContractClient implements IYieldManager<TransactionReceipt> {
+export class YieldManagerContractClient implements IYieldManager<TransactionReceipt>, IBaseContractClient {
   private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>;
   private readonly contractAddress: Address;
   private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
@@ -27,6 +28,14 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       address: contractAddress,
       client: this.contractClientLibrary.getBlockchainClient(),
     });
+  }
+
+  getAddress(): Address {
+    return this.contractAddress;
+  }
+
+  getContract(): GetContractReturnType {
+    return this.contract;
   }
 
   async getTargetReserveDeficit(): Promise<bigint> {
