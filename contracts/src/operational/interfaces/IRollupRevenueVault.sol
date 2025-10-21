@@ -105,11 +105,11 @@ interface IRollupRevenueVault {
   event L1LineaTokenBurnerUpdated(address previousValue, address newValue);
 
   /**
-   * @dev Emitted when the DEX contract address is updated.
-   * @param previousValue The previous DEX contract address.
-   * @param newValue The new DEX contract address.
+   * @dev Emitted when the DEX adapter contract address is updated.
+   * @param previousValue The previous DEX adapter contract address.
+   * @param newValue The new DEX adapter contract address.
    */
-  event DexUpdated(address previousValue, address newValue);
+  event DexAdapterUpdated(address previousValue, address newValue);
 
   /**
    * @dev Emitted when ETH is received.
@@ -130,4 +130,24 @@ interface IRollupRevenueVault {
    * @param newValue The new invoice payment receiver address.
    */
   event InvoicePaymentReceiverUpdated(address previousValue, address newValue);
+
+  /**
+   * @dev Emitted when the Rollup Revenue Vault is initialized.
+   * @param lastInvoiceDate The default or starting timestamp for invoices less 1 second.
+   * @param invoicePaymentReceiver The address that receives invoice payments.
+   * @param tokenBridge The address of the token bridge contract.
+   * @param messageService The address of the message service contract.
+   * @param l1LineaTokenBurner The address of the L1 LINEA token burner contract.
+   * @param lineaToken The address of the LINEA token contract.
+   * @param dexAdapter The address of the DEX adapter contract.
+   */
+  event RollupRevenueVaultInitialized(
+    uint256 lastInvoiceDate,
+    address invoicePaymentReceiver,
+    address tokenBridge,
+    address messageService,
+    address l1LineaTokenBurner,
+    address lineaToken,
+    address dexAdapter
+  );
 }

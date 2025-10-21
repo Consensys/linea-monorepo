@@ -24,6 +24,8 @@ contract L1LineaTokenBurner is IL1LineaTokenBurner, IGenericErrors {
 
     MESSAGE_SERVICE = _messageService;
     LINEA_TOKEN = _lineaToken;
+
+    emit L1LineaTokenBurnerInitialized(_messageService, _lineaToken);
   }
 
   /**
