@@ -2,17 +2,17 @@
 pragma solidity 0.8.30;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IV3DexSwap } from "./interfaces/IV3DexSwap.sol";
+import { IV3DexAdapter } from "./interfaces/IV3DexAdapter.sol";
 import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
 
 /**
- * @title V3DexSwap.
+ * @title V3DexAdapter.
  * @dev A contract for swapping tokens on a decentralized exchange.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract V3DexSwap is IV3DexSwap {
+contract V3DexAdapter is IV3DexAdapter {
   /// @notice Tick spacing of the pool.
   uint24 public immutable POOL_TICK_SPACING;
   /// @notice Address of the Swap Router contract.
@@ -39,6 +39,8 @@ contract V3DexSwap is IV3DexSwap {
     WETH_TOKEN = _wethToken;
     LINEA_TOKEN = _lineaToken;
     POOL_TICK_SPACING = _poolTickSpacing;
+
+    emit V3DexAdapterInitialized(_router, _wethToken, _lineaToken, _poolTickSpacing);
   }
 
   /** @notice Swap ETH into LINEA tokens.
@@ -46,13 +48,9 @@ contract V3DexSwap is IV3DexSwap {
    * @dev No ETH is kept in the contract after the swap due to exactInputSingle swapping.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
-   * @param _sqrtPriceLimitX96 Price limit of the swap as a Q64.96 value.
+   * @return amountOut The amount of LINEA tokens received from the swap.
    */
-  function swap(
-    uint256 _minLineaOut,
-    uint256 _deadline,
-    uint160 _sqrtPriceLimitX96
-  ) external payable returns (uint256 amountOut) {
+  function swap(uint256 _minLineaOut, uint256 _deadline) external payable returns (uint256 amountOut) {
     require(msg.value > 0, NoEthSent());
     require(_deadline > block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
@@ -71,7 +69,8 @@ contract V3DexSwap is IV3DexSwap {
         deadline: _deadline,
         amountIn: msg.value,
         amountOutMinimum: _minLineaOut,
-        sqrtPriceLimitX96: _sqrtPriceLimitX96
+        /// @dev Setting to 0 because _minLineaOut handles slippage protection.
+        sqrtPriceLimitX96: 0
       })
     );
 

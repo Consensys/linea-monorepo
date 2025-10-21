@@ -2,11 +2,11 @@
 pragma solidity 0.8.30;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { V3DexSwap } from "../../../operational/V3DexSwap.sol";
 import { IWETH9 } from "../../../operational/interfaces/IWETH9.sol";
 import { TestDexRouter } from "./TestDexRouter.sol";
+import { V3DexAdapter } from "../../../operational/V3DexAdapter.sol";
 
-contract TestDexSwap is V3DexSwap {
+contract TestDexAdapter is V3DexAdapter {
   error TestRevertFromSwap();
 
   constructor(
@@ -14,9 +14,9 @@ contract TestDexSwap is V3DexSwap {
     address _wethToken,
     address _lineaToken,
     uint24 _poolTickSpacing
-  ) V3DexSwap(_router, _wethToken, _lineaToken, _poolTickSpacing) {}
+  ) V3DexAdapter(_router, _wethToken, _lineaToken, _poolTickSpacing) {}
 
-  function testRevertSwap(uint256, uint256, uint160) external payable returns (uint256) {
+  function testRevertSwap(uint256, uint256) external payable returns (uint256) {
     revert TestRevertFromSwap();
   }
 
@@ -25,12 +25,10 @@ contract TestDexSwap is V3DexSwap {
    * @dev No ETH is kept in the contract after the swap due to exactInputSingle swapping.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
-   * @param _sqrtPriceLimitX96 Price limit of the swap as a Q64.96 value.
    */
   function testSwapInsufficientLineaTokensReceived(
     uint256 _minLineaOut,
-    uint256 _deadline,
-    uint160 _sqrtPriceLimitX96
+    uint256 _deadline
   ) external payable returns (uint256 amountOut) {
     require(msg.value > 0, NoEthSent());
     require(_deadline > block.timestamp, DeadlineInThePast());
@@ -50,7 +48,7 @@ contract TestDexSwap is V3DexSwap {
         deadline: _deadline,
         amountIn: msg.value,
         amountOutMinimum: _minLineaOut,
-        sqrtPriceLimitX96: _sqrtPriceLimitX96
+        sqrtPriceLimitX96: 0
       })
     );
 

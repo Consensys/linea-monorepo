@@ -1,4 +1,4 @@
-# `IV3DexSwap`
+# `IV3DexAdapter`
 
 ### NoEthSent
 
@@ -55,13 +55,34 @@ _Thrown when insufficient LINEA tokens are received from the DEX swap._
 | expectedMinimum | uint256 | The expected minimum number of LINEA tokens to be received. |
 | actualReceived | uint256 | The actual number of LINEA tokens received. |
 
-### swap
+### V3DexAdapterInitialized
 
 ```solidity
-function swap(uint256 _minLineaOut, uint256 _deadline, uint160 _sqrtPriceLimitX96) external payable returns (uint256 amountOut)
+event V3DexAdapterInitialized(address router, address wethToken, address lineaToken, uint24 poolTickSpacing)
 ```
 
 Swap ETH into LINEA.
+Emitted when the V3DexAdapter contract is initialized.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| router | address | The address of the Router contract. |
+| wethToken | address | The address of the WETH token contract. |
+| lineaToken | address | The address of the LINEA token contract. |
+| poolTickSpacing | uint24 | Tick spacing of the pool. |
+
+### swap
+
+```solidity
+function swap(uint256 _minLineaOut, uint256 _deadline) external payable returns (uint256 amountOut)
+```
+
+Swap ETH into LINEA tokens.
+
+_The msg.sender will be the recipient of the LINEA tokens, and WETH is swapped 1:1 with `msg.value`.
+No ETH is kept in the contract after the swap due to exactInputSingle swapping._
 
 #### Parameters
 
@@ -69,5 +90,10 @@ Swap ETH into LINEA.
 | ---- | ---- | ----------- |
 | _minLineaOut | uint256 | Minimum number of LINEA tokens to receive (slippage protection). |
 | _deadline | uint256 | Time after which the transaction will revert if not yet processed. |
-| _sqrtPriceLimitX96 | uint160 | Price limit of the swap as a Q64.96 value. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| amountOut | uint256 | The amount of LINEA tokens received from the swap. |
 
