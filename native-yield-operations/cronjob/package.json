@@ -22,6 +22,7 @@
     "@consensys/linea-sdk": "workspace:*",
     "@consensys/linea-shared-utils": "workspace:*",
     "dotenv": "catalog:",
+    "neverthrow": "catalog:",
     "winston": "catalog:",
     "viem": "catalog:",
     "zod": "catalog:"

@@ -1,34 +1,40 @@
 import { ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
-import { NativeYieldCronJobClientOptions } from "./config/NativeYieldCronJobClientOptions";
-
+import { NativeYieldCronJobClientConfig } from "./config/NativeYieldCronJobClientConfig";
+import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector";
+import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector";
+import {
+  createPublicClient,
+  http,
+} from "viem";
+import { mainnet } from "viem/chains";
 export class NativeYieldCronJobClient {
-  private readonly config: NativeYieldCronJobClientOptions;
+  private readonly config: NativeYieldCronJobClientConfig;
   private readonly logger: ILogger;
 
-  constructor(private readonly options: NativeYieldCronJobClientOptions) {
-    this.config = options;
-    this.logger = new WinstonLogger(NativeYieldCronJobClient.name, options.loggerOptions);
+  private operationModeSelector: IOperationModeSelector
+
+  constructor(config: NativeYieldCronJobClientConfig) {
+    this.config = config;
+    this.logger = new WinstonLogger(NativeYieldCronJobClient.name, config.loggerOptions);
+
+    this.operationModeSelector = new OperationModeSelector(config, new WinstonLogger(OperationModeSelector.name, config.loggerOptions))
   }
 
   public async connectServices(): Promise<void> {
     // TO-DO - startup Prom metrics API endpoint
   }
 
-  /**
-   * Starts all cron job processors.
-   */
   public startAllServices(): void {
+    this.operationModeSelector.start();
     this.logger.info("Native yield cron job started");
   }
 
-  /**
-   * Stops the cron job processors.
-   */
   public stopAllServices(): void {
+    this.operationModeSelector.stop();
     this.logger.info("Native yield cron job stopped");
   }
 
-  public getConfig(): NativeYieldCronJobClientOptions {
+  public getConfig(): NativeYieldCronJobClientConfig {
     return this.config;
   }
 }

@@ -1,5 +1,5 @@
 import { configSchema } from "./config.schema";
-import { toClientOptions } from "./NativeYieldCronJobClientOptions";
+import { toClientConfig } from "./NativeYieldCronJobClientConfig";
 
 export function loadConfigFromEnv(envObj: NodeJS.ProcessEnv = process.env) {
   const parsed = configSchema.safeParse(envObj);
@@ -9,5 +9,5 @@ export function loadConfigFromEnv(envObj: NodeJS.ProcessEnv = process.env) {
     console.error(JSON.stringify(parsed.error.format(), null, 2));
     process.exit(1);
   }
-  return toClientOptions(parsed.data);
+  return toClientConfig(parsed.data);
 }

@@ -10,19 +10,24 @@ const Address = z
 
 export const configSchema = z
   .object({
+    // Datasource URLs
     L1_RPC_URL: z.string().url(),
     STAKING_GRAPHQL_URL: z.string().url(),
     IPFS_BASE_URL: z.string().url(),
-
+    // L1 contract addresses
     LINEA_ROLLUP_ADDRESS: Address,
     LAZY_ORACLE_ADDRESS: Address,
     YIELD_MANAGER_ADDRESS: Address,
     LIDO_YIELD_PROVIDER_ADDRESS: Address,
+    // L2 contract addresses
     L2_YIELD_RECIPIENT: Address,
-
-    // Optional API port (uncomment your apiOptions block to use)
+    // Timing intervals
+    TRIGGER_EVENT_POLLING_TIME_SECONDS: z.coerce.number().int().positive(),
+    TRIGGER_MAX_INACTION_TIMEOUT_SECONDS: z.coerce.number().int().positive(),
+    CONTRACT_READ_RETRY_TIME_SECONDS: z.coerce.number().int().positive(),                        
+    // API port
     API_PORT: z.coerce.number().int().min(1024).max(49000),
   })
   .strict();
 
-export type Config = z.infer<typeof configSchema>;
+export type FlattenedConfigSchema = z.infer<typeof configSchema>;
