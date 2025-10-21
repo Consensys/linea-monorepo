@@ -159,7 +159,7 @@ func (io *InputOutput) newOutput(comp *wizard.CompiledIOP, maxNumKeccakF int,
 // It declares the columns specific to the submodule.
 func (io *InputOutput) declareColumnsInput(comp *wizard.CompiledIOP, maxNumKeccakF int) {
 	var (
-		size      = numRows(maxNumKeccakF)
+		size      = NumRows(maxNumKeccakF)
 		createCol = common.CreateColFn(comp, "KECCAKF_INPUT_MODULE", size, pragmas.RightPadded)
 	)
 
@@ -182,7 +182,7 @@ func (io *InputOutput) declareColumnsOutput(comp *wizard.CompiledIOP, maxNumKecc
 	io.IsActive = createCol("HASH_IS_ACTIVE")
 
 	var (
-		sizeState = numRows(maxNumKeccakF)
+		sizeState = NumRows(maxNumKeccakF)
 	)
 	io.IsHashOutPut = comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_IS_HASH_OUTPUT"), sizeState)
 }
@@ -304,7 +304,7 @@ func (io *InputOutput) assignHashOutPut(run *wizard.ProverRuntime, isBlockActive
 	// populate HashOutputSlicesBaseB
 	isHashOutputWit := isHashOutput.Slice()
 	for j := range io.HashOutputSlicesBaseB {
-		hashSlices[j] = make([]*common.VectorBuilder, numSlice)
+		hashSlices[j] = make([]*common.VectorBuilder, NumSlice)
 		for k := range io.HashOutputSlicesBaseB[0] {
 			hashSlices[j][k] = common.NewVectorBuilder(io.HashOutputSlicesBaseB[j][k])
 

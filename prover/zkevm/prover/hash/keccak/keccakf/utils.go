@@ -79,7 +79,7 @@ func DecomposeFrInSlice(f []field.Element, base int) (res [][]field.Element) {
 
 	// Preallocate the result. The +1 is to isolate the MSB in case it is needed
 	// when f is using 65 instead of 64 limbs.
-	res = make([][]field.Element, numSlice+1)
+	res = make([][]field.Element, NumSlice+1)
 	for k := range res {
 		res[k] = make([]field.Element, len(f))
 	}
@@ -88,7 +88,7 @@ func DecomposeFrInSlice(f []field.Element, base int) (res [][]field.Element) {
 		// Assumedly len(limbs) <= len(res). It will panic if this is not the
 		// case. This would indicate that `f` uses more than 68 bits which is
 		// not expected.
-		limbs := DecomposeFr(f[r], base, numSlice+1)
+		limbs := DecomposeFr(f[r], base, NumSlice+1)
 		for k := range limbs {
 			res[k][r] = limbs[k]
 		}
@@ -131,8 +131,8 @@ func BaseRecomposeSliceExpr(a []*symbolic.Expression, base int) *symbolic.Expres
 	// length assertion, there is should be 16 elements in the slice. We do not
 	// enforces that at the type level because otherwise it requires the user
 	// code to cast everything into a sized array which is annoying.
-	if len(a) != numSlice {
-		utils.Panic("expected length to be %v, got %v", numSlice, len(a))
+	if len(a) != NumSlice {
+		utils.Panic("expected length to be %v, got %v", NumSlice, len(a))
 	}
 
 	x := symbolic.NewConstant(IntExp(uint64(base), numChunkBaseX))
@@ -213,12 +213,12 @@ func IntExp(base uint64, exponent int) uint64 {
 // Returns the number of rows required to prove `numKeccakf` calls to the
 // permutation function. The result is padded to the next power of 2 in order to
 // satisfy the requirements of the Wizard to have only powers of 2.
-func numRows(numKeccakf int) int {
+func NumRows(numKeccakf int) int {
 	return utils.NextPowerOfTwo(numKeccakf * numRounds)
 }
 
 // derive column names
-func deriveName(mainName string, ids ...int) ifaces.ColID {
+func DeriveName(mainName string, ids ...int) ifaces.ColID {
 	idStr := []string{}
 	for i := range ids {
 		idStr = append(idStr, strconv.Itoa(ids[i]))

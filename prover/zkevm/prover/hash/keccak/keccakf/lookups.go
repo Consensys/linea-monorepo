@@ -47,10 +47,10 @@ func newLookUpTables(comp *wizard.CompiledIOP, maxNumKeccakf int) lookUpTables {
 	baseBDirty, baseAClean := valBaseXToBaseY(BaseB, BaseA, 1)
 
 	// tables for bit representation conversions
-	l.BaseAClean = comp.InsertPrecomputed(deriveName("BASE1_CLEAN"), baseAClean)
-	l.BaseBClean = comp.InsertPrecomputed(deriveName("BASE2_CLEAN"), baseBClean)
-	l.BaseADirty = comp.InsertPrecomputed(deriveName("BASE1_DIRTY"), baseADirty)
-	l.BaseBDirty = comp.InsertPrecomputed(deriveName("BASE2_DIRTY"), baseBDirty)
+	l.BaseAClean = comp.InsertPrecomputed(DeriveName("BASE1_CLEAN"), baseAClean)
+	l.BaseBClean = comp.InsertPrecomputed(DeriveName("BASE2_CLEAN"), baseBClean)
+	l.BaseADirty = comp.InsertPrecomputed(DeriveName("BASE1_DIRTY"), baseADirty)
+	l.BaseBDirty = comp.InsertPrecomputed(DeriveName("BASE2_DIRTY"), baseBDirty)
 
 	// This constraint is a small hack fixing an issue unrelated to keccak
 	// itself. The above-declared precomputed columns are grouped in a module
@@ -71,7 +71,7 @@ func newLookUpTables(comp *wizard.CompiledIOP, maxNumKeccakf int) lookUpTables {
 		comp,
 		0,
 		valRCBase2Pattern(),
-		verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf), "keccak-rc-pattern"),
+		verifiercol.NewConstantCol(field.One(), NumRows(maxNumKeccakf), "keccak-rc-pattern"),
 	)
 
 	// tables to indicate when to use the output of the previous round as
@@ -81,7 +81,7 @@ func newLookUpTables(comp *wizard.CompiledIOP, maxNumKeccakf int) lookUpTables {
 		0,
 		keccak.NumRound,
 		0,
-		verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf), "keccak-dont-use-prev-a-iota-heart-beat"),
+		verifiercol.NewConstantCol(field.One(), NumRows(maxNumKeccakf), "keccak-dont-use-prev-a-iota-heart-beat"),
 	)
 
 	return l

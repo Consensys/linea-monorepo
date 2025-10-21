@@ -48,8 +48,8 @@ func piChiIotaTestingModule(
 				// chi module.
 				mod.Rho.ARho[x][y] = comp.InsertCommit(
 					round,
-					deriveName("A_RHO", x, y),
-					numRows(maxNumKeccakf),
+					DeriveName("A_RHO", x, y),
+					NumRows(maxNumKeccakf),
 				)
 			}
 		}
@@ -119,7 +119,7 @@ func piChiIotaTestingModule(
 						mod.Rho.ARho[x][y].GetColID(),
 						smartvectors.RightZeroPadded(
 							aRho[x][y],
-							numRows(maxNumKeccakf),
+							NumRows(maxNumKeccakf),
 						),
 					)
 				}
@@ -192,8 +192,8 @@ func TestPiChiIota(t *testing.T) {
 				for x := 0; x < 5; x++ {
 					for y := 0; y < 5; y++ {
 						// Extract the slices
-						slice := [numSlice]field.Element{}
-						for k := 0; k < numSlice; k++ {
+						slice := [NumSlice]field.Element{}
+						for k := 0; k < NumSlice; k++ {
 							colid := mod.PiChiIota.AIotaBaseASliced[x][y][k].GetColID()
 							slice[k] = run.GetColumnAt(colid, pos)
 						}

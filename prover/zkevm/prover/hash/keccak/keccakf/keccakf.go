@@ -32,8 +32,8 @@ const (
 	// need 16 of them to represent an entire u64. The reason for this choice of
 	// 4 and 16 is that it allows us to limit the size of the corresponding
 	// lookup tables.
-	numSlice      = 16
-	numChunkBaseX = nBitsKeccakLane / numSlice
+	NumSlice      = 16
+	numChunkBaseX = nBitsKeccakLane / NumSlice
 	// The integer version of baseX ^ 4. Usefull for limb decomposition/recompo-
 	// sition.
 	BaseAPow4 = BaseA * BaseA * BaseA * BaseA
@@ -262,17 +262,17 @@ func (mod *Module) assignStateAndBlocks(
 
 // declare the columns of the state and the message.
 func (mod *Module) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccakF int) {
-	size := numRows(maxNumKeccakF)
+	size := NumRows(maxNumKeccakF)
 
 	// Initialize the column isActive
-	mod.IsActive = comp.InsertCommit(round, deriveName("IS_ACTIVE"), size)
+	mod.IsActive = comp.InsertCommit(round, DeriveName("IS_ACTIVE"), size)
 
 	// Initializes the state columns
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			mod.State[x][y] = comp.InsertCommit(
 				round,
-				deriveName("A_INPUT", x, y),
+				DeriveName("A_INPUT", x, y),
 				size,
 			)
 		}
@@ -282,7 +282,7 @@ func (mod *Module) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccakF
 	for m := 0; m < numLanesInBlock; m++ {
 		mod.Blocks[m] = comp.InsertCommit(
 			round,
-			deriveName("BLOCK_BASE_2", m),
+			DeriveName("BLOCK_BASE_2", m),
 			size,
 		)
 	}
