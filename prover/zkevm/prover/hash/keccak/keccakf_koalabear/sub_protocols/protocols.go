@@ -9,9 +9,9 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
-// linearCombination represents the linear combination of the given columns over the powers of the given scalar.
+// LinearCombination represents the linear combination of the given columns over the powers of the given scalar.
 // it is technically a polynomial evaluation at the given scalar point.
-type linearCombination struct {
+type LinearCombination struct {
 	// scalar for linear combination
 	scalar int
 	// input columns
@@ -23,10 +23,10 @@ type linearCombination struct {
 }
 
 // LinearCombination is similar to polynomial evaluation, implementing [wizard.ProverAction].
-func LinearCombination(comp *wizard.CompiledIOP, name string, r []ifaces.Column, base int) *linearCombination {
+func NewLinearCombination(comp *wizard.CompiledIOP, name string, r []ifaces.Column, base int) *LinearCombination {
 	var (
 		size = r[0].Size()
-		col  = comp.InsertCommit(0, ifaces.ColIDf("LINEAR_COMBINATION_RESULT_COL_%v", name), size)
+		col  = comp.InsertCommit(0, ifaces.ColIDf("%v", name), size)
 	)
 	// .. using the Horner method
 	s := sym.NewConstant(0)
@@ -35,11 +35,11 @@ func LinearCombination(comp *wizard.CompiledIOP, name string, r []ifaces.Column,
 		s = sym.Add(s, r[i])
 	}
 
-	comp.InsertGlobal(0, ifaces.QueryIDf("LINEAR_COMBINATION_RESULT_QUERY_%v", name),
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_QUERY", name),
 		sym.Sub(col, s),
 	)
 
-	return &linearCombination{
+	return &LinearCombination{
 		scalar:         base,
 		cols:           r,
 		CombinationRes: col,
@@ -48,7 +48,7 @@ func LinearCombination(comp *wizard.CompiledIOP, name string, r []ifaces.Column,
 }
 
 // Run  assign the values to the linear combination result column.
-func (bc *linearCombination) Run(run *wizard.ProverRuntime) {
+func (bc *LinearCombination) Run(run *wizard.ProverRuntime) {
 	var (
 		s    = vector.Zero(bc.size)
 		base = field.NewElement(uint64(bc.scalar))
