@@ -173,7 +173,8 @@ func ExpVec(vector, a Vector, k int64) {
 	base := a
 	exp := k
 	if k < 0 {
-		// call batch inverse
+		// call batch inverse: note that this allocates a new slice, so even if vector and a are
+		// the same, it's fine.
 		base = BatchInvert(a)
 		exp = -k // if k == math.MinInt64, -k overflows, but uint64(-k) is correct
 	} else if N > 0 {
