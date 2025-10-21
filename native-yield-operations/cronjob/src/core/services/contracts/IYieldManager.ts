@@ -1,23 +1,25 @@
+import { Address } from "viem";
 import { LidoStakingVaultWithdrawalParams } from "../../entities/YieldManager";
 
 export interface IYieldManager<TTransactionReceipt> {
   // View calls
-  getTargetReserveDeficit(yieldProvider: string): Promise<bigint>;
-  isStakingPaused(yieldProvider: string): Promise<boolean>;
-  isOssificationInitiated(yieldProvider: string): Promise<boolean>;
-  isOssified(yieldProvider: string): Promise<boolean>;
-  withdrawableValue(yieldProvider: string): Promise<bigint>;
+  getTargetReserveDeficit(): Promise<bigint>;
+  isStakingPaused(yieldProvider: Address): Promise<boolean>;
+  isOssificationInitiated(yieldProvider: Address): Promise<boolean>;
+  isOssified(yieldProvider: Address): Promise<boolean>;
+  withdrawableValue(yieldProvider: Address): Promise<bigint>;
   // Mutator calls
-  // fundYieldProvider(yieldProvider: string, amount: bigint): Promise<TransactionReceipt | null>;
-  // transferFundsToReserve(amount: bigint): Promise<TransactionReceipt | null>;
-  // reportYield(yieldProvider: string, l2YieldRecipient: string): Promise<TransactionReceipt | null>;
-  // unstake(
-  //   yieldProvider: string,
-  //   withdrawalParams: LidoStakingVaultWithdrawalParams,
-  // ): Promise<TransactionReceipt | null>;
-  // withdrawFromYieldProvider(yieldProvider: string, amount: bigint): Promise<TransactionReceipt | null>;
-  // addToWithdrawalReserve(yieldProvider: string, amount: bigint): Promise<TransactionReceipt | null>;
-  // pauseStaking(yieldProvider: string, amount: bigint): Promise<TransactionReceipt | null>;
-  // unpauseStaking(yieldProvider: string, amount: bigint): Promise<TransactionReceipt | null>;
-  // progressPendingOssification(yieldProvider: string): Promise<TransactionReceipt | null>;
+  fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt | null>;
+  transferFundsToReserve(amount: bigint): Promise<TTransactionReceipt | null>;
+  reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TTransactionReceipt | null>;
+  unstake(
+    yieldProvider: Address,
+    withdrawalParams: LidoStakingVaultWithdrawalParams,
+  ): Promise<TTransactionReceipt | null>;
+  withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt | null>;
+  addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt | null>;
+  safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt | null>;
+  pauseStaking(yieldProvider: Address): Promise<TTransactionReceipt | null>;
+  unpauseStaking(yieldProvider: Address): Promise<TTransactionReceipt | null>;
+  progressPendingOssification(yieldProvider: Address): Promise<TTransactionReceipt | null>;
 }
