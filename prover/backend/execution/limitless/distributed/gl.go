@@ -32,7 +32,8 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 	// Recover wrapper for panics
 	defer func() {
 		if r := recover(); r != nil {
-			logrus.Errorf("[PANIC] GL prover crashed for witness %s: %v\n%s", req.WitnessGLFile, r, debug.Stack())
+			logrus.Errorf("[PANIC] GL prover crashed for witness %s: %v", req.WitnessGLFile, r)
+			debug.PrintStack()
 			os.Exit(2)
 		}
 	}()

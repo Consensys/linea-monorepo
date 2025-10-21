@@ -65,10 +65,10 @@ shutdown_all() {
   pkill -f "prover prove" 2>/dev/null || true
 
   # Optional: clean up /tmp/exec-limitless
-  if [ -d "/tmp/exec-limitless" ]; then
-    echo "⚙️  Cleaning /tmp/exec-limitless..."
-    rm -rf /tmp/exec-limitless/* || true
-  fi
+  # if [ -d "/tmp/exec-limitless" ]; then
+  #   echo "⚙️  Cleaning /tmp/exec-limitless..."
+  #   rm -rf /tmp/exec-limitless/* || true
+  # fi
 
   echo "✅ Shutdown complete."
 }

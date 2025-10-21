@@ -51,7 +51,8 @@ func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata *Metad
 	// Recover wrapper for panics
 	defer func() {
 		if r := recover(); r != nil {
-			logrus.Errorf("[PANIC] Bootstrapper crashed for conflation request %s-%s: \n%s", metadata.StartBlock, metadata.EndBlock, debug.Stack())
+			logrus.Errorf("[PANIC] Bootstrapper crashed for conflation request %s-%s:", metadata.StartBlock, metadata.EndBlock)
+			debug.PrintStack()
 			os.Exit(2)
 		}
 	}()
