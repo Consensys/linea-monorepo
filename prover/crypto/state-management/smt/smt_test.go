@@ -150,8 +150,7 @@ func BenchmarkBuildComplete(b *testing.B) {
 		leaves[i] = Bytes32(leavesFr[i].Bytes())
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = smt.BuildComplete(leaves, config.HashFunc)
 	}
 }

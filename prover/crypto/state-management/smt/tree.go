@@ -302,7 +302,7 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 		wg    *sync.WaitGroup
 	}
 
-	workerCount := runtime.NumCPU()
+	workerCount := runtime.GOMAXPROCS(0)
 	if workerCount < 1 {
 		workerCount = 1
 	}
@@ -314,10 +314,8 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 		go func() {
 			hasher := config.HashFunc()
 			for task := range tasks {
-				if task.stop > task.start {
-					for k := task.start; k < task.stop; k++ {
-						task.next[k] = hashLR(hasher, task.curr[2*k], task.curr[2*k+1])
-					}
+				for k := task.start; k < task.stop; k++ {
+					task.next[k] = hashLR(hasher, task.curr[2*k], task.curr[2*k+1])
 				}
 				task.wg.Done()
 			}
