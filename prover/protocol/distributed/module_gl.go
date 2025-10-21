@@ -860,8 +860,12 @@ func (modGL *ModuleGL) assignPublicInput(run *wizard.ProverRuntime, witness *Mod
 // to the MSet.
 func (modGL *ModuleGL) assignMultiSetHash(run *wizard.ProverRuntime) {
 
+	var lppCommitments field.Element
+	if run.HasPublicInput(lppMerkleRootPublicInput + "_0") {
+		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
+	}
+
 	var (
-		lppCommitments           = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
 		segmentIndex             = modGL.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof              = field.NewElement(uint64(proofTypeGL))
 		hasSentOrReceive         = len(modGL.ReceivedValuesGlobalMap) > 0

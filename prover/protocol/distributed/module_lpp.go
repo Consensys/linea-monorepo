@@ -164,8 +164,8 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 		)
 		moduleLPP.Horner = &q
 
-		moduleLPP.N0Hash = moduleLPP.Wiop.InsertProof(0, "N0_HASH", 1)
-		moduleLPP.N1Hash = moduleLPP.Wiop.InsertProof(0, "N1_HASH", 1)
+		moduleLPP.N0Hash = moduleLPP.Wiop.InsertProof(1, "N0_HASH", 1)
+		moduleLPP.N1Hash = moduleLPP.Wiop.InsertProof(1, "N1_HASH", 1)
 	}
 
 	// In case the LPP part is empty, we have a scenario where the sub-proof to
@@ -588,8 +588,12 @@ func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *M
 // run as part of a prover action.
 func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 
+	var lppCommitments field.Element
+	if run.HasPublicInput(lppMerkleRootPublicInput + "_0") {
+		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
+	}
+
 	var (
-		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
