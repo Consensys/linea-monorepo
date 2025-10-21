@@ -11,9 +11,71 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestRho(t *testing.T) {
+
+	const numCases int = 30
+	maxKeccaf := 10
+
+	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
+	rnd := rand.New(rand.NewChaCha8([32]byte{}))
+
+	// Every time the prover function is called, the traces will be updated.
+	// Likewise, run will be set by the prover.
+	var run *wizard.ProverRuntime
+
+	// Parametrizes the wizard and the input generator.
+	builder, prover, mod := rhoTestingModule(maxKeccaf)
+
+	comp := wizard.Compile(builder, dummy.Compile)
+
+	for i := 0; i < numCases; i++ {
+
+		// Generate new traces
+		traces := genKeccakfTrace(rnd, maxKeccaf)
+
+		// Recall that this will set the values of `traces` and ``
+		proof := wizard.Prove(comp, prover(traces, &run))
+		assert.NoErrorf(t, wizard.Verify(comp, proof), "verifier failed")
+
+		effNumKeccak := len(traces.KeccakFInps)
+
+		for permId := 0; permId < effNumKeccak; permId++ {
+
+			// Copy the corresponding input state and apply the rho
+			// transformation.
+			state := traces.KeccakFInps[permId]
+			state.Theta()
+			state.Rho()
+			expected := state.Pi()
+
+			// Reconstruct the same state from the assignment of the prover
+			reconstructed := keccak.State{}
+			recomposed := [64]field.Element{}
+			for x := 0; x < 5; x++ {
+				for y := 0; y < 5; y++ {
+					for z := 0; z < 64; z++ {
+						// Recompose the slice into a complete base 2 representation
+						recomposed[z] = mod.RhoPi.stateNext[x][y][z].GetColAssignmentAt(run,
+							permId*keccak.NumRound)
+
+					}
+					reconstructed[x][y] = reconstructU64(recomposed)
+				}
+			}
+
+			assert.Equal(t, expected, reconstructed,
+				"could not reconstruct the state. permutation %v", permId)
+
+			// Exiting on the first failed case to not spam the test logs
+			if t.Failed() {
+				t.Fatalf("stopping here as we encountered errors")
+			}
+		}
+	}
+}
 
 // a module definition method specifically for testing the rho submodule
 func rhoTestingModule(
@@ -46,7 +108,7 @@ func rhoTestingModule(
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 64; z++ {
-					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("RHO_STATE_CURR", x, y, z), size)
+					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("RHO_STATE_CURR_%v_%v_%v", x, y, z), size)
 				}
 			}
 		}
@@ -133,71 +195,6 @@ func rhoTestingModule(
 	return builder, prover, mod
 }
 
-// Test the correctness of the theta wizard function
-func TestRho(t *testing.T) {
-
-	const numCases int = 30
-	maxKeccaf := 10
-
-	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-	rnd := rand.New(rand.NewChaCha8([32]byte{}))
-
-	// Every time the prover function is called, the traces will be updated.
-	// Likewise, run will be set by the prover.
-	var run *wizard.ProverRuntime
-
-	// Parametrizes the wizard and the input generator.
-	builder, prover, mod := rhoTestingModule(maxKeccaf)
-
-	comp := wizard.Compile(builder, dummy.Compile)
-
-	for i := 0; i < numCases; i++ {
-
-		// Generate new traces
-		traces := genKeccakfTrace(rnd, maxKeccaf)
-
-		// Recall that this will set the values of `traces` and ``
-		proof := wizard.Prove(comp, prover(traces, &run))
-		assert.NoErrorf(t, wizard.Verify(comp, proof), "verifier failed")
-
-		effNumKeccak := len(traces.KeccakFInps)
-
-		for permId := 0; permId < effNumKeccak; permId++ {
-
-			// Copy the corresponding input state and apply the rho
-			// transformation.
-			expectedStateRho := traces.KeccakFInps[permId]
-			expectedStateRho.Theta()
-			expectedStateRho.Rho()
-
-			// Reconstruct the same state from the assignment of the prover
-			reconstructed := keccak.State{}
-			recomposed := [8]field.Element{}
-			for x := 0; x < 5; x++ {
-				for y := 0; y < 5; y++ {
-					for z := 0; z < 8; z++ {
-						// Recompose the slice into a complete base 2 representation
-						// of aTheta[x][y] in base 2
-						recomposed[z] = mod.RhoPi.stateNext[x][y][z].GetColAssignmentAt(
-							run,
-							permId*keccak.NumRound,
-						)
-					}
-					reconstructed[x][y] = reconstructU64(recomposed)
-				}
-			}
-
-			assert.Equal(t, expectedStateRho, reconstructed,
-				"could not reconstruct the state. permutation %v", permId)
-
-			// Exiting on the first failed case to not spam the test logs
-			if t.Failed() {
-				t.Fatalf("stopping here as we encountered errors")
-			}
-		}
-	}
-}
-
 func BitsLE(x uint64) [64]uint8 {
 	var bits [64]uint8
 	for i := 0; i < 64; i++ {
@@ -228,19 +225,23 @@ func genKeccakfTrace(rnd *rand.Rand, maxNumKeccakf int) keccak.PermTraces {
 		}
 	}
 
+	// And trim a posteriori the excess permutation so that we have exactly
+	// effNumKeccak. This will not be very realistic for the last permutation
+	// since this will ignore the padding. Fortunately, the padding is out
+	// of scope for this module. So, this should not matter in practice.
+	res.Blocks = res.Blocks[:effNumKeccak]
+	res.IsNewHash = res.IsNewHash[:effNumKeccak]
+	res.KeccakFInps = res.KeccakFInps[:effNumKeccak]
+	res.KeccakFOuts = res.KeccakFOuts[:effNumKeccak]
+
 	return res
 
 }
 
-func reconstructU64(slices [8]field.Element) uint64 {
-	a := []field.Element{}
-	var res uint64
-	for _, slice := range slices {
-		decomposedF := keccakf.DecomposeFr(slice, 11, 64)
-		a = append(a, decomposedF...)
-	}
+func reconstructU64(x [64]field.Element) uint64 {
 
-	for i, limb := range a {
+	var res uint64
+	for i, limb := range x {
 		bit := (limb.Uint64()) & 1
 		res |= bit << i
 	}
