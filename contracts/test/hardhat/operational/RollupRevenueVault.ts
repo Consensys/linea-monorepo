@@ -99,6 +99,30 @@ describe("RollupRevenueVault", () => {
       await expectRevertWithCustomError(rollupRevenueVault, deployCall, "ZeroTimestampNotAllowed");
     });
 
+    it("should revert if lastInvoiceDate is in the future", async () => {
+      const futureInvoiceDate = (await time.latest()) + ONE_DAY_IN_SECONDS;
+      const deployCall = deployUpgradableFromFactory(
+        "RollupRevenueVault",
+        [
+          futureInvoiceDate,
+          admin.address,
+          invoiceSubmitter.address,
+          burner.address,
+          invoicePaymentReceiver.address,
+          await tokenBridge.getAddress(),
+          await messageService.getAddress(),
+          l1LineaTokenBurner.address,
+          await l2LineaToken.getAddress(),
+          await dex.getAddress(),
+        ],
+        {
+          initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
+          unsafeAllow: ["constructor"],
+        },
+      );
+      await expectRevertWithCustomError(rollupRevenueVault, deployCall, "FutureInvoicesNotAllowed");
+    });
+
     it("Should revert if defaultAdmin address is zero address", async () => {
       const deployCall = deployUpgradableFromFactory(
         "RollupRevenueVault",
@@ -414,10 +438,22 @@ describe("RollupRevenueVault", () => {
       );
     });
 
+    it("Should revert if endTimestamp is in the future", async () => {
+      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
+      const startTimestamp = lastInvoiceDate + 1n;
+      const endTimestamp = (await time.latest()) + ONE_DAY_IN_SECONDS;
+
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(invoiceSubmitter).submitInvoice(startTimestamp, endTimestamp, 100n),
+        "FutureInvoicesNotAllowed",
+      );
+    });
+
     it("Should revert if amount is zero", async () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
-      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
+      const endTimestamp = lastInvoiceDate + BigInt(ONE_DAY_IN_SECONDS);
 
       await expectRevertWithCustomError(
         rollupRevenueVault,
@@ -513,6 +549,16 @@ describe("RollupRevenueVault", () => {
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateInvoiceArrears(100n, lastInvoiceDate - 1n),
         "InvoiceDateTooOld",
+      );
+    });
+
+    it("Should revert if lastInvoiceDate is in the future", async () => {
+      const lastInvoiceDate = (await time.latest()) + ONE_DAY_IN_SECONDS;
+
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(admin).updateInvoiceArrears(100n, lastInvoiceDate),
+        "FutureInvoicesNotAllowed",
       );
     });
 
