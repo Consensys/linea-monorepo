@@ -60,5 +60,7 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
     }
   }
 
-  public async process(): Promise<void> {}
+  public async process(): Promise<void> {
+    // Get Lido 
+  }
 }

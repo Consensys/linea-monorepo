@@ -1,3 +1,3 @@
 export interface IOperationModeProcessor {
-  poll(): Promise<void>;
+  process(): Promise<void>;
 }
