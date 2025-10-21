@@ -7,14 +7,14 @@
   </Appenders>
   <Loggers>
     <Logger name="maru" level="INFO" additivity="false">
-      <AppenderRef ref="Console"/>
+      <AppenderRef ref="console"/>
     </Logger>
     <!--
     Set maru.clients to TRACE for more detailed client logs
     DEBUG will log only failed requests
     -->
     <Logger name="maru.clients" level="DEBUG" additivity="false">
-      <AppenderRef ref="Console"/>
+      <AppenderRef ref="console"/>
     </Logger>
     <Root level="INFO" additivity="false">
       <appender-ref ref="console"/>
