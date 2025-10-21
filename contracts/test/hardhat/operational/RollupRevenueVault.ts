@@ -730,9 +730,9 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("testRevertSwap", [0, 0, 0]);
 
       await expectRevertWithCustomError(
-        dex,
+        rollupRevenueVault,
         rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "TestRevertFromSwap",
+        "DexSwapFailed",
       );
     });
 
