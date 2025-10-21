@@ -115,7 +115,7 @@ class MaruApp(
     }
     start("P2P Network") { p2pNetwork.start().get() }
     start("Sync Service", syncControllerManager::start)
-    start("beacon Api", apiServer::start)
+    start("Beacon Api", apiServer::start)
     // observability shall be the last to start because of liveness/readiness probe
     start("Observability Server") {
       ObservabilityServer(
@@ -157,6 +157,7 @@ class MaruApp(
     action: () -> Unit,
   ) {
     runCatching(action)
+      .onSuccess { log.info("{} started!", serviceName) }
       .onFailure { log.error("Failed to start {}, errorMessage={}", serviceName, it.message, it) }
       .getOrThrow()
   }
