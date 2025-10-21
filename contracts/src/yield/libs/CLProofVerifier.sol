@@ -1,9 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
 
-// See contracts/COMPILERS.md
 pragma solidity 0.8.30;
-
 import { GIndex, pack, concat } from "./vendor/lido/GIndex.sol";
 import { SSZ } from "./vendor/lido/SSZ.sol";
 import { BLS12_381 } from "./vendor/lido/BLS.sol";
@@ -14,11 +12,8 @@ import { Validator } from "./vendor/lido/BeaconTypes.sol";
  * @author Lido
  * @notice
  *
- * CLProofVerifier is base abstract contract that provides internal method to verify
- * merkle proofs of validator entry in CL. It uses concatenated proofs that prove
- * validator existence in CL from (pubkey, withdrawalCredentials, effectiveBalance, slashed) against Beacon block root
- * stored in BeaconRoots system contract (see EIP-4788).
- *
+ * Modified version of CLProofVerifier (original implementation by Lido) to verify the entire Validator Container in the CL.
+ * It uses concatenated proofs against the beacon block root exposed in the EIP-4788 system contract.
  */
 abstract contract CLProofVerifier {
   /**
