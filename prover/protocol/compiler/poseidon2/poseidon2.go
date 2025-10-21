@@ -38,9 +38,6 @@ type Poseidon2Context struct {
 	// Interm stores the intermediate values of the Poseidon2 computation. This
 	// internal to the compiler.
 	Interm [][]ifaces.Column
-	// Interm stores the intermediate values of the Poseidon2 computation. This
-	// internal to the compiler.
-	Interm [][]ifaces.Column
 }
 
 // CompilePoseidon2 compiles all the Poseidon2 queries in the [comp] object. The compiler
@@ -91,16 +88,13 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 		ctx.StackedOldStates[block] = comp.InsertCommit(protocolRoundID,
 			ifaces.ColIDf("Poseidon2_STACKED_OLD_STATES_SelfRecursionCount_%v_ID_%v_BLOCK_%v", comp.SelfRecursionCount, uniqueID(comp), block),
 			totalSize, true)
-			totalSize, true)
 
 		ctx.StackedBlocks[block] = comp.InsertCommit(protocolRoundID,
 			ifaces.ColIDf("Poseidon2_STACKED_BLOCKS_SelfRecursionCount_%v_ID_%v_BLOCK_%v", comp.SelfRecursionCount, uniqueID(comp), block),
 			totalSize, true)
-			totalSize, true)
 
 		ctx.StackedNewStates[block] = comp.InsertCommit(protocolRoundID,
 			ifaces.ColIDf("Poseidon2_STACKED_NEW_STATES_SelfRecursionCount_%v_ID_%v_BLOCK_%v", comp.SelfRecursionCount, uniqueID(comp), block),
-			totalSize, true)
 			totalSize, true)
 	}
 
@@ -115,12 +109,6 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 	feedForwardInput := make([]ifaces.Column, blockSize)
 	copy(feedForwardInput, ctx.StackedBlocks[:])
 
-	ctx.Interm = checkPoseidon2BlockCompressionExpression(
-		comp,
-		asExprs(ctx.StackedOldStates[:]),
-		asExprs(ctx.StackedBlocks[:]),
-		asExprs(ctx.StackedNewStates[:]),
-	)
 	ctx.Interm = checkPoseidon2BlockCompressionExpression(
 		comp,
 		asExprs(ctx.StackedOldStates[:]),
@@ -175,7 +163,6 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 		totalSize        = ctx.StackedOldStates[0].Size()
 		poseidon2OfZero  = poseidon2.Poseidon2BlockCompression(zeroBlock, zeroBlock)
 	)
-
 
 	for i := range ctx.CompiledQueries {
 
@@ -251,23 +238,6 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 			smartvectors.RightPadded(stackedNewStates[block], poseidon2OfZero[block], totalSize))
 	}
 
-	var (
-		effectiveSize      = len(stackedOldStates[0])
-		intermediateStates = make([][][]field.Element, fullRounds)
-	)
-
-	for i := range intermediateStates {
-		intermediateStates[i] = make([][]field.Element, width)
-		for j := range intermediateStates[i] {
-			// The last iteration of the loop computes the dummy value.
-			intermediateStates[i][j] = make([]field.Element, effectiveSize+1)
-		}
-	}
-
-	parallel.Execute(effectiveSize+1, func(start, stop int) {
-		for row := start; row < stop; row++ {
-
-			// If the row is the last one, we leave zeroes in the state
 	var (
 		effectiveSize      = len(stackedOldStates[0])
 		intermediateStates = make([][][]field.Element, fullRounds)
