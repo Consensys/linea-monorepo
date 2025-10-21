@@ -1,100 +1,38 @@
 import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src/core/client/IContractClientLibrary";
 import { IYieldManager } from "../core/services/contracts/IYieldManager";
-import { Address, BaseError, PublicClient, TransactionReceipt } from "viem";
-import YieldManagerABI from "../core/abis/YieldManager.abi";
+import { Address, BaseError, getContract, GetContractReturnType, PublicClient, TransactionReceipt } from "viem";
+import { YieldManagerABI } from "../core/abis/YieldManager";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt> {
   private readonly blockchainClient: PublicClient;
+  private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
 
   constructor(
     contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt, BaseError>,
-    private readonly contractAddress: Address,
+    contractAddress: Address,
   ) {
     this.blockchainClient = contractClientLibrary.getBlockchainClient();
+    this.contract = getContract({ abi: YieldManagerABI, address: contractAddress, client: this.blockchainClient });
   }
 
-  async getTargetReserveDeficit(_yieldProvider: string): Promise<bigint> {
-    return this.blockchainClient.readContract({
-      address: this.contractAddress,
-      abi: YieldManagerABI,
-      functionName: "getTargetReserveDeficit",
-    });
+  async getTargetReserveDeficit(): Promise<bigint> {
+    return await this.contract.read.getTargetReserveDeficit();
   }
 
-  async isStakingPaused(yieldProvider: string): Promise<boolean> {
-    return this.blockchainClient.readContract({
-      address: this.contractAddress,
-      abi: YieldManagerABI,
-      functionName: "isStakingPaused",
-      args: [yieldProvider as Address],
-    });
+  async isStakingPaused(yieldProvider: Address): Promise<boolean> {
+    return await this.contract.read.isStakingPaused([yieldProvider]);
   }
 
-  async isOssificationInitiated(yieldProvider: string): Promise<boolean> {
-    return this.blockchainClient.readContract({
-      address: this.contractAddress,
-      abi: YieldManagerABI,
-      functionName: "isOssificationInitiated",
-      args: [yieldProvider as Address],
-    });
+  async isOssificationInitiated(yieldProvider: Address): Promise<boolean> {
+    return await this.contract.read.isOssificationInitiated([yieldProvider]);
   }
 
-  async isOssified(yieldProvider: string): Promise<boolean> {
-    return this.blockchainClient.readContract({
-      address: this.contractAddress,
-      abi: YieldManagerABI,
-      functionName: "isOssified",
-      args: [yieldProvider as Address],
-    });
+  async isOssified(yieldProvider: Address): Promise<boolean> {
+    return await this.contract.read.isOssified([yieldProvider]);
   }
 
-  async withdrawableValue(yieldProvider: string): Promise<bigint> {
-    return this.blockchainClient.readContract({
-      address: this.contractAddress,
-      abi: YieldManagerABI,
-      functionName: "withdrawableValue",
-      args: [yieldProvider as Address],
-    });
+  async withdrawableValue(yieldProvider: Address): Promise<bigint> {
+    const { result } = await this.contract.simulate.withdrawableValue([yieldProvider]);
+    return result;
   }
 }
-
-// export async function getLastInvoiceDate(client: Client, contractAddress: Address): Promise<Result<bigint, BaseError>> {
-//   try {
-//     const lastInvoiceDate = await readContract(client, {
-//       address: contractAddress,
-//       abi: [
-//         {
-//           inputs: [],
-//           name: "lastInvoiceDate",
-//           outputs: [
-//             {
-//               internalType: "uint256",
-//               name: "",
-//               type: "uint256",
-//             },
-//           ],
-//           stateMutability: "view",
-//           type: "function",
-//         },
-//       ],
-//       functionName: "lastInvoiceDate",
-//     });
-//     return ok(lastInvoiceDate);
-//   } catch (error) {
-//     if (error instanceof BaseError) {
-//       const decodedError = error.walk();
-//       return err(decodedError as BaseError);
-//     }
-//     return err(error as BaseError);
-//   }
-// }
-
-// const contract = getContract({ address, abi, client: publicClient })
-
-// // The below will send a single request to the RPC Provider.
-// const [name, totalSupply, symbol, balance] = await Promise.all([
-//   contract.read.name(),
-//   contract.read.totalSupply(),
-//   contract.read.symbol(),
-//   contract.read.balanceOf([address]),
-// ])

@@ -2,12 +2,14 @@ import { ILogger } from "ts-libs/linea-shared-utils/src";
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector";
 import { NativeYieldCronJobClientConfig } from "../../application/main/config/NativeYieldCronJobClientConfig";
 import { wait } from "@consensys/linea-sdk";
+import { IYieldManager } from "../../core/services/contracts/IYieldManager";
+import { TransactionReceipt } from "viem";
 
 export class OperationModeSelector implements IOperationModeSelector {
-  // Need IYieldManager instance...
   constructor(
     private readonly config: NativeYieldCronJobClientConfig,
     private readonly logger: ILogger,
+    private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
   ) {}
 
   public async start(): Promise<void> {
@@ -21,10 +23,17 @@ export class OperationModeSelector implements IOperationModeSelector {
 
   private async selectOperationMode(): Promise<void> {
     try {
-      // Get ossification state from YieldManager
-      // Choose mode based on ossification state
-      // const { fromBlock, fromBlockLogIndex } = await this.getInitialFromBlock();
-      // this.processEvents(fromBlock, fromBlockLogIndex);
+      const [isOssificationInitiated, isOssified] = await Promise.all([
+        this.yieldManagerContractClient.isOssificationInitiated(this.config.contractAddresses.lidoYieldProviderAddress),
+        this.yieldManagerContractClient.isOssified(this.config.contractAddresses.lidoYieldProviderAddress),
+      ]);
+      if (isOssified) {
+        // Run ossification complete
+      } else if (isOssificationInitiated) {
+        // Run ossification pending
+      } else {
+        // Run Yield reporter
+      }
     } catch (e) {
       this.logger.error(e);
       await wait(this.config.timing.contractReadRetryTimeSeconds);

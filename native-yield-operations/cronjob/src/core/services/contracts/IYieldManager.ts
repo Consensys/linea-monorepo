@@ -7,7 +7,7 @@ export interface IYieldManager<TTransactionReceipt> {
   isOssificationInitiated(yieldProvider: string): Promise<boolean>;
   isOssified(yieldProvider: string): Promise<boolean>;
   withdrawableValue(yieldProvider: string): Promise<bigint>;
-  // // Mutator calls
+  // Mutator calls
   // fundYieldProvider(yieldProvider: string, amount: bigint): Promise<TransactionReceipt | null>;
   // transferFundsToReserve(amount: bigint): Promise<TransactionReceipt | null>;
   // reportYield(yieldProvider: string, l2YieldRecipient: string): Promise<TransactionReceipt | null>;
