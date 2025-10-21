@@ -6,7 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { L2MessageService } from "../messaging/l2/L2MessageService.sol";
 import { TokenBridge } from "../bridging/token/TokenBridge.sol";
 import { IRollupRevenueVault } from "./interfaces/IRollupRevenueVault.sol";
-import { IL2LineaToken } from "./interfaces/IL2LineaToken.sol";
 
 /**
  * @title Upgradeable Rollup Revenue Vault Contract.
@@ -209,17 +208,24 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     (bool success, ) = address(0).call{ value: ethToBurn }("");
     require(success, EthBurnFailed());
 
-    uint256 lineaTokenBalanceBefore = IL2LineaToken(lineaToken).balanceOf(address(this));
+    (bool swapSuccess, bytes memory data) = dex.call{ value: balanceAvailable - ethToBurn }(_swapData);
 
-    (bool swapSuccess, bytes memory returnData) = dex.call{ value: balanceAvailable - ethToBurn }(_swapData);
-    require(swapSuccess, DexSwapFailed());
-    uint256 numLineaTokens = abi.decode(returnData, (uint256));
+    if (!swapSuccess) {
+      if (data.length > 0) {
+        assembly {
+          let returndata_size := mload(data)
+          revert(add(32, data), returndata_size)
+        }
+      } else {
+        revert DexSwapFailed();
+      }
+    }
 
-    uint256 lineaTokenBalanceAfter = IL2LineaToken(lineaToken).balanceOf(address(this));
-    require(lineaTokenBalanceAfter - lineaTokenBalanceBefore >= numLineaTokens, InsufficientLineaTokensReceived());
+    address lineaTokenAddress = lineaToken;
+    uint256 lineaTokenBalanceAfter = IERC20(lineaTokenAddress).balanceOf(address(this));
 
-    IERC20(lineaToken).approve(address(tokenBridge), lineaTokenBalanceAfter);
-    tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, lineaTokenBalanceAfter, l1LineaTokenBurner);
+    IERC20(lineaTokenAddress).approve(address(tokenBridge), lineaTokenBalanceAfter);
+    tokenBridge.bridgeToken{ value: minimumFee }(lineaTokenAddress, lineaTokenBalanceAfter, l1LineaTokenBurner);
 
     emit EthBurntSwappedAndBridged(ethToBurn, lineaTokenBalanceAfter);
   }

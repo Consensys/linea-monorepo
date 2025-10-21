@@ -730,33 +730,9 @@ describe("RollupRevenueVault", () => {
       const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("testRevertSwap", [0, 0, 0]);
 
       await expectRevertWithCustomError(
-        rollupRevenueVault,
+        dex,
         rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "DexSwapFailed",
-      );
-    });
-
-    it("Should revert if swap returns insufficient linea tokens", async () => {
-      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
-      const startTimestamp = lastInvoiceDate + 1n;
-      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-
-      await rollupRevenueVault
-        .connect(invoiceSubmitter)
-        .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("0.5"));
-
-      const minLineaOut = 200n;
-      const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
-
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData(
-        "testInsufficientAmountOutSwap",
-        [minLineaOut, deadline, 0n],
-      );
-
-      await expectRevertWithCustomError(
-        rollupRevenueVault,
-        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "InsufficientLineaTokensReceived",
+        "TestRevertFromSwap",
       );
     });
 

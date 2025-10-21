@@ -5,12 +5,12 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { deployWETH9Fixture } from "./helpers/deploy";
 import { deployFromFactory } from "../common/deployment";
-import { V3DexSwap, TestDexRouter, TestERC20 } from "../../../typechain-types";
+import { TestDexRouter, TestERC20, TestDexSwap } from "../../../typechain-types";
 import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
 import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
 
 describe("V3DexSwap", () => {
-  let dexSwap: V3DexSwap;
+  let dexSwap: TestDexSwap;
   let rollupRevenueVault: SignerWithAddress;
   let lineaToken: TestERC20;
   let testWETH9Address: string;
@@ -29,12 +29,12 @@ describe("V3DexSwap", () => {
     const router = (await deployFromFactory("TestDexRouter")) as TestDexRouter;
 
     const dexSwap = (await deployFromFactory(
-      "V3DexSwap",
+      "TestDexSwap",
       await router.getAddress(),
       testWETH9,
       await lineaToken.getAddress(),
       50,
-    )) as V3DexSwap;
+    )) as TestDexSwap;
 
     return { dexSwap, lineaToken, testWETH9, router };
   }
@@ -123,6 +123,17 @@ describe("V3DexSwap", () => {
         dexSwap,
         dexSwap.swap(0n, deadline, 0n, { value: ethValueToSwap }),
         "ZeroMinLineaOutNotAllowed",
+      );
+    });
+
+    it("Should revert when amountOut < minLineaOut", async () => {
+      const deadline = (await time.latest()) + ONE_MINUTE_IN_SECONDS;
+      const ethValueToSwap = ethers.parseEther("1");
+      await expectRevertWithCustomError(
+        dexSwap,
+        dexSwap.testSwapInsufficientLineaTokensReceived(10n, deadline, 0n, { value: ethValueToSwap }),
+        "InsufficientLineaTokensReceived",
+        [10n, 0n],
       );
     });
 
