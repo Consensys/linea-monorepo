@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IV3DexSwap } from "./interfaces/IV3DexSwap.sol";
 import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
@@ -59,6 +60,8 @@ contract V3DexSwap is IV3DexSwap {
     IWETH9(WETH_TOKEN).deposit{ value: msg.value }();
     IWETH9(WETH_TOKEN).approve(ROUTER, msg.value);
 
+    uint256 tokenBalanceBefore = IERC20(LINEA_TOKEN).balanceOf(msg.sender);
+
     amountOut = ISwapRouterV3(ROUTER).exactInputSingle(
       ISwapRouterV3.ExactInputSingleParams({
         tokenIn: WETH_TOKEN,
@@ -71,5 +74,8 @@ contract V3DexSwap is IV3DexSwap {
         sqrtPriceLimitX96: _sqrtPriceLimitX96
       })
     );
+
+    uint256 tokensReceived = IERC20(LINEA_TOKEN).balanceOf(msg.sender) - tokenBalanceBefore;
+    require(tokensReceived >= _minLineaOut, InsufficientLineaTokensReceived(_minLineaOut, tokensReceived));
   }
 }

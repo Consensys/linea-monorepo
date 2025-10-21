@@ -211,17 +211,16 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     (bool success, ) = address(0).call{ value: ethToBurn }("");
     require(success, EthBurnFailed());
 
-    (bool swapSuccess, bytes memory returnData) = dex.call{ value: balanceAvailable - ethToBurn }(_swapData);
+    (bool swapSuccess,) = dex.call{ value: balanceAvailable - ethToBurn }(_swapData);
     require(swapSuccess, DexSwapFailed());
 
-    uint256 numLineaTokens = abi.decode(returnData, (uint256));
-    require(numLineaTokens > 0, ZeroLineaTokensReceived());
+    address lineaTokenAddress = lineaToken;
+    uint256 lineaTokenBalanceAfter = IERC20(lineaTokenAddress).balanceOf(address(this));
 
-    IERC20(lineaToken).approve(address(tokenBridge), numLineaTokens);
+    IERC20(lineaTokenAddress).approve(address(tokenBridge), lineaTokenBalanceAfter);
+    tokenBridge.bridgeToken{ value: minimumFee }(lineaTokenAddress, lineaTokenBalanceAfter, l1LineaTokenBurner);
 
-    tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, numLineaTokens, l1LineaTokenBurner);
-
-    emit EthBurntSwappedAndBridged(ethToBurn, numLineaTokens);
+    emit EthBurntSwappedAndBridged(ethToBurn, lineaTokenBalanceAfter);
   }
 
   /**

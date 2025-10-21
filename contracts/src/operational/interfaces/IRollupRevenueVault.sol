@@ -69,11 +69,6 @@ interface IRollupRevenueVault {
   error DexSwapFailed();
 
   /**
-   * @dev Thrown when zero LINEA tokens are received from the DEX swap.
-   */
-  error ZeroLineaTokensReceived();
-
-  /**
    * @dev Thrown when the invoice is in the future.
    */
   error FutureInvoicesNotAllowed();

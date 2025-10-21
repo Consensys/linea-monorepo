@@ -792,31 +792,6 @@ describe("RollupRevenueVault", () => {
       );
     });
 
-    it("Should revert if swap returns 0 linea tokens", async () => {
-      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
-      const startTimestamp = lastInvoiceDate + 1n;
-      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-
-      await rollupRevenueVault
-        .connect(invoiceSubmitter)
-        .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("0.5"));
-
-      const minLineaOut = 200n;
-      const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
-
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("testZeroAmountOutSwap", [
-        minLineaOut,
-        deadline,
-        0n,
-      ]);
-
-      await expectRevertWithCustomError(
-        rollupRevenueVault,
-        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "ZeroLineaTokensReceived",
-      );
-    });
-
     it("Should burn ETH, swap to LINEA and bridge the tokens to L1 burner contract", async () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;

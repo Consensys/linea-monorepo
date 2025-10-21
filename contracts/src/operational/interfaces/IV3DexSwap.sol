@@ -33,6 +33,13 @@ interface IV3DexSwap {
    */
   error DeadlineInThePast();
 
+  /**
+   * @dev Thrown when insufficient LINEA tokens are received from the DEX swap.
+   * @param expectedMinimum The expected minimum number of LINEA tokens to be received.
+   * @param actualReceived The actual number of LINEA tokens received.
+   */
+  error InsufficientLineaTokensReceived(uint256 expectedMinimum, uint256 actualReceived);
+
   /** @notice Swap ETH into LINEA.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
