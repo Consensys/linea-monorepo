@@ -820,7 +820,7 @@ describe("RollupRevenueVault", () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
         rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "ZeroLineaTokensReceived",
+        "DexSwapFailed",
       );
     });
 
