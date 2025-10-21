@@ -309,6 +309,18 @@ func (r *Store) AllKeys() []ifaces.ColID {
 }
 
 /*
+Returns the length of all keys ever stored.
+*/
+func (r *Store) AllKeyLen() int {
+	counter := 0
+	for roundID := 0; roundID < r.NumRounds(); roundID++ {
+		counter += len(r.AllKeysAt(roundID))
+	}
+
+	return counter
+}
+
+/*
 Returns the number of rounds
 */
 func (r *Store) NumRounds() int {
