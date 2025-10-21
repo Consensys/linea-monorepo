@@ -126,6 +126,17 @@ func (r *Store) AllKeysAt(round int) []ifaces.ColID {
 	return res
 }
 
+// AllKeysAt returns the list of all keys for a given round. The result follows
+// the insertion order of insertion) (=assignment order)
+func (r *Store) AllKeysLenAt(round int) int {
+	rnd := r.byRounds.GetOrEmpty(round)
+	counter := 0
+	for i := range rnd {
+		counter += len(rnd[i].ID)
+	}
+	return counter
+}
+
 // Returns the list of all the [ifaces.ColID] tagged with the [Committed] status so far
 // at a given round. The order of the returned slice follows the insertion order.
 func (r *Store) AllKeysCommittedAt(round int) []ifaces.ColID {
@@ -314,7 +325,7 @@ Returns the length of all keys ever stored.
 func (r *Store) AllKeyLen() int {
 	counter := 0
 	for roundID := 0; roundID < r.NumRounds(); roundID++ {
-		counter += len(r.AllKeysAt(roundID))
+		counter += r.AllKeysLenAt(roundID)
 	}
 
 	return counter
