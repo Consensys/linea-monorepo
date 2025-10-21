@@ -70,8 +70,8 @@ func TestNodeID(t *testing.T) {
 	for i := range levels {
 		nodeID := newNodeID(levels[i], pos[i])
 
-		require.Equal(t, levels[i], nodeID.Level(), "nodeid %v", nodeID)
-		require.Equal(t, pos[i], nodeID.PosInLevel(), "nodeid %v", nodeID)
+		require.Equal(t, levels[i], nodeID.level(), "nodeid %v", nodeID)
+		require.Equal(t, pos[i], nodeID.posInLevel(), "nodeid %v", nodeID)
 	}
 
 }

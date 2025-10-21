@@ -102,7 +102,7 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 		if !ok {
 			utils.Panic("Children not found in expr")
 		}
-		maxChildrenLevel = utils.Max(maxChildrenLevel, childID.Level())
+		maxChildrenLevel = utils.Max(maxChildrenLevel, childID.level())
 		childrenIDs = append(childrenIDs, childID)
 	}
 
@@ -136,9 +136,9 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 	*/
 	b.ESHashesToPos[f.ESHash] = NewNodeID
 	for _, childID := range childrenIDs {
-		b.GetNode(childID).addParent(NewNodeID)
+		b.getNode(childID).addParent(NewNodeID)
 	}
-	b.Nodes[NewNodeID.Level()] = append(b.Nodes[NewNodeID.Level()], newNode)
+	b.Nodes[NewNodeID.level()] = append(b.Nodes[NewNodeID.level()], newNode)
 
 	/*
 		And returns the new Anchored expression
