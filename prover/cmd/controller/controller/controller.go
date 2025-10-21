@@ -185,7 +185,7 @@ func (s *ControllerState) handleSignals(
 		case syscall.SIGUSR1:
 			spotReclaimDetected.Store(true)
 			if !gracefulShutdownRequested.Load() {
-				cLog.Info("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP...")
+				cLog.Infof("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
 				cancel()
 				if cfg.Controller.Prometheus.Enabled {
 					metrics.IncSpotInterruption(cfg.Controller.LocalID)
@@ -212,7 +212,7 @@ func (s *ControllerState) handleSignals(
 				s.jobDoneChanMu.Unlock()
 
 				go func() {
-					cLog.Infof("Allowing in-flight job to finish (max %ds)...", cfg.Controller.TerminationGracePeriod)
+					cLog.Infof("Allowing in-flight job %s to finish (max %ds)...", s.activeJob.OriginalFile, cfg.Controller.TerminationGracePeriod)
 					select {
 					case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
 						cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")

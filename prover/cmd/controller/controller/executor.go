@@ -231,8 +231,10 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	// Build exec.Command so we can set process group
 	cmd := exec.Command("sh", "-c", cmdStr)
 
-	// Pipe the child process's stdin/stdout/stderr into the current process
+	// Setpgid sets the process group ID of the child to Pgid, or, if Pgid == 0, to the new child's process ID.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// Pipe the child process's stdin/stdout/stderr into the current process
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -263,24 +265,8 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 		// goroutine, we can safely close it.
 		defer close(done)
 
-		// Lock on the process until it finishes
-		err := cmd.Wait()
-
-		if err != nil {
-			// Here it means, the "os/exec" package could not "wait" the process. It
-			// can happen for many different reasons essentially pertaining to
-			// the initialization of the process. It may be that some of theses
-			// errors are retryables but it remains to see which one. Until then
-			// we exited with a fatal code and the files will need to be
-			// manually reprocessed.
-			logrus.Errorf("unexpected : got an error trying to lock on %v : %v", pname, err)
-			done <- Status{
-				ExitCode: CodeFatal,
-				What:     "got an error waiting for the process",
-				Err:      err,
-			}
-			return
-		}
+		// Wait until the process finishes
+		_ = cmd.Wait()
 		processingTime := time.Since(startTime)
 		exitcode, codeErr := unixExitCode(cmd.ProcessState)
 		if codeErr != nil {
@@ -298,10 +284,10 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 		switch status.ExitCode {
 		case CodeSuccess:
 			status.What = "success"
-		case CodeStdErr:
-			status.What = "standard error: manual investigation needed"
 		case CodeOom:
 			status.What = "out of memory error"
+		case CodeStdErr:
+			status.What = "standard error: manual investigation needed"
 		case CodeTraceLimit:
 			status.What = "trace limit overflow"
 		case CodeKilledByExtSig:
@@ -315,15 +301,27 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	}()
 
 	select {
-	case <-ctx.Done():
-		pgid := cmd.Process.Pid
-		logrus.Infof("The process group %v is being killed by the controller", pgid)
-		_ = syscall.Kill(-pgid, syscall.SIGTERM) // negative for process group
 
+	case <-ctx.Done():
+		logrus.Infof("The process %v is being terminated by the controller", pname)
+		if cmd.Process != nil {
+			pgid := cmd.Process.Pid
+
+			// Set negative id to kill the whole process group and attempt to terminate process gracefully first
+			// by sending SIGTERM
+			err := syscall.Kill(-pgid, syscall.SIGTERM)
+			if err != nil {
+				logrus.Warnf("failed to send SIGTERM to process group %v: %v. KILLING it immediately", pgid, err)
+				_ = cmd.Process.Kill()
+			}
+		} else {
+			logrus.Warnf("cmd.Process is nil, nothing to kill for %v", pname)
+		}
 		return Status{
 			ExitCode: CodeKilledByExtSig,
-			What:     "the process group was killed by the controller",
+			What:     "the process was requested to be killed by the controller (process may not have started)",
 		}
+
 	case status := <-done:
 		return status
 	}
