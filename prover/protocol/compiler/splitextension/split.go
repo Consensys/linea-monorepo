@@ -271,7 +271,7 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 		}
 
 		if !originalEvalToSplit[i].Equal(&reconstructedEval) {
-			eErr := fmt.Errorf("unconsistent evaluation claim, position [%v]: %v != %v", i, evalFextParams.ExtYs[i].String(), reconstructedEval.String())
+			eErr := fmt.Errorf("unconsistent evaluation claim, position [%v]: %v != %v", i, originalEvalToSplit[i].String(), reconstructedEval.String())
 			err = errors.Join(err, eErr)
 		}
 	}
