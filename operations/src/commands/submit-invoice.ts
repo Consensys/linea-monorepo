@@ -2,9 +2,9 @@ import { Command, Flags } from "@oclif/core";
 import {
   Address,
   createPublicClient,
-  encodeFunctionData,
   Hex,
   http,
+  parseEther,
   parseEventLogs,
   parseSignature,
   serializeTransaction,
@@ -12,12 +12,14 @@ import {
 } from "viem";
 import { linea } from "viem/chains";
 import { Agent } from "https";
-import { formatDate } from "date-fns";
+import { GetCostAndUsageCommandInput } from "@aws-sdk/client-cost-explorer";
+import { formatInTimeZone } from "date-fns-tz";
+import { addDays } from "date-fns";
 import { computeInvoicePeriod } from "../utils/eth-transfer/time.js";
 import { generateQueryParameters, getDuneClient, runDuneQuery } from "../utils/common/dune.js";
 import { estimateTransactionGas, sendTransaction } from "../utils/eth-transfer/transactions.js";
 import { getWeb3SignerSignature } from "../utils/common/signature.js";
-import { INVOICE_PROCESSED_EVENT_ABI, SUBMIT_INVOICE_ABI } from "../utils/eth-transfer/constants.js";
+import { INVOICE_PROCESSED_EVENT_ABI } from "../utils/eth-transfer/constants.js";
 import { getHttpsAgent } from "../utils/common/https-agent.js";
 import { createAwsCostExplorerClient, getDailyAwsCosts } from "../utils/common/aws.js";
 import { computeSubmitInvoiceCalldata, getLastInvoiceDate } from "../utils/eth-transfer/contract.js";
@@ -31,41 +33,53 @@ export const hexString = Flags.custom<Hex>({
   parse: async (input) => validateHexString("hex-string", input),
 });
 
-export default class EthTransfer extends Command {
+export const awsCostsApiFilters = Flags.custom<GetCostAndUsageCommandInput>({
+  parse: (input: string) => {
+    try {
+      return JSON.parse(input);
+    } catch {
+      throw new Error("Invalid JSON string for AWS Costs API Filters");
+    }
+  },
+});
+
+export default class SubmitInvoice extends Command {
   static examples = [
     `<%= config.bin %> <%= command.id %> 
-      --sender-address=0xYourSenderAddress
-      --contract-address=0xYourContractAddress
-      --period-days=10
-      --reporting-lag-days=2
-      --rpc-url=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
-      --web3-signer-url=http://localhost:8545
-      --web3-signer-public-key=0xYourWeb3SignerPublicKey
-      --dune-api-key=YOUR_DUNE_KEY
-      --dune-query-id=12345
+      --senderAddress=0xYourSenderAddress
+      --contractAddress=0xYourContractAddress
+      --periodDays=10
+      --reportingLagDays=2
+      --rpcUrl=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
+      --web3SignerUrl=http://localhost:8545
+      --web3SignerPublicKey=0xYourWeb3SignerPublicKey
+      --duneApiKey=YOUR_DUNE_KEY
+      --duneQueryId=12345
       --tls
-      --web3-signer-keystore-path=/path/to/keystore.p12
-      --web3-signer-keystore-passphrase=yourPassphrase
-      --web3-signer-trusted-store-path=/path/to/ca.p12
-      --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
+      --web3SignerKeystorePath=/path/to/keystore.p12
+      --web3SignerKeystorePassphrase=yourPassphrase
+      --web3SignerTrustedStorePath=/path/to/ca.p12
+      --web3SignerTrustedStorePassphrase=yourTrustedStorePassphrase
+      --awsCostsApiFilters='{"Granularity":"DAILY","Metrics":["AmortizedCost"],"GroupBy":[]}'
     `,
     // Dry run
     `<%= config.bin %> <%= command.id %>
-      --sender-address=0xYourSenderAddress
-      --contract-address=0xYourContractAddress
-      --period-days=10
-      --reporting-lag-days=2
-      --rpc-url=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
-      --web3-signer-url=http://localhost:8545
-      --web3-signer-public-key=0xYourWeb3SignerPublicKey
-      --dune-api-key=YOUR_DUNE_KEY
-      --dune-query-id=12345
+      --senderAddress=0xYourSenderAddress
+      --contractAddress=0xYourContractAddress
+      --periodDays=10
+      --reportingLagDays=2
+      --rpcUrl=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
+      --web3SignerUrl=http://localhost:8545
+      --web3SignerPublicKey=0xYourWeb3SignerPublicKey
+      --duneApiKey=YOUR_DUNE_KEY
+      --duneQueryId=12345
       --tls
-      --web3-signer-keystore-path=/path/to/keystore.p12
-      --web3-signer-keystore-passphrase=yourPassphrase
-      --web3-signer-trusted-store-path=/path/to/ca.p12
-      --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
-      --dry-run
+      --web3SignerKeystorePath=/path/to/keystore.p12
+      --web3SignerKeystorePassphrase=yourPassphrase
+      --web3SignerTrustedStorePath=/path/to/ca.p12
+      --web3SignerTrustedStorePassphrase=yourTrustedStorePassphrase
+      --awsCostsApiFilters='{"Granularity":"DAILY","Metrics":["AmortizedCost"],"GroupBy":[]}'
+      --dryRun
     `,
   ];
 
@@ -169,10 +183,15 @@ export default class EthTransfer extends Command {
       parse: async (input) => parseInt(input),
       env: "ETH_TRANSFER_DUNE_QUERY_ID",
     }),
+    awsCostsApiFilters: awsCostsApiFilters({
+      description: "AWS Costs API Filters as JSON string",
+      required: true,
+      env: "ETH_TRANSFER_AWS_COSTS_API_FILTERS",
+    }),
   };
 
   public async run(): Promise<void> {
-    const { flags } = await this.parse(EthTransfer);
+    const { flags } = await this.parse(SubmitInvoice);
     const {
       senderAddress,
       rpcUrl,
@@ -187,12 +206,17 @@ export default class EthTransfer extends Command {
       web3SignerTrustedStorePassphrase,
       tls,
       dryRun,
+      awsCostsApiFilters,
     } = flags;
 
     const client = createPublicClient({
       chain: linea,
       transport: http(rpcUrl, { batch: true, retryCount: 3 }),
     });
+
+    /******************************
+      INVOICE PERIOD COMPUTATION
+     ******************************/
 
     const lastInvoiceDate = await getLastInvoiceDate(client, contractAddress);
 
@@ -219,22 +243,20 @@ export default class EthTransfer extends Command {
       `Invoice period to process: from ${invoicePeriod.startDate.toISOString()} to ${invoicePeriod.endDate.toISOString()}`,
     );
 
-    const awsClient = createAwsCostExplorerClient({});
+    /******************************
+            AWS COSTS FETCHING
+     ******************************/
+
+    const awsClient = createAwsCostExplorerClient({ region: "us-east-1" });
     this.log(
-      `Fetching AWS costs for the invoice period from=${formatDate(invoicePeriod.startDate, "yyyy-MM-dd")} to=${formatDate(
-        invoicePeriod.endDate,
-        "yyyy-MM-dd",
-      )}`,
+      `Fetching AWS costs for the invoice period from=${formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd")} to=${formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd")}`,
     );
-    // TODO: refine the filter to specific tags
+
     const awsCostsResult = await getDailyAwsCosts(awsClient, {
-      Filter: {},
-      Granularity: "DAILY",
-      GroupBy: [],
-      Metrics: ["AmortizedCost"],
+      ...awsCostsApiFilters,
       TimePeriod: {
-        Start: formatDate(invoicePeriod.startDate, "yyyy-MM-dd"),
-        End: formatDate(invoicePeriod.endDate, "yyyy-MM-dd"),
+        Start: formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd"),
+        End: formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd"),
       },
     });
 
@@ -246,12 +268,26 @@ export default class EthTransfer extends Command {
           this.error("No AWS cost data returned for the specified period.");
         }
 
-        return ResultsByTime[0].Total?.AmortizedCost?.Amount
-          ? parseFloat(ResultsByTime[0].Total.AmortizedCost.Amount)
-          : 0;
+        if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
+          this.error("AWS Costs API Filters must specify one metric.");
+        }
+
+        const totalDailyCosts = ResultsByTime[0].Total?.[awsCostsApiFilters.Metrics[0]].Amount;
+
+        if (!totalDailyCosts) {
+          this.error("No AWS cost data found for the specified metric.");
+        }
+
+        return parseFloat(totalDailyCosts);
       },
       (error) => this.error(`Failed to fetch AWS costs: ${error.message}`),
     );
+
+    this.log(`Total AWS costs in USD for the period: ${awsCostsInUsd}`);
+
+    /******************************
+        ONCHAIN COSTS FETCHING
+     ******************************/
 
     const duneClient = getDuneClient(flags.duneApiKey);
     const onChainCostsResult = await runDuneQuery(
@@ -269,16 +305,22 @@ export default class EthTransfer extends Command {
         if (!result || !result.rows || result.rows.length === 0) {
           this.error("No Dune query result returned for the specified period.");
         }
-        return result.rows.reduce((acc, row) => acc + (row.totalCost as number), 0);
+        return result.rows.reduce((acc, row) => acc + (row.total_costs_per_day as number), 0);
       },
       (error) => this.error(`Failed to run Dune query: ${error.message}`),
     );
 
+    this.log(`Total on-chain costs in ETH for the period: ${onChainCostsInEth}`);
+
+    /******************************
+        TOTAL COSTS COMPUTATION
+     ******************************/
+
     // TODO: convert awsCostsInUsd to ETH using some oracle or API
     const awsCostsInEth = awsCostsInUsd;
-    const totalCostsInEth = awsCostsInEth + onChainCostsInEth;
+    const totalCostsInEth = parseEther((awsCostsInEth + onChainCostsInEth).toString());
 
-    if (totalCostsInEth === 0) {
+    if (totalCostsInEth === 0n) {
       this.warn("No costs to process at this time.");
       this.warn("Please check your Dune query and AWS costs API calls.");
       return;
@@ -286,25 +328,31 @@ export default class EthTransfer extends Command {
 
     this.log(`Total costs to invoice in ETH: ${totalCostsInEth}`);
 
+    /******************************
+      TRANSACTION GAS ESTIMATION
+     ******************************/
+
+    const submitInvoiceCalldata = computeSubmitInvoiceCalldata(
+      BigInt(Math.floor(invoicePeriod.startDate.getTime() / 1000)),
+      BigInt(Math.floor(invoicePeriod.endDate.getTime() / 1000)),
+      totalCostsInEth,
+    );
+
     const gasEstimationResult = await estimateTransactionGas(client, {
       to: contractAddress,
       account: senderAddress,
       value: 0n,
-      data: encodeFunctionData({
-        abi: SUBMIT_INVOICE_ABI,
-        functionName: "submitInvoice",
-        args: [
-          BigInt(Math.floor(invoicePeriod.startDate.getTime() / 1000)),
-          BigInt(Math.floor(invoicePeriod.endDate.getTime() / 1000)),
-          BigInt(totalCostsInEth),
-        ],
-      }),
+      data: submitInvoiceCalldata,
     });
 
     const { gasLimit, baseFeePerGas, priorityFeePerGas } = gasEstimationResult.match(
       (value) => value,
       (error) => this.error(`Failed to estimate gas: ${error.message}`),
     );
+
+    /******************************
+          SIGNING TRANSACTION
+     ******************************/
 
     let httpsAgent: Agent | undefined;
     if (
@@ -327,11 +375,7 @@ export default class EthTransfer extends Command {
       to: contractAddress,
       type: "eip1559",
       value: BigInt(totalCostsInEth),
-      data: computeSubmitInvoiceCalldata(
-        BigInt(Math.floor(invoicePeriod.startDate.getTime() / 1000)),
-        BigInt(Math.floor(invoicePeriod.endDate.getTime() / 1000)),
-        BigInt(totalCostsInEth),
-      ),
+      data: submitInvoiceCalldata,
       chainId: linea.id,
       gas: gasLimit,
       maxFeePerGas: baseFeePerGas + priorityFeePerGas,
@@ -349,12 +393,16 @@ export default class EthTransfer extends Command {
       this.error(`Failed to get signature from Web3 Signer: ${signature.error.message}`);
     }
 
-    const serializeSignedTransaction = serializeTransaction(transactionToSerialize, parseSignature(signature.value));
-
     if (dryRun) {
       this.log(`Dry run mode - transaction not submitted.`);
       return;
     }
+
+    /******************************
+        BROADCASTING TRANSACTION
+     ******************************/
+
+    const serializeSignedTransaction = serializeTransaction(transactionToSerialize, parseSignature(signature.value));
 
     this.log(`Broadcasting submitInvoice transaction to the network...`);
     const transactionResult = await sendTransaction(client, serializeSignedTransaction);
