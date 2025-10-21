@@ -139,86 +139,86 @@ var (
 )
 
 var selfRecursionParametersSet = []selfRecursionParameters{
+	// {
+	// 	NbOpenedColumns: 256,
+	// 	RsInverseRate:   2,
+	// 	TargetRowSize:   1 << 8,
+	// },
+	// {
+	// 	NbOpenedColumns: 256,
+	// 	RsInverseRate:   2,
+	// 	TargetRowSize:   1 << 9,
+	// },
+	// {
+	// 	NbOpenedColumns: 256,
+	// 	RsInverseRate:   2,
+	// 	TargetRowSize:   1 << 10,
+	// },
+	// {
+	// 	NbOpenedColumns: 256,
+	// 	RsInverseRate:   2,
+	// 	TargetRowSize:   1 << 11,
+	// },
+	// {
+	// 	NbOpenedColumns: 128,
+	// 	RsInverseRate:   4,
+	// 	TargetRowSize:   1 << 8,
+	// },
+	// {
+	// 	NbOpenedColumns: 128,
+	// 	RsInverseRate:   4,
+	// 	TargetRowSize:   1 << 9,
+	// },
+	// {
+	// 	NbOpenedColumns: 128,
+	// 	RsInverseRate:   4,
+	// 	TargetRowSize:   1 << 10,
+	// },
+	// {
+	// 	NbOpenedColumns: 128,
+	// 	RsInverseRate:   4,
+	// 	TargetRowSize:   1 << 11,
+	// },
+	// {
+	// 	NbOpenedColumns: 64,
+	// 	RsInverseRate:   16,
+	// 	TargetRowSize:   1 << 6,
+	// },
+	// {
+	// 	NbOpenedColumns: 64,
+	// 	RsInverseRate:   16,
+	// 	TargetRowSize:   1 << 7,
+	// },
 	{
-		NbOpenedColumns: 256,
-		RsInverseRate:   2,
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
 		TargetRowSize:   1 << 8,
 	},
-	{
-		NbOpenedColumns: 256,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 9,
-	},
-	{
-		NbOpenedColumns: 256,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 10,
-	},
-	{
-		NbOpenedColumns: 256,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 11,
-	},
-	{
-		NbOpenedColumns: 128,
-		RsInverseRate:   4,
-		TargetRowSize:   1 << 8,
-	},
-	{
-		NbOpenedColumns: 128,
-		RsInverseRate:   4,
-		TargetRowSize:   1 << 9,
-	},
-	{
-		NbOpenedColumns: 128,
-		RsInverseRate:   4,
-		TargetRowSize:   1 << 10,
-	},
-	{
-		NbOpenedColumns: 128,
-		RsInverseRate:   4,
-		TargetRowSize:   1 << 11,
-	},
-	{
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 6,
-	},
-	{
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 7,
-	},
-	{
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 8,
-	},
-	{
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 9,
-	},
-	{
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 10,
-	},
-	{
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 11,
-	},
-	{
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 12,
-	},
-	{
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 13,
-	},
+	// {
+	// 	NbOpenedColumns: 64,
+	// 	RsInverseRate:   16,
+	// 	TargetRowSize:   1 << 9,
+	// },
+	// {
+	// 	NbOpenedColumns: 64,
+	// 	RsInverseRate:   16,
+	// 	TargetRowSize:   1 << 10,
+	// },
+	// {
+	// 	NbOpenedColumns: 64,
+	// 	RsInverseRate:   16,
+	// 	TargetRowSize:   1 << 11,
+	// },
+	// {
+	// 	NbOpenedColumns: 64,
+	// 	RsInverseRate:   16,
+	// 	TargetRowSize:   1 << 12,
+	// },
+	// {
+	// 	NbOpenedColumns: 64,
+	// 	RsInverseRate:   16,
+	// 	TargetRowSize:   1 << 13,
+	// },
 }
 
 func BenchmarkCompilerWithoutSelfRecursion(b *testing.B) {
@@ -248,7 +248,7 @@ func BenchmarkProfileSelfRecursion(b *testing.B) {
 func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 
 	logrus.SetLevel(logrus.FatalLevel)
-	nbIteration := 5
+	nbIteration := 6
 
 	for _, params := range selfRecursionParametersSet {
 		b.Run(fmt.Sprintf("%+v", params), func(b *testing.B) {
@@ -269,6 +269,7 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 			)
 
 			for i := 0; i < nbIteration-1; i++ {
+				fmt.Printf("Self-recursion iteration %v/%v\n", i+1, nbIteration)
 				applySelfRecursionThenArcane(comp, params)
 				applyVortex(comp, params)
 			}
