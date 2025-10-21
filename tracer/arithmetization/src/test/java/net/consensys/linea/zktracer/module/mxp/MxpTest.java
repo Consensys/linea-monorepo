@@ -322,7 +322,7 @@ public class MxpTest extends TracerTestBase {
           MxpType.values()[util.nextRandomInt(1, 5)]; // Type 1 to 4 excluding opCodesType4Halting
       opCode = getRandomNonHaltingOpCodeByType(mxpType);
     } else {
-      mxpType = MxpType.TYPE_4;
+      // mxpType = MxpType.TYPE_4;
       opCode = opCodesType4Halting[util.nextRandomInt(opCodesType4Halting.length)];
     }
 
