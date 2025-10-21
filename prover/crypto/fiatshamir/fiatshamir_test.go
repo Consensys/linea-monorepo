@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -14,7 +14,7 @@ import (
 
 func TestFiatShamirSafeguardUpdate(t *testing.T) {
 
-	fs := poseidon2.NewMerkleDamgardHasher()
+	fs := hashtypes.Poseidon2()
 
 	a := RandomFext(fs)
 	b := RandomFext(fs)
@@ -29,11 +29,10 @@ func TestFiatShamirRandomVec(t *testing.T) {
 		testName := fmt.Sprintf("%v-integers-of-%v-bits", testCase.NumIntegers, testCase.IntegerBitSize)
 		t.Run(testName, func(t *testing.T) {
 
-			fs := poseidon2.NewMerkleDamgardHasher()
+			fs := hashtypes.Poseidon2()
 			Update(fs, field.NewElement(420))
 
 			var oldState, newState field.Element
-
 			ss := fs.Sum(nil)
 			if err := oldState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -67,28 +66,28 @@ func TestFiatShamirRandomVec(t *testing.T) {
 
 func TestBatchUpdates(t *testing.T) {
 
-	fs := poseidon2.NewMerkleDamgardHasher()
+	fs := hashtypes.Poseidon2()
 	Update(fs, field.NewElement(2))
 	Update(fs, field.NewElement(2))
 	Update(fs, field.NewElement(1))
 	expectedVal := RandomFext(fs)
 
 	t.Run("for a variadic call", func(t *testing.T) {
-		fs := poseidon2.NewMerkleDamgardHasher()
+		fs := hashtypes.Poseidon2()
 		Update(fs, field.NewElement(2), field.NewElement(2), field.NewElement(1))
 		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for slice of field elements", func(t *testing.T) {
-		fs := poseidon2.NewMerkleDamgardHasher()
+		fs := hashtypes.Poseidon2()
 		UpdateVec(fs, vector.ForTest(2, 2, 1))
 		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for multi-slice of field elements", func(t *testing.T) {
-		fs := poseidon2.NewMerkleDamgardHasher()
+		fs := hashtypes.Poseidon2()
 		UpdateVec(fs, vector.ForTest(2, 2), vector.ForTest(1))
 		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
@@ -96,109 +95,10 @@ func TestBatchUpdates(t *testing.T) {
 
 	t.Run("for a smart-vector", func(t *testing.T) {
 		sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
-		fs := poseidon2.NewMerkleDamgardHasher()
+		fs := hashtypes.Poseidon2()
 		UpdateSV(fs, sv)
 		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
-	})
-
-}
-
-// TestSamplingFromSeed tests that sampling from seed is consistent, does not forget
-// bytes from the seed and does not depends on the state.
-func TestSamplingFromSeed(t *testing.T) {
-
-	t.Run("dependence-on-name", func(t *testing.T) {
-
-		totalSize := 1000
-		name := ""
-		resMap := map[field.Element]struct{}{}
-
-		var seed, initialState field.Element
-		seed.SetRandom()
-		initialState.SetRandom()
-
-		fs := poseidon2.NewMerkleDamgardHasher()
-		fs.SetState(initialState.Marshal())
-
-		for i := 0; i < totalSize; i++ {
-
-			x := RandomFieldFromSeed(fs, seed, name)
-			if _, found := resMap[x]; found {
-				t.Errorf("found a collision for i=%v", i)
-			}
-
-			resMap[x] = struct{}{}
-			name += "a"
-		}
-	})
-
-	t.Run("non-dependance-curr-state", func(t *testing.T) {
-
-		var s1, s2, seed field.Element
-		seed.SetRandom()
-		s1.SetRandom()
-		s2.SetRandom()
-
-		name := "string-name"
-		fs1 := poseidon2.NewMerkleDamgardHasher()
-		fs2 := poseidon2.NewMerkleDamgardHasher()
-
-		fs1.SetState(s1.Marshal())
-		fs2.SetState(s2.Marshal())
-
-		y1 := RandomFieldFromSeed(fs1, seed, name)
-		y2 := RandomFieldFromSeed(fs2, seed, name)
-
-		if y1 != y2 {
-			t.Errorf("starting from different state does not give the same results")
-		}
-	})
-
-	t.Run("does-not-modify-state", func(t *testing.T) {
-
-		var initialState, seed field.Element
-		initialState.SetRandom()
-		seed.SetRandom()
-
-		name := "ddqsdjqskljd"
-		fs := poseidon2.NewMerkleDamgardHasher()
-
-		oldState := initialState.Marshal()
-		fs.SetState(oldState)
-		oldState = fs.State() // we read the state again because padding might happen in setState
-
-		RandomFieldFromSeed(fs, seed, name)
-
-		newState := fs.State()
-
-		errStr := "state was modified"
-
-		for i := 0; i < len(newState); i++ {
-			if newState[i] != oldState[i] {
-				t.Fatal(errStr)
-			}
-		}
-	})
-
-	t.Run("is-repeatable", func(t *testing.T) {
-
-		var initialState, seed field.Element
-		initialState.SetRandom()
-		seed.SetRandom()
-		name := "ddqsdjqskljd"
-		fs := poseidon2.NewMerkleDamgardHasher()
-
-		bInitialState := make([]byte, fs.BlockSize())
-		copy(bInitialState, initialState.Marshal())
-		fs.SetState(initialState.Marshal())
-
-		y1 := RandomFieldFromSeed(fs, seed, name)
-		y2 := RandomFieldFromSeed(fs, seed, name)
-
-		if y1 != y2 {
-			t.Errorf("state was modified")
-		}
 	})
 
 }
