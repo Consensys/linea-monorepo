@@ -1,6 +1,6 @@
 import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src/core/client/IContractClientLibrary";
 import { IYieldManager } from "../core/services/contracts/IYieldManager";
-import { Address, BaseError, getContract, GetContractReturnType, PublicClient, TransactionReceipt } from "viem";
+import { Address, getContract, GetContractReturnType, PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerABI } from "../core/abis/YieldManager";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt> {
@@ -8,7 +8,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
 
   constructor(
-    contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt, BaseError>,
+    contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
     contractAddress: Address,
   ) {
     this.blockchainClient = contractClientLibrary.getBlockchainClient();

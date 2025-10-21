@@ -34,6 +34,7 @@ export class OperationModeSelector implements IOperationModeSelector {
       } else {
         // Run Yield reporter
       }
+      // Is it sufficient to do 'catch all errors' block like this?
     } catch (e) {
       this.logger.error(e);
       await wait(this.config.timing.contractReadRetryTimeSeconds);

@@ -4,14 +4,14 @@ import { IOperationModeSelector } from "../../core/services/operation-mode/IOper
 import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector";
 import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src/core/client/IContractClientLibrary";
 import { EthereumMainnetClientLibrary } from "ts-libs/linea-shared-utils/src/clients/ethereum/EthereumMainnetClientLibrary";
-import { BaseError, PublicClient, TransactionReceipt } from "viem";
+import { PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerContractClient } from "../../clients/YieldManagerContractClient";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
   private readonly logger: ILogger;
 
-  private ethereumMainnetClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt, BaseError>;
+  private ethereumMainnetClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>;
   private yieldManagerContractClient: IYieldManager<TransactionReceipt>;
 
   private operationModeSelector: IOperationModeSelector;
