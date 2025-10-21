@@ -98,14 +98,6 @@ error DexSwapFailed()
 
 _Thrown when the DEX swap fails._
 
-### ZeroLineaTokensReceived
-
-```solidity
-error ZeroLineaTokensReceived()
-```
-
-_Thrown when zero LINEA tokens are received from the DEX swap._
-
 ### FutureInvoicesNotAllowed
 
 ```solidity
@@ -113,6 +105,14 @@ error FutureInvoicesNotAllowed()
 ```
 
 _Thrown when the invoice is in the future._
+
+### NoEthSent
+
+```solidity
+error NoEthSent()
+```
+
+_Thrown when no ETH is sent when the fallback function is reached._
 
 ### InvoiceProcessed
 
