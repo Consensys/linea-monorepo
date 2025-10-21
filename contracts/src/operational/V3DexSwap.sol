@@ -60,7 +60,7 @@ contract V3DexSwap is IV3DexSwap {
     IWETH9(WETH_TOKEN).deposit{ value: msg.value }();
     IWETH9(WETH_TOKEN).approve(ROUTER, msg.value);
 
-    uint256 balanceBefore = IERC20(LINEA_TOKEN).balanceOf(msg.sender);
+    uint256 tokenBalanceBefore = IERC20(LINEA_TOKEN).balanceOf(msg.sender);
 
     amountOut = ISwapRouterV3(ROUTER).exactInputSingle(
       ISwapRouterV3.ExactInputSingleParams({
@@ -75,7 +75,7 @@ contract V3DexSwap is IV3DexSwap {
       })
     );
 
-    uint256 received = IERC20(LINEA_TOKEN).balanceOf(msg.sender) - balanceBefore;
-    require(received >= _minLineaOut, InsufficientLineaTokensReceived(_minLineaOut, received));
+    uint256 tokensReceived = IERC20(LINEA_TOKEN).balanceOf(msg.sender) - tokenBalanceBefore;
+    require(tokensReceived >= _minLineaOut, InsufficientLineaTokensReceived(_minLineaOut, tokensReceived));
   }
 }
