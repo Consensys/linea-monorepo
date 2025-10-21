@@ -1,0 +1,8 @@
+goos: linux
+goarch: amd64
+pkg: github.com/consensys/linea-monorepo/prover/protocol/compiler
+cpu: AMD EPYC 9R14
+BenchmarkCompilerWithoutSelfRecursion/realistic-segment-64         	       1	6518298175 ns/op	43185617232 B/op	92965384 allocs/op
+BenchmarkCompilerWithoutSelfRecursion/realistic-segment-64         	       1	7370053499 ns/op	43181670632 B/op	92956823 allocs/op
+BenchmarkCompilerWithSelfRecursion/realistic-segment-64            	       1	75702092096 ns/op	204333323440 B/op	450706596 allocs/op
+BenchmarkCompilerWithSelfRecursion/realistic-segment-64            	

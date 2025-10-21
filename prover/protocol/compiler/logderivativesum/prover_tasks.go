@@ -2,7 +2,6 @@ package logderivativesum
 
 import (
 	"fmt"
-	"runtime"
 	"runtime/debug"
 	"sync"
 
@@ -59,8 +58,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 		// is running over a local copy of `i` which is not incremented every
 		// time the loop goes to the next iteration.
 		go func(i int) {
-			runtime.LockOSThread()
-			defer runtime.UnlockOSThread()
 			// In case the subtask panics, we recover so that we can repanic in
 			// the main goroutine. Simplifying the process of tracing back the
 			// error and allowing to test the panics.
@@ -86,8 +83,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 		// is running over a local copy of `i` which is not incremented every
 		// time the loop goes to the next iteration.
 		go func(i int) {
-			runtime.LockOSThread()
-			defer runtime.UnlockOSThread()
 			// In case the subtask panics, we recover so that we can repanic in
 			// the main goroutine. Simplifying the process of tracing back the
 			// error and allowing to test the panics.

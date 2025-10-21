@@ -117,10 +117,7 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 		parallel.Execute(rows, func(start, end int) {
 			for tileStart := start; tileStart < end; tileStart += tileSize {
-				tileEnd := tileStart + tileSize
-				if tileEnd > end {
-					tileEnd = end
-				}
+				tileEnd := min(tileStart+tileSize, end)
 				for j := tileStart; j < tileEnd; j++ {
 					base := j * maxSizeGroup
 					for i := 0; i < cols; i++ {
