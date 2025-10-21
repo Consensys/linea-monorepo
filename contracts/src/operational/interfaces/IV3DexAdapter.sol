@@ -11,7 +11,7 @@ interface IV3DexAdapter {
   /**
    * @dev Thrown when no ETH is sent with the swap call.
    */
-  error NoEthSend();
+  error NoEthSent();
 
   /**
    * @dev Thrown when a parameter is the zero address.
@@ -34,6 +34,13 @@ interface IV3DexAdapter {
   error DeadlineInThePast();
 
   /**
+   * @dev Thrown when insufficient LINEA tokens are received from the DEX swap.
+   * @param expectedMinimum The expected minimum number of LINEA tokens to be received.
+   * @param actualReceived The actual number of LINEA tokens received.
+   */
+  error InsufficientLineaTokensReceived(uint256 expectedMinimum, uint256 actualReceived);
+
+  /** @notice Swap ETH into LINEA.
    * @notice Emitted when the V3DexAdapter contract is initialized.
    * @param router The address of the Router contract.
    * @param wethToken The address of the WETH token contract.

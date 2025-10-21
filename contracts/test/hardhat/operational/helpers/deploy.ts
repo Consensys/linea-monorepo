@@ -74,7 +74,7 @@ export async function deployRollupRevenueVaultFixture() {
     (await deployUpgradableFromFactory(
       "RollupRevenueVault",
       [
-        await time.latest(),
+        (await time.latest()) - ONE_DAY_IN_SECONDS,
         admin.address,
         invoiceSubmitter.address,
         burner.address,

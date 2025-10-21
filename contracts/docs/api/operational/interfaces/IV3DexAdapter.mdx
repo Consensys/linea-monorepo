@@ -1,9 +1,9 @@
 # `IV3DexAdapter`
 
-### NoEthSend
+### NoEthSent
 
 ```solidity
-error NoEthSend()
+error NoEthSent()
 ```
 
 _Thrown when no ETH is sent with the swap call._
@@ -40,12 +40,28 @@ error DeadlineInThePast()
 
 _Thrown when the deadline is in the past. (< block.timestamp)_
 
+### InsufficientLineaTokensReceived
+
+```solidity
+error InsufficientLineaTokensReceived(uint256 expectedMinimum, uint256 actualReceived)
+```
+
+_Thrown when insufficient LINEA tokens are received from the DEX swap._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| expectedMinimum | uint256 | The expected minimum number of LINEA tokens to be received. |
+| actualReceived | uint256 | The actual number of LINEA tokens received. |
+
 ### V3DexAdapterInitialized
 
 ```solidity
 event V3DexAdapterInitialized(address router, address wethToken, address lineaToken, uint24 poolTickSpacing)
 ```
 
+Swap ETH into LINEA.
 Emitted when the V3DexAdapter contract is initialized.
 
 #### Parameters
