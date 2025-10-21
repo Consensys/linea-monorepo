@@ -77,6 +77,11 @@ interface IRollupRevenueVault {
    * @dev Thrown when the invoice is in the future.
    */
   error FutureInvoicesNotAllowed();
+  
+  /**
+   * @dev Thrown when no ETH is sent when the fallback function is reached.
+   */
+  error NoEthSent();
 
   /**
    * @dev Emitted when an invoice is processed.
