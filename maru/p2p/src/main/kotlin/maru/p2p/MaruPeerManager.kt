@@ -95,7 +95,9 @@ class MaruPeerManager(
   private fun logConnectedPeers() {
     connectedPeers().keys.toList().also { peers ->
       log.info(
-        "currently connected peers: peerCount={} peers={}", peers.size, peers
+        "currently connected peers: peerCount={} peers={}",
+        peers.size,
+        peers,
       )
     }
 
