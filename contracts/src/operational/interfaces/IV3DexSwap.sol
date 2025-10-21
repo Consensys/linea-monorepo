@@ -11,7 +11,7 @@ interface IV3DexSwap {
   /**
    * @dev Thrown when no ETH is sent with the swap call.
    */
-  error NoEthSend();
+  error NoEthSent();
 
   /**
    * @dev Thrown when a parameter is the zero address.

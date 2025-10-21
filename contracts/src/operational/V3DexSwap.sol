@@ -53,7 +53,7 @@ contract V3DexSwap is IV3DexSwap {
     uint256 _deadline,
     uint160 _sqrtPriceLimitX96
   ) external payable returns (uint256 amountOut) {
-    require(msg.value > 0, NoEthSend());
+    require(msg.value > 0, NoEthSent());
     require(_deadline > block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
 

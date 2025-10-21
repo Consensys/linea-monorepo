@@ -102,7 +102,7 @@ describe("V3DexSwap", () => {
     it("Should revert when msg.value == 0", async () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_MINUTE_IN_SECONDS;
-      await expectRevertWithCustomError(dexSwap, dexSwap.swap(minLineaOut, deadline, 0n, { value: 0n }), "NoEthSend");
+      await expectRevertWithCustomError(dexSwap, dexSwap.swap(minLineaOut, deadline, 0n, { value: 0n }), "NoEthSent");
     });
 
     it("Should revert when deadline is in the past", async () => {
