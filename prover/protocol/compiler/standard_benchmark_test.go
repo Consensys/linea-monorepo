@@ -269,7 +269,6 @@ func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 			)
 
 			for i := 0; i < nbIteration-1; i++ {
-				fmt.Printf("Self-recursion iteration %v/%v\n", i+1, nbIteration)
 				applySelfRecursionThenArcane(comp, params)
 				applyVortex(comp, params)
 			}
