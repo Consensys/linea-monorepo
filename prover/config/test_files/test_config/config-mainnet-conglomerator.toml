@@ -24,7 +24,7 @@ requests_root_dir = "/home/ubuntu/test_mainnet/prover-execution"
 limitless_with_debug = false 
 ignore_compatibility_check = true
 
-[execution_limitless]
+[exec_limitless]
 metadata_dir = "/tmp/exec-limitless/metadata"
 witness_dir = "/tmp/exec-limitless/witness"
 subproofs_dir = "/tmp/exec-limitless/subproofs"

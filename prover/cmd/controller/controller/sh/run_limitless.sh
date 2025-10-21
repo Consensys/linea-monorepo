@@ -32,11 +32,13 @@ start_instance() {
   echo "→ Starting controller (local-id=${local_id}) with config ${cfg}"
   echo "  Log file: ${logf}"
 
-  "$BIN" --config "$cfg" --local-id "$local_id" > "$logf" 2>&1 &
+  # Change process name with exec -a for easier identifiability
+  bash -c "exec -a controller-${local_id} \"$BIN\" --config \"$cfg\" --local-id \"$local_id\"" >"$logf" 2>&1 &
   local pid=$!
   PIDS+=("$pid")
   echo "  PID: $pid"
 }
+
 
 shutdown_all() {
   echo ""
