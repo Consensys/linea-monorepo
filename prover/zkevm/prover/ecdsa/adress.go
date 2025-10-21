@@ -331,8 +331,19 @@ func splitAt(nbEcRecover int) int {
 
 func (td *txnData) csTxnData(comp *wizard.CompiledIOP) {
 
-	//  isFrom == 1 iff ct==1
-	td.IsFrom, td.Pa_IsZero = dedicated.IsZero(comp, sym.Sub(td.Ct, 1)).GetColumnAndProverAction()
+	//  isFrom == 1 iff ct==0 && User==1 && HubSelector==1
+	//  (Ct-0)**2 + User**2 + HubSelector**2 = 0
+	condition := sym.Add(
+		sym.Square(sym.Sub(td.Ct, 0)),
+		sym.Square(sym.Sub(td.User, 1)),
+		sym.Square(sym.Sub(td.Selector, 1)),
+	)
+
+	// // sum of ct, User-1, Selector-1 is zero
+	// condition := sym.Add(td.Ct, sym.Sub(1, td.User), sym.Sub(1, td.Selector))
+
+	td.IsFrom, td.Pa_IsZero = dedicated.IsZero(comp, condition).GetColumnAndProverAction()
+
 }
 
 // txndata represents the txn_data module from the arithmetization side.
@@ -344,4 +355,7 @@ type txnData struct {
 	// helper column
 	IsFrom    ifaces.Column
 	Pa_IsZero wizard.ProverAction
+
+	User     ifaces.Column
+	Selector ifaces.Column
 }

@@ -45,7 +45,7 @@ func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, nam
 		comp,
 		sym.Sub(
 			td.Ct,
-			1, // check that the Ct field is 1 (we use 1 rather than 0, as on prepend columns, ct is 0).
+			0, // check that the Ct field is 1 (we use 1 rather than 0, as on prepend columns, ct is 0).
 			// Moreover, all transaction segments have a row with Ct = 1
 		),
 	).GetColumnAndProverAction()
@@ -144,7 +144,7 @@ func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td 
 			tdSelector      = tdSelector.GetPtr(i)
 		)
 
-		if ct.IsOne() && !fetchedAbsTxNum.IsZero() && arithUser.IsOne() && tdSelector.IsOne() { // absTxNum starts from 1, ct starts from 0 but always touches 1
+		if ct.IsZero() && !fetchedAbsTxNum.IsZero() && arithUser.IsOne() && tdSelector.IsOne() { // absTxNum starts from 1, ct starts from 0 but always touches 1
 			absTxNum[counter].Set(fetchedAbsTxNum)
 			relBlock[counter].Set(fetchedRelBlock)
 			fromHi[counter].Set(arithFromHi)
