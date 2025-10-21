@@ -135,6 +135,8 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _dex
   ) internal onlyInitializing {
     require(_lastInvoiceDate != 0, ZeroTimestampNotAllowed());
+    require(_lastInvoiceDate < block.timestamp, FutureInvoicesNotAllowed());
+
     require(_defaultAdmin != address(0), ZeroAddressNotAllowed());
     require(_invoiceSubmitter != address(0), ZeroAddressNotAllowed());
     require(_burner != address(0), ZeroAddressNotAllowed());
@@ -172,6 +174,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   ) external payable onlyRole(INVOICE_SUBMITTER_ROLE) {
     require(_startTimestamp == lastInvoiceDate + 1, TimestampsNotInSequence());
     require(_endTimestamp > _startTimestamp, EndTimestampMustBeGreaterThanStartTimestamp());
+    require(_endTimestamp < block.timestamp, FutureInvoicesNotAllowed());
     require(_invoiceAmount != 0, ZeroInvoiceAmount());
 
     address payable receiver = payable(invoicePaymentReceiver);
@@ -244,6 +247,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     uint256 _lastInvoiceDate
   ) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(_lastInvoiceDate >= lastInvoiceDate, InvoiceDateTooOld());
+    require(_lastInvoiceDate < block.timestamp, FutureInvoicesNotAllowed());
 
     invoiceArrears = _newInvoiceArrears;
     lastInvoiceDate = _lastInvoiceDate;
@@ -282,6 +286,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @notice Fallback function - Receives Funds.
    */
   fallback() external payable {
+    require(msg.value > 0, NoEthSent());
     emit EthReceived(msg.value);
   }
 
@@ -289,6 +294,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @notice Receive function - Receives Funds.
    */
   receive() external payable {
+    require(msg.value > 0, NoEthSent());
     emit EthReceived(msg.value);
   }
 }
