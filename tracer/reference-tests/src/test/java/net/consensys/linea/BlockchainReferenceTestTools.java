@@ -70,7 +70,7 @@ public class BlockchainReferenceTestTools {
   // Keep the forkName and the zkevm_fork in github worklow in PascalCase
   private static final Fork fork = getForkOrDefault(LONDON);
   private static final ReferenceTestProtocolSchedules REFERENCE_TEST_PROTOCOL_SCHEDULES =
-      ReferenceTestProtocolSchedules.getInstance();
+      ReferenceTestProtocolSchedules.create();
   private static final List<String> NETWORKS_TO_RUN = List.of(toPascalCase(fork));
 
   public static final JsonTestParameters<?, ?> PARAMS =
