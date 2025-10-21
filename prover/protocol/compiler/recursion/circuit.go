@@ -108,7 +108,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 // AssignRecursionCircuit assigns a recursion based on a compiled-IOP
 // and a proof.
-func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs []field.Element, finalFsState field.Element) *RecursionCircuit {
+func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs []field.Element, finalFsState field.Octuplet) *RecursionCircuit {
 
 	var (
 		pcsCtx         = comp.PcsCtxs.(*vortex.Ctx)

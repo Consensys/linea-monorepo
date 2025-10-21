@@ -27,8 +27,7 @@ type Natural struct {
 	// store points to the Store where the column is registered. It is accessed
 	// to fetch static informations about the column such as its size or its
 	// status.
-	store  *Store
-	isBase bool
+	store *Store
 }
 
 // Size returns the size of the column, as required by the [ifaces.Column]
@@ -94,11 +93,10 @@ func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVari
 }
 
 func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.WrappedVariable, error) {
-	if n.isBase {
-		return run.GetColumn(n.ID), nil
-	} else {
-		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
+	if !n.store.info(n.ID).IsBase {
+		return []zk.WrappedVariable{}, fmt.Errorf("requested base elements but column defined over field extensions")
 	}
+	return run.GetColumn(n.ID), nil
 }
 
 func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
@@ -111,12 +109,10 @@ func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.Wr
 }
 
 func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
-	if n.isBase {
-		return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size())), nil
-	} else {
+	if !n.store.info(n.ID).IsBase {
 		return zk.ValueOf(0), fmt.Errorf("requested base elements but column defined over field extensions")
 	}
-
+	return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size())), nil
 }
 
 func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.E4Gen {
@@ -136,7 +132,7 @@ func (n Natural) Status() Status {
 }
 
 func (n Natural) IsBase() bool {
-	return n.isBase
+	return n.store.info(n.ID).IsBase
 }
 
 // SetPragma sets the pragma for a given column name.

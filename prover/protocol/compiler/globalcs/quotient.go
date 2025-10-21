@@ -166,6 +166,7 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 				currRound,
 				ifaces.ColID(deriveName(comp, QUOTIENT_POLY_TMPL, ratio, k)),
 				domainSize,
+				false,
 			)
 		}
 	}
@@ -332,7 +333,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 				case coin.Info:
 					if metadata.IsBase() {
-						evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
+						utils.Panic("unsupported, coins are always over field extensions")
+
 					} else {
 						evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), ctx.DomainSize)
 					}

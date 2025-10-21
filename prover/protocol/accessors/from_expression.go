@@ -106,9 +106,7 @@ func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
 			x := castedMetadata.GetVal(run)
 			inputs[i] = smartvectors.NewConstant(x, 1)
 		case coin.Info:
-			// this is always fine because all coins are public
-			x := run.GetRandomCoinField(castedMetadata.Name)
-			inputs[i] = smartvectors.NewConstant(x, 1)
+			utils.Panic("unsupported, coins are always over field extensions")
 		default:
 			utils.Panic("unsupported type %T", m)
 		}
@@ -128,9 +126,7 @@ func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error)
 				x, _ := castedMetadata.GetValBase(run)
 				inputs[i] = smartvectors.NewConstant(x, 1)
 			case coin.Info:
-				// this is always fine because all coins are public
-				x := run.GetRandomCoinField(castedMetadata.Name)
-				inputs[i] = smartvectors.NewConstant(x, 1)
+				utils.Panic("unsupported, coins are always over field extensions")
 			default:
 				utils.Panic("unsupported type %T", m)
 			}
@@ -181,7 +177,7 @@ func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.Gna
 		case ifaces.Accessor:
 			inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
 		case coin.Info:
-			inputs[i] = circ.GetRandomCoinField(castedMetadata.Name)
+			utils.Panic("unsupported, coins are always over field extensions")
 		default:
 			utils.Panic("unsupported type %T", m)
 		}
@@ -200,7 +196,7 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 			case ifaces.Accessor:
 				inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
 			case coin.Info:
-				inputs[i] = circ.GetRandomCoinField(castedMetadata.Name)
+				utils.Panic("unsupported, coins are always over field extensions")
 			default:
 				utils.Panic("unsupported type %T", m)
 			}

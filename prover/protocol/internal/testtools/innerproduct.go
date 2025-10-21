@@ -194,6 +194,7 @@ func (ip *InnerProductTestcase) Define(comp *wizard.CompiledIOP) {
 			0,
 			formatName[ifaces.ColID]("InnerProduct", ip.Name, "A"),
 			ip.A.Len(),
+			smartvectors.IsBase(ip.A),
 		)
 	}
 
@@ -202,6 +203,7 @@ func (ip *InnerProductTestcase) Define(comp *wizard.CompiledIOP) {
 			0,
 			formatName[ifaces.ColID]("InnerProduct", ip.Name, "B", i),
 			ip.Bs[i].Len(),
+			smartvectors.IsBase(ip.Bs[i]),
 		)
 	}
 

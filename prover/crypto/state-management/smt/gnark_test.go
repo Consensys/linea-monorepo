@@ -4,20 +4,23 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
+
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
-	. "github.com/consensys/linea-monorepo/prover/utils/types"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+
 	"github.com/stretchr/testify/require"
 )
 
-func getMerkleProof(t *testing.T) ([]Proof, []Bytes32, Bytes32) {
+func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 
 	config := &Config{
-		HashFunc: hashtypes.MiMC,
+		HashFunc: hashtypes.Poseidon2,
 		Depth:    40,
 	}
 
@@ -26,10 +29,9 @@ func getMerkleProof(t *testing.T) ([]Proof, []Bytes32, Bytes32) {
 	// Only contains empty leaves
 	nbProofs := 1
 	proofs := make([]Proof, nbProofs)
-	leafs := make([]Bytes32, nbProofs)
+	leafs := make([]field.Octuplet, nbProofs)
 	for pos := 0; pos < nbProofs; pos++ {
 
-		// Make a valid Bytes32
 		leafs[pos], _ = tree.GetLeaf(pos)
 		proofs[pos], _ = tree.Prove(pos)
 

@@ -143,7 +143,6 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 		metadata = board.ListVariableMetadata()
 		inputs   = make([]smartvectors.SmartVector, len(metadata))
 		length   = ExprIsOnSameLengthHandles(&board)
-		v        field.Element
 	)
 
 	// Attempt to recover the size of the
@@ -153,8 +152,7 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 			inputs[i] = m.GetColAssignment(run)
 		case coin.Info:
 			if m.IsBase() {
-				v = run.GetRandomCoinField(m.Name)
-				inputs[i] = smartvectors.NewConstant(v, length)
+				utils.Panic("unsupported, coins are always over field extensions")
 			} else {
 				vExt := run.GetRandomCoinFieldExt(m.Name)
 				inputs[i] = smartvectors.NewConstantExt(vExt, length)
@@ -200,7 +198,7 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 				inputs[i] = m.GetColAssignmentGnarkAt(run, k)
 			case coin.Info:
 				if m.IsBase() {
-					inputs[i] = run.GetRandomCoinField(m.Name)
+					utils.Panic("unsupported, coins are always over field extensions")
 				} else {
 					tmp := run.GetRandomCoinFieldExt(m.Name)
 					// inputs[i] = run.GetRandomCoinFieldExt(m.Name)

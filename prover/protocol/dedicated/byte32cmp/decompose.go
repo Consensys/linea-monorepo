@@ -106,6 +106,7 @@ func Decompose(comp *wizard.CompiledIOP, col any, numLimbs int, bitPerLimbs int,
 			round,
 			ifaces.ColID(ctxName("LIMB_"+strconv.Itoa(i))),
 			size,
+			true,
 		)
 		// Enforces the range over the limbs
 		comp.InsertRange(

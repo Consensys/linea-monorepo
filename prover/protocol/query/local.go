@@ -105,7 +105,8 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 			}
 		case coin.Info:
 			if metadata.IsBase() {
-				inputs[i] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), 1)
+				utils.Panic("unsupported, coins are always over field extensions")
+
 			} else {
 				inputs[i] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), 1)
 			}
@@ -175,7 +176,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 			inputs[i] = val
 		case coin.Info:
 			if metadata.IsBase() {
-				inputs[i] = run.GetRandomCoinField(metadata.Name)
+				utils.Panic("unsupported, coins are always over field extensions")
 			} else {
 				// TODO @thomas fixme
 				inputs[i] = run.GetRandomCoinField(metadata.Name)

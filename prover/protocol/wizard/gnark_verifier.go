@@ -433,7 +433,7 @@ func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) zk.WrappedVariable 
 		and that it has the correct type
 	*/
 	infos := c.Spec.Coins.Data(name)
-	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed && infos.Type != coin.FieldExt {
+	if infos.Type != coin.FieldExt {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.Field)
 	}
 	// If this panics, it means we generate the coins wrongly
@@ -469,7 +469,7 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen 
 	infos := c.Spec.Coins.Data(name)
 
 	// intermediary use case, should be removed when all coins become field extensions
-	if infos.Type == coin.Field || infos.Type == coin.FieldFromSeed || infos.Type == coin.FieldExt {
+	if infos.Type == coin.FieldExt {
 		res := c.Coins.MustGet(name).(zk.WrappedVariable)
 		return gnarkfext.NewE4GenFromBase(res)
 	}

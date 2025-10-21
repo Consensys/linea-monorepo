@@ -18,7 +18,7 @@ import (
 var _ ifaces.Accessor = &FromCoinAccessor{}
 
 // FromCoinAccessor implements [ifaces.Accessor] and represents the value of a
-// [coin.Info] of type [coin.Field]. It is sometime used to supply a coin to
+// [coin.Info] of type [coin.FieldExt]. It is sometime used to supply a coin to
 // a function requiring an accessor explicitly. For [github.com/consensys/linea-monorepo/prover/symbolic.Expression]
 // this should not be necessary as [coin.Info] already implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata].
 type FromCoinAccessor struct {
@@ -27,11 +27,11 @@ type FromCoinAccessor struct {
 }
 
 // NewFromCoin returns an [ifaces.Accessor] object symbolizing a
-// [coin.Info]. The supplied [coin.Info] must be of type [coin.Field] or the
+// [coin.Info]. The supplied [coin.Info] must be of type [coin.FieldExt] or the
 // function panics.
 func NewFromCoin(info coin.Info) ifaces.Accessor {
-	if info.Type != coin.Field && info.Type != coin.FieldFromSeed && info.Type != coin.FieldExt {
-		utils.Panic("NewFromCoin expects a [coin.Field], a [coin.FieldFromSeed] or a [coin.FieldExt] `info`, got `%v`", info.Type)
+	if info.Type != coin.FieldExt {
+		utils.Panic("NewFromCoin expects a [coin.FieldExt] `info`, got `%v`", info.Type)
 	}
 	return &FromCoinAccessor{
 		Info: info,
@@ -50,11 +50,11 @@ func (c *FromCoinAccessor) String() string {
 
 // GetVal implements [ifaces.Accessor]
 func (c *FromCoinAccessor) GetVal(run ifaces.Runtime) field.Element {
-	return run.GetRandomCoinField(c.Info.Name)
+	panic("unsupported, coins are always over field extensions")
 }
 
 func (c *FromCoinAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	return run.GetRandomCoinField(c.Info.Name), nil
+	panic("unsupported, coins are always over field extensions")
 }
 
 func (c *FromCoinAccessor) GetValExt(run ifaces.Runtime) fext.Element {
@@ -63,11 +63,11 @@ func (c *FromCoinAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
-	return circ.GetRandomCoinField(c.Info.Name)
+	panic("unsupported, coins are always over field extensions")
 }
 
 func (c *FromCoinAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (zk.WrappedVariable, error) {
-	return circ.GetRandomCoinField(c.Info.Name), nil
+	panic("unsupported, coins are always over field extensions")
 }
 
 func (c *FromCoinAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {

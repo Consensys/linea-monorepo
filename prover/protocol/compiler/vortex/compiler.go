@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -20,7 +20,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -477,6 +476,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 			round,
 			ifaces.ColID(ctx.MerkleRootName(round, i)),
 			len(field.Element{}),
+			true,
 		)
 	}
 }
@@ -551,7 +551,7 @@ func (ctx *Ctx) generateVortexParams() {
 		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2.NewMerkleDamgardHasher, nil)
+	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
 }
 
 // return the number of columns to open
@@ -604,6 +604,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		lastRound+1,
 		ctx.LinCombName(),
 		ctx.NumEncodedCols(),
+		false,
 	)
 
 	// registers the random's verifier column selection
@@ -624,6 +625,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			lastRound+2,
 			ctx.SelectedColName(col),
 			numRows,
+			true,
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
 		if numRowsSIS != 0 {
@@ -631,6 +633,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 				lastRound+2,
 				ctx.SelectedColSISName(col),
 				numRowsSIS,
+				true,
 			)
 			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
 		}
@@ -639,6 +642,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 				lastRound+2,
 				ctx.SelectedColNonSISName(col),
 				numRowsNonSIS,
+				true,
 			)
 			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
 		}
@@ -653,6 +657,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			lastRound+2,
 			ifaces.ColID(ctx.MerkleProofName(i)),
 			ctx.MerkleProofSize(),
+			true,
 		)
 	}
 
@@ -937,11 +942,11 @@ func (ctx *Ctx) commitPrecomputeds() {
 	ctx.Items.Precomputeds.Tree = tree
 
 	// And assign the 1-sized column to contain the root
-	rootOct := types.Bytes32ToHash(tree.Root)
 	for i := 0; i < blockSize; i++ {
 		ctx.Items.Precomputeds.MerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(
 			ctx.PrecomputedMerkleRootName(i),
-			smartvectors.NewConstant(rootOct[i], 1),
+			smartvectors.NewConstant(tree.Root[i], 1),
+			true,
 		)
 	}
 }

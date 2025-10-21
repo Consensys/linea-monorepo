@@ -44,8 +44,7 @@ func (a *BigRangeProverAction) Run(run *wizard.ProverRuntime) {
 			evalInputs[k] = w
 		case coin.Info:
 			if meta.IsBase() {
-				x := run.GetRandomCoinField(meta.Name)
-				evalInputs[k] = sv.NewConstant(x, size)
+				utils.Panic("unsupported, coins are always over field extensions")
 			} else {
 				x := run.GetRandomCoinFieldExt(meta.Name)
 				evalInputs[k] = sv.NewConstantExt(x, size)
@@ -126,6 +125,7 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 			round,
 			ifaces.ColIDf("BIGRANGE_%v_LIMB_%v", name, i),
 			size,
+			true,
 		)
 		// Enforces the range over the limbs
 		comp.InsertRange(

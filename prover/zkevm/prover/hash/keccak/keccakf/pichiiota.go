@@ -53,6 +53,7 @@ func (c *piChiIota) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccak
 				round,
 				deriveName("AIOTA_BASE2", x, y),
 				colSize,
+				true,
 			)
 
 			// declares the subslices in base B and base A
@@ -62,12 +63,14 @@ func (c *piChiIota) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccak
 					round,
 					deriveName("AIOTA_BASE2_SLICED", x, y, k),
 					colSize,
+					true,
 				)
 				// base A
 				c.AIotaBaseASliced[x][y][k] = comp.InsertCommit(
 					round,
 					deriveName("AIOTA_BASE1_SLICED", x, y, k),
 					colSize,
+					true,
 				)
 			}
 		}

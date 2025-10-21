@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // ExplicitPolynomialEval is a [wizard.VerifierAction] that evaluates the
@@ -44,8 +43,8 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 		// roots before the SIS roots. The precomputed root is the
 		// first root of the SIS roots if SIS hash is applied on the
 		// precomputed. Otherwise, it is the first root of the no SIS roots.
-		noSisRoots = []types.Bytes32{}
-		sisRoots   = []types.Bytes32{}
+		noSisRoots = []field.Octuplet{}
+		sisRoots   = []field.Octuplet{}
 		// Slice of true value of length equal to the number of no SIS round
 		// + 1 (if SIS is not applied to precomputed)
 		flagForNoSISRounds = []bool{}
@@ -63,10 +62,10 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 		}
 
 		if ctx.IsSISAppliedToPrecomputed() {
-			sisRoots = append(sisRoots, types.HashToBytes32(precompRootF))
+			sisRoots = append(sisRoots, precompRootF)
 			flagForSISRounds = append(flagForSISRounds, false)
 		} else {
-			noSisRoots = append(noSisRoots, types.HashToBytes32(precompRootF))
+			noSisRoots = append(noSisRoots, precompRootF)
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		}
 	}
@@ -91,10 +90,10 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
 		switch ctx.RoundStatus[round] {
 		case IsOnlyPoseidon2Applied:
-			noSisRoots = append(noSisRoots, types.HashToBytes32(precompRootF))
+			noSisRoots = append(noSisRoots, precompRootF)
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		case IsSISApplied:
-			sisRoots = append(sisRoots, types.HashToBytes32(precompRootF))
+			sisRoots = append(sisRoots, precompRootF)
 			flagForSISRounds = append(flagForSISRounds, false)
 		default:
 			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
@@ -340,7 +339,7 @@ func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime) {
 func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces.Column {
 
 	name := ifaces.ColIDf("VORTEX_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
-	col := comp.InsertCommit(round, name, size)
+	col := comp.InsertCommit(round, name, size, true)
 
 	comp.RegisterProverAction(round, &ShadowRowProverAction{
 		Name: name,

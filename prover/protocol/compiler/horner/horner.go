@@ -107,6 +107,7 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 				round,
 				ifaces.ColIDf("HORNER_%v_PART_%v_COLUMN_%v", q.ID, i, j),
 				part.Size(),
+				false,
 			)
 		}
 

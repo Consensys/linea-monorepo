@@ -3,9 +3,9 @@ package vortex
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark-crypto/hash"
 	gutils "github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -37,10 +37,10 @@ type Params struct {
 	MaxNbRows int
 	// LeafHashFunc returns a `hash.Hash` which is used
 	// to compute the leaves of the Merkle tree.
-	LeafHashFunc func() hash.StateStorer
+	LeafHashFunc func() *hashtypes.Poseidon2FieldHasherDigest
 	// MerkleHashFunc returns a `hash.Hash` which is used
 	// to hash the nodes of the Merkle tree.
-	MerkleHashFunc func() hash.StateStorer
+	MerkleHashFunc func() *hashtypes.Poseidon2FieldHasherDigest
 
 	// Coset table of the small domain, bit reversed
 	CosetTableBitReverse field.Vector
@@ -61,8 +61,8 @@ func NewParams(
 	nbColumns int,
 	maxNbRows int,
 	sisParams ringsis.Params,
-	merkleHashFunc func() hash.StateStorer,
-	leafHashFunc func() hash.StateStorer,
+	merkleHashFunc func() *hashtypes.Poseidon2FieldHasherDigest,
+	leafHashFunc func() *hashtypes.Poseidon2FieldHasherDigest,
 ) *Params {
 
 	if !utils.IsPowerOfTwo(nbColumns) {
@@ -73,8 +73,8 @@ func NewParams(
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
 	}
 
-	if merkleHashFunc == nil {
-		utils.Panic("`nil` merkle hash function provided")
+	if merkleHashFunc == nil || leafHashFunc == nil {
+		utils.Panic("Hash function is not provided")
 	}
 
 	if maxNbRows < 1 {

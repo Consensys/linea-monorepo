@@ -76,9 +76,9 @@ func CmpSmallCols(comp *wizard.CompiledIOP, a, b ifaces.Column, numBits int) (g,
 		// Note: that isEqual is already constrained to be correctly formed.
 		isEqualCtx   = dedicated.IsZero(comp, sym.Sub(a, b)).WithPaddingVal(field.One())
 		isEqual      = isEqualCtx.IsZero
-		rangeChecked = comp.InsertCommit(round, ifaces.ColID(ctxName("RANGE_CHECKED")), size)
-		isGreater    = comp.InsertCommit(round, ifaces.ColID(ctxName("IS_GREATER")), size)
-		isLower      = comp.InsertCommit(round, ifaces.ColID(ctxName("IS_LOWER")), size)
+		rangeChecked = comp.InsertCommit(round, ifaces.ColID(ctxName("RANGE_CHECKED")), size, true)
+		isGreater    = comp.InsertCommit(round, ifaces.ColID(ctxName("IS_GREATER")), size, true)
+		isLower      = comp.InsertCommit(round, ifaces.ColID(ctxName("IS_LOWER")), size, true)
 	)
 
 	res := &OneLimbCmpCtx{

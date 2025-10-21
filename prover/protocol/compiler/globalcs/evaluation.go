@@ -296,7 +296,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 				evalInputs[k] = mapYs[metadata.GetColID()]
 			case coin.Info:
 				if metadata.IsBase() {
-					evalInputs[k] = c.GetRandomCoinField(metadata.Name)
+					utils.Panic("unsupported, coins are always over field extensions")
 				} else {
 					tmp := c.GetRandomCoinFieldExt(metadata.Name)
 					evalInputs[k] = tmp.B0.A0 // TODO @thomas fixme (ext vs base)

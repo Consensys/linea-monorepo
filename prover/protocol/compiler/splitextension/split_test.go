@@ -147,7 +147,12 @@ func TestSplitextension(t *testing.T) {
 				toSplit := make([]ifaces.Column, numColumns)
 				for i := 0; i < len(testCase.Columns); i++ {
 					curName := fmt.Sprintf("%s_%d", baseNameToSplit, i)
-					toSplit[i] = b.RegisterCommit(ifaces.ColID(curName), testCase.Columns[i].Len())
+					toSplit[i] = b.CompiledIOP.InsertCommit(
+						0,
+						ifaces.ColID(curName),
+						testCase.Columns[i].Len(),
+						smartvectors.IsBase(testCase.Columns[i]),
+					)
 				}
 
 				b.InsertUnivariate(0, qName, toSplit)

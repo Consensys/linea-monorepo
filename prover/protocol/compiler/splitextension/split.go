@@ -2,6 +2,7 @@ package splitextension
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
@@ -119,7 +120,7 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 					splittedColName := ifaces.ColIDf("%s_%s_%d", pol.String(), fextSplitTag, 4*i+j)
 					ctx.SplittedPolynomials = append(
 						ctx.SplittedPolynomials,
-						comp.InsertCommit(polRound, ifaces.ColID(splittedColName), pol.Size()))
+						comp.InsertCommit(polRound, ifaces.ColID(splittedColName), pol.Size(), true))
 				}
 			}
 
@@ -237,12 +238,28 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 	var (
 		evalFextParams      = run.GetUnivariateParams(ctx.QueryFext.QueryID)
 		evalBaseFieldParams = run.GetUnivariateParams(ctx.QueryBaseField.QueryID)
-		nbPolyToSplit       = len(evalFextParams.ExtYs)
+		nbPolyToSplit       = len(ctx.ToSplitPolynomials)
+		originalEvalToSplit = []fext.Element{}
+		alreadyOnBase       = []fext.Element{}
 	)
 
 	if evalBaseFieldParams.ExtX != evalFextParams.ExtX {
 		return errInconsistentX
 	}
+
+	for i := range evalFextParams.ExtYs {
+		if ctx.QueryFext.Pols[i].IsBase() {
+			alreadyOnBase = append(alreadyOnBase, evalFextParams.ExtYs[i])
+		} else {
+			originalEvalToSplit = append(originalEvalToSplit, evalFextParams.ExtYs[i])
+		}
+	}
+
+	// In order to compare, we need to first resort the evaluation claims so
+	// that the first ones corresponds to the splitted ones and the last ones
+	// corresponds to the already-on-base ones.
+
+	var err error
 
 	for i := 0; i < nbPolyToSplit; i++ {
 
@@ -253,9 +270,21 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 			reconstructedEval.Add(&reconstructedEval, &tmp)
 		}
 
-		if !evalFextParams.ExtYs[i].Equal(&reconstructedEval) {
-			return errInconsistentEval
+		if !originalEvalToSplit[i].Equal(&reconstructedEval) {
+			eErr := fmt.Errorf("unconsistent evaluation claim, position [%v]: %v != %v", i, originalEvalToSplit[i].String(), reconstructedEval.String())
+			err = errors.Join(err, eErr)
 		}
+	}
+
+	for i := 0; i < len(alreadyOnBase); i++ {
+		if !alreadyOnBase[i].Equal(&evalBaseFieldParams.ExtYs[4*nbPolyToSplit+i]) {
+			eErr := fmt.Errorf("unconsistent evaluation claim, position [%v]: %v != %v", nbPolyToSplit+i, evalBaseFieldParams.ExtYs[4*nbPolyToSplit+i].String(), alreadyOnBase[i].String())
+			err = errors.Join(err, eErr)
+		}
+	}
+
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -75,9 +75,7 @@ type Type int
 const (
 	Field Type = iota
 	IntegerVec
-	FieldFromSeed
 	FieldExt
-	FieldExtFromSeed
 )
 
 // MarshalJSON implements [json.Marshaler] directly returning the Itoa of the
@@ -105,16 +103,13 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs hash.StateStorer, seed field.Element) interface{} {
+func (info *Info) Sample(fs *hashtypes.Poseidon2FieldHasherDigest, seed field.Octuplet) interface{} {
 	switch info.Type {
-	case Field:
-		return fiatshamir.RandomField(fs)
 	case IntegerVec:
 		return fiatshamir.RandomManyIntegers(fs, info.Size, info.UpperBound)
-	case FieldFromSeed:
-		return fiatshamir.RandomFieldFromSeed(fs, seed, string(info.Name))
 	case FieldExt:
 		return fiatshamir.RandomFext(fs)
+		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
 	}
 	panic("Unreachable")
 }
@@ -123,12 +118,9 @@ func (info *Info) Sample(fs hash.StateStorer, seed field.Element) interface{} {
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
 func (info *Info) SampleGnark(fs *fiatshamir.GnarkFiatShamir, seed zk.WrappedVariable) interface{} {
 	switch info.Type {
-	case Field:
-		return fs.RandomField()
 	case IntegerVec:
 		return fs.RandomManyIntegers(info.Size, info.UpperBound)
-	case FieldFromSeed:
-		return fs.RandomFieldFromSeed(seed, string(info.Name))
+
 	}
 	panic("Unreachable")
 }
@@ -152,10 +144,7 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 		if len(size) > 0 {
 			utils.Panic("size for Field")
 		}
-	case FieldFromSeed:
-		if len(size) > 0 {
-			utils.Panic("size for Field")
-		}
+
 	case FieldExt:
 		if len(size) > 0 {
 			utils.Panic("size for FieldExt")

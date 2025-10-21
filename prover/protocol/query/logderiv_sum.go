@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/hash"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -52,7 +51,7 @@ type LogDerivSumParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (l LogDerivSumParams) UpdateFS(fs hash.StateStorer) {
+func (l LogDerivSumParams) UpdateFS(fs *hashtypes.Poseidon2FieldHasherDigest) {
 	fiatshamir.UpdateGeneric(fs, l.Sum)
 }
 

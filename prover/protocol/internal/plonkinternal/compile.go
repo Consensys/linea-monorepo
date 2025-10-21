@@ -122,37 +122,37 @@ func (ctx *CompilationCtx) commitGateColumns() {
 		// First Round, for the committed value and the PI
 		for i := 0; i < ctx.MaxNbInstances; i++ {
 			if tinyPISize(ctx.Plonk.SPR) > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR), true)
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, fext.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
 			}
-			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("Cp_%v", i), nbRow)
-			ctx.Columns.Activators[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1)
+			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("Cp_%v", i), nbRow, true)
+			ctx.Columns.Activators[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1, true)
 		}
 
 		// Second rounds, after sampling HCP
-		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.Round+1, coin.Name(ctx.Sprintf("HCP")), coin.Field)
+		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.Round+1, coin.Name(ctx.Sprintf("HCP")), coin.FieldExt)
 
 		// And assigns the LRO polynomials
 		for i := 0; i < ctx.MaxNbInstances; i++ {
-			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("L_%v", i), nbRow)
-			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("R_%v", i), nbRow)
-			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("O_%v", i), nbRow)
+			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("L_%v", i), nbRow, true)
+			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("R_%v", i), nbRow, true)
+			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("O_%v", i), nbRow, true)
 		}
 	} else {
 		// Else no additional selector, and just commit to LRO + PI at the same Round
 		for i := 0; i < ctx.MaxNbInstances; i++ {
 			if tinyPISize(ctx.Plonk.SPR) > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR), true)
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, fext.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
 			}
-			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("L_%v", i), nbRow)
-			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("R_%v", i), nbRow)
-			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("O_%v", i), nbRow)
-			ctx.Columns.Activators[i] = ctx.comp.InsertColumn(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1, column.Proof)
+			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("L_%v", i), nbRow, true)
+			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("R_%v", i), nbRow, true)
+			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("O_%v", i), nbRow, true)
+			ctx.Columns.Activators[i] = ctx.comp.InsertColumn(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1, column.Proof, true)
 		}
 	}
 }

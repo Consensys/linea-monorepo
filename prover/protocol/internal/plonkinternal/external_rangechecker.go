@@ -168,7 +168,7 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 			l            = ctx.Columns.L[i]
 			r            = ctx.Columns.R[i]
 			o            = ctx.Columns.O[i]
-			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), utils.ToInt(totalNumRangeCheckedValuesPadded))
+			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), utils.ToInt(totalNumRangeCheckedValuesPadded), true)
 		)
 
 		ctx.RangeCheckOption.RangeChecked[i] = rangeChecked

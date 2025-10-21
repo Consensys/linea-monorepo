@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"golang.org/x/crypto/blake2b"
 )
 
 // GnarkFiatShamir mirrors [State] in a gnark circuit. It provides analogous
@@ -180,35 +179,10 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []zk.WrappedV
 	}
 }
 
-// RandomFieldFromSeed generates a new field element from the given seed
-// and a name. The 'fs' is left unchanged by the call (aside from the
-// underlying [frontend.API]).
-func (fs *GnarkFiatShamir) RandomFieldFromSeed(seed zk.WrappedVariable, name string) zk.WrappedVariable {
-
-	// The first step encodes the 'name' into a single field element. The
-	// field element is obtained by hashing and taking the modulo of the
-	// result to fit into a field element.
-	nameBytes := []byte(name)
-	hasher, _ := blake2b.New256(nil)
-	hasher.Write(nameBytes)
-	nameBytes = hasher.Sum(nil)
-	nameField := new(field.Element).SetBytes(nameBytes)
-
-	// The seed is then obtained by calling the compression function over
-	// the seed and the encoded name.
-	oldState := fs.State()
-	defer fs.SetState(oldState)
-
-	fs.SetState([]zk.WrappedVariable{seed})
-	fs.hasher.Write(nameField)
-
-	return fs.hasher.Sum()
-}
-
 // safeguardUpdate updates the state as a safeguard by appending a field element
 // representing a "0". This is used every time a field element is consumed from
 // the hasher to ensure that the next field element will have a different
 // value.
 func (fs *GnarkFiatShamir) safeguardUpdate() {
-	fs.Update(0)
+	fs.Update(zk.WrappedVariable{})
 }
