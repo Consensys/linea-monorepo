@@ -1,10 +1,9 @@
-import { Hex } from "viem";
-import { Result } from "neverthrow";
+import { Address, Hex } from "viem";
 
 // TODO - Make generic and uncoupled from Viem
 export interface IContractClientLibrary<TClient, TTransactionReceipt> {
   getBlockchainClient(): TClient;
-  sendSerializedTransaction(serializedTransaction: Hex): Promise<TTransactionReceipt>;
   estimateGasFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }>;
   getChainId(): Promise<number>;
+  sendSignedTransaction(contractAddress: Address, calldata: Hex): Promise<TTransactionReceipt>;
 }

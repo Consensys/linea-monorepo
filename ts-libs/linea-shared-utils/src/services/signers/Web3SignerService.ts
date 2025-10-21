@@ -12,10 +12,10 @@ export class Web3SignerService implements IContractSignerService {
   constructor(
     private readonly web3SignerUrl: string,
     private readonly web3SignerPublicKey: Hex,
-    private web3SignerKeystorePath: string,
-    private web3SignerKeystorePassphrase: string,
-    private web3SignerTrustedStorePath: string,
-    private web3SignerTrustedStorePassphrase: string,
+    web3SignerKeystorePath: string,
+    web3SignerKeystorePassphrase: string,
+    web3SignerTrustedStorePath: string,
+    web3SignerTrustedStorePassphrase: string,
   ) {
     this.agent = this.getHttpsAgent(
       web3SignerKeystorePath,

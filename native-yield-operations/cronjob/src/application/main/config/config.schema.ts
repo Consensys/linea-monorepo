@@ -1,12 +1,14 @@
 // src/config.ts
 import { z } from "zod";
-import { isAddress, getAddress } from "viem";
+import { isAddress, getAddress, isHex } from "viem";
 
 /** Reusable EVM address schema: validates then normalizes to checksummed form */
 const Address = z
   .string()
   .refine((v) => isAddress(v), { message: "Invalid Ethereum address" })
   .transform((v) => getAddress(v)); // checksum/normalize
+
+const Hex = z.string().refine((v) => isHex(v), { message: "Invalid Hex" });
 
 export const configSchema = z
   .object({
@@ -24,7 +26,24 @@ export const configSchema = z
     // Timing intervals
     TRIGGER_EVENT_POLLING_TIME_SECONDS: z.coerce.number().int().positive(),
     TRIGGER_MAX_INACTION_TIMEOUT_SECONDS: z.coerce.number().int().positive(),
-    CONTRACT_READ_RETRY_TIME_SECONDS: z.coerce.number().int().positive(),                        
+    CONTRACT_READ_RETRY_TIME_SECONDS: z.coerce.number().int().positive(),
+
+    // Web3Signer
+    WEB3SIGNER_URL: z.string().url(),
+    // Accept either an Ethereum address (20 bytes) OR a secp256k1 pubkey (33/65 bytes).
+    // If you only want addresses, replace with `Address`.
+    WEB3SIGNER_PUBLIC_KEY: Hex.refine(
+      (v) =>
+        /^0x[a-fA-F0-9]{40}$/.test(v) || // address
+        /^0x04[a-fA-F0-9]{128}$/.test(v) || // uncompressed pubkey (65 bytes)
+        /^0x0[23][a-fA-F0-9]{64}$/.test(v), // compressed pubkey (33 bytes)
+      "Expected 0x-hex Ethereum address, or secp256k1 public key (compressed/uncompressed).",
+    ),
+    WEB3SIGNER_KEYSTORE_PATH: z.string().min(1),
+    WEB3SIGNER_KEYSTORE_PASSPHRASE: z.string().min(1),
+    WEB3SIGNER_TRUSTSTORE_PATH: z.string().min(1),
+    WEB3SIGNER_TRUSTSTORE_PASSPHRASE: z.string().min(1),
+
     // API port
     API_PORT: z.coerce.number().int().min(1024).max(49000),
   })
