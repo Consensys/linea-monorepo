@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -65,25 +66,28 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema, expTraces
 		exit.OnLimitOverflow(argMaxRatioLimit, int(argMaxRatioHeight), err77)
 	}
 
-	for id := uint(0); id < numCols; id++ {
+	parallel.Execute(int(numCols), func(start, stop int) {
+		for id := start; id < stop; id++ {
 
-		var (
-			col     = expTraces.Column(id)
-			name    = ifaces.ColID(wizardName(getModuleName(schema, col), col.Name()))
-			wCol    = run.Spec.Columns.GetHandle(name)
-			padding = col.Padding()
-			data    = col.Data()
-			plain   = make([]field.Element, data.Len())
-		)
+			var (
+				col     = expTraces.Column(uint(id))
+				name    = ifaces.ColID(wizardName(getModuleName(schema, col), col.Name()))
+				wCol    = run.Spec.Columns.GetHandle(name)
+				padding = col.Padding()
+				data    = col.Data()
+			)
 
-		if !run.Spec.Columns.Exists(name) {
-			continue
+			if !run.Spec.Columns.Exists(name) {
+				continue
+			}
+
+			plain := make([]field.Element, data.Len())
+			for i := range plain {
+				plain[i] = data.Get(uint(i))
+			}
+
+			run.AssignColumn(ifaces.ColID(name), smartvectors.LeftPadded(plain, padding, wCol.Size()))
 		}
+	})
 
-		for i := range plain {
-			plain[i] = data.Get(uint(i))
-		}
-
-		run.AssignColumn(ifaces.ColID(name), smartvectors.LeftPadded(plain, padding, wCol.Size()))
-	}
 }
