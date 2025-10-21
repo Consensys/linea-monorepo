@@ -23,7 +23,7 @@ import {
 import { deployUpgradableFromFactory } from "../common/deployment";
 import { ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE } from "./constants";
 
-describe.only("RollupRevenueVault", () => {
+describe("RollupRevenueVault", () => {
   let rollupRevenueVault: RollupRevenueVault;
   let l2LineaToken: TestERC20;
   let tokenBridge: TokenBridge;
@@ -110,7 +110,7 @@ describe.only("RollupRevenueVault", () => {
           unsafeAllow: ["constructor"],
         },
       );
-      await expectRevertWithCustomError(rollupRevenueVault, deployCall, "TimestampInTheFutureNotAllowed");
+      await expectRevertWithCustomError(rollupRevenueVault, deployCall, "FutureInvoicesNotAllowed");
     });
 
     it("Should revert if defaultAdmin address is zero address", async () => {
@@ -436,7 +436,7 @@ describe.only("RollupRevenueVault", () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
         rollupRevenueVault.connect(invoiceSubmitter).submitInvoice(startTimestamp, endTimestamp, 100n),
-        "TimestampInTheFutureNotAllowed",
+        "FutureInvoicesNotAllowed",
       );
     });
 
@@ -548,7 +548,7 @@ describe.only("RollupRevenueVault", () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateInvoiceArrears(100n, lastInvoiceDate),
-        "TimestampInTheFutureNotAllowed",
+        "FutureInvoicesNotAllowed",
       );
     });
 
