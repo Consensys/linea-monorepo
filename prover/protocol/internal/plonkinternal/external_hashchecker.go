@@ -61,9 +61,9 @@ func (ctx *CompilationCtx) addHashConstraint() {
 			}
 		)
 
-		eho.OldStates[i] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckOldState_%v", i), size)
-		eho.Blocks[i] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckBlock_%v", i), size)
-		eho.NewStates[i] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckNewState_%v", i), size)
+		eho.OldStates[i] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckOldState_%v", i), size, true)
+		eho.Blocks[i] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckBlock_%v", i), size, true)
+		eho.NewStates[i] = ctx.comp.InsertCommit(round, ctx.colIDf("HashCheckNewState_%v", i), size, true)
 
 		// Those are lookups checking that the LRO columns are consistent with
 		// the hash claims.

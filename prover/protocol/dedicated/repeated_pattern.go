@@ -29,7 +29,7 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Ele
 	}
 
 	res := &RepeatedPattern{
-		Natural: comp.InsertCommit(round, ifaces.ColID(name)+"_NATURAL", size).(column.Natural),
+		Natural: comp.InsertCommit(round, ifaces.ColID(name)+"_NATURAL", size, true).(column.Natural),
 		Pattern: pattern,
 		PatternPrecomp: comp.InsertPrecomputed(
 			ifaces.ColID(name)+"_PATTERN",

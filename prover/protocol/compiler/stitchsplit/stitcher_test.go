@@ -66,10 +66,10 @@ func TestLocalEvalWithStatus(t *testing.T) {
 	define := func(builder *wizard.Builder) {
 		logrus.Info("Defining columns and local opening queries")
 		// Declare columns of different sizes
-		a = builder.RegisterCommit("A", 2)
-		b = builder.RegisterCommit("B", 4)
-		c = builder.RegisterCommit("C", 8)
-		d = builder.RegisterCommit("D", 16)
+		a = builder.RegisterCommitExt("A", 2)
+		b = builder.RegisterCommitExt("B", 4)
+		c = builder.RegisterCommitExt("C", 8)
+		d = builder.RegisterCommitExt("D", 16)
 
 		// Local opening at zero
 		q1 = builder.LocalOpening("Q00", a)
@@ -245,10 +245,10 @@ func localOpening(n int) func() (wizard.DefineFunc, wizard.MainProverStep) {
 			}
 			p1 := smartvectors.NewRegular(p1_)
 			run.AssignColumn(P1, p1)
-			run.AssignLocalPointExt("O1", p1.GetExt(0%n))
-			run.AssignLocalPointExt("O2", p1.GetExt(3%n))
-			run.AssignLocalPointExt("O3", p1.GetExt(4%n))
-			run.AssignLocalPointExt("O4", p1.GetExt(n-1))
+			run.AssignLocalPoint("O1", p1.Get(0%n))
+			run.AssignLocalPoint("O2", p1.Get(3%n))
+			run.AssignLocalPoint("O3", p1.Get(4%n))
+			run.AssignLocalPoint("O4", p1.Get(n-1))
 		}
 
 		return definer, prover

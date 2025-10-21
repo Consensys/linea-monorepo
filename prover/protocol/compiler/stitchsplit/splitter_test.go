@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -50,7 +49,7 @@ func TestSplitterLocalWithPeriodicSample(t *testing.T) {
 func fixedPointOpening() (wizard.DefineFunc, wizard.MainProverStep) {
 	n := 1 << 6
 	definer := func(build *wizard.Builder) {
-		P1 := build.RegisterCommit(P1, n)
+		P1 := build.RegisterCommitExt(P1, n)
 		_ = build.LocalOpening("O1", P1)
 		_ = build.LocalOpening("O2", column.Shift(P1, 3))
 		_ = build.LocalOpening("O3", column.Shift(P1, 4))
@@ -232,14 +231,14 @@ func TestLocalEvalWithStatus(t *testing.T) {
 		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(6, 7, 8, 9, 10, 11, 12, 13))
 
 		// And the alleged results
-		assi.AssignLocalPointExt("Q01", fext.NewFromInt(2, 0, 0, 0))
-		assi.AssignLocalPointExt("Q02", fext.NewFromInt(6, 0, 0, 0))
+		assi.AssignLocalPoint("Q01", field.NewElement(2))
+		assi.AssignLocalPoint("Q02", field.NewElement(6))
 
-		assi.AssignLocalPointExt("Q11", fext.NewFromInt(3, 0, 0, 0))
-		assi.AssignLocalPointExt("Q12", fext.NewFromInt(7, 0, 0, 0))
+		assi.AssignLocalPoint("Q11", field.NewElement(3))
+		assi.AssignLocalPoint("Q12", field.NewElement(7))
 
-		assi.AssignLocalPointExt("Q21", fext.NewFromInt(5, 0, 0, 0))
-		assi.AssignLocalPointExt("Q22", fext.NewFromInt(13, 0, 0, 0))
+		assi.AssignLocalPoint("Q21", field.NewElement(5))
+		assi.AssignLocalPoint("Q22", field.NewElement(13))
 
 	})
 

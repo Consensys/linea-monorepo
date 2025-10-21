@@ -247,12 +247,12 @@ func TestLogDerivativeLookupRandomLinComb(t *testing.T) {
 
 		_ = b.RegisterRandomCoin("COIN", coin.FieldExt)
 
-		uCol := b.InsertProof(1, "LC", sizeA)
+		uCol := b.InsertProof(1, "LC", sizeA, false)
 
 		_ = b.RegisterRandomCoin("COIN1", coin.FieldExt)
 
 		colQ := b.RegisterCommit("Q", sizeB)
-		uChosen := b.RegisterCommit("UChosen", sizeB)
+		uChosen := b.RegisterCommitExt("UChosen", sizeB)
 
 		// multi-col query
 		b.Inclusion("LOOKUP", []ifaces.Column{colI, uCol}, []ifaces.Column{colQ, uChosen})

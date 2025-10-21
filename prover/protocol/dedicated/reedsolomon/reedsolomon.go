@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -31,6 +32,17 @@ type ReedSolomonProverAction struct {
 func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	witness := a.H.GetColAssignment(assi)
 	domain := fft.NewDomain(uint64(witness.Len()), fft.WithCache())
+
+	if a.H.IsBase() {
+		coeffs := make([]field.Element, witness.Len())
+		witness.WriteInSlice(coeffs)
+		domain.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(1))
+		utils.BitReverse(coeffs)
+		// Take only the first `CodeDim` coefficients
+		assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegular(coeffs[:a.CodeDim]))
+		return
+	}
+
 	coeffs := make([]fext.Element, witness.Len())
 	witness.WriteInSliceExt(coeffs)
 	domain.FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
@@ -70,6 +82,7 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 		round,
 		ifaces.ColIDf("%v_%v", REED_SOLOMON_COEFF, h.GetColID()),
 		codeDim,
+		h.IsBase(),
 	)
 
 	beta := comp.InsertCoin(

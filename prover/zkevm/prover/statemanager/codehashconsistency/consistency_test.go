@@ -43,29 +43,29 @@ func runTestcase(t *testing.T, mimcCodeHashCsvPath, stateSummaryCsvPath string) 
 	define := func(b *wizard.Builder) {
 
 		stateSummary = &statesummary.Module{
-			IsActive:  b.InsertCommit(0, "SS_IS_ACTIVE", sizeStateSummary),
-			IsStorage: b.InsertCommit(0, "SS_IS_STORAGE", sizeStateSummary),
+			IsActive:  b.InsertCommit(0, "SS_IS_ACTIVE", sizeStateSummary, true),
+			IsStorage: b.InsertCommit(0, "SS_IS_STORAGE", sizeStateSummary, true),
 			Account: statesummary.AccountPeek{
 				Initial: statesummary.Account{
 					KeccakCodeHash: common.NewHiLoColumns(b.CompiledIOP, sizeStateSummary, "SS_INITIAL_KECCAK"),
-					MiMCCodeHash:   b.InsertCommit(0, "SS_INITIAL_MIMC", sizeStateSummary),
-					Exists:         b.InsertCommit(0, "SS_INITIAL_EXISTS", sizeStateSummary),
+					MiMCCodeHash:   b.InsertCommit(0, "SS_INITIAL_MIMC", sizeStateSummary, true),
+					Exists:         b.InsertCommit(0, "SS_INITIAL_EXISTS", sizeStateSummary, true),
 				},
 				Final: statesummary.Account{
 					KeccakCodeHash: common.NewHiLoColumns(b.CompiledIOP, sizeStateSummary, "SS_FINAL_KECCAK"),
-					MiMCCodeHash:   b.InsertCommit(0, "SS_FINAL_MIMC", sizeStateSummary),
-					Exists:         b.InsertCommit(0, "SS_FINAL_EXISTS", sizeStateSummary),
+					MiMCCodeHash:   b.InsertCommit(0, "SS_FINAL_MIMC", sizeStateSummary, true),
+					Exists:         b.InsertCommit(0, "SS_FINAL_EXISTS", sizeStateSummary, true),
 				},
 			},
 		}
 
 		mimcCodeHash = &mimccodehash.Module{
-			IsActive:         b.InsertCommit(0, "MCH_IS_ACTIVE", sizeMimcCodeHash),
-			IsHashEnd:        b.InsertCommit(0, "MCH_IS_HASH_END", sizeMimcCodeHash),
-			NewState:         b.InsertCommit(0, "MCH_NEW_STATE", sizeMimcCodeHash),
-			CodeHashHi:       b.InsertCommit(0, "MCH_KECCAK_HI", sizeMimcCodeHash),
-			CodeHashLo:       b.InsertCommit(0, "MCH_KECCAK_LO", sizeMimcCodeHash),
-			IsForConsistency: b.InsertCommit(0, "MCH_IS_FOR_CONSISTENCY", sizeMimcCodeHash),
+			IsActive:         b.InsertCommit(0, "MCH_IS_ACTIVE", sizeMimcCodeHash, true),
+			IsHashEnd:        b.InsertCommit(0, "MCH_IS_HASH_END", sizeMimcCodeHash, true),
+			NewState:         b.InsertCommit(0, "MCH_NEW_STATE", sizeMimcCodeHash, true),
+			CodeHashHi:       b.InsertCommit(0, "MCH_KECCAK_HI", sizeMimcCodeHash, true),
+			CodeHashLo:       b.InsertCommit(0, "MCH_KECCAK_LO", sizeMimcCodeHash, true),
+			IsForConsistency: b.InsertCommit(0, "MCH_IS_FOR_CONSISTENCY", sizeMimcCodeHash, true),
 		}
 
 		consistency = NewModule(b.CompiledIOP, "CONSISTENCY", stateSummary, mimcCodeHash)

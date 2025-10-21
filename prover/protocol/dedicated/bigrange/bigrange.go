@@ -125,6 +125,7 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 			round,
 			ifaces.ColIDf("BIGRANGE_%v_LIMB_%v", name, i),
 			size,
+			true,
 		)
 		// Enforces the range over the limbs
 		comp.InsertRange(
