@@ -2,22 +2,28 @@ import { ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
 import { NativeYieldCronJobClientConfig } from "./config/NativeYieldCronJobClientConfig";
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector";
 import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector";
-import {
-  createPublicClient,
-  http,
-} from "viem";
-import { mainnet } from "viem/chains";
+import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src/core/client/IContractClientLibrary";
+import { EthereumMainnetClientLibrary } from "ts-libs/linea-shared-utils/src/clients/ethereum/EthereumMainnetClientLibrary";
+import { BaseError, PublicClient, TransactionReceipt } from "viem";
+
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
   private readonly logger: ILogger;
 
-  private operationModeSelector: IOperationModeSelector
+  private ethereumMainnetClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt, BaseError>;
+
+  private operationModeSelector: IOperationModeSelector;
 
   constructor(config: NativeYieldCronJobClientConfig) {
     this.config = config;
     this.logger = new WinstonLogger(NativeYieldCronJobClient.name, config.loggerOptions);
 
-    this.operationModeSelector = new OperationModeSelector(config, new WinstonLogger(OperationModeSelector.name, config.loggerOptions))
+    this.ethereumMainnetClientLibrary = new EthereumMainnetClientLibrary(config.dataSources.l1RpcUrl);
+
+    this.operationModeSelector = new OperationModeSelector(
+      config,
+      new WinstonLogger(OperationModeSelector.name, config.loggerOptions),
+    );
   }
 
   public async connectServices(): Promise<void> {

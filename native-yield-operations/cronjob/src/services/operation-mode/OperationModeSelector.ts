@@ -23,7 +23,6 @@ export class OperationModeSelector implements IOperationModeSelector {
     try {
       // Get ossification state from YieldManager
       // Choose mode based on ossification state
-      
       // const { fromBlock, fromBlockLogIndex } = await this.getInitialFromBlock();
       // this.processEvents(fromBlock, fromBlockLogIndex);
     } catch (e) {
