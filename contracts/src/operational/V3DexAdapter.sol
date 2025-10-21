@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 pragma solidity 0.8.30;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IV3DexAdapter } from "./interfaces/IV3DexAdapter.sol";
 import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
@@ -50,12 +51,14 @@ contract V3DexAdapter is IV3DexAdapter {
    * @return amountOut The amount of LINEA tokens received from the swap.
    */
   function swap(uint256 _minLineaOut, uint256 _deadline) external payable returns (uint256 amountOut) {
-    require(msg.value > 0, NoEthSend());
+    require(msg.value > 0, NoEthSent());
     require(_deadline > block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
 
     IWETH9(WETH_TOKEN).deposit{ value: msg.value }();
     IWETH9(WETH_TOKEN).approve(ROUTER, msg.value);
+
+    uint256 tokenBalanceBefore = IERC20(LINEA_TOKEN).balanceOf(msg.sender);
 
     amountOut = ISwapRouterV3(ROUTER).exactInputSingle(
       ISwapRouterV3.ExactInputSingleParams({
@@ -70,5 +73,8 @@ contract V3DexAdapter is IV3DexAdapter {
         sqrtPriceLimitX96: 0
       })
     );
+
+    uint256 tokensReceived = IERC20(LINEA_TOKEN).balanceOf(msg.sender) - tokenBalanceBefore;
+    require(tokensReceived >= _minLineaOut, InsufficientLineaTokensReceived(_minLineaOut, tokensReceived));
   }
 }

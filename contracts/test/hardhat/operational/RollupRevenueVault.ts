@@ -54,12 +54,22 @@ describe("RollupRevenueVault", () => {
       return admin.sendTransaction({ to: await rollupRevenueVault.getAddress(), value, data });
     };
 
+    it("Should fail to send eth to the rollupRevenueVault contract through the receive when msg.value == 0", async () => {
+      const value = ethers.parseEther("0");
+      await expectRevertWithCustomError(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "NoEthSent");
+    });
+
     it("Should send eth to the rollupRevenueVault contract through the receive", async () => {
       const value = ethers.parseEther("1");
       await expectEvent(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "EthReceived", [value]);
     });
 
-    it("Should fail to send eth to the rollupRevenueVault contract through the fallback function", async () => {
+    it("Should fail to send eth to the rollupRevenueVault contract through the fallback function when msg.value == 0", async () => {
+      const value = ethers.parseEther("0");
+      await expectRevertWithCustomError(rollupRevenueVault, sendEthToContract(value, "0x1234"), "NoEthSent");
+    });
+
+    it("Should send eth to the rollupRevenueVault contract through the fallback function", async () => {
       const value = ethers.parseEther("1");
       await expectEvent(rollupRevenueVault, sendEthToContract(value, "0x1234"), "EthReceived", [value]);
     });
@@ -105,6 +115,30 @@ describe("RollupRevenueVault", () => {
         },
       );
       await expectRevertWithCustomError(rollupRevenueVault, deployCall, "ZeroTimestampNotAllowed");
+    });
+
+    it("should revert if lastInvoiceDate is in the future", async () => {
+      const futureInvoiceDate = (await time.latest()) + ONE_DAY_IN_SECONDS;
+      const deployCall = deployUpgradableFromFactory(
+        "RollupRevenueVault",
+        [
+          futureInvoiceDate,
+          admin.address,
+          invoiceSubmitter.address,
+          burner.address,
+          invoicePaymentReceiver.address,
+          await tokenBridge.getAddress(),
+          await messageService.getAddress(),
+          l1LineaTokenBurner.address,
+          await l2LineaToken.getAddress(),
+          await dexAdapter.getAddress(),
+        ],
+        {
+          initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
+          unsafeAllow: ["constructor"],
+        },
+      );
+      await expectRevertWithCustomError(rollupRevenueVault, deployCall, "FutureInvoicesNotAllowed");
     });
 
     it("Should revert if defaultAdmin address is zero address", async () => {
@@ -413,10 +447,22 @@ describe("RollupRevenueVault", () => {
       );
     });
 
+    it("Should revert if endTimestamp is in the future", async () => {
+      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
+      const startTimestamp = lastInvoiceDate + 1n;
+      const endTimestamp = (await time.latest()) + ONE_DAY_IN_SECONDS;
+
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(invoiceSubmitter).submitInvoice(startTimestamp, endTimestamp, 100n),
+        "FutureInvoicesNotAllowed",
+      );
+    });
+
     it("Should revert if amount is zero", async () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
-      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
+      const endTimestamp = lastInvoiceDate + BigInt(ONE_DAY_IN_SECONDS);
 
       await expectRevertWithCustomError(
         rollupRevenueVault,
@@ -512,6 +558,16 @@ describe("RollupRevenueVault", () => {
         rollupRevenueVault,
         rollupRevenueVault.connect(admin).updateInvoiceArrears(100n, lastInvoiceDate - 1n),
         "InvoiceDateTooOld",
+      );
+    });
+
+    it("Should revert if lastInvoiceDate is in the future", async () => {
+      const lastInvoiceDate = (await time.latest()) + ONE_DAY_IN_SECONDS;
+
+      await expectRevertWithCustomError(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(admin).updateInvoiceArrears(100n, lastInvoiceDate),
+        "FutureInvoicesNotAllowed",
       );
     });
 
@@ -735,7 +791,7 @@ describe("RollupRevenueVault", () => {
         .connect(invoiceSubmitter)
         .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("0.5"));
 
-      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("testRevertSwap", [0, 0, 0]);
+      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("testRevertSwap", [0, 0]);
 
       await expectRevertWithCustomError(
         rollupRevenueVault,
@@ -744,7 +800,7 @@ describe("RollupRevenueVault", () => {
       );
     });
 
-    it("Should revert if swap returns 0 linea tokens", async () => {
+    it("Should revert if swap returns insufficient linea tokens", async () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
       const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
@@ -756,16 +812,15 @@ describe("RollupRevenueVault", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
-      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("testZeroAmountOutSwap", [
-        minLineaOut,
-        deadline,
-        0n,
-      ]);
+      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData(
+        "testSwapInsufficientLineaTokensReceived",
+        [minLineaOut, deadline],
+      );
 
       await expectRevertWithCustomError(
         rollupRevenueVault,
         rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "ZeroLineaTokensReceived",
+        "DexSwapFailed",
       );
     });
 

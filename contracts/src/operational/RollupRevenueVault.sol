@@ -95,6 +95,8 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _dexAdapter
   ) internal onlyInitializing {
     require(_lastInvoiceDate != 0, ZeroTimestampNotAllowed());
+    require(_lastInvoiceDate < block.timestamp, FutureInvoicesNotAllowed());
+
     require(_defaultAdmin != address(0), ZeroAddressNotAllowed());
     require(_invoiceSubmitter != address(0), ZeroAddressNotAllowed());
     require(_burner != address(0), ZeroAddressNotAllowed());
@@ -142,6 +144,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   ) external payable onlyRole(INVOICE_SUBMITTER_ROLE) {
     require(_startTimestamp == lastInvoiceDate + 1, TimestampsNotInSequence());
     require(_endTimestamp > _startTimestamp, EndTimestampMustBeGreaterThanStartTimestamp());
+    require(_endTimestamp < block.timestamp, FutureInvoicesNotAllowed());
     require(_invoiceAmount != 0, ZeroInvoiceAmount());
 
     address payable receiver = payable(invoicePaymentReceiver);
@@ -178,20 +181,19 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     (bool success, ) = address(0).call{ value: ethToBurn }("");
     require(success, EthBurnFailed());
 
-    (bool swapSuccess, bytes memory returnData) = dexAdapter.call{ value: balanceAvailable - ethToBurn }(_swapData);
+    (bool swapSuccess,) = dexAdapter.call{ value: balanceAvailable - ethToBurn }(_swapData);
     require(swapSuccess, DexSwapFailed());
-
-    uint256 numLineaTokens = abi.decode(returnData, (uint256));
-    require(numLineaTokens > 0, ZeroLineaTokensReceived());
 
     address lineaTokenAddress = lineaToken;
     TokenBridge tokenBridgeContract = tokenBridge;
+    
+    uint256 lineaTokenBalanceAfter = IERC20(lineaTokenAddress).balanceOf(address(this));
 
-    IERC20(lineaTokenAddress).approve(address(tokenBridgeContract), numLineaTokens);
+    IERC20(lineaTokenAddress).approve(address(tokenBridgeContract), lineaTokenBalanceAfter);
 
-    tokenBridgeContract.bridgeToken{ value: minimumFee }(lineaTokenAddress, numLineaTokens, l1LineaTokenBurner);
+    tokenBridgeContract.bridgeToken{ value: minimumFee }(lineaTokenAddress, lineaTokenBalanceAfter, l1LineaTokenBurner);
 
-    emit EthBurntSwappedAndBridged(ethToBurn, numLineaTokens);
+    emit EthBurntSwappedAndBridged(ethToBurn, lineaTokenBalanceAfter);
   }
 
   /**
@@ -218,6 +220,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     uint256 _lastInvoiceDate
   ) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(_lastInvoiceDate >= lastInvoiceDate, InvoiceDateTooOld());
+    require(_lastInvoiceDate < block.timestamp, FutureInvoicesNotAllowed());
 
     invoiceArrears = _newInvoiceArrears;
     lastInvoiceDate = _lastInvoiceDate;
@@ -256,6 +259,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @notice Fallback function - Receives Funds.
    */
   fallback() external payable {
+    require(msg.value > 0, NoEthSent());
     emit EthReceived(msg.value);
   }
 
@@ -263,6 +267,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @notice Receive function - Receives Funds.
    */
   receive() external payable {
+    require(msg.value > 0, NoEthSent());
     emit EthReceived(msg.value);
   }
 }

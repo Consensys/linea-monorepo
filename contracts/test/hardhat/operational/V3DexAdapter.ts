@@ -5,12 +5,12 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { deployWETH9Fixture } from "./helpers/deploy";
 import { deployFromFactory } from "../common/deployment";
-import { V3DexAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";
+import { TestDexAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";
 import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
 import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
 
 describe("V3DexAdapter", () => {
-  let dexAdapter: V3DexAdapter;
+  let dexAdapter: TestDexAdapter;
   let rollupRevenueVault: SignerWithAddress;
   let lineaToken: TestERC20;
   let testWETH9Address: string;
@@ -29,12 +29,12 @@ describe("V3DexAdapter", () => {
     const router = (await deployFromFactory("TestDexRouter")) as TestDexRouter;
 
     const dexAdapter = (await deployFromFactory(
-      "V3DexAdapter",
+      "TestDexAdapter",
       await router.getAddress(),
       testWETH9,
       await lineaToken.getAddress(),
       50,
-    )) as V3DexAdapter;
+    )) as TestDexAdapter;
 
     return { dexAdapter, lineaToken, testWETH9, router };
   }
@@ -125,7 +125,7 @@ describe("V3DexAdapter", () => {
     it("Should revert when msg.value == 0", async () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_MINUTE_IN_SECONDS;
-      await expectRevertWithCustomError(dexAdapter, dexAdapter.swap(minLineaOut, deadline, { value: 0n }), "NoEthSend");
+      await expectRevertWithCustomError(dexAdapter, dexAdapter.swap(minLineaOut, deadline, { value: 0n }), "NoEthSent");
     });
 
     it("Should revert when deadline is in the past", async () => {
@@ -146,6 +146,17 @@ describe("V3DexAdapter", () => {
         dexAdapter,
         dexAdapter.swap(0n, deadline, { value: ethValueToSwap }),
         "ZeroMinLineaOutNotAllowed",
+      );
+    });
+
+    it("Should revert when amountOut < minLineaOut", async () => {
+      const deadline = (await time.latest()) + ONE_MINUTE_IN_SECONDS;
+      const ethValueToSwap = ethers.parseEther("1");
+      await expectRevertWithCustomError(
+        dexAdapter,
+        dexAdapter.testSwapInsufficientLineaTokensReceived(10n, deadline, { value: ethValueToSwap }),
+        "InsufficientLineaTokensReceived",
+        [10n, 0n],
       );
     });
 
