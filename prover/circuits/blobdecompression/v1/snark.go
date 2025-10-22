@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 
 	"math/big"
 	"math/bits"
@@ -116,13 +117,13 @@ type PackedBatchesIteration struct {
 	BatchI     frontend.Variable
 }
 
-type PackedBatchesResult struct {
+type PackBatchesResult struct {
 	Iterations []PackedBatchesIteration
 	BatchEnds  []frontend.Variable
 	Range      *internal.Range
 }
 
-func PackBatches(api frontend.API, nbBatches frontend.Variable, blobPayload, batchLengths []frontend.Variable) (*PackedBatchesResult, error) {
+func PackBatches(api frontend.API, nbBatches frontend.Variable, blobPayload, batchLengths []frontend.Variable) (*PackBatchesResult, error) {
 
 	batchEnds := internal.PartialSums(api, batchLengths)
 
@@ -239,7 +240,7 @@ func PackBatches(api frontend.API, nbBatches frontend.Variable, blobPayload, bat
 
 	api.AssertIsEqual(batchI, nbBatches) // check that we're actually done
 
-	return &PackedBatchesResult{
+	return &PackBatchesResult{
 		Iterations: iterations,
 		BatchEnds:  batchEnds,
 		Range:      batchesRange,
@@ -251,6 +252,10 @@ func PackBatches(api frontend.API, nbBatches frontend.Variable, blobPayload, bat
 // It is also checked that the batches are all within the MAXIMUM range of the blob. CheckBatchesSums does not have access to the actual blob size, so it remains the caller's responsibility to check that the batches are within the confines of the ACTUAL blob size.
 // The expected checksums are not checked beyond nbBatches
 func CheckBatchesSums(api frontend.API, hsh snarkHash.FieldHasher, nbBatches frontend.Variable, blobPayload, batchLengths []frontend.Variable, expectedChecksums []frontend.Variable) error {
+	if len(expectedChecksums) != len(batchLengths) {
+		return fmt.Errorf("given checksums and batch lengths don't match in number %d≠%d ", len(expectedChecksums), len(batchLengths))
+	}
+
 	packedBatches, err := PackBatches(api, nbBatches, blobPayload, batchLengths)
 	if err != nil {
 		return err
