@@ -179,7 +179,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 	sortColumns(ctx.AllInvolvedColumns)
 	sortColumns(ctx.AllInvolvedRoots)
 
-	for k := range ctx.AllInvolvedColumns {
+	for k := range ctx.ColumnsForRatio {
 		sortColumns(ctx.ColumnsForRatio[k])
 		sortColumns(ctx.RootsForRatio[k])
 	}
