@@ -22,27 +22,49 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
-	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit   = 1 << 18
-	fixedNbRowExternalHasher = 1 << 14
-	fixedNbPublicInput       = 1 << 10
+// CompilationParams gather the different compilation parameters to use to
+// compile the segments.
+type CompilationParams struct {
 
-	// initialCompilerSize sets the target number of rows of the first invokation
-	// of [compiler.Arcane] of the pre-recursion pass of [CompileSegment]. It is
-	// also the length of the column in the [DefaultModule].
-	initialCompilerSize       int = 1 << 18
-	initialCompilerSizeConglo int = 1 << 13
-)
+	// FixedNbRowPlonkCircuit is the number of rows in the plonk circuit, if
+	// the compilation process generates a recursion circuit with more rows than
+	// this number, then the compilation will fail with panic. If the number of
+	// rows is less, then we add dummy padding rows.
+	FixedNbRowPlonkCircuit int
 
-var (
-	// numColumnProfileMpts tells the last invokation of Vortex prior to the self-
-	// recursion to use a plonk circuit with a fixed number of rows. The values
-	// are completely empirical and set to make the compilation work.
-	numColumnProfileMpts            = []int{17, 330, 36, 3, 3, 15, 0, 1}
-	numColumnProfileMptsPrecomputed = 21
-)
+	// FixedNbRowExternalHasher is the number of rows in the external hasher
+	// circuit. It works the same way as [FixedNbRowPlonkCircuit] but for the
+	// number of calls to the external hasher.
+	FixedNbRowExternalHasher int
+
+	// FixedNbPublicInput is the size of the public input vector of the
+	// recursion circuit. It works the same way as [FixedNbRowPlonkCircuit]
+	// but for the number of public inputs.
+	FixedNbPublicInput int
+
+	// InitialCompilerSize sets the target number of rows of the first
+	// invokation of [compiler.Arcane] of the pre-recursion pass of
+	// [CompileSegment]. It is applicable only for the GL and LPP proofs. The
+	// conglomeration circuit uses a different parameter.
+	InitialCompilerSize int
+
+	// InitialCompilerSizeConglo sets the target number of rows of the first
+	// invokation of [compiler.Arcane] of the pre-recursion pass of
+	// [CompileSegment] for the conglomeration circuit.
+	InitialCompilerSizeConglo int
+
+	// ColumnProfileMPTS gives the number of rows for each round to target
+	// before the recursion step.
+	ColumnProfileMPTS []int
+
+	// ColumnProfileMPTSPrecomputed is the number of rows for the precomputed
+	// round.
+	ColumnProfileMPTSPrecomputed int
+
+	// FullDebugMode tells the compiler to add debugging steps to help track
+	// errors.
+	FullDebugMode bool
+}
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
 // to compile a segment of the protocol into a standardized recursed proof.
@@ -76,14 +98,14 @@ type SegmentProof struct {
 // CompileSegment applies all the compilation steps required to compile an LPP
 // or a GL module of the protocol. The function accepts either a *[ModuleLPP]
 // or a *[ModuleGL].
-func CompileSegment(mod any) *RecursedSegmentCompilation {
+func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilation {
 
 	var (
 		modIOP              *wizard.CompiledIOP
 		res                 = &RecursedSegmentCompilation{}
 		proofType           ProofType
 		subscript           string
-		initialCompilerSize = initialCompilerSize
+		initialCompilerSize = params.InitialCompilerSize
 	)
 
 	switch m := mod.(type) {
@@ -104,7 +126,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		res.HierarchicalConglomeration = m
 		subscript = "hierarchical-conglomeration"
 		proofType = proofTypeConglo
-		initialCompilerSize = initialCompilerSizeConglo
+		initialCompilerSize = params.InitialCompilerSizeConglo
 
 	default:
 		utils.Panic("unexpected type: %T", mod)
@@ -182,7 +204,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode(subscript+"_0"),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
 		),
 		vortex.Compile(
 			8,
@@ -197,7 +219,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode(subscript+"_1"),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
 		),
 		// This extra step is to ensure the tightness of the final wizard by
 		// adding an optional second layer of compilation when we have very
@@ -216,13 +238,13 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			compiler.WithStitcherMinSize(2),
 			compiler.WithoutMpts(),
 			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode(subscript+"_2"),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
 		),
 		// This final step expectedly always generate always the same profile.
 		// Most of the time, it is ineffective and could be skipped so there is
 		// a pending optimization.
 		logdata.Log("just-before-recursion"),
-		mpts.Compile(mpts.WithNumColumnProfileOpt(numColumnProfileMpts, numColumnProfileMptsPrecomputed)),
+		mpts.Compile(mpts.WithNumColumnProfileOpt(params.ColumnProfileMPTS, params.ColumnProfileMPTSPrecomputed)),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(32),
@@ -266,10 +288,10 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				Name:                   "wizard-recursion",
 				WithoutGkr:             true,
 				MaxNumProof:            1,
-				FixedNbRowPlonkCircuit: fixedNbRowPlonkCircuit,
+				FixedNbRowPlonkCircuit: params.FixedNbRowPlonkCircuit,
 				WithExternalHasherOpts: true,
-				ExternalHasherNbRows:   fixedNbRowExternalHasher,
-				FixedNbPublicInput:     fixedNbPublicInput,
+				ExternalHasherNbRows:   params.FixedNbRowExternalHasher,
+				FixedNbPublicInput:     params.FixedNbPublicInput,
 				Subscript:              subscript,
 				SkipRecursionPrefix:    true,
 				RestrictPublicInputs:   publicInputRestriction,

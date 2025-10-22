@@ -296,7 +296,7 @@ func checkVkMembershipGnark(
 
 // Conglomerate runs the conglomeration compiler and returns a pointer to the
 // receiver of the method.
-func (d *DistributedWizard) Conglomerate() *DistributedWizard {
+func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedWizard {
 
 	conglo := &ModuleConglo{
 		ModuleNumber: len(d.CompiledGLs),
@@ -304,7 +304,7 @@ func (d *DistributedWizard) Conglomerate() *DistributedWizard {
 
 	comp := wizard.NewCompiledIOP()
 	conglo.Compile(comp, d.CompiledGLs[0].RecursionComp)
-	d.CompiledConglomeration = CompileSegment(conglo)
+	d.CompiledConglomeration = CompileSegment(conglo, params)
 	assertCompatibleIOPs(d)
 
 	d.VerificationKeyMerkleTree = buildVerificationKeyMerkleTree(

@@ -39,9 +39,27 @@ var (
 	verificationKeyMerkleTree = "verification-key-merkle-tree.bin"
 )
 
+var LimitlessCompilationParams = distributed.CompilationParams{
+	FixedNbRowPlonkCircuit:       1 << 18,
+	FixedNbRowExternalHasher:     1 << 14,
+	FixedNbPublicInput:           1 << 10,
+	InitialCompilerSize:          1 << 18,
+	InitialCompilerSizeConglo:    1 << 13,
+	ColumnProfileMPTS:            []int{17, 330, 36, 3, 3, 15, 0, 1},
+	ColumnProfileMPTSPrecomputed: 21,
+}
+
 // GetTestZkEVM returns a ZkEVM object configured for testing.
 func GetTestZkEVM() *ZkEvm {
-	return FullZKEVMWithSuite(config.GetTestTracesLimits(), CompilationSuite{}, &config.Config{})
+	return FullZKEVMWithSuite(
+		config.GetTestTracesLimits(),
+		CompilationSuite{},
+		&config.Config{
+			Execution: config.Execution{
+				IgnoreCompatibilityCheck: true,
+			},
+		},
+	)
 }
 
 // LimitlessZkEVM defines the wizard responsible for proving execution of the EVM
@@ -168,7 +186,7 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 		traceLimits = cfg.TracesLimits
 		zkevm       = FullZKEVMWithSuite(&traceLimits, CompilationSuite{}, cfg)
 		disc        = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 29,
+			TargetWeight: 1 << 28,
 			Predivision:  1,
 			Advices:      DiscoveryAdvices,
 		}
@@ -176,7 +194,7 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 	)
 
 	// These are the slow and expensive operations.
-	dw.CompileSegments().Conglomerate()
+	dw.CompileSegments(LimitlessCompilationParams).Conglomerate(LimitlessCompilationParams)
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
@@ -287,7 +305,9 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		lz.DistWizard.Disc,
 		lz.DistWizard.BlueprintGLs,
 		lz.DistWizard.BlueprintLPPs,
-		lz.DistWizard.VerificationKeyMerkleTree.GetRoot(),
+		// The verification key merkle tree does not exists in debug mode. So
+		// we can get the value here. It is not needed anyway.
+		field.Element{},
 	)
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))
@@ -299,22 +319,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		logrus.Infof("Checking GL witness %v, module=%v", i, witness.ModuleName)
 
 		var (
-			moduleToFind = witness.ModuleName
-			debugGL      *distributed.ModuleGL
-		)
-
-		for i := range lz.DistWizard.DebugGLs {
-			if lz.DistWizard.DebugGLs[i].DefinitionInput.ModuleName == moduleToFind {
-				debugGL = lz.DistWizard.DebugGLs[i]
-				break
-			}
-		}
-
-		if debugGL == nil {
-			utils.Panic("debugGL not found")
-		}
-
-		var (
+			debugGL        = lz.DistWizard.DebugGLs[witness.ModuleIndex]
 			mainProverStep = debugGL.GetMainProverStep(witness)
 			compiledIOP    = debugGL.Wiop
 		)
@@ -339,23 +344,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 		logrus.Infof("Checking LPP witness %v, module=%v", i, witness.ModuleName)
 
-		var (
-			// moduleToFind = witness.ModuleName
-			debugLPP *distributed.ModuleLPP
-		)
-
-		for _ = range lz.DistWizard.DebugLPPs {
-			panic("uncomment me")
-			// if reflect.DeepEqual(lz.DistWizard.DebugLPPs[i].ModuleNames(), moduleToFind) {
-			// 	debugLPP = lz.DistWizard.DebugLPPs[i]
-			// 	break
-			// }
-		}
-
-		if debugLPP == nil {
-			utils.Panic("debugLPP not found")
-		}
-
+		debugLPP := lz.DistWizard.DebugLPPs[witness.ModuleIndex]
 		witness.InitialFiatShamirState = sharedRandomness
 
 		var (
