@@ -3,7 +3,7 @@ package fiatshamir
 import (
 	"math"
 
-	"github.com/consensys/gnark-crypto/hash"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -32,7 +32,7 @@ import (
 //
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 
-func Update(h hash.StateStorer, vec ...field.Element) {
+func Update(h hashtypes.Poseidon2Hasher, vec ...field.Element) {
 	for _, f := range vec {
 		bytes := f.Bytes()
 		_, err := h.Write(bytes[:])
@@ -42,7 +42,7 @@ func Update(h hash.StateStorer, vec ...field.Element) {
 	}
 }
 
-func UpdateExt(h hash.StateStorer, vec ...fext.Element) {
+func UpdateExt(h hashtypes.Poseidon2Hasher, vec ...fext.Element) {
 	for _, f := range vec {
 		bytes := fext.Bytes(&f)
 		_, err := h.Write(bytes[:])
@@ -51,7 +51,7 @@ func UpdateExt(h hash.StateStorer, vec ...fext.Element) {
 		}
 	}
 }
-func UpdateGeneric(h hash.StateStorer, vec ...fext.GenericFieldElem) {
+func UpdateGeneric(h hashtypes.Poseidon2Hasher, vec ...fext.GenericFieldElem) {
 	if len(vec) == 0 {
 		return
 	}
@@ -69,7 +69,7 @@ func UpdateGeneric(h hash.StateStorer, vec ...fext.GenericFieldElem) {
 		}
 	}
 }
-func UpdateVec(h hash.StateStorer, vecs ...[]field.Element) {
+func UpdateVec(h hashtypes.Poseidon2Hasher, vecs ...[]field.Element) {
 	for i := range vecs {
 		Update(h, vecs[i]...)
 	}
@@ -77,7 +77,7 @@ func UpdateVec(h hash.StateStorer, vecs ...[]field.Element) {
 
 // UpdateVec updates the Fiat-Shamir state by passing one of more slices of
 // field elements.
-func UpdateVecExt(h hash.StateStorer, vecs ...[]fext.Element) {
+func UpdateVecExt(h hashtypes.Poseidon2Hasher, vecs ...[]fext.Element) {
 	for i := range vecs {
 		UpdateExt(h, vecs[i]...)
 	}
@@ -85,7 +85,7 @@ func UpdateVecExt(h hash.StateStorer, vecs ...[]fext.Element) {
 
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
-func UpdateSV(h hash.StateStorer, sv smartvectors.SmartVector) {
+func UpdateSV(h hashtypes.Poseidon2Hasher, sv smartvectors.SmartVector) {
 	if sv.Len() == 0 {
 		return
 	}
@@ -97,7 +97,7 @@ func UpdateSV(h hash.StateStorer, sv smartvectors.SmartVector) {
 
 // RandomField generates and returns a single field element from the Fiat-Shamir
 // transcript.
-func RandomField(h hash.StateStorer) field.Element {
+func RandomField(h hashtypes.Poseidon2Hasher) field.Element {
 	s := h.Sum(nil)
 	var res field.Element
 	res.SetBytes(s)
@@ -106,7 +106,7 @@ func RandomField(h hash.StateStorer) field.Element {
 }
 
 // RandomField generates and returns a single field element from the seed and the given name.
-func RandomFieldFromSeed(h hash.StateStorer, seed field.Element, name string) field.Element {
+func RandomFieldFromSeed(h hashtypes.Poseidon2Hasher, seed field.Element, name string) field.Element {
 
 	// The first step encodes the 'name' into a single field element. The
 	// field element is obtained by hashing and taking the modulo of the
@@ -137,7 +137,7 @@ func RandomFieldFromSeed(h hash.StateStorer, seed field.Element, name string) fi
 	return *res
 }
 
-func RandomFext(h hash.StateStorer) fext.Element {
+func RandomFext(h hashtypes.Poseidon2Hasher) fext.Element {
 	// TODO @thomas according the size of s, run several hashes to fit in an fext elmt
 	s := h.Sum(nil)
 	var res fext.Element
@@ -152,7 +152,7 @@ func RandomFext(h hash.StateStorer) fext.Element {
 
 // TODO@yao: maybe we want 'RandomFextFromSeed', which generates and returns a single fext element from the seed and the given name.
 
-func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
+func RandomManyIntegers(h hashtypes.Poseidon2Hasher, num, upperBound int) []int {
 
 	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
@@ -219,6 +219,6 @@ func RandomManyIntegers(h hash.StateStorer, num, upperBound int) []int {
 	}
 }
 
-func safeguardUpdate(h hash.StateStorer) {
+func safeguardUpdate(h hashtypes.Poseidon2Hasher) {
 	Update(h, field.NewElement(0))
 }

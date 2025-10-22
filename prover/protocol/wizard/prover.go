@@ -7,8 +7,6 @@ import (
 	"path"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"strconv"
@@ -17,6 +15,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -148,7 +147,7 @@ type ProverRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS hash.StateStorer
+	FS hashtypes.Poseidon2Hasher
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
@@ -273,7 +272,7 @@ func (run *ProverRuntime) NumRounds() int {
 func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
-	fs := poseidon2.NewMerkleDamgardHasher()
+	fs := hashtypes.Poseidon2()
 	fiatshamir.Update(fs, c.FiatShamirSetup)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
@@ -1092,7 +1091,7 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() hash.StateStorer {
+func (run *ProverRuntime) Fs() hashtypes.Poseidon2Hasher {
 	return run.FS
 }
 
