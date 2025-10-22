@@ -76,17 +76,17 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 
 	mh = Module{
 		Inputs:           inputs,
-		IsActive:         comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_ACTIVE_NAME, inputs.Size),
-		CFI:              comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_CFI_NAME, inputs.Size),
-		Limb:             comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_LIMB_NAME, inputs.Size),
-		CodeHashHi:       comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_KECCAK_CODEHASH_HI_NAME, inputs.Size),
-		CodeHashLo:       comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_KECCAK_CODEHASH_LO_NAME, inputs.Size),
-		CodeSize:         comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_CODE_SIZE_NAME, inputs.Size),
-		IsNewHash:        comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_NEW_HASH_NAME, inputs.Size),
-		IsHashEnd:        comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_HASH_END_NAME, inputs.Size),
-		PrevState:        comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_PREV_STATE_NAME, inputs.Size),
-		NewState:         comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_NEW_STATE_NAME, inputs.Size),
-		IsForConsistency: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_FOR_CONSISTENCY, inputs.Size),
+		IsActive:         comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_ACTIVE_NAME, inputs.Size, true),
+		CFI:              comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_CFI_NAME, inputs.Size, true),
+		Limb:             comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_LIMB_NAME, inputs.Size, true),
+		CodeHashHi:       comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_KECCAK_CODEHASH_HI_NAME, inputs.Size, true),
+		CodeHashLo:       comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_KECCAK_CODEHASH_LO_NAME, inputs.Size, true),
+		CodeSize:         comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_CODE_SIZE_NAME, inputs.Size, true),
+		IsNewHash:        comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_NEW_HASH_NAME, inputs.Size, true),
+		IsHashEnd:        comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_HASH_END_NAME, inputs.Size, true),
+		PrevState:        comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_PREV_STATE_NAME, inputs.Size, true),
+		NewState:         comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_NEW_STATE_NAME, inputs.Size, true),
+		IsForConsistency: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_FOR_CONSISTENCY, inputs.Size, true),
 	}
 
 	mh.IsEmptyKeccakHi, mh.CptIsEmptyKeccakHi = dedicated.IsZero(comp, sym.Sub(mh.CodeHashHi, emptyKeccakHi)).GetColumnAndProverAction()

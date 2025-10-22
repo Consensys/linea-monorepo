@@ -62,7 +62,7 @@ func TestCompiler(t *testing.T) {
 func TestChangingColumnStatus(t *testing.T) {
 
 	comp := wizard.NewCompiledIOP()
-	comp.InsertCommit(0, "P", 4)
+	comp.InsertCommit(0, "P", 4, true)
 
 	p := comp.Columns.GetHandle("P").(column.Natural)
 	require.Equal(t, column.Committed, p.Status())

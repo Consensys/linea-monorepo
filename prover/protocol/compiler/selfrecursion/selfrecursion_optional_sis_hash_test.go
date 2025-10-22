@@ -1,6 +1,7 @@
 package selfrecursion_test
 
 import (
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -17,6 +18,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
+
+var rng = rand.New(utils.NewRandSource(0)) // #nosec G404
 
 type testCase = struct {
 	Explainer string
@@ -55,7 +58,8 @@ func testCaseGenerator() []testCase {
 		},
 		Prove: func(pr *wizard.ProverRuntime) {
 			ys := make([]fext.Element, len(rows))
-			x := fext.RandomElement()
+			x := fext.PseudoRand(rng)
+
 			// assign the rows with random polynomials and collect the ys
 			for i, row := range rows {
 				p := smartvectors.Rand(polSize)
@@ -95,7 +99,7 @@ func testCaseGenerator() []testCase {
 				numPolys += nPolsMultiRound[i]
 			}
 			ys := make([]fext.Element, numPolys)
-			x := fext.RandomElement()
+			x := fext.PseudoRand(rng)
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -159,7 +163,7 @@ func testCaseGenerator() []testCase {
 				numPolys += nPolsMultiRound[i]
 			}
 			ys := make([]fext.Element, numPolys)
-			x := fext.RandomElement() // the evaluation point
+			x := fext.PseudoRand(rng)
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -230,7 +234,7 @@ func testCaseGenerator() []testCase {
 				numPolys += nPolsMultiRound[i]
 			}
 			ys := make([]fext.Element, numPolys)
-			x := fext.RandomElement() // the evaluation point
+			x := fext.PseudoRand(rng)
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -301,7 +305,7 @@ func testCaseGenerator() []testCase {
 				numPolys += nPolsMultiRoundNoSIS[i]
 			}
 			ys := make([]fext.Element, numPolys)
-			x := fext.RandomElement() // the evaluation point
+			x := fext.PseudoRand(rng)
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -372,7 +376,7 @@ func testCaseGenerator() []testCase {
 				numPolys += nPolsMultiRoundSIS[i]
 			}
 			ys := make([]fext.Element, numPolys)
-			x := fext.RandomElement() // the evaluation point
+			x := fext.PseudoRand(rng)
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {
@@ -443,7 +447,7 @@ func testCaseGenerator() []testCase {
 				numPolys += nPolsMultiRoundEmpty[i]
 			}
 			ys := make([]fext.Element, numPolys)
-			x := fext.RandomElement() // the evaluation point
+			x := fext.PseudoRand(rng)
 
 			// assign the rows with random polynomials and collect the ys
 			for round := range rowsMultiRound {

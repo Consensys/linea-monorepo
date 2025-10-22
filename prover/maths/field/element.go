@@ -29,28 +29,27 @@ const (
 )
 
 var (
-	RootOfUnity = NewFromString("1791270792")
-	Modulus     = koalabear.Modulus
-	Butterfly   = koalabear.Butterfly
-	NewElement  = koalabear.NewElement
-	BatchInvert = koalabear.BatchInvert
-	One         = koalabear.One
+	RootOfUnity     = NewFromString("1791270792")
+	MontConstant    = NewFromString("33554430")
+	MontConstantInv = NewFromString("1057030144")
+	Modulus         = koalabear.Modulus
+	Butterfly       = koalabear.Butterfly
+	NewElement      = koalabear.NewElement
+	BatchInvert     = koalabear.BatchInvert
+	One             = koalabear.One
 )
-
-var montConstant = NewFromString("33554430")
-var montConstantInv = NewFromString("1057030144")
 
 // MulR multiplies by montConstant, where montConstant is the Montgommery constant
 func MulR(x Element) Element {
 	var res Element
-	res.Mul(&x, &montConstant)
+	res.Mul(&x, &MontConstant)
 	return res
 }
 
 // MulRInv multiplies the field element by R^-1, where R is the Montgommery constant
 func MulRInv(x Element) Element {
 	var res Element
-	res.Mul(&x, &montConstantInv)
+	res.Mul(&x, &MontConstantInv)
 	return res
 }
 
@@ -155,4 +154,12 @@ func OctupletToBytes(octuplet [8]Element) [32]byte {
 		copy(res[i*4:i*4+4], x[:])
 	}
 	return res
+}
+
+func RandomOctuplet() Octuplet {
+	var oct Octuplet
+	for i := range oct {
+		oct[i] = RandomElement()
+	}
+	return oct
 }

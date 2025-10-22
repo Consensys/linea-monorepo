@@ -92,6 +92,7 @@ func EvalCoeffBivariate(
 		maxRound,
 		ifaces.ColIDf("%v_%v", name, EVAL_BIVARIATE_POLY),
 		length,
+		false,
 	)
 
 	/*

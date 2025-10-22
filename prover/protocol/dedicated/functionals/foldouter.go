@@ -62,7 +62,7 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 	foldedSize := h.Size() / outerDegree
 	innerDegree := foldedSize
 	foldedName := ifaces.ColIDf("FOLDED_OUTER_%v_%v_%v", h.GetColID(), x.Name(), outerDegree)
-	folded := comp.InsertCommit(round, foldedName, foldedSize)
+	folded := comp.InsertCommit(round, foldedName, foldedSize, false)
 
 	if x.Round() <= h.Round() {
 		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)

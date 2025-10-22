@@ -73,6 +73,10 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 		utils.Panic("a and b cannot have zero limbs %v %v", len(a.Limbs), len(b.Limbs))
 	}
 
+	if len(a.Limbs) > 31 || len(b.Limbs) > 31 {
+		utils.Panic("a and b cannot have more than 31 limbs, the syndrom will overflow. a has %v limbs and b has %v limbs", len(a.Limbs), len(b.Limbs))
+	}
+
 	if a.LimbBitSize != b.LimbBitSize {
 		utils.Panic("a and b don't use the same limb-bit-size: %v %v", a.LimbBitSize, b.LimbBitSize)
 	}
@@ -100,9 +104,9 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 		numLimbs        = len(a.Limbs)
 		numBitsPerLimbs = a.LimbBitSize
 		ctx             = &MultiLimbCmp{
-			IsGreater:          comp.InsertCommit(round, ifaces.ColIDf("%s", ctxName("IS_GREATER")), nRows),
-			IsLower:            comp.InsertCommit(round, ifaces.ColIDf("%s", ctxName("IS_LOWER")), nRows),
-			NonNegativeSyndrom: comp.InsertCommit(round, ifaces.ColIDf("%s", ctxName("MUST_BE_POSITIVE")), nRows),
+			IsGreater:          comp.InsertCommit(round, ifaces.ColIDf("%s", ctxName("IS_GREATER")), nRows, true),
+			IsLower:            comp.InsertCommit(round, ifaces.ColIDf("%s", ctxName("IS_LOWER")), nRows, true),
+			NonNegativeSyndrom: comp.InsertCommit(round, ifaces.ColIDf("%s", ctxName("MUST_BE_POSITIVE")), nRows, true),
 		}
 
 		syndromExpression = sym.NewConstant(0)

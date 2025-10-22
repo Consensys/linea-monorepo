@@ -5,11 +5,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
@@ -17,6 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // StdBenchmarkCase represents a benchmark case for the Arcane and Vortex compilers
@@ -28,6 +33,13 @@ type StdBenchmarkCase struct {
 	Lookup       SubModuleParameters
 	Projection   SubModuleParameters
 	Fibo         SubModuleParameters
+}
+
+// selfRecursionParameters stores parameters for self-recursion
+type selfRecursionParameters struct {
+	TargetRowSize   int
+	RsInverseRate   int
+	NbOpenedColumns int
 }
 
 // SubModuleParameters represents the parameters of a sub-module in [StdBenchmarkCase]
@@ -126,15 +138,163 @@ var (
 	}
 )
 
-func BenchmarkCompiler(b *testing.B) {
+var selfRecursionParametersSet = []selfRecursionParameters{
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 8,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 9,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 10,
+	},
+	{
+		NbOpenedColumns: 256,
+		RsInverseRate:   2,
+		TargetRowSize:   1 << 11,
+	},
+	{
+		NbOpenedColumns: 128,
+		RsInverseRate:   4,
+		TargetRowSize:   1 << 8,
+	},
+	{
+		NbOpenedColumns: 128,
+		RsInverseRate:   4,
+		TargetRowSize:   1 << 9,
+	},
+	{
+		NbOpenedColumns: 128,
+		RsInverseRate:   4,
+		TargetRowSize:   1 << 10,
+	},
+	{
+		NbOpenedColumns: 128,
+		RsInverseRate:   4,
+		TargetRowSize:   1 << 11,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 6,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 7,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 8,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 9,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 10,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 11,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 12,
+	},
+	{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 13,
+	},
+}
+
+func BenchmarkCompilerWithoutSelfRecursion(b *testing.B) {
 	for _, bc := range benchCases {
 		b.Run(bc.Name, func(b *testing.B) {
-			benchmarkCompiler(b, bc)
+			benchmarkCompilerWithoutSelfRecursion(b, bc)
 		})
 	}
 }
 
-func benchmarkCompiler(b *testing.B, sbc StdBenchmarkCase) {
+func BenchmarkCompilerWithSelfRecursion(b *testing.B) {
+	for _, bc := range benchCases {
+		b.Run(bc.Name, func(b *testing.B) {
+			benchmarkCompilerWithSelfRecursion(b, bc)
+		})
+	}
+}
+
+func BenchmarkProfileSelfRecursion(b *testing.B) {
+	for _, bc := range benchCases {
+		b.Run(bc.Name, func(b *testing.B) {
+			profileSelfRecursionCompilation(b, bc)
+		})
+	}
+}
+
+func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
+
+	logrus.SetLevel(logrus.FatalLevel)
+	nbIteration := 5
+
+	for _, params := range selfRecursionParametersSet {
+		b.Run(fmt.Sprintf("%+v", params), func(b *testing.B) {
+
+			comp := wizard.Compile(
+				// Round of recursion 0
+				sbc.Define,
+				compiler.Arcane(
+					compiler.WithTargetColSize(1<<18),
+					compiler.WithStitcherMinSize(1<<8),
+				),
+				vortex.Compile(
+					2,
+					vortex.WithOptionalSISHashingThreshold(512),
+					vortex.ForceNumOpenedColumns(256),
+					vortex.WithSISParams(&ringsis.StdParams),
+				),
+			)
+
+			for i := 0; i < nbIteration-1; i++ {
+				applySelfRecursionThenArcane(comp, params)
+				applyVortex(comp, params)
+			}
+
+			statsVortex := logdata.GetWizardStats(comp)
+
+			applySelfRecursionThenArcane(comp, params)
+
+			statsArcane := logdata.GetWizardStats(comp)
+
+			b.ReportMetric(float64(statsArcane.NumCellsCommitted), "#committed-cells")
+			b.ReportMetric(float64(statsVortex.NumCellsProof), "#proof-cells")
+
+			csvF := files.MustOverwrite(
+				fmt.Sprintf(
+					"selfrecursion-nbOpenedColumns-%v-rsInverseRate-%v-targetRowSize-%v.csv",
+					params.NbOpenedColumns, params.RsInverseRate, params.TargetRowSize,
+				),
+			)
+
+			logdata.GenCSV(csvF, logdata.IncludeNonIgnoredColumnCSVFilter)(comp)
+		})
+	}
+}
+
+func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 	comp := wizard.Compile(
 		sbc.Define,
@@ -149,6 +309,44 @@ func benchmarkCompiler(b *testing.B, sbc StdBenchmarkCase) {
 			vortex.WithSISParams(&ringsis.StdParams),
 		),
 	)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = wizard.Prove(comp, sbc.NewAssigner(b))
+	}
+}
+
+func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
+
+	// These parameters have been found to give the best result for performances
+	params := selfRecursionParameters{
+		NbOpenedColumns: 64,
+		RsInverseRate:   16,
+		TargetRowSize:   1 << 9,
+	}
+
+	comp := wizard.Compile(
+		// Round of recursion 0
+		sbc.Define,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<20),
+			compiler.WithStitcherMinSize(1<<1),
+		),
+		vortex.Compile(
+			2,
+			vortex.WithOptionalSISHashingThreshold(512),
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+	)
+
+	nbIteration := 2
+
+	for i := 0; i < nbIteration; i++ {
+		applySelfRecursionThenArcane(comp, params)
+		applyVortex(comp, params)
+	}
 
 	b.ResetTimer()
 
@@ -204,6 +402,42 @@ func (sbc *StdBenchmarkCase) NewAssigner(b *testing.B) func(run *wizard.ProverRu
 	}
 }
 
+// applySelfRecursionThenArcane applies the self-recursion step and then the
+// arcane step using the provided parameters.
+func applySelfRecursionThenArcane(comp *wizard.CompiledIOP, params selfRecursionParameters) {
+
+	selfrecursion.SelfRecurse(comp)
+
+	var (
+		stats      = logdata.GetWizardStats(comp)
+		totalCells = stats.NumCellsCommitted
+		rowSize    = utils.NextPowerOfTwo(utils.DivCeil(totalCells, params.TargetRowSize))
+	)
+
+	_ = wizard.ContinueCompilation(
+		comp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(
+			compiler.WithTargetColSize(rowSize),
+			compiler.WithStitcherMinSize(1<<1),
+		),
+	)
+}
+
+// applyVortex applies the vortex step using the provided parameters.
+func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters) {
+
+	_ = wizard.ContinueCompilation(
+		comp,
+		vortex.Compile(
+			params.RsInverseRate,
+			vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
+			vortex.WithOptionalSISHashingThreshold(ringsis.StdParams.OutputSize()),
+			vortex.WithSISParams(&ringsis.StdParams),
+		),
+	)
+}
+
 // defineLookupModule adds a lookup module to the benchmark case
 func defineLookupModule(comp *wizard.CompiledIOP, index int, params SubModuleParameters) {
 
@@ -221,8 +455,8 @@ func defineLookupModule(comp *wizard.CompiledIOP, index int, params SubModulePar
 	)
 
 	for i := 0; i < params.NumCol; i++ {
-		si := comp.InsertCommit(0, formatName[ifaces.ColID]("Lookup", index, "S", i), params.NumRow)
-		ti := comp.InsertCommit(0, formatName[ifaces.ColID]("Lookup", index, "T", i), params.NumRowAux)
+		si := comp.InsertCommit(0, formatName[ifaces.ColID]("Lookup", index, "S", i), params.NumRow, true)
+		ti := comp.InsertCommit(0, formatName[ifaces.ColID]("Lookup", index, "T", i), params.NumRowAux, true)
 
 		s = append(s, si)
 		t = append(t, ti)
@@ -254,8 +488,8 @@ func definePermutationModule(comp *wizard.CompiledIOP, index int, params SubModu
 	)
 
 	for i := 0; i < params.NumCol; i++ {
-		ai := comp.InsertCommit(0, formatName[ifaces.ColID]("Permutation", index, "A", i), params.NumRow)
-		bi := comp.InsertCommit(0, formatName[ifaces.ColID]("Permutation", index, "B", i), params.NumRow)
+		ai := comp.InsertCommit(0, formatName[ifaces.ColID]("Permutation", index, "A", i), params.NumRow, true)
+		bi := comp.InsertCommit(0, formatName[ifaces.ColID]("Permutation", index, "B", i), params.NumRow, true)
 
 		a = append(a, ai)
 		b = append(b, bi)
@@ -283,13 +517,13 @@ func defineProjectionModule(comp *wizard.CompiledIOP, index int, params SubModul
 	var (
 		a       = []ifaces.Column{}
 		b       = []ifaces.Column{}
-		aFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "AFilter"), params.NumRow)
-		bFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "BFilter"), params.NumRowAux)
+		aFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "AFilter"), params.NumRow, true)
+		bFilter = comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "BFilter"), params.NumRowAux, true)
 	)
 
 	for i := 0; i < params.NumCol; i++ {
-		ai := comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "A", i), params.NumRow)
-		bi := comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "B", i), params.NumRowAux)
+		ai := comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "A", i), params.NumRow, true)
+		bi := comp.InsertCommit(0, formatName[ifaces.ColID]("Projection", index, "B", i), params.NumRowAux, true)
 
 		a = append(a, ai)
 		b = append(b, bi)
@@ -346,7 +580,7 @@ func assignProjectionModule(run *wizard.ProverRuntime, index int, params SubModu
 // starting at 1, 1
 func defineFiboModule(comp *wizard.CompiledIOP, index int, params SubModuleParameters) {
 
-	a := comp.InsertCommit(0, formatName[ifaces.ColID]("Fibo", index), params.NumRow)
+	a := comp.InsertCommit(0, formatName[ifaces.ColID]("Fibo", index), params.NumRow, true)
 
 	comp.InsertGlobal(0, formatName[ifaces.QueryID]("Fibo", index, "Global"), sym.Sub(
 		a,

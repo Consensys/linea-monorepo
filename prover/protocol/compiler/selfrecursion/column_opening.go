@@ -61,6 +61,7 @@ func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
 			round,
 			ctx.limbExpandedPreimageName(wholes[i].GetColID()),
 			limbSize,
+			true,
 		)
 		ctx.Comp.InsertRange(
 			round,
@@ -135,6 +136,7 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 		roundQ,
 		ctx.uAlphaQName(),
 		ctx.Coins.Q.Size,
+		false,
 	)
 
 	// And registers the assignment function
@@ -426,6 +428,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		// Declare Edual
 		ctx.Columns.Edual = ctx.Comp.InsertCommit(
 			round, ctx.eDual(), ctx.VortexCtx.SisParams.OutputSize(),
+			false,
 		)
 
 		// And assign it

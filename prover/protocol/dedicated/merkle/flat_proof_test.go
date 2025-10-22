@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 const (
@@ -25,7 +24,7 @@ var testcases = [][]merkleTestCaseInstance{
 		{
 			IsWrite: true,
 			Pos:     0,
-			Leaf:    types.Bytes32ToHash(types.Bytes32{1, 2, 3, 4})},
+			Leaf:    field.RandomOctuplet()},
 		{
 			Pos: 1,
 		},
@@ -105,7 +104,7 @@ func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleT
 				left[k] = ctx.ctx.Lefts[l][k].Result.GetColAssignmentAt(run, i)
 				right[k] = ctx.ctx.Rights[l][k].Result.GetColAssignmentAt(run, i)
 				node[k] = ctx.ctx.Nodes[l].Result()[k].GetColAssignmentAt(run, i)
-				// fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left[k].Text(16), right[k].Text(16), node[k].Text(16))
+				fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left[k].Text(16), right[k].Text(16), node[k].Text(16))
 			}
 
 		}

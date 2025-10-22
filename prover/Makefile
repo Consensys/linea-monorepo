@@ -30,7 +30,8 @@ PACKAGES := \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit/... \
 	github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates/... \
-	github.com/consensys/linea-monorepo/prover/protocol/dedicated/... \
+  github.com/consensys/linea-monorepo/prover/protocol/dedicated/...\
+  github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion/...\
 
 
 

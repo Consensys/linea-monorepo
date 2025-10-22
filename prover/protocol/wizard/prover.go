@@ -26,6 +26,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -274,6 +275,8 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 	// Create a new fresh FS state and bootstrap it
 	fs := hashtypes.Poseidon2()
 	fiatshamir.Update(fs, c.FiatShamirSetup)
+	fs := hashtypes.Poseidon2()
+	fiatshamir.Update(fs, c.FiatShamirSetup[:]...)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
@@ -456,10 +459,10 @@ func (run ProverRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element
 // before doing this call. Will also trigger the "goNextRound" logic if
 // appropriate.
 //
-// The coin must also be of type [coin.FieldFromSeed] or [coin.Field].
+// The coin must also be of type [coin.Field].
 func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	mycoin := run.Spec.Coins.Data(name)
-	if mycoin.Type != coin.Field && mycoin.Type != coin.FieldFromSeed {
+	if mycoin.Type != coin.Field {
 		utils.Panic("coin %v is not a field randomness", name)
 	}
 	return run.getRandomCoinGeneric(name, mycoin.Type).(field.Element)
@@ -471,10 +474,10 @@ func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 // field extension randomness before doing this call. Will also trigger the
 // "goNextRound" logic if appropriate.
 //
-// The type must also be of type [coin.FieldExtFromSeed] or [coin.FieldExt].
+// The type must also be of type [coin.FieldExt].
 func (run *ProverRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	mycoin := run.Spec.Coins.Data(name)
-	if mycoin.Type != coin.FieldExt && mycoin.Type != coin.FieldExtFromSeed {
+	if mycoin.Type != coin.FieldExt {
 		utils.Panic("coin %v is not a field extension randomness", name)
 	}
 	return run.getRandomCoinGeneric(name, mycoin.Type).(fext.Element)
@@ -764,9 +767,7 @@ func (run *ProverRuntime) goNextRound() {
 		}
 	}
 
-	seedByte := run.FS.State()
-	var seed koalabear.Element
-	seed.SetBytes(seedByte)
+	seed := types.Bytes32ToHash(types.AsBytes32(run.FS.State()))
 
 	// Then assigns the coins for the new round. As the round
 	// incrementation is made lazily, we expect that there is

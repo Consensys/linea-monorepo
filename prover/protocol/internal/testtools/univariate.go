@@ -218,7 +218,7 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 			continue
 		}
 		maxRound = max(maxRound, round)
-		polys[i] = comp.InsertCommit(round, name, u.Polys[i].Len())
+		polys[i] = comp.InsertCommit(round, name, u.Polys[i].Len(), smartvectors.IsBase(u.Polys[i]))
 
 		if round > 0 {
 			comp.RegisterProverAction(round, autoAssignColumn{

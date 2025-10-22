@@ -6,18 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
-
-// Deterministically creates random Bytes32s
-func RandBytes32(pos int) Bytes32 {
-	res := Bytes32{}
-	for i := range res {
-		res[i] = byte(pos ^ (i + pos*156) ^ (pos + i*256) ^ (i * pos))
-	}
-	return res
-}
 
 // Creates a empty SMT, test its root hash in hard and tests that
 // all the leaves are zero.
@@ -47,7 +37,6 @@ func TestTreeUpdateLeaf(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		// Make a valid Bytes32
 		var newLeaf field.Octuplet
 		for i := range newLeaf {
 			newLeaf[i] = field.RandomElement()
@@ -67,7 +56,6 @@ func TestMerkleProofNative(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		// Make a valid Bytes32
 		oldLeaf, _ := tree.GetLeaf(pos)
 		proof, _ := tree.Prove(pos)
 
@@ -111,7 +99,7 @@ func TestBuildFromScratch(t *testing.T) {
 		Depth:    8,
 	}
 
-	// Generate random field elements and cast them into Bytes32es
+	// Generate random field elements and cast them into field.Octuplet
 	// every 8 field elements forms a leaf
 	leavesFr := make([]field.Element, 8*(1<<config.Depth))
 	for i := 0; i < len(leavesFr); i++ {

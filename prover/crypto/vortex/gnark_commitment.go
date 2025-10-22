@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Final circuit - commitment using Merkle trees
@@ -26,7 +25,7 @@ func AllocateCircuitVariablesWithMerkleTree(
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32) {
+	roots []field.Octuplet) {
 
 	verifyCircuit.Proof.LinearCombination = make([]frontend.Variable, proof.LinearCombination.Len())
 
@@ -63,7 +62,7 @@ func AssignCicuitVariablesWithMerkleTree(
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32) {
+	roots []field.Octuplet) {
 
 	frLinComb := make([]field.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSlice(frLinComb)
@@ -79,14 +78,11 @@ func AssignCicuitVariablesWithMerkleTree(
 		}
 	}
 
-	var buf field.Element
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
 			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path
 			for k := 0; k < len(proof.MerkleProofs[i][j].Siblings); k++ {
-				hashBytes := types.HashToBytes32(proof.MerkleProofs[i][j].Siblings[k])
-				buf.SetBytes(hashBytes[:])
-				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = buf.String()
+				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = proof.MerkleProofs[i][j].Siblings[k]
 			}
 		}
 	}
@@ -102,8 +98,7 @@ func AssignCicuitVariablesWithMerkleTree(
 	}
 
 	for i := 0; i < len(roots); i++ {
-		buf.SetBytes(roots[i][:])
-		verifyCircuit.Roots[i] = buf.String()
+		verifyCircuit.Roots[i] = roots[i][:]
 	}
 
 }

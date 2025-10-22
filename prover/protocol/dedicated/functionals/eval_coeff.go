@@ -83,16 +83,16 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		maxRound,
 		ifaces.ColIDf("%v_%v", name, EVAL_COEFF_POLY),
 		length,
+		false,
 	)
 
 	// (x * h[i+1]) + expr[i] == h[i]
 	// This will be cancelled at the border already
 	// if length == 1, we skip the shift as the poly is constant
-	if length > 1 {
-		globalExpr := ifaces.ColumnAsVariable(column.Shift(hornerPoly, 1)).
-			Mul(x.AsVariable()).
-			Add(ifaces.ColumnAsVariable(pol)).
-			Sub(ifaces.ColumnAsVariable(hornerPoly))
+	globalExpr := ifaces.ColumnAsVariable(column.Shift(hornerPoly, 1)).
+		Mul(x.AsVariable()).
+		Add(ifaces.ColumnAsVariable(pol)).
+		Sub(ifaces.ColumnAsVariable(hornerPoly))
 
 		comp.InsertGlobal(
 			maxRound,

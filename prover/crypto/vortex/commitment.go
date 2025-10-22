@@ -81,7 +81,10 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 		// colHashes stores the Poseidon2 hashes
 		// of the columns.
 		colHashesOcts := p.noSisTransversalHash(encodedMatrix)
-
+		colHashes = make([]field.Element, 0, len(colHashesOcts)*len(field.Octuplet{}))
+		for i := range colHashesOcts {
+			colHashes = append(colHashes, colHashesOcts[i][:]...)
+		}
 		tree = smt.BuildComplete(
 			colHashesOcts,
 			p.MerkleHashFunc,
@@ -137,9 +140,9 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 			startChunk := chunkID * chunkSize
 
 			hasher := p.LeafHashFunc()
-			// Default LeafHashFunc: Using Poseidon2Sponge directly to avoid data conversion.
-			leaves[chunkID] = hasher.SumElements(colHashes[startChunk : startChunk+chunkSize])
+			hasher.Reset()
 
+			leaves[chunkID] = hasher.SumElements(colHashes[startChunk : startChunk+chunkSize])
 		}
 
 	})
@@ -173,6 +176,8 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 		},
 		func(col, threadID int) {
 			hasher := hashers[threadID]
+			hasher.Reset()
+
 			colElems := make([]field.Element, numRows)
 			for row := 0; row < numRows; row++ {
 				colElems[row] = v[row].Get(col)

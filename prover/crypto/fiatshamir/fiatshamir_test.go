@@ -15,6 +15,7 @@ import (
 func TestFiatShamirSafeguardUpdate(t *testing.T) {
 
 	fs := hashtypes.Poseidon2()
+	fs := hashtypes.Poseidon2()
 
 	a := RandomFext(fs)
 	b := RandomFext(fs)
@@ -68,12 +69,14 @@ func TestFiatShamirSafeguardUpdate(t *testing.T) {
 func TestBatchUpdates(t *testing.T) {
 
 	fs := hashtypes.Poseidon2()
+	fs := hashtypes.Poseidon2()
 	Update(fs, field.NewElement(2))
 	Update(fs, field.NewElement(2))
 	Update(fs, field.NewElement(1))
 	expectedVal := RandomFext(fs)
 
 	t.Run("for a variadic call", func(t *testing.T) {
+		fs := hashtypes.Poseidon2()
 		fs := hashtypes.Poseidon2()
 		Update(fs, field.NewElement(2), field.NewElement(2), field.NewElement(1))
 		actualValue := RandomFext(fs)
@@ -89,6 +92,7 @@ func TestBatchUpdates(t *testing.T) {
 
 	t.Run("for multi-slice of field elements", func(t *testing.T) {
 		fs := hashtypes.Poseidon2()
+		fs := hashtypes.Poseidon2()
 		UpdateVec(fs, vector.ForTest(2, 2), vector.ForTest(1))
 		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
@@ -96,6 +100,7 @@ func TestBatchUpdates(t *testing.T) {
 
 	t.Run("for a smart-vector", func(t *testing.T) {
 		sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
+		fs := hashtypes.Poseidon2()
 		fs := hashtypes.Poseidon2()
 		UpdateSV(fs, sv)
 		actualValue := RandomFext(fs)

@@ -31,7 +31,7 @@ func NewProof(comp *wizard.CompiledIOP, round int, name string, depth, numRows i
 	proof := &FlatProof{}
 	for i := 0; i < depth; i++ {
 		for j := 0; j < blockSize; j++ {
-			node := comp.InsertCommit(round, ifaces.ColIDf("%v_NODE_%v_%v", name, i, j), numRows)
+			node := comp.InsertCommit(round, ifaces.ColIDf("%v_NODE_%v_%v", name, i, j), numRows, true)
 			proof.Nodes[j] = append(proof.Nodes[j], node)
 		}
 	}

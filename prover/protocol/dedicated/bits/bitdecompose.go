@@ -34,7 +34,7 @@ func BitDecompose(comp *wizard.CompiledIOP, packed ifaces.Column, numBits int) *
 	)
 
 	for i := 0; i < numBits; i++ {
-		bd.Bits[i] = comp.InsertCommit(round, ifaces.ColIDf("%v_BIT_%v", packed.GetColID(), i), packed.Size())
+		bd.Bits[i] = comp.InsertCommit(round, ifaces.ColIDf("%v_BIT_%v", packed.GetColID(), i), packed.Size(), true)
 		MustBeBoolean(comp, bd.Bits[i])
 		bitExpr = append(bitExpr, symbolic.NewVariable(bd.Bits[i]))
 	}
@@ -61,10 +61,6 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 	bits := make([][]field.Element, len(bd.Bits))
 
 	for x := range v.IterateCompact() {
-
-		if x.LexicographicallyLargest() {
-			panic("can handle 64 bits at most")
-		}
 
 		x := x.Uint64()
 

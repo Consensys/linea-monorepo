@@ -22,11 +22,13 @@ func NewHiLoColumns(comp *wizard.CompiledIOP, size int, name string) HiLoColumns
 			0,
 			ifaces.ColIDf("STATE_SUMMARY_%v_HI", name),
 			size,
+			true,
 		),
 		Lo: comp.InsertCommit(
 			0,
 			ifaces.ColIDf("STATE_SUMMARY_%v_LO", name),
 			size,
+			true,
 		),
 	}
 }
