@@ -21,7 +21,7 @@ export class EthereumMainnetClientLibrary implements IContractClientLibrary<Publ
 
   constructor(
     rpcUrl: string,
-    private readonly contractSignerService: IContractSignerClient,
+    private readonly contractSignerClient: IContractSignerClient,
   ) {
     // Aim re-use single blockchain client for
     // i.) Better connection pooling
@@ -68,7 +68,7 @@ export class EthereumMainnetClientLibrary implements IContractClientLibrary<Publ
       maxFeePerGas,
       maxPriorityFeePerGas,
     };
-    const signature = await this.contractSignerService.sign(tx);
+    const signature = await this.contractSignerClient.sign(tx);
     const serializedTransaction = serializeTransaction(tx, parseSignature(signature));
     const txHash = await sendRawTransaction(this.blockchainClient, { serializedTransaction });
     const receipt = await waitForTransactionReceipt(this.blockchainClient, { hash: txHash });
