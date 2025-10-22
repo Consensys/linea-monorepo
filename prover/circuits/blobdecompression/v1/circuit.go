@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"hash"
@@ -339,13 +338,9 @@ func BatchesChecksumAssign(ends []int, payload []byte) [][]byte {
 	in := make([]byte, len(payload)+31)
 	copy(in, payload) // pad with 31 bytes to avoid out of range panic
 
-	hsh := gcHash.MIMC_BLS12_377.New()
-	var buf [32]byte
-
 	batchStart := 0
 	for i := range res {
-		gnarkutil.ChecksumLooselyPackedBytes(payload[batchStart:ends[i]], buf[:], hsh)
-		res[i] = bytes.Clone(buf[:])
+		res[i] = gnarkutil.ChecksumMiMCLooselyPackedBytes(payload[batchStart:ends[i]])
 		batchStart = ends[i]
 	}
 

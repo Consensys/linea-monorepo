@@ -16,7 +16,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
@@ -140,20 +139,17 @@ func TestChecksumBatchesSimple(t *testing.T) {
 }
 
 func testChecksumBatches(t *testing.T, blob []byte, batchEndss ...[]int) {
-	hsh := hash.MIMC_BLS12_377.New()
 	circuit := testChecksumCircuit{
 		Blob: make([]frontend.Variable, len(blob)),
 	}
 	for _, batchEnds := range batchEndss {
 		var sums, lengths [MaxNbBatches]frontend.Variable
 		batchStart := 0
-		buf := make([]byte, 32)
 
 		for j := range sums {
 			if j < len(batchEnds) {
-				gnarkutil.ChecksumLooselyPackedBytes(blob[batchStart:batchEnds[j]], buf, hsh)
 				lengths[j] = batchEnds[j] - batchStart
-				sums[j] = bytes.Clone(buf)
+				sums[j] = gnarkutil.ChecksumMiMCLooselyPackedBytes(blob[batchStart:batchEnds[j]])
 				batchStart = batchEnds[j]
 			} else {
 				sums[j], lengths[j] = 0, 0

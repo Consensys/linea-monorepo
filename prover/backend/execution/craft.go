@@ -9,8 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-
 	"github.com/consensys/linea-monorepo/prover/config"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -228,9 +226,9 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 // mimcHashLooselyPacked hashes the input stream b using the MiMC hash function
 // encoding each slice of 31 bytes into a field element separately.
 func mimcHashLooselyPacked(b []byte) types.Bytes32 {
-	var buf [32]byte
-	gnarkutil.ChecksumLooselyPackedBytes(b, buf[:], mimc.NewMiMC())
-	return types.AsBytes32(buf[:])
+	var res types.Bytes32
+	copy(res[:], gnarkutil.ChecksumMiMCLooselyPackedBytes(b))
+	return res
 }
 
 func getBlockHashList(rsp *Response) []types.FullBytes32 {

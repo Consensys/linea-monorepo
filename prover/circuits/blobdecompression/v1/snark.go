@@ -3,6 +3,8 @@ package v1
 import (
 	"errors"
 
+	"github.com/consensys/gnark-crypto/hash"
+	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 
 	"math/big"
@@ -84,6 +86,37 @@ func parseHeader(api frontend.API, blobBytes []frontend.Variable, blobLen fronte
 	return
 }
 
+// hashAsCompressor uses the given length-extended hash function as a collision-resistant compressor.
+// NB! This is inefficient, using twice the number of required permutations.
+// It should only be used for retro-compatibility.
+type hashAsCompressor struct {
+	h snarkHash.FieldHasher
+}
+
+func (h hashAsCompressor) Compress(left frontend.Variable, right frontend.Variable) frontend.Variable {
+	h.h.Reset()
+	h.h.Write(left, right)
+	return h.h.Sum()
+}
+
+type BatchesSumsChecker struct {
+	Compressor         hash.Compressor
+	FieldCompressorGen func(frontend.API) snarkHash.Compressor
+	MaxNbBatches       int
+}
+
+var batchesSumChecker = BatchesSumsChecker{
+	Compressor: gnarkutil.NewHashAsCompressor(hash.MIMC_BLS12_377.New()),
+	FieldCompressorGen: func(api frontend.API) snarkHash.Compressor {
+		h, err := mimc.NewMiMC(api)
+		if err != nil {
+			panic(err)
+		}
+		return hashAsCompressor{&h}
+	},
+	MaxNbBatches: MaxNbBatches,
+}
+
 // CheckBatchesSums checks batch checksums consisting of H(batchLen, contentSum) where contentSum = Blocks[0] if len(Blocks) == 1 and H(Blocks...) otherwise. Blocks are consecutive 31-byte chunks of the data in the batch, with the last one right-padded with zeros if necessary.
 // All batches must be at least 31 bytes long. The function performs this range check.
 // It is also checked that the batches are all within the MAXIMUM range of the blob. CheckBatchesSums does not have access to the actual blob size, so it remains the caller's responsibility to check that the batches are within the confines of the ACTUAL blob size.
@@ -136,7 +169,7 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 	}
 
 	// side effect: batchEnds are range checked to be within a reasonable factor of the maximum blob payload length; useless because we will have to perform a stronger check in the end
-	endQsV, endRsV, err := divBy31(api, batchEnds, bits.Len(uint(len(blobPayload))+31))
+	endQsV, endRsV, err := DivBy31(api, batchEnds, bits.Len(uint(len(blobPayload))+31))
 	if err != nil {
 		return err
 	}
@@ -189,7 +222,7 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 		hintIn[0] = nbBatches
 		hintIn = append(hintIn, batchEnds[:]...)
 		hintIn = append(hintIn, blobPayload...)
-		if partialSums, err = api.Compiler().NewHint(partialChecksumBatchesPackedHint, len(batchEnds), hintIn...); err != nil {
+		if partialSums, err = api.Compiler().NewHint(batchesSumChecker.PartialChecksumBatchesPackedHint, len(batchEnds), hintIn...); err != nil {
 			return err
 		}
 	}
@@ -202,7 +235,7 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 	startR := frontend.Variable(0) // the remainder by 31 of where the current batch starts
 
 	// each iteration is able to process at most one new batch. This dictates that end[i] % 31 != end[i+1] % 31 for any applicable i
-	for i := 0; i < nbHashes; i++ {
+	for i := range nbHashes {
 
 		endQ, endR := endQs.Lookup(batchI)[0], endRs.Lookup(batchI)[0]
 		end := api.Add(api.Mul(31, endQ), endR)
@@ -244,18 +277,18 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 	return nil
 }
 
-func partialChecksumBatchesPackedHint(_ *big.Int, ins []*big.Int, outs []*big.Int) error {
-	return gnarkutil.PartialMiMCChecksumBatchesPackedHint(MaxNbBatches)(nil, ins, outs)
+func (c *BatchesSumsChecker) PartialChecksumBatchesPackedHint(_ *big.Int, ins, outs []*big.Int) error {
+	return gnarkutil.PartialChecksumBatchesLooselyPackedHint(c.MaxNbBatches, c.Compressor, ins, outs)
 }
 
 func registerHints() {
 	lzss.RegisterHints()
-	solver.RegisterHint(partialChecksumBatchesPackedHint, divBy31Hint)
+	solver.RegisterHint(batchesSumChecker.PartialChecksumBatchesPackedHint, divBy31Hint)
 	internal.RegisterHints()
 }
 
 // side effect: ensures 0 ≤ v[i] < 2ᵇⁱᵗˢ⁺² for all i
-func divBy31(api frontend.API, v []frontend.Variable, bits int) (q, r []frontend.Variable, err error) {
+func DivBy31(api frontend.API, v []frontend.Variable, bits int) (q, r []frontend.Variable, err error) {
 	qNbBits := bits - 4
 
 	if hintOut, err := api.Compiler().NewHint(divBy31Hint, 2*len(v), v...); err != nil {

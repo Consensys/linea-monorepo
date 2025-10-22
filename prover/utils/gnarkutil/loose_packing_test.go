@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/stretchr/testify/require"
 )
@@ -19,14 +18,13 @@ func TestPartialChecksumBatchesPacked(t *testing.T) {
 	for i := range b {
 		b[i] = uint8(i)
 	}
-	var buf [32]byte
 	for i := range sizes {
-		partialChecksumLooselyPackedBytes(b[:sizes[i]], buf[:], hash.MIMC_BLS12_377.New())
+		res := PartialMiMCChecksumLooselyPackedBytes(b[:sizes[i]])
 		b = b[sizes[i]:]
 		expectedHashPrefix, err := hexutil.Decode(expectedHashPrefixesHex[i])
 		require.NoError(t, err)
-		if !bytes.HasPrefix(buf[:], expectedHashPrefix) {
-			t.Fatalf("expected checksum 0x%s..., got 0x%x", expectedHashPrefixesHex[i], buf[:])
+		if !bytes.HasPrefix(res, expectedHashPrefix) {
+			t.Fatalf("expected checksum %s..., got 0x%x", expectedHashPrefixesHex[i], res)
 		}
 	}
 }

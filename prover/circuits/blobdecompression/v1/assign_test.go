@@ -5,8 +5,9 @@ package v1_test
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
