@@ -1,4 +1,4 @@
-export interface IOAuth2TokenService {
+export interface IOAuth2TokenClient {
   getBearerToken(): Promise<string>;
 }
 

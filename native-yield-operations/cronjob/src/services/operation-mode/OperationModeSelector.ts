@@ -1,20 +1,21 @@
 import { ILogger } from "ts-libs/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
-import { TransactionReceipt } from "viem";
-import { NativeYieldCronJobClientConfig } from "../../application/main/config/NativeYieldCronJobClientConfig";
+import { Address, TransactionReceipt } from "viem";
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor";
 
 export class OperationModeSelector implements IOperationModeSelector {
-  private readonly yieldReportingOperationModeProcessor: IOperationModeProcessor;
   private isRunning = false;
 
   constructor(
-    private readonly config: NativeYieldCronJobClientConfig,
     private readonly logger: ILogger,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
-    yieldReportingOperationModeProcessor: IOperationModeProcessor,
+    private readonly yieldReportingOperationModeProcessor: IOperationModeProcessor,
+    private readonly ossificationPendingOperationModeProcessor: IOperationModeProcessor,
+    private readonly ossificationCompleteOperationModeProcessor: IOperationModeProcessor,
+    private readonly yieldProvider: Address,
+    private readonly contractReadRetryTimeSeconds: number,
   ) {
     this.yieldReportingOperationModeProcessor = yieldReportingOperationModeProcessor;
   }
@@ -42,23 +43,23 @@ export class OperationModeSelector implements IOperationModeSelector {
     while (this.isRunning) {
       try {
         const [isOssificationInitiated, isOssified] = await Promise.all([
-          this.yieldManagerContractClient.isOssificationInitiated(
-            this.config.contractAddresses.lidoYieldProviderAddress,
-          ),
-          this.yieldManagerContractClient.isOssified(this.config.contractAddresses.lidoYieldProviderAddress),
+          this.yieldManagerContractClient.isOssificationInitiated(this.yieldProvider),
+          this.yieldManagerContractClient.isOssified(this.yieldProvider),
         ]);
 
         if (isOssified) {
           this.logger.info("Selected OSSIFICATION_COMPLETE_MODE");
+          await this.ossificationCompleteOperationModeProcessor.process();
         } else if (isOssificationInitiated) {
           this.logger.info("Selected OSSIFICATION_PENDING_MODE");
+          await this.ossificationPendingOperationModeProcessor.process();
         } else {
           this.logger.info("Selected YIELD_REPORTING_MODE");
           await this.yieldReportingOperationModeProcessor.process();
         }
       } catch (error) {
         this.logger.error(error as Error);
-        await wait(this.config.timing.contractReadRetryTimeSeconds);
+        await wait(this.contractReadRetryTimeSeconds);
       }
     }
   }

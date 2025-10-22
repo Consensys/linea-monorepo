@@ -7,12 +7,13 @@ import { EthereumMainnetClientLibrary } from "ts-libs/linea-shared-utils/clients
 import { PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerContractClient } from "../../clients/YieldManagerContractClient";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
-import { IContractSignerService } from "ts-libs/linea-shared-utils/core/services/IContractSignerService";
 import { Web3SignerService } from "ts-libs/linea-shared-utils/services/signers/Web3SignerService";
 import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor";
-import { IBaseContractClient } from "../../core/clients/IBaseContractClient";
 import { LazyOracleContractClient } from "../../clients/LazyOracleContractClient";
 import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
+import { ApolloClient, InMemoryCache, HttpLink, from } from "@apollo/client";
+import { SetContextLink } from "@apollo/client/link/context";
+import { IContractSignerService, IOAuth2TokenClient } from "ts-libs/linea-shared-utils/src";
 
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
@@ -84,5 +85,28 @@ export class NativeYieldCronJobClient {
 
   public getConfig(): NativeYieldCronJobClientConfig {
     return this.config;
+  }
+
+  private _createApolloClient(oAuth2TokenClient: IOAuth2TokenClient): ApolloClient {
+    // --- create the base HTTP transport
+    const httpLink = new HttpLink({
+      uri: this.config.dataSources.stakingGraphQLUrl,
+    });
+
+    const asyncAuthLink = new SetContextLink(async (prevContext, operation) => {
+      const token = await oAuth2TokenClient.getBearerToken();
+      return {
+        headers: {
+          ...prevContext.headers,
+          authorization: `Bearer ${token}`,
+        },
+      };
+    });
+    // --- combine links so authLink runs before httpLink
+    const client = new ApolloClient({
+      link: from([asyncAuthLink, httpLink]),
+      cache: new InMemoryCache(),
+    });
+    return client;
   }
 }
