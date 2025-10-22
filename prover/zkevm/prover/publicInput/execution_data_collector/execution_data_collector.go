@@ -558,10 +558,13 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_TX_RLP_DIRECTLY_TO_IS_INACTIVE_GLOBAL_CONSTRAINT", name),
 		sym.Mul(
-			edc.SelectorEndOfAllTx,        // 1 at the very last transaction, in the last block
-			edc.EndOfRlpSegment,           // 1 at the end of RLP segment for the current transaction
-			edc.IsTxRLP,                   // 1 inside the RLP segment
+			edc.SelectorEndOfAllTx, // 1 at the very last transaction, in the last block
+			edc.EndOfRlpSegment,    // 1 at the end of RLP segment for the current transaction
+			edc.IsTxRLP,            // 1 inside the RLP segment
+			// either of the ones below must be 0
 			column.Shift(edc.IsActive, 1), // all the above forces isActive to be 0 on the next position
+			// or we have that
+			column.Shift(edc.TotalNoTxBlock, 1), // the next block is empty
 		),
 	)
 
@@ -569,6 +572,7 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_BLOCKHASH_LO_TO_IS_NO_TX_FOR_EMPTY_BLOCKS", name),
 		sym.Mul(
+			edc.IsActive,                        // constraint below only valid if we are still in the active part of the collector
 			column.Shift(edc.IsBlockHashLo, -1), // this constraint says if IsBlockHashLo[i-1] = 1 then ....
 			sym.Sub(
 				// this term enforces that IsBlockHashLo[i-1] = 1 must be equal to IsNoTx = 1 (when the other outside conditions are true)
