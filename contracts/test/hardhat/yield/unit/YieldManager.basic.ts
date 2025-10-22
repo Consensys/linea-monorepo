@@ -50,6 +50,19 @@ describe("YieldManager contract - basic operations", () => {
     });
   });
 
+  describe("Constructor", () => {
+    it("Should successfully set the L1MessageService and emit the expected event", async () => {
+      const l1MessageServiceAddress = await mockLineaRollup.getAddress();
+      const yieldManagerFactory = await ethers.getContractFactory("TestYieldManager");
+      const deployedYieldManager = await yieldManagerFactory.deploy(l1MessageServiceAddress);
+      expect(deployedYieldManager.deploymentTransaction)
+        .to.emit(yieldManager, "YieldManagerDeployed")
+        .withArgs(l1MessageServiceAddress);
+      await deployedYieldManager.waitForDeployment();
+      expect(await deployedYieldManager.L1_MESSAGE_SERVICE()).to.equal(l1MessageServiceAddress);
+    });
+  });
+
   describe("Initialisation", () => {
     const cloneInitializationData = (
       overrides: Partial<YieldManagerInitializationData> = {},
