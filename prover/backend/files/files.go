@@ -184,8 +184,10 @@ func RemoveMatchingFiles(pattern string) error {
 	if err != nil {
 		return fmt.Errorf("glob pattern failed for %q: %w", pattern, err)
 	}
+	// Nothing to delete
 	if len(matches) == 0 {
-		return nil // nothing to delete
+		logrus.Infof("No file found matching pattern:%s to delete", pattern)
+		return nil
 	}
 
 	for _, file := range matches {

@@ -2,6 +2,16 @@
 set -euo pipefail
 
 # Usage: GL_WORKERS=4 LPP_WORKERS=3  ./cmd/controller/controller/sh/run_limitless.sh > ./cmd/controller/controller/logs/meta.log 2 >&1
+# Kill:
+
+# kill -SIGUSR1 $(pgrep -f controller-bootstrapper)
+# kill -SIGTERM $(pgrep -f controller-bootstrapper)
+
+# kill -SIGUSR1 $(pgrep -f controller-worker-gl-1)
+# kill -SIGTERM $(pgrep -f controller-worker-gl-1)
+
+# kill -SIGUSR1 $(pgrep -f controller-worker-lpp-1)
+# kill -SIGTERM $(pgrep -f controller-worker-lpp-1)
 
 # ====== ABSOLUTE PATHS ======
 BASE_DIR="/home/ubuntu/linea-monorepo/prover"

@@ -8,6 +8,8 @@ retry_delays = [0, 1]
 enable_execution = false 
 enable_blob_decompression = false
 enable_aggregation = false
+spot_instance_reclaim_time_seconds = 10
+termination_grace_period_seconds = 30
 
 [controller.limitless_jobs]
 enable_bootstrapper   = true  

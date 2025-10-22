@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/cmd/controller/controller/metrics"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/config/assets"
@@ -87,6 +88,13 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// the job is still active (timer already slept in signal handler) - See signal handler go routine
 			if !spotReclaimDetected.Load() && gracefulShutdownRequested.Load() && state.activeJob != nil {
 				cLog.Infof("Job %v did not finish before termination grace period. Requeuing...", state.activeJob.OriginalFile)
+
+				// Write transient failures for limitless jobs
+				err := state.writeTransientFailFile(cfg, cLog, CodeKilledByExtSig)
+				if err != nil {
+					panic(err)
+				}
+
 				state.requeueJob(cfg, cLog)
 			}
 			return
@@ -118,6 +126,11 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// Important: Set the active job to the current job for safe requeue mechanism
 			state.activeJob = job
 
+			// Rm any prev. transient failure file - only for Limitless jobs
+			if err := state.rmTransientFailureFiles(cfg, cLog); err != nil {
+				panic(err)
+			}
+
 			// Run the command (potentially retrying in large mode)
 			status := executor.Run(cmdCtx, job)
 
@@ -145,21 +158,21 @@ func retryDelay(retryDelaysSec []int, numRetrySoFar int) <-chan time.Time {
 	return time.After(ttw)
 }
 
-func (s *ControllerState) notifyJobDone() {
-	s.jobDoneChanMu.Lock()
-	if s.jobDoneChan != nil {
-		close(s.jobDoneChan)
-		s.jobDoneChan = nil
+func (st *ControllerState) notifyJobDone() {
+	st.jobDoneChanMu.Lock()
+	if st.jobDoneChan != nil {
+		close(st.jobDoneChan)
+		st.jobDoneChan = nil
 	}
-	s.jobDoneChanMu.Unlock()
+	st.jobDoneChanMu.Unlock()
 }
 
-func (s *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
-	if s.activeJob == nil {
+func (st *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
+	if st.activeJob == nil {
 		return
 	}
 
-	job := s.activeJob
+	job := st.activeJob
 	_ = os.Remove(job.TmpResponseFile(cfg))
 	if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
 		cLog.Errorf("Failed to requeue job %v: %v", job.InProgressPath(), err)
@@ -167,11 +180,11 @@ func (s *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
 		cLog.Infof("REQUEUED job: %v", job.OriginalFile)
 	}
 
-	s.activeJob = nil
-	s.notifyJobDone()
+	st.activeJob = nil
+	st.notifyJobDone()
 }
 
-func (s *ControllerState) handleSignals(
+func (st *ControllerState) handleSignals(
 	cancel context.CancelFunc,
 	cLog *logrus.Entry,
 	cfg *config.Config,
@@ -194,8 +207,14 @@ func (s *ControllerState) handleSignals(
 				cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
 			}
 
+			// Write transient failures for limitless jobs
+			err := st.writeTransientFailFile(cfg, cLog, CodeKilledByExtSig)
+			if err != nil {
+				panic(err)
+			}
+
 			// Requeue active job immediately
-			s.requeueJob(cfg, cLog)
+			st.requeueJob(cfg, cLog)
 
 		case syscall.SIGTERM:
 			gracefulShutdownRequested.Store(true)
@@ -203,20 +222,21 @@ func (s *ControllerState) handleSignals(
 				cLog.Info("Received SIGTERM: graceful shutdown requested")
 			}
 
-			if s.activeJob != nil {
-				s.jobDoneChanMu.Lock()
-				if s.jobDoneChan == nil {
-					s.jobDoneChan = make(chan struct{})
+			if st.activeJob != nil {
+				st.jobDoneChanMu.Lock()
+				if st.jobDoneChan == nil {
+					st.jobDoneChan = make(chan struct{})
 				}
-				localJobDoneChan := s.jobDoneChan
-				s.jobDoneChanMu.Unlock()
+				localJobDoneChan := st.jobDoneChan
+				st.jobDoneChanMu.Unlock()
 
 				go func() {
-					cLog.Infof("Allowing in-flight job %s to finish (max %ds)...", s.activeJob.OriginalFile, cfg.Controller.TerminationGracePeriod)
+					cLog.Infof("Allowing in-flight job %s to finish (max %ds)...", st.activeJob.OriginalFile, cfg.Controller.TerminationGracePeriod)
 					select {
 					case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
 						cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
 						cancel()
+
 					case <-localJobDoneChan:
 						cLog.Info("Job finished before grace period expired. Cancelling context to exit immediately...")
 						cancel()
@@ -232,24 +252,25 @@ func (s *ControllerState) handleSignals(
 }
 
 // handleJobResult processes a job according to its exit status.
-func (state *ControllerState) handleJobResult(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
+func (st *ControllerState) handleJobResult(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
+
 	switch {
 	case status.ExitCode == CodeSuccess:
-		state.handleJobSuccess(cfg, cLog, job, status)
+		st.handleJobSuccess(cfg, cLog, job, status)
 
 	case job.Def.Name == jobNameExecution && isIn(status.ExitCode, cfg.Controller.DeferToOtherLargeCodes):
-		state.handleDeferToLarge(cLog, job, status)
+		st.handleDeferToLarge(cLog, job, status)
 
 	case status.ExitCode == CodeKilledByExtSig:
-		state.handleJobKilledByExtSig(cfg, cLog, job)
+		st.handleJobTerminatedByExtSig(cfg, cLog, job)
 
 	default:
-		state.handleJobFailure(cfg, cLog, job, status)
+		st.handleJobFailure(cfg, cLog, job, status)
 	}
 }
 
 // handleJobSuccess moves response and in-progress files to their final locations.
-func (state *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
+func (st *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 
 	if job.Def.WritesToDevNull() {
 		// Jobs that target /dev/null do not produce a response file.
@@ -297,12 +318,12 @@ func (state *ControllerState) handleJobSuccess(cfg *config.Config, cLog *logrus.
 	}
 
 	// Set active job to nil once the job is successful and notify the job is done
-	state.activeJob = nil
-	state.notifyJobDone()
+	st.activeJob = nil
+	st.notifyJobDone()
 }
 
 // handleDeferToLarge defers job execution to the large prover.
-func (state *ControllerState) handleDeferToLarge(cLog *logrus.Entry, job *Job, status Status) {
+func (st *ControllerState) handleDeferToLarge(cLog *logrus.Entry, job *Job, status Status) {
 	cLog.Infof("Renaming %v for the large prover", job.OriginalFile)
 
 	toLargePath, err := job.DeferToLargeFile(status)
@@ -317,13 +338,13 @@ func (state *ControllerState) handleDeferToLarge(cLog *logrus.Entry, job *Job, s
 	// From the controller perspective, it has completed its job by renaming and
 	// moving it to the large prover’s queue. Setting activeJob to nil prevents
 	// incorrect requeuing during shutdown, avoiding filesystem errors
-	state.activeJob = nil
-	state.notifyJobDone()
+	st.activeJob = nil
+	st.notifyJobDone()
 }
 
-// handleJobKilledByExtSig puts the job back in the request folder and cleans up tmp files.
-func (state *ControllerState) handleJobKilledByExtSig(cfg *config.Config, cLog *logrus.Entry, job *Job) {
-	cLog.Infof("Job %v was killed by user signal", job.OriginalFile)
+// handleJobTerminatedByExtSig puts the job back in the request folder and cleans up tmp files.
+func (st *ControllerState) handleJobTerminatedByExtSig(cfg *config.Config, cLog *logrus.Entry, job *Job) {
+	cLog.Infof("Job %v was terminated by user signal", job.OriginalFile)
 
 	// Remove tmp-response only if we produce a response file for this job.
 	if !job.Def.WritesToDevNull() {
@@ -337,8 +358,7 @@ func (state *ControllerState) handleJobKilledByExtSig(cfg *config.Config, cLog *
 }
 
 // handleJobFailure moves the failed job to the done directory with failure suffix.
-// TODO: handle failure of the conglomeration. Rename bootstrap suffix.
-func (state *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
+func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Entry, job *Job, status Status) {
 	cLog.Infof("Moving %v with in %v with a failure suffix for code %v", job.OriginalFile, job.Def.dirDone(), status.ExitCode)
 
 	jobFailed := job.DoneFile(status)
@@ -361,19 +381,62 @@ func (state *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.
 		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
 	}
 
+	// Write transient failure for limitless jobs
+	if err := st.writeTransientFailFile(cfg, cLog, status.ExitCode); err != nil {
+		cLog.Errorf("error writing failure marker: %v", err)
+	}
+
 	// Set active job to nil as there is nothing more to retry and notify the job is done
-	state.activeJob = nil
-	state.notifyJobDone()
+	st.activeJob = nil
+	st.notifyJobDone()
 }
 
-func (s *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Entry,
+// writeTransientFailFile: writes a failure marker to the shared failure directory for distributed
+// error propogation in the context of external signal or generic job failure.
+// This is relevant only for limitless jobs
+func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logrus.Entry, exitCode int) error {
+
+	// Relevant only for limitless jobs
+	if !isLimitless(st.activeJob) {
+		return nil
+	}
+
+	var (
+		sharedFailFileName = fmt.Sprintf("%d-%d-%s-failure_code%d", st.activeJob.Start, st.activeJob.End, st.activeJob.Def.Name, exitCode)
+		sharedFailPath     = filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFailFileName)
+	)
+
+	if err := os.WriteFile(sharedFailPath, []byte{}, 0644); err != nil {
+		cLog.Errorf("%s could not create failure marker %s: %v", fLocalID, sharedFailPath, err)
+		return err
+	} else {
+		cLog.Warnf("%s wrote abort-by-peer failure marker: %s", fLocalID, sharedFailPath)
+	}
+
+	return nil
+}
+
+func (st *ControllerState) rmTransientFailureFiles(cfg *config.Config, cLog *logrus.Entry) error {
+
+	if !isLimitless(st.activeJob) {
+		return nil
+	}
+
+	// Remove any transient failure files if present at the start before executing the job to remove stale files
+	// and prevent false-postives
+	sharedFilePattern := fmt.Sprintf("%d-%d-%s-failure_code*", st.activeJob.Start, st.activeJob.End, st.activeJob.Def.Name)
+	cLog.Infof("Removing any transient failure files matching pattern:%s before executing job:%s", sharedFilePattern, st.activeJob.Def.Name)
+	return files.RemoveMatchingFiles(filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFilePattern))
+}
+
+func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Entry,
 	spotReclaimDetected *atomic.Bool, gracefulShutdownRequested *atomic.Bool, cfg *config.Config) {
 
 	<-cmdCtx.Done()
 	if spotReclaimDetected.Load() {
 		cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
 	} else if gracefulShutdownRequested.Load() {
-		if s.activeJob != nil {
+		if st.activeJob != nil {
 			cLog.Infof("Context done: grace period expired, forcing shutdown")
 		} else {
 			cLog.Info("Context done: graceful shutdown complete")
@@ -418,4 +481,10 @@ func logRetryMessage(cLog *logrus.Entry, msg string, numRetry int) {
 	} else {
 		cLog.Info(msg)
 	}
+}
+
+func isLimitless(job *Job) bool {
+	return job.Def.Name == jobNameBootstrap ||
+		strings.HasPrefix(job.Def.Name, jobNameGL) ||
+		strings.HasPrefix(job.Def.Name, jobNameLPP)
 }
