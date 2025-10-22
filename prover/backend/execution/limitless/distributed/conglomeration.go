@@ -237,7 +237,6 @@ func waitForAllLPPWorkers(cfg *config.Config, req *Metadata) error {
 // runConglomeration runs the conglomeration prover for the provided subproofs
 func runConglomeration(cfg *config.Config, proofGLs, proofLPPs []recursion.Witness) (proof wizard.Proof, congloWIOP *wizard.CompiledIOP, err error) {
 
-	// TODO: Implment mmap optimization here
 	cong, err := zkevm.LoadConglomeration(cfg)
 	if err != nil {
 		return wizard.Proof{}, nil, fmt.Errorf("could not load compiled conglomeration: %w", err)

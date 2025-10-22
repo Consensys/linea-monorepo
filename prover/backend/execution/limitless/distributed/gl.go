@@ -56,8 +56,6 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 
 	logrus.Infof("Running the GL-prover for witness module name=%s at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	// TODO: Loads static prover asset. This call will go away after impl.
-	// `mmap` optimization in the respective GL worker controller
 	compiledGL, err := zkevm.LoadCompiledGL(cfg, witnessGL.ModuleName)
 	if err != nil {
 		return fmt.Errorf("could not load compiled GL: %w", err)

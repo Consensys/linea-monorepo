@@ -48,8 +48,6 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 		return fmt.Errorf("could not load witness: %w", err)
 	}
 
-	// TODO: Loads static prover asset. This call will go away after impl.
-	// `mmap` optimization in the respective LPP worker controller
 	compiledLPP, err := zkevm.LoadCompiledLPP(cfg, witnessLPP.ModuleName)
 	if err != nil {
 		return fmt.Errorf("could not load compiled LPP: %w", err)

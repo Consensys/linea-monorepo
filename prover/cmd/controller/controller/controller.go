@@ -132,6 +132,11 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// Important: Set the active job to the current job for safe requeue mechanism
 			state.activeJob = job
 
+			// TODO: We need to write a detailed logic to clean any previous files that are left dangling
+			// for the limitless prover. For ex: Bootstrapper dangling witness files need to be removed here
+			// and not inside the child process. This is because dangling files could have already been picked
+			// up active workers.
+
 			// Rm any prev. transient failure file - only for Limitless jobs
 			if err := state.rmTransientFailureFiles(cfg, cLog); err != nil {
 				panic(err)
@@ -385,9 +390,13 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
 	}
 
-	// Write transient failure for limitless jobs
-	if err := st.writeTransientFailFile(cfg, cLog, status.ExitCode); err != nil {
-		cLog.Errorf("error writing failure marker: %v", err)
+	// Write transient failure for limitless jobs - write only genuine failures and not due to PeerAbortion
+	if status.ExitCode != CodePeerAbortReceived {
+		if err := st.writeTransientFailFile(cfg, cLog, status.ExitCode); err != nil {
+			cLog.Errorf("error writing failure marker: %v", err)
+		}
+	} else {
+		cLog.Infof("Ignoring to write transient failure file for job:%s with status exit code:%d", job.OriginalFile, CodePeerAbortReceived)
 	}
 
 	// Set active job to nil as there is nothing more to retry and notify the job is done
