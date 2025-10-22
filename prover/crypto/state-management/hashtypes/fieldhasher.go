@@ -4,10 +4,15 @@ import (
 	"github.com/consensys/gnark-crypto/hash"
 
 	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
+
+const blockSize = 8
+
+// TODO @thomas fixme arbitrary max size of the buffer
+const maxSizeBuf = 1024
 
 // Poseidon2Hasher implements a Poseidon2-based hasher that works with both field elements and bytes
 type Poseidon2Hasher struct {
@@ -19,31 +24,38 @@ type Poseidon2Hasher struct {
 	buffer []field.Element // data to hash
 }
 
-// WriteElement adds a field element to the running hash.
-func (d Poseidon2Hasher) WriteElement(e field.Element) {
-	d.buffer = append(d.buffer, e)
-}
-
 // WriteElements adds a slice of field elements to the running hash.
-func (d Poseidon2Hasher) WriteElements(elems []field.Element) {
-	d.buffer = append(d.buffer, elems...)
+func (d *Poseidon2Hasher) WriteElements(elmts []field.Element) {
+	quo := (len(d.buffer) + len(elmts)) / maxSizeBuf
+	rem := (len(d.buffer) + len(elmts)) % maxSizeBuf
+	off := len(d.buffer)
+	for i := 0; i < quo; i++ {
+		d.buffer = append(d.buffer, elmts[:maxSizeBuf-off]...)
+		_ = d.SumElement()
+		d.buffer = d.buffer[:0] // flush the buffer once maxSizeBuf is reached
+		off = len(d.buffer)
+	}
+	d.buffer = append(d.buffer, elmts[:rem-off]...)
 }
 
-func (p Poseidon2Hasher) SumElement() field.Octuplet {
-	p.state = poseidon2.Poseidon2Sponge(p.buffer)
-	p.buffer = p.buffer[:0]
-
-	return p.state
+func (d *Poseidon2Hasher) SumElement() field.Octuplet {
+	for len(d.buffer) != 0 {
+		var buf [blockSize]field.Element
+		// in this case we left pad by zeroes
+		if len(d.buffer) < blockSize {
+			copy(buf[blockSize-len(d.buffer):], d.buffer)
+			d.buffer = d.buffer[:0]
+		} else {
+			copy(buf[:], d.buffer)
+			d.buffer = d.buffer[blockSize:]
+		}
+		d.state = vortex.CompressPoseidon2(d.state, buf)
+	}
+	return d.state
 }
 
-func (p Poseidon2Hasher) SumElements(xs []field.Element) field.Octuplet {
-	p.state = poseidon2.Poseidon2Sponge(xs)
-
-	return p.state
-}
-
-func (p Poseidon2Hasher) MaxBytes32() Bytes32 {
-	return p.maxValue
+func (d Poseidon2Hasher) MaxBytes32() Bytes32 {
+	return d.maxValue
 }
 
 // ///// Constructor for Poseidon2Hasher /////

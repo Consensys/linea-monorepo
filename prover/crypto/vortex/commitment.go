@@ -142,7 +142,8 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 			hasher := p.LeafHashFunc()
 			hasher.Reset()
 
-			leaves[chunkID] = hasher.SumElements(colHashes[startChunk : startChunk+chunkSize])
+			hasher.WriteElements(colHashes[startChunk : startChunk+chunkSize])
+			leaves[chunkID] = hasher.SumElement()
 		}
 
 	})
@@ -182,7 +183,8 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			for row := 0; row < numRows; row++ {
 				colElems[row] = v[row].Get(col)
 			}
-			res[col] = hasher.SumElements(colElems)
+			hasher.WriteElements(colElems)
+			res[col] = hasher.SumElement()
 		},
 	)
 
