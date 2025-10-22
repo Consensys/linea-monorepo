@@ -132,6 +132,14 @@ describe("YieldManager contract - basic operations", () => {
       );
     });
 
+    it("Should emit the correct initialization event", async () => {
+      const deployTx = await yieldManager.deploymentTransaction();
+      expect(deployTx).to.not.equal(null);
+      await expect(deployTx!)
+        .to.emit(yieldManager, "YieldManagerInitialized")
+        .withArgs(initializationData.initialL2YieldRecipients);
+    });
+
     it("Should have the correct L1_MESSAGE_ADDRESS", async () => {
       expect(await yieldManager.L1_MESSAGE_SERVICE()).to.equal(await mockLineaRollup.getAddress());
     });

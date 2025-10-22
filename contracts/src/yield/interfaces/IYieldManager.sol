@@ -38,6 +38,18 @@ interface IYieldManager {
   }
 
   /**
+   * @notice Emitted when YieldManager is deployed.
+   * @param l1MessageService The L1MessageServiceAddress.
+   */
+  event YieldManagerDeployed(address l1MessageService);
+
+  /**
+   * @notice Emitted when YieldManager is initialized.
+   * @param initialL2YieldRecipients The list of initial L2 yield recipients.
+   */
+  event YieldManagerInitialized(address[] initialL2YieldRecipients);
+
+  /**
    * @notice Struct used to represent reserve threshold updates.
    * @param minimumWithdrawalReservePercentageBps Minimum withdrawal reserve percentage in bps.
    * @param targetWithdrawalReservePercentageBps Target withdrawal reserve percentage in bps.

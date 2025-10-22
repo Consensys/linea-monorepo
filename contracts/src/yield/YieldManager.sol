@@ -78,6 +78,7 @@ contract YieldManager is
   constructor(address _l1MessageService) {
     ErrorUtils.revertIfZeroAddress(_l1MessageService);
     L1_MESSAGE_SERVICE = _l1MessageService;
+    emit YieldManagerDeployed(_l1MessageService);
     _disableInitializers();
   }
 
@@ -110,6 +111,8 @@ contract YieldManager is
     }
     // Ensure address(0) at index=0.
     $.yieldProviders.push(address(0));
+
+    emit YieldManagerInitialized(_initializationData.initialL2YieldRecipients);
   }
 
   modifier onlyKnownYieldProvider(address _yieldProvider) {
