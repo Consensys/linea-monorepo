@@ -9,27 +9,20 @@ import (
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-// Create a new FieldHasher
-
-// FieldHasher defines an interface for hashing operations that work directly on field elements,
-type FieldHasher interface {
-	// TODO@yao: consider width
-	MaxBytes32() Bytes32
-	// FieldHash takes a slice of field elements and returns a fixed-size hash output.
-	// It's typically implemented using a sponge construction.
-	FieldHash(xs []field.Element) field.Octuplet
-}
-
 // Poseidon2Hasher is a concrete implementation of the FieldHasher interface using the Poseidon2 hash function.
 type Poseidon2Hasher struct {
 	// By embedding hash.Hash, Poseidon2Hasher satisfies the standard Go hash interface,
 	// allowing it to be used with standard library packages that expect a hash.Hash.
 	hash.Hash
 	maxValue Bytes32 // the maximal value obtainable with that hasher
+
+	// Sponge construction state
+	h    field.Octuplet
+	data []field.Element // data to hash
 }
 
 // ///// Implementation for the FieldHasher interface ///////
-func (p Poseidon2Hasher) FieldHash(xs []field.Element) field.Octuplet {
+func (p Poseidon2Hasher) SumElements(xs []field.Element) field.Octuplet {
 	return poseidon2.Poseidon2Sponge(xs)
 }
 
@@ -46,5 +39,7 @@ func Poseidon2() Poseidon2Hasher {
 	return Poseidon2Hasher{
 		Hash:     gnarkposeidon2.NewMerkleDamgardHasher(),
 		maxValue: HashToBytes32(maxVal),
+		h:        field.Octuplet{},
+		data:     make([]field.Element, 0),
 	}
 }

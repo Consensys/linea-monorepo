@@ -197,11 +197,11 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 					// SIS hash of the current sub-column
 					sisHash = v.Params.Key.Hash(selectedSubCol)
 				)
-				leaf = hasher.FieldHash(sisHash)
+				leaf = hasher.SumElements(sisHash)
 			} else {
 				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
 				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
-				leaf = hasher.FieldHash(selectedSubCol)
+				leaf = hasher.SumElements(selectedSubCol)
 
 			}
 
