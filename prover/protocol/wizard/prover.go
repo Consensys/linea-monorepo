@@ -148,7 +148,7 @@ type ProverRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS hashtypes.Poseidon2Hasher
+	FS *hashtypes.Poseidon2FieldHasherDigest
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
@@ -1090,7 +1090,7 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() hashtypes.Poseidon2Hasher {
+func (run *ProverRuntime) Fs() *hashtypes.Poseidon2FieldHasherDigest {
 	return run.FS
 }
 

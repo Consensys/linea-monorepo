@@ -53,7 +53,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() hashtypes.Poseidon2Hasher
+	Fs() *hashtypes.Poseidon2FieldHasherDigest
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -93,7 +93,7 @@ type VerifierRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS hashtypes.Poseidon2Hasher
+	FS *hashtypes.Poseidon2FieldHasherDigest
 
 	// State stores arbitrary data that can be used by the verifier. This
 	// can be used to communicate values between verifier states.
@@ -501,7 +501,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() hashtypes.Poseidon2Hasher {
+func (run *VerifierRuntime) Fs() *hashtypes.Poseidon2FieldHasherDigest {
 	return run.FS
 }
 

@@ -103,7 +103,7 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs hashtypes.Poseidon2Hasher, seed field.Octuplet) interface{} {
+func (info *Info) Sample(fs *hashtypes.Poseidon2FieldHasherDigest, seed field.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
 		return fiatshamir.RandomManyIntegers(fs, info.Size, info.UpperBound)

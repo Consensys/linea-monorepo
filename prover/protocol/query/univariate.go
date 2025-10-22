@@ -83,11 +83,11 @@ func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEv
 // Update the fiat-shamir state with the alleged evaluations. We assume that
 // the verifer always computes the values of X upfront on his own. Therefore
 // there is no need to include them in the FS.
-func (p UnivariateEvalParams) UpdateFS(state hashtypes.Poseidon2Hasher) {
+func (p UnivariateEvalParams) UpdateFS(state *hashtypes.Poseidon2FieldHasherDigest) {
 	fiatshamir.Update(state, p.Ys...)
 }
 
-func (p UnivariateEvalParams) UpdateFSExt(state hashtypes.Poseidon2Hasher) {
+func (p UnivariateEvalParams) UpdateFSExt(state *hashtypes.Poseidon2FieldHasherDigest) {
 	fiatshamir.UpdateExt(state, p.ExtYs...)
 }
 

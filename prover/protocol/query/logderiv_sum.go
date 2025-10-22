@@ -51,7 +51,7 @@ type LogDerivSumParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (l LogDerivSumParams) UpdateFS(fs hashtypes.Poseidon2Hasher) {
+func (l LogDerivSumParams) UpdateFS(fs *hashtypes.Poseidon2FieldHasherDigest) {
 	fiatshamir.UpdateGeneric(fs, l.Sum)
 }
 

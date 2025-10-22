@@ -87,7 +87,7 @@ type Query interface {
 // should update the Fiat-Shamir state.
 type QueryParams interface {
 	// Update fiat-shamir with the query parameters
-	UpdateFS(hashtypes.Poseidon2Hasher)
+	UpdateFS(*hashtypes.Poseidon2FieldHasherDigest)
 }
 
 // GnarkQueryParams mirrors exactly [QueryParams], but in a gnark circuit.

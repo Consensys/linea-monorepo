@@ -13,7 +13,7 @@ import (
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
 	// HashFunc is a function returning initialized hashers.
-	HashFunc func() hashtypes.Poseidon2Hasher
+	HashFunc func() *hashtypes.Poseidon2FieldHasherDigest
 	// Depth is the depth of the tree
 	Depth int
 }
@@ -271,7 +271,7 @@ func (t *Tree) reserveLevel(level, newSize int) {
 // input leaves are powers of 2. The depth of the tree is deduced from the list.
 //
 // It panics if the number of leaves is a non-power of 2.
-func BuildComplete(leaves []field.Octuplet, hashFunc func() hashtypes.Poseidon2Hasher) *Tree {
+func BuildComplete(leaves []field.Octuplet, hashFunc func() *hashtypes.Poseidon2FieldHasherDigest) *Tree {
 
 	numLeaves := len(leaves)
 
