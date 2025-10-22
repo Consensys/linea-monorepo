@@ -11,13 +11,17 @@ import { IContractSignerService } from "ts-libs/linea-shared-utils/src/core/serv
 import { Web3SignerService } from "ts-libs/linea-shared-utils/src/services/signers/Web3SignerService";
 import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor";
 import { IBaseContractClient } from "../../core/clients/IBaseContractClient";
+import { LazyOracleContractClient } from "../../clients/LazyOracleContractClient";
+import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
 
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
   private readonly logger: ILogger;
 
   private ethereumMainnetClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>;
-  private yieldManagerContractClient: IYieldManager<TransactionReceipt> & IBaseContractClient;
+  private yieldManagerContractClient: IYieldManager<TransactionReceipt>;
+  private lazyOracleContractClient: ILazyOracle<TransactionReceipt>;
+
   private web3SignerService: IContractSignerService;
 
   private operationModeSelector: IOperationModeSelector;
@@ -42,12 +46,18 @@ export class NativeYieldCronJobClient {
       this.ethereumMainnetClientLibrary,
       config.contractAddresses.yieldManagerAddress,
     );
+    this.lazyOracleContractClient = new LazyOracleContractClient(
+      this.ethereumMainnetClientLibrary,
+      config.contractAddresses.lazyOracleAddress,
+      new WinstonLogger(LazyOracleContractClient.name, config.loggerOptions),
+      config.timing.trigger.maxInactionMs,
+    );
 
     const yieldReportingProcessor = new YieldReportingOperationModeProcessor(
       this.yieldManagerContractClient,
-      this.ethereumMainnetClientLibrary,
+      this.lazyOracleContractClient,
       new WinstonLogger(YieldReportingOperationModeProcessor.name, config.loggerOptions),
-      config.timing.trigger,
+      config.timing.trigger.pollIntervalMs,
     );
 
     this.operationModeSelector = new OperationModeSelector(

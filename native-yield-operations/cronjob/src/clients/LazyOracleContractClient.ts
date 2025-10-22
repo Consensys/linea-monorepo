@@ -9,15 +9,18 @@ import {
   TransactionReceipt,
 } from "viem";
 import { LazyOracleABI } from "../core/abis/LazyOracle";
-import { ILazyOracle } from "../core/services/contracts/ILazyOracle";
+import { ILazyOracle, WaitForVaultsReportDataUpdatedEventReturnType } from "../core/services/contracts/ILazyOracle";
 import { LazyOracleReportData } from "../core/entities";
 import { IBaseContractClient } from "../core/clients/IBaseContractClient";
+import { ILogger } from "ts-libs/linea-shared-utils/dist";
 
 export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>, IBaseContractClient {
   private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;
   constructor(
     private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
+    private readonly logger: ILogger,
+    private readonly pollIntervalMs: number,
   ) {
     this.contract = getContract({
       abi: LazyOracleABI,
@@ -59,5 +62,35 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       args: [vault, totalValue, cumulativeLidoFees, liabilityShares, maxLiabilityShares, slashingReserve, proof],
     });
     return await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+  }
+
+  waitForVaultsReportDataUpdatedEvent(): WaitForVaultsReportDataUpdatedEventReturnType {
+    // Create placeholder variable. Initialize to empty fn so it's callable before being reassigned (TS safety).
+    let resolvePromise: () => void = () => {};
+    // Create the waitForEvent Promise, create a 2nd reference to 'resolve' fn
+    // Decouple Promise creation from resolve fn creation
+    const waitForEvent = new Promise<void>((resolve) => {
+      resolvePromise = resolve;
+    });
+
+    const unwatch = this.contractClientLibrary.getBlockchainClient().watchContractEvent({
+      address: this.contractAddress,
+      abi: this.contract.abi,
+      eventName: "VaultsReportDataUpdated",
+      pollingInterval: this.pollIntervalMs,
+      onLogs: (logs) => {
+        // Filter out reorgs
+        const valid = logs.find((l) => !l.removed);
+        if (!valid) return;
+        this.logger.info("VaultsReportDataUpdated detected");
+        // Call resolve through 2nd reference
+        resolvePromise();
+      },
+      onError: (err) => {
+        this.logger.error({ err }, "watchContractEvent error");
+      },
+    });
+
+    return { unwatch, waitForEvent };
   }
 }

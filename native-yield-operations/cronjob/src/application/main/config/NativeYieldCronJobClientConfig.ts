@@ -19,11 +19,11 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
   timing: {
     trigger: {
       // How often we poll for the trigger event
-      pollIntervalSeconds: env.TRIGGER_EVENT_POLL_INTERVAL_SECONDS,
+      pollIntervalMs: env.TRIGGER_EVENT_POLL_INTERVAL_MS,
       // Max tolerated time for inaction if trigger event polling doesn't find the trigger event
-      maxInactionSeconds: env.TRIGGER_MAX_INACTION_SECONDS,
+      maxInactionMs: env.TRIGGER_MAX_INACTION_MS,
     },
-    contractReadRetryTimeSeconds: env.CONTRACT_READ_RETRY_TIME_SECONDS,
+    contractReadRetryTimeMs: env.CONTRACT_READ_RETRY_TIME_MS,
   },
   web3signer: {
     url: env.WEB3SIGNER_URL,
