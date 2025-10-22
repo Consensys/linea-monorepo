@@ -1,6 +1,6 @@
 import { Address, BaseError, Client, encodeFunctionData, Hex } from "viem";
 import { readContract } from "viem/actions";
-import { SUBMIT_INVOICE_ABI } from "./constants.js";
+import { SUBMIT_INVOICE_ABI } from "./abi.js";
 import { err, ok, Result } from "neverthrow";
 
 export async function getLastInvoiceDate(client: Client, contractAddress: Address): Promise<Result<bigint, BaseError>> {
