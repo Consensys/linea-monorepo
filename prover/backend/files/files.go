@@ -177,6 +177,25 @@ func (z *ZipFile) Close() error {
 	return nil
 }
 
+// RemoveMatchingFiles deletes all files matching the given pattern.
+// The pattern can include wildcards like "*.tmp.*" or "filename*".
+func RemoveMatchingFiles(pattern string) error {
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return fmt.Errorf("glob pattern failed for %q: %w", pattern, err)
+	}
+	if len(matches) == 0 {
+		return nil // nothing to delete
+	}
+
+	for _, file := range matches {
+		if err := os.Remove(file); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to remove %s: %w", file, err)
+		}
+	}
+	return nil
+}
+
 // WaitForAllFilesAtPath waits until all expected files exist or the context is done.
 // It returns nil on success, or ctx.Err() / watcher error otherwise.
 func WaitForAllFilesAtPath(ctx context.Context, files []string, reportMissing bool, msg string) error {

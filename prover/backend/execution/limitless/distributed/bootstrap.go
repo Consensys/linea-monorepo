@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime/debug"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -85,9 +87,6 @@ func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata *Metad
 
 func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Metadata) error {
 
-	// TODO: This call will goaway once we implement `mmap` optimization in the controller process
-	// By this way, we ensure the static prover assets are loaded into memory only once and it is passed as `memfd`
-	// to the prover process, thereby saving disk load time.
 	assets := &zkevm.LimitlessZkEVM{}
 	loadStaticProverAssetsFromDisk(cfg, assets)
 
@@ -184,12 +183,22 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 				return ctx.Err()
 			default:
 
-				witnessGLFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
-				witnessGLFile := path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", string(witnessGL.ModuleName), config.RequestsFromSubDir, witnessGLFileName)
+				var (
+					witnessGLFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
+					witnessGLDirFrom  = path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", string(witnessGL.ModuleName), config.RequestsFromSubDir)
+					witnessGLFile     = path.Join(witnessGLDirFrom, witnessGLFileName)
 
-				// Clean up any prev. witness file before starting. This helps addressing the situation
+					witnessGLFilePattern = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-wit.bin*", metadata.StartBlock, metadata.EndBlock, i, witnessGL.ModuleIndex)
+					witnessGLDirDone     = path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", string(witnessGL.ModuleName), config.RequestsDoneSubDir)
+					WitnessGLPatternFrom = filepath.Join(witnessGLDirFrom, witnessGLFilePattern)
+					WitnessGLPatternDone = filepath.Join(witnessGLDirDone, witnessGLFilePattern)
+				)
+
+				// Clean up any prev. witness file (and temp variants) before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
-				_ = os.Remove(witnessGLFile)
+				_ = files.RemoveMatchingFiles(WitnessGLPatternFrom)
+				_ = files.RemoveMatchingFiles(WitnessGLPatternDone)
+
 				if err := serialization.StoreToDisk(witnessGLFile, *witnessGL, true); err != nil {
 					return fmt.Errorf("could not save witnessGL: %w", err)
 				}
@@ -215,12 +224,22 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 				return ctx.Err()
 			default:
 
-				witnessLPPFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
-				witnessLPPFile := path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", string(witnessLPP.ModuleName[0]), config.RequestsFromSubDir, witnessLPPFileName)
+				var (
+					witnessLPPFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
+					witnessLPPDirFrom  = path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", string(witnessLPP.ModuleName[0]), config.RequestsFromSubDir)
+					witnessLPPFile     = path.Join(witnessLPPDirFrom, witnessLPPFileName)
 
-				// Clean up any prev. witness file before starting. This helps addressing the situation
+					witnessLPPFilePattern = fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin*", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
+					witnessLPPDirDone     = path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", string(witnessLPP.ModuleName[0]), config.RequestsDoneSubDir)
+					WitnessLPPPatternFrom = filepath.Join(witnessLPPDirFrom, witnessLPPFilePattern)
+					WitnessLPPPatternDone = filepath.Join(witnessLPPDirDone, witnessLPPFilePattern)
+				)
+
+				// Clean up any prev. witness file (and temp variants) before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
-				_ = os.Remove(witnessLPPFile)
+				_ = files.RemoveMatchingFiles(WitnessLPPPatternFrom)
+				_ = files.RemoveMatchingFiles(WitnessLPPPatternDone)
+
 				if err := serialization.StoreToDisk(witnessLPPFile, *witnessLPP, true); err != nil {
 					return fmt.Errorf("could not save witnessLPP: %w", err)
 				}
