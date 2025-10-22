@@ -23,9 +23,9 @@ export function validateUrl(argName: string, input: string, allowedProtocols: st
   return input;
 }
 
-export function validateHexString(argName: string, input: string) {
+export function validateHexString(input: string) {
   if (!isHex(input)) {
-    throw new Error(`${argName} must be a hexadecimal string.`);
+    throw new Error(`Input must be a hexadecimal string.`);
   }
   return input;
 }

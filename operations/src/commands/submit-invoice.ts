@@ -1,7 +1,9 @@
 import { Command, Flags } from "@oclif/core";
 import {
   Address,
+  Client,
   createPublicClient,
+  formatEther,
   Hex,
   http,
   parseEther,
@@ -15,33 +17,17 @@ import { Agent } from "https";
 import { GetCostAndUsageCommandInput } from "@aws-sdk/client-cost-explorer";
 import { formatInTimeZone } from "date-fns-tz";
 import { addDays } from "date-fns";
-import { computeInvoicePeriod } from "../utils/eth-transfer/time.js";
+import { computeInvoicePeriod, InvoicePeriod } from "../utils/submit-invoice/time.js";
 import { generateQueryParameters, getDuneClient, runDuneQuery } from "../utils/common/dune.js";
-import { estimateTransactionGas, sendTransaction } from "../utils/eth-transfer/transactions.js";
+import { estimateTransactionGas, sendTransaction } from "../utils/submit-invoice/transactions.js";
 import { getWeb3SignerSignature } from "../utils/common/signature.js";
-import { INVOICE_PROCESSED_EVENT_ABI } from "../utils/eth-transfer/constants.js";
-import { getHttpsAgent } from "../utils/common/https-agent.js";
+import { INVOICE_PROCESSED_EVENT_ABI } from "../utils/submit-invoice/constants.js";
+import { buildHttpsAgent } from "../utils/common/https-agent.js";
 import { createAwsCostExplorerClient, getDailyAwsCosts } from "../utils/common/aws.js";
-import { computeSubmitInvoiceCalldata, getLastInvoiceDate } from "../utils/eth-transfer/contract.js";
-import { validateEthereumAddress, validateHexString, validateUrl } from "../utils/common/validation.js";
-
-export const address = Flags.custom<Address>({
-  parse: async (input) => validateEthereumAddress("address", input),
-});
-
-export const hexString = Flags.custom<Hex>({
-  parse: async (input) => validateHexString("hex-string", input),
-});
-
-export const awsCostsApiFilters = Flags.custom<GetCostAndUsageCommandInput>({
-  parse: (input: string) => {
-    try {
-      return JSON.parse(input);
-    } catch {
-      throw new Error("Invalid JSON string for AWS Costs API Filters");
-    }
-  },
-});
+import { computeSubmitInvoiceCalldata, getLastInvoiceDate } from "../utils/submit-invoice/contract.js";
+import { validateUrl } from "../utils/common/validation.js";
+import { address, hexString } from "../utils/common/custom-flags.js";
+import { awsCostsApiFilters } from "../utils/submit-invoice/custom-flags.js";
 
 export default class SubmitInvoice extends Command {
   static examples = [
@@ -207,6 +193,8 @@ export default class SubmitInvoice extends Command {
       tls,
       dryRun,
       awsCostsApiFilters,
+      duneApiKey,
+      duneQueryId,
     } = flags;
 
     const client = createPublicClient({
@@ -218,21 +206,7 @@ export default class SubmitInvoice extends Command {
       INVOICE PERIOD COMPUTATION
      ******************************/
 
-    const lastInvoiceDate = await getLastInvoiceDate(client, contractAddress);
-
-    if (lastInvoiceDate.isErr()) {
-      this.error(`Failed to retrieve the last invoice date from the contract: ${lastInvoiceDate.error.message}`);
-    }
-
-    this.log(`Last invoice date (timestamp in seconds): ${lastInvoiceDate.value}`);
-
-    const currentTimestampInSeconds = Math.floor(Date.now() / 1000);
-    const invoicePeriod = computeInvoicePeriod(
-      Number(lastInvoiceDate.value),
-      currentTimestampInSeconds,
-      periodDays,
-      reportingLagDays,
-    );
+    const invoicePeriod = await this.getInvoicePeriod(client, contractAddress, periodDays, reportingLagDays);
 
     if (!invoicePeriod) {
       this.warn("No invoice to process at this time.");
@@ -240,77 +214,24 @@ export default class SubmitInvoice extends Command {
     }
 
     this.log(
-      `Invoice period to process: from ${invoicePeriod.startDate.toISOString()} to ${invoicePeriod.endDate.toISOString()}`,
+      `Invoice period to process: from=${invoicePeriod.startDate.toISOString()} to=${invoicePeriod.endDate.toISOString()}`,
     );
 
     /******************************
             AWS COSTS FETCHING
      ******************************/
 
-    const awsClient = createAwsCostExplorerClient({ region: "us-east-1" });
-    this.log(
-      `Fetching AWS costs for the invoice period from=${formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd")} to=${formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd")}`,
-    );
+    const awsCostsInUsd = await this.getAWSCosts(invoicePeriod, awsCostsApiFilters);
 
-    const awsCostsResult = await getDailyAwsCosts(awsClient, {
-      ...awsCostsApiFilters,
-      TimePeriod: {
-        Start: formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd"),
-        End: formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd"),
-      },
-    });
-
-    const awsCostsInUsd = awsCostsResult.match(
-      (value) => {
-        const { ResultsByTime } = value;
-
-        if (!ResultsByTime || ResultsByTime.length === 0) {
-          this.error("No AWS cost data returned for the specified period.");
-        }
-
-        if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
-          this.error("AWS Costs API Filters must specify one metric.");
-        }
-
-        const totalDailyCosts = ResultsByTime[0].Total?.[awsCostsApiFilters.Metrics[0]].Amount;
-
-        if (!totalDailyCosts) {
-          this.error("No AWS cost data found for the specified metric.");
-        }
-
-        return parseFloat(totalDailyCosts);
-      },
-      (error) => this.error(`Failed to fetch AWS costs: ${error.message}`),
-    );
-
-    this.log(`Total AWS costs in USD for the period: ${awsCostsInUsd}`);
+    this.log(`Total AWS costs for the period: costs=${awsCostsInUsd} USD`);
 
     /******************************
         ONCHAIN COSTS FETCHING
      ******************************/
 
-    const duneClient = getDuneClient(flags.duneApiKey);
-    const onChainCostsResult = await runDuneQuery(
-      duneClient,
-      flags.duneQueryId,
-      generateQueryParameters({
-        fromDate: invoicePeriod.startDate,
-        toDate: invoicePeriod.endDate,
-      }),
-    );
+    const onChainCostsInEth = await this.getOnChainCosts(duneApiKey, duneQueryId, invoicePeriod);
 
-    const onChainCostsInEth = onChainCostsResult.match(
-      (value) => {
-        const { result } = value;
-        if (!result || !result.rows || result.rows.length === 0) {
-          this.error("No Dune query result returned for the specified period.");
-        }
-        return result.rows.reduce((acc, row) => acc + (row.total_costs_per_day as number), 0);
-      },
-      (error) => this.error(`Failed to run Dune query: ${error.message}`),
-    );
-
-    this.log(`Total on-chain costs in ETH for the period: ${onChainCostsInEth}`);
+    this.log(`Total on-chain costs for the period: costs=${onChainCostsInEth} ETH`);
 
     /******************************
         TOTAL COSTS COMPUTATION
@@ -326,7 +247,7 @@ export default class SubmitInvoice extends Command {
       return;
     }
 
-    this.log(`Total costs to invoice in ETH: ${totalCostsInEth}`);
+    this.log(`Total costs to invoice: costs=${formatEther(totalCostsInEth)} ETH`);
 
     /******************************
       TRANSACTION GAS ESTIMATION
@@ -350,6 +271,10 @@ export default class SubmitInvoice extends Command {
       (error) => this.error(`Failed to estimate gas: ${error.message}`),
     );
 
+    this.log(
+      `Gas estimation for submitInvoice transaction: gasLimit=${gasLimit} baseFeePerGas=${baseFeePerGas} priorityFeePerGas=${priorityFeePerGas}`,
+    );
+
     /******************************
           SIGNING TRANSACTION
      ******************************/
@@ -363,7 +288,7 @@ export default class SubmitInvoice extends Command {
       web3SignerTrustedStorePassphrase
     ) {
       this.log(`Using TLS for secure communication with Web3 Signer.`);
-      httpsAgent = getHttpsAgent(
+      httpsAgent = buildHttpsAgent(
         web3SignerKeystorePath,
         web3SignerKeystorePassphrase,
         web3SignerTrustedStorePath,
@@ -382,16 +307,12 @@ export default class SubmitInvoice extends Command {
       maxPriorityFeePerGas: priorityFeePerGas,
     };
 
-    const signature = await getWeb3SignerSignature(
+    const signature = await this.signSubmitInvoiceTransaction(
       web3SignerUrl,
       web3SignerPublicKey,
       transactionToSerialize,
       httpsAgent,
     );
-
-    if (signature.isErr()) {
-      this.error(`Failed to get signature from Web3 Signer: ${signature.error.message}`);
-    }
 
     if (dryRun) {
       this.log(`Dry run mode - transaction not submitted.`);
@@ -402,7 +323,7 @@ export default class SubmitInvoice extends Command {
         BROADCASTING TRANSACTION
      ******************************/
 
-    const serializeSignedTransaction = serializeTransaction(transactionToSerialize, parseSignature(signature.value));
+    const serializeSignedTransaction = serializeTransaction(transactionToSerialize, parseSignature(signature));
 
     this.log(`Broadcasting submitInvoice transaction to the network...`);
     const transactionResult = await sendTransaction(client, serializeSignedTransaction);
@@ -411,19 +332,155 @@ export default class SubmitInvoice extends Command {
       (error) => this.error(`Failed to send transaction: ${error.message}`),
     );
 
-    if (receipt.status === "success") {
-      const [event] = parseEventLogs({
-        abi: INVOICE_PROCESSED_EVENT_ABI,
-        logs: receipt.logs,
-        eventName: "InvoiceProcessed",
-      });
-
-      this.log(
-        `Invoice successfully submitted: transactionHash=${receipt.transactionHash} eventName=${event.eventName} receiver=${event.args.receiver} startTimestamp=${event.args.startTimestamp} endTimestamp=${event.args.endTimestamp} amountPaid=${event.args.amountPaid} amountRequested=${event.args.amountRequested}`,
-      );
-      return;
+    if (receipt.status === "reverted") {
+      this.error(`Invoice submission failed. transactionHash=${receipt.transactionHash}`);
     }
 
-    this.error(`Invoice submission failed. transactionHash=${receipt.transactionHash}`);
+    const [event] = parseEventLogs({
+      abi: INVOICE_PROCESSED_EVENT_ABI,
+      logs: receipt.logs,
+      eventName: "InvoiceProcessed",
+    });
+
+    this.log(
+      `Invoice successfully submitted: transactionHash=${receipt.transactionHash} eventName=${event.eventName} receiver=${event.args.receiver} startTimestamp=${event.args.startTimestamp} endTimestamp=${event.args.endTimestamp} amountPaid=${event.args.amountPaid} amountRequested=${event.args.amountRequested}`,
+    );
+  }
+
+  /**
+   * Compute the invoice period based on the last invoice date, current date, period days and reporting lag days.
+   * @param client Viem Client.
+   * @param contractAddress Rollup Revenue Vault contract address.
+   * @param periodDays Number of days in the invoice period.
+   * @param reportingLagDays Number of days to wait before reporting.
+   * @returns The start and end dates of the invoice period, or null if no invoice is to be processed.
+   */
+  private async getInvoicePeriod(
+    client: Client,
+    contractAddress: Address,
+    periodDays: number,
+    reportingLagDays: number,
+  ): Promise<InvoicePeriod | null> {
+    const lastInvoiceDateResult = await getLastInvoiceDate(client, contractAddress);
+
+    const lastInvoiceDate = lastInvoiceDateResult.match(
+      (value) => value,
+      (error) => {
+        this.error(`Failed to retrieve the last invoice date from the contract: ${error.message}`);
+      },
+    );
+
+    this.log(`Last invoice date (timestamp in seconds): ${lastInvoiceDate}`);
+
+    const currentTimestampInSeconds = Math.floor(Date.now() / 1000);
+    return computeInvoicePeriod(Number(lastInvoiceDate), currentTimestampInSeconds, periodDays, reportingLagDays);
+  }
+
+  /**
+   * Fetch AWS costs for the given invoice period using the provided AWS Costs API filters.
+   * @param invoicePeriod Invoice period with start and end dates.
+   * @param awsCostsApiFilters AWS Costs API filters to apply.
+   * @returns The total AWS costs for the specified invoice period.
+   */
+  private async getAWSCosts(
+    invoicePeriod: InvoicePeriod,
+    awsCostsApiFilters: GetCostAndUsageCommandInput,
+  ): Promise<number> {
+    const awsClient = createAwsCostExplorerClient({ region: "us-east-1" });
+    this.log(
+      `Fetching AWS costs for the invoice period from=${formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd")} to=${formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd")}`,
+    );
+
+    const awsCostsResult = await getDailyAwsCosts(awsClient, {
+      ...awsCostsApiFilters,
+      TimePeriod: {
+        Start: formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd"),
+        End: formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd"),
+      },
+    });
+
+    return awsCostsResult.match(
+      (value) => {
+        const { ResultsByTime } = value;
+
+        if (!ResultsByTime || ResultsByTime.length === 0) {
+          this.error("No AWS cost data returned for the specified period.");
+        }
+
+        if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
+          this.error("AWS Costs API Filters must specify one metric.");
+        }
+
+        const totalDailyCosts = ResultsByTime[0].Total?.[awsCostsApiFilters.Metrics[0]].Amount;
+
+        if (!totalDailyCosts) {
+          this.error("No AWS cost data found for the specified metric.");
+        }
+
+        return parseFloat(totalDailyCosts);
+      },
+      (error) => this.error(`Failed to fetch AWS costs: ${error.message}`),
+    );
+  }
+
+  /**
+   * Fetch on-chain costs for the given invoice period using Dune Analytics.
+   * @param duneApiKey Dune API key.
+   * @param duneQueryId Dune query ID.
+   * @param invoicePeriod Invoice period with start and end dates.
+   * @returns The total on-chain costs for the specified invoice period.
+   */
+  private async getOnChainCosts(
+    duneApiKey: string,
+    duneQueryId: number,
+    invoicePeriod: InvoicePeriod,
+  ): Promise<number> {
+    const duneClient = getDuneClient(duneApiKey);
+    const onChainCostsResult = await runDuneQuery(
+      duneClient,
+      duneQueryId,
+      generateQueryParameters({
+        fromDate: invoicePeriod.startDate,
+        toDate: invoicePeriod.endDate,
+      }),
+    );
+
+    return onChainCostsResult.match(
+      (value) => {
+        const { result } = value;
+        if (!result || !result.rows || result.rows.length === 0) {
+          this.error("No Dune query result returned for the specified period.");
+        }
+        return result.rows.reduce((acc, row) => acc + (row.total_costs_per_day as number), 0);
+      },
+      (error) => this.error(`Failed to run Dune query: ${error.message}`),
+    );
+  }
+
+  /**
+   * Sign the submit invoice transaction using Web3 Signer.
+   * @param web3SignerUrl Web3 Signer URL.
+   * @param web3SignerPublicKey Web3 Signer Public Key.
+   * @param transactionToSerialize Transaction to be serialized and signed.
+   * @param httpsAgent Optional HTTPS Agent for secure communication.
+   * @returns The signature as a hex string.
+   */
+  public async signSubmitInvoiceTransaction(
+    web3SignerUrl: string,
+    web3SignerPublicKey: string,
+    transactionToSerialize: TransactionSerializable,
+    httpsAgent?: Agent,
+  ): Promise<Hex> {
+    const signatureResult = await getWeb3SignerSignature(
+      web3SignerUrl,
+      web3SignerPublicKey,
+      transactionToSerialize,
+      httpsAgent,
+    );
+
+    return signatureResult.match(
+      (value) => value,
+      (error) => this.error(`Failed to get signature from Web3 Signer: ${error.message}`),
+    );
   }
 }

@@ -7,6 +7,11 @@ function startOfUTCDay(timestamp: number): Date {
   return fromZonedTime(midnight, "UTC");
 }
 
+export type InvoicePeriod = {
+  startDate: Date;
+  endDate: Date;
+};
+
 /**
  * Compute the start and end date of the invoice period.
  * @param lastInvoiceDateInSeconds Unix seconds, UTC timestamp of the last invoice date
@@ -19,7 +24,7 @@ export function computeInvoicePeriod(
   currentTimestampInSeconds: number,
   numberOfInvoicingDays: number,
   reportingLagDays: number,
-): { startDate: Date; endDate: Date } | null {
+): InvoicePeriod | null {
   const lastInvoiceDate = toDate(lastInvoiceTimestampInSeconds * 1000);
   const currentMidnight = startOfUTCDay(currentTimestampInSeconds * 1000);
 

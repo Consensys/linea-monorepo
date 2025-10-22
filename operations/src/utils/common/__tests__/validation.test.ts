@@ -51,12 +51,12 @@ describe("Validation utils", () => {
   describe("validateHexString", () => {
     it("should throw an error when the input is not a hex string", () => {
       const invalidHexString = "0a1f";
-      expect(() => validateHexString("HexString", invalidHexString)).toThrow(`HexString must be a hexadecimal string.`);
+      expect(() => validateHexString(invalidHexString)).toThrow(`Input must be a hexadecimal string.`);
     });
 
     it("should return the input when it is a hex string", () => {
       const hexString = "0x0a1f";
-      expect(validateHexString("HexString", hexString)).toStrictEqual(hexString);
+      expect(validateHexString(hexString)).toStrictEqual(hexString);
     });
   });
 });

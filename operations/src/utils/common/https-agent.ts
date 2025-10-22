@@ -22,7 +22,7 @@ function getCertificateFromP12(p12: forge.pkcs12.Pkcs12Pfx) {
   return { pemCertificate };
 }
 
-export function getHttpsAgent(
+export function buildHttpsAgent(
   keystorePath: string,
   keystorePassphrase: string,
   trustedStorePath: string,
