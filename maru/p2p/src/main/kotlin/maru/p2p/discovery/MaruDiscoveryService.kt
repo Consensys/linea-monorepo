@@ -223,9 +223,9 @@ class MaruDiscoveryService(
         .secretKey(privateKey)
         .seq(UInt64.valueOf(sequenceNumber.toBigInteger()))
         .address(
-          p2pConfig.ipAddress,
-          p2pConfig.discovery!!.port.toInt(),
-          p2pConfig.port.toInt(),
+          /* ipAddress = */ p2pConfig.discovery!!.advertisedIp ?: p2pConfig.ipAddress,
+          /* udpPort = */ p2pConfig.discovery!!.port.toInt(),
+          /* tcpPort = */ p2pConfig.port.toInt(),
         ).customField(FORK_ID_HASH_FIELD_NAME, Bytes.wrap(forkIdHashManager.currentForkHash()))
     // TODO: do we want more custom fields to identify version/topics/role/something else?
 

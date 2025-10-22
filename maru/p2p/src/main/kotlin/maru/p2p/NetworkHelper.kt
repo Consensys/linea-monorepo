@@ -36,8 +36,6 @@ object NetworkHelper {
       .filter { it is Inet4Address }
       .map { it.hostAddress }
 
-  fun hasInterfaceWithIpV4(ipV4: String): Boolean = listIpsV4(excludeLoopback = false).contains(ipV4)
-
   fun selectIpV4ForP2P(
     targetIpV4: String,
     excludeLoopback: Boolean = true,

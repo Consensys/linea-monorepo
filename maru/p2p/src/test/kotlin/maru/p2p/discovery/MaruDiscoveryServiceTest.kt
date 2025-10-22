@@ -293,4 +293,50 @@ class MaruDiscoveryServiceTest {
 
     assertThat(result).isFalse()
   }
+
+  @Test
+  fun `local node record uses advertisedIp when set`() {
+    val ipAddress = "127.0.0.1"
+    val advertisedIp = "203.0.113.50"
+    val port = 9001u
+    val discoveryPort = 9000u
+
+    val p2pConfig =
+      P2PConfig(
+        ipAddress = ipAddress,
+        port = port,
+        discovery =
+          P2PConfig.Discovery(
+            port = discoveryPort,
+            bootnodes = listOf(),
+            refreshInterval = 10.seconds,
+            advertisedIp = advertisedIp,
+          ),
+      )
+
+    val discoveryService =
+      MaruDiscoveryService(
+        privateKeyBytes = keyPair.secretKey().bytesArray(),
+        p2pConfig = p2pConfig,
+        forkIdHashManager = forkIdHashProvider,
+        p2PState = InMemoryP2PState(),
+      )
+
+    val localNodeRecord = discoveryService.getLocalNodeRecord()
+
+    assertThat(localNodeRecord.udpAddress.isPresent).isTrue()
+    assertThat(
+      localNodeRecord.udpAddress
+        .get()
+        .address.hostAddress,
+    ).isEqualTo(advertisedIp)
+    assertThat(localNodeRecord.udpAddress.get().port).isEqualTo(discoveryPort.toInt())
+    assertThat(localNodeRecord.tcpAddress.isPresent).isTrue()
+    assertThat(
+      localNodeRecord.tcpAddress
+        .get()
+        .address.hostAddress,
+    ).isEqualTo(advertisedIp)
+    assertThat(localNodeRecord.tcpAddress.get().port).isEqualTo(port.toInt())
+  }
 }
