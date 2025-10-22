@@ -44,10 +44,11 @@ func Update(h hashtypes.Poseidon2Hasher, vec ...field.Element) {
 
 func UpdateExt(h hashtypes.Poseidon2Hasher, vec ...fext.Element) {
 	for _, f := range vec {
-		h.WriteElement(f.B0.A0)
-		h.WriteElement(f.B0.A1)
-		h.WriteElement(f.B1.A0)
-		h.WriteElement(f.B1.A1)
+		bytes := fext.Bytes(&f)
+		_, err := h.Write(bytes[:])
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 func UpdateGeneric(h hashtypes.Poseidon2Hasher, vec ...fext.GenericFieldElem) {
@@ -57,10 +58,14 @@ func UpdateGeneric(h hashtypes.Poseidon2Hasher, vec ...fext.GenericFieldElem) {
 
 	// Marshal the elements in a vector of bytes
 	for _, f := range vec {
-		if f.GetIsBase() {
-			Update(h, f.Base)
-		} else {
-			UpdateExt(h, f.Ext)
+		bytes := f.GenericBytes()
+		_, err := h.Write(bytes)
+		if err != nil {
+			// This normally happens if the bytes that we provide do not represent
+			// a field element. In our case, the bytes are computed by ourselves
+			// from the caller's field element so the error is not possible. Hence,
+			// the assertion.
+			panic("Hashing is not supposed to fail")
 		}
 	}
 }
@@ -136,11 +141,11 @@ func RandomFext(h hashtypes.Poseidon2Hasher) fext.Element {
 	// TODO @thomas according the size of s, run several hashes to fit in an fext elmt
 	s := h.Sum(nil)
 	var res fext.Element
-	res.B0.A0 = s[0]
-	res.B0.A1 = s[1]
-	res.B1.A0 = s[2]
-	res.B1.A1 = s[3]
-
+	if len(s) > 4 {
+		res = fext.SetBytes(s)
+	} else {
+		res.B0.A0.SetBytes(s)
+	}
 	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
 	return res
 }

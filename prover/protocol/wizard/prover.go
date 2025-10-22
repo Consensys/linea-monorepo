@@ -274,8 +274,6 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
 	fs := hashtypes.Poseidon2()
-	fiatshamir.Update(fs, c.FiatShamirSetup)
-	fs := hashtypes.Poseidon2()
 	fiatshamir.Update(fs, c.FiatShamirSetup[:]...)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)

@@ -94,12 +94,11 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		Add(ifaces.ColumnAsVariable(pol)).
 		Sub(ifaces.ColumnAsVariable(hornerPoly))
 
-		comp.InsertGlobal(
-			maxRound,
-			ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_GLOBAL),
-			globalExpr,
-		)
-	}
+	comp.InsertGlobal(
+		maxRound,
+		ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_GLOBAL),
+		globalExpr,
+	)
 
 	// p[-1] = h[-1]
 	comp.InsertLocal(
