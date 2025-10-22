@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"golang.org/x/crypto/blake2b"
 )
 
 // State holds a Fiat-Shamir state. The Fiat-Shamir state can be updated by
@@ -95,48 +94,6 @@ func UpdateSV(h *hashtypes.Poseidon2FieldHasherDigest, sv smartvectors.SmartVect
 	Update(h, vec...)
 }
 
-// RandomField generates and returns a single field element from the Fiat-Shamir
-// transcript.
-func RandomField(h *hashtypes.Poseidon2FieldHasherDigest) field.Element {
-	s := h.Sum(nil)
-	var res field.Element
-	res.SetBytes(s)
-	safeguardUpdate(h)
-	return res
-}
-
-// RandomField generates and returns a single field element from the seed and the given name.
-func RandomFieldFromSeed(h *hashtypes.Poseidon2FieldHasherDigest, seed field.Element, name string) field.Element {
-
-	// The first step encodes the 'name' into a single field element. The
-	// field element is obtained by hashing and taking the modulo of the
-	// result to fit into a field element.
-	tmpFr := field.Element{}
-	nameBytes := []byte(name)
-	hasher, _ := blake2b.New256(nil)
-	hasher.Write(nameBytes)
-	nameBytes = hasher.Sum(nil)
-
-	// This ensures that the name is hashed into a field element
-	tmpFr.SetBytes(nameBytes)
-	nameBytes_ := tmpFr.Bytes()
-	nameBytes = nameBytes_[:]
-
-	// The seed is then obtained by calling the compression function over
-	// the seed and the encoded name.
-	oldState := h.State()
-	defer h.SetState(oldState)
-
-	h.SetState(seed.Marshal())
-	if _, err := h.Write(nameBytes); err != nil {
-		panic(err)
-	}
-	challBytes := h.Sum(nil)
-	res := new(field.Element).SetBytes(challBytes)
-
-	return *res
-}
-
 func RandomFext(h *hashtypes.Poseidon2FieldHasherDigest) fext.Element {
 	// TODO @thomas according the size of s, run several hashes to fit in an fext elmt
 	s := h.Sum(nil)
@@ -149,8 +106,6 @@ func RandomFext(h *hashtypes.Poseidon2FieldHasherDigest) fext.Element {
 	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
 	return res
 }
-
-// TODO@yao: maybe we want 'RandomFextFromSeed', which generates and returns a single fext element from the seed and the given name.
 
 func RandomManyIntegers(h *hashtypes.Poseidon2FieldHasherDigest, num, upperBound int) []int {
 
