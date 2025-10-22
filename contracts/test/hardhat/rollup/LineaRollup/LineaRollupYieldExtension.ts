@@ -17,6 +17,7 @@ import {
   YIELD_PROVIDER_STAKING_ROLE,
   SET_YIELD_MANAGER_ROLE,
   VALID_MERKLE_PROOF,
+  ZERO_VALUE,
 } from "../../common/constants";
 import {
   expectEvent,
@@ -87,6 +88,11 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("fund() to receive funding", () => {
+    it("Should revert if 0 value received", async () => {
+      const fundCall = lineaRollup.connect(nonAuthorizedAccount).fund({ value: ZERO_VALUE });
+      expectRevertWithCustomError(lineaRollup, fundCall, "NoEthSent");
+    });
+
     it("Should succeed with permissionless call and emit the correct event", async () => {
       const amount = ethers.parseEther("1");
       const fundCall = lineaRollup.connect(nonAuthorizedAccount).fund({ value: amount });

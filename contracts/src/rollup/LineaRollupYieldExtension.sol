@@ -74,6 +74,7 @@ abstract contract LineaRollupYieldExtension is LineaRollupBase, ILineaRollupYiel
    * @dev Accepts both permissionless donations and YieldManager withdrawals.
    */
   function fund() external payable virtual {
+    if (msg.value == 0) revert NoEthSent();
     emit FundingReceived(msg.value);
   }
 
