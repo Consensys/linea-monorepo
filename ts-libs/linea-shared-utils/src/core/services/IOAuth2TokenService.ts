@@ -1,0 +1,12 @@
+export interface IOAuth2TokenService {
+  getBearerToken(): Promise<string>;
+}
+
+export interface OAuth2TokenResponse {
+  access_token?: string;
+  token_type?: string;
+  // Expected in seconds
+  expires_in?: number;
+  // Expected as Unix timestamp in seconds
+  expires_at?: number;
+}
