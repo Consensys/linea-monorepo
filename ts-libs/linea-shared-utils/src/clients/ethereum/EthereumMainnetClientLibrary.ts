@@ -12,7 +12,7 @@ import {
 } from "viem";
 import { mainnet } from "viem/chains";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
-import { IContractSignerService } from "../../core/services/IContractSignerService";
+import { IContractSignerClient } from "../../core/client/IContractSignerClient";
 
 // Re-use via composition in ContractClients
 // Hope that using strategy pattern like this makes us more 'viem-agnostic'
@@ -21,7 +21,7 @@ export class EthereumMainnetClientLibrary implements IContractClientLibrary<Publ
 
   constructor(
     rpcUrl: string,
-    private readonly contractSignerService: IContractSignerService,
+    private readonly contractSignerService: IContractSignerClient,
   ) {
     // Aim re-use single blockchain client for
     // i.) Better connection pooling

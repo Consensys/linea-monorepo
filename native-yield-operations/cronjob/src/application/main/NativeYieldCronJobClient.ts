@@ -13,7 +13,7 @@ import { LazyOracleContractClient } from "../../clients/LazyOracleContractClient
 import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
 import { ApolloClient, InMemoryCache, HttpLink, from } from "@apollo/client";
 import { SetContextLink } from "@apollo/client/link/context";
-import { IContractSignerService, IOAuth2TokenClient } from "ts-libs/linea-shared-utils/src";
+import { IContractSignerClient, IOAuth2TokenClient } from "ts-libs/linea-shared-utils/src";
 
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
@@ -23,7 +23,7 @@ export class NativeYieldCronJobClient {
   private yieldManagerContractClient: IYieldManager<TransactionReceipt>;
   private lazyOracleContractClient: ILazyOracle<TransactionReceipt>;
 
-  private web3SignerService: IContractSignerService;
+  private web3SignerService: IContractSignerClient;
 
   private operationModeSelector: IOperationModeSelector;
 

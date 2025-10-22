@@ -1,13 +1,13 @@
 import axios from "axios";
 import { Agent } from "https";
 import { Address, Hex, serializeTransaction, TransactionSerializable } from "viem";
-import { IContractSignerService } from "../../core/services/IContractSignerService";
+import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { publicKeyToAddress } from "viem/accounts";
 import forge from "node-forge";
 import { readFileSync } from "fs";
 import path from "path";
 
-export class Web3SignerService implements IContractSignerService {
+export class Web3SignerClient implements IContractSignerClient {
   private readonly agent: Agent;
   constructor(
     private readonly web3SignerUrl: string,
