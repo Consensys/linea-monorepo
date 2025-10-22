@@ -48,6 +48,7 @@ class HopliteFriendlinessTest {
     port = 3324
     bootnodes = ["enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT"]
     refresh-interval = "30 seconds"
+    advertised-ip = "13.12.11.10"
 
     [p2p.reputation]
     small-change = 1
@@ -116,6 +117,7 @@ class HopliteFriendlinessTest {
               "enr:-Iu4QHk0YN5IRRnufqsWkbO6Tn0iGTx4H_hnyiIEdXDuhIe0KKrxmaECisyvO40mEmmqKLhz_tdIhx2yFBK8XFKhvxABgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQOgBvD-dv0cX5szOeEsiAMtwxnP1q5CA5toYDrgUyOhV4N0Y3CCJBKDdWRwgiQT",
             ),
           refreshInterval = 30.seconds,
+          advertisedIp = "13.12.11.10",
         ),
       reputation =
         P2PConfig.Reputation(
@@ -651,5 +653,50 @@ class HopliteFriendlinessTest {
         gossipFactor = 0.3,
       ),
     )
+  }
+
+  @Test
+  fun `p2p discovery with invalid advertisedIp format should fail`() {
+    val discoveryConfigToml =
+      """
+      port = 9000
+      refresh-interval = "30 seconds"
+      advertised-ip = "127.0.256.1"
+      """.trimIndent()
+
+    assertThatThrownBy {
+      parseConfig<P2PConfig.Discovery>(discoveryConfigToml)
+    }.isInstanceOf(ConfigException::class.java)
+      .hasMessageContaining("UnknownHostException")
+      .hasMessageContaining("127.0.256.1")
+  }
+
+  @Test
+  fun `p2p config with invalid ipAddress format should fail`() {
+    val p2pConfigToml =
+      """
+      ip-address = "127.O.0H.1"
+      """.trimIndent()
+
+    assertThatThrownBy {
+      parseConfig<P2PConfig>(p2pConfigToml)
+    }.isInstanceOf(ConfigException::class.java)
+      .hasMessageContaining("UnknownHostException")
+      .hasMessageContaining("127.O.0H.1")
+  }
+
+  @Test
+  fun `p2p config with valid dns instead of IP format should fail`() {
+    val p2pConfigToml =
+      """
+      ip-address = "test.com"
+      """.trimIndent()
+
+    assertThatThrownBy {
+      parseConfig<P2PConfig>(p2pConfigToml)
+    }.isInstanceOf(ConfigException::class.java)
+      .hasMessageContaining("IllegalArgumentException")
+      .hasMessageContaining("Invalid IP address format")
+      .hasMessageContaining("test.com")
   }
 }
