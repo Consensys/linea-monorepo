@@ -7,19 +7,23 @@ import {
   PublicClient,
   TransactionReceipt,
 } from "viem";
-import { encodeLidoWithdrawalParams, LidoStakingVaultWithdrawalParams } from "../core/entities/YieldManager";
+import {
+  encodeLidoWithdrawalParams,
+  LidoStakingVaultWithdrawalParams,
+} from "../core/entities/LidoStakingVaultWithdrawalParams";
+import { RebalanceRequirement, RebalanceDirection } from "../core/entities/RebalanceRequirement";
+
 import { YieldManagerABI } from "../core/abis/YieldManager";
 import { IYieldManager } from "../core/services/contracts/IYieldManager";
 import { IBaseContractClient } from "../core/clients/IBaseContractClient";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt>, IBaseContractClient {
-  private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>;
-  private readonly contractAddress: Address;
   private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
 
   constructor(
-    contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
-    contractAddress: Address,
+    private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
+    private readonly contractAddress: Address,
+    private readonly rebalanceToleranceBps: number,
   ) {
     this.contractClientLibrary = contractClientLibrary;
     this.contractAddress = contractAddress;
@@ -36,6 +40,18 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
 
   getContract(): GetContractReturnType {
     return this.contract;
+  }
+
+  async L1_MESSAGE_SERVICE(): Promise<Address> {
+    return this.contract.read.L1_MESSAGE_SERVICE();
+  }
+
+  async getTotalSystemBalance(): Promise<bigint> {
+    return this.contract.read.getTotalSystemBalance();
+  }
+
+  async getEffectiveTargetWithdrawalReserve(): Promise<bigint> {
+    return this.contract.read.getEffectiveTargetWithdrawalReserve();
   }
 
   async getTargetReserveDeficit(): Promise<bigint> {
@@ -161,5 +177,55 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     });
 
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+  }
+
+  async getRebalanceRequirements(): Promise<RebalanceRequirement> {
+    const l1MessageServiceAddress = await this.L1_MESSAGE_SERVICE();
+    const [l1MessageServiceBalance, totalSystemBalance, effectiveTargetWithdrawalReserve] = await Promise.all([
+      this.contractClientLibrary.getBalance(l1MessageServiceAddress),
+      this.getTotalSystemBalance(),
+      this.getEffectiveTargetWithdrawalReserve(),
+    ]);
+    const isRebalanceRequired = this._isRebalanceRequired(
+      totalSystemBalance,
+      l1MessageServiceBalance,
+      effectiveTargetWithdrawalReserve,
+    );
+    if (!isRebalanceRequired) {
+      return {
+        rebalanceDirection: RebalanceDirection.NONE,
+        rebalanceAmount: 0n,
+      };
+    }
+    // In deficit
+    if (l1MessageServiceBalance < effectiveTargetWithdrawalReserve) {
+      return {
+        rebalanceDirection: RebalanceDirection.UNSTAKE,
+        rebalanceAmount: effectiveTargetWithdrawalReserve - l1MessageServiceBalance,
+      };
+      // In surplus
+    } else {
+      return {
+        rebalanceDirection: RebalanceDirection.STAKE,
+        rebalanceAmount: l1MessageServiceBalance - effectiveTargetWithdrawalReserve,
+      };
+    }
+  }
+
+  private _isRebalanceRequired(
+    totalSystemBalance: bigint,
+    l1MessageServiceBalance: bigint,
+    effectiveTargetWithdrawalReserve: bigint,
+  ): boolean {
+    const toleranceBand = (totalSystemBalance * BigInt(this.rebalanceToleranceBps)) / 10000n;
+    // Below tolerance band
+    if (l1MessageServiceBalance < effectiveTargetWithdrawalReserve - toleranceBand) {
+      return true;
+    }
+    // Above tolerance band
+    if (l1MessageServiceBalance < effectiveTargetWithdrawalReserve + toleranceBand) {
+      return true;
+    }
+    return false;
   }
 }

@@ -37,8 +37,14 @@ export class EthereumMainnetClientLibrary implements IContractClientLibrary<Publ
     return this.blockchainClient;
   }
 
-  getChainId(): Promise<number> {
-    return this.blockchainClient.getChainId();
+  async getChainId(): Promise<number> {
+    return await this.blockchainClient.getChainId();
+  }
+
+  async getBalance(address: Address): Promise<bigint> {
+    return await this.blockchainClient.getBalance({
+      address,
+    });
   }
 
   async estimateGasFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }> {

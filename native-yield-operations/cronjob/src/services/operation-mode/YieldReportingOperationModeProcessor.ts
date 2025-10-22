@@ -13,6 +13,12 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
     private readonly maxInactionMs: number,
   ) {}
 
+  /**
+   * Executes one processing cycle:
+   * - Waits for the next `VaultsReportDataUpdated` event **or** a timeout, whichever happens first.
+   * - Once triggered, runs the main processing logic (`_process()`).
+   * - Always cleans up the event watcher afterward.
+   */
   public async process(): Promise<void> {
     const { unwatch, waitForEvent } = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
     try {
@@ -21,7 +27,6 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
         waitForEvent.then(() => "event" as const),
         wait(this.maxInactionMs).then(() => "timeout" as const),
       ]);
-
       await this._process();
       this.logger.info(`poll(): finished via ${winner}`);
     } finally {
@@ -30,5 +35,13 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
     }
   }
 
+  /**
+   * Main processing loop:
+   * 1. Determine whether a new report should be submitted.
+   * 2. Decide whether a rebalance is required.
+   * 3. If rebalancing, calculate the amount and direction.
+   * 4. Execute.
+   * 5. Evaluate execution result, amend if needed.
+   */
   private async _process(): Promise<void> {}
 }

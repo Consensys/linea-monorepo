@@ -28,6 +28,11 @@ export const configSchema = z
     TRIGGER_MAX_INACTION_MS: z.coerce.number().int().positive(),
     CONTRACT_READ_RETRY_TIME_MS: z.coerce.number().int().positive(),
 
+    // Rebalance params
+    // Tolerance band for changes around the target threshold reserve, no rebalance will be done unless exceed this band.
+    // Bps is multiplied by YieldManager.totalSystemBalance().
+    REBALANCE_TOLERANCE_BPS: z.coerce.number().int().positive().max(10000),
+
     // Web3Signer
     WEB3SIGNER_URL: z.string().url(),
     // Accept either an Ethereum address (20 bytes) OR a secp256k1 pubkey (33/65 bytes).

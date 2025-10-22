@@ -1,8 +1,12 @@
 import { Address } from "viem";
-import { LidoStakingVaultWithdrawalParams } from "../../entities/YieldManager";
+import { LidoStakingVaultWithdrawalParams } from "../../entities/LidoStakingVaultWithdrawalParams";
+import { RebalanceRequirement } from "../../entities/RebalanceRequirement";
 
 export interface IYieldManager<TTransactionReceipt> {
   // View calls
+  L1_MESSAGE_SERVICE(): Promise<Address>;
+  getTotalSystemBalance(): Promise<bigint>;
+  getEffectiveTargetWithdrawalReserve(): Promise<bigint>;
   getTargetReserveDeficit(): Promise<bigint>;
   isStakingPaused(yieldProvider: Address): Promise<boolean>;
   isOssificationInitiated(yieldProvider: Address): Promise<boolean>;
@@ -22,4 +26,6 @@ export interface IYieldManager<TTransactionReceipt> {
   pauseStaking(yieldProvider: Address): Promise<TTransactionReceipt | null>;
   unpauseStaking(yieldProvider: Address): Promise<TTransactionReceipt | null>;
   progressPendingOssification(yieldProvider: Address): Promise<TTransactionReceipt | null>;
+  // Utility methods
+  getRebalanceRequirements(): Promise<RebalanceRequirement>;
 }
