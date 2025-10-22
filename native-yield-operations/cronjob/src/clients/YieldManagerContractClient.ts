@@ -1,4 +1,4 @@
-import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src/core/client/IContractClientLibrary";
+import { IContractClientLibrary } from "ts-libs/linea-shared-utils/core/client/IContractClientLibrary";
 import {
   Address,
   encodeFunctionData,
@@ -14,7 +14,7 @@ import {
 import { RebalanceRequirement, RebalanceDirection } from "../core/entities/RebalanceRequirement";
 
 import { YieldManagerABI } from "../core/abis/YieldManager";
-import { IYieldManager } from "../core/services/contracts/IYieldManager";
+import { IYieldManager, YieldProviderData } from "../core/services/contracts/IYieldManager";
 import { IBaseContractClient } from "../core/clients/IBaseContractClient";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt>, IBaseContractClient {
@@ -75,7 +75,11 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return result;
   }
 
-  async fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt | null> {
+  async getYieldProviderData(yieldProvider: Address): Promise<YieldProviderData> {
+    return this.contract.read.getYieldProviderData([yieldProvider]);
+  }
+
+  async fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "fundYieldProvider",
@@ -85,7 +89,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
 
-  async transferFundsToReserve(amount: bigint): Promise<TransactionReceipt | null> {
+  async transferFundsToReserve(amount: bigint): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "transferFundsToReserve",
@@ -95,7 +99,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
 
-  async reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TransactionReceipt | null> {
+  async reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "reportYield",
@@ -108,7 +112,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   async unstake(
     yieldProvider: Address,
     withdrawalParams: LidoStakingVaultWithdrawalParams,
-  ): Promise<TransactionReceipt | null> {
+  ): Promise<TransactionReceipt> {
     const encodedWithdrawalParams = encodeLidoWithdrawalParams(withdrawalParams);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
@@ -119,7 +123,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
 
-  async withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt | null> {
+  async withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "withdrawFromYieldProvider",
@@ -129,7 +133,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
 
-  async addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt | null> {
+  async addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "addToWithdrawalReserve",
@@ -139,7 +143,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
 
-  async safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt | null> {
+  async safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "safeAddToWithdrawalReserve",
@@ -149,7 +153,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
 
-  async pauseStaking(yieldProvider: Address): Promise<TransactionReceipt | null> {
+  async pauseStaking(yieldProvider: Address): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "pauseStaking",
@@ -159,7 +163,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
 
-  async unpauseStaking(yieldProvider: Address): Promise<TransactionReceipt | null> {
+  async unpauseStaking(yieldProvider: Address): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "unpauseStaking",
@@ -169,7 +173,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
 
-  async progressPendingOssification(yieldProvider: Address): Promise<TransactionReceipt | null> {
+  async progressPendingOssification(yieldProvider: Address): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "progressPendingOssification",
@@ -227,5 +231,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       return true;
     }
     return false;
+  }
+
+  async getLidoStakingVaultAddress(yieldProvider: Address): Promise<Address> {
+    const yieldProviderData = await this.getYieldProviderData(yieldProvider);
+    return yieldProviderData.ossifiedEntrypoint;
   }
 }

@@ -1,18 +1,21 @@
-import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src/core/client/IContractClientLibrary";
+import { IContractClientLibrary } from "ts-libs/linea-shared-utils/core/client/IContractClientLibrary";
 import {
   Address,
   encodeFunctionData,
   getContract,
   GetContractReturnType,
-  Hex,
   PublicClient,
   TransactionReceipt,
 } from "viem";
 import { LazyOracleABI } from "../core/abis/LazyOracle";
-import { ILazyOracle, WaitForVaultsReportDataUpdatedEventReturnType } from "../core/services/contracts/ILazyOracle";
-import { LazyOracleReportData } from "../core/entities";
+import {
+  ILazyOracle,
+  UpdateVaultDataParams,
+  WaitForVaultsReportDataUpdatedEventReturnType,
+  LazyOracleReportData,
+} from "../core/services/contracts/ILazyOracle";
 import { IBaseContractClient } from "../core/clients/IBaseContractClient";
-import { ILogger } from "ts-libs/linea-shared-utils/dist";
+import { ILogger } from "ts-libs/linea-shared-utils";
 
 export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>, IBaseContractClient {
   private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;
@@ -47,15 +50,9 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     };
   }
 
-  async updateVaultData(
-    vault: Address,
-    totalValue: bigint,
-    cumulativeLidoFees: bigint,
-    liabilityShares: bigint,
-    maxLiabilityShares: bigint,
-    slashingReserve: bigint,
-    proof: Hex[],
-  ): Promise<TransactionReceipt | null> {
+  async updateVaultData(params: UpdateVaultDataParams): Promise<TransactionReceipt> {
+    const { vault, totalValue, cumulativeLidoFees, liabilityShares, maxLiabilityShares, slashingReserve, proof } =
+      params;
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "updateVaultData",
@@ -63,6 +60,22 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     });
     return await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
+
+  async simulateUpdateVaultData(params: UpdateVaultDataParams): Promise<void> {
+    const { vault, totalValue, cumulativeLidoFees, liabilityShares, maxLiabilityShares, slashingReserve, proof } =
+      params;
+    await this.contract.simulate.updateVaultData([
+      vault,
+      totalValue,
+      cumulativeLidoFees,
+      liabilityShares,
+      maxLiabilityShares,
+      slashingReserve,
+      proof,
+    ]);
+  }
+
+  async withdrawableValue(yieldProvider: Address): Promise<bigint> {}
 
   waitForVaultsReportDataUpdatedEvent(): WaitForVaultsReportDataUpdatedEventReturnType {
     // Create placeholder variable. Initialize to empty fn so it's callable before being reassigned (TS safety).

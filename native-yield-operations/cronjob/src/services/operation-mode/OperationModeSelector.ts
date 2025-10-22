@@ -1,4 +1,4 @@
-import { ILogger } from "ts-libs/linea-shared-utils/src";
+import { ILogger } from "ts-libs/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
 import { TransactionReceipt } from "viem";

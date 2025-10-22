@@ -12,20 +12,35 @@ export interface IYieldManager<TTransactionReceipt> {
   isOssificationInitiated(yieldProvider: Address): Promise<boolean>;
   isOssified(yieldProvider: Address): Promise<boolean>;
   withdrawableValue(yieldProvider: Address): Promise<bigint>;
+  getYieldProviderData(yieldProvider: Address): Promise<YieldProviderData>;
   // Mutator calls
-  fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt | null>;
-  transferFundsToReserve(amount: bigint): Promise<TTransactionReceipt | null>;
-  reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TTransactionReceipt | null>;
+  fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
+  transferFundsToReserve(amount: bigint): Promise<TTransactionReceipt>;
+  reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TTransactionReceipt>;
   unstake(
     yieldProvider: Address,
     withdrawalParams: LidoStakingVaultWithdrawalParams,
-  ): Promise<TTransactionReceipt | null>;
-  withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt | null>;
-  addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt | null>;
-  safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt | null>;
-  pauseStaking(yieldProvider: Address): Promise<TTransactionReceipt | null>;
-  unpauseStaking(yieldProvider: Address): Promise<TTransactionReceipt | null>;
-  progressPendingOssification(yieldProvider: Address): Promise<TTransactionReceipt | null>;
+  ): Promise<TTransactionReceipt>;
+  withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
+  addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
+  safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
+  pauseStaking(yieldProvider: Address): Promise<TTransactionReceipt>;
+  unpauseStaking(yieldProvider: Address): Promise<TTransactionReceipt>;
+  progressPendingOssification(yieldProvider: Address): Promise<TTransactionReceipt>;
   // Utility methods
   getRebalanceRequirements(): Promise<RebalanceRequirement>;
+  getLidoStakingVaultAddress(yieldProvider: Address): Promise<Address>;
+}
+
+export interface YieldProviderData {
+  yieldProviderVendor: number; // enum uint8
+  isStakingPaused: boolean;
+  isOssificationInitiated: boolean;
+  isOssified: boolean;
+  primaryEntrypoint: Address;
+  ossifiedEntrypoint: Address;
+  yieldProviderIndex: bigint; // uint96
+  userFunds: bigint; // uint256
+  yieldReportedCumulative: bigint; // uint256
+  lstLiabilityPrincipal: bigint; // uint256
 }

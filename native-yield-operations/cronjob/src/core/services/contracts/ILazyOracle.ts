@@ -1,17 +1,19 @@
 import { Address, Hex, WatchContractEventReturnType } from "viem";
-import { LazyOracleReportData } from "../../entities";
 export interface ILazyOracle<TransactionReceipt> {
-  updateVaultData(
-    vault: Address,
-    totalValue: bigint,
-    cumulativeLidoFees: bigint,
-    liabilityShares: bigint,
-    maxLiabilityShares: bigint,
-    slashingReserve: bigint,
-    proof: Hex[],
-  ): Promise<TransactionReceipt | null>;
+  updateVaultData(params: UpdateVaultDataParams): Promise<TransactionReceipt>;
+  simulateUpdateVaultData(params: UpdateVaultDataParams): Promise<void>;
   latestReportData(): Promise<LazyOracleReportData>;
   waitForVaultsReportDataUpdatedEvent(): WaitForVaultsReportDataUpdatedEventReturnType;
+}
+
+export interface UpdateVaultDataParams {
+  vault: Address;
+  totalValue: bigint;
+  cumulativeLidoFees: bigint;
+  liabilityShares: bigint;
+  maxLiabilityShares: bigint;
+  slashingReserve: bigint;
+  proof: Hex[];
 }
 
 export interface WaitForVaultsReportDataUpdatedEventReturnType {
@@ -19,4 +21,11 @@ export interface WaitForVaultsReportDataUpdatedEventReturnType {
   unwatch: WatchContractEventReturnType;
   // Resolves when event detected
   waitForEvent: Promise<void>;
+}
+
+export interface LazyOracleReportData {
+  timestamp: bigint;
+  refSlot: bigint;
+  treeRoot: Hex;
+  reportCid: string;
 }

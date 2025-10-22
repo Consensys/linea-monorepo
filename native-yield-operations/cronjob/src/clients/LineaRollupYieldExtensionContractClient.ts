@@ -1,4 +1,4 @@
-import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src/core/client/IContractClientLibrary";
+import { IContractClientLibrary } from "ts-libs/linea-shared-utils/core/client/IContractClientLibrary";
 import {
   Address,
   encodeFunctionData,
@@ -33,7 +33,7 @@ export class LineaRollupYieldExtensionContractClient implements ILineaRollup<Tra
     return this.contract;
   }
 
-  async transferFundsForNativeYield(amount: bigint): Promise<TransactionReceipt | null> {
+  async transferFundsForNativeYield(amount: bigint): Promise<TransactionReceipt> {
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "transferFundsForNativeYield",

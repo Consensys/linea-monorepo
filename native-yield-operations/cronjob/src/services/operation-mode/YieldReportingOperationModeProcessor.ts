@@ -1,7 +1,7 @@
 import { TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor";
-import { ILogger } from "ts-libs/linea-shared-utils/dist";
+import { ILogger } from "ts-libs/linea-shared-utils";
 import { wait } from "sdk/sdk-ethers/dist";
 import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
 
@@ -34,6 +34,8 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
       unwatch();
     }
   }
+
+  // Attempt to submitReport for latest report -> If it works, then we should submit, if simulation fails, then nah.
 
   /**
    * Main processing loop:
