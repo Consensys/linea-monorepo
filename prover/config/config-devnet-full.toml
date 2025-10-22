@@ -1,5 +1,5 @@
 environment = "devnet"
-version = "5.0.2"                              # TODO @gbotrel hunt all version definitions.
+version = "6.0.5"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
@@ -10,7 +10,7 @@ retry_delays = [0, 1]
 prover_mode = "full"
 conflated_traces_dir = "./"
 requests_root_dir = "./"
-ignore_compatibility_check=true
+ignore_compatibility_check=false
 
 [blob_decompression]
 prover_mode = "full"
