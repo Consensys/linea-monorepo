@@ -12,7 +12,6 @@ import { IStakingVault } from "./interfaces/vendor/lido/IStakingVault.sol";
 import { Math256 } from "../libraries/Math256.sol";
 import { CLProofVerifier } from "./libs/CLProofVerifier.sol";
 import { GIndex } from "./libs/vendor/lido/GIndex.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 import { IPermissionsManager } from "../security/access/interfaces/IPermissionsManager.sol";
 import { ProgressOssificationResult, YieldProviderRegistration, YieldProviderVendor } from "./interfaces/YieldTypes.sol";
@@ -22,7 +21,7 @@ import { ProgressOssificationResult, YieldProviderRegistration, YieldProviderVen
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initializable, IGenericErrors {
+contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGenericErrors {
   /// @notice Byte-length of a validator BLS pubkey.
   uint256 private constant PUBLIC_KEY_LENGTH = 48;
 
@@ -85,13 +84,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, Initial
     VAULT_HUB = IVaultHub(_vaultHub);
     VAULT_FACTORY = IVaultFactory(_vaultFactory);
     STETH = IStETH(_steth);
-    _disableInitializers();
   }
-
-  /**
-   * @dev Storage is expected to be initialized via the permissioned YieldManager.addYieldProvider function
-   */
-  function initialize() external initializer {}
 
   /// @notice Helper function to get the Lido contract to interact with.
   function _getEntrypointContract(address _yieldProvider) internal view returns (address entrypointContract) {
