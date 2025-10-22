@@ -55,7 +55,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
-      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents) {
+      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents,
+      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
 
@@ -75,7 +76,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             tracerConfiguration,
             maybeProfitabilityMetrics,
             invalidTransactionByLineCountCache,
-            deniedEvents);
+            deniedEvents,
+            deniedBundleEvents);
   }
 
   /**
@@ -99,7 +101,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaTracerConfiguration tracerConfiguration,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
-      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents) {
+      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents,
+      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
@@ -121,7 +124,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             new MaxBundleGasPerBlockTransactionSelector(
                 selectorsStateManager, txSelectorConfiguration.maxBundleGasPerBlock()),
             traceLineLimitTransactionSelector,
-            new TransactionEventPostProcessingSelector(deniedEvents));
+            new TransactionEventPostProcessingSelector(deniedEvents, deniedBundleEvents));
 
     return selectors;
   }

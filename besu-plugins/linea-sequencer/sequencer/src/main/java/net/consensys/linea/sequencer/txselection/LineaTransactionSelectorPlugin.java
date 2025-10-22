@@ -46,7 +46,9 @@ import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin {
   private TransactionSelectionService transactionSelectionService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
-  private AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents =
+  private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents =
+      new AtomicReference<>(Collections.emptySet());
+  private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents =
       new AtomicReference<>(Collections.emptySet());
 
   @Override
@@ -114,6 +116,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             : Optional.empty();
 
     deniedEvents.set(txSelectorConfiguration.eventsDenyList());
+    deniedBundleEvents.set(txSelectorConfiguration.eventsBundleDenyList());
 
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
@@ -127,7 +130,8 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             maybeProfitabilityMetrics,
             bundlePoolService,
             getInvalidTransactionByLineCountCache(),
-            deniedEvents));
+            deniedEvents,
+            deniedBundleEvents));
   }
 
   @Override
@@ -144,6 +148,12 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
               .parseTransactionEventDenyList(
                   transactionSelectorConfiguration().eventsDenyListPath());
       deniedEvents.set(newDeniedEvents);
+
+      Set<TransactionEventSelectionDescription> newDeniedBundleEvents =
+          LineaTransactionSelectorCliOptions.create()
+              .parseTransactionEventDenyList(
+                  transactionSelectorConfiguration().eventsBundleDenyListPath());
+      deniedBundleEvents.set(newDeniedBundleEvents);
       return CompletableFuture.completedFuture(null);
     } catch (Exception e) {
       return CompletableFuture.failedFuture(e);

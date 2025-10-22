@@ -53,6 +53,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
   private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents;
+  private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents;
 
   public LineaTransactionSelectorFactory(
       final BlockchainService blockchainService,
@@ -65,7 +66,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final BundlePoolService bundlePoolService,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
-      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents) {
+      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents,
+      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents) {
     this.blockchainService = blockchainService;
     this.txSelectorConfiguration = txSelectorConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
@@ -77,6 +79,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.livenessService = livenessService;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
     this.deniedEvents = deniedEvents;
+    this.deniedBundleEvents = deniedBundleEvents;
   }
 
   @Override
@@ -92,7 +95,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
             rejectedTxJsonRpcManager,
             maybeProfitabilityMetrics,
             invalidTransactionByLineCountCache,
-            deniedEvents);
+            deniedEvents,
+            deniedBundleEvents);
     currSelector.set(selector);
     return selector;
   }
