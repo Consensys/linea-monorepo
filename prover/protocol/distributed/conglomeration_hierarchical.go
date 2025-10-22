@@ -402,6 +402,16 @@ func (c *ModuleConglo) Assign(
 		prodGrandProduct            = field.One()
 	)
 
+	// This assigns the functional public input by summing them
+	for f := range c.PublicInputs.Functionals {
+		var sumValue field.Element
+		for instance := 0; instance < aggregationArity; instance++ {
+			sumValue.Add(&sumValue, &collectedPIs[instance].Functionals[f])
+		}
+		pi := c.PublicInputs.Functionals[f]
+		assignPiColumn(run, pi.Name, sumValue)
+	}
+
 	for instance := 0; instance < aggregationArity; instance++ {
 
 		collectedPIs[instance] = c.collectAllPublicInputsOfInstance(run, instance)
