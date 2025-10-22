@@ -24,6 +24,12 @@ type Poseidon2FieldHasherDigest struct {
 	buffer []field.Element // data to hash
 }
 
+// Reset clears the buffer, and reset state to iv
+func (d *Poseidon2FieldHasherDigest) Reset() {
+	d.buffer = d.buffer[:0]
+	d.state = field.Octuplet{}
+}
+
 // WriteElements adds a slice of field elements to the running hash.
 func (d *Poseidon2FieldHasherDigest) WriteElements(elmts []field.Element) {
 	quo := (len(d.buffer) + len(elmts)) / maxSizeBuf
