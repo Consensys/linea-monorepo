@@ -7,6 +7,6 @@ export interface IValidatorDataClient {
   // iii.) Subtract pending withdrawals from active balances
   getActiveValidatorsByLargestBalances(): Promise<ValidatorBalance[]>;
   //   getWithdrawalRequestsToFulfilAmount(amountWei: bigint): Promise<WithdrawalRequests>;
-  //   getPendingPartialWithdrawals(): Promise<void>;
+  getTotalPendingPartialWithdrawals(): Promise<bigint>;
   //   getPendingValidatorExits(): Promise<void>;
 }
