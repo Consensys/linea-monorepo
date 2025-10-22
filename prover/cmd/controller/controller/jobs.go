@@ -233,3 +233,9 @@ func intIfRegexpNotNil(r *regexp2.Regexp, s string) int {
 	}
 	return res
 }
+
+func isExecLimitlessJob(job *Job) bool {
+	return job.Def.Name == jobNameBootstrap || job.Def.Name == jobNameConglomeration ||
+		strings.HasPrefix(job.Def.Name, jobNameGL) ||
+		strings.HasPrefix(job.Def.Name, jobNameLPP)
+}

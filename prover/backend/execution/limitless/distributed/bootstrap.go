@@ -196,8 +196,8 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 
 				// Clean up any prev. witness file (and temp variants) before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
-				_ = files.RemoveMatchingFiles(WitnessGLPatternFrom)
-				_ = files.RemoveMatchingFiles(WitnessGLPatternDone)
+				_ = files.RemoveMatchingFiles(WitnessGLPatternFrom, false)
+				_ = files.RemoveMatchingFiles(WitnessGLPatternDone, false)
 
 				if err := serialization.StoreToDisk(witnessGLFile, *witnessGL, true); err != nil {
 					return fmt.Errorf("could not save witnessGL: %w", err)
@@ -237,8 +237,8 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 
 				// Clean up any prev. witness file (and temp variants) before starting. This helps addressing the situation
 				// where a previous process have been interrupted.
-				_ = files.RemoveMatchingFiles(WitnessLPPPatternFrom)
-				_ = files.RemoveMatchingFiles(WitnessLPPPatternDone)
+				_ = files.RemoveMatchingFiles(WitnessLPPPatternFrom, false)
+				_ = files.RemoveMatchingFiles(WitnessLPPPatternDone, false)
 
 				if err := serialization.StoreToDisk(witnessLPPFile, *witnessLPP, true); err != nil {
 					return fmt.Errorf("could not save witnessLPP: %w", err)

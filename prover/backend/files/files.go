@@ -179,17 +179,21 @@ func (z *ZipFile) Close() error {
 
 // RemoveMatchingFiles deletes all files matching the given pattern.
 // The pattern can include wildcards like "*.tmp.*" or "filename*".
-func RemoveMatchingFiles(pattern string) error {
+func RemoveMatchingFiles(pattern string, isLog bool) error {
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		return fmt.Errorf("glob pattern failed for %q: %w", pattern, err)
 	}
 	// Nothing to delete
 	if len(matches) == 0 {
-		logrus.Infof("No file found matching pattern:%s to delete", pattern)
+		if isLog {
+			logrus.Infof("No file found matching pattern:%s", pattern)
+		}
+
 		return nil
 	}
 
+	logrus.Infof("Files found matching pattern:%s", pattern)
 	for _, file := range matches {
 		if err := os.Remove(file); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("failed to remove %s: %w", file, err)

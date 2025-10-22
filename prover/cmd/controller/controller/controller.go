@@ -26,6 +26,13 @@ type ControllerState struct {
 	jobDoneChanMu sync.Mutex
 }
 
+var (
+	// Atomic coordination flags
+	spotReclaimDetected       atomic.Bool
+	gracefulShutdownRequested atomic.Bool
+	peerAbortDetected         atomic.Bool
+)
+
 // runController runs the controller main loop.
 func runController(ctx context.Context, cfg *config.Config) {
 	var (
@@ -38,10 +45,6 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 		// Track the number of retries so far
 		numRetrySoFar int
-
-		// Atomic coordination flags
-		spotReclaimDetected       atomic.Bool
-		gracefulShutdownRequested atomic.Bool
 
 		// Channel to receive signals
 		signalChan = make(chan os.Signal, 2)
@@ -60,14 +63,17 @@ func runController(ctx context.Context, cfg *config.Config) {
 	cmdCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGUSR1)
+	// Graceful shutdown => Only SIGTERM
+	// Spot-reclaim => SIGUSR1 and SIGTERM
+	// Peer Abort   => SIGUSR2 and SIGTERM
+	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 	defer signal.Stop(signalChan)
 
 	// Spin up the signal handler go routine to handle SIGTERM and SIGUSR1 signals
-	go state.handleSignals(cancel, cLog, cfg, signalChan, &spotReclaimDetected, &gracefulShutdownRequested)
+	go state.handleSignals(cancel, cLog, cfg, signalChan)
 
 	// Spin up the log on context done go routine for prompt logging and diagnostics
-	go state.logOnCtxDone(cmdCtx, cLog, &spotReclaimDetected, &gracefulShutdownRequested, cfg)
+	go state.logOnCtxDone(cmdCtx, cLog, cfg)
 
 	// If any files are locked to RAM unlock it before exiting
 	defer assets.UnlockAllLockedFiles()
@@ -184,14 +190,7 @@ func (st *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
 	st.notifyJobDone()
 }
 
-func (st *ControllerState) handleSignals(
-	cancel context.CancelFunc,
-	cLog *logrus.Entry,
-	cfg *config.Config,
-	signalChan <-chan os.Signal,
-	spotReclaimDetected *atomic.Bool,
-	gracefulShutdownRequested *atomic.Bool,
-) {
+func (st *ControllerState) handleSignals(cancel context.CancelFunc, cLog *logrus.Entry, cfg *config.Config, signalChan <-chan os.Signal) {
 
 	for sig := range signalChan {
 		switch sig {
@@ -246,9 +245,14 @@ func (st *ControllerState) handleSignals(
 				cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
 				cancel()
 			}
+
+		case syscall.SIGUSR2:
+			cLog.Warn("Received SIGUSR2 (Abort-By-Peer): cancelling the context and shutting down immediately")
+			// Mark peer abort flag
+			peerAbortDetected.Store(true)
+			cancel()
 		}
 	}
-
 }
 
 // handleJobResult processes a job according to its exit status.
@@ -396,8 +400,8 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 // This is relevant only for limitless jobs
 func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logrus.Entry, exitCode int) error {
 
-	// Relevant only for limitless jobs
-	if !isLimitless(st.activeJob) {
+	// Relevant only for limitless jobs (excl. conglomeration - final stage)
+	if !isExecLimitlessJob(st.activeJob) || st.activeJob.Def.Name == jobNameConglomeration {
 		return nil
 	}
 
@@ -418,7 +422,8 @@ func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logr
 
 func (st *ControllerState) rmTransientFailureFiles(cfg *config.Config, cLog *logrus.Entry) error {
 
-	if !isLimitless(st.activeJob) {
+	// Relevant only for limitless jobs (excl. conglomeration - final stage)
+	if !isExecLimitlessJob(st.activeJob) || st.activeJob.Def.Name == jobNameConglomeration {
 		return nil
 	}
 
@@ -426,12 +431,10 @@ func (st *ControllerState) rmTransientFailureFiles(cfg *config.Config, cLog *log
 	// and prevent false-postives
 	sharedFilePattern := fmt.Sprintf("%d-%d-%s-failure_code*", st.activeJob.Start, st.activeJob.End, st.activeJob.Def.Name)
 	cLog.Infof("Removing any transient failure files matching pattern:%s before executing job:%s", sharedFilePattern, st.activeJob.Def.Name)
-	return files.RemoveMatchingFiles(filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFilePattern))
+	return files.RemoveMatchingFiles(filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFilePattern), true)
 }
 
-func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Entry,
-	spotReclaimDetected *atomic.Bool, gracefulShutdownRequested *atomic.Bool, cfg *config.Config) {
-
+func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Entry, cfg *config.Config) {
 	<-cmdCtx.Done()
 	if spotReclaimDetected.Load() {
 		cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
@@ -481,10 +484,4 @@ func logRetryMessage(cLog *logrus.Entry, msg string, numRetry int) {
 	} else {
 		cLog.Info(msg)
 	}
-}
-
-func isLimitless(job *Job) bool {
-	return job.Def.Name == jobNameBootstrap ||
-		strings.HasPrefix(job.Def.Name, jobNameGL) ||
-		strings.HasPrefix(job.Def.Name, jobNameLPP)
 }
