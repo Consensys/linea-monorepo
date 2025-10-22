@@ -10,6 +10,6 @@ public abstract class AbstractTransactionPostProcessingSelector
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       final TransactionEvaluationContext evaluationContext) {
-    return null;
+    return TransactionSelectionResult.SELECTED;
   }
 }
