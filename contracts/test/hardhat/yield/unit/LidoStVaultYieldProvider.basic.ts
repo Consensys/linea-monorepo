@@ -167,6 +167,32 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
+
+    it("Should succeed and emit the correct deployment event", async () => {
+      const contractFactory = await ethers.getContractFactory("TestLidoStVaultYieldProvider");
+      const contract = await contractFactory.deploy(
+        l1MessageServiceAddress,
+        yieldManagerAddress,
+        vaultHubAddress,
+        vaultFactoryAddress,
+        stethAddress,
+        GI_FIRST_VALIDATOR,
+        GI_FIRST_VALIDATOR_AFTER_CHANGE,
+        CHANGE_SLOT,
+      );
+      expect(contract.deploymentTransaction)
+        .to.emit(contract, "LidoStVaultYieldProviderDeployed")
+        .withArgs(
+          l1MessageServiceAddress,
+          yieldManagerAddress,
+          vaultHubAddress,
+          vaultFactoryAddress,
+          stethAddress,
+          GI_FIRST_VALIDATOR,
+          GI_FIRST_VALIDATOR_AFTER_CHANGE,
+          CHANGE_SLOT,
+        );
+    });
   });
 
   describe("Immutables", () => {

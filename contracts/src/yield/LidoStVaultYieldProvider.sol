@@ -40,6 +40,28 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   /// @notice amount of ETH that is locked on the vault on connect and can be withdrawn on disconnect only
   uint256 public constant CONNECT_DEPOSIT = 1 ether;
 
+  /**
+   * @notice Emitted whenever LidoStVaultYieldProvider is deployed.
+   * @param l1MessageService The Linea L1MessageService, also the withdrawal reserve.
+   * @param yieldManager The Linea YieldManager.
+   * @param vaultHub Lido VaultHub contract.
+   * @param vaultFactory Lido VaultFactory contract.
+   * @param steth Lido stETH contract.
+   * @param gIFirstValidator Packed generalized index for the first validator before the pivot slot.
+   * @param gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
+   * @param changeSlot Beacon chain slot at which the validator generalized index changes.
+   */
+  event LidoStVaultYieldProviderDeployed(
+    address l1MessageService,
+    address yieldManager,
+    address vaultHub,
+    address vaultFactory,
+    address steth,
+    GIndex gIFirstValidator,
+    GIndex gIFirstValidatorAfterChange,
+    uint64 changeSlot
+  );
+
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
   /// @param stakingVault The staking vault address.
   /// @param refundRecipient Address designated to receive surplus withdrawal-fee refunds.
@@ -84,6 +106,17 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     VAULT_HUB = IVaultHub(_vaultHub);
     VAULT_FACTORY = IVaultFactory(_vaultFactory);
     STETH = IStETH(_steth);
+
+    emit LidoStVaultYieldProviderDeployed(
+      _l1MessageService,
+      _yieldManager,
+      _vaultHub,
+      _vaultFactory,
+      _steth,
+      _gIFirstValidator,
+      _gIFirstValidatorAfterChange,
+      _changeSlot
+    );
   }
 
   /// @notice Helper function to get the Lido contract to interact with.
