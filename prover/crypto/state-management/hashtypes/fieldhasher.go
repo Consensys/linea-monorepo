@@ -9,40 +9,37 @@ import (
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-// Poseidon2Hasher is a concrete implementation of the FieldHasher interface using the Poseidon2 hash function.
+// Poseidon2Hasher implements a Poseidon2-based hasher that works with both field elements and bytes
 type Poseidon2Hasher struct {
-	// By embedding hash.Hash, Poseidon2Hasher satisfies the standard Go hash interface,
-	// allowing it to be used with standard library packages that expect a hash.Hash.
 	hash.StateStorer
 	maxValue Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
-	h    field.Octuplet
-	data []field.Element // data to hash
+	state  field.Octuplet
+	buffer []field.Element // data to hash
 }
 
 // WriteElement adds a field element to the running hash.
 func (d Poseidon2Hasher) WriteElement(e field.Element) {
-	d.data = append(d.data, e)
+	d.buffer = append(d.buffer, e)
 }
 
 // WriteElements adds a slice of field elements to the running hash.
 func (d Poseidon2Hasher) WriteElements(elems []field.Element) {
-	d.data = append(d.data, elems...)
+	d.buffer = append(d.buffer, elems...)
 }
 
 func (p Poseidon2Hasher) SumElement() field.Octuplet {
-	p.h = poseidon2.Poseidon2Sponge(p.data)
-	p.data = p.data[:0]
+	p.state = poseidon2.Poseidon2Sponge(p.buffer)
+	p.buffer = p.buffer[:0]
 
-	return p.h
+	return p.state
 }
 
-// ///// Implementation for the FieldHasher interface ///////
 func (p Poseidon2Hasher) SumElements(xs []field.Element) field.Octuplet {
-	p.h = poseidon2.Poseidon2Sponge(xs)
+	p.state = poseidon2.Poseidon2Sponge(xs)
 
-	return p.h
+	return p.state
 }
 
 func (p Poseidon2Hasher) MaxBytes32() Bytes32 {
@@ -58,7 +55,7 @@ func Poseidon2() Poseidon2Hasher {
 	return Poseidon2Hasher{
 		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
 		maxValue:    HashToBytes32(maxVal),
-		h:           field.Octuplet{},
-		data:        make([]field.Element, 0),
+		state:       field.Octuplet{},
+		buffer:      make([]field.Element, 0),
 	}
 }
