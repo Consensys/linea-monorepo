@@ -2,13 +2,14 @@ import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor";
 import { ILogger } from "ts-libs/linea-shared-utils";
-import { wait } from "sdk/sdk-ethers/dist";
+import { wait } from "sdk/sdk-ethers";
 import { ILazyOracle, UpdateVaultDataParams } from "../../core/services/contracts/ILazyOracle";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient";
 import { RebalanceDirection, RebalanceRequirement } from "../../core/entities/RebalanceRequirement";
 import { ILineaRollupYieldExtension } from "../../core/services/contracts/ILineaRollupYieldExtension";
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient";
 
+// FIRST PRIORITY FOR UNIT TESTING
 export class YieldReportingOperationModeProcessor implements IOperationModeProcessor {
   constructor(
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
@@ -152,7 +153,9 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
       await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
     }
     // Then perform rebalance
-    // TODO - Skip if only dust will be moved to LineaRollup
-    await this.yieldManagerContractClient.safeAddToWithdrawalReserve(this.yieldProvider, rebalanceAmount);
+    await this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(
+      this.yieldProvider,
+      rebalanceAmount,
+    );
   }
 }

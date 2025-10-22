@@ -29,6 +29,12 @@ export interface IYieldManager<TTransactionReceipt> {
   getLidoStakingVaultAddress(yieldProvider: Address): Promise<Address>;
   pauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | null>;
   unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | null>;
+  getAvailableUnstakingRebalanceBalance(yieldProvider: Address): Promise<bigint>;
+  safeAddToWithdrawalReserveIfAboveThreshold(
+    yieldProvider: Address,
+    amount: bigint,
+  ): Promise<TTransactionReceipt | null>;
+  safeMaxAddToWithdrawalReserve(yieldProvider: Address): Promise<TTransactionReceipt | null>;
 }
 
 export interface YieldProviderData {

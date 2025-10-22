@@ -36,6 +36,13 @@ export const configSchema = z
     // Unstake params
     MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: z.coerce.number().int().positive(),
 
+    // Withdrawal settings
+    // Minimum withdrawal threshold — no withdrawal occurs if available amount < threshold.
+    MIN_WITHDRAWAL_THRESHOLD_ETH: z
+      .union([z.string(), z.number(), z.bigint()])
+      .transform((val) => BigInt(val))
+      .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
+
     // Web3Signer
     WEB3SIGNER_URL: z.string().url(),
     // Accept either an Ethereum address (20 bytes) OR a secp256k1 pubkey (33/65 bytes).

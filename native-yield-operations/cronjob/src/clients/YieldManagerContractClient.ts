@@ -16,6 +16,7 @@ import { RebalanceRequirement, RebalanceDirection } from "../core/entities/Rebal
 import { YieldManagerABI } from "../core/abis/YieldManager";
 import { IYieldManager, YieldProviderData } from "../core/services/contracts/IYieldManager";
 import { IBaseContractClient } from "../core/clients/IBaseContractClient";
+import { ONE_ETHER } from "ts-libs/linea-shared-utils/src/core/constants/blockchain";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt>, IBaseContractClient {
   private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
@@ -24,6 +25,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
     private readonly rebalanceToleranceBps: number,
+    private readonly minWithdrawalThresholdEth: bigint,
   ) {
     this.contractClientLibrary = contractClientLibrary;
     this.contractAddress = contractAddress;
@@ -244,10 +246,34 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     }
     return null;
   }
+
   async unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
     if (!(await this.isStakingPaused(yieldProvider))) {
       return await this.unpauseStaking(yieldProvider);
     }
     return null;
+  }
+
+  async getAvailableUnstakingRebalanceBalance(yieldProvider: Address): Promise<bigint> {
+    const [yieldManagerBalance, yieldProviderWithdrawableBalance] = await Promise.all([
+      this.contractClientLibrary.getBalance(this.contractAddress),
+      this.withdrawableValue(yieldProvider),
+    ]);
+    return yieldManagerBalance + yieldProviderWithdrawableBalance;
+  }
+
+  async safeAddToWithdrawalReserveIfAboveThreshold(
+    yieldProvider: Address,
+    amount: bigint,
+  ): Promise<TransactionReceipt | null> {
+    const availableWithdrawalBalance = await this.getAvailableUnstakingRebalanceBalance(yieldProvider);
+    if (availableWithdrawalBalance < this.minWithdrawalThresholdEth * ONE_ETHER) return null;
+    return await this.safeAddToWithdrawalReserve(yieldProvider, amount);
+  }
+
+  async safeMaxAddToWithdrawalReserve(yieldProvider: Address): Promise<TransactionReceipt | null> {
+    const availableWithdrawalBalance = await this.getAvailableUnstakingRebalanceBalance(yieldProvider);
+    if (availableWithdrawalBalance < this.minWithdrawalThresholdEth * ONE_ETHER) return null;
+    return await this.safeAddToWithdrawalReserve(yieldProvider, availableWithdrawalBalance);
   }
 }
