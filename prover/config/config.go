@@ -318,9 +318,11 @@ type ExecutionLimitless struct {
 	SubproofsDir        string `mapstructure:"subproofs_dir"`
 	CommitsDir          string `mapstructure:"commits_dir"`
 	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
-	GLSubproofsTimeout  int    `mapstructure:"gl_subproofs_timeout" validate:"gt=0,number"`
-	RndBeaconTimeout    int    `mapstructure:"rnd_beacon_timeout" validate:"gt=0,number"`
-	LPPSubproofsTimeout int    `mapstructure:"lpp_subproofs_timeout" validate:"gt=0,number"`
+	SharedFailureDir    string `mapstructure:"shared_failure_dir"`
+
+	GLSubproofsTimeout  int `mapstructure:"gl_subproofs_timeout" validate:"gt=0,number"`
+	RndBeaconTimeout    int `mapstructure:"rnd_beacon_timeout" validate:"gt=0,number"`
+	LPPSubproofsTimeout int `mapstructure:"lpp_subproofs_timeout" validate:"gt=0,number"`
 }
 
 type Execution struct {

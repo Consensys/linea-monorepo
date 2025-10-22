@@ -61,6 +61,9 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 
 	// Limitless specific dirs
 	limitlessDirs := []string{
+		// Shared transitent failure dir for distributed error propogation
+		cfg.ExecutionLimitless.SharedFailureDir,
+
 		path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsFromSubDir),
 		path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir),
 

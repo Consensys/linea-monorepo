@@ -69,6 +69,7 @@ func setDefaultPaths() {
 
 func setDefaultExecLimitlessParams() {
 	viper.SetDefault("exec_limitless.preload_assets", true)
+	viper.SetDefault("exec_limitless.shared_failure_dir", "/tmp/exec-limitless/failure")
 	viper.SetDefault("exec_limitless.metadata_dir", "/tmp/exec-limitless/metadata")
 	viper.SetDefault("exec_limitless.witness_dir", "/tmp/exec-limitless/witness")
 	viper.SetDefault("exec_limitless.subproofs_dir", "/tmp/exec-limitless/subproofs")
