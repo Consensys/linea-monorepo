@@ -6,6 +6,11 @@ export interface LidoStakingVaultWithdrawalParams {
   refundRecipient: Address;
 }
 
+export interface WithdrawalRequests {
+  pubkeys: Hex[];
+  amountsGwei: bigint[];
+}
+
 export function encodeLidoWithdrawalParams(params: LidoStakingVaultWithdrawalParams): Hex {
   return encodeAbiParameters(
     [

@@ -8,10 +8,12 @@ import {
   TransactionReceipt,
 } from "viem";
 import { LineaRollupYieldExtensionABI } from "../core/abis/LineaRollupYieldExtension";
-import { ILineaRollup } from "../core/services/contracts/ILineaRollup";
+import { ILineaRollupYieldExtension } from "../core/services/contracts/ILineaRollupYieldExtension";
 import { IBaseContractClient } from "../core/clients/IBaseContractClient";
 
-export class LineaRollupYieldExtensionContractClient implements ILineaRollup<TransactionReceipt>, IBaseContractClient {
+export class LineaRollupYieldExtensionContractClient
+  implements ILineaRollupYieldExtension<TransactionReceipt>, IBaseContractClient
+{
   private readonly contract: GetContractReturnType<typeof LineaRollupYieldExtensionABI, PublicClient, Address>;
 
   constructor(

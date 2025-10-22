@@ -17,10 +17,7 @@ export interface IYieldManager<TTransactionReceipt> {
   fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
   transferFundsToReserve(amount: bigint): Promise<TTransactionReceipt>;
   reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TTransactionReceipt>;
-  unstake(
-    yieldProvider: Address,
-    withdrawalParams: LidoStakingVaultWithdrawalParams,
-  ): Promise<TTransactionReceipt>;
+  unstake(yieldProvider: Address, withdrawalParams: LidoStakingVaultWithdrawalParams): Promise<TTransactionReceipt>;
   withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
   addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
   safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
@@ -30,6 +27,8 @@ export interface IYieldManager<TTransactionReceipt> {
   // Utility methods
   getRebalanceRequirements(): Promise<RebalanceRequirement>;
   getLidoStakingVaultAddress(yieldProvider: Address): Promise<Address>;
+  pauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | null>;
+  unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | null>;
 }
 
 export interface YieldProviderData {

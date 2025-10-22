@@ -1,3 +1,3 @@
-export interface ILineaRollup<TransactionReceipt> {
+export interface ILineaRollupYieldExtension<TransactionReceipt> {
   transferFundsForNativeYield(amount: bigint): Promise<TransactionReceipt>;
 }

@@ -26,6 +26,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     contractReadRetryTimeMs: env.CONTRACT_READ_RETRY_TIME_MS,
   },
   rebalanceToleranceBps: env.REBALANCE_TOLERANCE_BPS,
+  maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
   web3signer: {
     url: env.WEB3SIGNER_URL,
     publicKey: env.WEB3SIGNER_PUBLIC_KEY as Hex, // address or secp pubkey (compressed/uncompressed)

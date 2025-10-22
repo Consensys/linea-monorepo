@@ -237,4 +237,17 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     const yieldProviderData = await this.getYieldProviderData(yieldProvider);
     return yieldProviderData.ossifiedEntrypoint;
   }
+
+  async pauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
+    if (await this.isStakingPaused(yieldProvider)) {
+      return await this.pauseStaking(yieldProvider);
+    }
+    return null;
+  }
+  async unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
+    if (!(await this.isStakingPaused(yieldProvider))) {
+      return await this.unpauseStaking(yieldProvider);
+    }
+    return null;
+  }
 }

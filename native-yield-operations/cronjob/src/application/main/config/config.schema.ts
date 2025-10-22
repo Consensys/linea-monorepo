@@ -33,6 +33,9 @@ export const configSchema = z
     // Bps is multiplied by YieldManager.totalSystemBalance().
     REBALANCE_TOLERANCE_BPS: z.coerce.number().int().positive().max(10000),
 
+    // Unstake params
+    MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: z.coerce.number().int().positive(),
+
     // Web3Signer
     WEB3SIGNER_URL: z.string().url(),
     // Accept either an Ethereum address (20 bytes) OR a secp256k1 pubkey (33/65 bytes).
