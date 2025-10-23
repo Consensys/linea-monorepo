@@ -15,46 +15,8 @@
 
 package net.consensys.linea.zktracer.precompiles;
 
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLAKE2_PER_ROUND;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_G1_ADD;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_G2_ADD;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_MAP_FP2_TO_G2;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_MAP_FP_TO_G1;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_PAIRING_CHECK;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_PAIRING_CHECK_PAIR;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECADD;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECMUL;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECPAIRING;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECPAIRING_PAIR;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECRECOVER;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_IDENTITY;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_IDENTITY_WORD;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_MODEXP;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_POINT_EVALUATION;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_RIPEMD;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_RIPEMD_WORD;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_SHA2;
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_SHA2_WORD;
-import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G1_MSM;
-import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G2_MSM;
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.Trace.Oob.G_QUADDIVISOR;
-import static net.consensys.linea.zktracer.Trace.PRC_BLS_G1_MSM_MULTIPLICATION_COST;
-import static net.consensys.linea.zktracer.Trace.PRC_BLS_G2_MSM_MULTIPLICATION_COST;
-import static net.consensys.linea.zktracer.Trace.PRC_BLS_MULTIPLICATION_MULTIPLIER;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G1_MSM;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G2_MSM;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_UNIT_SIZE___ECPAIRING;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_ADD;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_MSM;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_ADD;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_MSM;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP2_TO_G2;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP_TO_G1;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___BLS_PAIRING_CHECK;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_RETURN_DATA_SIZE___POINT_EVALUATION;
-import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
-import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.populateMemory;
 import static org.hyperledger.besu.datatypes.Address.*;
 

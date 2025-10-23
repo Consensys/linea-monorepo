@@ -378,14 +378,6 @@ public class CallSection extends TraceSection
   }
 
   private void prcProcessing(Hub hub) {
-    // TODO: remove me when Linea supports Cancun & Prague precompiles
-    if (isKzgPrecompileCall(calleeAddress, hub.fork)) {
-      hub.pointEval().detectEvent();
-    }
-    if (isBlsPrecompileCall(calleeAddress, hub.fork)) {
-      hub.bls().detectEvent();
-    }
-
     precompileSubsection = ADDRESS_TO_PRECOMPILE.get(calleeFirst.address()).apply(hub, this);
     hub.defers().scheduleForContextEntry(this);
     hub.defers().scheduleForContextReEntry(this, hub.currentFrame());

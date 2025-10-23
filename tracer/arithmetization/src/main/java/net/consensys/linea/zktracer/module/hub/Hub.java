@@ -271,10 +271,6 @@ public abstract class Hub implements Module {
   private final BlakeRounds blakeRounds = new BlakeRounds();
 
   // Related to Bls
-  // TODO: remove me when Linea supports Cancun & Prague precompiles
-  private final IncrementAndDetectModule pointEval = new IncrementAndDetectModule(POINT_EVAL) {};
-  private final IncrementAndDetectModule bls = new IncrementAndDetectModule(BLS) {};
-
   final IncrementingModule pointEvaluationEffectiveCall =
       new IncrementingModule(PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS);
   final IncrementingModule pointEvaluationFailureCall =
@@ -336,9 +332,7 @@ public abstract class Hub implements Module {
         blsG1MembershipCalls,
         blsG2MembershipCalls,
         l1BlockSize,
-        l2L1Logs,
-        pointEval,
-        bls);
+        l2L1Logs);
   }
 
   /*
