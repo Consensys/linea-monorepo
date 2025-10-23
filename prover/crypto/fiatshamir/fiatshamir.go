@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // State holds a Fiat-Shamir state. The Fiat-Shamir state can be updated by
@@ -131,9 +130,7 @@ func RandomManyIntegers(h *poseidon2.Poseidon2FieldHasherDigest, num, upperBound
 	)
 
 	for {
-		d := types.HashToBytes32(h.SumElement())
-		var digest [32]byte
-		copy(digest[:], d[:])
+		digest := h.Sum(nil)
 		buffer := NewBitReader(digest[:], field.Bits-1)
 
 		// Increase the counter
