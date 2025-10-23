@@ -1,7 +1,7 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor";
-import { ILogger } from "ts-libs/linea-shared-utils";
+import { ILogger } from "@consensys/linea-shared-utils";
 import { wait } from "sdk/sdk-ethers";
 import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient";

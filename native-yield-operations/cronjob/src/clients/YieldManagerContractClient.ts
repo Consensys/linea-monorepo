@@ -1,4 +1,4 @@
-import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src";
+import { IContractClientLibrary } from "@consensys/linea-shared-utils";
 import {
   Address,
   encodeFunctionData,
@@ -13,7 +13,7 @@ import { RebalanceRequirement, RebalanceDirection } from "../core/entities/Rebal
 import { YieldManagerABI } from "../core/abis/YieldManager";
 import { IYieldManager, YieldProviderData } from "../core/services/contracts/IYieldManager";
 import { IBaseContractClient } from "../core/clients/IBaseContractClient";
-import { ONE_ETHER } from "ts-libs/linea-shared-utils/src/core/constants/blockchain";
+import { ONE_ETHER } from "@consensys/linea-shared-utils/core/constants/blockchain";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt>, IBaseContractClient {
   private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;

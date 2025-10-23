@@ -13,7 +13,7 @@
 
 import { BeaconNodeApiClient, WinstonLogger } from "@consensys/linea-shared-utils";
 import { ConsensysStakingGraphQLClient } from "../src/clients/ConsensysStakingGraphQLClient";
-import { OAuth2TokenClient } from "ts-libs/linea-shared-utils/src";
+import { OAuth2TokenClient } from "@consensys/linea-shared-utils";
 import { createApolloClient } from "../src/utils/createApolloClient";
 
 // private readonly apolloClient: ApolloClient,

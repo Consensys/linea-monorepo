@@ -1,4 +1,4 @@
-import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src";
+import { IContractClientLibrary } from "@consensys/linea-shared-utils";
 import {
   Address,
   encodeFunctionData,
@@ -15,7 +15,7 @@ import {
   LazyOracleReportData,
 } from "../core/services/contracts/ILazyOracle";
 import { IBaseContractClient } from "../core/clients/IBaseContractClient";
-import { ILogger } from "ts-libs/linea-shared-utils";
+import { ILogger } from "@consensys/linea-shared-utils";
 
 export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>, IBaseContractClient {
   private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;

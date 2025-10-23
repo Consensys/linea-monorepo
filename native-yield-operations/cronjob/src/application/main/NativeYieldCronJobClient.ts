@@ -11,8 +11,8 @@ import {
   IBeaconNodeAPIClient,
   BeaconNodeApiClient,
   OAuth2TokenClient,
-} from "ts-libs/linea-shared-utils/src";
-import {} from "ts-libs/linea-shared-utils/src";
+} from "@consensys/linea-shared-utils";
+import {} from "@consensys/linea-shared-utils";
 import { Chain, PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerContractClient } from "../../clients/YieldManagerContractClient";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";

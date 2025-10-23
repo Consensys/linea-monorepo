@@ -2,7 +2,7 @@ import { Address, TransactionReceipt, BaseError, ContractFunctionRevertedError }
 import { ILidoAccountingReportClient } from "../core/clients/ILidoAccountingReportClient";
 import { ILazyOracle, UpdateVaultDataParams } from "../core/services/contracts/ILazyOracle";
 import { getReportProofByVault } from "@lidofinance/lsv-cli";
-import { ILogger } from "ts-libs/linea-shared-utils";
+import { ILogger } from "@consensys/linea-shared-utils";
 
 export class LidoAccountingReportClient implements ILidoAccountingReportClient {
   private latestSubmitVaultReportParams?: UpdateVaultDataParams;

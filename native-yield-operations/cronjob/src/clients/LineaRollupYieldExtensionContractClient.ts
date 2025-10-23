@@ -1,4 +1,4 @@
-import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src";
+import { IContractClientLibrary } from "@consensys/linea-shared-utils";
 import {
   Address,
   encodeFunctionData,

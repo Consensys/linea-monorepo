@@ -1,4 +1,4 @@
-import { min, ONE_GWEI, safeSub } from "ts-libs/linea-shared-utils/src";
+import { min, ONE_GWEI, safeSub } from "@consensys/linea-shared-utils";
 import { IBeaconChainStakingClient } from "../core/clients/IBeaconChainStakingClient";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient";
 import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance";

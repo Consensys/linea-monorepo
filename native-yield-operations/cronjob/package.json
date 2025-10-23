@@ -38,5 +38,6 @@
   },
   "files": [
     "dist/**/*"
-  ]
+  ],
+  "type": "module"
 }

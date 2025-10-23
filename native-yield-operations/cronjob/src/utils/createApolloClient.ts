@@ -3,7 +3,7 @@ import { InMemoryCache } from "@apollo/client";
 import { from } from "@apollo/client";
 import { ApolloClient } from "@apollo/client";
 import { SetContextLink } from "@apollo/client/link/context";
-import { IOAuth2TokenClient } from "ts-libs/linea-shared-utils/src";
+import { IOAuth2TokenClient } from "@consensys/linea-shared-utils";
 
 // Could move to linea-shared-utils one day, if there is another project using @apollo/client
 export function createApolloClient(oAuth2TokenClient: IOAuth2TokenClient, graphqlUri: string): ApolloClient {
