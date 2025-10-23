@@ -8,7 +8,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-	execCirc "github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
@@ -64,10 +63,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// -- 1. Launch bootstrapper
 	logrus.Info("Starting to run the bootstrapper")
 	var (
-		bootstrapperResp = RunBootstrapper(cfg, witness.ZkEVM)
-		numGL, numLPP    = bootstrapperResp.numGL, bootstrapperResp.numLPP
-		mt               = bootstrapperResp.mt
-		cong             = bootstrapperResp.cong
+		numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM)
 	)
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
@@ -98,7 +94,12 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// -- 2. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more
 	// proofs come in. It will exit when it collects `totalProofs` or when ctx is cancelled.
 	go func() {
-		proof, err := RunConglomerationHierarchical(ctx, &mt, cong, proofStream, totalProofs)
+		cong, mt, err := zkevm.LoadCompiledConglomeration(cfg)
+		if err != nil || cong == nil || mt == nil {
+			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
+		}
+		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
+		proof, err := RunConglomerationHierarchical(ctx, mt, cong, proofStream, totalProofs)
 		resultCh <- congResult{proof: proof, err: err}
 	}()
 
@@ -241,7 +242,10 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	if res.err != nil {
 		return nil, fmt.Errorf("conglomeration failed: %w", res.err)
 	}
-	congFinalproof := res.proof
+
+	logrus.Infof("HIERARCHICAL CONGLOMERATION SUCCESSFUL!!!")
+
+	// congFinalproof := res.proof
 
 	// TODO: Sanity check the final conglomerated proof using wizard.VerifyRuntime
 	// For that we should be able to extract a wizard.proof from segment proof
@@ -264,31 +268,25 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		utils.Panic("could not load setup: %v", errSetup)
 	}
 
-	out.Proof = execCirc.MakeProof(
-		&cfg.TracesLimits,
-		setup,
-		cong.HierarchicalConglomeration.Wiop,
-		congFinalproof,
-		*witness.FuncInp,
-	)
+	// out.Proof = execCirc.MakeProof(
+	// 	&cfg.TracesLimits,
+	// 	setup,
+	// 	cong.HierarchicalConglomeration.Wiop,
+	// 	congFinalproof,
+	// 	*witness.FuncInp,
+	// )
 
+	logrus.Infof("Returning dummy outer proof for now.")
+	out.Proof = "dummy-proof"
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
 
 	return &out, nil
 }
 
-type bootstrapResp struct {
-	numGL  int
-	numLPP int
-	mt     distributed.VerificationKeyMerkleTree
-	cong   *distributed.RecursedSegmentCompilation
-}
-
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,
 // the function then performs the module segmentation and saves each module
 // witness in the /tmp directory.
-func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
-) *bootstrapResp {
+func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness) (int, int) {
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
@@ -364,12 +362,6 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 	// This frees the memory from the assets that are no longer needed. We don't
 	// need to do that for the module GLs and LPPs because they are thrown away
 	// when the current function returns.
-
-	var (
-		mt   = assets.DistWizard.VerificationKeyMerkleTree
-		cong = assets.DistWizard.CompiledConglomeration
-	)
-
 	assets.Zkevm = nil
 	assets.DistWizard.Bootstrapper = nil
 
@@ -433,12 +425,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness,
 		utils.Panic("could not save witnesses: %v", err)
 	}
 
-	return &bootstrapResp{
-		mt:     mt,
-		cong:   cong,
-		numGL:  len(witnessGLs),
-		numLPP: len(witnessLPPs),
-	}
+	return len(witnessGLs), len(witnessLPPs)
 }
 
 // RunGL runs the GL prover for the provided witness index
@@ -517,6 +504,9 @@ func RunConglomerationHierarchical(ctx context.Context,
 			_proof2 := stack[len(stack)-2]
 			stack = stack[:len(stack)-2]
 
+			logrus.Infof("Conglomerating sub-proofs for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
+				_proof1.ProofType, _proof1.ModuleIndex, _proof1.SegmentIndex,
+				_proof2.ProofType, _proof2.ModuleIndex, _proof2.SegmentIndex)
 			aggregated := cong.ProveSegment(&distributed.ModuleWitnessConglo{
 				SegmentProofs:             []distributed.SegmentProof{_proof1, _proof2},
 				VerificationKeyMerkleTree: *mt,
@@ -551,7 +541,7 @@ func RunConglomerationHierarchical(ctx context.Context,
 				}
 				return distributed.SegmentProof{}, fmt.Errorf("proof stream closed prematurely; stack size=%d, proofsReceived=%d, totalProofs=%d", len(stack), proofsReceived, totalProofs)
 			}
-			logrus.Infof("Received proof for module index:%d and segment index:%d", p.ModuleIndex, p.SegmentIndex)
+			logrus.Infof("Received subproof with module index:%d and segment index:%d", p.ModuleIndex, p.SegmentIndex)
 			stack = append(stack, p)
 			proofsReceived++
 		}
