@@ -30,10 +30,10 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 	// Initial round
 	state = matMulExternalExpression(state)
 
-	interm := make([][]ifaces.Column, 28)
+	interm := make([][]ifaces.Column, fullRounds)
 	counter := 0
 	// External rounds
-	for round := 1; round < partialRounds+1; round++ {
+	for round := 1; round < 1+partialRounds; round++ {
 		state = addRoundKeyExpression(round-1, state)
 		state = sBoxFullExpression(state)
 		state = matMulExternalExpression(state)
@@ -54,7 +54,7 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 	// (e.g., the optimial choice is every 3 rounds), we "collapse" the growing linear expressions for state[1] through state[15] back into simple variables.
 	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
 		state = addRoundKeyExpression(round-1, state)
-		state[0] = sBoxPartialExpression(state)[0]
+		state[0] = sBoxPartialExpression(state[0])
 
 		if round%internalPackedSize == 0 {
 			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
@@ -62,10 +62,10 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 			interm[counter] = cols
 			counter++
 		} else if partialSBox {
-			/// Reduce columns to only the first one
-			cols := anchorPartialColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
-			state[0] = asExprs(cols)[0]
-			interm[counter] = cols
+			// Constrain only the first one
+			col := anchorSingleColumn(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state[0])
+			state[0] = symbolic.NewVariable(col)
+			interm[counter] = []ifaces.Column{col}
 			counter++
 		}
 
@@ -73,7 +73,7 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 
 	}
 
-	// // External rounds
+	// External rounds
 	for round := fullRounds - partialRounds; round < fullRounds; round++ {
 		state = addRoundKeyExpression(round-1, state)
 		state = sBoxFullExpression(state)
@@ -118,14 +118,8 @@ func sBoxFullExpression(input []*symbolic.Expression) []*symbolic.Expression {
 }
 
 // sBoxPartialExpression applies the partial s-box over an array of expression.
-func sBoxPartialExpression(input []*symbolic.Expression) []*symbolic.Expression {
-	if len(input) != width {
-		utils.Panic("Input slice length must be %v", width)
-	}
-
-	res := make([]*symbolic.Expression, width)
-	res[0] = symbolic.Mul(input[0], input[0], input[0])
-	// copy(res[1:], input[1:])
+func sBoxPartialExpression(input *symbolic.Expression) *symbolic.Expression {
+	res := symbolic.Mul(input, input, input)
 	return res
 }
 
@@ -282,28 +276,22 @@ func asExprs(columns []ifaces.Column) []*symbolic.Expression {
 	return res
 }
 
-func anchorPartialColumns(comp *wizard.CompiledIOP, name string, columns []*symbolic.Expression) []ifaces.Column {
+func anchorSingleColumn(comp *wizard.CompiledIOP, name string, column *symbolic.Expression) ifaces.Column {
 
-	_, round, size := wizardutils.AsExpr(columns[0])
+	_, round, size := wizardutils.AsExpr(column)
 
-	news := make([]ifaces.Column, 1)
-	for i, column := range columns {
-		if i == 0 {
-			news[i] = comp.InsertCommit(
-				round,
-				ifaces.ColIDf("%v_%v", name, i),
-				size,
-				true,
-			)
+	news := comp.InsertCommit(
+		round,
+		ifaces.ColIDf("%v_%v", name, 0),
+		size,
+		true,
+	)
 
-			comp.InsertGlobal(
-				round,
-				ifaces.QueryIDf("%v_%v_GLOBAL", name, i),
-				symbolic.Sub(column, news[i]),
-			)
-		}
-
-	}
+	comp.InsertGlobal(
+		round,
+		ifaces.QueryIDf("%v_%v_GLOBAL", name, 0),
+		symbolic.Sub(column, news),
+	)
 
 	return news
 }
