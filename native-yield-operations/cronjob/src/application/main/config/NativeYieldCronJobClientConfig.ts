@@ -4,6 +4,7 @@ import { transports } from "winston";
 
 export const toClientConfig = (env: FlattenedConfigSchema) => ({
   dataSources: {
+    chainId: env.CHAIN_ID,
     l1RpcUrl: env.L1_RPC_URL,
     beaconChainRpcUrl: env.BEACON_CHAIN_RPC_URL,
     stakingGraphQLUrl: env.STAKING_GRAPHQL_URL,

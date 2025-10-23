@@ -13,6 +13,7 @@ const Hex = z.string().refine((v) => isHex(v), { message: "Invalid Hex" });
 export const configSchema = z
   .object({
     // Datasource URLs
+    CHAIN_ID: z.coerce.number().int().positive(),
     L1_RPC_URL: z.string().url(),
     BEACON_CHAIN_RPC_URL: z.string().url(),
     STAKING_GRAPHQL_URL: z.string().url(),
@@ -33,22 +34,16 @@ export const configSchema = z
     TRIGGER_EVENT_POLL_INTERVAL_MS: z.coerce.number().int().positive(),
     TRIGGER_MAX_INACTION_MS: z.coerce.number().int().positive(),
     CONTRACT_READ_RETRY_TIME_MS: z.coerce.number().int().positive(),
-
-    // Rebalance params
     // Tolerance band for changes around the target threshold reserve, no rebalance will be done unless exceed this band.
     // Bps is multiplied by YieldManager.totalSystemBalance().
     REBALANCE_TOLERANCE_BPS: z.coerce.number().int().positive().max(10000),
-
     // Unstake params
     MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: z.coerce.number().int().positive(),
-
-    // Withdrawal settings
     // Minimum withdrawal threshold — no withdrawal occurs if available amount < threshold.
     MIN_WITHDRAWAL_THRESHOLD_ETH: z
       .union([z.string(), z.number(), z.bigint()])
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
-
     // Web3Signer
     WEB3SIGNER_URL: z.string().url(),
     // Accept either an Ethereum address (20 bytes) OR a secp256k1 pubkey (33/65 bytes).
@@ -64,7 +59,6 @@ export const configSchema = z
     WEB3SIGNER_KEYSTORE_PASSPHRASE: z.string().min(1),
     WEB3SIGNER_TRUSTSTORE_PATH: z.string().min(1),
     WEB3SIGNER_TRUSTSTORE_PASSPHRASE: z.string().min(1),
-
     // API port
     API_PORT: z.coerce.number().int().min(1024).max(49000),
   })

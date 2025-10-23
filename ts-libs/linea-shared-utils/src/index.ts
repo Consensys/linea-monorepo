@@ -2,7 +2,7 @@ export * from "./clients/BeaconNodeApiClient";
 export * from "./clients/OAuth2TokenClient";
 export * from "./clients/ViemWalletSignerClient";
 export * from "./clients/Web3SignerClient";
-export * from "./clients/ethereum/EthereumMainnetClientLibrary";
+export * from "./clients/ContractClientLibrary";
 export * from "./core/client/IBeaconNodeApiClient";
 export * from "./core/client/IContractClientLibrary";
 export * from "./core/client/IContractSignerClient";

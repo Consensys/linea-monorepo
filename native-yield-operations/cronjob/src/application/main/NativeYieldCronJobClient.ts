@@ -4,7 +4,7 @@ import { IOperationModeSelector } from "../../core/services/operation-mode/IOper
 import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector";
 import {
   IContractClientLibrary,
-  EthereumMainnetClientLibrary,
+  ContractClientLibrary,
   Web3SignerClient,
   IContractSignerClient,
   IOAuth2TokenClient,
@@ -13,7 +13,7 @@ import {
   OAuth2TokenClient,
 } from "ts-libs/linea-shared-utils/src";
 import {} from "ts-libs/linea-shared-utils/src";
-import { PublicClient, TransactionReceipt } from "viem";
+import { Chain, PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerContractClient } from "../../clients/YieldManagerContractClient";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
 import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor";
@@ -32,12 +32,13 @@ import { LidoAccountingReportClient } from "../../clients/LidoAccountingReportCl
 import { BeaconChainStakingClient } from "../../clients/BeaconChainStakingClient";
 import { OssificationCompleteOperationModeProcessor } from "../../services/operation-mode/OssificationCompleteOperationModeProcessor";
 import { OssificationPendingOperationModeProcessor } from "../../services/operation-mode/OssificationPendingOperationModeProcessor";
+import { mainnet, hoodi } from "viem/chains";
 
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
   private readonly logger: ILogger;
 
-  private ethereumMainnetClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>;
+  private ContractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>;
   private web3SignerClient: IContractSignerClient;
   private yieldManagerContractClient: IYieldManager<TransactionReceipt>;
   private lazyOracleContractClient: ILazyOracle<TransactionReceipt>;
@@ -67,24 +68,36 @@ export class NativeYieldCronJobClient {
       config.web3signer.truststore.path,
       config.web3signer.truststore.passphrase,
     );
-    this.ethereumMainnetClientLibrary = new EthereumMainnetClientLibrary(
+
+    const getChain = (chainId: number): Chain => {
+      switch (chainId) {
+        case mainnet.id:
+          return mainnet;
+        case hoodi.id:
+          return hoodi;
+        default:
+          throw new Error(`Unsupported chain ID: ${chainId}`);
+      }
+    };
+    this.ContractClientLibrary = new ContractClientLibrary(
       config.dataSources.l1RpcUrl,
+      getChain(config.dataSources.chainId),
       this.web3SignerClient,
     );
     this.yieldManagerContractClient = new YieldManagerContractClient(
-      this.ethereumMainnetClientLibrary,
+      this.ContractClientLibrary,
       config.contractAddresses.yieldManagerAddress,
       config.rebalanceToleranceBps,
       config.minWithdrawalThresholdEth,
     );
     this.lazyOracleContractClient = new LazyOracleContractClient(
-      this.ethereumMainnetClientLibrary,
+      this.ContractClientLibrary,
       config.contractAddresses.lazyOracleAddress,
       new WinstonLogger(LazyOracleContractClient.name, config.loggerOptions),
       config.timing.trigger.maxInactionMs,
     );
     this.lineaRollupYieldExtensionContractClient = new LineaRollupYieldExtensionContractClient(
-      this.ethereumMainnetClientLibrary,
+      this.ContractClientLibrary,
       config.contractAddresses.lineaRollupContractAddress,
     );
 

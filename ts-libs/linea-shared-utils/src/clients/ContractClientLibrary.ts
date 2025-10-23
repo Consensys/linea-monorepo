@@ -9,18 +9,19 @@ import {
   TransactionSerializableEIP1559,
   serializeTransaction,
   parseSignature,
+  Chain,
 } from "viem";
-import { mainnet } from "viem/chains";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
 
 // Re-use via composition in ContractClients
 // Hope that using strategy pattern like this makes us more 'viem-agnostic'
-export class EthereumMainnetClientLibrary implements IContractClientLibrary<PublicClient, TransactionReceipt> {
+export class ContractClientLibrary implements IContractClientLibrary<PublicClient, TransactionReceipt> {
   blockchainClient: PublicClient;
 
   constructor(
     rpcUrl: string,
+    chain: Chain,
     private readonly contractSignerClient: IContractSignerClient,
   ) {
     // Aim re-use single blockchain client for
@@ -28,7 +29,7 @@ export class EthereumMainnetClientLibrary implements IContractClientLibrary<Publ
     // ii.) Memory efficient
     // iii.) Single point of configuration
     this.blockchainClient = createPublicClient({
-      chain: mainnet,
+      chain,
       transport: http(rpcUrl, { batch: true, retryCount: 3 }),
     });
   }
@@ -53,12 +54,14 @@ export class EthereumMainnetClientLibrary implements IContractClientLibrary<Publ
   }
 
   async sendSignedTransaction(contractAddress: Address, calldata: Hex): Promise<TransactionReceipt> {
-    const [fees, gasLimit, chainId] = await Promise.all([
+    const [fees, gasLimit, chainId, nonce] = await Promise.all([
       this.estimateGasFees(),
       this.blockchainClient.estimateGas({ to: contractAddress, data: calldata }),
       this.getChainId(),
+      this.blockchainClient.getTransactionCount({ address: this.contractSignerClient.getAddress() }),
     ]);
     const { maxFeePerGas, maxPriorityFeePerGas } = fees;
+
     const tx: TransactionSerializableEIP1559 = {
       to: contractAddress,
       type: "eip1559",
@@ -67,6 +70,7 @@ export class EthereumMainnetClientLibrary implements IContractClientLibrary<Publ
       gas: gasLimit,
       maxFeePerGas,
       maxPriorityFeePerGas,
+      nonce,
     };
     const signature = await this.contractSignerClient.sign(tx);
     const serializedTransaction = serializeTransaction(tx, parseSignature(signature));

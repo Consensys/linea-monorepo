@@ -5,10 +5,10 @@ PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
 pnpm --filter @consensys/linea-shared-utils exec tsx scripts/test-ethereum-mainnet-client-library.ts
 
  */
-import { EthereumMainnetClientLibrary } from "../src/clients/EthereumMainnetClientLibrary";
+import { ContractClientLibrary } from "../src/clients/ContractClientLibrary";
 import { ViemWalletSignerClient } from "../src/clients/ViemWalletSignerClient";
 import { Hex } from "viem";
-import { mainnet } from "viem/chains";
+import { anvil } from "viem/chains";
 
 async function main() {
   const requiredEnvVars = ["RPC_URL", "PRIVATE_KEY"];
@@ -22,8 +22,8 @@ async function main() {
   const rpcUrl = process.env.RPC_URL as string;
   const privateKey = process.env.PRIVATE_KEY as Hex;
 
-  const signer = new ViemWalletSignerClient(privateKey, mainnet);
-  const clientLibrary = new EthereumMainnetClientLibrary(rpcUrl, signer);
+  const signer = new ViemWalletSignerClient(privateKey, anvil);
+  const clientLibrary = new ContractClientLibrary(rpcUrl, anvil, signer);
 
   try {
     const address = signer.getAddress();
@@ -41,7 +41,7 @@ async function main() {
     const receipt = await clientLibrary.sendSignedTransaction(address, "0x");
     console.log("Receipt:", receipt);
   } catch (err) {
-    console.error("EthereumMainnetClientLibrary integration script failed:", err);
+    console.error("ContractClientLibrary integration script failed:", err);
     process.exitCode = 1;
   }
 }

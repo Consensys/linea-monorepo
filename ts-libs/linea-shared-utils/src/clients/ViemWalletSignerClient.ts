@@ -1,4 +1,15 @@
-import { Account, Address, Chain, createWalletClient, Hex, http, TransactionSerializable, WalletClient } from "viem";
+import {
+  Account,
+  Address,
+  Chain,
+  createWalletClient,
+  Hex,
+  http,
+  parseTransaction,
+  serializeSignature,
+  TransactionSerializable,
+  WalletClient,
+} from "viem";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { privateKeyToAccount, privateKeyToAddress } from "viem/accounts";
 
@@ -22,13 +33,23 @@ export class ViemWalletSignerClient implements IContractSignerClient {
     // 'as any' required to avoid enforcing strict structural validation
     // Fine because we are only removing fields, not depending on them existing
     // Practical way to strip off optional keys from a union type
-    const { r, s, v, yParity, ...unsigned } = tx as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    void r;
-    void s;
-    void v;
-    void yParity;
+    const { r: r_void, s: s_void, v: v_void, yParity: yParity_void, ...unsigned } = tx as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    void r_void;
+    void s_void;
+    void v_void;
+    void yParity_void;
 
-    return this.wallet.signTransaction({ ...unsigned });
+    const serializedSignedTx = await this.wallet.signTransaction({ ...unsigned });
+    const { r, s, yParity } = await parseTransaction(serializedSignedTx);
+    // TODO - Better error handling
+    if (!r || !s || yParity === undefined) throw new Error("sign error");
+    const signatureHex = serializeSignature({
+      r,
+      s,
+      yParity,
+    });
+
+    return signatureHex;
   }
 
   getAddress(): Address {
