@@ -296,7 +296,7 @@ func checkVkMembershipGnark(
 
 // Conglomerate runs the conglomeration compiler and returns a pointer to the
 // receiver of the method.
-func (d *DistributedWizard) Conglomerate() *DistributedWizard {
+func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedWizard {
 
 	conglo := &ModuleConglo{
 		ModuleNumber: len(d.CompiledGLs),
@@ -304,7 +304,7 @@ func (d *DistributedWizard) Conglomerate() *DistributedWizard {
 
 	comp := wizard.NewCompiledIOP()
 	conglo.Compile(comp, d.CompiledGLs[0].RecursionComp)
-	d.CompiledConglomeration = CompileSegment(conglo)
+	d.CompiledConglomeration = CompileSegment(conglo, params)
 	assertCompatibleIOPs(d)
 
 	d.VerificationKeyMerkleTree = buildVerificationKeyMerkleTree(
@@ -347,7 +347,7 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 	// vkMerkleTreeDepth is the depth of the verification key merkle tree
 	vkMerkleTreeDepth := c.VKeyMTreeDepth()
 	c.VerificationKeyMerkleProofs = make([][]ifaces.Column, c.ModuleNumber)
-	for i := 0; i < c.ModuleNumber; i++ {
+	for i := 0; i < aggregationArity; i++ {
 		for j := 0; j < vkMerkleTreeDepth; j++ {
 			col := comp.InsertProof(0, ifaces.ColID(fmt.Sprintf("vkMerkleProof_%d_%d", i, j)), 1)
 			c.VerificationKeyMerkleProofs[i] = append(c.VerificationKeyMerkleProofs[i], col)
@@ -416,6 +416,16 @@ func (c *ModuleConglo) Assign(
 		subMSetSharedRand := mimc.MSetHash(collectedPIs[instance].SharedRandomnessMultiSetHash)
 		mSetGeneral.Add(subMSetGeneral)
 		mSetSharedRand.Add(subMSetSharedRand)
+	}
+
+	// This assigns the functional public input by summing them
+	for f := range c.PublicInputs.Functionals {
+		var sumValue field.Element
+		for instance := 0; instance < aggregationArity; instance++ {
+			sumValue.Add(&sumValue, &collectedPIs[instance].Functionals[f])
+		}
+		pi := c.PublicInputs.Functionals[f]
+		assignPiColumn(run, pi.Name, sumValue)
 	}
 
 	assignListOfPiColumns(run, GeneralMultiSetPublicInputBase, mSetGeneral[:])
@@ -627,6 +637,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 	var (
 		collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable]{}
 		topPIs       = c.collectAllPublicInputsGnark(api, run)
+		hasher       = run.GetHasherFactory().NewHasher()
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
@@ -669,17 +680,17 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 
 	// This agglomerates the multiset hashes
 	var (
-		generalSum = mimc.EmptyMSetHashGnark()
-		sharedSum  = mimc.EmptyMSetHashGnark()
+		generalSum = mimc.EmptyMSetHashGnark(hasher)
+		sharedSum  = mimc.EmptyMSetHashGnark(hasher)
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
-		generalSum.Add(api, mimc.MSetHashGnark(collectedPIs[instance].GeneralMultiSetHash))
-		sharedSum.Add(api, mimc.MSetHashGnark(collectedPIs[instance].SharedRandomnessMultiSetHash))
+		generalSum.AddRaw(api, collectedPIs[instance].GeneralMultiSetHash)
+		sharedSum.AddRaw(api, collectedPIs[instance].SharedRandomnessMultiSetHash)
 	}
 
-	sharedSum.AssertEqual(api, mimc.MSetHashGnark(topPIs.SharedRandomnessMultiSetHash))
-	generalSum.AssertEqual(api, mimc.MSetHashGnark(topPIs.GeneralMultiSetHash))
+	sharedSum.AssertEqualRaw(api, topPIs.SharedRandomnessMultiSetHash)
+	generalSum.AssertEqualRaw(api, topPIs.GeneralMultiSetHash)
 
 	// The loop below "aggregate" the public inputs: log-derivative-sum, gd-product,
 	// and horner sum of the sub-instances. The aggregation is done by multiplying/summing
@@ -886,7 +897,7 @@ func collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Eleme
 	)
 
 	for _, pub := range pubs {
-		if strings.Contains(pub.Name, TargetNbSegmentPublicInputBase) {
+		if strings.Contains(pub.Name, TargetNbSegmentPublicInputBase) && !strings.Contains(pub.Name, "conglomeration") {
 			moduleNumber++
 		}
 	}

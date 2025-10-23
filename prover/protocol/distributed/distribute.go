@@ -187,18 +187,19 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) 
 }
 
 // CompileModules applies the compilation steps to each modules identically.
-func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
+func (dist *DistributedWizard) CompileSegments(params CompilationParams) *DistributedWizard {
 	logrus.Infoln("Compiling distributed wizard default module")
 
 	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))
 	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
 	for i := range dist.GLs {
+
 		logrus.
 			WithField("module-name", dist.GLs[i].DefinitionInput.ModuleName).
 			WithField("module-type", "GL").
 			Info("compiling module")
 
-		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
+		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i], params)
 	}
 
 	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs))
@@ -209,7 +210,7 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 			WithField("module-type", "LPP").
 			Info("compiling module")
 
-		dist.CompiledLPPs[i] = CompileSegment(dist.LPPs[i])
+		dist.CompiledLPPs[i] = CompileSegment(dist.LPPs[i], params)
 	}
 
 	return dist
@@ -239,8 +240,8 @@ func GetSharedRandomnessFromSegmentProofs(gLWitnesses []SegmentProof) field.Elem
 	return cmimc.HashVec(mset[:])
 }
 
-// GetLppCommitmentFromRuntime returns the LPP commitment from the runtime
-func GetLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
+// getLppCommitmentFromRuntime returns the LPP commitment from the runtime
+func getLppCommitmentFromRuntime(runtime *wizard.ProverRuntime) field.Element {
 	name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
 	return runtime.GetPublicInput(name)
 }
