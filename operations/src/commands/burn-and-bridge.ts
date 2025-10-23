@@ -1,5 +1,7 @@
 import { Command, Flags } from "@oclif/core";
 import {
+  Address,
+  Client,
   createPublicClient,
   formatEther,
   formatUnits,
@@ -28,6 +30,7 @@ import {
 } from "../utils/burn-and-bridge/contract.js";
 import { LINEA_TOKEN_ADDRESS, WETH_TOKEN_ADDRESS } from "../utils/burn-and-bridge/constants.js";
 import { ETH_BURNT_SWAPPED_AND_BRIDGED_EVENT_ABI } from "../utils/burn-and-bridge/abi.js";
+import { getBalance } from "viem/actions";
 
 export default class BurnAndBridge extends Command {
   static examples = [
@@ -189,22 +192,15 @@ export default class BurnAndBridge extends Command {
       return;
     }
 
-    const rollupRevenueVaultContractBalance = await client.getBalance({
-      address: rollupRevenueVaultContractAddress,
-    });
-
-    const minimumFeeResult = await getMinimumFee(client, l2MessageServiceContractAddress);
-
-    const minimumFeeInWei = minimumFeeResult.match(
-      (value) => value,
-      (error) => this.error(`Failed to get minimum fee: ${error.message}`),
+    const { rollupRevenueVaultContractBalance, minimumFeeInWei } = await this.checkRollupRevenueVaultBalance(
+      client,
+      rollupRevenueVaultContractAddress,
+      l2MessageServiceContractAddress,
     );
 
-    if (rollupRevenueVaultContractBalance < minimumFeeInWei) {
-      this.error(
-        `Insufficient balance in Rollup Revenue Vault Contract to cover the minimum fee. balance=${formatEther(rollupRevenueVaultContractBalance)} ETH minimumFee=${formatEther(minimumFeeInWei)} ETH`,
-      );
-    }
+    /******************************
+        GETTING SWAP QUOTE
+     ******************************/
 
     const balanceAvailable = rollupRevenueVaultContractBalance - minimumFeeInWei;
     const ETH_BURNT_PERCENTAGE = 20n; // 20% of the ETH balance will be burnt
@@ -236,8 +232,8 @@ export default class BurnAndBridge extends Command {
       TRANSACTION GAS ESTIMATION
      ******************************/
 
-    const deadline = addSeconds(fromZonedTime(Math.floor(new Date().getTime()), "UTC").getTime() / 1000, 3);
-    const swapCalldata = computeSwapCalldata(minLineaOut, BigInt(Math.floor(deadline.getTime() / 1000)));
+    const deadline = this.computeSwapDeadline(3);
+    const swapCalldata = computeSwapCalldata(minLineaOut, deadline);
     const burnAndBridgeCalldata = computeBurnAndBridgeCalldata(swapCalldata);
 
     const gasEstimationResult = await estimateTransactionGas(client, {
@@ -336,7 +332,7 @@ export default class BurnAndBridge extends Command {
    * @param httpsAgent Optional HTTPS Agent for secure communication.
    * @returns The signature as a hex string.
    */
-  public async signBurnAndBridgeTransaction(
+  private async signBurnAndBridgeTransaction(
     web3SignerUrl: string,
     web3SignerPublicKey: string,
     transactionToSerialize: TransactionSerializable,
@@ -353,5 +349,42 @@ export default class BurnAndBridge extends Command {
       (value) => value,
       (error) => this.error(`Failed to get signature from Web3 Signer: ${error.message}`),
     );
+  }
+
+  private async checkRollupRevenueVaultBalance(
+    client: Client,
+    rollupRevenueVaultContractAddress: Address,
+    l2MessageServiceContractAddress: Address,
+  ): Promise<{
+    rollupRevenueVaultContractBalance: bigint;
+    minimumFeeInWei: bigint;
+  }> {
+    const rollupRevenueVaultContractBalance = await getBalance(client, {
+      address: rollupRevenueVaultContractAddress,
+    });
+
+    const minimumFeeResult = await getMinimumFee(client, l2MessageServiceContractAddress);
+
+    const minimumFeeInWei = minimumFeeResult.match(
+      (value) => value,
+      (error) => this.error(`Failed to get minimum fee: ${error.message}`),
+    );
+
+    if (rollupRevenueVaultContractBalance < minimumFeeInWei) {
+      this.error(
+        `Insufficient balance in Rollup Revenue Vault Contract to cover the minimum fee. balance=${formatEther(rollupRevenueVaultContractBalance)} ETH minimumFee=${formatEther(minimumFeeInWei)} ETH`,
+      );
+    }
+
+    return {
+      rollupRevenueVaultContractBalance,
+      minimumFeeInWei,
+    };
+  }
+
+  private computeSwapDeadline(delayInSeconds: number): bigint {
+    const currentTime = fromZonedTime(Math.floor(new Date().getTime()), "UTC").getTime();
+    const deadline = addSeconds(currentTime, delayInSeconds);
+    return BigInt(Math.floor(deadline.getTime() / 1000));
   }
 }
