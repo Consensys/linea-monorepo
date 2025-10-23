@@ -7,7 +7,7 @@ services:
     # make build-local-image
     # MARU_TAG=local make docker-run-stack
     # command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/path/to/vertx-options.json', '-Dlog4j2.configurationFile=/path/to/log4j2-dev.xml']
-    image: consensys/maru:${MARU_TAG:-0ad2e75}
+    image: consensys/maru:${MARU_TAG:-dbb6c73}
     container_name: maru
     depends_on:
       - sequencer
