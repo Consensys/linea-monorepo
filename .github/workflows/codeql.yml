@@ -8,11 +8,7 @@ jobs:
     name: Detect Changes
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     outputs:
-      go: ${{ steps.changes.outputs.go }}
-      java-kotlin: ${{ steps.changes.outputs.java-kotlin }}
-      javascript-typescript: ${{ steps.changes.outputs.javascript-typescript }}
-      actions: ${{ steps.changes.outputs.actions }}
-      python: ${{ steps.changes.outputs.python }}
+      languages: ${{ steps.set-matrix.outputs.languages }}
     permissions:
       contents: read
     steps:
@@ -60,18 +56,25 @@ jobs:
               - '**/requirements.txt'
               - '**/pyproject.toml'
               - '**/setup.py'
+      
               - '**/Pipfile'
+      - name: Build matrix
+        id: set-matrix
+        run: |
+          languages=()
+          if [ "${{ steps.changes.outputs.go }}" == "true" ]; then languages+=("\"go\""); fi
+          if [ "${{ steps.changes.outputs.java-kotlin }}" == "true" ]; then languages+=("\"java-kotlin\""); fi
+          if [ "${{ steps.changes.outputs.javascript-typescript }}" == "true" ]; then languages+=("\"javascript-typescript\""); fi
+          if [ "${{ steps.changes.outputs.actions }}" == "true" ]; then languages+=("\"actions\""); fi
+          if [ "${{ steps.changes.outputs.python }}" == "true" ]; then languages+=("\"python\""); fi
+
+          echo "languages=[$(IFS=,; echo "${languages[*]}")]" >> $GITHUB_OUTPUT
 
   analyze:
     name: Analyze
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     needs: changes
-    if: |
-      needs.changes.outputs.go == 'true' ||
-      needs.changes.outputs.java-kotlin == 'true' ||
-      needs.changes.outputs.javascript-typescript == 'true' ||
-      needs.changes.outputs.actions == 'true' ||
-      needs.changes.outputs.python == 'true'
+    if: ${{ needs.changes.outputs.languages != '[]' }}
     permissions:
       actions: read
       contents: read
@@ -80,56 +83,41 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - language: 'go'
-            condition: ${{ needs.changes.outputs.go == 'true' }}
-          - language: 'java-kotlin'
-            condition: ${{ needs.changes.outputs.java-kotlin == 'true' }}
-          - language: 'javascript-typescript'
-            condition: ${{ needs.changes.outputs.javascript-typescript == 'true' }}
-          - language: 'actions'
-            condition: ${{ needs.changes.outputs.actions == 'true' }}
-          - language: 'python'
-            condition: ${{ needs.changes.outputs.python == 'true' }}
+        language: ${{ fromJson(needs.changes.outputs.languages) }}
 
     steps:
       - name: Skip if no changes
-        if: matrix.condition != true
         run: echo "Skipping ${{ matrix.language }} - no relevant changes detected"
 
       - name: Checkout repository
-        if: matrix.condition == true
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        if: matrix.condition == true
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
 
       - name: Setup Java
-        if: matrix.language == 'java-kotlin' && matrix.condition == true
+        if: matrix.language == 'java-kotlin'
         uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b #v4.5.0
         with:
           distribution: temurin
           java-version: 21
 
       - name: Autobuild
-        if: matrix.language != 'github-actions' && matrix.condition == true
+        if: matrix.language != 'github-actions'
         uses: github/codeql-action/autobuild@v3
         env:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
 
       - name: Perform CodeQL Analysis
-        if: matrix.condition == true
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{matrix.language}}"
           output: sarif-results
 
       - name: Upload CodeQL Results
-        if: matrix.condition == true
         uses: actions/upload-artifact@v4
         with:
           name: codeql-results-${{ matrix.language }}
