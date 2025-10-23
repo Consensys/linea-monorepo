@@ -106,7 +106,7 @@ jobs:
           java-version: 21
 
       - name: Autobuild
-        if: matrix.language != 'github-actions'
+        if: matrix.language != 'actions'
         uses: github/codeql-action/autobuild@v3
         env:
           GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
