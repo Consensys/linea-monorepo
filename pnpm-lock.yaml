@@ -677,6 +677,9 @@ importers:
 
   ts-libs/linea-shared-utils:
     dependencies:
+      '@consensys/linea-sdk':
+        specifier: workspace:*
+        version: link:../../sdk/sdk-ethers
       '@types/node-forge':
         specifier: 1.3.14
         version: 1.3.14
