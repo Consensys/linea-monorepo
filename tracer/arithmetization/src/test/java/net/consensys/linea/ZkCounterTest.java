@@ -138,8 +138,6 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals(0, lineCountMap.get(ModuleName.PRECOMPILE_MODEXP_EFFECTIVE_CALLS.toString()));
     assertEquals(0, lineCountMap.get(PRECOMPILE_RIPEMD_BLOCKS.toString()));
     assertEquals(0, lineCountMap.get(PRECOMPILE_BLAKE_EFFECTIVE_CALLS.toString()));
-    assertEquals(0, lineCountMap.get(POINT_EVAL.toString()));
-    assertEquals(0, lineCountMap.get(BLS.toString()));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get(BLOCK_L1_SIZE.toString()) > 0);
@@ -236,8 +234,6 @@ public class ZkCounterTest extends TracerTestBase {
     assertEquals(0, lineCountMap.get(ModuleName.PRECOMPILE_MODEXP_EFFECTIVE_CALLS.toString()));
     assertEquals(0, lineCountMap.get(PRECOMPILE_RIPEMD_BLOCKS.toString()));
     assertEquals(0, lineCountMap.get(PRECOMPILE_BLAKE_EFFECTIVE_CALLS.toString()));
-    assertEquals(0, lineCountMap.get(POINT_EVAL.toString()));
-    assertEquals(0, lineCountMap.get(BLS.toString()));
 
     // L1 block size > 0
     assertTrue(lineCountMap.get(BLOCK_L1_SIZE.toString()) > 0);

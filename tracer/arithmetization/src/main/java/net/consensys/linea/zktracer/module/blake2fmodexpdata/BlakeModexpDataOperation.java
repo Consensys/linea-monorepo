@@ -46,13 +46,13 @@ import org.hyperledger.besu.crypto.Hash;
 
 @Accessors(fluent = true)
 public class BlakeModexpDataOperation extends ModuleOperation {
-  public static final int MODEXP_COMPONENT_BYTE_SIZE = LLARGE * (INDEX_MAX_MODEXP + 1);
-  public static final int NB_ROWS_BLAKEMODEXP_MODEXP =
+  public static final short MODEXP_COMPONENT_BYTE_SIZE = LLARGE * (INDEX_MAX_MODEXP + 1);
+  public static final short NB_ROWS_BLAKEMODEXP_MODEXP =
       (INDEX_MAX_MODEXP_BASE + 1)
           + (INDEX_MAX_MODEXP_EXPONENT + 1)
           + (INDEX_MAX_MODEXP_MODULUS + 1)
           + (INDEX_MAX_MODEXP_RESULT + 1);
-  private static final int BLAKE2f_COMPONENTS_LINE_COUNT =
+  public static final short NB_ROWS_BLAKEMODEPX_BLAKE =
       (INDEX_MAX_BLAKE_DATA + 1) + (INDEX_MAX_BLAKE_PARAMS + 1) + (INDEX_MAX_BLAKE_RESULT + 1);
   public static final short BLAKE2f_R_SIZE = 4;
   public static final short BLAKE2f_HASH_INPUT_OFFSET = BLAKE2f_R_SIZE;
@@ -78,11 +78,10 @@ public class BlakeModexpDataOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return modexpMetaData.isPresent() ? NB_ROWS_BLAKEMODEXP_MODEXP : BLAKE2f_COMPONENTS_LINE_COUNT;
+    return modexpMetaData.isPresent() ? NB_ROWS_BLAKEMODEXP_MODEXP : NB_ROWS_BLAKEMODEPX_BLAKE;
   }
 
   void trace(Trace.Blake2fmodexpdata trace, final int stamp) {
-    final UnsignedByte stampByte = UnsignedByte.of(stamp);
 
     if (modexpMetaData.isPresent()) {
       traceBase(trace, stamp);

@@ -31,6 +31,11 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.apache.tuweni.bytes.Bytes;
 
 public class BlakeSubsection extends PrecompileSubsection {
+  // 3 = SCEN + MISC + CON (squash caller return data): if size != 213
+  // 4 = SCEN + MISC + MISC + CON (squash caller return data): if insufficient gas / f not a bit
+  // 6 = SCEN + MISC + (3 * MISC) + CON (provide caller with return data): if success
+  // we don't optimize as BLAKE calls are rare
+  public static final short NB_ROWS_HUB_PRC_BLAKE = 6;
   final Blake2fCallDataSizeOobCall blakeCdsOobCall;
   ImcFragment secondImcFragment;
   Blake2fParamsOobCall blake2fParamsOobCall;
@@ -123,10 +128,6 @@ public class BlakeSubsection extends PrecompileSubsection {
 
   @Override
   protected short maxNumberOfLines() {
-    // 3 = SCEN + MISC + CON (squash caller return data): if size != 213
-    // 4 = SCEN + MISC + MISC + CON (squash caller return data): if insufficient gas / f not a bit
-    // 6 = SCEN + MISC + (3 * MISC) + CON (provide caller with return data): if success
-    // we don't optimize as BLAKE calls are rare
-    return 6;
+    return NB_ROWS_HUB_PRC_BLAKE;
   }
 }
