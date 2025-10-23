@@ -1,4 +1,3 @@
-import { Address } from "viem";
 import { UpdateVaultDataParams } from "../services/contracts/ILazyOracle";
 
 export interface ILidoAccountingReportClient {
@@ -8,7 +7,7 @@ export interface ILidoAccountingReportClient {
   // iv.) Compute params for updateVaultData
   // v.) Submit tx
   // vi.) Return success
-  getSubmitVaultReportParams(vaultAddress: Address): Promise<UpdateVaultDataParams>;
-  isSimulateSubmitLatestVaultReportSuccessful(params: UpdateVaultDataParams): Promise<boolean>;
-  submitLatestVaultReport(params: UpdateVaultDataParams): Promise<void>;
+  getLatestSubmitVaultReportParams(): Promise<UpdateVaultDataParams>;
+  isSimulateSubmitLatestVaultReportSuccessful(): Promise<boolean>;
+  submitLatestVaultReport(): Promise<void>;
 }

@@ -49,13 +49,12 @@ export class OssificationPendingOperationModeProcessor implements IOperationMode
    */
   private async _process(): Promise<void> {
     // Submit vault report if available
-    const vaultAddress = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
-    const latestSubmitVaultReportParams =
-      await this.lidoAccountingReportClient.getSubmitVaultReportParams(vaultAddress);
+    await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams();
     const isSimulateSubmitLatestVaultReportSuccessful =
-      await this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful(latestSubmitVaultReportParams);
-    if (isSimulateSubmitLatestVaultReportSuccessful)
-      await this.lidoAccountingReportClient.submitLatestVaultReport(latestSubmitVaultReportParams);
+      await this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful();
+    if (isSimulateSubmitLatestVaultReportSuccessful) {
+      await this.lidoAccountingReportClient.submitLatestVaultReport();
+    }
 
     // Process Pending Ossification
     await this.yieldManagerContractClient.progressPendingOssification(this.yieldProvider);

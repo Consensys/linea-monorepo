@@ -75,8 +75,6 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     ]);
   }
 
-  async withdrawableValue(yieldProvider: Address): Promise<bigint> {}
-
   waitForVaultsReportDataUpdatedEvent(): WaitForVaultsReportDataUpdatedEventReturnType {
     // Create placeholder variable. Initialize to empty fn so it's callable before being reassigned (TS safety).
     let resolvePromise: () => void = () => {};

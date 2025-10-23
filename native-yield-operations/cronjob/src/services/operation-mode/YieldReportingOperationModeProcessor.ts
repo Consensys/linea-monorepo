@@ -3,7 +3,7 @@ import { IYieldManager } from "../../core/services/contracts/IYieldManager";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor";
 import { ILogger } from "ts-libs/linea-shared-utils";
 import { wait } from "sdk/sdk-ethers";
-import { ILazyOracle, UpdateVaultDataParams } from "../../core/services/contracts/ILazyOracle";
+import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient";
 import { RebalanceDirection, RebalanceRequirement } from "../../core/entities/RebalanceRequirement";
 import { ILineaRollupYieldExtension } from "../../core/services/contracts/ILineaRollupYieldExtension";
@@ -81,12 +81,10 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
    */
   private async _process(): Promise<void> {
     // Fetch initial data
-    const vaultAddress = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
-    const latestSubmitVaultReportParams =
-      await this.lidoAccountingReportClient.getSubmitVaultReportParams(vaultAddress);
+    await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams();
     const [initialRebalanceRequirements, isSimulateSubmitLatestVaultReportSuccessful] = await Promise.all([
       this.yieldManagerContractClient.getRebalanceRequirements(),
-      this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful(latestSubmitVaultReportParams),
+      this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful(),
     ]);
 
     // If we begin in DEFICIT, freeze beacon chain deposits to prevent further exacerbation
@@ -95,11 +93,7 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
     }
 
     // Do primary rebalance +/- report submission
-    await this._handleRebalance(
-      initialRebalanceRequirements,
-      isSimulateSubmitLatestVaultReportSuccessful,
-      latestSubmitVaultReportParams,
-    );
+    await this._handleRebalance(initialRebalanceRequirements, isSimulateSubmitLatestVaultReportSuccessful);
 
     const postReportRebalanceRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
 
@@ -108,11 +102,7 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
     // immediately correct with a targeted UNSTAKE amendment.
     if (initialRebalanceRequirements.rebalanceDirection === RebalanceDirection.STAKE) {
       if (postReportRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
-        await this._handleUnstakingRebalance(
-          postReportRebalanceRequirements.rebalanceAmount,
-          false,
-          latestSubmitVaultReportParams,
-        );
+        await this._handleUnstakingRebalance(postReportRebalanceRequirements.rebalanceAmount, false);
       } else {
         await this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider);
       }
@@ -131,7 +121,6 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
   private async _handleRebalance(
     rebalanceRequirements: RebalanceRequirement,
     isSimulateSubmitLatestVaultReportSuccessful: boolean,
-    latestSubmitVaultReportParams: UpdateVaultDataParams,
   ): Promise<void> {
     if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.NONE) {
       // No-op
@@ -139,7 +128,7 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
         return;
         // Simple submit report
       } else {
-        await this.lidoAccountingReportClient.submitLatestVaultReport(latestSubmitVaultReportParams);
+        await this.lidoAccountingReportClient.submitLatestVaultReport();
         await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
         return;
       }
@@ -147,13 +136,11 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
       await this._handleStakingRebalance(
         rebalanceRequirements.rebalanceAmount,
         isSimulateSubmitLatestVaultReportSuccessful,
-        latestSubmitVaultReportParams,
       );
     } else {
       await this._handleUnstakingRebalance(
         rebalanceRequirements.rebalanceAmount,
         isSimulateSubmitLatestVaultReportSuccessful,
-        latestSubmitVaultReportParams,
       );
     }
   }
@@ -162,14 +149,13 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
   private async _handleStakingRebalance(
     rebalanceAmount: bigint,
     isSimulateSubmitLatestVaultReportSuccessful: boolean,
-    latestSubmitVaultReportParams: UpdateVaultDataParams,
   ): Promise<void> {
     // Rebalance first
     await this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount);
     await this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount);
     // Submit report last
     if (isSimulateSubmitLatestVaultReportSuccessful) {
-      await this.lidoAccountingReportClient.submitLatestVaultReport(latestSubmitVaultReportParams);
+      await this.lidoAccountingReportClient.submitLatestVaultReport();
       await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
     }
   }
@@ -178,11 +164,10 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
   private async _handleUnstakingRebalance(
     rebalanceAmount: bigint,
     isSimulateSubmitLatestVaultReportSuccessful: boolean,
-    latestSubmitVaultReportParams: UpdateVaultDataParams,
   ): Promise<void> {
     // Submit report first
     if (isSimulateSubmitLatestVaultReportSuccessful) {
-      await this.lidoAccountingReportClient.submitLatestVaultReport(latestSubmitVaultReportParams);
+      await this.lidoAccountingReportClient.submitLatestVaultReport();
       await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
     }
     // Then perform rebalance

@@ -5,23 +5,26 @@ import { getReportProofByVault } from "@lidofinance/lsv-cli";
 import { ILogger } from "ts-libs/linea-shared-utils";
 
 export class LidoAccountingReportClient implements ILidoAccountingReportClient {
+  private latestSubmitVaultReportParams?: UpdateVaultDataParams;
+
   constructor(
     private readonly lazyOracleContractClient: ILazyOracle<TransactionReceipt>,
     private readonly ipfsGatewayUrl: string,
     private readonly logger: ILogger,
+    private readonly vault: Address,
   ) {}
 
-  async getSubmitVaultReportParams(vaultAddress: Address): Promise<UpdateVaultDataParams> {
+  async getLatestSubmitVaultReportParams(): Promise<UpdateVaultDataParams> {
     const latestReportData = await this.lazyOracleContractClient.latestReportData();
 
     const reportProof = await getReportProofByVault({
-      vault: vaultAddress,
+      vault: this.vault,
       cid: latestReportData.reportCid,
       gateway: this.ipfsGatewayUrl,
     });
 
-    return {
-      vault: vaultAddress,
+    const params: UpdateVaultDataParams = {
+      vault: this.vault,
       totalValue: BigInt(reportProof.data.totalValueWei),
       cumulativeLidoFees: BigInt(reportProof.data.fee),
       liabilityShares: BigInt(reportProof.data.liabilityShares),
@@ -29,16 +32,16 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
       slashingReserve: BigInt(reportProof.data.slashingReserve),
       proof: reportProof.proof,
     };
+
+    this.latestSubmitVaultReportParams = params;
+
+    return params;
   }
 
-  // i.) Get latest vault report CID
-  // ii.) Return early if latest vault report already submitted
-  // iii.) Get accounting report from IPFS
-  // iv.) Compute params for updateVaultData
-  // v.) Submit tx
-  // vi.) Return success
-  // Return true is simulated succeeded, false otherwise
-  async isSimulateSubmitLatestVaultReportSuccessful(params: UpdateVaultDataParams): Promise<boolean> {
+  // Return true is simulation succeeded, false otherwise
+  async isSimulateSubmitLatestVaultReportSuccessful(): Promise<boolean> {
+    const params = await this._getLatestSubmitVaultReportParams();
+
     try {
       await this.lazyOracleContractClient.simulateUpdateVaultData(params);
       this.logger.info("Successful isSimulateSubmitLatestVaultReportSuccessful");
@@ -57,7 +60,16 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
     }
   }
 
-  async submitLatestVaultReport(params: UpdateVaultDataParams): Promise<void> {
+  async submitLatestVaultReport(): Promise<void> {
+    const params = await this._getLatestSubmitVaultReportParams();
     await this.lazyOracleContractClient.updateVaultData(params);
+  }
+
+  private async _getLatestSubmitVaultReportParams(): Promise<UpdateVaultDataParams> {
+    if (!this.latestSubmitVaultReportParams) {
+      this.latestSubmitVaultReportParams = await this.getLatestSubmitVaultReportParams();
+    }
+
+    return this.latestSubmitVaultReportParams;
   }
 }

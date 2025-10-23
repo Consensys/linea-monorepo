@@ -1,6 +1,6 @@
 export * from "./clients/BeaconNodeApiClient";
 export * from "./clients/OAuth2TokenClient";
-export * from "./clients/Web3SignerClient";
+export * from "./clients/ViemWalletSignerClient";
 export * from "./clients/ethereum/EthereumMainnetClientLibrary";
 export * from "./core/client/IBeaconNodeApiClient";
 export * from "./core/client/IContractClientLibrary";
@@ -11,6 +11,6 @@ export * from "./core/client/IOAuth2TokenClient";
 export * from "./logging/ILogger";
 export * from "./logging/WinstonLogger";
 export * from "./clients/OAuth2TokenClient";
-export * from "./clients/Web3SignerClient";
+export * from "./clients/ViemWalletSignerClient";
 export * from "./utils/viem/time";
 export * from "./utils/viem/toResultAsync";
