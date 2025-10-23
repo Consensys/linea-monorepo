@@ -5,6 +5,6 @@ export interface RebalanceRequirement {
 
 export enum RebalanceDirection {
   NONE = "NONE",
-  STAKE = "STAKE",
-  UNSTAKE = "UNSTAKE",
+  STAKE = "STAKE", // Reserve excess
+  UNSTAKE = "UNSTAKE", // Reserve deficit
 }
