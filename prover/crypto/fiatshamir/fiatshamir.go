@@ -32,23 +32,18 @@ import (
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 
 func Update(h *hashtypes.Poseidon2FieldHasherDigest, vec ...field.Element) {
-	for _, f := range vec {
-		bytes := f.Bytes()
-		_, err := h.Write(bytes[:])
-		if err != nil {
-			panic(err)
-		}
-	}
+	h.WriteElements(vec)
 }
 
 func UpdateExt(h *hashtypes.Poseidon2FieldHasherDigest, vec ...fext.Element) {
-	for _, f := range vec {
-		bytes := fext.Bytes(&f)
-		_, err := h.Write(bytes[:])
-		if err != nil {
-			panic(err)
-		}
+	pad := make([]field.Element, 4*len(vec))
+	for i := 0; i < len(vec); i++ {
+		pad[4*i].Set(&vec[i].B0.A0)
+		pad[4*i+1].Set(&vec[i].B0.A1)
+		pad[4*i+2].Set(&vec[i].B1.A0)
+		pad[4*i+3].Set(&vec[i].B1.A1)
 	}
+	h.WriteElements(pad)
 }
 func UpdateGeneric(h *hashtypes.Poseidon2FieldHasherDigest, vec ...fext.GenericFieldElem) {
 	if len(vec) == 0 {
@@ -57,14 +52,10 @@ func UpdateGeneric(h *hashtypes.Poseidon2FieldHasherDigest, vec ...fext.GenericF
 
 	// Marshal the elements in a vector of bytes
 	for _, f := range vec {
-		bytes := f.GenericBytes()
-		_, err := h.Write(bytes)
-		if err != nil {
-			// This normally happens if the bytes that we provide do not represent
-			// a field element. In our case, the bytes are computed by ourselves
-			// from the caller's field element so the error is not possible. Hence,
-			// the assertion.
-			panic("Hashing is not supposed to fail")
+		if f.GetIsBase() {
+			Update(h, f.Base)
+		} else {
+			UpdateExt(h, f.Ext)
 		}
 	}
 }
@@ -96,13 +87,12 @@ func UpdateSV(h *hashtypes.Poseidon2FieldHasherDigest, sv smartvectors.SmartVect
 
 func RandomFext(h *hashtypes.Poseidon2FieldHasherDigest) fext.Element {
 	// TODO @thomas according the size of s, run several hashes to fit in an fext elmt
-	s := h.Sum(nil)
+	s := h.SumElement()
 	var res fext.Element
-	if len(s) > 4 {
-		res = fext.SetBytes(s)
-	} else {
-		res.B0.A0.SetBytes(s)
-	}
+	res.B0.A0 = s[0]
+	res.B0.A1 = s[1]
+	res.B1.A0 = s[2]
+	res.B1.A1 = s[3]
 	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
 	return res
 }
