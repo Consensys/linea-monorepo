@@ -8,6 +8,7 @@ import { deployFromFactory } from "../common/deployment";
 import { V3DexSwap, TestDexRouter, TestERC20 } from "../../../typechain-types";
 import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
 import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
+import { setNextBlockTimestamp } from "@nomicfoundation/hardhat-network-helpers/dist/src/helpers/time";
 
 describe("V3DexSwap", () => {
   let dexSwap: V3DexSwap;
@@ -129,6 +130,21 @@ describe("V3DexSwap", () => {
     it("Should swap ETH to LINEA tokens", async () => {
       const minLineaOut = ethers.parseUnits("2", 18);
       const deadline = (await time.latest()) + ONE_MINUTE_IN_SECONDS;
+
+      const ethValueToSwap = ethers.parseEther("1");
+      const rollupRevenueVaultLineaTokensBalanceBefore = await lineaToken.balanceOf(rollupRevenueVault.address);
+      await dexSwap.connect(rollupRevenueVault).swap(minLineaOut, deadline, 0n, { value: ethValueToSwap });
+
+      const rollupRevenueVaultLineaTokensBalanceAfter = await lineaToken.balanceOf(rollupRevenueVault.address);
+      expect(rollupRevenueVaultLineaTokensBalanceAfter).to.equal(
+        rollupRevenueVaultLineaTokensBalanceBefore + ethValueToSwap * 2n, // 1 ETH = 2 LINEA in the TestDexRouter
+      );
+    });
+
+    it("Should swap ETH to LINEA tokens if deadline in same block", async () => {
+      const minLineaOut = ethers.parseUnits("2", 18);
+      const deadline = (await time.latest()) + ONE_MINUTE_IN_SECONDS;
+      await setNextBlockTimestamp(deadline);
 
       const ethValueToSwap = ethers.parseEther("1");
       const rollupRevenueVaultLineaTokensBalanceBefore = await lineaToken.balanceOf(rollupRevenueVault.address);
