@@ -44,3 +44,5 @@ export const L2_ACCOUNT_ADDRESS = "0xe00cad48944330a60bbaedfbf2e0ac97e9762a1e";
 
 export const L1_ACCOUNT_METAMASK_NAME = "L1 Account";
 export const L2_ACCOUNT_METAMASK_NAME = "L2 Account";
+
+export const TEST = "test";
