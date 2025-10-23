@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 // TestDistributedWizardBasic attempts to compiler the wizard distribution.
@@ -28,7 +29,7 @@ func TestDistributedWizardBasic(t *testing.T) {
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = distributed.DistributeWizard(wiop, disc).CompileSegments()
+		distWizard = distributed.DistributeWizard(wiop, disc).CompileSegments(zkevm.LimitlessCompilationParams)
 	)
 
 	// This compilation step is needed for sanity-checking the bootstrapper
@@ -240,7 +241,7 @@ func runProverGLs(
 			moduleGL  *distributed.RecursedSegmentCompilation
 		)
 
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
+		t.Logf("segment(total)=%v module=%v module.index=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex, witnessGL.SegmentModuleIndex)
 		for k := range distWizard.ModuleNames {
 			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
 				continue
@@ -287,8 +288,7 @@ func runProverLPPs(
 
 		witnessLPP.InitialFiatShamirState = sharedRandomness
 
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
-
+		t.Logf("segment(total)=%v module=%v module.index=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex, witnessLPP.SegmentModuleIndex)
 		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
 		proofs[i] = moduleLPP.ProveSegment(witnessLPP)
 		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())

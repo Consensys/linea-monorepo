@@ -1,10 +1,17 @@
 package distributed_test
 
 import (
+	"encoding/json"
 	"testing"
+	"time"
 
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,8 +31,8 @@ func TestConglomerationBasic(t *testing.T) {
 
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
-				CompileSegments().
-				Conglomerate()
+				CompileSegments(zkevm.LimitlessCompilationParams).
+				Conglomerate(zkevm.LimitlessCompilationParams)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
@@ -49,96 +56,91 @@ func TestConglomerationBasic(t *testing.T) {
 	)
 }
 
-// // TestConglomeration generates a conglomeration proof and checks if it is valid
-// func TestConglomeration(t *testing.T) {
+// TestConglomerationProverDebug
+func TestConglomerationProverDebug(t *testing.T) {
 
-// 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	var (
+		reqFile        = files.MustRead("/home/ubuntu/mainnet-beta-v2-5.1.3/prover-execution/requests/20106872-20106937-etv0.2.0-stv2.3.0-getZkProof.json")
+		cfgFilePath    = "/home/ubuntu/zkevm-monorepo/prover/config/config-mainnet-limitless.toml"
+		req            = &execution.Request{}
+		reqDecodeErr   = json.NewDecoder(reqFile).Decode(req)
+		cfg, cfgErr    = config.NewConfigFromFileUnchecked(cfgFilePath)
+		limitlessZkEVM = zkevm.NewLimitlessDebugZkEVM(cfg)
+		_, witness     = test_utils.GetZkevmWitness(req, cfg)
+	)
 
-// 	var (
-// 		z    = zkevm.GetTestZkEVM()
-// 		disc = &distributed.StandardModuleDiscoverer{
-// 			TargetWeight: 1 << 28,
-// 			Affinities:   zkevm.GetAffinities(z),
-// 			Predivision:  1,
-// 		}
+	if reqDecodeErr != nil {
+		t.Fatalf("could not read the request file: %v", reqDecodeErr)
+	}
 
-// 		// This tests the compilation of the compiled-IOP
-// 		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).
-// 				CompileSegments().
-// 				Conglomerate()
-// 	)
+	if cfgErr != nil {
+		t.Fatalf("could not read the config file: err=%v, cfg=%++v", cfgErr, cfg)
+	}
 
-// 	var (
-// 		reqFile      = files.MustRead("/home/ubuntu/beta-v2-rc11/10556002-10556002-etv0.2.0-stv2.2.2-getZkProof.json")
-// 		cfgFilePath  = "/home/ubuntu/zkevm-monorepo/prover/config/config-sepolia-full.toml"
-// 		req          = &execution.Request{}
-// 		reqDecodeErr = json.NewDecoder(reqFile).Decode(req)
-// 		cfg, cfgErr  = config.NewConfigFromFileUnchecked(cfgFilePath)
-// 	)
+	limitlessZkEVM.RunDebug(cfg, witness)
 
-// 	if reqDecodeErr != nil {
-// 		t.Fatalf("could not read the request file: %v", reqDecodeErr)
-// 	}
+}
 
-// 	if cfgErr != nil {
-// 		t.Fatalf("could not read the config file: err=%v, cfg=%++v", cfgErr, cfg)
-// 	}
+// TestConglomeration generates a conglomeration proof and checks if it is valid
+func TestConglomerationProverFile(t *testing.T) {
 
-// 	t.Logf("loaded config: %++v", cfg)
+	var (
+		reqFile        = files.MustRead("/home/ubuntu/mainnet-beta-v2-5.1.3/prover-execution/requests/20106872-20106937-etv0.2.0-stv2.3.0-getZkProof.json")
+		cfgFilePath    = "/home/ubuntu/zkevm-monorepo/prover/config/config-mainnet-limitless.toml"
+		req            = &execution.Request{}
+		reqDecodeErr   = json.NewDecoder(reqFile).Decode(req)
+		cfg, cfgErr    = config.NewConfigFromFileUnchecked(cfgFilePath)
+		limitlessZkEVM = zkevm.NewLimitlessZkEVM(cfg)
+		z              = limitlessZkEVM.Zkevm
+		distWizard     = limitlessZkEVM.DistWizard
+	)
 
-// 	t.Logf("[%v] running the bootstrapper\n", time.Now())
+	if reqDecodeErr != nil {
+		t.Fatalf("could not read the request file: %v", reqDecodeErr)
+	}
 
-// 	var (
-// 		_, witness  = test_utils.GetZkevmWitness(req, cfg)
-// 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.GetMainProverStep(witness))
-// 	)
+	if cfgErr != nil {
+		t.Fatalf("could not read the config file: err=%v, cfg=%++v", cfgErr, cfg)
+	}
 
-// 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
+	t.Logf("loaded config: %++v", cfg)
 
-// 	var (
-// 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
-// 			runtimeBoot,
-// 			distWizard.Disc,
-// 			distWizard.BlueprintGLs,
-// 			distWizard.BlueprintLPPs,
-// 		)
-// 		runGLs = runProverGLs(t, distWizard, witnessGLs)
-// 	)
+	t.Logf("[%v] running the bootstrapper\n", time.Now())
 
-// 	for i := range runGLs {
-// 		t.Logf("sanity-checking runGLs[%d]\n", i)
-// 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
-// 	}
+	var (
+		_, witness  = test_utils.GetZkevmWitness(req, cfg)
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.GetMainProverStep(witness))
+	)
 
-// 	var (
-// 		sharedRandomness = getSharedRandomness(runGLs)
-// 		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
-// 	)
+	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
-// 	for i := range runLPPs {
-// 		t.Logf("sanity-checking runLPPs[%d]\n", i)
-// 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
-// 	}
+	var (
+		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
+			runtimeBoot,
+			distWizard.Disc,
+			distWizard.BlueprintGLs,
+			distWizard.BlueprintLPPs,
+			distWizard.VerificationKeyMerkleTree.GetRoot(),
+		)
+		glProofs         = runProverGLs(t, distWizard, witnessGLs)
+		sharedRandomness = distributed.GetSharedRandomnessFromSegmentProofs(glProofs)
+		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
+	)
 
-// 	runConglomerationProver(t, distWizard.CompiledConglomeration, runGLs, runLPPs)
-// }
+	runConglomerationProver(
+		t,
+		&distWizard.VerificationKeyMerkleTree,
+		distWizard.CompiledConglomeration,
+		glProofs,
+		runLPPs,
+	)
+}
 
-// // Sanity-check for conglomeration compilation.
-// func sanityCheckConglomeration(t *testing.T, cong *distributed.ConglomeratorCompilation, run *wizard.ProverRuntime) {
-
-// 	t.Logf("sanity-check for conglomeration")
-// 	stopRound := recursion.VortexQueryRound(cong.ModuleGLIops[0])
-// 	err := wizard.VerifyUntilRound(cong.ModuleGLIops[0], run.ExtractProof(), stopRound+1)
-
-// 	if err != nil {
-// 		t.Fatalf("could not verify proof: %v", err)
-// 	}
-// }
-
-// This function runs a prover for a conglomerator compilation. It takes in a ConglomeratorCompilation
-// object and two slices of ProverRuntime objects, runGLs and runLPPs. It extracts witnesses from
-// these runtimes, then uses the ConglomeratorCompilation object to prove the conglomerator,
-// logging the start and end times of the proof process.
+// This function runs a prover for a conglomerator compilation. It takes in a
+// ConglomeratorCompilation object and two slices of ProverRuntime objects,
+// runGLs and runLPPs. It extracts witnesses from these runtimes, then uses the
+// ConglomeratorCompilation object to prove the conglomerator, logging the start
+// and end times of the proof process.
 func runConglomerationProver(
 	t *testing.T,
 	mt *distributed.VerificationKeyMerkleTree,

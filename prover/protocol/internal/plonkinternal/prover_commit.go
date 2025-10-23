@@ -95,11 +95,11 @@ func (pa InitialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 				utils.Panic("[witness.Public()] returned an error: %v", err)
 			}
 
-			if pa.FixedNbPublicInput > 0 {
+			if pa.NbPublicInputs > 0 {
 				// Convert public witness to smart-vector
 				pubWitSV := smartvectors.RightZeroPadded(
 					[]field.Element(pubWitness.Vector().(fr.Vector)),
-					pa.FixedNbPublicInput,
+					pa.NbPublicInputs,
 				)
 
 				// Assign the public witness
