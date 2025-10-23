@@ -127,7 +127,6 @@ func TestConglomerationProverFile(t *testing.T) {
 	)
 
 	runConglomerationProver(
-		t,
 		&distWizard.VerificationKeyMerkleTree,
 		distWizard.CompiledConglomeration,
 		glProofs,
