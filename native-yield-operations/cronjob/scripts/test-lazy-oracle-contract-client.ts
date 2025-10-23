@@ -1,0 +1,56 @@
+/**
+ * Manual integration runner for LidoAccountingReportClient.
+ *
+ * Example usage:
+ * RPC_URL=https://mainnet.infura.io/v3/YOUR_KEY \
+ * PRIVATE_KEY=0xabc123... \
+ * LAZY_ORACLE_ADDRESS=0x... \
+ * LIDO_VAULT_ADDRESS=0x... \
+ * pnpm --filter @consensys/linea-native-yield-cron-job exec tsx scripts/test-lazy-oracle-contract-client.ts
+ *
+ * Optional flags:
+ * POLL_INTERVAL_MS=60000 \
+ */
+
+import { ContractClientLibrary, ViemWalletSignerClient, WinstonLogger } from "@consensys/linea-shared-utils";
+import { LazyOracleContractClient } from "../src/clients/LazyOracleContractClient.js";
+import { Address, Hex } from "viem";
+import { hoodi } from "viem/chains";
+
+async function main() {
+  const requiredEnvVars = ["RPC_URL", "PRIVATE_KEY", "LAZY_ORACLE_ADDRESS"];
+
+  const missing = requiredEnvVars.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    console.error(`Missing required env vars: ${missing.join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const rpcUrl = process.env.RPC_URL as string;
+  const privateKey = process.env.PRIVATE_KEY as Hex;
+  const lazyOracleAddress = process.env.LAZY_ORACLE_ADDRESS as Address;
+  const pollIntervalMs = Number.parseInt(process.env.POLL_INTERVAL_MS ?? "60000", 10);
+
+  const signer = new ViemWalletSignerClient(privateKey, hoodi);
+  const contractClientLibrary = new ContractClientLibrary(rpcUrl, hoodi, signer);
+
+  const lazyOracleClient = new LazyOracleContractClient(
+    contractClientLibrary,
+    lazyOracleAddress,
+    new WinstonLogger("LazyOracleContractClient.integration"),
+    pollIntervalMs,
+  );
+  const { unwatch, waitForEvent } = lazyOracleClient.waitForVaultsReportDataUpdatedEvent();
+
+  try {
+    await waitForEvent;
+  } catch (err) {
+    console.error("LazyOracleContractClient integration script failed:", err);
+    process.exitCode = 1;
+  } finally {
+    unwatch();
+  }
+}
+
+void main();
