@@ -1,0 +1,4 @@
+package keccakfkoalabear
+
+func Testchi() {
+}
