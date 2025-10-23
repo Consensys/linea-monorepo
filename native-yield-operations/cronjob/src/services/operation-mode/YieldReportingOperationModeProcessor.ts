@@ -1,7 +1,7 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import { ILogger } from "@consensys/linea-shared-utils";
+import { bigintReplacer, ILogger } from "@consensys/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
 import { ILazyOracle } from "../../core/services/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
@@ -37,8 +37,12 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
         waitForEvent.then(() => "event" as const),
         wait(this.maxInactionMs).then(() => "timeout" as const),
       ]);
+      this.logger.info(
+        `_process() started due to ${
+          winner === "timeout" ? `time out after ${this.maxInactionMs}ms` : `receiving VaultsReportDataUpdated event`
+        }`,
+      );
       await this._process();
-      this.logger.info(`poll(): finished via ${winner}`);
     } finally {
       // clean up watcher
       unwatch();
@@ -86,6 +90,9 @@ export class YieldReportingOperationModeProcessor implements IOperationModeProce
       this.yieldManagerContractClient.getRebalanceRequirements(),
       this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful(),
     ]);
+    this.logger.info(
+      `Initial data fetch: initialRebalanceRequirements=${JSON.stringify(initialRebalanceRequirements, bigintReplacer, 2)} isSimulateSubmitLatestVaultReportSuccessful=${isSimulateSubmitLatestVaultReportSuccessful}`,
+    );
 
     // If we begin in DEFICIT, freeze beacon chain deposits to prevent further exacerbation
     if (initialRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {

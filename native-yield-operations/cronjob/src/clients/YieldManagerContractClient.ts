@@ -1,4 +1,4 @@
-import { IContractClientLibrary } from "@consensys/linea-shared-utils";
+import { IContractClientLibrary, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
   encodeFunctionData,
@@ -19,6 +19,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
 
   constructor(
+    private readonly logger: ILogger,
     private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
     private readonly rebalanceToleranceBps: number,
@@ -239,15 +240,21 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
 
   async pauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
     if (!(await this.isStakingPaused(yieldProvider))) {
-      return await this.pauseStaking(yieldProvider);
+      const txReceipt = await this.pauseStaking(yieldProvider);
+      this.logger.info(`Paused staking for yieldProvider=${yieldProvider}`);
+      return txReceipt;
     }
+    this.logger.info(`Already paused staking for yieldProvider=${yieldProvider}`);
     return null;
   }
 
   async unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
     if (await this.isStakingPaused(yieldProvider)) {
-      return await this.unpauseStaking(yieldProvider);
+      const txReceipt = await this.unpauseStaking(yieldProvider);
+      this.logger.info(`Resumed staking for yieldProvider=${yieldProvider}`);
+      return txReceipt;
     }
+    this.logger.info(`Already resumed staking for yieldProvider=${yieldProvider}`);
     return null;
   }
 
