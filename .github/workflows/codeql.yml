@@ -56,7 +56,6 @@ jobs:
               - '**/requirements.txt'
               - '**/pyproject.toml'
               - '**/setup.py'
-      
               - '**/Pipfile'
       - name: Build matrix
         id: set-matrix
