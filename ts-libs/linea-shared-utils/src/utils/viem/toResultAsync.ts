@@ -3,7 +3,7 @@ import { Result, ok, err } from "neverthrow";
 
 type AsyncFactory<T> = () => Promise<T>;
 
-export async function toResultAsync<T>(callback: AsyncFactory<T>): Promise<Result<T, Error>> {
+export async function toResultAsync<T>(callback: AsyncFactory<T>): Promise<Result<T, BaseError>> {
   try {
     const value = await callback();
     return ok(value);

@@ -226,7 +226,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       return true;
     }
     // Above tolerance band
-    if (l1MessageServiceBalance < effectiveTargetWithdrawalReserve + toleranceBand) {
+    if (l1MessageServiceBalance > effectiveTargetWithdrawalReserve + toleranceBand) {
       return true;
     }
     return false;
@@ -238,14 +238,14 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   async pauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
-    if (await this.isStakingPaused(yieldProvider)) {
+    if (!(await this.isStakingPaused(yieldProvider))) {
       return await this.pauseStaking(yieldProvider);
     }
     return null;
   }
 
   async unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
-    if (!(await this.isStakingPaused(yieldProvider))) {
+    if (await this.isStakingPaused(yieldProvider)) {
       return await this.unpauseStaking(yieldProvider);
     }
     return null;

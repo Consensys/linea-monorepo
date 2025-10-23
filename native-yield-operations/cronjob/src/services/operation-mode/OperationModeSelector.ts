@@ -15,7 +15,7 @@ export class OperationModeSelector implements IOperationModeSelector {
     private readonly ossificationPendingOperationModeProcessor: IOperationModeProcessor,
     private readonly ossificationCompleteOperationModeProcessor: IOperationModeProcessor,
     private readonly yieldProvider: Address,
-    private readonly contractReadRetryTimeSeconds: number,
+    private readonly contractReadRetryTimeMs: number,
   ) {
     this.yieldReportingOperationModeProcessor = yieldReportingOperationModeProcessor;
   }
@@ -59,7 +59,7 @@ export class OperationModeSelector implements IOperationModeSelector {
         }
       } catch (error) {
         this.logger.error(error as Error);
-        await wait(this.contractReadRetryTimeSeconds);
+        await wait(this.contractReadRetryTimeMs);
       }
     }
   }
