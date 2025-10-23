@@ -1,13 +1,4 @@
-import {
-  Account,
-  Address,
-  createWalletClient,
-  Hex,
-  http,
-  PublicClient,
-  TransactionSerializable,
-  WalletClient,
-} from "viem";
+import { Account, Address, Chain, createWalletClient, Hex, http, TransactionSerializable, WalletClient } from "viem";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { privateKeyToAccount, privateKeyToAddress } from "viem/accounts";
 
@@ -16,15 +7,12 @@ export class ViemWalletSignerClient implements IContractSignerClient {
   private readonly address: Address;
   private readonly wallet: WalletClient;
 
-  constructor(
-    private readonly publicClient: PublicClient,
-    privateKey: Hex,
-  ) {
+  constructor(privateKey: Hex, chain: Chain) {
     this.account = privateKeyToAccount(privateKey);
     this.address = privateKeyToAddress(privateKey);
     this.wallet = createWalletClient({
       account: this.account,
-      chain: this.publicClient.chain,
+      chain,
       transport: http(),
     });
   }
@@ -40,7 +28,7 @@ export class ViemWalletSignerClient implements IContractSignerClient {
     void v;
     void yParity;
 
-    return this.wallet.signTransaction({ ...unsigned, chainId: await this.publicClient.getChainId() });
+    return this.wallet.signTransaction({ ...unsigned });
   }
 
   getAddress(): Address {

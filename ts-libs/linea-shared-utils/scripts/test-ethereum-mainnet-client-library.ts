@@ -1,0 +1,49 @@
+/* Run against anvil node
+
+RPC_URL=http://127.0.0.1:8545 \
+PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+pnpm --filter @consensys/linea-shared-utils exec tsx scripts/test-ethereum-mainnet-client-library.ts
+
+ */
+import { EthereumMainnetClientLibrary } from "../src/clients/EthereumMainnetClientLibrary";
+import { ViemWalletSignerClient } from "../src/clients/ViemWalletSignerClient";
+import { Hex } from "viem";
+import { mainnet } from "viem/chains";
+
+async function main() {
+  const requiredEnvVars = ["RPC_URL", "PRIVATE_KEY"];
+
+  const missing = requiredEnvVars.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    console.error(`Missing required env vars: ${missing.join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+  const rpcUrl = process.env.RPC_URL as string;
+  const privateKey = process.env.PRIVATE_KEY as Hex;
+
+  const signer = new ViemWalletSignerClient(privateKey, mainnet);
+  const clientLibrary = new EthereumMainnetClientLibrary(rpcUrl, signer);
+
+  try {
+    const address = signer.getAddress();
+    console.log("Address:", address);
+
+    const chainId = await clientLibrary.getChainId();
+    console.log("Chain ID:", chainId);
+
+    const balance = await clientLibrary.getBalance(address);
+    console.log(`Balance for ${address}:`, balance.toString());
+
+    const fees = await clientLibrary.estimateGasFees();
+    console.log("Estimated fees:", fees);
+
+    const receipt = await clientLibrary.sendSignedTransaction(address, "0x");
+    console.log("Receipt:", receipt);
+  } catch (err) {
+    console.error("EthereumMainnetClientLibrary integration script failed:", err);
+    process.exitCode = 1;
+  }
+}
+
+main();
