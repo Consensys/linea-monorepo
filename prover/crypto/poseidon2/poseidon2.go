@@ -100,7 +100,7 @@ func (d Poseidon2FieldHasherDigest) MaxBytes32() Bytes32 {
 func Poseidon2() *Poseidon2FieldHasherDigest {
 	var maxVal field.Octuplet
 	for i := range maxVal {
-		maxVal[i] = field.NewFromString("-1")
+		maxVal[i] = field.MaxVal
 	}
 	return &Poseidon2FieldHasherDigest{
 		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
