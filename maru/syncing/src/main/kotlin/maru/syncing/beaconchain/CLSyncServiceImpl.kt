@@ -67,7 +67,7 @@ class CLSyncServiceImpl(
 
     val oldTarget = this.syncTarget.getAndSet(syncTarget)
     if (oldTarget != syncTarget) {
-      log.info("Syncing target updated from {} to {}", oldTarget, syncTarget)
+      log.info("Syncing target updated: from={} to={}", oldTarget, syncTarget)
     }
 
     // If the pipeline is already running, we don't need to start a new one

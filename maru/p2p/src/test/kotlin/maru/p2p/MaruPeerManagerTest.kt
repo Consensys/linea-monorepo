@@ -13,6 +13,7 @@ import maru.config.P2PConfig
 import maru.config.SyncingConfig
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
+import maru.syncing.FakeSyncStatusProvider
 import maru.syncing.SyncStatusProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -73,27 +74,12 @@ class MaruPeerManagerTest {
       )
 
     private fun createSyncStatusProvider(): SyncStatusProvider =
-      object : SyncStatusProvider {
-        override fun getCLSyncStatus(): CLSyncStatus = CLSyncStatus.SYNCED
-
-        override fun getElSyncStatus(): ELSyncStatus = ELSyncStatus.SYNCED
-
-        override fun onClSyncStatusUpdate(handler: (newStatus: CLSyncStatus) -> Unit) {}
-
-        override fun onElSyncStatusUpdate(handler: (newStatus: ELSyncStatus) -> Unit) {}
-
-        override fun isBeaconChainSynced(): Boolean = true
-
-        override fun isELSynced(): Boolean = true
-
-        override fun onBeaconSyncComplete(handler: () -> Unit) {}
-
-        override fun onFullSyncComplete(handler: () -> Unit) {}
-
-        override fun getBeaconSyncDistance(): ULong = 0UL
-
-        override fun getCLSyncTarget(): ULong = 0UL
-      }
+      FakeSyncStatusProvider(
+        clStatus = CLSyncStatus.SYNCED,
+        elStatus = ELSyncStatus.SYNCED,
+        beaconSyncDistanceValue = 0UL,
+        clSyncTarget = 0UL,
+      )
 
     val syncStatusProvider: SyncStatusProvider = createSyncStatusProvider()
   }

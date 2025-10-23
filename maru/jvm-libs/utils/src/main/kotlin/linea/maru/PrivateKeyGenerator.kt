@@ -92,7 +92,7 @@ object PrivateKeyGenerator {
     return getKeyData(privateKeyTyped.raw())
   }
 
-  internal fun generatePrivateKey(): KeyData {
+  fun generatePrivateKey(): KeyData {
     val (privKey, pubKey) = generateKeyPair(KeyType.SECP256K1)
     return getKeyData(privKey.raw())
   }
