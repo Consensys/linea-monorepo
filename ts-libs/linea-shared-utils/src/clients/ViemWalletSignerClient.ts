@@ -30,7 +30,17 @@ export class ViemWalletSignerClient implements IContractSignerClient {
   }
 
   async sign(tx: TransactionSerializable): Promise<Hex> {
-    return await this.wallet.signTransaction({ ...tx, chainId: await this.publicClient.getChainId() });
+    // Remove any signature fields if they exist on the object
+    // 'as any' required to avoid enforcing strict structural validation
+    // Fine because we are only removing fields, not depending on them existing
+    // Practical way to strip off optional keys from a union type
+    const { r, s, v, yParity, ...unsigned } = tx as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    void r;
+    void s;
+    void v;
+    void yParity;
+
+    return this.wallet.signTransaction({ ...unsigned, chainId: await this.publicClient.getChainId() });
   }
 
   getAddress(): Address {

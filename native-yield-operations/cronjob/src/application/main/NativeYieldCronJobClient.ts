@@ -2,18 +2,22 @@ import { ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
 import { NativeYieldCronJobClientConfig } from "./config/NativeYieldCronJobClientConfig";
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector";
 import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector";
-import { IContractClientLibrary } from "ts-libs/linea-shared-utils/core/client/IContractClientLibrary";
-import { EthereumMainnetClientLibrary } from "ts-libs/linea-shared-utils/clients/ethereum/EthereumMainnetClientLibrary";
+import {
+  IContractClientLibrary,
+  EthereumMainnetClientLibrary,
+  Web3SignerClient,
+  IContractSignerClient,
+  IOAuth2TokenClient,
+} from "ts-libs/linea-shared-utils/src";
+import {} from "ts-libs/linea-shared-utils/src";
 import { PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerContractClient } from "../../clients/YieldManagerContractClient";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager";
-import { Web3SignerService } from "ts-libs/linea-shared-utils/services/signers/Web3SignerService";
 import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor";
 import { LazyOracleContractClient } from "../../clients/LazyOracleContractClient";
 import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
 import { ApolloClient, InMemoryCache, HttpLink, from } from "@apollo/client";
 import { SetContextLink } from "@apollo/client/link/context";
-import { IContractSignerClient, IOAuth2TokenClient } from "ts-libs/linea-shared-utils/src";
 
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
@@ -31,7 +35,7 @@ export class NativeYieldCronJobClient {
     this.config = config;
     this.logger = new WinstonLogger(NativeYieldCronJobClient.name, config.loggerOptions);
 
-    this.web3SignerService = new Web3SignerService(
+    this.web3SignerService = new Web3SignerClient(
       config.web3signer.url,
       config.web3signer.publicKey,
       config.web3signer.keystore.path,
