@@ -77,9 +77,8 @@ public class Bin implements OperationSetModule<BinOperation> {
 
   @Override
   public void commit(Trace trace) {
-    int stamp = 0;
     for (BinOperation op : operations.sortOperations(new BinOperationComparator())) {
-      op.traceBinOperation(++stamp, trace.bin());
+      op.traceBinOperation(trace.bin());
     }
   }
 }
