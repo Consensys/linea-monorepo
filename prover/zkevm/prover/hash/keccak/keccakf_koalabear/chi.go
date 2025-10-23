@@ -3,11 +3,13 @@ package keccakfkoalabear
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	protocols "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/sub_protocols"
 )
 
@@ -21,8 +23,9 @@ type chi struct {
 	StateNext [5][5][8]*symbolic.Expression
 	// prover actions for linear combinations
 	paLinearCombinations [5][5][8]*protocols.LinearCombination
-	// state witness after applying the chi step, since the state-witness is needed for the next Iota step.
+	// state witness after applying the chi step, since the state-witness is needed for the Iota step.
 	stateNextWitness [5][5][8][]field.Element
+	stateNextBits    [5][5][64][]field.Element
 	// the round constant
 	RC ifaces.Column
 }
@@ -70,12 +73,67 @@ func newChi(comp *wizard.CompiledIOP, numKeccakf int, stateCurr stateInBits) *ch
 
 // assignChi assigns the values to the columns of chi step.
 func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
+	var (
+		u, v          []field.Element
+		stateInternal [5][5][8][]field.Element
+		size          = stateCurr[0][0][0].Size()
+	)
 	// assign the linear combinations for each lane in the state
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
 				chi.paLinearCombinations[x][y][z].Run(run)
+				stateInternal[x][y][z] = chi.stateInternal[x][y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
 			}
 		}
 	}
+
+	// assign the state after chi step
+	for x := 0; x < 5; x++ {
+		for y := 0; y < 5; y++ {
+			for z := 0; z < 8; z++ {
+				// A[x][y] = A[x][y] + ( (not A[x+1][y]) and A[x+2][y])
+				u = make([]field.Element, size)
+				vector.ScalarMul(u, stateInternal[x][y][z], field.NewElement(2))
+				vector.ScalarMul(v, stateInternal[(x+2)%5][y][z], field.NewElement(3))
+				vector.Add(u, u, v, stateInternal[(x+1)%5][y][z])
+				chi.stateNextWitness[x][y][z] = u
+				for i := 0; i < size; i++ {
+					res := cleanBase(Decompose(u[i].Uint64(), 11, 8))
+					for j := range res {
+						chi.stateNextBits[x][y][z*8+j][i] = field.NewElement(res[j])
+					}
+				}
+			}
+		}
+	}
+
+}
+
+// to be removed later
+func Decompose(r uint64, base int, nb int) (res []uint64) {
+	// It will essentially be used for chunk to slice decomposition
+	res = make([]uint64, 0, nb)
+	base64 := uint64(base)
+	curr := r
+	for curr > 0 {
+		limb := curr % base64
+		res = append(res, limb)
+		curr /= base64
+	}
+
+	if len(res) > nb {
+		utils.Panic("expected %v limbs, but got %v", nb, len(res))
+	}
+
+	return res
+}
+
+func cleanBase(in []uint64) (out []uint64) {
+	out = make([]uint64, len(in))
+	for i := 0; i < len(in); i++ {
+		// take the second bit
+		out[i] = in[i] >> 1 & 1
+	}
+	return out
 }
