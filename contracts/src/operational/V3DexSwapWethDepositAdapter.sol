@@ -11,7 +11,7 @@ import { IWETH9 } from "./interfaces/IWETH9.sol";
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract V3DexSwapWethDeposit is IV3DexSwap {
+contract V3DexSwapWethDepositAdapter is IV3DexSwap {
   /// @notice Tick spacing of the pool.
   int24 public immutable POOL_TICK_SPACING;
   /// @notice Address of the Swap Router contract.
