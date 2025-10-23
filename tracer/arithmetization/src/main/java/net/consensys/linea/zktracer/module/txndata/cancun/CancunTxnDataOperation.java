@@ -76,8 +76,7 @@ public abstract class CancunTxnDataOperation extends TxnDataOperation {
 
   private void traceCommonSaveForFlags(
       Trace.Txndata trace, int ct, long totalUserTransactionsInConflation) {
-    final long relativeUserTxNumMax =
-        this instanceof CancunUserTransaction ? blockSnapshot.getNbOfTxsInBlock() : 0;
+    final long relativeUserTxNumMax = blockSnapshot.getNbOfTxsInBlock();
     trace
         // BLK_NUMBER is (defcomputed ...)
         // TOTL_TXN_NUMBER is (defcomputed ...)
@@ -95,8 +94,7 @@ public abstract class CancunTxnDataOperation extends TxnDataOperation {
     // GAS_CUMULATIVE gets traced for USER transactions only
     ;
 
-    if (this instanceof CancunUserTransaction) {
-      CancunUserTransaction userTransaction = (CancunUserTransaction) this;
+    if (this instanceof CancunUserTransaction userTransaction) {
       trace.gasCumulative(Bytes.ofUnsignedLong(userTransaction.txn.getAccumulatedGasUsedInBlock()));
     }
   }
