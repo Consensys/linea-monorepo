@@ -86,9 +86,6 @@ jobs:
         language: ${{ fromJson(needs.changes.outputs.languages) }}
 
     steps:
-      - name: Skip if no changes
-        run: echo "Skipping ${{ matrix.language }} - no relevant changes detected"
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
