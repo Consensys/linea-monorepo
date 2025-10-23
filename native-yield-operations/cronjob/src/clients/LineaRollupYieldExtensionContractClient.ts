@@ -7,9 +7,9 @@ import {
   PublicClient,
   TransactionReceipt,
 } from "viem";
-import { LineaRollupYieldExtensionABI } from "../core/abis/LineaRollupYieldExtension";
-import { ILineaRollupYieldExtension } from "../core/services/contracts/ILineaRollupYieldExtension";
-import { IBaseContractClient } from "../core/clients/IBaseContractClient";
+import { LineaRollupYieldExtensionABI } from "../core/abis/LineaRollupYieldExtension.js";
+import { ILineaRollupYieldExtension } from "../core/services/contracts/ILineaRollupYieldExtension.js";
+import { IBaseContractClient } from "../core/clients/IBaseContractClient.js";
 
 export class LineaRollupYieldExtensionContractClient
   implements ILineaRollupYieldExtension<TransactionReceipt>, IBaseContractClient

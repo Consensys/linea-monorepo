@@ -1,5 +1,5 @@
 import { Hex } from "viem";
-import { FlattenedConfigSchema } from "./config.schema";
+import { FlattenedConfigSchema } from "./config.schema.js";
 import { transports } from "winston";
 
 export const toClientConfig = (env: FlattenedConfigSchema) => ({

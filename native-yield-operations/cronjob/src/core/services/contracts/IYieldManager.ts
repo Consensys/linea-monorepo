@@ -1,6 +1,6 @@
 import { Address } from "viem";
-import { WithdrawalRequests } from "../../entities/LidoStakingVaultWithdrawalParams";
-import { RebalanceRequirement } from "../../entities/RebalanceRequirement";
+import { WithdrawalRequests } from "../../entities/LidoStakingVaultWithdrawalParams.js";
+import { RebalanceRequirement } from "../../entities/RebalanceRequirement.js";
 
 export interface IYieldManager<TTransactionReceipt> {
   // View calls

@@ -11,10 +11,9 @@
  * pnpm --filter @consensys/linea-native-yield-cron-job exec tsx scripts/test-consensys-staking-graphql-client.ts
  */
 
-import { BeaconNodeApiClient, WinstonLogger } from "@consensys/linea-shared-utils";
-import { ConsensysStakingGraphQLClient } from "../src/clients/ConsensysStakingGraphQLClient";
-import { OAuth2TokenClient } from "@consensys/linea-shared-utils";
-import { createApolloClient } from "../src/utils/createApolloClient";
+import { BeaconNodeApiClient, WinstonLogger, OAuth2TokenClient } from "@consensys/linea-shared-utils";
+import { ConsensysStakingGraphQLClient } from "../src/clients/ConsensysStakingGraphQLClient.js";
+import { createApolloClient } from "../src/utils/createApolloClient.js";
 
 // private readonly apolloClient: ApolloClient,
 

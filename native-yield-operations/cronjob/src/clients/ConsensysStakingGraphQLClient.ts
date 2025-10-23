@@ -1,8 +1,8 @@
 import { ApolloClient } from "@apollo/client";
-import { IValidatorDataClient } from "../core/clients/IValidatorDataClient";
-import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance";
+import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
+import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
 import { ILogger } from "@consensys/linea-shared-utils";
-import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance";
+import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
 import { IBeaconNodeAPIClient, ONE_GWEI, safeSub } from "@consensys/linea-shared-utils";
 
 export class ConsensysStakingGraphQLClient implements IValidatorDataClient {

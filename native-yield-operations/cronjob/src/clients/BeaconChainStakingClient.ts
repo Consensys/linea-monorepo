@@ -1,10 +1,10 @@
 import { min, ONE_GWEI, safeSub } from "@consensys/linea-shared-utils";
-import { IBeaconChainStakingClient } from "../core/clients/IBeaconChainStakingClient";
-import { IValidatorDataClient } from "../core/clients/IValidatorDataClient";
-import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance";
-import { WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams";
+import { IBeaconChainStakingClient } from "../core/clients/IBeaconChainStakingClient.js";
+import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
+import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
+import { WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams.js";
 import { Address, maxUint256, stringToHex, TransactionReceipt } from "viem";
-import { IYieldManager } from "../core/services/contracts/IYieldManager";
+import { IYieldManager } from "../core/services/contracts/IYieldManager.js";
 
 export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   constructor(

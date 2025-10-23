@@ -1,11 +1,11 @@
 import { Address, TransactionReceipt } from "viem";
-import { IYieldManager } from "../../core/services/contracts/IYieldManager";
-import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor";
+import { IYieldManager } from "../../core/services/contracts/IYieldManager.js";
+import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { ILogger } from "@consensys/linea-shared-utils";
 import { wait } from "sdk/sdk-ethers";
-import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
-import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient";
-import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient";
+import { ILazyOracle } from "../../core/services/contracts/ILazyOracle.js";
+import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
+import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 
 export class OssificationPendingOperationModeProcessor implements IOperationModeProcessor {
   constructor(

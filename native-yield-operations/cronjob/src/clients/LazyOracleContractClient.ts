@@ -7,14 +7,14 @@ import {
   PublicClient,
   TransactionReceipt,
 } from "viem";
-import { LazyOracleABI } from "../core/abis/LazyOracle";
+import { LazyOracleABI } from "../core/abis/LazyOracle.js";
 import {
   ILazyOracle,
   UpdateVaultDataParams,
   WaitForVaultsReportDataUpdatedEventReturnType,
   LazyOracleReportData,
-} from "../core/services/contracts/ILazyOracle";
-import { IBaseContractClient } from "../core/clients/IBaseContractClient";
+} from "../core/services/contracts/ILazyOracle.js";
+import { IBaseContractClient } from "../core/clients/IBaseContractClient.js";
 import { ILogger } from "@consensys/linea-shared-utils";
 
 export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>, IBaseContractClient {

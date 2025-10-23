@@ -1,7 +1,7 @@
 import { ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
-import { NativeYieldCronJobClientConfig } from "./config/NativeYieldCronJobClientConfig";
-import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector";
-import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector";
+import { NativeYieldCronJobClientConfig } from "./config/NativeYieldCronJobClientConfig.js";
+import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
+import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector.js";
 import {
   IContractClientLibrary,
   ContractClientLibrary,
@@ -14,25 +14,25 @@ import {
 } from "@consensys/linea-shared-utils";
 import {} from "@consensys/linea-shared-utils";
 import { Chain, PublicClient, TransactionReceipt } from "viem";
-import { YieldManagerContractClient } from "../../clients/YieldManagerContractClient";
-import { IYieldManager } from "../../core/services/contracts/IYieldManager";
-import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor";
-import { LazyOracleContractClient } from "../../clients/LazyOracleContractClient";
-import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
+import { YieldManagerContractClient } from "../../clients/YieldManagerContractClient.js";
+import { IYieldManager } from "../../core/services/contracts/IYieldManager.js";
+import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor.js";
+import { LazyOracleContractClient } from "../../clients/LazyOracleContractClient.js";
+import { ILazyOracle } from "../../core/services/contracts/ILazyOracle.js";
 import { ApolloClient } from "@apollo/client";
-import { ILineaRollupYieldExtension } from "../../core/services/contracts/ILineaRollupYieldExtension";
-import { LineaRollupYieldExtensionContractClient } from "../../clients/LineaRollupYieldExtensionContractClient";
-import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor";
-import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient";
-import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient";
-import { IValidatorDataClient } from "../../core/clients/IValidatorDataClient";
-import { ConsensysStakingGraphQLClient } from "../../clients/ConsensysStakingGraphQLClient";
-import { LidoAccountingReportClient } from "../../clients/LidoAccountingReportClient";
-import { BeaconChainStakingClient } from "../../clients/BeaconChainStakingClient";
-import { OssificationCompleteOperationModeProcessor } from "../../services/operation-mode/OssificationCompleteOperationModeProcessor";
-import { OssificationPendingOperationModeProcessor } from "../../services/operation-mode/OssificationPendingOperationModeProcessor";
+import { ILineaRollupYieldExtension } from "../../core/services/contracts/ILineaRollupYieldExtension.js";
+import { LineaRollupYieldExtensionContractClient } from "../../clients/LineaRollupYieldExtensionContractClient.js";
+import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
+import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
+import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
+import { IValidatorDataClient } from "../../core/clients/IValidatorDataClient.js";
+import { ConsensysStakingGraphQLClient } from "../../clients/ConsensysStakingGraphQLClient.js";
+import { LidoAccountingReportClient } from "../../clients/LidoAccountingReportClient.js";
+import { BeaconChainStakingClient } from "../../clients/BeaconChainStakingClient.js";
+import { OssificationCompleteOperationModeProcessor } from "../../services/operation-mode/OssificationCompleteOperationModeProcessor.js";
+import { OssificationPendingOperationModeProcessor } from "../../services/operation-mode/OssificationPendingOperationModeProcessor.js";
 import { mainnet, hoodi } from "viem/chains";
-import { createApolloClient } from "../../utils/createApolloClient";
+import { createApolloClient } from "../../utils/createApolloClient.js";
 
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;

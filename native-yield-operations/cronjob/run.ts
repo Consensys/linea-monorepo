@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
-import { loadConfigFromEnv } from "./src/application/main/config/loadConfigFromEnv";
-import { NativeYieldCronJobClient } from "./src/application/main/NativeYieldCronJobClient";
+import { loadConfigFromEnv } from "./src/application/main/config/loadConfigFromEnv.js";
+import { NativeYieldCronJobClient } from "./src/application/main/NativeYieldCronJobClient.js";
 
 dotenv.config();
 

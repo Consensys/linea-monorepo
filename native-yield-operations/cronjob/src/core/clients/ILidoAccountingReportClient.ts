@@ -1,4 +1,4 @@
-import { UpdateVaultDataParams } from "../services/contracts/ILazyOracle";
+import { UpdateVaultDataParams } from "../services/contracts/ILazyOracle.js";
 
 export interface ILidoAccountingReportClient {
   // i.) Get latest vault report CID

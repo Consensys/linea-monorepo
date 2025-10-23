@@ -1,6 +1,6 @@
 import { Address, TransactionReceipt, BaseError, ContractFunctionRevertedError } from "viem";
-import { ILidoAccountingReportClient } from "../core/clients/ILidoAccountingReportClient";
-import { ILazyOracle, UpdateVaultDataParams } from "../core/services/contracts/ILazyOracle";
+import { ILidoAccountingReportClient } from "../core/clients/ILidoAccountingReportClient.js";
+import { ILazyOracle, UpdateVaultDataParams } from "../core/services/contracts/ILazyOracle.js";
 import { getReportProofByVault } from "@lidofinance/lsv-cli";
 import { ILogger } from "@consensys/linea-shared-utils";
 

@@ -1,5 +1,5 @@
-import { configSchema } from "./config.schema";
-import { toClientConfig } from "./NativeYieldCronJobClientConfig";
+import { configSchema } from "./config.schema.js";
+import { toClientConfig } from "./NativeYieldCronJobClientConfig.js";
 
 export function loadConfigFromEnv(envObj: NodeJS.ProcessEnv = process.env) {
   const parsed = configSchema.safeParse(envObj);

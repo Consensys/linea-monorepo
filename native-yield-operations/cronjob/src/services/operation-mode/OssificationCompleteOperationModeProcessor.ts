@@ -1,8 +1,8 @@
 import { Address, TransactionReceipt } from "viem";
-import { IYieldManager } from "../../core/services/contracts/IYieldManager";
-import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor";
+import { IYieldManager } from "../../core/services/contracts/IYieldManager.js";
+import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { wait } from "sdk/sdk-ethers";
-import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient";
+import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 
 export class OssificationCompleteOperationModeProcessor implements IOperationModeProcessor {
   constructor(
