@@ -10,9 +10,10 @@ package linea.maru
 
 import kotlin.system.exitProcess
 import linea.kotlin.decodeHex
-import linea.maru.PrivateKeyGenerator.getKeyData
-import linea.maru.PrivateKeyGenerator.getKeyDataByPrefixedKey
-import linea.maru.PrivateKeyGenerator.logKeyData
+import maru.crypto.PrivateKeyGenerator
+import maru.crypto.PrivateKeyGenerator.getKeyData
+import maru.crypto.PrivateKeyGenerator.getKeyDataByPrefixedKey
+import maru.crypto.PrivateKeyGenerator.logKeyData
 import picocli.CommandLine
 
 @CommandLine.Command(

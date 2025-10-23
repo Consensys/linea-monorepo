@@ -1,5 +1,6 @@
 plugins {
   id 'maru.kotlin-library-conventions'
+  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -10,4 +11,10 @@ dependencies {
   implementation("org.hyperledger.besu.internal:besu-crypto-services")
   implementation("org.hyperledger.besu.internal:besu-ethereum-core")
   implementation "io.tmio:tuweni-bytes"
+
+  testFixturesImplementation "io.libp2p:jvm-libp2p"
+  testFixturesImplementation "tech.pegasys.teku.internal:p2p"
+  testFixturesImplementation "build.linea.internal:kotlin"
+
+  testImplementation "build.linea.internal:kotlin"
 }

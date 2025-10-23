@@ -6,12 +6,12 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package linea.maru
+package maru.crypto
 
 import linea.kotlin.decodeHex
-import linea.maru.PrivateKeyGenerator.generatePrivateKey
-import linea.maru.PrivateKeyGenerator.getKeyData
-import linea.maru.PrivateKeyGenerator.getKeyDataByPrefixedKey
+import maru.crypto.PrivateKeyGenerator.generatePrivateKey
+import maru.crypto.PrivateKeyGenerator.getKeyData
+import maru.crypto.PrivateKeyGenerator.getKeyDataByPrefixedKey
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.RepeatedTest
 

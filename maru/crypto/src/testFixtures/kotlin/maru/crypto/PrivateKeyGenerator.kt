@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package linea.maru
+package maru.crypto
 
 import io.libp2p.core.PeerId
 import io.libp2p.core.crypto.KeyType
@@ -15,7 +15,6 @@ import io.libp2p.core.crypto.marshalPrivateKey
 import io.libp2p.core.crypto.unmarshalPrivateKey
 import io.libp2p.crypto.keys.unmarshalSecp256k1PrivateKey
 import linea.kotlin.encodeHex
-import maru.crypto.Crypto
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 
 /**
@@ -87,7 +86,7 @@ object PrivateKeyGenerator {
       else -> privateKey.takeLast(32).toByteArray()
     }
 
-  internal fun getKeyDataByPrefixedKey(prefixedPrivateKey: ByteArray): KeyData {
+  fun getKeyDataByPrefixedKey(prefixedPrivateKey: ByteArray): KeyData {
     val privateKeyTyped = unmarshalPrivateKey(prefixedPrivateKey)
     return getKeyData(privateKeyTyped.raw())
   }
