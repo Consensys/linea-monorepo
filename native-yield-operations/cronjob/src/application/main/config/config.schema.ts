@@ -59,6 +59,7 @@ export const configSchema = z
     WEB3SIGNER_KEYSTORE_PASSPHRASE: z.string().min(1),
     WEB3SIGNER_TRUSTSTORE_PATH: z.string().min(1),
     WEB3SIGNER_TRUSTSTORE_PASSPHRASE: z.string().min(1),
+    WEB3SIGNER_TLS_ENABLED: z.boolean(),
     // API port
     API_PORT: z.coerce.number().int().min(1024).max(49000),
   })

@@ -65,12 +65,12 @@ export class Web3SignerClient implements IContractSignerClient {
     trustedStorePath: string,
     trustedStorePassphrase: string,
   ): Agent {
-    const trustedStoreFile = readFileSync(path.resolve(import.meta.dirname, trustedStorePath), { encoding: "binary" });
+    const trustedStoreFile = readFileSync(path.resolve(__dirname, trustedStorePath), { encoding: "binary" });
 
     const { pemCertificate } = this.convertToPem(trustedStoreFile, trustedStorePassphrase);
 
     return new Agent({
-      pfx: readFileSync(path.resolve(import.meta.dirname, keystorePath)),
+      pfx: readFileSync(path.resolve(__dirname, keystorePath)),
       passphrase: keystorePassphrase,
       ca: pemCertificate,
     });

@@ -34,7 +34,7 @@ async function main() {
     return;
   }
 
-  const beaconClient = new BeaconNodeApiClient(process.env.BEACON_NODE_RPC_URL);
+  const beaconClient = new BeaconNodeApiClient(process.env.BEACON_NODE_RPC_URL!);
 
   const tokenClient = new OAuth2TokenClient(
     new WinstonLogger("OAuth2TokenClient.integration"),

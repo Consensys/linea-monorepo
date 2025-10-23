@@ -47,12 +47,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
       path: env.WEB3SIGNER_TRUSTSTORE_PATH,
       passphrase: env.WEB3SIGNER_TRUSTSTORE_PASSPHRASE,
     },
-    // tls: {
-    //   enabled: env.WEB3SIGNER_TLS_ENABLED,         // boolean
-    //   caFile: env.WEB3SIGNER_TLS_CA_FILE,          // optional
-    //   certFile: env.WEB3SIGNER_TLS_CERT_FILE,      // required if enabled
-    //   keyFile: env.WEB3SIGNER_TLS_KEY_FILE,        // required if enabled
-    // },
+    tlsEnabled: env.WEB3SIGNER_TLS_ENABLED,
   },
   loggerOptions: {
     level: "info",
