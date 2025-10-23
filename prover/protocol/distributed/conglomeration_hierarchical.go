@@ -347,7 +347,7 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 	// vkMerkleTreeDepth is the depth of the verification key merkle tree
 	vkMerkleTreeDepth := c.VKeyMTreeDepth()
 	c.VerificationKeyMerkleProofs = make([][]ifaces.Column, c.ModuleNumber)
-	for i := 0; i < c.ModuleNumber; i++ {
+	for i := 0; i < aggregationArity; i++ {
 		for j := 0; j < vkMerkleTreeDepth; j++ {
 			col := comp.InsertProof(0, ifaces.ColID(fmt.Sprintf("vkMerkleProof_%d_%d", i, j)), 1)
 			c.VerificationKeyMerkleProofs[i] = append(c.VerificationKeyMerkleProofs[i], col)
@@ -402,16 +402,6 @@ func (c *ModuleConglo) Assign(
 		prodGrandProduct            = field.One()
 	)
 
-	// This assigns the functional public input by summing them
-	for f := range c.PublicInputs.Functionals {
-		var sumValue field.Element
-		for instance := 0; instance < aggregationArity; instance++ {
-			sumValue.Add(&sumValue, &collectedPIs[instance].Functionals[f])
-		}
-		pi := c.PublicInputs.Functionals[f]
-		assignPiColumn(run, pi.Name, sumValue)
-	}
-
 	for instance := 0; instance < aggregationArity; instance++ {
 
 		collectedPIs[instance] = c.collectAllPublicInputsOfInstance(run, instance)
@@ -426,6 +416,16 @@ func (c *ModuleConglo) Assign(
 		subMSetSharedRand := mimc.MSetHash(collectedPIs[instance].SharedRandomnessMultiSetHash)
 		mSetGeneral.Add(subMSetGeneral)
 		mSetSharedRand.Add(subMSetSharedRand)
+	}
+
+	// This assigns the functional public input by summing them
+	for f := range c.PublicInputs.Functionals {
+		var sumValue field.Element
+		for instance := 0; instance < aggregationArity; instance++ {
+			sumValue.Add(&sumValue, &collectedPIs[instance].Functionals[f])
+		}
+		pi := c.PublicInputs.Functionals[f]
+		assignPiColumn(run, pi.Name, sumValue)
 	}
 
 	assignListOfPiColumns(run, GeneralMultiSetPublicInputBase, mSetGeneral[:])
