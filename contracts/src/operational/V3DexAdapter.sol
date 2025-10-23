@@ -14,7 +14,7 @@ import { IWETH9 } from "./interfaces/IWETH9.sol";
  */
 contract V3DexAdapter is IV3DexAdapter {
   /// @notice Tick spacing of the pool.
-  uint24 public immutable POOL_TICK_SPACING;
+  int24 public immutable POOL_TICK_SPACING;
   /// @notice Address of the Swap Router contract.
   address public immutable ROUTER;
   /// @notice Address of the WETH token contract.
@@ -24,12 +24,13 @@ contract V3DexAdapter is IV3DexAdapter {
 
   /**
    * @dev Initializes the contract with the given parameters.
+   * @dev The expect pools use int24.
    * @param _router Address of the Router contract.
    * @param _wethToken Address of the WETH token contract.
    * @param _lineaToken Address of the LINEA token contract.
    * @param _poolTickSpacing Tick spacing of the pool.
    */
-  constructor(address _router, address _wethToken, address _lineaToken, uint24 _poolTickSpacing) {
+  constructor(address _router, address _wethToken, address _lineaToken, int24 _poolTickSpacing) {
     require(_router != address(0), ZeroAddressNotAllowed());
     require(_wethToken != address(0), ZeroAddressNotAllowed());
     require(_lineaToken != address(0), ZeroAddressNotAllowed());
