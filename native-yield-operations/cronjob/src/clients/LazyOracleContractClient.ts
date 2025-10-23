@@ -84,6 +84,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       resolvePromise = resolve;
     });
 
+    this.logger.info("Waiting for VaultsReportDataUpdated event...");
     const unwatch = this.contractClientLibrary.getBlockchainClient().watchContractEvent({
       address: this.contractAddress,
       abi: this.contract.abi,

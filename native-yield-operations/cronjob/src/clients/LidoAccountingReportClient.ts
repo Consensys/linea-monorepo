@@ -1,8 +1,8 @@
 import { Address, TransactionReceipt, BaseError, ContractFunctionRevertedError } from "viem";
 import { ILidoAccountingReportClient } from "../core/clients/ILidoAccountingReportClient.js";
 import { ILazyOracle, UpdateVaultDataParams } from "../core/services/contracts/ILazyOracle.js";
-import { getReportProofByVault } from "@lidofinance/lsv-cli";
-import { ILogger } from "@consensys/linea-shared-utils";
+import { getReportProofByVault } from "@lidofinance/lsv-cli/dist/utils/report/report-proof.js";
+import { ILogger, bigintReplacer } from "@consensys/linea-shared-utils";
 
 export class LidoAccountingReportClient implements ILidoAccountingReportClient {
   private latestSubmitVaultReportParams?: UpdateVaultDataParams;
@@ -16,7 +16,6 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
 
   async getLatestSubmitVaultReportParams(): Promise<UpdateVaultDataParams> {
     const latestReportData = await this.lazyOracleContractClient.latestReportData();
-
     const reportProof = await getReportProofByVault({
       vault: this.vault,
       cid: latestReportData.reportCid,
@@ -35,6 +34,7 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
 
     this.latestSubmitVaultReportParams = params;
 
+    this.logger.info(`latestSubmitVaultReportParams=${JSON.stringify(params, bigintReplacer, 2)}`);
     return params;
   }
 
@@ -49,12 +49,12 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
     } catch (err) {
       this.logger.error("Failed isSimulateSubmitLatestVaultReportSuccessful");
       if (err instanceof ContractFunctionRevertedError) {
-        console.error("❌ Reverted:", err.shortMessage);
-        console.error("Reason:", err.data?.errorName || err.message);
+        this.logger.error("❌ Reverted:", err.shortMessage);
+        this.logger.error("Reason:", err.data?.errorName || err.message);
       } else if (err instanceof BaseError) {
-        console.error("⚠️ Other error:", err.shortMessage);
+        this.logger.error("⚠️ Other error:", err.shortMessage);
       } else {
-        console.error("Unexpected error:", err);
+        this.logger.error("Unexpected error:", err);
       }
       return false;
     }

@@ -1,6 +1,6 @@
 import axios from "axios";
 import { ILogger } from "../logging/ILogger";
-import { getCurrentUnixTimestampSeconds } from "../utils/viem/time";
+import { getCurrentUnixTimestampSeconds } from "../utils/time";
 import { IOAuth2TokenClient, OAuth2TokenResponse } from "../core/client/IOAuth2TokenClient";
 
 export class OAuth2TokenClient implements IOAuth2TokenClient {
