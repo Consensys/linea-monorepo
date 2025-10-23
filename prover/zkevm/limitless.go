@@ -22,20 +22,20 @@ import (
 )
 
 var (
-	bootstrapperFile          = "dw-bootstrapper.bin"
-	discFile                  = "disc.bin"
-	zkevmFile                 = "zkevm-wiop.bin"
-	blueprintGLPrefix         = "dw-blueprint-gl"
-	blueprintLppPrefix        = "dw-blueprint-lpp"
-	blueprintGLTemplate       = blueprintGLPrefix + "-%d.bin"
-	blueprintLppTemplate      = blueprintLppPrefix + "-%d.bin"
-	compileLppTemplate        = "dw-compiled-lpp-%v.bin"
-	compileGlTemplate         = "dw-compiled-gl-%v.bin"
-	debugLppTemplate          = "dw-debug-lpp-%v.bin"
-	debugGlTemplate           = "dw-debug-gl-%v.bin"
-	conglomerationFile        = "dw-compiled-conglomeration.bin"
-	executionLimitlessPath    = "execution-limitless"
-	verificationKeyMerkleTree = "verification-key-merkle-tree.bin"
+	bootstrapperFile              = "dw-bootstrapper.bin"
+	discFile                      = "disc.bin"
+	zkevmFile                     = "zkevm-wiop.bin"
+	blueprintGLPrefix             = "dw-blueprint-gl"
+	blueprintLppPrefix            = "dw-blueprint-lpp"
+	blueprintGLTemplate           = blueprintGLPrefix + "-%d.bin"
+	blueprintLppTemplate          = blueprintLppPrefix + "-%d.bin"
+	compileLppTemplate            = "dw-compiled-lpp-%v.bin"
+	compileGlTemplate             = "dw-compiled-gl-%v.bin"
+	debugLppTemplate              = "dw-debug-lpp-%v.bin"
+	debugGlTemplate               = "dw-debug-gl-%v.bin"
+	conglomerationFile            = "dw-compiled-conglomeration.bin"
+	executionLimitlessPath        = "execution-limitless"
+	verificationKeyMerkleTreeFile = "verification-key-merkle-tree.bin"
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
@@ -487,7 +487,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Object: *lz.DistWizard.CompiledConglomeration,
 		},
 		{
-			Name:   verificationKeyMerkleTree,
+			Name:   verificationKeyMerkleTreeFile,
 			Object: lz.DistWizard.VerificationKeyMerkleTree,
 		},
 	}
@@ -708,28 +708,34 @@ func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*dis
 }
 
 // LoadCompiledConglomeration loads the conglomeration assets from disk
-func LoadCompiledConglomeration(cfg *config.Config) (
-	*distributed.RecursedSegmentCompilation,
-	*distributed.VerificationKeyMerkleTree,
-	error,
-) {
+func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmentCompilation, error) {
 
 	var (
 		assetDir = cfg.PathForSetup(executionLimitlessPath)
 		filePath = path.Join(assetDir, conglomerationFile)
 		conglo   = &distributed.RecursedSegmentCompilation{}
-		mt       = &distributed.VerificationKeyMerkleTree{}
 	)
 
 	if err := serialization.LoadFromDisk(filePath, conglo, true); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+
+	return conglo, nil
+}
+
+func LoadVerificationKeyMerkleTree(cfg *config.Config) (*distributed.VerificationKeyMerkleTree, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, verificationKeyMerkleTreeFile)
+		mt       = &distributed.VerificationKeyMerkleTree{}
+	)
 
 	if err := serialization.LoadFromDisk(filePath, mt, true); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return conglo, mt, nil
+	return mt, nil
 }
 
 // GetAffinities returns a list of affinities for the following modules. This
