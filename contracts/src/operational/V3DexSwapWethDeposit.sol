@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import { IV3DexSwap } from "./interfaces/IV3DexSwap.sol";
 import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
+import { IWETH9 } from "./interfaces/IWETH9.sol";
 
 /**
  * @title V3DexSwap.
@@ -10,7 +11,7 @@ import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract V3DexSwap is IV3DexSwap {
+contract V3DexSwapWethDeposit is IV3DexSwap {
   /// @notice Tick spacing of the pool.
   int24 public immutable POOL_TICK_SPACING;
   /// @notice Address of the Swap Router contract.
@@ -55,6 +56,9 @@ contract V3DexSwap is IV3DexSwap {
     require(msg.value > 0, NoEthSend());
     require(_deadline >= block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
+
+    IWETH9(WETH_TOKEN).deposit{ value: msg.value }();
+    IWETH9(WETH_TOKEN).approve(ROUTER, msg.value);
 
     amountOut = ISwapRouterV3(ROUTER).exactInputSingle(
       ISwapRouterV3.ExactInputSingleParams({
