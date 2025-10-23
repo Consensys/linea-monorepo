@@ -54,10 +54,6 @@ const (
 	VerifyingKey2PublicInput                = "VERIFYING_KEY_2"
 	VerifyingKeyMerkleRootPublicInput       = "VK_MERKLE_ROOT"
 	lppMerkleRootPublicInput                = "LPP_COLUMNS_MERKLE_ROOTS"
-
-	// The prerecursion prefix is a prefix to apply to the name of the public
-	// inputs to be able to access them in the conglomerated wizard-IOP.
-	preRecursionPrefix = "wizard-recursion-0."
 )
 
 // ConglomerationCompilation holds the compilation context of the hierarchical
@@ -1095,7 +1091,7 @@ func assertCompatibleIOPs(d *DistributedWizard) {
 	for i := range d.CompiledGLs {
 		diff1, diff2 := cmpWizardIOP(w0, d.CompiledGLs[i].RecursionComp)
 		if len(diff1) > 0 || len(diff2) > 0 {
-			dumpWizardIOP(w0, fmt.Sprintf("conglomeration-debug/iop-conglo.csv"))
+			dumpWizardIOP(w0, "conglomeration-debug/iop-conglo.csv")
 			dumpWizardIOP(d.CompiledGLs[i].RecursionComp, fmt.Sprintf("conglomeration-debug/iop-gl-%d.csv", i))
 			utils.Panic("incompatible IOPs i=%v\n\t+++=%v\n\t---=%v", i, diff1, diff2)
 		}
@@ -1104,7 +1100,7 @@ func assertCompatibleIOPs(d *DistributedWizard) {
 	for i := range d.CompiledLPPs {
 		diff1, diff2 := cmpWizardIOP(w0, d.CompiledLPPs[i].RecursionComp)
 		if len(diff1) > 0 || len(diff2) > 0 {
-			dumpWizardIOP(w0, fmt.Sprintf("conglomeration-debug/iop-conglomeration.csv"))
+			dumpWizardIOP(w0, "conglomeration-debug/iop-conglomeration.csv")
 			dumpWizardIOP(d.CompiledLPPs[i].RecursionComp, fmt.Sprintf("conglomeration-debug/iop-lpp-%d.csv", i))
 			utils.Panic("incompatible IOPs i=%v\n\t+++=%v\n\t---=%v", i, diff1, diff2)
 		}

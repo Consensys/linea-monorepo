@@ -172,6 +172,8 @@ func init() {
 	RegisterImplementation(bigrange.BigRangeProverAction{})
 	RegisterImplementation(ded.AssignPIPProverAction{})
 	RegisterImplementation(keccak.ShakiraProverAction{})
+	RegisterImplementation(vortex.ColumnAssignmentProverAction{})
+	RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
 
 	// Smartvectors
 	RegisterImplementation(smartvectors.Regular{})
