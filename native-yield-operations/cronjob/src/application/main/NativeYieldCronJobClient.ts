@@ -19,8 +19,7 @@ import { IYieldManager } from "../../core/services/contracts/IYieldManager";
 import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor";
 import { LazyOracleContractClient } from "../../clients/LazyOracleContractClient";
 import { ILazyOracle } from "../../core/services/contracts/ILazyOracle";
-import { ApolloClient, InMemoryCache, HttpLink, from } from "@apollo/client";
-import { SetContextLink } from "@apollo/client/link/context";
+import { ApolloClient } from "@apollo/client";
 import { ILineaRollupYieldExtension } from "../../core/services/contracts/ILineaRollupYieldExtension";
 import { LineaRollupYieldExtensionContractClient } from "../../clients/LineaRollupYieldExtensionContractClient";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor";
@@ -33,6 +32,7 @@ import { BeaconChainStakingClient } from "../../clients/BeaconChainStakingClient
 import { OssificationCompleteOperationModeProcessor } from "../../services/operation-mode/OssificationCompleteOperationModeProcessor";
 import { OssificationPendingOperationModeProcessor } from "../../services/operation-mode/OssificationPendingOperationModeProcessor";
 import { mainnet, hoodi } from "viem/chains";
+import { createApolloClient } from "../../utils/createApolloClient";
 
 export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
@@ -109,7 +109,7 @@ export class NativeYieldCronJobClient {
       config.consensysStakingOAuth2.clientSecret,
       config.consensysStakingOAuth2.audience,
     );
-    this.apolloClient = this._createApolloClient(this.oAuth2TokenClient);
+    this.apolloClient = createApolloClient(this.oAuth2TokenClient, config.dataSources.stakingGraphQLUrl);
     this.consensysStakingGraphQLClient = new ConsensysStakingGraphQLClient(
       this.apolloClient,
       this.beaconNodeApiClient,
@@ -184,29 +184,5 @@ export class NativeYieldCronJobClient {
 
   public getConfig(): NativeYieldCronJobClientConfig {
     return this.config;
-  }
-
-  private _createApolloClient(oAuth2TokenClient: IOAuth2TokenClient): ApolloClient {
-    // --- create the base HTTP transport
-    const httpLink = new HttpLink({
-      uri: this.config.dataSources.stakingGraphQLUrl,
-    });
-
-    const asyncAuthLink = new SetContextLink(async (prevContext, operation) => {
-      void operation;
-      const token = await oAuth2TokenClient.getBearerToken();
-      return {
-        headers: {
-          ...prevContext.headers,
-          authorization: `Bearer ${token}`,
-        },
-      };
-    });
-    // --- combine links so authLink runs before httpLink
-    const client = new ApolloClient({
-      link: from([asyncAuthLink, httpLink]),
-      cache: new InMemoryCache(),
-    });
-    return client;
   }
 }
