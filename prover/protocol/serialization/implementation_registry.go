@@ -19,10 +19,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
@@ -237,7 +237,7 @@ func init() {
 	RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
 
-	RegisterImplementation(mimc.MimcContext{})
+	RegisterImplementation(poseidon2.Poseidon2Context{})
 	RegisterImplementation(mpts.QuotientAccumulation{})
 	RegisterImplementation(mpts.RandomPointEvaluation{})
 	RegisterImplementation(mpts.ShadowRowProverAction{})

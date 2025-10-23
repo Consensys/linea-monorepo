@@ -5,8 +5,8 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -33,7 +33,7 @@ func dumval(i int) DummyVal {
 
 func newTestAccumulatorPoseidon2() *accumulator.ProverState[DummyKey, DummyVal] {
 	config := &smt.Config{
-		HashFunc: hashtypes.Poseidon2,
+		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 	return accumulator.InitializeProverState[DummyKey, DummyVal](config, locationTesting)

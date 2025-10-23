@@ -1,7 +1,7 @@
 package testtools
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -195,10 +195,10 @@ func (m *Poseidon2Testcase) Assign(run *wizard.ProverRuntime) {
 			newStatesWindow := make([][8]field.Element, len(blocksWindow))
 			var rotatedNewStatesWindow [8][]field.Element
 
-			newStatesPadding := poseidon2.Poseidon2BlockCompression(oldStatesPadding, blocksPadding)
+			newStatesPadding := vortex.CompressPoseidon2(oldStatesPadding, blocksPadding)
 
 			for k := range blocksWindow {
-				newStatesWindow[k] = poseidon2.Poseidon2BlockCompression(
+				newStatesWindow[k] = vortex.CompressPoseidon2(
 					oldStatesWindow[k],
 					blocksWindow[k],
 				)

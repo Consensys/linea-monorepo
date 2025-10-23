@@ -3,7 +3,7 @@ package poseidon2
 import (
 	"strconv"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -143,7 +143,7 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 				for j := 0; j < blockSize; j++ {
 					block[j] = inputs[j][i].Get(k)
 				}
-				interm[i][k] = poseidon2.Poseidon2BlockCompression(prevState[k-start], block)
+				interm[i][k] = vortex.CompressPoseidon2(prevState[k-start], block)
 			}
 			prevState = interm[i][start:stop]
 		}

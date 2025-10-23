@@ -1,7 +1,8 @@
 package poseidon2
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -178,10 +179,10 @@ func addRoundKeyCompute(round int, input []field.Element) (addRoundKey []field.E
 		utils.Panic("Input slice length must be %v", width)
 	}
 	addRoundKey = make([]field.Element, width)
-	for i := 0; i < len(poseidon2.RoundKeys[round]); i++ {
-		addRoundKey[i].Add(&input[i], &poseidon2.RoundKeys[round][i])
+	for i := 0; i < len(gnarkposeidon2.GetDefaultParameters().RoundKeys[round]); i++ {
+		addRoundKey[i].Add(&input[i], &gnarkposeidon2.GetDefaultParameters().RoundKeys[round][i])
 	}
-	for i := len(poseidon2.RoundKeys[round]); i < width; i++ {
+	for i := len(gnarkposeidon2.GetDefaultParameters().RoundKeys[round]); i < width; i++ {
 		addRoundKey[i] = input[i]
 	}
 	return addRoundKey

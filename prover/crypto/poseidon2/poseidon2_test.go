@@ -7,10 +7,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 var rng = rand.New(utils.NewRandSource(0)) // #nosec G404
@@ -26,7 +27,7 @@ var testCases = []struct {
 }
 
 // This test ensures that the Poseidon2BlockCompression function is correctly implemented and produces the same output as
-// the hashtypes.Poseidon2(), which uses Write and Sum methods to get the final hash output
+// the poseidon2.Poseidon2(), which uses Write and Sum methods to get the final hash output
 //
 // We hash and compress one Octuplet at a time
 func TestPoseidon2BlockCompression(t *testing.T) {
@@ -44,10 +45,10 @@ func TestPoseidon2BlockCompression(t *testing.T) {
 		}
 
 		// Compute hash using the Poseidon2BlockCompression.
-		h := poseidon2.Poseidon2BlockCompression(state, input)
+		h := vortex.CompressPoseidon2(state, input)
 
 		// Compute hash using the NewMerkleDamgardHasher implementation.
-		merkleHasher := hashtypes.Poseidon2()
+		merkleHasher := poseidon2.Poseidon2()
 		merkleHasher.Reset()
 		merkleHasher.Write(inputBytes[:]) // write one 32 bytes (equivalent to one Octuplet)
 		newBytes := merkleHasher.Sum(nil)
@@ -67,7 +68,7 @@ func TestPoseidon2BlockCompression(t *testing.T) {
 }
 
 // This test ensures that the Poseidon2Sponge function is correctly implemented and produces the same output as
-// the hashtypes.Poseidon2(), which uses Write and Sum methods to get the final hash output
+// the poseidon2.Poseidon2(), which uses Write and Sum methods to get the final hash output
 // We write and compress the 'whole slice'
 func TestPoseidon2SpongeConsistency(t *testing.T) {
 	t.Parallel()
@@ -90,7 +91,7 @@ func TestPoseidon2SpongeConsistency(t *testing.T) {
 				state := poseidon2.Poseidon2Sponge(input)
 
 				// Compute hash using the reference Merkle-Damgard hasher.
-				merkleHasher := hashtypes.Poseidon2()
+				merkleHasher := poseidon2.Poseidon2()
 				merkleHasher.Reset()
 				merkleHasher.Write(inputBytes[:])
 				newBytes := merkleHasher.Sum(nil)
@@ -108,4 +109,27 @@ func TestPoseidon2SpongeConsistency(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFieldHasher(t *testing.T) {
+	assert := require.New(t)
+
+	h1 := poseidon2.Poseidon2()
+	h2 := poseidon2.Poseidon2()
+	randInputs := make(field.Vector, 10)
+	randInputs.MustSetRandom()
+
+	// test Write + Sum
+	for _, elem := range randInputs {
+		h1.Write(elem.Marshal())
+	}
+	dgst1 := h1.Sum(nil)
+	var dgst1Byte32 types.Bytes32
+	copy(dgst1Byte32[:], dgst1[:])
+
+	// test WriteElement + SumElement
+	h2.WriteElements(randInputs)
+	dgst2 := h2.SumElement()
+	assert.Equal(types.Bytes32ToHash(dgst1Byte32), dgst2, "hashes do not match")
+
 }

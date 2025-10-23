@@ -1,7 +1,7 @@
 package poseidon2
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -338,7 +338,7 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 		stackedBlocks    = make([][]field.Element, blockSize)
 		stackedNewStates = make([][]field.Element, blockSize)
 		totalSize        = ctx.StackedOldStates[0].Size()
-		poseidon2OfZero  = poseidon2.Poseidon2BlockCompression(zeroBlock, zeroBlock)
+		poseidon2OfZero  = vortex.CompressPoseidon2(zeroBlock, zeroBlock)
 	)
 
 	for i := range ctx.CompiledQueries {

@@ -3,7 +3,7 @@ package vortex
 import (
 	"runtime"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -142,7 +142,8 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []field.Octuplet
 			hasher := p.LeafHashFunc()
 			hasher.Reset()
 
-			leaves[chunkID] = hasher.SumElements(colHashes[startChunk : startChunk+chunkSize])
+			hasher.WriteElements(colHashes[startChunk : startChunk+chunkSize])
+			leaves[chunkID] = hasher.SumElement()
 		}
 
 	})
@@ -167,7 +168,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 
 	res := make([]field.Octuplet, numCols)
 
-	hashers := make([]*hashtypes.Poseidon2FieldHasherDigest, runtime.GOMAXPROCS(0))
+	hashers := make([]*poseidon2.Poseidon2FieldHasherDigest, runtime.GOMAXPROCS(0))
 
 	parallel.ExecuteThreadAware(
 		numCols,
@@ -181,9 +182,9 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			colElems := make([]field.Element, numRows)
 			for row := 0; row < numRows; row++ {
 				colElems[row] = v[row].Get(col)
-				hasher.WriteElement(colElems[row])
 			}
-			res[col] = hasher.SumElements(nil)
+			hasher.WriteElements(colElems)
+			res[col] = hasher.SumElement()
 		},
 	)
 

@@ -3,7 +3,7 @@ package smt_test
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
@@ -14,7 +14,7 @@ import (
 func TestTreeInitialization(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.Poseidon2,
+		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 
@@ -29,7 +29,7 @@ func TestTreeInitialization(t *testing.T) {
 
 func TestTreeUpdateLeaf(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Poseidon2,
+		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 
@@ -48,7 +48,7 @@ func TestTreeUpdateLeaf(t *testing.T) {
 }
 func TestMerkleProofNative(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Poseidon2,
+		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 
@@ -67,7 +67,7 @@ func TestMerkleProofNative(t *testing.T) {
 
 func TestMerkleProofWithUpdate(t *testing.T) {
 	config := &smt.Config{
-		HashFunc: hashtypes.Poseidon2,
+		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 
@@ -95,7 +95,7 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 func TestBuildFromScratch(t *testing.T) {
 
 	config := &smt.Config{
-		HashFunc: hashtypes.Poseidon2,
+		HashFunc: poseidon2.Poseidon2,
 		Depth:    8,
 	}
 
