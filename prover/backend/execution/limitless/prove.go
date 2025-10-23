@@ -62,8 +62,15 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// -- 1. Launch bootstrapper
 	logrus.Info("Starting to run the bootstrapper")
+
+	mt := &distributed.VerificationKeyMerkleTree{}
+	mt, err := zkevm.LoadVerificationKeyMerkleTree(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("could not load verification key merkle tree: %w", err)
+	}
+
 	var (
-		numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM)
+		numGL, numLPP = RunBootstrapper(cfg, witness.ZkEVM, mt.GetRoot())
 	)
 	logrus.Infof("Finished running the bootstrapper, generated %d GL modules and %d LPP modules", numGL, numLPP)
 
@@ -94,8 +101,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// -- 2. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more
 	// proofs come in. It will exit when it collects `totalProofs` or when ctx is cancelled.
 	go func() {
-		cong, mt, err := zkevm.LoadCompiledConglomeration(cfg)
-		if err != nil || cong == nil || mt == nil {
+		cong, err := zkevm.LoadCompiledConglomeration(cfg)
+		if err != nil || cong == nil {
 			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
 		}
 		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
@@ -286,7 +293,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,
 // the function then performs the module segmentation and saves each module
 // witness in the /tmp directory.
-func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness) (int, int) {
+func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Element) (int, int) {
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
@@ -375,7 +382,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness) (int, int)
 		assets.DistWizard.Disc,
 		assets.DistWizard.BlueprintGLs,
 		assets.DistWizard.BlueprintLPPs,
-		assets.DistWizard.VerificationKeyMerkleTree.GetRoot(),
+		merkleTreeRoot,
 	)
 
 	logrus.Info("Saving the witnesses")
@@ -541,8 +548,8 @@ func RunConglomerationHierarchical(ctx context.Context,
 				}
 				return distributed.SegmentProof{}, fmt.Errorf("proof stream closed prematurely; stack size=%d, proofsReceived=%d, totalProofs=%d", len(stack), proofsReceived, totalProofs)
 			}
-			logrus.Infof("Received subproof with module index:%d and segment index:%d", p.ModuleIndex, p.SegmentIndex)
 			stack = append(stack, p)
+			logrus.Infof("Number of proofs in stack:%d", len(stack))
 			proofsReceived++
 		}
 	}
