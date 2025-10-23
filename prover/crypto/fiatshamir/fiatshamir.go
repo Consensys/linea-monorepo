@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // State holds a Fiat-Shamir state. The Fiat-Shamir state can be updated by
@@ -86,13 +87,13 @@ func UpdateSV(h *hashtypes.Poseidon2FieldHasherDigest, sv smartvectors.SmartVect
 }
 
 func RandomFext(h *hashtypes.Poseidon2FieldHasherDigest) fext.Element {
-	// TODO @thomas according the size of s, run several hashes to fit in an fext elmt
 	s := h.SumElement()
 	var res fext.Element
 	res.B0.A0 = s[0]
 	res.B0.A1 = s[1]
 	res.B1.A0 = s[2]
 	res.B1.A1 = s[3]
+
 	UpdateExt(h, fext.NewFromUint(0, 0, 0, 0)) // safefuard update
 	return res
 }
@@ -130,8 +131,10 @@ func RandomManyIntegers(h *hashtypes.Poseidon2FieldHasherDigest, num, upperBound
 	)
 
 	for {
-		digest := h.Sum(nil)
-		buffer := NewBitReader(digest, field.Bits-1)
+		d := types.HashToBytes32(h.SumElement())
+		var digest [32]byte
+		copy(digest[:], d[:])
+		buffer := NewBitReader(digest[:], field.Bits-1)
 
 		// Increase the counter
 
