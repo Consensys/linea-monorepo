@@ -5,8 +5,15 @@ import { transports } from "winston";
 export const toClientConfig = (env: FlattenedConfigSchema) => ({
   dataSources: {
     l1RpcUrl: env.L1_RPC_URL,
+    beaconChainRpcUrl: env.BEACON_CHAIN_RPC_URL,
     stakingGraphQLUrl: env.STAKING_GRAPHQL_URL,
     ipfsBaseUrl: env.IPFS_BASE_URL,
+  },
+  consensysStakingOAuth2: {
+    tokenEndpoint: env.CONSENSYS_STAKING_OAUTH2_TOKEN_ENDPOINT,
+    clientId: env.CONSENSYS_STAKING_OAUTH2_CLIENT_ID,
+    clientSecret: env.CONSENSYS_STAKING_OAUTH2_CLIENT_SECRET,
+    audience: env.CONSENSYS_STAKING_OAUTH2_AUDIENCE,
   },
   contractAddresses: {
     lineaRollupContractAddress: env.LINEA_ROLLUP_ADDRESS,

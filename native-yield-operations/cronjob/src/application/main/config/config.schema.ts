@@ -14,8 +14,14 @@ export const configSchema = z
   .object({
     // Datasource URLs
     L1_RPC_URL: z.string().url(),
+    BEACON_CHAIN_RPC_URL: z.string().url(),
     STAKING_GRAPHQL_URL: z.string().url(),
     IPFS_BASE_URL: z.string().url(),
+    // Consensys Staking OAuth2 Token Endpoint
+    CONSENSYS_STAKING_OAUTH2_TOKEN_ENDPOINT: z.string().url(),
+    CONSENSYS_STAKING_OAUTH2_CLIENT_ID: z.string().min(1),
+    CONSENSYS_STAKING_OAUTH2_CLIENT_SECRET: z.string().min(1),
+    CONSENSYS_STAKING_OAUTH2_AUDIENCE: z.string().min(1),
     // L1 contract addresses
     LINEA_ROLLUP_ADDRESS: Address,
     LAZY_ORACLE_ADDRESS: Address,

@@ -1,4 +1,4 @@
-import { IContractClientLibrary } from "ts-libs/linea-shared-utils/core/client/IContractClientLibrary";
+import { IContractClientLibrary } from "ts-libs/linea-shared-utils/src";
 import {
   Address,
   encodeFunctionData,
@@ -7,11 +7,7 @@ import {
   PublicClient,
   TransactionReceipt,
 } from "viem";
-import {
-  encodeLidoWithdrawalParams,
-  LidoStakingVaultWithdrawalParams,
-  WithdrawalRequests,
-} from "../core/entities/LidoStakingVaultWithdrawalParams";
+import { encodeLidoWithdrawalParams, WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams";
 import { RebalanceRequirement, RebalanceDirection } from "../core/entities/RebalanceRequirement";
 
 import { YieldManagerABI } from "../core/abis/YieldManager";
