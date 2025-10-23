@@ -3,7 +3,7 @@ package smt
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -13,7 +13,7 @@ import (
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
 	// HashFunc is a function returning initialized hashers.
-	HashFunc func() *hashtypes.Poseidon2FieldHasherDigest
+	HashFunc func() *poseidon2.Poseidon2FieldHasherDigest
 	// Depth is the depth of the tree
 	Depth int
 }
@@ -53,12 +53,12 @@ func EmptyLeaf() field.Octuplet {
 // taking H as the HashFunc of the config.
 func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
 	var d field.Octuplet
+
 	if config.HashFunc != nil {
 		hasher := config.HashFunc()
-		var toHash [16]field.Element
-		copy(toHash[0:8], nodeL[:])
-		copy(toHash[8:16], nodeR[:])
-		d = hasher.SumElements(toHash[:])
+		hasher.WriteElements(nodeL[:])
+		hasher.WriteElements(nodeR[:])
+		d = hasher.SumElement()
 	} else {
 		panic("missing a hash function")
 	}
@@ -271,7 +271,7 @@ func (t *Tree) reserveLevel(level, newSize int) {
 // input leaves are powers of 2. The depth of the tree is deduced from the list.
 //
 // It panics if the number of leaves is a non-power of 2.
-func BuildComplete(leaves []field.Octuplet, hashFunc func() *hashtypes.Poseidon2FieldHasherDigest) *Tree {
+func BuildComplete(leaves []field.Octuplet, hashFunc func() *poseidon2.Poseidon2FieldHasherDigest) *Tree {
 
 	numLeaves := len(leaves)
 
