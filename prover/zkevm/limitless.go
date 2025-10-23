@@ -703,9 +703,9 @@ func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*dis
 	return res, nil
 }
 
-// LoadConglomeration loads the conglomeration assets from disk
-func LoadConglomeration(cfg *config.Config) (
-	*distributed.ModuleConglo,
+// LoadCompiledConglomeration loads the conglomeration assets from disk
+func LoadCompiledConglomeration(cfg *config.Config) (
+	*distributed.RecursedSegmentCompilation,
 	*distributed.VerificationKeyMerkleTree,
 	error,
 ) {
@@ -713,7 +713,7 @@ func LoadConglomeration(cfg *config.Config) (
 	var (
 		assetDir = cfg.PathForSetup(executionLimitlessPath)
 		filePath = path.Join(assetDir, conglomerationFile)
-		conglo   = &distributed.ModuleConglo{}
+		conglo   = &distributed.RecursedSegmentCompilation{}
 		mt       = &distributed.VerificationKeyMerkleTree{}
 	)
 
