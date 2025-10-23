@@ -10,7 +10,7 @@ contract TestDexSwap is V3DexSwap {
     address _router,
     address _wethToken,
     address _lineaToken,
-    uint24 _poolTickSpacing
+    int24 _poolTickSpacing
   ) V3DexSwap(_router, _wethToken, _lineaToken, _poolTickSpacing) {}
 
   function testRevertSwap(uint256, uint256, uint160) external payable returns (uint256) {
