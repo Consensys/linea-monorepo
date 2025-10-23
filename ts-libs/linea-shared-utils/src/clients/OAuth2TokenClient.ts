@@ -1,7 +1,7 @@
 import axios from "axios";
-import { getCurrentUnixTimestampSeconds } from "../../utils/viem/time";
-import { ILogger } from "../../logging/ILogger";
-import { IOAuth2TokenClient, OAuth2TokenResponse } from "../../core/client/IOAuth2TokenClient";
+import { ILogger } from "../logging/ILogger";
+import { getCurrentUnixTimestampSeconds } from "../utils/viem/time";
+import { IOAuth2TokenClient, OAuth2TokenResponse } from "../core/client/IOAuth2TokenClient";
 
 export class OAuth2TokenClient implements IOAuth2TokenClient {
   private bearerToken?: string;

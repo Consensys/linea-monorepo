@@ -8,5 +8,10 @@
     "isolatedModules": false,
     "strictPropertyInitialization": false,
     "exactOptionalPropertyTypes": false
-  }
+  },
+  "references": [
+    {
+      "path": "../linea-native-libs"
+    }
+  ]
 }
