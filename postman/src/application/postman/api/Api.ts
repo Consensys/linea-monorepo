@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from "express";
-import { IMetricsService } from "../../../core/metrics/IMetricsService";
-import { ILogger } from "../../../core/utils/logging/ILogger";
+import { IMetricsService, LineaPostmanMetrics } from "../../../core/metrics/IMetricsService";
+import { ILogger } from "@consensys/linea-shared-utils";
 
 type ApiConfig = {
   port: number;
@@ -12,7 +12,7 @@ export class Api {
 
   constructor(
     private readonly config: ApiConfig,
-    private readonly metricsService: IMetricsService,
+    private readonly metricsService: IMetricsService<LineaPostmanMetrics>,
     private readonly logger: ILogger,
   ) {
     this.app = express();

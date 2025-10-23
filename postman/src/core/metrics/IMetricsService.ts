@@ -23,18 +23,20 @@ export enum LineaPostmanMetrics {
   TransactionProcessingTime = "linea_postman_l2_transaction_tx_processing_time",
 }
 
-export interface IMetricsService {
+export interface IMetricsService<TMetricName extends string = string> {
   getRegistry(): Registry;
-  createCounter(name: LineaPostmanMetrics, help: string, labelNames?: string[]): Counter<string>;
-  createGauge(name: LineaPostmanMetrics, help: string, labelNames?: string[]): Gauge<string>;
-  incrementCounter(name: LineaPostmanMetrics, labels?: Record<string, string>, value?: number): void;
-  incrementGauge(name: LineaPostmanMetrics, labels?: Record<string, string>, value?: number): void;
-  decrementGauge(name: LineaPostmanMetrics, labels?: Record<string, string>, value?: number): void;
-  getGaugeValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined>;
-  getCounterValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined>;
-  createHistogram(name: LineaPostmanMetrics, buckets: number[], help: string, labelNames?: string[]): Histogram<string>;
-  addValueToHistogram(name: LineaPostmanMetrics, value: number, labels?: Record<string, string>): void;
+  createCounter(name: TMetricName, help: string, labelNames?: string[]): Counter<string>;
+  createGauge(name: TMetricName, help: string, labelNames?: string[]): Gauge<string>;
+  incrementCounter(name: TMetricName, labels?: Record<string, string>, value?: number): void;
+  incrementGauge(name: TMetricName, labels?: Record<string, string>, value?: number): void;
+  decrementGauge(name: TMetricName, labels?: Record<string, string>, value?: number): void;
+  getGaugeValue(name: TMetricName, labels: Record<string, string>): Promise<number | undefined>;
+  getCounterValue(name: TMetricName, labels: Record<string, string>): Promise<number | undefined>;
+  createHistogram(name: TMetricName, buckets: number[], help: string, labelNames?: string[]): Histogram<string>;
+  addValueToHistogram(name: TMetricName, value: number, labels?: Record<string, string>): void;
   getHistogramMetricsValues(
-    name: LineaPostmanMetrics,
+    name: TMetricName,
   ): Promise<MetricObjectWithValues<MetricValueWithName<string>> | undefined>;
 }
+
+export type LineaPostmanMetricsService = IMetricsService<LineaPostmanMetrics>;

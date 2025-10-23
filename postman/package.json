@@ -21,6 +21,7 @@
   "dependencies": {
     "@consensys/linea-native-libs": "workspace:*",
     "@consensys/linea-sdk": "workspace:*",
+    "@consensys/linea-shared-utils": "workspace:*",
     "better-sqlite3": "11.6.0",
     "class-validator": "0.14.1",
     "dotenv": "catalog:",

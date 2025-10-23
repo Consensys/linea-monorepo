@@ -3,10 +3,10 @@ import { IMetricsService, LineaPostmanMetrics } from "../../../../../core/metric
 import { SingletonMetricsService } from "../SingletonMetricsService";
 
 describe("SingletonMetricsService", () => {
-  let metricService: IMetricsService;
+  let metricService: IMetricsService<LineaPostmanMetrics>;
 
   beforeEach(() => {
-    metricService = new SingletonMetricsService();
+    metricService = new SingletonMetricsService<LineaPostmanMetrics>();
   });
 
   it("should create a counter", () => {

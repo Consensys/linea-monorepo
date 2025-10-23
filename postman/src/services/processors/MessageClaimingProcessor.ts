@@ -13,7 +13,7 @@ import {
   IMessageClaimingProcessor,
   MessageClaimingProcessorConfig,
 } from "../../core/services/processors/IMessageClaimingProcessor";
-import { ILogger } from "../../core/utils/logging/ILogger";
+import { ILogger } from "@consensys/linea-shared-utils";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
 import { Message } from "../../core/entities/Message";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";

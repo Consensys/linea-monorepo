@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
+    "exactOptionalPropertyTypes": false
+  },
+  "references": [
+    {
+      "path": "../../ts-libs/linea-shared-utils"
+    },
+  ]
+}

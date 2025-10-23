@@ -12,7 +12,7 @@ import { MessageStatus } from "../../../../core/enums";
 export class MessageMetricsUpdater implements IMessageMetricsUpdater {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly metricsService: IMetricsService,
+    private readonly metricsService: IMetricsService<LineaPostmanMetrics>,
   ) {
     this.metricsService.createGauge(
       LineaPostmanMetrics.Messages,

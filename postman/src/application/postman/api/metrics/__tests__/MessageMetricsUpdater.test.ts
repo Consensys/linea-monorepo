@@ -4,7 +4,7 @@ import { MessageMetricsUpdater } from "../MessageMetricsUpdater";
 import { mock, MockProxy } from "jest-mock-extended";
 import { MessageStatus } from "../../../../../core/enums";
 import { SingletonMetricsService } from "../SingletonMetricsService";
-import { IMessageMetricsUpdater } from "../../../../../core/metrics";
+import { IMessageMetricsUpdater, LineaPostmanMetrics } from "../../../../../core/metrics";
 
 describe("MessageMetricsUpdater", () => {
   let messageMetricsUpdater: IMessageMetricsUpdater;
@@ -12,7 +12,7 @@ describe("MessageMetricsUpdater", () => {
 
   beforeEach(() => {
     mockEntityManager = mock<EntityManager>();
-    const metricService = new SingletonMetricsService();
+    const metricService = new SingletonMetricsService<LineaPostmanMetrics>();
     messageMetricsUpdater = new MessageMetricsUpdater(mockEntityManager, metricService);
   });
 
