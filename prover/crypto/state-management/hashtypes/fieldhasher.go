@@ -1,11 +1,14 @@
 package hashtypes
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark-crypto/hash"
 
 	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -44,6 +47,28 @@ func (d *Poseidon2FieldHasherDigest) WriteElements(elmts []field.Element) {
 	d.buffer = append(d.buffer, elmts[:rem-off]...)
 }
 
+// WriteElements adds a slice of field elements to the running hash.
+func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
+
+	elemByteSize := field.Bytes // 4 bytes = 1 field element
+
+	if len(p)%elemByteSize != 0 {
+		return 0, fmt.Errorf("input length is not a multiple of 4 byte size")
+	}
+	elems := make([]field.Element, 0, len(p)/elemByteSize)
+
+	for start := 0; start < len(p); start += elemByteSize {
+		chunk := p[start : start+elemByteSize]
+
+		var elem field.Element
+		elem.SetBytes(chunk)
+		elems = append(elems, elem)
+
+	}
+	d.WriteElements(elems)
+	return len(p), nil
+}
+
 func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
 	for len(d.buffer) != 0 {
 		var buf [blockSize]field.Element
@@ -60,6 +85,13 @@ func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
 	return d.state
 }
 
+// Sum computes the poseidon2 hash of msg
+func (d *Poseidon2FieldHasherDigest) Sum(msg []byte) []byte {
+	d.Write(msg)
+	h := d.SumElement()
+	bytes := types.HashToBytes32(h)
+	return bytes[:]
+}
 func (d Poseidon2FieldHasherDigest) MaxBytes32() Bytes32 {
 	return d.maxValue
 }

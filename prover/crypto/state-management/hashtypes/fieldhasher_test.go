@@ -18,11 +18,9 @@ func TestFieldHasher(t *testing.T) {
 	randInputs.MustSetRandom()
 
 	// test Write + Sum
-	var bytes []byte
 	for _, elem := range randInputs {
-		bytes = append(bytes, elem.Marshal()...)
+		h1.Write(elem.Marshal())
 	}
-	h1.Write(bytes) // Write the whole byte slice
 	dgst1 := h1.Sum(nil)
 	var dgst1Byte32 types.Bytes32
 	copy(dgst1Byte32[:], dgst1[:])
