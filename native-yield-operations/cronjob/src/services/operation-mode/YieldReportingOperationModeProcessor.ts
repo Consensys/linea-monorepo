@@ -2,7 +2,7 @@ import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/services/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { ILogger } from "@consensys/linea-shared-utils";
-import { wait } from "sdk/sdk-ethers";
+import { wait } from "@consensys/linea-sdk";
 import { ILazyOracle } from "../../core/services/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
 import { RebalanceDirection, RebalanceRequirement } from "../../core/entities/RebalanceRequirement.js";
