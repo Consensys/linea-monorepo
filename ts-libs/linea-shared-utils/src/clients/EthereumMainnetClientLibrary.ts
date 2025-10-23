@@ -1,4 +1,4 @@
-import { IContractClientLibrary } from "../../core/client/IContractClientLibrary";
+import { IContractClientLibrary } from "../core/client/IContractClientLibrary";
 import {
   Hex,
   createPublicClient,
@@ -12,7 +12,7 @@ import {
 } from "viem";
 import { mainnet } from "viem/chains";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
-import { IContractSignerClient } from "../../core/client/IContractSignerClient";
+import { IContractSignerClient } from "../core/client/IContractSignerClient";
 
 // Re-use via composition in ContractClients
 // Hope that using strategy pattern like this makes us more 'viem-agnostic'
