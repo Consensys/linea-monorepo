@@ -52,7 +52,7 @@ contract V3DexAdapter is IV3DexAdapter {
    */
   function swap(uint256 _minLineaOut, uint256 _deadline) external payable returns (uint256 amountOut) {
     require(msg.value > 0, NoEthSent());
-    require(_deadline > block.timestamp, DeadlineInThePast());
+    require(_deadline >= block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
 
     IWETH9(WETH_TOKEN).deposit{ value: msg.value }();
