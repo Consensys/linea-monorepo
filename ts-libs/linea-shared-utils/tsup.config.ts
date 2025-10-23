@@ -9,5 +9,7 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   minify: true,
+  splitting: false,
   outDir: "dist",
+  external: ["node-forge", "crypto"], // Avoid 'Error: Dynamic require of "crypto" is not supported' when used from native-yield-cronjob
 });
