@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -58,7 +58,7 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 		}
 		leaves[i] = x
 	}
-	tree := smt.BuildComplete(leaves, hashtypes.Poseidon2)
+	tree := smt.BuildComplete(leaves, poseidon2.Poseidon2)
 	root := tree.Root
 	if !isReuse {
 

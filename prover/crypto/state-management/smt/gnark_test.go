@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +13,7 @@ import (
 func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 
 	config := &Config{
-		HashFunc: hashtypes.Poseidon2,
+		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 

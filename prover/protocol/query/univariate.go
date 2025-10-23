@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -83,11 +83,11 @@ func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEv
 // Update the fiat-shamir state with the alleged evaluations. We assume that
 // the verifer always computes the values of X upfront on his own. Therefore
 // there is no need to include them in the FS.
-func (p UnivariateEvalParams) UpdateFS(state *hashtypes.Poseidon2FieldHasherDigest) {
+func (p UnivariateEvalParams) UpdateFS(state *poseidon2.Poseidon2FieldHasherDigest) {
 	fiatshamir.Update(state, p.Ys...)
 }
 
-func (p UnivariateEvalParams) UpdateFSExt(state *hashtypes.Poseidon2FieldHasherDigest) {
+func (p UnivariateEvalParams) UpdateFSExt(state *poseidon2.Poseidon2FieldHasherDigest) {
 	fiatshamir.UpdateExt(state, p.ExtYs...)
 }
 
