@@ -10,6 +10,7 @@ import {
 import {
   encodeLidoWithdrawalParams,
   LidoStakingVaultWithdrawalParams,
+  WithdrawalRequests,
 } from "../core/entities/LidoStakingVaultWithdrawalParams";
 import { RebalanceRequirement, RebalanceDirection } from "../core/entities/RebalanceRequirement";
 
@@ -111,11 +112,11 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
   }
 
-  async unstake(
-    yieldProvider: Address,
-    withdrawalParams: LidoStakingVaultWithdrawalParams,
-  ): Promise<TransactionReceipt> {
-    const encodedWithdrawalParams = encodeLidoWithdrawalParams(withdrawalParams);
+  async unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TransactionReceipt> {
+    const encodedWithdrawalParams = encodeLidoWithdrawalParams({
+      ...withdrawalParams,
+      refundRecipient: this.contractAddress,
+    });
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "unstake",

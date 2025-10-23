@@ -1,5 +1,5 @@
 import { Address } from "viem";
-import { LidoStakingVaultWithdrawalParams } from "../../entities/LidoStakingVaultWithdrawalParams";
+import { WithdrawalRequests } from "../../entities/LidoStakingVaultWithdrawalParams";
 import { RebalanceRequirement } from "../../entities/RebalanceRequirement";
 
 export interface IYieldManager<TTransactionReceipt> {
@@ -17,7 +17,7 @@ export interface IYieldManager<TTransactionReceipt> {
   fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
   transferFundsToReserve(amount: bigint): Promise<TTransactionReceipt>;
   reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TTransactionReceipt>;
-  unstake(yieldProvider: Address, withdrawalParams: LidoStakingVaultWithdrawalParams): Promise<TTransactionReceipt>;
+  unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TTransactionReceipt>;
   withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
   addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
   safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;

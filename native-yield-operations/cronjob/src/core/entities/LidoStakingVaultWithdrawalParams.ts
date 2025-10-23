@@ -1,14 +1,12 @@
 import { Address, encodeAbiParameters, Hex } from "viem";
 
-export interface LidoStakingVaultWithdrawalParams {
-  pubkeys: Hex[];
-  amountsGwei: bigint[];
-  refundRecipient: Address;
-}
-
 export interface WithdrawalRequests {
   pubkeys: Hex[];
   amountsGwei: bigint[];
+}
+
+export interface LidoStakingVaultWithdrawalParams extends WithdrawalRequests {
+  refundRecipient: Address;
 }
 
 export function encodeLidoWithdrawalParams(params: LidoStakingVaultWithdrawalParams): Hex {
@@ -18,7 +16,7 @@ export function encodeLidoWithdrawalParams(params: LidoStakingVaultWithdrawalPar
         type: "tuple",
         components: [
           { name: "pubkeys", type: "bytes[]" },
-          { name: "amountsGwei", type: "uint256[]" },
+          { name: "amounts", type: "uint64[]" },
           { name: "refundRecipient", type: "address" },
         ],
       },
@@ -26,7 +24,7 @@ export function encodeLidoWithdrawalParams(params: LidoStakingVaultWithdrawalPar
     [
       {
         pubkeys: params.pubkeys,
-        amountsGwei: params.amountsGwei,
+        amounts: params.amountsGwei,
         refundRecipient: params.refundRecipient,
       },
     ],

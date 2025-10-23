@@ -2,8 +2,8 @@ import { ApolloClient } from "@apollo/client";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance";
 import { ILogger } from "ts-libs/linea-shared-utils";
-import { ValidatorBalance } from "../core/entities/ValidatorBalance";
-import { IBeaconNodeAPIClient, PendingPartialWithdrawal } from "ts-libs/linea-shared-utils/src";
+import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance";
+import { IBeaconNodeAPIClient, ONE_GWEI, safeSub } from "ts-libs/linea-shared-utils/src";
 
 export class ConsensysStakingGraphQLClient implements IValidatorDataClient {
   constructor(
@@ -11,7 +11,8 @@ export class ConsensysStakingGraphQLClient implements IValidatorDataClient {
     private readonly beaconNodeApiClient: IBeaconNodeAPIClient,
     private readonly logger: ILogger,
   ) {}
-  async getActiveValidatorsByLargestBalances(): Promise<ValidatorBalance[]> {
+
+  async getActiveValidators(): Promise<ValidatorBalance[]> {
     const { data, error } = await this.apolloClient.query({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY });
     if (error) {
       this.logger.error("getActiveValidatorsByLargestBalances error:", error);
@@ -23,10 +24,11 @@ export class ConsensysStakingGraphQLClient implements IValidatorDataClient {
     }
     return data?.allValidators.nodes;
   }
-  //   getWithdrawalRequestsToFulfilAmount(amountWei: bigint): Promise<WithdrawalRequests>;
-  async getTotalPendingPartialWithdrawals(): Promise<bigint> {
+
+  // Return sorted in descending order of withdrawableValue
+  async getActiveValidatorsWithPendingWithdrawals(): Promise<ValidatorBalanceWithPendingWithdrawal[]> {
     const [allValidators, pendingWithdrawalsQueue] = await Promise.all([
-      this.getActiveValidatorsByLargestBalances(),
+      this.getActiveValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
     ]);
 
@@ -38,11 +40,8 @@ export class ConsensysStakingGraphQLClient implements IValidatorDataClient {
     }
 
     // 2️⃣ Join with validators and compute total pending amount
-    let totalPendingWithdrawal = 0n;
-
     const joined = allValidators.map((v) => {
       const pendingAmount = pendingByValidator.get(Number(v.validatorIndex)) ?? 0n;
-      totalPendingWithdrawal += pendingAmount;
 
       return {
         balance: v.balance,
@@ -50,10 +49,22 @@ export class ConsensysStakingGraphQLClient implements IValidatorDataClient {
         publicKey: v.publicKey,
         validatorIndex: v.validatorIndex,
         pendingWithdrawalAmount: pendingAmount,
+        withdrawableAmount: safeSub(safeSub(v.balance, pendingAmount), ONE_GWEI * 32n),
       };
     });
-    return totalPendingWithdrawal;
+
+    // ✅ Sort descending (largest withdrawableAmount first)
+    joined.sort((a, b) =>
+      a.withdrawableAmount > b.withdrawableAmount ? -1 : a.withdrawableAmount < b.withdrawableAmount ? 1 : 0,
+    );
+
+    return joined;
   }
 
-  //   getPendingValidatorExits(): Promise<void>;
+  // Should be static, but bit tricky to use static and interface together
+  getTotalPendingPartialWithdrawalsWei(validatorList: ValidatorBalanceWithPendingWithdrawal[]): bigint {
+    const totalGwei = validatorList.reduce((acc, v) => acc + v.pendingWithdrawalAmount, 0n);
+    const totalWei = totalGwei * ONE_GWEI;
+    return totalWei;
+  }
 }
