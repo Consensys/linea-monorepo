@@ -13,6 +13,7 @@ import {
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
+import { ILogger } from "../logging/ILogger";
 
 // Re-use via composition in ContractClients
 // Hope that using strategy pattern like this makes us more 'viem-agnostic'
@@ -20,6 +21,7 @@ export class ContractClientLibrary implements IContractClientLibrary<PublicClien
   blockchainClient: PublicClient;
 
   constructor(
+    private readonly logger: ILogger,
     rpcUrl: string,
     chain: Chain,
     private readonly contractSignerClient: IContractSignerClient,
@@ -74,7 +76,11 @@ export class ContractClientLibrary implements IContractClientLibrary<PublicClien
     };
     const signature = await this.contractSignerClient.sign(tx);
     const serializedTransaction = serializeTransaction(tx, parseSignature(signature));
+    this.logger.debug(
+      `ContractClientLibrary: sending transaction to ${contractAddress} nonce=${nonce} gas=${gasLimit}`,
+    );
     const txHash = await sendRawTransaction(this.blockchainClient, { serializedTransaction });
+    this.logger.debug(`ContractClientLibrary: txHash=${txHash}`);
     const receipt = await waitForTransactionReceipt(this.blockchainClient, { hash: txHash });
     return receipt;
   }

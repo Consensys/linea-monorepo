@@ -87,12 +87,12 @@ const createProcessor = () => {
   };
 
   const processor = new YieldReportingOperationModeProcessor(
+    mocks.logger as unknown as ILogger,
     mocks.yieldManager as unknown as IYieldManager<TransactionReceipt>,
     mocks.lazyOracle as unknown as ILazyOracle<TransactionReceipt>,
     mocks.lineaRollup as unknown as ILineaRollupYieldExtension<TransactionReceipt>,
     mocks.lidoAccounting as unknown as ILidoAccountingReportClient,
     mocks.beacon as unknown as IBeaconChainStakingClient,
-    mocks.logger as unknown as ILogger,
     MAX_INACTION_MS,
     YIELD_PROVIDER,
     L2_RECIPIENT,

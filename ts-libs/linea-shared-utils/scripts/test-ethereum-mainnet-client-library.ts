@@ -7,6 +7,7 @@ pnpm --filter @consensys/linea-shared-utils exec tsx scripts/test-ethereum-mainn
  */
 import { ContractClientLibrary } from "../src/clients/ContractClientLibrary";
 import { ViemWalletSignerClient } from "../src/clients/ViemWalletSignerClient";
+import { WinstonLogger } from "../src/logging/WinstonLogger";
 import { Hex } from "viem";
 import { anvil } from "viem/chains";
 
@@ -22,8 +23,13 @@ async function main() {
   const rpcUrl = process.env.RPC_URL as string;
   const privateKey = process.env.PRIVATE_KEY as Hex;
 
-  const signer = new ViemWalletSignerClient(privateKey, anvil);
-  const clientLibrary = new ContractClientLibrary(rpcUrl, anvil, signer);
+  const signer = new ViemWalletSignerClient(new WinstonLogger("ViemWalletSignerClient.integration"), privateKey, anvil);
+  const clientLibrary = new ContractClientLibrary(
+    new WinstonLogger("ContractClientLibrary.integration"),
+    rpcUrl,
+    anvil,
+    signer,
+  );
 
   try {
     const address = signer.getAddress();

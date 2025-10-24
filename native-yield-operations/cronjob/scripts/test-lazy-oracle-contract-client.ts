@@ -32,13 +32,22 @@ async function main() {
   const lazyOracleAddress = process.env.LAZY_ORACLE_ADDRESS as Address;
   const pollIntervalMs = Number.parseInt(process.env.POLL_INTERVAL_MS ?? "60000", 10);
 
-  const signer = new ViemWalletSignerClient(privateKey, hoodi);
-  const contractClientLibrary = new ContractClientLibrary(rpcUrl, hoodi, signer);
+  const signer = new ViemWalletSignerClient(
+    new WinstonLogger("ViemWalletSignerClient.integration"),
+    privateKey,
+    hoodi,
+  );
+  const contractClientLibrary = new ContractClientLibrary(
+    new WinstonLogger("ContractClientLibrary.integration"),
+    rpcUrl,
+    hoodi,
+    signer,
+  );
 
   const lazyOracleClient = new LazyOracleContractClient(
+    new WinstonLogger("LazyOracleContractClient.integration"),
     contractClientLibrary,
     lazyOracleAddress,
-    new WinstonLogger("LazyOracleContractClient.integration"),
     pollIntervalMs,
   );
   const { unwatch, waitForEvent } = lazyOracleClient.waitForVaultsReportDataUpdatedEvent();

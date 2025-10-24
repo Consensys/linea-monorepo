@@ -9,11 +9,11 @@ import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakin
 
 export class OssificationPendingOperationModeProcessor implements IOperationModeProcessor {
   constructor(
+    private readonly logger: ILogger,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
     private readonly lazyOracleContractClient: ILazyOracle<TransactionReceipt>,
     private readonly lidoAccountingReportClient: ILidoAccountingReportClient,
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
-    private readonly logger: ILogger,
     private readonly maxInactionMs: number,
     private readonly yieldProvider: Address,
   ) {}

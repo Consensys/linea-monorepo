@@ -8,9 +8,9 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
   private latestSubmitVaultReportParams?: UpdateVaultDataParams;
 
   constructor(
+    private readonly logger: ILogger,
     private readonly lazyOracleContractClient: ILazyOracle<TransactionReceipt>,
     private readonly ipfsGatewayUrl: string,
-    private readonly logger: ILogger,
     private readonly vault: Address,
   ) {}
 

@@ -12,13 +12,18 @@ import {
 } from "viem";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { privateKeyToAccount, privateKeyToAddress } from "viem/accounts";
+import { ILogger } from "../logging/ILogger";
 
 export class ViemWalletSignerClient implements IContractSignerClient {
   private readonly account: Account;
   private readonly address: Address;
   private readonly wallet: WalletClient;
 
-  constructor(privateKey: Hex, chain: Chain) {
+  constructor(
+    private readonly logger: ILogger,
+    privateKey: Hex,
+    chain: Chain,
+  ) {
     this.account = privateKeyToAccount(privateKey);
     this.address = privateKeyToAddress(privateKey);
     this.wallet = createWalletClient({
@@ -49,6 +54,7 @@ export class ViemWalletSignerClient implements IContractSignerClient {
       yParity,
     });
 
+    this.logger.debug(`ViemWalletSignerClient: signed transaction for ${this.address}`);
     return signatureHex;
   }
 

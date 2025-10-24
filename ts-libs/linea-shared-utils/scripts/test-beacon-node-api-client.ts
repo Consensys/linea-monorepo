@@ -1,6 +1,7 @@
 // pnpm --filter @consensys/linea-shared-utils exec tsx scripts/test-beacon-node-api-client.ts
 
 import { BeaconNodeApiClient } from "../src/clients/BeaconNodeApiClient";
+import { WinstonLogger } from "../src/logging/WinstonLogger";
 
 async function main() {
   const rpcUrl = process.env.BEACON_NODE_RPC_URL;
@@ -11,7 +12,7 @@ async function main() {
     return;
   }
 
-  const client = new BeaconNodeApiClient(rpcUrl);
+  const client = new BeaconNodeApiClient(new WinstonLogger("BeaconNodeApiClient.integration"), rpcUrl);
 
   console.log(`Fetching pending partial withdrawals from ${rpcUrl}...`);
   try {

@@ -1,4 +1,4 @@
-import { IContractClientLibrary } from "@consensys/linea-shared-utils";
+import { IContractClientLibrary, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
   encodeFunctionData,
@@ -17,6 +17,7 @@ export class LineaRollupYieldExtensionContractClient
   private readonly contract: GetContractReturnType<typeof LineaRollupYieldExtensionABI, PublicClient, Address>;
 
   constructor(
+    private readonly logger: ILogger,
     private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
   ) {
@@ -36,6 +37,7 @@ export class LineaRollupYieldExtensionContractClient
   }
 
   async transferFundsForNativeYield(amount: bigint): Promise<TransactionReceipt> {
+    this.logger.info(`transferFundsForNativeYield: amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "transferFundsForNativeYield",

@@ -38,20 +38,29 @@ async function main() {
   const ipfsGatewayUrl = process.env.IPFS_BASE_URL as string;
   const pollIntervalMs = Number.parseInt(process.env.POLL_INTERVAL_MS ?? "60000", 10);
 
-  const signer = new ViemWalletSignerClient(privateKey, hoodi);
-  const contractClientLibrary = new ContractClientLibrary(rpcUrl, hoodi, signer);
+  const signer = new ViemWalletSignerClient(
+    new WinstonLogger("ViemWalletSignerClient.integration"),
+    privateKey,
+    hoodi,
+  );
+  const contractClientLibrary = new ContractClientLibrary(
+    new WinstonLogger("ContractClientLibrary.integration"),
+    rpcUrl,
+    hoodi,
+    signer,
+  );
 
   const lazyOracleClient = new LazyOracleContractClient(
+    new WinstonLogger("LazyOracleContractClient.integration"),
     contractClientLibrary,
     lazyOracleAddress,
-    new WinstonLogger("LazyOracleContractClient.integration"),
     pollIntervalMs,
   );
 
   const lidoAccountingClient = new LidoAccountingReportClient(
+    new WinstonLogger("LidoAccountingReportClient.integration"),
     lazyOracleClient,
     ipfsGatewayUrl,
-    new WinstonLogger("LidoAccountingReportClient.integration"),
     lidoVaultAddress,
   );
 

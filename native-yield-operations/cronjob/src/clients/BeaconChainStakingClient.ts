@@ -1,4 +1,4 @@
-import { min, ONE_GWEI, safeSub } from "@consensys/linea-shared-utils";
+import { ILogger, min, ONE_GWEI, safeSub } from "@consensys/linea-shared-utils";
 import { IBeaconChainStakingClient } from "../core/clients/IBeaconChainStakingClient.js";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
@@ -8,6 +8,7 @@ import { IYieldManager } from "../core/services/contracts/IYieldManager.js";
 
 export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   constructor(
+    private readonly logger: ILogger,
     private readonly validatorDataClient: IValidatorDataClient,
     private readonly maxValidatorWithdrawalRequestsPerTransaction: number,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
@@ -15,6 +16,9 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   ) {}
 
   async submitWithdrawalRequestsToFulfilAmount(amountWei: bigint): Promise<void> {
+    this.logger.info(
+      `submitWithdrawalRequestsToFulfilAmount: amountWei=${amountWei.toString()}; validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
+    );
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
     const totalPendingPartialWithdrawalsWei =
       this.validatorDataClient.getTotalPendingPartialWithdrawalsWei(sortedValidatorList);
@@ -23,6 +27,9 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   }
 
   async submitMaxAvailableWithdrawalRequests(): Promise<void> {
+    this.logger.info(
+      `submitMaxAvailableWithdrawalRequests: validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
+    );
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
     const remainingWithdrawals = await this._submitPartialWithdrawalRequests(sortedValidatorList, maxUint256);
     await this._submitValidatorExits(sortedValidatorList, remainingWithdrawals);

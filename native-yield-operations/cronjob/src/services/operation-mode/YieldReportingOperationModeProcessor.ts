@@ -12,12 +12,12 @@ import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakin
 // FIRST PRIORITY FOR UNIT TESTING
 export class YieldReportingOperationModeProcessor implements IOperationModeProcessor {
   constructor(
+    private readonly logger: ILogger,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
     private readonly lazyOracleContractClient: ILazyOracle<TransactionReceipt>,
     private readonly lineaRollupYieldExtensionClient: ILineaRollupYieldExtension<TransactionReceipt>,
     private readonly lidoAccountingReportClient: ILidoAccountingReportClient,
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
-    private readonly logger: ILogger,
     private readonly maxInactionMs: number,
     private readonly yieldProvider: Address,
     private readonly l2YieldRecipient: Address,
