@@ -36,13 +36,17 @@ export class LineaRollupYieldExtensionContractClient
   }
 
   async transferFundsForNativeYield(amount: bigint): Promise<TransactionReceipt> {
-    this.logger.info(`transferFundsForNativeYield: amount=${amount.toString()}`);
+    this.logger.debug(`transferFundsForNativeYield started, amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "transferFundsForNativeYield",
       args: [amount],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `transferFundsForNativeYield succeeded, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
   }
 }

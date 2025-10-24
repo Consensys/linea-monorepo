@@ -81,36 +81,58 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   async fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
+    this.logger.debug(
+      `fundYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
+    );
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "fundYieldProvider",
       args: [yieldProvider, amount],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `fundYieldProvider succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
   }
 
   async transferFundsToReserve(amount: bigint): Promise<TransactionReceipt> {
+    this.logger.debug(`transferFundsToReserve started, amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "transferFundsToReserve",
       args: [amount],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `transferFundsToReserve succeeded, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
   }
 
   async reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TransactionReceipt> {
+    this.logger.debug(
+      `reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`,
+    );
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "reportYield",
       args: [yieldProvider, l2YieldRecipient],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `reportYield succeeded, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
   }
 
   async unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TransactionReceipt> {
+    this.logger.debug(
+      `unstake started, yieldProvider=${yieldProvider}`, [withdrawalParams]
+    );
     const encodedWithdrawalParams = this._encodeLidoWithdrawalParams({
       ...withdrawalParams,
       refundRecipient: this.contractAddress,
@@ -121,67 +143,103 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       args: [yieldProvider, encodedWithdrawalParams],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`, [withdrawalParams]
+    );
+    return txReceipt;
   }
 
   async withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
+    this.logger.debug(
+      `withdrawFromYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
+    );
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "withdrawFromYieldProvider",
       args: [yieldProvider, amount],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `withdrawFromYieldProvider succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
   }
 
   async addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
+    this.logger.debug(
+      `addToWithdrawalReserve started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
+    );
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "addToWithdrawalReserve",
       args: [yieldProvider, amount],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `addToWithdrawalReserve succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
   }
 
   async safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
+    this.logger.debug(
+      `safeAddToWithdrawalReserve started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
+    );
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "safeAddToWithdrawalReserve",
       args: [yieldProvider, amount],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `safeAddToWithdrawalReserve succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
   }
 
   async pauseStaking(yieldProvider: Address): Promise<TransactionReceipt> {
+    this.logger.debug(`pauseStaking started, yieldProvider=${yieldProvider}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "pauseStaking",
       args: [yieldProvider],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(`pauseStaking succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`);
+    return txReceipt;
   }
 
   async unpauseStaking(yieldProvider: Address): Promise<TransactionReceipt> {
+    this.logger.debug(`unpauseStaking started, yieldProvider=${yieldProvider}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "unpauseStaking",
       args: [yieldProvider],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(`unpauseStaking succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`);
+    return txReceipt;
   }
 
   async progressPendingOssification(yieldProvider: Address): Promise<TransactionReceipt> {
+    this.logger.debug(`progressPendingOssification started, yieldProvider=${yieldProvider}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "progressPendingOssification",
       args: [yieldProvider],
     });
 
-    return this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(
+      `progressPendingOssification succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`,
+    );
+    return txReceipt;
   }
 
   async getRebalanceRequirements(): Promise<RebalanceRequirement> {
@@ -264,7 +322,6 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   async pauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
     if (!(await this.isStakingPaused(yieldProvider))) {
       const txReceipt = await this.pauseStaking(yieldProvider);
-      this.logger.info(`Paused staking for yieldProvider=${yieldProvider}`);
       return txReceipt;
     }
     this.logger.info(`Already paused staking for yieldProvider=${yieldProvider}`);
@@ -274,7 +331,6 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   async unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
     if (await this.isStakingPaused(yieldProvider)) {
       const txReceipt = await this.unpauseStaking(yieldProvider);
-      this.logger.info(`Resumed staking for yieldProvider=${yieldProvider}`);
       return txReceipt;
     }
     this.logger.info(`Already resumed staking for yieldProvider=${yieldProvider}`);

@@ -56,7 +56,10 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       functionName: "updateVaultData",
       args: [vault, totalValue, cumulativeLidoFees, liabilityShares, maxLiabilityShares, slashingReserve, proof],
     });
-    return await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.debug(`updateVaultData started, params=${params}`);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    this.logger.info(`updateVaultData succeeded, params=${params}, txHash=${txReceipt.transactionHash}`);
+    return txReceipt;
   }
 
   async simulateUpdateVaultData(params: UpdateVaultDataParams): Promise<void> {
@@ -82,7 +85,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       resolvePromise = resolve;
     });
 
-    this.logger.info("Waiting for VaultsReportDataUpdated event...");
+    this.logger.info("waitForVaultsReportDataUpdatedEvent started...");
     const unwatch = this.contractClientLibrary.getBlockchainClient().watchContractEvent({
       address: this.contractAddress,
       abi: this.contract.abi,
@@ -91,13 +94,16 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       onLogs: (logs) => {
         // Filter out reorgs
         const valid = logs.find((l) => !l.removed);
-        if (!valid) return;
-        this.logger.info("VaultsReportDataUpdated detected");
+        if (!valid) {
+          this.logger.warn("waitForVaultsReportDataUpdatedEvent: Dropped VaultsReportDataUpdated event")
+          return;
+        }
+        this.logger.info("waitForVaultsReportDataUpdatedEvent succeeded, VaultsReportDataUpdated event detected");
         // Call resolve through 2nd reference
         resolvePromise();
       },
       onError: (err) => {
-        this.logger.error({ err }, "watchContractEvent error");
+        this.logger.error("waitForVaultsReportDataUpdatedEvent error", [err]);
       },
     });
 
