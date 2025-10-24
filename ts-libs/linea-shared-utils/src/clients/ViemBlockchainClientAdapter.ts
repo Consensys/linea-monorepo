@@ -28,7 +28,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     rpcUrl: string,
     chain: Chain,
     private readonly contractSignerClient: IContractSignerClient,
-    private readonly sendTransactionsMaxRetries = 1,
+    private readonly sendTransactionsMaxRetries = 3,
     private readonly gasRetryBumpBps: bigint = 1000n, // +10% per retry
     private readonly sendTransactionAttemptTimeoutMs = 300_000, // 5m
   ) {
