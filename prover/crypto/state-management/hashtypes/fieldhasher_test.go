@@ -29,7 +29,7 @@ func TestFieldHasher(t *testing.T) {
 
 	var dgst2Byte32 types.Bytes32
 	copy(dgst2Byte32[:], dgst2[:])
-	assert.Equal(dgst1, types.Bytes32ToHash(dgst2Byte32), "hashes do not match")
+	assert.Equal(dgst1, types.Bytes32ToOctuplet(dgst2Byte32), "hashes do not match")
 
 	// test WriteElement + SumElement
 	for i := range randInputs {
