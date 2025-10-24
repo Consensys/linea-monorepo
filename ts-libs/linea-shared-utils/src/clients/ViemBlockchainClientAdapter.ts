@@ -32,7 +32,21 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     // iii.) Single point of configuration
     this.blockchainClient = createPublicClient({
       chain,
-      transport: http(rpcUrl, { batch: true, retryCount: 3 }),
+      transport: http(rpcUrl, {
+        batch: true,
+        retryCount: 3,
+        // Unsure if below is helpful, given we have added a decent number of logging to our ContractClient classes
+        // onFetchRequest: (request) => {
+        //   this.logger.debug("onFetchRequest", request);
+        // },
+        // onFetchResponse: (request) => {
+        //   this.logger.debug("onFetchResponse", request);
+        // },
+      }),
+      batch: {
+        // Not sure if this will help or not, need to experiment in testnet
+        multicall: true,
+      },
     });
   }
 
