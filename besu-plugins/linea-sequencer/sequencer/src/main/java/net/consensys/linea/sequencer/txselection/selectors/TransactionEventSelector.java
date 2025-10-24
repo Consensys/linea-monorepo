@@ -39,7 +39,7 @@ public class TransactionEventSelector implements PluginTransactionSelector {
                       .getPendingTransaction()
                       .getTransaction()
                       .getHash()
-                      .toShortLogString()));
+                      .toShortHexString()));
         }
       }
     }

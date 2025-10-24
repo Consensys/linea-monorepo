@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import net.consensys.linea.bundles.TransactionBundle;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
@@ -93,13 +95,15 @@ public class TransactionEventSelectorTest {
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
-    Mockito.verify(evaluationContext).getPendingTransaction();
+    Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
     Mockito.verify(transactionEventFilter).matches(log);
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(
-        TransactionSelectionResult.invalid("Transaction event logs match deny list"), actualResult);
+        TransactionSelectionResult.invalid(
+            "Transaction 0xdeadbeefdeadbeefdeadbeefdeadbeef is blocked due to contract address and event logs appearing on SDN or other legally prohibited list"),
+        actualResult);
   }
 
   @Test
@@ -160,23 +164,29 @@ public class TransactionEventSelectorTest {
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
-    Mockito.verify(evaluationContext).getPendingTransaction();
+    Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
     Mockito.verify(transactionEventFilter).matches(log);
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(
-        TransactionSelectionResult.invalid("Transaction event logs match deny list"), actualResult);
+        TransactionSelectionResult.invalid(
+            "Transaction 0xdeadbeefdeadbeefdeadbeefdeadbeef is blocked due to contract address and event logs appearing on SDN or other legally prohibited list"),
+        actualResult);
   }
 
   private void mockTransactionType(
       final boolean isBundle, final TransactionEvaluationContext evaluationContext) {
+    PendingTransaction mockPendingTransaction;
     if (isBundle) {
-      Mockito.when(evaluationContext.getPendingTransaction())
-          .thenReturn(Mockito.mock(TransactionBundle.PendingBundleTx.class));
+      mockPendingTransaction = Mockito.mock(TransactionBundle.PendingBundleTx.class);
     } else {
-      Mockito.when(evaluationContext.getPendingTransaction())
-          .thenReturn(Mockito.mock(PendingTransaction.class));
+      mockPendingTransaction = Mockito.mock(PendingTransaction.class);
     }
+    Mockito.when(evaluationContext.getPendingTransaction()).thenReturn(mockPendingTransaction);
+    Transaction transaction = Mockito.mock(Transaction.class);
+    Mockito.when(mockPendingTransaction.getTransaction()).thenReturn(transaction);
+    Mockito.when(transaction.getHash())
+        .thenReturn(Hash.fromHexStringLenient("deadbeefdeadbeefdeadbeefdeadbeef"));
   }
 }
