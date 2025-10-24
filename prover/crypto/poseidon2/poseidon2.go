@@ -18,8 +18,8 @@ const blockSize = 8
 // TODO @thomas fixme arbitrary max size of the buffer
 const maxSizeBuf = 1024
 
-// Poseidon2FieldHasherDigest implements a Poseidon2-based hasher that works with both field elements and bytes
-type Poseidon2FieldHasherDigest struct {
+// Hasher implements a Poseidon2-based hasher that works with both field elements and bytes
+type Hasher struct {
 	hash.StateStorer
 	maxValue types.Bytes32 // the maximal value obtainable with that hasher
 
@@ -29,13 +29,13 @@ type Poseidon2FieldHasherDigest struct {
 }
 
 // Reset clears the buffer, and reset state to iv
-func (d *Poseidon2FieldHasherDigest) Reset() {
+func (d *Hasher) Reset() {
 	d.buffer = d.buffer[:0]
 	d.state = field.Octuplet{}
 }
 
 // WriteElements adds a slice of field elements to the running hash.
-func (d *Poseidon2FieldHasherDigest) WriteElements(elmts []field.Element) {
+func (d *Hasher) WriteElements(elmts []field.Element) {
 	quo := (len(d.buffer) + len(elmts)) / maxSizeBuf
 	rem := (len(d.buffer) + len(elmts)) % maxSizeBuf
 	off := len(d.buffer)
@@ -49,7 +49,7 @@ func (d *Poseidon2FieldHasherDigest) WriteElements(elmts []field.Element) {
 }
 
 // WriteElements adds a slice of field elements to the running hash.
-func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
+func (d *Hasher) Write(p []byte) (int, error) {
 
 	elemByteSize := field.Bytes // 4 bytes = 1 field element
 
@@ -70,7 +70,7 @@ func (d *Poseidon2FieldHasherDigest) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
+func (d *Hasher) SumElement() field.Octuplet {
 	for len(d.buffer) != 0 {
 		var buf [blockSize]field.Element
 		// in this case we left pad by zeroes
@@ -87,23 +87,23 @@ func (d *Poseidon2FieldHasherDigest) SumElement() field.Octuplet {
 }
 
 // Sum computes the poseidon2 hash of msg
-func (d *Poseidon2FieldHasherDigest) Sum(msg []byte) []byte {
+func (d *Hasher) Sum(msg []byte) []byte {
 	d.Write(msg)
 	h := d.SumElement()
 	bytes := types.HashToBytes32(h)
 	return bytes[:]
 }
-func (d Poseidon2FieldHasherDigest) MaxBytes32() types.Bytes32 {
+func (d Hasher) MaxBytes32() types.Bytes32 {
 	return d.maxValue
 }
 
 // ///// Constructor for Poseidon2Hasher /////
-func Poseidon2() *Poseidon2FieldHasherDigest {
+func Poseidon2() *Hasher {
 	var maxVal field.Octuplet
 	for i := range maxVal {
 		maxVal[i] = field.NewFromString("-1")
 	}
-	return &Poseidon2FieldHasherDigest{
+	return &Hasher{
 		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
 		maxValue:    types.HashToBytes32(maxVal),
 		state:       field.Octuplet{},

@@ -31,7 +31,7 @@ type InnerProductParams struct {
 }
 
 // Update the fiat-shamir state with inner-product params
-func (ipp InnerProductParams) UpdateFS(state *poseidon2.Poseidon2FieldHasherDigest) {
+func (ipp InnerProductParams) UpdateFS(state *poseidon2.Hasher) {
 	fiatshamir.UpdateVecExt(state, ipp.Ys)
 }
 

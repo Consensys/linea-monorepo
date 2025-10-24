@@ -31,11 +31,11 @@ import (
 //
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 
-func Update(h *poseidon2.Poseidon2FieldHasherDigest, vec ...field.Element) {
+func Update(h *poseidon2.Hasher, vec ...field.Element) {
 	h.WriteElements(vec)
 }
 
-func UpdateExt(h *poseidon2.Poseidon2FieldHasherDigest, vec ...fext.Element) {
+func UpdateExt(h *poseidon2.Hasher, vec ...fext.Element) {
 	pad := make([]field.Element, 4*len(vec))
 	for i := 0; i < len(vec); i++ {
 		pad[4*i].Set(&vec[i].B0.A0)
@@ -45,7 +45,7 @@ func UpdateExt(h *poseidon2.Poseidon2FieldHasherDigest, vec ...fext.Element) {
 	}
 	h.WriteElements(pad)
 }
-func UpdateGeneric(h *poseidon2.Poseidon2FieldHasherDigest, vec ...fext.GenericFieldElem) {
+func UpdateGeneric(h *poseidon2.Hasher, vec ...fext.GenericFieldElem) {
 	if len(vec) == 0 {
 		return
 	}
@@ -59,7 +59,7 @@ func UpdateGeneric(h *poseidon2.Poseidon2FieldHasherDigest, vec ...fext.GenericF
 		}
 	}
 }
-func UpdateVec(h *poseidon2.Poseidon2FieldHasherDigest, vecs ...[]field.Element) {
+func UpdateVec(h *poseidon2.Hasher, vecs ...[]field.Element) {
 	for i := range vecs {
 		Update(h, vecs[i]...)
 	}
@@ -67,7 +67,7 @@ func UpdateVec(h *poseidon2.Poseidon2FieldHasherDigest, vecs ...[]field.Element)
 
 // UpdateVec updates the Fiat-Shamir state by passing one of more slices of
 // field elements.
-func UpdateVecExt(h *poseidon2.Poseidon2FieldHasherDigest, vecs ...[]fext.Element) {
+func UpdateVecExt(h *poseidon2.Hasher, vecs ...[]fext.Element) {
 	for i := range vecs {
 		UpdateExt(h, vecs[i]...)
 	}
@@ -75,7 +75,7 @@ func UpdateVecExt(h *poseidon2.Poseidon2FieldHasherDigest, vecs ...[]fext.Elemen
 
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
-func UpdateSV(h *poseidon2.Poseidon2FieldHasherDigest, sv smartvectors.SmartVector) {
+func UpdateSV(h *poseidon2.Hasher, sv smartvectors.SmartVector) {
 	if sv.Len() == 0 {
 		return
 	}
@@ -85,7 +85,7 @@ func UpdateSV(h *poseidon2.Poseidon2FieldHasherDigest, sv smartvectors.SmartVect
 	Update(h, vec...)
 }
 
-func RandomFext(h *poseidon2.Poseidon2FieldHasherDigest) fext.Element {
+func RandomFext(h *poseidon2.Hasher) fext.Element {
 	s := h.SumElement()
 	var res fext.Element
 	res.B0.A0 = s[0]
@@ -97,7 +97,7 @@ func RandomFext(h *poseidon2.Poseidon2FieldHasherDigest) fext.Element {
 	return res
 }
 
-func RandomManyIntegers(h *poseidon2.Poseidon2FieldHasherDigest, num, upperBound int) []int {
+func RandomManyIntegers(h *poseidon2.Hasher, num, upperBound int) []int {
 
 	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
@@ -164,6 +164,6 @@ func RandomManyIntegers(h *poseidon2.Poseidon2FieldHasherDigest, num, upperBound
 	}
 }
 
-func safeguardUpdate(h *poseidon2.Poseidon2FieldHasherDigest) {
+func safeguardUpdate(h *poseidon2.Hasher) {
 	Update(h, field.NewElement(0))
 }
