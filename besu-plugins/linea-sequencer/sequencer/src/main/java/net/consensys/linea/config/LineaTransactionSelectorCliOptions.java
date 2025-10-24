@@ -20,7 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.consensys.linea.plugins.LineaCliOptions;
-import net.consensys.linea.sequencer.txselection.selectors.TransactionEventSelectionDescription;
+import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.log.LogTopic;
 import picocli.CommandLine;
@@ -189,8 +189,7 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         .toString();
   }
 
-  public Set<TransactionEventSelectionDescription> parseTransactionEventDenyList(
-      final String filename) {
+  public Set<TransactionEventFilter> parseTransactionEventDenyList(final String filename) {
     if (filename == null || filename.isEmpty()) {
       return Collections.emptySet();
     }
@@ -200,7 +199,7 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
           .map(
               l -> {
                 String[] parts = l.split(",");
-                return new TransactionEventSelectionDescription(
+                return new TransactionEventFilter(
                     Address.fromHexString(parts[0]),
                     parts[1].isEmpty() ? null : LogTopic.fromHexString(parts[1]),
                     parts[2].isEmpty() ? null : LogTopic.fromHexString(parts[2]),

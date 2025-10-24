@@ -55,8 +55,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
-      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents,
-      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents) {
+      final AtomicReference<Set<TransactionEventFilter>> deniedEvents,
+      final AtomicReference<Set<TransactionEventFilter>> deniedBundleEvents) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
 
@@ -101,8 +101,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaTracerConfiguration tracerConfiguration,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
-      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents,
-      final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents) {
+      final AtomicReference<Set<TransactionEventFilter>> deniedEvents,
+      final AtomicReference<Set<TransactionEventFilter>> deniedBundleEvents) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(

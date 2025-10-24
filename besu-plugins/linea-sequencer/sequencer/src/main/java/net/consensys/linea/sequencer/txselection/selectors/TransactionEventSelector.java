@@ -12,8 +12,8 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
 
 @RequiredArgsConstructor
 public class TransactionEventSelector implements PluginTransactionSelector {
-  private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents;
-  private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents;
+  private final AtomicReference<Set<TransactionEventFilter>> deniedEvents;
+  private final AtomicReference<Set<TransactionEventFilter>> deniedBundleEvents;
 
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
@@ -27,9 +27,9 @@ public class TransactionEventSelector implements PluginTransactionSelector {
       final TransactionProcessingResult processingResult) {
     final boolean isBundle =
         evaluationContext.getPendingTransaction() instanceof TransactionBundle.PendingBundleTx;
-    Set<TransactionEventSelectionDescription> deniedEventsForTransaction =
+    Set<TransactionEventFilter> deniedEventsForTransaction =
         isBundle ? deniedBundleEvents.get() : deniedEvents.get();
-    for (TransactionEventSelectionDescription deniedEvent : deniedEventsForTransaction) {
+    for (TransactionEventFilter deniedEvent : deniedEventsForTransaction) {
       for (Log log : processingResult.getLogs()) {
         if (deniedEvent.matches(log)) {
           return TransactionSelectionResult.invalid("Transaction event logs match deny list");

@@ -31,7 +31,7 @@ import net.consensys.linea.sequencer.liveness.LineaLivenessService;
 import net.consensys.linea.sequencer.liveness.LineaLivenessTxBuilder;
 import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.txselection.selectors.ProfitableTransactionSelector;
-import net.consensys.linea.sequencer.txselection.selectors.TransactionEventSelectionDescription;
+import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.TransactionSelectionService;
@@ -46,9 +46,9 @@ import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin {
   private TransactionSelectionService transactionSelectionService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
-  private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents =
+  private final AtomicReference<Set<TransactionEventFilter>> deniedEvents =
       new AtomicReference<>(Collections.emptySet());
-  private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents =
+  private final AtomicReference<Set<TransactionEventFilter>> deniedBundleEvents =
       new AtomicReference<>(Collections.emptySet());
 
   @Override
@@ -143,13 +143,13 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
   @Override
   public CompletableFuture<Void> reloadConfiguration() {
     try {
-      Set<TransactionEventSelectionDescription> newDeniedEvents =
+      Set<TransactionEventFilter> newDeniedEvents =
           LineaTransactionSelectorCliOptions.create()
               .parseTransactionEventDenyList(
                   transactionSelectorConfiguration().eventsDenyListPath());
       deniedEvents.set(newDeniedEvents);
 
-      Set<TransactionEventSelectionDescription> newDeniedBundleEvents =
+      Set<TransactionEventFilter> newDeniedBundleEvents =
           LineaTransactionSelectorCliOptions.create()
               .parseTransactionEventDenyList(
                   transactionSelectorConfiguration().eventsBundleDenyListPath());

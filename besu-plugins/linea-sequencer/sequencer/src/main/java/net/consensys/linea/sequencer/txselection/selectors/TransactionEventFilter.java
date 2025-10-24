@@ -4,14 +4,13 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.log.LogTopic;
 
-public record TransactionEventSelectionDescription(
+public record TransactionEventFilter(
     Address contractAddress, LogTopic topic0, LogTopic topic1, LogTopic topic2, LogTopic topic3) {
   /**
-   * Checks whether the supplied log matches this TransactionEventSelectionDescription
+   * Checks whether the supplied log matches this TransactionEventFilter
    *
    * @param log the Log to be checked
-   * @return true if the supplied log matches this TransactionEventSelectionDescription, false
-   *     otherwise
+   * @return true if the supplied log matches this TransactionEventFilter, false otherwise
    */
   public boolean matches(final Log log) {
     return log.getLogger().equals(contractAddress)

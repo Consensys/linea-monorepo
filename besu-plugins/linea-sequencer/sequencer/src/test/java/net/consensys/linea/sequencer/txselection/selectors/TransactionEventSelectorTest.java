@@ -17,9 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class TransactionEventSelectorTest {
-  private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents =
+  private final AtomicReference<Set<TransactionEventFilter>> deniedEvents =
       new AtomicReference<>(Collections.emptySet());
-  private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents =
+  private final AtomicReference<Set<TransactionEventFilter>> deniedBundleEvents =
       new AtomicReference<>(Collections.emptySet());
 
   private TransactionEventSelector selector;
@@ -55,9 +55,8 @@ public class TransactionEventSelectorTest {
 
   @Test
   public void testEvaluateTransactionPostProcessingForSingleTransactionWithDenyListButSelected() {
-    TransactionEventSelectionDescription transactionEventSelectionDescription =
-        Mockito.mock(TransactionEventSelectionDescription.class);
-    deniedEvents.set(Set.of(transactionEventSelectionDescription));
+    TransactionEventFilter transactionEventFilter = Mockito.mock(TransactionEventFilter.class);
+    deniedEvents.set(Set.of(transactionEventFilter));
     TransactionEvaluationContext evaluationContext =
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
@@ -65,25 +64,23 @@ public class TransactionEventSelectorTest {
     mockTransactionType(false, evaluationContext);
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
-    Mockito.when(transactionEventSelectionDescription.matches(log)).thenReturn(false);
+    Mockito.when(transactionEventFilter.matches(log)).thenReturn(false);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
     Mockito.verify(evaluationContext).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
-    Mockito.verify(transactionEventSelectionDescription).matches(log);
-    Mockito.verifyNoMoreInteractions(
-        evaluationContext, processingResult, transactionEventSelectionDescription);
+    Mockito.verify(transactionEventFilter).matches(log);
+    Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(TransactionSelectionResult.SELECTED, actualResult);
   }
 
   @Test
   public void testEvaluateTransactionPostProcessingForSingleTransactionWithDenyListButInvalid() {
-    TransactionEventSelectionDescription transactionEventSelectionDescription =
-        Mockito.mock(TransactionEventSelectionDescription.class);
-    deniedEvents.set(Set.of(transactionEventSelectionDescription));
+    TransactionEventFilter transactionEventFilter = Mockito.mock(TransactionEventFilter.class);
+    deniedEvents.set(Set.of(transactionEventFilter));
     TransactionEvaluationContext evaluationContext =
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
@@ -91,16 +88,15 @@ public class TransactionEventSelectorTest {
     mockTransactionType(false, evaluationContext);
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
-    Mockito.when(transactionEventSelectionDescription.matches(log)).thenReturn(true);
+    Mockito.when(transactionEventFilter.matches(log)).thenReturn(true);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
     Mockito.verify(evaluationContext).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
-    Mockito.verify(transactionEventSelectionDescription).matches(log);
-    Mockito.verifyNoMoreInteractions(
-        evaluationContext, processingResult, transactionEventSelectionDescription);
+    Mockito.verify(transactionEventFilter).matches(log);
+    Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(
         TransactionSelectionResult.invalid("Transaction event logs match deny list"), actualResult);
@@ -126,9 +122,8 @@ public class TransactionEventSelectorTest {
 
   @Test
   public void testEvaluateTransactionPostProcessingForBundleTransactionWithDenyListButSelected() {
-    TransactionEventSelectionDescription transactionEventSelectionDescription =
-        Mockito.mock(TransactionEventSelectionDescription.class);
-    deniedBundleEvents.set(Set.of(transactionEventSelectionDescription));
+    TransactionEventFilter transactionEventFilter = Mockito.mock(TransactionEventFilter.class);
+    deniedBundleEvents.set(Set.of(transactionEventFilter));
     TransactionEvaluationContext evaluationContext =
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
@@ -136,25 +131,23 @@ public class TransactionEventSelectorTest {
     mockTransactionType(true, evaluationContext);
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
-    Mockito.when(transactionEventSelectionDescription.matches(log)).thenReturn(false);
+    Mockito.when(transactionEventFilter.matches(log)).thenReturn(false);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
     Mockito.verify(evaluationContext).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
-    Mockito.verify(transactionEventSelectionDescription).matches(log);
-    Mockito.verifyNoMoreInteractions(
-        evaluationContext, processingResult, transactionEventSelectionDescription);
+    Mockito.verify(transactionEventFilter).matches(log);
+    Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(TransactionSelectionResult.SELECTED, actualResult);
   }
 
   @Test
   public void testEvaluateTransactionPostProcessingForBundleTransactionWithDenyListButInvalid() {
-    TransactionEventSelectionDescription transactionEventSelectionDescription =
-        Mockito.mock(TransactionEventSelectionDescription.class);
-    deniedBundleEvents.set(Set.of(transactionEventSelectionDescription));
+    TransactionEventFilter transactionEventFilter = Mockito.mock(TransactionEventFilter.class);
+    deniedBundleEvents.set(Set.of(transactionEventFilter));
     TransactionEvaluationContext evaluationContext =
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
@@ -162,16 +155,15 @@ public class TransactionEventSelectorTest {
     mockTransactionType(true, evaluationContext);
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
-    Mockito.when(transactionEventSelectionDescription.matches(log)).thenReturn(true);
+    Mockito.when(transactionEventFilter.matches(log)).thenReturn(true);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
     Mockito.verify(evaluationContext).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
-    Mockito.verify(transactionEventSelectionDescription).matches(log);
-    Mockito.verifyNoMoreInteractions(
-        evaluationContext, processingResult, transactionEventSelectionDescription);
+    Mockito.verify(transactionEventFilter).matches(log);
+    Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(
         TransactionSelectionResult.invalid("Transaction event logs match deny list"), actualResult);
