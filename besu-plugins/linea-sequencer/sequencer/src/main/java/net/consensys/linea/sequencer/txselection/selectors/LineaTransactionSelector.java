@@ -90,6 +90,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @param tracerConfiguration the tracer config
    * @param maybeProfitabilityMetrics The optional profitability metrics
    * @param deniedEvents The transaction event deny list
+   * @param deniedBundleEvents The bundle transaction event deny list
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
