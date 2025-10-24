@@ -34,6 +34,7 @@ export class ViemWalletSignerClientAdapter implements IContractSignerClient {
   }
 
   async sign(tx: TransactionSerializable): Promise<Hex> {
+    this.logger.debug("sign started...", tx);
     // Remove any signature fields if they exist on the object
     // 'as any' required to avoid enforcing strict structural validation
     // Fine because we are only removing fields, not depending on them existing
@@ -45,16 +46,22 @@ export class ViemWalletSignerClientAdapter implements IContractSignerClient {
     void yParity_void;
 
     const serializedSignedTx = await this.wallet.signTransaction({ ...unsigned });
-    const { r, s, yParity } = await parseTransaction(serializedSignedTx);
+    const parsedTx = parseTransaction(serializedSignedTx);
+    this.logger.debug("sign", parsedTx);
+    const { r, s, yParity } = parsedTx;
     // TODO - Better error handling
-    if (!r || !s || yParity === undefined) throw new Error("sign error");
+    if (!r || !s || yParity === undefined) {
+      this.logger.error("sign - r, s or yParity missing");
+      throw new Error("sign - r, s or yParity missing");
+    }
+
     const signatureHex = serializeSignature({
       r,
       s,
       yParity,
     });
 
-    this.logger.debug(`ViemWalletSignerClientAdapter: signed transaction for ${this.address}`);
+    this.logger.debug(`sign completed signatureHex=${signatureHex}`);
     return signatureHex;
   }
 

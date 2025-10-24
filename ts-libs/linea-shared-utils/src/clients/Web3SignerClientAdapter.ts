@@ -19,7 +19,7 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
     web3SignerTrustedStorePath: string,
     web3SignerTrustedStorePassphrase: string,
   ) {
-    this.logger.info("Web3SignerClientAdapter: initialising HTTPS agent");
+    this.logger.info("Initialising HTTPS agent");
     this.agent = this.getHttpsAgent(
       web3SignerKeystorePath,
       web3SignerKeystorePassphrase,
@@ -29,7 +29,7 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
   }
 
   async sign(tx: TransactionSerializable): Promise<Hex> {
-    this.logger.debug("Web3SignerClientAdapter: signing transaction via remote Web3Signer");
+    this.logger.debug("Signing transaction via remote Web3Signer");
     const { data } = await axios.post(
       `${this.web3SignerUrl}/api/v1/eth1/sign/${this.web3SignerPublicKey}`,
       {
@@ -37,6 +37,7 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
       },
       { httpsAgent: this.agent },
     );
+    this.logger.debug(`Signing successful signature=${data}`);
     return data;
   }
 
@@ -47,14 +48,12 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
   private convertToPem(p12base64: string | forge.util.ByteStringBuffer, password: string) {
     const p12Asn1 = forge.asn1.fromDer(p12base64);
     const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
-
     return this.getCertificateFromP12(p12);
   }
 
   private getCertificateFromP12(p12: forge.pkcs12.Pkcs12Pfx) {
     const certData = p12.getBags({ bagType: forge.pki.oids.certBag });
     const certificate = certData[forge.pki.oids.certBag]?.[0];
-
     if (!certificate?.cert) {
       throw new Error("Certificate not found in P12");
     }
@@ -70,7 +69,7 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
     trustedStorePassphrase: string,
   ): Agent {
     const trustedStoreFile = readFileSync(path.resolve(__dirname, trustedStorePath), { encoding: "binary" });
-    this.logger.debug("Web3SignerClientAdapter: loading trusted store certificate");
+    this.logger.debug("Loading trusted store certificate");
 
     const { pemCertificate } = this.convertToPem(trustedStoreFile, trustedStorePassphrase);
 

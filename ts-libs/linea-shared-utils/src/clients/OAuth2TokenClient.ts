@@ -25,9 +25,11 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
       this.tokenExpiresAtSeconds &&
       getCurrentUnixTimestampSeconds() < this.tokenExpiresAtSeconds - this.expiryBufferSeconds
     ) {
+      this.logger.info("getBearerToken cache-hit");
       return this.bearerToken;
     }
 
+    this.logger.info("getBearerToken requesting new token");
     const { data } = await axios.post<OAuth2TokenResponse>(
       this.tokenUrl,
       {
@@ -45,6 +47,7 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
 
     if (!data?.access_token) {
       this.logger.error("Failed to retrieve OAuth2 access token");
+      return "";
     }
 
     const tokenType = data.token_type ?? "Bearer";
@@ -57,6 +60,10 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
     } else {
       this.tokenExpiresAtSeconds = getCurrentUnixTimestampSeconds() + this.defaultExpiresInSeconds;
     }
+
+    this.logger.info(
+      `getBearerToken successfully retrived new OAuth2 Bearer token tokenExpiresAtSeconds=${this.tokenExpiresAtSeconds}`,
+    );
 
     return this.bearerToken;
   }

@@ -56,6 +56,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   }
 
   async sendSignedTransaction(contractAddress: Address, calldata: Hex): Promise<TransactionReceipt> {
+    this.logger.debug("sendSignedTransaction started");
     const [fees, gasLimit, chainId, nonce] = await Promise.all([
       this.estimateGasFees(),
       this.blockchainClient.estimateGas({ to: contractAddress, data: calldata }),
@@ -74,13 +75,12 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       maxPriorityFeePerGas,
       nonce,
     };
+    this.logger.debug("sendSignedTransaction constructed tx for signing", [tx]);
     const signature = await this.contractSignerClient.sign(tx);
     const serializedTransaction = serializeTransaction(tx, parseSignature(signature));
-    this.logger.debug(
-      `ViemBlockchainClientAdapter: sending transaction to ${contractAddress} nonce=${nonce} gas=${gasLimit}`,
-    );
+
+    this.logger.debug(`sendSignedTransaction - sending raw transaction serializedTransaction=${serializedTransaction}`);
     const txHash = await sendRawTransaction(this.blockchainClient, { serializedTransaction });
-    this.logger.debug(`ViemBlockchainClientAdapter: txHash=${txHash}`);
     const receipt = await waitForTransactionReceipt(this.blockchainClient, { hash: txHash });
     return receipt;
   }
