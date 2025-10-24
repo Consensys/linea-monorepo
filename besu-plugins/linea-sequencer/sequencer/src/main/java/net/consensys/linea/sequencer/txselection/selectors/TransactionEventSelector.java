@@ -32,7 +32,14 @@ public class TransactionEventSelector implements PluginTransactionSelector {
     for (TransactionEventFilter deniedEvent : deniedEventsForTransaction) {
       for (Log log : processingResult.getLogs()) {
         if (deniedEvent.matches(log)) {
-          return TransactionSelectionResult.invalid("Transaction event logs match deny list");
+          return TransactionSelectionResult.invalid(
+              String.format(
+                  "Transaction %s is blocked due to contract address and event logs appearing on SDN or other legally prohibited list",
+                  evaluationContext
+                      .getPendingTransaction()
+                      .getTransaction()
+                      .getHash()
+                      .toShortLogString()));
         }
       }
     }
