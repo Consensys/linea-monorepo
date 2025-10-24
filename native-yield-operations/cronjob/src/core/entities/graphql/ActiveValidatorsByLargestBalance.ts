@@ -29,18 +29,3 @@ export const ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY: TypedDocumentNode<
     }
   }
 `;
-
-// export const ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY: TypedDocumentNode<
-//   ActiveValidatorsByLargestBalanceQuery,
-//   ActiveValidatorsByLargestBalanceQueryVariables
-// > = gql`
-//   query ActiveValidatorsByLargestBalanceQuery($first: Int = 50) {
-//     allValidators(condition: { state: ACTIVE }, orderBy: EFFECTIVE_BALANCE_DESC, first: $first) {
-//       nodes {
-//         balance
-//         effectiveBalance
-//         publicKey
-//       }
-//     }
-//   }
-// `;

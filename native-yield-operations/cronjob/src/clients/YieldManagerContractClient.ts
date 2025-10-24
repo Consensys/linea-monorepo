@@ -1,13 +1,15 @@
 import { IContractClientLibrary, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
+  encodeAbiParameters,
   encodeFunctionData,
   getContract,
   GetContractReturnType,
+  Hex,
   PublicClient,
   TransactionReceipt,
 } from "viem";
-import { encodeLidoWithdrawalParams, WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams.js";
+import { LidoStakingVaultWithdrawalParams, WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams.js";
 import { RebalanceRequirement, RebalanceDirection } from "../core/entities/RebalanceRequirement.js";
 
 import { YieldManagerABI } from "../core/abis/YieldManager.js";
@@ -110,7 +112,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   async unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TransactionReceipt> {
-    const encodedWithdrawalParams = encodeLidoWithdrawalParams({
+    const encodedWithdrawalParams = this._encodeLidoWithdrawalParams({
       ...withdrawalParams,
       refundRecipient: this.contractAddress,
     });
@@ -231,6 +233,28 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       return true;
     }
     return false;
+  }
+
+  private _encodeLidoWithdrawalParams(params: LidoStakingVaultWithdrawalParams): Hex {
+    return encodeAbiParameters(
+      [
+        {
+          type: "tuple",
+          components: [
+            { name: "pubkeys", type: "bytes[]" },
+            { name: "amounts", type: "uint64[]" },
+            { name: "refundRecipient", type: "address" },
+          ],
+        },
+      ],
+      [
+        {
+          pubkeys: params.pubkeys,
+          amounts: params.amountsGwei,
+          refundRecipient: params.refundRecipient,
+        },
+      ],
+    );
   }
 
   async getLidoStakingVaultAddress(yieldProvider: Address): Promise<Address> {
