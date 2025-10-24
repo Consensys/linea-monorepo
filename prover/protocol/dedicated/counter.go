@@ -20,7 +20,7 @@ func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny a
 
 	var (
 		isActive, fullyActive, size = cleanIsActive(isActiveAny)
-		numCols                     = len(comp.Columns.AllKeys())
+		numCols                     = comp.Columns.AllKeyLen()
 		// The appending of the round to the name is necessary to disambiguate
 		// the name of the column when serializing. This is particularly useful
 		// for self-recursion columns.
