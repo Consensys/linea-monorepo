@@ -98,7 +98,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     if (initialRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
       const result = await tryResult(() => this.yieldManagerContractClient.pauseStakingIfNotAlready(this.yieldProvider));
       if (result.isErr()) {
-        this.logger.error("_process - pause staking failed, continuing anyway", {error: result.error,})
+        this.logger.warn("_process - pause staking failed (tolerated)", {error: result.error,})
       }
     }
 
@@ -119,7 +119,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       } else {
       const result = await tryResult(() => this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider));
       if (result.isErr()) {
-        this.logger.error("_process - unpause staking failed, continuing anyway", {error: result.error,})
+        this.logger.warn("_process - unpause staking failed (tolerated)", {error: result.error,})
       }
       }
     }
@@ -175,7 +175,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     await tryResult(() =>
       this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount)
     ).mapErr((error) => {
-      this.logger.error("_handleStakingRebalance - transferFundsForNativeYield failed", {
+      this.logger.warn("_handleStakingRebalance - transferFundsForNativeYield failed (tolerated)", {
         error,
       });
       return error
@@ -184,7 +184,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     await tryResult(() =>
       this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount)
     ).mapErr((error) => {
-      this.logger.error("_handleStakingRebalance - fundYieldProvider failed", {
+      this.logger.warn("_handleStakingRebalance - fundYieldProvider failed (tolerated)", {
         error,
       });
       return error;
@@ -216,7 +216,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
         rebalanceAmount,
       )
     ).mapErr((err) => {
-      this.logger.error("_handleUnstakingRebalance - safeAddToWithdrawalReserveIfAboveThreshold failed", {
+      this.logger.warn("_handleUnstakingRebalance - safeAddToWithdrawalReserveIfAboveThreshold failed (tolerated)", {
         err,
       });
       return err;
@@ -238,7 +238,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
         this.lidoAccountingReportClient.submitLatestVaultReport()
       );
       if (vaultResult.isErr()) {
-        this.logger.error("_handleSubmitLatestVaultReport: submitLatestVaultReport failed; skipping yield report", {
+        this.logger.warn("_handleSubmitLatestVaultReport: submitLatestVaultReport failed; skipping yield report", {
           error: vaultResult.error,
         });
         // Early return, no point reporting Linea yield without a new vault report beforehand
@@ -250,7 +250,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
         this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient)
       );
       if (yieldResult.isErr()) {
-        this.logger.error("_handleSubmitLatestVaultReport - submitLatestVaultReport succeeded but reportYield failed", {
+        this.logger.warn("_handleSubmitLatestVaultReport - submitLatestVaultReport succeeded but reportYield failed", {
           error: yieldResult.error,
         });
         return yieldResult;
