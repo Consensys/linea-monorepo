@@ -47,22 +47,13 @@ public class Bin implements OperationSetModule<BinOperation> {
     return BIN;
   }
 
-  @Override
-  public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
-    if (opcode == AND
-        || opcode == OR
-        || opcode == XOR
-        || opcode == NOT
-        || opcode == SIGNEXTEND
-        || opcode == BYTE) {
+  public void callBin(MessageFrame frame, OpCode opcode) {
+    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
+    final Bytes32 arg2 =
+        isOneStackArgument(opcode) ? Bytes32.ZERO : Bytes32.leftPad(frame.getStackItem(1));
 
-      final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
-      final Bytes32 arg2 =
-          opcode == OpCode.NOT ? Bytes32.ZERO : Bytes32.leftPad(frame.getStackItem(1));
-
-      operations.add(
-          new BinOperation(opcode, BaseBytes.fromBytes32(arg1), BaseBytes.fromBytes32(arg2)));
-    }
+    operations.add(
+        new BinOperation(opcode, BaseBytes.fromBytes32(arg1), BaseBytes.fromBytes32(arg2)));
   }
 
   @Override
@@ -80,5 +71,9 @@ public class Bin implements OperationSetModule<BinOperation> {
     for (BinOperation op : operations.sortOperations(new BinOperationComparator())) {
       op.traceBinOperation(trace.bin());
     }
+  }
+
+  private static boolean isOneStackArgument(OpCode opcode) {
+    return opcode == NOT || opcode == CLZ;
   }
 }

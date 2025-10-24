@@ -20,15 +20,17 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExplogExpCall;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class ExpSection extends TraceSection {
   public ExpSection(Hub hub) {
     // 1 + 1     (stack, misc)
     // 1 + 1 + 1 (stack, misc, context)
     super(hub, Exceptions.none(hub.pch().exceptions()) ? (short) 3 : (short) 2);
-
-    final ExpCall expCall = new ExplogExpCall(hub.messageFrame());
+    final MessageFrame messageFrame = hub.messageFrame();
+    final ExpCall expCall = new ExplogExpCall(messageFrame);
     final ImcFragment miscFragment = ImcFragment.empty(hub).callExp(expCall);
     this.addStackAndFragments(hub, miscFragment);
+    hub.mul().callMul(messageFrame, hub.opCode());
   }
 }

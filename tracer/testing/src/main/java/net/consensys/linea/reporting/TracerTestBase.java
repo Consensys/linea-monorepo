@@ -30,7 +30,7 @@ public class TracerTestBase {
   public static void init() {
     // Configure chain information and fork before any tests are run, including any methods used as
     // MethodSource.
-    TracerTestBase.chainConfig = ChainConfig.MAINNET_TESTCONFIG(getForkOrDefault(LONDON));
+    TracerTestBase.chainConfig = ChainConfig.MAINNET_TESTCONFIG(getForkOrDefault(OSAKA));
     TracerTestBase.fork = TracerTestBase.chainConfig.fork;
     TracerTestBase.opcodes = OpCodes.load(fork);
   }

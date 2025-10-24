@@ -109,28 +109,19 @@ public class Wcp implements Module {
     additionalRows.commitTransactionBundle();
   }
 
-  @Override
-  public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
-    if (opcode == LT
-        || opcode == GT
-        || opcode == SLT
-        || opcode == SGT
-        || opcode == EQ
-        || opcode == ISZERO) {
+  public void callWcp(MessageFrame frame, OpCode opcode) {
+    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
+    final Bytes32 arg2 =
+        (opcode != OpCode.ISZERO) ? Bytes32.leftPad(frame.getStackItem(1)) : Bytes32.ZERO;
 
-      final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
-      final Bytes32 arg2 =
-          (opcode != OpCode.ISZERO) ? Bytes32.leftPad(frame.getStackItem(1)) : Bytes32.ZERO;
-
-      switch (opcode) {
-        case LT -> ltOperations.add(new WcpOperation(LTbv, arg1, arg2));
-        case GT -> gtOperations.add(new WcpOperation(GTbv, arg1, arg2));
-        case SLT -> sltOperations.add(new WcpOperation(SLTbv, arg1, arg2));
-        case SGT -> sgtOperations.add(new WcpOperation(SGTbv, arg1, arg2));
-        case EQ -> eqOperations.add(new WcpOperation(EQbv, arg1, arg2));
-        case ISZERO -> isZeroOperations.add(new WcpOperation(ISZERObv, arg1, Bytes32.ZERO));
-        default -> throw new UnsupportedOperationException("Not given a WCP EVM Opcode");
-      }
+    switch (opcode) {
+      case LT -> ltOperations.add(new WcpOperation(LTbv, arg1, arg2));
+      case GT -> gtOperations.add(new WcpOperation(GTbv, arg1, arg2));
+      case SLT -> sltOperations.add(new WcpOperation(SLTbv, arg1, arg2));
+      case SGT -> sgtOperations.add(new WcpOperation(SGTbv, arg1, arg2));
+      case EQ -> eqOperations.add(new WcpOperation(EQbv, arg1, arg2));
+      case ISZERO -> isZeroOperations.add(new WcpOperation(ISZERObv, arg1, Bytes32.ZERO));
+      default -> throw new UnsupportedOperationException("Not given a WCP EVM Opcode");
     }
   }
 

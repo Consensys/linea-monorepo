@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.mod;
 
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
-import static net.consensys.linea.zktracer.opcode.OpCode.SMOD;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -44,14 +43,10 @@ public class Mod implements OperationSetWithAdditionalRowsModule<ModOperation> {
     return ModuleName.MOD;
   }
 
-  @Override
-  public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
-    if (opcode == DIV || opcode == SDIV || opcode == MOD || opcode == SMOD) {
-      final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
-      final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
-
-      operations.add(new ModOperation(opcode, arg1, arg2));
-    }
+  public void callMod(MessageFrame frame, OpCode opcode) {
+    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
+    final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
+    operations.add(new ModOperation(opcode, arg1, arg2));
   }
 
   @Override
