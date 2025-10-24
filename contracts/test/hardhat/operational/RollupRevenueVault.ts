@@ -573,15 +573,20 @@ describe("RollupRevenueVault", () => {
 
     it("Should update invoice arrears", async () => {
       const newInvoiceArrears = 100n;
+      const newInvoiceDate = await time.latest();
+
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
+      const lastInvoiceArrears = await rollupRevenueVault.invoiceArrears();
+
       await expectEvent(
         rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateInvoiceArrears(newInvoiceArrears, lastInvoiceDate),
+        rollupRevenueVault.connect(admin).updateInvoiceArrears(newInvoiceArrears, newInvoiceDate),
         "InvoiceArrearsUpdated",
-        [newInvoiceArrears, lastInvoiceDate],
+        [lastInvoiceArrears, newInvoiceArrears, lastInvoiceDate, newInvoiceDate],
       );
 
       expect(await rollupRevenueVault.invoiceArrears()).to.equal(newInvoiceArrears);
+      expect(await rollupRevenueVault.lastInvoiceDate()).to.equal(newInvoiceDate);
     });
   });
 

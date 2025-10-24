@@ -222,9 +222,10 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     require(_lastInvoiceDate >= lastInvoiceDate, InvoiceDateTooOld());
     require(_lastInvoiceDate < block.timestamp, FutureInvoicesNotAllowed());
 
+    emit InvoiceArrearsUpdated(invoiceArrears, _newInvoiceArrears, lastInvoiceDate, _lastInvoiceDate);
+
     invoiceArrears = _newInvoiceArrears;
     lastInvoiceDate = _lastInvoiceDate;
-    emit InvoiceArrearsUpdated(_newInvoiceArrears, _lastInvoiceDate);
   }
 
   /**
