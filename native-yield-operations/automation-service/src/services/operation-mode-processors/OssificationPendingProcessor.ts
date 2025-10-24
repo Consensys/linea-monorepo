@@ -1,7 +1,7 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import { ILogger, tryResult } from "@consensys/linea-shared-utils";
+import { ILogger, attempt } from "@consensys/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
@@ -68,14 +68,8 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
     // Max withdraw if ossified
     this.logger.info("_process - Ossification completed, performing max safe withdrawal")
     if (await this.yieldManagerContractClient.isOssified(this.yieldProvider)) {
-      await tryResult(() =>
-        this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider)
-      ).mapErr((error) => {
-        this.logger.warn(
-          "safeMaxAddToWithdrawalReserve failed (tolerated)", { error }
-        );
-        return error; // required by mapErr
-      });
+      await attempt(this.logger, () =>
+        this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider), "safeMaxAddToWithdrawalReserve failed (tolerated)");
     }
 
     // Max unstake

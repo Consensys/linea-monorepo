@@ -1,4 +1,5 @@
 import { ResultAsync } from "neverthrow";
+import { ILogger } from "../logging/ILogger";
 
 /**
  * @notice Wraps a potentially-throwing function (sync or async) into a `ResultAsync`.
@@ -15,3 +16,9 @@ import { ResultAsync } from "neverthrow";
 export const tryResult = <T>(fn: () => Promise<T> | T): ResultAsync<T, Error> => {
   return ResultAsync.fromPromise(Promise.resolve().then(fn), (e) => (e instanceof Error ? e : new Error(String(e))));
 };
+
+export const attempt = <T>(logger: ILogger, fn: () => Promise<T> | T, msg: string) =>
+  tryResult(fn).mapErr((error) => {
+    logger.warn(msg, { error });
+    return error;
+  });

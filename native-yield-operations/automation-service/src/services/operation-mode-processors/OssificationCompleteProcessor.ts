@@ -1,5 +1,5 @@
 import { Address, TransactionReceipt } from "viem";
-import { ILogger, tryResult } from "@consensys/linea-shared-utils";
+import { ILogger, attempt } from "@consensys/linea-shared-utils";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { wait } from "@consensys/linea-sdk";
@@ -25,12 +25,8 @@ export class OssificationCompleteProcessor implements IOperationModeProcessor {
   private async _process(): Promise<void> {
     // Max withdraw
     this.logger.info("_process - Performing max withdrawal from YieldProvider");
-    await tryResult(() =>
-      this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider)
-    ).mapErr((error) => {
-      this.logger.warn("_process - safeMaxAddToWithdrawalReserve failed (tolerated)")
-      return error;
-    });
+    await attempt(this.logger, () =>
+      this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider), "_process - safeMaxAddToWithdrawalReserve failed (tolerated)");
 
     // Max unstake
     this.logger.info("_process - Performing max unstake from beacon chain");

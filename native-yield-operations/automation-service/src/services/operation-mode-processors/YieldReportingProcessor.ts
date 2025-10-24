@@ -1,7 +1,7 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import { bigintReplacer, ILogger, tryResult } from "@consensys/linea-shared-utils";
+import { bigintReplacer, ILogger, attempt, tryResult } from "@consensys/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
@@ -96,10 +96,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     // If we begin in DEFICIT, freeze beacon chain deposits to prevent further exacerbation
     if (initialRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
-      const result = await tryResult(() => this.yieldManagerContractClient.pauseStakingIfNotAlready(this.yieldProvider));
-      if (result.isErr()) {
-        this.logger.warn("_process - pause staking failed (tolerated)", {error: result.error,})
-      }
+      await attempt(this.logger, () => this.yieldManagerContractClient.pauseStakingIfNotAlready(this.yieldProvider), "_process - pause staking failed (tolerated)");
     }
 
     // Do primary rebalance +/- report submission
@@ -117,10 +114,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       if (postReportRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
         await this._handleUnstakingRebalance(postReportRebalanceRequirements.rebalanceAmount, false);
       } else {
-      const result = await tryResult(() => this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider));
-      if (result.isErr()) {
-        this.logger.warn("_process - unpause staking failed (tolerated)", {error: result.error,})
-      }
+        await attempt(this.logger, () => this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider), "_process - unpause staking failed (tolerated)");
       }
     }
 
@@ -172,23 +166,8 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   ): Promise<void> {
       this.logger.info(`_handleStakingRebalance - reserve surplus, rebalanceAmount=${rebalanceAmount}`);
     // Rebalance first - tolerate failures because fresh vault report should not be blocked
-    await tryResult(() =>
-      this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount)
-    ).mapErr((error) => {
-      this.logger.warn("_handleStakingRebalance - transferFundsForNativeYield failed (tolerated)", {
-        error,
-      });
-      return error
-    });
-
-    await tryResult(() =>
-      this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount)
-    ).mapErr((error) => {
-      this.logger.warn("_handleStakingRebalance - fundYieldProvider failed (tolerated)", {
-        error,
-      });
-      return error;
-    });
+    await attempt(this.logger, () => this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount), "_handleStakingRebalance - transferFundsForNativeYield failed (tolerated)");
+    await attempt(this.logger, () => this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount), "_handleStakingRebalance - fundYieldProvider failed (tolerated)");
 
     // Submit report last
     if (isSimulateSubmitLatestVaultReportSuccessful) {
@@ -208,19 +187,9 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       await this._handleSubmitLatestVaultReport();
     }
 
-    this.logger.info(`_handleStakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
+    this.logger.info(`_handleUnstakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
     // Then perform rebalance
-    await tryResult(() =>
-      this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(
-        this.yieldProvider,
-        rebalanceAmount,
-      )
-    ).mapErr((err) => {
-      this.logger.warn("_handleUnstakingRebalance - safeAddToWithdrawalReserveIfAboveThreshold failed (tolerated)", {
-        err,
-      });
-      return err;
-    });
+    await attempt(this.logger, () => this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(this.yieldProvider, rebalanceAmount), "_handleUnstakingRebalance - safeAddToWithdrawalReserveIfAboveThreshold failed (tolerated)");
   }
 
   /**
