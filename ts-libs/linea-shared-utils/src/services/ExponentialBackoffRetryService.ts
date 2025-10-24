@@ -2,7 +2,7 @@ import { IRetryService } from "../core/services/IRetryService";
 import { ILogger } from "../logging/ILogger";
 import { wait } from "@consensys/linea-sdk";
 
-export class ExponentialBackoffRetryService<TReturn> implements IRetryService<TReturn> {
+export class ExponentialBackoffRetryService implements IRetryService {
   constructor(
     private readonly logger: ILogger,
     private readonly maxRetryAttempts: number = 3,
@@ -20,7 +20,7 @@ export class ExponentialBackoffRetryService<TReturn> implements IRetryService<TR
    * @notice Retry an asynchronous operation until success or failure.
    * @param fn An async callback returning a promise of type TReturn.
    */
-  public async retry(fn: () => Promise<TReturn>): Promise<TReturn> {
+  public async retry<TReturn>(fn: () => Promise<TReturn>): Promise<TReturn> {
     let lastError: unknown;
 
     for (let attempt = 0; attempt <= this.maxRetryAttempts; attempt += 1) {
