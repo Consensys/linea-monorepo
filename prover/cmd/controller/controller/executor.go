@@ -31,8 +31,8 @@ const (
 	CodeFatal             int = 14   // When the process could not start
 	CodeCantRunCommand    int = 15   // When the controller could not run the command
 	CodeCantPreLoad       int = 16   // When the controller could not preload the prover assets
-	CodeKilledByExtSig    int = 1137 // When the process is killed by the controller vis external signal handlers. We purposefully use a non-Unix code.
-	CodePeerAbortReceived int = 1187 // This is relevant only for limitless job where one or more of the component failures results in cascading failure. We again use a non-Unix code.
+	CodeKilledByExtSig    int = 1137 // When the parent (Controller) process is killed via external signal handlers. We purposefully use a non-Unix code.
+	CodePeerAbortReceived int = 1187 // When the child process is killed via SIGUSR2. Relevant only for limitless jobs where one or more of the component failures results in cascading failure.
 )
 
 // Status of a finished job

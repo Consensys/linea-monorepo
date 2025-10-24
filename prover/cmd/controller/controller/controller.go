@@ -25,6 +25,34 @@ type ControllerState struct {
 	activeJob     *Job
 	jobDoneChan   chan struct{}
 	jobDoneChanMu sync.Mutex
+
+	// per-job cancel so SIGUSR2 can cancel only the running child
+	currentJobCancel context.CancelFunc
+	cancelJobMu      sync.Mutex
+}
+
+// set the current job cancel func
+func (st *ControllerState) setCurrentJobCancel(cf context.CancelFunc) {
+	st.cancelJobMu.Lock()
+	st.currentJobCancel = cf
+	st.cancelJobMu.Unlock()
+}
+
+// clear the current job cancel func (call after job finishes)
+func (st *ControllerState) clearCurrentJobCancel() {
+	st.cancelJobMu.Lock()
+	st.currentJobCancel = nil
+	st.cancelJobMu.Unlock()
+}
+
+// cancel only the current child job
+func (st *ControllerState) cancelCurrentJob() {
+	st.cancelJobMu.Lock()
+	if st.currentJobCancel != nil {
+		st.currentJobCancel()
+		st.currentJobCancel = nil
+	}
+	st.cancelJobMu.Unlock()
 }
 
 var (
@@ -60,9 +88,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 		)
 	}
 
-	// Derive the command context with a cancel function
-	cmdCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	// Derive the controller context with a ctrlCancel function from the parent ctx
+	ctrlCtx, ctrlCancel := context.WithCancel(ctx)
+	defer ctrlCancel()
 
 	// Graceful shutdown => Only SIGTERM
 	// Spot-reclaim => SIGUSR1 and SIGTERM
@@ -71,10 +99,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 	defer signal.Stop(signalChan)
 
 	// Spin up the signal handler go routine to handle SIGTERM and SIGUSR1 signals
-	go state.handleSignals(cancel, cLog, cfg, signalChan)
+	go state.handleSignals(ctrlCancel, cLog, cfg, signalChan)
 
 	// Spin up the log on context done go routine for prompt logging and diagnostics
-	go state.logOnCtxDone(cmdCtx, cLog, cfg)
+	go state.logOnCtxDone(ctrlCtx, cLog, cfg)
 
 	// If any files are locked to RAM unlock it before exiting
 	defer assets.UnlockAllLockedFiles()
@@ -82,9 +110,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 	// Main loop
 	for {
 		select {
-		case <-cmdCtx.Done():
-			cLog.Infoln("Context cancelled by caller or externally triggered (SIGTERM/SIGUSR1). Exiting...")
-			metrics.ShutdownServer(cmdCtx)
+		case <-ctrlCtx.Done():
+			cLog.Infoln("Context cancelled by caller or externally triggered. EXITING!!!")
+			metrics.ShutdownServer(ctrlCtx)
 
 			if spotReclaimDetected.Load() {
 				cLog.Infof("Waiting up to %ds for spot reclaim...", cfg.Controller.SpotInstanceReclaimTime)
@@ -109,7 +137,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// Processing a new job
 		case <-retryDelay(cfg.Controller.RetryDelays, numRetrySoFar):
 			// Prevent starting new jobs if shutdown started
-			if cmdCtx.Err() != nil {
+			if ctrlCtx.Err() != nil {
 				continue
 			}
 
@@ -128,9 +156,23 @@ func runController(ctx context.Context, cfg *config.Config) {
 				continue
 			}
 
+			// Create a per-job context derived from controller context
+			jobCtx, jobCancel := context.WithCancel(ctrlCtx)
+			state.setCurrentJobCancel(jobCancel)
+
+			// If a shared-failure marker exists for this job, skip it and cleanup
+			// Relevant only for limitless controller
+			if state.shouldSkipDueToSharedFail(cfg, cLog, job) {
+				jobCancel()
+				state.clearCurrentJobCancel()
+				numRetrySoFar++
+				continue
+			}
+
+			// Reset retry counter and claim the job
 			numRetrySoFar = 0
 
-			// Important: Set the active job to the current job for safe requeue mechanism
+			// Claim active job for safe requeue mechanism
 			state.activeJob = job
 
 			// Rm any prev. transient failure files and other intermediate files - relevant only for Limitless jobs
@@ -139,9 +181,14 @@ func runController(ctx context.Context, cfg *config.Config) {
 				utils.Panic("error during precleaning files for limitless jobs:%v", err)
 			}
 
-			// Run the command (potentially retrying in large mode)
-			status := executor.Run(cmdCtx, job)
+			// Run the command (potentially retrying in large mode) using jobCtx so it can be
+			// cancelled independently by SIGUSR2/peer abort.
+			status := executor.Run(jobCtx, job)
 
+			// Job finished (clear per-job cancel)
+			state.clearCurrentJobCancel()
+
+			// Continue with existing result handling
 			state.handleJobResult(cfg, cLog, job, status)
 		}
 	}
@@ -192,7 +239,7 @@ func (st *ControllerState) requeueJob(cfg *config.Config, cLog *logrus.Entry) {
 	st.notifyJobDone()
 }
 
-func (st *ControllerState) handleSignals(cancel context.CancelFunc, cLog *logrus.Entry, cfg *config.Config, signalChan <-chan os.Signal) {
+func (st *ControllerState) handleSignals(ctrlCancel context.CancelFunc, cLog *logrus.Entry, cfg *config.Config, signalChan <-chan os.Signal) {
 
 	for sig := range signalChan {
 		switch sig {
@@ -200,7 +247,7 @@ func (st *ControllerState) handleSignals(cancel context.CancelFunc, cLog *logrus
 			spotReclaimDetected.Store(true)
 			if !gracefulShutdownRequested.Load() {
 				cLog.Infof("Received SIGUSR1: marking spot reclaim detected, cancelling context ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
-				cancel()
+				ctrlCancel()
 				if cfg.Controller.Prometheus.Enabled {
 					metrics.IncSpotInterruption(cfg.Controller.LocalID)
 				}
@@ -236,23 +283,25 @@ func (st *ControllerState) handleSignals(cancel context.CancelFunc, cLog *logrus
 					select {
 					case <-time.After(time.Duration(cfg.Controller.TerminationGracePeriod) * time.Second):
 						cLog.Info("Termination grace period expired. Cancelling context to force shutdown...")
-						cancel()
+						ctrlCancel()
 
 					case <-localJobDoneChan:
 						cLog.Info("Job finished before grace period expired. Cancelling context to exit immediately...")
-						cancel()
+						ctrlCancel()
 					}
 				}()
 			} else {
 				cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
-				cancel()
+				ctrlCancel()
 			}
 
 		case syscall.SIGUSR2:
-			cLog.Warn("Received SIGUSR2 (Abort-By-Peer): cancelling the context and shutting down immediately")
-			// Mark peer abort flag
+			cLog.Warn("Received SIGUSR2 (Abort-By-Peer): cancelling the current child job only")
 			peerAbortDetected.Store(true)
-			cancel()
+
+			// Cancel only the current job's context so executor.Run returns a CodePeerAbortReceived.
+			// IMPORTANT: DONT call the parent ctrlCancel() here; that would stop the whole controller.
+			st.cancelCurrentJob()
 		}
 	}
 }
@@ -387,13 +436,14 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 		replaceExecDoneSuffix(cfg, cLog, job, config.BootstrapPartialSucessSuffix, failSuffix)
 	}
 
-	// Write transient failure for limitless jobs - write only genuine failures and not due to PeerAbortion
+	// Write transient failure for limitless jobs - only genuine failures are written here
+	// and not due to PeerAbortion
 	if status.ExitCode != CodePeerAbortReceived {
 		if err := st.writeTransientFailFile(cfg, cLog, status.ExitCode); err != nil {
 			cLog.Errorf("error writing failure marker: %v", err)
 		}
 	} else {
-		cLog.Infof("Ignoring to write transient failure file for job:%s with status exit code:%d", job.OriginalFile, CodePeerAbortReceived)
+		cLog.Infof("Safely ignoring to write transient failure file for job:%s with status exit code:%d", job.OriginalFile, CodePeerAbortReceived)
 	}
 
 	// Set active job to nil as there is nothing more to retry and notify the job is done
@@ -483,20 +533,62 @@ func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config) error {
 	return err
 }
 
+// Only for limitless job: Returns true if a shared-failure marker exists for this job and so we should skip picking it up.
+// Allows job of its own type to proceed to clean-up and futher execution.
+func (st *ControllerState) shouldSkipDueToSharedFail(cfg *config.Config, cLog *logrus.Entry, job *Job) bool {
+	// Only relevant for limitless jobs
+	if !isExecLimitlessJob(job) {
+		return false
+	}
+
+	// Match any job type for the same range (not just this job)
+	pattern := fmt.Sprintf("%d-%d-*-failure_code*", job.Start, job.End)
+	globPattern := filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, pattern)
+
+	matches, err := filepath.Glob(globPattern)
+	if err != nil {
+		cLog.Errorf("could not glob shared failure marker for pattern %s: %v", globPattern, err)
+		// safer to skip this job so we don't execute when filesystem is weird
+		return true
+	}
+
+	if len(matches) == 0 {
+		return false
+	}
+
+	// Check if any marker belongs to this job’s own type (e.g. bootstrap)
+	for _, m := range matches {
+		base := filepath.Base(m)
+		if strings.Contains(base, fmt.Sprintf("-%s-failure_code", job.Def.Name)) {
+			cLog.Infof("Job %s matches its own failure marker (%s); proceeding to handle cleanup", job.OriginalFile, base)
+			return false // allow execution
+		}
+	}
+
+	// Otherwise skip since another job already marked this range failed
+	cLog.Warnf("Skipping job %s because shared failure marker exists: %v", job.OriginalFile, matches)
+	return true
+}
+
 func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Entry, cfg *config.Config) {
 	<-cmdCtx.Done()
-	if spotReclaimDetected.Load() {
+	switch {
+	case spotReclaimDetected.Load():
 		cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
-	} else if gracefulShutdownRequested.Load() {
+
+	case gracefulShutdownRequested.Load():
 		if st.activeJob != nil {
 			cLog.Infof("Context done: grace period expired, forcing shutdown")
 		} else {
 			cLog.Info("Context done: graceful shutdown complete")
 		}
-	} else {
-		cLog.Infoln("Context done due to cancellation request.")
-	}
 
+	case peerAbortDetected.Load():
+		cLog.Infoln("Context cancellation triggered due to peer-aborted service")
+
+	default:
+		cLog.Infoln("Context cancelled due to unknown reason.")
+	}
 }
 
 func replaceExecDoneSuffix(cfg *config.Config, cLog *logrus.Entry, job *Job, oldSuffix, newSuffix string) {

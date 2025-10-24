@@ -13,6 +13,9 @@ set -euo pipefail
 # kill -SIGUSR1 $(pgrep -f controller-worker-lpp-1)
 # kill -SIGTERM $(pgrep -f controller-worker-lpp-1)
 
+# Debug/Diagnostics
+# ps aux | grep controller | grep -v grep
+
 # ====== ABSOLUTE PATHS ======
 BASE_DIR="/home/ubuntu/linea-monorepo/prover"
 BIN="$BASE_DIR/bin/controller"
