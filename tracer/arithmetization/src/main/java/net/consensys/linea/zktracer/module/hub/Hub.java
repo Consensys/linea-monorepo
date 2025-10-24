@@ -199,10 +199,10 @@ public abstract class Hub implements Module {
     return trace.hub().spillage();
   }
 
-  /** List of all modules of the ZK-evm */
+  // List of all modules of the ZK-evm:
+
   // stateless modules
   private final Wcp wcp = new Wcp();
-
   private final Add add = new Add();
   private final Bin bin = new Bin();
   private final Blockhash blockhash = new Blockhash(this, wcp);
@@ -1001,13 +1001,6 @@ public abstract class Hub implements Module {
 
     this.handleStack(frame);
 
-    // Trigger basic operations modules
-    if (Exceptions.none(pch.exceptions())) {
-      for (Module m : modules) {
-        m.tracePreOpcode(frame, opCode());
-      }
-    }
-
     if (currentFrame().stack().isOk()) {
       // Tracer for the HUB
       this.traceOpcode(frame);
@@ -1029,31 +1022,33 @@ public abstract class Hub implements Module {
   }
 
   void traceOpcode(MessageFrame frame) {
-    switch (this.opCodeData().instructionFamily()) {
-      case ADD, MOD, SHF, BIN, WCP, EXT, BATCH, PUSH_POP, DUP, SWAP -> new StackOnlySection(this);
+    final OpCodeData op = opCodeData();
+    switch (op.instructionFamily()) {
+      case ADD, BIN, MOD, SHF, WCP, EXT, BATCH, PUSH_POP, DUP, SWAP -> new StackOnlySection(
+          this, op);
       case MACHINE_STATE -> {
-        switch (this.opCode()) {
-          case OpCode.MSIZE -> new MsizeSection(this);
-          default -> new StackOnlySection(this);
+        switch (op.mnemonic()) {
+          case MSIZE -> new MsizeSection(this);
+          default -> new StackOnlySection(this, op);
         }
       }
       case MUL -> {
-        switch (this.opCode()) {
-          case OpCode.EXP -> new ExpSection(this);
-          case OpCode.MUL -> new StackOnlySection(this);
+        switch (op.mnemonic()) {
+          case EXP -> new ExpSection(this);
+          case MUL -> new StackOnlySection(this, op);
           default -> throw new IllegalStateException(
               String.format("opcode %s not part of the MUL instruction family", this.opCode()));
         }
       }
       case HALT -> {
-        switch (this.opCode()) {
+        switch (op.mnemonic()) {
           case RETURN -> new ReturnSection(this, frame);
           case REVERT -> new RevertSection(this, frame);
           case STOP -> new StopSection(this);
           case SELFDESTRUCT -> setSelfdestructSection(this, frame);
         }
         final boolean returnFromDeployment =
-            (this.opCode() == RETURN && this.currentFrame().isDeployment());
+            (op.mnemonic() == RETURN && this.currentFrame().isDeployment());
 
         callStack
             .parentCallFrame()
@@ -1067,11 +1062,11 @@ public abstract class Hub implements Module {
       case LOG -> new LogSection(this);
       case ACCOUNT -> new AccountSection(this);
       case COPY -> {
-        switch (this.opCode()) {
-          case OpCode.CALLDATACOPY -> new CallDataCopySection(this);
-          case OpCode.RETURNDATACOPY -> new ReturnDataCopySection(this);
-          case OpCode.CODECOPY -> new CodeCopySection(this);
-          case OpCode.EXTCODECOPY -> new ExtCodeCopySection(this, frame);
+        switch (op.mnemonic()) {
+          case CALLDATACOPY -> new CallDataCopySection(this);
+          case RETURNDATACOPY -> new ReturnDataCopySection(this);
+          case CODECOPY -> new CodeCopySection(this);
+          case EXTCODECOPY -> new ExtCodeCopySection(this, frame);
           default -> throw new RuntimeException(
               "Invalid instruction: " + this.opCode().toString() + " not in the COPY family");
         }
@@ -1079,14 +1074,14 @@ public abstract class Hub implements Module {
       case MCOPY -> setMcopySection(this);
       case TRANSACTION -> new TransactionSection(this);
       case STACK_RAM -> {
-        switch (this.opCode()) {
+        switch (op.mnemonic()) {
           case CALLDATALOAD -> new CallDataLoadSection(this);
           case MLOAD, MSTORE, MSTORE8 -> new StackRamSection(this);
           default -> throw new IllegalStateException("unexpected STACK_RAM opcode");
         }
       }
       case STORAGE -> {
-        switch (this.opCode()) {
+        switch (op.mnemonic()) {
           case SSTORE -> new SstoreSection(this, frame.getWorldUpdater());
           case SLOAD -> new SloadSection(this, frame.getWorldUpdater());
           default -> throw new IllegalStateException("invalid operation in family STORAGE");

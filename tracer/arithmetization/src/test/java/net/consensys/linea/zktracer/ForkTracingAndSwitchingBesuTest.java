@@ -55,7 +55,7 @@ public class ForkTracingAndSwitchingBesuTest extends TracerTestBase {
         BytecodeCompiler.newProgram(chainConfig).push(32, 0xbeef).push(32, 0xdead).op(OpCode.ADD);
 
     switch (fork) {
-      case LONDON -> {}
+      case LONDON -> compiler.op(OpCode.DIFFICULTY);
       case PARIS -> compiler.op(OpCode.PREVRANDAO);
       case SHANGHAI -> compiler.op(OpCode.PUSH0);
         // Same opcode for Cancun and Prague, as no new opcode was introduced in Prague
@@ -67,7 +67,7 @@ public class ForkTracingAndSwitchingBesuTest extends TracerTestBase {
           .push(32) // offset to trigger mem expansion
           .push(0) // dest offset
           .op(OpCode.MCOPY);
-      case OSAKA -> {} // TODO CLZ;
+      case OSAKA -> compiler.push("0x07acaa").op(OpCode.CLZ);
       default -> throw new IllegalArgumentException("Unsupported fork: " + fork);
     }
 

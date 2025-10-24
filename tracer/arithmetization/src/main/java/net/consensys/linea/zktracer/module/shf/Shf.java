@@ -42,14 +42,10 @@ public class Shf implements OperationSetModule<ShfOperation> {
     return SHF;
   }
 
-  @Override
-  public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
-    if (opcode == SHL || opcode == SHR || opcode == SAR) {
-
-      final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
-      final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
-      operations.add(new ShfOperation(opcode, arg1, arg2));
-    }
+  public void callShf(MessageFrame frame, OpCode opcode) {
+    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
+    final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
+    operations.add(new ShfOperation(opcode, arg1, arg2));
   }
 
   @Override

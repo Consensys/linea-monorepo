@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.bytestheta;
 
+import static net.consensys.linea.zktracer.types.Conversions.longToBytes32;
+
 import lombok.EqualsAndHashCode;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -46,6 +48,10 @@ public class BaseBytes implements HighLowBytes {
    */
   public static BaseBytes fromBytes32(Bytes32 arg) {
     return new BaseBytes(arg);
+  }
+
+  public static BaseBytes fromInt(int arg) {
+    return new BaseBytes(longToBytes32(arg));
   }
 
   /**

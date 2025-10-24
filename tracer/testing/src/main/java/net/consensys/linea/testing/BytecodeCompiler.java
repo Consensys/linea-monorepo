@@ -63,10 +63,6 @@ public class BytecodeCompiler {
     return opCodes.of(opcode);
   }
 
-  private static Bytes toBytes(final int x) {
-    return Bytes.ofUnsignedLong(x).trimLeadingZeros();
-  }
-
   /**
    * Assemble an EVM program into bytecode. Requirement are: one instruction per line; `;` mark a
    * line as a comment; no more than one word per line, safe for PUSHs.
@@ -161,6 +157,11 @@ public class BytecodeCompiler {
     return this;
   }
 
+  public BytecodeCompiler immediate(final byte b) {
+    this.byteCode.add(Bytes.of(b));
+    return this;
+  }
+
   /**
    * Add a {@link Bytes} instance as is to the bytecode sequence.
    *
@@ -178,7 +179,7 @@ public class BytecodeCompiler {
    * @return current instance
    */
   public BytecodeCompiler immediate(final int x) {
-    return this.immediate(toBytes(x));
+    return this.immediate(Bytes.minimalBytes(x));
   }
 
   /**
@@ -237,7 +238,7 @@ public class BytecodeCompiler {
    * @return current instance
    */
   public BytecodeCompiler push(final int x) {
-    return this.push(toBytes(x));
+    return this.push(Bytes.minimalBytes(x));
   }
 
   /**
@@ -280,7 +281,7 @@ public class BytecodeCompiler {
    * @return current instance
    */
   public BytecodeCompiler push(final int w, final int x) {
-    return this.push(w, toBytes(x));
+    return this.push(w, Bytes.minimalBytes(x));
   }
 
   /**

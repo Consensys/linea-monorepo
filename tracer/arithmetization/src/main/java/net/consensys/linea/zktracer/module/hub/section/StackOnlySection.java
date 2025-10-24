@@ -15,14 +15,33 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
+import static net.consensys.linea.zktracer.opcode.OpCode.*;
+
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 
 public class StackOnlySection extends TraceSection {
   public static final short NB_ROWS_HUB_SIMPLE_STACK_OP = 1;
 
-  public StackOnlySection(Hub hub) {
+  public StackOnlySection(Hub hub, OpCodeData opcode) {
     super(hub, NB_ROWS_HUB_SIMPLE_STACK_OP);
 
     this.addStack(hub);
+
+    switch (opcode.instructionFamily()) {
+      case ADD -> hub.add().callAdd(hub.messageFrame(), opcode.mnemonic());
+      case BIN -> hub.bin().callBin(hub.messageFrame(), opcode.mnemonic());
+      case MOD -> hub.mod().callMod(hub.messageFrame(), opcode.mnemonic());
+      case SHF -> hub.shf().callShf(hub.messageFrame(), opcode.mnemonic());
+      case WCP -> hub.wcp().callWcp(hub.messageFrame(), opcode.mnemonic());
+      case EXT -> hub.ext().callExt(hub.messageFrame(), opcode.mnemonic());
+      case MUL -> hub.mul().callMul(hub.messageFrame(), opcode.mnemonic());
+      case BATCH -> {
+        if (opcode.mnemonic() == BLOCKHASH) {
+          hub.blockhash().callBlockhash(hub.messageFrame());
+        }
+      }
+      default -> {}
+    }
   }
 }

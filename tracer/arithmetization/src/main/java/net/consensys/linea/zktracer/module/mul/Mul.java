@@ -43,14 +43,11 @@ public class Mul implements OperationSetModule<MulOperation> {
     return ModuleName.MUL;
   }
 
-  @Override
-  public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
-    if (opcode == MUL || opcode == EXP) {
-      final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
-      final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
+  public void callMul(MessageFrame frame, OpCode opcode) {
+    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
+    final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
 
-      operations.add(new MulOperation(opcode, arg1, arg2));
-    }
+    operations.add(new MulOperation(opcode, arg1, arg2));
   }
 
   @Override

@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.bin;
 
+import static net.consensys.linea.zktracer.bytestheta.BaseBytes.fromInt;
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +54,7 @@ public class BinOperation extends ModuleOperation {
       case NOT -> arg1.not();
       case BYTE -> byteResult();
       case SIGNEXTEND -> signExtensionResult();
+      case CLZ -> fromInt(256 - arg1.getBytes32().bitLength());
       default -> throw new IllegalStateException("Bin doesn't support OpCode" + opCode);
     };
   }

@@ -48,11 +48,8 @@ public class Ext implements OperationSetWithAdditionalRowsModule<ExtOperation> {
     return EXT;
   }
 
-  @Override
-  public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
-    if (opcode == ADDMOD || opcode == MULMOD) {
-      call(opcode, frame.getStackItem(0), frame.getStackItem(1), frame.getStackItem(2));
-    }
+  public void callExt(MessageFrame frame, OpCode opcode) {
+    call(opcode, frame.getStackItem(0), frame.getStackItem(1), frame.getStackItem(2));
   }
 
   public Bytes call(OpCode opCode, Bytes _arg1, Bytes _arg2, Bytes _arg3) {

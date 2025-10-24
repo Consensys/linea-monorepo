@@ -50,12 +50,8 @@ public class Add implements OperationSetWithAdditionalRowsModule<AddOperation> {
     return ModuleName.ADD;
   }
 
-  @Override
-  public void tracePreOpcode(MessageFrame frame, OpCode opcode) {
-    if ((opcode == ADD || opcode == SUB)) {
-      this.call(
-          opcode, Bytes32.leftPad(frame.getStackItem(0)), Bytes32.leftPad(frame.getStackItem(1)));
-    }
+  public void callAdd(MessageFrame frame, OpCode opcode) {
+    call(opcode, Bytes32.leftPad(frame.getStackItem(0)), Bytes32.leftPad(frame.getStackItem(1)));
   }
 
   @Override
