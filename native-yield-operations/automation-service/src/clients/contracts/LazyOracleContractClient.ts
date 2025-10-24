@@ -58,9 +58,9 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       functionName: "updateVaultData",
       args: [vault, totalValue, cumulativeLidoFees, liabilityShares, maxLiabilityShares, slashingReserve, proof],
     });
-    this.logger.debug(`updateVaultData started, params=${params}`);
+    this.logger.debug(`updateVaultData started`, { params });
     const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
-    this.logger.info(`updateVaultData succeeded, params=${params}, txHash=${txReceipt.transactionHash}`);
+    this.logger.info(`updateVaultData succeeded, txHash=${txReceipt.transactionHash}`, { params });
     return txReceipt;
   }
 

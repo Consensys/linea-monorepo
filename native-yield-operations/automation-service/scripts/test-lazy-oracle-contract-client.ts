@@ -34,6 +34,7 @@ async function main() {
 
   const signer = new ViemWalletSignerClientAdapter(
     new WinstonLogger("ViemWalletSignerClientAdapter.integration"),
+    rpcUrl,
     privateKey,
     hoodi,
   );

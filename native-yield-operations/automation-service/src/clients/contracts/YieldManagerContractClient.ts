@@ -131,7 +131,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
 
   async unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TransactionReceipt> {
     this.logger.debug(
-      `unstake started, yieldProvider=${yieldProvider}`, withdrawalParams
+      `unstake started, yieldProvider=${yieldProvider}`, { withdrawalParams }
     );
     const encodedWithdrawalParams = this._encodeLidoWithdrawalParams({
       ...withdrawalParams,
@@ -145,7 +145,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
 
     const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
     this.logger.info(
-      `unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`, withdrawalParams
+      `unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`, { withdrawalParams }
     );
     return txReceipt;
   }

@@ -21,6 +21,7 @@ export class ViemWalletSignerClientAdapter implements IContractSignerClient {
 
   constructor(
     private readonly logger: ILogger,
+    rpcUrl: string,
     privateKey: Hex,
     chain: Chain,
   ) {
@@ -29,7 +30,7 @@ export class ViemWalletSignerClientAdapter implements IContractSignerClient {
     this.wallet = createWalletClient({
       account: this.account,
       chain,
-      transport: http(),
+      transport: http(rpcUrl),
     });
   }
 
