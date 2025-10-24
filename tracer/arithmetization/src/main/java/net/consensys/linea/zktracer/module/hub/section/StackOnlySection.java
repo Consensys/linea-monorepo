@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.section;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 
 public class StackOnlySection extends TraceSection {
@@ -28,20 +29,22 @@ public class StackOnlySection extends TraceSection {
 
     this.addStack(hub);
 
-    switch (opcode.instructionFamily()) {
-      case ADD -> hub.add().callAdd(hub.messageFrame(), opcode.mnemonic());
-      case BIN -> hub.bin().callBin(hub.messageFrame(), opcode.mnemonic());
-      case MOD -> hub.mod().callMod(hub.messageFrame(), opcode.mnemonic());
-      case SHF -> hub.shf().callShf(hub.messageFrame(), opcode.mnemonic());
-      case WCP -> hub.wcp().callWcp(hub.messageFrame(), opcode.mnemonic());
-      case EXT -> hub.ext().callExt(hub.messageFrame(), opcode.mnemonic());
-      case MUL -> hub.mul().callMul(hub.messageFrame(), opcode.mnemonic());
-      case BATCH -> {
-        if (opcode.mnemonic() == BLOCKHASH) {
-          hub.blockhash().callBlockhash(hub.messageFrame());
+    if (Exceptions.none(hub.pch().exceptions())) {
+      switch (opcode.instructionFamily()) {
+        case ADD -> hub.add().callAdd(hub.messageFrame(), opcode.mnemonic());
+        case BIN -> hub.bin().callBin(hub.messageFrame(), opcode.mnemonic());
+        case MOD -> hub.mod().callMod(hub.messageFrame(), opcode.mnemonic());
+        case SHF -> hub.shf().callShf(hub.messageFrame(), opcode.mnemonic());
+        case WCP -> hub.wcp().callWcp(hub.messageFrame(), opcode.mnemonic());
+        case EXT -> hub.ext().callExt(hub.messageFrame(), opcode.mnemonic());
+        case MUL -> hub.mul().callMul(hub.messageFrame(), opcode.mnemonic());
+        case BATCH -> {
+          if (opcode.mnemonic() == BLOCKHASH) {
+            hub.blockhash().callBlockhash(hub.messageFrame());
+          }
         }
+        default -> {}
       }
-      default -> {}
     }
   }
 }
