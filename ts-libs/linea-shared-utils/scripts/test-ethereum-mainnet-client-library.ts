@@ -23,7 +23,11 @@ async function main() {
   const rpcUrl = process.env.RPC_URL as string;
   const privateKey = process.env.PRIVATE_KEY as Hex;
 
-  const signer = new ViemWalletSignerClientAdapter(new WinstonLogger("ViemWalletSignerClientAdapter.integration"), privateKey, anvil);
+  const signer = new ViemWalletSignerClientAdapter(
+    new WinstonLogger("ViemWalletSignerClientAdapter.integration"),
+    privateKey,
+    anvil,
+  );
   const clientLibrary = new ViemBlockchainClientAdapter(
     new WinstonLogger("ViemBlockchainClientAdapter.integration"),
     rpcUrl,

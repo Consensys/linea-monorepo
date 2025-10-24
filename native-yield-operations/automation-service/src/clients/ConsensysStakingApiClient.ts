@@ -1,5 +1,5 @@
 import { ApolloClient } from "@apollo/client";
-import { IBeaconNodeAPIClient, ILogger, ONE_GWEI, safeSub } from "@consensys/linea-shared-utils";
+import { IBeaconNodeAPIClient, ILogger, IRetryService, ONE_GWEI, safeSub } from "@consensys/linea-shared-utils";
 import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
 import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
@@ -7,12 +7,13 @@ import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../core
 export class ConsensysStakingApiClient implements IValidatorDataClient {
   constructor(
     private readonly logger: ILogger,
+    private readonly retryService: IRetryService,
     private readonly apolloClient: ApolloClient,
     private readonly beaconNodeApiClient: IBeaconNodeAPIClient,
   ) {}
 
   async getActiveValidators(): Promise<ValidatorBalance[]> {
-    const { data, error } = await this.apolloClient.query({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY });
+    const { data, error } = await this.retryService.retry(() => this.apolloClient.query({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY }));
     if (error) {
       this.logger.error("getActiveValidators error:", error);
       return [];

@@ -1,4 +1,4 @@
-import { ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
+import { ExponentialBackoffRetryService, ILogger, IRetryService, WinstonLogger } from "@consensys/linea-shared-utils";
 import { NativeYieldAutomationServiceBootstrapConfig } from "./config/config.js";
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
 import { OperationModeSelector } from "../../services/OperationModeSelector.js";
@@ -44,6 +44,7 @@ export class NativeYieldAutomationServiceBootstrap {
   private lazyOracleContractClient: ILazyOracle<TransactionReceipt>;
   private lineaRollupYieldExtensionContractClient: ILineaRollupYieldExtension<TransactionReceipt>;
 
+  private exponentialBackoffRetryService: IRetryService;
   private beaconNodeApiClient: IBeaconNodeAPIClient;
   private oAuth2TokenClient: IOAuth2TokenClient;
   private apolloClient: ApolloClient;
@@ -105,12 +106,15 @@ export class NativeYieldAutomationServiceBootstrap {
       config.contractAddresses.lineaRollupContractAddress,
     );
 
+    this.exponentialBackoffRetryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name))
     this.beaconNodeApiClient = new BeaconNodeApiClient(
       new WinstonLogger(BeaconNodeApiClient.name, config.loggerOptions),
+      this.exponentialBackoffRetryService,
       config.dataSources.beaconChainRpcUrl,
     );
     this.oAuth2TokenClient = new OAuth2TokenClient(
       new WinstonLogger(OAuth2TokenClient.name, config.loggerOptions),
+      this.exponentialBackoffRetryService,
       config.consensysStakingOAuth2.tokenEndpoint,
       config.consensysStakingOAuth2.clientId,
       config.consensysStakingOAuth2.clientSecret,
@@ -119,11 +123,13 @@ export class NativeYieldAutomationServiceBootstrap {
     this.apolloClient = createApolloClient(this.oAuth2TokenClient, config.dataSources.stakingGraphQLUrl);
     this.consensysStakingGraphQLClient = new ConsensysStakingApiClient(
       new WinstonLogger(ConsensysStakingApiClient.name, config.loggerOptions),
+      this.exponentialBackoffRetryService,
       this.apolloClient,
       this.beaconNodeApiClient,
     );
     this.lidoAccountingReportClient = new LidoAccountingReportClient(
       new WinstonLogger(LidoAccountingReportClient.name, config.loggerOptions),
+      this.exponentialBackoffRetryService,
       this.lazyOracleContractClient,
       config.dataSources.ipfsBaseUrl,
       this.config.contractAddresses.lidoYieldProviderAddress, // TODO - Wrong address because can't get vault sync

@@ -2,13 +2,14 @@ import { Address, TransactionReceipt, BaseError, ContractFunctionRevertedError }
 import { ILidoAccountingReportClient } from "../core/clients/ILidoAccountingReportClient.js";
 import { ILazyOracle, UpdateVaultDataParams } from "../core/clients/contracts/ILazyOracle.js";
 import { getReportProofByVault } from "@lidofinance/lsv-cli/dist/utils/report/report-proof.js";
-import { ILogger, bigintReplacer } from "@consensys/linea-shared-utils";
+import { ILogger, IRetryService, bigintReplacer } from "@consensys/linea-shared-utils";
 
 export class LidoAccountingReportClient implements ILidoAccountingReportClient {
   private latestSubmitVaultReportParams?: UpdateVaultDataParams;
 
   constructor(
     private readonly logger: ILogger,
+    private readonly retryService: IRetryService,
     private readonly lazyOracleContractClient: ILazyOracle<TransactionReceipt>,
     private readonly ipfsGatewayUrl: string,
     private readonly vault: Address,
@@ -16,11 +17,11 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
 
   async getLatestSubmitVaultReportParams(): Promise<UpdateVaultDataParams> {
     const latestReportData = await this.lazyOracleContractClient.latestReportData();
-    const reportProof = await getReportProofByVault({
+    const reportProof = await this.retryService.retry(() => getReportProofByVault({
       vault: this.vault,
       cid: latestReportData.reportCid,
       gateway: this.ipfsGatewayUrl,
-    });
+    }));
 
     const params: UpdateVaultDataParams = {
       vault: this.vault,
