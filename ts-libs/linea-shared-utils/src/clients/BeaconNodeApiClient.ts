@@ -22,7 +22,7 @@ export class BeaconNodeApiClient implements IBeaconNodeAPIClient {
       this.logger.warn("getPendingPartialWithdrawals: no pending_partial_withdrawals returned");
     }
     const returnVal = data.data ?? [];
-    this.logger.debug("getPendingPartialWithdrawals return value", returnVal);
+    this.logger.debug("getPendingPartialWithdrawals return value", { returnVal });
     return returnVal;
   }
 }

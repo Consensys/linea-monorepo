@@ -150,7 +150,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       maxPriorityFeePerGas: (maxPriorityFeePerGas * gasMultiplierBps) / MAX_BPS,
       nonce,
     };
-    this.logger.debug("_sendSignedTransaction tx for signing", tx);
+    this.logger.debug("_sendSignedTransaction tx for signing", { tx });
     const signature = await this.contractSignerClient.sign(tx);
     const serializedTransaction = serializeTransaction(tx, parseSignature(signature));
 

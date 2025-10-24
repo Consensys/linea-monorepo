@@ -17,7 +17,7 @@ export class WinstonLogger implements ILogger {
     const { align, combine, colorize, timestamp, printf, errors, splat, label } = format;
 
     this.logger = createLogger({
-      level: "info",
+      level: options?.level ?? "info",
       format: combine(
         timestamp(),
         errors({ stack: true }),
