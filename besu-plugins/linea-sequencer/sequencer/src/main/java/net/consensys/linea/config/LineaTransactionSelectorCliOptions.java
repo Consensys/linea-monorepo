@@ -17,7 +17,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.consensys.linea.plugins.LineaCliOptions;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
@@ -194,19 +193,30 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
       return Collections.emptySet();
     }
 
+    Set<TransactionEventFilter> eventFilters =
+        Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
     try (Stream<String> lines = Files.lines(Path.of(new File(filename).toURI()))) {
-      return lines
-          .map(
-              l -> {
-                String[] parts = l.split(",");
-                return new TransactionEventFilter(
-                    Address.fromHexString(parts[0]),
-                    parts[1].isEmpty() ? null : LogTopic.fromHexString(parts[1]),
-                    parts[2].isEmpty() ? null : LogTopic.fromHexString(parts[2]),
-                    parts[3].isEmpty() ? null : LogTopic.fromHexString(parts[3]),
-                    parts[4].isEmpty() ? null : LogTopic.fromHexString(parts[4]));
-              })
-          .collect(Collectors.toUnmodifiableSet());
+      for (String line : (Iterable<String>) lines::iterator) {
+        if (line.isEmpty()) {
+          continue;
+        }
+        String[] parts = line.split(",", -1);
+        if (parts.length != 5) {
+          throw new IllegalArgumentException(
+              "Invalid transaction event filter line: "
+                  + line
+                  + ". Expected format: address,topic0,topic1,topic2,topic3");
+        }
+        var eventFilter =
+            new TransactionEventFilter(
+                Address.fromHexString(parts[0]),
+                parts[1].isEmpty() ? null : LogTopic.fromHexString(parts[1]),
+                parts[2].isEmpty() ? null : LogTopic.fromHexString(parts[2]),
+                parts[3].isEmpty() ? null : LogTopic.fromHexString(parts[3]),
+                parts[4].isEmpty() ? null : LogTopic.fromHexString(parts[4]));
+        eventFilters.add(eventFilter);
+      }
+      return eventFilters;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
