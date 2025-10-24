@@ -13,11 +13,11 @@ Running the script with an .env file set, you will need to make sure that the co
 Running the script without an .env file will require you to place the variables as command-line arguments.
 The command-line arguments will create or replace existing .env (only in memory) environment variables. If the variables are provided in the terminal as command-line arguments, they will have priority over the same variables if they are defined in the .env file. These need not exist in the .env file.
 
-Furthermore, you can also specify a general set of variables in the .env file (SAVE_ADDRESS, VERIFY_CONTRACT, SEPOLIA_PRIVATE_KEY, LINEA_SEPOLIA_PRIVATE_KEY, MAINNET_PRIVATE_KEY, LINEA_MAINNET_PRIVATE_KEY, ETHERSCAN_API_KEY, LINEASCAN_API_KEY, INFURA_API_KEY) and provide only the script-specific variables as command-line arguments, when you run each script.
+Furthermore, you can also specify a general set of variables in the .env file (SAVE_ADDRESS, VERIFY_CONTRACT, SEPOLIA_PRIVATE_KEY, LINEA_SEPOLIA_PRIVATE_KEY, MAINNET_PRIVATE_KEY, LINEA_MAINNET_PRIVATE_KEY, ETHERSCAN_API_KEY, INFURA_API_KEY) and provide only the script-specific variables as command-line arguments, when you run each script.
 
 Setting `SAVE_ADDRESS=true` will make the script write a file in the deployments/<network_name>/ folder which stores the contract address, ABI and transaction hash.
 <br />
-Setting `VERIFY_CONTRACT=true` will start the verifying stage after the contract is deployed, provided that there is a `ETHERSCAN_API_KEY` or `LINEASCAN_API_KEY` available in the .env or provided as CLI argument.
+Setting `VERIFY_CONTRACT=true` will start the verifying stage after the contract is deployed, provided that there is a `ETHERSCAN_API_KEY` available in the .env or provided as CLI argument.
 
 <br />
 
@@ -28,9 +28,9 @@ Dependent on which network you are using, a specific network private key needs t
 | Network       | Private key parameter name   | API Key / RPC URL | Block explorer parameter name |
 | ------------- | ----------------- | ---- | ----------------- | 
 | sepolia    | SEPOLIA_PRIVATE_KEY    | INFURA_API_KEY  | ETHERSCAN_API_KEY |
-| linea_sepolia | LINEA_SEPOLIA_PRIVATE_KEY   | INFURA_API_KEY  | LINEASCAN_API_KEY |
+| linea_sepolia | LINEA_SEPOLIA_PRIVATE_KEY   | INFURA_API_KEY  | ETHERSCAN_API_KEY |
 | mainnet   | MAINNET_PRIVATE_KEY | INFURA_API_KEY | ETHERSCAN_API_KEY |
-| linea_mainnet | LINEA_MAINNET_PRIVATE_KEY |  INFURA_API_KEY  | LINEASCAN_API_KEY |
+| linea_mainnet | LINEA_MAINNET_PRIVATE_KEY |  INFURA_API_KEY  | ETHERSCAN_API_KEY |
 | custom    | CUSTOM_PRIVATE_KEY | CUSTOM_BLOCKCHAIN_URL | ETHERSCAN_API_KEY |
 | zkevm_dev | PRIVATE_KEY | BLOCKCHAIN_NODE or L2_BLOCKCHAIN_NODE | n/a |
 
@@ -87,6 +87,103 @@ SAVE_ADDRESS=true VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_K
 <br />
 <br />
 
+### EIP2935SystemContract
+<br />
+
+The EIP2935SystemContract is a system contract for historical block hashes according to [EIP-2935](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2935.md). This contract deploys to a predetermined address using a specific deployment transaction format. The deployment script automatically funds the required sender address if needed.
+
+Parameters that should be filled either in .env or passed as CLI arguments:
+
+| Parameter name             | Required | Input Value | Description |
+| -------------------------- | -------- | ---------- | ----------- |
+| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| BLOCKCHAIN_NODE     | true     | key | RPC URL endpoint` |
+
+<br />
+
+**Prerequisites:**
+- The deployment script automatically funds the predetermined sender address (0x3462413Af4609098e1E27A490f554f260213D685) if needed
+- The contract deploys to the fixed address: 0x0000F90827F1C53a10cb7A02335B175320002935
+
+Base command:
+```shell
+npx hardhat deploy --network sepolia --tags EIP2935SystemContract
+```
+
+Base command with cli arguments:
+
+```shell
+PRIVATE_KEY=<key> BLOCKCHAIN_NODE=<node_rpc_url> npx hardhat deploy --network sepolia --tags EIP2935SystemContract
+```
+
+(make sure to replace `<key>` with actual values)
+<br />
+<br />
+
+### UpgradeableWithdrawalQueuePredeploy
+<br />
+
+The UpgradeableWithdrawalQueuePredeploy is an upgradeable predeploy contract that implements EIP-7002 execution layer triggerable withdrawals. This deploys as a placeholder implementation that can be upgraded later to provide full functionality.
+
+Parameters that should be filled either in .env or passed as CLI arguments:
+
+| Parameter name             | Required | Input Value | Description |
+| -------------------------- | -------- | ---------- | ----------- |
+| SAVE_ADDRESS       | false    |true\|false| Saves file with deployment details [address, ABI, transaction hash] |
+| VERIFY_CONTRACT    | false    |true\|false| Verifies the deployed contract |
+| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
+| INFURA_API_KEY     | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
+
+<br />
+
+Base command:
+```shell
+npx hardhat deploy --network sepolia --tags UpgradeableWithdrawalQueuePredeploy
+```
+
+Base command with cli arguments:
+
+```shell
+SAVE_ADDRESS=true VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network sepolia --tags UpgradeableWithdrawalQueuePredeploy
+```
+
+(make sure to replace `<key>` with actual values)
+<br />
+<br />
+
+### UpgradeableConsolidationQueuePredeploy
+<br />
+
+The UpgradeableConsolidationQueuePredeploy is an upgradeable predeploy contract that implements EIP-7251 execution layer consolidation requests. This deploys as a placeholder implementation that can be upgraded later to provide full functionality.
+
+Parameters that should be filled either in .env or passed as CLI arguments:
+
+| Parameter name             | Required | Input Value | Description |
+| -------------------------- | -------- | ---------- | ----------- |
+| SAVE_ADDRESS       | false    |true\|false| Saves file with deployment details [address, ABI, transaction hash] |
+| VERIFY_CONTRACT    | false    |true\|false| Verifies the deployed contract |
+| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
+| INFURA_API_KEY     | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
+
+<br />
+
+Base command:
+```shell
+npx hardhat deploy --network sepolia --tags UpgradeableConsolidationQueuePredeploy
+```
+
+Base command with cli arguments:
+
+```shell
+SAVE_ADDRESS=true VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network sepolia --tags UpgradeableConsolidationQueuePredeploy
+```
+
+(make sure to replace `<key>` with actual values)
+<br />
+<br />
+
 ### LineaRollup
 <br />
 
@@ -122,28 +219,6 @@ SAVE_ADDRESS=true VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_K
 
 <br />
 <br />
-
-### Linea Voyage XP Token
-<br />
-
-
-Parameters that should be filled either in .env or passed as CLI arguments:
-
-| Parameter name        | Required | Input Value | Description |
-| ------------------ | -------- | ---------- | ----------- |
-| SAVE_ADDRESS       | false    |true\|false| Saves file with deployment details [address, ABI, transaction hash] |
-| VERIFY_CONTRACT    | false    |true\|false| Verifies the deployed contract |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
-| \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
-| INFURA_API_KEY     | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
-| LINEA_VOYAGE_XP_ADMIN_ADDRESS | true     | address | Admin and minter address  |
-
-<br />
-
-Base command:
-```shell
-npx hardhat deploy --network linea_sepolia --tags LineaVoyageXPToken
-```
 
 ### Timelock
 <br />
@@ -206,7 +281,7 @@ npx hardhat deploy --network linea_sepolia --tags L2MessageService
 
 Base command with cli arguments:
 ```shell
-SAVE_ADDRESS=true VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> LINEASCAN_API_KEY=<key> INFURA_API_KEY=<key> L2MSGSERVICE_SECURITY_COUNCIL=<address> L2MSGSERVICE_L1L2_MESSAGE_SETTER=<address>  L2MSGSERVICE_RATE_LIMIT_PERIOD=<value> L2MSGSERVICE_RATE_LIMIT_AMOUNT=<value> npx hardhat deploy --network linea_sepolia --tags L2MessageService
+SAVE_ADDRESS=true VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> L2MSGSERVICE_SECURITY_COUNCIL=<address> L2MSGSERVICE_L1L2_MESSAGE_SETTER=<address>  L2MSGSERVICE_RATE_LIMIT_PERIOD=<value> L2MSGSERVICE_RATE_LIMIT_AMOUNT=<value> npx hardhat deploy --network linea_sepolia --tags L2MessageService
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
@@ -236,7 +311,7 @@ npx hardhat deploy --network linea_sepolia --tags BridgedToken
 
 Base command with cli arguments:
 ```shell
-SAVE_ADDRESS=true VERIFY_CONTRACT=true LINEASCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags BridgedToken
+SAVE_ADDRESS=true VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags BridgedToken
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
@@ -270,7 +345,7 @@ npx hardhat deploy --network linea_sepolia --tags CustomBridgedToken
 
 Base command with cli arguments:
 ```shell
-SAVE_ADDRESS=true VERIFY_CONTRACT=true LINEASCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> CUSTOMTOKENBRIDGE_NAME=<name> CUSTOMTOKENBRIDGE_SYMBOL=<symbol> CUSTOMTOKENBRIDGE_DECIMALS=<decimals> CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags CustomBridgedToken
+SAVE_ADDRESS=true VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> CUSTOMTOKENBRIDGE_NAME=<name> CUSTOMTOKENBRIDGE_SYMBOL=<symbol> CUSTOMTOKENBRIDGE_DECIMALS=<decimals> CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags CustomBridgedToken
 ```
 
 (make sure to replace `<key>` `<address>` `<name>` `<symbol>` `<decimals>` with actual values)
@@ -306,7 +381,7 @@ npx hardhat deploy --network linea_sepolia --tags TokenBridge
 
 Base command with cli arguments:
 ```shell
-SAVE_ADDRESS=true VERIFY_CONTRACT=true LINEASCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_RESERVED_TOKEN_ADDRESSES=<address> L2MESSAGESERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags TokenBridge
+SAVE_ADDRESS=true VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_RESERVED_TOKEN_ADDRESSES=<address> L2MESSAGESERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags TokenBridge
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
@@ -395,7 +470,7 @@ npx hardhat deploy --network linea_sepolia --tags L2MessageService,Timelock
 
 Base command with cli arguments:
 ```shell
-SAVE_ADDRESS=true VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> LINEASCAN_API_KEY=<key> INFURA_API_KEY=<key> L2MSGSERVICE_SECURITY_COUNCIL=<address> L2MSGSERVICE_L1L2_MESSAGE_SETTER=<address>  L2MSGSERVICE_RATE_LIMIT_PERIOD=<value> L2MSGSERVICE_RATE_LIMIT_AMOUNT=<value> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> npx hardhat deploy --network linea_sepolia --tags L2MessageService_Timelock
+SAVE_ADDRESS=true VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> L2MSGSERVICE_SECURITY_COUNCIL=<address> L2MSGSERVICE_L1L2_MESSAGE_SETTER=<address>  L2MSGSERVICE_RATE_LIMIT_PERIOD=<value> L2MSGSERVICE_RATE_LIMIT_AMOUNT=<value> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> npx hardhat deploy --network linea_sepolia --tags L2MessageService_Timelock
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
@@ -429,7 +504,7 @@ npx hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
 
 Base command with cli arguments:
 ```shell
-SAVE_ADDRESS=true VERIFY_CONTRACT=true LINEASCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_RESERVED_TOKEN_ADDRESSES=<address>  L2MESSAGESERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address>  npx hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
+SAVE_ADDRESS=true VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_RESERVED_TOKEN_ADDRESSES=<address>  L2MESSAGESERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address>  npx hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
 ```
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
 

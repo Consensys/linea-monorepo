@@ -30,13 +30,21 @@ import { Api } from "../api/Api";
 import { MessageStatusSubscriber } from "../persistence/subscribers/MessageStatusSubscriber";
 import { SingletonMetricsService } from "../api/metrics/SingletonMetricsService";
 import { MessageMetricsUpdater } from "../api/metrics/MessageMetricsUpdater";
-import { IMessageMetricsUpdater, IMetricsService, ISponsorshipMetricsUpdater } from "postman/src/core/metrics";
+import {
+  IMessageMetricsUpdater,
+  IMetricsService,
+  ISponsorshipMetricsUpdater,
+  ITransactionMetricsUpdater,
+} from "../../../../src/core/metrics";
 import { SponsorshipMetricsUpdater } from "../api/metrics/SponsorshipMetricsUpdater";
+import { TransactionMetricsUpdater } from "../api/metrics/TransactionMetricsUpdater";
+
 export class PostmanServiceClient {
   // Metrics services
   private singletonMetricsService: IMetricsService;
   private messageMetricsUpdater: IMessageMetricsUpdater;
   private sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater;
+  private transactionMetricsUpdater: ITransactionMetricsUpdater;
 
   // L1 -> L2 flow
   private l1MessageSentEventPoller: IPoller;
@@ -125,6 +133,7 @@ export class PostmanServiceClient {
     this.singletonMetricsService = new SingletonMetricsService();
     this.messageMetricsUpdater = new MessageMetricsUpdater(this.db.manager, this.singletonMetricsService);
     this.sponsorshipMetricsUpdater = new SponsorshipMetricsUpdater(this.singletonMetricsService);
+    this.transactionMetricsUpdater = new TransactionMetricsUpdater(this.singletonMetricsService);
 
     // L1 -> L2 flow
 
@@ -201,6 +210,7 @@ export class PostmanServiceClient {
         maxNumberOfRetries: config.l2Config.claiming.maxNumberOfRetries,
         retryDelayInSeconds: config.l2Config.claiming.retryDelayInSeconds,
         maxClaimGasLimit: BigInt(config.l2Config.claiming.maxClaimGasLimit),
+        claimViaAddress: config.l2Config.claiming.claimViaAddress,
       },
       new WinstonLogger(`L2${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
@@ -218,6 +228,7 @@ export class PostmanServiceClient {
       lineaMessageDBService,
       l2MessageServiceClient,
       this.sponsorshipMetricsUpdater,
+      this.transactionMetricsUpdater,
       l2Provider,
       {
         direction: Direction.L1_TO_L2,
@@ -326,6 +337,7 @@ export class PostmanServiceClient {
         maxNumberOfRetries: config.l1Config.claiming.maxNumberOfRetries,
         retryDelayInSeconds: config.l1Config.claiming.retryDelayInSeconds,
         maxClaimGasLimit: BigInt(config.l1Config.claiming.maxClaimGasLimit),
+        claimViaAddress: config.l1Config.claiming.claimViaAddress,
       },
       new WinstonLogger(`L1${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
@@ -343,6 +355,7 @@ export class PostmanServiceClient {
       ethereumMessageDBService,
       lineaRollupClient,
       this.sponsorshipMetricsUpdater,
+      this.transactionMetricsUpdater,
       l1Provider,
       {
         direction: Direction.L2_TO_L1,

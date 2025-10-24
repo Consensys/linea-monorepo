@@ -1,6 +1,8 @@
 package packing
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -10,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
@@ -62,7 +65,7 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 		Lanes:                createCol("Lane"),
 		IsFirstLaneOfNewHash: createCol("IsFirstLaneOfNewHash"),
 		IsLaneActive:         createCol("IsLaneActive"),
-		Coeff:                comp.InsertCommit(0, ifaces.ColIDf("Coefficient_"+pckInp.Name), spaghettiSize),
+		Coeff:                comp.InsertCommit(0, ifaces.ColID("Coefficient_"+pckInp.Name), spaghettiSize),
 
 		PAAccUpToMax:   pa,
 		IsLaneComplete: pa.IsMax,
@@ -82,7 +85,7 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 
 	// constraints over isFirstLaneOfNewHash
 	// Project the isFirstLaneOfNewHash from isFirstSliceOfNewHash
-	comp.InsertProjection(ifaces.QueryIDf("Project_IsFirstLaneOfHash_"+pckInp.Name),
+	comp.InsertProjection(ifaces.QueryID("Project_IsFirstLaneOfHash_"+pckInp.Name),
 		query.ProjectionInput{ColumnA: []ifaces.Column{isFirstSliceOfNewHash},
 			ColumnB: []ifaces.Column{l.IsFirstLaneOfNewHash},
 			FilterA: l.IsLaneComplete,
@@ -288,7 +291,11 @@ func (l *laneRepacking) getBlocks(run *wizard.ProverRuntime, inp PackingInput) (
 			}
 		}
 		if ctr > inp.MaxNumBlocks {
-			utils.Panic("the number of the blocks %v passes the limit %v", ctr, inp.MaxNumBlocks)
+			exit.OnLimitOverflow(
+				inp.MaxNumBlocks,
+				ctr,
+				fmt.Errorf("too many block keccack - the number of blocks %v passes the limit %v", ctr, inp.MaxNumBlocks),
+			)
 		}
 	}
 
