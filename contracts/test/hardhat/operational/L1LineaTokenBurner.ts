@@ -4,7 +4,7 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { deployFromFactory, deployUpgradableFromFactory } from "../common/deployment";
 import { L1LineaTokenBurner, MockL1LineaToken, TestL1MessageServiceMerkleProof } from "../../../typechain-types";
-import { expectEvent, expectEvents, expectRevertWithCustomError } from "../common/helpers";
+import { expectEvent, expectRevertWithCustomError } from "../common/helpers";
 import {
   ADDRESS_ZERO,
   EMPTY_CALLDATA,
@@ -177,15 +177,10 @@ describe("L1LineaTokenBurner", () => {
         data: EMPTY_CALLDATA,
       });
 
-      await expectEvents(lineaToken, txPromise, [
-        {
-          name: "Transfer",
-          args: [await l1LineaTokenBurner.getAddress(), ADDRESS_ZERO, lineaTokensBalanceOwnedByBurnerContract],
-        },
-        {
-          name: "L1TotalSupplySyncStarted",
-          args: [INITIAL_LINEA_TOKEN_SUPPLY],
-        },
+      await expectEvent(lineaToken, txPromise, "Transfer", [
+        await l1LineaTokenBurner.getAddress(),
+        ADDRESS_ZERO,
+        lineaTokensBalanceOwnedByBurnerContract,
       ]);
 
       const burnerBalanceAfter = await lineaToken.balanceOf(await l1LineaTokenBurner.getAddress());
@@ -227,15 +222,10 @@ describe("L1LineaTokenBurner", () => {
       );
 
       await expectEvent(messageService, txPromise, "MessageClaimed", [messageLeafHash]);
-      await expectEvents(lineaToken, txPromise, [
-        {
-          name: "Transfer",
-          args: [await l1LineaTokenBurner.getAddress(), ADDRESS_ZERO, lineaTokensBalanceOwnedByBurnerContract],
-        },
-        {
-          name: "L1TotalSupplySyncStarted",
-          args: [INITIAL_LINEA_TOKEN_SUPPLY],
-        },
+      await expectEvent(lineaToken, txPromise, "Transfer", [
+        await l1LineaTokenBurner.getAddress(),
+        ADDRESS_ZERO,
+        lineaTokensBalanceOwnedByBurnerContract,
       ]);
     });
   });

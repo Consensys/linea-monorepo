@@ -19,11 +19,4 @@ interface IL1LineaToken {
    * @return The amount of tokens owned by `account`.
    */
   function balanceOf(address account) external view returns (uint256);
-
-  /**
-   * @notice Synchronizes the total supply of the L1 token to the L2 token.
-   * @dev This function sends a message to the L2 token contract to sync the total supply.
-   * @dev NB: This function is permissionless on purpose, allowing anyone to trigger the sync.
-   */
-  function syncTotalSupplyToL2() external;
 }
