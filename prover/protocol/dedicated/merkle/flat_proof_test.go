@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -144,7 +144,7 @@ type merkleTestBuilderRow struct {
 
 func newMerkleTestBuilder(depth int) *merkleTestBuilder {
 	return &merkleTestBuilder{
-		tree: *smt.BuildComplete(make([]field.Octuplet, 1<<depth), hashtypes.Poseidon2),
+		tree: *smt.BuildComplete(make([]field.Octuplet, 1<<depth), poseidon2.Poseidon2),
 	}
 }
 

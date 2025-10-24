@@ -199,13 +199,15 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 					hasher = v.Params.LeafHashFunc()
 				)
 				hasher.Reset()
-				leaf = hasher.SumElements(sisHash)
+				hasher.WriteElements(sisHash)
+				leaf = hasher.SumElement()
 			} else {
 				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
 				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
 				hasher := v.Params.LeafHashFunc()
 				hasher.Reset()
-				leaf = hasher.SumElements(selectedSubCol)
+				hasher.WriteElements(selectedSubCol)
+				leaf = hasher.SumElement()
 			}
 
 			// Check the Merkle-proof for the obtained leaf

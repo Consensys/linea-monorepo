@@ -3,6 +3,7 @@ package query
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -105,7 +106,7 @@ func (p Poseidon2) Check(run ifaces.Runtime) error {
 			newState[j] = newStates[j].Get(i)
 		}
 
-		recomputed := poseidon2.Poseidon2BlockCompression(oldState, block)
+		recomputed := vortex.CompressPoseidon2(oldState, block)
 		if recomputed != newState {
 			return fmt.Errorf(
 				"Poseidon2 compression check failed for row #%v : block %v, oldState %v, newState %v, recomputed%v\n",

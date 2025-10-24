@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -595,8 +595,8 @@ func (cm *ComputeMod) assign(
 				}
 
 				// And run the poseidon2 compression function
-				interm[row] = poseidon2.Poseidon2BlockCompression(zeroBlock, left[row])
-				nodehash[row] = poseidon2.Poseidon2BlockCompression(interm[row], right[row])
+				interm[row] = vortex.CompressPoseidon2(zeroBlock, left[row])
+				nodehash[row] = vortex.CompressPoseidon2(interm[row], right[row])
 			}
 
 			root = nodehash[proofNo*cm.Depth]
@@ -623,17 +623,17 @@ func (cm *ComputeMod) assign(
 		}
 	})
 
-	intermPadding := poseidon2.Poseidon2BlockCompression(zeroBlock, zeroBlock)
+	intermPadding := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
 	// Assign zero blocks in the inactive area when the actual number of proofs and maximum number of proofs
 	// are different
 	if cm.WithOptProofReuseCheck {
 		for i := numProofs * cm.Depth; i < numActiveRows; i++ {
 			interm[i] = intermPadding
-			nodehash[i] = poseidon2.Poseidon2BlockCompression(intermPadding, zeroBlock)
+			nodehash[i] = vortex.CompressPoseidon2(intermPadding, zeroBlock)
 		}
 	}
 
-	nodeHashPadding := poseidon2.Poseidon2BlockCompression(intermPadding, zeroBlock)
+	nodeHashPadding := vortex.CompressPoseidon2(intermPadding, zeroBlock)
 
 	// and assign the freshly computed columns
 	cols := cm.Cols

@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -31,7 +31,7 @@ type InnerProductParams struct {
 }
 
 // Update the fiat-shamir state with inner-product params
-func (ipp InnerProductParams) UpdateFS(state *hashtypes.Poseidon2FieldHasherDigest) {
+func (ipp InnerProductParams) UpdateFS(state *poseidon2.Poseidon2FieldHasherDigest) {
 	fiatshamir.UpdateVecExt(state, ipp.Ys)
 }
 
