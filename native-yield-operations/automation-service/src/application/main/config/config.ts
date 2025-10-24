@@ -55,4 +55,4 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
   },
 });
 
-export type NativeYieldCronJobBootstrapConfig = ReturnType<typeof toClientConfig>;
+export type NativeYieldAutomationServiceBootstrapConfig = ReturnType<typeof toClientConfig>;
