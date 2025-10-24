@@ -420,7 +420,7 @@ func PeerAbortWatcher(ctx context.Context, job *Job, cfg *config.Config, logger 
 				continue
 			}
 
-			// Ignore the special failure_code1137 for conglomeration jobs
+			// Ignore the CodeKilledByExtSig for conglomeration jobs
 			if job.Def.Name == jobNameConglomeration && strings.Contains(base, fmt.Sprintf("failure_code%d", CodeKilledByExtSig)) {
 				logger.Infof("Ignoring abort marker %s for conglomeration job", event.Name)
 				continue

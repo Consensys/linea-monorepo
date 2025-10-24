@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -98,7 +99,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 				// Write transient failures for limitless jobs
 				err := state.writeTransientFailFile(cfg, cLog, CodeKilledByExtSig)
 				if err != nil {
-					panic(err)
+					utils.Panic("error while writing transient failure files:%v", err)
 				}
 
 				state.requeueJob(cfg, cLog)
@@ -132,14 +133,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 			// Important: Set the active job to the current job for safe requeue mechanism
 			state.activeJob = job
 
-			// TODO: We need to write a detailed logic to clean any previous files that are left dangling
-			// for the limitless prover. For ex: Bootstrapper dangling witness files need to be removed here
-			// and not inside the child process. This is because dangling files could have already been picked
-			// up active workers.
-
-			// Rm any prev. transient failure file - only for Limitless jobs
-			if err := state.rmTransientFailureFiles(cfg, cLog); err != nil {
-				panic(err)
+			// Rm any prev. transient failure files and other intermediate files - relevant only for Limitless jobs
+			if err := state.preCleanForLimitlessJob(cfg); err != nil {
+				// Assumed to be unreachable path
+				utils.Panic("error during precleaning files for limitless jobs:%v", err)
 			}
 
 			// Run the command (potentially retrying in large mode)
@@ -214,7 +211,7 @@ func (st *ControllerState) handleSignals(cancel context.CancelFunc, cLog *logrus
 			// Write transient failures for limitless jobs
 			err := st.writeTransientFailFile(cfg, cLog, CodeKilledByExtSig)
 			if err != nil {
-				panic(err)
+				utils.Panic("error while writing transient failure files:%v", err)
 			}
 
 			// Requeue active job immediately
@@ -408,7 +405,6 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 // error propogation in the context of external signal or generic job failure.
 // This is relevant only for limitless jobs
 func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logrus.Entry, exitCode int) error {
-
 	// Relevant only for limitless jobs (excl. conglomeration - final stage)
 	if !isExecLimitlessJob(st.activeJob) || st.activeJob.Def.Name == jobNameConglomeration {
 		return nil
@@ -427,20 +423,54 @@ func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logr
 	}
 
 	return nil
+
 }
 
-func (st *ControllerState) rmTransientFailureFiles(cfg *config.Config, cLog *logrus.Entry) error {
+func (st *ControllerState) preCleanForLimitlessJob(cfg *config.Config) error {
 
-	// Relevant only for limitless jobs (excl. conglomeration - final stage)
+	// Relevant only for limitless jobs (excl. conglomeration - final stage does not write any transient failure file)
 	if !isExecLimitlessJob(st.activeJob) || st.activeJob.Def.Name == jobNameConglomeration {
 		return nil
 	}
 
-	// Remove any transient failure files if present at the start before executing the job to remove stale files
-	// and prevent false-postives
+	// Remove any transient failure files if present at the start before executing
+	// the job to remove stale failure files and prevent false-postives
 	sharedFilePattern := fmt.Sprintf("%d-%d-%s-failure_code*", st.activeJob.Start, st.activeJob.End, st.activeJob.Def.Name)
-	cLog.Infof("Removing any transient failure files matching pattern:%s before executing job:%s", sharedFilePattern, st.activeJob.Def.Name)
-	return files.RemoveMatchingFiles(filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFilePattern), true)
+
+	exists, err := files.RemoveMatchingFiles(filepath.Join(cfg.ExecutionLimitless.SharedFailureDir, sharedFilePattern), true)
+
+	// If failure files indeed exist, we need to enforce limitless specific job logic to remove dangling files
+	if exists {
+		switch {
+
+		case st.activeJob.Def.Name == jobNameBootstrap:
+			// Prev. Bootstrapper dangling witness files needs to be removed here before the start of the job
+			// and not inside the child process. This is because dangling witness files could have already been picked
+			// up by other active workers.
+
+			// Get all possible dir paths where witness files can be created
+			var (
+				limitlessDirs  []string
+				witnessPattern = fmt.Sprintf("%d-%d-*", st.activeJob.Start, st.activeJob.End)
+			)
+
+			for _, mod := range config.ALL_MODULES {
+				limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsFromSubDir))
+				limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir))
+				limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsFromSubDir))
+				limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir))
+			}
+
+			for _, dir := range limitlessDirs {
+				_, err := files.RemoveMatchingFiles(filepath.Join(dir, witnessPattern), true)
+				if err != nil {
+					return fmt.Errorf("error removing dangling witness pattern in prev. interrupted bootstrap job:%v", err)
+				}
+			}
+		}
+	}
+
+	return err
 }
 
 func (st *ControllerState) logOnCtxDone(cmdCtx context.Context, cLog *logrus.Entry, cfg *config.Config) {
