@@ -57,6 +57,8 @@ type Module struct {
 	bc *protocols.BaseConversion
 	// rho pi module, responsible for updating the state in the rho and pi steps of keccakf
 	RhoPi *rho
+	// chi module, responsible for updating the state in the chi step of keccakf
+	Chi *chi
 }
 
 // NewModule creates a new keccakf module, declares the columns and constraints and returns its pointer
