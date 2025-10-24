@@ -20,7 +20,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.List;
 import linea.plugin.acc.test.tests.web3j.generated.LogEmitter;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.awaitility.core.ConditionTimeoutException;
 import org.hyperledger.besu.datatypes.Address;
@@ -72,7 +71,7 @@ public class TransactionEventDenialTest extends LineaPluginTestBase {
     Bytes32 blockedTopic = Bytes32.fromHexStringLenient("0xaa");
     byte[] payload = "data".getBytes(StandardCharsets.UTF_8);
 
-    addDenyListFilterAndReload(logEmitter.getContractAddress(), blockedTopic.toArray());
+    addDenyListFilterAndReload(logEmitter.getContractAddress(), blockedTopic);
 
     String txData = logEmitter.log1(blockedTopic.toArray(), payload).encodeFunctionCall();
     var transaction =
@@ -91,21 +90,106 @@ public class TransactionEventDenialTest extends LineaPluginTestBase {
     assertTransactionNotInThePool(transaction.getTransactionHash());
   }
 
+  /** Test that a transaction emitting denied topics, with a wildcard, is rejected. */
+  @Test
+  public void transactionWithDeniedTopicsWithWildcardIsRejected() throws Exception {
+    LogEmitter logEmitter = deployLogEmitter();
+    Web3j web3j = minerNode.nodeRequests().eth();
+    TransactionManager txManager = createTransactionManager(web3j);
+
+    Bytes32 blockedTopic1 = Bytes32.fromHexStringLenient("0xaa");
+    Bytes32 blockedByWildcardTopic = Bytes32.fromHexStringLenient("0xbb");
+    Bytes32 blockedTopic3 = Bytes32.fromHexStringLenient("0xcc");
+    Bytes32 blockedTopic4 = Bytes32.fromHexStringLenient("0xdd");
+    byte[] payload = "data".getBytes(StandardCharsets.UTF_8);
+
+    addDenyListFilterAndReload(
+        logEmitter.getContractAddress(), blockedTopic1, null, blockedTopic3, blockedTopic4);
+
+    String txData =
+        logEmitter
+            .log4(
+                blockedTopic1.toArray(),
+                blockedByWildcardTopic.toArray(),
+                blockedTopic3.toArray(),
+                blockedTopic4.toArray(),
+                payload)
+            .encodeFunctionCall();
+    var transaction =
+        txManager.sendTransaction(
+            GAS_PRICE, GAS_LIMIT, logEmitter.getContractAddress(), txData, VALUE);
+
+    // Transaction should not be mined
+    assertThrows(
+        ConditionTimeoutException.class,
+        () ->
+            minerNode.verify(
+                eth.expectSuccessfulTransactionReceipt(transaction.getTransactionHash())));
+
+    // Because the transaction is denied based on its emitted event, it should not even be in the
+    // pool
+    assertTransactionNotInThePool(transaction.getTransactionHash());
+  }
+
+  /** Test that a transaction emitting denied topics, with a wildcard, is rejected. */
+  @Test
+  public void transactionWithoutDeniedTopicsWithWildcardIsAllowed() throws Exception {
+    LogEmitter logEmitter = deployLogEmitter();
+    Web3j web3j = minerNode.nodeRequests().eth();
+    TransactionManager txManager = createTransactionManager(web3j);
+
+    Bytes32 blockedTopic1 = Bytes32.fromHexStringLenient("0xaa");
+    Bytes32 blockedTopic2 = null;
+    Bytes32 blockedTopic3 = Bytes32.fromHexStringLenient("0xcc");
+    Bytes32 blockedTopic4 = Bytes32.fromHexStringLenient("0xdd");
+    Bytes32 allowedTopic1 = Bytes32.fromHexStringLenient("0x11");
+    Bytes32 allowedTopic2 = Bytes32.fromHexStringLenient("0x22");
+    Bytes32 allowedTopic3 = Bytes32.fromHexStringLenient("0x33");
+    Bytes32 allowedTopic4 = Bytes32.fromHexStringLenient("0x44");
+    byte[] payload = "data".getBytes(StandardCharsets.UTF_8);
+
+    addDenyListFilterAndReload(
+        logEmitter.getContractAddress(),
+        blockedTopic1,
+        blockedTopic2,
+        blockedTopic3,
+        blockedTopic4);
+
+    String txData =
+        logEmitter
+            .log4(
+                allowedTopic1.toArray(),
+                allowedTopic2.toArray(),
+                allowedTopic3.toArray(),
+                allowedTopic4.toArray(),
+                payload)
+            .encodeFunctionCall();
+    var transaction =
+        txManager.sendTransaction(
+            GAS_PRICE, GAS_LIMIT, logEmitter.getContractAddress(), txData, VALUE);
+
+    // Transaction should be mined
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(transaction.getTransactionHash()));
+  }
+
   private TransactionManager createTransactionManager(Web3j web3j) {
     Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
     return new RawTransactionManager(web3j, credentials, CHAIN_ID);
   }
 
   // Helper method to add a filter to the deny list and reload configuration
-  private void addDenyListFilterAndReload(String address, byte[] blockedTopic) throws IOException {
+  private void addDenyListFilterAndReload(String address, Bytes32... blockedTopics)
+      throws IOException {
     // Add filter to deny list
     addFilterToDenyList(
         new TransactionEventFilter(
             Address.fromHexString(address),
-            LogTopic.wrap(Bytes.wrap(blockedTopic)),
-            null,
-            null,
-            null));
+            blockedTopics.length >= 1 ? LogTopic.wrap(blockedTopics[0]) : null,
+            blockedTopics.length >= 2 && blockedTopics[1] != null
+                ? LogTopic.wrap(blockedTopics[1])
+                : null,
+            blockedTopics.length >= 3 ? LogTopic.wrap(blockedTopics[2]) : null,
+            blockedTopics.length >= 4 ? LogTopic.wrap(blockedTopics[3]) : null));
     reloadPluginConfiguration();
   }
 
