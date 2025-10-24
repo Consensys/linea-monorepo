@@ -66,4 +66,21 @@ public class TransactionEventFilterTest {
 
     Assertions.assertFalse(transactionEventFilter.matches(log));
   }
+
+  @Test
+  public void testMatchesWithDuplicateTopic() {
+    Address contractAddress = Mockito.mock(Address.class);
+    LogTopic topic = Mockito.mock(LogTopic.class);
+
+    TransactionEventFilter transactionEventFilter =
+        new TransactionEventFilter(
+            contractAddress, WILDCARD_LOGTOPIC, WILDCARD_LOGTOPIC, WILDCARD_LOGTOPIC, topic);
+
+    Log log = Mockito.mock(Log.class);
+    Mockito.when(log.getLogger()).thenReturn(contractAddress);
+    List<LogTopic> logTopics = List.of(topic, topic, topic, topic);
+    Mockito.when(log.getTopics()).thenReturn(logTopics);
+
+    Assertions.assertTrue(transactionEventFilter.matches(log));
+  }
 }
