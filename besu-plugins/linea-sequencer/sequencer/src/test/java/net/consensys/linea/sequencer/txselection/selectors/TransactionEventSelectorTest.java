@@ -16,17 +16,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class TransactionEventPostProcessingSelectorTest {
+public class TransactionEventSelectorTest {
   private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents =
       new AtomicReference<>(Collections.emptySet());
   private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents =
       new AtomicReference<>(Collections.emptySet());
 
-  private TransactionEventPostProcessingSelector selector;
+  private TransactionEventSelector selector;
 
   @BeforeEach
   public void beforeTest() {
-    selector = new TransactionEventPostProcessingSelector(deniedEvents, deniedBundleEvents);
+    selector = new TransactionEventSelector(deniedEvents, deniedBundleEvents);
   }
 
   @AfterEach

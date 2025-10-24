@@ -124,7 +124,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             new MaxBundleGasPerBlockTransactionSelector(
                 selectorsStateManager, txSelectorConfiguration.maxBundleGasPerBlock()),
             traceLineLimitTransactionSelector,
-            new TransactionEventPostProcessingSelector(deniedEvents, deniedBundleEvents));
+            new TransactionEventSelector(deniedEvents, deniedBundleEvents));
 
     return selectors;
   }

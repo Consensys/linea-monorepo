@@ -7,13 +7,19 @@ import net.consensys.linea.bundles.TransactionBundle;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
+import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
 @RequiredArgsConstructor
-public class TransactionEventPostProcessingSelector
-    extends AbstractTransactionPostProcessingSelector {
+public class TransactionEventSelector implements PluginTransactionSelector {
   private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedEvents;
   private final AtomicReference<Set<TransactionEventSelectionDescription>> deniedBundleEvents;
+
+  @Override
+  public TransactionSelectionResult evaluateTransactionPreProcessing(
+      final TransactionEvaluationContext evaluationContext) {
+    return TransactionSelectionResult.SELECTED;
+  }
 
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
