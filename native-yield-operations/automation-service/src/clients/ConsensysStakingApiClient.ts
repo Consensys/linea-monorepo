@@ -15,7 +15,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
   async getActiveValidators(): Promise<ValidatorBalance[]> {
     const { data, error } = await this.retryService.retry(() => this.apolloClient.query({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY }));
     if (error) {
-      this.logger.error("getActiveValidators error:", error);
+      this.logger.error("getActiveValidators error:", { error });
       return [];
     }
     if (data === undefined) {
@@ -23,7 +23,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       return [];
     }
     const resp = data?.allValidators.nodes;
-    this.logger.debug("getActiveValidators succeded", [resp])
+    this.logger.debug("getActiveValidators succeded", { resp });
     return resp;
   }
 
@@ -60,7 +60,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       a.withdrawableAmount > b.withdrawableAmount ? -1 : a.withdrawableAmount < b.withdrawableAmount ? 1 : 0,
     );
 
-    this.logger.debug("getActiveValidatorsWithPendingWithdrawals return val", [joined]);
+    this.logger.debug("getActiveValidatorsWithPendingWithdrawals return val", { joined });
     return joined;
   }
 

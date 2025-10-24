@@ -50,12 +50,12 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
     } catch (err) {
       this.logger.error("Failed isSimulateSubmitLatestVaultReportSuccessful");
       if (err instanceof ContractFunctionRevertedError) {
-        this.logger.error("❌ Reverted:", err.shortMessage);
-        this.logger.error("Reason:", err.data?.errorName || err.message);
+        this.logger.error("❌ Reverted:", { shortMessage: err.shortMessage });
+        this.logger.error("Reason:", { reason: err.data?.errorName || err.message });
       } else if (err instanceof BaseError) {
-        this.logger.error("⚠️ Other error:", err.shortMessage);
+        this.logger.error("⚠️ Other error:", { shortMessage: err.shortMessage });
       } else {
-        this.logger.error("Unexpected error:", err);
+        this.logger.error("Unexpected error:", { error: err });
       }
       return false;
     }

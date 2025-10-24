@@ -28,12 +28,14 @@ export class ExponentialBackoffRetryService implements IRetryService {
         return await fn();
       } catch (error) {
         if (attempt >= this.maxRetryAttempts) {
-          this.logger.error(`Retry attempts exhausted maxRetryAttempts=${this.maxRetryAttempts}`, error);
+          this.logger.error(`Retry attempts exhausted maxRetryAttempts=${this.maxRetryAttempts}`, { error });
           throw error;
         }
 
         lastError = error;
-        this.logger.warn(`Retry attempt failed attempt=${attempt} maxRetryAttempts=${this.maxRetryAttempts}`, error);
+        this.logger.warn(`Retry attempt failed attempt=${attempt} maxRetryAttempts=${this.maxRetryAttempts}`, {
+          error,
+        });
 
         const delayMs = this.getDelayMs(attempt);
         this.logger.debug(`Retrying after delay=${delayMs}ms`);

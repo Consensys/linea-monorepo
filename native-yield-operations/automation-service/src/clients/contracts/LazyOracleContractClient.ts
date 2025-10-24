@@ -46,7 +46,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       treeRoot: resp[2],
       reportCid: resp[3],
     }
-    this.logger.debug("latestReportData", returnVal);
+    this.logger.debug("latestReportData", { returnVal });
     return returnVal;
   }
 
@@ -105,7 +105,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
         resolvePromise();
       },
       onError: (error) => {
-        this.logger.error("waitForVaultsReportDataUpdatedEvent error", error);
+        this.logger.error("waitForVaultsReportDataUpdatedEvent error", { error });
       },
     });
 

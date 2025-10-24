@@ -26,7 +26,7 @@ export class OperationModeSelector implements IOperationModeSelector {
     }
 
     this.isRunning = true;
-    this.logger.info("Starting %s...", this.logger.name);
+    this.logger.info(`Starting ${this.logger.name}...`, { loggerName: this.logger.name });
     void this.selectOperationModeLoop();
   }
 
@@ -36,7 +36,7 @@ export class OperationModeSelector implements IOperationModeSelector {
     }
 
     this.isRunning = false;
-    this.logger.info("Stopped %s...", this.logger.name);
+    this.logger.info(`Stopped ${this.logger.name}...`, { loggerName: this.logger.name });
   }
 
   private async selectOperationModeLoop(): Promise<void> {
@@ -61,7 +61,10 @@ export class OperationModeSelector implements IOperationModeSelector {
           this.logger.info("Completed YIELD_REPORTING_MODE");
         }
       } catch (error) {
-        this.logger.error("selectOperationModeLoop error, retrying in this.contractReadRetryTimeMs milliseconds", error);
+        this.logger.error(
+          "selectOperationModeLoop error, retrying in this.contractReadRetryTimeMs milliseconds",
+          { error },
+        );
         await wait(this.contractReadRetryTimeMs);
       }
     }

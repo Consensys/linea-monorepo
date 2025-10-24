@@ -40,7 +40,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     sortedValidatorList: ValidatorBalanceWithPendingWithdrawal[],
     amountWei: bigint,
   ): Promise<number> {
-    this.logger.debug(`_submitPartialWithdrawalRequests started amountWei=${amountWei}`, sortedValidatorList)
+    this.logger.debug(`_submitPartialWithdrawalRequests started amountWei=${amountWei}`, { sortedValidatorList });
     const withdrawalRequests: WithdrawalRequests = {
       pubkeys: [],
       amountsGwei: [],
@@ -76,7 +76,9 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     sortedValidatorList: ValidatorBalanceWithPendingWithdrawal[],
     remainingWithdrawals: number,
   ): Promise<void> {
-    this.logger.debug(`_submitValidatorExits started remainingWithdrawals=${remainingWithdrawals}`, sortedValidatorList)
+    this.logger.debug(`_submitValidatorExits started remainingWithdrawals=${remainingWithdrawals}`, {
+      sortedValidatorList,
+    });
     const withdrawalRequests: WithdrawalRequests = {
       pubkeys: [],
       amountsGwei: [],

@@ -97,19 +97,21 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
             signal: false, // don’t try to abort, just reject
           },
         );
-        this.logger.debug(`sendSignedTransaction succeeded`, receipt);
+        this.logger.debug(`sendSignedTransaction succeeded`, { receipt });
         return receipt;
       } catch (error) {
         // We don't want to retry for ContractFunctionRevertedError
         if (error instanceof ContractFunctionRevertedError) {
-          this.logger.error("❌ sendSignedTransaction contract call reverted:", error.shortMessage);
-          this.logger.error("Reason:", error.data?.errorName || error.message);
+          this.logger.error("❌ sendSignedTransaction contract call reverted:", {
+            shortMessage: error.shortMessage,
+          });
+          this.logger.error("Reason:", { reason: error.data?.errorName || error.message });
           throw error;
         }
         if (attempt >= this.sendTransactionsMaxRetries) {
           this.logger.error(
             `sendSignedTransaction retry attempts exhausted sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
-            error,
+            { error },
           );
           throw error;
         }
@@ -117,7 +119,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         lastError = error;
         this.logger.warn(
           `sendSignedTransaction retry attempt failed attempt=${attempt} sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
-          error,
+          { error },
         );
 
         // Bump gas for next retry
