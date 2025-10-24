@@ -16,18 +16,19 @@ export class OssificationCompleteProcessor implements IOperationModeProcessor {
 
   public async process(): Promise<void> {
     this.logger.info(
-      `OssificationCompleteProcessor: waiting ${this.maxInactionMs}ms before executing actions`,
+      `Waiting ${this.maxInactionMs}ms before executing actions`,
     );
     await wait(this.maxInactionMs);
     await this._process();
   }
 
   private async _process(): Promise<void> {
-    this.logger.info("OssificationCompleteProcessor: executing withdrawal and unstake cycle");
     // Max withdraw
+    this.logger.info("_process - Performing max withdrawal from YieldProvider");
     await this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider);
 
     // Max unstake
+    this.logger.info("_process - Performing max unstake from beacon chain");
     await this.beaconChainStakingClient.submitMaxAvailableWithdrawalRequests();
   }
 }

@@ -32,19 +32,19 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   public async process(): Promise<void> {
     const { unwatch, waitForEvent } = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
     try {
+      this.logger.info(`process - Waiting for VaultsReportDataUpdated event vs timeout race, timeout=${this.maxInactionMs}ms`)
       // Race: event vs. timeout
       const winner = await Promise.race([
         waitForEvent.then(() => "event" as const),
         wait(this.maxInactionMs).then(() => "timeout" as const),
       ]);
       this.logger.info(
-        `_process() started due to ${
-          winner === "timeout" ? `time out after ${this.maxInactionMs}ms` : `receiving VaultsReportDataUpdated event`
-        }`,
+        `process - race won by ${winner === "timeout" ?  `time out after ${this.maxInactionMs}ms` : "VaultsReportDataUpdated event"}`,
       );
       await this._process();
     } finally {
       // clean up watcher
+      this.logger.debug("Cleaning up VaultsReportDataUpdated event watcher")
       unwatch();
     }
   }
@@ -91,7 +91,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful(),
     ]);
     this.logger.info(
-      `Initial data fetch: initialRebalanceRequirements=${JSON.stringify(initialRebalanceRequirements, bigintReplacer, 2)} isSimulateSubmitLatestVaultReportSuccessful=${isSimulateSubmitLatestVaultReportSuccessful}`,
+      `_process - Initial data fetch: initialRebalanceRequirements=${JSON.stringify(initialRebalanceRequirements, bigintReplacer, 2)} isSimulateSubmitLatestVaultReportSuccessful=${isSimulateSubmitLatestVaultReportSuccessful}`,
     );
 
     // If we begin in DEFICIT, freeze beacon chain deposits to prevent further exacerbation
@@ -103,6 +103,9 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     await this._handleRebalance(initialRebalanceRequirements, isSimulateSubmitLatestVaultReportSuccessful);
 
     const postReportRebalanceRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
+    this.logger.info(
+      `_process - Post rebalance data fetch: postReportRebalanceRequirements=${JSON.stringify(postReportRebalanceRequirements, bigintReplacer, 2)}`
+    );
 
     // Mid-cycle drift check:
     // If we *started* with EXCESS (STAKE) but external flows flipped us to DEFICIT,
@@ -118,6 +121,9 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     // Beacon-chain withdrawals are last:
     // These have fulfillment latency beyond this method; queue them after local state is stable.
     const beaconChainWithdrawalRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
+    this.logger.info(
+      `_process - Beacon chain withdrawal data fetch: beaconChainWithdrawalRequirements=${JSON.stringify(beaconChainWithdrawalRequirements, bigintReplacer, 2)}`
+    );
     if (beaconChainWithdrawalRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
       await this.beaconChainStakingClient.submitWithdrawalRequestsToFulfilAmount(
         beaconChainWithdrawalRequirements.rebalanceAmount,
@@ -132,11 +138,13 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.NONE) {
       // No-op
       if (!isSimulateSubmitLatestVaultReportSuccessful) {
+        this.logger.info("_handleRebalance - no-op");
         return;
         // Simple submit report
       } else {
         await this.lidoAccountingReportClient.submitLatestVaultReport();
         await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
+        this.logger.info("_handleRebalance - no rebalance, new vault report & yield report submitted");
         return;
       }
     } else if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.STAKE) {
@@ -157,6 +165,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     rebalanceAmount: bigint,
     isSimulateSubmitLatestVaultReportSuccessful: boolean,
   ): Promise<void> {
+      this.logger.info(`_handleStakingRebalance - reserve surplus, rebalanceAmount=${rebalanceAmount}`);
     // Rebalance first
     await this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount);
     await this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount);
@@ -164,6 +173,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     if (isSimulateSubmitLatestVaultReportSuccessful) {
       await this.lidoAccountingReportClient.submitLatestVaultReport();
       await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
+      this.logger.info("_handleStakingRebalance - new vault report & yield report submitted");
     }
   }
 
@@ -176,7 +186,9 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     if (isSimulateSubmitLatestVaultReportSuccessful) {
       await this.lidoAccountingReportClient.submitLatestVaultReport();
       await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
+      this.logger.info("_handleUnstakingRebalance - new vault report & yield report submitted");
     }
+      this.logger.info(`_handleStakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
     // Then perform rebalance
     await this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(
       this.yieldProvider,

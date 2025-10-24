@@ -50,15 +50,18 @@ export class OperationModeSelector implements IOperationModeSelector {
         if (isOssified) {
           this.logger.info("Selected OSSIFICATION_COMPLETE_MODE");
           await this.ossificationCompleteOperationModeProcessor.process();
+          this.logger.info("Completed OSSIFICATION_COMPLETE_MODE");
         } else if (isOssificationInitiated) {
           this.logger.info("Selected OSSIFICATION_PENDING_MODE");
           await this.ossificationPendingOperationModeProcessor.process();
+          this.logger.info("Completed OSSIFICATION_PENDING_MODE");
         } else {
           this.logger.info("Selected YIELD_REPORTING_MODE");
           await this.yieldReportingOperationModeProcessor.process();
+          this.logger.info("Completed YIELD_REPORTING_MODE");
         }
       } catch (error) {
-        this.logger.error(error as Error);
+        this.logger.error("selectOperationModeLoop error, retrying in this.contractReadRetryTimeMs milliseconds", error);
         await wait(this.contractReadRetryTimeMs);
       }
     }
