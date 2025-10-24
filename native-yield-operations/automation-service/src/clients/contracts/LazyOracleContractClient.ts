@@ -104,8 +104,8 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
         // Call resolve through 2nd reference
         resolvePromise();
       },
-      onError: (err) => {
-        this.logger.error("waitForVaultsReportDataUpdatedEvent error", {err);
+      onError: (error) => {
+        this.logger.error("waitForVaultsReportDataUpdatedEvent error", error);
       },
     });
 

@@ -5,11 +5,11 @@ import { wait } from "@consensys/linea-sdk";
 export class ExponentialBackoffRetryService<TReturn> implements IRetryService<TReturn> {
   constructor(
     private readonly logger: ILogger,
-    private readonly retryAttempts: number = 3,
+    private readonly maxRetryAttempts: number = 3,
     private readonly baseDelayMs: number = 1000,
   ) {
-    if (retryAttempts < 1) {
-      throw new Error("retryAttempts must be at least 1");
+    if (maxRetryAttempts < 1) {
+      throw new Error("maxRetryAttempts must be at least 1");
     }
     if (baseDelayMs < 0) {
       throw new Error("baseDelay must be non-negative");
@@ -23,20 +23,20 @@ export class ExponentialBackoffRetryService<TReturn> implements IRetryService<TR
   public async retry(fn: () => Promise<TReturn>): Promise<TReturn> {
     let lastError: unknown;
 
-    for (let attempt = 0; attempt <= this.retryAttempts; attempt += 1) {
+    for (let attempt = 0; attempt <= this.maxRetryAttempts; attempt += 1) {
       try {
         return await fn();
       } catch (error) {
         lastError = error;
-        this.logger.warn("Retry attempt failed", { attempt, retryAttempts: this.retryAttempts, error });
+        this.logger.warn(`Retry attempt failed attempt=${attempt} maxRetryAttempts=${this.maxRetryAttempts}`, error);
 
-        if (attempt >= this.retryAttempts) {
-          this.logger.error("Retry attempts exhausted", { retryAttempts: this.retryAttempts, error });
+        if (attempt >= this.maxRetryAttempts) {
+          this.logger.error(`Retry attempts exhausted maxRetryAttempts=${this.maxRetryAttempts}`, error);
           throw error;
         }
 
         const delayMs = this.getDelayMs(attempt);
-        this.logger.debug("Retrying after delay", { attempt, delayMs });
+        this.logger.debug(`Retrying after delay=${delayMs}ms`);
         await wait(delayMs);
       }
     }
