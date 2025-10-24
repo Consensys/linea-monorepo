@@ -130,11 +130,7 @@ func (r *Store) AllKeysAt(round int) []ifaces.ColID {
 // the insertion order of insertion) (=assignment order)
 func (r *Store) AllKeysLenAt(round int) int {
 	rnd := r.byRounds.GetOrEmpty(round)
-	counter := 0
-	for i := range rnd {
-		counter += len(rnd[i].ID)
-	}
-	return counter
+	return len(rnd)
 }
 
 // Returns the list of all the [ifaces.ColID] tagged with the [Committed] status so far
