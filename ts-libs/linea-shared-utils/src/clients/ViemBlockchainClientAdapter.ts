@@ -10,10 +10,13 @@ import {
   serializeTransaction,
   parseSignature,
   Chain,
+  ContractFunctionRevertedError,
+  withTimeout,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { ILogger } from "../logging/ILogger";
+import { MAX_BPS } from "../core/constants/maths";
 
 // Re-use via composition in ContractClients
 // Hope that using strategy pattern like this makes us more 'viem-agnostic'
@@ -25,7 +28,13 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     rpcUrl: string,
     chain: Chain,
     private readonly contractSignerClient: IContractSignerClient,
+    private readonly sendTransactionsMaxRetries = 1,
+    private readonly gasRetryBumpBps: bigint = 1000n, // +10% per retry
+    private readonly sendTransactionAttemptTimeoutMs = 300_000, // 5m
   ) {
+    if (sendTransactionsMaxRetries < 1) {
+      throw new Error("sendTransactionsMaxRetries must be at least 1");
+    }
     // Aim re-use single blockchain client for
     // i.) Better connection pooling
     // ii.) Memory efficient
@@ -69,8 +78,60 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     return { maxFeePerGas, maxPriorityFeePerGas };
   }
 
+  /**
+   * Attempts to send a signed tx with per-attempt timeout and retry-once-more
+   * semantics. On each retry, bumps gas by `gasRetryBumpBps`. Does not retry on
+   * ContractFunctionRevertedError.
+   */
   async sendSignedTransaction(contractAddress: Address, calldata: Hex): Promise<TransactionReceipt> {
     this.logger.debug("sendSignedTransaction started");
+    let gasMultiplierBps = MAX_BPS; // Start at 100%
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= this.sendTransactionsMaxRetries; attempt += 1) {
+      // Try to send tx with a timeout
+      try {
+        const receipt = await withTimeout(
+          () => this._sendSignedTransaction(contractAddress, calldata, gasMultiplierBps),
+          {
+            timeout: this.sendTransactionAttemptTimeoutMs,
+            signal: false, // don’t try to abort, just reject
+          },
+        );
+        this.logger.debug(`sendSignedTransaction succeeded`, receipt);
+        return receipt;
+      } catch (error) {
+        // We don't want to retry for ContractFunctionRevertedError
+        if (error instanceof ContractFunctionRevertedError) {
+          this.logger.error("❌ sendSignedTransaction contract call reverted:", error.shortMessage);
+          this.logger.error("Reason:", error.data?.errorName || error.message);
+          throw error;
+        }
+        if (attempt >= this.sendTransactionsMaxRetries) {
+          this.logger.error(
+            `sendSignedTransaction retry attempts exhausted sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
+            error,
+          );
+          throw error;
+        }
+
+        lastError = error;
+        this.logger.warn(
+          `sendSignedTransaction retry attempt failed attempt=${attempt} sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
+          error,
+        );
+
+        // Bump gas for next retry
+        gasMultiplierBps = (gasMultiplierBps * (MAX_BPS + this.gasRetryBumpBps)) / MAX_BPS;
+      }
+    }
+    throw lastError;
+  }
+
+  private async _sendSignedTransaction(
+    contractAddress: Address,
+    calldata: Hex,
+    gasMultiplierBps = 10000n,
+  ): Promise<TransactionReceipt> {
     const [fees, gasLimit, chainId, nonce] = await Promise.all([
       this.estimateGasFees(),
       this.blockchainClient.estimateGas({ to: contractAddress, data: calldata }),
@@ -84,16 +145,18 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       type: "eip1559",
       data: calldata,
       chainId: chainId,
-      gas: gasLimit,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
+      gas: (gasLimit * gasMultiplierBps) / MAX_BPS,
+      maxFeePerGas: (maxFeePerGas * gasMultiplierBps) / MAX_BPS,
+      maxPriorityFeePerGas: (maxPriorityFeePerGas * gasMultiplierBps) / MAX_BPS,
       nonce,
     };
-    this.logger.debug("sendSignedTransaction constructed tx for signing", [tx]);
+    this.logger.debug("_sendSignedTransaction tx for signing", tx);
     const signature = await this.contractSignerClient.sign(tx);
     const serializedTransaction = serializeTransaction(tx, parseSignature(signature));
 
-    this.logger.debug(`sendSignedTransaction - sending raw transaction serializedTransaction=${serializedTransaction}`);
+    this.logger.debug(
+      `_sendSignedTransaction - sending raw transaction serializedTransaction=${serializedTransaction}`,
+    );
     const txHash = await sendRawTransaction(this.blockchainClient, { serializedTransaction });
     const receipt = await waitForTransactionReceipt(this.blockchainClient, { hash: txHash });
     return receipt;
