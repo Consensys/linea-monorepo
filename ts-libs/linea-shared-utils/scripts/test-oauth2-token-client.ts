@@ -1,5 +1,6 @@
 // Script to manually test OAuth2TokenClient against a live server
 // pnpm --filter @consensys/linea-shared-utils exec tsx scripts/test-oauth2-token-client.ts
+import { ExponentialBackoffRetryService } from "../src";
 import { OAuth2TokenClient } from "../src/clients/OAuth2TokenClient";
 import { WinstonLogger } from "../src/logging/WinstonLogger";
 
@@ -14,8 +15,10 @@ async function main() {
   }
 
   const logger = new WinstonLogger("OAuth2TokenClient.integration");
+  const retryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name));
   const client = new OAuth2TokenClient(
     logger,
+    retryService,
     process.env.TOKEN_URL!,
     process.env.CLIENT_ID!,
     process.env.CLIENT_SECRET!,

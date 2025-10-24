@@ -2,6 +2,7 @@ import axios from "axios";
 import { ILogger } from "../logging/ILogger";
 import { getCurrentUnixTimestampSeconds } from "../utils/time";
 import { IOAuth2TokenClient, OAuth2TokenResponse } from "../core/client/IOAuth2TokenClient";
+import { IRetryService } from "../core/services/IRetryService";
 
 export class OAuth2TokenClient implements IOAuth2TokenClient {
   private bearerToken?: string;
@@ -9,6 +10,7 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
 
   constructor(
     private readonly logger: ILogger,
+    private readonly retryService: IRetryService,
     private readonly tokenUrl: string,
     private readonly clientId: string,
     private readonly clientSecret: string,
@@ -30,19 +32,21 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
     }
 
     this.logger.info("getBearerToken requesting new token");
-    const { data } = await axios.post<OAuth2TokenResponse>(
-      this.tokenUrl,
-      {
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        audience: this.audience,
-        grant_type: this.grantType,
-      },
-      {
-        headers: {
-          "content-type": "application/json",
+    const { data } = await this.retryService.retry(() =>
+      axios.post<OAuth2TokenResponse>(
+        this.tokenUrl,
+        {
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          audience: this.audience,
+          grant_type: this.grantType,
         },
-      },
+        {
+          headers: {
+            "content-type": "application/json",
+          },
+        },
+      ),
     );
 
     if (!data?.access_token) {

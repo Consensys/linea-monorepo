@@ -27,6 +27,10 @@ export class ExponentialBackoffRetryService implements IRetryService {
       try {
         return await fn();
       } catch (error) {
+        if (this.maxRetryAttempts === 1) {
+          throw error;
+        }
+
         lastError = error;
         this.logger.warn(`Retry attempt failed attempt=${attempt} maxRetryAttempts=${this.maxRetryAttempts}`, error);
 
