@@ -1,4 +1,4 @@
-import { IBlockchainClientAdapter } from "../core/client/IBlockchainClientAdapter";
+import { IBlockchainClient } from "../core/client/IBlockchainClient";
 import {
   Hex,
   createPublicClient,
@@ -17,7 +17,7 @@ import { ILogger } from "../logging/ILogger";
 
 // Re-use via composition in ContractClients
 // Hope that using strategy pattern like this makes us more 'viem-agnostic'
-export class ViemBlockchainClientAdapter implements IBlockchainClientAdapter<PublicClient, TransactionReceipt> {
+export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClient, TransactionReceipt> {
   blockchainClient: PublicClient;
 
   constructor(

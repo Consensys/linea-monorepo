@@ -3,7 +3,7 @@ import { NativeYieldCronJobClientConfig } from "./config/NativeYieldCronJobClien
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
 import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector.js";
 import {
-  IBlockchainClientAdapter,
+  IBlockchainClient,
   ViemBlockchainClientAdapter,
   Web3SignerClient,
   IContractSignerClient,
@@ -38,7 +38,7 @@ export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
   private readonly logger: ILogger;
 
-  private ViemBlockchainClientAdapter: IBlockchainClientAdapter<PublicClient, TransactionReceipt>;
+  private ViemBlockchainClientAdapter: IBlockchainClient<PublicClient, TransactionReceipt>;
   private web3SignerClient: IContractSignerClient;
   private yieldManagerContractClient: IYieldManager<TransactionReceipt>;
   private lazyOracleContractClient: ILazyOracle<TransactionReceipt>;

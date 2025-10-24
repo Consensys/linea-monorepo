@@ -1,4 +1,4 @@
-import { IBlockchainClientAdapter, ILogger } from "@consensys/linea-shared-utils";
+import { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
   encodeFunctionData,
@@ -18,7 +18,7 @@ export class LineaRollupYieldExtensionContractClient
 
   constructor(
     private readonly logger: ILogger,
-    private readonly contractClientLibrary: IBlockchainClientAdapter<PublicClient, TransactionReceipt>,
+    private readonly contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
   ) {
     this.contract = getContract({

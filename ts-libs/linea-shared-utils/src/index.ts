@@ -4,7 +4,7 @@ export * from "./clients/ViemWalletSignerClient";
 export * from "./clients/Web3SignerClient";
 export * from "./clients/ViemBlockchainClientAdapter";
 export * from "./core/client/IBeaconNodeApiClient";
-export * from "./core/client/IBlockchainClientAdapter";
+export * from "./core/client/IBlockchainClient";
 export * from "./core/client/IContractSignerClient";
 export * from "./core/client/IOAuth2TokenClient";
 export * from "./core/constants/blockchain";
