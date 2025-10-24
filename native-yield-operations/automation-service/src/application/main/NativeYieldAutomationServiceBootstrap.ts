@@ -106,7 +106,7 @@ export class NativeYieldAutomationServiceBootstrap {
       config.contractAddresses.lineaRollupContractAddress,
     );
 
-    this.exponentialBackoffRetryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name))
+    this.exponentialBackoffRetryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name, config.loggerOptions));
     this.beaconNodeApiClient = new BeaconNodeApiClient(
       new WinstonLogger(BeaconNodeApiClient.name, config.loggerOptions),
       this.exponentialBackoffRetryService,
