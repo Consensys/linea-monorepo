@@ -8,7 +8,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { ILogger } from "../logging/ILogger";
 
-export class Web3SignerClient implements IContractSignerClient {
+export class Web3SignerClientAdapter implements IContractSignerClient {
   private readonly agent: Agent;
   constructor(
     private readonly logger: ILogger,
@@ -19,7 +19,7 @@ export class Web3SignerClient implements IContractSignerClient {
     web3SignerTrustedStorePath: string,
     web3SignerTrustedStorePassphrase: string,
   ) {
-    this.logger.info("Web3SignerClient: initialising HTTPS agent");
+    this.logger.info("Web3SignerClientAdapter: initialising HTTPS agent");
     this.agent = this.getHttpsAgent(
       web3SignerKeystorePath,
       web3SignerKeystorePassphrase,
@@ -29,7 +29,7 @@ export class Web3SignerClient implements IContractSignerClient {
   }
 
   async sign(tx: TransactionSerializable): Promise<Hex> {
-    this.logger.debug("Web3SignerClient: signing transaction via remote Web3Signer");
+    this.logger.debug("Web3SignerClientAdapter: signing transaction via remote Web3Signer");
     const { data } = await axios.post(
       `${this.web3SignerUrl}/api/v1/eth1/sign/${this.web3SignerPublicKey}`,
       {
@@ -70,7 +70,7 @@ export class Web3SignerClient implements IContractSignerClient {
     trustedStorePassphrase: string,
   ): Agent {
     const trustedStoreFile = readFileSync(path.resolve(__dirname, trustedStorePath), { encoding: "binary" });
-    this.logger.debug("Web3SignerClient: loading trusted store certificate");
+    this.logger.debug("Web3SignerClientAdapter: loading trusted store certificate");
 
     const { pemCertificate } = this.convertToPem(trustedStoreFile, trustedStorePassphrase);
 

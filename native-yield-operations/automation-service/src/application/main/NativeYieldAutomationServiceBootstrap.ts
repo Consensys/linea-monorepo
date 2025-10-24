@@ -5,7 +5,7 @@ import { OperationModeSelector } from "../../services/OperationModeSelector.js";
 import {
   IBlockchainClient,
   ViemBlockchainClientAdapter,
-  Web3SignerClient,
+  Web3SignerClientAdapter,
   IContractSignerClient,
   IOAuth2TokenClient,
   IBeaconNodeAPIClient,
@@ -60,8 +60,8 @@ export class NativeYieldAutomationServiceBootstrap {
     this.config = config;
     this.logger = new WinstonLogger(NativeYieldAutomationServiceBootstrap.name, config.loggerOptions);
 
-    this.web3SignerClient = new Web3SignerClient(
-      new WinstonLogger(Web3SignerClient.name, config.loggerOptions),
+    this.web3SignerClient = new Web3SignerClientAdapter(
+      new WinstonLogger(Web3SignerClientAdapter.name, config.loggerOptions),
       config.web3signer.url,
       config.web3signer.publicKey,
       config.web3signer.keystore.path,

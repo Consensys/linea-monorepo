@@ -15,7 +15,7 @@
  * SUBMIT_LATEST_REPORT=true \
  */
 
-import { ViemBlockchainClientAdapter, ViemWalletSignerClient, WinstonLogger } from "@consensys/linea-shared-utils";
+import { ViemBlockchainClientAdapter, ViemWalletSignerClientAdapter, WinstonLogger } from "@consensys/linea-shared-utils";
 import { LidoAccountingReportClient } from "../src/clients/LidoAccountingReportClient.js";
 import { LazyOracleContractClient } from "../src/clients/contracts/LazyOracleContractClient.js";
 import { Address, Hex } from "viem";
@@ -38,8 +38,8 @@ async function main() {
   const ipfsGatewayUrl = process.env.IPFS_BASE_URL as string;
   const pollIntervalMs = Number.parseInt(process.env.POLL_INTERVAL_MS ?? "60000", 10);
 
-  const signer = new ViemWalletSignerClient(
-    new WinstonLogger("ViemWalletSignerClient.integration"),
+  const signer = new ViemWalletSignerClientAdapter(
+    new WinstonLogger("ViemWalletSignerClientAdapter.integration"),
     privateKey,
     hoodi,
   );

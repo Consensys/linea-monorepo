@@ -14,7 +14,7 @@ import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { privateKeyToAccount, privateKeyToAddress } from "viem/accounts";
 import { ILogger } from "../logging/ILogger";
 
-export class ViemWalletSignerClient implements IContractSignerClient {
+export class ViemWalletSignerClientAdapter implements IContractSignerClient {
   private readonly account: Account;
   private readonly address: Address;
   private readonly wallet: WalletClient;
@@ -54,7 +54,7 @@ export class ViemWalletSignerClient implements IContractSignerClient {
       yParity,
     });
 
-    this.logger.debug(`ViemWalletSignerClient: signed transaction for ${this.address}`);
+    this.logger.debug(`ViemWalletSignerClientAdapter: signed transaction for ${this.address}`);
     return signatureHex;
   }
 

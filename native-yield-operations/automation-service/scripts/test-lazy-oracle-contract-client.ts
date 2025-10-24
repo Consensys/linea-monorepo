@@ -12,7 +12,7 @@
  * POLL_INTERVAL_MS=60000 \
  */
 
-import { ViemBlockchainClientAdapter, ViemWalletSignerClient, WinstonLogger } from "@consensys/linea-shared-utils";
+import { ViemBlockchainClientAdapter, ViemWalletSignerClientAdapter, WinstonLogger } from "@consensys/linea-shared-utils";
 import { LazyOracleContractClient } from "../src/clients/contracts/LazyOracleContractClient.js";
 import { Address, Hex } from "viem";
 import { hoodi } from "viem/chains";
@@ -32,8 +32,8 @@ async function main() {
   const lazyOracleAddress = process.env.LAZY_ORACLE_ADDRESS as Address;
   const pollIntervalMs = Number.parseInt(process.env.POLL_INTERVAL_MS ?? "60000", 10);
 
-  const signer = new ViemWalletSignerClient(
-    new WinstonLogger("ViemWalletSignerClient.integration"),
+  const signer = new ViemWalletSignerClientAdapter(
+    new WinstonLogger("ViemWalletSignerClientAdapter.integration"),
     privateKey,
     hoodi,
   );
