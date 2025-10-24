@@ -209,7 +209,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 				vector.Add(col, stateCurrWit[x][y][z], cf[(x-1+5)%5][z], cc[(x+1)%5][z])
 				// clean the state
 				for i := 0; i < len(col); i++ {
-					// decompose col and clean it
+					// decompose col and clean it, buggy
 					res := clean(Decompose(col[i].Uint64(), thetaBase, 8))
 					// recompse to get clean state
 					stateCleaned := 0
@@ -233,6 +233,9 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 
 }
 
+// clean converts a slice of uint64 values into a new slice of ints of the
+// same length where each element is 1 if the corresponding input value is
+// odd and 0 if it is even. The input slice is not modified.
 func clean(in []uint64) (out []int) {
 	out = make([]int, len(in))
 	for i, element := range in {
