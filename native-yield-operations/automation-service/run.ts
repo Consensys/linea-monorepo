@@ -6,11 +6,11 @@ dotenv.config();
 
 async function main() {
   const options = loadConfigFromEnv();
-  const client = new NativeYieldAutomationServiceBootstrap({
+  const application = new NativeYieldAutomationServiceBootstrap({
     ...options,
   });
-  await client.connectServices();
-  client.startAllServices();
+  await application.connectServices();
+  application.startAllServices();
 }
 
 main()
