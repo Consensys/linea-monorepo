@@ -1,7 +1,7 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import { bigintReplacer, ILogger } from "@consensys/linea-shared-utils";
+import { bigintReplacer, ILogger, tryResult } from "@consensys/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
@@ -96,7 +96,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     // If we begin in DEFICIT, freeze beacon chain deposits to prevent further exacerbation
     if (initialRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
-      await this.yieldManagerContractClient.pauseStakingIfNotAlready(this.yieldProvider);
+      const result = await tryResult(() => this.yieldManagerContractClient.pauseStakingIfNotAlready(this.yieldProvider));
+      if (result.isErr()) {
+        this.logger.error("_process - pause staking failed, continuing anyway", {error: result.error,})
+      }
     }
 
     // Do primary rebalance +/- report submission
@@ -114,7 +117,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       if (postReportRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
         await this._handleUnstakingRebalance(postReportRebalanceRequirements.rebalanceAmount, false);
       } else {
-        await this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider);
+      const result = await tryResult(() => this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider));
+      if (result.isErr()) {
+        this.logger.error("_process - unpause staking failed, continuing anyway", {error: result.error,})
+      }
       }
     }
 
@@ -142,9 +148,8 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
         return;
         // Simple submit report
       } else {
-        await this.lidoAccountingReportClient.submitLatestVaultReport();
-        await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
-        this.logger.info("_handleRebalance - no rebalance, new vault report & yield report submitted");
+        this.logger.info("_handleRebalance - no rebalance pathway, calling _handleSubmitLatestVaultReport");
+        await this._handleSubmitLatestVaultReport();
         return;
       }
     } else if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.STAKE) {
@@ -166,14 +171,29 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     isSimulateSubmitLatestVaultReportSuccessful: boolean,
   ): Promise<void> {
       this.logger.info(`_handleStakingRebalance - reserve surplus, rebalanceAmount=${rebalanceAmount}`);
-    // Rebalance first
-    await this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount);
-    await this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount);
+    // Rebalance first - tolerate failures because fresh vault report should not be blocked
+    await tryResult(() =>
+      this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount)
+    ).mapErr((error) => {
+      this.logger.error("_handleStakingRebalance - transferFundsForNativeYield failed", {
+        error,
+      });
+      return error
+    });
+
+    await tryResult(() =>
+      this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount)
+    ).mapErr((error) => {
+      this.logger.error("_handleStakingRebalance - fundYieldProvider failed", {
+        error,
+      });
+      return error;
+    });
+
     // Submit report last
     if (isSimulateSubmitLatestVaultReportSuccessful) {
-      await this.lidoAccountingReportClient.submitLatestVaultReport();
-      await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
-      this.logger.info("_handleStakingRebalance - new vault report & yield report submitted");
+      this.logger.info("_handleStakingRebalance calling _handleSubmitLatestVaultReport");
+      await this._handleSubmitLatestVaultReport();
     }
   }
 
@@ -184,15 +204,58 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   ): Promise<void> {
     // Submit report first
     if (isSimulateSubmitLatestVaultReportSuccessful) {
-      await this.lidoAccountingReportClient.submitLatestVaultReport();
-      await this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient);
-      this.logger.info("_handleUnstakingRebalance - new vault report & yield report submitted");
+      this.logger.info("_handleUnstakingRebalance calling _handleSubmitLatestVaultReport");
+      await this._handleSubmitLatestVaultReport();
     }
-      this.logger.info(`_handleStakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
+
+    this.logger.info(`_handleStakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
     // Then perform rebalance
-    await this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(
-      this.yieldProvider,
-      rebalanceAmount,
-    );
+    await tryResult(() =>
+      this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(
+        this.yieldProvider,
+        rebalanceAmount,
+      )
+    ).mapErr((err) => {
+      this.logger.error("_handleUnstakingRebalance - safeAddToWithdrawalReserveIfAboveThreshold failed", {
+        err,
+      });
+      return err;
+    });
+  }
+
+  /**
+   * @notice Submits the latest vault report and then reports yield to the yield manager.
+   * @dev Uses `tryResult` to safely handle failures without throwing.
+   *      - If submitting the vault report fails, the function logs the error and exits early,
+   *        since reporting yield without a fresh vault report would be invalid.
+   *      - If yield reporting fails, the function logs the error but continues without rethrowing,
+   *        allowing the caller or scheduler to proceed without interruption.
+   * @dev We tolerate report submission errors because they should not block rebalances
+   */
+  private async _handleSubmitLatestVaultReport() {
+      // First call: submit vault report
+      const vaultResult = await tryResult(() =>
+        this.lidoAccountingReportClient.submitLatestVaultReport()
+      );
+      if (vaultResult.isErr()) {
+        this.logger.error("_handleSubmitLatestVaultReport: submitLatestVaultReport failed; skipping yield report", {
+          error: vaultResult.error,
+        });
+        // Early return, no point reporting Linea yield without a new vault report beforehand
+        return vaultResult;
+      }
+
+      // Second call: report yield
+      const yieldResult = await tryResult(() =>
+        this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient)
+      );
+      if (yieldResult.isErr()) {
+        this.logger.error("_handleSubmitLatestVaultReport - submitLatestVaultReport succeeded but reportYield failed", {
+          error: yieldResult.error,
+        });
+        return yieldResult;
+      }
+      this.logger.info("_handleSubmitLatestVaultReport: vault report + yield report succeeded");
+      return yieldResult;
   }
 }

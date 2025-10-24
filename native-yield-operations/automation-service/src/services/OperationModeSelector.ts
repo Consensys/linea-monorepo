@@ -62,7 +62,7 @@ export class OperationModeSelector implements IOperationModeSelector {
         }
       } catch (error) {
         this.logger.error(
-          "selectOperationModeLoop error, retrying in this.contractReadRetryTimeMs milliseconds",
+          `selectOperationModeLoop error, retrying in ${this.contractReadRetryTimeMs}ms`,
           { error },
         );
         await wait(this.contractReadRetryTimeMs);
