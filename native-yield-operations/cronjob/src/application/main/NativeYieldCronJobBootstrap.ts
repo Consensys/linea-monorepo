@@ -1,5 +1,5 @@
 import { ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
-import { NativeYieldCronJobClientConfig } from "./config/NativeYieldCronJobClientConfig.js";
+import { NativeYieldCronJobBootstrapConfig } from "./config/config.js";
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
 import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector.js";
 import {
@@ -34,8 +34,8 @@ import { OssificationPendingOperationModeProcessor } from "../../services/operat
 import { mainnet, hoodi } from "viem/chains";
 import { createApolloClient } from "../../utils/createApolloClient.js";
 
-export class NativeYieldCronJobClient {
-  private readonly config: NativeYieldCronJobClientConfig;
+export class NativeYieldCronJobBootstrap {
+  private readonly config: NativeYieldCronJobBootstrapConfig;
   private readonly logger: ILogger;
 
   private ViemBlockchainClientAdapter: IBlockchainClient<PublicClient, TransactionReceipt>;
@@ -56,9 +56,9 @@ export class NativeYieldCronJobClient {
   private ossificationPendingOperationModeProcessor: IOperationModeProcessor;
   private ossificationCompleteOperationModeProcessor: IOperationModeProcessor;
 
-  constructor(config: NativeYieldCronJobClientConfig) {
+  constructor(config: NativeYieldCronJobBootstrapConfig) {
     this.config = config;
-    this.logger = new WinstonLogger(NativeYieldCronJobClient.name, config.loggerOptions);
+    this.logger = new WinstonLogger(NativeYieldCronJobBootstrap.name, config.loggerOptions);
 
     this.web3SignerClient = new Web3SignerClient(
       new WinstonLogger(Web3SignerClient.name, config.loggerOptions),
@@ -191,7 +191,7 @@ export class NativeYieldCronJobClient {
     this.logger.info("Native yield cron job stopped");
   }
 
-  public getConfig(): NativeYieldCronJobClientConfig {
+  public getConfig(): NativeYieldCronJobBootstrapConfig {
     return this.config;
   }
 }

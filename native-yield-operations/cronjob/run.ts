@@ -1,12 +1,12 @@
 import * as dotenv from "dotenv";
 import { loadConfigFromEnv } from "./src/application/main/config/loadConfigFromEnv.js";
-import { NativeYieldCronJobClient } from "./src/application/main/NativeYieldCronJobClient.js";
+import { NativeYieldCronJobBootstrap } from "./src/application/main/NativeYieldCronJobBootstrap.js";
 
 dotenv.config();
 
 async function main() {
   const options = loadConfigFromEnv();
-  const client = new NativeYieldCronJobClient({
+  const client = new NativeYieldCronJobBootstrap({
     ...options,
   });
   await client.connectServices();
