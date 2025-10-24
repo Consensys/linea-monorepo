@@ -11,7 +11,7 @@
  * pnpm --filter @consensys/linea-native-yield-cron-job exec tsx scripts/test-consensys-staking-graphql-client.ts
  */
 
-import { BeaconNodeApiClient, WinstonLogger, OAuth2TokenClient } from "@consensys/linea-shared-utils";
+import { BeaconNodeApiClient, WinstonLogger, OAuth2TokenClient, ExponentialBackoffRetryService } from "@consensys/linea-shared-utils";
 import { ConsensysStakingApiClient } from "../src/clients/ConsensysStakingApiClient.js";
 import { createApolloClient } from "../src/utils/createApolloClient.js";
 
@@ -33,13 +33,16 @@ async function main() {
     return;
   }
 
+  const retryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name));
   const beaconClient = new BeaconNodeApiClient(
     new WinstonLogger("BeaconNodeApiClient.integration"),
+    retryService,
     process.env.BEACON_NODE_RPC_URL!,
   );
 
   const tokenClient = new OAuth2TokenClient(
     new WinstonLogger("OAuth2TokenClient.integration"),
+    retryService,
     process.env.TOKEN_URL!,
     process.env.CLIENT_ID!,
     process.env.CLIENT_SECRET!,
@@ -49,6 +52,7 @@ async function main() {
   const apolloClient = createApolloClient(tokenClient, process.env.GRAPHQL_ENDPOINT!);
   const consensysStakingClient = new ConsensysStakingApiClient(
     new WinstonLogger("ConsensysStakingApiClient.integration"),
+    retryService,
     apolloClient,
     beaconClient,
   );

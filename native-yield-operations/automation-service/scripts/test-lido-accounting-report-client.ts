@@ -15,7 +15,7 @@
  * SUBMIT_LATEST_REPORT=true \
  */
 
-import { ViemBlockchainClientAdapter, ViemWalletSignerClientAdapter, WinstonLogger } from "@consensys/linea-shared-utils";
+import { ExponentialBackoffRetryService, ViemBlockchainClientAdapter, ViemWalletSignerClientAdapter, WinstonLogger } from "@consensys/linea-shared-utils";
 import { LidoAccountingReportClient } from "../src/clients/LidoAccountingReportClient.js";
 import { LazyOracleContractClient } from "../src/clients/contracts/LazyOracleContractClient.js";
 import { Address, Hex } from "viem";
@@ -57,8 +57,10 @@ async function main() {
     pollIntervalMs,
   );
 
+  const retryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name));
   const lidoAccountingClient = new LidoAccountingReportClient(
     new WinstonLogger("LidoAccountingReportClient.integration"),
+    retryService,
     lazyOracleClient,
     ipfsGatewayUrl,
     lidoVaultAddress,
