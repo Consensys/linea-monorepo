@@ -9,11 +9,11 @@ import {
   PublicClient,
   TransactionReceipt,
 } from "viem";
-import { LidoStakingVaultWithdrawalParams, WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams.js";
-import { RebalanceRequirement, RebalanceDirection } from "../core/entities/RebalanceRequirement.js";
+import { LidoStakingVaultWithdrawalParams, WithdrawalRequests } from "../../core/entities/LidoStakingVaultWithdrawalParams.js";
+import { RebalanceRequirement, RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 
-import { YieldManagerABI } from "../core/abis/YieldManager.js";
-import { IYieldManager, YieldProviderData } from "../core/clients/contracts/IYieldManager.js";
+import { YieldManagerABI } from "../../core/abis/YieldManager.js";
+import { IYieldManager, YieldProviderData } from "../../core/clients/contracts/IYieldManager.js";
 import { ONE_ETHER } from "@consensys/linea-shared-utils";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt> {

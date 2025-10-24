@@ -7,13 +7,13 @@ import {
   PublicClient,
   TransactionReceipt,
 } from "viem";
-import { LazyOracleABI } from "../core/abis/LazyOracle.js";
+import { LazyOracleABI } from "../../core/abis/LazyOracle.js";
 import {
   ILazyOracle,
   UpdateVaultDataParams,
   WaitForVaultsReportDataUpdatedEventReturnType,
   LazyOracleReportData,
-} from "../core/clients/contracts/ILazyOracle.js";
+} from "../../core/clients/contracts/ILazyOracle.js";
 
 export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt> {
   private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;

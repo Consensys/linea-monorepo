@@ -1,5 +1,5 @@
 /**
- * Manual integration runner for ConsensysStakingGraphQLClient.
+ * Manual integration runner for ConsensysStakingApiClient.
  *
  * Example usage:
  * GRAPHQL_ENDPOINT=https://example/graphql \
@@ -12,7 +12,7 @@
  */
 
 import { BeaconNodeApiClient, WinstonLogger, OAuth2TokenClient } from "@consensys/linea-shared-utils";
-import { ConsensysStakingGraphQLClient } from "../src/clients/ConsensysStakingGraphQLClient.js";
+import { ConsensysStakingApiClient } from "../src/clients/ConsensysStakingApiClient.js";
 import { createApolloClient } from "../src/utils/createApolloClient.js";
 
 // private readonly apolloClient: ApolloClient,
@@ -47,8 +47,8 @@ async function main() {
   );
 
   const apolloClient = createApolloClient(tokenClient, process.env.GRAPHQL_ENDPOINT!);
-  const consensysStakingClient = new ConsensysStakingGraphQLClient(
-    new WinstonLogger("ConsensysStakingGraphQLClient.integration"),
+  const consensysStakingClient = new ConsensysStakingApiClient(
+    new WinstonLogger("ConsensysStakingApiClient.integration"),
     apolloClient,
     beaconClient,
   );
@@ -60,7 +60,7 @@ async function main() {
     const totalPendingWei = consensysStakingClient.getTotalPendingPartialWithdrawalsWei(validators);
     console.log(`Total pending partial withdrawals (wei): ${totalPendingWei.toString()}`);
   } catch (err) {
-    console.error("ConsensysStakingGraphQLClient integration script failed:", err);
+    console.error("ConsensysStakingApiClient integration script failed:", err);
     process.exitCode = 1;
   }
 }

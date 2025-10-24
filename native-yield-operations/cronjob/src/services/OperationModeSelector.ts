@@ -1,9 +1,9 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
-import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
+import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
 import { Address, TransactionReceipt } from "viem";
-import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
-import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
+import { IOperationModeSelector } from "../core/services/operation-mode/IOperationModeSelector.js";
+import { IOperationModeProcessor } from "../core/services/operation-mode/IOperationModeProcessor.js";
 
 export class OperationModeSelector implements IOperationModeSelector {
   private isRunning = false;

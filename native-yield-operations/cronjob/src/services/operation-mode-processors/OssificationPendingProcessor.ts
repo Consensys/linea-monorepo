@@ -7,7 +7,7 @@ import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 
-export class OssificationPendingOperationModeProcessor implements IOperationModeProcessor {
+export class OssificationPendingProcessor implements IOperationModeProcessor {
   constructor(
     private readonly logger: ILogger,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,

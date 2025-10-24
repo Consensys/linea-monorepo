@@ -5,7 +5,7 @@ import { IOperationModeProcessor } from "../../core/services/operation-mode/IOpe
 import { wait } from "@consensys/linea-sdk";
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 
-export class OssificationCompleteOperationModeProcessor implements IOperationModeProcessor {
+export class OssificationCompleteProcessor implements IOperationModeProcessor {
   constructor(
     private readonly logger: ILogger,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
@@ -16,14 +16,14 @@ export class OssificationCompleteOperationModeProcessor implements IOperationMod
 
   public async process(): Promise<void> {
     this.logger.info(
-      `OssificationCompleteOperationModeProcessor: waiting ${this.maxInactionMs}ms before executing actions`,
+      `OssificationCompleteProcessor: waiting ${this.maxInactionMs}ms before executing actions`,
     );
     await wait(this.maxInactionMs);
     await this._process();
   }
 
   private async _process(): Promise<void> {
-    this.logger.info("OssificationCompleteOperationModeProcessor: executing withdrawal and unstake cycle");
+    this.logger.info("OssificationCompleteProcessor: executing withdrawal and unstake cycle");
     // Max withdraw
     await this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider);
 

@@ -1,5 +1,5 @@
 import { Address, TransactionReceipt } from "viem";
-import { YieldReportingOperationModeProcessor } from "../YieldReportingOperationModeProcessor.js";
+import { YieldReportingProcessor } from "../YieldReportingProcessor.js";
 import { RebalanceDirection, RebalanceRequirement } from "../../../core/entities/RebalanceRequirement.js";
 import { wait } from "@consensys/linea-sdk";
 import type { IYieldManager } from "../../../core/clients/contracts/IYieldManager.js";
@@ -86,7 +86,7 @@ const createProcessor = () => {
     },
   };
 
-  const processor = new YieldReportingOperationModeProcessor(
+  const processor = new YieldReportingProcessor(
     mocks.logger as unknown as ILogger,
     mocks.yieldManager as unknown as IYieldManager<TransactionReceipt>,
     mocks.lazyOracle as unknown as ILazyOracle<TransactionReceipt>,
@@ -110,7 +110,7 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe("YieldReportingOperationModeProcessor", () => {
+describe("YieldReportingProcessor", () => {
   it("performs a no-op cycle when no rebalance is required and simulation fails", async () => {
     const { processor, mocks } = createProcessor();
     const unwatch = jest.fn();

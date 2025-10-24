@@ -10,7 +10,7 @@ import { ILineaRollupYieldExtension } from "../../core/clients/contracts/ILineaR
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 
 // FIRST PRIORITY FOR UNIT TESTING
-export class YieldReportingOperationModeProcessor implements IOperationModeProcessor {
+export class YieldReportingProcessor implements IOperationModeProcessor {
   constructor(
     private readonly logger: ILogger,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,

@@ -4,7 +4,7 @@ import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
 import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
 
-export class ConsensysStakingGraphQLClient implements IValidatorDataClient {
+export class ConsensysStakingApiClient implements IValidatorDataClient {
   constructor(
     private readonly logger: ILogger,
     private readonly apolloClient: ApolloClient,

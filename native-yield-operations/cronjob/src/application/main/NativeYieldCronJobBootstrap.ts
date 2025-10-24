@@ -1,7 +1,7 @@
 import { ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
 import { NativeYieldCronJobBootstrapConfig } from "./config/config.js";
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
-import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector.js";
+import { OperationModeSelector } from "../../services/OperationModeSelector.js";
 import {
   IBlockchainClient,
   ViemBlockchainClientAdapter,
@@ -14,23 +14,23 @@ import {
 } from "@consensys/linea-shared-utils";
 import {} from "@consensys/linea-shared-utils";
 import { Chain, PublicClient, TransactionReceipt } from "viem";
-import { YieldManagerContractClient } from "../../clients/YieldManagerContractClient.js";
+import { YieldManagerContractClient } from "../../clients/contracts/YieldManagerContractClient.js";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
-import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor.js";
-import { LazyOracleContractClient } from "../../clients/LazyOracleContractClient.js";
+import { YieldReportingProcessor } from "../../services/operation-mode-processors/YieldReportingProcessor.js";
+import { LazyOracleContractClient } from "../../clients/contracts/LazyOracleContractClient.js";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ApolloClient } from "@apollo/client";
 import { ILineaRollupYieldExtension } from "../../core/clients/contracts/ILineaRollupYieldExtension.js";
-import { LineaRollupYieldExtensionContractClient } from "../../clients/LineaRollupYieldExtensionContractClient.js";
+import { LineaRollupYieldExtensionContractClient } from "../../clients/contracts/LineaRollupYieldExtensionContractClient.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 import { IValidatorDataClient } from "../../core/clients/IValidatorDataClient.js";
-import { ConsensysStakingGraphQLClient } from "../../clients/ConsensysStakingGraphQLClient.js";
+import { ConsensysStakingApiClient } from "../../clients/ConsensysStakingApiClient.js";
 import { LidoAccountingReportClient } from "../../clients/LidoAccountingReportClient.js";
 import { BeaconChainStakingClient } from "../../clients/BeaconChainStakingClient.js";
-import { OssificationCompleteOperationModeProcessor } from "../../services/operation-mode/OssificationCompleteOperationModeProcessor.js";
-import { OssificationPendingOperationModeProcessor } from "../../services/operation-mode/OssificationPendingOperationModeProcessor.js";
+import { OssificationCompleteProcessor } from "../../services/operation-mode-processors/OssificationCompleteProcessor.js";
+import { OssificationPendingProcessor } from "../../services/operation-mode-processors/OssificationPendingProcessor.js";
 import { mainnet, hoodi } from "viem/chains";
 import { createApolloClient } from "../../utils/createApolloClient.js";
 
@@ -117,8 +117,8 @@ export class NativeYieldCronJobBootstrap {
       config.consensysStakingOAuth2.audience,
     );
     this.apolloClient = createApolloClient(this.oAuth2TokenClient, config.dataSources.stakingGraphQLUrl);
-    this.consensysStakingGraphQLClient = new ConsensysStakingGraphQLClient(
-      new WinstonLogger(ConsensysStakingGraphQLClient.name, config.loggerOptions),
+    this.consensysStakingGraphQLClient = new ConsensysStakingApiClient(
+      new WinstonLogger(ConsensysStakingApiClient.name, config.loggerOptions),
       this.apolloClient,
       this.beaconNodeApiClient,
     );
@@ -136,8 +136,8 @@ export class NativeYieldCronJobBootstrap {
       this.config.contractAddresses.lidoYieldProviderAddress,
     );
 
-    this.yieldReportingOperationModeProcessor = new YieldReportingOperationModeProcessor(
-      new WinstonLogger(YieldReportingOperationModeProcessor.name, config.loggerOptions),
+    this.yieldReportingOperationModeProcessor = new YieldReportingProcessor(
+      new WinstonLogger(YieldReportingProcessor.name, config.loggerOptions),
       this.yieldManagerContractClient,
       this.lazyOracleContractClient,
       this.lineaRollupYieldExtensionContractClient,
@@ -148,8 +148,8 @@ export class NativeYieldCronJobBootstrap {
       config.contractAddresses.l2YieldRecipientAddress,
     );
 
-    this.ossificationPendingOperationModeProcessor = new OssificationPendingOperationModeProcessor(
-      new WinstonLogger(OssificationPendingOperationModeProcessor.name, config.loggerOptions),
+    this.ossificationPendingOperationModeProcessor = new OssificationPendingProcessor(
+      new WinstonLogger(OssificationPendingProcessor.name, config.loggerOptions),
       this.yieldManagerContractClient,
       this.lazyOracleContractClient,
       this.lidoAccountingReportClient,
@@ -158,8 +158,8 @@ export class NativeYieldCronJobBootstrap {
       config.contractAddresses.lidoYieldProviderAddress,
     );
 
-    this.ossificationCompleteOperationModeProcessor = new OssificationCompleteOperationModeProcessor(
-      new WinstonLogger(OssificationCompleteOperationModeProcessor.name, config.loggerOptions),
+    this.ossificationCompleteOperationModeProcessor = new OssificationCompleteProcessor(
+      new WinstonLogger(OssificationCompleteProcessor.name, config.loggerOptions),
       this.yieldManagerContractClient,
       this.beaconChainStakingClient,
       config.timing.trigger.maxInactionMs,

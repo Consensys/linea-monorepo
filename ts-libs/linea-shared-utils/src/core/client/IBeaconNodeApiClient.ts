@@ -1,3 +1,5 @@
+// https://ethereum.github.io/beacon-APIs/
+
 export interface IBeaconNodeAPIClient {
   getPendingPartialWithdrawals(): Promise<PendingPartialWithdrawal[]>;
 }
