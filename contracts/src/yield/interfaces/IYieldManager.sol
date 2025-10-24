@@ -337,6 +337,11 @@ interface IYieldManager {
   error OssificationNotInitiated();
 
   /**
+   * @dev Thrown when attempting to re-initiate the ossification process for a YieldProvider.
+   */
+  error OssificationAlreadyInitiated();
+
+  /**
    * @dev Thrown when attempting to initiate or progress the ossification process for a YieldProvider that is already ossified.
    */
   error AlreadyOssified();
@@ -633,7 +638,6 @@ interface IYieldManager {
   /**
    * @notice Initiate the ossification sequence for a provider.
    * @dev Will pause beacon chain staking and LST withdrawals.
-   * @dev Re-calling this function after a prior initiation is allowed.
    * @dev WARNING: This operation irreversibly pauses beacon chain deposits.
    * @param _yieldProvider The yield provider address.
    */

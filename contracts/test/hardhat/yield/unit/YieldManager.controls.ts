@@ -359,6 +359,18 @@ describe("YieldManager contract - control operations", () => {
       );
     });
 
+    it("Should revert if ossification has been initiated", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress),
+        "OssificationAlreadyInitiated",
+      );
+    });
+
     it("Should revert if ossification has completed", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
@@ -373,6 +385,18 @@ describe("YieldManager contract - control operations", () => {
 
     it("Should successfully initiate ossification, pause staking and emit the correct event", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await expect(yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress))
+        .to.emit(yieldManager, "YieldProviderOssificationInitiated")
+        .withArgs(mockYieldProviderAddress);
+
+      expect(await yieldManager.isOssificationInitiated(mockYieldProviderAddress)).to.be.true;
+      expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
+    });
+
+    it("Shoulds succeed even if YieldProvider interaction reverts", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      await yieldManager.setIsInitiateOssificationReverting(mockYieldProviderAddress, true);
 
       await expect(yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress))
         .to.emit(yieldManager, "YieldProviderOssificationInitiated")

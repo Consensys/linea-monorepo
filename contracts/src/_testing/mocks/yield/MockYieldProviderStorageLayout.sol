@@ -23,6 +23,7 @@ abstract contract MockYieldProviderStorageLayout {
     ProgressOssificationResult progressPendingOssificationReturnVal;
     YieldProviderRegistration initializeVendorContractsReturnVal;
     address mockWithdrawTarget;
+    bool isInitiateOssificationReverting;
   }
 
   function _getMockYieldProviderStorage(
@@ -103,5 +104,13 @@ abstract contract MockYieldProviderStorageLayout {
 
   function setInitializeVendorContractsReturnVal(YieldProviderRegistration memory registration) public {
     _getMockYieldProviderStorage(address(0)).initializeVendorContractsReturnVal = registration;
+  }
+
+  function getIsInitiateOssificationReverting(address _yieldProvider) public view returns (bool) {
+    return _getMockYieldProviderStorage(_yieldProvider).isInitiateOssificationReverting;
+  }
+
+  function setIsInitiateOssificationReverting(address _yieldProvider, bool val) external {
+    _getMockYieldProviderStorage(_yieldProvider).isInitiateOssificationReverting = val;
   }
 }

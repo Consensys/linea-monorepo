@@ -928,7 +928,6 @@ contract YieldManager is
   /**
    * @notice Initiate the ossification sequence for a provider.
    * @dev Will pause beacon chain staking and LST withdrawals.
-   * @dev Re-calling this function after a prior initiation is allowed.
    * @dev WARNING: This operation irreversibly pauses beacon chain deposits.
    * @param _yieldProvider The yield provider address.
    */
@@ -936,10 +935,17 @@ contract YieldManager is
     address _yieldProvider
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(OSSIFICATION_INITIATOR_ROLE) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    if ($$.isOssificationInitiated) {
+      revert OssificationAlreadyInitiated();
+    }
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider)));
+    // Intentionally ignore (success, returnData) from delegatecall here
+    // - External vendor interaction may or may not succeed; it should not block this call
+    // - An automation service is expected to continue progressing ossification post-initiation.
+    // solhint-disable-next-line avoid-low-level-calls
+    _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider)));
     _pauseStakingIfNotAlready(_yieldProvider);
     $$.isOssificationInitiated = true;
     emit YieldProviderOssificationInitiated(_yieldProvider);
