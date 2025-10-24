@@ -5,13 +5,13 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { deployWETH9Fixture } from "./helpers/deploy";
 import { deployFromFactory } from "../common/deployment";
-import { V3DexSwap, TestDexRouter, TestERC20 } from "../../../typechain-types";
+import { V3DexSwapWethDepositAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";
 import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
 import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
 import { setNextBlockTimestamp } from "@nomicfoundation/hardhat-network-helpers/dist/src/helpers/time";
 
-describe("V3DexSwap", () => {
-  let dexSwap: V3DexSwap;
+describe("V3DexSwapWethDepositAdapter", () => {
+  let dexSwap: V3DexSwapWethDepositAdapter;
   let rollupRevenueVault: SignerWithAddress;
   let lineaToken: TestERC20;
   let testWETH9Address: string;
