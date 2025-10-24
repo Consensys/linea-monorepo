@@ -39,27 +39,27 @@ async function main() {
   const pollIntervalMs = Number.parseInt(process.env.POLL_INTERVAL_MS ?? "60000", 10);
 
   const signer = new ViemWalletSignerClientAdapter(
-    new WinstonLogger("ViemWalletSignerClientAdapter.integration"),
+    new WinstonLogger("ViemWalletSignerClientAdapter.integration", {level: "debug"}),
     privateKey,
     hoodi,
   );
   const contractClientLibrary = new ViemBlockchainClientAdapter(
-    new WinstonLogger("ViemBlockchainClientAdapter.integration"),
+    new WinstonLogger("ViemBlockchainClientAdapter.integration", {level: "debug"}),
     rpcUrl,
     hoodi,
     signer,
   );
 
   const lazyOracleClient = new LazyOracleContractClient(
-    new WinstonLogger("LazyOracleContractClient.integration"),
+    new WinstonLogger("LazyOracleContractClient.integration", {level: "debug"}),
     contractClientLibrary,
     lazyOracleAddress,
     pollIntervalMs,
   );
 
-  const retryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name));
+  const retryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name, {level: "debug"}));
   const lidoAccountingClient = new LidoAccountingReportClient(
-    new WinstonLogger("LidoAccountingReportClient.integration"),
+    new WinstonLogger("LidoAccountingReportClient.integration", {level: "debug"}),
     retryService,
     lazyOracleClient,
     ipfsGatewayUrl,

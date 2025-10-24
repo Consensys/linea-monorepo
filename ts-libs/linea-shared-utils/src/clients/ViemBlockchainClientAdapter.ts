@@ -12,6 +12,8 @@ import {
   Chain,
   ContractFunctionRevertedError,
   withTimeout,
+  TimeoutError,
+  BaseError,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
@@ -79,9 +81,9 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   }
 
   /**
-   * Attempts to send a signed tx with per-attempt timeout and retry-once-more
-   * semantics. On each retry, bumps gas by `gasRetryBumpBps`. Does not retry on
-   * ContractFunctionRevertedError.
+   * Attempts to send a signed tx with retry-on-timeout semantics.
+   * On each retry, bumps gas by `gasRetryBumpBps`.
+   * Does not retry on errors, only on timeout.
    */
   async sendSignedTransaction(contractAddress: Address, calldata: Hex): Promise<TransactionReceipt> {
     this.logger.debug("sendSignedTransaction started");
@@ -95,6 +97,10 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
           {
             timeout: this.sendTransactionAttemptTimeoutMs,
             signal: false, // don’t try to abort, just reject
+            errorInstance: new TimeoutError({
+              body: { message: "sendSignedTransaction attempt timed out" },
+              url: "local:sendSignedTransaction",
+            }),
           },
         );
         this.logger.debug(`sendSignedTransaction succeeded`, { receipt });
@@ -114,6 +120,14 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
             { error },
           );
           throw error;
+        }
+        const isTimeout =
+          error instanceof TimeoutError ||
+          (error instanceof BaseError && error.name === "TimeoutError") ||
+          (error as any)?.name === "TimeoutError";
+        if (!isTimeout) {
+          this.logger.error(`sendSignedTransaction error`, { error });
+          throw error; // not a timeout → bail
         }
 
         lastError = error;
