@@ -1,4 +1,4 @@
-import { IContractClientLibrary, ILogger } from "@consensys/linea-shared-utils";
+import { IBlockchainClientAdapter, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
   encodeFunctionData,
@@ -20,7 +20,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
   private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;
   constructor(
     private readonly logger: ILogger,
-    private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
+    private readonly contractClientLibrary: IBlockchainClientAdapter<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
     private readonly pollIntervalMs: number,
   ) {

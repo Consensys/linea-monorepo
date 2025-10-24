@@ -15,7 +15,7 @@
  * SUBMIT_LATEST_REPORT=true \
  */
 
-import { ContractClientLibrary, ViemWalletSignerClient, WinstonLogger } from "@consensys/linea-shared-utils";
+import { ViemBlockchainClientAdapter, ViemWalletSignerClient, WinstonLogger } from "@consensys/linea-shared-utils";
 import { LidoAccountingReportClient } from "../src/clients/LidoAccountingReportClient.js";
 import { LazyOracleContractClient } from "../src/clients/LazyOracleContractClient.js";
 import { Address, Hex } from "viem";
@@ -43,8 +43,8 @@ async function main() {
     privateKey,
     hoodi,
   );
-  const contractClientLibrary = new ContractClientLibrary(
-    new WinstonLogger("ContractClientLibrary.integration"),
+  const contractClientLibrary = new ViemBlockchainClientAdapter(
+    new WinstonLogger("ViemBlockchainClientAdapter.integration"),
     rpcUrl,
     hoodi,
     signer,

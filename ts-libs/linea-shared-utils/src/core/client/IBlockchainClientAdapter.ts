@@ -1,7 +1,7 @@
 import { Address, Hex } from "viem";
 
 // TODO - Make generic and uncoupled from Viem
-export interface IContractClientLibrary<TClient, TTransactionReceipt> {
+export interface IBlockchainClientAdapter<TClient, TTransactionReceipt> {
   getBlockchainClient(): TClient;
   estimateGasFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }>;
   getChainId(): Promise<number>;

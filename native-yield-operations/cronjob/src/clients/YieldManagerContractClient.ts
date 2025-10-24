@@ -1,4 +1,4 @@
-import { IContractClientLibrary, ILogger } from "@consensys/linea-shared-utils";
+import { IBlockchainClientAdapter, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
   encodeAbiParameters,
@@ -22,7 +22,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
 
   constructor(
     private readonly logger: ILogger,
-    private readonly contractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>,
+    private readonly contractClientLibrary: IBlockchainClientAdapter<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
     private readonly rebalanceToleranceBps: number,
     private readonly minWithdrawalThresholdEth: bigint,

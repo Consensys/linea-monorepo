@@ -5,7 +5,7 @@ PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
 pnpm --filter @consensys/linea-shared-utils exec tsx scripts/test-ethereum-mainnet-client-library.ts
 
  */
-import { ContractClientLibrary } from "../src/clients/ContractClientLibrary";
+import { ViemBlockchainClientAdapter } from "../src/clients/ViemBlockchainClientAdapter";
 import { ViemWalletSignerClient } from "../src/clients/ViemWalletSignerClient";
 import { WinstonLogger } from "../src/logging/WinstonLogger";
 import { Hex } from "viem";
@@ -24,8 +24,8 @@ async function main() {
   const privateKey = process.env.PRIVATE_KEY as Hex;
 
   const signer = new ViemWalletSignerClient(new WinstonLogger("ViemWalletSignerClient.integration"), privateKey, anvil);
-  const clientLibrary = new ContractClientLibrary(
-    new WinstonLogger("ContractClientLibrary.integration"),
+  const clientLibrary = new ViemBlockchainClientAdapter(
+    new WinstonLogger("ViemBlockchainClientAdapter.integration"),
     rpcUrl,
     anvil,
     signer,
@@ -47,7 +47,7 @@ async function main() {
     const receipt = await clientLibrary.sendSignedTransaction(address, "0x");
     console.log("Receipt:", receipt);
   } catch (err) {
-    console.error("ContractClientLibrary integration script failed:", err);
+    console.error("ViemBlockchainClientAdapter integration script failed:", err);
     process.exitCode = 1;
   }
 }

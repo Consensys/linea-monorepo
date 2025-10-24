@@ -3,8 +3,8 @@ import { NativeYieldCronJobClientConfig } from "./config/NativeYieldCronJobClien
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
 import { OperationModeSelector } from "../../services/operation-mode/OperationModeSelector.js";
 import {
-  IContractClientLibrary,
-  ContractClientLibrary,
+  IBlockchainClientAdapter,
+  ViemBlockchainClientAdapter,
   Web3SignerClient,
   IContractSignerClient,
   IOAuth2TokenClient,
@@ -38,7 +38,7 @@ export class NativeYieldCronJobClient {
   private readonly config: NativeYieldCronJobClientConfig;
   private readonly logger: ILogger;
 
-  private ContractClientLibrary: IContractClientLibrary<PublicClient, TransactionReceipt>;
+  private ViemBlockchainClientAdapter: IBlockchainClientAdapter<PublicClient, TransactionReceipt>;
   private web3SignerClient: IContractSignerClient;
   private yieldManagerContractClient: IYieldManager<TransactionReceipt>;
   private lazyOracleContractClient: ILazyOracle<TransactionReceipt>;
@@ -80,28 +80,28 @@ export class NativeYieldCronJobClient {
           throw new Error(`Unsupported chain ID: ${chainId}`);
       }
     };
-    this.ContractClientLibrary = new ContractClientLibrary(
-      new WinstonLogger(ContractClientLibrary.name, config.loggerOptions),
+    this.ViemBlockchainClientAdapter = new ViemBlockchainClientAdapter(
+      new WinstonLogger(ViemBlockchainClientAdapter.name, config.loggerOptions),
       config.dataSources.l1RpcUrl,
       getChain(config.dataSources.chainId),
       this.web3SignerClient,
     );
     this.yieldManagerContractClient = new YieldManagerContractClient(
       new WinstonLogger(YieldManagerContractClient.name, config.loggerOptions),
-      this.ContractClientLibrary,
+      this.ViemBlockchainClientAdapter,
       config.contractAddresses.yieldManagerAddress,
       config.rebalanceToleranceBps,
       config.minWithdrawalThresholdEth,
     );
     this.lazyOracleContractClient = new LazyOracleContractClient(
       new WinstonLogger(LazyOracleContractClient.name, config.loggerOptions),
-      this.ContractClientLibrary,
+      this.ViemBlockchainClientAdapter,
       config.contractAddresses.lazyOracleAddress,
       config.timing.trigger.maxInactionMs,
     );
     this.lineaRollupYieldExtensionContractClient = new LineaRollupYieldExtensionContractClient(
       new WinstonLogger(LineaRollupYieldExtensionContractClient.name, config.loggerOptions),
-      this.ContractClientLibrary,
+      this.ViemBlockchainClientAdapter,
       config.contractAddresses.lineaRollupContractAddress,
     );
 
