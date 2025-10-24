@@ -16,6 +16,7 @@
 package net.consensys.linea.blockcapture;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.gson.Gson;
@@ -40,10 +41,6 @@ import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 public class BlockCapturer implements ConflationAwareOperationTracer {
-  public static final int MAX_RELATIVE_BLOCK = 256;
-
-  private static final int MAX_BLOCK_ARG_SIZE = 8;
-
   /**
    * The {@link Reaper} will collect all the data that will need to be mimicked to replay the block.
    */
@@ -60,12 +57,14 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
 
   /**
    * Construct a BlockCapturer instance for a specific fork. This is necessary to ensure opcodes are
-   * loaded before hand.
+   * loaded beforehand.
    *
    * @param fork
    */
-  public BlockCapturer(Fork fork) {
-    this.opcodes = OpCodes.load(fork);
+  public BlockCapturer(Fork fork, Map<Long, Hash> historicalBlockHashes) {
+    opcodes = OpCodes.load(fork);
+    for (Map.Entry<Long, Hash> entry : historicalBlockHashes.entrySet())
+      reaper.touchBlockHash(entry.getKey(), entry.getValue());
   }
 
   /**
@@ -89,12 +88,19 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
       BlockHeader blockHeader,
       BlockBody blockBody,
       final Address miningBeneficiary) {
-    this.reaper.enterBlock(blockHeader, blockBody, miningBeneficiary);
+    reaper.enterBlock(blockHeader, blockBody, miningBeneficiary);
+  }
+
+  // used to record the block hash of the last block in the conflation (previous one are already
+  // recorded in the constructor)
+  @Override
+  public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
+    reaper.touchBlockHash(blockHeader.getNumber(), blockHeader.getBlockHash());
   }
 
   @Override
   public void tracePrepareTransaction(WorldView worldView, Transaction transaction) {
-    this.reaper.prepareTransaction(transaction);
+    reaper.prepareTransaction(transaction);
   }
 
   @Override
@@ -107,7 +113,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
       long gasUsed,
       Set<Address> selfDestructs,
       long timeNs) {
-    this.reaper.exitTransaction(world, status, output, logs, gasUsed, selfDestructs);
+    reaper.exitTransaction(world, status, output, logs, gasUsed, selfDestructs);
   }
 
   /**
@@ -125,7 +131,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
       case EXTCODESIZE, EXTCODECOPY, EXTCODEHASH -> {
         if (frame.stackSize() > 0) {
           final Address target = Words.toAddress(frame.getStackItem(0));
-          this.reaper.touchAddress(target);
+          reaper.touchAddress(target);
         }
       }
 
@@ -135,7 +141,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
           final Account account = frame.getWorldUpdater().get(frame.getRecipientAddress());
           final Address address = account.getAddress();
           final UInt256 key = UInt256.fromBytes(frame.getStackItem(0));
-          this.reaper.touchStorage(address, key);
+          reaper.touchStorage(address, key);
         }
       }
 
@@ -145,7 +151,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
           final Account account = frame.getWorldUpdater().get(frame.getRecipientAddress());
           final Address address = account.getAddress();
           final UInt256 key = UInt256.fromBytes(frame.getStackItem(0));
-          this.reaper.touchStorage(address, key);
+          reaper.touchStorage(address, key);
         }
       }
 
@@ -153,14 +159,14 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
         if (frame.stackSize() > 1) {
           final Address target = Words.toAddress(frame.getStackItem(1));
-          this.reaper.touchAddress(target);
+          reaper.touchAddress(target);
         }
       }
 
       case BALANCE -> {
         if (frame.stackSize() > 0) {
           final Address target = Words.toAddress(frame.getStackItem(0));
-          this.reaper.touchAddress(target);
+          reaper.touchAddress(target);
         }
       }
 
@@ -168,7 +174,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
       case CREATE, CREATE2 -> {
         if (frame.stackSize() > 0) {
           final Address target = AddressUtils.getDeploymentAddress(frame, opCode);
-          this.reaper.touchAddress(target);
+          reaper.touchAddress(target);
         }
       }
 
@@ -176,27 +182,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
       case SELFDESTRUCT -> {
         if (frame.stackSize() > 0) {
           final Address target = Words.toAddress(frame.getStackItem(0));
-          this.reaper.touchAddress(target);
-        }
-      }
-
-      case BLOCKHASH -> {
-        if (frame.stackSize() > 0) {
-          // Determine current block number
-          final long currentBlockNumber = frame.getBlockValues().getNumber();
-          final Bytes arg = frame.getStackItem(0).trimLeadingZeros();
-          // Check arguments fits within 8 bytes
-          if (arg.size() <= 8) {
-            // Determine block number requested
-            final long blockNumber = arg.toLong();
-            // Sanity check block within last 256 blocks.
-            if (blockNumber < currentBlockNumber && (currentBlockNumber - blockNumber) <= 256) {
-              // Use enclosing frame to determine hash
-              Hash blockHash = frame.getBlockHashLookup().apply(frame, blockNumber);
-              // Record it was seen
-              this.reaper.touchBlockHash(blockNumber, blockHash);
-            }
-          }
+          reaper.touchAddress(target);
         }
       }
     }
@@ -204,6 +190,6 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
 
   public String toJson() {
     Gson gson = new Gson();
-    return gson.toJson(this.reaper.collapse(this.worldUpdater));
+    return gson.toJson(reaper.collapse(worldUpdater));
   }
 }

@@ -15,6 +15,9 @@
 
 package net.consensys.linea.blockcapture.snapshots;
 
+import static net.consensys.linea.zktracer.Trace.BLOCKHASH_MAX_HISTORY;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +40,21 @@ public record ConflationSnapshot(
     List<StorageSnapshot> storage,
     List<BlockHashSnapshot> blockHashes) {
 
+  public static ConflationSnapshot from(
+      List<BlockSnapshot> blocks,
+      List<AccountSnapshot> accounts,
+      List<StorageSnapshot> storage,
+      Map<Long, Hash> blockHashes) {
+    ArrayList<BlockHashSnapshot> blockHashSnapshots = new ArrayList<>();
+    //
+    for (Map.Entry<Long, Hash> e : blockHashes.entrySet()) {
+      String h = e.getValue().toHexString();
+      blockHashSnapshots.add(new BlockHashSnapshot(e.getKey(), h));
+    }
+    //
+    return new ConflationSnapshot(blocks, accounts, storage, blockHashSnapshots);
+  }
+
   public long firstBlockNumber() {
     if (blocks.isEmpty()) {
       return Long.MAX_VALUE;
@@ -53,18 +71,33 @@ public record ConflationSnapshot(
     return blocks.getLast().header().number();
   }
 
+  public Map<Long, Hash> historicalBlockHashes() {
+    final long firstBlockToRetrieve = Math.max(0, firstBlockNumber() - BLOCKHASH_MAX_HISTORY);
+    final long lastBlockToRetrieve = Math.max(0, lastBlockNumber() - 1);
+    final HashMap<Long, Hash> hashes = new HashMap<>();
+    // Initialise map of historical hashes
+    for (BlockHashSnapshot blkHash : blockHashes) {
+      long key = blkHash.blockNumber();
+      if (key >= firstBlockToRetrieve && key <= lastBlockToRetrieve) {
+        hashes.put(key, Hash.fromHexString(blkHash.blockHash()));
+      }
+    }
+    // Done
+    return hashes;
+  }
+
   /**
    * Construct a block hash map for any block hashes embedded in this conflation.
    *
    * @return
    */
   public BlockHashLookup toBlockHashLookup() {
-    BlockHashMap map = new BlockHashMap();
+    final BlockHashMap map = new BlockHashMap();
     // Initialise block hashes.  This can be null for replays which pre-date support for block hash
     // capture and, hence, we must support this case (at least for now).
-    if (this.blockHashes() != null) {
+    if (blockHashes() != null) {
       // Initialise block hash cache
-      for (BlockHashSnapshot h : this.blockHashes()) {
+      for (BlockHashSnapshot h : blockHashes) {
         Hash blockHash = Hash.fromHexString(h.blockHash());
         map.blockHashCache.put(h.blockNumber(), blockHash);
       }

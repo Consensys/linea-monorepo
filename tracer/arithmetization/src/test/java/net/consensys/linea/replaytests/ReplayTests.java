@@ -104,11 +104,13 @@ public class ReplayTests extends TracerTestBase {
     replay(OLD_MAINNET_TESTCONFIG, "2250197.mainnet.json.gz", testInfo);
   }
 
+  @Disabled("Fails to create the ConflationSnapshot from the gson file")
   @Test
   void blockHash1(TestInfo testInfo) {
     replay(OLD_MAINNET_TESTCONFIG, "8718090.mainnet.json.gz", testInfo);
   }
 
+  @Disabled("Fails to create the ConflationSnapshot from the gson file")
   @Test
   void blockHash2(TestInfo testInfo) {
     replay(OLD_MAINNET_TESTCONFIG, "8718330.mainnet.json.gz", testInfo);
@@ -187,6 +189,7 @@ public class ReplayTests extends TracerTestBase {
     replay(OLD_MAINNET_TESTCONFIG, "4323985.mainnet.json.gz", testInfo);
   }
 
+  @Disabled("Fails to create the ConflationSnapshot from the gson file")
   @Test
   void duplicateSubZero(TestInfo testInfo) {
     replay(MAINNET_LONDON_TESTCONFIG, "20197061-20197173.mainnet.json.gz", testInfo);

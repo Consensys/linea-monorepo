@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer;
 
 import static net.consensys.linea.zktracer.Fork.*;
 import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.Trace.BLOCKHASH_MAX_HISTORY;
 import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECPAIRING_DATA_MIN;
 import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_CALL;
 import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_CREATE;
@@ -368,7 +369,10 @@ public class ZkCounter implements LineCountingTracer {
   }
 
   @Override
-  public void traceStartConflation(long numBlocksInConflation) {}
+  public void traceStartConflation(long numBlocksInConflation) {
+    blockHash.updateTally(
+        (int) ((BLOCKHASH_MAX_HISTORY + numBlocksInConflation) * NB_ROWS_BLOCKHASH));
+  }
 
   @Override
   public void traceEndConflation(WorldView state) {}
@@ -776,14 +780,14 @@ public class ZkCounter implements LineCountingTracer {
   /** When called, erase all tracing related to the bundle of all transactions since the last. */
   @Override
   public void popTransactionBundle() {
-    for (Module m : moduleToCount) {
+    for (Module m : checkedModules()) {
       m.popTransactionBundle();
     }
   }
 
   @Override
   public void commitTransactionBundle() {
-    for (Module m : moduleToCount) {
+    for (Module m : checkedModules()) {
       m.commitTransactionBundle();
     }
   }
@@ -792,8 +796,11 @@ public class ZkCounter implements LineCountingTracer {
   public Map<String, Integer> getModulesLineCount() {
     final HashMap<String, Integer> modulesLineCount = HashMap.newHashMap(moduleToCount.size());
 
-    for (Module m : moduleToCount) {
+    for (Module m : checkedModules()) {
       modulesLineCount.put(m.moduleKey().toString(), m.lineCount() + m.spillage(trace));
+    }
+    for (Module m : uncheckedModules()) {
+      modulesLineCount.put(m.moduleKey().toString(), 0);
     }
     return modulesLineCount;
   }

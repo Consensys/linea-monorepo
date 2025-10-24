@@ -19,6 +19,8 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSF;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.SYSI;
 
+import java.util.Map;
+
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
@@ -46,13 +48,14 @@ import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.cancun.CancunTxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class CancunHub extends ShanghaiHub {
-  public CancunHub(ChainConfig chain) {
-    super(chain);
+  public CancunHub(ChainConfig chain, Map<Long, Hash> historicalBlockHashes) {
+    super(chain, historicalBlockHashes);
   }
 
   @Override

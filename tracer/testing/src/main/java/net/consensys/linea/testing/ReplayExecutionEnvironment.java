@@ -41,6 +41,7 @@ import net.consensys.linea.blockcapture.snapshots.TransactionSnapshot;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ConflationAwareOperationTracer;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.commons.io.FileUtils;
@@ -113,21 +114,7 @@ public class ReplayExecutionEnvironment {
     // assertThat(CORSET_VALIDATOR.validate(outputPath).isValid()).isTrue();
   }
 
-  /**
-   * Given a file containing the JSON serialization of a {@link ConflationSnapshot}, loads it,
-   * updates this's state to mirror it, and replays it.
-   *
-   * @param replayFile the file containing the conflation
-   */
-  public void replay(ChainConfig chain, TestInfo testInfo, final Reader replayFile) {
-    Gson gson = new Gson();
-    ConflationSnapshot conflation;
-    try {
-      conflation = gson.fromJson(replayFile, ConflationSnapshot.class);
-    } catch (Exception e) {
-      log.error(e.getMessage());
-      return;
-    }
+  public void replay(ChainConfig chain, TestInfo testInfo, ConflationSnapshot conflation) {
     if (runWithBesuNode || System.getenv().containsKey("RUN_WITH_BESU_NODE")) {
       executeOnBesu(chain, conflation, this.useCoinbaseAddressFromBlockHeader, this.filename);
       return;
@@ -155,17 +142,6 @@ public class ReplayExecutionEnvironment {
     this.checkTracer(inputFilePath, conflation.firstBlockNumber(), conflation.lastBlockNumber());
   }
 
-  public void replay(ChainConfig chain, TestInfo testInfo, ConflationSnapshot conflation) {
-    this.executeFrom(chain, conflation, systemContractDeployedPriorToConflation);
-    ExecutionEnvironment.checkTracer(
-        zkTracer,
-        new CorsetValidator(chain),
-        Optional.of(log),
-        conflation.firstBlockNumber(),
-        conflation.lastBlockNumber(),
-        testInfo);
-  }
-
   /**
    * Loads the states and the conflation defined in a {@link ConflationSnapshot}, mimick the
    * accounts, storage and blocks state as it was on the blockchain before the conflation played
@@ -184,7 +160,7 @@ public class ReplayExecutionEnvironment {
     if (debugBlockCapturer) {
       // Initialise world state from conflation
       MutableWorldState world = initWorld(conflation);
-      capturer = new BlockCapturer(chain.fork);
+      capturer = new BlockCapturer(chain.fork, new HashMap<>());
       capturer.setWorld(world.updater());
       // Sequence zktracer and capturer
       tracer = ConflationAwareOperationTracer.sequence(tracer, capturer);
@@ -272,7 +248,6 @@ public class ReplayExecutionEnvironment {
     if (systemContractDeployedPriorToTheConflation) {
       addSystemAccountsIfRequired(world.updater(), chain.fork);
     }
-
     world.persist(null);
     // Construct the processor
     final ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(chain.id, chain.fork);
@@ -288,10 +263,12 @@ public class ReplayExecutionEnvironment {
           new BlockBody(
               blockSnapshot.txs().stream().map(TransactionSnapshot::toTransaction).toList(),
               new ArrayList<>());
+      // Determine mining beneficiay
       final Address miningBeneficiary =
           useCoinbaseAddressFromBlockHeader
               ? header.getCoinbase()
-              : CliqueHelpers.getProposerOfBlock(header);
+              : determineMiningBeneficiary(header, chain.fork);
+
       tracer.traceStartBlock(world.updater(), header, body, miningBeneficiary);
       runSystemInitialTransactions(protocolSpec, chain.fork, world, header, tracer);
 
@@ -319,6 +296,15 @@ public class ReplayExecutionEnvironment {
 
   public Hub getHub() {
     return zkTracer.getHub();
+  }
+
+  private static Address determineMiningBeneficiary(BlockHeader header, Fork fork) {
+    // Clique was only used on forks prior to Shanghai
+    if (Fork.isPostShanghai(fork)) {
+      return header.getCoinbase();
+    } else {
+      return CliqueHelpers.getProposerOfBlock(header);
+    }
   }
 
   /**

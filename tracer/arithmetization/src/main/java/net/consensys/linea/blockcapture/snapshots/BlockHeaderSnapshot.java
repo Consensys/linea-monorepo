@@ -46,7 +46,7 @@ public record BlockHeaderSnapshot(
     String mixHashOrPrevRandao,
     long nonce,
     Optional<String> baseFee,
-    Bytes32 parentBeaconBlockRoot) {
+    Optional<String> parentBeaconBlockRoot) {
   public static BlockHeaderSnapshot from(BlockHeader header) {
     return new BlockHeaderSnapshot(
         header.getParentHash().toHexString(),
@@ -65,7 +65,7 @@ public record BlockHeaderSnapshot(
         header.getMixHashOrPrevRandao().toHexString(),
         header.getNonce(),
         header.getBaseFee().map(Quantity::toHexString),
-        header.getParentBeaconBlockRoot().orElse(null));
+        header.getParentBeaconBlockRoot().map(Bytes::toHexString));
   }
 
   public BlockHeader toBlockHeader() {
@@ -87,11 +87,15 @@ public record BlockHeaderSnapshot(
             .mixHash(Hash.fromHexString(this.mixHashOrPrevRandao))
             .prevRandao(Bytes32.fromHexString(this.mixHashOrPrevRandao))
             .nonce(this.nonce)
-            .blockHeaderFunctions(new CliqueBlockHeaderFunctions())
-            .parentBeaconBlockRoot(parentBeaconBlockRoot);
+            .blockHeaderFunctions(new CliqueBlockHeaderFunctions());
 
     this.baseFee.ifPresent(baseFee -> builder.baseFee(Wei.fromHexString(baseFee)));
-
+    // Following null check appears to be necessary for older replays.
+    if (this.parentBeaconBlockRoot != null) {
+      this.parentBeaconBlockRoot.ifPresent(
+          root -> builder.parentBeaconBlockRoot(Bytes32.fromHexString(root)));
+    }
+    //
     return builder.buildBlockHeader();
   }
 }

@@ -32,6 +32,7 @@ import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
+import org.hyperledger.besu.ethereum.core.BlockBody;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.junit.jupiter.api.Test;
@@ -110,10 +111,11 @@ public class LineCountingTracerTest extends TracerTestBase {
             .baseFee(DEFAULT_BASE_FEE)
             .parentBeaconBlockRoot(DEFAULT_BEACON_ROOT)
             .buildBlockHeader();
+    final BlockBody blockBody = BlockBody.empty();
 
     final ZkTracer tracer = new ZkTracer(chainConfig);
     tracer.traceStartConflation(1);
-    tracer.traceStartBlock(world, blockHeader, DEFAULT_COINBASE_ADDRESS);
+    tracer.traceStartBlock(world, blockHeader, blockBody, DEFAULT_COINBASE_ADDRESS);
     final Map<String, Integer> sizeBeforeTracer = tracer.getModulesLineCount();
     tracer.popTransactionBundle();
     final Map<String, Integer> sizeAfterTracer = tracer.getModulesLineCount();
@@ -125,14 +127,19 @@ public class LineCountingTracerTest extends TracerTestBase {
 
     final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration);
     counter.traceStartConflation(1);
-    counter.traceStartBlock(world, blockHeader, DEFAULT_COINBASE_ADDRESS);
+    counter.traceStartBlock(world, blockHeader, blockBody, DEFAULT_COINBASE_ADDRESS);
     final Map<String, Integer> sizeBeforeCounter = counter.getModulesLineCount();
     counter.popTransactionBundle();
     final Map<String, Integer> sizeAfterCounter = counter.getModulesLineCount();
     for (String module : sizeBeforeCounter.keySet()) {
       checkArgument(
           Objects.equals(sizeAfterCounter.get(module), sizeBeforeCounter.get(module)),
-          "Counter: some block stuff has been removed in Module " + module);
+          "Counter: some block stuff has been removed in Module "
+              + module
+              + "line count is dropping from "
+              + sizeBeforeCounter.get(module)
+              + " to "
+              + sizeAfterCounter.get(module));
     }
   }
 }

@@ -67,6 +67,7 @@ public class ToyExecutionEnvironmentV2 {
   @Builder.Default private final Boolean runWithBesuNode = false;
   @Builder.Default private String customBesuNodeGenesis = null;
   @Builder.Default private Boolean oneTxPerBlockOnBesuNode = false;
+  @Builder.Default private final long firstBlockNumber = DEFAULT_BLOCK_NUMBER;
 
   @Singular private final List<Transaction> transactions;
 
@@ -222,7 +223,7 @@ public class ToyExecutionEnvironmentV2 {
         ReferenceTestWorldState.create(accountMockMap, protocolSpec.getEvm().getEvmConfiguration());
     final BlockHeader blockHeader =
         ExecutionEnvironment.getLineaBlockHeaderBuilder(Optional.empty())
-            .number(DEFAULT_BLOCK_NUMBER)
+            .number(firstBlockNumber)
             .coinbase(coinbase)
             .timestamp(DEFAULT_TIME_STAMP)
             .parentHash(DEFAULT_HASH)
