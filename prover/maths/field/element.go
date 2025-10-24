@@ -1,6 +1,8 @@
 package field
 
 import (
+	"fmt"
+	"io"
 	"math/big"
 	"math/bits"
 	"math/rand/v2"
@@ -162,4 +164,22 @@ func RandomOctuplet() Octuplet {
 		oct[i] = RandomElement()
 	}
 	return oct
+}
+
+func PseudoRandOctuplet(rng *rand.Rand) Octuplet {
+	var oct Octuplet
+	for i := range oct {
+		oct[i] = PseudoRand(rng)
+	}
+	return oct
+}
+
+func WriteOctupletTo(w io.Writer, octuplet Octuplet) error {
+	for i := range octuplet {
+		f := octuplet[i].Bytes()
+		if _, err := w.Write(f[:]); err != nil {
+			return fmt.Errorf("error writing field octuplet, could not write position %v: %w", i, err)
+		}
+	}
+	return nil
 }
