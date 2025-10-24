@@ -40,12 +40,14 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
 
   async latestReportData(): Promise<LazyOracleReportData> {
     const resp = await this.contract.read.latestReportData();
-    return {
+    const returnVal = {
       timestamp: resp[0],
       refSlot: resp[1],
       treeRoot: resp[2],
       reportCid: resp[3],
-    };
+    }
+    this.logger.debug("latestReportData", returnVal);
+    return returnVal;
   }
 
   async updateVaultData(params: UpdateVaultDataParams): Promise<TransactionReceipt> {
@@ -103,7 +105,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
         resolvePromise();
       },
       onError: (err) => {
-        this.logger.error("waitForVaultsReportDataUpdatedEvent error", [err]);
+        this.logger.error("waitForVaultsReportDataUpdatedEvent error", {err);
       },
     });
 

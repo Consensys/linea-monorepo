@@ -34,7 +34,7 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
 
     this.latestSubmitVaultReportParams = params;
 
-    this.logger.info(`latestSubmitVaultReportParams=${JSON.stringify(params, bigintReplacer, 2)}`);
+    this.logger.info(`getLatestSubmitVaultReportParams set latestSubmitVaultReportParams=${JSON.stringify(params, bigintReplacer, 2)}`);
     return params;
   }
 

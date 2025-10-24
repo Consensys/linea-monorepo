@@ -16,8 +16,8 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   ) {}
 
   async submitWithdrawalRequestsToFulfilAmount(amountWei: bigint): Promise<void> {
-    this.logger.info(
-      `submitWithdrawalRequestsToFulfilAmount: amountWei=${amountWei.toString()}; validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
+    this.logger.debug(
+      `submitWithdrawalRequestsToFulfilAmount started: amountWei=${amountWei.toString()}; validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
     );
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
     const totalPendingPartialWithdrawalsWei =
@@ -27,8 +27,8 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   }
 
   async submitMaxAvailableWithdrawalRequests(): Promise<void> {
-    this.logger.info(
-      `submitMaxAvailableWithdrawalRequests: validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
+    this.logger.debug(
+      `submitMaxAvailableWithdrawalRequests started`,
     );
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
     const remainingWithdrawals = await this._submitPartialWithdrawalRequests(sortedValidatorList, maxUint256);
@@ -40,6 +40,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     sortedValidatorList: ValidatorBalanceWithPendingWithdrawal[],
     amountWei: bigint,
   ): Promise<number> {
+    this.logger.debug(`_submitPartialWithdrawalRequests started amountWei=${amountWei}`, sortedValidatorList)
     const withdrawalRequests: WithdrawalRequests = {
       pubkeys: [],
       amountsGwei: [],
@@ -66,13 +67,16 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     await this.yieldManagerContractClient.unstake(this.yieldProvider, withdrawalRequests);
 
     // Return # of remaining shots
-    return this.maxValidatorWithdrawalRequestsPerTransaction - withdrawalRequests.pubkeys.length;
+    const remainingWithdrawals = this.maxValidatorWithdrawalRequestsPerTransaction - withdrawalRequests.pubkeys.length;
+    this.logger.debug(`_submitPartialWithdrawalRequests remainingWithdrawal=${remainingWithdrawals}`)
+    return remainingWithdrawals;
   }
 
   private async _submitValidatorExits(
     sortedValidatorList: ValidatorBalanceWithPendingWithdrawal[],
     remainingWithdrawals: number,
   ): Promise<void> {
+    this.logger.debug(`_submitValidatorExits started remainingWithdrawals=${remainingWithdrawals}`, sortedValidatorList)
     const withdrawalRequests: WithdrawalRequests = {
       pubkeys: [],
       amountsGwei: [],
