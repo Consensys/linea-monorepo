@@ -125,14 +125,10 @@ public enum Fork {
    *     toBlock, else throw
    */
   public static Fork getForkFromBesuBlockchainService(
-      ServiceManager context, long fromBlock, long toBlock) {
-    final HardforkId forkStart =
-        BesuServiceProvider.getBesuService(context, BlockchainService.class)
-            .getHardforkId(fromBlock);
+      BlockchainService blockchainService, long fromBlock, long toBlock) {
+    final HardforkId forkStart = blockchainService.getHardforkId(fromBlock);
     if (fromBlock != toBlock) {
-      final HardforkId forkEnd =
-          BesuServiceProvider.getBesuService(context, BlockchainService.class)
-              .getHardforkId(toBlock);
+      final HardforkId forkEnd = blockchainService.getHardforkId(toBlock);
       // Do not accept conflations with different fork ...
       if (!forkStart.equals(forkEnd)) {
         throw new IllegalStateException(
@@ -147,6 +143,12 @@ public enum Fork {
       }
     }
     return fromMainnetHardforkIdToTracerFork((MainnetHardforkId) forkStart);
+  }
+
+  public static Fork getForkFromBesuBlockchainService(
+      ServiceManager context, long blockNumber, long toBlock) {
+    return getForkFromBesuBlockchainService(
+        BesuServiceProvider.getBesuService(context, BlockchainService.class), blockNumber, toBlock);
   }
 
   /**

@@ -78,7 +78,6 @@ public class ToyWorld implements WorldUpdater {
     // capture and,
     // hence, we must support this case (at least for now).
     if (conflation.blockHashes() != null) {
-      // Initialise block hash cache
       for (BlockHashSnapshot h : conflation.blockHashes()) {
         Hash blockHash = Hash.fromHexString(h.blockHash());
         world.blockHashCache.put(h.blockNumber(), blockHash);

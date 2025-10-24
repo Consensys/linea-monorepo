@@ -39,6 +39,7 @@ import net.consensys.linea.zktracer.types.FiniteList;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
@@ -65,7 +66,23 @@ public class ZkTracer implements LineCountingTracer {
 
   /**
    * Construct a ZkTracer for a given bridge configuration and chainId. This is used, for example,
-   * by the sequencer for tracing in production, such as on mainnet and/or sepolia.
+   * by the coordinator for tracing in production, such as on mainnet and/or sepolia.
+   *
+   * @param bridgeConfiguration Configuration for the L1L2 bridge.
+   * @param chainId Identifies the chain being traced.
+   */
+  public ZkTracer(
+      final Fork fork,
+      final LineaL1L2BridgeSharedConfiguration bridgeConfiguration,
+      BigInteger chainId,
+      Map<Long, Hash> historicalBlockHashes) {
+    this(FORK_LINEA_CHAIN(fork, bridgeConfiguration, chainId), historicalBlockHashes);
+  }
+
+  /**
+   * Construct a ZkTracer for a given bridge configuration and chainId, without a BlockchainService.
+   * This is used, for example, by the sequencer for line counting in production, such as on mainnet
+   * and/or sepolia, or in tests.
    *
    * @param bridgeConfiguration Configuration for the L1L2 bridge.
    * @param chainId Identifies the chain being traced.
@@ -77,22 +94,30 @@ public class ZkTracer implements LineCountingTracer {
     this(FORK_LINEA_CHAIN(fork, bridgeConfiguration, chainId));
   }
 
+  public ZkTracer(ChainConfig chain) {
+    this(chain, new HashMap<>());
+  }
+
   /**
    * Construct a ZkTracer with a given chain configuration, which could either for a production
    * environment or a test environment.
    *
    * @param chain
    */
-  public ZkTracer(ChainConfig chain) {
+  public ZkTracer(ChainConfig chain, Map<Long, Hash> historicalBlockHashes) {
+    if (historicalBlockHashes.isEmpty()) {
+      log.info(
+          "[ZkTracer] No historical block hashes provided, assuming line counting only, testing, or tracing conflation of only genesis block. Tracing will fail.");
+    }
     this.chain = chain;
     this.hub =
         switch (chain.fork) {
-          case LONDON -> new LondonHub(chain);
-          case PARIS -> new ParisHub(chain);
-          case SHANGHAI -> new ShanghaiHub(chain);
-          case CANCUN -> new CancunHub(chain);
-          case PRAGUE -> new PragueHub(chain);
-          case OSAKA -> new OsakaHub(chain);
+          case LONDON -> new LondonHub(chain, historicalBlockHashes);
+          case PARIS -> new ParisHub(chain, historicalBlockHashes);
+          case SHANGHAI -> new ShanghaiHub(chain, historicalBlockHashes);
+          case CANCUN -> new CancunHub(chain, historicalBlockHashes);
+          case PRAGUE -> new PragueHub(chain, historicalBlockHashes);
+          case OSAKA -> new OsakaHub(chain, historicalBlockHashes);
           default -> throw new IllegalArgumentException("Unknown fork: " + chain.fork);
         };
     this.trace = getTraceFromFork(chain.fork);

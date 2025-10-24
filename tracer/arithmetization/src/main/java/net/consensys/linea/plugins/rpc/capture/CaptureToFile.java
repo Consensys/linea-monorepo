@@ -16,12 +16,18 @@
 package net.consensys.linea.plugins.rpc.capture;
 
 import static net.consensys.linea.zktracer.Fork.getForkFromBesuBlockchainService;
+import static net.consensys.linea.zktracer.module.blockhash.Blockhash.retrieveHistoricalBlockHashes;
+
+import java.util.Map;
 
 import com.google.common.base.Stopwatch;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.BlockCapturer;
+import net.consensys.linea.plugins.BesuServiceProvider;
 import net.consensys.linea.zktracer.Fork;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.ServiceManager;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -58,14 +64,19 @@ public class CaptureToFile {
       this.traceService = getTraceService();
     }
 
-    CaptureParams params = CaptureParams.createTraceParams(request.getParams());
+    final CaptureParams params = CaptureParams.createTraceParams(request.getParams());
     final long fromBlock = params.fromBlock();
     final long toBlock = params.toBlock();
 
-    // Retrieve fork from Besu plugin API with block number
-    final Fork fork = getForkFromBesuBlockchainService(besuContext, fromBlock, toBlock);
+    final BlockchainService blockchainService =
+        BesuServiceProvider.getBesuService(besuContext, BlockchainService.class);
 
-    final BlockCapturer tracer = new BlockCapturer(fork);
+    // Retrieve fork from Besu plugin API with block number
+    final Fork fork = getForkFromBesuBlockchainService(blockchainService, fromBlock, toBlock);
+    final Map<Long, Hash> historicalBlockHashes =
+        retrieveHistoricalBlockHashes(blockchainService, fromBlock, toBlock);
+
+    final BlockCapturer tracer = new BlockCapturer(fork, historicalBlockHashes);
 
     Stopwatch sw = Stopwatch.createStarted();
     traceService.trace(

@@ -15,14 +15,12 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.reporting.TracerTestBase.chainConfig;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_BLOCK_NUMBER;
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import lombok.Builder;
 import lombok.Singular;
@@ -32,6 +30,7 @@ import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.core.*;
 import org.junit.jupiter.api.TestInfo;
 
@@ -46,7 +45,7 @@ public class MultiBlockExecutionEnvironment {
   private final List<BlockSnapshot> blocks;
 
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
-  private final ZkTracer tracer;
+  private ZkTracer tracer;
 
   public final ChainConfig testsChain;
   public final TestInfo testInfo;
@@ -64,10 +63,7 @@ public class MultiBlockExecutionEnvironment {
 
   public static MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder(
       ChainConfig chainConfig, TestInfo testInfo) {
-    return new MultiBlockExecutionEnvironmentBuilder()
-        .tracer(new ZkTracer(chainConfig))
-        .testsChain(chainConfig)
-        .testInfo(testInfo);
+    return new MultiBlockExecutionEnvironmentBuilder().testsChain(chainConfig).testInfo(testInfo);
   }
 
   public static MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder(
@@ -76,7 +72,6 @@ public class MultiBlockExecutionEnvironment {
       boolean systemContractDeployedPriorConflation,
       long firstBlockNumber) {
     return new MultiBlockExecutionEnvironmentBuilder()
-        .tracer(new ZkTracer(chainConfig))
         .testsChain(chainConfig)
         .testInfo(testInfo)
         .systemContractDeployedPriorToConflation(systemContractDeployedPriorConflation)
@@ -93,12 +88,12 @@ public class MultiBlockExecutionEnvironment {
 
     public MultiBlockExecutionEnvironmentBuilder addBlock(
         List<Transaction> transactions, long gasLimit) {
-      final boolean firstBlock = this.blocks.isEmpty();
+      final boolean firstBlock = blocks.isEmpty();
       final BlockHeaderBuilder blockHeaderBuilder =
           firstBlock
               ? ExecutionEnvironment.getLineaBlockHeaderBuilder(Optional.empty())
               : ExecutionEnvironment.getLineaBlockHeaderBuilder(
-                  Optional.of(this.blocks.getLast().header().toBlockHeader()));
+                  Optional.of(blocks.getLast().header().toBlockHeader()));
       blockHeaderBuilder.coinbase(ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS);
       blockHeaderBuilder.gasLimit(gasLimit);
       blockHeaderBuilder.number(startingBlockNumber$value + blocks.size());
@@ -123,13 +118,18 @@ public class MultiBlockExecutionEnvironment {
   }
 
   public void run() {
+    final ConflationSnapshot conflationSnapshot = buildConflationSnapshot();
+    final Map<Long, Hash> historicalBlockhashes = conflationSnapshot.historicalBlockHashes();
+    // Remove the last block number as it's not part of the historical blockhashes
+    historicalBlockhashes.remove(conflationSnapshot.lastBlockNumber());
+    tracer = new ZkTracer(chainConfig, historicalBlockhashes);
     ReplayExecutionEnvironment.builder()
         .zkTracer(tracer)
         .useCoinbaseAddressFromBlockHeader(true)
-        .transactionProcessingResultValidator(this.transactionProcessingResultValidator)
+        .transactionProcessingResultValidator(transactionProcessingResultValidator)
         .systemContractDeployedPriorToConflation(systemContractDeployedPriorToConflation)
         .build()
-        .replay(testsChain, testInfo, this.buildConflationSnapshot());
+        .replay(testsChain, testInfo, conflationSnapshot);
   }
 
   public Hub getHub() {
@@ -137,7 +137,7 @@ public class MultiBlockExecutionEnvironment {
   }
 
   private ConflationSnapshot buildConflationSnapshot() {
-    List<AccountSnapshot> accountSnapshots =
+    final List<AccountSnapshot> accountSnapshots =
         accounts.stream()
             .map(
                 toyAccount ->
@@ -148,7 +148,7 @@ public class MultiBlockExecutionEnvironment {
                         toyAccount.getCode().toHexString()))
             .toList();
 
-    List<StorageSnapshot> storageSnapshots =
+    final List<StorageSnapshot> storageSnapshots =
         accounts.stream()
             .flatMap(
                 account ->
@@ -161,16 +161,12 @@ public class MultiBlockExecutionEnvironment {
                                     storageEntry.getValue().toHexString())))
             .toList();
 
-    List<BlockHashSnapshot> blockHashSnapshots =
-        blocks.stream()
-            .map(
-                blockSnapshot -> {
-                  BlockHeader blockHeader = blockSnapshot.header().toBlockHeader();
-                  return BlockHashSnapshot.of(blockHeader.getNumber(), blockHeader.getBlockHash());
-                })
-            .toList();
+    final Map<Long, Hash> blockHashSnapshots = new HashMap<>(blocks.size());
+    for (BlockSnapshot block : blocks) {
+      blockHashSnapshots.put(
+          block.header().number(), block.header().toBlockHeader().getBlockHash());
+    }
 
-    return new ConflationSnapshot(
-        this.blocks, accountSnapshots, storageSnapshots, blockHashSnapshots);
+    return ConflationSnapshot.from(blocks, accountSnapshots, storageSnapshots, blockHashSnapshots);
   }
 }

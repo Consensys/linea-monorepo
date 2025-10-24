@@ -27,8 +27,7 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_WARM;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.USER;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
-import static net.consensys.linea.zktracer.opcode.OpCode.RETURN;
-import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
+import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
 
@@ -119,6 +118,7 @@ import net.consensys.linea.zktracer.types.MemoryRange;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.AccountState;
@@ -203,9 +203,10 @@ public abstract class Hub implements Module {
 
   // stateless modules
   private final Wcp wcp = new Wcp();
+
   private final Add add = new Add();
   private final Bin bin = new Bin();
-  private final Blockhash blockhash = new Blockhash(this, wcp);
+  private final Blockhash blockhash;
   private final Euc euc = new Euc(wcp);
   private final Ext ext = new Ext();
   private final Gas gas = new Gas();
@@ -426,15 +427,14 @@ public abstract class Hub implements Module {
     return Stream.concat(realModule().stream(), getTracelessModules().stream()).toList();
   }
 
-  public Hub(final ChainConfig chain) {
+  public Hub(final ChainConfig chain, Map<Long, Hash> historicalBlockHashes) {
     fork = chain.fork;
     gasCalculator = getGasCalculatorFromFork(fork);
     opCodes = OpCodes.load(fork);
     gasProjector = new GasProjector(fork, gasCalculator);
-    checkState(chain.id.signum() >= 0, "Hub constructor: chain id must be nonnegative");
-    Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
+    checkState(chain.id.signum() >= 0, "Hub constructor: chain id must be non-negative");
+    final Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
     final Bytes l2l1Topic = chain.bridgeConfiguration.topic();
-    //
     if (l2l1ContractAddress.equals(TEST_DEFAULT.contract())) {
       log.info("WARN: Using default testing L2L1 contract address");
     }
@@ -450,6 +450,7 @@ public abstract class Hub implements Module {
     blockdata = setBlockData(this, wcp, euc, chain);
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
+    blockhash = new Blockhash(this, wcp, historicalBlockHashes);
 
     refTableModules =
         Stream.of(setBlsRt(), setInstructionDecoder(), setPower())

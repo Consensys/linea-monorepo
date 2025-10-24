@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Hash;
 
 @Accessors(fluent = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
@@ -37,7 +38,7 @@ public class BlockhashOperation extends ModuleOperation {
   @Getter @EqualsAndHashCode.Include private final short relBlock;
   @Getter @EqualsAndHashCode.Include private final Bytes32 blockhashArg;
   private final long absBlock;
-  @Getter private final Bytes32 blockhashRes;
+  @Getter private final Hash blockhashRes;
   private final Wcp wcp;
 
   private final Bytes[] exoArg1Hi = new Bytes[nROWS_PRPRC];
@@ -51,7 +52,7 @@ public class BlockhashOperation extends ModuleOperation {
       final short relBlock,
       final long absBlock,
       final Bytes32 blockhashArg,
-      final Bytes32 blockhashRes,
+      final Hash blockhashRes,
       final Wcp wcp) {
     this.relBlock = relBlock;
     this.absBlock = absBlock;

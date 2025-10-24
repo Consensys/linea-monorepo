@@ -16,10 +16,12 @@
 package net.consensys.linea.plugins.rpc.tracegeneration;
 
 import static net.consensys.linea.zktracer.Fork.getForkFromBesuBlockchainService;
+import static net.consensys.linea.zktracer.module.blockhash.Blockhash.retrieveHistoricalBlockHashes;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Optional;
 
 import com.google.common.base.Stopwatch;
@@ -32,6 +34,7 @@ import net.consensys.linea.tracewriter.TraceWriter;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
@@ -85,7 +88,7 @@ public class GenerateConflatedTracesV2 {
   }
 
   private TraceFile generateTraceFile(PluginRpcRequest request) {
-    Stopwatch sw = Stopwatch.createStarted();
+    final Stopwatch sw = Stopwatch.createStarted();
 
     this.traceService =
         Optional.ofNullable(traceService).orElse(BesuServiceProvider.getTraceService(besuContext));
@@ -94,7 +97,7 @@ public class GenerateConflatedTracesV2 {
 
     Validator.validatePluginRpcRequestParams(rawParams);
 
-    TraceRequestParams params =
+    final TraceRequestParams params =
         CONVERTER.fromJson(CONVERTER.toJson(rawParams[0]), TraceRequestParams.class);
 
     params.validate();
@@ -112,16 +115,20 @@ public class GenerateConflatedTracesV2 {
     if (cachedTraceFileAvailable(path)) {
       log.info("[TRACING] cached trace for {}-{} detected as {}", fromBlock, toBlock, path);
     } else {
+      final BlockchainService blockchainService =
+          BesuServiceProvider.getBesuService(besuContext, BlockchainService.class);
       // Retrieve fork from Besu plugin API with block number
-      final Fork fork = getForkFromBesuBlockchainService(besuContext, fromBlock, toBlock);
-
+      final Fork fork = getForkFromBesuBlockchainService(blockchainService, fromBlock, toBlock);
+      final Map<Long, Hash> historicalBlockHashes =
+          retrieveHistoricalBlockHashes(blockchainService, fromBlock, toBlock);
       final ZkTracer tracer =
           new ZkTracer(
               fork,
               l1L2BridgeSharedConfiguration,
-              BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
+              blockchainService
                   .getChainId()
-                  .orElseThrow());
+                  .orElseThrow(() -> new IllegalStateException("ChainId must be provided")),
+              historicalBlockHashes);
 
       traceService.trace(
           fromBlock,

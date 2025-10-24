@@ -35,6 +35,7 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public class EIP2935HistoricalHash extends TraceSection {
@@ -51,6 +52,11 @@ public class EIP2935HistoricalHash extends TraceSection {
     super(hub, NB_ROWS_HUB_SYSI_EIP2935);
     final long blockNumber = blockHeader.getNumber();
     final boolean currentBlockIsGenesis = blockNumber == 0;
+    // Note: this is supposed to be useless in prod, as BLOCKHASH must have already loaded the
+    // historical blockhashes
+    if (!currentBlockIsGenesis) {
+      hub.blockhash().callBlockhashForParent((BlockHeader) blockHeader);
+    }
     final long previousBlockNumber = currentBlockIsGenesis ? 0 : blockNumber - 1;
     final short previousBlockNumberMod8191 = (short) (previousBlockNumber % HISTORY_SERVE_WINDOW);
     final AccountSnapshot blockhashHistoryAccount =
