@@ -17,6 +17,7 @@ import io.vertx.micrometer.backends.BackendRegistries
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
+import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
@@ -103,19 +104,19 @@ class MaruAppFactory {
   ): MaruApp {
     log.info("configs={}", config)
     log.info("beaconGenesisConfig={}", beaconGenesisConfig)
+    config.persistence.dataPath.createDirectories()
     val privateKey = getOrGeneratePrivateKey(config.persistence.privateKeyPath)
-    val vertx =
-      VertxFactory.createVertx(
-        jvmMetricsEnabled = config.observability.jvmMetricsEnabled,
-        prometheusMetricsEnabled = config.observability.prometheusMetricsEnabled,
-      )
-
     val nodeId = PeerId.fromPubKey(unmarshalPrivateKey(privateKey).publicKey())
     val metricsFacade =
       MicrometerMetricsFacade(
         registry = getMetricsRegistry(),
         metricsPrefix = "maru",
         allMetricsCommonTags = listOf(Tag("nodeid", nodeId.toBase58())),
+      )
+    val vertx =
+      VertxFactory.createVertx(
+        jvmMetricsEnabled = config.observability.jvmMetricsEnabled,
+        prometheusMetricsEnabled = config.observability.prometheusMetricsEnabled,
       )
     val besuMetricsSystemAdapter =
       BesuMetricsSystemAdapter(
