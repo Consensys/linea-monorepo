@@ -208,7 +208,7 @@ func (st *ControllerState) handleSignals(cancel context.CancelFunc, cLog *logrus
 				cLog.Info("Received SIGUSR1 after SIGTERM: marking spot reclaim detected (shutdown already in progress)")
 			}
 
-			// Write transient failures for limitless jobs
+			// Write transient failures for limitless jobs - only BOOTSRAP job
 			err := st.writeTransientFailFile(cfg, cLog, CodeKilledByExtSig)
 			if err != nil {
 				utils.Panic("error while writing transient failure files:%v", err)
@@ -407,6 +407,16 @@ func (st *ControllerState) handleJobFailure(cfg *config.Config, cLog *logrus.Ent
 func (st *ControllerState) writeTransientFailFile(cfg *config.Config, cLog *logrus.Entry, exitCode int) error {
 	// Relevant only for limitless jobs (excl. conglomeration - final stage)
 	if !isExecLimitlessJob(st.activeJob) || st.activeJob.Def.Name == jobNameConglomeration {
+		return nil
+	}
+
+	// For worker jobs - interrupted through SIGUSR1/SIGTERM, do not write peer abort files
+	// This is because, if one of the worker was spot-reclaimed/ did not terminate within grace period
+	// there is no reason to abort other workers. We propogate peer-abort only if there is a genuine failure
+	// in processing any of the worker sub-proofs
+	if (strings.HasPrefix(st.activeJob.Def.Name, jobNameGL) || strings.HasPrefix(st.activeJob.Def.Name, jobNameLPP)) &&
+		exitCode == CodeKilledByExtSig {
+		logrus.Infof("Safely ignoring to write peer-abort failure failure for worker:%s terminated via external signal(exitcode:%d)", fLocalID, CodeKilledByExtSig)
 		return nil
 	}
 

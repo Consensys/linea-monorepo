@@ -420,12 +420,6 @@ func PeerAbortWatcher(ctx context.Context, job *Job, cfg *config.Config, logger 
 				continue
 			}
 
-			// Ignore the CodeKilledByExtSig for conglomeration jobs
-			if job.Def.Name == jobNameConglomeration && strings.Contains(base, fmt.Sprintf("failure_code%d", CodeKilledByExtSig)) {
-				logger.Infof("Ignoring abort marker %s for conglomeration job", event.Name)
-				continue
-			}
-
 			// Optional sanity: ensure the file exists and is a regular file
 			if fi, err := os.Stat(event.Name); err == nil && !fi.IsDir() {
 				logger.Warnf("PeerAbortWatcher: detected failure file %s; sending SIGUSR2", event.Name)
