@@ -182,7 +182,7 @@ func thetaTestingModule(
 				}
 			}
 
-			// Then assigns all the columns of the rho module
+			// Then assign all the columns of the theta module
 			mod.Theta.assignTheta(run, stateCurr)
 		}
 	}

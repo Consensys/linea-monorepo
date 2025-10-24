@@ -238,6 +238,13 @@ func genKeccakfTrace(rnd *rand.Rand, maxNumKeccakf int) keccak.PermTraces {
 
 }
 
+// reconstructU64 reconstructs a uint64 from 64 field elements.
+// Each element of x is treated as a single bit: the function reads
+// the least-significant bit of each field.Element (limb.Uint64() & 1)
+// and places it into the corresponding bit position of the result.
+// Bits are assembled in little-endian order: x[0] becomes bit 0 (LSB),
+// x[63] becomes bit 63 (MSB). If elements contain values other than 0 or 1,
+// only their LSB is used.
 func reconstructU64(x [64]field.Element) uint64 {
 
 	var res uint64
