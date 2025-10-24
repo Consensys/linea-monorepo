@@ -183,12 +183,12 @@ export class NativeYieldCronJobBootstrap {
 
   public startAllServices(): void {
     void this.operationModeSelector.start();
-    this.logger.info("Native yield cron job started");
+    this.logger.info("Native yield automation service started");
   }
 
   public stopAllServices(): void {
     this.operationModeSelector.stop();
-    this.logger.info("Native yield cron job stopped");
+    this.logger.info("Native yield automation service stopped");
   }
 
   public getConfig(): NativeYieldCronJobBootstrapConfig {

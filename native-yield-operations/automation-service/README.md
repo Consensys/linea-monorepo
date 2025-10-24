@@ -1,4 +1,4 @@
-# Linea Native Yield Cron Job
+# Linea Native Yield Automation Service
 
 Trigger
 - Event-based on Lido contract

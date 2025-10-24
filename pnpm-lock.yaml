@@ -401,7 +401,7 @@ importers:
         specifier: 'catalog:'
         version: 3.17.0
 
-  native-yield-operations/cronjob:
+  native-yield-operations/automation-service:
     dependencies:
       '@apollo/client':
         specifier: 4.0.7
