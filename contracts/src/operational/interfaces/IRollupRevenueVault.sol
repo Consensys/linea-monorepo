@@ -119,10 +119,17 @@ interface IRollupRevenueVault {
 
   /**
    * @dev Emitted when the invoice arrears are updated.
+   * @param oldInvoiceArrears The old invoice arrears value.
    * @param newInvoiceArrears The new invoice arrears value.
    * @param lastInvoiceDate The timestamp of the last invoice processed.
+   * @param newInvoiceDate The timestamp of the new invoice processed.
    */
-  event InvoiceArrearsUpdated(uint256 newInvoiceArrears, uint256 lastInvoiceDate);
+  event InvoiceArrearsUpdated(
+    uint256 oldInvoiceArrears,
+    uint256 newInvoiceArrears,
+    uint256 lastInvoiceDate,
+    uint256 newInvoiceDate
+  );
 
   /**
    * @dev Emitted when the invoice payment receiver is updated.
