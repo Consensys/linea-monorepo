@@ -8,8 +8,8 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/testing-sepolia-beta-v2-15520477/traces/conflated"
-requests_root_dir = "/home/ubuntu/testing-sepolia-beta-v2-15520477/prover-execution/requests-done"
+conflated_traces_dir = "./"
+requests_root_dir = "./"
 limitless_with_debug = false
 ignore_compatibility_check = false
 
