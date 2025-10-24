@@ -1,6 +1,6 @@
 import { Address, TransactionReceipt } from "viem";
 import { ILogger } from "@consensys/linea-shared-utils";
-import { IYieldManager } from "../../core/services/contracts/IYieldManager.js";
+import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { wait } from "@consensys/linea-sdk";
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";

@@ -13,10 +13,9 @@ import {
   UpdateVaultDataParams,
   WaitForVaultsReportDataUpdatedEventReturnType,
   LazyOracleReportData,
-} from "../core/services/contracts/ILazyOracle.js";
-import { IBaseContractClient } from "../core/clients/IBaseContractClient.js";
+} from "../core/clients/contracts/ILazyOracle.js";
 
-export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>, IBaseContractClient {
+export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt> {
   private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;
   constructor(
     private readonly logger: ILogger,

@@ -4,7 +4,7 @@ import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
 import { WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams.js";
 import { Address, maxUint256, stringToHex, TransactionReceipt } from "viem";
-import { IYieldManager } from "../core/services/contracts/IYieldManager.js";
+import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
 
 export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   constructor(

@@ -3,6 +3,7 @@ export * from "./clients/OAuth2TokenClient";
 export * from "./clients/ViemWalletSignerClient";
 export * from "./clients/Web3SignerClient";
 export * from "./clients/ViemBlockchainClientAdapter";
+export * from "./core/client/IBaseContractClient";
 export * from "./core/client/IBeaconNodeApiClient";
 export * from "./core/client/IBlockchainClient";
 export * from "./core/client/IContractSignerClient";

@@ -1,5 +1,7 @@
 import { Address, Hex, WatchContractEventReturnType } from "viem";
-export interface ILazyOracle<TransactionReceipt> {
+import { IBaseContractClient } from "@consensys/linea-shared-utils";
+
+export interface ILazyOracle<TransactionReceipt> extends IBaseContractClient {
   updateVaultData(params: UpdateVaultDataParams): Promise<TransactionReceipt>;
   simulateUpdateVaultData(params: UpdateVaultDataParams): Promise<void>;
   latestReportData(): Promise<LazyOracleReportData>;

@@ -1,8 +1,9 @@
 import { Address } from "viem";
 import { WithdrawalRequests } from "../../entities/LidoStakingVaultWithdrawalParams.js";
 import { RebalanceRequirement } from "../../entities/RebalanceRequirement.js";
+import { IBaseContractClient } from "@consensys/linea-shared-utils";
 
-export interface IYieldManager<TTransactionReceipt> {
+export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient {
   // View calls
   L1_MESSAGE_SERVICE(): Promise<Address>;
   getTotalSystemBalance(): Promise<bigint>;

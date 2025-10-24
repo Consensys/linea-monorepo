@@ -15,12 +15,12 @@ import {
 import {} from "@consensys/linea-shared-utils";
 import { Chain, PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerContractClient } from "../../clients/YieldManagerContractClient.js";
-import { IYieldManager } from "../../core/services/contracts/IYieldManager.js";
+import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { YieldReportingOperationModeProcessor } from "../../services/operation-mode/YieldReportingOperationModeProcessor.js";
 import { LazyOracleContractClient } from "../../clients/LazyOracleContractClient.js";
-import { ILazyOracle } from "../../core/services/contracts/ILazyOracle.js";
+import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ApolloClient } from "@apollo/client";
-import { ILineaRollupYieldExtension } from "../../core/services/contracts/ILineaRollupYieldExtension.js";
+import { ILineaRollupYieldExtension } from "../../core/clients/contracts/ILineaRollupYieldExtension.js";
 import { LineaRollupYieldExtensionContractClient } from "../../clients/LineaRollupYieldExtensionContractClient.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
