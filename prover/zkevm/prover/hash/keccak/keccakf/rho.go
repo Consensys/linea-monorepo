@@ -27,7 +27,7 @@ func newRho(
 	comp *wizard.CompiledIOP,
 	round int,
 	numKeccakf int,
-	aThetaSlicedBaseB [5][5][numSlice]ifaces.Column,
+	aThetaSlicedBaseB [5][5][NumSlice]ifaces.Column,
 ) rho {
 
 	res := rho{}
@@ -44,12 +44,12 @@ func newRho(
 
 // Declares the columns for the rhopi module
 func (r *rho) declareColumns(comp *wizard.CompiledIOP, round, numKeccakf int) {
-	colSize := numRows(numKeccakf)
+	colSize := NumRows(numKeccakf)
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			r.ARho[x][y] = comp.InsertCommit(
 				round,
-				deriveName("A_RHO", x, y),
+				DeriveName("A_RHO", x, y),
 				colSize,
 			)
 
@@ -62,7 +62,7 @@ func (r *rho) declareColumns(comp *wizard.CompiledIOP, round, numKeccakf int) {
 			for s := 0; s < numChunkBaseX; s++ {
 				r.TargetSliceDecompose[x][y][s] = comp.InsertCommit(
 					round,
-					deriveName("TARGET_SLICE_DECOMPOSE", x, y, s),
+					DeriveName("TARGET_SLICE_DECOMPOSE", x, y, s),
 					colSize,
 				)
 			}
@@ -75,14 +75,14 @@ func (r *rho) declareColumns(comp *wizard.CompiledIOP, round, numKeccakf int) {
 // combination of the rotated slices.
 func (r *rho) checkConvertAndRotateLr(
 	comp *wizard.CompiledIOP, round int,
-	aThetaSlicedBaseB [5][5][numSlice]ifaces.Column,
+	aThetaSlicedBaseB [5][5][NumSlice]ifaces.Column,
 	x, y int,
 ) {
 
 	lr := keccak.LR[x][y]
 
 	// Convert the slice as an expression
-	aThetaSlicedBaseBExprs := make([]*symbolic.Expression, numSlice)
+	aThetaSlicedBaseBExprs := make([]*symbolic.Expression, NumSlice)
 	for i := range aThetaSlicedBaseB[x][y] {
 		aThetaSlicedBaseBExprs[i] = ifaces.ColumnAsVariable(
 			aThetaSlicedBaseB[x][y][i],
@@ -116,7 +116,7 @@ func (r *rho) checkConvertAndRotateLr(
 
 		// Shave the overflow out of the last rotated slice
 		baseBPow4 := symbolic.NewConstant(IntExp(BaseB, 4)) // BaseB ^ 4
-		rotated[numSlice-1] = rotated[numSlice-1].Sub(
+		rotated[NumSlice-1] = rotated[NumSlice-1].Sub(
 			overflow.Mul(baseBPow4),
 		)
 
@@ -137,7 +137,7 @@ func (r *rho) checkConvertAndRotateLr(
 func (r *rho) checkTargetSliceDecompose(
 	comp *wizard.CompiledIOP,
 	round int,
-	aThetaSlicedBaseB [5][5][numSlice]ifaces.Column,
+	aThetaSlicedBaseB [5][5][NumSlice]ifaces.Column,
 	x, y int,
 ) {
 
@@ -186,7 +186,7 @@ func (r *rho) assign(
 	aThetaOut := [5][5][16]smartvectors.SmartVector{}
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
-			for k := 0; k < numSlice; k++ {
+			for k := 0; k < NumSlice; k++ {
 				aThetaOut[x][y][k] = run.GetColumn(
 					aThetaBaseBSliced[x][y][k].GetColID(),
 				)
@@ -216,7 +216,7 @@ func (r *rho) assign(
 
 	parallel.Execute(effNumRows, func(start, stop int) {
 
-		slice := [numSlice]field.Element{}
+		slice := [NumSlice]field.Element{}
 
 		// Multiplying a field in base B by shfBy64 is equivalent to bitshift by
 		// 64 to the left.
@@ -234,8 +234,8 @@ func (r *rho) assign(
 
 					// Permutate the slices to perform a rotation of LR floored
 					// to the lower multiple of 4.
-					for k := 0; k < numSlice; k++ {
-						slice[(k+rotateBy)%numSlice] = aThetaOut[x][y][k].Get(r)
+					for k := 0; k < NumSlice; k++ {
+						slice[(k+rotateBy)%NumSlice] = aThetaOut[x][y][k].Get(r)
 					}
 
 					// Then, recompose the slice to regroup all the 64 bits of
@@ -254,7 +254,7 @@ func (r *rho) assign(
 
 						// The trick here, is that slice decompose is returns the
 						// extra limb as the last entry.
-						extraLimb := DecomposeFr(z, int(BaseBPow4), numSlice+1)[numSlice]
+						extraLimb := DecomposeFr(z, int(BaseBPow4), NumSlice+1)[NumSlice]
 						// readd the missing limb at the start
 						z.Add(&z, &extraLimb)
 						extraLimb.Mul(&extraLimb, &shfBy64)

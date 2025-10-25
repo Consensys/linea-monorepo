@@ -105,10 +105,10 @@ func TestDecomposeInSlice(t *testing.T) {
 		xBase1 := U64ToBaseX(x, &base1)
 		xBase2 := U64ToBaseX(x, &base2)
 
-		decomposed1 := DecomposeFr(xBase1, BaseAPow4, numSlice)
-		decomposed2 := DecomposeFr(xBase2, BaseBPow4, numSlice)
+		decomposed1 := DecomposeFr(xBase1, BaseAPow4, NumSlice)
+		decomposed2 := DecomposeFr(xBase2, BaseBPow4, NumSlice)
 
-		for k := 0; k < numSlice; k++ {
+		for k := 0; k < NumSlice; k++ {
 			expected := (x >> (4 * k)) & 0xf
 			u := BaseXToU64(decomposed1[k], &BaseAFr)
 			v := BaseXToU64(decomposed2[k], &BaseBFr)
