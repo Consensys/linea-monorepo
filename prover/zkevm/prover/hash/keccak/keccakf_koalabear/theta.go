@@ -128,7 +128,9 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		col           []field.Element
 		stateInternal [5][5][8]*common.VectorBuilder
 		stateBinary   [5][5][64]*common.VectorBuilder
-		lsb           [5][8][]field.Element
+		lsb           [5][8][]int
+		msb           [5][8][]int
+		cfCleanedVals [5][8][]int
 	)
 	// get the current state
 	for x := 0; x < 5; x++ {
@@ -144,6 +146,10 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		for z := 0; z < 8; z++ {
 			cm[x][z] = make([]field.Element, size)
 			cf[x][z] = make([]field.Element, size)
+			lsb[x][z] = make([]int, 0, size)
+			msb[x][z] = make([]int, 0, size)
+			cfCleanedVals[x][z] = make([]int, 0, size)
+
 
 			// cmClean[x][z] = common.NewVectorBuilder(theta.cMiddleCleanBase[x][z])
 			// cfClean[x][z] = common.NewVectorBuilder(theta.cFinalCleanBase[x][z])
@@ -180,37 +186,29 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		}
 
 		// First pass: compute resf, lsb and cfCleaned/msb arrays for all z
-		cfCleanedVals := make([][]int, 8)
-		msbVals := make([][]int, 8)
-		lsbVals := make([][]int, 8)
 		for z := 0; z < 8; z++ {
-			cfCleanedVals[z] = make([]int, size)
-			msbVals[z] = make([]int, size)
-			lsbVals[z] = make([]int, size)
 			for i := 0; i < len(cf[x][z]); i++ {
-				// limit to low 8 base-thetaBase digits so Decompose never requests more than 8 limbs
 				v := cf[x][z][i].Uint64()
 				logrus.Printf("v = %v", v)
 				resf := clean(Decompose(v, thetaBase, 8))
 				logrus.Printf("resf: %v", resf)
-				lsb[x][z] = append(lsb[x][z], field.NewElement(uint64(resf[0])))
-				lsbVals[z][i] = resf[0]
+				lsb[x][z] = append(lsb[x][z], resf[0])
+				msb[x][z] = append(msb[x][z], resf[len(resf)-1])
 
 				cfCleaned := 0
 				for k := len(resf) - 1; k >= 0; k-- {
 					cfCleaned = cfCleaned*thetaBase + resf[k]
 				}
-				cfCleanedVals[z][i] = cfCleaned
-				msbVals[z][i] = resf[len(resf)-1]
+				cfCleanedVals[x][z] = append(cfCleanedVals[x][z], cfCleaned)
 			}
 		}
 
 		// Second pass: compute cc using previous slice lsb (wrap-around)
 		for z := 0; z < 8; z++ {
-			prev := (z + 7) % 8 // safe wrap-around for z==0
+			prev := (z - 1 + 8) % 8 // safe wrap-around for z==0
 			for i := 0; i < len(cf[x][z]); i++ {
 				// use integer lsbVals computed in first pass to avoid index/race issues
-				a := cfCleanedVals[z][i]*thetaBase - msbVals[z][i]*thetaBase8 + lsbVals[prev][i]
+				a := cfCleanedVals[x][z][i]*thetaBase - msb[x][z][i]*thetaBase8 + msb[x][prev][i]
 				cc[x][z] = append(cc[x][z], field.NewElement(uint64(a)))
 			}
 		}

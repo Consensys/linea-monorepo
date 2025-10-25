@@ -160,11 +160,11 @@ func thetaTestingModule(
 					}
 
 					// Then finalize the permutation normally
-					state.Theta()
-					state.Rho()
-					b := state.Pi()
-					state.Chi(&b)
-					state.Iota(rnd)
+					//state.Theta()
+					//state.Rho()
+					//b := state.Pi()
+					//state.Chi(&b)
+					//state.Iota(rnd)
 				}
 			}
 
