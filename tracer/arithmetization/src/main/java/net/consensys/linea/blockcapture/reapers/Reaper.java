@@ -88,9 +88,10 @@ public class Reaper {
     try {
       conflationAddresses.touch(EIP4788_BEACONROOT_ADDRESS);
       final UInt256 timestamp = UInt256.valueOf(header.getTimestamp());
-      final UInt256 keyTimestamp = timestamp.mod(HISTORY_BUFFER_LENGTH);
-      conflationStorage.touch(EIP4788_BEACONROOT_ADDRESS, timestamp);
-      conflationStorage.touch(EIP4788_BEACONROOT_ADDRESS, keyTimestamp);
+      final UInt256 timestampIdx = timestamp.mod(HISTORY_BUFFER_LENGTH);
+      final UInt256 rootIdx = timestampIdx.add(HISTORY_BUFFER_LENGTH);
+      conflationStorage.touch(EIP4788_BEACONROOT_ADDRESS, timestampIdx);
+      conflationStorage.touch(EIP4788_BEACONROOT_ADDRESS, rootIdx);
     } catch (Exception e) {
       log.warn(
           "Failed to retrieve EIP4788 infos for block {}, exception caught is: {}",
