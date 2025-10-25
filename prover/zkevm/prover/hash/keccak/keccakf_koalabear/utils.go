@@ -21,7 +21,6 @@ import (
 //  - Returns a slice of limbs in little-endian order (least-significant first).
 //  - If the decomposition requires more than numLimbs limbs, the function triggers utils.Panic
 //    with an explanatory message ("expected %v limbs, but got %v").
-//  - The function does not pad the result to numLimbs limbs; it returns only the produced limbs.
 func Decompose(r uint64, base int, numLimbs int) (res []uint64) {
 	// It will essentially be used for chunk to slice decomposition
 	if base < 2 {
@@ -38,6 +37,13 @@ func Decompose(r uint64, base int, numLimbs int) (res []uint64) {
 
 	if len(res) > numLimbs {
 		utils.Panic("expected %v limbs, but got %v", numLimbs, len(res))
+	}
+
+	if len(res) < numLimbs {
+		// pad with zeros to have exactly numLimbs limbs
+		for len(res) < numLimbs {
+			res = append(res, 0)
+		}
 	}
 
 	return res

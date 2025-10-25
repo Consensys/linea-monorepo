@@ -128,7 +128,6 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		col           []field.Element
 		stateInternal [5][5][8]*common.VectorBuilder
 		stateBinary   [5][5][64]*common.VectorBuilder
-		lsb           [5][8][]int
 		msb           [5][8][]int
 		cfCleanedVals [5][8][]int
 	)
@@ -146,10 +145,9 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		for z := 0; z < 8; z++ {
 			cm[x][z] = make([]field.Element, size)
 			cf[x][z] = make([]field.Element, size)
-			lsb[x][z] = make([]int, 0, size)
+			col = make([]field.Element, size)
 			msb[x][z] = make([]int, 0, size)
 			cfCleanedVals[x][z] = make([]int, 0, size)
-
 
 			// cmClean[x][z] = common.NewVectorBuilder(theta.cMiddleCleanBase[x][z])
 			// cfClean[x][z] = common.NewVectorBuilder(theta.cFinalCleanBase[x][z])
@@ -166,9 +164,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 			// clean the cm by decomposing each element into base thetaBase and recomposing
 			for i := 0; i < len(cm[x][z]); i++ {
 				v := cm[x][z][i].Uint64()
-				logrus.Printf("v = %v", v)
 				resc := clean(Decompose(v, thetaBase, 8))
-				logrus.Printf("resc: %v", resc)
 
 				cleaned := 0
 				for k := len(resc) - 1; k >= 0; k-- {
@@ -189,10 +185,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		for z := 0; z < 8; z++ {
 			for i := 0; i < len(cf[x][z]); i++ {
 				v := cf[x][z][i].Uint64()
-				logrus.Printf("v = %v", v)
 				resf := clean(Decompose(v, thetaBase, 8))
-				logrus.Printf("resf: %v", resf)
-				lsb[x][z] = append(lsb[x][z], resf[0])
 				msb[x][z] = append(msb[x][z], resf[len(resf)-1])
 
 				cfCleaned := 0
@@ -227,17 +220,19 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 				}
 				// A'[x][y][z] = A[x][y][z] + c[(x-1+5)%5][z] + cc[(x+1)%5][z]
 				vector.Add(col, stateCurrWit[x][y][z], cf[(x-1+5)%5][z], cc[(x+1)%5][z])
+
 				// clean the state
 				for i := 0; i < len(col); i++ {
 					// decompose col and clean it
-					res := clean(Decompose(col[i].Uint64(), thetaBase, 8))
+					logrus.Printf("col[i] = %v, i = %v", col[i].Uint64(), i)
+					res := clean(Decompose(col[i].Uint64()%thetaBase8, thetaBase, 8))
 					// recompse to get clean state
 					stateCleaned := 0
 					for k := len(res) - 1; k >= 0; k-- {
 						stateCleaned = stateCleaned*thetaBase + res[k]
 					}
 					stateInternal[x][y][z].PushInt(stateCleaned)
-					for j := 0; j < 8; j++ {
+					for j := 0; j < len(res); j++ {
 						stateBinary[x][y][z*8+j].PushInt(res[j])
 					}
 				}
@@ -257,12 +252,12 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 // same length where each element is 1 if the corresponding input value is
 // odd and 0 if it is even. The input slice is not modified.
 func clean(in []uint64) (out []int) {
-	out = make([]int, len(in))
-	for i, element := range in {
+	out = make([]int, 0, len(in))
+	for _, element := range in {
 		if element%2 == 0 {
-			out[i] = 0
+			out = append(out, 0)
 		} else {
-			out[i] = 1
+			out = append(out, 1)
 		}
 	}
 	return out
