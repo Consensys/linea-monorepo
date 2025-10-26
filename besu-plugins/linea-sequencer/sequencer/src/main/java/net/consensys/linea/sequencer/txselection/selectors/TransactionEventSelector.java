@@ -28,27 +28,30 @@ public class TransactionEventSelector implements PluginTransactionSelector {
   public TransactionSelectionResult evaluateTransactionPostProcessing(
       final TransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult) {
-    Optional<Address> maybeContractAddress = evaluationContext.getPendingTransaction().getTransaction().contractAddress();
-    if(maybeContractAddress.isEmpty()) {
+    Optional<Address> maybeContractAddress =
+        evaluationContext.getPendingTransaction().getTransaction().contractAddress();
+    if (maybeContractAddress.isEmpty()) {
       return TransactionSelectionResult.SELECTED;
     }
 
     final boolean isBundle =
         evaluationContext.getPendingTransaction() instanceof TransactionBundle.PendingBundleTx;
     Set<TransactionEventFilter> deniedEventsForTransaction =
-        isBundle ? deniedBundleEvents.get().get(maybeContractAddress.get()) : deniedEvents.get().get(maybeContractAddress.get());
-    if(deniedEventsForTransaction != null) {
+        isBundle
+            ? deniedBundleEvents.get().get(maybeContractAddress.get())
+            : deniedEvents.get().get(maybeContractAddress.get());
+    if (deniedEventsForTransaction != null) {
       for (TransactionEventFilter deniedEvent : deniedEventsForTransaction) {
         for (Log log : processingResult.getLogs()) {
           if (deniedEvent.matches(log)) {
             return TransactionSelectionResult.invalid(
-              String.format(
-                "Transaction %s is blocked due to contract address and event logs appearing on SDN or other legally prohibited list",
-                evaluationContext
-                  .getPendingTransaction()
-                  .getTransaction()
-                  .getHash()
-                  .toShortHexString()));
+                String.format(
+                    "Transaction %s is blocked due to contract address and event logs appearing on SDN or other legally prohibited list",
+                    evaluationContext
+                        .getPendingTransaction()
+                        .getTransaction()
+                        .getHash()
+                        .toShortHexString()));
           }
         }
       }

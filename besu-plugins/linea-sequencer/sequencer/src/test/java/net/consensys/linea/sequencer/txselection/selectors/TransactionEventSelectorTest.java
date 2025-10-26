@@ -185,7 +185,9 @@ public class TransactionEventSelectorTest {
   }
 
   private void mockTransactionType(
-      final boolean isBundle, final TransactionEvaluationContext evaluationContext, final Address address) {
+      final boolean isBundle,
+      final TransactionEvaluationContext evaluationContext,
+      final Address address) {
     PendingTransaction mockPendingTransaction;
     if (isBundle) {
       mockPendingTransaction = Mockito.mock(TransactionBundle.PendingBundleTx.class);

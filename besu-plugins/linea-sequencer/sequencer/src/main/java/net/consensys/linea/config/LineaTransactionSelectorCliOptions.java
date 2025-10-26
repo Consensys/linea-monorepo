@@ -191,7 +191,8 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         .toString();
   }
 
-  public Map<Address, Set<TransactionEventFilter>> parseTransactionEventDenyList(final String filename) {
+  public Map<Address, Set<TransactionEventFilter>> parseTransactionEventDenyList(
+      final String filename) {
     if (filename == null || filename.isEmpty()) {
       return Collections.emptyMap();
     }
