@@ -16,7 +16,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import net.consensys.linea.plugins.LineaCliOptions;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
@@ -188,13 +191,12 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         .toString();
   }
 
-  public Set<TransactionEventFilter> parseTransactionEventDenyList(final String filename) {
+  public Map<Address, Set<TransactionEventFilter>> parseTransactionEventDenyList(final String filename) {
     if (filename == null || filename.isEmpty()) {
-      return Collections.emptySet();
+      return Collections.emptyMap();
     }
 
-    Set<TransactionEventFilter> eventFilters =
-        Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+    Map<Address, Set<TransactionEventFilter>> eventFilters = new ConcurrentHashMap<>();
     try (Stream<String> lines = Files.lines(Path.of(new File(filename).toURI()))) {
       for (String line : (Iterable<String>) lines::iterator) {
         if (line.isEmpty()) {
@@ -207,14 +209,15 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
                   + line
                   + ". Expected format: address,topic0,topic1,topic2,topic3");
         }
+        var address = Address.fromHexString(parts[0]);
         var eventFilter =
             new TransactionEventFilter(
-                Address.fromHexString(parts[0]),
+                address,
                 parts[1].isEmpty() ? null : LogTopic.fromHexString(parts[1]),
                 parts[2].isEmpty() ? null : LogTopic.fromHexString(parts[2]),
                 parts[3].isEmpty() ? null : LogTopic.fromHexString(parts[3]),
                 parts[4].isEmpty() ? null : LogTopic.fromHexString(parts[4]));
-        eventFilters.add(eventFilter);
+        eventFilters.putIfAbsent(address, new HashSet<>()).add(eventFilter);
       }
       return eventFilters;
     } catch (IOException e) {
