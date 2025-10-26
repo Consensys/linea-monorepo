@@ -5,7 +5,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	"github.com/sirupsen/logrus"
 )
@@ -125,10 +124,10 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		cm, cf       [5][8][]field.Element
 		cc           [5][8][]field.Element
 		// cmClean, cfClean, msb,lsb [5][8]*common.VectorBuilder
-		col           []field.Element
-		stateInternal [5][5][8]*common.VectorBuilder
-		stateBinary   [5][5][64]*common.VectorBuilder
-		msb           [5][8][]int
+		col []field.Element
+		//stateInternal [5][5][8][]*common.VectorBuilder
+		//stateBinary   [5][5][64][]*common.VectorBuilder
+		msb           [5][8][]field.Element
 		cfCleanedVals [5][8][]int
 	)
 	// get the current state
@@ -145,8 +144,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		for z := 0; z < 8; z++ {
 			cm[x][z] = make([]field.Element, size)
 			cf[x][z] = make([]field.Element, size)
-			col = make([]field.Element, size)
-			msb[x][z] = make([]int, 0, size)
+			msb[x][z] = make([]field.Element, 0, size)
 			cfCleanedVals[x][z] = make([]int, 0, size)
 
 			// cmClean[x][z] = common.NewVectorBuilder(theta.cMiddleCleanBase[x][z])
@@ -181,12 +179,12 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 			)
 		}
 
-		// First pass: compute resf, lsb and cfCleaned/msb arrays for all z
+		// First pass: compute msb of the next slice for all z
 		for z := 0; z < 8; z++ {
 			for i := 0; i < len(cf[x][z]); i++ {
 				v := cf[x][z][i].Uint64()
 				resf := clean(Decompose(v, thetaBase, 8))
-				msb[x][z] = append(msb[x][z], resf[len(resf)-1])
+				msb[x][z] = append(msb[x][z], field.NewElement(uint64(resf[len(resf)-1])))
 
 				cfCleaned := 0
 				for k := len(resf) - 1; k >= 0; k-- {
@@ -198,11 +196,17 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 
 		// Second pass: compute cc using previous slice lsb (wrap-around)
 		for z := 0; z < 8; z++ {
-			prev := (z - 1 + 8) % 8 // safe wrap-around for z==0
+			next := (z + 1) % 8 // safe wrap-around
 			for i := 0; i < len(cf[x][z]); i++ {
 				// use integer lsbVals computed in first pass to avoid index/race issues
-				a := cfCleanedVals[x][z][i]*thetaBase - msb[x][z][i]*thetaBase8 + msb[x][prev][i]
-				cc[x][z] = append(cc[x][z], field.NewElement(uint64(a)))
+				a := cfCleanedVals[x][z][i]*thetaBase - int(msb[x][z][i].Uint64())*thetaBase8 + int(msb[x][next][i].Uint64())
+				// clean a
+				res := clean(Decompose(uint64(a), thetaBase8, 8))
+				cleanedA := 0
+				for k := len(res) - 1; k >= 0; k-- {
+					cleanedA = cleanedA*thetaBase + res[k]
+				}
+				cc[x][z] = append(cc[x][z], field.NewElement(uint64(cleanedA)))
 			}
 		}
 
@@ -212,35 +216,20 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
-
-				stateInternal[x][y][z] = common.NewVectorBuilder(theta.stateInternal[x][y][z])
-				// assign the binary state
-				for i := 0; i < 8; i++ {
-					stateBinary[x][y][z*8+i] = common.NewVectorBuilder(theta.stateNext[x][y][z*8+i])
-				}
+				col = make([]field.Element, size)
+				
 				// A'[x][y][z] = A[x][y][z] + c[(x-1+5)%5][z] + cc[(x+1)%5][z]
 				vector.Add(col, stateCurrWit[x][y][z], cf[(x-1+5)%5][z], cc[(x+1)%5][z])
 
 				// clean the state
 				for i := 0; i < len(col); i++ {
-					// decompose col and clean it
-					logrus.Printf("col[i] = %v, i = %v", col[i].Uint64(), i)
-					res := clean(Decompose(col[i].Uint64()%thetaBase8, thetaBase, 8))
+					logrus.Printf("i = %v, col = %v", i, col[i].Uint64())
+					res := clean(Decompose(col[i].Uint64(), thetaBase, 16))
 					// recompse to get clean state
 					stateCleaned := 0
-					for k := len(res) - 1; k >= 0; k-- {
-						stateCleaned = stateCleaned*thetaBase + res[k]
+					for i := len(res) - 1; i >= 0; i-- {
+						stateCleaned = stateCleaned*thetaBase + res[i]
 					}
-					stateInternal[x][y][z].PushInt(stateCleaned)
-					for j := 0; j < len(res); j++ {
-						stateBinary[x][y][z*8+j].PushInt(res[j])
-					}
-				}
-				// assign the internal state
-				stateInternal[x][y][z].PadAndAssign(run)
-				// assign the binary state
-				for i := 0; i < 8; i++ {
-					stateBinary[x][y][z*8+i].PadAndAssign(run)
 				}
 			}
 		}
