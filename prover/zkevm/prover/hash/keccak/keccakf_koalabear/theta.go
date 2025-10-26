@@ -204,7 +204,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 
 		// Second pass: compute cc using previous slice lsb (wrap-around)
 		for z := 0; z < 8; z++ {
-			next := (z + 1) % 8 // safe wrap-around
+			next := (z - 1 + 8) % 8 // safe wrap-around
 			for i := 0; i < len(cf[x][z]); i++ {
 				// use integer lsbVals computed in first pass to avoid index/race issues
 				a := int(cf[x][z][i].Uint64())*thetaBase - int(msb[x][z][i].Uint64())*thetaBase8 + int(msb[x][next][i].Uint64())
