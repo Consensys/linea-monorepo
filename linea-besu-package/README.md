@@ -1,7 +1,7 @@
 # Linea Besu Distribution
 
-This project uses Gradle to manage dependencies, build tasks, and create distributions for linea-besu with 
-all the necessary plugins to run a node for operators. The build process will also create a Docker image that can be 
+This project uses Gradle to manage dependencies, build tasks, and create distributions for linea-besu with
+all the necessary plugins to run a node for operators. The build process will also create a Docker image that can be
 used to run a node with a specific profile.
 
 ## Run with Docker
@@ -38,7 +38,7 @@ docker run -e BESU_PROFILE=basic-mainnet consensys/linea-besu-package:2.1.0-2025
 ## Run with a binary distribution
 
 ### Step 1. Install Linea Besu from packaged binaries
-*  Download the [linea-besu-package-&lt;release&gt;.tar.gz](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) 
+*  Download the [linea-besu-package-&lt;release&gt;.tar.gz](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true)
 from the assets.
 * Unpack the downloaded files and change directory into the `linea-besu/besu`
 directory.
@@ -50,12 +50,8 @@ bin/besu --help
 
 ### Step 2. Start the Besu client
 
-Note the YOUR_L1_RPC_ENDPOINT. You should replace this with your L1 RPC endpoint. 
-
-This is required to enable RPC queries using "FINALIZED" tag. 
-Linea Finalization status is based on L1 RPC endpoint's response
 ```sh
-bin/besu --profile=advanced-mainnet --plugin-linea-l1-rpc-endpoint=YOUR_L1_RPC_ENDPOINT
+bin/besu --profile=advanced-mainnet
 ```
 
 ## Build from source locally
@@ -66,9 +62,9 @@ bin/besu --profile=advanced-mainnet --plugin-linea-l1-rpc-endpoint=YOUR_L1_RPC_E
 
 3. Run `make clean && make build` (check the Makefile for build options)
 
-4. The docker image (i.e. default as `consensys/linea-besu-package:local`) should be created locally 
+4. The docker image (i.e. default as `consensys/linea-besu-package:local`) should be created locally
 
-### Note: 
+### Note:
 
 To build with specific platform (e.g. linux/amd64) and image tag (e.g. xxx), do the following:
 ```
@@ -116,7 +112,7 @@ plugin-linea-module-limit-file-path="config/trace-limits.mainnet.toml"
 
 Currently, the following profiles are available:
 
-| Profile Name                                                                                                              | Description                                                               | Network | 
+| Profile Name                                                                                                              | Description                                                               | Network |
 |---------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|---------|
 | [`basic-mainnet`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/basic-mainnet.toml)       | Creates a basic Linea Node.                                               | Mainnet |
 | [`advanced-mainnet`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/advanced-mainnet.toml) | Creates a Linea Node with `linea_estimateGas` and `finalized tag updater plugin`. | Mainnet |
