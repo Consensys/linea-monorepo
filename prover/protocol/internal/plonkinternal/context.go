@@ -2,7 +2,6 @@ package plonkinternal
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
@@ -217,7 +216,7 @@ func createCtx(
 // of gnark.
 func CompileCircuitDefault(circ frontend.Circuit) (*cs.SparseR1CS, error) {
 
-	ccs, err := frontend.CompileU32(koalabear.Modulus(), query.From(scs.NewBuilder), circ)
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circ)
 	if err != nil {
 		return nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
