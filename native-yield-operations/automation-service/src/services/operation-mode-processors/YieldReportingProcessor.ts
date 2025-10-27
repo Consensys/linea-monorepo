@@ -14,6 +14,7 @@ import { updateMetricsForSafeWithdrawalResult } from "../../application/metrics/
 import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { updateMetricsForReportYieldResult } from "../../application/metrics/updateMetricsForReportYieldResult.js";
 import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
+import { updateMetricsForTransferFundsResult } from "../../application/metrics/updateMetricsForTransferFundsResult.js";
 
 // FIRST PRIORITY FOR UNIT TESTING
 export class YieldReportingProcessor implements IOperationModeProcessor {
@@ -200,10 +201,17 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       // i.) We count rebalance once funds have been moved away from the L1MessageService
       // ii.) Only the initial rebalance will call this fn
       this.metricsUpdater.recordRebalance(RebalanceDirection.STAKE, weiToGweiNumber(rebalanceAmount));
-      await attempt(
+      const transferFundsResult = await attempt(
         this.logger,
         () => this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount),
         "_handleStakingRebalance - fundYieldProvider failed (tolerated)",
+      );
+      await updateMetricsForTransferFundsResult(
+        transferFundsResult,
+        this.metricsUpdater,
+        this.yieldManagerContractClient,
+        this.vaultHubContractClient,
+        this.yieldProvider,
       );
     }
 

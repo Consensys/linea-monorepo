@@ -10,7 +10,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { updateMetricsForSafeWithdrawalResult } from "../../application/metrics/updateMetricsForSafeWithdrawalResult.js";
 import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
-import { updateMetricsForProgressOssification } from "../../application/metrics/updateMetricsForProgressOssification.js";
+import { updateMetricsForProgressOssificationResult } from "../../application/metrics/updateMetricsForProgressOssificationResult.js";
 import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 
 export class OssificationPendingProcessor implements IOperationModeProcessor {
@@ -102,7 +102,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
     // Stop if failed.
     if (ossificationResult.isErr()) return;
 
-    await updateMetricsForProgressOssification(
+    await updateMetricsForProgressOssificationResult(
       ossificationResult,
       this.metricsUpdater,
       this.yieldManagerContractClient,
