@@ -40,6 +40,8 @@ contract V3DexSwapWethDepositAdapter is IV3DexSwapAdapter {
     WETH_TOKEN = _wethToken;
     LINEA_TOKEN = _lineaToken;
     POOL_TICK_SPACING = _poolTickSpacing;
+
+    emit V3DexSwapAdapterInitialized(_router, _wethToken, _lineaToken, _poolTickSpacing);
   }
 
   /** @notice Swap ETH into LINEA tokens.
