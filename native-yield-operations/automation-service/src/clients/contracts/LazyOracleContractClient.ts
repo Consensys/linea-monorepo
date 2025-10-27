@@ -45,7 +45,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       refSlot: resp[1],
       treeRoot: resp[2],
       reportCid: resp[3],
-    }
+    };
     this.logger.debug("latestReportData", { returnVal });
     return returnVal;
   }
@@ -97,7 +97,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
         // Filter out reorgs
         const valid = logs.find((l) => !l.removed);
         if (!valid) {
-          this.logger.warn("waitForVaultsReportDataUpdatedEvent: Dropped VaultsReportDataUpdated event")
+          this.logger.warn("waitForVaultsReportDataUpdatedEvent: Dropped VaultsReportDataUpdated event");
           return;
         }
         this.logger.info("waitForVaultsReportDataUpdatedEvent succeeded, VaultsReportDataUpdated event detected");

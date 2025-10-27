@@ -9,9 +9,7 @@ import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 
 // Buckets range up to 20 minutes to account for long-running modes.
-const OPERATION_MODE_DURATION_BUCKETS = [
-  1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200,
-];
+const OPERATION_MODE_DURATION_BUCKETS = [1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200];
 
 export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomationMetricsUpdater {
   constructor(private readonly metricsService: IMetricsService<LineaNativeYieldAutomationServiceMetrics>) {
@@ -101,10 +99,7 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
-  public recordRebalance(
-    direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE,
-    amountGwei: number,
-  ): void {
+  public recordRebalance(direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE, amountGwei: number): void {
     if (amountGwei <= 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
@@ -146,10 +141,9 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   public incrementReportYield(vaultAddress: Address): void {
-    this.metricsService.incrementCounter(
-      LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal,
-      { vault_address: vaultAddress },
-    );
+    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal, {
+      vault_address: vaultAddress,
+    });
   }
 
   public addReportedYieldAmount(vaultAddress: Address, amountGwei: number): void {
@@ -162,11 +156,11 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   public async setCurrentNegativeYieldLastReport(vaultAddress: Address, negativeYield: number): Promise<void> {
-      this.metricsService.setGauge(
-        LineaNativeYieldAutomationServiceMetrics.CurrentNegativeYieldLastReport,
-        { vault_address: vaultAddress },
-        negativeYield,
-      );
+    this.metricsService.setGauge(
+      LineaNativeYieldAutomationServiceMetrics.CurrentNegativeYieldLastReport,
+      { vault_address: vaultAddress },
+      negativeYield,
+    );
   }
 
   public addNodeOperatorFeesPaid(vaultAddress: Address, amountGwei: number): void {
@@ -202,10 +196,9 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   public incrementOperationModeExecution(mode: OperationMode): void {
-    this.metricsService.incrementCounter(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      { mode },
-    );
+    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal, {
+      mode,
+    });
   }
 
   public recordOperationModeDuration(mode: OperationMode, durationSeconds: number): void {

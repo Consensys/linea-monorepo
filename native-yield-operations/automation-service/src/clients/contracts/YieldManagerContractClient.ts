@@ -10,7 +10,10 @@ import {
   PublicClient,
   TransactionReceipt,
 } from "viem";
-import { LidoStakingVaultWithdrawalParams, WithdrawalRequests } from "../../core/entities/LidoStakingVaultWithdrawalParams.js";
+import {
+  LidoStakingVaultWithdrawalParams,
+  WithdrawalRequests,
+} from "../../core/entities/LidoStakingVaultWithdrawalParams.js";
 import { RebalanceRequirement, RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 
 import { YieldManagerABI } from "../../core/abis/YieldManager.js";
@@ -82,9 +85,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   async fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(
-      `fundYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
-    );
+    this.logger.debug(`fundYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "fundYieldProvider",
@@ -114,9 +115,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   async reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TransactionReceipt> {
-    this.logger.debug(
-      `reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`,
-    );
+    this.logger.debug(`reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "reportYield",
@@ -131,9 +130,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   async unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TransactionReceipt> {
-    this.logger.debug(
-      `unstake started, yieldProvider=${yieldProvider}`, { withdrawalParams }
-    );
+    this.logger.debug(`unstake started, yieldProvider=${yieldProvider}`, { withdrawalParams });
     const encodedWithdrawalParams = this._encodeLidoWithdrawalParams({
       ...withdrawalParams,
       refundRecipient: this.contractAddress,
@@ -145,16 +142,14 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     });
 
     const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
-    this.logger.info(
-      `unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`, { withdrawalParams }
-    );
+    this.logger.info(`unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`, {
+      withdrawalParams,
+    });
     return txReceipt;
   }
 
   async withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(
-      `withdrawFromYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
-    );
+    this.logger.debug(`withdrawFromYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "withdrawFromYieldProvider",
@@ -169,9 +164,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
   }
 
   async addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(
-      `addToWithdrawalReserve started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`,
-    );
+    this.logger.debug(`addToWithdrawalReserve started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
     const calldata = encodeFunctionData({
       abi: this.contract.abi,
       functionName: "addToWithdrawalReserve",
@@ -385,5 +378,4 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     // If event not found
     return 0n;
   }
-
 }

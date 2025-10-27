@@ -15,7 +15,12 @@
  * SUBMIT_LATEST_REPORT=true \
  */
 
-import { ExponentialBackoffRetryService, ViemBlockchainClientAdapter, ViemWalletSignerClientAdapter, WinstonLogger } from "@consensys/linea-shared-utils";
+import {
+  ExponentialBackoffRetryService,
+  ViemBlockchainClientAdapter,
+  ViemWalletSignerClientAdapter,
+  WinstonLogger,
+} from "@consensys/linea-shared-utils";
 import { LidoAccountingReportClient } from "../src/clients/LidoAccountingReportClient.js";
 import { LazyOracleContractClient } from "../src/clients/contracts/LazyOracleContractClient.js";
 import { Address, Hex } from "viem";
@@ -39,28 +44,30 @@ async function main() {
   const pollIntervalMs = Number.parseInt(process.env.POLL_INTERVAL_MS ?? "60000", 10);
 
   const signer = new ViemWalletSignerClientAdapter(
-    new WinstonLogger("ViemWalletSignerClientAdapter.integration", {level: "debug"}),
+    new WinstonLogger("ViemWalletSignerClientAdapter.integration", { level: "debug" }),
     rpcUrl,
     privateKey,
     hoodi,
   );
   const contractClientLibrary = new ViemBlockchainClientAdapter(
-    new WinstonLogger("ViemBlockchainClientAdapter.integration", {level: "debug"}),
+    new WinstonLogger("ViemBlockchainClientAdapter.integration", { level: "debug" }),
     rpcUrl,
     hoodi,
     signer,
   );
 
   const lazyOracleClient = new LazyOracleContractClient(
-    new WinstonLogger("LazyOracleContractClient.integration", {level: "debug"}),
+    new WinstonLogger("LazyOracleContractClient.integration", { level: "debug" }),
     contractClientLibrary,
     lazyOracleAddress,
     pollIntervalMs,
   );
 
-  const retryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name, {level: "debug"}));
+  const retryService = new ExponentialBackoffRetryService(
+    new WinstonLogger(ExponentialBackoffRetryService.name, { level: "debug" }),
+  );
   const lidoAccountingClient = new LidoAccountingReportClient(
-    new WinstonLogger("LidoAccountingReportClient.integration", {level: "debug"}),
+    new WinstonLogger("LidoAccountingReportClient.integration", { level: "debug" }),
     retryService,
     lazyOracleClient,
     ipfsGatewayUrl,

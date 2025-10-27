@@ -36,14 +36,16 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   public async process(): Promise<void> {
     const { unwatch, waitForEvent } = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
     try {
-      this.logger.info(`process - Waiting for VaultsReportDataUpdated event vs timeout race, timeout=${this.maxInactionMs}ms`)
+      this.logger.info(
+        `process - Waiting for VaultsReportDataUpdated event vs timeout race, timeout=${this.maxInactionMs}ms`,
+      );
       // Race: event vs. timeout
       const winner = await Promise.race([
         waitForEvent.then(() => "event" as const),
         wait(this.maxInactionMs).then(() => "timeout" as const),
       ]);
       this.logger.info(
-        `process - race won by ${winner === "timeout" ?  `time out after ${this.maxInactionMs}ms` : "VaultsReportDataUpdated event"}`,
+        `process - race won by ${winner === "timeout" ? `time out after ${this.maxInactionMs}ms` : "VaultsReportDataUpdated event"}`,
       );
       const startedAt = performance.now();
       await this._process();
@@ -51,7 +53,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       this.metricsUpdater.recordOperationModeDuration(OperationMode.YIELD_REPORTING_MODE, msToSeconds(durationMs));
     } finally {
       // clean up watcher
-      this.logger.debug("Cleaning up VaultsReportDataUpdated event watcher")
+      this.logger.debug("Cleaning up VaultsReportDataUpdated event watcher");
       unwatch();
     }
   }
@@ -103,7 +105,11 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     // If we begin in DEFICIT, freeze beacon chain deposits to prevent further exacerbation
     if (initialRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
-      await attempt(this.logger, () => this.yieldManagerContractClient.pauseStakingIfNotAlready(this.yieldProvider), "_process - pause staking failed (tolerated)");
+      await attempt(
+        this.logger,
+        () => this.yieldManagerContractClient.pauseStakingIfNotAlready(this.yieldProvider),
+        "_process - pause staking failed (tolerated)",
+      );
     }
 
     // Do primary rebalance +/- report submission
@@ -111,7 +117,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     const postReportRebalanceRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
     this.logger.info(
-      `_process - Post rebalance data fetch: postReportRebalanceRequirements=${JSON.stringify(postReportRebalanceRequirements, bigintReplacer, 2)}`
+      `_process - Post rebalance data fetch: postReportRebalanceRequirements=${JSON.stringify(postReportRebalanceRequirements, bigintReplacer, 2)}`,
     );
 
     // Mid-cycle drift check:
@@ -121,7 +127,11 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
       if (postReportRebalanceRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
         await this._handleUnstakingRebalance(postReportRebalanceRequirements.rebalanceAmount, false);
       } else {
-        await attempt(this.logger, () => this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider), "_process - unpause staking failed (tolerated)");
+        await attempt(
+          this.logger,
+          () => this.yieldManagerContractClient.unpauseStakingIfNotAlready(this.yieldProvider),
+          "_process - unpause staking failed (tolerated)",
+        );
       }
     }
 
@@ -129,7 +139,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     // These have fulfillment latency beyond this method; queue them after local state is stable.
     const beaconChainWithdrawalRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
     this.logger.info(
-      `_process - Beacon chain withdrawal data fetch: beaconChainWithdrawalRequirements=${JSON.stringify(beaconChainWithdrawalRequirements, bigintReplacer, 2)}`
+      `_process - Beacon chain withdrawal data fetch: beaconChainWithdrawalRequirements=${JSON.stringify(beaconChainWithdrawalRequirements, bigintReplacer, 2)}`,
     );
     if (beaconChainWithdrawalRequirements.rebalanceDirection === RebalanceDirection.UNSTAKE) {
       await this.beaconChainStakingClient.submitWithdrawalRequestsToFulfilAmount(
@@ -171,16 +181,24 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     rebalanceAmount: bigint,
     isSimulateSubmitLatestVaultReportSuccessful: boolean,
   ): Promise<void> {
-      this.logger.info(`_handleStakingRebalance - reserve surplus, rebalanceAmount=${rebalanceAmount}`);
+    this.logger.info(`_handleStakingRebalance - reserve surplus, rebalanceAmount=${rebalanceAmount}`);
     // Rebalance first - tolerate failures because fresh vault report should not be blocked
-    const transferFundsForNativeYieldResult = await attempt(this.logger, () => this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount), "_handleStakingRebalance - transferFundsForNativeYield failed (tolerated)");
+    const transferFundsForNativeYieldResult = await attempt(
+      this.logger,
+      () => this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount),
+      "_handleStakingRebalance - transferFundsForNativeYield failed (tolerated)",
+    );
     // Only do YieldManager->YieldProvider, if L1MessageService->YieldManager succeeded
     if (transferFundsForNativeYieldResult.isOk()) {
       // Assumptions
       // i.) We count rebalance once funds have been moved away from the L1MessageService
       // ii.) Only the initial rebalance will call this fn
-      this.metricsUpdater.recordRebalance(RebalanceDirection.STAKE, weiToGweiNumber(rebalanceAmount))
-      await attempt(this.logger, () => this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount), "_handleStakingRebalance - fundYieldProvider failed (tolerated)");
+      this.metricsUpdater.recordRebalance(RebalanceDirection.STAKE, weiToGweiNumber(rebalanceAmount));
+      await attempt(
+        this.logger,
+        () => this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount),
+        "_handleStakingRebalance - fundYieldProvider failed (tolerated)",
+      );
     }
 
     // Submit report last
@@ -203,7 +221,12 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     this.logger.info(`_handleUnstakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
     // Then perform rebalance
-    await attempt(this.logger, () => this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(this.yieldProvider, rebalanceAmount), "_handleUnstakingRebalance - safeAddToWithdrawalReserveIfAboveThreshold failed (tolerated)");
+    await attempt(
+      this.logger,
+      () =>
+        this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(this.yieldProvider, rebalanceAmount),
+      "_handleUnstakingRebalance - safeAddToWithdrawalReserveIfAboveThreshold failed (tolerated)",
+    );
   }
 
   /**
@@ -216,21 +239,29 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @dev We tolerate report submission errors because they should not block rebalances
    */
   private async _handleSubmitLatestVaultReport() {
-      // First call: submit vault report
-      const vaultResult = await attempt(this.logger, () => this.lidoAccountingReportClient.submitLatestVaultReport(), "_handleSubmitLatestVaultReport: submitLatestVaultReport failed; skipping yield report");
-      // Early return, no point reporting Linea yield without a new vault report beforehand
-      if (vaultResult.isErr()) {
-        return;
-      }
+    // First call: submit vault report
+    const vaultResult = await attempt(
+      this.logger,
+      () => this.lidoAccountingReportClient.submitLatestVaultReport(),
+      "_handleSubmitLatestVaultReport: submitLatestVaultReport failed; skipping yield report",
+    );
+    // Early return, no point reporting Linea yield without a new vault report beforehand
+    if (vaultResult.isErr()) {
+      return;
+    }
 
-      // Second call: report yield
-      const yieldResult = await attempt(this.logger, () => this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient), "_handleSubmitLatestVaultReport - submitLatestVaultReport succeeded but reportYield failed");
-      if (yieldResult.isErr()) {
-        return;
-      }
+    // Second call: report yield
+    const yieldResult = await attempt(
+      this.logger,
+      () => this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient),
+      "_handleSubmitLatestVaultReport - submitLatestVaultReport succeeded but reportYield failed",
+    );
+    if (yieldResult.isErr()) {
+      return;
+    }
 
-      // Both calls succeeded
-      this.logger.info("_handleSubmitLatestVaultReport: vault report + yield report succeeded");
-      return yieldResult;
+    // Both calls succeeded
+    this.logger.info("_handleSubmitLatestVaultReport: vault report + yield report succeeded");
+    return yieldResult;
   }
 }

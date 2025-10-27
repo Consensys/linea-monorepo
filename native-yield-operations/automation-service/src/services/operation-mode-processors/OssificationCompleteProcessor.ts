@@ -18,9 +18,7 @@ export class OssificationCompleteProcessor implements IOperationModeProcessor {
   ) {}
 
   public async process(): Promise<void> {
-    this.logger.info(
-      `Waiting ${this.maxInactionMs}ms before executing actions`,
-    );
+    this.logger.info(`Waiting ${this.maxInactionMs}ms before executing actions`);
     await wait(this.maxInactionMs);
     const startedAt = performance.now();
     await this._process();
@@ -31,8 +29,11 @@ export class OssificationCompleteProcessor implements IOperationModeProcessor {
   private async _process(): Promise<void> {
     // Max withdraw
     this.logger.info("_process - Performing max withdrawal from YieldProvider");
-    const maybeWithdrawalReceipt = await attempt(this.logger, () =>
-      this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider), "_process - safeMaxAddToWithdrawalReserve failed (tolerated)");
+    await attempt(
+      this.logger,
+      () => this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider),
+      "_process - safeMaxAddToWithdrawalReserve failed (tolerated)",
+    );
 
     // Max unstake
     this.logger.info("_process - Performing max unstake from beacon chain");

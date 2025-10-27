@@ -50,7 +50,7 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // N.B. Only accounts for payments by the automation service, but external actors can also trigger payment
   LidoFeesPaidTotal = "linea_native_yield_automation_service_lido_fees_paid_total",
 
-  // Counter representing tx fees paid by automation service 
+  // Counter representing tx fees paid by automation service
   // Single label `vault_address`
   TransactionFees = "linea_native_yield_automation_service_transaction_fees",
 
@@ -60,7 +60,7 @@ export enum LineaNativeYieldAutomationServiceMetrics {
 
   // Histogram that tracks time for each operation mode run.
   // Single label `mode`
-  OperationModeExecutionDurationSeconds = "linea_native_yield_automation_service_operation_mode_execution_duration_seconds"
+  OperationModeExecutionDurationSeconds = "linea_native_yield_automation_service_operation_mode_execution_duration_seconds",
 }
 
 export type YieldReportingTriggerLabel = "VAULTS_REPORT_DATA_UPDATED_EVENT" | "TIMEOUT";

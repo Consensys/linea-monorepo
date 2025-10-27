@@ -27,9 +27,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   }
 
   async submitMaxAvailableWithdrawalRequests(): Promise<void> {
-    this.logger.debug(
-      `submitMaxAvailableWithdrawalRequests started`,
-    );
+    this.logger.debug(`submitMaxAvailableWithdrawalRequests started`);
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
     const remainingWithdrawals = await this._submitPartialWithdrawalRequests(sortedValidatorList, maxUint256);
     await this._submitValidatorExits(sortedValidatorList, remainingWithdrawals);
@@ -68,7 +66,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
 
     // Return # of remaining shots
     const remainingWithdrawals = this.maxValidatorWithdrawalRequestsPerTransaction - withdrawalRequests.pubkeys.length;
-    this.logger.debug(`_submitPartialWithdrawalRequests remainingWithdrawal=${remainingWithdrawals}`)
+    this.logger.debug(`_submitPartialWithdrawalRequests remainingWithdrawal=${remainingWithdrawals}`);
     return remainingWithdrawals;
   }
 

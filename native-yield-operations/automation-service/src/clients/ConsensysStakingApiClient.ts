@@ -13,7 +13,9 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
   ) {}
 
   async getActiveValidators(): Promise<ValidatorBalance[]> {
-    const { data, error } = await this.retryService.retry(() => this.apolloClient.query({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY }));
+    const { data, error } = await this.retryService.retry(() =>
+      this.apolloClient.query({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY }),
+    );
     if (error) {
       this.logger.error("getActiveValidators error:", { error });
       return [];
@@ -68,7 +70,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
   getTotalPendingPartialWithdrawalsWei(validatorList: ValidatorBalanceWithPendingWithdrawal[]): bigint {
     const totalGwei = validatorList.reduce((acc, v) => acc + v.pendingWithdrawalAmount, 0n);
     const totalWei = totalGwei * ONE_GWEI;
-    this.logger.debug(`getTotalPendingPartialWithdrawalsWei totalWei=${totalWei}`)
+    this.logger.debug(`getTotalPendingPartialWithdrawalsWei totalWei=${totalWei}`);
     return totalWei;
   }
 }

@@ -30,21 +30,23 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
   public async process(): Promise<void> {
     const { unwatch, waitForEvent } = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
     try {
-      this.logger.info(`process - Waiting for VaultsReportDataUpdated event vs timeout race, timeout=${this.maxInactionMs}ms`)
+      this.logger.info(
+        `process - Waiting for VaultsReportDataUpdated event vs timeout race, timeout=${this.maxInactionMs}ms`,
+      );
       // Race: event vs. timeout
       const winner = await Promise.race([
         waitForEvent.then(() => "event" as const),
         wait(this.maxInactionMs).then(() => "timeout" as const),
       ]);
       this.logger.info(
-        `process - race won by ${winner === "timeout" ?  `time out after ${this.maxInactionMs}ms` : "VaultsReportDataUpdated event"}`,
+        `process - race won by ${winner === "timeout" ? `time out after ${this.maxInactionMs}ms` : "VaultsReportDataUpdated event"}`,
       );
       const startedAt = performance.now();
       await this._process();
       const durationMs = performance.now() - startedAt;
       this.metricsUpdater.recordOperationModeDuration(OperationMode.OSSIFICATION_PENDING_MODE, msToSeconds(durationMs));
     } finally {
-      this.logger.debug("Cleaning up VaultsReportDataUpdated event watcher")
+      this.logger.debug("Cleaning up VaultsReportDataUpdated event watcher");
       // clean up watcher
       unwatch();
     }
@@ -59,27 +61,34 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
    */
   private async _process(): Promise<void> {
     // Max unstake
-    this.logger.info("_process - performing max unstake from beacon chain")
-    await attempt(this.logger, () =>
-        this.beaconChainStakingClient.submitMaxAvailableWithdrawalRequests(), "submitMaxAvailableWithdrawalRequests failed (tolerated)");
+    this.logger.info("_process - performing max unstake from beacon chain");
+    await attempt(
+      this.logger,
+      () => this.beaconChainStakingClient.submitMaxAvailableWithdrawalRequests(),
+      "submitMaxAvailableWithdrawalRequests failed (tolerated)",
+    );
 
-    this.logger.info("_process - Fetching latest vault report")
+    this.logger.info("_process - Fetching latest vault report");
     // Submit vault report if available
     await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams();
     const isSimulateSubmitLatestVaultReportSuccessful =
       await this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful();
     if (isSimulateSubmitLatestVaultReportSuccessful) {
-      this.logger.info("_process - Submitting latest vault report")
-      await attempt(this.logger, () => this.lidoAccountingReportClient.submitLatestVaultReport(), "submitLatestVaultReport failed (tolerated)")
+      this.logger.info("_process - Submitting latest vault report");
+      await attempt(
+        this.logger,
+        () => this.lidoAccountingReportClient.submitLatestVaultReport(),
+        "submitLatestVaultReport failed (tolerated)",
+      );
     }
 
     // Process Pending Ossification
     await this.yieldManagerContractClient.progressPendingOssification(this.yieldProvider);
 
     // Max withdraw if ossified
-    this.logger.info("_process - Ossification completed, performing max safe withdrawal")
+    this.logger.info("_process - Ossification completed, performing max safe withdrawal");
     if (await this.yieldManagerContractClient.isOssified(this.yieldProvider)) {
-        this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider);
+      this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider);
     }
   }
 }

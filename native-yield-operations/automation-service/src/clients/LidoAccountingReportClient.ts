@@ -17,11 +17,13 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
 
   async getLatestSubmitVaultReportParams(): Promise<UpdateVaultDataParams> {
     const latestReportData = await this.lazyOracleContractClient.latestReportData();
-    const reportProof = await this.retryService.retry(() => getReportProofByVault({
-      vault: this.vault,
-      cid: latestReportData.reportCid,
-      gateway: this.ipfsGatewayUrl,
-    }));
+    const reportProof = await this.retryService.retry(() =>
+      getReportProofByVault({
+        vault: this.vault,
+        cid: latestReportData.reportCid,
+        gateway: this.ipfsGatewayUrl,
+      }),
+    );
 
     const params: UpdateVaultDataParams = {
       vault: this.vault,
@@ -35,7 +37,9 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
 
     this.latestSubmitVaultReportParams = params;
 
-    this.logger.info(`getLatestSubmitVaultReportParams set latestSubmitVaultReportParams=${JSON.stringify(params, bigintReplacer, 2)}`);
+    this.logger.info(
+      `getLatestSubmitVaultReportParams set latestSubmitVaultReportParams=${JSON.stringify(params, bigintReplacer, 2)}`,
+    );
     return params;
   }
 

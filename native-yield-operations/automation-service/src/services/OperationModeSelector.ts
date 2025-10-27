@@ -67,10 +67,7 @@ export class OperationModeSelector implements IOperationModeSelector {
           this.metricsUpdater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE);
         }
       } catch (error) {
-        this.logger.error(
-          `selectOperationModeLoop error, retrying in ${this.contractReadRetryTimeMs}ms`,
-          { error },
-        );
+        this.logger.error(`selectOperationModeLoop error, retrying in ${this.contractReadRetryTimeMs}ms`, { error });
         await wait(this.contractReadRetryTimeMs);
       }
     }

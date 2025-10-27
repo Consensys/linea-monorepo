@@ -10,9 +10,7 @@ import {
 import { LineaRollupYieldExtensionABI } from "../../core/abis/LineaRollupYieldExtension.js";
 import { ILineaRollupYieldExtension } from "../../core/clients/contracts/ILineaRollupYieldExtension.js";
 
-export class LineaRollupYieldExtensionContractClient
-  implements ILineaRollupYieldExtension<TransactionReceipt>
-{
+export class LineaRollupYieldExtensionContractClient implements ILineaRollupYieldExtension<TransactionReceipt> {
   private readonly contract: GetContractReturnType<typeof LineaRollupYieldExtensionABI, PublicClient, Address>;
 
   constructor(

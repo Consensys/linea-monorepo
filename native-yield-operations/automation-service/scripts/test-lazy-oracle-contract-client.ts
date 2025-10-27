@@ -12,7 +12,11 @@
  * POLL_INTERVAL_MS=60000 \
  */
 
-import { ViemBlockchainClientAdapter, ViemWalletSignerClientAdapter, WinstonLogger } from "@consensys/linea-shared-utils";
+import {
+  ViemBlockchainClientAdapter,
+  ViemWalletSignerClientAdapter,
+  WinstonLogger,
+} from "@consensys/linea-shared-utils";
 import { LazyOracleContractClient } from "../src/clients/contracts/LazyOracleContractClient.js";
 import { Address, Hex } from "viem";
 import { hoodi } from "viem/chains";

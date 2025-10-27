@@ -1,4 +1,12 @@
-import { ExponentialBackoffRetryService, ExpressApiApplication, IApplication, ILogger, IMetricsService, IRetryService, WinstonLogger } from "@consensys/linea-shared-utils";
+import {
+  ExponentialBackoffRetryService,
+  ExpressApiApplication,
+  IApplication,
+  ILogger,
+  IMetricsService,
+  IRetryService,
+  WinstonLogger,
+} from "@consensys/linea-shared-utils";
 import { NativeYieldAutomationServiceBootstrapConfig } from "./config/config.js";
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
 import { OperationModeSelector } from "../../services/OperationModeSelector.js";
@@ -41,7 +49,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 export class NativeYieldAutomationServiceBootstrap {
   private readonly config: NativeYieldAutomationServiceBootstrapConfig;
   private readonly logger: ILogger;
-  private readonly metricsService: IMetricsService<LineaNativeYieldAutomationServiceMetrics>
+  private readonly metricsService: IMetricsService<LineaNativeYieldAutomationServiceMetrics>;
   private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater;
   private readonly api: IApplication;
 
@@ -123,7 +131,9 @@ export class NativeYieldAutomationServiceBootstrap {
       config.contractAddresses.lineaRollupContractAddress,
     );
 
-    this.exponentialBackoffRetryService = new ExponentialBackoffRetryService(new WinstonLogger(ExponentialBackoffRetryService.name, config.loggerOptions));
+    this.exponentialBackoffRetryService = new ExponentialBackoffRetryService(
+      new WinstonLogger(ExponentialBackoffRetryService.name, config.loggerOptions),
+    );
     this.beaconNodeApiClient = new BeaconNodeApiClient(
       new WinstonLogger(BeaconNodeApiClient.name, config.loggerOptions),
       this.exponentialBackoffRetryService,
