@@ -1,6 +1,8 @@
 package keccakfkoalabear
 
 import (
+	"fmt"
+	"math/bits"
 	"math/rand/v2"
 	"testing"
 
@@ -27,7 +29,7 @@ func TestChi(t *testing.T) {
 	var run *wizard.ProverRuntime
 
 	// Parametrizes the wizard and the input generator.
-	builder, prover, mod := rhoTestingModule(maxKeccaf)
+	builder, prover, mod := chiTestingModule(maxKeccaf)
 
 	comp := wizard.Compile(builder, dummy.Compile)
 
@@ -41,7 +43,6 @@ func TestChi(t *testing.T) {
 		assert.NoErrorf(t, wizard.Verify(comp, proof), "verifier failed")
 
 		effNumKeccak := len(traces.KeccakFInps)
-
 		for permId := 0; permId < effNumKeccak; permId++ {
 
 			// Copy the corresponding input state and apply the rho
@@ -65,7 +66,7 @@ func TestChi(t *testing.T) {
 					reconstructed[x][y] = reconstructU64(recomposed)
 				}
 			}
-
+			printDiff(state, reconstructed)
 			assert.Equal(t, state, reconstructed,
 				"could not reconstruct the state. permutation %v", permId)
 
@@ -78,7 +79,7 @@ func TestChi(t *testing.T) {
 }
 
 // a module definition method specifically for testing the rho submodule
-func ChiTestingModule(
+func chiTestingModule(
 	// parameters for the wizard
 	maxNumKeccakf int,
 ) (
@@ -108,12 +109,12 @@ func ChiTestingModule(
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 64; z++ {
-					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("RHO_STATE_CURR_%v_%v_%v", x, y, z), size)
+					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_CURR_%v_%v_%v", x, y, z), size)
 				}
 			}
 		}
 
-		mod.RhoPi = newRho(comp, maxNumKeccakf, stateCurr)
+		mod.Chi = newChi(comp, maxNumKeccakf, stateCurr)
 	}
 
 	prover := func(
@@ -144,19 +145,18 @@ func ChiTestingModule(
 					// Pre-permute using the theta transformation before running
 					// the rho permutation.
 					state.Theta()
+					state.Rho()
+					inputState := state.Pi()
 
 					// Convert the state in sliced from in base 2
 					for x := 0; x < 5; x++ {
 						for y := 0; y < 5; y++ {
-							a := BitsLE(state[x][y])
+							a := BitsLE(inputState[x][y])
 							for k := 0; k < 64; k++ {
 								// If the column is not already assigned, then
 								// allocate it with the proper length.
 								if stateCurrWit[x][y][k] == nil {
-									stateCurrWit[x][y][k] = make(
-										[]field.Element,
-										size,
-									)
+									stateCurrWit[x][y][k] = make([]field.Element, size)
 								}
 
 								r := keccak.NumRound*permId + rnd
@@ -166,9 +166,7 @@ func ChiTestingModule(
 					}
 
 					// Then finalize the permutation normally
-					state.Rho()
-					b := state.Pi()
-					state.Chi(&b)
+					state.Chi(&inputState)
 					state.Iota(rnd)
 				}
 			}
@@ -188,9 +186,24 @@ func ChiTestingModule(
 			}
 
 			// Then assigns all the columns of the rho module
-			mod.RhoPi.assignRoh(run, stateCurr)
+			mod.Chi.assignChi(run, stateCurr)
 		}
 	}
 
 	return builder, prover, mod
+}
+
+func printDiff(expected, actual keccak.State) {
+	totDiffBits := 0
+	for i := 0; i < 5; i++ {
+		for j := 0; j < 5; j++ {
+			e := expected[i][j]
+			a := actual[i][j]
+			x := e ^ a
+			bc := bits.OnesCount64(x)
+			totDiffBits += bc
+			fmt.Printf("word (%d,%d): expected=0x%x actual=0x%x xor=0x%x diffBits=%d\n", i, j, e, a, x, bc)
+		}
+	}
+	fmt.Printf("total differing bits = %d\n", totDiffBits)
 }
