@@ -1,7 +1,7 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import { bigintReplacer, ILogger, attempt, tryResult } from "@consensys/linea-shared-utils";
+import { bigintReplacer, ILogger, attempt } from "@consensys/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
@@ -166,8 +166,11 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   ): Promise<void> {
       this.logger.info(`_handleStakingRebalance - reserve surplus, rebalanceAmount=${rebalanceAmount}`);
     // Rebalance first - tolerate failures because fresh vault report should not be blocked
-    await attempt(this.logger, () => this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount), "_handleStakingRebalance - transferFundsForNativeYield failed (tolerated)");
-    await attempt(this.logger, () => this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount), "_handleStakingRebalance - fundYieldProvider failed (tolerated)");
+    const transferFundsForNativeYieldResult = await attempt(this.logger, () => this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount), "_handleStakingRebalance - transferFundsForNativeYield failed (tolerated)");
+    // Only do YieldManager->YieldProvider, if L1MessageService->YieldManager succeeded
+    if (transferFundsForNativeYieldResult.isOk()) {
+      await attempt(this.logger, () => this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount), "_handleStakingRebalance - fundYieldProvider failed (tolerated)");
+    }
 
     // Submit report last
     if (isSimulateSubmitLatestVaultReportSuccessful) {
@@ -203,27 +206,19 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    */
   private async _handleSubmitLatestVaultReport() {
       // First call: submit vault report
-      const vaultResult = await tryResult(() =>
-        this.lidoAccountingReportClient.submitLatestVaultReport()
-      );
+      const vaultResult = await attempt(this.logger, () => this.lidoAccountingReportClient.submitLatestVaultReport(), "_handleSubmitLatestVaultReport: submitLatestVaultReport failed; skipping yield report");
+      // Early return, no point reporting Linea yield without a new vault report beforehand
       if (vaultResult.isErr()) {
-        this.logger.warn("_handleSubmitLatestVaultReport: submitLatestVaultReport failed; skipping yield report", {
-          error: vaultResult.error,
-        });
-        // Early return, no point reporting Linea yield without a new vault report beforehand
-        return vaultResult;
+        return;
       }
 
       // Second call: report yield
-      const yieldResult = await tryResult(() =>
-        this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient)
-      );
+      const yieldResult = await attempt(this.logger, () => this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient), "_handleSubmitLatestVaultReport - submitLatestVaultReport succeeded but reportYield failed");
       if (yieldResult.isErr()) {
-        this.logger.warn("_handleSubmitLatestVaultReport - submitLatestVaultReport succeeded but reportYield failed", {
-          error: yieldResult.error,
-        });
-        return yieldResult;
+        return;
       }
+
+      // Both calls succeeded
       this.logger.info("_handleSubmitLatestVaultReport: vault report + yield report succeeded");
       return yieldResult;
   }

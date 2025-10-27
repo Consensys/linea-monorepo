@@ -52,6 +52,11 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
    * 4. Max unstake
    */
   private async _process(): Promise<void> {
+    // Max unstake
+    this.logger.info("_process - performing max unstake from beacon chain")
+    await attempt(this.logger, () =>
+        this.beaconChainStakingClient.submitMaxAvailableWithdrawalRequests(), "submitMaxAvailableWithdrawalRequests failed (tolerated)");
+
     this.logger.info("_process - Fetching latest vault report")
     // Submit vault report if available
     await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams();
@@ -59,7 +64,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
       await this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful();
     if (isSimulateSubmitLatestVaultReportSuccessful) {
       this.logger.info("_process - Submitting latest vault report")
-      await this.lidoAccountingReportClient.submitLatestVaultReport();
+      await attempt(this.logger, () => this.lidoAccountingReportClient.submitLatestVaultReport(), "submitLatestVaultReport failed (tolerated)")
     }
 
     // Process Pending Ossification
@@ -68,12 +73,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
     // Max withdraw if ossified
     this.logger.info("_process - Ossification completed, performing max safe withdrawal")
     if (await this.yieldManagerContractClient.isOssified(this.yieldProvider)) {
-      await attempt(this.logger, () =>
-        this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider), "safeMaxAddToWithdrawalReserve failed (tolerated)");
+        this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider);
     }
-
-    // Max unstake
-    this.logger.info("_process - performing max unstake from beacon chain")
-    await this.beaconChainStakingClient.submitMaxAvailableWithdrawalRequests();
   }
 }
