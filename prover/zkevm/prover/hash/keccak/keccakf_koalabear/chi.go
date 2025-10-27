@@ -5,11 +5,13 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	protocols "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/sub_protocols"
 )
 
@@ -18,16 +20,16 @@ type chi struct {
 	stateCurr stateInBits
 	// internal state  recomposing each 8 bits into a base clean 11.
 	stateInternal state
-	// state after applying the chi step. It is in the expression form since it will be combined with Iota step to get the standard state later.
-	// this avoid declaring extra columns.
+	// state after applying the chi step.
+	// It is in the expression form since it will be combined with Iota step
+	// to get the standard state later. This avoid declaring extra columns.
 	StateNext [5][5][8]*symbolic.Expression
 	// prover actions for linear combinations
 	paLinearCombinations [5][5][8]*protocols.LinearCombination
 	// state witness after applying the chi step, since the state-witness is needed for the Iota step.
 	stateNextWitness [5][5][8][]field.Element
-	stateNextBits    [5][5][64][]field.Element
 	// the round constant
-	RC ifaces.Column
+	RC *dedicated.RepeatedPattern
 }
 
 func newChi(comp *wizard.CompiledIOP, numKeccakf int, stateCurr stateInBits) *chi {
@@ -50,6 +52,14 @@ func newChi(comp *wizard.CompiledIOP, numKeccakf int, stateCurr stateInBits) *ch
 		}
 	}
 
+	// define the round constant column
+	chi.RC = dedicated.NewRepeatedPattern(
+		comp,
+		0,
+		keccakf.ValRCBase2Pattern(),
+		verifiercol.NewConstantCol(field.One(), numRows(numKeccakf), "keccak-rc-pattern"),
+	)
+
 	// apply complex binary. i.e., A[x][y] = A[x][y] + ( (not A[x+1][y]) and A[x+2][y] )  and A[0,0] = A[0,0] + RC
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
@@ -59,13 +69,15 @@ func newChi(comp *wizard.CompiledIOP, numKeccakf int, stateCurr stateInBits) *ch
 					chi.stateInternal[(x+1)%5][y][z],
 					sym.Mul(3, chi.stateInternal[(x+2)%5][y][z]),
 				)
-			}
-			/* if x == 0 && y == 0 {
+
+				if x == 0 && y == 0 {
 					chi.StateNext[x][y][0] = sym.Add(
 						chi.StateNext[x][y][0],
-						chi.RC)
+						sym.Mul(2, chi.RC.Natural),
+					)
 				}
-			}*/
+			}
+
 		}
 	}
 	return chi
@@ -78,6 +90,7 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 		stateInternal [5][5][8][]field.Element
 		size          = stateCurr[0][0][0].Size()
 	)
+	chi.RC.Assign(run)
 	// assign the linear combinations for each lane in the state
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
@@ -99,12 +112,14 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 				vector.ScalarMul(v, stateInternal[(x+2)%5][y][z], field.NewElement(3))
 				vector.Add(u, u, v, stateInternal[(x+1)%5][y][z])
 				chi.stateNextWitness[x][y][z] = u
-				for i := 0; i < size; i++ {
-					res := cleanBase(Decompose(u[i].Uint64(), 11, 8))
-					for j := range res {
-						chi.stateNextBits[x][y][z*8+j] = append(chi.stateNextBits[x][y][z*8+j], field.NewElement(res[j]))
+
+				// If it is the first lane, then add the round constant
+				/*	if x == 0 && y == 0 {
+						rc := chi.RC.Natural.GetColAssignment(run).IntoRegVecSaveAlloc()
+						vector.ScalarMul(rc, rc, field.NewElement(2))
+						vector.Add(chi.stateNextWitness[x][y][0], chi.stateNextWitness[x][y][0], rc)
 					}
-				}
+				*/
 			}
 		}
 	}
