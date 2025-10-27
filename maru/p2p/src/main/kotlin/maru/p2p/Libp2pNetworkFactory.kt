@@ -93,11 +93,16 @@ class Libp2pNetworkFactory(
         .gossipFactor(gossipingConfig.gossipFactor)
         .build()
     val gossipRouterBuilder =
-      GossipRouterBuilder().apply {
-        params = gossipParams
-        scoreParams = GossipScoreParams(GossipPeerScoreParams(), GossipTopicsScoreParams())
-        messageFactory = { getMessageFactory(it, gossipTopicHandlers) }
-      }
+      GossipRouterBuilder()
+        .apply {
+          params = gossipParams
+          scoreParams =
+            GossipScoreParams(
+              GossipPeerScoreParams(isDirect = { _ -> gossipingConfig.considerPeersAsDirect }),
+              GossipTopicsScoreParams(),
+            )
+          messageFactory = { getMessageFactory(it, gossipTopicHandlers) }
+        }
     val gossipRouter = gossipRouterBuilder.build()
     val pubsubApiImpl = PubsubApiImpl(gossipRouter)
     val gossip = Gossip(gossipRouter, pubsubApiImpl)
