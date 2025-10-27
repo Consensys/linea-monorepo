@@ -52,7 +52,7 @@ func TestInitialization(t *testing.T) {
 	assert.Equal(t, acc.SubTreeRoot(), ver.SubTreeRoot, "inconsistent roots")
 
 	headHash := accumulator.Head().Hash(acc.Config())
-	tailHash := accumulator.Head().Hash(acc.Config())
+	tailHash := accumulator.Tail(acc.Config()).Hash(acc.Config())
 
 	// First leaf is head
 	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(0)), accumulator.Head().Hash(acc.Config()))
