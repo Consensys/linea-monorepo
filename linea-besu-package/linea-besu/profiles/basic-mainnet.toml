@@ -25,7 +25,6 @@ host-allowlist=["*"]
 engine-host-allowlist=["*"]
 engine-rpc-port=8550
 engine-jwt-disabled=true
-engine-jwt-secret="/var/lib/besu/jwt"
 
 # rpc
 rpc-http-enabled=true

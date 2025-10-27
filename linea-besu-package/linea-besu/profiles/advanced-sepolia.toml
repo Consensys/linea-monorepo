@@ -62,8 +62,7 @@ metrics-host="0.0.0.0"
 metrics-port=9545
 
 ### JWT and Engine Configuration ###
-engine-jwt-disabled=false
-engine-jwt-secret="/etc/jwt-secret.hex"
+engine-jwt-disabled=true
 engine-rpc-enabled=true
 engine-rpc-port=8550
 engine-host-allowlist=["*"]

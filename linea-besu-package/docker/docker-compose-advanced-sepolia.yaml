@@ -5,7 +5,7 @@ services:
     command: 
       - --profile=advanced-sepolia 
       - --p2p-host=YOUR_IP_ADDRESS
-      # - --engine-jwt-disabled=true  # Uncomment if engine-api jwt is enabled
+      # - --engine-jwt-disabled=false  # Uncomment if engine-api jwt is enabled
       # - --engine-jwt-secret=/var/lib/besu/jwt  # Uncomment if engine-api jwt is enabled
     ports:
       - 30303:30303
