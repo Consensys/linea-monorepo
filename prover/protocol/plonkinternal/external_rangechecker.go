@@ -49,7 +49,7 @@ type externalRangeChecker struct {
 // [kvstore.Store].
 type storeCommitBuilder interface {
 	frontend.Builder[constraint.U32]
-	frontend.Committer
+	frontend.WideCommitter
 	SetKeyValue(key, value any)
 	GetKeyValue(key any) (value any)
 	GetWireConstraints(wires []frontend.Variable, addMissing bool) ([][2]int, error)

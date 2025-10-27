@@ -38,7 +38,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"

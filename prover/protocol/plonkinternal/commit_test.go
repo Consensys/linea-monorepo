@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/require"
@@ -34,11 +34,12 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	}
 
 	// commit to powers of a
-	committer := api.(frontend.Committer)
-	_, err := committer.Commit(powersOfA...)
+	committer := api.(frontend.WideCommitter)
+	committed, err := committer.WideCommit(4, powersOfA...)
 	if err != nil {
 		return err
 	}
+	_ = committed // skip use of committed values for this test
 
 	api.AssertIsEqual(circuit.Y, a)
 	return nil

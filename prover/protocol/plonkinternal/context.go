@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	plonkKoalabear "github.com/consensys/gnark/backend/plonk/koalabear"
-	"github.com/consensys/gnark/constraint"
 	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -245,7 +244,7 @@ func CompileCircuitWithExternalHasher(circ frontend.Circuit, addGates bool) (*cs
 
 	gnarkBuilder, hshGetter := mimc.NewExternalHasherBuilder(addGates)
 
-	ccs, err := frontend.CompileGeneric[constraint.U32](koalabear.Modulus(), gnarkBuilder, circ)
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkBuilder, circ)
 	if err != nil {
 		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
