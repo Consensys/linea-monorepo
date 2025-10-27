@@ -38,7 +38,7 @@ func (comp *CompiledIOP) BootstrapFiatShamir(vm VersionMetadata, ser CompiledIOP
 	digest[0] = 0 // This is to prevent potential errors due to overflowing the field
 	var digestArr types.Bytes32
 	copy(digestArr[:], digest)
-	comp.FiatShamirSetup = types.Bytes32ToHash(digestArr)
+	comp.FiatShamirSetup = types.Bytes32ToOctuplet(digestArr)
 
 	return comp
 }

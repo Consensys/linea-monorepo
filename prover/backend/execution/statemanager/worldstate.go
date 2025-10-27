@@ -14,7 +14,7 @@ import (
 const WS_LOCATION = "0x"
 
 var MIMC_CONFIG = &smt.Config{
-	HashFunc: hashtypes.MiMC,
+	HashFunc: hashtypes.Poseidon2,
 	Depth:    40,
 }
 

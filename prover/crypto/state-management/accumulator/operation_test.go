@@ -52,7 +52,7 @@ func TestInitialization(t *testing.T) {
 	assert.Equal(t, acc.SubTreeRoot(), ver.SubTreeRoot, "inconsistent roots")
 
 	headHash := accumulator.Head().Hash(acc.Config())
-	tailHash := accumulator.Head().Hash(acc.Config())
+	tailHash := accumulator.Tail(acc.Config()).Hash(acc.Config())
 
 	// First leaf is head
 	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(0)), accumulator.Head().Hash(acc.Config()))
@@ -60,10 +60,10 @@ func TestInitialization(t *testing.T) {
 
 	// Can we prover membership of the leaf
 	proofHead := acc.Tree.MustProve(0)
-	proofHead.Verify(acc.Config(), types.Bytes32ToHash(headHash), types.Bytes32ToHash(acc.SubTreeRoot()))
+	proofHead.Verify(acc.Config(), types.Bytes32ToOctuplet(headHash), types.Bytes32ToOctuplet(acc.SubTreeRoot()))
 
 	proofTail := acc.Tree.MustProve(1)
-	proofTail.Verify(acc.Config(), types.Bytes32ToHash(tailHash), types.Bytes32ToHash(acc.SubTreeRoot()))
+	proofTail.Verify(acc.Config(), types.Bytes32ToOctuplet(tailHash), types.Bytes32ToOctuplet(acc.SubTreeRoot()))
 }
 
 func TestInsertion(t *testing.T) {
