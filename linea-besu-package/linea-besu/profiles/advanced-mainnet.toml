@@ -19,11 +19,10 @@ static-nodes-file="config/static-nodes.mainnet.json"
 host-allowlist=["*"]
 
 # engine
-engine-jwt-disabled=false
-engine-jwt-secret="/etc/jwt-secret.hex"
-engine-rpc-enabled=false
-engine-rpc-port=8551
 engine-host-allowlist=["*"]
+engine-rpc-port=8550
+engine-jwt-disabled=true
+engine-jwt-secret="/var/lib/besu/jwt"
 
 # rpc
 rpc-http-enabled=true
@@ -76,10 +75,13 @@ Xplugin-rocksdb-high-spec-enabled=true
 
 ### Gas and Block Limit Configuration ###
 min-gas-price="10000000"
-target-gas-limit="2000000000"
+target-gas-limit="61000000"
 
 ### Disable parallel tx processing until it is fully supported by Linea
 bonsai-parallel-tx-processing-enabled=false
+
+cache-last-block-headers-preload-enabled=true
+cache-last-block-headers=50000
 
 ### Plugin Configuration ###
 #plugin-linea-min-margin="0.3"
