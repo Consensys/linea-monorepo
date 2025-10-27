@@ -5,10 +5,12 @@ import { ValidatorBalanceWithPendingWithdrawal } from "../core/entities/Validato
 import { WithdrawalRequests } from "../core/entities/LidoStakingVaultWithdrawalParams.js";
 import { Address, maxUint256, stringToHex, TransactionReceipt } from "viem";
 import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
+import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 
 export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   constructor(
     private readonly logger: ILogger,
+    private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly validatorDataClient: IValidatorDataClient,
     private readonly maxValidatorWithdrawalRequestsPerTransaction: number,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
@@ -64,6 +66,13 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     // Do unstake
     await this.yieldManagerContractClient.unstake(this.yieldProvider, withdrawalRequests);
 
+    // Instrument metrics after tx success
+    for (let i = 0; i < withdrawalRequests.pubkeys.length; i++) {
+      const pubkey = withdrawalRequests.pubkeys[i];
+      const amountGwei = withdrawalRequests.amountsGwei[i];
+      this.metricsUpdater.addValidatorPartialUnstakeAmount(pubkey, Number(amountGwei));
+    }
+
     // Return # of remaining shots
     const remainingWithdrawals = this.maxValidatorWithdrawalRequestsPerTransaction - withdrawalRequests.pubkeys.length;
     this.logger.debug(`_submitPartialWithdrawalRequests remainingWithdrawal=${remainingWithdrawals}`);
@@ -95,5 +104,11 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
 
     // Do unstake
     await this.yieldManagerContractClient.unstake(this.yieldProvider, withdrawalRequests);
+
+    // Instrument metrics after tx success
+    for (let i = 0; i < withdrawalRequests.pubkeys.length; i++) {
+      const pubkey = withdrawalRequests.pubkeys[i];
+      this.metricsUpdater.incrementValidatorExit(pubkey);
+    }
   }
 }
