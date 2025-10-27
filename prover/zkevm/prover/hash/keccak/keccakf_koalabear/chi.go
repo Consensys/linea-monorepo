@@ -94,6 +94,7 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 			for z := 0; z < 8; z++ {
 				// A[x][y] = A[x][y] + ( (not A[x+1][y]) and A[x+2][y])
 				u = make([]field.Element, size)
+				v = make([]field.Element, size)
 				vector.ScalarMul(u, stateInternal[x][y][z], field.NewElement(2))
 				vector.ScalarMul(v, stateInternal[(x+2)%5][y][z], field.NewElement(3))
 				vector.Add(u, u, v, stateInternal[(x+1)%5][y][z])
@@ -101,7 +102,7 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 				for i := 0; i < size; i++ {
 					res := cleanBase(Decompose(u[i].Uint64(), 11, 8))
 					for j := range res {
-						chi.stateNextBits[x][y][z*8+j][i] = field.NewElement(res[j])
+						chi.stateNextBits[x][y][z*8+j] = append(chi.stateNextBits[x][y][z*8+j], field.NewElement(res[j]))
 					}
 				}
 			}
@@ -126,6 +127,10 @@ func Decompose(r uint64, base int, nb int) (res []uint64) {
 		utils.Panic("expected %v limbs, but got %v", nb, len(res))
 	}
 
+	// Complete with zeroes
+	for len(res) < nb {
+		res = append(res, 0)
+	}
 	return res
 }
 
