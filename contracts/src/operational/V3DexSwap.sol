@@ -56,7 +56,7 @@ contract V3DexSwap is IV3DexSwap {
     require(_deadline >= block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
 
-    amountOut = ISwapRouterV3(ROUTER).exactInputSingle(
+    amountOut = ISwapRouterV3(ROUTER).exactInputSingle{ value: msg.value }(
       ISwapRouterV3.ExactInputSingleParams({
         tokenIn: WETH_TOKEN,
         tokenOut: LINEA_TOKEN,
