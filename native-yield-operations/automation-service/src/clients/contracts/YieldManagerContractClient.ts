@@ -144,11 +144,10 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     });
 
     const validatorWithdrawalFee = await this._getValidatorWithdrawalFee(yieldProvider, withdrawalParams);
-    console.log(validatorWithdrawalFee);
     const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
       this.contractAddress,
       calldata,
-      // validatorWithdrawalFee,
+      validatorWithdrawalFee,
     );
     this.logger.info(`unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`, {
       withdrawalParams,
