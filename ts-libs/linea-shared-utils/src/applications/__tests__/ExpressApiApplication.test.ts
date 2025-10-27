@@ -1,12 +1,16 @@
 import { Registry } from "prom-client";
 import { mock } from "jest-mock-extended";
-import { Api } from "../Api";
+import { ExpressApiApplication } from "../ExpressApiApplication";
 import { ILogger, IMetricsService } from "@consensys/linea-shared-utils";
 
+export enum ExampleMetrics {
+  ExampleMetrics = "ExampleMetrics",
+}
+
 describe("Api", () => {
-  let api: Api;
-  const mockConfig = { port: 3000 };
-  const mockMetricService = mock<IMetricsService<LineaPostmanMetrics>>();
+  let api: ExpressApiApplication;
+  const mockPort = 3000;
+  const mockMetricService = mock<IMetricsService<ExampleMetrics>>();
   const mockLogger = mock<ILogger>();
 
   beforeEach(async () => {
@@ -14,7 +18,7 @@ describe("Api", () => {
       contentType: "text/plain; version=0.0.4; charset=utf-8",
       metrics: async () => "mocked metrics",
     } as Registry);
-    api = new Api(mockConfig, mockMetricService, mockLogger);
+    api = new ExpressApiApplication(mockPort, mockMetricService, mockLogger);
   });
 
   afterEach(async () => {

@@ -28,7 +28,7 @@ import { L2ClaimMessageTransactionSizePoller } from "../../../../services/poller
 import { DEFAULT_MAX_CLAIM_GAS_LIMIT } from "../../../../core/constants";
 import { MessageStatusSubscriber } from "../../persistence/subscribers/MessageStatusSubscriber";
 import { MessageMetricsUpdater } from "../../api/metrics/MessageMetricsUpdater";
-import { Api } from "../../api/Api";
+import { ExpressApiApplication } from "@consensys/linea-shared-utils";
 
 jest.mock("ethers", () => {
   const allAutoMocked = jest.createMockFromModule("ethers");
@@ -215,7 +215,7 @@ describe("PostmanServiceClient", () => {
       jest.spyOn(MessagePersistingPoller.prototype, "start").mockImplementationOnce(jest.fn());
       jest.spyOn(DatabaseCleaningPoller.prototype, "start").mockImplementationOnce(jest.fn());
       jest.spyOn(TypeOrmMessageRepository.prototype, "getLatestMessageSent").mockImplementationOnce(jest.fn());
-      jest.spyOn(Api.prototype, "start").mockImplementationOnce(jest.fn());
+      jest.spyOn(ExpressApiApplication.prototype, "start").mockImplementationOnce(jest.fn());
 
       jest.spyOn(MessageMetricsUpdater.prototype, "initialize").mockResolvedValueOnce();
       await postmanServiceClient.initializeMetricsAndApi();
@@ -235,7 +235,7 @@ describe("PostmanServiceClient", () => {
       jest.spyOn(L2ClaimMessageTransactionSizePoller.prototype, "stop").mockImplementationOnce(jest.fn());
       jest.spyOn(MessagePersistingPoller.prototype, "stop").mockImplementationOnce(jest.fn());
       jest.spyOn(DatabaseCleaningPoller.prototype, "stop").mockImplementationOnce(jest.fn());
-      jest.spyOn(Api.prototype, "stop").mockImplementationOnce(jest.fn());
+      jest.spyOn(ExpressApiApplication.prototype, "stop").mockImplementationOnce(jest.fn());
 
       jest.spyOn(MessageMetricsUpdater.prototype, "initialize").mockResolvedValueOnce();
       await postmanServiceClient.initializeMetricsAndApi();

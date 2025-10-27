@@ -1,6 +1,6 @@
 import { DataSource } from "typeorm";
 import { LineaSDK, Direction } from "@consensys/linea-sdk";
-import { ILogger } from "@consensys/linea-shared-utils";
+import { ExpressApiApplication, ILogger } from "@consensys/linea-shared-utils";
 import { TypeOrmMessageRepository } from "../persistence/repositories/TypeOrmMessageRepository";
 import { IPoller } from "../../../core/services/pollers/IPoller";
 import {
@@ -25,7 +25,6 @@ import { L2ClaimTransactionSizeCalculator } from "../../../services/L2ClaimTrans
 import { LineaTransactionValidationService } from "../../../services/LineaTransactionValidationService";
 import { EthereumTransactionValidationService } from "../../../services/EthereumTransactionValidationService";
 import { getConfig } from "./config/utils";
-import { Api } from "../api/Api";
 import { MessageStatusSubscriber } from "../persistence/subscribers/MessageStatusSubscriber";
 import { PostmanWinstonLogger } from "../../../utils/PostmanWinstonLogger";
 import { PostmanMetricsService } from "../api/metrics/PostmanMetricsService";
@@ -38,7 +37,7 @@ import {
 } from "../../../../src/core/metrics";
 import { SponsorshipMetricsUpdater } from "../api/metrics/SponsorshipMetricsUpdater";
 import { TransactionMetricsUpdater } from "../api/metrics/TransactionMetricsUpdater";
-import { IMetricsService } from "@consensys/linea-shared-utils";
+import { IMetricsService, IApplication } from "@consensys/linea-shared-utils";
 
 export class PostmanServiceClient {
   // Metrics services
@@ -68,7 +67,7 @@ export class PostmanServiceClient {
 
   private l1L2AutoClaimEnabled: boolean;
   private l2L1AutoClaimEnabled: boolean;
-  private api: Api;
+  private api: IApplication;
   private config: PostmanConfig;
 
   /**
@@ -421,10 +420,10 @@ export class PostmanServiceClient {
       this.db.subscribers.push(messageStatusSubscriber);
 
       // Initialize or reinitialize the API using the metrics service.
-      this.api = new Api(
-        { port: this.config.apiConfig.port },
+      this.api = new ExpressApiApplication(
+        this.config.apiConfig.port,
         this.postmanMetricsService,
-        new PostmanWinstonLogger(Api.name),
+        new PostmanWinstonLogger(ExpressApiApplication.name),
       );
 
       this.logger.info("Metrics and API have been initialized successfully.");
