@@ -192,6 +192,7 @@ export class NativeYieldAutomationServiceBootstrap {
 
     this.operationModeSelector = new OperationModeSelector(
       new WinstonLogger(OperationModeSelector.name, config.loggerOptions),
+      this.metricsUpdater,
       this.yieldManagerContractClient,
       this.yieldReportingOperationModeProcessor,
       this.ossificationPendingOperationModeProcessor,
