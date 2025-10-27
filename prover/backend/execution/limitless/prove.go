@@ -139,6 +139,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 					if r := recover(); r != nil {
 						jobErr = fmt.Errorf("GL prover for witness index=%v panicked: %v", i, r)
 						debug.PrintStack()
+						return
 					}
 				}()
 
@@ -211,6 +212,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 					if r := recover(); r != nil {
 						jobErr = fmt.Errorf("LPP prover for witness index=%v panicked: %v", i, r)
 						debug.PrintStack()
+						return
 					}
 				}()
 
@@ -551,8 +553,8 @@ func RunConglomerationHierarchical(ctx context.Context,
 				}
 				return distributed.SegmentProof{}, fmt.Errorf("proof stream closed prematurely; stack size=%d, proofsReceived=%d, totalProofs=%d", len(stack), proofsReceived, totalProofs)
 			}
+			logrus.Infof("Received proof (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) for conglomeration", p.ProofType, p.ModuleIndex, p.SegmentIndex)
 			stack = append(stack, p)
-			logrus.Infof("Number of proofs in stack:%d", len(stack))
 			proofsReceived++
 		}
 	}
