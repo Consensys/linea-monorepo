@@ -1,7 +1,6 @@
 package net.consensys.linea.sequencer.txselection.selectors;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
@@ -28,21 +27,15 @@ public class TransactionEventSelector implements PluginTransactionSelector {
   public TransactionSelectionResult evaluateTransactionPostProcessing(
       final TransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult) {
-    Optional<Address> maybeContractAddress =
-        evaluationContext.getPendingTransaction().getTransaction().contractAddress();
-    if (maybeContractAddress.isEmpty()) {
-      return TransactionSelectionResult.SELECTED;
-    }
-
     final boolean isBundle =
         evaluationContext.getPendingTransaction() instanceof TransactionBundle.PendingBundleTx;
-    Set<TransactionEventFilter> deniedEventsForTransaction =
-        isBundle
-            ? deniedBundleEvents.get().get(maybeContractAddress.get())
-            : deniedEvents.get().get(maybeContractAddress.get());
-    if (deniedEventsForTransaction != null) {
-      for (TransactionEventFilter deniedEvent : deniedEventsForTransaction) {
-        for (Log log : processingResult.getLogs()) {
+    final Map<Address, Set<TransactionEventFilter>> deniedEventsByAddress = isBundle
+      ? deniedBundleEvents.get()
+      : deniedEvents.get();
+    for (Log log : processingResult.getLogs()) {
+      Set<TransactionEventFilter> deniedEventsForTransaction = deniedEventsByAddress.get(log.getLogger());
+      if (deniedEventsForTransaction != null) {
+        for (TransactionEventFilter deniedEvent : deniedEventsForTransaction) {
           if (deniedEvent.matches(log)) {
             return TransactionSelectionResult.invalid(
                 String.format(

@@ -3,7 +3,6 @@ package net.consensys.linea.sequencer.txselection.selectors;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import net.consensys.linea.bundles.TransactionBundle;
@@ -47,14 +46,18 @@ public class TransactionEventSelectorTest {
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
 
-    mockTransactionType(false, evaluationContext, address);
+    Log log = Mockito.mock(Log.class);
+    Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
+    Mockito.when(log.getLogger()).thenReturn(address);
+
+    mockTransactionType(false, evaluationContext);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
-    Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
-    Mockito.verifyNoMoreInteractions(evaluationContext);
-    Mockito.verifyNoInteractions(processingResult);
+    Mockito.verify(evaluationContext).getPendingTransaction();
+    Mockito.verify(processingResult).getLogs();
+    Mockito.verifyNoMoreInteractions(evaluationContext, processingResult);
 
     Assertions.assertEquals(TransactionSelectionResult.SELECTED, actualResult);
   }
@@ -68,15 +71,16 @@ public class TransactionEventSelectorTest {
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
 
-    mockTransactionType(false, evaluationContext, address);
+    mockTransactionType(false, evaluationContext);
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
+    Mockito.when(log.getLogger()).thenReturn(address);
     Mockito.when(transactionEventFilter.matches(log)).thenReturn(false);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
-    Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
+    Mockito.verify(evaluationContext).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
     Mockito.verify(transactionEventFilter).matches(log);
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
@@ -93,15 +97,16 @@ public class TransactionEventSelectorTest {
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
 
-    mockTransactionType(false, evaluationContext, address);
+    mockTransactionType(false, evaluationContext);
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
+    Mockito.when(log.getLogger()).thenReturn(address);
     Mockito.when(transactionEventFilter.matches(log)).thenReturn(true);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
-    Mockito.verify(evaluationContext, Mockito.times(3)).getPendingTransaction();
+    Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
     Mockito.verify(transactionEventFilter).matches(log);
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
@@ -118,15 +123,18 @@ public class TransactionEventSelectorTest {
     TransactionEvaluationContext evaluationContext =
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
+    Log log = Mockito.mock(Log.class);
+    Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
+    Mockito.when(log.getLogger()).thenReturn(address);
 
-    mockTransactionType(true, evaluationContext, address);
+    mockTransactionType(true, evaluationContext);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
-    Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
-    Mockito.verifyNoMoreInteractions(evaluationContext);
-    Mockito.verifyNoInteractions(processingResult);
+    Mockito.verify(evaluationContext).getPendingTransaction();
+    Mockito.verify(processingResult).getLogs();
+    Mockito.verifyNoMoreInteractions(evaluationContext, processingResult);
 
     Assertions.assertEquals(TransactionSelectionResult.SELECTED, actualResult);
   }
@@ -140,15 +148,16 @@ public class TransactionEventSelectorTest {
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
 
-    mockTransactionType(true, evaluationContext, address);
+    mockTransactionType(true, evaluationContext);
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
+    Mockito.when(log.getLogger()).thenReturn(address);
     Mockito.when(transactionEventFilter.matches(log)).thenReturn(false);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
-    Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
+    Mockito.verify(evaluationContext).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
     Mockito.verify(transactionEventFilter).matches(log);
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
@@ -165,15 +174,16 @@ public class TransactionEventSelectorTest {
         Mockito.mock(TransactionEvaluationContext.class);
     TransactionProcessingResult processingResult = Mockito.mock(TransactionProcessingResult.class);
 
-    mockTransactionType(true, evaluationContext, address);
+    mockTransactionType(true, evaluationContext);
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
+    Mockito.when(log.getLogger()).thenReturn(address);
     Mockito.when(transactionEventFilter.matches(log)).thenReturn(true);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
-    Mockito.verify(evaluationContext, Mockito.times(3)).getPendingTransaction();
+    Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
     Mockito.verify(transactionEventFilter).matches(log);
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
@@ -185,9 +195,7 @@ public class TransactionEventSelectorTest {
   }
 
   private void mockTransactionType(
-      final boolean isBundle,
-      final TransactionEvaluationContext evaluationContext,
-      final Address address) {
+      final boolean isBundle, final TransactionEvaluationContext evaluationContext) {
     PendingTransaction mockPendingTransaction;
     if (isBundle) {
       mockPendingTransaction = Mockito.mock(TransactionBundle.PendingBundleTx.class);
@@ -197,7 +205,6 @@ public class TransactionEventSelectorTest {
     Mockito.when(evaluationContext.getPendingTransaction()).thenReturn(mockPendingTransaction);
     Transaction transaction = Mockito.mock(Transaction.class);
     Mockito.when(mockPendingTransaction.getTransaction()).thenReturn(transaction);
-    Mockito.when(transaction.contractAddress()).thenReturn(Optional.of(address));
     Mockito.when(transaction.getHash())
         .thenReturn(Hash.fromHexStringLenient("deadbeefdeadbeefdeadbeefdeadbeef"));
   }
