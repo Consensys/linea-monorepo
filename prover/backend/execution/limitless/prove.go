@@ -81,7 +81,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	// Final Conglomeration outcome
 	type congResult struct {
-		proof distributed.SegmentProof
+		proof *distributed.SegmentProof
 		err   error
 	}
 
@@ -95,7 +95,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 		// Conglomeration proof pipeline setup: have a buffered channel proofStream
 		// with capacity large enough so producers won't block
-		proofStream = make(chan distributed.SegmentProof, totalProofs)
+		proofStream = make(chan *distributed.SegmentProof, totalProofs)
 		resultCh    = make(chan congResult, 1)
 	)
 
@@ -160,7 +160,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 			// Safe send: if ctx cancelled, abort send
 			select {
-			case proofStream <- *proofGL:
+			case proofStream <- proofGL:
 				return nil
 			case <-ctx.Done():
 				return ctx.Err()
@@ -228,7 +228,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			}
 
 			select {
-			case proofStream <- *proofLPP:
+			case proofStream <- proofLPP:
 				return nil
 			case <-ctx.Done():
 				return ctx.Err()
@@ -501,19 +501,19 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element
 func RunConglomerationHierarchical(ctx context.Context,
 	mt *distributed.VerificationKeyMerkleTree,
 	cong *distributed.RecursedSegmentCompilation,
-	proofStream <-chan distributed.SegmentProof, totalProofs int,
-) (distributed.SegmentProof, error) {
+	proofStream <-chan *distributed.SegmentProof, totalProofs int,
+) (*distributed.SegmentProof, error) {
 
 	// Stack is a slice for channel-based pairing logic
-	var stack []distributed.SegmentProof
+	var stack []*distributed.SegmentProof
 	proofsReceived := 0
 
 	// Main loop: block on either new proof, or cancellation.
 	for {
 		// First, aggregate while we have at least 2 items
 		for len(stack) >= 2 {
-			_proof1 := stack[len(stack)-1]
-			_proof2 := stack[len(stack)-2]
+			_proof1 := *stack[len(stack)-1]
+			_proof2 := *stack[len(stack)-2]
 			stack = stack[:len(stack)-2]
 
 			logrus.Infof("Conglomerating sub-proofs for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
@@ -523,7 +523,7 @@ func RunConglomerationHierarchical(ctx context.Context,
 				SegmentProofs:             []distributed.SegmentProof{_proof1, _proof2},
 				VerificationKeyMerkleTree: *mt,
 			})
-			stack = append(stack, aggregated)
+			stack = append(stack, &aggregated)
 		}
 
 		// If we've received all proofs and have exactly one on the stack -> done
@@ -536,13 +536,13 @@ func RunConglomerationHierarchical(ctx context.Context,
 				stack = nil
 				return finalProof, nil
 			}
-			return distributed.SegmentProof{}, fmt.Errorf("conglomeration finished but stack size=%d (expected 1)", len(stack))
+			return nil, fmt.Errorf("conglomeration finished but stack size=%d (expected 1)", len(stack))
 		}
 
 		// Wait for next proof or cancellation
 		select {
 		case <-ctx.Done():
-			return distributed.SegmentProof{}, ctx.Err()
+			return nil, ctx.Err()
 
 		// Receive new proof from main proof stream
 		case p, ok := <-proofStream:
@@ -551,7 +551,7 @@ func RunConglomerationHierarchical(ctx context.Context,
 				if len(stack) == 1 {
 					return stack[0], nil
 				}
-				return distributed.SegmentProof{}, fmt.Errorf("proof stream closed prematurely; stack size=%d, proofsReceived=%d, totalProofs=%d", len(stack), proofsReceived, totalProofs)
+				return nil, fmt.Errorf("proof stream closed prematurely; stack size=%d, proofsReceived=%d, totalProofs=%d", len(stack), proofsReceived, totalProofs)
 			}
 			logrus.Infof("Received proof (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) for conglomeration", p.ProofType, p.ModuleIndex, p.SegmentIndex)
 			stack = append(stack, p)
