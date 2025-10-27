@@ -7,6 +7,7 @@ export class ExponentialBackoffRetryService implements IRetryService {
     private readonly logger: ILogger,
     private readonly maxRetryAttempts: number = 3,
     private readonly baseDelayMs: number = 1000,
+    private readonly defaultTimeoutMs: number = 10000,
   ) {
     if (maxRetryAttempts < 1) {
       throw new Error("maxRetryAttempts must be at least 1");
@@ -20,12 +21,12 @@ export class ExponentialBackoffRetryService implements IRetryService {
    * @notice Retry an asynchronous operation until success or failure.
    * @param fn An async callback returning a promise of type TReturn.
    */
-  public async retry<TReturn>(fn: () => Promise<TReturn>): Promise<TReturn> {
+  public async retry<TReturn>(fn: () => Promise<TReturn>, timeoutMs?: number): Promise<TReturn> {
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= this.maxRetryAttempts; attempt += 1) {
       try {
-        return await fn();
+        return await this.executeWithTimeout(fn, timeoutMs ? timeoutMs : this.defaultTimeoutMs);
       } catch (error) {
         if (attempt >= this.maxRetryAttempts) {
           this.logger.error(`Retry attempts exhausted maxRetryAttempts=${this.maxRetryAttempts}`, { error });
@@ -44,6 +45,23 @@ export class ExponentialBackoffRetryService implements IRetryService {
     }
 
     throw lastError;
+  }
+
+  private executeWithTimeout<TReturn>(fn: () => Promise<TReturn>, timeoutMs: number): Promise<TReturn> {
+    if (timeoutMs <= 0) {
+      throw new Error("timeoutMs must be greater than 0");
+    }
+
+    return new Promise<TReturn>((resolve, reject) => {
+      const timeoutHandle = setTimeout(() => {
+        reject(new Error(`${fn.name} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      fn()
+        .then(resolve)
+        .catch(reject)
+        .finally(() => clearTimeout(timeoutHandle));
+    });
   }
 
   private getDelayMs(attempt: number): number {
