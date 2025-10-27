@@ -102,45 +102,21 @@ func ReadInt64On16Bytes(r io.Reader) (x, n_ int64, err error) {
 	return int64(xU64), 16, err // #nosec G115 -- above line precludes overflowing
 }
 
-// TODO @yao remove
-// Big int are assumed to fit on 32 bytes and are written as a single
-// block of 32 bytes in bigendian form (i.e, zero-padded on the left)
-func WriteBigIntOn32Bytes(w io.Writer, b *big.Int) (int64, error) {
-	balanceBig := b.FillBytes(make([]byte, 32))
-	n, err := w.Write(balanceBig)
-	return int64(n), err
-}
-
 // Big int are assumed to fit on 64 bytes and are written as a single
 // block of 64 bytes in bigendian form (i.e, zero-padded on the left)
 func WriteBigIntOn64Bytes(w io.Writer, b *big.Int) (int64, error) {
 
-	// res := [16]byte{}
-	// xBytes := [8]byte{}
-
-	// // Convert the int64 to its 8-byte representation
-	// binary.BigEndian.PutUint64(xBytes[:], uint64(x))
-
-	// // We copy every 2 bytes from tmp into res, left started by 2 zero-bytes.
-	// for i := 0; i < 4; i++ {
-	// 	copy(res[4*i+2:4*i+4], xBytes[2*i:2*i+2])
-	// }
-
-	// n, err := w.Write(res[:])
-	// if err != nil {
-	// 	return int64(n), fmt.Errorf("could not write 16 bytes into Writer : %w", err)
-	// }
-	// return int64(n), nil
-
-	balanceBig := b.FillBytes(make([]byte, 64))
-	n, err := w.Write(balanceBig)
+	balanceBig := b.FillBytes(make([]byte, 32))
+	balanceBigPadded := LeftPadded(balanceBig)
+	n, err := w.Write(balanceBigPadded)
 	return int64(n), err
 }
 
 // Read a bigint from a reader assuming it takes 32 bytes
-func ReadBigIntOn32Bytes(r io.Reader) (*big.Int, error) {
-	res := [32]byte{}
-	_, err := r.Read(res[:])
+func ReadBigIntOn64Bytes(r io.Reader) (*big.Int, error) {
+	buf := [64]byte{}
+	_, err := r.Read(buf[:])
+	res := RemovePadding(buf[:])
 	if err != nil {
 		return nil, fmt.Errorf("reading big int, could not 32 bytes from reader: %v", err)
 	}

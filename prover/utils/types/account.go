@@ -42,7 +42,7 @@ func (a Account) writeTo(w io.Writer, packed bool) (int64, error) {
 	if balance == nil {
 		balance = &big.Int{}
 	}
-	n1, _ := WriteBigIntOn32Bytes(w, balance)
+	n1, _ := WriteBigIntOn64Bytes(w, balance)
 	n2, _ := a.StorageRoot.WriteTo(w)
 	n3, _ := a.MimcCodeHash.WriteTo(w)
 	var n4 int64
@@ -65,7 +65,7 @@ func (a *Account) readFrom(r io.Reader, packed bool) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading nonce : %w", err)
 	}
-	a.Balance, err = ReadBigIntOn32Bytes(r)
+	a.Balance, err = ReadBigIntOn64Bytes(r)
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading balance : %w", err)
 	}
