@@ -525,9 +525,15 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    */
   function _initiateOssification(YieldProviderStorage storage $$) internal {
     _payMaximumPossibleLSTLiability($$);
-    // This will revert if i.) There is no fresh report ii.) liabilities > 0
-    // This will also force repay obligations, and revert if it cannot pay off in full
-    _getDashboard($$).voluntaryDisconnect();
+    // Attempt to disconnect the YieldProvider gracefully.
+    // The try/catch block prevents reverts from external factors such as:
+    //   i.) Missing or stale reports
+    //   ii.) Outstanding liabilities
+    //   iii.) Unsettled obligations
+    // This function is intended to be executed by the Security Council and may take several days to prepare.
+    // Regardless of the post-disconnect state, the automation service running `preparePendingOssification`
+    // will progress the ossification process.
+    try _getDashboard($$).voluntaryDisconnect() {} catch {}
   }
 
   /**

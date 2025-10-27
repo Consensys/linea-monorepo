@@ -393,18 +393,6 @@ describe("YieldManager contract - control operations", () => {
       expect(await yieldManager.isOssificationInitiated(mockYieldProviderAddress)).to.be.true;
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
     });
-
-    it("Shoulds succeed even if YieldProvider interaction reverts", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      await yieldManager.setIsInitiateOssificationReverting(mockYieldProviderAddress, true);
-
-      await expect(yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress))
-        .to.emit(yieldManager, "YieldProviderOssificationInitiated")
-        .withArgs(mockYieldProviderAddress);
-
-      expect(await yieldManager.isOssificationInitiated(mockYieldProviderAddress)).to.be.true;
-      expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
-    });
   });
 
   // progressPendingOssification() unit tests

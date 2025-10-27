@@ -941,11 +941,7 @@ contract YieldManager is
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    // Intentionally ignore (success, returnData) from delegatecall here
-    // - External vendor interaction may or may not succeed; it should not block this call
-    // - An automation service is expected to continue progressing ossification post-initiation.
-    // solhint-disable-next-line avoid-low-level-calls
-    _yieldProvider.delegatecall(abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider)));
+    _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.initiateOssification, (_yieldProvider)));
     _pauseStakingIfNotAlready(_yieldProvider);
     $$.isOssificationInitiated = true;
     emit YieldProviderOssificationInitiated(_yieldProvider);

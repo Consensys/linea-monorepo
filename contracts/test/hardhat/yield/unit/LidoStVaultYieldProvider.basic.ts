@@ -391,6 +391,10 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("Should succeed", async () => {
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
     });
+    it("Should succeed even if dashboard.voluntaryDisconnect call fails", async () => {
+      await mockDashboard.setIsVoluntaryDisconnectRevert(true);
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+    });
   });
 
   describe("progress pending ossification", () => {

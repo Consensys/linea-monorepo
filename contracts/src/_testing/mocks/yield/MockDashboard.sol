@@ -58,7 +58,17 @@ contract MockDashboard is IDashboard {
     return withdrawableValueReturn;
   }
 
-  function voluntaryDisconnect() external override {}
+  bool public isVoluntaryDisconnectRevert;
+
+  function setIsVoluntaryDisconnectRevert(bool _val) public {
+    isVoluntaryDisconnectRevert = _val;
+  }
+
+  function voluntaryDisconnect() external override {
+    if (isVoluntaryDisconnectRevert) {
+      revert("revert for test");
+    }
+  }
 
   function abandonDashboard(address) external override {}
 
