@@ -35,10 +35,12 @@ var (
 	MontConstant    = NewFromString("33554430")
 	MontConstantInv = NewFromString("1057030144")
 	Modulus         = koalabear.Modulus
-	Butterfly       = koalabear.Butterfly
-	NewElement      = koalabear.NewElement
-	BatchInvert     = koalabear.BatchInvert
-	One             = koalabear.One
+	MaxVal          = new(Element).SetUint64(Modulus().Uint64() - 1)
+
+	Butterfly   = koalabear.Butterfly
+	NewElement  = koalabear.NewElement
+	BatchInvert = koalabear.BatchInvert
+	One         = koalabear.One
 )
 
 // MulR multiplies by montConstant, where montConstant is the Montgommery constant
