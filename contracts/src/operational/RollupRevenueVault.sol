@@ -196,7 +196,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @param _swapData Encoded calldata for the DEX swap function.
    */
   function burnAndBridge(bytes calldata _swapData) external onlyRole(BURNER_ROLE) {
-    _payAnyArrears();
+    _payArrears();
 
     uint256 minimumFee = messageService.minimumFeeInWei();
 
@@ -218,21 +218,6 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, numLineaTokens, l1LineaTokenBurner);
 
       emit EthBurntSwappedAndBridged(ethToBurn, numLineaTokens);
-    }
-  }
-
-  function _payAnyArrears() internal {
-    uint256 balanceAvailable = address(this).balance;
-
-    uint256 totalAmountOwing = invoiceArrears;
-    uint256 amountToPay = (balanceAvailable < totalAmountOwing) ? balanceAvailable : totalAmountOwing;
-
-    invoiceArrears = totalAmountOwing - amountToPay;
-
-    if (amountToPay > 0) {
-      (bool success, ) = payable(invoicePaymentReceiver).call{ value: amountToPay }("");
-      require(success, InvoiceTransferFailed());
-      emit ArrearsPaid(amountToPay);
     }
   }
 
@@ -293,6 +278,25 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
     dex = _newDex;
     emit DexUpdated(currentDex, _newDex);
+  }
+
+  /**
+   * @notice Pays off arrears where applicable and balance permits.
+   */
+  function _payArrears() internal {
+    uint256 balanceAvailable = address(this).balance;
+
+    uint256 totalAmountOwing = invoiceArrears;
+    uint256 amountToPay = (balanceAvailable < totalAmountOwing) ? balanceAvailable : totalAmountOwing;
+
+    if (amountToPay > 0) {
+      uint256 remainingArrears = totalAmountOwing - amountToPay;
+      invoiceArrears = remainingArrears;
+
+      (bool success, ) = payable(invoicePaymentReceiver).call{ value: amountToPay }("");
+      require(success, InvoiceTransferFailed());
+      emit ArrearsPaid(amountToPay, invoiceArrears);
+    }
   }
 
   /**

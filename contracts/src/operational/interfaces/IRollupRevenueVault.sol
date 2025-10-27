@@ -108,10 +108,11 @@ interface IRollupRevenueVault {
   event EthReceived(uint256 amount);
 
   /**
-   * @dev Emitted when arrears is paid when calling burnA=ndBridge.
+   * @dev Emitted when arrears is paid when calling burnAndBridge.
    * @param amount The amount of ETH paid.
+   * @param remainingArrears The arrears remaining in ETH.
    */
-  event ArrearsPaid(uint256 amount);
+  event ArrearsPaid(uint256 amount, uint256 remainingArrears);
 
   /**
    * @dev Emitted when the invoice arrears are updated.

@@ -37,6 +37,8 @@ describe("RollupRevenueVault", () => {
   let l1LineaTokenBurner: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
 
+  const ONE_ETHER = ethers.parseEther("1");
+
   before(async () => {
     await network.provider.send("hardhat_reset");
     ({ admin, invoiceSubmitter, burner, invoicePaymentReceiver, l1LineaTokenBurner, nonAuthorizedAccount } =
@@ -55,12 +57,12 @@ describe("RollupRevenueVault", () => {
 
   describe("Fallback/Receive", () => {
     it("Should send eth to the rollupRevenueVault contract through the receive", async () => {
-      const value = ethers.parseEther("1");
+      const value = ONE_ETHER;
       await expectEvent(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "EthReceived", [value]);
     });
 
     it("Should fail to send eth to the rollupRevenueVault contract through the fallback function", async () => {
-      const value = ethers.parseEther("1");
+      const value = ONE_ETHER;
       await expectEvent(rollupRevenueVault, sendEthToContract(value, "0x1234"), "EthReceived", [value]);
     });
   });
@@ -420,7 +422,7 @@ describe("RollupRevenueVault", () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
       const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-      const invoiceAmount = ethers.parseEther("1");
+      const invoiceAmount = ONE_ETHER;
 
       const invoicePaymentReceiverBalanceBefore = await ethers.provider.getBalance(invoicePaymentReceiver.address);
 
@@ -440,7 +442,7 @@ describe("RollupRevenueVault", () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
       const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-      const invoiceAmount = ethers.parseEther("1");
+      const invoiceAmount = ONE_ETHER;
       const balanceAvailable = ethers.parseEther("0.6");
 
       const invoicePaymentReceiverBalanceBefore = await ethers.provider.getBalance(invoicePaymentReceiver.address);
@@ -464,7 +466,7 @@ describe("RollupRevenueVault", () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
       const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-      const invoiceAmount = ethers.parseEther("1");
+      const invoiceAmount = ONE_ETHER;
       const balanceAvailable = ethers.parseEther("1.5");
 
       const invoicePaymentReceiverBalanceBefore = await ethers.provider.getBalance(invoicePaymentReceiver.address);
@@ -647,7 +649,7 @@ describe("RollupRevenueVault", () => {
   });
 
   describe("burnAndBridge", () => {
-    const INITIAL_CONTRACT_BALANCE = ethers.parseEther("1");
+    const INITIAL_CONTRACT_BALANCE = ONE_ETHER;
     beforeEach(async () => {
       await admin.sendTransaction({ to: await rollupRevenueVault.getAddress(), value: INITIAL_CONTRACT_BALANCE });
     });
@@ -680,7 +682,7 @@ describe("RollupRevenueVault", () => {
         .connect(invoiceSubmitter)
         .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("2.5"));
 
-      const value = ethers.parseEther("1");
+      const value = ONE_ETHER;
       await expectEvent(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "EthReceived", [value]);
 
       const minLineaOut = 200n;
@@ -691,14 +693,16 @@ describe("RollupRevenueVault", () => {
         0n,
       ]);
 
+      const expectedRemainingArrears = ethers.parseUnits("0.5");
+
       await expectEvent(
         rollupRevenueVault,
         rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
         "ArrearsPaid",
-        [ethers.parseEther("1")],
+        [ONE_ETHER, expectedRemainingArrears],
       );
 
-      expect(await rollupRevenueVault.invoiceArrears()).equal(ethers.parseUnits("0.5"));
+      expect(await rollupRevenueVault.invoiceArrears()).equal(expectedRemainingArrears);
     });
 
     it("Should pay off arrears with burning", async () => {
@@ -710,7 +714,7 @@ describe("RollupRevenueVault", () => {
         .connect(invoiceSubmitter)
         .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("1.5"));
 
-      const value = ethers.parseEther("1");
+      const value = ONE_ETHER;
       await expectEvent(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "EthReceived", [value]);
 
       const minLineaOut = 200n;
