@@ -1,5 +1,3 @@
-import { IMetricsService } from "@consensys/linea-shared-utils";
-
 export enum LineaPostmanMetrics {
   Messages = "linea_postman_messages",
   // Example PromQL query for hourly rate of sponsored messages 'rate(linea_postman_sponsored_messages_total{direction="L1_TO_L2",app="postman"}[60m]) * 3600'
@@ -22,5 +20,3 @@ export enum LineaPostmanMetrics {
 
   TransactionProcessingTime = "linea_postman_l2_transaction_tx_processing_time",
 }
-
-export type LineaPostmanMetricsService = IMetricsService<LineaPostmanMetrics>;
