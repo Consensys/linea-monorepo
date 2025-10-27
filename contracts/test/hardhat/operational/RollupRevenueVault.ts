@@ -16,6 +16,7 @@ import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
 import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_DAY_IN_SECONDS } from "../common/constants";
 import {
   expectEvent,
+  expectNoEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateRandomBytes,
@@ -703,6 +704,37 @@ describe("RollupRevenueVault", () => {
       );
 
       expect(await rollupRevenueVault.invoiceArrears()).equal(expectedRemainingArrears);
+    });
+
+    it("Should pay off arrears with no burning due to less than minimumFeeInWei", async () => {
+      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
+      const startTimestamp = lastInvoiceDate + 1n;
+      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
+
+      await rollupRevenueVault.connect(invoiceSubmitter).submitInvoice(startTimestamp, endTimestamp, ONE_ETHER * 2n);
+
+      const minimumFee = await messageService.minimumFeeInWei();
+      const expectedRemainingBalance = minimumFee - 1n;
+      const ethToSend = ONE_ETHER + expectedRemainingBalance;
+
+      await expectEvent(rollupRevenueVault, sendEthToContract(ethToSend, EMPTY_CALLDATA), "EthReceived", [ethToSend]);
+
+      const minLineaOut = 200n;
+      const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
+      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+        minLineaOut,
+        deadline,
+        0n,
+      ]);
+
+      await expectNoEvent(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
+        "EthBurntSwappedAndBridged",
+      );
+
+      expect(await rollupRevenueVault.invoiceArrears()).equal(0n);
+      expect(await ethers.provider.getBalance(await rollupRevenueVault.getAddress())).equal(expectedRemainingBalance);
     });
 
     it("Should pay off arrears with burning", async () => {
