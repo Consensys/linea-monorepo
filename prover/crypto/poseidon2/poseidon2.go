@@ -112,7 +112,7 @@ func (d *Poseidon2FieldHasherDigest) SetState(state []byte) error {
 		return err
 	}
 
-	d.state = Bytes32ToHash(AsBytes32(stateBytes))
+	d.state = Bytes32ToOctuplet(AsBytes32(stateBytes))
 	return err
 }
 
