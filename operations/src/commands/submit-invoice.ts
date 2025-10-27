@@ -28,6 +28,7 @@ import { computeSubmitInvoiceCalldata, getLastInvoiceDate } from "../utils/submi
 import { validateUrl } from "../utils/common/validation.js";
 import { address, hexString } from "../utils/common/custom-flags.js";
 import { awsCostsApiFilters } from "../utils/submit-invoice/custom-flags.js";
+import { Result } from "neverthrow";
 
 export default class SubmitInvoice extends Command {
   static examples = [
@@ -259,16 +260,14 @@ export default class SubmitInvoice extends Command {
       totalCostsInEth,
     );
 
-    const gasEstimationResult = await estimateTransactionGas(client, {
-      to: contractAddress,
-      account: senderAddress,
-      value: 0n,
-      data: submitInvoiceCalldata,
-    });
-
-    const { gasLimit, baseFeePerGas, priorityFeePerGas } = gasEstimationResult.match(
-      (value) => value,
-      (error) => this.error(`Failed to estimate gas: ${error.message}`),
+    const { gasLimit, baseFeePerGas, priorityFeePerGas } = this.unwrapOrError(
+      await estimateTransactionGas(client, {
+        to: contractAddress,
+        account: senderAddress,
+        value: 0n,
+        data: submitInvoiceCalldata,
+      }),
+      "Failed to estimate gas for submitInvoice transaction",
     );
 
     this.log(
@@ -279,33 +278,24 @@ export default class SubmitInvoice extends Command {
           SIGNING TRANSACTION
      ******************************/
 
-    let httpsAgent: Agent | undefined;
-    if (
-      tls &&
-      web3SignerKeystorePath &&
-      web3SignerKeystorePassphrase &&
-      web3SignerTrustedStorePath &&
-      web3SignerTrustedStorePassphrase
-    ) {
-      this.log(`Using TLS for secure communication with Web3 Signer.`);
-      httpsAgent = buildHttpsAgent(
-        web3SignerKeystorePath,
-        web3SignerKeystorePassphrase,
-        web3SignerTrustedStorePath,
-        web3SignerTrustedStorePassphrase,
-      );
-    }
-
     const transactionToSerialize: TransactionSerializable = {
       to: contractAddress,
       type: "eip1559",
-      value: BigInt(totalCostsInEth),
+      value: 0n,
       data: submitInvoiceCalldata,
       chainId: linea.id,
       gas: gasLimit,
       maxFeePerGas: baseFeePerGas + priorityFeePerGas,
       maxPriorityFeePerGas: priorityFeePerGas,
     };
+
+    const httpsAgent = this.buildHttpsAgentIfNeeded({
+      tls,
+      web3SignerKeystorePath,
+      web3SignerKeystorePassphrase,
+      web3SignerTrustedStorePath,
+      web3SignerTrustedStorePassphrase,
+    });
 
     const signature = await this.signSubmitInvoiceTransaction(
       web3SignerUrl,
@@ -323,28 +313,7 @@ export default class SubmitInvoice extends Command {
         BROADCASTING TRANSACTION
      ******************************/
 
-    const serializeSignedTransaction = serializeTransaction(transactionToSerialize, parseSignature(signature));
-
-    this.log(`Broadcasting submitInvoice transaction to the network...`);
-    const transactionResult = await sendTransaction(client, serializeSignedTransaction);
-    const receipt = transactionResult.match(
-      (value) => value,
-      (error) => this.error(`Failed to send transaction: ${error.message}`),
-    );
-
-    if (receipt.status === "reverted") {
-      this.error(`Invoice submission failed. transactionHash=${receipt.transactionHash}`);
-    }
-
-    const [event] = parseEventLogs({
-      abi: INVOICE_PROCESSED_EVENT_ABI,
-      logs: receipt.logs,
-      eventName: "InvoiceProcessed",
-    });
-
-    this.log(
-      `Invoice successfully submitted: transactionHash=${receipt.transactionHash} eventName=${event.eventName} receiver=${event.args.receiver} startTimestamp=${event.args.startTimestamp} endTimestamp=${event.args.endTimestamp} amountPaid=${event.args.amountPaid} amountRequested=${event.args.amountRequested}`,
-    );
+    await this.broadcastTransaction(client, transactionToSerialize, signature);
   }
 
   /**
@@ -361,16 +330,12 @@ export default class SubmitInvoice extends Command {
     periodDays: number,
     reportingLagDays: number,
   ): Promise<InvoicePeriod | null> {
-    const lastInvoiceDateResult = await getLastInvoiceDate(client, contractAddress);
-
-    const lastInvoiceDate = lastInvoiceDateResult.match(
-      (value) => value,
-      (error) => {
-        this.error(`Failed to retrieve the last invoice date from the contract: ${error.message}`);
-      },
+    const lastInvoiceDate = this.unwrapOrError(
+      await getLastInvoiceDate(client, contractAddress),
+      "Failed to retrieve the last invoice date from the contract",
     );
 
-    this.log(`Last invoice date (timestamp in seconds): ${lastInvoiceDate}`);
+    this.log(`Last invoice date (timestamp in seconds): lastInvoiceDate=${lastInvoiceDate}`);
 
     const currentTimestampInSeconds = Math.floor(Date.now() / 1000);
     return computeInvoicePeriod(Number(lastInvoiceDate), currentTimestampInSeconds, periodDays, reportingLagDays);
@@ -391,36 +356,32 @@ export default class SubmitInvoice extends Command {
       `Fetching AWS costs for the invoice period from=${formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd")} to=${formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd")}`,
     );
 
-    const awsCostsResult = await getDailyAwsCosts(awsClient, {
-      ...awsCostsApiFilters,
-      TimePeriod: {
-        Start: formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd"),
-        End: formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd"),
-      },
-    });
-
-    return awsCostsResult.match(
-      (value) => {
-        const { ResultsByTime } = value;
-
-        if (!ResultsByTime || ResultsByTime.length === 0) {
-          this.error("No AWS cost data returned for the specified period.");
-        }
-
-        if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
-          this.error("AWS Costs API Filters must specify one metric.");
-        }
-
-        const totalDailyCosts = ResultsByTime[0].Total?.[awsCostsApiFilters.Metrics[0]].Amount;
-
-        if (!totalDailyCosts) {
-          this.error("No AWS cost data found for the specified metric.");
-        }
-
-        return parseFloat(totalDailyCosts);
-      },
-      (error) => this.error(`Failed to fetch AWS costs: ${error.message}`),
+    const { ResultsByTime } = this.unwrapOrError(
+      await getDailyAwsCosts(awsClient, {
+        ...awsCostsApiFilters,
+        TimePeriod: {
+          Start: formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd"),
+          End: formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd"),
+        },
+      }),
+      "Failed to fetch AWS costs",
     );
+
+    if (!ResultsByTime || ResultsByTime.length === 0) {
+      this.error("No AWS cost data returned for the specified period.");
+    }
+
+    if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
+      this.error("AWS Costs API Filters must specify one metric.");
+    }
+
+    const totalDailyCosts = ResultsByTime[0].Total?.[awsCostsApiFilters.Metrics[0]].Amount;
+
+    if (!totalDailyCosts) {
+      this.error("No AWS cost data found for the specified metric.");
+    }
+
+    return parseFloat(totalDailyCosts);
   }
 
   /**
@@ -436,25 +397,52 @@ export default class SubmitInvoice extends Command {
     invoicePeriod: InvoicePeriod,
   ): Promise<number> {
     const duneClient = getDuneClient(duneApiKey);
-    const onChainCostsResult = await runDuneQuery(
-      duneClient,
-      duneQueryId,
-      generateQueryParameters({
-        fromDate: invoicePeriod.startDate,
-        toDate: invoicePeriod.endDate,
-      }),
+    const { result } = this.unwrapOrError(
+      await runDuneQuery(
+        duneClient,
+        duneQueryId,
+        generateQueryParameters({
+          fromDate: invoicePeriod.startDate,
+          toDate: invoicePeriod.endDate,
+        }),
+      ),
+      "Failed to run Dune query",
     );
 
-    return onChainCostsResult.match(
-      (value) => {
-        const { result } = value;
-        if (!result || !result.rows || result.rows.length === 0) {
-          this.error("No Dune query result returned for the specified period.");
-        }
-        return result.rows.reduce((acc, row) => acc + (row.total_costs_per_day as number), 0);
-      },
-      (error) => this.error(`Failed to run Dune query: ${error.message}`),
-    );
+    if (!result || !result.rows || result.rows.length === 0) {
+      this.error("No Dune query result returned for the specified period.");
+    }
+    return result.rows.reduce((acc, row) => acc + (row.total_costs_per_day as number), 0);
+  }
+
+  /**
+   * Build https agent if TLS is enabled and all required parameters are provided.
+   * @param params Parameters for building the HTTPS agent.
+   * @returns The built HTTPS agent or undefined if not needed.
+   */
+  private buildHttpsAgentIfNeeded(params: {
+    tls: boolean;
+    web3SignerKeystorePath?: string | undefined;
+    web3SignerKeystorePassphrase?: string | undefined;
+    web3SignerTrustedStorePath?: string | undefined;
+    web3SignerTrustedStorePassphrase?: string | undefined;
+  }): Agent | undefined {
+    if (
+      params.tls &&
+      params.web3SignerKeystorePath &&
+      params.web3SignerKeystorePassphrase &&
+      params.web3SignerTrustedStorePath &&
+      params.web3SignerTrustedStorePassphrase
+    ) {
+      this.log("Using TLS for Web3 Signer communication.");
+      return buildHttpsAgent(
+        params.web3SignerKeystorePath,
+        params.web3SignerKeystorePassphrase,
+        params.web3SignerTrustedStorePath,
+        params.web3SignerTrustedStorePassphrase,
+      );
+    }
+    return undefined;
   }
 
   /**
@@ -471,16 +459,50 @@ export default class SubmitInvoice extends Command {
     transactionToSerialize: TransactionSerializable,
     httpsAgent?: Agent,
   ): Promise<Hex> {
-    const signatureResult = await getWeb3SignerSignature(
-      web3SignerUrl,
-      web3SignerPublicKey,
-      transactionToSerialize,
-      httpsAgent,
+    return this.unwrapOrError(
+      await getWeb3SignerSignature(web3SignerUrl, web3SignerPublicKey, transactionToSerialize, httpsAgent),
+      "Failed to get signature from Web3 Signer",
     );
+  }
 
-    return signatureResult.match(
+  /**
+   * Broadcast the signed transaction to the network.
+   * @param client Viem Client.
+   * @param tx Transaction to be broadcasted.
+   * @param signature Signature of the transaction.
+   */
+  private async broadcastTransaction(client: Client, tx: TransactionSerializable, signature: Hex) {
+    const signed = serializeTransaction(tx, parseSignature(signature));
+
+    this.log(`Broadcasting submitInvoice transaction to the network...`);
+
+    const receipt = this.unwrapOrError(await sendTransaction(client, signed), "Failed to send transaction");
+
+    if (receipt.status === "reverted") {
+      this.error(`Invoice submission failed. transactionHash=${receipt.transactionHash}`);
+    }
+
+    const [event] = parseEventLogs({
+      abi: INVOICE_PROCESSED_EVENT_ABI,
+      logs: receipt.logs,
+      eventName: "InvoiceProcessed",
+    });
+
+    this.log(
+      `Invoice successfully submitted: transactionHash=${receipt.transactionHash} eventName=${event.eventName} receiver=${event.args.receiver} startTimestamp=${event.args.startTimestamp} endTimestamp=${event.args.endTimestamp} amountPaid=${event.args.amountPaid} amountRequested=${event.args.amountRequested}`,
+    );
+  }
+
+  /**
+   * Unwrap a Result or throw an error with a custom message.
+   * @param result The Result to unwrap.
+   * @param message The error message to use if unwrapping fails.
+   * @returns The unwrapped value.
+   */
+  private unwrapOrError<T, E extends Error = Error>(result: Result<T, E>, message: string): T {
+    return result.match(
       (value) => value,
-      (error) => this.error(`Failed to get signature from Web3 Signer: ${error.message}`),
+      (error) => this.error(`${message}. message=${error.message}`),
     );
   }
 }

@@ -15,7 +15,9 @@ import {
 import { linea } from "viem/chains";
 import { Agent } from "https";
 import { fromZonedTime } from "date-fns-tz";
+import { Result } from "neverthrow";
 import { addSeconds } from "date-fns";
+import { getBalance } from "viem/actions";
 import { estimateTransactionGas, sendTransaction } from "../utils/common/transactions.js";
 import { getWeb3SignerSignature } from "../utils/common/signature.js";
 import { buildHttpsAgent } from "../utils/common/https-agent.js";
@@ -30,7 +32,6 @@ import {
 } from "../utils/burn-and-bridge/contract.js";
 import { LINEA_TOKEN_ADDRESS, WETH_TOKEN_ADDRESS } from "../utils/burn-and-bridge/constants.js";
 import { ETH_BURNT_SWAPPED_AND_BRIDGED_EVENT_ABI } from "../utils/burn-and-bridge/abi.js";
-import { getBalance } from "viem/actions";
 
 export default class BurnAndBridge extends Command {
   static examples = [
@@ -47,6 +48,8 @@ export default class BurnAndBridge extends Command {
       --web3SignerTrustedStorePath=/path/to/ca.p12
       --web3SignerTrustedStorePassphrase=yourTrustedStorePassphrase
       --swapAmountSlippageBps=50
+      --swapDeadlineInSeconds=300
+      --poolTickSpacing=50
     `,
     // Dry run
     `<%= config.bin %> <%= command.id %>
@@ -62,6 +65,8 @@ export default class BurnAndBridge extends Command {
       --web3SignerTrustedStorePath=/path/to/ca.p12
       --web3SignerTrustedStorePassphrase=yourTrustedStorePassphrase
       --swapAmountSlippageBps=50
+      --swapDeadlineInSeconds=300
+      --poolTickSpacing=50
       --dryRun
     `,
   ];
@@ -155,6 +160,16 @@ export default class BurnAndBridge extends Command {
       required: true,
       env: "BURN_AND_BRIDGE_SWAP_AMOUNT_SLIPPAGE_BPS",
     }),
+    swapDeadlineInSeconds: Flags.integer({
+      description: "Swap deadline in seconds",
+      required: true,
+      env: "BURN_AND_BRIDGE_SWAP_DEADLINE_IN_SECONDS",
+    }),
+    poolTickSpacing: Flags.integer({
+      description: "Tick spacing of the pool used for quote",
+      required: true,
+      env: "BURN_AND_BRIDGE_POOL_TICK_SPACING",
+    }),
   };
 
   public async run(): Promise<void> {
@@ -173,6 +188,9 @@ export default class BurnAndBridge extends Command {
       web3SignerTrustedStorePassphrase,
       tls,
       dryRun,
+      swapAmountSlippageBps,
+      swapDeadlineInSeconds,
+      poolTickSpacing,
     } = flags;
 
     const client = createPublicClient({
@@ -180,98 +198,79 @@ export default class BurnAndBridge extends Command {
       transport: http(rpcUrl, { batch: true, retryCount: 3 }),
     });
 
-    const invoiceArrearsResult = await getInvoiceArrears(client, rollupRevenueVaultContractAddress);
-
-    const invoiceArrearsInWei = invoiceArrearsResult.match(
-      (value) => value,
-      (error) => this.error(`Failed to get invoice arrears: ${error.message}`),
-    );
-
-    if (invoiceArrearsInWei === 0n) {
-      this.log(`No invoice arrears to pay. Exiting.`);
-      return;
-    }
-
-    const { rollupRevenueVaultContractBalance, minimumFeeInWei } = await this.checkRollupRevenueVaultBalance(
+    /******************************
+          FETCH CHAIN DATA
+     ******************************/
+    const { invoiceArrearsInWei, vaultBalance, minimumFeeInWei } = await this.fetchChainData(
       client,
       rollupRevenueVaultContractAddress,
       l2MessageServiceContractAddress,
     );
 
-    /******************************
-        GETTING SWAP QUOTE
-     ******************************/
-
-    const balanceAvailable = rollupRevenueVaultContractBalance - minimumFeeInWei;
-    const ETH_BURNT_PERCENTAGE = 20n; // 20% of the ETH balance will be burnt
-    const ethToBurn = (balanceAvailable * ETH_BURNT_PERCENTAGE) / 100n;
-
-    const amountToBeSwappedInWei = balanceAvailable - ethToBurn;
-
-    const quoteResult = await getQuote(client, quoteContractAddress, {
-      tokenIn: WETH_TOKEN_ADDRESS,
-      tokenOut: LINEA_TOKEN_ADDRESS,
-      amountIn: amountToBeSwappedInWei,
-      tickSpacing: 50,
-      sqrtPriceLimitX96: 0n,
-    });
-
-    const [minAmountOut] = quoteResult.match(
-      (value) => value,
-      (error) => this.error(`Failed to get quote: ${error.message}`),
-    );
-
-    const slippageBps = BigInt(flags.swapAmountSlippageBps);
-    const minLineaOut = (minAmountOut * (10_000n - slippageBps)) / 10_000n;
-
     this.log(
-      `Minimum LINEA out (after slippage): minLineaOut=${formatUnits(minLineaOut, 18)} LINEA slippageBps=${slippageBps}`,
+      `Fetched chain data: invoiceArrears=${formatEther(invoiceArrearsInWei)} ETH, vaultBalance=${formatEther(
+        vaultBalance,
+      )} ETH, minimumFee=${formatEther(minimumFeeInWei)} ETH`,
     );
 
     /******************************
-      TRANSACTION GAS ESTIMATION
+        CHECK IF SWAP NEEDED
      ******************************/
 
-    const deadline = this.computeSwapDeadline(3);
-    const swapCalldata = computeSwapCalldata(minLineaOut, deadline);
+    // If arrears are greater than the balance, we can only pay off arrears and then just use empty swapData
+    // If arrears == balance - minimumFee, then there is no ETH left to swap and burn. use empty swapData
+    // If arrears == 0, and balance <= minimumFee, stop the script.
+    // Otherwise, normal case.
+    const shouldSwap = this.shouldSwap(invoiceArrearsInWei, vaultBalance, minimumFeeInWei);
+
+    if (!shouldSwap) {
+      this.log("Skipping swap due to insufficient funds.");
+    }
+
+    /******************************
+        COMPUTE TRANSACTION DATA
+     ******************************/
+
+    const minLineaOut = shouldSwap
+      ? await this.computeMinLineaOut(
+          client,
+          quoteContractAddress,
+          vaultBalance,
+          minimumFeeInWei,
+          swapAmountSlippageBps,
+          poolTickSpacing,
+        )
+      : undefined;
+
+    const deadline = this.computeSwapDeadline(swapDeadlineInSeconds);
+    const swapCalldata = shouldSwap ? computeSwapCalldata(minLineaOut!, deadline) : "0x";
     const burnAndBridgeCalldata = computeBurnAndBridgeCalldata(swapCalldata);
 
-    const gasEstimationResult = await estimateTransactionGas(client, {
-      to: rollupRevenueVaultContractAddress,
-      account: senderAddress,
-      value: 0n,
-      data: burnAndBridgeCalldata,
-    });
+    /******************************
+      ESTIMATE GAS & SIGN TRANSACTION
+     ******************************/
 
-    const { gasLimit, baseFeePerGas, priorityFeePerGas } = gasEstimationResult.match(
-      (value) => value,
-      (error) => this.error(`Failed to estimate gas: ${error.message}`),
+    const { gasLimit, baseFeePerGas, priorityFeePerGas } = this.unwrapOrError(
+      await estimateTransactionGas(client, {
+        to: rollupRevenueVaultContractAddress,
+        account: senderAddress,
+        value: 0n,
+        data: burnAndBridgeCalldata,
+      }),
+      "Failed to estimate gas for burn and bridge transaction",
     );
 
     this.log(
       `Gas estimation for burnAndBridge transaction: gasLimit=${gasLimit} baseFeePerGas=${baseFeePerGas} priorityFeePerGas=${priorityFeePerGas}`,
     );
 
-    /******************************
-          SIGNING TRANSACTION
-     ******************************/
-
-    let httpsAgent: Agent | undefined;
-    if (
-      tls &&
-      web3SignerKeystorePath &&
-      web3SignerKeystorePassphrase &&
-      web3SignerTrustedStorePath &&
-      web3SignerTrustedStorePassphrase
-    ) {
-      this.log(`Using TLS for secure communication with Web3 Signer.`);
-      httpsAgent = buildHttpsAgent(
-        web3SignerKeystorePath,
-        web3SignerKeystorePassphrase,
-        web3SignerTrustedStorePath,
-        web3SignerTrustedStorePassphrase,
-      );
-    }
+    const httpsAgent = this.buildHttpsAgentIfNeeded({
+      tls,
+      web3SignerKeystorePath,
+      web3SignerKeystorePassphrase,
+      web3SignerTrustedStorePath,
+      web3SignerTrustedStorePassphrase,
+    });
 
     const transactionToSerialize: TransactionSerializable = {
       to: rollupRevenueVaultContractAddress,
@@ -295,19 +294,170 @@ export default class BurnAndBridge extends Command {
       this.log(`Dry run mode - transaction not submitted.`);
       return;
     }
-
     /******************************
-        BROADCASTING TRANSACTION
+          BROADCAST TRANSACTION
      ******************************/
 
-    const serializeSignedTransaction = serializeTransaction(transactionToSerialize, parseSignature(signature));
+    await this.broadcastTransaction(client, transactionToSerialize, signature);
+  }
 
-    this.log(`Broadcasting submitInvoice transaction to the network...`);
-    const transactionResult = await sendTransaction(client, serializeSignedTransaction);
-    const receipt = transactionResult.match(
-      (value) => value,
-      (error) => this.error(`Failed to send transaction: ${error.message}`),
+  /**
+   * Sign the burn and bridge transaction using Web3 Signer.
+   * @param web3SignerUrl Web3 Signer URL.
+   * @param web3SignerPublicKey Web3 Signer Public Key.
+   * @param transactionToSerialize Transaction to be serialized and signed.
+   * @param httpsAgent Optional HTTPS Agent for secure communication.
+   * @returns The signature as a hex string.
+   */
+  private async signBurnAndBridgeTransaction(
+    web3SignerUrl: string,
+    web3SignerPublicKey: string,
+    transactionToSerialize: TransactionSerializable,
+    httpsAgent?: Agent,
+  ): Promise<Hex> {
+    return this.unwrapOrError(
+      await getWeb3SignerSignature(web3SignerUrl, web3SignerPublicKey, transactionToSerialize, httpsAgent),
+      "Failed to get signature from Web3 Signer",
     );
+  }
+
+  /**
+   * Compute the swap deadline as a bigint in seconds.
+   * @param delayInSeconds Delay in seconds to add to the current time.
+   * @returns The computed swap deadline as a bigint.
+   */
+  private computeSwapDeadline(delayInSeconds: number): bigint {
+    const currentTime = fromZonedTime(Math.floor(new Date().getTime()), "UTC").getTime();
+    const deadline = addSeconds(currentTime, delayInSeconds);
+    return BigInt(Math.floor(deadline.getTime() / 1000));
+  }
+
+  /**
+   * Compute the minimum LINEA tokens expected from the swap after accounting for slippage.
+   * @param client Viem Client.
+   * @param quoteContractAddress Quote Contract address.
+   * @param rollupRevenueVaultContractBalance Balance of the Rollup Revenue Vault Contract.
+   * @param minimumFeeInWei Minimum fee in wei.
+   * @param swapAmountSlippageBps Allowed slippage in basis points for the swap.
+   * @param poolTickSpacing Tick spacing of the pool used for quote.
+   * @returns The minimum LINEA tokens expected from the swap as a bigint.
+   */
+  private async computeMinLineaOut(
+    client: Client,
+    quoteContractAddress: Address,
+    rollupRevenueVaultContractBalance: bigint,
+    minimumFeeInWei: bigint,
+    swapAmountSlippageBps: number,
+    poolTickSpacing: number,
+  ): Promise<bigint> {
+    const balanceAvailable = rollupRevenueVaultContractBalance - minimumFeeInWei;
+    const ETH_BURNT_PERCENTAGE = 20n; // 20% of the ETH balance will be burnt
+    const ethToBurn = (balanceAvailable * ETH_BURNT_PERCENTAGE) / 100n;
+
+    const amountToBeSwappedInWei = balanceAvailable - ethToBurn;
+
+    const [minAmountOut] = this.unwrapOrError(
+      await getQuote(client, quoteContractAddress, {
+        tokenIn: WETH_TOKEN_ADDRESS,
+        tokenOut: LINEA_TOKEN_ADDRESS,
+        amountIn: amountToBeSwappedInWei,
+        tickSpacing: poolTickSpacing,
+        sqrtPriceLimitX96: 0n,
+      }),
+      "Failed to get quote from quote contract",
+    );
+
+    const slippageBps = BigInt(swapAmountSlippageBps);
+    const minLineaOut = (minAmountOut * (10_000n - slippageBps)) / 10_000n;
+
+    this.log(
+      `Minimum LINEA out (after slippage): minLineaOut=${formatUnits(minLineaOut, 18)} LINEA slippageBps=${swapAmountSlippageBps}`,
+    );
+
+    return minLineaOut;
+  }
+
+  /**
+   * Check whether a swap should be performed based on invoice, balance, and minimum fee.
+   * @param invoice Invoice amount in wei.
+   * @param vaultBalance Vault balance amount in wei.
+   * @param minfee Minimum fee amount in wei.
+   * @returns Whether the swap should be performed.
+   */
+  private shouldSwap(invoice: bigint, vaultBalance: bigint, minfee: bigint): boolean {
+    if (invoice > vaultBalance) return false;
+    if (invoice === vaultBalance - minfee) return false;
+    if (invoice === 0n && vaultBalance <= minfee) {
+      this.error(
+        "No funds available to perform burn and bridge. Invoice arrears is zero and balance is less than or equal to minimum fee.",
+      );
+    }
+    return true;
+  }
+
+  /**
+   * Fetch necessary chain data: invoice arrears, vault balance, and minimum fee.
+   * @param client Viem Client.
+   * @param vaultAddress Rollup Revenue Vault Contract address.
+   * @param messageServiceAddress L2 Message Service Contract address.
+   * @returns An object containing invoice arrears, vault balance, and minimum fee in wei.
+   */
+  private async fetchChainData(client: Client, vaultAddress: Address, messageServiceAddress: Address) {
+    const invoiceArrearsInWei = this.unwrapOrError(
+      await getInvoiceArrears(client, vaultAddress),
+      "Failed to get invoice arrears",
+    );
+
+    const vaultBalance = await getBalance(client, { address: vaultAddress });
+
+    const minimumFeeInWei = this.unwrapOrError(
+      await getMinimumFee(client, messageServiceAddress),
+      "Failed to get minimum fee",
+    );
+
+    return { invoiceArrearsInWei, vaultBalance, minimumFeeInWei };
+  }
+
+  /**
+   * Build https agent if TLS is enabled and all required parameters are provided.
+   * @param params Parameters for building the HTTPS agent.
+   * @returns The built HTTPS agent or undefined if not needed.
+   */
+  private buildHttpsAgentIfNeeded(params: {
+    tls: boolean;
+    web3SignerKeystorePath?: string | undefined;
+    web3SignerKeystorePassphrase?: string | undefined;
+    web3SignerTrustedStorePath?: string | undefined;
+    web3SignerTrustedStorePassphrase?: string | undefined;
+  }): Agent | undefined {
+    if (
+      params.tls &&
+      params.web3SignerKeystorePath &&
+      params.web3SignerKeystorePassphrase &&
+      params.web3SignerTrustedStorePath &&
+      params.web3SignerTrustedStorePassphrase
+    ) {
+      this.log("Using TLS for Web3 Signer communication.");
+      return buildHttpsAgent(
+        params.web3SignerKeystorePath,
+        params.web3SignerKeystorePassphrase,
+        params.web3SignerTrustedStorePath,
+        params.web3SignerTrustedStorePassphrase,
+      );
+    }
+    return undefined;
+  }
+
+  /**
+   * Broadcast the signed transaction to the network.
+   * @param client Viem Client.
+   * @param tx Transaction to be broadcasted.
+   * @param signature Signature of the transaction.
+   */
+  private async broadcastTransaction(client: Client, tx: TransactionSerializable, signature: Hex) {
+    const signed = serializeTransaction(tx, parseSignature(signature));
+    this.log("Broadcasting transaction...");
+    const receipt = this.unwrapOrError(await sendTransaction(client, signed), "Failed to send transaction");
 
     if (receipt.status === "reverted") {
       this.error(`Burn and bridge failed. transactionHash=${receipt.transactionHash}`);
@@ -325,66 +475,15 @@ export default class BurnAndBridge extends Command {
   }
 
   /**
-   * Sign the burn and bridge transaction using Web3 Signer.
-   * @param web3SignerUrl Web3 Signer URL.
-   * @param web3SignerPublicKey Web3 Signer Public Key.
-   * @param transactionToSerialize Transaction to be serialized and signed.
-   * @param httpsAgent Optional HTTPS Agent for secure communication.
-   * @returns The signature as a hex string.
+   * Unwrap a Result or throw an error with a custom message.
+   * @param result The Result to unwrap.
+   * @param message The error message to use if unwrapping fails.
+   * @returns The unwrapped value.
    */
-  private async signBurnAndBridgeTransaction(
-    web3SignerUrl: string,
-    web3SignerPublicKey: string,
-    transactionToSerialize: TransactionSerializable,
-    httpsAgent?: Agent,
-  ): Promise<Hex> {
-    const signatureResult = await getWeb3SignerSignature(
-      web3SignerUrl,
-      web3SignerPublicKey,
-      transactionToSerialize,
-      httpsAgent,
-    );
-
-    return signatureResult.match(
+  private unwrapOrError<T, E extends Error = Error>(result: Result<T, E>, message: string): T {
+    return result.match(
       (value) => value,
-      (error) => this.error(`Failed to get signature from Web3 Signer: ${error.message}`),
+      (error) => this.error(`${message}. message=${error.message}`),
     );
-  }
-
-  private async checkRollupRevenueVaultBalance(
-    client: Client,
-    rollupRevenueVaultContractAddress: Address,
-    l2MessageServiceContractAddress: Address,
-  ): Promise<{
-    rollupRevenueVaultContractBalance: bigint;
-    minimumFeeInWei: bigint;
-  }> {
-    const rollupRevenueVaultContractBalance = await getBalance(client, {
-      address: rollupRevenueVaultContractAddress,
-    });
-
-    const minimumFeeResult = await getMinimumFee(client, l2MessageServiceContractAddress);
-
-    const minimumFeeInWei = minimumFeeResult.match(
-      (value) => value,
-      (error) => this.error(`Failed to get minimum fee: ${error.message}`),
-    );
-
-    if (rollupRevenueVaultContractBalance < minimumFeeInWei) {
-      this.error(
-        `Insufficient balance in Rollup Revenue Vault Contract to cover the minimum fee. balance=${formatEther(rollupRevenueVaultContractBalance)} ETH minimumFee=${formatEther(minimumFeeInWei)} ETH`,
-      );
-    }
-
-    return {
-      rollupRevenueVaultContractBalance,
-      minimumFeeInWei,
-    };
-  }
-
-  private computeSwapDeadline(delayInSeconds: number): bigint {
-    const currentTime = fromZonedTime(Math.floor(new Date().getTime()), "UTC").getTime();
-    const deadline = addSeconds(currentTime, delayInSeconds);
-    return BigInt(Math.floor(deadline.getTime() / 1000));
   }
 }
