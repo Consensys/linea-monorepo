@@ -6,5 +6,5 @@ export interface IBlockchainClient<TClient, TTransactionReceipt> {
   estimateGasFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }>;
   getChainId(): Promise<number>;
   getBalance(address: Address): Promise<bigint>;
-  sendSignedTransaction(contractAddress: Address, calldata: Hex): Promise<TTransactionReceipt>;
+  sendSignedTransaction(contractAddress: Address, calldata: Hex, value?: bigint): Promise<TTransactionReceipt>;
 }

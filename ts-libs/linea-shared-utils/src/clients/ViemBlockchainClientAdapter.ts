@@ -86,7 +86,11 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
    * On each retry, bumps gas by `gasRetryBumpBps`.
    * Does not retry on errors, only on timeout.
    */
-  async sendSignedTransaction(contractAddress: Address, calldata: Hex): Promise<TransactionReceipt> {
+  async sendSignedTransaction(
+    contractAddress: Address,
+    calldata: Hex,
+    value: bigint = 0n,
+  ): Promise<TransactionReceipt> {
     this.logger.debug("sendSignedTransaction started");
     let gasMultiplierBps = MAX_BPS; // Start at 100%
     let lastError: unknown;
@@ -94,7 +98,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       // Try to send tx with a timeout
       try {
         const receipt = await withTimeout(
-          () => this._sendSignedTransaction(contractAddress, calldata, gasMultiplierBps),
+          () => this._sendSignedTransaction(contractAddress, calldata, value, gasMultiplierBps),
           {
             timeout: this.sendTransactionAttemptTimeoutMs,
             signal: false, // don’t try to abort, just reject
@@ -147,6 +151,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   private async _sendSignedTransaction(
     contractAddress: Address,
     calldata: Hex,
+    value: bigint,
     gasMultiplierBps = 10000n,
   ): Promise<TransactionReceipt> {
     const [fees, gasLimit, chainId, nonce] = await Promise.all([
@@ -166,6 +171,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       maxFeePerGas: (maxFeePerGas * gasMultiplierBps) / MAX_BPS,
       maxPriorityFeePerGas: (maxPriorityFeePerGas * gasMultiplierBps) / MAX_BPS,
       nonce,
+      value,
     };
     this.logger.debug("_sendSignedTransaction tx for signing", { tx });
     const signature = await this.contractSignerClient.sign(tx);

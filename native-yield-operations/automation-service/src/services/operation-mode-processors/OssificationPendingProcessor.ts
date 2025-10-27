@@ -10,7 +10,6 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { recordUnstakeRebalanceFromSafeWithdrawalResult } from "../../application/metrics/recordUnstakeRebalanceFromSafeWithdrawalResult.js";
 import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
-import { updateMetricsForReportYieldResult } from "../../application/metrics/updateMetricsForReportYieldResult.js";
 
 export class OssificationPendingProcessor implements IOperationModeProcessor {
   constructor(

@@ -20,6 +20,7 @@ import { YieldManagerABI } from "../../core/abis/YieldManager.js";
 import { IYieldManager, YieldProviderData } from "../../core/clients/contracts/IYieldManager.js";
 import { ONE_ETHER } from "@consensys/linea-shared-utils";
 import { YieldReport } from "../../core/entities/YieldReport.js";
+import { StakingVaultABI } from "../../core/abis/StakingVault.js";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt> {
   private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
@@ -142,11 +143,32 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       args: [yieldProvider, encodedWithdrawalParams],
     });
 
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
+    const validatorWithdrawalFee = await this._getValidatorWithdrawalFee(yieldProvider, withdrawalParams);
+    console.log(validatorWithdrawalFee);
+    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(
+      this.contractAddress,
+      calldata,
+      // validatorWithdrawalFee,
+    );
     this.logger.info(`unstake succeeded, yieldProvider=${yieldProvider}, txHash=${txReceipt.transactionHash}`, {
       withdrawalParams,
     });
     return txReceipt;
+  }
+
+  // Compute EIP7002 Withdrawal Fee for beacon chain unstaking
+  private async _getValidatorWithdrawalFee(
+    yieldProvider: Address,
+    withdrawalParams: WithdrawalRequests,
+  ): Promise<bigint> {
+    const vault = await this.getLidoStakingVaultAddress(yieldProvider);
+    const validatorWithdrawalFee = await this.contractClientLibrary.getBlockchainClient().readContract({
+      address: vault,
+      abi: StakingVaultABI,
+      functionName: "calculateValidatorWithdrawalFee",
+      args: [BigInt(withdrawalParams.pubkeys.length)],
+    });
+    return validatorWithdrawalFee;
   }
 
   async withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
