@@ -295,7 +295,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
       (bool success, ) = payable(invoicePaymentReceiver).call{ value: amountToPay }("");
       require(success, InvoiceTransferFailed());
-      emit ArrearsPaid(amountToPay, invoiceArrears);
+      emit ArrearsPaid(amountToPay, remainingArrears);
     }
   }
 
