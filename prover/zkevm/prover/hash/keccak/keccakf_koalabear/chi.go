@@ -90,7 +90,6 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 		stateInternal [5][5][8][]field.Element
 		size          = stateCurr[0][0][0].Size()
 	)
-	chi.RC.Assign(run)
 	// assign the linear combinations for each lane in the state
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
@@ -102,6 +101,8 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 	}
 
 	// assign the state after chi step
+	// eleven := field.NewElement(11)
+	two := field.NewElement(2)
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
@@ -111,15 +112,24 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 				vector.ScalarMul(u, stateInternal[x][y][z], field.NewElement(2))
 				vector.ScalarMul(v, stateInternal[(x+2)%5][y][z], field.NewElement(3))
 				vector.Add(u, u, v, stateInternal[(x+1)%5][y][z])
+				// var k field.Element
+				// If it is the first lane, then add the round constant
+				/*if x == 0 && y == 0 && z == 0 {
+					for i := 0; i < size; i++ {
+						a := keccakf.U64ToBaseX(keccak.RC[i%keccak.NumRound], &eleven)
+						u[i].Add(&u[i], k.Mul(&two, &a))
+					}
+				}*/
+				if x == 0 && y == 0 && z == 0 {
+					chi.RC.Assign(run)
+					var tt = make([]field.Element, size)
+					kk := chi.RC.Natural.GetColAssignment(run).IntoRegVecSaveAlloc()
+					vector.ScalarMul(tt, kk, two)
+					vector.Add(u, u, tt)
+				}
+
 				chi.stateNextWitness[x][y][z] = u
 
-				// If it is the first lane, then add the round constant
-				/*	if x == 0 && y == 0 {
-						rc := chi.RC.Natural.GetColAssignment(run).IntoRegVecSaveAlloc()
-						vector.ScalarMul(rc, rc, field.NewElement(2))
-						vector.Add(chi.stateNextWitness[x][y][0], chi.stateNextWitness[x][y][0], rc)
-					}
-				*/
 			}
 		}
 	}
