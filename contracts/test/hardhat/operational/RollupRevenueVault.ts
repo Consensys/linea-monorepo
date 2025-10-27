@@ -721,11 +721,17 @@ describe("RollupRevenueVault", () => {
         0n,
       ]);
 
+      const minimumFee = await messageService.minimumFeeInWei();
+      const arrears = await rollupRevenueVault.invoiceArrears();
+      const balanceAvailable =
+        (await ethers.provider.getBalance(rollupRevenueVault.getAddress())) - minimumFee - arrears;
+      const ethToBurn = (balanceAvailable * 20n) / 100n;
+
       await expectEvent(
         rollupRevenueVault,
         rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "ArrearsPaid",
-        [ethers.parseEther("0.5")],
+        "EthBurntSwappedAndBridged",
+        [ethToBurn, (balanceAvailable - ethToBurn) * 2n], // We mock the swap to return amountIn * 2
       );
 
       expect(await rollupRevenueVault.invoiceArrears()).equal(0n);
