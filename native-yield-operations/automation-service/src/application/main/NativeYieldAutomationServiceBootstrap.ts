@@ -163,6 +163,7 @@ export class NativeYieldAutomationServiceBootstrap {
     );
     this.beaconChainStakingClient = new BeaconChainStakingClient(
       new WinstonLogger(BeaconChainStakingClient.name, config.loggerOptions),
+      this.metricsUpdater,
       this.consensysStakingGraphQLClient,
       config.maxValidatorWithdrawalRequestsPerTransaction,
       this.yieldManagerContractClient,

@@ -79,11 +79,6 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       ["vault_address"],
     );
 
-    this.metricsService.createCounter(
-      LineaNativeYieldAutomationServiceMetrics.TransactionFees,
-      "Transaction fees paid (gwei) by automation per vault",
-      ["vault_address"],
-    );
 
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
@@ -182,14 +177,6 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   public addLidoFeesPaid(vaultAddress: Address, amountGwei: number): void {
     this._incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
-      vaultAddress,
-      amountGwei,
-    );
-  }
-
-  public addTransactionFees(vaultAddress: Address, amountGwei: number): void {
-    this._incrementVaultAmountCounter(
-      LineaNativeYieldAutomationServiceMetrics.TransactionFees,
       vaultAddress,
       amountGwei,
     );

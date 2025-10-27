@@ -26,8 +26,6 @@ export interface INativeYieldAutomationMetricsUpdater {
 
   addLidoFeesPaid(vaultAddress: Address, amountGwei: number): void;
 
-  addTransactionFees(vaultAddress: Address, amountGwei: number): void;
-
   incrementOperationModeExecution(mode: OperationMode): void;
 
   recordOperationModeDuration(mode: OperationMode, durationSeconds: number): void;
