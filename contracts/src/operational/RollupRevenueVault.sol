@@ -190,7 +190,11 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
       IERC20(lineaTokenAddress).approve(address(tokenBridgeContract), lineaTokenBalanceAfter);
 
-      tokenBridgeContract.bridgeToken{ value: minimumFee }(lineaTokenAddress, lineaTokenBalanceAfter, l1LineaTokenBurner);
+      tokenBridgeContract.bridgeToken{ value: minimumFee }(
+        lineaTokenAddress,
+        lineaTokenBalanceAfter,
+        l1LineaTokenBurner
+      );
 
       emit EthBurntSwappedAndBridged(ethToBurn, lineaTokenBalanceAfter);
     }
@@ -212,19 +216,19 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
   /**
    * @notice Update the invoice arrears.
-   * @param _newInvoiceArrears New invoice arrears value.
+   * @param _invoiceArrears New invoice arrears value.
    * @param _lastInvoiceDate Timestamp of the last invoice.
    */
   function updateInvoiceArrears(
-    uint256 _newInvoiceArrears,
+    uint256 _invoiceArrears,
     uint256 _lastInvoiceDate
   ) external onlyRole(DEFAULT_ADMIN_ROLE) {
     require(_lastInvoiceDate >= lastInvoiceDate, InvoiceDateTooOld());
     require(_lastInvoiceDate < block.timestamp, FutureInvoicesNotAllowed());
 
-    emit InvoiceArrearsUpdated(invoiceArrears, _newInvoiceArrears, lastInvoiceDate, _lastInvoiceDate);
+    emit InvoiceArrearsUpdated(invoiceArrears, _invoiceArrears, lastInvoiceDate, _lastInvoiceDate);
 
-    invoiceArrears = _newInvoiceArrears;
+    invoiceArrears = _invoiceArrears;
     lastInvoiceDate = _lastInvoiceDate;
   }
 
@@ -257,6 +261,22 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   }
 
   /**
+   * @notice Fallback function - Receives Funds.
+   */
+  fallback() external payable {
+    require(msg.value > 0, NoEthSent());
+    emit EthReceived(msg.value);
+  }
+
+  /**
+   * @notice Receive function - Receives Funds.
+   */
+  receive() external payable {
+    require(msg.value > 0, NoEthSent());
+    emit EthReceived(msg.value);
+  }
+
+  /**
    * @notice Pays off arrears where applicable and balance permits.
    */
   function _payArrears() internal {
@@ -273,21 +293,5 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       require(success, InvoiceTransferFailed());
       emit ArrearsPaid(amountToPay, remainingArrears);
     }
-  }
-
-  /**
-   * @notice Fallback function - Receives Funds.
-   */
-  fallback() external payable {
-    require(msg.value > 0, NoEthSent());
-    emit EthReceived(msg.value);
-  }
-
-  /**
-   * @notice Receive function - Receives Funds.
-   */
-  receive() external payable {
-    require(msg.value > 0, NoEthSent());
-    emit EthReceived(msg.value);
   }
 }

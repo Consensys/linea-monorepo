@@ -50,10 +50,7 @@ contract V3DexSwapWethDepositAdapter is IV3DexSwapAdapter {
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
    */
-  function swap(
-    uint256 _minLineaOut,
-    uint256 _deadline
-  ) external payable returns (uint256 amountOut) {
+  function swap(uint256 _minLineaOut, uint256 _deadline) external payable returns (uint256 amountOut) {
     require(msg.value > 0, NoEthSent());
     require(_deadline >= block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
