@@ -19,7 +19,7 @@ export enum LineaNativeYieldAutomationServiceMetrics {
 
   // Counter that increment each time a vault accounting report is submitted
   // Single label `vault_address`
-  LidoVaultAccountingReportSubmittedTotal = "linea_native_yield_automation_service_...",
+  LidoVaultAccountingReportSubmittedTotal = "linea_native_yield_automation_service_lido_vault_accounting_report_submitted_total",
 
   // Counter that increment each time YieldManager.reportYield is called
   // Single label `vault_address`
@@ -60,3 +60,7 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label `mode`
   OperationModeExecutionDurationSeconds = "linea_native_yield_automation_service_operation_mode_execution_duration_seconds"
 }
+
+export type RebalanceDirectionLabel = "STAKE" | "UNSTAKE";
+
+export type RebalanceTypeLabel = "INITIAL" | "POST_REPORT";
