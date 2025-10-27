@@ -35,7 +35,7 @@ func (a *Account) ReadFrom(r io.Reader) (int64, error) {
 //
 // If the account contains a "nil" balance is will be written as zero.
 func (a Account) writeTo(w io.Writer, packed bool) (int64, error) {
-	n0, _ := WriteInt64On32Bytes(w, a.Nonce)
+	n0, _ := WriteInt64On32Bytes(w, a.Nonce) //TODO@yao: need to update?, need to update address and balance as well
 	// Without this edge-case handling, the function panics if called over
 	// Account{}
 	balance := a.Balance
