@@ -7,6 +7,7 @@ import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakin
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { recordUnstakeRebalanceFromSafeWithdrawalResult } from "../../application/metrics/recordUnstakeRebalanceFromSafeWithdrawalResult.js";
+import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
 export class OssificationCompleteProcessor implements IOperationModeProcessor {
   constructor(
@@ -21,6 +22,11 @@ export class OssificationCompleteProcessor implements IOperationModeProcessor {
   public async process(): Promise<void> {
     this.logger.info(`Waiting ${this.maxInactionMs}ms before executing actions`);
     await wait(this.maxInactionMs);
+
+    this.metricsUpdater.incrementOperationModeTrigger(
+      OperationMode.OSSIFICATION_COMPLETE_MODE,
+      OperationTrigger.TIMEOUT,
+    );
     const startedAt = performance.now();
     await this._process();
     const durationMs = performance.now() - startedAt;

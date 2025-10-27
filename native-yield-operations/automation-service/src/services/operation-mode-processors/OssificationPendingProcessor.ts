@@ -9,6 +9,7 @@ import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakin
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { recordUnstakeRebalanceFromSafeWithdrawalResult } from "../../application/metrics/recordUnstakeRebalanceFromSafeWithdrawalResult.js";
+import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
 export class OssificationPendingProcessor implements IOperationModeProcessor {
   constructor(
@@ -36,12 +37,14 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
       );
       // Race: event vs. timeout
       const winner = await Promise.race([
-        waitForEvent.then(() => "event" as const),
-        wait(this.maxInactionMs).then(() => "timeout" as const),
+        waitForEvent.then(() => OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT),
+        wait(this.maxInactionMs).then(() => OperationTrigger.TIMEOUT),
       ]);
       this.logger.info(
-        `process - race won by ${winner === "timeout" ? `time out after ${this.maxInactionMs}ms` : "VaultsReportDataUpdated event"}`,
+        `process - race won by ${winner === OperationTrigger.TIMEOUT ? `time out after ${this.maxInactionMs}ms` : "VaultsReportDataUpdated event"}`,
       );
+      this.metricsUpdater.incrementOperationModeTrigger(OperationMode.OSSIFICATION_PENDING_MODE, winner);
+
       const startedAt = performance.now();
       await this._process();
       const durationMs = performance.now() - startedAt;

@@ -1,7 +1,7 @@
 import { Address, Hex } from "viem";
 import { RebalanceDirection } from "../entities/RebalanceRequirement.js";
 import { OperationMode } from "../enums/OperationModeEnums.js";
-import { YieldReportingTriggerLabel } from "./LineaNativeYieldAutomationServiceMetrics.js";
+import { OperationTrigger } from "./LineaNativeYieldAutomationServiceMetrics.js";
 
 export interface INativeYieldAutomationMetricsUpdater {
   recordRebalance(direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE, amountGwei: number): void;
@@ -9,8 +9,6 @@ export interface INativeYieldAutomationMetricsUpdater {
   addValidatorPartialUnstakeAmount(validatorPubkey: Hex, amountGwei: number): void;
 
   incrementValidatorExit(validatorPubkey: Hex, count?: number): void;
-
-  incrementYieldReportingTrigger(trigger: YieldReportingTriggerLabel): void;
 
   incrementLidoVaultAccountingReport(vaultAddress: Address): void;
 
@@ -25,6 +23,8 @@ export interface INativeYieldAutomationMetricsUpdater {
   addLiabilitiesPaid(vaultAddress: Address, amountGwei: number): void;
 
   addLidoFeesPaid(vaultAddress: Address, amountGwei: number): void;
+
+  incrementOperationModeTrigger(mode: OperationMode, trigger: OperationTrigger): void;
 
   incrementOperationModeExecution(mode: OperationMode): void;
 

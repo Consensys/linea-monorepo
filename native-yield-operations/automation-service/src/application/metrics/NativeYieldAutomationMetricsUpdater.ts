@@ -1,7 +1,7 @@
 import { IMetricsService } from "@consensys/linea-shared-utils";
 import {
   LineaNativeYieldAutomationServiceMetrics,
-  YieldReportingTriggerLabel,
+  OperationTrigger,
 } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 import { Address, Hex } from "viem";
@@ -29,12 +29,6 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.ValidatorExitTotal,
       "Total validator exits initiated by automation",
       ["validator_pubkey"],
-    );
-
-    this.metricsService.createCounter(
-      LineaNativeYieldAutomationServiceMetrics.YieldReportingModeProcessorTriggerTotal,
-      "Yield reporting processor activations grouped by trigger",
-      ["trigger"],
     );
 
     this.metricsService.createCounter(
@@ -79,6 +73,11 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       ["vault_address"],
     );
 
+    this.metricsService.createCounter(
+      LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal,
+      "Operation mode triggers grouped by mode and triggers",
+      ["mode", "trigger"],
+    );
 
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
@@ -118,13 +117,6 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       LineaNativeYieldAutomationServiceMetrics.ValidatorExitTotal,
       { validator_pubkey: validatorPubkey },
       count,
-    );
-  }
-
-  public incrementYieldReportingTrigger(trigger: YieldReportingTriggerLabel): void {
-    this.metricsService.incrementCounter(
-      LineaNativeYieldAutomationServiceMetrics.YieldReportingModeProcessorTriggerTotal,
-      { trigger },
     );
   }
 
@@ -180,6 +172,13 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       vaultAddress,
       amountGwei,
     );
+  }
+
+  public incrementOperationModeTrigger(mode: OperationMode, trigger: OperationTrigger): void {
+    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal, {
+      mode,
+      trigger,
+    });
   }
 
   public incrementOperationModeExecution(mode: OperationMode): void {

@@ -15,10 +15,6 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // Single label - validator_pubkey
   ValidatorExitTotal = "linea_native_yield_automation_service_validator_exit_total",
 
-  // Counter that increments each time the _process() fn in YieldReportingProcessor is triggered
-  // Single label `trigger` - VaultsReportDataUpdated_event vs timeout
-  YieldReportingModeProcessorTriggerTotal = "linea_native_yield_automation_service_yield_reporting_mode_processor_trigger_total",
-
   // Counter that increment each time a vault accounting report is submitted
   // Single label `vault_address`
   LidoVaultAccountingReportSubmittedTotal = "linea_native_yield_automation_service_lido_vault_accounting_report_submitted_total",
@@ -50,7 +46,13 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // N.B. Only accounts for payments by the automation service, but external actors can also trigger payment
   LidoFeesPaidTotal = "linea_native_yield_automation_service_lido_fees_paid_total",
 
-  // Counter that increments each time an operation mode runs.
+  // Counter that increments each time an operation mode is triggered.
+  // Labels:
+  // i.) `mode`
+  // i.) `operation_trigger` - VaultsReportDataUpdated_event vs timeout
+  OperationModeTriggerTotal = "linea_native_yield_automation_service_operation_mode_trigger_total",
+
+  // Counter that increments each time an operation mode completes execution.
   // Single label `mode`
   OperationModeExecutionTotal = "linea_native_yield_automation_service_operation_mode_execution_total",
 
@@ -59,4 +61,7 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   OperationModeExecutionDurationSeconds = "linea_native_yield_automation_service_operation_mode_execution_duration_seconds",
 }
 
-export type YieldReportingTriggerLabel = "VAULTS_REPORT_DATA_UPDATED_EVENT" | "TIMEOUT";
+export enum OperationTrigger {
+  VAULTS_REPORT_DATA_UPDATED_EVENT = "VAULTS_REPORT_DATA_UPDATED_EVENT",
+  TIMEOUT = "TIMEOUT",
+}
