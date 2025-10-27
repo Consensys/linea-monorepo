@@ -2,11 +2,12 @@ package protocols
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 )
 
 // LinearCombination represents the linear combination of the given columns over the powers of the given scalar.
@@ -49,15 +50,49 @@ func NewLinearCombination(comp *wizard.CompiledIOP, name string, r []ifaces.Colu
 
 // Run  assign the values to the linear combination result column.
 func (bc *LinearCombination) Run(run *wizard.ProverRuntime) {
+
 	var (
-		s    = vector.Zero(bc.size)
-		base = field.NewElement(uint64(bc.scalar))
+		colValues = make([][]field.Element, len(bc.cols))
+
+		ss     = make([]field.Element, bc.size)
+		baseFr = field.NewElement(uint64(bc.scalar))
 	)
-	for i := len(bc.cols) - 1; i >= 0; i-- {
-		colValue := bc.cols[i].GetColAssignment(run).IntoRegVecSaveAlloc()
-		vector.ScalarMul(s, s, base)
-		vector.Add(s, s, colValue)
+	for i := 0; i < len(bc.cols); i++ {
+		colValues[i] = bc.cols[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+	for j := 0; j < bc.size; j++ {
+		var t []field.Element
+		for i := 0; i < len(bc.cols); i++ {
+			t = append(t, colValues[i][j])
+			if colValues[i][j].IsZero() || colValues[i][j].IsOne() {
+				// do nothing
+			} else {
+				panic("unexpected value in linear combination input column")
+			}
+		}
+
+		ss[j] = keccakf.BaseRecompose(t, &baseFr)
+		DecomposeForTesting(ss[j].Uint64(), bc.scalar, len(bc.cols))
+
 	}
 
-	run.AssignColumn(bc.CombinationRes.GetColID(), smartvectors.NewRegular(s))
+	run.AssignColumn(bc.CombinationRes.GetColID(), smartvectors.NewRegular(ss))
+}
+
+func DecomposeForTesting(r uint64, base int, nb int) (res []uint64) {
+	// It will essentially be used for chunk to slice decomposition
+	res = make([]uint64, 0, nb)
+	base64 := uint64(base)
+	curr := r
+	for curr > 0 {
+		limb := curr % base64
+		res = append(res, limb)
+		curr /= base64
+	}
+
+	if len(res) > nb {
+		utils.Panic("expected %v limbs, but got %v", nb, len(res))
+	}
+
+	return res
 }
