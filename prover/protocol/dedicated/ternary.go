@@ -36,7 +36,7 @@ func Ternary(comp *wizard.CompiledIOP, condition, ifTrue, ifFalse ifaces.Column)
 
 	var (
 		round = max(max(condition.Round(), ifTrue.Round()), ifFalse.Round())
-		name  = fmt.Sprintf("TERNARY_%v", comp.Columns.AllKeyLen())
+		name  = fmt.Sprintf("TERNARY_%v", comp.Columns.NumEntriesTotal())
 		ctx   = &TernaryCtx{
 			Condition: condition,
 			IfTrue:    ifTrue,

@@ -89,7 +89,7 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 		nRows   = ifaces.AssertSameLength(a.Limbs...)
 		nRowsB  = ifaces.AssertSameLength(b.Limbs...)
 		ctxName = func(subName string) string {
-			return fmt.Sprintf("CMP_MULTI_LIMB_%v_%v", comp.Columns.AllKeyLen(), subName)
+			return fmt.Sprintf("CMP_MULTI_LIMB_%v_%v", comp.Columns.NumEntriesTotal(), subName)
 		}
 	)
 

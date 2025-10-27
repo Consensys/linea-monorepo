@@ -356,5 +356,5 @@ func (ctx *Poseidon2Context) Run(run *wizard.ProverRuntime) {
 // uniqueID returns an integer helping to uniquely identify the items generated
 // by the compilation of a Poseidon2 query.
 func uniqueID(comp *wizard.CompiledIOP) int {
-	return comp.Columns.AllKeyLen()
+	return comp.Columns.NumEntriesTotal()
 }

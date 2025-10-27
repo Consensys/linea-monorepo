@@ -38,7 +38,7 @@ type ManuallyShifted struct {
 func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, name string) *ManuallyShifted {
 
 	if len(name) == 0 {
-		name = fmt.Sprintf("ManualShift/%v", comp.Columns.AllKeyLen())
+		name = fmt.Sprintf("ManualShift/%v", comp.Columns.NumEntriesTotal())
 	}
 
 	var (

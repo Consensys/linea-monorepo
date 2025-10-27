@@ -316,9 +316,9 @@ func (r *Store) AllKeys() []ifaces.ColID {
 }
 
 /*
-Returns the length of all keys ever stored.
+NumEntriesTotal returns the total number of entries in the store. That is the total number of colums in the system (regardless of their status).
 */
-func (r *Store) AllKeyLen() int {
+func (r *Store) NumEntriesTotal() int {
 	counter := 0
 	for roundID := 0; roundID < r.NumRounds(); roundID++ {
 		counter += r.AllKeysLenAt(roundID)

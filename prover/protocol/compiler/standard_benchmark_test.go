@@ -190,6 +190,7 @@ var selfRecursionParametersSet = []selfRecursionParameters{
 	// 	TargetRowSize:   1 << 7,
 	// },
 	{
+		// Best parameters found, you can try others by uncommenting them
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
 		TargetRowSize:   1 << 8,
