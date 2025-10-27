@@ -119,6 +119,7 @@ data class P2PConfig(
     val seenTTL: Duration = 700.milliseconds * 1115,
     val floodPublishMaxMessageSizeThreshold: Int = 1 shl 14, // 16KiB
     val gossipFactor: Double = 0.25,
+    val considerPeersAsDirect: Boolean = false,
   )
 }
 
