@@ -8,13 +8,14 @@ min-gas-price=0
 # engine
 engine-host-allowlist=["*"]
 engine-rpc-port=8550
+engine-jwt-disabled=true
 
 # rpc
 rpc-http-enabled=true
 rpc-http-host="0.0.0.0"
 rpc-http-port=8545
 rpc-http-cors-origins=["*"]
-rpc-http-api=["ADMIN","DEBUG","NET","ETH","WEB3","PLUGINS","LINEA"]
+rpc-http-api=["ADMIN","DEBUG","NET","ETH","ENGINE","WEB3","PLUGINS","LINEA"]
 rpc-http-max-active-connections=200
 
 # ws
@@ -46,7 +47,7 @@ plugin-linea-tx-pool-profitability-check-api-enabled=true
 plugin-linea-tx-pool-simulation-check-api-enabled=true
 plugin-linea-tx-pool-simulation-check-p2p-enabled=true
 plugin-linea-extra-data-pricing-enabled=true
-plugin-linea-max-tx-calldata-size=30000 # lower this to 30000 (default 60000) for the transaction data limit e2e test 
+plugin-linea-max-tx-calldata-size=30000 # lower this to 30000 (default 60000) for the transaction data limit e2e test
 plugin-linea-tx-pool-min-margin="0.8"
 plugin-linea-min-margin="1.0"
 plugin-linea-fixed-gas-cost-wei=30000000
@@ -57,9 +58,14 @@ plugin-linea-estimate-gas-min-margin="1.2"
 plugin-linea-bundles-forward-urls=["http://sequencer:8545"]
 plugin-linea-bundles-forward-retry-delay=1000
 plugin-linea-bundles-forward-timeout=5000
-
-bonsai-limit-trie-logs-enabled=false
-bonsai-historical-block-limit=1024
+plugin-linea-limitless-enabled=false
 
 Xin-process-rpc-enabled=true
 Xin-process-rpc-apis=["ETH", "MINER"]
+
+cache-last-block-headers-preload-enabled=true
+cache-last-block-headers=50
+
+bonsai-limit-trie-logs-enabled=false
+bonsai-historical-block-limit=1024
+bonsai-parallel-tx-processing-enabled=false

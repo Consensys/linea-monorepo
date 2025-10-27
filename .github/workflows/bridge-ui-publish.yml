@@ -37,14 +37,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Get version from package.json
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@3cf273023a0dda27efcd3164bdfb51908dd46a5b #v1.3.1
-        with:
-          path: ./bridge-ui
+        run: |
+          VERSION=$(jq -r .version bridge-ui/package.json)
+          echo "PACKAGE_JSON_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Set Docker Tag
         id: docker-tag
-        run: echo "DOCKER_TAG=${GITHUB_SHA:0:7}-$(date +%s)-bridge-ui-${{ steps.package-version.outputs.current-version }}-${{ matrix.environment }}" | tee $GITHUB_ENV
+        run: echo "DOCKER_TAG=${GITHUB_SHA:0:7}-$(date +%s)-bridge-ui-${{ env.PACKAGE_JSON_VERSION }}-${{ matrix.environment }}" | tee $GITHUB_ENV
 
       - name: Login to Docker Repository
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
@@ -70,26 +69,31 @@ jobs:
             NEXT_PUBLIC_ENVIRONMENT=${{ env.NEXT_PUBLIC_ENVIRONMENT }}
             NEXT_PUBLIC_WALLET_CONNECT_ID=${{ env.NEXT_PUBLIC_WALLET_CONNECT_ID }}
             NEXT_PUBLIC_INFURA_ID=${{ env.NEXT_PUBLIC_INFURA_ID }}
+            NEXT_PUBLIC_ALCHEMY_API_KEY=${{ env.NEXT_PUBLIC_ALCHEMY_API_KEY }}
             NEXT_PUBLIC_QUICKNODE_ID=${{ env.NEXT_PUBLIC_QUICKNODE_ID }}
-            NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=${{ env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID }}
+            NEXT_PUBLIC_WEB3_AUTH_CLIENT_ID=${{ env.NEXT_PUBLIC_WEB3_AUTH_CLIENT_ID }}
             NEXT_PUBLIC_LIFI_API_KEY=${{ env.NEXT_PUBLIC_LIFI_API_KEY }}
             NEXT_PUBLIC_LIFI_INTEGRATOR_NAME=${{ env.NEXT_PUBLIC_LIFI_INTEGRATOR_NAME }}
             NEXT_PUBLIC_ONRAMPER_API_KEY=${{ env.NEXT_PUBLIC_ONRAMPER_API_KEY }}
             NEXT_PUBLIC_LAYERSWAP_API_KEY=${{ env.NEXT_PUBLIC_LAYERSWAP_API_KEY }}
-            REVALIDATE_SECRET=${{ env.REVALIDATE_SECRET }}
           cache-from: type=registry,ref=consensys/linea-bridge-ui:buildcache
           cache-to: type=registry,ref=consensys/linea-bridge-ui:buildcache,mode=max
+          secrets: |
+            "revalidate_secret=${{ env.REVALIDATE_SECRET }}"
+            "contentful_space_id=${{ secrets.CONTENTFUL_SPACE_ID }}"
         env:
           NEXT_PUBLIC_WALLET_CONNECT_ID: ${{ secrets.PUBLIC_WALLET_CONNECT_ID }}
           NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
+          NEXT_PUBLIC_ALCHEMY_API_KEY: ${{ secrets.NEXT_PUBLIC_ALCHEMY_API_KEY }}
           NEXT_PUBLIC_QUICKNODE_ID: ${{ secrets.PUBLIC_BRIDGE_UI_QUICKNODE_ID }}
-          NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: ${{ secrets.PUBLIC_DYNAMIC_ENVIRONMENT_ID }}
+          NEXT_PUBLIC_WEB3_AUTH_CLIENT_ID: ${{ matrix.environment == 'production' && secrets.NEXT_PUBLIC_WEB3_AUTH_CLIENT_ID || secrets.NEXT_PUBLIC_WEB3_AUTH_TESTNET_CLIENT_ID }}
           NEXT_PUBLIC_LIFI_API_KEY: ${{ secrets.PUBLIC_LIFI_API_KEY }}
           NEXT_PUBLIC_LIFI_INTEGRATOR_NAME: ${{ secrets.PUBLIC_LIFI_INTEGRATOR_NAME }}
           NEXT_PUBLIC_ONRAMPER_API_KEY: ${{ secrets.PUBLIC_ONRAMPER_API_KEY }}
           NEXT_PUBLIC_LAYERSWAP_API_KEY: ${{ secrets.PUBLIC_LAYERSWAP_API_KEY }}
           NEXT_PUBLIC_ENVIRONMENT: ${{ matrix.environment }}
           REVALIDATE_SECRET: ${{ secrets.BRIDGE_UI_REVALIDATE_SECRET }}
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
 
   test-build:
     if: github.event.pull_request.head.repo.fork == true

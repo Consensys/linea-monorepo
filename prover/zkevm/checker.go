@@ -3,7 +3,7 @@ package zkevm
 import (
 	"sync"
 
-	"github.com/consensys/go-corset/pkg/mir"
+	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -14,7 +14,7 @@ var (
 	checkerZkEvm     *ZkEvm
 	onceCheckerZkEvm = sync.Once{}
 
-	checkerCompilationSuite = compilationSuite{
+	checkerCompilationSuite = CompilationSuite{
 		// The dummy compiler returns the witness as the proof and manually
 		// checks it as the verifier. It is essentially the trivial proof
 		// system.

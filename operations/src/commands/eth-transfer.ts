@@ -11,7 +11,9 @@ import {
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_MAX_FEE_PER_GAS,
   WEB3_SIGNER_PUBLIC_KEY_LENGTH,
+  getWeb3SignerHttpsAgent,
 } from "../utils/eth-transfer/index.js";
+import { Agent } from "https";
 
 export default class EthTransfer extends Command {
   static examples = [
@@ -22,7 +24,13 @@ export default class EthTransfer extends Command {
       --threshold=10
       --blockchain-rpc-url=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
       --web3-signer-url=http://localhost:8545
-      --web3-signer-public-key=0xYourWeb3SignerPublicKey`,
+      --web3-signer-public-key=0xYourWeb3SignerPublicKey
+      --tls
+      --web3-signer-keystore-path=/path/to/keystore.p12
+      --web3-signer-keystore-passphrase=yourPassphrase
+      --web3-signer-trusted-store-path=/path/to/ca.p12
+      --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
+      `,
 
     // Example 2: Including optional flags with custom values
     `<%= config.bin %> <%= command.id %>
@@ -33,7 +41,13 @@ export default class EthTransfer extends Command {
       --web3-signer-url=http://localhost:8545
       --web3-signer-public-key=0xYourWeb3SignerPublicKey
       --max-fee-per-gas=150000000000
-      --gas-estimation-percentile=20`,
+      --gas-estimation-percentile=20
+      --tls
+      --web3-signer-keystore-path=/path/to/keystore.p12
+      --web3-signer-keystore-passphrase=yourPassphrase
+      --web3-signer-trusted-store-path=/path/to/ca.p12
+      --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
+      `,
 
     // Example 3: Using the dry-run flag to simulate the transaction
     `<%= config.bin %> <%= command.id %>
@@ -43,7 +57,13 @@ export default class EthTransfer extends Command {
       --blockchain-rpc-url=http://127.0.0.1:8545
       --web3-signer-url=http://127.0.0.1:8546
       --web3-signer-public-key=0xYourWeb3SignerPublicKey
-      --dry-run`,
+      --dry-run
+      --tls
+      --web3-signer-keystore-path=/path/to/keystore.p12
+      --web3-signer-keystore-passphrase=yourPassphrase
+      --web3-signer-trusted-store-path=/path/to/ca.p12
+      --web3-signer-trusted-store-passphrase=yourTrustedStorePassphrase
+      `,
   ];
 
   static flags = {
@@ -104,6 +124,32 @@ export default class EthTransfer extends Command {
       default: DEFAULT_GAS_ESTIMATION_PERCENTILE,
       env: "ETH_TRANSFER_GAS_ESTIMATION_PERCENTILE",
     }),
+    tls: Flags.boolean({
+      description: "Enable TLS",
+      required: false,
+      default: false,
+      env: "ETH_TRANSFER_TLS",
+    }),
+    "web3-signer-keystore-path": Flags.string({
+      description: "Path to the web3 signer keystore file",
+      required: false,
+      env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PATH",
+    }),
+    "web3-signer-keystore-passphrase": Flags.string({
+      description: "Passphrase for the web3 signer keystore",
+      required: false,
+      env: "ETH_TRANSFER_WEB3_SIGNER_KEYSTORE_PASSPHRASE",
+    }),
+    "web3-signer-trusted-store-path": Flags.string({
+      description: "Path to the web3 signer trusted store file",
+      required: false,
+      env: "ETH_TRANSFER_WEB3_SIGNER_TRUSTED_STORE_PATH",
+    }),
+    "web3-signer-trusted-store-passphrase": Flags.string({
+      description: "Passphrase for the web3 signer trusted store file",
+      required: false,
+      env: "ETH_TRANSFER_WEB3_SIGNER_TRUSTED_STORE_PASSPHRASE",
+    }),
   };
 
   public async run(): Promise<void> {
@@ -119,6 +165,11 @@ export default class EthTransfer extends Command {
       maxFeePerGas,
       gasEstimationPercentile,
       dryRun,
+      tls,
+      web3SignerKeystorePath,
+      web3SignerKeystorePassphrase,
+      web3SignerTrustedStorePath,
+      web3SignerTrustedStorePassphrase,
     } = validateConfig(flags);
 
     const provider = new ethers.JsonRpcProvider(blockchainRpcUrl);
@@ -162,7 +213,18 @@ export default class EthTransfer extends Command {
       gasLimit: transactionGasLimit,
     };
 
-    const signature = await getWeb3SignerSignature(web3SignerUrl, web3SignerPublicKey, transaction);
+    let httpsAgent: Agent | undefined;
+    if (tls) {
+      this.log(`Using TLS for secure communication with Web3 Signer.`);
+      httpsAgent = getWeb3SignerHttpsAgent(
+        web3SignerKeystorePath,
+        web3SignerKeystorePassphrase,
+        web3SignerTrustedStorePath,
+        web3SignerTrustedStorePassphrase,
+      );
+    }
+
+    const signature = await getWeb3SignerSignature(web3SignerUrl, web3SignerPublicKey, transaction, httpsAgent);
 
     if (dryRun) {
       this.log("Dry run enabled: Skipping transaction submission to blockchain.");

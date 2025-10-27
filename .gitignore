@@ -89,6 +89,7 @@ __pycache__/
 /besu-plugins/linea-sequencer/**/site
 
 /bridge-ui/.env*.local
+!/bridge-ui/.env.test
 /bridge-ui/cache
 /bridge-ui/out
 /bridge-ui/test-results
@@ -130,6 +131,9 @@ __pycache__/
 
 /ts-libs/**/lib/**/*.so
 /ts-libs/**/lib/**/*.dylib
+
+/docker/config/l2-genesis-initialization/*.json
+/docker/config/l2-genesis-initialization/*.toml
 
 !.gitkeep
 !operations/bin/

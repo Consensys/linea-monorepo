@@ -1,40 +1,48 @@
-import { Address } from "viem";
+import { Address, Client, Hex } from "viem";
 import { getPublicClient } from "@wagmi/core";
-import { LineaSDK } from "@consensys/linea-sdk";
-import { config as wagmiConfig } from "@/lib/wagmi";
+import { getL1ToL2MessageStatus, getL2ToL1MessageStatus } from "@consensys/linea-sdk-viem";
 import { defaultTokensConfig, HistoryActionsForCompleteTxCaching } from "@/stores";
 import {
   BridgeTransaction,
   BridgeTransactionType,
   Chain,
   ChainLayer,
-  Token,
   MessageSentABIEvent,
   MessageSentLogEvent,
+  Token,
 } from "@/types";
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
-import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
+import { config } from "@/config";
+import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
+import { saveToTransactionCache } from "./saveToTransactionCache";
+import { Config } from "wagmi";
 
 export async function fetchETHBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
-  lineaSDK: LineaSDK,
   address: Address,
   fromChain: Chain,
   toChain: Chain,
   tokens: Token[],
+  wagmiConfig: Config,
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
 
-  const client = getPublicClient(wagmiConfig, {
+  const originLayerClient = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
 
-  const contract = fromChain.layer === ChainLayer.L1 ? lineaSDK.getL2Contract() : lineaSDK.getL1Contract();
+  if (!originLayerClient) {
+    throw new Error(`No public client for chain ${fromChain.name}`);
+  }
+
+  const destinationLayerClient = getPublicClient(wagmiConfig, {
+    chainId: toChain.id,
+  });
 
   const messageServiceAddress = fromChain.messageServiceAddress;
   const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([
-    client.getLogs({
+    originLayerClient.getLogs({
       event: MessageSentABIEvent,
       // No need to find more 'optimal' value than earliest.
       // Empirical testing showed no practical difference when using hardcoded block number (that was 90 days old).
@@ -45,7 +53,7 @@ export async function fetchETHBridgeEvents(
         _from: address,
       },
     }),
-    client.getLogs({
+    originLayerClient.getLogs({
       event: MessageSentABIEvent,
       fromBlock: "earliest",
       toBlock: "latest",
@@ -71,19 +79,35 @@ export async function fetchETHBridgeEvents(
       const uniqueKey = `${log.args._from}-${log.args._to}-${log.transactionHash}`;
 
       // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
-      const cacheKey = getCompleteTxStoreKey(fromChain.id, log.transactionHash);
-      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
-      if (cachedCompletedTx) {
-        transactionsMap.set(uniqueKey, cachedCompletedTx);
+      if (
+        restoreFromTransactionCache(historyStoreActions, fromChain.id, log.transactionHash, transactionsMap, uniqueKey)
+      ) {
         return;
       }
 
-      const messageHash = log.args._messageHash;
+      const messageHash = log.args._messageHash as Hex;
 
-      const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
+      const block = await originLayerClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
       if (isBlockTooOld(block)) return;
 
-      const messageStatus = await contract.getMessageStatus(messageHash);
+      const messageStatus =
+        fromChain.layer === ChainLayer.L1
+          ? await getL1ToL2MessageStatus(destinationLayerClient as Client, {
+              messageHash,
+              ...(config.e2eTestMode
+                ? { l2MessageServiceAddress: config.chains[toChain.id].messageServiceAddress as Address }
+                : {}),
+            })
+          : await getL2ToL1MessageStatus(destinationLayerClient as Client, {
+              messageHash,
+              l2Client: originLayerClient as Client,
+              ...(config.e2eTestMode
+                ? {
+                    lineaRollupAddress: config.chains[toChain.id].messageServiceAddress as Address,
+                    l2MessageServiceAddress: config.chains[fromChain.id].messageServiceAddress as Address,
+                  }
+                : {}),
+            });
 
       const token = tokens.find((token) => token.type.includes("eth"));
 
@@ -107,8 +131,7 @@ export async function fetchETHBridgeEvents(
         },
       };
 
-      // Store COMPLETE tx in cache
-      historyStoreActions.setCompleteTx(tx);
+      saveToTransactionCache(historyStoreActions, tx);
       transactionsMap.set(uniqueKey, tx);
     }),
   );

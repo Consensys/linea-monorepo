@@ -1,5 +1,5 @@
 .layout {
-  padding: 0.625rem 1.5rem 0 1.5rem;
+  padding: 0.625rem 0.5rem 0 0.5rem;
 
   @include bp("tablet") {
     padding: 1.5rem 1.5rem 0 1.5rem;
@@ -15,12 +15,13 @@
 }
 
 .right {
-  min-height: calc(100svh - 3rem);
+  min-height: calc(100svh - 5.25rem - 0.625rem);
   width: 100%;
   min-width: 0;
-  margin-bottom: 3.9375rem;
+  margin-bottom: 5.25rem;
 
   @include bp("tablet") {
     margin-bottom: 0;
+    min-height: calc(100svh - 3rem);
   }
 }
