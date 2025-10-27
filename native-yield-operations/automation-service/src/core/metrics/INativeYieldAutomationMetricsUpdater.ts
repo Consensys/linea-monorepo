@@ -1,12 +1,11 @@
 import { Address, Hex } from "viem";
 import { RebalanceDirection } from "../entities/RebalanceRequirement.js";
 import { OperationMode } from "../enums/OperationModeEnums.js";
-import { RebalanceTypeLabel, YieldReportingTriggerLabel } from "./LineaNativeYieldAutomationServiceMetrics.js";
+import { YieldReportingTriggerLabel } from "./LineaNativeYieldAutomationServiceMetrics.js";
 
 export interface INativeYieldAutomationMetricsUpdater {
   recordRebalance(
     direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE,
-    type: RebalanceTypeLabel,
     amountGwei: number,
   ): void;
 

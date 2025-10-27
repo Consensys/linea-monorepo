@@ -1,7 +1,6 @@
 import { IMetricsService } from "@consensys/linea-shared-utils";
 import {
   LineaNativeYieldAutomationServiceMetrics,
-  RebalanceTypeLabel,
   YieldReportingTriggerLabel,
 } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
@@ -104,13 +103,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
 
   public recordRebalance(
     direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE,
-    type: RebalanceTypeLabel,
     amountGwei: number,
   ): void {
     if (amountGwei <= 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
-      { direction, type },
+      { direction },
       amountGwei,
     );
   }

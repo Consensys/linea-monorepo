@@ -31,7 +31,7 @@ export class OssificationCompleteProcessor implements IOperationModeProcessor {
   private async _process(): Promise<void> {
     // Max withdraw
     this.logger.info("_process - Performing max withdrawal from YieldProvider");
-    await attempt(this.logger, () =>
+    const maybeWithdrawalReceipt = await attempt(this.logger, () =>
       this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider), "_process - safeMaxAddToWithdrawalReserve failed (tolerated)");
 
     // Max unstake

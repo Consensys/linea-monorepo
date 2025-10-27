@@ -63,6 +63,4 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   OperationModeExecutionDurationSeconds = "linea_native_yield_automation_service_operation_mode_execution_duration_seconds"
 }
 
-export type RebalanceTypeLabel = "INITIAL" | "POST_REPORT";
-
 export type YieldReportingTriggerLabel = "VAULTS_REPORT_DATA_UPDATED_EVENT" | "TIMEOUT";

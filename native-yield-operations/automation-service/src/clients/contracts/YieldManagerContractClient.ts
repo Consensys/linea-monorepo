@@ -1,6 +1,7 @@
 import { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
+  decodeEventLog,
   encodeAbiParameters,
   encodeFunctionData,
   getContract,
@@ -359,4 +360,30 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     if (availableWithdrawalBalance < this.minWithdrawalThresholdEth * ONE_ETHER) return null;
     return await this.safeAddToWithdrawalReserve(yieldProvider, availableWithdrawalBalance);
   }
+
+  getWithdrawalAmountFromTxReceipt(txReceipt: TransactionReceipt): bigint {
+    for (const log of txReceipt.logs) {
+      // Only decode logs emitted by this contract
+      if (log.address.toLowerCase() !== this.contractAddress.toLowerCase()) continue;
+
+      try {
+        const decoded = decodeEventLog({
+          abi: this.contract.abi,
+          data: log.data,
+          topics: log.topics,
+        });
+
+        if (decoded.eventName === "WithdrawalReserveAugmented") {
+          const { reserveIncrementAmount } = decoded.args;
+          return reserveIncrementAmount as bigint;
+        }
+      } catch {
+        // skip unrelated logs (from the same contract or different ABIs)
+      }
+    }
+
+    // If event not found
+    return 0n;
+  }
+
 }

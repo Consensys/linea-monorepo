@@ -10,6 +10,7 @@ import { ILineaRollupYieldExtension } from "../../core/clients/contracts/ILineaR
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
+import { weiToGweiNumber } from "ts-libs/linea-shared-utils/src/utils/blockchain.js";
 
 // FIRST PRIORITY FOR UNIT TESTING
 export class YieldReportingProcessor implements IOperationModeProcessor {
@@ -175,6 +176,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     const transferFundsForNativeYieldResult = await attempt(this.logger, () => this.lineaRollupYieldExtensionClient.transferFundsForNativeYield(rebalanceAmount), "_handleStakingRebalance - transferFundsForNativeYield failed (tolerated)");
     // Only do YieldManager->YieldProvider, if L1MessageService->YieldManager succeeded
     if (transferFundsForNativeYieldResult.isOk()) {
+      // Assumptions
+      // i.) We count rebalance once funds have been moved away from the L1MessageService
+      // ii.) Only the initial rebalance will call this fn
+      this.metricsUpdater.recordRebalance(RebalanceDirection.STAKE, weiToGweiNumber(rebalanceAmount))
       await attempt(this.logger, () => this.yieldManagerContractClient.fundYieldProvider(this.yieldProvider, rebalanceAmount), "_handleStakingRebalance - fundYieldProvider failed (tolerated)");
     }
 

@@ -36,6 +36,7 @@ export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient 
     amount: bigint,
   ): Promise<TTransactionReceipt | null>;
   safeMaxAddToWithdrawalReserve(yieldProvider: Address): Promise<TTransactionReceipt | null>;
+  getWithdrawalAmountFromTxReceipt(txReceipt: TTransactionReceipt): bigint;
 }
 
 export interface YieldProviderData {
