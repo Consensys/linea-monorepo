@@ -2,12 +2,12 @@
 pragma solidity 0.8.30;
 
 /**
- * @title Interface for the V3DexAdapter contract.
+ * @title Interface for the V3DexSwapAdapter contract.
  * @dev A contract for swapping tokens on the V3 decentralized exchange.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface IV3DexAdapter {
+interface IV3DexSwapAdapter {
   /**
    * @dev Thrown when no ETH is sent with the swap call.
    */
@@ -47,7 +47,7 @@ interface IV3DexAdapter {
    * @param lineaToken The address of the LINEA token contract.
    * @param poolTickSpacing Tick spacing of the pool.
    */
-  event V3DexAdapterInitialized(address router, address wethToken, address lineaToken, uint24 poolTickSpacing);
+  event V3DexSwapAdapterInitialized(address router, address wethToken, address lineaToken, int24 poolTickSpacing);
 
   /** @notice Swap ETH into LINEA tokens.
    * @dev The msg.sender will be the recipient of the LINEA tokens, and WETH is swapped 1:1 with `msg.value`.

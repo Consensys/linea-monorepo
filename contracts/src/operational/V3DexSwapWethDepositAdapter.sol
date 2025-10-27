@@ -2,19 +2,19 @@
 pragma solidity 0.8.30;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IV3DexAdapter } from "./interfaces/IV3DexAdapter.sol";
+import { IV3DexSwapAdapter } from "./interfaces/IV3DexSwapAdapter.sol";
 import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
 
 /**
- * @title V3DexAdapter.
+ * @title V3DexSwapWethDepositAdapter.
  * @dev A contract for swapping tokens on a decentralized exchange.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract V3DexAdapter is IV3DexAdapter {
+contract V3DexSwapWethDepositAdapter is IV3DexSwapAdapter {
   /// @notice Tick spacing of the pool.
-  uint24 public immutable POOL_TICK_SPACING;
+  int24 public immutable POOL_TICK_SPACING;
   /// @notice Address of the Swap Router contract.
   address public immutable ROUTER;
   /// @notice Address of the WETH token contract.
@@ -24,12 +24,13 @@ contract V3DexAdapter is IV3DexAdapter {
 
   /**
    * @dev Initializes the contract with the given parameters.
+   * @dev The expect pools use int24.
    * @param _router Address of the Router contract.
    * @param _wethToken Address of the WETH token contract.
    * @param _lineaToken Address of the LINEA token contract.
    * @param _poolTickSpacing Tick spacing of the pool.
    */
-  constructor(address _router, address _wethToken, address _lineaToken, uint24 _poolTickSpacing) {
+  constructor(address _router, address _wethToken, address _lineaToken, int24 _poolTickSpacing) {
     require(_router != address(0), ZeroAddressNotAllowed());
     require(_wethToken != address(0), ZeroAddressNotAllowed());
     require(_lineaToken != address(0), ZeroAddressNotAllowed());
@@ -40,7 +41,7 @@ contract V3DexAdapter is IV3DexAdapter {
     LINEA_TOKEN = _lineaToken;
     POOL_TICK_SPACING = _poolTickSpacing;
 
-    emit V3DexAdapterInitialized(_router, _wethToken, _lineaToken, _poolTickSpacing);
+    emit V3DexSwapAdapterInitialized(_router, _wethToken, _lineaToken, _poolTickSpacing);
   }
 
   /** @notice Swap ETH into LINEA tokens.
@@ -48,11 +49,10 @@ contract V3DexAdapter is IV3DexAdapter {
    * @dev No ETH is kept in the contract after the swap due to exactInputSingle swapping.
    * @param _minLineaOut Minimum number of LINEA tokens to receive (slippage protection).
    * @param _deadline Time after which the transaction will revert if not yet processed.
-   * @return amountOut The amount of LINEA tokens received from the swap.
    */
   function swap(uint256 _minLineaOut, uint256 _deadline) external payable returns (uint256 amountOut) {
     require(msg.value > 0, NoEthSent());
-    require(_deadline > block.timestamp, DeadlineInThePast());
+    require(_deadline >= block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
 
     IWETH9(WETH_TOKEN).deposit{ value: msg.value }();

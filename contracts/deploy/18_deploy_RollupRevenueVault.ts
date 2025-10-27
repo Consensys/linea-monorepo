@@ -32,7 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const messageService = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_MESSAGE_SERVICE");
   const l1LineaTokenBurner = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_L1_LINEA_TOKEN_BURNER");
   const lineaToken = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_LINEA_TOKEN");
-  const dexAdapter = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_DEX_ADAPTER");
+  const dexSwapAdapter = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER");
 
   const contract = await deployUpgradableFromFactory(
     contractName,
@@ -46,7 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       messageService,
       l1LineaTokenBurner,
       lineaToken,
-      dexAdapter,
+      dexSwapAdapter,
     ],
     {
       initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,

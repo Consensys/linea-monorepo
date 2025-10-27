@@ -4,17 +4,17 @@ pragma solidity 0.8.30;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IWETH9 } from "../../../operational/interfaces/IWETH9.sol";
 import { TestDexRouter } from "./TestDexRouter.sol";
-import { V3DexAdapter } from "../../../operational/V3DexAdapter.sol";
+import { V3DexSwapAdapter } from "../../../operational/V3DexSwapAdapter.sol";
 
-contract TestDexAdapter is V3DexAdapter {
+contract TestDexSwapAdapter is V3DexSwapAdapter {
   error TestRevertFromSwap();
 
   constructor(
     address _router,
     address _wethToken,
     address _lineaToken,
-    uint24 _poolTickSpacing
-  ) V3DexAdapter(_router, _wethToken, _lineaToken, _poolTickSpacing) {}
+    int24 _poolTickSpacing
+  ) V3DexSwapAdapter(_router, _wethToken, _lineaToken, _poolTickSpacing) {}
 
   function testRevertSwap(uint256, uint256) external payable returns (uint256) {
     revert TestRevertFromSwap();

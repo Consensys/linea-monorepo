@@ -22,10 +22,10 @@ uint256 ETH_BURNT_PERCENTAGE
 
 Percentage of ETH to be burnt when performing the burn and bridge operation.
 
-### dexAdapter
+### dexSwapAdapter
 
 ```solidity
-address dexAdapter
+address dexSwapAdapter
 ```
 
 Decentralized exchange adapter contract for swapping ETH to LINEA tokens.
@@ -95,7 +95,7 @@ constructor() public
 ### initializeRolesAndStorageVariables
 
 ```solidity
-function initializeRolesAndStorageVariables(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _dexAdapter) external
+function initializeRolesAndStorageVariables(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _dexSwapAdapter) external
 ```
 
 Reinitializes the contract state for upgrade.
@@ -113,12 +113,12 @@ Reinitializes the contract state for upgrade.
 | _messageService | address | Address of the L2 message service contract. |
 | _l1LineaTokenBurner | address | Address of the L1 LINEA token burner contract. |
 | _lineaToken | address | Address of the LINEA token contract. |
-| _dexAdapter | address | Address of the DEX adapter contract. |
+| _dexSwapAdapter | address | Address of the DEX swap adapter contract. |
 
 ### __RollupRevenueVault_init
 
 ```solidity
-function __RollupRevenueVault_init(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _dexAdapter) internal
+function __RollupRevenueVault_init(uint256 _lastInvoiceDate, address _defaultAdmin, address _invoiceSubmitter, address _burner, address _invoicePaymentReceiver, address _tokenBridge, address _messageService, address _l1LineaTokenBurner, address _lineaToken, address _dexSwapAdapter) internal
 ```
 
 ### submitInvoice
@@ -194,19 +194,27 @@ Updates the address of the L1 LINEA token burner contract.
 | ---- | ---- | ----------- |
 | _newL1LineaTokenBurner | address | Address of the new L1 LINEA token burner contract. |
 
-### updateDexAdapter
+### updateDexSwapAdapter
 
 ```solidity
-function updateDexAdapter(address _newDexAdapter) external
+function updateDexSwapAdapter(address _newDexSwapAdapter) external
 ```
 
-Updates the address of the DEX adapter contract.
+Updates the address of the DEX swap adapter contract.
 
 #### Parameters
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _newDexAdapter | address | Address of the new DEX adapter contract. |
+| _newDexSwapAdapter | address | Address of the new DEX swap adapter contract. |
+
+### _payArrears
+
+```solidity
+function _payArrears() internal
+```
+
+Pays off arrears where applicable and balance permits.
 
 ### fallback
 
