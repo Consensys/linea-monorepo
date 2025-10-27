@@ -2,16 +2,16 @@
 pragma solidity 0.8.30;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IV3DexAdapter } from "./interfaces/IV3DexAdapter.sol";
+import { IV3DexSwapAdapter } from "./interfaces/IV3DexSwapAdapter.sol";
 import { ISwapRouterV3 } from "./interfaces/ISwapRouterV3.sol";
 
 /**
- * @title V3DexAdapter.
+ * @title V3DexSwapAdapter.
  * @dev A contract for swapping tokens on a decentralized exchange.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract V3DexAdapter is IV3DexAdapter {
+contract V3DexSwapAdapter is IV3DexSwapAdapter {
   /// @notice Tick spacing of the pool.
   int24 public immutable POOL_TICK_SPACING;
   /// @notice Address of the Swap Router contract.
@@ -55,12 +55,9 @@ contract V3DexAdapter is IV3DexAdapter {
     require(_deadline >= block.timestamp, DeadlineInThePast());
     require(_minLineaOut > 0, ZeroMinLineaOutNotAllowed());
 
-    IWETH9(WETH_TOKEN).deposit{ value: msg.value }();
-    IWETH9(WETH_TOKEN).approve(ROUTER, msg.value);
-
     uint256 tokenBalanceBefore = IERC20(LINEA_TOKEN).balanceOf(msg.sender);
 
-    amountOut = ISwapRouterV3(ROUTER).exactInputSingle(
+    amountOut = ISwapRouterV3(ROUTER).exactInputSingle{ value: msg.value }(
       ISwapRouterV3.ExactInputSingleParams({
         tokenIn: WETH_TOKEN,
         tokenOut: LINEA_TOKEN,

@@ -21,7 +21,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   uint256 public constant ETH_BURNT_PERCENTAGE = 20;
 
   /// @notice Decentralized exchange adapter contract for swapping ETH to LINEA tokens.
-  address public dexAdapter;
+  address public dexSwapAdapter;
   /// @notice Address to receive invoice payments.
   address public invoicePaymentReceiver;
   /// @notice Amount of invoice arrears.
@@ -53,7 +53,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @param _messageService Address of the L2 message service contract.
    * @param _l1LineaTokenBurner Address of the L1 LINEA token burner contract.
    * @param _lineaToken Address of the LINEA token contract.
-   * @param _dexAdapter Address of the DEX adapter contract.
+   * @param _dexSwapAdapter Address of the DEX swap adapter contract.
    */
   function initializeRolesAndStorageVariables(
     uint256 _lastInvoiceDate,
@@ -65,7 +65,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _messageService,
     address _l1LineaTokenBurner,
     address _lineaToken,
-    address _dexAdapter
+    address _dexSwapAdapter
   ) external reinitializer(2) {
     __AccessControl_init();
     __RollupRevenueVault_init(
@@ -78,7 +78,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       _messageService,
       _l1LineaTokenBurner,
       _lineaToken,
-      _dexAdapter
+      _dexSwapAdapter
     );
   }
 
@@ -92,7 +92,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     address _messageService,
     address _l1LineaTokenBurner,
     address _lineaToken,
-    address _dexAdapter
+    address _dexSwapAdapter
   ) internal onlyInitializing {
     require(_lastInvoiceDate != 0, ZeroTimestampNotAllowed());
     require(_lastInvoiceDate < block.timestamp, FutureInvoicesNotAllowed());
@@ -105,7 +105,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     require(_messageService != address(0), ZeroAddressNotAllowed());
     require(_l1LineaTokenBurner != address(0), ZeroAddressNotAllowed());
     require(_lineaToken != address(0), ZeroAddressNotAllowed());
-    require(_dexAdapter != address(0), ZeroAddressNotAllowed());
+    require(_dexSwapAdapter != address(0), ZeroAddressNotAllowed());
 
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
     _grantRole(INVOICE_SUBMITTER_ROLE, _invoiceSubmitter);
@@ -118,7 +118,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     messageService = L2MessageService(_messageService);
     l1LineaTokenBurner = _l1LineaTokenBurner;
     lineaToken = _lineaToken;
-    dexAdapter = _dexAdapter;
+    dexSwapAdapter = _dexSwapAdapter;
 
     emit RollupRevenueVaultInitialized(
       _lastInvoiceDate,
@@ -127,7 +127,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       _messageService,
       _l1LineaTokenBurner,
       _lineaToken,
-      _dexAdapter
+      _dexSwapAdapter
     );
   }
 
@@ -180,19 +180,19 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
       (bool success, ) = address(0).call{ value: ethToBurn }("");
       require(success, EthBurnFailed());
 
-    (bool swapSuccess, ) = dexAdapter.call{ value: balanceAvailable - ethToBurn }(_swapData);
-    require(swapSuccess, DexSwapFailed());
+      (bool swapSuccess, ) = dexSwapAdapter.call{ value: balanceAvailable - ethToBurn }(_swapData);
+      require(swapSuccess, DexSwapFailed());
 
-    address lineaTokenAddress = lineaToken;
-    TokenBridge tokenBridgeContract = tokenBridge;
+      address lineaTokenAddress = lineaToken;
+      TokenBridge tokenBridgeContract = tokenBridge;
 
-    uint256 lineaTokenBalanceAfter = IERC20(lineaTokenAddress).balanceOf(address(this));
+      uint256 lineaTokenBalanceAfter = IERC20(lineaTokenAddress).balanceOf(address(this));
 
-    IERC20(lineaTokenAddress).approve(address(tokenBridgeContract), lineaTokenBalanceAfter);
+      IERC20(lineaTokenAddress).approve(address(tokenBridgeContract), lineaTokenBalanceAfter);
 
-    tokenBridgeContract.bridgeToken{ value: minimumFee }(lineaTokenAddress, lineaTokenBalanceAfter, l1LineaTokenBurner);
+      tokenBridgeContract.bridgeToken{ value: minimumFee }(lineaTokenAddress, lineaTokenBalanceAfter, l1LineaTokenBurner);
 
-    emit EthBurntSwappedAndBridged(ethToBurn, lineaTokenBalanceAfter);
+      emit EthBurntSwappedAndBridged(ethToBurn, lineaTokenBalanceAfter);
     }
   }
 
@@ -243,17 +243,17 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
   }
 
   /**
-   * @notice Updates the address of the DEX adapter contract.
-   * @param _newDexAdapter Address of the new DEX adapter contract.
+   * @notice Updates the address of the DEX swap adapter contract.
+   * @param _newDexSwapAdapter Address of the new DEX swap adapter contract.
    */
-  function updateDexAdapter(address _newDexAdapter) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    require(_newDexAdapter != address(0), ZeroAddressNotAllowed());
+  function updateDexSwapAdapter(address _newDexSwapAdapter) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    require(_newDexSwapAdapter != address(0), ZeroAddressNotAllowed());
 
-    address currentDexAdapter = dexAdapter;
-    require(_newDexAdapter != currentDexAdapter, ExistingAddressTheSame());
+    address currentDexSwapAdapter = dexSwapAdapter;
+    require(_newDexSwapAdapter != currentDexSwapAdapter, ExistingAddressTheSame());
 
-    dexAdapter = _newDexAdapter;
-    emit DexAdapterUpdated(currentDexAdapter, _newDexAdapter);
+    dexSwapAdapter = _newDexSwapAdapter;
+    emit DexSwapAdapterUpdated(currentDexSwapAdapter, _newDexSwapAdapter);
   }
 
   /**

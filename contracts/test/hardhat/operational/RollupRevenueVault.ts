@@ -8,8 +8,8 @@ import {
   RollupRevenueVault,
   TestERC20,
   TokenBridge,
-  TestDexAdapter,
-  TestDexAdapter__factory,
+  TestDexSwapAdapter,
+  TestDexSwapAdapter__factory,
 } from "../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./helpers/before";
 import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
@@ -29,7 +29,7 @@ describe("RollupRevenueVault", () => {
   let l2LineaToken: TestERC20;
   let tokenBridge: TokenBridge;
   let messageService: L2MessageService;
-  let dexAdapter: TestDexAdapter;
+  let dexSwapAdapter: TestDexSwapAdapter;
 
   let admin: SignerWithAddress;
   let invoiceSubmitter: SignerWithAddress;
@@ -47,7 +47,7 @@ describe("RollupRevenueVault", () => {
   });
 
   beforeEach(async () => {
-    ({ rollupRevenueVault, l2LineaToken, tokenBridge, messageService, dexAdapter } = await loadFixture(
+    ({ rollupRevenueVault, l2LineaToken, tokenBridge, messageService, dexSwapAdapter } = await loadFixture(
       deployRollupRevenueVaultFixture,
     ));
   });
@@ -55,7 +55,7 @@ describe("RollupRevenueVault", () => {
   const sendEthToContract = async (value: bigint, data: string) => {
     return admin.sendTransaction({ to: await rollupRevenueVault.getAddress(), value, data });
   };
-describe("Fallback/Receive", () => {
+  describe("Fallback/Receive", () => {
     it("Should fail to send eth to the rollupRevenueVault contract through the receive when msg.value == 0", async () => {
       const value = ethers.parseEther("0");
       await expectRevertWithCustomError(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "NoEthSent");
@@ -90,7 +90,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ),
         "Initializable: contract is already initialized",
       );
@@ -109,7 +109,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -133,7 +133,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -156,7 +156,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -179,7 +179,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -202,7 +202,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -225,7 +225,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -248,7 +248,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -271,7 +271,7 @@ describe("Fallback/Receive", () => {
           ADDRESS_ZERO,
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -294,7 +294,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           ADDRESS_ZERO,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -317,7 +317,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           ADDRESS_ZERO,
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -327,7 +327,7 @@ describe("Fallback/Receive", () => {
       await expectRevertWithCustomError(rollupRevenueVault, deployCall, "ZeroAddressNotAllowed");
     });
 
-    it("Should revert if V3DexAdapter contract address is zero address", async () => {
+    it("Should revert if V3DexSwapAdapter contract address is zero address", async () => {
       const deployCall = deployUpgradableFromFactory(
         "RollupRevenueVault",
         [
@@ -364,7 +364,7 @@ describe("Fallback/Receive", () => {
           await messageService.getAddress(),
           l1LineaTokenBurner.address,
           await l2LineaToken.getAddress(),
-          await dexAdapter.getAddress(),
+          await dexSwapAdapter.getAddress(),
         ],
         {
           initializer: ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE,
@@ -390,7 +390,7 @@ describe("Fallback/Receive", () => {
       expect(event?.args.messageService).to.equal(await messageService.getAddress());
       expect(event?.args.l1LineaTokenBurner).to.equal(l1LineaTokenBurner.address);
       expect(event?.args.lineaToken).to.equal(await l2LineaToken.getAddress());
-      expect(event?.args.dexAdapter).to.equal(await dexAdapter.getAddress());
+      expect(event?.args.dexSwapAdapter).to.equal(await dexSwapAdapter.getAddress());
     });
 
     it("Should initialize correctly the contract", async () => {
@@ -406,7 +406,7 @@ describe("Fallback/Receive", () => {
       expect(await rollupRevenueVault.messageService()).to.equal(await messageService.getAddress());
       expect(await rollupRevenueVault.l1LineaTokenBurner()).to.equal(l1LineaTokenBurner.address);
       expect(await rollupRevenueVault.lineaToken()).to.equal(await l2LineaToken.getAddress());
-      expect(await rollupRevenueVault.dexAdapter()).to.equal(await dexAdapter.getAddress());
+      expect(await rollupRevenueVault.dexSwapAdapter()).to.equal(await dexSwapAdapter.getAddress());
     });
   });
 
@@ -637,7 +637,7 @@ describe("Fallback/Receive", () => {
     it("Should revert if caller is not admin", async () => {
       const dexAddress = generateRandomBytes(20);
       await expectRevertWithReason(
-        rollupRevenueVault.connect(nonAuthorizedAccount).updateDexAdapter(dexAddress),
+        rollupRevenueVault.connect(nonAuthorizedAccount).updateDexSwapAdapter(dexAddress),
         "AccessControl: account " +
           nonAuthorizedAccount.address.toLowerCase() +
           " is missing role " +
@@ -648,7 +648,7 @@ describe("Fallback/Receive", () => {
     it("Should revert if Dex address is zero address", async () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateDexAdapter(ADDRESS_ZERO),
+        rollupRevenueVault.connect(admin).updateDexSwapAdapter(ADDRESS_ZERO),
         "ZeroAddressNotAllowed",
       );
     });
@@ -656,7 +656,7 @@ describe("Fallback/Receive", () => {
     it("Should revert if Dex adapter address is already setup", async () => {
       await expectRevertWithCustomError(
         rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateDexAdapter(await dexAdapter.getAddress()),
+        rollupRevenueVault.connect(admin).updateDexSwapAdapter(await dexSwapAdapter.getAddress()),
         "ExistingAddressTheSame",
       );
     });
@@ -665,12 +665,12 @@ describe("Fallback/Receive", () => {
       const randomAddress = toChecksumAddress(generateRandomBytes(20));
       await expectEvent(
         rollupRevenueVault,
-        rollupRevenueVault.connect(admin).updateDexAdapter(randomAddress),
-        "DexAdapterUpdated",
-        [await dexAdapter.getAddress(), randomAddress],
+        rollupRevenueVault.connect(admin).updateDexSwapAdapter(randomAddress),
+        "DexSwapAdapterUpdated",
+        [await dexSwapAdapter.getAddress(), randomAddress],
       );
 
-      expect(await rollupRevenueVault.dexAdapter()).to.equal(randomAddress);
+      expect(await rollupRevenueVault.dexSwapAdapter()).to.equal(randomAddress);
     });
   });
 
@@ -725,7 +725,7 @@ describe("Fallback/Receive", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
-      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
+      const encodedSwapData = TestDexSwapAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
       ]);
@@ -753,10 +753,9 @@ describe("Fallback/Receive", () => {
 
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+      const encodedSwapData = TestDexSwapAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       const expectedRemainingArrears = ethers.parseUnits("0.5");
@@ -786,10 +785,9 @@ describe("Fallback/Receive", () => {
 
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+      const encodedSwapData = TestDexSwapAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
-        0n,
       ]);
 
       await expectNoEvent(
@@ -816,7 +814,7 @@ describe("Fallback/Receive", () => {
 
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
-      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
+      const encodedSwapData = TestDexSwapAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
       ]);
@@ -846,7 +844,10 @@ describe("Fallback/Receive", () => {
         .connect(invoiceSubmitter)
         .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("0.5"));
 
-      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("testRevertSwap", [0, 0]);
+      const encodedSwapData = TestDexSwapAdapter__factory.createInterface().encodeFunctionData(
+        "testRevertSwap",
+        [0, 0],
+      );
 
       await expectRevertWithCustomError(
         rollupRevenueVault,
@@ -867,7 +868,7 @@ describe("Fallback/Receive", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
-      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData(
+      const encodedSwapData = TestDexSwapAdapter__factory.createInterface().encodeFunctionData(
         "testSwapInsufficientLineaTokensReceived",
         [minLineaOut, deadline],
       );
@@ -896,7 +897,7 @@ describe("Fallback/Receive", () => {
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
 
-      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
+      const encodedSwapData = TestDexSwapAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
       ]);
