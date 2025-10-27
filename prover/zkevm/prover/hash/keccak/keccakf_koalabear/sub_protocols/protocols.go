@@ -64,15 +64,16 @@ func (bc *LinearCombination) Run(run *wizard.ProverRuntime) {
 		var t []field.Element
 		for i := 0; i < len(bc.cols); i++ {
 			t = append(t, colValues[i][j])
-			if colValues[i][j].IsZero() || colValues[i][j].IsOne() {
-				// do nothing
-			} else {
-				panic("unexpected value in linear combination input column")
-			}
 		}
 
 		ss[j] = keccakf.BaseRecompose(t, &baseFr)
-		DecomposeForTesting(ss[j].Uint64(), bc.scalar, len(bc.cols))
+		res := DecomposeForTesting(ss[j].Uint64(), bc.scalar, len(bc.cols))
+
+		for i := range res {
+			if res[i] != t[i].Uint64() {
+				utils.Panic("linear combination assignment failed at row %v: expected %v, got %v", j, t[i].Uint64(), res[i])
+			}
+		}
 
 	}
 
@@ -94,5 +95,11 @@ func DecomposeForTesting(r uint64, base int, nb int) (res []uint64) {
 		utils.Panic("expected %v limbs, but got %v", nb, len(res))
 	}
 
+	if len(res) < nb {
+		// Complete with zeroes
+		for len(res) < nb {
+			res = append(res, 0)
+		}
+	}
 	return res
 }
