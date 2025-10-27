@@ -33,17 +33,44 @@ func MarshalHexBytesJSON(b []byte) []byte {
 	return []byte(strconv.Quote(hexstring))
 }
 
+// LeftPadded copies b into a new byte slice of size 2*len(b).
+func LeftPadded(b []byte) []byte {
+
+	if len(b)%2 != 0 {
+		panic("input length must be even")
+	}
+
+	res := make([]byte, len(b)*2)
+
+	// We copy every 2 bytes from tmp into res, left started by 2 zero-bytes.
+	for i := 0; i < len(b)/2; i++ {
+		copy(res[4*i+2:4*i+4], b[2*i:2*i+2])
+	}
+	return res
+}
+
+// RemovePadding removes the zero padding from the byte slice.
+func RemovePadding(b []byte) []byte {
+
+	if len(b)%4 != 0 {
+		panic("input length must be a multiple of 4")
+	}
+
+	data := make([]byte, len(b)/2)
+	for i := 0; i < len(b)/4; i++ {
+		copy(data[2*i:2*i+2], b[4*i+2:4*i+4])
+	}
+	return data
+}
+
 func WriteInt64On16Bytes(w io.Writer, x int64) (int64, error) {
-	res := [16]byte{}
 	xBytes := [8]byte{}
 
 	// Convert the int64 to its 8-byte representation
 	binary.BigEndian.PutUint64(xBytes[:], uint64(x))
 
-	// We copy every 2 bytes from tmp into res, left started by 2 zero-bytes.
-	for i := 0; i < 4; i++ {
-		copy(res[4*i+2:4*i+4], xBytes[2*i:2*i+2])
-	}
+	// We copy every 2 bytes from tmp into res, left padded by 2 zero-bytes.
+	res := LeftPadded(xBytes[:])
 
 	n, err := w.Write(res[:])
 	if err != nil {
@@ -63,10 +90,7 @@ func ReadInt64On16Bytes(r io.Reader) (x, n_ int64, err error) {
 	}
 
 	// De-interleave the data from the 16-byte buffer into an 8-byte buffer
-	var data [8]byte
-	for i := 0; i < 4; i++ {
-		copy(data[2*i:2*i+2], buf[4*i+2:4*i+4])
-	}
+	data := RemovePadding(buf[:])
 
 	// Convert the 8 data bytes back to a uint64
 	xU64 := binary.BigEndian.Uint64(data[:])
@@ -90,6 +114,24 @@ func WriteBigIntOn32Bytes(w io.Writer, b *big.Int) (int64, error) {
 // Big int are assumed to fit on 64 bytes and are written as a single
 // block of 64 bytes in bigendian form (i.e, zero-padded on the left)
 func WriteBigIntOn64Bytes(w io.Writer, b *big.Int) (int64, error) {
+
+	// res := [16]byte{}
+	// xBytes := [8]byte{}
+
+	// // Convert the int64 to its 8-byte representation
+	// binary.BigEndian.PutUint64(xBytes[:], uint64(x))
+
+	// // We copy every 2 bytes from tmp into res, left started by 2 zero-bytes.
+	// for i := 0; i < 4; i++ {
+	// 	copy(res[4*i+2:4*i+4], xBytes[2*i:2*i+2])
+	// }
+
+	// n, err := w.Write(res[:])
+	// if err != nil {
+	// 	return int64(n), fmt.Errorf("could not write 16 bytes into Writer : %w", err)
+	// }
+	// return int64(n), nil
+
 	balanceBig := b.FillBytes(make([]byte, 64))
 	n, err := w.Write(balanceBig)
 	return int64(n), err
