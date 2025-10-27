@@ -10,6 +10,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { recordUnstakeRebalanceFromSafeWithdrawalResult } from "../../application/metrics/recordUnstakeRebalanceFromSafeWithdrawalResult.js";
 import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import { updateMetricsForReportYieldResult } from "../../application/metrics/updateMetricsForReportYieldResult.js";
 
 export class OssificationPendingProcessor implements IOperationModeProcessor {
   constructor(
@@ -85,7 +86,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
         "submitLatestVaultReport failed (tolerated)",
       );
       if (vaultReportResult.isOk()) {
-        this.metricsUpdater.incrementReportYield(this.lidoAccountingReportClient.getVault());
+        this.metricsUpdater.incrementLidoVaultAccountingReport(this.lidoAccountingReportClient.getVault());
       }
     }
 
