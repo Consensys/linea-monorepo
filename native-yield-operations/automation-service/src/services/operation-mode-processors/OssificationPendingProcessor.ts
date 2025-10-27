@@ -1,15 +1,18 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import { ILogger, attempt } from "@consensys/linea-shared-utils";
+import { ILogger, attempt, msToSeconds } from "@consensys/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
+import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 
 export class OssificationPendingProcessor implements IOperationModeProcessor {
   constructor(
     private readonly logger: ILogger,
+    private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
     private readonly lazyOracleContractClient: ILazyOracle<TransactionReceipt>,
     private readonly lidoAccountingReportClient: ILidoAccountingReportClient,
@@ -36,7 +39,10 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
       this.logger.info(
         `process - race won by ${winner === "timeout" ?  `time out after ${this.maxInactionMs}ms` : "VaultsReportDataUpdated event"}`,
       );
+      const startedAt = performance.now();
       await this._process();
+      const durationMs = performance.now() - startedAt;
+      this.metricsUpdater.recordOperationModeDuration(OperationMode.OSSIFICATION_PENDING_MODE, msToSeconds(durationMs));
     } finally {
       this.logger.debug("Cleaning up VaultsReportDataUpdated event watcher")
       // clean up watcher

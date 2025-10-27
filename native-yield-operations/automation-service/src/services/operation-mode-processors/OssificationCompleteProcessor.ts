@@ -1,13 +1,16 @@
 import { Address, TransactionReceipt } from "viem";
-import { ILogger, attempt } from "@consensys/linea-shared-utils";
+import { ILogger, attempt, msToSeconds } from "@consensys/linea-shared-utils";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { wait } from "@consensys/linea-sdk";
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
+import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 
 export class OssificationCompleteProcessor implements IOperationModeProcessor {
   constructor(
     private readonly logger: ILogger,
+    private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
     private readonly maxInactionMs: number,
@@ -19,7 +22,10 @@ export class OssificationCompleteProcessor implements IOperationModeProcessor {
       `Waiting ${this.maxInactionMs}ms before executing actions`,
     );
     await wait(this.maxInactionMs);
+    const startedAt = performance.now();
     await this._process();
+    const durationMs = performance.now() - startedAt;
+    this.metricsUpdater.recordOperationModeDuration(OperationMode.OSSIFICATION_COMPLETE_MODE, msToSeconds(durationMs));
   }
 
   private async _process(): Promise<void> {

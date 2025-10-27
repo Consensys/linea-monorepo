@@ -11,6 +11,8 @@ export * from "./core/client/IBlockchainClient";
 export * from "./core/client/IContractSignerClient";
 export * from "./core/client/IOAuth2TokenClient";
 export * from "./core/constants/blockchain";
+export * from "./core/constants/maths";
+export * from "./core/constants/time";
 export * from "./core/client/IOAuth2TokenClient";
 export * from "./core/services/IRetryService";
 export * from "./core/services/IMetricsService";
