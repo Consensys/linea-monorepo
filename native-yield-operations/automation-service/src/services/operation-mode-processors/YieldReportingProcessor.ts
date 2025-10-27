@@ -10,6 +10,7 @@ import { ILineaRollupYieldExtension } from "../../core/clients/contracts/ILineaR
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
+import { recordUnstakeRebalanceFromSafeWithdrawalResult } from "../../application/metrics/recordUnstakeRebalanceFromSafeWithdrawalResult.js";
 
 // FIRST PRIORITY FOR UNIT TESTING
 export class YieldReportingProcessor implements IOperationModeProcessor {
@@ -220,11 +221,16 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     this.logger.info(`_handleUnstakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
     // Then perform rebalance
-    await attempt(
+    const withdrawalResult = await attempt(
       this.logger,
       () =>
         this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(this.yieldProvider, rebalanceAmount),
       "_handleUnstakingRebalance - safeAddToWithdrawalReserveIfAboveThreshold failed (tolerated)",
+    );
+    recordUnstakeRebalanceFromSafeWithdrawalResult(
+      withdrawalResult,
+      this.yieldManagerContractClient,
+      this.metricsUpdater,
     );
   }
 

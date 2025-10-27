@@ -6,6 +6,7 @@ import { wait } from "@consensys/linea-sdk";
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
+import { recordUnstakeRebalanceFromSafeWithdrawalResult } from "../../application/metrics/recordUnstakeRebalanceFromSafeWithdrawalResult.js";
 
 export class OssificationCompleteProcessor implements IOperationModeProcessor {
   constructor(
@@ -29,10 +30,15 @@ export class OssificationCompleteProcessor implements IOperationModeProcessor {
   private async _process(): Promise<void> {
     // Max withdraw
     this.logger.info("_process - Performing max withdrawal from YieldProvider");
-    await attempt(
+    const withdrawalResult = await attempt(
       this.logger,
       () => this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider),
       "_process - safeMaxAddToWithdrawalReserve failed (tolerated)",
+    );
+    recordUnstakeRebalanceFromSafeWithdrawalResult(
+      withdrawalResult,
+      this.yieldManagerContractClient,
+      this.metricsUpdater,
     );
 
     // Max unstake

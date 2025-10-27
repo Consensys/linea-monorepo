@@ -8,6 +8,7 @@ import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingR
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
+import { recordUnstakeRebalanceFromSafeWithdrawalResult } from "../../application/metrics/recordUnstakeRebalanceFromSafeWithdrawalResult.js";
 
 export class OssificationPendingProcessor implements IOperationModeProcessor {
   constructor(
@@ -88,7 +89,17 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
     // Max withdraw if ossified
     this.logger.info("_process - Ossification completed, performing max safe withdrawal");
     if (await this.yieldManagerContractClient.isOssified(this.yieldProvider)) {
-      this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider);
+      const withdrawalResult = await attempt(
+        this.logger,
+        () => this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider),
+        "_process - safeMaxAddToWithdrawalReserve failed",
+      );
+
+      recordUnstakeRebalanceFromSafeWithdrawalResult(
+        withdrawalResult,
+        this.yieldManagerContractClient,
+        this.metricsUpdater,
+      );
     }
   }
 }
