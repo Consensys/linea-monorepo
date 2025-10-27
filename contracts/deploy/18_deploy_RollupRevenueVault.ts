@@ -4,7 +4,6 @@ import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import {
   tryVerifyContract,
   getDeployedContractAddress,
-  tryStoreAddress,
   LogContractDeployment,
   getRequiredEnvVar,
 } from "../common/helpers";
@@ -56,8 +55,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
-
-  await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
 
   await tryVerifyContract(contractAddress, "src/operational/RollupRevenueVault.sol:RollupRevenueVault");
 };

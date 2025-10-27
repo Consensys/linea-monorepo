@@ -3,7 +3,6 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
   getRequiredEnvVar,
-  tryStoreAddress,
   getDeployedContractAddress,
   LogContractDeployment,
   tryVerifyContractWithConstructorArgs,
@@ -29,8 +28,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
-
-  await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
 
   const args = [messageService, lineaToken];
   await tryVerifyContractWithConstructorArgs(

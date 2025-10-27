@@ -168,7 +168,7 @@ Update the invoice payment receiver.
 ### updateInvoiceArrears
 
 ```solidity
-function updateInvoiceArrears(uint256 _newInvoiceArrears, uint256 _lastInvoiceDate) external
+function updateInvoiceArrears(uint256 _invoiceArrears, uint256 _lastInvoiceDate) external
 ```
 
 Update the invoice arrears.
@@ -177,7 +177,7 @@ Update the invoice arrears.
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| _newInvoiceArrears | uint256 | New invoice arrears value. |
+| _invoiceArrears | uint256 | New invoice arrears value. |
 | _lastInvoiceDate | uint256 | Timestamp of the last invoice. |
 
 ### updateL1LineaTokenBurner
@@ -208,14 +208,6 @@ Updates the address of the DEX swap adapter contract.
 | ---- | ---- | ----------- |
 | _newDexSwapAdapter | address | Address of the new DEX swap adapter contract. |
 
-### _payArrears
-
-```solidity
-function _payArrears() internal
-```
-
-Pays off arrears where applicable and balance permits.
-
 ### fallback
 
 ```solidity
@@ -231,4 +223,12 @@ receive() external payable
 ```
 
 Receive function - Receives Funds.
+
+### _payArrears
+
+```solidity
+function _payArrears() internal
+```
+
+Pays off arrears where applicable and balance permits.
 

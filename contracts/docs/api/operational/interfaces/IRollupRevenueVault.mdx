@@ -194,7 +194,7 @@ _Emitted when arrears is paid when calling burnAndBridge._
 ### InvoiceArrearsUpdated
 
 ```solidity
-event InvoiceArrearsUpdated(uint256 oldInvoiceArrears, uint256 newInvoiceArrears, uint256 lastInvoiceDate, uint256 newInvoiceDate)
+event InvoiceArrearsUpdated(uint256 previousInvoiceArrears, uint256 newInvoiceArrears, uint256 previousLastInvoiceDate, uint256 newLastInvoiceDate)
 ```
 
 _Emitted when the invoice arrears are updated._
@@ -203,10 +203,10 @@ _Emitted when the invoice arrears are updated._
 
 | Name | Type | Description |
 | ---- | ---- | ----------- |
-| oldInvoiceArrears | uint256 | The old invoice arrears value. |
+| previousInvoiceArrears | uint256 | The previous invoice arrears value. |
 | newInvoiceArrears | uint256 | The new invoice arrears value. |
-| lastInvoiceDate | uint256 | The timestamp of the last invoice processed. |
-| newInvoiceDate | uint256 | The timestamp of the new invoice processed. |
+| previousLastInvoiceDate | uint256 | The previous timestamp of the last invoice processed. |
+| newLastInvoiceDate | uint256 | The new timestamp of the last invoice processed. |
 
 ### InvoicePaymentReceiverUpdated
 
