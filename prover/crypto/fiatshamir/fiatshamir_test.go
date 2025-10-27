@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFiatShamirSafeguardUpdate(t *testing.T) {
 
-	fs := hashtypes.Poseidon2()
+	fs := poseidon2.Poseidon2()
 
 	a := RandomFext(fs)
 	b := RandomFext(fs)
@@ -29,11 +30,14 @@ func TestFiatShamirRandomVec(t *testing.T) {
 		testName := fmt.Sprintf("%v-integers-of-%v-bits", testCase.NumIntegers, testCase.IntegerBitSize)
 		t.Run(testName, func(t *testing.T) {
 
-			fs := hashtypes.Poseidon2()
+			fs := poseidon2.Poseidon2()
 			Update(fs, field.NewElement(420))
 
 			var oldState, newState field.Element
-			ss := fs.Sum(nil)
+			d := types.HashToBytes32(fs.SumElement())
+			var ss [32]byte
+			copy(ss[:], d[:])
+
 			if err := oldState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -41,7 +45,8 @@ func TestFiatShamirRandomVec(t *testing.T) {
 			a := RandomManyIntegers(fs, testCase.NumIntegers, 1<<testCase.IntegerBitSize)
 			t.Logf("the generated vector= %v", a)
 
-			ss = fs.Sum(nil)
+			d = types.HashToBytes32(fs.SumElement())
+			copy(ss[:], d[:])
 			if err := newState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -63,31 +68,30 @@ func TestFiatShamirRandomVec(t *testing.T) {
 		})
 	}
 }
-
 func TestBatchUpdates(t *testing.T) {
 
-	fs := hashtypes.Poseidon2()
+	fs := poseidon2.Poseidon2()
 	Update(fs, field.NewElement(2))
 	Update(fs, field.NewElement(2))
 	Update(fs, field.NewElement(1))
 	expectedVal := RandomFext(fs)
 
 	t.Run("for a variadic call", func(t *testing.T) {
-		fs := hashtypes.Poseidon2()
+		fs := poseidon2.Poseidon2()
 		Update(fs, field.NewElement(2), field.NewElement(2), field.NewElement(1))
 		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for slice of field elements", func(t *testing.T) {
-		fs := hashtypes.Poseidon2()
+		fs := poseidon2.Poseidon2()
 		UpdateVec(fs, vector.ForTest(2, 2, 1))
 		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for multi-slice of field elements", func(t *testing.T) {
-		fs := hashtypes.Poseidon2()
+		fs := poseidon2.Poseidon2()
 		UpdateVec(fs, vector.ForTest(2, 2), vector.ForTest(1))
 		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
@@ -95,7 +99,7 @@ func TestBatchUpdates(t *testing.T) {
 
 	t.Run("for a smart-vector", func(t *testing.T) {
 		sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
-		fs := hashtypes.Poseidon2()
+		fs := poseidon2.Poseidon2()
 		UpdateSV(fs, sv)
 		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())

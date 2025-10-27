@@ -3,7 +3,7 @@ package poseidon2
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -151,7 +151,7 @@ func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 				for j := 0; j < blockSize; j++ {
 					currentBlock[j] = blocksWit[j].Get(pos)
 				}
-				new := poseidon2.Poseidon2BlockCompression(old, currentBlock)
+				new := vortex.CompressPoseidon2(old, currentBlock)
 				for j := 0; j < blockSize; j++ {
 					olds[j][pos] = old[j]
 					news[j][pos] = new[j]
@@ -163,7 +163,7 @@ func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	padNew := poseidon2.Poseidon2BlockCompression(zeroBlock, zeroBlock)
+	padNew := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
 
 	var oldSV, newSV, newCleanSV [blockSize]smartvectors.SmartVector
 	for i := 0; i < blockSize; i++ {
