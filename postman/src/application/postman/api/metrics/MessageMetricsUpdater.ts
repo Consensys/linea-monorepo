@@ -1,13 +1,9 @@
 import { EntityManager } from "typeorm";
 import { MessageEntity } from "../../persistence/entities/Message.entity";
-import {
-  IMetricsService,
-  IMessageMetricsUpdater,
-  LineaPostmanMetrics,
-  MessagesMetricsAttributes,
-} from "../../../../core/metrics";
+import { IMessageMetricsUpdater, LineaPostmanMetrics, MessagesMetricsAttributes } from "../../../../core/metrics";
 import { Direction } from "@consensys/linea-sdk";
 import { MessageStatus } from "../../../../core/enums";
+import { IMetricsService } from "@consensys/linea-shared-utils";
 
 export class MessageMetricsUpdater implements IMessageMetricsUpdater {
   constructor(

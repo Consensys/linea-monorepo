@@ -7,7 +7,8 @@ import {
   MetricValueWithName,
   Registry,
 } from "prom-client";
-import { IMetricsService, LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
+import { LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
+import { IMetricsService } from "@consensys/linea-shared-utils";
 
 /**
  * Take care to instantiate as a singleton because there should be only be one instance of prom-client Registry

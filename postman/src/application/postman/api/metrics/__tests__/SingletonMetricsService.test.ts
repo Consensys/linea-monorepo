@@ -1,6 +1,7 @@
 import { Counter, Gauge, Histogram } from "prom-client";
-import { IMetricsService, LineaPostmanMetrics } from "../../../../../core/metrics/IMetricsService";
+import { LineaPostmanMetrics } from "../../../../../core/metrics/IMetricsService";
 import { SingletonMetricsService } from "../SingletonMetricsService";
+import { IMetricsService } from "@consensys/linea-shared-utils";
 
 describe("SingletonMetricsService", () => {
   let metricService: IMetricsService<LineaPostmanMetrics>;

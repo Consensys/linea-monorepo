@@ -11,6 +11,7 @@ export * from "./core/client/IOAuth2TokenClient";
 export * from "./core/constants/blockchain";
 export * from "./core/client/IOAuth2TokenClient";
 export * from "./core/services/IRetryService";
+export * from "./core/services/IMetricsService";
 export * from "./logging/ILogger";
 export * from "./logging/WinstonLogger";
 export * from "./clients/OAuth2TokenClient";

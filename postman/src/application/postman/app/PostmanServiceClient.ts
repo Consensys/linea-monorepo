@@ -32,13 +32,13 @@ import { SingletonMetricsService } from "../api/metrics/SingletonMetricsService"
 import { MessageMetricsUpdater } from "../api/metrics/MessageMetricsUpdater";
 import {
   IMessageMetricsUpdater,
-  IMetricsService,
   ISponsorshipMetricsUpdater,
   ITransactionMetricsUpdater,
   LineaPostmanMetrics,
 } from "../../../../src/core/metrics";
 import { SponsorshipMetricsUpdater } from "../api/metrics/SponsorshipMetricsUpdater";
 import { TransactionMetricsUpdater } from "../api/metrics/TransactionMetricsUpdater";
+import { IMetricsService } from "@consensys/linea-shared-utils";
 
 export class PostmanServiceClient {
   // Metrics services

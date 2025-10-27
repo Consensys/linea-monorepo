@@ -1,6 +1,6 @@
 import express, { Express, Request, Response } from "express";
-import { IMetricsService, LineaPostmanMetrics } from "../../../core/metrics/IMetricsService";
-import { ILogger } from "@consensys/linea-shared-utils";
+import { LineaPostmanMetrics } from "../../../core/metrics/IMetricsService";
+import { ILogger, IMetricsService } from "@consensys/linea-shared-utils";
 
 type ApiConfig = {
   port: number;
