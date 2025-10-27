@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from "express";
-import { LineaPostmanMetrics } from "../../../core/metrics/IMetricsService";
+import { LineaPostmanMetrics } from "../../../core/metrics/LineaPostmanMetrics";
 import { ILogger, IMetricsService } from "@consensys/linea-shared-utils";
 
 type ApiConfig = {

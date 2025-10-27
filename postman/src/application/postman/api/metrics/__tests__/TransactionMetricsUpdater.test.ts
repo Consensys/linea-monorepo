@@ -1,13 +1,14 @@
-import { SingletonMetricsService } from "../SingletonMetricsService";
+import { PostmanMetricsService } from "../PostmanMetricsService";
 import { ITransactionMetricsUpdater, LineaPostmanMetrics } from "../../../../../core/metrics";
 import { TransactionMetricsUpdater } from "../TransactionMetricsUpdater";
+import { IMetricsService } from "@consensys/linea-shared-utils";
 
 describe("TransactionMetricsUpdater", () => {
   let transactionMetricsUpdater: ITransactionMetricsUpdater;
-  let metricsService: SingletonMetricsService<LineaPostmanMetrics>;
+  let metricsService: IMetricsService<LineaPostmanMetrics>;
 
   beforeEach(() => {
-    metricsService = new SingletonMetricsService<LineaPostmanMetrics>();
+    metricsService = new PostmanMetricsService();
     transactionMetricsUpdater = new TransactionMetricsUpdater(metricsService);
   });
 

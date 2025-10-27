@@ -7,8 +7,7 @@ import {
   MetricValueWithName,
   Registry,
 } from "prom-client";
-import { LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
-import { IMetricsService } from "@consensys/linea-shared-utils";
+import { IMetricsService } from "../core/services/IMetricsService";
 
 /**
  * Take care to instantiate as a singleton because there should be only be one instance of prom-client Registry
@@ -17,15 +16,13 @@ import { IMetricsService } from "@consensys/linea-shared-utils";
  * MetricsService class that implements the IMetricsService interface.
  * This class provides methods to create and manage Prometheus metrics.
  */
-export class SingletonMetricsService<TMetricName extends string = LineaPostmanMetrics>
-  implements IMetricsService<TMetricName>
-{
+export class SingletonMetricsService<TMetricName extends string = string> implements IMetricsService<TMetricName> {
   private readonly registry: Registry;
   private readonly counters: Map<TMetricName, Counter<string>>;
   private readonly gauges: Map<TMetricName, Gauge<string>>;
   private readonly histograms: Map<TMetricName, Histogram<string>>;
 
-  constructor(defaultLabels: Record<string, string> = { app: "postman" }) {
+  constructor(defaultLabels: Record<string, string>) {
     this.registry = new Registry();
     this.registry.setDefaultLabels(defaultLabels);
 

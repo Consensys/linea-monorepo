@@ -28,7 +28,7 @@ import { getConfig } from "./config/utils";
 import { Api } from "../api/Api";
 import { MessageStatusSubscriber } from "../persistence/subscribers/MessageStatusSubscriber";
 import { PostmanWinstonLogger } from "../../../utils/PostmanWinstonLogger";
-import { SingletonMetricsService } from "../api/metrics/SingletonMetricsService";
+import { PostmanMetricsService } from "../api/metrics/PostmanMetricsService";
 import { MessageMetricsUpdater } from "../api/metrics/MessageMetricsUpdater";
 import {
   IMessageMetricsUpdater,
@@ -42,7 +42,7 @@ import { IMetricsService } from "@consensys/linea-shared-utils";
 
 export class PostmanServiceClient {
   // Metrics services
-  private singletonMetricsService: IMetricsService<LineaPostmanMetrics>;
+  private postmanMetricsService: IMetricsService<LineaPostmanMetrics>;
   private messageMetricsUpdater: IMessageMetricsUpdater;
   private sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater;
   private transactionMetricsUpdater: ITransactionMetricsUpdater;
@@ -131,10 +131,10 @@ export class PostmanServiceClient {
     const ethereumMessageDBService = new EthereumMessageDBService(l1GasProvider, messageRepository);
 
     // Metrics services
-    this.singletonMetricsService = new SingletonMetricsService<LineaPostmanMetrics>();
-    this.messageMetricsUpdater = new MessageMetricsUpdater(this.db.manager, this.singletonMetricsService);
-    this.sponsorshipMetricsUpdater = new SponsorshipMetricsUpdater(this.singletonMetricsService);
-    this.transactionMetricsUpdater = new TransactionMetricsUpdater(this.singletonMetricsService);
+    this.postmanMetricsService = new PostmanMetricsService();
+    this.messageMetricsUpdater = new MessageMetricsUpdater(this.db.manager, this.postmanMetricsService);
+    this.sponsorshipMetricsUpdater = new SponsorshipMetricsUpdater(this.postmanMetricsService);
+    this.transactionMetricsUpdater = new TransactionMetricsUpdater(this.postmanMetricsService);
 
     // L1 -> L2 flow
 
@@ -423,7 +423,7 @@ export class PostmanServiceClient {
       // Initialize or reinitialize the API using the metrics service.
       this.api = new Api(
         { port: this.config.apiConfig.port },
-        this.singletonMetricsService,
+        this.postmanMetricsService,
         new PostmanWinstonLogger(Api.name),
       );
 
