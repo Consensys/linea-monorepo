@@ -1,9 +1,9 @@
 import { Result } from "neverthrow";
 import { TransactionReceipt } from "viem";
 import { weiToGweiNumber } from "@consensys/linea-shared-utils";
-import { RebalanceDirection } from "../core/entities/RebalanceRequirement.js";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 
 export const recordUnstakeRebalanceFromSafeWithdrawalResult = (
   result: Result<TransactionReceipt | null, Error>,

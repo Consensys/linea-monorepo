@@ -21,6 +21,7 @@ export * from "./logging/WinstonLogger";
 export * from "./clients/OAuth2TokenClient";
 export * from "./services/ExponentialBackoffRetryService";
 export * from "./services/SingletonMetricsService";
+export * from "./utils/blockchain";
 export * from "./utils/errors";
 export * from "./utils/maths";
 export * from "./utils/time";

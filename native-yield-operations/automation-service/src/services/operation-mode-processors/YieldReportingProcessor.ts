@@ -1,7 +1,7 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import { bigintReplacer, ILogger, attempt, msToSeconds } from "@consensys/linea-shared-utils";
+import { bigintReplacer, ILogger, attempt, msToSeconds, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import { wait } from "@consensys/linea-sdk";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
@@ -10,7 +10,6 @@ import { ILineaRollupYieldExtension } from "../../core/clients/contracts/ILineaR
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
-import { weiToGweiNumber } from "ts-libs/linea-shared-utils/src/utils/blockchain.js";
 
 // FIRST PRIORITY FOR UNIT TESTING
 export class YieldReportingProcessor implements IOperationModeProcessor {
