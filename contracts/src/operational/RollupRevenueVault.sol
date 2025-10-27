@@ -196,29 +196,44 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @param _swapData Encoded calldata for the DEX swap function.
    */
   function burnAndBridge(bytes calldata _swapData) external onlyRole(BURNER_ROLE) {
-    require(invoiceArrears == 0, InvoiceInArrears());
+    _payAnyArrears();
 
     uint256 minimumFee = messageService.minimumFeeInWei();
 
-    require(address(this).balance > minimumFee, InsufficientBalance());
+    if (address(this).balance > minimumFee) {
+      uint256 balanceAvailable = address(this).balance - minimumFee;
 
-    uint256 balanceAvailable = address(this).balance - minimumFee;
+      uint256 ethToBurn = (balanceAvailable * ETH_BURNT_PERCENTAGE) / 100;
+      (bool success, ) = address(0).call{ value: ethToBurn }("");
+      require(success, EthBurnFailed());
 
-    uint256 ethToBurn = (balanceAvailable * ETH_BURNT_PERCENTAGE) / 100;
-    (bool success, ) = address(0).call{ value: ethToBurn }("");
-    require(success, EthBurnFailed());
+      (bool swapSuccess, bytes memory returnData) = dex.call{ value: balanceAvailable - ethToBurn }(_swapData);
+      require(swapSuccess, DexSwapFailed());
 
-    (bool swapSuccess, bytes memory returnData) = dex.call{ value: balanceAvailable - ethToBurn }(_swapData);
-    require(swapSuccess, DexSwapFailed());
+      uint256 numLineaTokens = abi.decode(returnData, (uint256));
+      require(numLineaTokens > 0, ZeroLineaTokensReceived());
 
-    uint256 numLineaTokens = abi.decode(returnData, (uint256));
-    require(numLineaTokens > 0, ZeroLineaTokensReceived());
+      IERC20(lineaToken).approve(address(tokenBridge), numLineaTokens);
 
-    IERC20(lineaToken).approve(address(tokenBridge), numLineaTokens);
+      tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, numLineaTokens, l1LineaTokenBurner);
 
-    tokenBridge.bridgeToken{ value: minimumFee }(lineaToken, numLineaTokens, l1LineaTokenBurner);
+      emit EthBurntSwappedAndBridged(ethToBurn, numLineaTokens);
+    }
+  }
 
-    emit EthBurntSwappedAndBridged(ethToBurn, numLineaTokens);
+  function _payAnyArrears() internal {
+    uint256 balanceAvailable = address(this).balance;
+
+    uint256 totalAmountOwing = invoiceArrears;
+    uint256 amountToPay = (balanceAvailable < totalAmountOwing) ? balanceAvailable : totalAmountOwing;
+
+    invoiceArrears = totalAmountOwing - amountToPay;
+
+    if (amountToPay > 0) {
+      (bool success, ) = payable(invoicePaymentReceiver).call{ value: amountToPay }("");
+      require(success, InvoiceTransferFailed());
+      emit ArrearsPaid(amountToPay);
+    }
   }
 
   /**

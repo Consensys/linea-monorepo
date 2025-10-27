@@ -44,19 +44,9 @@ interface IRollupRevenueVault {
   error ZeroInvoiceAmount();
 
   /**
-   * @dev Thrown when the invoice is in arrears.
-   */
-  error InvoiceInArrears();
-
-  /**
    * @dev Thrown when the invoice date is too old.
    */
   error InvoiceDateTooOld();
-
-  /**
-   * @dev Thrown when the contract balance is insufficient.
-   */
-  error InsufficientBalance();
 
   /**
    * @dev Thrown when the provided address is the same as the existing address.
@@ -116,6 +106,12 @@ interface IRollupRevenueVault {
    * @param amount The amount of ETH received.
    */
   event EthReceived(uint256 amount);
+
+  /**
+   * @dev Emitted when arrears is paid when calling burnA=ndBridge.
+   * @param amount The amount of ETH paid.
+   */
+  event ArrearsPaid(uint256 amount);
 
   /**
    * @dev Emitted when the invoice arrears are updated.
