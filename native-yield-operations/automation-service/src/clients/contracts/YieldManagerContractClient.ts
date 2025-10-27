@@ -19,6 +19,7 @@ import { RebalanceRequirement, RebalanceDirection } from "../../core/entities/Re
 import { YieldManagerABI } from "../../core/abis/YieldManager.js";
 import { IYieldManager, YieldProviderData } from "../../core/clients/contracts/IYieldManager.js";
 import { ONE_ETHER } from "@consensys/linea-shared-utils";
+import { YieldReport } from "../../core/entities/YieldReport.js";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt> {
   private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
@@ -313,6 +314,11 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return yieldProviderData.ossifiedEntrypoint;
   }
 
+  async getLidoDashboardAddress(yieldProvider: Address): Promise<Address> {
+    const yieldProviderData = await this.getYieldProviderData(yieldProvider);
+    return yieldProviderData.primaryEntrypoint;
+  }
+
   async pauseStakingIfNotAlready(yieldProvider: Address): Promise<TransactionReceipt | null> {
     if (!(await this.isStakingPaused(yieldProvider))) {
       const txReceipt = await this.pauseStaking(yieldProvider);
@@ -377,5 +383,31 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
 
     // If event not found
     return 0n;
+  }
+
+  getYieldReportFromTxReceipt(txReceipt: TransactionReceipt): YieldReport | undefined {
+    for (const log of txReceipt.logs) {
+      // Only decode logs emitted by this contract
+      if (log.address.toLowerCase() !== this.contractAddress.toLowerCase()) continue;
+      try {
+        const decoded = decodeEventLog({
+          abi: this.contract.abi,
+          data: log.data,
+          topics: log.topics,
+        });
+        if (decoded.eventName === "NativeYieldReported") {
+          const { yieldAmount, outstandingNegativeYield, yieldProvider } = decoded.args;
+          return {
+            yieldAmount,
+            outstandingNegativeYield,
+            yieldProvider,
+          };
+        }
+      } catch {
+        // skip unrelated logs (from the same contract or different ABIs)
+      }
+    }
+    // If event not found
+    return undefined;
   }
 }

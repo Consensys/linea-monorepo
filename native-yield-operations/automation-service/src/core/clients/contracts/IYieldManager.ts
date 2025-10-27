@@ -2,6 +2,7 @@ import { Address } from "viem";
 import { WithdrawalRequests } from "../../entities/LidoStakingVaultWithdrawalParams.js";
 import { RebalanceRequirement } from "../../entities/RebalanceRequirement.js";
 import { IBaseContractClient } from "@consensys/linea-shared-utils";
+import { YieldReport } from "../../entities/YieldReport.js";
 
 export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient {
   // View calls
@@ -28,6 +29,7 @@ export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient 
   // Utility methods
   getRebalanceRequirements(): Promise<RebalanceRequirement>;
   getLidoStakingVaultAddress(yieldProvider: Address): Promise<Address>;
+  getLidoDashboardAddress(yieldProvider: Address): Promise<Address>;
   pauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | null>;
   unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | null>;
   getAvailableUnstakingRebalanceBalance(yieldProvider: Address): Promise<bigint>;
@@ -37,6 +39,7 @@ export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient 
   ): Promise<TTransactionReceipt | null>;
   safeMaxAddToWithdrawalReserve(yieldProvider: Address): Promise<TTransactionReceipt | null>;
   getWithdrawalAmountFromTxReceipt(txReceipt: TTransactionReceipt): bigint;
+  getYieldReportFromTxReceipt(txReceipt: TTransactionReceipt): YieldReport | undefined;
 }
 
 export interface YieldProviderData {

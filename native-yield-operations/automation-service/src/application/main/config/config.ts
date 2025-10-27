@@ -19,6 +19,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
   contractAddresses: {
     lineaRollupContractAddress: env.LINEA_ROLLUP_ADDRESS,
     lazyOracleAddress: env.LAZY_ORACLE_ADDRESS,
+    vaultHubAddress: env.VAULT_HUB_ADDRESS,
     yieldManagerAddress: env.YIELD_MANAGER_ADDRESS,
     lidoYieldProviderAddress: env.LIDO_YIELD_PROVIDER_ADDRESS,
     l2YieldRecipientAddress: env.L2_YIELD_RECIPIENT,

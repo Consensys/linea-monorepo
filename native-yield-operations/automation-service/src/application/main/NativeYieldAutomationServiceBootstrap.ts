@@ -45,6 +45,8 @@ import { LineaNativeYieldAutomationServiceMetrics } from "../../core/metrics/Lin
 import { NativeYieldAutomationMetricsService } from "../metrics/NativeYieldAutomationMetricsService.js";
 import { NativeYieldAutomationMetricsUpdater } from "../metrics/NativeYieldAutomationMetricsUpdater.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
+import { VaultHubContractClient } from "../../clients/contracts/VaultHubContractClient.js";
 
 export class NativeYieldAutomationServiceBootstrap {
   private readonly config: NativeYieldAutomationServiceBootstrapConfig;
@@ -53,10 +55,11 @@ export class NativeYieldAutomationServiceBootstrap {
   private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater;
   private readonly api: IApplication;
 
-  private ViemBlockchainClientAdapter: IBlockchainClient<PublicClient, TransactionReceipt>;
+  private viemBlockchainClientAdapter: IBlockchainClient<PublicClient, TransactionReceipt>;
   private web3SignerClient: IContractSignerClient;
   private yieldManagerContractClient: IYieldManager<TransactionReceipt>;
   private lazyOracleContractClient: ILazyOracle<TransactionReceipt>;
+  private vaultHubContractClient: IVaultHub<TransactionReceipt>;
   private lineaRollupYieldExtensionContractClient: ILineaRollupYieldExtension<TransactionReceipt>;
 
   private exponentialBackoffRetryService: IRetryService;
@@ -106,7 +109,7 @@ export class NativeYieldAutomationServiceBootstrap {
           throw new Error(`Unsupported chain ID: ${chainId}`);
       }
     };
-    this.ViemBlockchainClientAdapter = new ViemBlockchainClientAdapter(
+    this.viemBlockchainClientAdapter = new ViemBlockchainClientAdapter(
       new WinstonLogger(ViemBlockchainClientAdapter.name, config.loggerOptions),
       config.dataSources.l1RpcUrl,
       getChain(config.dataSources.chainId),
@@ -114,20 +117,24 @@ export class NativeYieldAutomationServiceBootstrap {
     );
     this.yieldManagerContractClient = new YieldManagerContractClient(
       new WinstonLogger(YieldManagerContractClient.name, config.loggerOptions),
-      this.ViemBlockchainClientAdapter,
+      this.viemBlockchainClientAdapter,
       config.contractAddresses.yieldManagerAddress,
       config.rebalanceToleranceBps,
       config.minWithdrawalThresholdEth,
     );
     this.lazyOracleContractClient = new LazyOracleContractClient(
       new WinstonLogger(LazyOracleContractClient.name, config.loggerOptions),
-      this.ViemBlockchainClientAdapter,
+      this.viemBlockchainClientAdapter,
       config.contractAddresses.lazyOracleAddress,
       config.timing.trigger.maxInactionMs,
     );
+    this.vaultHubContractClient = new VaultHubContractClient(
+      this.viemBlockchainClientAdapter,
+      config.contractAddresses.vaultHubAddress,
+    );
     this.lineaRollupYieldExtensionContractClient = new LineaRollupYieldExtensionContractClient(
       new WinstonLogger(LineaRollupYieldExtensionContractClient.name, config.loggerOptions),
-      this.ViemBlockchainClientAdapter,
+      this.viemBlockchainClientAdapter,
       config.contractAddresses.lineaRollupContractAddress,
     );
 
@@ -176,6 +183,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.metricsUpdater,
       this.yieldManagerContractClient,
       this.lazyOracleContractClient,
+      this.vaultHubContractClient,
       this.lineaRollupYieldExtensionContractClient,
       this.lidoAccountingReportClient,
       this.beaconChainStakingClient,

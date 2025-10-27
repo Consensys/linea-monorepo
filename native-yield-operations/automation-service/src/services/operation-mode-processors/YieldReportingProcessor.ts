@@ -12,6 +12,8 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { recordUnstakeRebalanceFromSafeWithdrawalResult } from "../../application/metrics/recordUnstakeRebalanceFromSafeWithdrawalResult.js";
 import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import { updateMetricsForReportYieldResult } from "../../application/metrics/updateMetricsForReportYieldResult.js";
+import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 
 // FIRST PRIORITY FOR UNIT TESTING
 export class YieldReportingProcessor implements IOperationModeProcessor {
@@ -20,6 +22,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
     private readonly lazyOracleContractClient: ILazyOracle<TransactionReceipt>,
+    private readonly vaultHubClient: IVaultHub<TransactionReceipt>,
     private readonly lineaRollupYieldExtensionClient: ILineaRollupYieldExtension<TransactionReceipt>,
     private readonly lidoAccountingReportClient: ILidoAccountingReportClient,
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
@@ -269,7 +272,12 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     if (yieldResult.isErr()) {
       return;
     } else {
-      this.metricsUpdater.incrementReportYield(this.lidoAccountingReportClient.getVault());
+      await updateMetricsForReportYieldResult(
+        yieldResult,
+        this.metricsUpdater,
+        this.yieldManagerContractClient,
+        this.vaultHubClient,
+      );
     }
 
     // Both calls succeeded

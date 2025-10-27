@@ -26,6 +26,7 @@ export const configSchema = z
     // L1 contract addresses
     LINEA_ROLLUP_ADDRESS: Address,
     LAZY_ORACLE_ADDRESS: Address,
+    VAULT_HUB_ADDRESS: Address,
     YIELD_MANAGER_ADDRESS: Address,
     LIDO_YIELD_PROVIDER_ADDRESS: Address,
     // L2 contract addresses
