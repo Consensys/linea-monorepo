@@ -13,11 +13,8 @@ import (
 type FullBytes32 Bytes32
 
 func (f FullBytes32) WriteTo(w io.Writer) (n int64, err error) {
-	buf := [32]byte{}
-	copy(buf[16:], f[16:])
-	w.Write(buf[:])
-	copy(buf[16:], f[:16])
-	w.Write(buf[:])
+	padded := LeftPadded(f[:])
+	w.Write(padded[:])
 	return 64, nil
 }
 
@@ -26,11 +23,9 @@ func (f FullBytes32) Write1Word(w io.Writer) (n int64, err error) {
 }
 
 func (f *FullBytes32) ReadFrom(r io.Reader) (n int64, err error) {
-	buf0, buf1 := [32]byte{}, [32]byte{}
-	r.Read(buf0[:])
-	r.Read(buf1[:])
-	copy((*f)[16:], buf0[16:])
-	copy((*f)[:16], buf1[16:])
+	buf := [64]byte{}
+	r.Read(buf[:])
+	copy((*f)[:], RemovePadding(buf[:]))
 	return 64, nil
 }
 

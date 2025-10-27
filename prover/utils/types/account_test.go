@@ -27,7 +27,7 @@ func TestAccountUnmarshalJSON(t *testing.T) {
 	require.Equal(t, account.Nonce, int64(65))
 	require.Equal(t, account.Balance, big.NewInt(835))
 	require.Equal(t, account.StorageRoot.Hex(), "0x00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11")
-	require.Equal(t, account.MimcCodeHash.Hex(), "0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee")
+	require.Equal(t, account.Poseidon2CodeHash.Hex(), "0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee")
 	require.Equal(t, account.KeccakCodeHash.Hex(), "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
 	require.Equal(t, account.CodeSize, int64(0))
 }
@@ -47,24 +47,24 @@ func TestAccountMarshalUnmarshalJSON(t *testing.T) {
 		{
 			// EOA
 			Account: Account{
-				Nonce:          65,
-				Balance:        big.NewInt(5690),
-				StorageRoot:    Bytes32FromHex("0x00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11"),
-				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
-				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
-				CodeSize:       0,
+				Nonce:             65,
+				Balance:           big.NewInt(5690),
+				StorageRoot:       Bytes32FromHex("0x00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11"),
+				Poseidon2CodeHash: Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				KeccakCodeHash:    FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+				CodeSize:          0,
 			},
 			HexString: "0x0000000000000000000000000000000000000000000000000000000000000041000000000000000000000000000000000000000000000000000000000000163a00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6eec5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4700000000000000000000000000000000000000000000000000000000000000000",
 		},
 		{
 			// Another EOA
 			Account: Account{
-				Nonce:          65,
-				Balance:        big.NewInt(835),
-				StorageRoot:    Bytes32FromHex("0x007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"),
-				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
-				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
-				CodeSize:       0,
+				Nonce:             65,
+				Balance:           big.NewInt(835),
+				StorageRoot:       Bytes32FromHex("0x007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"),
+				Poseidon2CodeHash: Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				KeccakCodeHash:    FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+				CodeSize:          0,
 			},
 			HexString: "0x00000000000000000000000000000000000000000000000000000000000000410000000000000000000000000000000000000000000000000000000000000343007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6eec5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a4700000000000000000000000000000000000000000000000000000000000000000",
 		},
@@ -95,24 +95,24 @@ func TestReadWriteAccountUnpacked(t *testing.T) {
 		{
 			// EOA
 			Account: Account{
-				Nonce:          65,
-				Balance:        big.NewInt(5690),
-				StorageRoot:    Bytes32FromHex("0x00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11"),
-				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
-				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
-				CodeSize:       0,
+				Nonce:             65,
+				Balance:           big.NewInt(5690),
+				StorageRoot:       Bytes32FromHex("0x00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11"),
+				Poseidon2CodeHash: Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				KeccakCodeHash:    FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+				CodeSize:          0,
 			},
 			HexString: "0x0000000000000000000000000000000000000000000000000000000000000041000000000000000000000000000000000000000000000000000000000000163a00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee00000000000000000000000000000000e500b653ca82273b7bfad8045d85a47000000000000000000000000000000000c5d2460186f7233c927e7db2dcc703c00000000000000000000000000000000000000000000000000000000000000000",
 		},
 		{
 			// Another EOA
 			Account: Account{
-				Nonce:          65,
-				Balance:        big.NewInt(835),
-				StorageRoot:    Bytes32FromHex("0x007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"),
-				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
-				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
-				CodeSize:       0,
+				Nonce:             65,
+				Balance:           big.NewInt(835),
+				StorageRoot:       Bytes32FromHex("0x007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"),
+				Poseidon2CodeHash: Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				KeccakCodeHash:    FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+				CodeSize:          0,
 			},
 			HexString: "0x00000000000000000000000000000000000000000000000000000000000000410000000000000000000000000000000000000000000000000000000000000343007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee00000000000000000000000000000000e500b653ca82273b7bfad8045d85a47000000000000000000000000000000000c5d2460186f7233c927e7db2dcc703c00000000000000000000000000000000000000000000000000000000000000000",
 		},

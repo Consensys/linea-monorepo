@@ -76,17 +76,24 @@ func Bytes32ToOctuplet(input Bytes32) field.Octuplet {
 
 // Writes the bytes32 into the given write.
 func (b Bytes32) WriteTo(w io.Writer) (int64, error) {
-	_, err := w.Write(b[:])
+	paddedB := LeftPadded(b[:])
+	n, err := w.Write(paddedB[:])
 	if err != nil {
 		panic(err) // hard forbid any error
 	}
-	return 32, nil
+	return int64(n), nil
 }
 
 // Reads a bytes32 from the given reader
 func (b *Bytes32) ReadFrom(r io.Reader) (int64, error) {
-	n, err := r.Read((*b)[:])
-	return int64(n), err
+	var buf [64]byte
+	n, err := r.Read(buf[:])
+	if err != nil {
+		return 0, err
+	}
+	unpadded := RemovePadding(buf[:])
+	copy((*b)[:], unpadded)
+	return int64(n), nil
 }
 
 /*

@@ -34,6 +34,7 @@ func MarshalHexBytesJSON(b []byte) []byte {
 }
 
 // LeftPadded copies b into a new byte slice of size 2*len(b).
+// Every 2 bytes from b are copied into res, left padded by 2 zero-bytes.
 func LeftPadded(b []byte) []byte {
 
 	if len(b)%2 != 0 {
@@ -50,6 +51,7 @@ func LeftPadded(b []byte) []byte {
 }
 
 // RemovePadding removes the zero padding from the byte slice.
+// Every 4 bytes from b are copied into res, removing the first 2 zero-bytes.
 func RemovePadding(b []byte) []byte {
 
 	if len(b)%4 != 0 {
