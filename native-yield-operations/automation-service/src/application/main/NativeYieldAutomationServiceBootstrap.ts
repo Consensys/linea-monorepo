@@ -1,4 +1,4 @@
-import { ExponentialBackoffRetryService, ILogger, IRetryService, WinstonLogger } from "@consensys/linea-shared-utils";
+import { ExponentialBackoffRetryService, ExpressApiApplication, IApplication, ILogger, IMetricsService, IRetryService, WinstonLogger } from "@consensys/linea-shared-utils";
 import { NativeYieldAutomationServiceBootstrapConfig } from "./config/config.js";
 import { IOperationModeSelector } from "../../core/services/operation-mode/IOperationModeSelector.js";
 import { OperationModeSelector } from "../../services/OperationModeSelector.js";
@@ -33,10 +33,17 @@ import { OssificationCompleteProcessor } from "../../services/operation-mode-pro
 import { OssificationPendingProcessor } from "../../services/operation-mode-processors/OssificationPendingProcessor.js";
 import { mainnet, hoodi } from "viem/chains";
 import { createApolloClient } from "../../utils/createApolloClient.js";
+import { LineaNativeYieldAutomationServiceMetrics } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import { NativeYieldAutomationMetricsService } from "../metrics/NativeYieldAutomationMetricsService.js";
+import { NativeYieldAutomationMetricsUpdater } from "../metrics/NativeYieldAutomationMetricsUpdater.js";
+import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 
 export class NativeYieldAutomationServiceBootstrap {
   private readonly config: NativeYieldAutomationServiceBootstrapConfig;
   private readonly logger: ILogger;
+  private readonly metricsService: IMetricsService<LineaNativeYieldAutomationServiceMetrics>
+  private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater;
+  private readonly api: IApplication;
 
   private ViemBlockchainClientAdapter: IBlockchainClient<PublicClient, TransactionReceipt>;
   private web3SignerClient: IContractSignerClient;
@@ -59,8 +66,18 @@ export class NativeYieldAutomationServiceBootstrap {
 
   constructor(config: NativeYieldAutomationServiceBootstrapConfig) {
     this.config = config;
-    this.logger = new WinstonLogger(NativeYieldAutomationServiceBootstrap.name, config.loggerOptions);
 
+    // Observability - logging and metrics
+    this.logger = new WinstonLogger(NativeYieldAutomationServiceBootstrap.name, config.loggerOptions);
+    this.metricsService = new NativeYieldAutomationMetricsService();
+    this.metricsUpdater = new NativeYieldAutomationMetricsUpdater(this.metricsService);
+    this.api = new ExpressApiApplication(
+      this.config.apiPort,
+      this.metricsService,
+      new WinstonLogger(ExpressApiApplication.name),
+    );
+
+    // Clients
     this.web3SignerClient = new Web3SignerClientAdapter(
       new WinstonLogger(Web3SignerClientAdapter.name, config.loggerOptions),
       config.web3signer.url,
@@ -142,6 +159,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.config.contractAddresses.lidoYieldProviderAddress,
     );
 
+    // Processor Services
     this.yieldReportingOperationModeProcessor = new YieldReportingProcessor(
       new WinstonLogger(YieldReportingProcessor.name, config.loggerOptions),
       this.yieldManagerContractClient,
@@ -183,16 +201,18 @@ export class NativeYieldAutomationServiceBootstrap {
     );
   }
 
-  public async connectServices(): Promise<void> {
-    // TO-DO - startup Prom metrics API endpoint
-  }
+  public async connectServices(): Promise<void> {}
 
   public startAllServices(): void {
-    void this.operationModeSelector.start();
+    this.api.start();
+    this.logger.info("Metrics API server started");
+    this.operationModeSelector.start();
     this.logger.info("Native yield automation service started");
   }
 
   public stopAllServices(): void {
+    this.api.stop();
+    this.logger.info("Metrics API server stopped");
     this.operationModeSelector.stop();
     this.logger.info("Native yield automation service stopped");
   }

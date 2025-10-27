@@ -1,15 +1,20 @@
 import { IMetricsService } from "@consensys/linea-shared-utils";
-import { LineaNativeYieldAutomationServiceMetrics, RebalanceTypeLabel, YieldReportingTriggerLabel } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import {
+  LineaNativeYieldAutomationServiceMetrics,
+  RebalanceTypeLabel,
+  YieldReportingTriggerLabel,
+} from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 import { Address, Hex } from "viem";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
+import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 
 // Buckets range up to 20 minutes to account for long-running modes.
 const OPERATION_MODE_DURATION_BUCKETS = [
   1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200,
 ];
 
-export class NativeYieldAutomationMetricsUpdater {
+export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomationMetricsUpdater {
   constructor(private readonly metricsService: IMetricsService<LineaNativeYieldAutomationServiceMetrics>) {
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
@@ -216,10 +221,10 @@ export class NativeYieldAutomationMetricsUpdater {
 
   private _incrementVaultAmountCounter(
     metric: LineaNativeYieldAutomationServiceMetrics,
-    vaultAddress: string,
-    amount: number,
+    vaultAddress: Address,
+    amountGwei: number,
   ): void {
-    if (amount <= 0) return;
-    this.metricsService.incrementCounter(metric, { vault_address: vaultAddress }, amount);
+    if (amountGwei <= 0) return;
+    this.metricsService.incrementCounter(metric, { vault_address: vaultAddress }, amountGwei);
   }
 }

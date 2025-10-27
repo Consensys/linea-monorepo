@@ -23,7 +23,7 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
     lidoYieldProviderAddress: env.LIDO_YIELD_PROVIDER_ADDRESS,
     l2YieldRecipientAddress: env.L2_YIELD_RECIPIENT,
   },
-  apiOptions: env.API_PORT,
+  apiPort: env.API_PORT,
   timing: {
     trigger: {
       // How often we poll for the trigger event
