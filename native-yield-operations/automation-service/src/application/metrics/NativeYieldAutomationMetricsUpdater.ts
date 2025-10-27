@@ -1,10 +1,10 @@
 import { IMetricsService } from "@consensys/linea-shared-utils";
-import { LineaNativeYieldAutomationServiceMetrics, RebalanceTypeLabel } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
+import { LineaNativeYieldAutomationServiceMetrics, RebalanceTypeLabel, YieldReportingTriggerLabel } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
+import { Address, Hex } from "viem";
+import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 
 const OPERATION_MODE_DURATION_BUCKETS = [1, 5, 10, 30, 60, 120, 300, 600];
-
-export type YieldReportingTriggerLabel = "VaultsReportDataUpdated_event" | "timeout";
 
 export class NativeYieldAutomationMetricsUpdater {
   constructor(private readonly metricsService: IMetricsService<LineaNativeYieldAutomationServiceMetrics>) {
@@ -107,16 +107,16 @@ export class NativeYieldAutomationMetricsUpdater {
     );
   }
 
-  public addValidatorPartialUnstakeAmount(validatorPubkey: string, amount: number): void {
-    if (amount <= 0) return;
+  public addValidatorPartialUnstakeAmount(validatorPubkey: Hex, amountGwei: number): void {
+    if (amountGwei <= 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.ValidatorPartialUnstakeAmountTotal,
       { validator_pubkey: validatorPubkey },
-      amount,
+      amountGwei,
     );
   }
 
-  public incrementValidatorExit(validatorPubkey: string, count: number = 1): void {
+  public incrementValidatorExit(validatorPubkey: Hex, count: number = 1): void {
     if (count <= 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.ValidatorExitTotal,
@@ -132,97 +132,77 @@ export class NativeYieldAutomationMetricsUpdater {
     );
   }
 
-  public incrementLidoVaultAccountingReport(vaultAddress: string): void {
+  public incrementLidoVaultAccountingReport(vaultAddress: Address): void {
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.LidoVaultAccountingReportSubmittedTotal,
       { vault_address: vaultAddress },
     );
   }
 
-  public incrementReportYield(vaultAddress: string): void {
+  public incrementReportYield(vaultAddress: Address): void {
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal,
       { vault_address: vaultAddress },
     );
   }
 
-  public addReportedYieldAmount(vaultAddress: string, amount: number): void {
-    if (amount <= 0) return;
+  public addReportedYieldAmount(vaultAddress: Address, amountGwei: number): void {
+    if (amountGwei <= 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.ReportYieldAmountTotal,
       { vault_address: vaultAddress },
-      amount,
+      amountGwei,
     );
   }
 
-  public async setCurrentNegativeYieldLastReport(vaultAddress: string, negativeYield: number): Promise<void> {
-    const target = negativeYield;
-    const current = (await this.metricsService.getGaugeValue(
-      LineaNativeYieldAutomationServiceMetrics.CurrentNegativeYieldLastReport,
-      { vault_address: vaultAddress },
-    )) ?? 0;
-
-    const delta = target - current;
-    if (delta === 0) {
-      return;
-    }
-
-    if (delta > 0) {
-      this.metricsService.incrementGauge(
+  public async setCurrentNegativeYieldLastReport(vaultAddress: Address, negativeYield: number): Promise<void> {
+      this.metricsService.setGauge(
         LineaNativeYieldAutomationServiceMetrics.CurrentNegativeYieldLastReport,
         { vault_address: vaultAddress },
-        delta,
+        negativeYield,
       );
-      return;
-    }
-
-    this.metricsService.decrementGauge(
-      LineaNativeYieldAutomationServiceMetrics.CurrentNegativeYieldLastReport,
-      { vault_address: vaultAddress },
-      Math.abs(delta),
-    );
   }
 
-  public addNodeOperatorFeesPaid(vaultAddress: string, amount: number): void {
-    this.incrementVaultAmountCounter(
+  public addNodeOperatorFeesPaid(vaultAddress: Address, amountGwei: number): void {
+    this._incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       vaultAddress,
-      amount,
+      amountGwei,
     );
   }
 
-  public addLiabilitiesPaid(vaultAddress: string, amount: number): void {
-    this.incrementVaultAmountCounter(
+  public addLiabilitiesPaid(vaultAddress: Address, amountGwei: number): void {
+    this._incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.LiabilitiesPaidTotal,
       vaultAddress,
-      amount,
+      amountGwei,
     );
   }
 
-  public addLidoFeesPaid(vaultAddress: string, amount: number): void {
-    this.incrementVaultAmountCounter(
+  public addLidoFeesPaid(vaultAddress: Address, amountGwei: number): void {
+    this._incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
       vaultAddress,
-      amount,
+      amountGwei,
     );
   }
 
-  public addTransactionFeesGwei(vaultAddress: string, amount: number): void {
-    this.incrementVaultAmountCounter(
-      LineaNativeYieldAutomationServiceMetrics.TransactionFeesGwei,
+  public addTransactionFees(vaultAddress: Address, amountGwei: number): void {
+    this._incrementVaultAmountCounter(
+      LineaNativeYieldAutomationServiceMetrics.TransactionFees,
       vaultAddress,
-      amount,
+      amountGwei,
     );
   }
 
-  public incrementOperationModeExecution(mode: string): void {
+  public incrementOperationModeExecution(mode: OperationMode): void {
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
       { mode },
     );
   }
 
-  public recordOperationModeDuration(mode: string, durationSeconds: number): void {
+  public recordOperationModeDuration(mode: OperationMode, durationSeconds: number): void {
     if (durationSeconds < 0) return;
     this.metricsService.addValueToHistogram(
       LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
@@ -231,7 +211,7 @@ export class NativeYieldAutomationMetricsUpdater {
     );
   }
 
-  private incrementVaultAmountCounter(
+  private _incrementVaultAmountCounter(
     metric: LineaNativeYieldAutomationServiceMetrics,
     vaultAddress: string,
     amount: number,

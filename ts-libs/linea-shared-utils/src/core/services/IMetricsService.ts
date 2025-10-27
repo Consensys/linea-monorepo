@@ -5,6 +5,7 @@ export interface IMetricsService<TMetricName extends string = string> {
   createCounter(name: TMetricName, help: string, labelNames?: string[]): Counter<string>;
   createGauge(name: TMetricName, help: string, labelNames?: string[]): Gauge<string>;
   incrementCounter(name: TMetricName, labels?: Record<string, string>, value?: number): void;
+  setGauge(name: TMetricName, labels?: Record<string, string>, value?: number): void;
   incrementGauge(name: TMetricName, labels?: Record<string, string>, value?: number): void;
   decrementGauge(name: TMetricName, labels?: Record<string, string>, value?: number): void;
   getGaugeValue(name: TMetricName, labels: Record<string, string>): Promise<number | undefined>;

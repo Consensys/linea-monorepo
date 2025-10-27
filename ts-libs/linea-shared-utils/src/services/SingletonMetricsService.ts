@@ -135,6 +135,20 @@ export class SingletonMetricsService<TMetricName extends string = string> implem
   }
 
   /**
+   * Sets a gauge metric to a specific value.
+   * @param name - Name of the metric
+   * @param labels - Labels for the metric
+   * @param value - Value to set (required)
+   * @returns void
+   */
+  public setGauge(name: TMetricName, labels: Record<string, string> = {}, value: number): void {
+    const gauge = this.gauges.get(name);
+    if (gauge !== undefined) {
+      gauge.set(labels, value);
+    }
+  }
+
+  /**
    * Increment a gauge metric value
    * @param name - Name of the metric
    * @param labels - Labels for the metric

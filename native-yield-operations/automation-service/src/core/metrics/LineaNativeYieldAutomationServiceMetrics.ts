@@ -1,3 +1,5 @@
+// NB - All amounts rounded down in gwei. Due to limitation that PromQL does not support bigint.
+
 export enum LineaNativeYieldAutomationServiceMetrics {
   // Counter that increments each time a rebalance between L1MessageService and YieldProvider is performed
   // Labels:
@@ -48,9 +50,9 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   // N.B. Only accounts for payments by the automation service, but external actors can also trigger payment
   LidoFeesPaidTotal = "linea_native_yield_automation_service_lido_fees_paid_total",
 
-  // Counter representing tx fees paid by automation service (rounded down in gwei - bigint is not supported in Prometheus)
+  // Counter representing tx fees paid by automation service 
   // Single label `vault_address`
-  TransactionFeesGwei = "linea_native_yield_automation_service_transaction_fees_gwei",
+  TransactionFees = "linea_native_yield_automation_service_transaction_fees",
 
   // Counter that increments each time an operation mode runs.
   // Single label `mode`
@@ -61,6 +63,6 @@ export enum LineaNativeYieldAutomationServiceMetrics {
   OperationModeExecutionDurationSeconds = "linea_native_yield_automation_service_operation_mode_execution_duration_seconds"
 }
 
-export type RebalanceDirectionLabel = "STAKE" | "UNSTAKE";
-
 export type RebalanceTypeLabel = "INITIAL" | "POST_REPORT";
+
+export type YieldReportingTriggerLabel = "VAULTS_REPORT_DATA_UPDATED_EVENT" | "TIMEOUT";
