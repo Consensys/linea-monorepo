@@ -4,7 +4,10 @@ import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js"
 import { Address, Hex } from "viem";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 
-const OPERATION_MODE_DURATION_BUCKETS = [1, 5, 10, 30, 60, 120, 300, 600];
+// Buckets range up to 20 minutes to account for long-running modes.
+const OPERATION_MODE_DURATION_BUCKETS = [
+  1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200,
+];
 
 export class NativeYieldAutomationMetricsUpdater {
   constructor(private readonly metricsService: IMetricsService<LineaNativeYieldAutomationServiceMetrics>) {
@@ -75,7 +78,7 @@ export class NativeYieldAutomationMetricsUpdater {
     );
 
     this.metricsService.createCounter(
-      LineaNativeYieldAutomationServiceMetrics.TransactionFeesGwei,
+      LineaNativeYieldAutomationServiceMetrics.TransactionFees,
       "Transaction fees paid (gwei) by automation per vault",
       ["vault_address"],
     );
