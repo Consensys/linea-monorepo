@@ -17,8 +17,8 @@ import (
 type LeafOpening struct {
 	Prev int64   `json:"prevLeaf"`
 	Next int64   `json:"nextLeaf"`
-	HKey Bytes32 `json:"hkey"` //it is mimc hash of the adress
-	HVal Bytes32 `json:"hval"` // is it mimc of account
+	HKey Bytes32 `json:"hkey"` //it is poseidon2 hash of the adress
+	HVal Bytes32 `json:"hval"` // is it poseidon2 of account
 }
 
 // KVOpeningTuple is simple a tuple type of (key, value) adding the
