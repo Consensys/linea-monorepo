@@ -99,6 +99,7 @@ export class NativeYieldAutomationMetricsUpdater {
     type: RebalanceTypeLabel,
     amountGwei: number,
   ): void {
+    if (amountGwei <= 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
       { direction, type },
@@ -106,13 +107,12 @@ export class NativeYieldAutomationMetricsUpdater {
     );
   }
 
-  public addValidatorPartialUnstakeAmount(validatorPubkey: string, amount: bigint | number): void {
-    const value = this.toNumber(amount);
-    if (value <= 0) return;
+  public addValidatorPartialUnstakeAmount(validatorPubkey: string, amount: number): void {
+    if (amount <= 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.ValidatorPartialUnstakeAmountTotal,
       { validator_pubkey: validatorPubkey },
-      value,
+      amount,
     );
   }
 
@@ -146,18 +146,17 @@ export class NativeYieldAutomationMetricsUpdater {
     );
   }
 
-  public addReportedYieldAmount(vaultAddress: string, amount: bigint | number): void {
-    const value = this.toNumber(amount);
-    if (value <= 0) return;
+  public addReportedYieldAmount(vaultAddress: string, amount: number): void {
+    if (amount <= 0) return;
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.ReportYieldAmountTotal,
       { vault_address: vaultAddress },
-      value,
+      amount,
     );
   }
 
-  public async setCurrentNegativeYieldLastReport(vaultAddress: string, negativeYield: bigint | number): Promise<void> {
-    const target = this.toNumber(negativeYield);
+  public async setCurrentNegativeYieldLastReport(vaultAddress: string, negativeYield: number): Promise<void> {
+    const target = negativeYield;
     const current = (await this.metricsService.getGaugeValue(
       LineaNativeYieldAutomationServiceMetrics.CurrentNegativeYieldLastReport,
       { vault_address: vaultAddress },
@@ -184,7 +183,7 @@ export class NativeYieldAutomationMetricsUpdater {
     );
   }
 
-  public addNodeOperatorFeesPaid(vaultAddress: string, amount: bigint | number): void {
+  public addNodeOperatorFeesPaid(vaultAddress: string, amount: number): void {
     this.incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
       vaultAddress,
@@ -192,7 +191,7 @@ export class NativeYieldAutomationMetricsUpdater {
     );
   }
 
-  public addLiabilitiesPaid(vaultAddress: string, amount: bigint | number): void {
+  public addLiabilitiesPaid(vaultAddress: string, amount: number): void {
     this.incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.LiabilitiesPaidTotal,
       vaultAddress,
@@ -200,7 +199,7 @@ export class NativeYieldAutomationMetricsUpdater {
     );
   }
 
-  public addLidoFeesPaid(vaultAddress: string, amount: bigint | number): void {
+  public addLidoFeesPaid(vaultAddress: string, amount: number): void {
     this.incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
       vaultAddress,
@@ -208,7 +207,7 @@ export class NativeYieldAutomationMetricsUpdater {
     );
   }
 
-  public addTransactionFeesGwei(vaultAddress: string, amount: bigint | number): void {
+  public addTransactionFeesGwei(vaultAddress: string, amount: number): void {
     this.incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.TransactionFeesGwei,
       vaultAddress,
@@ -235,14 +234,9 @@ export class NativeYieldAutomationMetricsUpdater {
   private incrementVaultAmountCounter(
     metric: LineaNativeYieldAutomationServiceMetrics,
     vaultAddress: string,
-    amount: bigint | number,
+    amount: number,
   ): void {
-    const value = this.toNumber(amount);
-    if (value <= 0) return;
-    this.metricsService.incrementCounter(metric, { vault_address: vaultAddress }, value);
-  }
-
-  private toNumber(value: bigint | number): number {
-    return typeof value === "bigint" ? Number(value) : value;
+    if (amount <= 0) return;
+    this.metricsService.incrementCounter(metric, { vault_address: vaultAddress }, amount);
   }
 }
