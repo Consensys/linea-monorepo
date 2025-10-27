@@ -52,17 +52,24 @@ func TestChi(t *testing.T) {
 			state.Rho()
 			b := state.Pi()
 			state.Chi(&b)
-			// state.Iota(keccak.NumRound - 1)
+			state.Iota(0)
 
 			// Reconstruct the same state from the assignment of the prover
 			reconstructed := keccak.State{}
 			stateBits := [64]field.Element{}
+			// two := field.NewElement(2)
+			// eleven := field.NewElement(11)
 			for x := 0; x < 5; x++ {
 				for y := 0; y < 5; y++ {
 					for z := 0; z < 8; z++ {
-
 						u := mod.Chi.stateNextWitness[x][y][z]
-						res := cleanBase(Decompose(u[permId*keccak.NumRound].Uint64(), 11, 8))
+						k := u[permId*keccak.NumRound]
+						/*if x == 0 && y == 0 && z == 0 {
+							l := keccakf.U64ToBaseX(keccak.RC[0], &eleven)
+							k.Add(&u[permId*keccak.NumRound],
+								k.Mul(&two, &l))
+						}*/
+						res := cleanBase(Decompose(k.Uint64(), 11, 8))
 						for j := range res {
 							stateBits[z*8+j] = field.NewElement(res[j])
 						}
