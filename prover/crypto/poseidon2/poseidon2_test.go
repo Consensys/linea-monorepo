@@ -130,6 +130,6 @@ func TestFieldHasher(t *testing.T) {
 	// test WriteElement + SumElement
 	h2.WriteElements(randInputs)
 	dgst2 := h2.SumElement()
-	assert.Equal(types.Bytes32ToHash(dgst1Byte32), dgst2, "hashes do not match")
+	assert.Equal(types.Bytes32ToOctuplet(dgst1Byte32), dgst2, "hashes do not match")
 
 }

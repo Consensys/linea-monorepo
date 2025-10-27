@@ -5,7 +5,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/go-playground/assert/v2"
@@ -17,7 +17,7 @@ import (
 func TestHashNodeLR(t *testing.T) {
 
 	cfg := &Config{
-		HashFunc: hashtypes.Poseidon2,
+		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 
