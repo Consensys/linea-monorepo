@@ -51,8 +51,8 @@ type Module struct {
 	maxNumKeccakf int
 	// inputs to the keccakf module
 	inputs keccakfInputs
-	// theta module, responsible for updating the state in the theta step of keccakf
-	theta *theta
+	// Theta module, responsible for updating the state in the Theta step of keccakf
+	Theta *theta
 	// base conversion module, responsible for converting the state from base dirty 12 to base 2.
 	bc *protocols.BaseConversion
 	// rho pi module, responsible for updating the state in the rho and pi steps of keccakf
@@ -109,14 +109,14 @@ func NewModule(comp *wizard.CompiledIOP, numKeccakf int, inp keccakfInputs) *Mod
 	// create the theta module with the state including the message-blocks
 	theta := newTheta(comp, numKeccakf, inp.state)
 	// @azam ask Arijit to add it to theta step.
-	bc := protocols.NewBaseConversion(comp, numKeccakf, theta.stateNext)
+	bc := protocols.NewBaseConversion(comp, numKeccakf, theta.stateInternal)
 	// create the rho module with the state after theta
 	rho := newRho(comp, numKeccakf, bc.StateNext)
 
 	return &Module{
 		maxNumKeccakf: numKeccakf,
 		inputs:        inp,
-		theta:         theta,
+		Theta:         theta,
 		RhoPi:         rho,
 	}
 }
@@ -128,7 +128,7 @@ func (m *Module) Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [numLa
 	// assign the blocks of the message to the state
 
 	// assign the theta module with the state including the message-blocks
-	m.theta.assignTheta(run, state)
+	m.Theta.assignTheta(run, state)
 	// assign the base conversion module with the state after theta
 	m.bc.Run(run)
 	// assign the rho pi module with the state after theta

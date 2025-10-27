@@ -162,9 +162,9 @@ func TestTheta(t *testing.T) {
 				for y := 0; y < 5; y++ {
 
 					// Extract the slices
-					slice := [numSlice]field.Element{}
+					slice := [NumSlice]field.Element{}
 					pos := permId * keccak.NumRound
-					for k := 0; k < numSlice; k++ {
+					for k := 0; k < NumSlice; k++ {
 						colid := mod.Theta.AThetaSlicedBaseB[x][y][k].GetColID()
 						slice[k] = run.GetColumnAt(colid, pos)
 					}
