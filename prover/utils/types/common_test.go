@@ -40,7 +40,7 @@ func TestWriteInt64(t *testing.T) {
 		},
 		{
 			N:        7987979,
-			Expected: "0000000000000000000000000079e30b",
+			Expected: "0000000000000000000000790000e30b",
 		},
 	}
 

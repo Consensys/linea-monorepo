@@ -35,7 +35,16 @@ func MarshalHexBytesJSON(b []byte) []byte {
 
 func WriteInt64On16Bytes(w io.Writer, x int64) (int64, error) {
 	res := [16]byte{}
-	binary.BigEndian.PutUint64(res[8:], uint64(x))
+	xBytes := [8]byte{}
+
+	// Convert the int64 to its 8-byte representation
+	binary.BigEndian.PutUint64(xBytes[:], uint64(x))
+
+	// We copy every 2 bytes from tmp into res, left started by 2 zero-bytes.
+	for i := 0; i < 4; i++ {
+		copy(res[4*i+2:4*i+4], xBytes[2*i:2*i+2])
+	}
+
 	n, err := w.Write(res[:])
 	if err != nil {
 		return int64(n), fmt.Errorf("could not write 16 bytes into Writer : %w", err)
@@ -44,19 +53,24 @@ func WriteInt64On16Bytes(w io.Writer, x int64) (int64, error) {
 }
 
 func ReadInt64On16Bytes(r io.Reader) (x, n_ int64, err error) {
-	// Read the first 8 bytes into the garbage
-	padding := [8]byte{}
-	n, err := r.Read(padding[:])
+	var buf [16]byte
+
+	// Read exactly 16 bytes. io.ReadFull handles partial reads and EOF
+	// correctly, returning io.ErrUnexpectedEOF if 16 bytes aren't available.
+	n, err := io.ReadFull(r, buf[:])
 	if err != nil {
-		return 0, int64(n), fmt.Errorf("could not read 16 bytes from buffer: %v", err)
+		return 0, int64(n), fmt.Errorf("could not read 16 bytes: %w", err)
 	}
-	// Then reads the following 8 bytes. We reuse the padding buffer to save an
-	// allocation.
-	n, err = r.Read(padding[:8])
-	if err != nil {
-		return 0, int64(n), fmt.Errorf("could not read 16 bytes from buffer: %v", err)
+
+	// De-interleave the data from the 16-byte buffer into an 8-byte buffer
+	var data [8]byte
+	for i := 0; i < 4; i++ {
+		copy(data[2*i:2*i+2], buf[4*i+2:4*i+4])
 	}
-	xU64 := binary.BigEndian.Uint64(padding[:8])
+
+	// Convert the 8 data bytes back to a uint64
+	xU64 := binary.BigEndian.Uint64(data[:])
+
 	if n < 0 {
 		panic("we are only reading 8 bits so this should not overflow")
 	}
@@ -64,10 +78,19 @@ func ReadInt64On16Bytes(r io.Reader) (x, n_ int64, err error) {
 	return int64(xU64), 16, err // #nosec G115 -- above line precludes overflowing
 }
 
+// TODO @yao remove
 // Big int are assumed to fit on 32 bytes and are written as a single
 // block of 32 bytes in bigendian form (i.e, zero-padded on the left)
 func WriteBigIntOn32Bytes(w io.Writer, b *big.Int) (int64, error) {
 	balanceBig := b.FillBytes(make([]byte, 32))
+	n, err := w.Write(balanceBig)
+	return int64(n), err
+}
+
+// Big int are assumed to fit on 64 bytes and are written as a single
+// block of 64 bytes in bigendian form (i.e, zero-padded on the left)
+func WriteBigIntOn64Bytes(w io.Writer, b *big.Int) (int64, error) {
+	balanceBig := b.FillBytes(make([]byte, 64))
 	n, err := w.Write(balanceBig)
 	return int64(n), err
 }
