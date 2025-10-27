@@ -29,11 +29,11 @@ public class TransactionEventSelector implements PluginTransactionSelector {
       final TransactionProcessingResult processingResult) {
     final boolean isBundle =
         evaluationContext.getPendingTransaction() instanceof TransactionBundle.PendingBundleTx;
-    final Map<Address, Set<TransactionEventFilter>> deniedEventsByAddress = isBundle
-      ? deniedBundleEvents.get()
-      : deniedEvents.get();
+    final Map<Address, Set<TransactionEventFilter>> deniedEventsByAddress =
+        isBundle ? deniedBundleEvents.get() : deniedEvents.get();
     for (Log log : processingResult.getLogs()) {
-      Set<TransactionEventFilter> deniedEventsForTransaction = deniedEventsByAddress.get(log.getLogger());
+      Set<TransactionEventFilter> deniedEventsForTransaction =
+          deniedEventsByAddress.get(log.getLogger());
       if (deniedEventsForTransaction != null) {
         for (TransactionEventFilter deniedEvent : deniedEventsForTransaction) {
           if (deniedEvent.matches(log)) {
