@@ -129,7 +129,6 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		stateInternal [5][5][8]*common.VectorBuilder
 		stateBinary   [5][5][64]*common.VectorBuilder
 		msb           [5][8][]field.Element
-		cfCleanedVals [5][8][]int
 	)
 	// get the current state
 	for x := 0; x < 5; x++ {
@@ -146,7 +145,6 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 			cm[x][z] = make([]field.Element, size)
 			cf[x][z] = make([]field.Element, size)
 			msb[x][z] = make([]field.Element, size)
-			cfCleanedVals[x][z] = make([]int, 0, size)
 
 			// cmClean[x][z] = common.NewVectorBuilder(theta.cMiddleCleanBase[x][z])
 			// cfClean[x][z] = common.NewVectorBuilder(theta.cFinalCleanBase[x][z])
@@ -163,7 +161,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 			// clean the cm by decomposing each element into base thetaBase and recomposing
 			for i := 0; i < len(cm[x][z]); i++ {
 				v := cm[x][z][i].Uint64()
-				resc := clean(Decompose(v, thetaBase, 8))
+				resc := clean(Decompose(v, thetaBase, 8, true))
 
 				cleaned := 0
 				for k := len(resc) - 1; k >= 0; k-- {
@@ -184,14 +182,8 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		for z := 0; z < 8; z++ {
 			for i := 0; i < len(cf[x][z]); i++ {
 				v := cf[x][z][i].Uint64()
-				resf := clean(Decompose(v, thetaBase, 8))
-				// make resf a slice of 8 elements to get msb
-				if len(resf) < 8 {
-					// pad with zeros
-					for len(resf) < 8 {
-						resf = append(resf, 0)
-					}
-				}
+				resf := clean(Decompose(v, thetaBase, 8, true))
+
 				msb[x][z][i] = field.NewElement(uint64(resf[len(resf)-1]))
 
 				cfCleaned := 0
@@ -204,12 +196,18 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 
 		// Second pass: compute cc using previous slice lsb (wrap-around)
 		for z := 0; z < 8; z++ {
-			next := (z - 1 + 8) % 8 // safe wrap-around
+			prev := (z - 1 + 8) % 8 // safe wrap-around
 			for i := 0; i < len(cf[x][z]); i++ {
-				// use integer lsbVals computed in first pass to avoid index/race issues
-				a := int(cf[x][z][i].Uint64())*thetaBase - int(msb[x][z][i].Uint64())*thetaBase8 + int(msb[x][next][i].Uint64())
+				// cc is the 1 bit left shifted version of cf
+				// to obtain cc we do:
+				// - left shift cf by 1 position (multiply by thetaBase)
+				// - subtract msb * thetaBase^8 (removing the overflowed bit)
+				// - add msb of previous slice (adding the bit shifted from previous slice)
+				// it is the previous slice because z slices are stored in little endian order
+				// cc[x][z] = cf[x][z] * thetaBase - msb[x][z] * thetaBase^8 + msb of previous slice
+				a := int(cf[x][z][i].Uint64())*thetaBase - int(msb[x][z][i].Uint64())*thetaBase8 + int(msb[x][prev][i].Uint64())
 				// clean a
-				res := clean(Decompose(uint64(a), thetaBase, 8))
+				res := clean(Decompose(uint64(a), thetaBase, 8, true))
 				cleanedA := 0
 				for k := len(res) - 1; k >= 0; k-- {
 					cleanedA = cleanedA*thetaBase + res[k]
@@ -237,20 +235,14 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 
 				// clean the state
 				for i := 0; i < len(col); i++ {
-					res := clean(Decompose(col[i].Uint64(), thetaBase, 8))
+					res := clean(Decompose(col[i].Uint64(), thetaBase, 8, true))
 					// recompse to get clean state
 					stateCleaned := 0
 					for i := len(res) - 1; i >= 0; i-- {
 						stateCleaned = stateCleaned*thetaBase + res[i]
 					}
 					stateInternal[x][y][z].PushInt(stateCleaned)
-					// make res a slice of 8 elements to assign to binary state
-					if len(res) < 8 {
-						// pad with zeros
-						for len(res) < 8 {
-							res = append(res, 0)
-						}
-					}
+					// assign the binary representation
 					for j := 0; j < 8; j++ {
 						stateBinary[x][y][z*8+j].PushInt(res[j])
 					}
