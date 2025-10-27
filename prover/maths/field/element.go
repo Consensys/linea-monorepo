@@ -33,9 +33,8 @@ var (
 	MontConstant    = NewFromString("33554430")
 	MontConstantInv = NewFromString("1057030144")
 	Modulus         = koalabear.Modulus
-	MaxVal          = Element{
-		2097152003,
-	}
+	MaxVal          = new(Element).SetUint64(Modulus().Uint64() - 1)
+
 	Butterfly   = koalabear.Butterfly
 	NewElement  = koalabear.NewElement
 	BatchInvert = koalabear.BatchInvert
