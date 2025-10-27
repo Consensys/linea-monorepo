@@ -6,7 +6,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
 
 export const recordUnstakeRebalanceFromSafeWithdrawalResult = (
-  result: Result<TransactionReceipt | null, Error>,
+  result: Result<TransactionReceipt | undefined, Error>,
   yieldManagerClient: IYieldManager<TransactionReceipt>,
   metricsUpdater: INativeYieldAutomationMetricsUpdater,
 ) => {

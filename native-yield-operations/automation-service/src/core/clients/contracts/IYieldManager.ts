@@ -30,14 +30,14 @@ export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient 
   getRebalanceRequirements(): Promise<RebalanceRequirement>;
   getLidoStakingVaultAddress(yieldProvider: Address): Promise<Address>;
   getLidoDashboardAddress(yieldProvider: Address): Promise<Address>;
-  pauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | null>;
-  unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | null>;
+  pauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | undefined>;
+  unpauseStakingIfNotAlready(yieldProvider: Address): Promise<TTransactionReceipt | undefined>;
   getAvailableUnstakingRebalanceBalance(yieldProvider: Address): Promise<bigint>;
   safeAddToWithdrawalReserveIfAboveThreshold(
     yieldProvider: Address,
     amount: bigint,
-  ): Promise<TTransactionReceipt | null>;
-  safeMaxAddToWithdrawalReserve(yieldProvider: Address): Promise<TTransactionReceipt | null>;
+  ): Promise<TTransactionReceipt | undefined>;
+  safeMaxAddToWithdrawalReserve(yieldProvider: Address): Promise<TTransactionReceipt | undefined>;
   getWithdrawalAmountFromTxReceipt(txReceipt: TTransactionReceipt): bigint;
   getYieldReportFromTxReceipt(txReceipt: TTransactionReceipt): YieldReport | undefined;
 }

@@ -7,7 +7,7 @@ import { getNodeOperatorFeesPaidFromTxReceipt } from "../../clients/contracts/ge
 import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 
 export const updateMetricsForReportYieldResult = async (
-  result: Result<TransactionReceipt | null, Error>,
+  result: Result<TransactionReceipt | undefined, Error>,
   metricsUpdater: INativeYieldAutomationMetricsUpdater,
   yieldManagerClient: IYieldManager<TransactionReceipt>,
   vaultHubClient: IVaultHub<TransactionReceipt>,
