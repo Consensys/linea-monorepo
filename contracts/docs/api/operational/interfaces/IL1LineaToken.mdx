@@ -34,14 +34,3 @@ _Returns the amount of tokens owned by `account`._
 | ---- | ---- | ----------- |
 | [0] | uint256 | The amount of tokens owned by `account`. |
 
-### syncTotalSupplyToL2
-
-```solidity
-function syncTotalSupplyToL2() external
-```
-
-Synchronizes the total supply of the L1 token to the L2 token.
-
-_This function sends a message to the L2 token contract to sync the total supply.
-NB: This function is permissionless on purpose, allowing anyone to trigger the sync._
-

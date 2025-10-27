@@ -102,7 +102,7 @@ describe("V3DexSwapAdapter", () => {
 
       const event = contract.interface.parseLog(logs![0]);
       expect(event).is.not.null;
-      expect(event!.name).to.equal("V3DexAdapterInitialized");
+      expect(event!.name).to.equal("V3DexSwapAdapterInitialized");
       expect(event!.args.router).to.equal(randomnAddress);
       expect(event!.args.wethToken).to.equal(randomnAddress);
       expect(event!.args.lineaToken).to.equal(randomnAddress);
