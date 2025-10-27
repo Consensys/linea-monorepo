@@ -31,7 +31,7 @@ export const updateMetricsForReportYieldResult = async (
 
   const nodeOperatorFeesDisbursed = getNodeOperatorFeesPaidFromTxReceipt(receipt, dashboard);
   if (nodeOperatorFeesDisbursed != 0n) {
-    metricsUpdater.addLidoFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));
+    metricsUpdater.addNodeOperatorFeesPaid(vault, weiToGweiNumber(nodeOperatorFeesDisbursed));
   }
 
   const lidoFeePayment = vaultHubClient.getLidoFeePaymentFromTxReceipt(receipt);
