@@ -33,35 +33,35 @@ func MarshalHexBytesJSON(b []byte) []byte {
 	return []byte(strconv.Quote(hexstring))
 }
 
-func WriteInt64On32Bytes(w io.Writer, x int64) (int64, error) {
-	res := [32]byte{}
-	binary.BigEndian.PutUint64(res[24:], uint64(x))
+func WriteInt64On16Bytes(w io.Writer, x int64) (int64, error) {
+	res := [16]byte{}
+	binary.BigEndian.PutUint64(res[8:], uint64(x))
 	n, err := w.Write(res[:])
 	if err != nil {
-		return int64(n), fmt.Errorf("could not write 32 bytes into Writer : %w", err)
+		return int64(n), fmt.Errorf("could not write 16 bytes into Writer : %w", err)
 	}
 	return int64(n), nil
 }
 
-func ReadInt64On32Bytes(r io.Reader) (x, n_ int64, err error) {
-	// Read the first 24 bytes into the garbage
-	padding := [24]byte{}
+func ReadInt64On16Bytes(r io.Reader) (x, n_ int64, err error) {
+	// Read the first 8 bytes into the garbage
+	padding := [8]byte{}
 	n, err := r.Read(padding[:])
 	if err != nil {
-		return 0, int64(n), fmt.Errorf("could not read 32 bytes from buffer: %v", err)
+		return 0, int64(n), fmt.Errorf("could not read 16 bytes from buffer: %v", err)
 	}
 	// Then reads the following 8 bytes. We reuse the padding buffer to save an
 	// allocation.
 	n, err = r.Read(padding[:8])
 	if err != nil {
-		return 0, int64(n), fmt.Errorf("could not read 32 bytes from buffer: %v", err)
+		return 0, int64(n), fmt.Errorf("could not read 16 bytes from buffer: %v", err)
 	}
 	xU64 := binary.BigEndian.Uint64(padding[:8])
 	if n < 0 {
 		panic("we are only reading 8 bits so this should not overflow")
 	}
 	xU64 &= 0x7fffffffffffffff  // TODO delete this if negative numbers are allowed
-	return int64(xU64), 32, err // #nosec G115 -- above line precludes overflowing
+	return int64(xU64), 16, err // #nosec G115 -- above line precludes overflowing
 }
 
 // Big int are assumed to fit on 32 bytes and are written as a single
