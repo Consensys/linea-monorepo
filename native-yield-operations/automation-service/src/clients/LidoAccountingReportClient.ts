@@ -15,6 +15,10 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
     private readonly vault: Address,
   ) {}
 
+  getVault(): Address {
+    return this.vault;
+  }
+
   async getLatestSubmitVaultReportParams(): Promise<UpdateVaultDataParams> {
     const latestReportData = await this.lazyOracleContractClient.latestReportData();
     const reportProof = await this.retryService.retry(() =>

@@ -256,6 +256,8 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     // Early return, no point reporting Linea yield without a new vault report beforehand
     if (vaultResult.isErr()) {
       return;
+    } else {
+      this.metricsUpdater.incrementLidoVaultAccountingReport(this.lidoAccountingReportClient.getVault());
     }
 
     // Second call: report yield
@@ -266,6 +268,8 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     );
     if (yieldResult.isErr()) {
       return;
+    } else {
+      this.metricsUpdater.incrementReportYield(this.lidoAccountingReportClient.getVault());
     }
 
     // Both calls succeeded
