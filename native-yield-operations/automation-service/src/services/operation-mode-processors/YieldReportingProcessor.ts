@@ -10,7 +10,7 @@ import { ILineaRollupYieldExtension } from "../../core/clients/contracts/ILineaR
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
-import { recordUnstakeRebalanceFromSafeWithdrawalResult } from "../../application/metrics/recordUnstakeRebalanceFromSafeWithdrawalResult.js";
+import { updateMetricsForSafeWithdrawalResult } from "../../application/metrics/updateMetricsForSafeWithdrawalResult.js";
 import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { updateMetricsForReportYieldResult } from "../../application/metrics/updateMetricsForReportYieldResult.js";
 import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
@@ -22,7 +22,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
     private readonly lazyOracleContractClient: ILazyOracle<TransactionReceipt>,
-    private readonly vaultHubClient: IVaultHub<TransactionReceipt>,
+    private readonly vaultHubContractClient: IVaultHub<TransactionReceipt>,
     private readonly lineaRollupYieldExtensionClient: ILineaRollupYieldExtension<TransactionReceipt>,
     private readonly lidoAccountingReportClient: ILidoAccountingReportClient,
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
@@ -233,10 +233,11 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
         this.yieldManagerContractClient.safeAddToWithdrawalReserveIfAboveThreshold(this.yieldProvider, rebalanceAmount),
       "_handleUnstakingRebalance - safeAddToWithdrawalReserveIfAboveThreshold failed (tolerated)",
     );
-    recordUnstakeRebalanceFromSafeWithdrawalResult(
+    await updateMetricsForSafeWithdrawalResult(
       withdrawalResult,
-      this.yieldManagerContractClient,
       this.metricsUpdater,
+      this.yieldManagerContractClient,
+      this.vaultHubContractClient,
     );
   }
 
@@ -276,7 +277,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
         yieldResult,
         this.metricsUpdater,
         this.yieldManagerContractClient,
-        this.vaultHubClient,
+        this.vaultHubContractClient,
       );
     }
 

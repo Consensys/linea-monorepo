@@ -21,6 +21,7 @@ import { IYieldManager, YieldProviderData } from "../../core/clients/contracts/I
 import { ONE_ETHER } from "@consensys/linea-shared-utils";
 import { YieldReport } from "../../core/entities/YieldReport.js";
 import { StakingVaultABI } from "../../core/abis/StakingVault.js";
+import { WithdrawalEvent } from "../../core/entities/WithdrawalEvent.js";
 
 export class YieldManagerContractClient implements IYieldManager<TransactionReceipt> {
   private readonly contract: GetContractReturnType<typeof YieldManagerABI, PublicClient, Address>;
@@ -101,21 +102,6 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return txReceipt;
   }
 
-  async transferFundsToReserve(amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(`transferFundsToReserve started, amount=${amount.toString()}`);
-    const calldata = encodeFunctionData({
-      abi: this.contract.abi,
-      functionName: "transferFundsToReserve",
-      args: [amount],
-    });
-
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
-    this.logger.info(
-      `transferFundsToReserve succeeded, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
-    );
-    return txReceipt;
-  }
-
   async reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TransactionReceipt> {
     this.logger.debug(`reportYield started, yieldProvider=${yieldProvider}, l2YieldRecipient=${l2YieldRecipient}`);
     const calldata = encodeFunctionData({
@@ -168,36 +154,6 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       args: [BigInt(withdrawalParams.pubkeys.length)],
     });
     return validatorWithdrawalFee;
-  }
-
-  async withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(`withdrawFromYieldProvider started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
-    const calldata = encodeFunctionData({
-      abi: this.contract.abi,
-      functionName: "withdrawFromYieldProvider",
-      args: [yieldProvider, amount],
-    });
-
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
-    this.logger.info(
-      `withdrawFromYieldProvider succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
-    );
-    return txReceipt;
-  }
-
-  async addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
-    this.logger.debug(`addToWithdrawalReserve started, yieldProvider=${yieldProvider}, amount=${amount.toString()}`);
-    const calldata = encodeFunctionData({
-      abi: this.contract.abi,
-      functionName: "addToWithdrawalReserve",
-      args: [yieldProvider, amount],
-    });
-
-    const txReceipt = await this.contractClientLibrary.sendSignedTransaction(this.contractAddress, calldata);
-    this.logger.info(
-      `addToWithdrawalReserve succeeded, yieldProvider=${yieldProvider}, amount=${amount.toString()}, txHash=${txReceipt.transactionHash}`,
-    );
-    return txReceipt;
   }
 
   async safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TransactionReceipt> {
@@ -381,7 +337,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return await this.safeAddToWithdrawalReserve(yieldProvider, availableWithdrawalBalance);
   }
 
-  getWithdrawalAmountFromTxReceipt(txReceipt: TransactionReceipt): bigint {
+  getWithdrawalEventFromTxReceipt(txReceipt: TransactionReceipt): WithdrawalEvent | undefined {
     for (const log of txReceipt.logs) {
       // Only decode logs emitted by this contract
       if (log.address.toLowerCase() !== this.contractAddress.toLowerCase()) continue;
@@ -394,8 +350,8 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
         });
 
         if (decoded.eventName === "WithdrawalReserveAugmented") {
-          const { reserveIncrementAmount } = decoded.args;
-          return reserveIncrementAmount as bigint;
+          const { reserveIncrementAmount, yieldProvider } = decoded.args;
+          return { reserveIncrementAmount, yieldProvider };
         }
       } catch {
         // skip unrelated logs (from the same contract or different ABIs)
@@ -403,7 +359,7 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     }
 
     // If event not found
-    return 0n;
+    return undefined;
   }
 
   getYieldReportFromTxReceipt(txReceipt: TransactionReceipt): YieldReport | undefined {

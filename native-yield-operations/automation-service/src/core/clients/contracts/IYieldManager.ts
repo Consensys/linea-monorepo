@@ -3,6 +3,7 @@ import { WithdrawalRequests } from "../../entities/LidoStakingVaultWithdrawalPar
 import { RebalanceRequirement } from "../../entities/RebalanceRequirement.js";
 import { IBaseContractClient } from "@consensys/linea-shared-utils";
 import { YieldReport } from "../../entities/YieldReport.js";
+import { WithdrawalEvent } from "../../entities/WithdrawalEvent.js";
 
 export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient {
   // View calls
@@ -17,11 +18,8 @@ export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient 
   getYieldProviderData(yieldProvider: Address): Promise<YieldProviderData>;
   // Mutator calls
   fundYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
-  transferFundsToReserve(amount: bigint): Promise<TTransactionReceipt>;
   reportYield(yieldProvider: Address, l2YieldRecipient: Address): Promise<TTransactionReceipt>;
   unstake(yieldProvider: Address, withdrawalParams: WithdrawalRequests): Promise<TTransactionReceipt>;
-  withdrawFromYieldProvider(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
-  addToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
   safeAddToWithdrawalReserve(yieldProvider: Address, amount: bigint): Promise<TTransactionReceipt>;
   pauseStaking(yieldProvider: Address): Promise<TTransactionReceipt>;
   unpauseStaking(yieldProvider: Address): Promise<TTransactionReceipt>;
@@ -38,7 +36,7 @@ export interface IYieldManager<TTransactionReceipt> extends IBaseContractClient 
     amount: bigint,
   ): Promise<TTransactionReceipt | undefined>;
   safeMaxAddToWithdrawalReserve(yieldProvider: Address): Promise<TTransactionReceipt | undefined>;
-  getWithdrawalAmountFromTxReceipt(txReceipt: TTransactionReceipt): bigint;
+  getWithdrawalEventFromTxReceipt(txReceipt: TTransactionReceipt): WithdrawalEvent | undefined;
   getYieldReportFromTxReceipt(txReceipt: TTransactionReceipt): YieldReport | undefined;
 }
 
