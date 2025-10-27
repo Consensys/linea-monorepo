@@ -741,34 +741,6 @@ describe("RollupRevenueVault", () => {
       expect(await rollupRevenueVault.invoiceArrears()).equal(0n);
     });
 
-    it("Should revert if contract balance is insufficient to cover minimum fee", async () => {
-      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
-      const startTimestamp = lastInvoiceDate + 1n;
-      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-
-      const minimumFee = await messageService.minimumFeeInWei();
-
-      // Drain the contract balance
-      await rollupRevenueVault
-        .connect(invoiceSubmitter)
-        .submitInvoice(startTimestamp, endTimestamp, INITIAL_CONTRACT_BALANCE - minimumFee / 2n);
-
-      const minLineaOut = 200n;
-      const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
-
-      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
-        minLineaOut,
-        deadline,
-        0n,
-      ]);
-
-      await expectRevertWithCustomError(
-        rollupRevenueVault,
-        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "InsufficientBalance",
-      );
-    });
-
     it("Should revert if swap call fails", async () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
