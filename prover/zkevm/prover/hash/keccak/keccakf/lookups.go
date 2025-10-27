@@ -133,9 +133,9 @@ func valBaseXToBaseY(
 		smartvectors.RightZeroPadded(byClean, utils.ToInt(colSize))
 }
 
-// valRCBase2Pattern returns the list of the round constant of keccakf in base
+// ValRCBase2Pattern returns the list of the round constant of keccakf in base
 // [baseBF].
-func valRCBase2Pattern() []field.Element {
+func ValRCBase2Pattern() []field.Element {
 
 	var (
 		res    = make([]field.Element, len(keccak.RC))
