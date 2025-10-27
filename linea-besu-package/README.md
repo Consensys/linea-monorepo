@@ -18,7 +18,7 @@ In the docker-compose.yaml file, update the --p2p-host command to include your p
 
 To enable JWT on engine-api, please uncomment the followings and mount the JWT file accordingly:
 ```sh
---engine-jwt-disabled=true
+--engine-jwt-disabled=false
 --engine-jwt-secret=/var/lib/besu/jwt
 ```
 
