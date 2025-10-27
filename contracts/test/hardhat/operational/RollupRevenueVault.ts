@@ -16,6 +16,7 @@ import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
 import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_DAY_IN_SECONDS } from "../common/constants";
 import {
   expectEvent,
+  expectNoEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateRandomBytes,
@@ -37,6 +38,8 @@ describe("RollupRevenueVault", () => {
   let l1LineaTokenBurner: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
 
+  const ONE_ETHER = ethers.parseEther("1");
+
   before(async () => {
     await network.provider.send("hardhat_reset");
     ({ admin, invoiceSubmitter, burner, invoicePaymentReceiver, l1LineaTokenBurner, nonAuthorizedAccount } =
@@ -49,18 +52,17 @@ describe("RollupRevenueVault", () => {
     ));
   });
 
-  describe("Fallback/Receive", () => {
-    const sendEthToContract = async (value: bigint, data: string) => {
-      return admin.sendTransaction({ to: await rollupRevenueVault.getAddress(), value, data });
-    };
-
+  const sendEthToContract = async (value: bigint, data: string) => {
+    return admin.sendTransaction({ to: await rollupRevenueVault.getAddress(), value, data });
+  };
+describe("Fallback/Receive", () => {
     it("Should fail to send eth to the rollupRevenueVault contract through the receive when msg.value == 0", async () => {
       const value = ethers.parseEther("0");
       await expectRevertWithCustomError(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "NoEthSent");
     });
 
     it("Should send eth to the rollupRevenueVault contract through the receive", async () => {
-      const value = ethers.parseEther("1");
+      const value = ONE_ETHER;
       await expectEvent(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "EthReceived", [value]);
     });
 
@@ -475,7 +477,7 @@ describe("RollupRevenueVault", () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
       const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-      const invoiceAmount = ethers.parseEther("1");
+      const invoiceAmount = ONE_ETHER;
 
       const invoicePaymentReceiverBalanceBefore = await ethers.provider.getBalance(invoicePaymentReceiver.address);
 
@@ -495,7 +497,7 @@ describe("RollupRevenueVault", () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
       const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-      const invoiceAmount = ethers.parseEther("1");
+      const invoiceAmount = ONE_ETHER;
       const balanceAvailable = ethers.parseEther("0.6");
 
       const invoicePaymentReceiverBalanceBefore = await ethers.provider.getBalance(invoicePaymentReceiver.address);
@@ -519,7 +521,7 @@ describe("RollupRevenueVault", () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
       const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
-      const invoiceAmount = ethers.parseEther("1");
+      const invoiceAmount = ONE_ETHER;
       const balanceAvailable = ethers.parseEther("1.5");
 
       const invoicePaymentReceiverBalanceBefore = await ethers.provider.getBalance(invoicePaymentReceiver.address);
@@ -714,7 +716,7 @@ describe("RollupRevenueVault", () => {
   });
 
   describe("burnAndBridge", () => {
-    const INITIAL_CONTRACT_BALANCE = ethers.parseEther("1");
+    const INITIAL_CONTRACT_BALANCE = ONE_ETHER;
     beforeEach(async () => {
       await admin.sendTransaction({ to: await rollupRevenueVault.getAddress(), value: INITIAL_CONTRACT_BALANCE });
     });
@@ -737,7 +739,70 @@ describe("RollupRevenueVault", () => {
       );
     });
 
-    it("Should revert if invoice arrears amount > 0", async () => {
+    it("Should pay off arrears with no burning", async () => {
+      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
+      const startTimestamp = lastInvoiceDate + 1n;
+      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
+
+      await rollupRevenueVault
+        .connect(invoiceSubmitter)
+        .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("2.5"));
+
+      const value = ONE_ETHER;
+      await expectEvent(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "EthReceived", [value]);
+
+      const minLineaOut = 200n;
+      const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
+      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+        minLineaOut,
+        deadline,
+        0n,
+      ]);
+
+      const expectedRemainingArrears = ethers.parseUnits("0.5");
+
+      await expectEvent(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
+        "ArrearsPaid",
+        [ONE_ETHER, expectedRemainingArrears],
+      );
+
+      expect(await rollupRevenueVault.invoiceArrears()).equal(expectedRemainingArrears);
+    });
+
+    it("Should pay off arrears with no burning due to less than minimumFeeInWei", async () => {
+      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
+      const startTimestamp = lastInvoiceDate + 1n;
+      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
+
+      await rollupRevenueVault.connect(invoiceSubmitter).submitInvoice(startTimestamp, endTimestamp, ONE_ETHER * 2n);
+
+      const minimumFee = await messageService.minimumFeeInWei();
+      const expectedRemainingBalance = minimumFee - 1n;
+      const ethToSend = ONE_ETHER + expectedRemainingBalance;
+
+      await expectEvent(rollupRevenueVault, sendEthToContract(ethToSend, EMPTY_CALLDATA), "EthReceived", [ethToSend]);
+
+      const minLineaOut = 200n;
+      const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
+      const encodedSwapData = TestDexSwap__factory.createInterface().encodeFunctionData("swap", [
+        minLineaOut,
+        deadline,
+        0n,
+      ]);
+
+      await expectNoEvent(
+        rollupRevenueVault,
+        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
+        "EthBurntSwappedAndBridged",
+      );
+
+      expect(await rollupRevenueVault.invoiceArrears()).equal(0n);
+      expect(await ethers.provider.getBalance(await rollupRevenueVault.getAddress())).equal(expectedRemainingBalance);
+    });
+
+    it("Should pay off arrears with burning", async () => {
       const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
       const startTimestamp = lastInvoiceDate + 1n;
       const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
@@ -746,45 +811,30 @@ describe("RollupRevenueVault", () => {
         .connect(invoiceSubmitter)
         .submitInvoice(startTimestamp, endTimestamp, ethers.parseEther("1.5"));
 
+      const value = ONE_ETHER;
+      await expectEvent(rollupRevenueVault, sendEthToContract(value, EMPTY_CALLDATA), "EthReceived", [value]);
+
       const minLineaOut = 200n;
       const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
       const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
         minLineaOut,
         deadline,
       ]);
-
-      await expectRevertWithCustomError(
-        rollupRevenueVault,
-        rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "InvoiceInArrears",
-      );
-    });
-
-    it("Should revert if contract balance is insufficient to cover minimum fee", async () => {
-      const lastInvoiceDate = await rollupRevenueVault.lastInvoiceDate();
-      const startTimestamp = lastInvoiceDate + 1n;
-      const endTimestamp = startTimestamp + BigInt(ONE_DAY_IN_SECONDS);
 
       const minimumFee = await messageService.minimumFeeInWei();
+      const arrears = await rollupRevenueVault.invoiceArrears();
+      const balanceAvailable =
+        (await ethers.provider.getBalance(rollupRevenueVault.getAddress())) - minimumFee - arrears;
+      const ethToBurn = (balanceAvailable * 20n) / 100n;
 
-      // Drain the contract balance
-      await rollupRevenueVault
-        .connect(invoiceSubmitter)
-        .submitInvoice(startTimestamp, endTimestamp, INITIAL_CONTRACT_BALANCE - minimumFee / 2n);
-
-      const minLineaOut = 200n;
-      const deadline = (await time.latest()) + ONE_DAY_IN_SECONDS;
-
-      const encodedSwapData = TestDexAdapter__factory.createInterface().encodeFunctionData("swap", [
-        minLineaOut,
-        deadline,
-      ]);
-
-      await expectRevertWithCustomError(
+      await expectEvent(
         rollupRevenueVault,
         rollupRevenueVault.connect(burner).burnAndBridge(encodedSwapData),
-        "InsufficientBalance",
+        "EthBurntSwappedAndBridged",
+        [ethToBurn, (balanceAvailable - ethToBurn) * 2n], // We mock the swap to return amountIn * 2
       );
+
+      expect(await rollupRevenueVault.invoiceArrears()).equal(0n);
     });
 
     it("Should revert if swap call fails", async () => {

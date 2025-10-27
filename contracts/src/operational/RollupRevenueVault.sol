@@ -169,17 +169,16 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
    * @param _swapData Encoded calldata for the DEX swap function.
    */
   function burnAndBridge(bytes calldata _swapData) external onlyRole(BURNER_ROLE) {
-    require(invoiceArrears == 0, InvoiceInArrears());
+    _payArrears();
 
     uint256 minimumFee = messageService.minimumFeeInWei();
 
-    require(address(this).balance > minimumFee, InsufficientBalance());
+    if (address(this).balance > minimumFee) {
+      uint256 balanceAvailable = address(this).balance - minimumFee;
 
-    uint256 balanceAvailable = address(this).balance - minimumFee;
-
-    uint256 ethToBurn = (balanceAvailable * ETH_BURNT_PERCENTAGE) / 100;
-    (bool success, ) = address(0).call{ value: ethToBurn }("");
-    require(success, EthBurnFailed());
+      uint256 ethToBurn = (balanceAvailable * ETH_BURNT_PERCENTAGE) / 100;
+      (bool success, ) = address(0).call{ value: ethToBurn }("");
+      require(success, EthBurnFailed());
 
     (bool swapSuccess, ) = dexAdapter.call{ value: balanceAvailable - ethToBurn }(_swapData);
     require(swapSuccess, DexSwapFailed());
@@ -194,6 +193,7 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
     tokenBridgeContract.bridgeToken{ value: minimumFee }(lineaTokenAddress, lineaTokenBalanceAfter, l1LineaTokenBurner);
 
     emit EthBurntSwappedAndBridged(ethToBurn, lineaTokenBalanceAfter);
+    }
   }
 
   /**
@@ -254,6 +254,25 @@ contract RollupRevenueVault is AccessControlUpgradeable, IRollupRevenueVault {
 
     dexAdapter = _newDexAdapter;
     emit DexAdapterUpdated(currentDexAdapter, _newDexAdapter);
+  }
+
+  /**
+   * @notice Pays off arrears where applicable and balance permits.
+   */
+  function _payArrears() internal {
+    uint256 balanceAvailable = address(this).balance;
+
+    uint256 totalAmountOwing = invoiceArrears;
+    uint256 amountToPay = (balanceAvailable < totalAmountOwing) ? balanceAvailable : totalAmountOwing;
+
+    if (amountToPay > 0) {
+      uint256 remainingArrears = totalAmountOwing - amountToPay;
+      invoiceArrears = remainingArrears;
+
+      (bool success, ) = payable(invoicePaymentReceiver).call{ value: amountToPay }("");
+      require(success, InvoiceTransferFailed());
+      emit ArrearsPaid(amountToPay, remainingArrears);
+    }
   }
 
   /**
