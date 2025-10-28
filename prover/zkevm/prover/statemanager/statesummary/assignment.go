@@ -386,7 +386,7 @@ func getOldAndNewTopRoot(trace any) (old, new types.Bytes32) {
 
 	getTopRoot := func(subRoot types.Bytes32, nextFreeNode int64) types.Bytes32 {
 		hasher := poseidon2.Poseidon2()
-		types.WriteInt64On16Bytes(hasher, nextFreeNode)
+		types.WriteInt64On64Bytes(hasher, nextFreeNode)
 		subRoot.WriteTo(hasher)
 		b32 := hasher.Sum(nil)
 		return types.AsBytes32(b32)

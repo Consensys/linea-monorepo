@@ -50,6 +50,18 @@ func LeftPadded(b []byte) []byte {
 	return res
 }
 
+// LeftPadded48Zeros copies b into a new byte slice, left padded by 48 zero-bytes.
+func LeftPadded48Zeros(b []byte) []byte {
+
+	if len(b) != 16 {
+		panic("input length must be 16")
+	}
+
+	res := make([]byte, 64)
+	copy(res[48:], b[:])
+	return res
+}
+
 // RemovePadding removes the zero padding from the byte slice.
 // Every 4 bytes from b are copied into res, removing the first 2 zero-bytes.
 func RemovePadding(b []byte) []byte {
@@ -65,14 +77,26 @@ func RemovePadding(b []byte) []byte {
 	return data
 }
 
-func WriteInt64On16Bytes(w io.Writer, x int64) (int64, error) {
+// Remove48Padding removes the 48 zero padding from the byte slice.
+func Remove48Padding(b []byte) []byte {
+
+	if len(b) != 64 {
+		panic("input length must be 64")
+	}
+
+	data := make([]byte, 16)
+	copy(data[:], b[48:])
+	return data
+}
+
+func WriteInt64On64Bytes(w io.Writer, x int64) (int64, error) {
 	xBytes := [8]byte{}
 
 	// Convert the int64 to its 8-byte representation
 	binary.BigEndian.PutUint64(xBytes[:], uint64(x))
 
 	// We copy every 2 bytes from tmp into res, left padded by 2 zero-bytes.
-	res := LeftPadded(xBytes[:])
+	res := LeftPadded48Zeros(LeftPadded(xBytes[:]))
 
 	n, err := w.Write(res[:])
 	if err != nil {
@@ -81,8 +105,8 @@ func WriteInt64On16Bytes(w io.Writer, x int64) (int64, error) {
 	return int64(n), nil
 }
 
-func ReadInt64On16Bytes(r io.Reader) (x, n_ int64, err error) {
-	var buf [16]byte
+func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
+	var buf [64]byte
 
 	// Read exactly 16 bytes. io.ReadFull handles partial reads and EOF
 	// correctly, returning io.ErrUnexpectedEOF if 16 bytes aren't available.
@@ -92,7 +116,7 @@ func ReadInt64On16Bytes(r io.Reader) (x, n_ int64, err error) {
 	}
 
 	// De-interleave the data from the 16-byte buffer into an 8-byte buffer
-	data := RemovePadding(buf[:])
+	data := RemovePadding(Remove48Padding(buf[:]))
 
 	// Convert the 8 data bytes back to a uint64
 	xU64 := binary.BigEndian.Uint64(data[:])

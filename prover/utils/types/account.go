@@ -35,7 +35,7 @@ func (a *Account) ReadFrom(r io.Reader) (int64, error) {
 //
 // If the account contains a "nil" balance is will be written as zero.
 func (a Account) writeTo(w io.Writer, packed bool) (int64, error) {
-	n0, _ := WriteInt64On16Bytes(w, a.Nonce)
+	n0, _ := WriteInt64On64Bytes(w, a.Nonce)
 	// Without this edge-case handling, the function panics if called over
 	// Account{}
 	balance := a.Balance
@@ -51,7 +51,7 @@ func (a Account) writeTo(w io.Writer, packed bool) (int64, error) {
 	} else {
 		n4, _ = a.KeccakCodeHash.WriteTo(w)
 	}
-	n5, _ := WriteInt64On16Bytes(w, a.CodeSize)
+	n5, _ := WriteInt64On64Bytes(w, a.CodeSize)
 	return n0 + n1 + n2 + n3 + n4 + n5, nil
 }
 
@@ -61,7 +61,7 @@ func (a *Account) readFrom(r io.Reader, packed bool) (int64, error) {
 
 	var err error
 
-	a.Nonce, _, err = ReadInt64On16Bytes(r)
+	a.Nonce, _, err = ReadInt64On64Bytes(r)
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading nonce : %w", err)
 	}
@@ -86,7 +86,7 @@ func (a *Account) readFrom(r io.Reader, packed bool) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading keccak codehash : %w", err)
 	}
-	a.CodeSize, _, err = ReadInt64On16Bytes(r)
+	a.CodeSize, _, err = ReadInt64On64Bytes(r)
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading codesize : %w", err)
 	}
@@ -102,12 +102,13 @@ func (a Account) MarshalJSON() ([]byte, error) {
 }
 
 func (a *Account) UnmarshalJSON(data []byte) error {
+	fmt.Printf("UnmarshalJSON account data: %s\n", string(data))
 	decoded, err := DecodeQuotedHexString(data)
 	if err != nil {
 		return fmt.Errorf("could not decode eth account hexstring : %w", err)
 	}
 	buf := bytes.NewBuffer(decoded)
-	_, err = a.readFrom(buf, true)
+	_, err = a.readFrom(buf, true) // todo@yao :false is ok
 	if err != nil {
 		return fmt.Errorf("unmarshaling JSON account : %w", err)
 	}

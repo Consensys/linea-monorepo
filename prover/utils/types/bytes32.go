@@ -157,9 +157,13 @@ func Bytes32FromHex(s string) Bytes32 {
 
 	var res Bytes32
 	copy(res[32-len(b):], b)
-	var f field.Element
-	if err := f.SetBytesCanonical(res[:]); err != nil {
-		utils.Panic("Invalid field element %v", err.Error())
+
+	padded := LeftPadded(res[:])
+	var f [8]field.Element
+	for i := 0; i < 8; i++ {
+		if err := f[i].SetBytesCanonical(padded[4*i : 4*i+4]); err != nil {
+			utils.Panic("Invalid field element %v", err.Error())
+		}
 	}
 	return res
 }
