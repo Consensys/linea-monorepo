@@ -554,6 +554,30 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(nodeOperatorFeesPaid).eq(operatorFees);
       expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - operatorFees);
     });
+    it("If vault balance > current fees, feesPaid > availableYield and disburseFee fails, succeed with 0 fees paid", async () => {
+      // Arrange - Set up Vault balance
+      const vaultBalance = ONE_ETHER * 2n;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
+      // Arrange - Set up current fees
+      const operatorFees = ONE_ETHER;
+      await mockDashboard.setAccruedFeeReturn(operatorFees);
+      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
+      // Arrange - Setup revert
+      await mockDashboard.setIsDisburseFeeRevert(true);
+      // Arrange - Get before figures
+      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
+
+      // Act
+      const amountAvailable = 1n;
+      const nodeOperatorFeesPaid = await yieldManager
+        .connect(securityCouncil)
+        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
+
+      // Assert
+      expect(nodeOperatorFeesPaid).eq(0n);
+      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore);
+    });
   });
 
   describe("reportYield", () => {

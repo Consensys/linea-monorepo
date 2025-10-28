@@ -87,7 +87,16 @@ contract MockDashboard is IDashboard {
     return accruedFeeReturn;
   }
 
+  bool public isDisburseFeeRevert;
+
+  function setIsDisburseFeeRevert(bool _val) public {
+    isDisburseFeeRevert = _val;
+  }
+
   function disburseFee() external override {
+    if (isDisburseFeeRevert) {
+      revert("revert for test");
+    }
     if (isDisburseFeeWithdrawingFromVault) {
       ICommonVaultOperations vault = ICommonVaultOperations(stakingVaultReturn);
       vault.withdraw(address(0), accruedFeeReturn);
