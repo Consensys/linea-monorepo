@@ -24,8 +24,10 @@ type Hasher struct {
 	maxValue types.Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
-	state  field.Octuplet
-	buffer []field.Element // data to hash
+	state field.Octuplet
+
+	// data to hash
+	buffer []field.Element
 }
 
 // Reset clears the buffer, and reset state to iv
@@ -109,23 +111,6 @@ func Poseidon2() *Hasher {
 		state:       field.Octuplet{},
 		buffer:      make([]field.Element, 0),
 	}
-}
-
-// Poseidon2Sponge returns a Poseidon2 hash of an array of field elements
-func Poseidon2Sponge(x []field.Element) (newState field.Octuplet) {
-	var state, xBlock field.Octuplet
-	for len(x) != 0 {
-		if len(x) < blockSize {
-			padded := make([]field.Element, blockSize)
-			copy(padded[blockSize-len(x):], x) // left-padding
-			x = padded
-		}
-
-		copy(xBlock[:], x[:])
-		state = vortex.CompressPoseidon2(state, xBlock)
-		x = x[blockSize:]
-	}
-	return state
 }
 
 // GnarkBlockCompression applies the MiMC permutation to a given block within
