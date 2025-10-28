@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Logger as LoggerClass, LoggerOptions, createLogger, format, transports } from "winston";
-import { serialize, isString } from "@consensys/linea-sdk";
 import { ILogger } from "./ILogger";
+import { isString, serialize } from "../utils/string";
 
 export class WinstonLogger implements ILogger {
   private logger: LoggerClass;

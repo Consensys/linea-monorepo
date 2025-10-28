@@ -34,7 +34,6 @@
     "tsup": "catalog:"
   },
   "dependencies": {
-    "@consensys/linea-sdk": "workspace:*",
     "axios": "catalog:",
     "express": "catalog:",
     "neverthrow": "catalog:",

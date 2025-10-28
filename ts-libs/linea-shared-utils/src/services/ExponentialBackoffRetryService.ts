@@ -1,6 +1,6 @@
 import { IRetryService } from "../core/services/IRetryService";
 import { ILogger } from "../logging/ILogger";
-import { wait } from "@consensys/linea-sdk";
+import { wait } from "../utils/time";
 
 export class ExponentialBackoffRetryService implements IRetryService {
   constructor(

@@ -123,7 +123,6 @@ jobs:
               - 'linea-besu-package/scripts/assemble-packages.sh'
             native-yield-automation-service:
               - 'native-yield-operations/automation-service/**'
-              - 'sdk/sdk-core/**'
               - 'ts-libs/linea-shared-utils/**'
               - '.github/workflows/native-yield-automation-service-*.yml'
 
