@@ -102,13 +102,12 @@ func (a Account) MarshalJSON() ([]byte, error) {
 }
 
 func (a *Account) UnmarshalJSON(data []byte) error {
-	fmt.Printf("UnmarshalJSON account data: %s\n", string(data))
 	decoded, err := DecodeQuotedHexString(data)
 	if err != nil {
 		return fmt.Errorf("could not decode eth account hexstring : %w", err)
 	}
 	buf := bytes.NewBuffer(decoded)
-	_, err = a.readFrom(buf, true) // todo@yao :false is ok
+	_, err = a.readFrom(buf, true)
 	if err != nil {
 		return fmt.Errorf("unmarshaling JSON account : %w", err)
 	}

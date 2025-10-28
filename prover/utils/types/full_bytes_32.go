@@ -63,7 +63,6 @@ func (f FullBytes32) MarshalJSON() ([]byte, error) {
 // Unmarshal an ethereum address from JSON format. The expected format is an hex
 // string.
 func (f *FullBytes32) UnmarshalJSON(b []byte) error {
-
 	decoded, err := DecodeQuotedHexString(b)
 	if err != nil {
 		return fmt.Errorf(
