@@ -1,7 +1,10 @@
 ---
 name: Epic/Major Feature
 about: File an Epic
-assignees: 'dfox-consensys,julien-marchand'
+title: ''
+labels: ''
+assignees: dfox-consensys, julien-marchand
+
 ---
 
 ## Description
@@ -27,4 +30,3 @@ This section should indicate what value we are receiving from it.
 
 ## Documentation & communication
 - [ ] What needs to be documented for this feature?
- 

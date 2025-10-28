@@ -2,6 +2,7 @@
 name: Feature request
 about: File a feature request
 title: ''
+labels: ''
 assignees: ''
 
 ---
@@ -26,4 +27,4 @@ This section should indicate what value we are receiving from it.
 ## Remember to
  - [ ] Add the `documentation` label in case there is an impact on the documentation
  - [ ] Add `priority` and `team` labels
- - [ ] Add Task for updating the Runbook or adding/updating existing metrics and alerts. 
+ - [ ] Add Task for updating the Runbook or adding/updating existing metrics and alerts.
