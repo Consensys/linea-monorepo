@@ -17,6 +17,7 @@ import { Agent } from "https";
 import { GetCostAndUsageCommandInput } from "@aws-sdk/client-cost-explorer";
 import { formatInTimeZone } from "date-fns-tz";
 import { addDays } from "date-fns";
+import { Result } from "neverthrow";
 import { computeInvoicePeriod, InvoicePeriod } from "../utils/submit-invoice/time.js";
 import { generateQueryParameters, getDuneClient, runDuneQuery } from "../utils/common/dune.js";
 import { estimateTransactionGas, sendTransaction } from "../utils/common/transactions.js";
@@ -28,7 +29,7 @@ import { computeSubmitInvoiceCalldata, getLastInvoiceDate } from "../utils/submi
 import { validateUrl } from "../utils/common/validation.js";
 import { address, hexString } from "../utils/common/custom-flags.js";
 import { awsCostsApiFilters } from "../utils/submit-invoice/custom-flags.js";
-import { Result } from "neverthrow";
+import { fetchEthereumPrice } from "../utils/common/coingecko.js";
 
 export default class SubmitInvoice extends Command {
   static examples = [
@@ -48,6 +49,8 @@ export default class SubmitInvoice extends Command {
       --web3SignerTrustedStorePath=/path/to/ca.p12
       --web3SignerTrustedStorePassphrase=yourTrustedStorePassphrase
       --awsCostsApiFilters='{"Granularity":"DAILY","Metrics":["AmortizedCost"],"GroupBy":[]}'
+      --coingeckoApiBaseUrl=https://api.coingecko.com/api/v3
+      --coingeckoApiKey=YOUR_COINGECKO_KEY
     `,
     // Dry run
     `<%= config.bin %> <%= command.id %>
@@ -66,6 +69,8 @@ export default class SubmitInvoice extends Command {
       --web3SignerTrustedStorePath=/path/to/ca.p12
       --web3SignerTrustedStorePassphrase=yourTrustedStorePassphrase
       --awsCostsApiFilters='{"Granularity":"DAILY","Metrics":["AmortizedCost"],"GroupBy":[]}'
+      --coingeckoApiBaseUrl=https://api.coingecko.com/api/v3
+      --coingeckoApiKey=YOUR_COINGECKO_KEY
       --dryRun
     `,
   ];
@@ -102,13 +107,13 @@ export default class SubmitInvoice extends Command {
     rpcUrl: Flags.string({
       description: "Blockchain RPC URL",
       required: true,
-      parse: async (input) => validateUrl("blockchain-rpc-url", input, ["http:", "https:"]),
+      parse: async (input) => validateUrl("rpcUrl", input, ["http:", "https:"]),
       env: "SUBMIT_INVOICE_BLOCKCHAIN_RPC_URL",
     }),
     web3SignerUrl: Flags.string({
       description: "Web3 Signer URL",
       required: true,
-      parse: async (input) => validateUrl("web3-signer-url", input, ["http:", "https:"]),
+      parse: async (input) => validateUrl("web3SignerUrl", input, ["http:", "https:"]),
       env: "SUBMIT_INVOICE_WEB3_SIGNER_URL",
     }),
     web3SignerPublicKey: hexString({
@@ -175,6 +180,17 @@ export default class SubmitInvoice extends Command {
       required: true,
       env: "SUBMIT_INVOICE_AWS_COSTS_API_FILTERS",
     }),
+    coingeckoApiBaseUrl: Flags.string({
+      description: "CoinGecko API Base URL",
+      required: true,
+      parse: async (input) => validateUrl("coingeckoApiBaseUrl", input, ["http:", "https:"]),
+      env: "SUBMIT_INVOICE_COINGECKO_API_BASE_URL",
+    }),
+    coingeckoApiKey: Flags.string({
+      description: "CoinGecko API Key",
+      required: true,
+      env: "SUBMIT_INVOICE_COINGECKO_API_KEY",
+    }),
   };
 
   public async run(): Promise<void> {
@@ -196,6 +212,8 @@ export default class SubmitInvoice extends Command {
       awsCostsApiFilters,
       duneApiKey,
       duneQueryId,
+      coingeckoApiBaseUrl,
+      coingeckoApiKey,
     } = flags;
 
     const client = createPublicClient({
@@ -238,8 +256,14 @@ export default class SubmitInvoice extends Command {
         TOTAL COSTS COMPUTATION
      ******************************/
 
-    // TODO: convert awsCostsInUsd to ETH using some oracle or API
-    const awsCostsInEth = awsCostsInUsd;
+    const {
+      ethereum: { usd: etherPriceInUsd },
+    } = this.unwrapOrError(
+      await fetchEthereumPrice(coingeckoApiBaseUrl, coingeckoApiKey),
+      "Failed to fetch Ethereum price from CoinGecko",
+    );
+
+    const awsCostsInEth = awsCostsInUsd / etherPriceInUsd;
     const totalCostsInEth = parseEther((awsCostsInEth + onChainCostsInEth).toString());
 
     if (totalCostsInEth === 0n) {
