@@ -832,11 +832,11 @@ func DefineNumberOfBytesConstraints(comp *wizard.CompiledIOP, edc *ExecutionData
 }
 
 // ProjectionQueries computes projection queries to each arithmetization fetcher:
-// fetch.TimestampFetcher, fetch.BlockTxnMetadata, fetch.TxnDataFetcher and fetch.RlpTxnFetcher.
+// fetch.BlockDataFetcher, fetch.BlockTxnMetadata, fetch.TxnDataFetcher and fetch.RlpTxnFetcher.
 func ProjectionQueries(comp *wizard.CompiledIOP,
 	edc *ExecutionDataCollector,
 	name string,
-	timestamps *fetch.TimestampFetcher,
+	timestamps *fetch.BlockDataFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
@@ -1245,7 +1245,7 @@ func DefineIsActiveConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 	edc *ExecutionDataCollector,
 	name string,
-	timestamps *fetch.TimestampFetcher,
+	timestamps *fetch.BlockDataFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
@@ -1290,11 +1290,11 @@ func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 }
 
 // AssignExecutionDataCollector assigns the data in the ExecutionDataCollector, using
-// the arithmetizationfetchers fetch.TimestampFetcher, fetch.BlockTxnMetadata,
+// the arithmetizationfetchers fetch.BlockDataFetcher, fetch.BlockTxnMetadata,
 // fetch.TxnDataFetcher, and fetch.RlpTxnFetcher.
 func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 	edc *ExecutionDataCollector,
-	timestamps *fetch.TimestampFetcher,
+	timestamps *fetch.BlockDataFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher,

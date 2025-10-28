@@ -45,7 +45,7 @@ var (
 type PublicInput struct {
 	Inputs             InputModules
 	Aux                AuxiliaryModules
-	TimestampFetcher   *fetch.TimestampFetcher
+	BlockDataFetcher   *fetch.BlockDataFetcher
 	RootHashFetcher    *fetch.RootHashFetcher
 	RollingHashFetcher *logs.RollingSelector
 	LogHasher          logs.LogHasher
@@ -159,8 +159,8 @@ func newPublicInput(
 	}
 
 	// Timestamps
-	timestampFetcher := fetch.NewTimestampFetcher(comp, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
-	fetch.DefineTimestampFetcher(comp, timestampFetcher, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
+	blockDataFetcher := fetch.NewBlockDataFetcher(comp, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
+	fetch.DefineBlockDataFetcher(comp, blockDataFetcher, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
 
 	// Logs: Fetchers, Selectors and Hasher
 	fetchedL2L1 := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_L2L1LOGS")
@@ -197,7 +197,7 @@ func newPublicInput(
 	limbColSize := edc.GetSummarySize(inp.TxnData, inp.RlpTxn)
 	limbColSize = 2 * limbColSize // we need to artificially blow up the column size by 2, or padding will fail
 	execDataCollector := edc.NewExecutionDataCollector(comp, "EXECUTION_DATA_COLLECTOR", limbColSize)
-	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", timestampFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
+	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
 
 	// ExecutionDataCollector: Padding
 	importInp := importpad.ImportAndPadInputs{
@@ -232,7 +232,7 @@ func newPublicInput(
 	mimcHasher.DefineHasher(comp, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
 	publicInput := PublicInput{
-		TimestampFetcher:   timestampFetcher,
+		BlockDataFetcher:   blockDataFetcher,
 		RootHashFetcher:    rootHashFetcher,
 		RollingHashFetcher: rollingSelector,
 		LogHasher:          logHasherL2l1,
@@ -270,7 +270,7 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	)
 
 	// assign the timestamp module
-	fetch.AssignTimestampFetcher(run, pub.TimestampFetcher, inp.BlockData)
+	fetch.AssignBlockDataFetcher(run, pub.BlockDataFetcher, inp.BlockData)
 	// assign the log modules
 	aux.LogSelectors.Assign(run, l2BridgeAddress)
 	logs.AssignExtractedData(run, inp.LogCols, aux.LogSelectors, aux.FetchedL2L1, logs.L2L1)
@@ -285,7 +285,7 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignTxnDataFetcher(run, aux.TxnDataFetcher, inp.TxnData)
 	fetch.AssignRlpTxnFetcher(run, &aux.RlpTxnFetcher, inp.RlpTxn)
 	// assign the ExecutionDataCollector
-	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.TimestampFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
+	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.BlockDataFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
 	aux.ExecDataCollectorPadding.Run(run)
 	aux.ExecDataCollectorPacking.Run(run)
 	pub.ExecMiMCHasher.AssignHasher(run)
@@ -316,10 +316,10 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		L2MessageHash:                createNewLocalOpening(pi.LogHasher.HashFinal),
 		InitialStateRootHash:         createNewLocalOpening(pi.RootHashFetcher.First),
 		FinalStateRootHash:           createNewLocalOpening(pi.RootHashFetcher.Last),
-		InitialBlockNumber:           createNewLocalOpening(pi.TimestampFetcher.FirstBlockID),
-		FinalBlockNumber:             createNewLocalOpening(pi.TimestampFetcher.LastBlockID),
-		InitialBlockTimestamp:        createNewLocalOpening(pi.TimestampFetcher.First),
-		FinalBlockTimestamp:          createNewLocalOpening(pi.TimestampFetcher.Last),
+		InitialBlockNumber:           createNewLocalOpening(pi.BlockDataFetcher.FirstBlockID),
+		FinalBlockNumber:             createNewLocalOpening(pi.BlockDataFetcher.LastBlockID),
+		InitialBlockTimestamp:        createNewLocalOpening(pi.BlockDataFetcher.First),
+		FinalBlockTimestamp:          createNewLocalOpening(pi.BlockDataFetcher.Last),
 		FirstRollingHashUpdate:       initialRollingHash,
 		LastRollingHashUpdate:        finalRollingHash,
 		FirstRollingHashUpdateNumber: createNewLocalOpening(pi.RollingHashFetcher.FirstMessageNo),
