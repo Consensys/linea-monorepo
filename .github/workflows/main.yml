@@ -238,7 +238,7 @@ jobs:
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
-      linea_besu_package_changed: ${{ needs.filter-commit-changes.outputs.linea-besu-package }}
+      linea_besu_package_changed: "false" # dockerhub image push will be on linea-besu-package-release when push main
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
