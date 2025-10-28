@@ -107,10 +107,7 @@ func WriteInt64On64Bytes(w io.Writer, x int64) (int64, error) {
 
 func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
 	var buf [64]byte
-
-	// Read exactly 64 bytes. io.ReadFull handles partial reads and EOF
-	// correctly, returning io.ErrUnexpectedEOF if 64 bytes aren't available.
-	n, err := io.ReadFull(r, buf[:])
+	n, err := r.Read(buf[:])
 	if err != nil {
 		return 0, int64(n), fmt.Errorf("could not read 64 bytes: %w", err)
 	}
