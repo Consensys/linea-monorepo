@@ -11,6 +11,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.evm.log.LogTopic;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
@@ -75,14 +76,18 @@ public class TransactionEventSelectorTest {
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
     Mockito.when(log.getLogger()).thenReturn(address);
-    Mockito.when(transactionEventFilter.matches(log)).thenReturn(false);
+    LogTopic logTopic = LogTopic.fromHexString("0x01");
+    Mockito.when(log.getTopics()).thenReturn(List.of(logTopic));
+    Mockito.when(transactionEventFilter.matches(Mockito.eq(address), Mockito.any(LogTopic[].class)))
+        .thenReturn(false);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
     Mockito.verify(evaluationContext).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
-    Mockito.verify(transactionEventFilter).matches(log);
+    Mockito.verify(transactionEventFilter)
+        .matches(Mockito.eq(address), Mockito.any(LogTopic[].class));
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(TransactionSelectionResult.SELECTED, actualResult);
@@ -101,14 +106,18 @@ public class TransactionEventSelectorTest {
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
     Mockito.when(log.getLogger()).thenReturn(address);
-    Mockito.when(transactionEventFilter.matches(log)).thenReturn(true);
+    LogTopic logTopic = LogTopic.fromHexString("0x01");
+    Mockito.when(log.getTopics()).thenReturn(List.of(logTopic));
+    Mockito.when(transactionEventFilter.matches(Mockito.eq(address), Mockito.any(LogTopic[].class)))
+        .thenReturn(true);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
     Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
-    Mockito.verify(transactionEventFilter).matches(log);
+    Mockito.verify(transactionEventFilter)
+        .matches(Mockito.eq(address), Mockito.any(LogTopic[].class));
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(
@@ -152,14 +161,18 @@ public class TransactionEventSelectorTest {
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
     Mockito.when(log.getLogger()).thenReturn(address);
-    Mockito.when(transactionEventFilter.matches(log)).thenReturn(false);
+    LogTopic logTopic = LogTopic.fromHexString("0x01");
+    Mockito.when(log.getTopics()).thenReturn(List.of(logTopic));
+    Mockito.when(transactionEventFilter.matches(Mockito.eq(address), Mockito.any(LogTopic[].class)))
+        .thenReturn(false);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
     Mockito.verify(evaluationContext).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
-    Mockito.verify(transactionEventFilter).matches(log);
+    Mockito.verify(transactionEventFilter)
+        .matches(Mockito.eq(address), Mockito.any(LogTopic[].class));
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(TransactionSelectionResult.SELECTED, actualResult);
@@ -178,14 +191,18 @@ public class TransactionEventSelectorTest {
     Log log = Mockito.mock(Log.class);
     Mockito.when(processingResult.getLogs()).thenReturn(List.of(log));
     Mockito.when(log.getLogger()).thenReturn(address);
-    Mockito.when(transactionEventFilter.matches(log)).thenReturn(true);
+    LogTopic logTopic = LogTopic.fromHexString("0x01");
+    Mockito.when(log.getTopics()).thenReturn(List.of(logTopic));
+    Mockito.when(transactionEventFilter.matches(Mockito.eq(address), Mockito.any(LogTopic[].class)))
+        .thenReturn(true);
 
     TransactionSelectionResult actualResult =
         selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
 
     Mockito.verify(evaluationContext, Mockito.times(2)).getPendingTransaction();
     Mockito.verify(processingResult).getLogs();
-    Mockito.verify(transactionEventFilter).matches(log);
+    Mockito.verify(transactionEventFilter)
+        .matches(Mockito.eq(address), Mockito.any(LogTopic[].class));
     Mockito.verifyNoMoreInteractions(evaluationContext, processingResult, transactionEventFilter);
 
     Assertions.assertEquals(

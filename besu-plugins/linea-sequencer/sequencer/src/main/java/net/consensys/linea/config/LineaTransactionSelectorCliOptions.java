@@ -23,6 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import net.consensys.linea.plugins.LineaCliOptions;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.log.LogTopic;
 import picocli.CommandLine;
@@ -214,10 +216,10 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         var eventFilter =
             new TransactionEventFilter(
                 address,
-                parts[1].isEmpty() ? null : LogTopic.fromHexString(parts[1]),
-                parts[2].isEmpty() ? null : LogTopic.fromHexString(parts[2]),
-                parts[3].isEmpty() ? null : LogTopic.fromHexString(parts[3]),
-                parts[4].isEmpty() ? null : LogTopic.fromHexString(parts[4]));
+                parts[1].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[1], Bytes32.SIZE)),
+                parts[2].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[2], Bytes32.SIZE)),
+                parts[3].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[3], Bytes32.SIZE)),
+                parts[4].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[4], Bytes32.SIZE)));
         eventFilters.putIfAbsent(address, new HashSet<>()).add(eventFilter);
       }
       return eventFilters;
