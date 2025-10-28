@@ -100,7 +100,7 @@ func WriteInt64On64Bytes(w io.Writer, x int64) (int64, error) {
 
 	n, err := w.Write(res[:])
 	if err != nil {
-		return int64(n), fmt.Errorf("could not write 16 bytes into Writer : %w", err)
+		return int64(n), fmt.Errorf("could not write 64 bytes into Writer : %w", err)
 	}
 	return int64(n), nil
 }
@@ -108,14 +108,14 @@ func WriteInt64On64Bytes(w io.Writer, x int64) (int64, error) {
 func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
 	var buf [64]byte
 
-	// Read exactly 16 bytes. io.ReadFull handles partial reads and EOF
-	// correctly, returning io.ErrUnexpectedEOF if 16 bytes aren't available.
+	// Read exactly 64 bytes. io.ReadFull handles partial reads and EOF
+	// correctly, returning io.ErrUnexpectedEOF if 64 bytes aren't available.
 	n, err := io.ReadFull(r, buf[:])
 	if err != nil {
-		return 0, int64(n), fmt.Errorf("could not read 16 bytes: %w", err)
+		return 0, int64(n), fmt.Errorf("could not read 64 bytes: %w", err)
 	}
 
-	// De-interleave the data from the 16-byte buffer into an 8-byte buffer
+	// De-interleave the data from the 64-byte buffer into an 8-byte buffer
 	data := RemovePadding(Remove48Padding(buf[:]))
 
 	// Convert the 8 data bytes back to a uint64
@@ -125,7 +125,7 @@ func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
 		panic("we are only reading 8 bits so this should not overflow")
 	}
 	xU64 &= 0x7fffffffffffffff  // TODO delete this if negative numbers are allowed
-	return int64(xU64), 16, err // #nosec G115 -- above line precludes overflowing
+	return int64(xU64), 64, err // #nosec G115 -- above line precludes overflowing
 }
 
 // Big int are assumed to fit on 64 bytes and are written as a single
