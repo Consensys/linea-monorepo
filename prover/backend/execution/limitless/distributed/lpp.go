@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
@@ -83,11 +82,10 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 
 	logrus.Infof("Running the LPP-prover for witness module name=%s at index=%d", witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
-	run := compiledLPP.ProveSegment(witnessLPP)
+	_proofLPP := compiledLPP.ProveSegment(witnessLPP)
 
 	logrus.Infof("Finished running the LPP-prover for witness module=%v at index=%d", witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
-	_proofLPP := recursion.ExtractWitness(run)
 	if err := serialization.StoreToDisk(proofLPPFile, _proofLPP, true); err != nil {
 		return fmt.Errorf("could not store LPP proof: %w", err)
 	}

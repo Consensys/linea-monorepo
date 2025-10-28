@@ -7,7 +7,6 @@ import (
 	"runtime/debug"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
@@ -44,15 +43,12 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 	}
 
 	var (
-		glProofFileName   = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
-		proofGLFile       = path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", string(witnessGL.ModuleName), config.RequestsFromSubDir, glProofFileName)
-		LPPCommitFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-lpp-commit.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
-		LPPCommitFile     = path.Join(cfg.ExecutionLimitless.CommitsDir, string(witnessGL.ModuleName), config.RequestsFromSubDir, LPPCommitFileName)
+		glProofFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessGL.ModuleIndex)
+		proofGLFile     = path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", string(witnessGL.ModuleName), config.RequestsFromSubDir, glProofFileName)
 	)
 
 	// Incase the prev. process was interrupted, we clear the previous corrupted files (if it exists)
 	_ = os.Remove(proofGLFile)
-	_ = os.Remove(LPPCommitFile)
 
 	logrus.Infof("Running the GL-prover for witness module name=%s at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
@@ -63,7 +59,7 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 
 	logrus.Infof("Loaded the compiled GL for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	run := compiledGL.ProveSegment(witnessGL)
+	_proofGL := compiledGL.ProveSegment(witnessGL)
 
 	logrus.Infof("Finished running the GL-prover for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
@@ -71,19 +67,11 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 	// in the conglomeration prover, we have a watcher for all LPP commitments to get shared randomness and
 	// hence the presence of LPP commitment files signal that GL proof files also exist. We want to make sure to
 	// avoid partial writes - the case where only one file is written.
-	_proofGL := recursion.ExtractWitness(run)
 	if err := serialization.StoreToDisk(proofGLFile, _proofGL, true); err != nil {
 		return fmt.Errorf("could not store GL proof: %w", err)
 	}
 
 	logrus.Infof("Generated GL proof for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
-
-	_lppCommit := distributed.GetLppCommitmentFromRuntime(run)
-	if err := serialization.StoreToDisk(LPPCommitFile, _lppCommit, true); err != nil {
-		return fmt.Errorf("could not store GL proof: %w", err)
-	}
-
-	logrus.Infof("Generated LPP commitment for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
 	return nil
 }
