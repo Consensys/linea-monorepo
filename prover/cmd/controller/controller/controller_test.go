@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"text/template"
@@ -156,358 +157,6 @@ func TestRunCommand(t *testing.T) {
 
 }
 
-func TestFileWatcherM(t *testing.T) {
-
-	confM, _ := setupFsTest(t)
-
-	// Create a list of files
-	eFrom := confM.Execution.DirFrom
-	cFrom := confM.BlobDecompression.DirFrom
-	aFrom := confM.Aggregation.DirFrom
-
-	exitCode := 0 // we are not interesting in the exit code here
-
-	// The jobs, declared in the order in which they are expected to be found
-
-	// Name of the expected inprogress files
-	expectedFNames := []struct {
-		FName string
-		Skip  bool
-	}{
-		{
-			FName: createTestInputFile(eFrom(), 0, 1, execJob, exitCode),
-		},
-		{
-			Skip:  true, // wrong directory
-			FName: createTestInputFile(eFrom(), 0, 1, aggregationJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(cFrom(), 0, 1, compressionJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(eFrom(), 1, 2, execJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(cFrom(), 1, 2, compressionJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(aFrom(), 0, 2, aggregationJob, exitCode),
-		},
-		{
-			Skip:  true, // for large only
-			FName: createTestInputFile(eFrom(), 2, 4, execJob, exitCode, forLarge),
-		},
-		{
-			FName: createTestInputFile(eFrom(), 4, 5, execJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(cFrom(), 2, 5, compressionJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(aFrom(), 2, 5, aggregationJob, exitCode),
-		},
-	}
-
-	fw := NewFsWatcher(confM)
-
-	for _, f := range expectedFNames {
-		if f.Skip {
-			continue
-		}
-		found := fw.GetBest()
-		if assert.NotNil(t, found, "did not find the job") {
-			assert.Equal(t, f.FName, found.OriginalFile)
-		}
-	}
-	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
-}
-
-func TestFileWatcherL(t *testing.T) {
-
-	_, confL := setupFsTest(t)
-
-	// Create a list of files
-	eFrom := confL.Execution.DirFrom()
-
-	exitCode := 0 // we are not interesting in the exit code here
-
-	// The jobs, declared in the order in which they are expected to be found
-
-	// Name of the expected inprogress files
-	expectedFNames := []struct {
-		FName string
-		Skip  bool
-	}{
-		{
-			Skip:  true, // not large
-			FName: createTestInputFile(eFrom, 0, 1, execJob, exitCode),
-		},
-		{
-			Skip:  true, // wrong directory
-			FName: createTestInputFile(eFrom, 0, 1, aggregationJob, exitCode),
-		},
-		{
-			FName: createTestInputFile(eFrom, 1, 2, execJob, exitCode, forLarge),
-		},
-		{
-			FName: createTestInputFile(eFrom, 2, 4, execJob, exitCode, forLarge),
-		},
-		{
-			Skip:  true, // not large
-			FName: createTestInputFile(eFrom, 4, 5, execJob, exitCode),
-		},
-		{
-			Skip:  true, // wrong dir
-			FName: createTestInputFile(eFrom, 2, 5, compressionJob, exitCode),
-		},
-	}
-
-	fw := NewFsWatcher(confL)
-
-	for _, f := range expectedFNames {
-		if f.Skip {
-			continue
-		}
-		found := fw.GetBest()
-		if assert.NotNil(t, found, "did not find the job") {
-			assert.Equal(t, f.FName, found.OriginalFile)
-		}
-	}
-	assert.Nil(t, fw.GetBest(), "the queue should be empty now")
-}
-
-func setupFsTest(t *testing.T) (confM, confL *config.Config) {
-
-	// Testdir is going to contain the whole test directory
-	testDir := t.TempDir()
-
-	const (
-		dirlogs     = "logs"
-		proverM     = "prover-full-M"
-		proverL     = "prover-full-L"
-		execution   = "execution"
-		compression = "compression"
-		aggregation = "aggregation"
-	)
-
-	// Create a configuration using temporary directories
-	cmd := `
-/bin/sh {{.InFile}}
-CODE=$?
-if [ $CODE -eq 0 ]; then
-	touch {{.OutFile}}
-fi
-exit $CODE
-`
-	cmdLarge := `
-	/bin/sh {{.InFile}}
-	CODE=$?
-	CODE=$(($CODE - 12))
-	if [ $CODE -eq 0 ]; then
-		touch {{.OutFile}}
-	fi
-	exit $CODE
-	`
-
-	cmdLargeInternal := `
-/bin/sh {{.InFile}}
-CODE=$?
-CODE=$(($CODE - 10))
-if [ $CODE -eq 0 ]; then
-	touch {{.OutFile}}
-fi
-exit $CODE
-`
-
-	// For a prover M
-	confM = &config.Config{
-		Version: "0.2.4",
-
-		Controller: config.Controller{
-			EnableExecution:            true,
-			EnableBlobDecompression:    true,
-			EnableAggregation:          true,
-			LocalID:                    proverM,
-			Prometheus:                 config.Prometheus{Enabled: false},
-			RetryDelays:                []int{0, 1},
-			WorkerCmd:                  cmd,
-			WorkerCmdLarge:             cmdLargeInternal,
-			DeferToOtherLargeCodes:     []int{12, 137},
-			RetryLocallyWithLargeCodes: []int{10, 77},
-		},
-
-		Execution: config.Execution{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, execution),
-			},
-		},
-		BlobDecompression: config.BlobDecompression{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, compression),
-			},
-		},
-		Aggregation: config.Aggregation{
-			WithRequestDir: config.WithRequestDir{
-				RequestsRootDir: path.Join(testDir, proverM, aggregation),
-			},
-		},
-	}
-
-	_confL := *confM
-	confL = &_confL
-	confL.Controller.LocalID = proverL
-	confL.Controller.WorkerCmdLarge = cmdLarge
-	confL.Execution.CanRunFullLarge = true
-
-	// confL = &config.GlobalConfig{
-	// 	Version: "0.2.4",
-
-	// 	Controller: config.Controller{
-	// 		EnableExecution:            true,
-	// 		EnableBlobDecompression:    false,
-	// 		EnableAggregation:          false,
-	// 		LocalID:                    proverL,
-	// 		Prometheus:                 config.Prometheus{Enabled: false},
-	// 		RetryDelays:                []int{0, 1},
-	// 		WorkerCmd:                  cmdLarge,
-	// 		WorkerCmdLarge:             cmdLarge,
-	// 		DeferToOtherLargeCodes:     []int{12, 137},
-	// 		RetryLocallyWithLargeCodes: []int{10, 77},
-	// 	},
-	// 	Execution: config.Execution{
-	// 		WithRequestDir: config.WithRequestDir{
-	// 			RequestsRootDir: path.Join(testDir, proverM, execution),
-	// 		},
-	// 		CanRunFullLarge: true,
-	// 	},
-	// 	BlobDecompression: config.BlobDecompression{
-	// 		WithRequestDir: config.WithRequestDir{
-	// 			RequestsRootDir: path.Join(testDir, proverM, compression),
-	// 		},
-	// 	},
-	// 	Aggregation: config.Aggregation{
-	// 		WithRequestDir: config.WithRequestDir{
-	// 			RequestsRootDir: path.Join(testDir, proverM, aggregation),
-	// 		},
-	// 	},
-	// }
-
-	// ensure the template are parsed
-	confM.Controller.WorkerCmdTmpl = template.Must(template.New("worker").Parse(confM.Controller.WorkerCmd))
-	confM.Controller.WorkerCmdLargeTmpl = template.Must(template.New("worker-large").Parse(confM.Controller.WorkerCmdLarge))
-	confL.Controller.WorkerCmdTmpl = template.Must(template.New("worker").Parse(confL.Controller.WorkerCmd))
-	confL.Controller.WorkerCmdLargeTmpl = template.Must(template.New("worker-large").Parse(confL.Controller.WorkerCmdLarge))
-
-	// Initialize the dirs (and give them all permissions). They will be
-	// wiped out after the test anyway.
-	permCode := fs.FileMode(0777)
-	err := errors.Join(
-		os.MkdirAll(confM.Execution.DirFrom(), permCode),
-		os.MkdirAll(confM.Execution.DirTo(), permCode),
-		os.MkdirAll(confM.Execution.DirDone(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirFrom(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirTo(), permCode),
-		os.MkdirAll(confM.BlobDecompression.DirDone(), permCode),
-		os.MkdirAll(confM.Aggregation.DirFrom(), permCode),
-		os.MkdirAll(confM.Aggregation.DirTo(), permCode),
-		os.MkdirAll(confM.Aggregation.DirDone(), permCode),
-	)
-
-	if err != nil {
-		t.Fatalf("could not create the temporary directories")
-	}
-
-	return confM, confL
-}
-
-const (
-	execJob int = iota
-	compressionJob
-	aggregationJob
-	forLarge bool = true
-)
-
-func createTestInputFile(
-	dirfrom string,
-	start, end, jobType, exitWith int,
-	large ...bool,
-) (fname string) {
-
-	// The filenames are expected to match the regexp pattern that we have in
-	// the job definition.
-	fmtString := ""
-	switch jobType {
-	case execJob:
-		fmtString = "%v-%v-etv0.1.2-stv1.2.3-getZkProof.json"
-	case compressionJob:
-		fmtString = "%v-%v-bcv0.1.2-ccv0.1.2-getZkBlobCompressionProof.json"
-	case aggregationJob:
-		fmtString = "%v-%v-deadbeef57-getZkAggregatedProof.json"
-	default:
-		panic("incorrect job type")
-	}
-
-	filename := fmt.Sprintf(fmtString, start, end)
-	if len(large) > 0 && large[0] {
-		filename += ".large"
-	}
-	f, err := os.Create(path.Join(dirfrom, filename))
-	if err != nil {
-		panic(err)
-	}
-
-	// If called (with the test configuration (i.e. with sh), the file will
-	// immediately exit with the provided error code)
-	f.WriteString(fmt.Sprintf("#!/bin/sh\nexit %v", exitWith))
-	f.Close()
-
-	return filename
-}
-
-func TestSpotInstanceMode(t *testing.T) {
-
-	t.Skipf("this breaks the CI pipeline")
-
-	var (
-		cfg    = setupFsTestSpotInstance(t)
-		nbTest = 5
-	)
-
-	for i := 0; i < nbTest; i++ {
-		// Create the input file
-		createTestInputFile(cfg.Execution.DirFrom(), i, i, execJob, 0)
-	}
-
-	// This bit of code finds the current process with the goal of self-SIGTERMING
-	// a few seconds after we start the controller.
-	p, err := os.FindProcess(os.Getpid())
-	if err != nil {
-		panic("could not find the current process")
-	}
-
-	go runController(context.Background(), cfg)
-
-	// Wait for the controller to process 2 jobs and be in the middle of the
-	// 3rd job.
-	time.Sleep(5 * time.Second)
-
-	if err := p.Signal(os.Signal(syscall.SIGTERM)); err != nil {
-		panic("panic could not self-send a SIGTERM")
-	}
-
-	var (
-		contentFrom, eFrom = lsname(cfg.Execution.DirFrom())
-		contentDone, eDone = lsname(cfg.Execution.DirDone())
-	)
-
-	if eFrom != nil || eDone != nil {
-		t.Fatalf("could not list the directories: %v %v", eFrom, eDone)
-	}
-
-	assert.Len(t, contentFrom, 3)
-	assert.Len(t, contentDone, 2)
-}
-
 func setupFsTestSpotInstance(t *testing.T) (cfg *config.Config) {
 
 	// Testdir is going to contain the whole test directory
@@ -517,12 +166,11 @@ func setupFsTestSpotInstance(t *testing.T) (cfg *config.Config) {
 		Version: "0.2.4",
 
 		Controller: config.Controller{
-			SpotInstanceMode: true,
-			EnableExecution:  true,
-			LocalID:          "test-prover-id",
-			Prometheus:       config.Prometheus{Enabled: false},
-			RetryDelays:      []int{0, 1},
-			WorkerCmdTmpl:    template.Must(template.New("test-cmd").Parse("sleep 2")),
+			EnableExecution: true,
+			LocalID:         "test-prover-id",
+			Prometheus:      config.Prometheus{Enabled: false},
+			RetryDelays:     []int{0, 1},
+			WorkerCmdTmpl:   template.Must(template.New("test-cmd").Parse("sleep 2")),
 		},
 
 		Execution: config.Execution{
@@ -546,4 +194,267 @@ func setupFsTestSpotInstance(t *testing.T) (cfg *config.Config) {
 	}
 
 	return cfg
+}
+
+func TestSpotInstanceMode(t *testing.T) {
+	t.Skipf("this breaks the CI pipeline")
+
+	var (
+		cfg    = setupFsTestSpotInstance(t)
+		nbTest = 5
+	)
+
+	cfg.Controller.SpotInstanceReclaimTime = 5 // Ensure sleep after SIGUSR1 to receive SIGTERM
+
+	for i := 0; i < nbTest; i++ {
+		// Create the input file
+		createTestInputFile(cfg.Execution.DirFrom(), i, i, execJob, 0)
+	}
+
+	// This bit of code finds the current process with the goal of self-SIGTERMING
+	// a few seconds after we start the controller.
+	p, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		panic("could not find the current process")
+	}
+
+	done := make(chan struct{})
+	go func() {
+		runController(context.Background(), cfg)
+		close(done)
+	}()
+
+	// Wait for the controller to process 2 jobs and be in the middle of the
+	// 3rd job. Adjust based on ~2s per job.
+	time.Sleep(5 * time.Second)
+
+	if err := p.Signal(os.Signal(syscall.SIGUSR1)); err != nil {
+		panic("panic could not self-send a SIGUSR1")
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	if err := p.Signal(os.Signal(syscall.SIGTERM)); err != nil {
+		panic("panic could not self-send a SIGTERM")
+	}
+
+	// Wait for controller to exit
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("controller did not exit within timeout")
+	}
+
+	var (
+		contentFrom, eFrom = lsname(cfg.Execution.DirFrom())
+		contentDone, eDone = lsname(cfg.Execution.DirDone())
+	)
+
+	if eFrom != nil || eDone != nil {
+		t.Fatalf("could not list the directories: %v %v", eFrom, eDone)
+	}
+
+	assert.Len(t, contentFrom, 3)
+	assert.Len(t, contentDone, 2)
+}
+
+func TestRunDistController(t *testing.T) {
+	conf := setupFsTestLimitless(t)
+
+	// --- Bootstrap jobs (must live under Execution.RequestsRootDir/requests) ---
+	bsSucc := createLimitlessInputFile(
+		filepath.Join(conf.Execution.RequestsRootDir), // <- IMPORTANT: requests-root
+		"bootstrap",
+		101, 102, 0, "",
+	)
+	bsFail := createLimitlessInputFile(
+		filepath.Join(conf.Execution.RequestsRootDir),
+		"bootstrap",
+		103, 104, 77, "",
+	)
+
+	// --- Conglomeration jobs (metadata requests) ---
+	cgSucc := createLimitlessInputFile(
+		filepath.Join(conf.ExecutionLimitless.MetadataDir), "conglomeration",
+		201, 202, 0, "",
+	)
+	cgFail := createLimitlessInputFile(
+		filepath.Join(conf.ExecutionLimitless.MetadataDir), "conglomeration",
+		203, 204, 2, "",
+	)
+
+	// --- GL and LPP jobs for all modules ---
+	glSucc, glFail := []string{}, []string{}
+	lppSucc, lppFail := []string{}, []string{}
+
+	for _, mod := range config.ALL_MODULES {
+		glSucc = append(glSucc, createLimitlessInputFile(
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL"),
+			"gl", 300, 301, 0, mod,
+		))
+		glFail = append(glFail, createLimitlessInputFile(
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL"),
+			"gl", 302, 303, 137, mod,
+		))
+		lppSucc = append(lppSucc, createLimitlessInputFile(
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP"),
+			"lpp", 400, 401, 0, mod,
+		))
+		lppFail = append(lppFail, createLimitlessInputFile(
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP"),
+			"lpp", 402, 403, 137, mod,
+		))
+	}
+
+	// Run controller
+	ctx, stop := context.WithCancel(context.Background())
+	go runController(ctx, conf)
+	time.Sleep(4 * time.Second)
+	defer stop()
+
+	// --- Assertions ---
+
+	// Bootstrap: done files live under the requests-root requests-done
+	require.FileExists(t, filepath.Join(conf.Execution.RequestsRootDir, config.RequestsDoneSubDir, bsSucc+".success"))
+	require.FileExists(t, filepath.Join(conf.Execution.RequestsRootDir, config.RequestsDoneSubDir, bsFail+".failure.code_77"))
+
+	// Conglomeration (metadata) - these go to metadata/requests-done
+	require.FileExists(t, filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir, cgSucc+".success"))
+	require.FileExists(t, filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir, cgFail+".failure.code_2"))
+
+	// GL + LPP for all modules (requests-done under each module)
+	for i, mod := range config.ALL_MODULES {
+		// GL
+		require.FileExists(t,
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir, glSucc[i]+".success"))
+		require.FileExists(t,
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir, glFail[i]+".failure.code_137"))
+
+		// LPP
+		require.FileExists(t,
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir, lppSucc[i]+".success"))
+		require.FileExists(t,
+			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir, lppFail[i]+".failure.code_137"))
+	}
+}
+
+func createLimitlessInputFile(dir, jobType string, start, end, exitWith int, mod string) string {
+	var fname string
+	switch jobType {
+	case "bootstrap":
+		fname = fmt.Sprintf("%d-%d-etv0.2.3-stv1.2.3-getZkProof.json", start, end)
+	case "conglomeration":
+		fname = fmt.Sprintf("%d-%d-metadata-getZkProof.json", start, end)
+	case "gl":
+		fname = fmt.Sprintf("%d-%d-seg-0-mod-0-gl-wit.bin", start, end)
+	case "lpp":
+		fname = fmt.Sprintf("%d-%d-seg-0-mod-0-lpp-wit.bin", start, end)
+	default:
+		panic("bad jobType")
+	}
+
+	// Module subdir if needed
+	if mod != "" {
+		dir = filepath.Join(dir, mod, config.RequestsFromSubDir)
+	} else {
+		// For bootstrap the caller passes the requests-root, so append requests-from there.
+		dir = filepath.Join(dir, config.RequestsFromSubDir)
+	}
+
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		panic(err)
+	}
+
+	full := filepath.Join(dir, fname)
+	content := fmt.Sprintf("#!/bin/sh\nexit %d\n", exitWith)
+	if err := os.WriteFile(full, []byte(content), 0o755); err != nil {
+		panic(err)
+	}
+	return fname
+}
+
+// Helper: poll until condition() is true or timeout elapses
+func waitFor(t *testing.T, timeout time.Duration, interval time.Duration, condition func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for {
+		if condition() {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timeout waiting for condition after %s", timeout)
+		}
+		time.Sleep(interval)
+	}
+}
+
+// Test that on SIGTERM (graceful) the controller lets the job finish and the result is in the done folder.
+func TestSIGTERMGracefulShutdown(t *testing.T) {
+
+	t.Skipf("this breaks the CI pipeline")
+
+	confM, _ := setupFsTest(t)
+
+	// Create a single input file. This file contains a short script that exits 0 and touches the out file.
+	fname := createTestInputFile(confM.Execution.DirFrom(), 0, 1, execJob, 0)
+
+	// Start controller in goroutine
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		runController(ctx, confM)
+		close(done)
+	}()
+
+	// wait for the controller to pick up the job (moved out of requests dir)
+	waitFor(t, 3*time.Second, 50*time.Millisecond, func() bool {
+		entries, _ := os.ReadDir(confM.Execution.DirFrom())
+		for _, e := range entries {
+			if e.Name() == fname {
+				return false // still in requests -> not yet picked
+			}
+		}
+		return true // picked (inprogress) or finished
+	})
+
+	// Send SIGTERM to ourselves (graceful shutdown)
+	p, err := os.FindProcess(os.Getpid())
+	require.NoError(t, err)
+	require.NoError(t, p.Signal(syscall.SIGTERM))
+
+	// Wait for controller to exit
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("controller did not exit within timeout after SIGTERM")
+	}
+
+	// After graceful shutdown, the job should have been completed and moved to done directory
+	doneDir := confM.Execution.DirDone()
+
+	// Poll for a done file that contains the job's base name and success suffix
+	found := false
+	waitFor(t, 5*time.Second, 50*time.Millisecond, func() bool {
+		entries, err := os.ReadDir(doneDir)
+		if err != nil {
+			return false
+		}
+		for _, d := range entries {
+			name := d.Name()
+			// your DoneFile uses patterns like "<orig>.success" or ".<something>.success"
+			if name == fname+".success" || name == fname+"."+config.SuccessSuffix {
+				found = true
+				return true
+			}
+			// some tests/templates produce different filename forms; allow prefix matching
+			if len(name) > 0 && (path.Base(name) == fname+".success" || path.Base(name) == fname+"."+config.SuccessSuffix) {
+				found = true
+				return true
+			}
+		}
+		return false
+	})
+	assert.True(t, found, "expected job to be finished and moved to done directory")
 }

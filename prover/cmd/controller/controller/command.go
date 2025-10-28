@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"os"
+	"path"
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/sirupsen/logrus"
@@ -58,6 +59,36 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 		cfg.Aggregation.DirTo(),
 	}
 
+	// Limitless specific dirs
+	limitlessDirs := []string{
+		// Shared transitent failure dir for distributed error propogation
+		cfg.ExecutionLimitless.SharedFailureDir,
+
+		path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsFromSubDir),
+		path.Join(cfg.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir),
+
+		path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsFromSubDir),
+		path.Join(cfg.ExecutionLimitless.SharedRandomnessDir, config.RequestsDoneSubDir),
+	}
+
+	for _, mod := range config.ALL_MODULES {
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsFromSubDir))
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "GL", mod, config.RequestsDoneSubDir))
+
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsFromSubDir))
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", mod, config.RequestsDoneSubDir))
+
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", mod, config.RequestsFromSubDir))
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", mod, config.RequestsDoneSubDir))
+
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsFromSubDir))
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsDoneSubDir))
+
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.CommitsDir, mod, config.RequestsFromSubDir))
+		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.CommitsDir, mod, config.RequestsDoneSubDir))
+	}
+
+	dirs = append(dirs, limitlessDirs...)
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			logrus.Fatalf("could not create the directory %s : %v", dir, err)
