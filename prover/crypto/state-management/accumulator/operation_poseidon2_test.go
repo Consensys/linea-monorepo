@@ -12,7 +12,7 @@ import (
 
 func TestInitializationPoseidon2(t *testing.T) {
 	// Just check that the code returns
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 	ver := acc.VerifierState()
 
 	// The next free nodes are well initialized
@@ -40,7 +40,7 @@ func TestInitializationPoseidon2(t *testing.T) {
 func TestInsertionPoseidon2(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 	ver := acc.VerifierState()
 
 	for i := 0; i < numRepetion; i++ {
@@ -57,7 +57,7 @@ func TestInsertionPoseidon2(t *testing.T) {
 func TestReadZeroPoseidon2(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 	ver := acc.VerifierState()
 
 	for i := 0; i < numRepetion; i++ {
@@ -75,7 +75,7 @@ func TestReadZeroPoseidon2(t *testing.T) {
 func TestReadNonZeroPoseidon2(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
@@ -99,7 +99,7 @@ func TestReadNonZeroPoseidon2(t *testing.T) {
 
 func TestUpdatePoseidon2(t *testing.T) {
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
@@ -122,7 +122,7 @@ func TestUpdatePoseidon2(t *testing.T) {
 
 func TestDeletionPoseidon2(t *testing.T) {
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {

@@ -31,7 +31,7 @@ func dumval(i int) DummyVal {
 	return DummyBytes32(i)
 }
 
-func newTestAccumulatorPoseidon2() *accumulator.ProverState[DummyKey, DummyVal] {
+func newTestAccumulatorPoseidon2DummyVal() *accumulator.ProverState[DummyKey, DummyVal] {
 	config := &smt.Config{
 		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
@@ -41,7 +41,7 @@ func newTestAccumulatorPoseidon2() *accumulator.ProverState[DummyKey, DummyVal] 
 
 func TestInitialization(t *testing.T) {
 	// Just check that the code returns
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 	ver := acc.VerifierState()
 
 	// The next free nodes are well initialized
@@ -69,7 +69,7 @@ func TestInitialization(t *testing.T) {
 func TestInsertion(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 	ver := acc.VerifierState()
 
 	for i := 0; i < numRepetion; i++ {
@@ -86,7 +86,7 @@ func TestInsertion(t *testing.T) {
 func TestReadZero(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 	ver := acc.VerifierState()
 
 	for i := 0; i < numRepetion; i++ {
@@ -104,7 +104,7 @@ func TestReadZero(t *testing.T) {
 func TestReadNonZero(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
@@ -128,7 +128,7 @@ func TestReadNonZero(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
@@ -151,7 +151,7 @@ func TestUpdate(t *testing.T) {
 
 func TestDeletion(t *testing.T) {
 	// Performs an insertion
-	acc := newTestAccumulatorPoseidon2()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
