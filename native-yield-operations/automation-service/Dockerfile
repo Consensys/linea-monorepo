@@ -2,6 +2,7 @@ FROM node:lts-slim AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV PNPM_CONFIG_INJECT_WORKSPACE_PACKAGES="true"
 
 # Temp fix for the corepack issue described in https://github.com/pnpm/pnpm/issues/9029
 RUN npm i -g corepack@latest
@@ -19,13 +20,12 @@ WORKDIR /usr/src/app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 
-COPY ./sdk/sdk-core/package.json ./sdk/sdk-core/package.json
+COPY ./native-yield-operations/automation-service/package.json ./native-yield-operations/automation-service/package.json
 COPY ./ts-libs/linea-shared-utils/package.json ./ts-libs/linea-shared-utils/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
 
 COPY ./native-yield-operations/automation-service ./native-yield-operations/automation-service
-COPY ./sdk/sdk-core ./sdk/sdk-core
 COPY ts-libs/linea-shared-utils ./ts-libs/linea-shared-utils
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build \

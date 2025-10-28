@@ -1,5 +1,4 @@
-import { ILogger } from "@consensys/linea-shared-utils";
-import { wait } from "@consensys/linea-sdk";
+import { ILogger, wait } from "@consensys/linea-shared-utils";
 import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
 import { Address, TransactionReceipt } from "viem";
 import { IOperationModeSelector } from "../core/services/operation-mode/IOperationModeSelector.js";

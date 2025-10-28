@@ -412,9 +412,6 @@ importers:
       '@apollo/client':
         specifier: 4.0.7
         version: 4.0.7(graphql@16.11.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rxjs@7.8.2)
-      '@consensys/linea-sdk':
-        specifier: workspace:*
-        version: link:../../sdk/sdk-ethers
       '@consensys/linea-shared-utils':
         specifier: workspace:*
         version: file:ts-libs/linea-shared-utils(bufferutil@4.0.8)(typescript@5.4.5)(utf-8-validate@5.0.10)(zod@3.24.2)
