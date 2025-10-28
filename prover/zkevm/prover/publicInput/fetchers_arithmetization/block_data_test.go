@@ -35,8 +35,8 @@ func TestBlockDataFetcher(t *testing.T) {
 		// assign the timestamp fetcher
 		AssignBlockDataFetcher(run, fetcher, bdc)
 		// two simple sanity checks based on the mock test data
-		assert.Equal(t, fetcher.First.GetColAssignmentAt(run, 0), field.NewElement(0xa))
-		assert.Equal(t, fetcher.Last.GetColAssignmentAt(run, 0), field.NewElement(0xcd))
+		assert.Equal(t, fetcher.FirstTimestamp.GetColAssignmentAt(run, 0), field.NewElement(0xa))
+		assert.Equal(t, fetcher.LastTimestamp.GetColAssignmentAt(run, 0), field.NewElement(0xcd))
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)

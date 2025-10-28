@@ -38,6 +38,8 @@ var (
 	NBytesChainID                = "NBytesChainID"
 	L2MessageServiceAddrHi       = "L2MessageServiceAddrHi"
 	L2MessageServiceAddrLo       = "L2MessageServiceAddrLo"
+	CoinBase                     = "CoinBase"
+	BaseFee                      = "BaseFee"
 )
 
 // PublicInput collects a number of submodules responsible for collecting the
@@ -318,8 +320,8 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		FinalStateRootHash:           createNewLocalOpening(pi.RootHashFetcher.Last),
 		InitialBlockNumber:           createNewLocalOpening(pi.BlockDataFetcher.FirstBlockID),
 		FinalBlockNumber:             createNewLocalOpening(pi.BlockDataFetcher.LastBlockID),
-		InitialBlockTimestamp:        createNewLocalOpening(pi.BlockDataFetcher.First),
-		FinalBlockTimestamp:          createNewLocalOpening(pi.BlockDataFetcher.Last),
+		InitialBlockTimestamp:        createNewLocalOpening(pi.BlockDataFetcher.FirstTimestamp),
+		FinalBlockTimestamp:          createNewLocalOpening(pi.BlockDataFetcher.LastTimestamp),
 		FirstRollingHashUpdate:       initialRollingHash,
 		LastRollingHashUpdate:        finalRollingHash,
 		FirstRollingHashUpdateNumber: createNewLocalOpening(pi.RollingHashFetcher.FirstMessageNo),
@@ -328,6 +330,8 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		NBytesChainID:                createNewLocalOpening(pi.ChainIDNBytes),
 		L2MessageServiceAddrHi:       createNewLocalOpening(pi.Aux.LogSelectors.L2BridgeAddressColHI),
 		L2MessageServiceAddrLo:       createNewLocalOpening(pi.Aux.LogSelectors.L2BridgeAddressColLo),
+		CoinBase:                     createNewLocalOpening(pi.BlockDataFetcher.CoinBase),
+		BaseFee:                      createNewLocalOpening(pi.BlockDataFetcher.BaseFee),
 	}
 
 	comp.PublicInputs = append(comp.PublicInputs,
@@ -350,5 +354,7 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		wizard.PublicInput{Name: NBytesChainID, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.NBytesChainID, 0)},
 		wizard.PublicInput{Name: L2MessageServiceAddrHi, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.L2MessageServiceAddrHi, 0)},
 		wizard.PublicInput{Name: L2MessageServiceAddrLo, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.L2MessageServiceAddrLo, 0)},
+		wizard.PublicInput{Name: CoinBase, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.CoinBase, 0)},
+		wizard.PublicInput{Name: BaseFee, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.BaseFee, 0)},
 	)
 }

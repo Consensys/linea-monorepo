@@ -135,6 +135,16 @@ func checkPublicInputs(
 
 	api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)
 
+	api.AssertIsEqual(
+		wvc.GetPublicInput(api, publicInput.BaseFee),
+		gnarkFuncInp.BaseFee,
+	)
+
+	api.AssertIsEqual(
+		wvc.GetPublicInput(api, publicInput.CoinBase),
+		gnarkFuncInp.CoinBase,
+	)
+
 }
 
 // execDataHash hash the execution-data with its length so that we can guard

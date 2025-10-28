@@ -871,7 +871,7 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 	// compute the fetcher table, directly tied to the arithmetization.
 	timestampTable := []ifaces.Column{
 		timestamps.RelBlock,
-		timestamps.Data,
+		timestamps.DataLo,
 	}
 
 	// compute the ExecutionDataCollector table.
@@ -1311,7 +1311,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 	rlpCt := 0
 	totalCt := 0
 
-	for blockCt := 0; blockCt < timestamps.Data.Size(); blockCt++ {
+	for blockCt := 0; blockCt < timestamps.DataLo.Size(); blockCt++ {
 		isBlockPresent := metadata.FilterFetched.GetColAssignmentAt(run, blockCt)
 		if isBlockPresent.IsOne() {
 			// block-wide information
@@ -1339,7 +1339,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			totalCt++
 
 			// row 1, load the timestamp
-			fetchedTimestamp := timestamps.Data.GetColAssignmentAt(run, blockCt)
+			fetchedTimestamp := timestamps.DataLo.GetColAssignmentAt(run, blockCt)
 			vect.IsTimestamp[totalCt].SetOne()
 			vect.NoBytes[totalCt].SetInt64(noBytesTimestamp)
 			genericLoadFunction(loadTimestamp, fetchedTimestamp)

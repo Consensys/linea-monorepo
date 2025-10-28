@@ -37,6 +37,8 @@ type FunctionalInputExtractor struct {
 	NBytesChainID          query.LocalOpening
 	L2MessageServiceAddrHi query.LocalOpening
 	L2MessageServiceAddrLo query.LocalOpening
+	CoinBase               query.LocalOpening
+	BaseFee                query.LocalOpening
 }
 
 // Run assigns all the local opening queries
@@ -65,4 +67,6 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 	assignLO(fie.NBytesChainID)
 	assignLO(fie.L2MessageServiceAddrHi)
 	assignLO(fie.L2MessageServiceAddrLo)
+	assignLO(fie.CoinBase)
+	assignLO(fie.BaseFee)
 }
