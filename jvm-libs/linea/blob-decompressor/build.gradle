@@ -16,7 +16,7 @@ dependencies {
   testImplementation(testFixtures(project(":jvm-libs:linea:core:domain-models")))
   testImplementation(project(":jvm-libs:linea:besu-rlp-and-mappers"))
   testImplementation(project(":jvm-libs:linea:testing:file-system"))
-  testImplementation("io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}")
+  testImplementation("io.consensys.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}")
   testImplementation(project(":jvm-libs:linea:besu-libs"))
 }
 
@@ -29,6 +29,7 @@ def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get()
 task downloadNativeLibs {
   doLast {
     fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.2.0/linea-blob-libs-v1.2.0.zip", "blob_decompressor", libsZipDownloadOutputDir)
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v2.1.0-rc1/linea-blob-libs-v2.1.0-rc1.zip", "blob_decompressor", libsZipDownloadOutputDir)
   }
 }
 

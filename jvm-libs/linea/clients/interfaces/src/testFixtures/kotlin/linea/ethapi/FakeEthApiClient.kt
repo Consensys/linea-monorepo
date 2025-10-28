@@ -17,6 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class FakeEthApiClient(
   initialLogsDb: Set<EthLog> = emptySet(),
+  val chainId: ULong = 101UL,
   val genesisTimestamp: Instant = Instant.parse("2025-04-01T00:00:00Z"),
   val blockTime: Duration = 1.seconds,
   initialTagsBlocks: Map<BlockParameter.Tag, ULong> = mapOf(
@@ -32,6 +33,10 @@ class FakeEthApiClient(
   private val blockTags: MutableMap<BlockParameter.Tag, ULong> = initialTagsBlocks.toMutableMap()
   private val logsDb: MutableList<EthLog> = mutableListOf()
   private val blocksDb: MutableMap<ULong, Block> = mutableMapOf()
+
+  // key = which block number to throw error
+  // value = how many times left to throw error, null means always throw
+  private var getLogsBlocksForcedErrorsCounts: MutableMap<ULong, ULong?> = mutableMapOf()
 
   init {
     require(initialTagsBlocks.keys.size == BlockParameter.Tag.entries.size) {
@@ -68,6 +73,11 @@ class FakeEthApiClient(
       listOf(BlockParameter.Tag.FINALIZED, BlockParameter.Tag.SAFE, BlockParameter.Tag.PENDING),
       blockNumber,
     )
+  }
+
+  @Synchronized
+  fun setGetLogsBlocksForcedErrorsCounts(getLogsBlocksForcedErrorsCounts: MutableMap<ULong, ULong?>) {
+    this.getLogsBlocksForcedErrorsCounts = getLogsBlocksForcedErrorsCounts
   }
 
   @Synchronized
@@ -112,6 +122,14 @@ class FakeEthApiClient(
     }
   }
 
+  override fun getChainId(): SafeFuture<ULong> {
+    return SafeFuture.completedFuture(chainId)
+  }
+
+  override fun blockNumber(): SafeFuture<ULong> {
+    return SafeFuture.completedFuture(blockTags[BlockParameter.Tag.LATEST]!!)
+  }
+
   override fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
     val blockNumber = blockParameterToBlockNumber(blockParameter)
     if (isAfterHead(blockNumber)) {
@@ -154,6 +172,14 @@ class FakeEthApiClient(
     address: String,
     topics: List<String?>,
   ): SafeFuture<List<EthLog>> {
+    if (isAtBlockNumberToThrow(
+        fromBlockNumber = blockParameterToBlockNumber(fromBlock),
+        toBlockNumber = blockParameterToBlockNumber(toBlock),
+      )
+    ) {
+      throw IllegalStateException("for error testing when calling getLogs")
+    }
+
     val addressBytes = address.decodeHex()
     val topicsFilter = topics.map { it?.decodeHex() }
     val logsInBlockRange = findLogsInRange(fromBlock, toBlock)
@@ -187,6 +213,20 @@ class FakeEthApiClient(
     toBlock: BlockParameter,
   ): List<EthLog> {
     return logsDb.filter { isInRange(it.blockNumber, fromBlock, toBlock) }
+  }
+
+  private fun isAtBlockNumberToThrow(fromBlockNumber: ULong, toBlockNumber: ULong): Boolean {
+    var shouldThrow = false
+    val targetRange = fromBlockNumber..toBlockNumber
+    getLogsBlocksForcedErrorsCounts.forEach { errorBlockNumber, throwTimes ->
+      if (targetRange.contains(errorBlockNumber)) {
+        if (throwTimes != null && throwTimes > 0UL) {
+          getLogsBlocksForcedErrorsCounts[errorBlockNumber] = getLogsBlocksForcedErrorsCounts[errorBlockNumber]!! - 1UL
+        }
+        shouldThrow = shouldThrow || throwTimes == null || getLogsBlocksForcedErrorsCounts[errorBlockNumber]!! > 0UL
+      }
+    }
+    return shouldThrow
   }
 
   private fun isInRange(

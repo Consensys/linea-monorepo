@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/math/emulated/emparams"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 )
 
 type EcRecoverInstance struct {
@@ -82,9 +83,12 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 		Y: *PY,
 	}
 
+	// v is 27 or 28 in EVM, but arithmetization gives on two limbs. Ensure that the high limb is zero and use only the low limb.
 	api.AssertIsEqual(c.VHi, 0)
 	v = c.VLo
 
+	// similarly, we split r and s into limbs compatible with gnark. But we work
+	// over a different field (scalar field vs base field for PK).
 	rLimbs := make([]frontend.Variable, 4)
 	rLimbs[2], rLimbs[3] = bitslice.Partition(api, c.RHi, 64, bitslice.WithNbDigits(128))
 	rLimbs[0], rLimbs[1] = bitslice.Partition(api, c.RLo, 64, bitslice.WithNbDigits(128))
@@ -95,13 +99,30 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 	sLimbs[0], sLimbs[1] = bitslice.Partition(api, c.SLo, 64, bitslice.WithNbDigits(128))
 	s = fr.NewElement(sLimbs)
 
+	// SUCCESS_BIT indicates if the input is a valid signature (1 for valid, 0
+	// for invalid). Recall that we also allow to verify invalid signatures (for
+	// the ECRECOVER precompile call).
 	isFailure = api.Sub(1, c.SUCCESS_BIT)
-	strictRange = c.ECRECOVERBIT
+	// ECRECOVERBIT indicates if the input comes from the ECRECOVER precompile
+	// or not (1 for ECRECOVER, 0 for TX).
+	strictRange = api.Sub(1, c.ECRECOVERBIT)
 
 	return
 }
 
-func inputFiller(circuitInstance, inputIndex int) field.Element {
+var (
+	plonkInputFillerKey = "ecdsa-secp256k1-plonk-input-filler"
+)
+
+func init() {
+	plonk.RegisterInputFiller(plonkInputFillerKey, PlonkInputFiller)
+}
+
+// PlonkInputFiller is the input-filler that we use to assign the public inputs
+// of incomplete circuits. This function must be registered via the
+// [plonk.RegisterInputFiller] via the [init] function. But this has to be done
+// manually if the package is not imported.
+func PlonkInputFiller(circuitInstance, inputIndex int) field.Element {
 	// every instance has 14 inputs.
 	// pubkey xHi, pubkey xLo, pubkey yHi, pubkey yLo, hHi, hLo, vHi, vLo, rHi, rLo, sHi, sLo, successBit, ecrecoverBit
 
@@ -148,7 +169,7 @@ func inputFiller(circuitInstance, inputIndex int) field.Element {
 	case 12: // success bit
 		ret.SetUint64(1)
 	case 13: // ecrecover bit
-		ret.SetUint64(0)
+		ret.SetUint64(1)
 	}
 	return ret
 }

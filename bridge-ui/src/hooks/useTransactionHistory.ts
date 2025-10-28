@@ -1,24 +1,26 @@
-import { useAccount } from "wagmi";
+import { useAccount, useConfig } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
-import { HistoryActionsForCompleteTxCaching, useChainStore } from "@/stores";
-import useLineaSDK from "./useLineaSDK";
+import { HistoryActionsForCompleteTxCaching, useChainStore, useHistoryStore } from "@/stores";
 import useTokens from "./useTokens";
-import { useHistoryStore } from "@/stores";
 import { fetchTransactionsHistory } from "@/utils";
 
 const useTransactionHistory = () => {
   const { address } = useAccount();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
-  const { lineaSDK } = useLineaSDK();
   const tokens = useTokens();
-  const { setCompleteTx, getCompleteTx } = useHistoryStore((state) => ({
+  const wagmiConfig = useConfig();
+
+  const { setCompleteTx, getCompleteTx, deleteCompleteTx } = useHistoryStore((state) => ({
     setCompleteTx: state.setCompleteTx,
     getCompleteTx: state.getCompleteTx,
+    deleteCompleteTx: state.deleteCompleteTx,
   }));
+
   const historyStoreActions: HistoryActionsForCompleteTxCaching = {
     setCompleteTx,
     getCompleteTx,
+    deleteCompleteTx,
   };
 
   const { data, isLoading, refetch } = useQuery({
@@ -26,12 +28,12 @@ const useTransactionHistory = () => {
     queryKey: ["transactionHistory", address, fromChain.id, toChain.id],
     queryFn: () =>
       fetchTransactionsHistory({
-        lineaSDK,
         fromChain,
         toChain,
         address: address!,
         tokens,
         historyStoreActions,
+        wagmiConfig,
       }),
     staleTime: 1000 * 60 * 0.5,
   });

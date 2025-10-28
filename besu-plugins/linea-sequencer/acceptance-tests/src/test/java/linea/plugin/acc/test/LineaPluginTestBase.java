@@ -1,56 +1,29 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
 package linea.plugin.acc.test;
 
-import static net.consensys.linea.metrics.LineaMetricCategory.PRICING_CONF;
-import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY;
-import static net.consensys.linea.metrics.LineaMetricCategory.TX_POOL_PROFITABILITY;
-import static org.assertj.core.api.Assertions.*;
+import static net.consensys.linea.metrics.LineaMetricCategory.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import linea.plugin.acc.test.tests.web3j.generated.AcceptanceTestToken;
-import linea.plugin.acc.test.tests.web3j.generated.DummyAdder;
-import linea.plugin.acc.test.tests.web3j.generated.EcAdd;
-import linea.plugin.acc.test.tests.web3j.generated.EcMul;
-import linea.plugin.acc.test.tests.web3j.generated.EcPairing;
-import linea.plugin.acc.test.tests.web3j.generated.EcRecover;
-import linea.plugin.acc.test.tests.web3j.generated.ExcludedPrecompiles;
-import linea.plugin.acc.test.tests.web3j.generated.ModExp;
-import linea.plugin.acc.test.tests.web3j.generated.MulmodExecutor;
-import linea.plugin.acc.test.tests.web3j.generated.RevertExample;
-import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
+import linea.plugin.acc.test.tests.web3j.generated.*;
 import linea.plugin.acc.test.utils.MemoryAppender;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -98,6 +71,17 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
   public static final int BLOCK_PERIOD_SECONDS = 5;
   public static final CliqueOptions DEFAULT_LINEA_CLIQUE_OPTIONS =
       new CliqueOptions(BLOCK_PERIOD_SECONDS, CliqueOptions.DEFAULT.epochLength(), false);
+  protected static final List<String> DEFAULT_REQUESTED_PLUGINS =
+      List.of(
+          "LineaExtraDataPlugin",
+          "LineaEstimateGasEndpointPlugin",
+          "LineaSetExtraDataEndpointPlugin",
+          "LineaTransactionPoolValidatorPlugin",
+          "LineaTransactionSelectorPlugin",
+          "LineaBundleEndpointsPlugin",
+          "ForwardBundlesPlugin",
+          "LineaTransactionValidatorPlugin");
+
   protected static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   protected BesuNode minerNode;
 
@@ -105,7 +89,12 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
   public void setup() throws Exception {
     minerNode =
         createCliqueNodeWithExtraCliOptionsAndRpcApis(
-            "miner1", getCliqueOptions(), getTestCliOptions(), Set.of("LINEA", "MINER"), false);
+            "miner1",
+            getCliqueOptions(),
+            getTestCliOptions(),
+            Set.of("LINEA", "MINER", "PLUGINS"),
+            false,
+            DEFAULT_REQUESTED_PLUGINS);
     minerNode.setTransactionPoolConfiguration(
         ImmutableTransactionPoolConfiguration.builder()
             .from(TransactionPoolConfiguration.DEFAULT)
@@ -138,7 +127,8 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
       final CliqueOptions cliqueOptions,
       final List<String> extraCliOptions,
       final Set<String> extraRpcApis,
-      final boolean isEngineRpcEnabled)
+      final boolean isEngineRpcEnabled,
+      final List<String> requestedPlugins)
       throws IOException {
     final NodeConfigurationFactory node = new NodeConfigurationFactory();
 
@@ -160,17 +150,13 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
                     .enabled(true)
                     .port(0)
                     .metricCategories(
-                        Set.of(PRICING_CONF, SEQUENCER_PROFITABILITY, TX_POOL_PROFITABILITY))
+                        Set.of(
+                            PRICING_CONF,
+                            SEQUENCER_PROFITABILITY,
+                            TX_POOL_PROFITABILITY,
+                            SEQUENCER_LIVENESS))
                     .build())
-            .requestedPlugins(
-                List.of(
-                    "LineaExtraDataPlugin",
-                    "LineaEstimateGasEndpointPlugin",
-                    "LineaSetExtraDataEndpointPlugin",
-                    "LineaTransactionPoolValidatorPlugin",
-                    "LineaTransactionSelectorPlugin",
-                    "LineaBundleEndpointsPlugin",
-                    "ForwardBundlesPlugin"));
+            .requestedPlugins(requestedPlugins);
 
     return besu.create(nodeConfBuilder.build());
   }
@@ -258,6 +244,17 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
         });
     // make sure that at least one block has maxTxs
     assertThat(txMap).containsValue(maxTxs);
+  }
+
+  protected LogEmitter deployLogEmitter() throws Exception {
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager =
+        new RawTransactionManager(web3j, credentials, CHAIN_ID, createReceiptProcessor(web3j));
+
+    final RemoteCall<LogEmitter> deploy =
+        LogEmitter.deploy(web3j, txManager, new DefaultGasProvider());
+    return deploy.send();
   }
 
   protected SimpleStorage deploySimpleStorage() throws Exception {

@@ -1,6 +1,7 @@
 package verifiercol
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
@@ -51,11 +52,22 @@ func (f FromAccessors) Round() int {
 
 // GetColID returns the column ID
 func (f FromAccessors) GetColID() ifaces.ColID {
-	accessorNames := make([]string, len(f.Accessors))
-	for i := range f.Accessors {
-		accessorNames[i] = f.Accessors[i].Name()
+	var sb strings.Builder
+	sb.Grow(64 + len(f.Accessors)*16) // Reserve some capacity
+
+	sb.WriteString("FROM_ACCESSORS_")
+	for i, acc := range f.Accessors {
+		if i > 0 {
+			sb.WriteByte('_')
+		}
+		sb.WriteString(acc.Name())
 	}
-	return ifaces.ColIDf("FROM_ACCESSORS_%v_PADDING=%v_SIZE=%v", strings.Join(accessorNames, "_"), f.Padding.String(), f.Size_)
+	sb.WriteString("_PADDING=")
+	sb.WriteString(f.Padding.String())
+	sb.WriteString("_SIZE=")
+	sb.WriteString(fmt.Sprintf("%v", f.Size_))
+
+	return ifaces.ColID(sb.String())
 }
 
 // MustExists implements the [ifaces.Column] interface and always returns true.
@@ -132,7 +144,9 @@ func (f FromAccessors) String() string {
 func (f FromAccessors) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column {
 
 	if from >= len(f.Accessors) {
-		return NewConstantCol(f.Padding, to-from)
+		// The reason we don't want to remove the size from the name here is that
+		// these columns tend to only exist as compilation artefacts.
+		return NewConstantCol(f.Padding, to-from, "")
 	}
 
 	var subAccessors = f.Accessors[from:]
@@ -149,4 +163,8 @@ func (f FromAccessors) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column 
 		Padding:   f.Padding,
 		Size_:     to - from,
 	}
+}
+
+func (f FromAccessors) GetFromAccessorsFields() (accs []ifaces.Accessor, padding field.Element) {
+	return f.Accessors, f.Padding
 }

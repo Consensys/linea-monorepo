@@ -30,13 +30,25 @@ func Ternary(cond, if1, if0 any) *sym.Expression {
 	)
 }
 
-// GetTimestampField returns a field element that contains the hardcoded INST value for a timestamp
+// GetTimestampField returns a field element that contains the hardcoded INST
+// value for a timestamp
 func GetTimestampField() field.Element {
-	var timestampField field.Element
-	stampCode := byte(vm.TIMESTAMP)
-	hardcoded := [...]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, stampCode}
-	timestampField.SetBytes(hardcoded[:])
-	return timestampField
+	timestampCode := uint64(vm.TIMESTAMP)
+	return field.NewElement(timestampCode)
+}
+
+// GetCoinBaseField returns a field element containing the EVM opcode value for
+// the instruction COINBASE
+func GetCoinBaseField() field.Element {
+	coinBaseCode := uint64(vm.COINBASE)
+	return field.NewElement(coinBaseCode)
+}
+
+// GetBaseFeeField returns a field element containing the EVM opcode value for
+// the instruction BASEFEE
+func GetBaseFeeField() field.Element {
+	baseFeeCode := uint64(vm.BASEFEE)
+	return field.NewElement(baseFeeCode)
 }
 
 // InitializeCsv is used to initialize a CsvTrace based on a path
@@ -63,7 +75,7 @@ func MustBeBinary(comp *wizard.CompiledIOP, c ifaces.Column) {
 }
 
 // CheckLastELemConsistency checks that the last element of the active part of parentCol is present in the field element of acc
-func CheckLastELemConsistency(comp *wizard.CompiledIOP, isActive ifaces.Column, parentCol ifaces.Column, acc ifaces.Accessor, name string) {
+func CheckLastELemConsistency(comp *wizard.CompiledIOP, isActive ifaces.Column, parentCol ifaces.Column, acc ifaces.Column, name string) {
 	// active is already constrained in the fetcher, no need to constrain it again
 	// two cases: Case 1: isActive is not completely filled with 1s, then parentCol[i] is equal to acc at the last row i where isActive[i] is 1
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s_%s", name, "IS_ACTIVE_BORDER_CONSTRAINT", parentCol.GetColID()),
@@ -86,7 +98,7 @@ func CheckLastELemConsistency(comp *wizard.CompiledIOP, isActive ifaces.Column, 
 			column.Shift(isActive, -1),
 			sym.Sub(
 				column.Shift(parentCol, -1),
-				acc,
+				column.Shift(acc, -1),
 			),
 		),
 	)

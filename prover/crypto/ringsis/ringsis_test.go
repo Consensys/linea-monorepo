@@ -43,21 +43,21 @@ var testCasesKey = []struct {
 	{
 		Size: 43,
 		Params: Params{
-			LogTwoBound:  1,
+			LogTwoBound:  8,
 			LogTwoDegree: 1,
 		},
 	},
 	{
 		Size: 23,
 		Params: Params{
-			LogTwoBound:  1,
+			LogTwoBound:  8,
 			LogTwoDegree: 1,
 		},
 	},
 	{
 		Size: 256,
 		Params: Params{
-			LogTwoBound:  1,
+			LogTwoBound:  8,
 			LogTwoDegree: 1,
 		},
 	},
@@ -107,41 +107,41 @@ func TestHashModXnMinusOne(t *testing.T) {
 		key := GenerateKey(testCasesKey[i].Params, testCase.Size)
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
+			runTest(t, key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/all-zeroes", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()))
+			runTest(t, key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/rand-constant", i), func(t *testing.T) {
 			var r field.Element
 			r.SetRandom()
-			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()))
+			runTest(t, key, vector.Repeat(r, key.maxNumLimbsHashable()))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/full-rand", i), func(t *testing.T) {
-			runTest(t, &key, vector.Rand(key.maxNumLimbsHashable()))
+			runTest(t, key, vector.Rand(key.maxNumLimbsHashable()))
 		})
 
 		// ==== passing shorter vectors
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()-1))
+			runTest(t, key, vector.Repeat(field.One(), key.maxNumLimbsHashable()-1))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/all-zeroes-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()-1))
+			runTest(t, key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()-1))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/rand-constant-shorter", i), func(t *testing.T) {
 			var r field.Element
 			r.SetRandom()
-			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()-1))
+			runTest(t, key, vector.Repeat(r, key.maxNumLimbsHashable()-1))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/full-rand-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Rand(key.maxNumLimbsHashable()-1))
+			runTest(t, key, vector.Rand(key.maxNumLimbsHashable()-1))
 		})
 	}
 }
@@ -175,7 +175,7 @@ func TestLimbSplit(t *testing.T) {
 			t.Run(
 				fmt.Sprintf("array-#%v-key-#%v", arrID, keyID),
 				func(t *testing.T) {
-					coreTest(t, arr, key)
+					coreTest(t, arr, *key)
 				},
 			)
 		}
@@ -206,7 +206,7 @@ func TestHashFromLimbs(t *testing.T) {
 		for vecId, tcVec := range testCaseVecs {
 			key := GenerateKey(tcParams.Params, len(tcVec))
 			t.Run(fmt.Sprintf("params-#%v-vec-1%v", pId, vecId), func(t *testing.T) {
-				coreTest(t, &key, tcVec)
+				coreTest(t, key, tcVec)
 			})
 		}
 	}
@@ -419,4 +419,33 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 
 	key.gnarkInternal.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
 	return res
+}
+
+func BenchmarkTransversalHash(b *testing.B) {
+
+	// max nb field elements to hash
+	const nbInputs = 1 << 15
+	const polySize = 1 << 10
+
+	ps := make([]smartvectors.SmartVector, nbInputs)
+	for i := range ps {
+		if i%20 == 0 {
+			// sprinkle some constants
+			ps[i] = smartvectors.NewConstant(field.NewElement(uint64(i+1)*42), polySize)
+			continue
+		}
+		ps[i] = smartvectors.Rand(polySize)
+	}
+
+	key := GenerateKey(StdParams, nbInputs)
+
+	b.Run("transversal-hash", func(b *testing.B) {
+		b.SetBytes(int64(nbInputs * polySize * field.Bytes))
+		var res []field.Element
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			res = key.TransversalHash(ps)
+		}
+		_ = res
+	})
 }

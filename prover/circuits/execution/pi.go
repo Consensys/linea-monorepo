@@ -107,6 +107,8 @@ type FunctionalPublicInputSnark struct {
 	InitialBlockNumber   frontend.Variable
 	ChainID              frontend.Variable
 	L2MessageServiceAddr frontend.Variable
+	BaseFee              frontend.Variable
+	CoinBase             frontend.Variable
 }
 
 // RangeCheck checks that values are within range
@@ -139,10 +141,26 @@ func (spi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.Field
 	)
 
 	hsh.Reset()
-	hsh.Write(spi.DataChecksum, l2MessagesSum,
-		spi.FinalStateRootHash, spi.FinalBlockNumber, spi.FinalBlockTimestamp, finalRollingHash[0], finalRollingHash[1], spi.LastRollingHashUpdateNumber,
-		spi.InitialStateRootHash, spi.InitialBlockNumber, spi.InitialBlockTimestamp, initialRollingHash[0], initialRollingHash[1], spi.FirstRollingHashUpdateNumber,
-		spi.ChainID, spi.L2MessageServiceAddr)
+	hsh.Write(
+		spi.DataChecksum,
+		l2MessagesSum,
+		spi.FinalStateRootHash,
+		spi.FinalBlockNumber,
+		spi.FinalBlockTimestamp,
+		finalRollingHash[0],
+		finalRollingHash[1],
+		spi.LastRollingHashUpdateNumber,
+		spi.InitialStateRootHash,
+		spi.InitialBlockNumber,
+		spi.InitialBlockTimestamp,
+		initialRollingHash[0],
+		initialRollingHash[1],
+		spi.FirstRollingHashUpdateNumber,
+		spi.ChainID,
+		spi.L2MessageServiceAddr,
+		spi.BaseFee,
+		spi.CoinBase,
+	)
 
 	return hsh.Sum()
 }
@@ -152,6 +170,8 @@ func (spi *FunctionalPublicInputSnark) Assign(pi *public_input.Execution) error 
 	spi.InitialStateRootHash = pi.InitialStateRootHash[:]
 	spi.InitialBlockNumber = pi.InitialBlockNumber
 	spi.ChainID = pi.ChainID
+	spi.CoinBase = pi.CoinBase[:]
+	spi.BaseFee = pi.BaseFee
 	spi.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
 
 	return spi.FunctionalPublicInputQSnark.Assign(pi)

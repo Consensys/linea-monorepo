@@ -4,19 +4,17 @@ import (
 	"hash"
 	"runtime"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
-
-// MerkleCommitment represents a (merkle-mode) Vortex commitment
-type MerkleCommitment field.Element
 
 // EncodedMatrix represents the witness of a Vortex matrix commitment, it is
 // represented as an array of rows.
@@ -30,39 +28,83 @@ type EncodedMatrix []smartvectors.SmartVector
 //
 // And can be safely converted to a field Element via
 // [field.Element.SetBytesCanonical]
-func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+// We apply SIS+MiMC hashing on the columns to compute leaves
+// Should be used when the number of rows to commit is more than the [ApplySISThreshold]
+func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
 	if len(ps) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
 	}
 
-	logrus.Infof("Vortex compiler: RS encoding nrows=%v of ncol=%v to codeword-size=%v", len(ps), p.NbColumns, p.NbColumns*p.BlowUpFactor)
-	encodedMatrix = p.encodeRows(ps)
-	logrus.Infof("Vortex compiler: RS encoding DONE")
-	logrus.Infof("Vortex compiler: SIS hashing nrows=%v of ncol=%v to codeword-size=%v", len(ps), p.NbColumns, p.NbColumns*p.BlowUpFactor)
-	colHashes = p.hashColumns(encodedMatrix)
-	logrus.Infof("Vortex compiler: SIS hashing DONE")
+	timeEncoding := profiling.TimeIt(func() {
+		encodedMatrix = p.encodeRows(ps)
+	})
+	timeSisHashing := profiling.TimeIt(func() {
+		// colHashes stores concatenation of SIS hashes of the columns
+		colHashes = p.Key.TransversalHash(encodedMatrix)
+	})
 
-	logrus.Infof("Vortex compiler: SIS merkle hashing START")
-	// Hash the digest by chunk and build the tree using the chunk hashes as leaves.
-	var leaves []types.Bytes32
+	timeTree := profiling.TimeIt(func() {
+		// Hash the SIS digests to obtain the leaves of the Merkle tree.
+		leaves := p.hashSisHash(colHashes)
 
-	if !p.HasSisReplacement() {
-		leaves = p.hashSisHash(colHashes)
-	} else {
-		leaves = make([]types.Bytes32, len(colHashes))
+		tree = smt.BuildComplete(
+			leaves,
+			func() hashtypes.Hasher {
+				return hashtypes.Hasher{Hash: mimc.NewMiMC()}
+			},
+		)
+	})
+
+	logrus.Infof(
+		"[vortex-commitment-with-sis] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeSisHashing=%v timeMerkleizing=%v",
+		p.NbColumns, len(ps), p.NumEncodedCols(), timeEncoding, timeSisHashing, timeTree,
+	)
+
+	return encodedMatrix, tree, colHashes
+}
+
+// Commit to a sequence of columns and Merkle hash on top of that. Returns the
+// tree and an array containing the concatenated columns hashes. The final
+// short commitment can be obtained from the returned tree as:
+//
+//	tree.Root()
+//
+// And can be safely converted to a field Element via
+// [field.Element.SetBytesCanonical]
+// We apply MiMC hashing on the columns to compute leaves.
+// Should be used when the number of rows to commit is less than the [ApplySISThreshold]
+func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+
+	if len(ps) > p.MaxNbRows {
+		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
+	}
+
+	timeEncoding := profiling.TimeIt(func() {
+		encodedMatrix = p.encodeRows(ps)
+	})
+
+	timeTree := profiling.TimeIt(func() {
+		// colHashes stores the MiMC hashes
+		// of the columns.
+		colHashes = p.noSisTransversalHash(encodedMatrix)
+		leaves := make([]types.Bytes32, len(colHashes))
 		for i := range leaves {
 			leaves[i] = colHashes[i].Bytes()
 		}
-	}
 
-	tree = smt.BuildComplete(
-		leaves,
-		func() hashtypes.Hasher {
-			return hashtypes.Hasher{Hash: p.HashFunc()}
-		},
+		tree = smt.BuildComplete(
+			leaves,
+			func() hashtypes.Hasher {
+				return hashtypes.Hasher{Hash: mimc.NewMiMC()}
+			},
+		)
+	})
+
+	logrus.Infof(
+		"[vortex-commitment-without-sis] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeMerkleizing=%v",
+		p.NbColumns, len(ps), p.NumEncodedCols(), timeEncoding, timeTree,
 	)
-	logrus.Infof("Vortex compiler: SIS merkle hashing DONE")
 
 	return encodedMatrix, tree, colHashes
 }
@@ -79,34 +121,16 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 		}
 	}
 
-	// The pool will be responsible for holding the coefficients that are
-	// intermediary steps in creating the rs encoded rows.
-	pool := mempool.CreateFromSyncPool(params.NbColumns)
-
 	// The committed matrix is obtained by encoding the input vectors
 	// and laying them in rows.
 	encodedMatrix = make(EncodedMatrix, len(ps))
 	parallel.Execute(len(ps), func(start, stop int) {
-		localPool := mempool.WrapsWithMemCache(pool)
 		for i := start; i < stop; i++ {
-			encodedMatrix[i] = params.rsEncode(ps[i], localPool)
+			encodedMatrix[i] = params.rsEncode(ps[i])
 		}
-		localPool.TearDown()
 	})
 
 	return encodedMatrix
-}
-
-// hashColumns returns a slice storing the hashes of the column of
-// `encodedMatrix` sequentially.
-//
-// When SIS is used, `colHashes` stores the concatenation of the SIS hashes.
-func (params *Params) hashColumns(encodedMatrix EncodedMatrix) (colHashes []field.Element) {
-	// And obtain the hash of the columns
-	if !params.HasSisReplacement() {
-		return params.Key.TransversalHash(encodedMatrix)
-	}
-	return params.noSisTransversalHash(encodedMatrix)
 }
 
 // hashSisHash is used to hash the individual SIS hashes stored in colHashes.
@@ -121,20 +145,15 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 	leaves = make([]types.Bytes32, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
-		// Create the hasher in the parallel setting to avoid race conditions.
-		hasher := p.HashFunc()
+		hasher := mimc.NewMiMC()
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 			hasher.Reset()
-
-			for i := 0; i < chunkSize; i++ {
-				fbytes := colHashes[startChunk+i].Bytes()
-				hasher.Write(fbytes[:])
-			}
-
+			s := hasher.SumElements(colHashes[startChunk : startChunk+chunkSize])
+			sbytes := s.Bytes()
 			// Manually copies the hasher's digest into the leaves to
 			// skip a verbose type conversion.
-			copy(leaves[chunkID][:], hasher.Sum(nil))
+			copy(leaves[chunkID][:], sbytes[:])
 		}
 	})
 
@@ -143,11 +162,6 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 
 // Uses the no-sis hash function to hash the columns
 func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Element {
-
-	// Assert, we are in no-sis mode
-	if !p.HasSisReplacement() {
-		panic("expected no-sis mode")
-	}
 
 	// Assert that all smart-vectors have the same numCols
 	numCols := v[0].Len()
@@ -166,7 +180,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Elem
 	parallel.ExecuteThreadAware(
 		numCols,
 		func(threadID int) {
-			hashers[threadID] = p.NoSisHashFunc()
+			hashers[threadID] = mimc.NewMiMC()
 		},
 		func(col, threadID int) {
 			hasher := hashers[threadID]

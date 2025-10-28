@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/consensys/go-corset/pkg/mir"
+	"github.com/consensys/go-corset/pkg/ir/mir"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
@@ -20,7 +20,7 @@ func MakeDefine(cfg *config.Config, optConfig *mir.OptimisationConfig) wizard.De
 	}
 }
 
-func MakeProver(traceFile string) wizard.ProverStep {
+func MakeProver(traceFile string) wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
 		globalArith.Assign(run, traceFile)
 	}

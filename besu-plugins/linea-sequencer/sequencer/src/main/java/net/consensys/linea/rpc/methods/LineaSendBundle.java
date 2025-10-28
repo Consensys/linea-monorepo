@@ -1,27 +1,20 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package net.consensys.linea.rpc.methods;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundleParameter;
@@ -37,6 +30,7 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
+import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -51,9 +45,13 @@ public class LineaSendBundle {
           .build();
   private final BlockchainService blockchainService;
   private BundlePoolService bundlePool;
+  private PluginTransactionPoolValidator txPoolValidator;
 
-  public LineaSendBundle init(BundlePoolService bundlePoolService) {
+  public LineaSendBundle init(
+      final BundlePoolService bundlePoolService,
+      final PluginTransactionPoolValidator txPoolValidator) {
     this.bundlePool = bundlePoolService;
+    this.txPoolValidator = txPoolValidator;
     return this;
   }
 
@@ -95,6 +93,8 @@ public class LineaSendBundle {
                         .map(DomainObjectDecodeUtils::decodeRawTransaction)
                         .toList();
 
+                validateTransactions(txs);
+
                 bundlePool.putOrReplace(
                     bundleHash,
                     new TransactionBundle(
@@ -104,7 +104,8 @@ public class LineaSendBundle {
                         bundleParams.minTimestamp(),
                         bundleParams.maxTimestamp(),
                         bundleParams.revertingTxHashes(),
-                        optBundleUUID));
+                        optBundleUUID,
+                        false));
                 return new BundleResponse(bundleHash.toHexString());
               })
           .orElseThrow(
@@ -132,7 +133,7 @@ public class LineaSendBundle {
     final var chainHeadBlockNumber = blockchainService.getChainHeadHeader().getNumber();
     if (bundleParams.blockNumber() <= chainHeadBlockNumber) {
       throw new IllegalArgumentException(
-          "bundle block number "
+          "Bundle block number "
               + bundleParams.blockNumber()
               + " is not greater than current chain head block number "
               + chainHeadBlockNumber);
@@ -145,7 +146,7 @@ public class LineaSendBundle {
               final var now = Instant.now().getEpochSecond();
               if (maxTimestamp < now) {
                 throw new IllegalArgumentException(
-                    "bundle max timestamp "
+                    "Bundle max timestamp "
                         + maxTimestamp
                         + " is in the past, current timestamp is "
                         + now);
@@ -159,11 +160,24 @@ public class LineaSendBundle {
       return param;
     } catch (Exception e) {
       log.atError()
-          .setMessage("[{}] failed to parse linea_sendBundle request")
+          .setMessage("[{}] Failed to parse linea_sendBundle request")
           .addArgument(logId)
           .setCause(e)
           .log();
-      throw new RuntimeException("malformed linea_sendBundle json param");
+      throw new RuntimeException("Malformed linea_sendBundle json param");
+    }
+  }
+
+  private void validateTransactions(final List<Transaction> txs) {
+    for (final Transaction tx : txs) {
+      final var maybeInvalidReason = txPoolValidator.validateTransaction(tx, true, false);
+      if (maybeInvalidReason.isPresent()) {
+        throw new IllegalArgumentException(
+            "Invalid transaction in bundle: hash "
+                + tx.getHash()
+                + ", reason: "
+                + maybeInvalidReason.get());
+      }
     }
   }
 

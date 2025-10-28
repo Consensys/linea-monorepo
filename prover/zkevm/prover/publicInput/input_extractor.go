@@ -1,7 +1,6 @@
 package publicInput
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -36,8 +35,10 @@ type FunctionalInputExtractor struct {
 
 	ChainID                query.LocalOpening
 	NBytesChainID          query.LocalOpening
-	L2MessageServiceAddrHi ifaces.Accessor
-	L2MessageServiceAddrLo ifaces.Accessor
+	L2MessageServiceAddrHi query.LocalOpening
+	L2MessageServiceAddrLo query.LocalOpening
+	CoinBase               query.LocalOpening
+	BaseFee                query.LocalOpening
 }
 
 // Run assigns all the local opening queries
@@ -64,4 +65,8 @@ func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
 	assignLO(fie.LastRollingHashUpdateNumber)
 	assignLO(fie.ChainID)
 	assignLO(fie.NBytesChainID)
+	assignLO(fie.L2MessageServiceAddrHi)
+	assignLO(fie.L2MessageServiceAddrLo)
+	assignLO(fie.CoinBase)
+	assignLO(fie.BaseFee)
 }

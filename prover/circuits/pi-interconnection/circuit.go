@@ -24,10 +24,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	mimcComp "github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -90,7 +92,12 @@ func (c *Circuit) Define(api frontend.API) error {
 		hshM hash.FieldHasher
 	)
 	if c.UseGkrMimc {
-		hshM = gkrmimc.NewHasherFactory(api).NewHasher()
+		hFac := gkrmimc.NewHasherFactory(api)
+		hshM = hFac.NewHasher()
+		if c.Keccak.Wc != nil {
+			c.Keccak.Wc.HasherFactory = hFac
+			c.Keccak.Wc.FS = fiatshamir.NewGnarkFiatShamir(api, hFac)
+		}
 	} else {
 		if hsh, err := mimc.NewMiMC(api); err != nil {
 			return err
@@ -375,7 +382,11 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 
 		fullCompilationSuite = compilationSuite{
 
-			compiler.Arcane(1<<10, 1<<18, false),
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<18),
+				compiler.WithStitcherMinSize(1<<8),
+			),
+			logdata.Log("after vortex"),
 			vortex.Compile(
 				2,
 				vortex.ForceNumOpenedColumns(256),
@@ -385,7 +396,10 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
 			mimcComp.CompileMiMC,
-			compiler.Arcane(1<<10, 1<<16, false),
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<16),
+				compiler.WithStitcherMinSize(1<<8),
+			),
 			vortex.Compile(
 				8,
 				vortex.ForceNumOpenedColumns(64),
@@ -395,11 +409,14 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
 			mimcComp.CompileMiMC,
-			compiler.Arcane(1<<10, 1<<13, false),
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<13),
+				compiler.WithStitcherMinSize(1<<8),
+			),
 			vortex.Compile(
 				8,
 				vortex.ForceNumOpenedColumns(64),
-				vortex.ReplaceSisByMimc(),
+				vortex.WithOptionalSISHashingThreshold(1<<20),
 			),
 		}
 	)

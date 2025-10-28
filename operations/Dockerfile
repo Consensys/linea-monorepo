@@ -1,5 +1,4 @@
-# syntax=docker/dockerfile:1.2
-FROM node:20-slim AS base
+FROM node:lts-slim AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -16,9 +15,9 @@ COPY operations/ ./operations/
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
 RUN pnpm run -F operations build
-RUN pnpm deploy --filter=./operations --prod ./prod
+RUN pnpm deploy --legacy --filter=./operations --prod ./prod
 
-FROM node:20-slim AS release
+FROM node:lts-slim AS release
 
 ENV NODE_ENV=production
 

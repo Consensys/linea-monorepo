@@ -12,12 +12,15 @@ import io.vertx.core.http.HttpClient
 import io.vertx.core.http.HttpClientResponse
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.RequestOptions
+import net.consensys.linea.async.toCompletableFuture
+import net.consensys.linea.async.toVertxFuture
 import net.consensys.linea.jsonrpc.JsonRpcError
 import net.consensys.linea.jsonrpc.JsonRpcErrorException
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.linea.jsonrpc.JsonRpcRequestData
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
+import net.consensys.linea.metrics.MetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.Level
@@ -34,11 +37,16 @@ class VertxHttpJsonRpcClient(
   private val responseObjectMapper: ObjectMapper = objectMapper,
   private val log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
   private val requestResponseLogLevel: Level = Level.TRACE,
+  private val requestTimeout: Long? = null,
   private val failuresLogLevel: Level = Level.DEBUG,
+  private val metricsCategory: MetricsCategory = object : MetricsCategory {
+    override val name: String = "jsonrpc"
+  },
 ) : JsonRpcClient {
   private val requestOptions = RequestOptions().apply {
     setMethod(HttpMethod.POST)
     setAbsoluteURI(endpoint)
+    requestTimeout?.let { setTimeout(it) }
   }
 
   private fun serializeRequest(request: JsonRpcRequest): String {
@@ -85,16 +93,17 @@ class VertxHttpJsonRpcClient(
           }
         }
 
-      Future.fromCompletionStage(
-        metricsFacade.createSimpleTimer<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>(
-          name = "jsonrpc.request",
-          description = "Time of Upstream API JsonRpc Requests",
-          tags = listOf(
-            Tag("endpoint", endpoint.host),
-            Tag("method", request.method),
-          ),
-        ).captureTime(requestFuture.toCompletionStage().toCompletableFuture()),
+      metricsFacade.createTimer(
+        category = metricsCategory,
+        name = "request",
+        description = "Time of Upstream API JsonRpc Requests",
+        tags = listOf(
+          Tag("endpoint", endpoint.host),
+          Tag("method", request.method),
+        ),
       )
+        .captureTime(requestFuture.toCompletableFuture())
+        .toVertxFuture()
     }
       .onFailure { th -> logRequestFailure(json, th) }
   }

@@ -1,10 +1,10 @@
 package vortex
 
 import (
-	"hash"
-
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -14,7 +14,7 @@ import (
 type Params struct {
 	// Key stores the public parameters of the ring-SIS instance in use to
 	// hash the columns.
-	Key ringsis.Key
+	Key *ringsis.Key
 	// BlowUpFactor corresponds to the inverse-rate of the Reed-Solomon code
 	// in use to encode the rows of the committed matrices. This is a power of
 	// two and
@@ -33,13 +33,10 @@ type Params struct {
 	// polynomial p is appended whose size if not 0 mod MaxNbRows, it is padded
 	// as p' so that len(p')=0 mod MaxNbRows.
 	MaxNbRows int
-	// HashFunc is an optional function that returns a `hash.Hash` it is used
-	// when vortex is used in "Merkle-tree" mode. In this case, the hash
-	// function is mandatory.
-	HashFunc func() hash.Hash
-	// NoSisHashFunc is an optional hash function that is used in place of the
-	// SIS. If it is set,
-	NoSisHashFunc func() hash.Hash
+
+	// CosetTableBitReverse is the coset table of the small domain in bit
+	// reversed order. It is used to speed-up the encoding of the rows.
+	CosetTableBitReverse field.Vector
 }
 
 // NewParams creates and returns a [Params]:
@@ -48,14 +45,15 @@ type Params struct {
 //   - nbColumns: the number of columns in the witness matrix
 //   - maxNbRows: the maximum number of rows in the witness matrix
 //   - sisParams: the parameters of the SIS instance to use to hash the columns
-//   - merkleHashFunc: the hash function to use to hash the SIS hashes into a
-//     Merkle-tree.
+//   - leafHashFunc: the hash function to use to hash the SIS hashes into the
+//     leaves of the Merkle-tree (when using the SIS hashing) or hash the field elements
+//     directly while not using the SIS hashing.
+//   - merkleHashFunc: the hash function to use to hash the nodes of the Merkle-tree.
 func NewParams(
 	blowUpFactor int,
 	nbColumns int,
 	maxNbRows int,
 	sisParams ringsis.Params,
-	merkleHashFunc func() hash.Hash,
 ) *Params {
 
 	if !utils.IsPowerOfTwo(nbColumns) {
@@ -66,25 +64,36 @@ func NewParams(
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
 	}
 
-	if merkleHashFunc == nil {
-		utils.Panic("`nil` merkle hash function provided")
-	}
-
 	if maxNbRows < 1 {
 		utils.Panic("The number of rows per matrix cannot be zero of negative: %v", maxNbRows)
 	}
 
+	shift, err := fr.Generator(uint64(nbColumns * blowUpFactor))
+	if err != nil {
+		panic(err)
+	}
+
 	res := &Params{
 		Domains: [2]*fft.Domain{
-			fft.NewDomain(nbColumns),
-			fft.NewDomain(blowUpFactor * nbColumns),
+			fft.NewDomain(uint64(nbColumns), fft.WithShift(shift)),
+			fft.NewDomain(uint64(blowUpFactor*nbColumns), fft.WithCache()),
 		},
 		NbColumns:    nbColumns,
 		MaxNbRows:    maxNbRows,
 		BlowUpFactor: blowUpFactor,
 		Key:          ringsis.GenerateKey(sisParams, maxNbRows),
-		HashFunc:     merkleHashFunc,
 	}
+
+	smallDomain := res.Domains[0]
+	cosetTable, err := smallDomain.CosetTable()
+	if err != nil {
+		panic(err)
+	}
+	cosetTableBitReverse := make(field.Vector, len(cosetTable))
+	copy(cosetTableBitReverse, cosetTable)
+	fft.BitReverse(cosetTableBitReverse)
+
+	res.CosetTableBitReverse = cosetTableBitReverse
 
 	return res
 }
@@ -93,21 +102,4 @@ func NewParams(
 // equivalently this is the size of the codeword-rows.
 func (p *Params) NumEncodedCols() int {
 	return utils.NextPowerOfTwo(p.NbColumns) * p.BlowUpFactor
-}
-
-// RemoveSis set the Vortex parameters to use another hash function than SIS
-func (p *Params) RemoveSis(h func() hash.Hash) *Params {
-
-	if p == nil {
-		utils.Panic("provided a nil, no-SIS hash function")
-	}
-
-	p.NoSisHashFunc = h
-	p.Key = ringsis.Key{} // and remove the key
-	return p
-}
-
-// HasSisReplacement returns true if the parameters are set to not use SIS
-func (p *Params) HasSisReplacement() bool {
-	return p.NoSisHashFunc != nil
 }

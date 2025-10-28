@@ -23,14 +23,18 @@ export async function deployRevertingVerifier(scenario: bigint): Promise<string>
 }
 
 export async function deployPlonkVerifierSepoliaFull(): Promise<string> {
-  const plonkVerifierSepoliaFull = await ethers.getContractFactory("PlonkVerifierSepoliaFull");
+  const plonkVerifierSepoliaFull = await ethers.getContractFactory(
+    "src/verifiers/PlonkVerifierSepoliaFull.sol:PlonkVerifierSepoliaFull",
+  );
   const verifier = await plonkVerifierSepoliaFull.deploy();
   await verifier.waitForDeployment();
   return await verifier.getAddress();
 }
 
 export async function deployPlonkVerifierMainnetFull(): Promise<string> {
-  const plonkVerifierMainnetFull = await ethers.getContractFactory("PlonkVerifierMainnetFull");
+  const plonkVerifierMainnetFull = await ethers.getContractFactory(
+    "src/verifiers/PlonkVerifierMainnetFull.sol:PlonkVerifierMainnetFull",
+  );
   const verifier = await plonkVerifierMainnetFull.deploy();
   await verifier.waitForDeployment();
   return await verifier.getAddress();
@@ -39,13 +43,6 @@ export async function deployPlonkVerifierMainnetFull(): Promise<string> {
 export async function deployPlonkVerifierDev(): Promise<string> {
   const plonkVerifierDev = await ethers.getContractFactory("PlonkVerifierDev");
   const verifier = await plonkVerifierDev.deploy();
-  await verifier.waitForDeployment();
-  return await verifier.getAddress();
-}
-
-export async function deployPlonkVerifierForMultiTypeDataAggregation(): Promise<string> {
-  const plonkVerifier = await ethers.getContractFactory("PlonkVerifierForMultiTypeDataAggregation");
-  const verifier = await plonkVerifier.deploy();
   await verifier.waitForDeployment();
   return await verifier.getAddress();
 }

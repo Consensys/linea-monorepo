@@ -17,6 +17,7 @@ import (
 // represented in Montgommery form. So neither `field.Element([0, 0, 0, 1])“ or
 // `field.Element(1, 0, 0, 0)` represent valid field elements.
 type Element = fr.Element
+type Vector = fr.Vector
 
 const (
 	// RootOfUnityOrder is the smallest integer such that
@@ -147,4 +148,12 @@ func PseudoRandTruncated(rng *rand.Rand, sizeByte int) Element {
 	bigInt.SetBytes(bareBytes[:sizeByte]).Mod(bigInt, Modulus())
 	res.SetBigInt(bigInt)
 	return res
+}
+
+// FromBool returns 1 if true and zero if false
+func FromBool(b bool) Element {
+	if b {
+		return One()
+	}
+	return Zero()
 }

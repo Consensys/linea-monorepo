@@ -1,6 +1,7 @@
 package net.consensys.zkevm.ethereum
 
 import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.addFileSource
 import linea.contract.l1.LineaContractVersion
 import linea.kotlin.gwei
@@ -73,12 +74,16 @@ interface ContractsManager {
 }
 
 object MakeFileDelegatedContractsManager : ContractsManager {
-  val log = LoggerFactory.getLogger(MakeFileDelegatedContractsManager::class.java)
+  private val log = LoggerFactory.getLogger(MakeFileDelegatedContractsManager::class.java)
+
+  @OptIn(ExperimentalHoplite::class)
   val lineaRollupContractErrors = findPathTo("config")!!
     .resolve("common/smart-contract-errors.toml")
     .let { filePath ->
       data class ErrorsFile(val smartContractErrors: Map<String, String>)
-      ConfigLoaderBuilder.default()
+      ConfigLoaderBuilder
+        .default()
+        .withExplicitSealedTypes()
         .addFileSource(filePath.toAbsolutePath().toString())
         .build()
         .loadConfigOrThrow<ErrorsFile>()

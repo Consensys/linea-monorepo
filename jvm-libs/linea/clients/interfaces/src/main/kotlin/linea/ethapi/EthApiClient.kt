@@ -5,7 +5,14 @@ import linea.domain.BlockParameter
 import linea.domain.BlockWithTxHashes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
+/**
+ * Failed requests with JSON-RPC error responses will be rejected with JsonRpcErrorResponseException
+ */
 interface EthApiClient : EthLogsClient {
+  fun getChainId(): SafeFuture<ULong>
+
+  fun blockNumber(): SafeFuture<ULong>
+
   fun findBlockByNumber(
     blockParameter: BlockParameter,
   ): SafeFuture<Block?>

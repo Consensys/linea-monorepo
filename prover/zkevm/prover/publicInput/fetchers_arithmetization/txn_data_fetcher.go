@@ -5,8 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
@@ -22,6 +22,7 @@ type TxnDataFetcher struct {
 	SelectorFromAddress ifaces.Column
 	// prover action to compute SelectorFromAddress
 	ComputeSelectorFromAddress wizard.ProverAction
+	FilterArith                ifaces.Column
 }
 
 // NewTxnDataFetcher returns a new TxnDataFetcher with initialized columns that are not constrained.
@@ -33,6 +34,7 @@ func NewTxnDataFetcher(comp *wizard.CompiledIOP, name string, td *arith.TxnData)
 		FromHi:        util.CreateCol(name, "FROM_HI", size, comp),
 		FromLo:        util.CreateCol(name, "FROM_LO", size, comp),
 		FilterFetched: util.CreateCol(name, "FILTER_FETCHED", size, comp),
+		FilterArith:   util.CreateCol(name, "FILTER_ARITH", size, comp),
 	}
 	return res
 }
@@ -43,10 +45,10 @@ func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, nam
 		comp,
 		sym.Sub(
 			td.Ct,
-			1, // check that the Ct field is 1 (we use 1 rather than 0, as on prepend columns, ct is 0).
+			0, // check that the Ct field is 1 (we use 1 rather than 0, as on prepend columns, ct is 0).
 			// Moreover, all transaction segments have a row with Ct = 1
 		),
-	)
+	).GetColumnAndProverAction()
 
 	comp.InsertGlobal(
 		0,
@@ -69,6 +71,20 @@ func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, nam
 		),
 	)
 
+	// constrain the filter on the arithmetization
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("%s_FILTER_ON_ARITH_CONSTRAINT", name),
+		sym.Sub(
+			fetcher.FilterArith,
+			sym.Mul(
+				fetcher.SelectorFromAddress,
+				td.USER,
+				td.Selector,
+			),
+		),
+	)
+
 	// the table with the data we fetch from the arithmetization's TxnData columns
 	fetcherTable := []ifaces.Column{
 		fetcher.FromHi,
@@ -81,48 +97,73 @@ func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, nam
 	}
 
 	// a projection query to check that the sender addresses are fetched correctly
-	projection.InsertProjection(comp,
+	comp.InsertProjection(
 		ifaces.QueryIDf("%s_TXN_DATA_FETCHER_PROJECTION", name),
-		fetcherTable,
-		arithTable,
-		fetcher.FilterFetched,
-		fetcher.SelectorFromAddress, // filter lights up on the arithmetization's TxnData rows that contain sender address data
-	)
+		query.ProjectionInput{ColumnA: fetcherTable,
+			ColumnB: arithTable,
+			FilterA: fetcher.FilterFetched,
+			// filter lights up on the arithmetization's TxnData rows that contain sender address data
+			FilterB: fetcher.FilterArith})
 }
 
 // AssignTxnDataFetcher assigns the data in the TxnDataFetcher using data fetched from the TxnData
 func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td *arith.TxnData) {
-	size := td.Ct.Size()
-	relBlock := make([]field.Element, size)
-	absTxNum := make([]field.Element, size)
-	fromHi := make([]field.Element, size)
-	fromLo := make([]field.Element, size)
-	filterFetched := make([]field.Element, size)
-	counter := 0
 
-	for i := 0; i < td.Ct.Size(); i++ {
-		ct := td.Ct.GetColAssignmentAt(run, i)
-		fetchedAbsTxNum := td.AbsTxNum.GetColAssignmentAt(run, i)
-		fetchedRelBlock := td.RelBlock.GetColAssignmentAt(run, i)
-		if ct.IsOne() && !fetchedAbsTxNum.IsZero() { // absTxNum starts from 1, ct starts from 0 but always touches 1
-			arithFromHi := td.FromHi.GetColAssignmentAt(run, i)
-			arithFromLo := td.FromLo.GetColAssignmentAt(run, i)
-			absTxNum[counter].Set(&fetchedAbsTxNum)
-			relBlock[counter].Set(&fetchedRelBlock)
-			fromHi[counter].Set(&arithFromHi)
-			fromLo[counter].Set(&arithFromLo)
+	var (
+		// Those are the assignments from the arithmetization
+		ct              = td.Ct.GetColAssignment(run)
+		fetchedAbsTxNum = td.AbsTxNum.GetColAssignment(run)
+		fetchedRelBlock = td.RelBlock.GetColAssignment(run)
+		arithFromHi     = td.FromHi.GetColAssignment(run)
+		arithFromLo     = td.FromLo.GetColAssignment(run)
+		arithUser       = td.USER.GetColAssignment(run)
+		tdSelector      = td.Selector.GetColAssignment(run)
+		start, stop     = smartvectors.CoCompactRange(ct)
+		size            = td.Ct.Size()
+		density         = stop - start
+
+		// Those are the ongoing assignment slices
+		relBlock      = make([]field.Element, density)
+		absTxNum      = make([]field.Element, density)
+		fromHi        = make([]field.Element, density)
+		fromLo        = make([]field.Element, density)
+		filterFetched = make([]field.Element, density)
+		filterArith   = make([]field.Element, size)
+		counter       = 0
+	)
+
+	for i := start; i < stop; i++ {
+
+		var (
+			ct              = ct.GetPtr(i)
+			fetchedAbsTxNum = fetchedAbsTxNum.GetPtr(i)
+			fetchedRelBlock = fetchedRelBlock.GetPtr(i)
+			arithFromHi     = arithFromHi.GetPtr(i)
+			arithFromLo     = arithFromLo.GetPtr(i)
+			arithUser       = arithUser.GetPtr(i)
+			tdSelector      = tdSelector.GetPtr(i)
+		)
+
+		if ct.IsZero() && !fetchedAbsTxNum.IsZero() && arithUser.IsOne() && tdSelector.IsOne() { // absTxNum starts from 1, ct starts from 0 but always touches 1
+			absTxNum[counter].Set(fetchedAbsTxNum)
+			relBlock[counter].Set(fetchedRelBlock)
+			fromHi[counter].Set(arithFromHi)
+			fromLo[counter].Set(arithFromLo)
 			// update counters
 			filterFetched[counter].SetOne()
 			counter++
+			// and compute the arith filter
+			filterArith[i].SetOne()
 		}
 	}
 
 	// assign the fetcher columns
-	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.NewRegular(relBlock))
-	run.AssignColumn(fetcher.AbsTxNum.GetColID(), smartvectors.NewRegular(absTxNum))
-	run.AssignColumn(fetcher.FromHi.GetColID(), smartvectors.NewRegular(fromHi))
-	run.AssignColumn(fetcher.FromLo.GetColID(), smartvectors.NewRegular(fromLo))
-	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched))
+	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.RightZeroPadded(relBlock[:counter], size))
+	run.AssignColumn(fetcher.AbsTxNum.GetColID(), smartvectors.RightZeroPadded(absTxNum[:counter], size))
+	run.AssignColumn(fetcher.FromHi.GetColID(), smartvectors.RightZeroPadded(fromHi[:counter], size))
+	run.AssignColumn(fetcher.FromLo.GetColID(), smartvectors.RightZeroPadded(fromLo[:counter], size))
+	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.RightZeroPadded(filterFetched[:counter], size))
+	run.AssignColumn(fetcher.FilterArith.GetColID(), smartvectors.NewRegular(filterArith))
 	// assign the SelectorFromAddress using the ComputeSelectorFromAddress prover action
 	fetcher.ComputeSelectorFromAddress.Run(run)
 }

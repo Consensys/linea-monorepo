@@ -1,16 +1,10 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
 package net.consensys.linea;
@@ -18,12 +12,13 @@ package net.consensys.linea;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.config.LineaBundleCliOptions;
 import net.consensys.linea.config.LineaBundleConfiguration;
+import net.consensys.linea.config.LineaLivenessServiceCliOptions;
+import net.consensys.linea.config.LineaLivenessServiceConfiguration;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRejectedTxReportingCliOptions;
@@ -32,12 +27,18 @@ import net.consensys.linea.config.LineaRpcCliOptions;
 import net.consensys.linea.config.LineaRpcConfiguration;
 import net.consensys.linea.config.LineaTracerCliOptions;
 import net.consensys.linea.config.LineaTracerConfiguration;
+import net.consensys.linea.config.LineaTracerLineLimitConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
+import net.consensys.linea.config.LineaTransactionValidatorCliOptions;
+import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
+import net.consensys.linea.plugins.config.LineaTracerSharedCliOptions;
+import net.consensys.linea.plugins.config.LineaTracerSharedConfiguration;
+import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.utils.Compressor;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
@@ -45,6 +46,7 @@ import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.MetricsSystem;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
+import org.hyperledger.besu.plugin.services.WorldStateService;
 import org.hyperledger.besu.plugin.services.metrics.MetricCategoryRegistry;
 
 /**
@@ -65,11 +67,13 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     extends AbstractLineaSharedOptionsPlugin {
   protected static BesuConfiguration besuConfiguration;
   protected static BlockchainService blockchainService;
+  protected static WorldStateService worldStateService;
   protected static MetricsSystem metricsSystem;
   protected static BesuEvents besuEvents;
   protected static BundlePoolService bundlePoolService;
   protected static MetricCategoryRegistry metricCategoryRegistry;
   protected static RpcEndpointService rpcEndpointService;
+  protected static InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
@@ -102,6 +106,12 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         LineaRejectedTxReportingCliOptions.create().asPluginConfig());
     configMap.put(
         LineaBundleCliOptions.CONFIG_KEY, LineaBundleCliOptions.create().asPluginConfig());
+    configMap.put(
+        LineaTransactionValidatorCliOptions.CONFIG_KEY,
+        LineaTransactionValidatorCliOptions.create().asPluginConfig());
+    configMap.put(
+        LineaLivenessServiceCliOptions.CONFIG_KEY,
+        LineaLivenessServiceCliOptions.create().asPluginConfig());
     return configMap;
   }
 
@@ -126,8 +136,16 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   }
 
   public LineaTracerConfiguration tracerConfiguration() {
-    return (LineaTracerConfiguration)
-        getConfigurationByKey(LineaTracerCliOptions.CONFIG_KEY).optionsConfig();
+    var tracerLineLimitConfig =
+        (LineaTracerLineLimitConfiguration)
+            getConfigurationByKey(LineaTracerCliOptions.CONFIG_KEY).optionsConfig();
+    var tracerSharedConfig =
+        (LineaTracerSharedConfiguration)
+            getConfigurationByKey(LineaTracerSharedCliOptions.CONFIG_KEY).optionsConfig();
+    return new LineaTracerConfiguration(
+        tracerLineLimitConfig.moduleLimitsFilePath(),
+        tracerLineLimitConfig.moduleLimitsMap(),
+        tracerSharedConfig.isLimitless());
   }
 
   public LineaRejectedTxReportingConfiguration rejectedTxReportingConfiguration() {
@@ -138,6 +156,20 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public LineaBundleConfiguration bundleConfiguration() {
     return (LineaBundleConfiguration)
         getConfigurationByKey(LineaBundleCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  public LineaTransactionValidatorConfiguration transactionValidatorConfiguration() {
+    return (LineaTransactionValidatorConfiguration)
+        getConfigurationByKey(LineaTransactionValidatorCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  public LineaLivenessServiceConfiguration livenessServiceConfiguration() {
+    return (LineaLivenessServiceConfiguration)
+        getConfigurationByKey(LineaLivenessServiceCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  protected InvalidTransactionByLineCountCache getInvalidTransactionByLineCountCache() {
+    return invalidTransactionByLineCountCache;
   }
 
   @Override
@@ -220,6 +252,14 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
             .orElseThrow(
                 () -> new RuntimeException("Failed to obtain BesuEvents from the ServiceManager."));
 
+    worldStateService =
+        serviceManager
+            .getService(WorldStateService.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain WorldStateService from the ServiceManager."));
+
     bundlePoolService =
         new LineaLimitedBundlePool(
             besuConfiguration.getDataPath(),
@@ -227,6 +267,10 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
             besuEvents,
             blockchainService);
     bundlePoolService.loadFromDisk();
+
+    invalidTransactionByLineCountCache =
+        new InvalidTransactionByLineCountCache(
+            transactionSelectorConfiguration().overLinesLimitCacheSize());
   }
 
   @Override

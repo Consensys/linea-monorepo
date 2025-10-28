@@ -13,7 +13,6 @@ import linea.web3j.ethapi.Web3jEthApiClient
 import linea.web3j.gas.EIP1559GasProvider
 import linea.web3j.requestAsync
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
-import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.contract.L2MessageService
 import net.consensys.linea.contract.Web3JContractAsyncHelper
 import org.apache.logging.log4j.LogManager
@@ -25,6 +24,7 @@ import org.web3j.tx.gas.StaticGasProvider
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.random.Random
 
 class Web3JL2MessageServiceSmartContractClient(
   private val web3j: Web3j,
@@ -75,6 +75,30 @@ class Web3JL2MessageServiceSmartContractClient(
         contractAddress = contractAddress,
         web3jContractHelper = web3jContractHelper,
         deploymentBlockNumberProvider = deploymentBlockNumberProvider,
+      )
+    }
+
+    fun createReadOnly(
+      web3jClient: Web3j,
+      contractAddress: String,
+      smartContractErrors: SmartContractErrors,
+      smartContractDeploymentBlockNumber: ULong?,
+    ): L2MessageServiceSmartContractClientReadOnly {
+      val unUsedTxManager = AsyncFriendlyTransactionManager(
+        web3j = web3jClient,
+        credentials = Credentials.create(Random.nextBytes(64).encodeHex()),
+        chainId = 1L,
+      )
+      return create(
+        web3jClient = web3jClient,
+        contractAddress = contractAddress,
+        gasLimit = 0UL,
+        maxFeePerGasCap = 0UL,
+        feeHistoryBlockCount = 1u,
+        feeHistoryRewardPercentile = 100.0,
+        transactionManager = unUsedTxManager,
+        smartContractErrors = smartContractErrors,
+        smartContractDeploymentBlockNumber = smartContractDeploymentBlockNumber,
       )
     }
   }
@@ -132,7 +156,9 @@ class Web3JL2MessageServiceSmartContractClient(
 
   override fun getAddress(): String = contractAddress
   override fun getVersion(): SafeFuture<L2MessageServiceSmartContractVersion> = getSmartContractVersion()
-  override fun getDeploymentBlock(): SafeFuture<ULong> { return deploymentBlockNumberProvider() }
+  override fun getDeploymentBlock(): SafeFuture<ULong> {
+    return deploymentBlockNumberProvider()
+  }
 
   override fun getLastAnchoredL1MessageNumber(block: BlockParameter): SafeFuture<ULong> {
     return contractClientAtBlock(block, L2MessageService::class.java)
@@ -177,14 +203,18 @@ class Web3JL2MessageServiceSmartContractClient(
     )
 
     return web3jContractHelper
-      .sendTransactionAfterEthCallAsync(
-        function = function,
-        weiValue = BigInteger.ZERO,
-        gasPriceCaps = null,
-      )
+      .transactionManager
+      .resetNonce(blockParameter = BlockParameter.Tag.LATEST)
+      .thenCompose {
+        web3jContractHelper
+          .sendTransactionAfterEthCallAsync(
+            function = function,
+            weiValue = BigInteger.ZERO,
+            gasPriceCaps = null,
+          )
+      }
       .thenApply { response ->
         response.transactionHash
       }
-      .toSafeFuture()
   }
 }

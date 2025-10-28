@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { getPublicClient } from "@wagmi/core";
 import {
   BridgeTransaction,
   BridgeTransactionType,
@@ -7,15 +9,16 @@ import {
   TransactionStatus,
 } from "@/types";
 import { isNativeBridgeMessage } from "@/utils/message";
-import { useQuery } from "@tanstack/react-query";
-import useLineaSDK from "./useLineaSDK";
 import { isUndefined, isUndefinedOrEmptyString } from "@/utils";
+import { config } from "@/config";
+import { getMessageProof } from "@consensys/linea-sdk-viem";
+import { Address, Client, Hex } from "viem";
+import { useConfig } from "wagmi";
 
 const useBridgeTransactionMessage = (
   transaction: BridgeTransaction | undefined,
 ): { message: CctpV2BridgeMessage | NativeBridgeMessage | undefined; isLoading: boolean } => {
-  const { lineaSDK } = useLineaSDK();
-
+  const wagmiConfig = useConfig();
   // queryFn for useQuery cannot return undefined - https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
   async function getBridgeTransactionMessage(
     transaction: BridgeTransaction | undefined,
@@ -37,14 +40,41 @@ const useBridgeTransactionMessage = (
         if (toChain.layer === ChainLayer.L2) return message;
         if (!isNativeBridgeMessage(message) || isUndefinedOrEmptyString(message?.messageHash)) return message;
         const { messageHash } = message;
-        message.proof = await lineaSDK.getL1ClaimingService().getMessageProof(messageHash);
+
+        const originLayerClient = getPublicClient(wagmiConfig, { chainId: fromChain.id });
+        const destinationLayerClient = getPublicClient(wagmiConfig, { chainId: toChain.id });
+
+        message.proof = await getMessageProof(destinationLayerClient as Client, {
+          messageHash: messageHash as Hex,
+          l2Client: originLayerClient as Client,
+          ...(config.e2eTestMode
+            ? {
+                lineaRollupAddress: config.chains[toChain.id].messageServiceAddress as Address,
+                l2MessageServiceAddress: config.chains[fromChain.id].messageServiceAddress as Address,
+              }
+            : {}),
+        });
+
         return message;
       }
       case BridgeTransactionType.ERC20: {
         if (toChain.layer === ChainLayer.L2) return message;
         if (!isNativeBridgeMessage(message) || isUndefinedOrEmptyString(message?.messageHash)) return message;
         const { messageHash } = message;
-        message.proof = await lineaSDK.getL1ClaimingService().getMessageProof(messageHash);
+
+        const originLayerClient = getPublicClient(wagmiConfig, { chainId: fromChain.id });
+        const destinationLayerClient = getPublicClient(wagmiConfig, { chainId: toChain.id });
+
+        message.proof = await getMessageProof(destinationLayerClient as Client, {
+          messageHash: messageHash as Hex,
+          l2Client: originLayerClient as Client,
+          ...(config.e2eTestMode
+            ? {
+                lineaRollupAddress: config.chains[toChain.id].messageServiceAddress as Address,
+                l2MessageServiceAddress: config.chains[fromChain.id].messageServiceAddress as Address,
+              }
+            : {}),
+        });
         return message;
       }
       case BridgeTransactionType.USDC: {

@@ -12,13 +12,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
 
-/*
-Refers to an abstract value that is 0 on every entries and one
-on every entries i such that i % T == 0
-*/
+// Refers to an abstract value that is 0 on every entries and one
+// on every entries i such that i % T == 0
 type PeriodicSample struct {
 	T      int
 	Offset int // Should be < T
@@ -27,6 +26,9 @@ type PeriodicSample struct {
 // Constructs a new PeriodicSample, will panic if the offset it larger
 // than T
 func NewPeriodicSample(period, offset int) *symbolic.Expression {
+
+	offset = utils.PositiveMod(offset, period)
+
 	if !utils.IsPowerOfTwo(period) {
 		utils.Panic("non power of two period %v", period)
 	}
@@ -43,6 +45,11 @@ func NewPeriodicSample(period, offset int) *symbolic.Expression {
 		T:      period,
 		Offset: offset,
 	})
+}
+
+// Lagrange returns a PeriodicSampling representing a Lagrange polynomial
+func Lagrange(n, pos int) *symbolic.Expression {
+	return NewPeriodicSample(n, pos)
 }
 
 // to implement symbolic.Metadata
@@ -188,7 +195,7 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	omegal := fft.GetOmega(t.T) // It's the canonical t-root of unity
 
 	// Denominator
-	denominator := make([]field.Element, t.T)
+	denominator := make([]field.Element, t.T, n)
 	denominator[0] = al
 
 	for i := 1; i < t.T; i++ {
@@ -197,7 +204,7 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	}
 
 	denominator[t.T-1].Sub(&denominator[t.T-1], &one)
-	denominator = field.BatchInvert(denominator)
+	denominator2 := field.ParBatchInvert(denominator, 8)
 
 	/*
 		Compute the constant term l / n (a^n - 1)
@@ -210,11 +217,13 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	constTerm.Mul(&constTerm, &lField)
 	constTerm.Mul(&constTerm, &nField)
 
-	vector.ScalarMul(denominator, denominator, constTerm)
+	parallel.Execute(len(denominator2), func(start, stop int) {
+		vector.ScalarMul(denominator2[start:stop], denominator2[start:stop], constTerm)
+	})
 
 	// Now, we just need to repeat it "l" time and we can return
-	res := make([]field.Element, t.T, n)
-	copy(res, denominator)
+	res := denominator // reuse the allocated memory
+	copy(res, denominator2)
 	for len(res) < n {
 		res = append(res, res...)
 	}

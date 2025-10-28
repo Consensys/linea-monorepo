@@ -27,6 +27,9 @@ type Witness struct {
 	TxHashes        [][32]byte
 	L2BridgeAddress common.Address
 	ChainID         uint
+	CoinBase        types.EthAddress
+	BaseFee         uint
+
 	// BlockHashList is the list of the block-hashes of the proven blocks
 	BlockHashList []types.FullBytes32
 }

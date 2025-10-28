@@ -3,32 +3,33 @@ import java.time.LocalTime
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
 plugins {
+  alias(libs.plugins.besuPluginLibrary)
   alias(libs.plugins.web3j)
   alias(libs.plugins.web3jSolidity)
   alias(libs.plugins.lombok)
   alias(libs.plugins.gradleVersions)
   alias(libs.plugins.dependencyManagement)
-  alias(libs.plugins.download)
 }
 
 def lineaSequencerProject = project(lineaSequencerProjectPath)
 apply from: lineaSequencerProject.file("gradle/java.gradle")
 apply from: lineaSequencerProject.file("gradle/dependency-management.gradle")
-apply from: lineaSequencerProject.file('gradle/common-dependencies.gradle')
 apply from: lineaSequencerProject.file("gradle/lint.gradle")
+
+compileJava {
+  options.annotationProcessorGeneratedSourcesDirectory = file("$buildDir/generated/sources/annotationProcessor/java/main")
+  options.compilerArgs += [
+    '-Alog4j.graalvm.groupId=' + project.group,
+    '-Alog4j.graalvm.artifactId=' + project.name
+  ]
+}
 
 web3j {
   generatedPackageName = 'linea.plugin.acc.test.tests.web3j.generated'
@@ -52,30 +53,27 @@ tasks.register('acceptanceTests', Test) {
     includeTags("AcceptanceTest")
   }
 
-  maxParallelForks Runtime.runtime.availableProcessors()
+  // Configure resource limits
+  boolean isCiServer = System.getenv().containsKey("CI")
+  maxParallelForks = isCiServer ? Runtime.runtime.availableProcessors() : 3
   systemProperties["junit.jupiter.execution.parallel.enabled"] = false
 }
 
 dependencies {
   annotationProcessor 'org.apache.logging.log4j:log4j-core'
-
   implementation 'org.apache.logging.log4j:log4j-core'
 
   testImplementation project("${lineaSequencerProjectPath}:sequencer")
 
-  testImplementation "${besuArtifactGroup}:besu-datatypes"
-  testImplementation "${besuArtifactGroup}.internal:clique"
-  testImplementation "${besuArtifactGroup}.internal:api"
-  testImplementation "${besuArtifactGroup}.internal:core"
-  testImplementation "${besuArtifactGroup}.internal:dsl"
-  testImplementation "${besuArtifactGroup}.internal:eth"
-  testImplementation "${besuArtifactGroup}.internal:metrics-core"
-  testImplementation "${besuArtifactGroup}.internal:services"
-  testImplementation group: "${besuArtifactGroup}.internal", name: "core", classifier: "test-support"
+  testImplementation "net.consensys.linea.zktracer:arithmetization:${libs.versions.arithmetization.get()}"
 
-  testImplementation 'net.consensys.linea.zktracer:arithmetization'
+  testImplementation 'org.assertj:assertj-core'
 
-  testImplementation 'org.awaitility:awaitility'
+  testImplementation 'org.junit.jupiter:junit-jupiter-api'
+  testImplementation 'org.junit.jupiter:junit-jupiter-params'
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+
+  testImplementation "org.wiremock:wiremock:${libs.versions.wiremock.get()}"
 }
 
 // Do not run acceptance tests with ./gradlew test, only with ./gradlew acceptanceTests

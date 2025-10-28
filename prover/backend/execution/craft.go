@@ -5,6 +5,7 @@ import (
 	"path"
 
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
@@ -32,9 +33,14 @@ func CraftProverOutput(
 		rsp             = Response{
 			BlocksData:           make([]BlockData, len(blocks)),
 			ChainID:              cfg.Layer2.ChainID,
+			BaseFee:              cfg.Layer2.BaseFee,
+			CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 			L2BridgeAddress:      types.EthAddress(cfg.Layer2.MsgSvcContract),
 			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs,
 		}
+		// execution prover performance metadta accumulators
+		totalTxs     uint64
+		totalGasUsed uint64
 	)
 
 	// Extract the data from the block
@@ -77,7 +83,13 @@ func CraftProverOutput(
 			rsp.AllL2L1MessageHashes,
 			l2l1MessageHashes...,
 		)
+
+		// execution prover performance metadta
+		totalTxs += uint64(len(block.Transactions()))
+		totalGasUsed += block.GasUsed()
 	}
+
+	logrus.Infof("Conflation stats - totalTxs: %d, totalGasUsed: %d", totalTxs, totalGasUsed)
 
 	rsp.ExecDataChecksum = mimcHashLooselyPacked(execDataBuf.Bytes())
 
@@ -183,6 +195,8 @@ func (rsp *Response) FuncInput() *public_input.Execution {
 		fi         = &public_input.Execution{
 			L2MessageServiceAddr:  types.EthAddress(rsp.L2BridgeAddress),
 			ChainID:               uint64(rsp.ChainID),
+			BaseFee:               uint64(rsp.BaseFee),
+			CoinBase:              types.EthAddress(rsp.CoinBase),
 			FinalBlockTimestamp:   lastBlock.TimeStamp,
 			FinalBlockNumber:      uint64(rsp.FirstBlockNumber + len(rsp.BlocksData) - 1),
 			InitialBlockTimestamp: firstBlock.TimeStamp,
@@ -219,6 +233,8 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 			TxHashes:        txHashes,
 			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
 			ChainID:         cfg.Layer2.ChainID,
+			BaseFee:         cfg.Layer2.BaseFee,
+			CoinBase:        types.EthAddress(cfg.Layer2.CoinBase),
 			BlockHashList:   getBlockHashList(rsp),
 		},
 		FuncInp: rsp.FuncInput(),

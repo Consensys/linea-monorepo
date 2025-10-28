@@ -1,22 +1,24 @@
 /*
  * Copyright Consensys Software Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * This file is dual-licensed under either the MIT license or Apache License 2.0.
+ * See the LICENSE-MIT and LICENSE-APACHE files in the repository root for details.
  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 
 package net.consensys.linea.config;
 
 import com.google.common.base.MoreObjects;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.consensys.linea.plugins.LineaCliOptions;
+import org.hyperledger.besu.datatypes.Address;
 import picocli.CommandLine;
 
 /** The Linea CLI options. */
@@ -25,6 +27,9 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
 
   public static final String DENY_LIST_PATH = "--plugin-linea-deny-list-path";
   public static final String DEFAULT_DENY_LIST_PATH = "lineaDenyList.txt";
+
+  public static final String BUNDLE_OVERRIDING_DENY_LIST_PATH =
+      "--plugin-linea-bundle-overriding-deny-list-path";
 
   public static final String MAX_TX_GAS_LIMIT_OPTION = "--plugin-linea-max-tx-gas-limit";
   public static final int DEFAULT_MAX_TRANSACTION_GAS_LIMIT = 30_000_000;
@@ -47,6 +52,16 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
       description =
           "Path to the file containing the deny list (default: " + DEFAULT_DENY_LIST_PATH + ")")
   private String denyListPath = DEFAULT_DENY_LIST_PATH;
+
+  @CommandLine.Option(
+      names = {BUNDLE_OVERRIDING_DENY_LIST_PATH},
+      hidden = true,
+      paramLabel = "<STRING>",
+      description =
+          "Path to the file containing the deny list for bundles. (default: value used for "
+              + DENY_LIST_PATH
+              + ")")
+  private String bundleOverridingDenyListPath;
 
   @CommandLine.Option(
       names = {MAX_TX_GAS_LIMIT_OPTION},
@@ -107,6 +122,7 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
       final LineaTransactionPoolValidatorConfiguration config) {
     final LineaTransactionPoolValidatorCliOptions options = create();
     options.denyListPath = config.denyListPath();
+    options.bundleOverridingDenyListPath = config.bundleOverridingDenyListPath();
     options.maxTxGasLimit = config.maxTxGasLimit();
     options.maxTxCallDataSize = config.maxTxCalldataSize();
     options.txPoolSimulationCheckApiEnabled = config.txPoolSimulationCheckApiEnabled();
@@ -121,8 +137,15 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
    */
   @Override
   public LineaTransactionPoolValidatorConfiguration toDomainObject() {
+    if (bundleOverridingDenyListPath == null) {
+      bundleOverridingDenyListPath = denyListPath;
+    }
+
     return new LineaTransactionPoolValidatorConfiguration(
         denyListPath,
+        parseDeniedAddresses(denyListPath),
+        bundleOverridingDenyListPath,
+        parseDeniedAddresses(bundleOverridingDenyListPath),
         maxTxGasLimit,
         maxTxCallDataSize,
         txPoolSimulationCheckApiEnabled,
@@ -133,10 +156,21 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add(DENY_LIST_PATH, denyListPath)
+        .add(BUNDLE_OVERRIDING_DENY_LIST_PATH, bundleOverridingDenyListPath)
         .add(MAX_TX_GAS_LIMIT_OPTION, maxTxGasLimit)
         .add(MAX_TX_CALLDATA_SIZE, maxTxCallDataSize)
         .add(TX_POOL_ENABLE_SIMULATION_CHECK_API, txPoolSimulationCheckApiEnabled)
         .add(TX_POOL_ENABLE_SIMULATION_CHECK_P2P, txPoolSimulationCheckP2pEnabled)
         .toString();
+  }
+
+  public Set<Address> parseDeniedAddresses(final String denyListFilename) {
+    try (Stream<String> lines = Files.lines(Path.of(new File(denyListFilename).toURI()))) {
+      return lines
+          .map(l -> Address.fromHexString(l.trim()))
+          .collect(Collectors.toUnmodifiableSet());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
