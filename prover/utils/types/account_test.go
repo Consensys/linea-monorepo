@@ -138,7 +138,7 @@ func TestReadWriteAccountUnpacked(t *testing.T) {
 
 }
 
-func TestVectorsAccountFormattingHASH(t *testing.T) {
+func TestAccountHash(t *testing.T) {
 
 	tcases := []struct {
 		Account     Account
