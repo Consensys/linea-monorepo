@@ -47,6 +47,8 @@ import { NativeYieldAutomationMetricsUpdater } from "../metrics/NativeYieldAutom
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 import { VaultHubContractClient } from "../../clients/contracts/VaultHubContractClient.js";
+import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
+import { OperationModeMetricsRecorder } from "../metrics/OperationModeMetricsRecorder.js";
 
 export class NativeYieldAutomationServiceBootstrap {
   private readonly config: NativeYieldAutomationServiceBootstrapConfig;
@@ -70,6 +72,7 @@ export class NativeYieldAutomationServiceBootstrap {
   private lidoAccountingReportClient: ILidoAccountingReportClient;
   private consensysStakingGraphQLClient: IValidatorDataClient;
 
+  private readonly operationModeMetricsRecorder: IOperationModeMetricsRecorder;
   private operationModeSelector: IOperationModeSelector;
   private yieldReportingOperationModeProcessor: IOperationModeProcessor;
   private ossificationPendingOperationModeProcessor: IOperationModeProcessor;
@@ -178,12 +181,19 @@ export class NativeYieldAutomationServiceBootstrap {
     );
 
     // Processor Services
+    this.operationModeMetricsRecorder = new OperationModeMetricsRecorder(
+      new WinstonLogger(OperationModeMetricsRecorder.name, config.loggerOptions),
+      this.metricsUpdater,
+      this.yieldManagerContractClient,
+      this.vaultHubContractClient,
+    );
+
     this.yieldReportingOperationModeProcessor = new YieldReportingProcessor(
       new WinstonLogger(YieldReportingProcessor.name, config.loggerOptions),
       this.metricsUpdater,
+      this.operationModeMetricsRecorder,
       this.yieldManagerContractClient,
       this.lazyOracleContractClient,
-      this.vaultHubContractClient,
       this.lineaRollupYieldExtensionContractClient,
       this.lidoAccountingReportClient,
       this.beaconChainStakingClient,
@@ -195,9 +205,9 @@ export class NativeYieldAutomationServiceBootstrap {
     this.ossificationPendingOperationModeProcessor = new OssificationPendingProcessor(
       new WinstonLogger(OssificationPendingProcessor.name, config.loggerOptions),
       this.metricsUpdater,
+      this.operationModeMetricsRecorder,
       this.yieldManagerContractClient,
       this.lazyOracleContractClient,
-      this.vaultHubContractClient,
       this.lidoAccountingReportClient,
       this.beaconChainStakingClient,
       config.timing.trigger.maxInactionMs,
@@ -207,8 +217,8 @@ export class NativeYieldAutomationServiceBootstrap {
     this.ossificationCompleteOperationModeProcessor = new OssificationCompleteProcessor(
       new WinstonLogger(OssificationCompleteProcessor.name, config.loggerOptions),
       this.metricsUpdater,
+      this.operationModeMetricsRecorder,
       this.yieldManagerContractClient,
-      this.vaultHubContractClient,
       this.beaconChainStakingClient,
       config.timing.trigger.maxInactionMs,
       config.contractAddresses.lidoYieldProviderAddress,

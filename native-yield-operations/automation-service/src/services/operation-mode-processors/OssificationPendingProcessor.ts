@@ -8,18 +8,16 @@ import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingR
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
-import { updateMetricsForSafeWithdrawalResult } from "../../application/metrics/updateMetricsForSafeWithdrawalResult.js";
 import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
-import { updateMetricsForProgressOssificationResult } from "../../application/metrics/updateMetricsForProgressOssificationResult.js";
-import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
+import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 
 export class OssificationPendingProcessor implements IOperationModeProcessor {
   constructor(
     private readonly logger: ILogger,
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
+    private readonly operationModeMetricsRecorder: IOperationModeMetricsRecorder,
     private readonly yieldManagerContractClient: IYieldManager<TransactionReceipt>,
     private readonly lazyOracleContractClient: ILazyOracle<TransactionReceipt>,
-    private readonly vaultHubContractClient: IVaultHub<TransactionReceipt>,
     private readonly lidoAccountingReportClient: ILidoAccountingReportClient,
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
     private readonly maxInactionMs: number,
@@ -102,13 +100,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
     // Stop if failed.
     if (ossificationResult.isErr()) return;
 
-    await updateMetricsForProgressOssificationResult(
-      ossificationResult,
-      this.metricsUpdater,
-      this.yieldManagerContractClient,
-      this.vaultHubContractClient,
-      this.yieldProvider,
-    );
+    await this.operationModeMetricsRecorder.recordProgressOssificationMetrics(this.yieldProvider, ossificationResult);
     this.logger.info("_process - Ossification completed, performing max safe withdrawal");
 
     // Max withdraw if ossified
@@ -118,13 +110,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
         () => this.yieldManagerContractClient.safeMaxAddToWithdrawalReserve(this.yieldProvider),
         "_process - safeMaxAddToWithdrawalReserve failed",
       );
-
-      await updateMetricsForSafeWithdrawalResult(
-        withdrawalResult,
-        this.metricsUpdater,
-        this.yieldManagerContractClient,
-        this.vaultHubContractClient,
-      );
+      await this.operationModeMetricsRecorder.recordSafeWithdrawalMetrics(this.yieldProvider, withdrawalResult);
     }
   }
 }

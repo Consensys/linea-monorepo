@@ -35,7 +35,7 @@ export const tryResult = <T>(fn: () => Promise<T> | T): ResultAsync<T, Error> =>
  * @param msg A message to include in the warning log if an error occurs.
  * @returns A `ResultAsync<T, Error>` that resolves to `ok(value)` or `err(error)`.
  */
-export const attempt = <T>(logger: ILogger, fn: () => Promise<T> | T, msg: string) =>
+export const attempt = <T>(logger: ILogger, fn: () => Promise<T> | T, msg: string): ResultAsync<T, Error> =>
   tryResult(fn).mapErr((error) => {
     logger.warn(msg, { error });
     return error;

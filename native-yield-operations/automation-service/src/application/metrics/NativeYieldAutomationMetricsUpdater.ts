@@ -11,6 +11,7 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 // Buckets range up to 20 minutes to account for long-running modes.
 const OPERATION_MODE_DURATION_BUCKETS = [1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200];
 
+// Focused on defining the specific metrics, and methods for updating them
 export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomationMetricsUpdater {
   constructor(private readonly metricsService: IMetricsService<LineaNativeYieldAutomationServiceMetrics>) {
     this.metricsService.createCounter(
