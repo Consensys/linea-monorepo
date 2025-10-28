@@ -36,11 +36,8 @@ type Metadata struct {
 	NumLPP                   int    `json:"numLPP"`
 
 	GLProofFiles  []string `json:"glProofFiles"`
-	GLCommitFiles []string `json:"glCommitFiles"`
-
-	SharedRndFile string `json:"sharedRndFile"`
-
 	LPPProofFiles []string `json:"lppProofFiles"`
+	SharedRndFile string   `json:"sharedRndFile"`
 }
 
 func RunBootstrapper(cfg *config.Config, req *execution.Request, metadata *Metadata) (*Metadata, error) {
@@ -119,7 +116,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 						return
 					}
 
-					panic(err)
+					debug.PrintStack()
 				}
 			}()
 
@@ -154,19 +151,24 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 	assets.Zkevm = nil
 	assets.DistWizard.Bootstrapper = nil
 
+	mt, err := zkevm.LoadVerificationKeyMerkleTree(cfg)
+	if err != nil {
+		return fmt.Errorf("could not load verification key merkle tree: %w", err)
+	}
+
 	logrus.Infof("Segmenting the runtime")
 	witnessGLs, witnessLPPs := distributed.SegmentRuntime(
 		runtimeBoot,
 		assets.DistWizard.Disc,
 		assets.DistWizard.BlueprintGLs,
 		assets.DistWizard.BlueprintLPPs,
+		mt.GetRoot(),
 	)
 
 	// Populate the metadata fields
 	metadata.NumGL = len(witnessGLs)
 	metadata.NumLPP = len(witnessLPPs)
 	metadata.GLProofFiles = make([]string, len(witnessGLs))
-	metadata.GLCommitFiles = make([]string, len(witnessGLs))
 	metadata.LPPProofFiles = make([]string, len(witnessLPPs))
 
 	logrus.Info("Saving the witnesses")
@@ -193,11 +195,8 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 
 				glProofFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-proof.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGLs[i].ModuleIndex)
 				glProofFile := path.Join(cfg.ExecutionLimitless.SubproofsDir, "GL", string(witnessGL.ModuleName), config.RequestsFromSubDir, glProofFileName)
-				glCommitFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-gl-lpp-commit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessGLs[i].ModuleIndex)
-				glCommitFile := path.Join(cfg.ExecutionLimitless.CommitsDir, string(witnessGL.ModuleName), config.RequestsFromSubDir, glCommitFileName)
 
 				metadata.GLProofFiles[i] = glProofFile
-				metadata.GLCommitFiles[i] = glCommitFile
 				witnessGL = nil
 				return nil
 			}
@@ -257,4 +256,5 @@ func loadStaticProverAssetsFromDisk(cfg *config.Config, assets *zkevm.LimitlessZ
 	if err := assets.LoadDisc(cfg); err != nil || assets.DistWizard.Disc == nil {
 		utils.Panic("could not load disc: %v", err)
 	}
+
 }
