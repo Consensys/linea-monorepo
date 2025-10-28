@@ -91,7 +91,7 @@ func (a *Account) readFrom(r io.Reader, packed bool) (int64, error) {
 		return 0, fmt.Errorf("reading account : reading codesize : %w", err)
 	}
 
-	return 192 + nK, nil
+	return 256 + nK, nil
 }
 
 func (a Account) MarshalJSON() ([]byte, error) {
