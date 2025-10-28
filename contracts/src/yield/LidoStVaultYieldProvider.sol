@@ -401,7 +401,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       _withdrawalParams,
       (bytes, uint64[], address)
     );
-    maxUnstakeAmount = _validateUnstakePermissionless(_yieldProvider, pubkeys, amounts, _withdrawalParamsProof);
+    maxUnstakeAmount = _validateUnstakePermissionlessRequest(_yieldProvider, pubkeys, amounts, _withdrawalParamsProof);
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
 
     emit LidoVaultUnstakePermissionlessRequest(
@@ -425,7 +425,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
    * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */
-  function _validateUnstakePermissionless(
+  function _validateUnstakePermissionlessRequest(
     address _yieldProvider,
     bytes memory _pubkeys,
     uint64[] memory _amounts,

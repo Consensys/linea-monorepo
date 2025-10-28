@@ -249,7 +249,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     );
   }
 
-  function validateUnstakePermissionlessHarness(
+  function validateUnstakePermissionlessRequestHarness(
     address _yieldProvider,
     bytes memory _pubkeys,
     uint64[] memory _amounts,
@@ -258,7 +258,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(
-        TestLidoStVaultYieldProvider.validateUnstakePermissionlessHarness,
+        TestLidoStVaultYieldProvider.validateUnstakePermissionlessRequestHarness,
         (_yieldProvider, _pubkeys, _amounts, _withdrawalParamsProof)
       )
     );

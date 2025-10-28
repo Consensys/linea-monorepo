@@ -113,6 +113,54 @@ describe("ValidatorContainerProofVerifier", () => {
     );
   });
 
+  it("should revert if no beacon chain root found for the timestamp", async () => {
+    const validatorMerkle = await sszMerkleTree.getValidatorPubkeyWCParentProof(
+      ACTIVE_0X01_VALIDATOR_PROOF.witness.validator,
+    );
+    const beaconHeaderMerkle = await sszMerkleTree.getBeaconBlockHeaderProof(
+      ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader,
+    );
+    const validatorGIndex = await verifier.getValidatorGI(ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex, 0);
+
+    // Verify (ValidatorContainer) leaf against (StateRoot) Merkle root
+    await sszMerkleTree.verifyProof(
+      ACTIVE_0X01_VALIDATOR_PROOF.witness.proof,
+      ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.stateRoot,
+      validatorMerkle.root,
+      validatorGIndex,
+    );
+
+    // Verify (StateRoot) leaf against (BeaconBlockRoot) Merkle root
+    await sszMerkleTree.verifyProof(
+      [...beaconHeaderMerkle.proof],
+      beaconHeaderMerkle.root,
+      ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.stateRoot,
+      beaconHeaderMerkle.index,
+    );
+
+    // concatentate all proofs to match PG style
+    const concatenatedProof = [...ACTIVE_0X01_VALIDATOR_PROOF.witness.proof, ...beaconHeaderMerkle.proof];
+
+    const validatorWitness: ValidatorWitness = {
+      proof: concatenatedProof,
+      validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
+      childBlockTimestamp: 0n,
+      slot: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.slot),
+      proposerIndex: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.proposerIndex),
+      effectiveBalance: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.effectiveBalance),
+      activationEpoch: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.activationEpoch),
+      activationEligibilityEpoch: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.activationEligibilityEpoch),
+    };
+
+    // PG style proof verification from PK+WC to BeaconBlockRoot
+    const call = verifier.verifyActiveValidatorContainer(
+      validatorWitness,
+      ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.pubkey,
+      ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.withdrawalCredentials,
+    );
+    expectRevertWithCustomError(verifier, call, "RootNotFound");
+  });
+
   it("can verify against dynamic merkle tree", async () => {
     const validator = generateValidator();
 
