@@ -243,21 +243,19 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param _liabilityShares Current outstanding liabilityShares.
    * @param _lstLiabilityPrincipalCached Recorded LST liability principal.
    * @return lstLiabilityPrincipalSynced New LST liability principal.
-   * @return isLstLiabilityPrincipalChanged True if LST liability principal was updated.
    */
   function _syncExternalLiabilitySettlement(
     YieldProviderStorage storage $$,
     uint256 _liabilityShares,
     uint256 _lstLiabilityPrincipalCached
-  ) internal returns (uint256 lstLiabilityPrincipalSynced, bool isLstLiabilityPrincipalChanged) {
+  ) internal returns (uint256 lstLiabilityPrincipalSynced) {
     uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(_liabilityShares);
     // If true, this means an external actor settled liabilities.
     if (liabilityETH < _lstLiabilityPrincipalCached) {
-      uint256 lstLiabilityPrincipalDecrement = _lstLiabilityPrincipalCached - liabilityETH;
       $$.lstLiabilityPrincipal = liabilityETH;
-      return (liabilityETH, true);
+      return liabilityETH;
     } else {
-      return (_lstLiabilityPrincipalCached, false);
+      return _lstLiabilityPrincipalCached;
     }
   }
 
@@ -341,7 +339,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
     if (lstLiabilityPrincipalCached == 0) return 0;
     IDashboard dashboard = _getDashboard($$);
-    (uint256 lstLiabilityPrincipalSynced, ) = _syncExternalLiabilitySettlement(
+    uint256 lstLiabilityPrincipalSynced = _syncExternalLiabilitySettlement(
       $$,
       dashboard.liabilityShares(),
       lstLiabilityPrincipalCached

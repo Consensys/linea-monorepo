@@ -46,7 +46,7 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     address _yieldProvider,
     uint256 _liabilityShares,
     uint256 _lstLiabilityPrincipalCached
-  ) external returns (uint256, bool) {
+  ) external returns (uint256) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     return _syncExternalLiabilitySettlement($$, _liabilityShares, _lstLiabilityPrincipalCached);
   }

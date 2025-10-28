@@ -73,7 +73,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProvider, liabilityPrincipalBefore);
 
       // Act
-      const [lstLiabilityPrincipalSynced, isLstLiabilityPrincipalChanged] = await yieldManager
+      const lstLiabilityPrincipalSynced = await yieldManager
         .connect(securityCouncil)
         .syncExternalLiabilitySettlement.staticCall(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore);
       await yieldManager
@@ -81,7 +81,6 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
         .syncExternalLiabilitySettlement(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore);
 
       // Assert
-      expect(isLstLiabilityPrincipalChanged).eq(false);
       expect(lstLiabilityPrincipalSynced).eq(liabilityPrincipalBefore);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
       expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
@@ -108,7 +107,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
 
       // Act
-      const [lstLiabilityPrincipalSynced, isLstLiabilityPrincipalChanged] = await yieldManager
+      const lstLiabilityPrincipalSynced = await yieldManager
         .connect(securityCouncil)
         .syncExternalLiabilitySettlement.staticCall(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore);
       await yieldManager
@@ -116,7 +115,6 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
         .syncExternalLiabilitySettlement(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore);
 
       // Assert
-      expect(isLstLiabilityPrincipalChanged).eq(true);
       expect(lstLiabilityPrincipalSynced).eq(ethValueOfLidoLiabilityShares);
       const lstLiabilityPrincipalDecrement = liabilityPrincipalBefore - BigInt(ethValueOfLidoLiabilityShares);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
