@@ -43,47 +43,46 @@ func TestChi(t *testing.T) {
 		assert.NoErrorf(t, wizard.Verify(comp, proof), "verifier failed")
 
 		effNumKeccak := len(traces.KeccakFInps)
+
 		for permId := 0; permId < effNumKeccak; permId++ {
+			state := traces.KeccakFInps[permId]
 
 			// Copy the corresponding input state and apply the rho
 			// transformation.
-			state := traces.KeccakFInps[permId]
-			state.Theta()
-			state.Rho()
-			b := state.Pi()
-			state.Chi(&b)
-			state.Iota(0)
+			for round := 0; round < keccak.NumRound; round++ {
+				state.ApplyKeccakfRound(round)
 
-			// Reconstruct the same state from the assignment of the prover
-			reconstructed := keccak.State{}
-			stateBits := [64]field.Element{}
-			// two := field.NewElement(2)
-			// eleven := field.NewElement(11)
-			for x := 0; x < 5; x++ {
-				for y := 0; y < 5; y++ {
-					for z := 0; z < 8; z++ {
-						u := mod.Chi.stateNextWitness[x][y][z]
-						k := u[permId*keccak.NumRound]
-						/*if x == 0 && y == 0 && z == 0 {
-							l := keccakf.U64ToBaseX(keccak.RC[0], &eleven)
-							k.Add(&u[permId*keccak.NumRound],
-								k.Mul(&two, &l))
-						}*/
-						res := cleanBase(Decompose(k.Uint64(), 11, 8))
-						for j := range res {
-							stateBits[z*8+j] = field.NewElement(res[j])
+				// Reconstruct the same state from the assignment of the prover
+				reconstructed := keccak.State{}
+				stateBits := [64]field.Element{}
+				// two := field.NewElement(2)
+				// eleven := field.NewElement(11)
+				for x := 0; x < 5; x++ {
+					for y := 0; y < 5; y++ {
+						for z := 0; z < 8; z++ {
+							u := mod.Chi.stateNextWitness[x][y][z]
+							k := u[permId*keccak.NumRound+round]
+							/*if x == 0 && y == 0 && z == 0 {
+								l := keccakf.U64ToBaseX(keccak.RC[0], &eleven)
+								k.Add(&u[permId*keccak.NumRound],
+									k.Mul(&two, &l))
+							}*/
+							res := cleanBase(Decompose(k.Uint64(), 11, 8))
+							for j := range res {
+								stateBits[z*8+j] = field.NewElement(res[j])
+							}
 						}
+						reconstructed[x][y] = reconstructU64(stateBits)
 					}
-					reconstructed[x][y] = reconstructU64(stateBits)
 				}
-			}
-			printDiff(state, reconstructed)
-			assert.Equal(t, state, reconstructed,
-				"could not reconstruct the state. permutation %v", permId)
+				printDiff(state, reconstructed)
+				assert.Equal(t, state, reconstructed,
+					"could not reconstruct the state. permutation %v", permId)
 
-			// Exiting on the first failed case to not spam the test logs
-			if t.Failed() {
-				t.Fatalf("stopping here as we encountered errors")
+				// Exiting on the first failed case to not spam the test logs
+				if t.Failed() {
+					t.Fatalf("stopping here as we encountered errors")
+				}
 			}
 		}
 	}
