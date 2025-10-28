@@ -8,45 +8,37 @@ RUN npm i -g corepack@latest
 
 RUN corepack enable
 
-# TODO
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates bash curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# RUN apt-get update \
-#     && apt-get install -y --no-install-recommends python3 ca-certificates bash curl make g++ \
-#     && apt-get clean \
-#     && rm -rf /var/lib/apt/lists/*
+FROM base AS builder
 
-# FROM base AS builder
+WORKDIR /usr/src/app
 
-# WORKDIR /usr/src/app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 
-# ARG NATIVE_LIBS_RELEASE_TAG
-# ENV NATIVE_LIBS_RELEASE_TAG=${NATIVE_LIBS_RELEASE_TAG}
+COPY ./sdk/sdk-core/package.json ./sdk/sdk-core/package.json
+COPY ./ts-libs/linea-shared-utils/package.json ./ts-libs/linea-shared-utils/package.json
 
-# COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
 
-# COPY ./postman/package.json ./postman/package.json
-# COPY ./sdk/sdk-ethers/package.json ./sdk/sdk-ethers/package.json
-# COPY ./ts-libs/linea-native-libs/package.json ./ts-libs/linea-native-libs/package.json
-# COPY ./ts-libs/linea-shared-utils/package.json ./ts-libs/linea-shared-utils/package.json
+COPY ./native-yield-operations/automation-service ./native-yield-operations/automation-service
+COPY ./sdk/sdk-core ./sdk/sdk-core
+COPY ts-libs/linea-shared-utils ./ts-libs/linea-shared-utils
 
-# RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build \
+    && pnpm deploy --legacy --filter=./native-yield-operations/automation-service --prod ./prod/native-yield-operations/automation-service
 
-# COPY ./postman ./postman
-# COPY ./sdk/sdk-ethers ./sdk/sdk-ethers
-# COPY ts-libs/linea-native-libs ./ts-libs/linea-native-libs
-# COPY ts-libs/linea-shared-utils ./ts-libs/linea-shared-utils
+FROM node:lts-slim AS production
 
-# RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build \
-#     && pnpm deploy --legacy --filter=./postman --prod ./prod/postman
+ENV NODE_ENV=production
 
-# FROM node:lts-slim AS production
+WORKDIR /usr/src/app
 
-# ENV NODE_ENV=production
+USER node
 
-# WORKDIR /usr/src/app
+COPY --from=builder /usr/src/app/prod/native-yield-operations/automation-service ./native-yield-operations/automation-service
 
-# USER node
-
-# COPY --from=builder /usr/src/app/prod/postman ./postman
-
-# CMD [ "node", "./postman/dist/scripts/runPostman.js" ]
+CMD [ "node", "./native-yield-operations/automation-service/dist/run.js" ]
