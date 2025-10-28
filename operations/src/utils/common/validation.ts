@@ -1,6 +1,6 @@
 import { isAddress, isHex } from "viem";
 
-export function validateEthereumAddress(argName: string, input: string) {
+export function validateEthereumAddress(input: string, argName = "Ethereum address") {
   if (!isAddress(input)) {
     throw new Error(`${argName} is not a valid Ethereum address.`);
   }

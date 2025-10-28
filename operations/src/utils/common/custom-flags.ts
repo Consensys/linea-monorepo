@@ -3,7 +3,7 @@ import { Flags } from "@oclif/core";
 import { validateEthereumAddress, validateHexString } from "./validation.js";
 
 export const address = Flags.custom<Address>({
-  parse: async (input) => validateEthereumAddress("address", input),
+  parse: async (input, _, opts) => validateEthereumAddress(input, opts.description),
 });
 
 export const hexString = Flags.custom<Hex>({
