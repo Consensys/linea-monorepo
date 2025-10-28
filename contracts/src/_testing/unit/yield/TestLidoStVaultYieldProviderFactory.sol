@@ -14,9 +14,7 @@ contract TestLidoStVaultYieldProviderFactory is LidoStVaultYieldProviderFactory 
     address _vaultHub,
     address _vaultFactory,
     address _steth,
-    GIndex _gIFirstValidator,
-    GIndex _gIFirstValidatorAfterChange,
-    uint64 _changeSlot
+    address _validatorContainerProofVerifier
   )
     LidoStVaultYieldProviderFactory(
       _l1MessageService,
@@ -24,9 +22,7 @@ contract TestLidoStVaultYieldProviderFactory is LidoStVaultYieldProviderFactory 
       _vaultHub,
       _vaultFactory,
       _steth,
-      _gIFirstValidator,
-      _gIFirstValidatorAfterChange,
-      _changeSlot
+      _validatorContainerProofVerifier
     )
   {}
 
@@ -38,9 +34,7 @@ contract TestLidoStVaultYieldProviderFactory is LidoStVaultYieldProviderFactory 
         VAULT_HUB,
         VAULT_FACTORY,
         STETH,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT
+        VALIDATOR_CONTAINER_PROOF_VERIFIER
       )
     );
     emit LidoStVaultYieldProviderCreated(yieldProviderAddress);

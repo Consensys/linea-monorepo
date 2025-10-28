@@ -12,9 +12,7 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     address _vaultHub,
     address _vaultFactory,
     address _steth,
-    GIndex _gIFirstValidator,
-    GIndex _gIFirstValidatorAfterChange,
-    uint64 _changeSlot
+    address _validatorContainerProofVerifier
   )
     LidoStVaultYieldProvider(
       _l1MessageService,
@@ -22,9 +20,7 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
       _vaultHub,
       _vaultFactory,
       _steth,
-      _gIFirstValidator,
-      _gIFirstValidatorAfterChange,
-      _changeSlot
+      _validatorContainerProofVerifier
     )
   {}
 

@@ -10,18 +10,18 @@ import { IVaultHub } from "./interfaces/vendor/lido/IVaultHub.sol";
 import { IVaultFactory } from "./interfaces/vendor/lido/IVaultFactory.sol";
 import { IStakingVault } from "./interfaces/vendor/lido/IStakingVault.sol";
 import { Math256 } from "../libraries/Math256.sol";
-import { CLProofVerifier } from "./libs/CLProofVerifier.sol";
 import { GIndex } from "./libs/vendor/lido/GIndex.sol";
 import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 import { IPermissionsManager } from "../security/access/interfaces/IPermissionsManager.sol";
 import { ProgressOssificationResult, YieldProviderRegistration, YieldProviderVendor } from "./interfaces/YieldTypes.sol";
+import { IValidatorContainerProofVerifier } from "./interfaces/IValidatorContainerProofVerifier.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGenericErrors {
+contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
   /// @notice Byte-length of a validator BLS pubkey.
   uint256 private constant PUBLIC_KEY_LENGTH = 48;
 
@@ -37,6 +37,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   /// @notice Address of the Lido stETH contract.
   IStETH public immutable STETH;
 
+  /// @notice Linea ValidatorContainerProofVerifier contract.
+  IValidatorContainerProofVerifier public immutable VALIDATOR_CONTAINER_PROOF_VERIFIER;
+
   /// @notice amount of ETH that is locked on the vault on connect and can be withdrawn on disconnect only
   uint256 public constant CONNECT_DEPOSIT = 1 ether;
 
@@ -47,9 +50,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param vaultHub Lido VaultHub contract.
    * @param vaultFactory Lido VaultFactory contract.
    * @param steth Lido stETH contract.
-   * @param gIFirstValidator Packed generalized index for the first validator before the pivot slot.
-   * @param gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
-   * @param changeSlot Beacon chain slot at which the validator generalized index changes.
+   * @param validatorContainerProofVerifier Linea ValidatorContainerProofVerifier contract.
    */
   event LidoStVaultYieldProviderDeployed(
     address l1MessageService,
@@ -57,9 +58,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     address vaultHub,
     address vaultFactory,
     address steth,
-    GIndex gIFirstValidator,
-    GIndex gIFirstValidatorAfterChange,
-    uint64 changeSlot
+    address validatorContainerProofVerifier
   );
 
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
@@ -82,30 +81,25 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   /// @param _vaultHub Lido VaultHub contract.
   /// @param _vaultFactory Lido VaultFactory contract.
   /// @param _steth Lido stETH contract.
-  /// @param _gIFirstValidator Packed generalized index for the first validator before the pivot slot.
-  /// @param _gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
-  /// @param _changeSlot Beacon chain slot at which the validator generalized index changes.
+  /// @param _validatorContainerProofVerifier Linea ValidatorContainerProofVerifier contract.
   constructor(
     address _l1MessageService,
     address _yieldManager,
     address _vaultHub,
     address _vaultFactory,
     address _steth,
-    GIndex _gIFirstValidator,
-    GIndex _gIFirstValidatorAfterChange,
-    uint64 _changeSlot
-  )
-    YieldProviderBase(_l1MessageService, _yieldManager)
-    CLProofVerifier(_gIFirstValidator, _gIFirstValidatorAfterChange, _changeSlot)
-  {
+    address _validatorContainerProofVerifier
+  ) YieldProviderBase(_l1MessageService, _yieldManager) {
     ErrorUtils.revertIfZeroAddress(_l1MessageService);
     ErrorUtils.revertIfZeroAddress(_yieldManager);
     ErrorUtils.revertIfZeroAddress(_vaultHub);
     ErrorUtils.revertIfZeroAddress(_vaultFactory);
     ErrorUtils.revertIfZeroAddress(_steth);
+    ErrorUtils.revertIfZeroAddress(_validatorContainerProofVerifier);
     VAULT_HUB = IVaultHub(_vaultHub);
     VAULT_FACTORY = IVaultFactory(_vaultFactory);
     STETH = IStETH(_steth);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER = IValidatorContainerProofVerifier(_validatorContainerProofVerifier);
 
     emit LidoStVaultYieldProviderDeployed(
       _l1MessageService,
@@ -113,9 +107,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       _vaultHub,
       _vaultFactory,
       _steth,
-      _gIFirstValidator,
-      _gIFirstValidatorAfterChange,
-      _changeSlot
+      _validatorContainerProofVerifier
     );
   }
 
@@ -449,7 +441,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       revert NoValidatorExitForUnstakePermissionless();
     }
 
-    ValidatorWitness memory witness = abi.decode(_withdrawalParamsProof, (ValidatorWitness));
+    IValidatorContainerProofVerifier.ValidatorContainerWitness memory witness = abi.decode(
+      _withdrawalParamsProof,
+      (IValidatorContainerProofVerifier.ValidatorContainerWitness)
+    );
 
     // 0x02 withdrawal credential scheme
     address vault = _getYieldProviderStorage(_yieldProvider).ossifiedEntrypoint;
@@ -458,7 +453,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       withdrawalCredentials := or(shl(248, 0x2), vault)
     }
 
-    _validateValidatorContainerForPermissionlessUnstake(witness, withdrawalCredentials);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyActiveValidatorContainer(witness, _pubkeys, withdrawalCredentials);
 
     // https://github.com/ethereum/consensus-specs/blob/master/specs/electra/beacon-chain.md#modified-get_expected_withdrawals
     uint256 maxUnstakeAmountGwei = Math256.min(

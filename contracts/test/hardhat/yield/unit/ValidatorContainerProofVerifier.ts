@@ -1,7 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { SSZMerkleTree, TestCLProofVerifier } from "contracts/typechain-types";
-import { deployTestCLProofVerifier, ValidatorWitness } from "../helpers";
+import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
+import { deployTestValidatorContainerProofVerifier, ValidatorWitness } from "../helpers";
 import {
   ACTIVE_0X01_VALIDATOR_PROOF,
   generateBeaconHeader,
@@ -16,8 +16,10 @@ import { ethers } from "hardhat";
 import { SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
 import { expectRevertWithCustomError } from "../../common/helpers";
 
-describe("BLS", () => {
-  let verifier: TestCLProofVerifier;
+// TODO Constructor params
+
+describe("ValidatorContainerProofVerifier", () => {
+  let verifier: TestValidatorContainerProofVerifier;
   let sszMerkleTree: SSZMerkleTree;
   let firstValidatorLeafIndex: bigint;
   let lastValidatorIndex: bigint;
@@ -37,7 +39,7 @@ describe("BLS", () => {
   });
 
   beforeEach(async () => {
-    verifier = await loadFixture(deployTestCLProofVerifier);
+    verifier = await loadFixture(deployTestValidatorContainerProofVerifier);
     // test mocker
     const mockRoot = randomBytes32();
     const timestamp = await setBeaconBlockRoot(mockRoot);
@@ -76,7 +78,6 @@ describe("BLS", () => {
 
     const validatorWitness: ValidatorWitness = {
       proof: concatenatedProof,
-      pubkey: ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.pubkey,
       validatorIndex: ACTIVE_0X01_VALIDATOR_PROOF.witness.validatorIndex,
       childBlockTimestamp: BigInt(timestamp),
       slot: BigInt(ACTIVE_0X01_VALIDATOR_PROOF.beaconBlockHeader.slot),
@@ -87,8 +88,9 @@ describe("BLS", () => {
     };
 
     // PG style proof verification from PK+WC to BeaconBlockRoot
-    await verifier.validateValidatorContainerForPermissionlessUnstake(
+    await verifier.verifyActiveValidatorContainer(
       validatorWitness,
+      ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.pubkey,
       ACTIVE_0X01_VALIDATOR_PROOF.witness.validator.withdrawalCredentials,
     );
   });
@@ -107,7 +109,7 @@ describe("BLS", () => {
     );
 
     // deploy new verifier with new gIFirstValidator
-    const factory = await ethers.getContractFactory("TestCLProofVerifier");
+    const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
     const newVerifier = await factory.deploy(localTreeGiFirstValidator, localTreeGiFirstValidator, 0);
     await newVerifier.waitForDeployment();
 
@@ -138,11 +140,10 @@ describe("BLS", () => {
     const timestamp = await setBeaconBlockRoot(beaconMerkle.root);
     const proof = [...stateProof, ...beaconMerkle.proof];
 
-    await newVerifier.validateValidatorContainerForPermissionlessUnstake(
+    await newVerifier.verifyActiveValidatorContainer(
       {
         validatorIndex,
         proof: [...proof],
-        pubkey: validator.container.pubkey,
         childBlockTimestamp: timestamp,
         slot: beaconHeader.slot,
         proposerIndex: beaconHeader.proposerIndex,
@@ -150,6 +151,7 @@ describe("BLS", () => {
         activationEpoch: validator.container.activationEpoch,
         activationEligibilityEpoch: validator.container.activationEligibilityEpoch,
       },
+      validator.container.pubkey,
       validator.container.withdrawalCredentials,
     );
   });
@@ -159,7 +161,7 @@ describe("BLS", () => {
     const giPrev = randomBytes32();
     const giCurr = randomBytes32();
 
-    const factory = await ethers.getContractFactory("TestCLProofVerifier");
+    const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
     const newVerifier = await factory.deploy(giPrev, giCurr, pivotSlot);
     await newVerifier.waitForDeployment();
 
@@ -203,7 +205,7 @@ describe("BLS", () => {
     ]);
 
     // current CL state
-    const factory = await ethers.getContractFactory("TestCLProofVerifier");
+    const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
     const newVerifier = await factory.deploy(prev.gIFirstValidator, curr.gIFirstValidator, pivotSlot);
     await newVerifier.waitForDeployment();
 
@@ -213,11 +215,10 @@ describe("BLS", () => {
 
     // // prev works
     const timestampPrev = await setBeaconBlockRoot(prev.beaconRoot);
-    await newVerifier.validateValidatorContainerForPermissionlessUnstake(
+    await newVerifier.verifyActiveValidatorContainer(
       {
         proof: prev.proof,
         validatorIndex: 1n,
-        pubkey: provenValidator.container.pubkey,
         childBlockTimestamp: timestampPrev,
         slot: prev.beaconHeader.slot,
         proposerIndex: prev.beaconHeader.proposerIndex,
@@ -225,6 +226,7 @@ describe("BLS", () => {
         activationEpoch: provenValidator.container.activationEpoch,
         activationEligibilityEpoch: provenValidator.container.activationEligibilityEpoch,
       },
+      provenValidator.container.pubkey,
       provenValidator.container.withdrawalCredentials,
     );
 
@@ -232,11 +234,10 @@ describe("BLS", () => {
 
     // curr works
     const timestampCurr = await setBeaconBlockRoot(curr.beaconRoot);
-    await newVerifier.validateValidatorContainerForPermissionlessUnstake(
+    await newVerifier.verifyActiveValidatorContainer(
       {
         proof: curr.proof,
         validatorIndex: 1n,
-        pubkey: provenValidator.container.pubkey,
         childBlockTimestamp: timestampCurr,
         slot: curr.beaconHeader.slot,
         proposerIndex: curr.beaconHeader.proposerIndex,
@@ -244,16 +245,16 @@ describe("BLS", () => {
         activationEpoch: provenValidator.container.activationEpoch,
         activationEligibilityEpoch: provenValidator.container.activationEligibilityEpoch,
       },
+      provenValidator.container.pubkey,
       provenValidator.container.withdrawalCredentials,
     );
 
     // prev fails on curr slot
     await expect(
-      newVerifier.validateValidatorContainerForPermissionlessUnstake(
+      newVerifier.verifyActiveValidatorContainer(
         {
           proof: [...prev.proof],
           validatorIndex: 1n,
-          pubkey: provenValidator.container.pubkey,
           childBlockTimestamp: timestampCurr,
           // invalid slot to get wrong GIndex
           slot: curr.beaconHeader.slot,
@@ -262,6 +263,7 @@ describe("BLS", () => {
           activationEpoch: provenValidator.container.activationEpoch,
           activationEligibilityEpoch: provenValidator.container.activationEligibilityEpoch,
         },
+        provenValidator.container.pubkey,
         provenValidator.container.withdrawalCredentials,
       ),
     ).to.be.revertedWithCustomError(newVerifier, "InvalidSlot");
@@ -279,7 +281,6 @@ describe("BLS", () => {
 
     const validatorWitness: ValidatorWitness = {
       proof: concatenatedProof,
-      pubkey: eip4788Witness.witness.validator.pubkey,
       validatorIndex: eip4788Witness.witness.validatorIndex,
       childBlockTimestamp: BigInt(timestamp),
       slot: BigInt(eip4788Witness.beaconBlockHeader.slot),
@@ -290,8 +291,9 @@ describe("BLS", () => {
     };
 
     // PG style proof verification from PK+WC to BeaconBlockRoot
-    await verifier.validateValidatorContainerForPermissionlessUnstake(
+    await verifier.verifyActiveValidatorContainer(
       validatorWitness,
+      eip4788Witness.witness.validator.pubkey,
       eip4788Witness.witness.validator.withdrawalCredentials,
     );
   });
@@ -305,7 +307,6 @@ describe("BLS", () => {
     const validatorWitness: ValidatorWitness = {
       proof: [],
       validatorIndex: BigInt(randomInt(1743359)),
-      pubkey: container.pubkey,
       effectiveBalance: container.effectiveBalance,
       childBlockTimestamp: BigInt(randomInt(1743359)),
       slot: BigInt(slot),

@@ -5,7 +5,7 @@ import {
   MockLineaRollup,
   MockYieldProvider,
   SSZMerkleTree,
-  TestCLProofVerifier,
+  TestValidatorContainerProofVerifier,
   TestLidoStVaultYieldProvider,
   TestLineaRollup,
   TestYieldManager,
@@ -246,14 +246,14 @@ export const withdrawLST = async (
 
 export const executeUnstakePermissionless = async (
   sszMerkleTree: SSZMerkleTree,
-  verifier: TestCLProofVerifier,
+  verifier: TestValidatorContainerProofVerifier,
   yieldManager: YieldManager,
   yieldProviderAddress: string,
   mockStakingVaultAddress: string,
   refundAddress: string,
   unstakeAmount: bigint,
 ) => {
-  const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+  const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
     sszMerkleTree,
     verifier,
     mockStakingVaultAddress,
@@ -261,7 +261,7 @@ export const executeUnstakePermissionless = async (
   );
   const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
     ["bytes", "uint64[]", "address"],
-    [validatorWitness.pubkey, [unstakeAmount / ONE_GWEI], refundAddress],
+    [pubkey, [unstakeAmount / ONE_GWEI], refundAddress],
   );
   const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode([VALIDATOR_WITNESS_TYPE], [validatorWitness]);
   // Arrange - first unstake

@@ -26,7 +26,7 @@ import {
   MockStakingVault,
   TestLidoStVaultYieldProviderFactory,
   SSZMerkleTree,
-  TestCLProofVerifier,
+  TestValidatorContainerProofVerifier,
   MockSTETH,
   MockVaultHub,
   MockVaultFactory,
@@ -60,7 +60,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
   let mockVaultFactory: MockVaultFactory;
   let lidoStVaultYieldProviderFactory: TestLidoStVaultYieldProviderFactory;
   let sszMerkleTree: SSZMerkleTree;
-  let verifier: TestCLProofVerifier;
+  let testVerifier: TestValidatorContainerProofVerifier;
 
   let l1MessageServiceAddress: string;
   let yieldManagerAddress: string;
@@ -85,7 +85,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       mockVaultFactory,
       lidoStVaultYieldProviderFactory,
       sszMerkleTree,
-      verifier,
+      testVerifier,
     } = await loadFixture(deployYieldManagerIntegrationTestFixture));
     l1MessageServiceAddress = await lineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
@@ -522,9 +522,9 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         );
       // Arrange - Prepare first unstakePermissionless
       const targetDeficit = await yieldManager.getTargetReserveDeficit();
-      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
         sszMerkleTree,
-        verifier,
+        testVerifier,
         mockStakingVaultAddress,
         MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
       );
@@ -532,7 +532,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const unstakeAmount = [targetDeficit / ONE_GWEI];
       const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
         ["bytes", "uint64[]", "address"],
-        [validatorWitness.pubkey, unstakeAmount, refundAddress],
+        [pubkey, unstakeAmount, refundAddress],
       );
       const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
         [VALIDATOR_WITNESS_TYPE],
@@ -543,16 +543,16 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       expect(await yieldManager.pendingPermissionlessUnstake()).eq(targetDeficit);
 
       // Arrange - Prepare second unstakePermissionless
-      const { validatorWitness: validatorWitness2 } = await generateLidoUnstakePermissionlessWitness(
+      const { validatorWitness: validatorWitness2, pubkey: pubkey2 } = await generateLidoUnstakePermissionlessWitness(
         sszMerkleTree,
-        verifier,
+        testVerifier,
         mockStakingVault2Address,
         MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
       );
 
       const secondWithdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
         ["bytes", "uint64[]", "address"],
-        [validatorWitness2.pubkey, [1n], refundAddress],
+        [pubkey2, [1n], refundAddress],
       );
       const secondWithdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
         [VALIDATOR_WITNESS_TYPE],
@@ -896,7 +896,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const unstakeAmount = ONE_ETHER * 5n;
       await executeUnstakePermissionless(
         sszMerkleTree,
-        verifier,
+        testVerifier,
         yieldManager,
         yieldProviderAddress,
         mockStakingVaultAddress,

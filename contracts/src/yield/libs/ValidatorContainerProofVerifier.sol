@@ -6,40 +6,19 @@ import { GIndex, pack, concat } from "./vendor/lido/GIndex.sol";
 import { SSZ } from "./vendor/lido/SSZ.sol";
 import { BLS12_381 } from "./vendor/lido/BLS.sol";
 import { Validator } from "./vendor/lido/BeaconTypes.sol";
+import { IValidatorContainerProofVerifier } from "../interfaces/IValidatorContainerProofVerifier.sol";
 
 /**
- * @title CLProofVerifier
- * @author Lido
+ * @title ValidatorContainerProofVerifier
+ * @author Linea
  * @notice
  *
  * Modified version of CLProofVerifier (original implementation by Lido) to verify the entire Validator Container in the CL.
  * It uses concatenated proofs against the beacon block root exposed in the EIP-4788 system contract.
  */
-abstract contract CLProofVerifier {
+contract ValidatorContainerProofVerifier {
   /**
-   * @notice user input for validator proof verification
-   * @custom:proof array of merkle proofs from parent(pubkey,wc) node to Beacon block root
-   * @custom:pubkey of validator to prove
-   * @custom:validatorIndex of validator in CL state tree
-   * @custom:effectiveBalance of validator in CL state tree
-   * @custom:childBlockTimestamp of EL block that has parent block beacon root in BEACON_ROOTS contract
-   * @custom:slot of the beacon block for which the proof is generated
-   * @custom:proposerIndex of the beacon block for which the proof is generated
-   */
-  struct ValidatorWitness {
-    bytes32[] proof;
-    bytes pubkey;
-    uint256 validatorIndex;
-    uint64 effectiveBalance;
-    uint64 childBlockTimestamp;
-    uint64 slot;
-    uint64 proposerIndex;
-    uint64 activationEpoch;
-    uint64 activationEligibilityEpoch;
-  }
-
-  /**
-   * @notice CLProofVerifier accepts concatenated Merkle proofs to verify existence of correct (pubkey, WC, EB, slashed) validator on CL
+   * @notice ValidatorContainerProofVerifier accepts concatenated Merkle proofs to verify existence of correct (pubkey, WC, EB, slashed) validator on CL
    * Proof consists of:
    *  I:   Validator Container Root
    *  II:  Merkle proof of CL state - from Validator Container Root to State Root
@@ -164,35 +143,33 @@ abstract contract CLProofVerifier {
   }
 
   /**
-   * @notice validates proof of validator in CL with (pubkey, withdrawalCredentials, effectiveBalance, slashed) against Beacon block root
+   * @notice validates proof of validator container in CL against Beacon block root
    * @param _witness object containing user input passed as calldata
-   *  `proof` - array of hashes for concatenated merkle proof from parent(pubkey,wc) node to the Beacon block root
-   *  `pubkey` - pubkey of the validator
-   *  `validatorIndex` - numerical index of validator in CL
-   *  `childBlockTimestamp` - timestamp of EL block that has Beacon root corresponding to proof
-   *  `slot` - slot of the Beacon block that has the state root
-   *  `proposerIndex` - proposer index of the Beacon block that has the state root
+   * @param _pubkey of validator to verify proof for.
    * @param _withdrawalCredentials to verify proof with
    * @dev reverts with `InvalidProof` when provided input cannot be proven to Beacon block root
-   * @dev We assume that 'slashed' is false. We cannot allow withdrawal requests to slashed nodes.
    */
-  function _validateValidatorContainerForPermissionlessUnstake(
-    ValidatorWitness memory _witness,
+  function verifyActiveValidatorContainer(
+    IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness,
+    bytes calldata _pubkey,
     bytes32 _withdrawalCredentials
-  ) internal view {
+  ) external view {
     // verifies user provided slot against user provided proof
     // proof verification is done in `SSZ.verifyProof` and is not affected by slot
     _verifySlot(_witness);
     _validateActivationEpoch(_witness);
 
     Validator memory validator = Validator({
-      pubkey: _witness.pubkey,
+      pubkey: _pubkey,
       withdrawalCredentials: _withdrawalCredentials,
       effectiveBalance: _witness.effectiveBalance,
+      // No toleration for slashed validators
       slashed: false,
       activationEligibilityEpoch: _witness.activationEligibilityEpoch,
       activationEpoch: _witness.activationEpoch,
+      // No toleration for validators pending exit
       exitEpoch: FAR_FUTURE_EXIT_EPOCH,
+      // No toleration for validators pending full withdrawal
       withdrawableEpoch: FAR_FUTURE_EXIT_EPOCH
     });
 
@@ -219,7 +196,7 @@ abstract contract CLProofVerifier {
    * @dev checks slot and proposerIndex against proof[:-2] which latter is verified against Beacon block root
    * This is a trivial case of multi Merkle proofs where a short proof branch proves slot
    */
-  function _verifySlot(ValidatorWitness memory _witness) internal view {
+  function _verifySlot(IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness) internal view {
     bytes32 parentSlotProposer = BLS12_381.sha256Pair(
       SSZ.toLittleEndian(_witness.slot),
       SSZ.toLittleEndian(_witness.proposerIndex)
@@ -229,7 +206,9 @@ abstract contract CLProofVerifier {
     }
   }
 
-  function _validateActivationEpoch(ValidatorWitness memory _witness) internal pure {
+  function _validateActivationEpoch(
+    IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness
+  ) internal pure {
     uint256 epoch = _witness.slot / SLOTS_PER_EPOCH;
     if (epoch < _witness.activationEpoch + SHARD_COMMITTEE_PERIOD) {
       revert ValidatorNotActiveForLongEnough();
