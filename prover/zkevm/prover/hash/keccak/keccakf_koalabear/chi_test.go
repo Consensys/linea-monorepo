@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -51,6 +52,20 @@ func TestChi(t *testing.T) {
 			// transformation.
 			for round := 0; round < keccak.NumRound; round++ {
 				state.ApplyKeccakfRound(round)
+			expectedAIota := traces.KeccakFInps[permId]
+
+			for rnd := 0; rnd < keccak.NumRound; rnd++ {
+
+				pos := permId*keccak.NumRound + rnd
+				expectedAIota.ApplyKeccakfRound(rnd)
+
+				// In that case, aIOTA should be in fact the next input because
+				// the iota step will be responsible for xoring in the inputs.
+				if rnd == 23 && permId+1 < len(traces.KeccakFInps) {
+					if !traces.IsNewHash[permId+1] {
+						expectedAIota = traces.KeccakFInps[permId+1]
+					}
+				}
 
 				// Reconstruct the same state from the assignment of the prover
 				reconstructed := keccak.State{}
@@ -78,7 +93,29 @@ func TestChi(t *testing.T) {
 				printDiff(state, reconstructed)
 				assert.Equal(t, state, reconstructed,
 					"could not reconstruct the state. permutation %v", permId)
+				// Reconstruct the same state from the assignment of the prover
+				reconstructed := keccak.State{}
+				stateBits := [64]field.Element{}
+				for x := 0; x < 5; x++ {
+					for y := 0; y < 5; y++ {
+						for z := 0; z < 8; z++ {
+							u := mod.Chi.stateNextWitness[x][y][z]
+							k := u[pos]
+							res := cleanBase(Decompose(k.Uint64(), 11, 8, pos))
+							for j := range res {
+								stateBits[z*8+j] = field.NewElement(res[j])
+							}
+						}
+						reconstructed[x][y] = reconstructU64(stateBits)
+					}
+				}
+				assert.Equal(t, expectedAIota, reconstructed,
+					"could not reconstruct the state. permutation %v", permId)
 
+				// Exiting on the first failed case to not spam the test logs
+				if t.Failed() {
+					t.Fatalf("stopping here as we encountered errors")
+				}
 				// Exiting on the first failed case to not spam the test logs
 				if t.Failed() {
 					t.Fatalf("stopping here as we encountered errors")
@@ -104,9 +141,11 @@ func chiTestingModule(
 	// The module is only used a placeholder to let us the `assignInput`
 	// function
 	var (
-		mod       = &Module{}
-		size      = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * 24))
-		stateCurr = stateInBits{} // input to the rho module
+		mod          = &Module{}
+		size         = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * 24))
+		stateCurr    = stateInBits{} // input to the rho module
+		blocks       = [17][8]ifaces.Column{}
+		isBlockOther ifaces.Column
 	)
 
 	/*
@@ -120,11 +159,16 @@ func chiTestingModule(
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 64; z++ {
 					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_CURR_%v_%v_%v", x, y, z), size)
+					if z < 8 && (5*y)+x < 17 {
+						blocks[(5*y)+x][z] = comp.InsertCommit(0, ifaces.ColIDf("MESSAGE_BLOCK_%v_%v", (5*y)+x, z), size)
+					}
 				}
 			}
 		}
 
-		mod.Chi = newChi(comp, maxNumKeccakf, stateCurr)
+		isBlockOther = comp.InsertCommit(0, "IS_BLOCK_OTHER", size)
+
+		mod.Chi = newChi(comp, maxNumKeccakf, stateCurr, blocks, isBlockOther)
 	}
 
 	prover := func(
@@ -148,8 +192,11 @@ func chiTestingModule(
 
 			// Initializes the input columns
 			stateCurrWit := [5][5][64][]field.Element{}
+			blockWit := [17][8][]field.Element{}
+			isBlockOtherWit := []field.Element{}
 			for permId := 0; permId < numKeccakf; permId++ {
 				state := traces.KeccakFInps[permId]
+				block := cleanBaseBlock(traces.Blocks[permId])
 
 				for rnd := 0; rnd < keccak.NumRound; rnd++ {
 					// Pre-permute using the theta transformation before running
@@ -158,10 +205,28 @@ func chiTestingModule(
 					state.Rho()
 					inputState := state.Pi()
 
+					// create the block columns
+					for i := 0; i < 17; i++ {
+						for j := 0; j < 8; j++ {
+							if rnd == 23 && traces.IsNewHash[permId] == false {
+								blockWit[i][j] = append(blockWit[i][j], block[i][j])
+							} else {
+								blockWit[i][j] = append(blockWit[i][j], field.Zero())
+							}
+						}
+					}
+
+					if rnd == 23 && traces.IsNewHash[permId] == false {
+						isBlockOtherWit = append(isBlockOtherWit, field.One())
+					} else {
+						isBlockOtherWit = append(isBlockOtherWit, field.Zero())
+					}
+
 					// Convert the state in sliced from in base 2
 					for x := 0; x < 5; x++ {
 						for y := 0; y < 5; y++ {
 							a := BitsLE(inputState[x][y])
+
 							for k := 0; k < 64; k++ {
 								// If the column is not already assigned, then
 								// allocate it with the proper length.
@@ -191,9 +256,21 @@ func chiTestingModule(
 								size,
 							),
 						)
+
+						if k < 8 && (5*y)+x < 17 {
+							run.AssignColumn(
+								blocks[(5*y)+x][k].GetColID(),
+								smartvectors.RightZeroPadded(
+									blockWit[(5*y)+x][k],
+									size,
+								),
+							)
+						}
 					}
 				}
 			}
+
+			run.AssignColumn(isBlockOther.GetColID(), smartvectors.RightZeroPadded(isBlockOtherWit, size))
 
 			// Then assigns all the columns of the rho module
 			mod.Chi.assignChi(run, stateCurr)
@@ -216,4 +293,20 @@ func printDiff(expected, actual keccak.State) {
 		}
 	}
 	fmt.Printf("total differing bits = %d\n", totDiffBits)
+}
+
+func cleanBaseBlock(block keccak.Block) (res [17][8]field.Element) {
+	eleven := field.NewElement(11)
+	// extract the byte of each lane, in little endian
+	for i := 0; i < 17; i++ {
+		lanebytes := [8]uint8{}
+		for j := 0; j < 8; j++ {
+			lanebytes[j] = uint8((block[i] >> (8 * j)) & 0xff)
+		}
+		// convert each byte to clean base 11
+		for j := 0; j < 8; j++ {
+			res[i][j] = keccakf.U64ToBaseX(uint64(lanebytes[j]), &eleven)
+		}
+	}
+	return res
 }

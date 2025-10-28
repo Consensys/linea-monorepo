@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -15,6 +16,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	protocols "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/sub_protocols"
 )
+
+type block [17][8]ifaces.Column
 
 type chi struct {
 	// state before applying the chi step
@@ -31,9 +34,14 @@ type chi struct {
 	stateNextWitness [5][5][8][]field.Element
 	// the round constant
 	RC [8]*dedicated.RepeatedPattern
+	// it contains the first block of the message at position 0 mod 24,
+	// and any other block at position 0 mod 23.
+	BlocksOther block
+	// flag for blocks other than the first one
+	IsBlockOther ifaces.Column
 }
 
-func newChi(comp *wizard.CompiledIOP, numKeccakf int, stateCurr stateInBits) *chi {
+func newChi(comp *wizard.CompiledIOP, numKeccakf int, stateCurr stateInBits, blocks block, isBlockOther ifaces.Column) *chi {
 
 	chi := &chi{
 		stateCurr:     stateCurr,
@@ -74,6 +82,13 @@ func newChi(comp *wizard.CompiledIOP, numKeccakf int, stateCurr stateInBits) *ch
 					chi.stateInternal[(x+1)%5][y][z],
 					sym.Mul(3, chi.stateInternal[(x+2)%5][y][z]),
 				)
+				if x+5*y < 17 {
+					// add the message block for all blocks except the first one
+					chi.StateNext[x][y][z] = sym.Add(
+						chi.StateNext[x][y][z],
+						sym.Mul(2, blocks[x+5*y][z], isBlockOther),
+					)
+				}
 
 				if x == 0 && y == 0 {
 					chi.StateNext[x][y][0] = sym.Add(
@@ -146,7 +161,7 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 }
 
 // to be removed later
-func Decompose(r uint64, base int, nb int) (res []uint64) {
+func Decompose(r uint64, base int, nb int, pos ...int) (res []uint64) {
 	// It will essentially be used for chunk to slice decomposition
 	res = make([]uint64, 0, nb)
 	base64 := uint64(base)
@@ -158,7 +173,7 @@ func Decompose(r uint64, base int, nb int) (res []uint64) {
 	}
 
 	if len(res) > nb {
-		utils.Panic("expected %v limbs, but got %v", nb, len(res))
+		utils.Panic("expected %v limbs, but got %v, overflow at pos %v", nb, len(res), pos)
 	}
 
 	// Complete with zeroes
