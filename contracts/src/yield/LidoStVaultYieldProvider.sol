@@ -155,6 +155,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param _amount Amount of ETH supplied by the YieldManager.
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
+    // Ossified -> Vault cannot generate yield -> Should fully withdraw
+    if (_getYieldProviderStorage(_yieldProvider).isOssified)
+      revert OperationNotSupportedDuringOssification(OperationType.FundYieldProvider);
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).fund{ value: _amount }();
   }
 
@@ -175,9 +178,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     address _yieldProvider
   ) external onlyDelegateCall returns (uint256 newReportedYield, uint256 outstandingNegativeYield) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if ($$.isOssified) {
-      revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
-    }
+    if ($$.isOssified) revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     // First compute the total yield
     uint256 lastUserFunds = $$.userFunds;
     uint256 totalVaultFunds = _getDashboard($$).totalValue();

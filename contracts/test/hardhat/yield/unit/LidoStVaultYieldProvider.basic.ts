@@ -40,6 +40,7 @@ import {
   MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
   ProgressOssificationResult,
   YieldProviderVendor,
+  OperationType,
 } from "../../common/constants";
 import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
@@ -276,12 +277,13 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
       expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
     });
-    it("If ossified, should fund the StakingVault", async () => {
+    it("Should revert if ossified", async () => {
       await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
-      const beforeVaultBalance = await ethers.provider.getBalance(mockStakingVaultAddress);
       const fundAmount = ONE_ETHER;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
+      const call = fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
+        OperationType.FUND_YIELD_PROVIDER,
+      ]);
     });
   });
 
@@ -296,9 +298,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
     });
     it("Should successfully withdraw when ossified", async () => {
-      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
       const withdrawAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
       await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
     });
   });
@@ -371,14 +373,23 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
     it("Should revert withdraw LST when ossifed", async () => {
       const withdrawAmount = ONE_ETHER;
+      const recipient = ethers.Wallet.createRandom().address;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+
+      // Add gas fees
+      const l1MessageService = await yieldManager.L1_MESSAGE_SERVICE();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+
       await yieldManager.connect(securityCouncil).setYieldProviderIsOssified(yieldProviderAddress, true);
-      const call = getWithdrawLSTCall(
-        mockLineaRollup,
-        yieldManager,
-        yieldProvider,
-        nativeYieldOperator,
-        withdrawAmount,
-      );
+
+      // Act
+      const call = yieldManager
+        .connect(l1Signer)
+        .withdrawLST(await yieldProvider.getAddress(), withdrawAmount, recipient);
+
+      // Assert
       await expectRevertWithCustomError(yieldProvider, call, "MintLSTDisabledDuringOssification");
     });
   });

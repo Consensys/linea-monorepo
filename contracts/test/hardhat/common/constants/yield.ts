@@ -28,8 +28,10 @@ export const enum ProgressOssificationResult {
   COMPLETE = 2,
 }
 
-// OperationType enum
-export const REPORT_YIELD_OPERATION_TYPE = 0;
+export const enum OperationType {
+  FUND_YIELD_PROVIDER = 0,
+  REPORT_YIELD = 1,
+}
 
 export const FAR_FUTURE_EXIT_EPOCH = 18446744073709551615n;
 export const SHARD_COMMITTEE_PERIOD = 256n;

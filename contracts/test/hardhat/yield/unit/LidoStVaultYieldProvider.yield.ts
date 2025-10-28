@@ -16,7 +16,7 @@ import {
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { ONE_ETHER, REPORT_YIELD_OPERATION_TYPE, ZERO_VALUE } from "../../common/constants";
+import { ONE_ETHER, OperationType, ZERO_VALUE } from "../../common/constants";
 import { ethers } from "hardhat";
 
 describe("LidoStVaultYieldProvider contract - yield operations", () => {
@@ -590,7 +590,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
       const call = yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
       await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
-        REPORT_YIELD_OPERATION_TYPE,
+        OperationType.REPORT_YIELD,
       ]);
     });
     it("If vault value > user funds, should report positive yield", async () => {

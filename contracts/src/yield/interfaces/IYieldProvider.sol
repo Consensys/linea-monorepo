@@ -12,6 +12,7 @@ import { ProgressOssificationResult, YieldProviderRegistration } from "./YieldTy
 interface IYieldProvider {
   /// @notice Enumerates operations that can be paused during ossification depending on the yield provider vendor.
   enum OperationType {
+    FundYieldProvider,
     ReportYield
   }
 
