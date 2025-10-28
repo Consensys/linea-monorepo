@@ -64,7 +64,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	// -- 1. Launch bootstrapper
 	logrus.Info("Starting to run the bootstrapper")
 
-	mt := &distributed.VerificationKeyMerkleTree{}
 	mt, err := zkevm.LoadVerificationKeyMerkleTree(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("could not load verification key merkle tree: %w", err)
