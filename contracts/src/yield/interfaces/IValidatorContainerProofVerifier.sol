@@ -29,6 +29,15 @@ interface IValidatorContainerProofVerifier {
     uint64 activationEligibilityEpoch;
   }
 
+  /// @notice Thrown when the slot and proposer index branch does not align with the supplied Merkle proof.
+  error InvalidSlot();
+
+  /// @notice Thrown when no beacon block root is found for the supplied child block timestamp in the EIP-4788 contract.
+  error RootNotFound();
+
+  /// @notice Thrown when the validator has not been active for the full `SHARD_COMMITTEE_PERIOD`.
+  error ValidatorNotActiveForLongEnough();
+
   /**
    * @notice validates proof of active validator container in CL against Beacon block root
    * @param _witness object containing user input passed as calldata

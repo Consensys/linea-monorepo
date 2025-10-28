@@ -11,12 +11,12 @@ import { IValidatorContainerProofVerifier } from "../interfaces/IValidatorContai
 /**
  * @title ValidatorContainerProofVerifier
  * @author Linea
- * @notice
+ * @notice Verifies merkle proofs for Validator container against the EIP-4788 beacon root.
  *
  * Modified version of CLProofVerifier (original implementation by Lido) to verify the entire Validator Container in the CL.
  * It uses concatenated proofs against the beacon block root exposed in the EIP-4788 system contract.
  */
-contract ValidatorContainerProofVerifier {
+contract ValidatorContainerProofVerifier is IValidatorContainerProofVerifier {
   /**
    * @notice ValidatorContainerProofVerifier accepts concatenated Merkle proofs to verify existence of correct (pubkey, WC, EB, slashed) validator on CL
    * Proof consists of:
@@ -29,10 +29,8 @@ contract ValidatorContainerProofVerifier {
    * Below is breakdown of each layer:
    */
 
-  /*  GIndex of grandparent node for (Pubkey,WC) in validator container
-     *   unlikely to change, same between mainnet/testnets.
-     *   Scheme of Validator Container Tree:
-     *
+  /*  Scheme of Validator Container Tree:
+
                             Validator Container Root                      **DEPTH = 0
                                         │
                         ┌───────────────┴───────────────┐
@@ -49,11 +47,6 @@ contract ValidatorContainerProofVerifier {
        {................................................................}
                                         ↑
                                 data to be proven
-
-        We hardcode the following values in our proof, because we cannot allow permissionless unstake otherrwise:
-        - slashed = false
-        - EE = FAR_FUTURE_EPOCH = 2**64 - 1
-        - WE = FAR_FUTURE_EPOCH = 2**64 - 1
     */
   uint8 private constant VALIDATOR_CONTAINER_ROOT_DEPTH = 0;
   uint256 private constant VALIDATOR_CONTAINER_ROOT_POSITION = 0;
@@ -206,6 +199,12 @@ contract ValidatorContainerProofVerifier {
     }
   }
 
+  /**
+   * @notice Ensures the tracked validator has satisfied the post-activation waiting period.
+   * @param _witness Witness data containing the validator's activation epoch and the proven slot.
+   * @dev Reverts with `ValidatorNotActiveForLongEnough` when the validator has not remained active
+   *      for at least `SHARD_COMMITTEE_PERIOD` epochs since `activationEpoch`.
+   */
   function _validateActivationEpoch(
     IValidatorContainerProofVerifier.ValidatorContainerWitness calldata _witness
   ) internal pure {
@@ -241,8 +240,4 @@ contract ValidatorContainerProofVerifier {
 
     return abi.decode(data, (bytes32));
   }
-
-  error InvalidSlot();
-  error RootNotFound();
-  error ValidatorNotActiveForLongEnough();
 }
