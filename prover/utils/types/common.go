@@ -142,10 +142,12 @@ func WriteBigIntOn64Bytes(w io.Writer, b *big.Int) (int64, error) {
 func ReadBigIntOn64Bytes(r io.Reader) (*big.Int, error) {
 	buf := [64]byte{}
 	_, err := r.Read(buf[:])
-	res := RemovePadding(buf[:])
 	if err != nil {
 		return nil, fmt.Errorf("reading big int, could not 32 bytes from reader: %v", err)
 	}
+
+	res := RemovePadding(buf[:])
+
 	bi := new(big.Int).SetBytes(res[:])
 	if bi.IsUint64() && bi.Uint64() == 0 {
 		// there is an edge-case here that breaks the test. Namely, giving 32
