@@ -33,9 +33,9 @@ interface IDashboard is ICommonVaultOperations {
 
   function rebalanceVaultWithEther(uint256 _ether) external payable;
 
-  function nodeOperatorDisbursableFee() external view returns (uint256);
+  function accruedFee() external view returns (uint256);
 
-  function disburseNodeOperatorFee() external;
+  function disburseFee() external;
 
   function reconnectToVaultHub() external;
 

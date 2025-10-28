@@ -10,16 +10,16 @@ contract MockDashboard is IDashboard {
   uint256 private totalValueReturn;
   uint256 private liabilitySharesReturn;
   uint256 private withdrawableValueReturn;
-  uint256 private nodeOperatorDisbursableFeeReturn;
+  uint256 private accruedFeeReturn;
   bool isRebalanceVaultWithSharesWithdrawingFromVault;
-  bool isDisburseNodeOperatorFeeWithdrawingFromVault;
+  bool isDisburseFeeWithdrawingFromVault;
 
   function setRebalanceVaultWithSharesWithdrawingFromVault(bool _value) external {
     isRebalanceVaultWithSharesWithdrawingFromVault = _value;
   }
 
-  function setIsDisburseNodeOperatorFeeWithdrawingFromVault(bool _value) external {
-    isDisburseNodeOperatorFeeWithdrawingFromVault = _value;
+  function setIsDisburseFeeWithdrawingFromVault(bool _value) external {
+    isDisburseFeeWithdrawingFromVault = _value;
   }
 
   function setStakingVaultReturn(IStakingVault _value) external {
@@ -38,8 +38,8 @@ contract MockDashboard is IDashboard {
     withdrawableValueReturn = _value;
   }
 
-  function setNodeOperatorDisbursableFeeReturn(uint256 _value) external {
-    nodeOperatorDisbursableFeeReturn = _value;
+  function setAccruedFeeReturn(uint256 _value) external {
+    accruedFeeReturn = _value;
   }
 
   function stakingVault() external view override returns (IStakingVault) {
@@ -83,14 +83,14 @@ contract MockDashboard is IDashboard {
 
   function rebalanceVaultWithEther(uint256) external payable override {}
 
-  function nodeOperatorDisbursableFee() external view override returns (uint256) {
-    return nodeOperatorDisbursableFeeReturn;
+  function accruedFee() external view override returns (uint256) {
+    return accruedFeeReturn;
   }
 
-  function disburseNodeOperatorFee() external override {
-    if (isDisburseNodeOperatorFeeWithdrawingFromVault) {
+  function disburseFee() external override {
+    if (isDisburseFeeWithdrawingFromVault) {
       ICommonVaultOperations vault = ICommonVaultOperations(stakingVaultReturn);
-      vault.withdraw(address(0), nodeOperatorDisbursableFeeReturn);
+      vault.withdraw(address(0), accruedFeeReturn);
     }
   }
 

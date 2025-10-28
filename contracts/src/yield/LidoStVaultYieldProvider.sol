@@ -292,11 +292,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     if (_availableYield == 0) return 0;
     IDashboard dashboard = _getDashboard($$);
     IStakingVault vault = _getVault($$);
-    uint256 currentFees = dashboard.nodeOperatorDisbursableFee();
+    uint256 currentFees = dashboard.accruedFee();
     uint256 avalableVaultBalance = vault.availableBalance();
     // Does not allow partial payment of node operator fees, unlike settleLidoFees
     if (avalableVaultBalance > currentFees) {
-      dashboard.disburseNodeOperatorFee();
+      dashboard.disburseFee();
       nodeOperatorFeesPaid = currentFees;
     }
   }

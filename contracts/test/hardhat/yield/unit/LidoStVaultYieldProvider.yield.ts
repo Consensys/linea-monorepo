@@ -495,7 +495,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
       // Arrange - Set up current fees
       const operatorFees = ONE_ETHER * 2n;
-      await mockDashboard.setNodeOperatorDisbursableFeeReturn(operatorFees);
+      await mockDashboard.setAccruedFeeReturn(operatorFees);
       // Arrange - Get before figures
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
 
@@ -516,8 +516,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
       // Arrange - Set up current fees
       const operatorFees = ONE_ETHER;
-      await mockDashboard.setNodeOperatorDisbursableFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseNodeOperatorFeeWithdrawingFromVault(true);
+      await mockDashboard.setAccruedFeeReturn(operatorFees);
+      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
       // Arrange - Get before figures
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
 
@@ -538,8 +538,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
       // Arrange - Set up current fees
       const operatorFees = ONE_ETHER;
-      await mockDashboard.setNodeOperatorDisbursableFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseNodeOperatorFeeWithdrawingFromVault(true);
+      await mockDashboard.setAccruedFeeReturn(operatorFees);
+      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
       // Arrange - Get before figures
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
 
@@ -756,8 +756,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
       // Arrange - Set up current fees
       const operatorFees = ONE_ETHER;
-      await mockDashboard.setNodeOperatorDisbursableFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseNodeOperatorFeeWithdrawingFromVault(true);
+      await mockDashboard.setAccruedFeeReturn(operatorFees);
+      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
       // Arrange - Get before figures
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
 
@@ -780,8 +780,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
       // Arrange - Set up current fees
       const operatorFees = ONE_ETHER * 4n;
-      await mockDashboard.setNodeOperatorDisbursableFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseNodeOperatorFeeWithdrawingFromVault(true);
+      await mockDashboard.setAccruedFeeReturn(operatorFees);
+      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
       // Arrange - Get before figures
       const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
 
@@ -801,8 +801,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
     it("Will succeed with LST liability payment, obligation payment and node operator fee payment", async () => {
       // Arrange - Setup node operator fees = 2 ETH
       const operatorFees = ONE_ETHER * 2n;
-      await mockDashboard.setNodeOperatorDisbursableFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseNodeOperatorFeeWithdrawingFromVault(true);
+      await mockDashboard.setAccruedFeeReturn(operatorFees);
+      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
       // Arrange - Setup obligations paid  = 1 ETH
       const expectedObligationsPaid = ONE_ETHER;
       await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
