@@ -12,9 +12,9 @@ import {
   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
   MINIMUM_WITHDRAWAL_RESERVE_AMOUNT,
   TARGET_WITHDRAWAL_RESERVE_AMOUNT,
-  GI_FIRST_VALIDATOR,
-  GI_FIRST_VALIDATOR_AFTER_CHANGE,
-  CHANGE_SLOT,
+  GI_FIRST_VALIDATOR_PREV,
+  GI_FIRST_VALIDATOR_CURR,
+  PIVOT_SLOT,
   YIELD_PROVIDER_STAKING_ROLE,
   ONE_ETHER,
 } from "../../common/constants";
@@ -90,21 +90,21 @@ export async function deployMockYieldProvider(): Promise<MockYieldProvider> {
 
 export async function deployValidatorContainerProofVerifier(): Promise<ValidatorContainerProofVerifier> {
   const factory = await ethers.getContractFactory("ValidatorContainerProofVerifier");
-  const contract = await factory.deploy(GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT);
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV, GI_FIRST_VALIDATOR_CURR, PIVOT_SLOT);
   await contract.waitForDeployment();
   return contract;
 }
 
 export async function deployTestValidatorContainerProofVerifier(): Promise<TestValidatorContainerProofVerifier> {
   const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
-  const contract = await factory.deploy(GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT);
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV, GI_FIRST_VALIDATOR_CURR, PIVOT_SLOT);
   await contract.waitForDeployment();
   return contract;
 }
 
 export async function deploySSZMerkleTree(): Promise<SSZMerkleTree> {
   const factory = await ethers.getContractFactory("SSZMerkleTree");
-  const contract = await factory.deploy(GI_FIRST_VALIDATOR);
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV);
   await contract.waitForDeployment();
   return contract;
 }

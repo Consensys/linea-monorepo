@@ -13,7 +13,13 @@ import {
   setBeaconBlockRoot,
 } from "../helpers/proof";
 import { ethers } from "hardhat";
-import { SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
+import {
+  GI_FIRST_VALIDATOR_PREV,
+  GI_FIRST_VALIDATOR_CURR,
+  PIVOT_SLOT,
+  SHARD_COMMITTEE_PERIOD,
+  SLOTS_PER_EPOCH,
+} from "../../common/constants";
 import { expectRevertWithCustomError } from "../../common/helpers";
 
 // TODO Constructor params
@@ -44,6 +50,18 @@ describe("ValidatorContainerProofVerifier", () => {
     const mockRoot = randomBytes32();
     const timestamp = await setBeaconBlockRoot(mockRoot);
     expect(await verifier.getParentBlockRoot(timestamp)).to.equal(mockRoot);
+  });
+
+  describe("constructor", () => {
+    it("It should have the correct GI_FIRST_VALIDATOR_PREV_PREV", async () => {
+      expect(await verifier.GI_FIRST_VALIDATOR_PREV()).eq(GI_FIRST_VALIDATOR_PREV);
+    });
+    it("It should have the correct GI_FIRST_VALIDATOR_PREV_CURR", async () => {
+      expect(await verifier.GI_FIRST_VALIDATOR_CURR()).eq(GI_FIRST_VALIDATOR_CURR);
+    });
+    it("It should have the correct PIVOT_SLOT", async () => {
+      expect(await verifier.PIVOT_SLOT()).eq(PIVOT_SLOT);
+    });
   });
 
   it("should verify precalculated 0x01 validator object in merkle tree", async () => {

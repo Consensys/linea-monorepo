@@ -80,7 +80,7 @@ contract ValidatorContainerProofVerifier {
           │           │   ............... │           │
     [Validator 0]                        ....     [Validator to prove]  **DEPTH = N
             ↑                                               ↑
-    GI_FIRST_VALIDATOR                   GI_FIRST_VALIDATOR + validator_index
+    GI_FIRST_VALIDATOR_PREV                   GI_FIRST_VALIDATOR_PREV + validator_index
     */
 
   /// @notice GIndex of first validator in CL state tree
