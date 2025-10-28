@@ -37,16 +37,16 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   /// @notice Address of the Lido stETH contract.
   IStETH public immutable STETH;
 
-  /// @notice amount of ETH that is locked on the vault on connect and can be withdrawn on disconnect only
+  /// @notice Amount of ETH that is locked on the vault on connect and can be withdrawn on disconnect only.
   uint256 public constant CONNECT_DEPOSIT = 1 ether;
 
   /**
    * @notice Emitted whenever LidoStVaultYieldProvider is deployed.
-   * @param l1MessageService The Linea L1MessageService, also the withdrawal reserve.
+   * @param l1MessageService The Linea L1MessageService, also the withdrawal reserve holding contract.
    * @param yieldManager The Linea YieldManager.
    * @param vaultHub Lido VaultHub contract.
    * @param vaultFactory Lido VaultFactory contract.
-   * @param steth Lido stETH contract.
+   * @param stEth Lido stETH contract.
    * @param gIFirstValidator Packed generalized index for the first validator before the pivot slot.
    * @param gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
    * @param changeSlot Beacon chain slot at which the validator generalized index changes.
@@ -56,7 +56,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     address yieldManager,
     address vaultHub,
     address vaultFactory,
-    address steth,
+    address stEth,
     GIndex gIFirstValidator,
     GIndex gIFirstValidatorAfterChange,
     uint64 changeSlot
@@ -77,11 +77,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   );
 
   /// @notice Used to set immutable variables, but not storage.
-  /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve.
+  /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve holding contract.
   /// @param _yieldManager The Linea YieldManager.
   /// @param _vaultHub Lido VaultHub contract.
   /// @param _vaultFactory Lido VaultFactory contract.
-  /// @param _steth Lido stETH contract.
+  /// @param _stEth Lido stETH contract.
   /// @param _gIFirstValidator Packed generalized index for the first validator before the pivot slot.
   /// @param _gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
   /// @param _changeSlot Beacon chain slot at which the validator generalized index changes.
@@ -90,7 +90,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     address _yieldManager,
     address _vaultHub,
     address _vaultFactory,
-    address _steth,
+    address _stEth,
     GIndex _gIFirstValidator,
     GIndex _gIFirstValidatorAfterChange,
     uint64 _changeSlot
@@ -102,35 +102,49 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     ErrorUtils.revertIfZeroAddress(_yieldManager);
     ErrorUtils.revertIfZeroAddress(_vaultHub);
     ErrorUtils.revertIfZeroAddress(_vaultFactory);
-    ErrorUtils.revertIfZeroAddress(_steth);
+    ErrorUtils.revertIfZeroAddress(_stEth);
+
     VAULT_HUB = IVaultHub(_vaultHub);
     VAULT_FACTORY = IVaultFactory(_vaultFactory);
-    STETH = IStETH(_steth);
+    STETH = IStETH(_stEth);
 
     emit LidoStVaultYieldProviderDeployed(
       _l1MessageService,
       _yieldManager,
       _vaultHub,
       _vaultFactory,
-      _steth,
+      _stEth,
       _gIFirstValidator,
       _gIFirstValidatorAfterChange,
       _changeSlot
     );
   }
 
-  /// @notice Helper function to get the Lido contract to interact with.
+  /**
+   * @notice Helper function to get the Lido contract to interact with.
+   * @dev If the vault has been ossified, the underlying contract switches.
+   * @param _yieldProvider The yield provider contract address.
+   * @return entrypointContract The Lido contract to interact with.
+   */
   function _getEntrypointContract(address _yieldProvider) internal view returns (address entrypointContract) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     entrypointContract = $$.isOssified ? $$.ossifiedEntrypoint : $$.primaryEntrypoint;
   }
 
-  /// @notice Helper function to get the associated Lido Dashboard contract.
+  /**
+   * @notice Helper function to get the associated Lido Dashboard contract.
+   * @param $$ The yield provider storage pointer.
+   * @return dashboard The dashboard contract.
+   */
   function _getDashboard(YieldProviderStorage storage $$) internal view returns (IDashboard dashboard) {
     dashboard = IDashboard($$.primaryEntrypoint);
   }
 
-  /// @notice Helper function to get the associated Lido StakingVault contract.
+  /**
+   * @notice Helper function to get the associated Lido StakingVault contract.
+   * @param $$ The yield provider storage pointer.
+   * @return vault The StakingVault contract.
+   */
   function _getVault(YieldProviderStorage storage $$) internal view returns (IStakingVault vault) {
     vault = IStakingVault($$.ossifiedEntrypoint);
   }
@@ -141,12 +155,11 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param _yieldProvider The yield provider address.
    * @return availableBalance The ETH amount that can be withdrawn.
    */
-  function withdrawableValue(address _yieldProvider) external view onlyDelegateCall returns (uint256) {
+  function withdrawableValue(address _yieldProvider) external view onlyDelegateCall returns (uint256 availableBalance) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return
-      $$.isOssified
-        ? IStakingVault($$.ossifiedEntrypoint).availableBalance()
-        : IDashboard($$.primaryEntrypoint).withdrawableValue();
+    availableBalance = $$.isOssified
+      ? IStakingVault($$.ossifiedEntrypoint).availableBalance()
+      : IDashboard($$.primaryEntrypoint).withdrawableValue();
   }
 
   /**
@@ -291,11 +304,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   ) internal returns (uint256 nodeOperatorFeesPaid) {
     if (_availableYield == 0) return 0;
     IDashboard dashboard = _getDashboard($$);
-    IStakingVault vault = _getVault($$);
     uint256 currentFees = dashboard.nodeOperatorDisbursableFee();
-    uint256 avalableVaultBalance = vault.availableBalance();
+    
     // Does not allow partial payment of node operator fees, unlike settleLidoFees
-    if (avalableVaultBalance > currentFees) {
+    if (_getVault($$).availableBalance() > currentFees) {
       dashboard.disburseNodeOperatorFee();
       nodeOperatorFeesPaid = currentFees;
     }
@@ -370,7 +382,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param _pubkeys Concatenated validator public keys (48 bytes each).
    * @param _amounts Withdrawal amounts in gwei for each validator key and must match _pubkeys length.
    *         Set amount to 0 for a full validator exit.
-   *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation
+   *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation.
    * @param _refundRecipient Address to receive any fee refunds, if zero, refunds go to msg.sender.
    */
   function _unstake(
@@ -426,7 +438,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param _pubkeys Concatenated validator public keys (48 bytes each).
    * @param _amounts Withdrawal amounts in gwei for each validator key and must match _pubkeys length.
    *         Set amount to 0 for a full validator exit.
-   *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation
+   *         For partial withdrawals, amounts will be trimmed to keep MIN_ACTIVATION_BALANCE on the validator to avoid deactivation.
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
    * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */

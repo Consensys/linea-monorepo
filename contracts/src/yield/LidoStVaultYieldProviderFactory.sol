@@ -12,7 +12,7 @@ import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 contract LidoStVaultYieldProviderFactory {
   /**
    * @notice Emitted whenever LidoStVaultYieldProviderFactoryDeployed is deployed.
-   * @param l1MessageService The Linea L1MessageService, also the withdrawal reserve.
+   * @param l1MessageService The Linea L1MessageService, also the withdrawal reserve holding contract.
    * @param yieldManager The Linea YieldManager.
    * @param vaultHub Lido VaultHub contract.
    * @param vaultFactory Lido VaultFactory contract.
@@ -38,7 +38,7 @@ contract LidoStVaultYieldProviderFactory {
    */
   event LidoStVaultYieldProviderCreated(address indexed providerAddress);
 
-  /// @notice The Linea L1MessageService, also the withdrawal reserve.
+  /// @notice The Linea L1MessageService, also the withdrawal reserve holding contract.
   address public immutable L1_MESSAGE_SERVICE;
 
   /// @notice The Linea YieldManager.
@@ -63,11 +63,11 @@ contract LidoStVaultYieldProviderFactory {
   uint64 public immutable CHANGE_SLOT;
 
   /// @notice Used to set immutable variables, but not storage.
-  /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve.
+  /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve holding contract.
   /// @param _yieldManager The Linea YieldManager.
   /// @param _vaultHub Lido VaultHub contract.
   /// @param _vaultFactory Lido VaultFactory contract.
-  /// @param _steth Lido stETH contract.
+  /// @param _stEth Lido stETH contract.
   /// @param _gIFirstValidator Packed generalized index for the first validator before the pivot slot.
   /// @param _gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
   /// @param _changeSlot Beacon chain slot at which the validator generalized index changes.
@@ -76,7 +76,7 @@ contract LidoStVaultYieldProviderFactory {
     address _yieldManager,
     address _vaultHub,
     address _vaultFactory,
-    address _steth,
+    address _stEth,
     GIndex _gIFirstValidator,
     GIndex _gIFirstValidatorAfterChange,
     uint64 _changeSlot
@@ -85,12 +85,12 @@ contract LidoStVaultYieldProviderFactory {
     ErrorUtils.revertIfZeroAddress(_yieldManager);
     ErrorUtils.revertIfZeroAddress(_vaultHub);
     ErrorUtils.revertIfZeroAddress(_vaultFactory);
-    ErrorUtils.revertIfZeroAddress(_steth);
+    ErrorUtils.revertIfZeroAddress(_stEth);
     L1_MESSAGE_SERVICE = _l1MessageService;
     YIELD_MANAGER = _yieldManager;
     VAULT_HUB = _vaultHub;
     VAULT_FACTORY = _vaultFactory;
-    STETH = _steth;
+    STETH = _stEth;
     GI_FIRST_VALIDATOR = _gIFirstValidator;
     GI_FIRST_VALIDATOR_AFTER_CHANGE = _gIFirstValidatorAfterChange;
     CHANGE_SLOT = _changeSlot;
@@ -100,7 +100,7 @@ contract LidoStVaultYieldProviderFactory {
       _yieldManager,
       _vaultHub,
       _vaultFactory,
-      _steth,
+      _stEth,
       _gIFirstValidator,
       _gIFirstValidatorAfterChange,
       _changeSlot
@@ -109,7 +109,7 @@ contract LidoStVaultYieldProviderFactory {
 
   /**
    * @notice Creates LidoStVaultYieldProvider instance.
-   * @dev LidoStVaultYieldProvider initialization is handled via permissioned YieldManager.addYieldProvider().
+   * @dev LidoStVaultYieldProvider Initialization is handled via permissioned YieldManager.addYieldProvider().
    * @return yieldProviderAddress The address of the deployed LidoStVaultYieldProvider beacon proxy.
    */
   function createLidoStVaultYieldProvider() external returns (address yieldProviderAddress) {

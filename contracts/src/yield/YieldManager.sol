@@ -995,11 +995,13 @@ contract YieldManager is
       revert YieldProviderAlreadyAdded();
     }
 
-    bytes memory data = _delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(IYieldProvider.initializeVendorContracts, (_vendorInitializationData))
+    YieldProviderRegistration memory registrationData = abi.decode(
+      delegatecallYieldProvider(
+        _yieldProvider,
+        abi.encodeCall(IYieldProvider.initializeVendorContracts, (_vendorInitializationData))
+      ),
+      (YieldProviderRegistration)
     );
-    YieldProviderRegistration memory registrationData = abi.decode(data, (YieldProviderRegistration));
 
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint96 yieldProviderIndex = uint96($.yieldProviders.length);
@@ -1098,9 +1100,9 @@ contract YieldManager is
     emit L2YieldRecipientRemoved(_l2YieldRecipient);
     $.isL2YieldRecipientKnown[_l2YieldRecipient] = false;
   }
-
+   
   /**
-   * @notice Update withdrawal reserve parameters
+   * @notice Update withdrawal reserve parameters.
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
    * @param _params Data used to update withdrawal reserve parameters.
    */
@@ -1111,7 +1113,7 @@ contract YieldManager is
   }
 
   /**
-   * @notice Helper function toupdate withdrawal reserve parameters
+   * @notice Helper function to update withdrawal reserve parameters
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.
    * @param _params Data used to update withdrawal reserve parameters.
    */
