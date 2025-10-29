@@ -15,7 +15,6 @@ export default {
   testPathIgnorePatterns: ["src/run.ts", "src/utils/createApolloClient.ts", "src/core"],
   coveragePathIgnorePatterns: ["src/run.ts", "src/utils/createApolloClient.ts", "src/core"],
 
-
   // Tell Jest that .ts files are ESM and have ts-jest emit ESM
   extensionsToTreatAsEsm: [".ts"],
   transform: {

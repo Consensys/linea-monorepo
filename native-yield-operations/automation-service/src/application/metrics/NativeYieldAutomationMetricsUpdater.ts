@@ -144,6 +144,7 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   public async setCurrentNegativeYieldLastReport(vaultAddress: Address, negativeYield: number): Promise<void> {
+    if (negativeYield < 0) return;
     this.metricsService.setGauge(
       LineaNativeYieldAutomationServiceMetrics.CurrentNegativeYieldLastReport,
       { vault_address: vaultAddress },

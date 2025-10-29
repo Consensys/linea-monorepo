@@ -162,6 +162,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     nonce: number,
     gasMultiplierBps = 10000n,
   ): Promise<TransactionReceipt> {
+    // TODO - Move out of this fn
     const [fees, gasLimit, chainId] = await Promise.all([
       this.estimateGasFees(),
       this.blockchainClient.estimateGas({

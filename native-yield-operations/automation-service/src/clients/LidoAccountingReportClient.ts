@@ -4,6 +4,7 @@ import { ILazyOracle, UpdateVaultDataParams } from "../core/clients/contracts/IL
 import { getReportProofByVault } from "@lidofinance/lsv-cli/dist/utils/report/report-proof.js";
 import { ILogger, IRetryService, bigintReplacer } from "@consensys/linea-shared-utils";
 
+// TODO - Don't store the vault as a class param, just store KV cache of the vault report
 export class LidoAccountingReportClient implements ILidoAccountingReportClient {
   private latestSubmitVaultReportParams?: UpdateVaultDataParams;
 
