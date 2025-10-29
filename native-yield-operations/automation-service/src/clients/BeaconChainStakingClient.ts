@@ -31,6 +31,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     const totalPendingPartialWithdrawalsWei =
       this.validatorDataClient.getTotalPendingPartialWithdrawalsWei(sortedValidatorList);
     const requiredWithdrawalAmountWei = safeSub(amountWei, totalPendingPartialWithdrawalsWei);
+    if (requiredWithdrawalAmountWei === 0n) return;
     await this._submitPartialWithdrawalRequests(sortedValidatorList, requiredWithdrawalAmountWei);
   }
 

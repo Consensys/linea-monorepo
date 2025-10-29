@@ -18,11 +18,11 @@ export class BeaconNodeApiClient implements IBeaconNodeAPIClient {
     const url = `${this.rpcURL}/eth/v1/beacon/states/head/pending_partial_withdrawals`;
     this.logger.debug(`getPendingPartialWithdrawals making GET request to url=${url}`);
     const { data } = await this.retryService.retry(() => axios.get<PendingPartialWithdrawalResponse>(url));
-    if (!data?.data) {
+    if (data === undefined || data?.data === undefined) {
       this.logger.error("Failed GET request to", url);
       return undefined;
     }
-    const returnVal = data.data ?? [];
+    const returnVal = data.data;
     this.logger.debug("getPendingPartialWithdrawals return value", { returnVal });
     return returnVal;
   }
