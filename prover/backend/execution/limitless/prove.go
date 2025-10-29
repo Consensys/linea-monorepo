@@ -137,6 +137,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				defer func() {
 					if r := recover(); r != nil {
 						jobErr = fmt.Errorf("GL prover for witness index=%v panicked: %v", i, r)
+						logrus.Error(jobErr)
 						debug.PrintStack()
 						return
 					}
@@ -210,6 +211,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				defer func() {
 					if r := recover(); r != nil {
 						jobErr = fmt.Errorf("LPP prover for witness index=%v panicked: %v", i, r)
+						logrus.Error(jobErr)
 						debug.PrintStack()
 						return
 					}
