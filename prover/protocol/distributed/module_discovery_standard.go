@@ -882,7 +882,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 
 	// In theory, the condition with the pragma is redundant based on the sanity
 	// check we are doing.
-	if stats.NbPragmaRightPadded > 0 || stats.NbAssignedRightPadded > 0 {
+	if stats.NbPragmaRightPadded > 0 || (stats.NbAssignedRightPadded > 0 && stats.NbPragmaLeftPadded == 0) {
 		start, stop := 0, totalSegmentedArea
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()
@@ -892,7 +892,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 
 	// In theory, the condition with the pragma is redundant based on the sanity
 	// check we are doing.
-	if stats.NbPragmaLeftPadded > 0 || stats.NbAssignedLeftPadded > 0 {
+	if stats.NbPragmaLeftPadded > 0 || (stats.NbAssignedLeftPadded > 0 && stats.NbPragmaRightPadded == 0) {
 		start, stop := stats.OriginalSize-totalSegmentedArea, stats.OriginalSize
 		mod.NbSegmentCacheMutex.Lock()
 		defer mod.NbSegmentCacheMutex.Unlock()

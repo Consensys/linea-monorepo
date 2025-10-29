@@ -118,10 +118,6 @@ type ModuleGLAssignGL struct {
 	*ModuleGL
 }
 
-const (
-	segmentModuleIndexColumn = "SEGMENT_MODULE_INDEX"
-)
-
 // BuildModuleGL builds a [ModuleGL] from scratch from a [FilteredModuleInputs].
 // The function works by creating a define function that will call [NewModuleGL]
 // / and then it calls [wizard.Compile] without passing compilers.

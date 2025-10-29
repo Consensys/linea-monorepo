@@ -48,7 +48,6 @@ func TestConglomerationBasic(t *testing.T) {
 	)
 
 	runConglomerationProver(
-		t,
 		&distWizard.VerificationKeyMerkleTree,
 		distWizard.CompiledConglomeration,
 		glProofs,
@@ -128,7 +127,6 @@ func TestConglomerationProverFile(t *testing.T) {
 	)
 
 	runConglomerationProver(
-		t,
 		&distWizard.VerificationKeyMerkleTree,
 		distWizard.CompiledConglomeration,
 		glProofs,
@@ -142,7 +140,6 @@ func TestConglomerationProverFile(t *testing.T) {
 // ConglomeratorCompilation object to prove the conglomerator, logging the start
 // and end times of the proof process.
 func runConglomerationProver(
-	t *testing.T,
 	mt *distributed.VerificationKeyMerkleTree,
 	cong *distributed.RecursedSegmentCompilation,
 	runGLs, runLPPs []distributed.SegmentProof,

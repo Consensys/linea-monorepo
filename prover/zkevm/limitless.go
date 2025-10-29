@@ -22,21 +22,20 @@ import (
 )
 
 var (
-	bootstrapperFile          = "dw-bootstrapper.bin"
-	discFile                  = "disc.bin"
-	zkevmFile                 = "zkevm-wiop.bin"
-	compiledDefaultFile       = "dw-compiled-default.bin"
-	blueprintGLPrefix         = "dw-blueprint-gl"
-	blueprintLppPrefix        = "dw-blueprint-lpp"
-	blueprintGLTemplate       = blueprintGLPrefix + "-%d.bin"
-	blueprintLppTemplate      = blueprintLppPrefix + "-%d.bin"
-	compileLppTemplate        = "dw-compiled-lpp-%v.bin"
-	compileGlTemplate         = "dw-compiled-gl-%v.bin"
-	debugLppTemplate          = "dw-debug-lpp-%v.bin"
-	debugGlTemplate           = "dw-debug-gl-%v.bin"
-	conglomerationFile        = "dw-compiled-conglomeration.bin"
-	executionLimitlessPath    = "execution-limitless"
-	verificationKeyMerkleTree = "verification-key-merkle-tree.bin"
+	bootstrapperFile              = "dw-bootstrapper.bin"
+	discFile                      = "disc.bin"
+	zkevmFile                     = "zkevm-wiop.bin"
+	blueprintGLPrefix             = "dw-blueprint-gl"
+	blueprintLppPrefix            = "dw-blueprint-lpp"
+	blueprintGLTemplate           = blueprintGLPrefix + "-%d.bin"
+	blueprintLppTemplate          = blueprintLppPrefix + "-%d.bin"
+	compileLppTemplate            = "dw-compiled-lpp-%v.bin"
+	compileGlTemplate             = "dw-compiled-gl-%v.bin"
+	debugLppTemplate              = "dw-debug-lpp-%v.bin"
+	debugGlTemplate               = "dw-debug-gl-%v.bin"
+	conglomerationFile            = "dw-compiled-conglomeration.bin"
+	executionLimitlessPath        = "execution-limitless"
+	verificationKeyMerkleTreeFile = "verification-key-merkle-tree.bin"
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
@@ -266,12 +265,16 @@ func GetScaledUpBootstrapper(cfg *config.Config, disc *distributed.StandardModul
 }
 
 // RunStatRecords runs only the bootstrapper and returns a list of stat records
-func (lz *LimitlessZkEVM) RunStatRecords(witness *Witness) []distributed.QueryBasedAssignmentStatsRecord {
+func (lz *LimitlessZkEVM) RunStatRecords(cfg *config.Config, witness *Witness) []distributed.QueryBasedAssignmentStatsRecord {
 
 	var (
-		runtimeBoot = wizard.RunProver(
+		runtimeBoot = runBootstrapperWithRescaling(
+			cfg,
 			lz.DistWizard.Bootstrapper,
-			lz.Zkevm.GetMainProverStep(witness),
+			lz.Zkevm,
+			lz.DistWizard.Disc,
+			witness,
+			true,
 		)
 
 		res  = []distributed.QueryBasedAssignmentStatsRecord{}
@@ -344,7 +347,23 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 		logrus.Infof("Checking LPP witness %v, module=%v", i, witness.ModuleName)
 
-		debugLPP := lz.DistWizard.DebugLPPs[witness.ModuleIndex]
+		var (
+			// moduleToFind = witness.ModuleName
+			debugLPP *distributed.ModuleLPP
+		)
+
+		for range lz.DistWizard.DebugLPPs {
+			panic("uncomment me")
+			// if reflect.DeepEqual(lz.DistWizard.DebugLPPs[i].ModuleNames(), moduleToFind) {
+			// 	debugLPP = lz.DistWizard.DebugLPPs[i]
+			// 	break
+			// }
+		}
+
+		if debugLPP == nil {
+			utils.Panic("debugLPP not found")
+		}
+
 		witness.InitialFiatShamirState = sharedRandomness
 
 		var (
@@ -468,7 +487,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Object: *lz.DistWizard.CompiledConglomeration,
 		},
 		{
-			Name:   verificationKeyMerkleTree,
+			Name:   verificationKeyMerkleTreeFile,
 			Object: lz.DistWizard.VerificationKeyMerkleTree,
 		},
 	}
@@ -514,8 +533,6 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 			Object: debugLPP,
 		})
 	}
-
-	assets = append(assets)
 
 	for _, asset := range assets {
 		logrus.Infof("writing %s to disk", asset.Name)
@@ -643,7 +660,7 @@ func LoadCompiledGL(cfg *config.Config, moduleName distributed.ModuleName) (*dis
 }
 
 // LoadCompiledLPP loads the compiled LPP from disk
-func LoadCompiledLPP(cfg *config.Config, moduleNames []distributed.ModuleName) (*distributed.RecursedSegmentCompilation, error) {
+func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*distributed.RecursedSegmentCompilation, error) {
 
 	var (
 		assetDir = cfg.PathForSetup(executionLimitlessPath)
@@ -690,29 +707,35 @@ func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*dis
 	return res, nil
 }
 
-// LoadConglomeration loads the conglomeration assets from disk
-func LoadConglomeration(cfg *config.Config) (
-	*distributed.ModuleConglo,
-	*distributed.VerificationKeyMerkleTree,
-	error,
-) {
+// LoadCompiledConglomeration loads the conglomeration assets from disk
+func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmentCompilation, error) {
 
 	var (
 		assetDir = cfg.PathForSetup(executionLimitlessPath)
 		filePath = path.Join(assetDir, conglomerationFile)
-		conglo   = &distributed.ModuleConglo{}
-		mt       = &distributed.VerificationKeyMerkleTree{}
+		conglo   = &distributed.RecursedSegmentCompilation{}
 	)
 
 	if err := serialization.LoadFromDisk(filePath, conglo, true); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+
+	return conglo, nil
+}
+
+func LoadVerificationKeyMerkleTree(cfg *config.Config) (*distributed.VerificationKeyMerkleTree, error) {
+
+	var (
+		assetDir = cfg.PathForSetup(executionLimitlessPath)
+		filePath = path.Join(assetDir, verificationKeyMerkleTreeFile)
+		mt       = &distributed.VerificationKeyMerkleTree{}
+	)
 
 	if err := serialization.LoadFromDisk(filePath, mt, true); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return conglo, mt, nil
+	return mt, nil
 }
 
 // GetAffinities returns a list of affinities for the following modules. This
