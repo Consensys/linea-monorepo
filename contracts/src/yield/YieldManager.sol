@@ -584,6 +584,9 @@ contract YieldManager is
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
     );
     maxUnstakeAmount = abi.decode(data, (uint256));
+    if (maxUnstakeAmount == 0) {
+      revert YieldProviderReturnedZeroUnstakeAmount();
+    }
     // Validiate maxUnstakeAmount
     uint256 targetDeficit = getTargetReserveDeficit();
     uint256 availableFundsToSettleTargetDeficit = address(this).balance +
