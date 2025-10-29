@@ -327,7 +327,7 @@ export default class BurnAndBridge extends Command {
    * @returns The computed swap deadline as a bigint.
    */
   private computeSwapDeadline(delayInSeconds: number): bigint {
-    const currentTime = fromZonedTime(Math.floor(new Date().getTime()), "UTC").getTime();
+    const currentTime = fromZonedTime(Math.floor(new Date().getTime()), "UTC");
     const deadline = addSeconds(currentTime, delayInSeconds);
     return BigInt(Math.floor(deadline.getTime() / 1000));
   }
