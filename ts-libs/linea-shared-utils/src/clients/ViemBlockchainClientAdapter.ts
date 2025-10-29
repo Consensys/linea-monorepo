@@ -20,6 +20,7 @@ import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { ILogger } from "../logging/ILogger";
 import { MAX_BPS } from "../core/constants/maths";
 
+// TODO - Ponder the edge cases for retry/timeout/throw logic in sendSignedTransaction before writing unit tests
 // Re-use via composition in ContractClients
 // Hope that using strategy pattern like this makes us more 'viem-agnostic'
 export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClient, TransactionReceipt> {
