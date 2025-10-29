@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,17 +38,14 @@ func TestChi(t *testing.T) {
 		// Generate new traces
 		traces := genKeccakfTrace(rnd, maxKeccaf)
 
-		// Recall that this will set the values of `traces` and ``
+		// Recall that this will set the values of `traces` and `run`
 		proof := wizard.Prove(comp, prover(traces, &run))
 		assert.NoErrorf(t, wizard.Verify(comp, proof), "verifier failed")
 
 		effNumKeccak := len(traces.KeccakFInps)
-
 		for permId := 0; permId < effNumKeccak; permId++ {
-
+			// Get the input state for this permutation
 			state := traces.KeccakFInps[permId]
-			// Copy the corresponding input state and apply the rho
-			// transformation.
 			for round := 0; round < keccak.NumRound; round++ {
 
 				state.ApplyKeccakfRound(round)
@@ -65,12 +63,11 @@ func TestChi(t *testing.T) {
 				stateBits := [64]field.Element{}
 				for x := 0; x < 5; x++ {
 					for y := 0; y < 5; y++ {
-						for z := 0; z < 8; z++ {
-							u := mod.Chi.stateNextWitness[x][y][z]
-							k := u[permId*keccak.NumRound+round]
-							res := cleanBase(Decompose(k.Uint64(), 11, 8))
+						for z := 0; z < numSlices; z++ {
+							k := mod.Chi.StateNext[x][y][z].GetColAssignmentAt(run, permId*keccak.NumRound+round)
+							res := common.CleanBase(common.DecomposeUint32(k.Uint64(), BaseChi, numSlices))
 							for j := range res {
-								stateBits[z*8+j] = field.NewElement(res[j])
+								stateBits[z*numSlices+j] = res[j]
 							}
 						}
 						reconstructed[x][y] = reconstructU64(stateBits)
@@ -107,7 +104,7 @@ func chiTestingModule(
 		mod          = &Module{}
 		size         = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * 24))
 		stateCurr    = stateInBits{} // input to the rho module
-		blocks       = [17][8]ifaces.Column{}
+		blocks       = [numLanesInBlock][numSlices]ifaces.Column{}
 		isBlockOther ifaces.Column
 	)
 
@@ -122,7 +119,7 @@ func chiTestingModule(
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 64; z++ {
 					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_CURR_%v_%v_%v", x, y, z), size)
-					if z < 8 && (5*y)+x < 17 {
+					if z < numSlices && (5*y)+x < numLanesInBlock {
 						blocks[(5*y)+x][z] = comp.InsertCommit(0, ifaces.ColIDf("MESSAGE_BLOCK_%v_%v", (5*y)+x, z), size)
 					}
 				}
@@ -131,7 +128,12 @@ func chiTestingModule(
 
 		isBlockOther = comp.InsertCommit(0, "IS_BLOCK_OTHER", size)
 
-		mod.Chi = newChi(comp, maxNumKeccakf, stateCurr, blocks, isBlockOther)
+		mod.Chi = newChi(comp, chiInputs{
+			stateCurr:    stateCurr,
+			blocks:       blocks,
+			isBlockOther: isBlockOther,
+			numKeccakf:   maxNumKeccakf,
+		})
 	}
 
 	prover := func(
@@ -155,9 +157,9 @@ func chiTestingModule(
 
 			// Initializes the input columns
 			stateCurrWit := [5][5][64][]field.Element{}
-			blockWit := [17][8][]field.Element{}
+			blockWit := [numLanesInBlock][numSlices][]field.Element{}
 			isBlockOtherWit := []field.Element{}
-			blockNext := [17][8]field.Element{}
+			blockNext := [numLanesInBlock][numSlices]field.Element{}
 			for permId := 0; permId < numKeccakf; permId++ {
 				state := traces.KeccakFInps[permId]
 				block := cleanBaseBlock(traces.Blocks[permId])
@@ -174,8 +176,8 @@ func chiTestingModule(
 					inputState := state.Pi()
 
 					// create the block columns
-					for i := 0; i < 17; i++ {
-						for j := 0; j < 8; j++ {
+					for i := 0; i < numLanesInBlock; i++ {
+						for j := 0; j < numSlices; j++ {
 							switch {
 							case rnd == 0 && traces.IsNewHash[permId] == true:
 								blockWit[i][j] = append(blockWit[i][j], block[i][j])
@@ -228,7 +230,7 @@ func chiTestingModule(
 							),
 						)
 
-						if k < 8 && (5*y)+x < 17 {
+						if k < numSlices && (5*y)+x < numLanesInBlock {
 							run.AssignColumn(
 								blocks[(5*y)+x][k].GetColID(),
 								smartvectors.RightZeroPadded(
@@ -251,16 +253,16 @@ func chiTestingModule(
 	return builder, prover, mod
 }
 
-func cleanBaseBlock(block keccak.Block) (res [17][8]field.Element) {
-	eleven := field.NewElement(11)
+func cleanBaseBlock(block keccak.Block) (res [numLanesInBlock][numSlices]field.Element) {
+	eleven := field.NewElement(BaseChi)
 	// extract the byte of each lane, in little endian
-	for i := 0; i < 17; i++ {
-		lanebytes := [8]uint8{}
-		for j := 0; j < 8; j++ {
-			lanebytes[j] = uint8((block[i] >> (8 * j)) & 0xff)
+	for i := 0; i < numLanesInBlock; i++ {
+		lanebytes := [numSlices]uint8{}
+		for j := 0; j < numSlices; j++ {
+			lanebytes[j] = uint8((block[i] >> (numSlices * j)) & 0xff)
 		}
-		// convert each byte to clean base 11
-		for j := 0; j < 8; j++ {
+		// convert each byte to clean base BaseChi
+		for j := 0; j < numSlices; j++ {
 			res[i][j] = keccakf.U64ToBaseX(uint64(lanebytes[j]), &eleven)
 		}
 	}
