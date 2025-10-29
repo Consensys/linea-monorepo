@@ -46,6 +46,8 @@ func newChi(comp *wizard.CompiledIOP, numKeccakf int, stateCurr stateInBits, blo
 	chi := &chi{
 		stateCurr:     stateCurr,
 		stateInternal: state{},
+		IsBlockOther:  isBlockOther,
+		BlocksOther:   blocks,
 	}
 
 	for x := 0; x < 5; x++ {
@@ -110,7 +112,9 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 		stateInternal [5][5][8][]field.Element
 		size          = stateCurr[0][0][0].Size()
 		rcCols        [8][]field.Element
+		isBlockOther  = chi.IsBlockOther.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
+
 	// assign the linear combinations for each lane in the state
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
@@ -122,7 +126,6 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 	}
 
 	// assign the state after chi step
-	// eleven := field.NewElement(11)
 	two := field.NewElement(2)
 	for i := 0; i < 8; i++ {
 		chi.RC[i].Assign(run)
@@ -135,21 +138,22 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 				// A[x][y] = A[x][y] + ( (not A[x+1][y]) and A[x+2][y])
 				u = make([]field.Element, size)
 				v = make([]field.Element, size)
-				vector.ScalarMul(u, stateInternal[x][y][z], field.NewElement(2))
+				vector.ScalarMul(u, stateInternal[x][y][z], two)
 				vector.ScalarMul(v, stateInternal[(x+2)%5][y][z], field.NewElement(3))
 				vector.Add(u, u, v, stateInternal[(x+1)%5][y][z])
-				// var k field.Element
-				// If it is the first lane, then add the round constant
-				/*if x == 0 && y == 0 && z == 0 {
-					for i := 0; i < size; i++ {
-						a := keccakf.U64ToBaseX(keccak.RC[i%keccak.NumRound], &eleven)
-						u[i].Add(&u[i], k.Mul(&two, &a))
-					}
-				}*/
 
+				// add the round constant for position (0,0)
 				if x == 0 && y == 0 {
 					var tt = make([]field.Element, size)
 					vector.ScalarMul(tt, rcCols[z], two)
+					vector.Add(u, u, tt)
+				}
+				// add the message block for all blocks
+				if x+5*y < 17 {
+					blocks := chi.BlocksOther[x+5*y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
+					var tt = make([]field.Element, size)
+					vector.ScalarMul(tt, blocks, two)
+					vector.MulElementWise(tt, tt, isBlockOther)
 					vector.Add(u, u, tt)
 				}
 				chi.stateNextWitness[x][y][z] = u
