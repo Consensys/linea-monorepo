@@ -44,7 +44,7 @@ func TestPlonkWizard(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]any{0, 5})})
 	})
 
 	err := wizard.Verify(compiled, proof)
@@ -66,7 +66,7 @@ func TestPlonkWizardWithFixedNbRow(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]any{0, 5})})
 	})
 
 	err := wizard.Verify(compiled, proof)

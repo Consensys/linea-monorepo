@@ -60,7 +60,7 @@ func TestPlonkWizardCircuitWithCommit(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]any{0, 5})})
 	})
 
 	err := wizard.Verify(compiled, proof)
@@ -83,9 +83,9 @@ func TestPlonkWizardCircuitWithCommitMultiInstance(t *testing.T) {
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 		pa.Run(run, []witness.Witness{
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
 		})
 	})
 
@@ -109,9 +109,9 @@ func TestPlonkWizardCircuitWithCommitMultiInstanceFixedNbRow(t *testing.T) {
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 		pa.Run(run, []witness.Witness{
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
 		})
 	})
 
