@@ -76,20 +76,20 @@ type BackReference int
 // Serializer manages the serialization process, packing objects into a PackedObject.
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
-	PackedObject     *PackedObject               // The output structure containing serialized data.
-	typeMap          map[string]int              // Maps type names to indices in PackedObject.Types.
-	pointerMap       map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
-	coinMap          map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
-	coinIdMap        map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
-	columnMap        map[uuid.UUID]int           // Maps column UUIDs to indices in PackedObject.Columns.
-	columnIdMap      map[string]int              // Maps column IDs to indices in PackedObject.ColumnIDs.
-	queryMap         map[uuid.UUID]int           // Maps query UUIDs to indices in PackedObject.Queries.
-	queryIDMap       map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
-	compiledIOPsFast map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
-	stores           map[*column.Store]int       // Maps Store pointers to indices in PackedObject.Store.
-	circuitMap       map[*cs.SparseR1CS]int      // Maps circuit pointers to indices in PackedObject.Circuits.
-	exprMap          map[field.Element]int       // Maps expression pointers to indices in PackedObject.Expressions
-	warnings         []string                    // Collects warnings (e.g., unexported fields) for debugging.
+	PackedObject     *PackedObject                // The output structure containing serialized data.
+	typeMap          map[string]int               // Maps type names to indices in PackedObject.Types.
+	pointerMap       map[uintptr]int              // Maps pointer values to indices in PackedObject.Pointers.
+	coinMap          map[uuid.UUID]int            // Maps coin UUIDs to indices in PackedObject.Coins.
+	coinIdMap        map[string]int               // Maps coin IDs to indices in PackedObject.CoinIDs.
+	columnMap        map[uuid.UUID]int            // Maps column UUIDs to indices in PackedObject.Columns.
+	columnIdMap      map[string]int               // Maps column IDs to indices in PackedObject.ColumnIDs.
+	queryMap         map[uuid.UUID]int            // Maps query UUIDs to indices in PackedObject.Queries.
+	queryIDMap       map[string]int               // Maps query IDs to indices in PackedObject.QueryIDs.
+	compiledIOPsFast map[*wizard.CompiledIOP]int  // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
+	stores           map[*column.Store]int        // Maps Store pointers to indices in PackedObject.Store.
+	circuitMap       map[*cs.SparseR1CS]int       // Maps circuit pointers to indices in PackedObject.Circuits.
+	exprMap          map[*symbolic.Expression]int // Maps expression pointers to indices in PackedObject.Expressions
+	warnings         []string                     // Collects warnings (e.g., unexported fields) for debugging.
 
 	// compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 }
@@ -165,7 +165,7 @@ func NewSerializer() *Serializer {
 		compiledIOPsFast: map[*wizard.CompiledIOP]int{},
 		stores:           map[*column.Store]int{},
 		circuitMap:       map[*cs.SparseR1CS]int{},
-		exprMap:          map[field.Element]int{},
+		exprMap:          map[*symbolic.Expression]int{},
 	}
 }
 
@@ -683,10 +683,10 @@ func (de *Deserializer) UnpackPlonkCircuit(v BackReference) (reflect.Value, *ser
 // in the table [PackedObject.Expressions] table and returning a BackReference
 // to it. The expression is cached using its ESHash.
 func (ser *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
-	if _, ok := ser.exprMap[e.ESHash]; !ok {
+	if _, ok := ser.exprMap[e]; !ok {
 
 		n := len(ser.PackedObject.Expressions)
-		ser.exprMap[e.ESHash] = n
+		ser.exprMap[e] = n
 		ser.PackedObject.Expressions = append(ser.PackedObject.Expressions, nil)
 
 		packed, err := ser.PackStructObject(reflect.ValueOf(*e))
@@ -697,7 +697,7 @@ func (ser *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *s
 		ser.PackedObject.Expressions[n] = packed
 	}
 
-	return BackReference(ser.exprMap[e.ESHash]), nil
+	return BackReference(ser.exprMap[e]), nil
 }
 
 // UnpackExpression unpacks an expression from a BackReference, using the cached
