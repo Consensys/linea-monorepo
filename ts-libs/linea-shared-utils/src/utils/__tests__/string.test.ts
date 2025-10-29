@@ -1,24 +1,45 @@
-import { bigintReplacer } from "../string";
+import { bigintReplacer, isString, serialize } from "../string";
 
 describe("bigintReplacer", () => {
-  it("serializes bigint values as decimal strings", () => {
-    const json = JSON.stringify({ amount: 1234567890123456789n }, bigintReplacer);
-    expect(json).toBe('{"amount":"1234567890123456789"}');
+  it("converts bigint values to strings", () => {
+    expect(bigintReplacer("amount", 123n)).toBe("123");
+    expect(bigintReplacer("negative", -456n)).toBe("-456");
   });
 
-  it("leaves non-bigint values unchanged", () => {
-    expect(bigintReplacer("numeric", 42)).toBe(42);
-    expect(bigintReplacer("text", "linea")).toBe("linea");
-    const obj = { nested: true };
-    expect(bigintReplacer("object", obj)).toBe(obj);
+  it("returns non-bigint values unchanged", () => {
+    const value = { foo: "bar" };
+    expect(bigintReplacer("object", value)).toBe(value);
+    expect(bigintReplacer("number", 10)).toBe(10);
   });
+});
 
-  it("handles bigint entries inside nested structures", () => {
-    const payload = {
-      data: [{ value: 99n }, 1n, "plain"],
+describe("serialize", () => {
+  it("stringifies bigint values recursively", () => {
+    const input = {
+      total: 999n,
+      nested: {
+        arr: [1n, 2, { inner: 3n }],
+      },
     };
 
-    const json = JSON.stringify(payload, bigintReplacer);
-    expect(json).toBe('{"data":[{"value":"99"},"1","plain"]}');
+    const serialized = serialize(input);
+    expect(serialized).toBe('{"total":"999","nested":{"arr":["1",2,{"inner":"3"}]}}');
+  });
+
+  it("matches JSON.stringify behaviour for non-bigint values", () => {
+    const input = { foo: "bar", count: 3 };
+    expect(serialize(input)).toBe(JSON.stringify(input));
+  });
+});
+
+describe("isString", () => {
+  it("returns true for primitive strings", () => {
+    expect(isString("hello")).toBe(true);
+  });
+
+  it("returns false for non-strings", () => {
+    expect(isString(123)).toBe(false);
+    expect(isString({ text: "hi" })).toBe(false);
+    expect(isString(new String("wrapped"))).toBe(false);
   });
 });

@@ -176,7 +176,7 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
   }
 
   public incrementOperationModeTrigger(mode: OperationMode, trigger: OperationTrigger): void {
-    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal, {
+    this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal, {
       mode,
       trigger,
     });
