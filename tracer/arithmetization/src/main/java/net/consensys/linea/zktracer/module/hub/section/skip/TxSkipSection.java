@@ -126,7 +126,8 @@ public abstract class TxSkipSection extends TraceSection implements EndTransacti
     final Wei value = (Wei) txMetadata.getBesuTransaction().getValue();
 
     if (txMetadata.senderAddressCollision()) {
-      final BigInteger gasUsed = BigInteger.valueOf(txMetadata.getGasUsed());
+      final BigInteger gasUsed =
+          BigInteger.valueOf(txMetadata.getGasLimit() - txMetadata.getGasRefunded());
       final BigInteger gasPrice = BigInteger.valueOf(txMetadata.getEffectiveGasPrice());
       final BigInteger gasCost = gasUsed.multiply(gasPrice);
       senderNew =
