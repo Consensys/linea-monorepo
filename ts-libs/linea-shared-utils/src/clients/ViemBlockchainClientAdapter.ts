@@ -141,7 +141,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
           { error },
         );
 
-        // Bump gas for next retry
+        // Compound gas for next retry
         gasMultiplierBps = (gasMultiplierBps * (MAX_BPS + this.gasRetryBumpBps)) / MAX_BPS;
       }
     }

@@ -169,7 +169,7 @@ export class NativeYieldAutomationServiceBootstrap {
       this.exponentialBackoffRetryService,
       this.lazyOracleContractClient,
       config.dataSources.ipfsBaseUrl,
-      this.config.contractAddresses.lidoYieldProviderAddress, // TODO - Wrong address because can't get vault sync
+      this.config.contractAddresses.lidoStakingVaultAddress,
     );
     this.beaconChainStakingClient = new BeaconChainStakingClient(
       new WinstonLogger(BeaconChainStakingClient.name, config.loggerOptions),
