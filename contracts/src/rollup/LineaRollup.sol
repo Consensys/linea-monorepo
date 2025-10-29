@@ -29,6 +29,13 @@ contract LineaRollup is LineaRollupYieldExtension {
   }
 
   /**
+   * @dev Storage slot with the admin of the contract.
+   * This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
+   * validated in the constructor.
+   */
+  bytes32 internal constant PROXY_ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+
+  /**
    * @notice Sets the roles for a list of addresses, the PauseManager pauseType:role mappings and sets the YieldManager address.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
    * @param _roleAddresses The list of addresses and roles to assign permissions to.
@@ -42,6 +49,11 @@ contract LineaRollup is LineaRollupYieldExtension {
     PauseTypeRole[] calldata _unpauseTypeRoles,
     address _yieldManager
   ) external reinitializer(7) {
+    address proxyAdmin;
+    assembly {
+      proxyAdmin := sload(PROXY_ADMIN_SLOT)
+    }
+    require(msg.sender == proxyAdmin, "");
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
