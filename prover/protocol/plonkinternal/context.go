@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	plonkKoalabear "github.com/consensys/gnark/backend/plonk/koalabear"
+	"github.com/consensys/gnark/constraint"
 	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -14,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -214,8 +216,8 @@ func createCtx(
 // CompileCircuitDefault compiles the circuit using the default scs.Builder
 // of gnark.
 func CompileCircuitDefault(circ frontend.Circuit) (*cs.SparseR1CS, error) {
-
-	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circ)
+	newBuilder := plonkbuilder.From(scs.NewBuilder[constraint.U32])
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), newBuilder, circ)
 	if err != nil {
 		return nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
