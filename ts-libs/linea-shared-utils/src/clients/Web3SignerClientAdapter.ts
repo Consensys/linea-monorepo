@@ -8,6 +8,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { ILogger } from "../logging/ILogger";
 
+// TODO - Test through manual script, before writing unit tests
 export class Web3SignerClientAdapter implements IContractSignerClient {
   private readonly agent: Agent;
   constructor(
