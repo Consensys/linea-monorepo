@@ -220,7 +220,7 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
                 parts[2].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[2], Bytes32.SIZE)),
                 parts[3].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[3], Bytes32.SIZE)),
                 parts[4].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[4], Bytes32.SIZE)));
-        eventFilters.putIfAbsent(address, new HashSet<>()).add(eventFilter);
+        eventFilters.computeIfAbsent(address, (a) -> new HashSet<>()).add(eventFilter);
       }
       return eventFilters;
     } catch (IOException e) {
