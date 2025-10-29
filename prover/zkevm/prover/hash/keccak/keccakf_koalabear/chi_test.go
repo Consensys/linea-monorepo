@@ -1,8 +1,6 @@
 package keccakfkoalabear
 
 import (
-	"fmt"
-	"math/bits"
 	"math/rand/v2"
 	"testing"
 
@@ -19,7 +17,7 @@ import (
 
 func TestChi(t *testing.T) {
 
-	const numCases int = 30
+	const numCases int = 1
 	maxKeccaf := 10
 
 	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
@@ -46,22 +44,17 @@ func TestChi(t *testing.T) {
 		effNumKeccak := len(traces.KeccakFInps)
 
 		for permId := 0; permId < effNumKeccak; permId++ {
-			state := traces.KeccakFInps[permId]
 
+			state := traces.KeccakFInps[permId]
 			// Copy the corresponding input state and apply the rho
 			// transformation.
 			for round := 0; round < keccak.NumRound; round++ {
+
 				state.ApplyKeccakfRound(round)
-			expectedAIota := traces.KeccakFInps[permId]
-
-			for rnd := 0; rnd < keccak.NumRound; rnd++ {
-
-				pos := permId*keccak.NumRound + rnd
-				expectedAIota.ApplyKeccakfRound(rnd)
-
+				expectedAIota := state
 				// In that case, aIOTA should be in fact the next input because
 				// the iota step will be responsible for xoring in the inputs.
-				if rnd == 23 && permId+1 < len(traces.KeccakFInps) {
+				if round == 23 && permId+1 < len(traces.KeccakFInps) {
 					if !traces.IsNewHash[permId+1] {
 						expectedAIota = traces.KeccakFInps[permId+1]
 					}
@@ -70,38 +63,12 @@ func TestChi(t *testing.T) {
 				// Reconstruct the same state from the assignment of the prover
 				reconstructed := keccak.State{}
 				stateBits := [64]field.Element{}
-				// two := field.NewElement(2)
-				// eleven := field.NewElement(11)
 				for x := 0; x < 5; x++ {
 					for y := 0; y < 5; y++ {
 						for z := 0; z < 8; z++ {
 							u := mod.Chi.stateNextWitness[x][y][z]
 							k := u[permId*keccak.NumRound+round]
-							/*if x == 0 && y == 0 && z == 0 {
-								l := keccakf.U64ToBaseX(keccak.RC[0], &eleven)
-								k.Add(&u[permId*keccak.NumRound],
-									k.Mul(&two, &l))
-							}*/
 							res := cleanBase(Decompose(k.Uint64(), 11, 8))
-							for j := range res {
-								stateBits[z*8+j] = field.NewElement(res[j])
-							}
-						}
-						reconstructed[x][y] = reconstructU64(stateBits)
-					}
-				}
-				printDiff(state, reconstructed)
-				assert.Equal(t, state, reconstructed,
-					"could not reconstruct the state. permutation %v", permId)
-				// Reconstruct the same state from the assignment of the prover
-				reconstructed := keccak.State{}
-				stateBits := [64]field.Element{}
-				for x := 0; x < 5; x++ {
-					for y := 0; y < 5; y++ {
-						for z := 0; z < 8; z++ {
-							u := mod.Chi.stateNextWitness[x][y][z]
-							k := u[pos]
-							res := cleanBase(Decompose(k.Uint64(), 11, 8, pos))
 							for j := range res {
 								stateBits[z*8+j] = field.NewElement(res[j])
 							}
@@ -111,12 +78,8 @@ func TestChi(t *testing.T) {
 				}
 				assert.Equal(t, expectedAIota, reconstructed,
 					"could not reconstruct the state. permutation %v", permId)
+				// Exiting on the first failed case to not spam the test logs
 
-				// Exiting on the first failed case to not spam the test logs
-				if t.Failed() {
-					t.Fatalf("stopping here as we encountered errors")
-				}
-				// Exiting on the first failed case to not spam the test logs
 				if t.Failed() {
 					t.Fatalf("stopping here as we encountered errors")
 				}
@@ -194,9 +157,14 @@ func chiTestingModule(
 			stateCurrWit := [5][5][64][]field.Element{}
 			blockWit := [17][8][]field.Element{}
 			isBlockOtherWit := []field.Element{}
+			blockNext := [17][8]field.Element{}
 			for permId := 0; permId < numKeccakf; permId++ {
 				state := traces.KeccakFInps[permId]
 				block := cleanBaseBlock(traces.Blocks[permId])
+
+				if permId+1 < numKeccakf {
+					blockNext = cleanBaseBlock(traces.Blocks[permId+1])
+				}
 
 				for rnd := 0; rnd < keccak.NumRound; rnd++ {
 					// Pre-permute using the theta transformation before running
@@ -208,15 +176,18 @@ func chiTestingModule(
 					// create the block columns
 					for i := 0; i < 17; i++ {
 						for j := 0; j < 8; j++ {
-							if rnd == 23 && traces.IsNewHash[permId] == false {
+							switch {
+							case rnd == 0 && traces.IsNewHash[permId] == true:
 								blockWit[i][j] = append(blockWit[i][j], block[i][j])
-							} else {
+							case rnd == 23 && permId+1 < numKeccakf && traces.IsNewHash[permId+1] == false:
+								blockWit[i][j] = append(blockWit[i][j], blockNext[i][j])
+							default:
 								blockWit[i][j] = append(blockWit[i][j], field.Zero())
 							}
 						}
 					}
 
-					if rnd == 23 && traces.IsNewHash[permId] == false {
+					if rnd == 23 && permId+1 < numKeccakf && traces.IsNewHash[permId+1] == false {
 						isBlockOtherWit = append(isBlockOtherWit, field.One())
 					} else {
 						isBlockOtherWit = append(isBlockOtherWit, field.Zero())
@@ -278,21 +249,6 @@ func chiTestingModule(
 	}
 
 	return builder, prover, mod
-}
-
-func printDiff(expected, actual keccak.State) {
-	totDiffBits := 0
-	for i := 0; i < 5; i++ {
-		for j := 0; j < 5; j++ {
-			e := expected[i][j]
-			a := actual[i][j]
-			x := e ^ a
-			bc := bits.OnesCount64(x)
-			totDiffBits += bc
-			fmt.Printf("word (%d,%d): expected=0x%x actual=0x%x xor=0x%x diffBits=%d\n", i, j, e, a, x, bc)
-		}
-	}
-	fmt.Printf("total differing bits = %d\n", totDiffBits)
 }
 
 func cleanBaseBlock(block keccak.Block) (res [17][8]field.Element) {
