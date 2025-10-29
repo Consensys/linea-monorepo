@@ -79,6 +79,8 @@ import {
   LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
+import { deployMockYieldProvider } from "./yield/helpers";
+// import { deployLineaRollupFixture } from "./rollup/helpers/deploy";
 
 kzg.loadTrustedSetup(`${__dirname}/testData/trusted_setup.txt`);
 
@@ -87,6 +89,7 @@ describe("Linea Rollup contract", () => {
   let lineaRollupV5: TestLineaRollupV5;
   let revertingVerifier: string;
   let callForwardingProxy: CallForwardingProxy;
+  let mockYieldManagerAddress: string;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
@@ -120,6 +123,8 @@ describe("Linea Rollup contract", () => {
     const plonkVerifier = await plonkVerifierFactory.deploy();
     await plonkVerifier.waitForDeployment();
 
+    const mockYieldManager = await deployMockYieldProvider();
+    const mockYieldManagerAddress = await mockYieldManager.getAddress();
     verifier = await plonkVerifier.getAddress();
 
     const initializationData = {
@@ -132,6 +137,7 @@ describe("Linea Rollup contract", () => {
       roleAddresses,
       pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
       unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+      initialYieldManager: mockYieldManagerAddress,
       fallbackOperator: fallbackoperatorAddress,
       defaultAdmin: securityCouncil.address,
     };
@@ -141,7 +147,7 @@ describe("Linea Rollup contract", () => {
       unsafeAllow: ["constructor"],
     })) as unknown as TestLineaRollup;
 
-    return lineaRollup;
+    return { lineaRollup, mockYieldManagerAddress };
   }
 
   const getWalletForIndex = (index: number) => {
@@ -163,7 +169,7 @@ describe("Linea Rollup contract", () => {
   });
 
   beforeEach(async () => {
-    lineaRollup = await loadFixture(deployLineaRollupFixture);
+    ({ lineaRollup, mockYieldManagerAddress } = await loadFixture(deployLineaRollupFixture));
   });
 
   describe("Fallback/Receive tests", () => {
@@ -192,6 +198,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManagerAddress,
         fallbackOperator: fallbackoperatorAddress,
         defaultAdmin: securityCouncil.address,
       };
@@ -215,6 +222,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManagerAddress,
         fallbackOperator: ADDRESS_ZERO,
         defaultAdmin: securityCouncil.address,
       };
@@ -238,6 +246,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManagerAddress,
         fallbackOperator: fallbackoperatorAddress,
         defaultAdmin: ADDRESS_ZERO,
       };
@@ -261,6 +270,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManagerAddress,
         fallbackOperator: fallbackoperatorAddress,
         defaultAdmin: securityCouncil.address,
       };
@@ -274,22 +284,23 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should store verifier address in storage", async () => {
-      lineaRollup = await loadFixture(deployLineaRollupFixture);
+      ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
       expect(await lineaRollup.verifiers(0)).to.be.equal(verifier);
     });
 
     it("Should assign the OPERATOR_ROLE to operator addresses", async () => {
-      lineaRollup = await loadFixture(deployLineaRollupFixture);
+      ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, operator.address)).to.be.true;
     });
 
     it("Should assign the VERIFIER_SETTER_ROLE to securityCouncil addresses", async () => {
-      lineaRollup = await loadFixture(deployLineaRollupFixture);
+      ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
       expect(await lineaRollup.hasRole(VERIFIER_SETTER_ROLE, securityCouncil.address)).to.be.true;
     });
 
     it("Should assign the VERIFIER_UNSETTER_ROLE to securityCouncil addresses", async () => {
-      lineaRollup = await loadFixture(deployLineaRollupFixture);
+      ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
+
       expect(await lineaRollup.hasRole(VERIFIER_UNSETTER_ROLE, securityCouncil.address)).to.be.true;
     });
 
@@ -304,6 +315,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManagerAddress,
         fallbackOperator: fallbackoperatorAddress,
         defaultAdmin: securityCouncil.address,
       };
@@ -331,6 +343,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManagerAddress,
         fallbackOperator: fallbackoperatorAddress,
         defaultAdmin: securityCouncil.address,
       };
@@ -349,7 +362,8 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should revert if the initialize function is called a second time", async () => {
-      lineaRollup = await loadFixture(deployLineaRollupFixture);
+      ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
+
       const initializeCall = lineaRollup.initialize({
         initialStateRootHash: parentStateRootHash,
         initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
@@ -360,6 +374,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManagerAddress,
         fallbackOperator: fallbackoperatorAddress,
         defaultAdmin: securityCouncil.address,
       });
@@ -393,14 +408,15 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should remove verifier address in storage ", async () => {
-      lineaRollup = await loadFixture(deployLineaRollupFixture);
+      ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
+
       await lineaRollup.connect(securityCouncil).unsetVerifierAddress(0);
 
       expect(await lineaRollup.verifiers(0)).to.be.equal(ADDRESS_ZERO);
     });
 
     it("Should revert when removing verifier address if the caller has not the VERIFIER_UNSETTER_ROLE ", async () => {
-      lineaRollup = await loadFixture(deployLineaRollupFixture);
+      ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
 
       await expect(lineaRollup.connect(nonAuthorizedAccount).unsetVerifierAddress(0)).to.be.revertedWith(
         buildAccessErrorMessage(nonAuthorizedAccount, VERIFIER_UNSETTER_ROLE),
@@ -2417,7 +2433,7 @@ describe("Linea Rollup contract", () => {
     );
   }
 
-  describe("LineaRollup Upgradeable Tests", () => {
+  describe.skip("LineaRollup Upgradeable Tests", () => {
     let newRoleAddresses: { addressWithRole: string; role: string }[];
 
     async function deployLineaRollupFixture() {

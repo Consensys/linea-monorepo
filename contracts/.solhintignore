@@ -4,3 +4,5 @@ contracts/test-contracts
 test/foundry
 /contracts/proxies
 /contracts/tokenBridge/mocks
+/contracts/_testing
+/contracts/yield/libs/vendor/lido

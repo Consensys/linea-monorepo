@@ -1990,6 +1990,7 @@ contract L2MessageServiceLineaMainnet is
     __AccessControl_init();
     __RateLimiter_init(_rateLimitPeriod, _rateLimitAmount);
     __L2MessageManager_init(_l1l2MessageSetter);
+    __ReentrancyGuard_init();
 
     nextMessageNumber = 1;
 
@@ -2124,12 +2125,7 @@ contract L2MessageServiceLineaMainnet is
    * @param _to The recipient of the message and gas refund.
    * @param _calldata The calldata of the message.
    */
-  modifier distributeFees(
-    uint256 _feeInWei,
-    address _to,
-    bytes calldata _calldata,
-    address _feeRecipient
-  ) {
+  modifier distributeFees(uint256 _feeInWei, address _to, bytes calldata _calldata, address _feeRecipient) {
     //pre-execution
     uint256 startingGas = gasleft();
     _;

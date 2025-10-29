@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.26;
+pragma solidity >=0.8.19 <=0.8.30;
 
 /**
  * @title Interface declaring generic errors.
@@ -21,4 +21,9 @@ interface IGenericErrors {
    * @dev Thrown when array lengths are mismatched.
    */
   error ArrayLengthsDoNotMatch();
+
+  /**
+   * @dev Thrown when no ETH is sent.
+   */
+  error NoEthSent();
 }

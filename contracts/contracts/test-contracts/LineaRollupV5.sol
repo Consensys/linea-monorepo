@@ -2656,12 +2656,7 @@ abstract contract L1MessageServiceV1 is
    * @param _to The recipient of the message and gas refund.
    * @param _calldata The calldata of the message.
    */
-  modifier distributeFees(
-    uint256 _feeInWei,
-    address _to,
-    bytes calldata _calldata,
-    address _feeRecipient
-  ) {
+  modifier distributeFees(uint256 _feeInWei, address _to, bytes calldata _calldata, address _feeRecipient) {
     //pre-execution
     uint256 startingGas = gasleft();
     _;
@@ -3703,9 +3698,7 @@ contract LineaRollupV5 is AccessControlUpgradeable, ZkEvmV2, L1MessageService, I
     assembly {
       for {
         let i := _data.length
-      } gt(i, 0) {
-
-      } {
+      } gt(i, 0) {} {
         i := sub(i, 0x20)
         let chunk := calldataload(add(_data.offset, i))
         if iszero(iszero(and(chunk, 0xFF00000000000000000000000000000000000000000000000000000000000000))) {

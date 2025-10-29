@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import { LineaRollup } from "../LineaRollup.sol";
+import { Utils } from "../lib/Utils.sol";
 
+/// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestLineaRollup is LineaRollup {
   function addRollingHash(uint256 _messageNumber, bytes32 _messageHash) external {
     _addRollingHash(_messageNumber, _messageHash);
@@ -50,5 +52,30 @@ contract TestLineaRollup is LineaRollup {
 
   function setShnarfFinalBlockNumber(bytes32 _shnarf, uint256 _finalBlockNumber) external {
     blobShnarfExists[_shnarf] = _finalBlockNumber;
+  }
+
+  function addL2MerkleRoots(bytes32[] calldata _newRoot, uint256 _treeDepth) external {
+    _addL2MerkleRoots(_newRoot, _treeDepth);
+  }
+
+  // Adapted from SparseMerkleTreeVerifier._verifyMerkleProof to generate passing proof + root
+  function generateMerkleRoot(
+    bytes32 _leafHash,
+    bytes32[] calldata _proof,
+    uint32 _leafIndex
+  ) external pure returns (bytes32) {
+    require(_leafIndex < uint32((2 ** _proof.length) - 1), "leafIndex out of bounds");
+
+    bytes32 node = _leafHash;
+
+    for (uint256 height; height < _proof.length; ++height) {
+      if (((_leafIndex >> height) & 1) == 1) {
+        node = Utils._efficientKeccak(_proof[height], node);
+      } else {
+        node = Utils._efficientKeccak(node, _proof[height]);
+      }
+    }
+
+    return node;
   }
 }

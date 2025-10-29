@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageServiceV1 } from "./v1/L1MessageServiceV1.sol";
@@ -87,40 +87,7 @@ abstract contract L1MessageService is
   function claimMessageWithProof(
     ClaimMessageWithProofParams calldata _params
   ) external nonReentrant distributeFees(_params.fee, _params.to, _params.data, _params.feeRecipient) {
-    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
-
-    uint256 merkleDepth = l2MerkleRootsDepths[_params.merkleRoot];
-
-    if (merkleDepth == 0) {
-      revert L2MerkleRootDoesNotExist();
-    }
-
-    if (merkleDepth != _params.proof.length) {
-      revert ProofLengthDifferentThanMerkleDepth(merkleDepth, _params.proof.length);
-    }
-
-    _setL2L1MessageToClaimed(_params.messageNumber);
-
-    _addUsedAmount(_params.fee + _params.value);
-
-    bytes32 messageLeafHash = MessageHashing._hashMessage(
-      _params.from,
-      _params.to,
-      _params.fee,
-      _params.value,
-      _params.messageNumber,
-      _params.data
-    );
-    if (
-      !SparseMerkleTreeVerifier._verifyMerkleProof(
-        messageLeafHash,
-        _params.proof,
-        _params.leafIndex,
-        _params.merkleRoot
-      )
-    ) {
-      revert InvalidMerkleProof();
-    }
+    bytes32 messageLeafHash = _validateAndConsumeMessageProof(_params);
 
     TransientStorageHelpers.tstoreAddress(MESSAGE_SENDER_TRANSIENT_KEY, _params.from);
 
@@ -139,6 +106,45 @@ abstract contract L1MessageService is
     TransientStorageHelpers.tstoreAddress(MESSAGE_SENDER_TRANSIENT_KEY, DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE);
 
     emit MessageClaimed(messageLeafHash);
+  }
+
+  function _validateAndConsumeMessageProof(
+    ClaimMessageWithProofParams calldata _params
+  ) internal virtual returns (bytes32 messageLeafHash) {
+    _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
+
+    uint256 merkleDepth = l2MerkleRootsDepths[_params.merkleRoot];
+
+    if (merkleDepth == 0) {
+      revert L2MerkleRootDoesNotExist();
+    }
+
+    if (merkleDepth != _params.proof.length) {
+      revert ProofLengthDifferentThanMerkleDepth(merkleDepth, _params.proof.length);
+    }
+
+    _setL2L1MessageToClaimed(_params.messageNumber);
+
+    _addUsedAmount(_params.fee + _params.value);
+
+    messageLeafHash = MessageHashing._hashMessage(
+      _params.from,
+      _params.to,
+      _params.fee,
+      _params.value,
+      _params.messageNumber,
+      _params.data
+    );
+    if (
+      !SparseMerkleTreeVerifier._verifyMerkleProof(
+        messageLeafHash,
+        _params.proof,
+        _params.leafIndex,
+        _params.merkleRoot
+      )
+    ) {
+      revert InvalidMerkleProof();
+    }
   }
 
   /**

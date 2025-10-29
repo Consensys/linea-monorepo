@@ -35,14 +35,14 @@ const config: HardhatUserConfig = {
     // NB: double check the autoupdate shell script version complies to the latest solidity version if you add a new one.
     compilers: [
       {
-        version: "0.8.26",
+        version: "0.8.30",
         settings: {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
-            runs: 10_000,
+            runs: 10000,
           },
-          evmVersion: "cancun",
+          evmVersion: "prague",
         },
       },
       {
@@ -88,6 +88,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       hardfork: "cancun",
+      allowUnlimitedContractSize: true, // TODO - Remove when ready for PR
     },
     mainnet: {
       accounts: [process.env.MAINNET_PRIVATE_KEY || EMPTY_HASH],

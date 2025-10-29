@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import { L1MessageService } from "../messageService/l1/L1MessageService.sol";
 import { IL1MessageService } from "../interfaces/l1/IL1MessageService.sol";
@@ -83,5 +83,11 @@ contract TestL1MessageServiceMerkleProof is L1MessageService, TestSetPauseTypeRo
 
   function addL2MerkleRoots(bytes32[] calldata _newRoot, uint256 _treeDepth) external {
     _addL2MerkleRoots(_newRoot, _treeDepth);
+  }
+
+  function validateAndConsumeMessageProof(
+    ClaimMessageWithProofParams calldata _params
+  ) external returns (bytes32 messageLeafHash) {
+    return _validateAndConsumeMessageProof(_params);
   }
 }

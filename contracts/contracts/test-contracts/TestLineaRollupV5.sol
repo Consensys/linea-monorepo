@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import { LineaRollupV5 } from "./LineaRollupV5.sol";
 
+/// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestLineaRollupV5 is LineaRollupV5 {
   function setDefaultShnarfExistValue(bytes32 _shnarf) external {
     shnarfFinalBlockNumbers[_shnarf] = 1;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.26;
+pragma solidity 0.8.30;
 
 import { IPauseManager } from "../../interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
@@ -22,6 +22,7 @@ interface ILineaRollup {
    * @param pauseTypeRoles The list of pause types to associate with roles.
    * @param unpauseTypeRoles The list of unpause types to associate with roles.
    * @param fallbackOperator The account to be given OPERATOR_ROLE on when the time since last finalization lapses.
+   * @param initialYieldManager The address of the YieldManager contract.
    * @param defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
    */
   struct InitializationData {
@@ -34,6 +35,7 @@ interface ILineaRollup {
     IPermissionsManager.RoleAddress[] roleAddresses;
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+    address initialYieldManager;
     address fallbackOperator;
     address defaultAdmin;
   }
