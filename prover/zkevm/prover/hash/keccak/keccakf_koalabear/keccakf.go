@@ -6,18 +6,19 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
-	protocols "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/sub_protocols"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/protocols"
 )
 
 const (
 	// Number of 64bits lanes in a keccak block
 	numLanesInBlock = 17
 	numRounds       = 24
+	numSlices       = 8 // the number of slices of lane for working with BaseTheta and BaseChi
 )
 
 type (
-	//  each lane is 64 bits, represented as 8 bytes.
-	lane = [8]ifaces.Column
+	//  each lane is 64 bits, represented as [numSlices] bytes.
+	lane = [numSlices]ifaces.Column
 	// keccakf state is a 5x5 matrix of lanes.
 	state = [5][5]lane
 	// state after each base conversion, each lane is decomposed into 16 slices of 4 bits each.
@@ -89,7 +90,7 @@ func NewModule(comp *wizard.CompiledIOP, numKeccakf int, inp keccakfInputs) *Mod
 		for y := 0; y < 5; y++ {
 			m := 5*y + x
 			if m < numLanesInBlock {
-				for z := 0; z < 8; z++ {
+				for z := 0; z < numSlices; z++ {
 					// if it is the first block of the message, assign it to the state
 					comp.InsertGlobal(0, ifaces.QueryIDf("STATE_IS_SET_TO_FIRST_BLOCK_%v_%v_%v", x, y, z),
 						sym.Mul(inp.isFirstBlock,
@@ -98,7 +99,7 @@ func NewModule(comp *wizard.CompiledIOP, numKeccakf int, inp keccakfInputs) *Mod
 					)
 				}
 			} else {
-				for z := 0; z < 8; z++ {
+				for z := 0; z < numSlices; z++ {
 					//  the remaining columns of the state are set to zero
 					comp.InsertGlobal(0, ifaces.QueryIDf("STATE_IS_SET_TO_ZERO_%v,%v_%v", x, y, z),
 						sym.Mul(inp.isFirstBlock, inp.state[x][y][z]),
@@ -110,16 +111,14 @@ func NewModule(comp *wizard.CompiledIOP, numKeccakf int, inp keccakfInputs) *Mod
 
 	// create the theta module with the state including the message-blocks
 	theta := newTheta(comp, numKeccakf, inp.state)
-	// @azam ask Arijit to add it to theta step.
-	bc := protocols.NewBaseConversion(comp, numKeccakf, theta.stateNext)
 	// create the rho module with the state after theta
-	rho := newRho(comp, numKeccakf, bc.StateNext)
+	//rho := newRho(comp, numKeccakf)
 
 	return &Module{
 		maxNumKeccakf: numKeccakf,
 		inputs:        inp,
 		theta:         theta,
-		RhoPi:         rho,
+		//	RhoPi:         rho,
 	}
 }
 
@@ -134,7 +133,7 @@ func (m *Module) Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [numLa
 	// assign the base conversion module with the state after theta
 	m.bc.Run(run)
 	// assign the rho pi module with the state after theta
-	m.RhoPi.assignRoh(run, m.bc.StateNext)
+	// m.RhoPi.assignRoh(run, m.bc.StateNext)
 
 }
 
