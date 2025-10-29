@@ -215,7 +215,7 @@ func (ctx SelfRecursionCtx) GluePositionsStacked() {
 			round,
 			ctx.positionGlue(),
 			[]smartvectors.SmartVector{s_smart},
-			[]ifaces.Column{stackedPosCols.UnpaddedColumn},
+			[]ifaces.Column{*stackedPosCols.UnpaddedColumn},
 			[]ifaces.Column{merklePos},
 		)
 	} else {

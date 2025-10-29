@@ -36,7 +36,8 @@ type StackedColumn struct {
 	// @alex: We store a pointer to Natural because having empty Natural causes
 	// issues with the serializer. In principle, we could have fixed the
 	// serializer but it's simpler to just use a pointer as it circumvent the
-	// issue.
+	// issue. However, we take dedicated care to ensure that the pointer is
+	// never propagated and is always dereferenced when passed as ifaces.Column.
 	UnpaddedColumn *column.Natural
 	// ColumnFilter is the filter used for the projection query between
 	// Column and UnpaddedColumn.
@@ -44,7 +45,8 @@ type StackedColumn struct {
 	// @alex: We store a pointer to Natural because having empty Natural causes
 	// issues with the serializer. In principle, we could have fixed the
 	// serializer but it's simpler to just use a pointer as it circumvent the
-	// issue.
+	// issue. However, we take dedicated care to ensure that the pointer is
+	// never propagated and is always dereferenced when passed as ifaces.Column.
 	ColumnFilter *column.Natural
 	// UnpaddedColumnFilter is the filter used for the projection query
 	// between Column and UnpaddedColumn.
@@ -52,7 +54,8 @@ type StackedColumn struct {
 	// @alex: We store a pointer to Natural because having empty Natural causes
 	// issues with the serializer. In principle, we could have fixed the
 	// serializer but it's simpler to just use a pointer as it circumvent the
-	// issue.
+	// issue. However, we take dedicated care to ensure that the pointer is
+	// never propagated and is always dereferenced when passed as ifaces.Column.
 	UnpaddedColumnFilter *column.Natural
 	// UnpaddedSize is the size of the non zero portions of the source columns.
 	UnpaddedSize int
@@ -174,15 +177,15 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column, opts ...StackCo
 			ifaces.QueryID(name)+"_PROJECTION",
 			query.ProjectionInput{
 				ColumnA: []ifaces.Column{stkCol.Column},
-				ColumnB: []ifaces.Column{stkCol.UnpaddedColumn},
-				FilterA: stkCol.ColumnFilter,
-				FilterB: stkCol.UnpaddedColumnFilter,
+				ColumnB: []ifaces.Column{*stkCol.UnpaddedColumn},
+				FilterA: *stkCol.ColumnFilter,
+				FilterB: *stkCol.UnpaddedColumnFilter,
 			},
 		)
 		// Insert a binarity constraint for ColumnFilter and
 		// UnpaddedColumnFilter
-		MustBeBinary(comp, stkCol.ColumnFilter, round)
-		MustBeBinary(comp, stkCol.UnpaddedColumnFilter, round)
+		MustBeBinary(comp, *stkCol.ColumnFilter, round)
+		MustBeBinary(comp, *stkCol.UnpaddedColumnFilter, round)
 		return stkCol
 	} else {
 		return stkCol
