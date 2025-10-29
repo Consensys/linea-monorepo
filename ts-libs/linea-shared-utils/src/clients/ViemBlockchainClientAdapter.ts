@@ -94,11 +94,15 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     this.logger.debug("sendSignedTransaction started");
     let gasMultiplierBps = MAX_BPS; // Start at 100%
     let lastError: unknown;
+
+    // Use a single nonce for all retries.
+    const nonce = await this.blockchainClient.getTransactionCount({ address: this.contractSignerClient.getAddress() });
+
     for (let attempt = 1; attempt <= this.sendTransactionsMaxRetries; attempt += 1) {
       // Try to send tx with a timeout
       try {
         const receipt = await withTimeout(
-          () => this._sendSignedTransaction(contractAddress, calldata, value, gasMultiplierBps),
+          () => this._sendSignedTransaction(contractAddress, calldata, value, nonce, gasMultiplierBps),
           {
             timeout: this.sendTransactionAttemptTimeoutMs,
             signal: false, // don’t try to abort, just reject
@@ -135,16 +139,18 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
           throw error; // not a timeout → bail
         }
 
-        lastError = error;
         this.logger.warn(
           `sendSignedTransaction retry attempt failed attempt=${attempt} sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
           { error },
         );
 
+        lastError = error;
         // Compound gas for next retry
         gasMultiplierBps = (gasMultiplierBps * (MAX_BPS + this.gasRetryBumpBps)) / MAX_BPS;
       }
     }
+
+    // Unreachable but required to simplify TypeScript return type
     throw lastError;
   }
 
@@ -152,13 +158,18 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     contractAddress: Address,
     calldata: Hex,
     value: bigint,
+    nonce: number,
     gasMultiplierBps = 10000n,
   ): Promise<TransactionReceipt> {
-    const [fees, gasLimit, chainId, nonce] = await Promise.all([
+    const [fees, gasLimit, chainId] = await Promise.all([
       this.estimateGasFees(),
-      this.blockchainClient.estimateGas({ to: contractAddress, data: calldata }),
+      this.blockchainClient.estimateGas({
+        account: this.contractSignerClient.getAddress(),
+        to: contractAddress,
+        data: calldata,
+        value,
+      }),
       this.getChainId(),
-      this.blockchainClient.getTransactionCount({ address: this.contractSignerClient.getAddress() }),
     ]);
     const { maxFeePerGas, maxPriorityFeePerGas } = fees;
 
