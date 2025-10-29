@@ -1,5 +1,5 @@
 export interface IOAuth2TokenClient {
-  getBearerToken(): Promise<string>;
+  getBearerToken(): Promise<string | undefined>;
 }
 
 export interface OAuth2TokenResponse {

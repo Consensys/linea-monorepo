@@ -20,7 +20,7 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
     private readonly defaultExpiresInSeconds: number = 3_600,
   ) {}
 
-  async getBearerToken(): Promise<string> {
+  async getBearerToken(): Promise<string | undefined> {
     // Serve cached token while it remains valid.
     if (
       this.bearerToken &&
@@ -51,7 +51,7 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
 
     if (!data?.access_token) {
       this.logger.error("Failed to retrieve OAuth2 access token");
-      return "";
+      return undefined;
     }
 
     const tokenType = data.token_type ?? "Bearer";
