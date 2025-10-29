@@ -11,13 +11,15 @@ const mockOperationModeSelector = jest.fn().mockImplementation(() => ({
 const mockWinstonLogger = jest.fn().mockImplementation(() => ({
   info: jest.fn(),
 }));
+const mockViemBlockchainClientAdapter = jest.fn().mockImplementation(() => ({}));
+const mockWeb3SignerClientAdapter = jest.fn().mockImplementation(() => ({}));
 
 jest.mock("@consensys/linea-shared-utils", () => ({
   ExponentialBackoffRetryService: jest.fn().mockImplementation(() => ({})),
   ExpressApiApplication: mockExpressApiApplication,
   WinstonLogger: mockWinstonLogger,
-  ViemBlockchainClientAdapter: jest.fn().mockImplementation(() => ({})),
-  Web3SignerClientAdapter: jest.fn().mockImplementation(() => ({})),
+  ViemBlockchainClientAdapter: mockViemBlockchainClientAdapter,
+  Web3SignerClientAdapter: mockWeb3SignerClientAdapter,
   BeaconNodeApiClient: jest.fn().mockImplementation(() => ({})),
   OAuth2TokenClient: jest.fn().mockImplementation(() => ({})),
 }));
@@ -180,7 +182,8 @@ const createBootstrapConfig = () => ({
   minWithdrawalThresholdEth: 42n,
   web3signer: {
     url: "https://web3signer.example.com",
-    publicKey: "0x02aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    publicKey:
+      "0x02aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     keystore: {
       path: "/keystore",
       passphrase: "keystore-pass",
@@ -256,5 +259,30 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
     const bootstrap = new NativeYieldAutomationServiceBootstrap(config);
 
     expect(bootstrap.getConfig()).toBe(config);
+  });
+
+  it("creates blockchain client using hoodi chain when configured", () => {
+    const config = createBootstrapConfig();
+    config.dataSources.chainId = 2;
+
+    new NativeYieldAutomationServiceBootstrap(config);
+
+    const { hoodi } = jest.requireMock("viem/chains") as { hoodi: { id: number } };
+    expect(mockViemBlockchainClientAdapter).toHaveBeenCalledWith(
+      expect.anything(),
+      config.dataSources.l1RpcUrl,
+      hoodi,
+      expect.anything(),
+    );
+  });
+
+  it("throws when configured with an unsupported chain id", () => {
+    const unsupportedChainId = 999;
+    const config = createBootstrapConfig();
+    config.dataSources.chainId = unsupportedChainId;
+
+    expect(() => new NativeYieldAutomationServiceBootstrap(config)).toThrow(
+      `Unsupported chain ID: ${unsupportedChainId}`,
+    );
   });
 });

@@ -182,6 +182,34 @@ describe("BeaconChainStakingClient", () => {
     });
   });
 
+  describe("_submitPartialWithdrawalRequests (private)", () => {
+    it("stops building requests once the required amount is met even if the validator limit is not reached", async () => {
+      const maxValidatorsPerTx = 3;
+      const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);
+      const validators = [
+        createValidator({ publicKey: "validator-1", withdrawableAmount: 5n }),
+        createValidator({ publicKey: "validator-2", withdrawableAmount: 5n }),
+      ];
+
+      const remaining = await (
+        client as unknown as {
+          _submitPartialWithdrawalRequests(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            amountWei: bigint,
+          ): Promise<number>;
+        }
+      )._submitPartialWithdrawalRequests(validators, 1n * ONE_GWEI);
+
+      expect(remaining).toBe(maxValidatorsPerTx - 1);
+      expect(unstakeMock).toHaveBeenCalledTimes(1);
+      const [, requests] = unstakeMock.mock.calls[0];
+      expect(requests.pubkeys).toEqual([stringToHex("validator-1")]);
+      expect(requests.amountsGwei).toEqual([1n]);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledTimes(1);
+      expect(mocks.addValidatorPartialUnstakeAmount).toHaveBeenCalledWith(stringToHex("validator-1"), 1);
+    });
+  });
+
   describe("submitMaxAvailableWithdrawalRequests", () => {
     it("logs an error when validator data is unavailable", async () => {
       const { client, logger, unstakeMock, mocks } = setupClient();
@@ -225,6 +253,40 @@ describe("BeaconChainStakingClient", () => {
 
       expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(1);
       expect(mocks.incrementValidatorExit).toHaveBeenCalledWith(stringToHex("validator-3"));
+    });
+  });
+
+  describe("_submitValidatorExits (private)", () => {
+    it("stops adding exits when reaching the maximum per-transaction limit even with remaining capacity", async () => {
+      const maxValidatorsPerTx = 3;
+      const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);
+      const validators = [
+        createValidator({ publicKey: "validator-1", withdrawableAmount: 0n }),
+        createValidator({ publicKey: "validator-2", withdrawableAmount: 0n }),
+        createValidator({ publicKey: "validator-3", withdrawableAmount: 0n }),
+        createValidator({ publicKey: "validator-4", withdrawableAmount: 0n }),
+      ];
+
+      await (
+        client as unknown as {
+          _submitValidatorExits(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            remainingWithdrawals: number,
+          ): Promise<void>;
+        }
+      )._submitValidatorExits(validators, maxValidatorsPerTx + 1);
+
+      expect(unstakeMock).toHaveBeenCalledTimes(1);
+      const [, requests] = unstakeMock.mock.calls[0];
+      expect(requests.pubkeys).toEqual([
+        stringToHex("validator-1"),
+        stringToHex("validator-2"),
+        stringToHex("validator-3"),
+      ]);
+      expect(mocks.incrementValidatorExit).toHaveBeenCalledTimes(3);
+      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(1, stringToHex("validator-1"));
+      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(2, stringToHex("validator-2"));
+      expect(mocks.incrementValidatorExit).toHaveBeenNthCalledWith(3, stringToHex("validator-3"));
     });
   });
 });

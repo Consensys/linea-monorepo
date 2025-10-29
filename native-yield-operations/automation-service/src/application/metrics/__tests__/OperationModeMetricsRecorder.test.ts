@@ -194,6 +194,24 @@ describe("OperationModeMetricsRecorder", () => {
   });
 
   describe("recordSafeWithdrawalMetrics", () => {
+    it("does nothing when receipt result is error", async () => {
+      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+
+      await recorder.recordSafeWithdrawalMetrics(yieldProvider, err(new Error("boom")));
+
+      expect(metricsUpdater.recordRebalance).not.toHaveBeenCalled();
+      expect(yieldManagerClient.getWithdrawalEventFromTxReceipt).not.toHaveBeenCalled();
+    });
+
+    it("does nothing when receipt is undefined", async () => {
+      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+
+      await recorder.recordSafeWithdrawalMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(undefined));
+
+      expect(metricsUpdater.recordRebalance).not.toHaveBeenCalled();
+      expect(yieldManagerClient.getWithdrawalEventFromTxReceipt).not.toHaveBeenCalled();
+    });
+
     it("records rebalance and liabilities when withdrawal event is present", async () => {
       const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient } = setupRecorder();
 
@@ -222,6 +240,24 @@ describe("OperationModeMetricsRecorder", () => {
   });
 
   describe("recordTransferFundsMetrics", () => {
+    it("does nothing when receipt result is error", async () => {
+      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+
+      await recorder.recordTransferFundsMetrics(yieldProvider, err(new Error("boom")));
+
+      expect(metricsUpdater.addLiabilitiesPaid).not.toHaveBeenCalled();
+      expect(yieldManagerClient.getLidoStakingVaultAddress).not.toHaveBeenCalled();
+    });
+
+    it("does nothing when receipt is undefined", async () => {
+      const { recorder, metricsUpdater, yieldManagerClient } = setupRecorder();
+
+      await recorder.recordTransferFundsMetrics(yieldProvider, ok<TransactionReceipt | undefined, Error>(undefined));
+
+      expect(metricsUpdater.addLiabilitiesPaid).not.toHaveBeenCalled();
+      expect(yieldManagerClient.getLidoStakingVaultAddress).not.toHaveBeenCalled();
+    });
+
     it("records liabilities when payment exists", async () => {
       const { recorder, metricsUpdater, yieldManagerClient, vaultHubClient } = setupRecorder();
 
