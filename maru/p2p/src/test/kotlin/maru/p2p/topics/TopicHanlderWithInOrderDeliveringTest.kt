@@ -37,7 +37,7 @@ class TopicHanlderWithInOrderDeliveringTest {
     isHandlingEnabled: () -> Boolean = { true },
   ): TopicHandlerWithInOrderDelivering<ULong> {
     val subscriptionManager = SubscriptionManager<ULong>()
-    subscriptionManager.subscribeToBlocks(onEvent)
+    subscriptionManager.subscribe(onEvent)
     val deserializer =
       object : Deserializer<ULong> {
         override fun deserialize(bytes: ByteArray): ULong = Bytes.wrap(bytes).toLong().toULong()
@@ -56,7 +56,7 @@ class TopicHanlderWithInOrderDeliveringTest {
 
   private fun createFailingDeserializerHandler(): TopicHandlerWithInOrderDelivering<ULong> {
     val subscriptionManager = SubscriptionManager<ULong>()
-    subscriptionManager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
+    subscriptionManager.subscribe { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
     val deserializer =
       object : Deserializer<ULong> {
         override fun deserialize(bytes: ByteArray): ULong = throw IllegalArgumentException("bad data")

@@ -28,8 +28,11 @@ import maru.p2p.NetworkHelper.listIpsV4
 import maru.p2p.discovery.MaruDiscoveryService
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
+import maru.p2p.topics.ImmediateTopicHandler
+import maru.p2p.topics.QbftMessageSerDe
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
+import maru.serialization.rlp.MaruCompressorRLPSerDe
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -37,6 +40,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import org.ethereum.beacon.discovery.schema.NodeRecord
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import tech.pegasys.teku.infrastructure.async.AsyncRunnerFactory
 import tech.pegasys.teku.infrastructure.async.MetricTrackingExecutorFactory
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -70,6 +74,7 @@ class P2PNetworkImpl(
     () -> PeerLookup,
     BeaconChain,
   ) -> RpcMethods = ::RpcMethods,
+  private val qbftMessageSerDe: SerDe<QbftMessage> = MaruCompressorRLPSerDe(QbftMessageSerDe()),
 ) : P2PNetwork {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   internal lateinit var maruPeerManager: MaruPeerManager
@@ -77,6 +82,12 @@ class P2PNetworkImpl(
   private val sealedBlocksTopicId =
     topicIdGenerator.id(
       GossipMessageType.BEACON_BLOCK.name,
+      Version.V1,
+      Encoding.RLP_SNAPPY,
+    )
+  private val qbftTopicId =
+    topicIdGenerator.id(
+      GossipMessageType.QBFT.name,
       Version.V1,
       Encoding.RLP_SNAPPY,
     )
@@ -89,6 +100,13 @@ class P2PNetworkImpl(
       topicId = sealedBlocksTopicId,
       isHandlingEnabled = isBlockImportEnabledProvider,
       nextExpectedSequenceNumberProvider = { beaconChain.getLatestBeaconState().beaconBlockHeader.number + 1UL },
+    )
+  private val qbftMessagesSubscriptionManager = SubscriptionManager<QbftMessage>()
+  private val qbftMessagesTopicHandler =
+    ImmediateTopicHandler(
+      subscriptionManager = qbftMessagesSubscriptionManager,
+      deserializer = qbftMessageSerDe,
+      topicId = qbftTopicId,
     )
   private val broadcastMessageCounterFactory =
     metricsFacade.createCounterFactory(
@@ -132,6 +150,8 @@ class P2PNetworkImpl(
       port = p2pConfig.port,
       sealedBlocksTopicHandler = sealedBlocksTopicHandler,
       sealedBlocksTopicId = sealedBlocksTopicId,
+      qbftTopicHandler = qbftMessagesTopicHandler,
+      qbftTopicId = qbftTopicId,
       rpcMethods = rpcMethods.all(),
       maruPeerManager = maruPeerManager,
       metricsSystem = besuMetricsSystem,
@@ -246,7 +266,14 @@ class P2PNetworkImpl(
         ),
       ).increment()
     return when (message.type) {
-      GossipMessageType.QBFT -> SafeFuture.completedFuture(Unit) // TODO: Add QBFT messages support later
+      GossipMessageType.QBFT -> {
+        require(message.payload is QbftMessage) { "QBFT message payload must be QbftMessage" }
+        val serializedQbftMessage = Bytes.wrap(qbftMessageSerDe.serialize(message.payload as QbftMessage))
+        p2pNetwork.gossip(
+          qbftTopicId,
+          serializedQbftMessage,
+        )
+      }
       GossipMessageType.BEACON_BLOCK -> {
         require(message.payload is SealedBeaconBlock)
         val serializedSealedBeaconBlock = Bytes.wrap(serDe.serialize(message.payload as SealedBeaconBlock))
@@ -262,7 +289,7 @@ class P2PNetworkImpl(
     log.trace("Subscribing on new sealed blocks")
     val subscriptionManagerHadSubscriptions = sealedBlocksSubscriptionManager.hasSubscriptions()
 
-    return sealedBlocksSubscriptionManager.subscribeToBlocks(subscriber::handleSealedBlock).also {
+    return sealedBlocksSubscriptionManager.subscribe(subscriber::handleSealedBlock).also {
       if (!subscriptionManagerHadSubscriptions) {
         log.trace(
           "First ever subscription on new sealed blocks topicId={}. Subscribing on network level",
@@ -280,7 +307,23 @@ class P2PNetworkImpl(
    */
   override fun unsubscribeFromBlocks(subscriptionId: Int) = sealedBlocksSubscriptionManager.unsubscribe(subscriptionId)
 
-  override fun isStaticPeer(nodeId: NodeId): Boolean = staticPeerMap.containsKey(nodeId)
+  override fun subscribeToQbftMessages(subscriber: QbftMessageHandler<ValidationResult>): Int {
+    log.trace("Subscribing to QBFT messages")
+    val subscriptionManagerHadSubscriptions = qbftMessagesSubscriptionManager.hasSubscriptions()
+
+    return qbftMessagesSubscriptionManager.subscribe(subscriber::handleQbftMessage).also {
+      if (!subscriptionManagerHadSubscriptions) {
+        log.trace(
+          "First ever subscription to QBFT messages topicId={}. Subscribing on network level",
+          qbftTopicId,
+        )
+        p2pNetwork.subscribe(qbftTopicId, qbftMessagesTopicHandler)
+      }
+    }
+  }
+
+  override fun unsubscribeFromQbftMessages(subscriptionId: Int) =
+    qbftMessagesSubscriptionManager.unsubscribe(subscriptionId)
 
   fun addStaticPeer(peerAddress: MultiaddrPeerAddress) {
     if (peerAddress.id == p2pNetwork.nodeId) { // Don't connect to self
@@ -295,6 +338,8 @@ class P2PNetworkImpl(
     }
     maintainPersistentConnection(peerAddress)
   }
+
+  override fun isStaticPeer(nodeId: NodeId): Boolean = staticPeerMap.containsKey(nodeId)
 
   fun removeStaticPeer(peerAddress: PeerAddress) {
     synchronized(this) {

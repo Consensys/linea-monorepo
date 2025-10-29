@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
-package testutils
+package maru.p2p.testutils
 
 import java.net.ServerSocket
 

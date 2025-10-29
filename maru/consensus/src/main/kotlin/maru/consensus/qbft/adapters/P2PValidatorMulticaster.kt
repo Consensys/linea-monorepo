@@ -8,10 +8,12 @@
  */
 package maru.consensus.qbft.adapters
 
+import io.libp2p.pubsub.NoPeersForOutboundMessageException
+import java.util.concurrent.ExecutionException
 import maru.p2p.P2PNetwork
 import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.datatypes.Address
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
 /**
  * Adapter that implements the Hyperledger Besu ValidatorMulticaster interface and delegates to a P2PNetwork.
@@ -26,8 +28,16 @@ class P2PValidatorMulticaster(
    *
    * @param message The message to send.
    */
-  override fun send(message: MessageData) {
-    p2pNetwork.broadcastMessage(message.toDomain()).get()
+  override fun send(message: BesuMessageData) {
+    try {
+      p2pNetwork.broadcastMessage(message.toDomain()).get()
+    } catch (ee: ExecutionException) {
+      if (ee.cause?.javaClass == NoPeersForOutboundMessageException::class.java) {
+        // No peers to send to, just ignore
+      } else {
+        throw ee
+      }
+    }
   }
 
   /**
@@ -38,7 +48,7 @@ class P2PValidatorMulticaster(
    * completeness of the interface
    */
   override fun send(
-    message: MessageData,
+    message: BesuMessageData,
     denyList: Collection<Address>,
   ) {
     send(message)

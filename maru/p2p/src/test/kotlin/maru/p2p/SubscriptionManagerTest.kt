@@ -25,14 +25,14 @@ class SubscriptionManagerTest {
   fun `hasSubscriptions returns false when empty and true after subscribe`() {
     assertThat(manager.hasSubscriptions()).isFalse()
 
-    manager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
+    manager.subscribe { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
     assertThat(manager.hasSubscriptions()).isTrue()
   }
 
   @Test
-  fun `subscribeToBlocks returns unique ids and can unsubscribe`() {
-    val id1 = manager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
-    val id2 = manager.subscribeToBlocks { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
+  fun `subscribe returns unique ids and can unsubscribe`() {
+    val id1 = manager.subscribe { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
+    val id2 = manager.subscribe { SafeFuture.completedFuture(ValidationResult.Companion.Valid) }
     assertThat(id2).isNotEqualTo(id1)
 
     manager.unsubscribe(id1)
@@ -44,11 +44,11 @@ class SubscriptionManagerTest {
   @Test
   fun `handleEvent calls all subscribers and aggregates ValidationResult`() {
     val results = mutableListOf<String>()
-    manager.subscribeToBlocks {
+    manager.subscribe {
       results.add("first")
       SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
-    manager.subscribeToBlocks {
+    manager.subscribe {
       results.add("second")
       SafeFuture.completedFuture(ValidationResult.Companion.Ignore("meh"))
     }
@@ -60,10 +60,10 @@ class SubscriptionManagerTest {
 
   @Test
   fun `handleEvent returns Failed if any subscriber fails`() {
-    manager.subscribeToBlocks {
+    manager.subscribe {
       SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
-    manager.subscribeToBlocks {
+    manager.subscribe {
       SafeFuture.completedFuture(ValidationResult.Companion.Invalid("fail"))
     }
     val result = manager.handleEvent("event").get()
@@ -78,7 +78,7 @@ class SubscriptionManagerTest {
 
   @Test
   fun `handleEvent handles subscriber exceptions gracefully`() {
-    manager.subscribeToBlocks {
+    manager.subscribe {
       throw RuntimeException("boom")
     }
     val result = manager.handleEvent("event").get()
@@ -87,13 +87,13 @@ class SubscriptionManagerTest {
 
   @Test
   fun `handleEvent aggregates with Failed over KindaFine and Successful`() {
-    manager.subscribeToBlocks {
+    manager.subscribe {
       SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
-    manager.subscribeToBlocks {
+    manager.subscribe {
       SafeFuture.completedFuture(ValidationResult.Companion.Ignore("meh"))
     }
-    manager.subscribeToBlocks {
+    manager.subscribe {
       SafeFuture.completedFuture(ValidationResult.Companion.Invalid("fail"))
     }
     val result = manager.handleEvent("event").get()
@@ -102,10 +102,10 @@ class SubscriptionManagerTest {
 
   @Test
   fun `handleEvent aggregates with KindaFine over Successful`() {
-    manager.subscribeToBlocks {
+    manager.subscribe {
       SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }
-    manager.subscribeToBlocks {
+    manager.subscribe {
       SafeFuture.completedFuture(ValidationResult.Companion.Ignore("meh"))
     }
     val result = manager.handleEvent("event").get()
@@ -117,11 +117,11 @@ class SubscriptionManagerTest {
     var called1 = false
     var called2 = false
     val id1 =
-      manager.subscribeToBlocks {
+      manager.subscribe {
         called1 = true
         SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
-    manager.subscribeToBlocks {
+    manager.subscribe {
       called2 = true
       SafeFuture.completedFuture(ValidationResult.Companion.Valid)
     }

@@ -21,7 +21,7 @@ class SubscriptionManager<E> {
   fun hasSubscriptions(): Boolean = subscriptions.isNotEmpty()
 
   @Synchronized
-  fun subscribeToBlocks(subscriber: (E) -> SafeFuture<ValidationResult>): Int {
+  fun subscribe(subscriber: (E) -> SafeFuture<ValidationResult>): Int {
     val subscriptionId = nextSubscriptionId.get()
     subscriptions[subscriptionId] = subscriber
     nextSubscriptionId.incrementAndGet()

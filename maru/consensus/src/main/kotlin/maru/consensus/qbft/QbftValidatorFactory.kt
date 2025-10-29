@@ -34,6 +34,7 @@ import maru.consensus.qbft.adapters.QbftFinalStateAdapter
 import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
 import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
+import maru.consensus.qbft.adapters.toQbftReceivedMessageEvent
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.StateTransition
@@ -57,11 +58,11 @@ import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
 import org.hyperledger.besu.consensus.common.bft.RoundTimer
 import org.hyperledger.besu.consensus.common.bft.statemachine.FutureMessageBuffer
-import org.hyperledger.besu.consensus.qbft.core.network.QbftGossip
 import org.hyperledger.besu.consensus.qbft.core.payload.MessageFactory
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftBlockHeightManagerFactory
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftRoundFactory
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMinedBlockObserver
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
 import org.hyperledger.besu.consensus.qbft.core.validation.MessageValidatorFactory
@@ -71,6 +72,7 @@ import org.hyperledger.besu.cryptoservices.NodeKey
 import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.util.Subscribers
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
@@ -144,10 +146,16 @@ class QbftValidatorFactory(
     val bftExecutors = BftExecutors.create(metricsSystem, BftExecutors.ConsensusType.QBFT)
     val bftEventQueue = BftEventQueue(qbftOptions.messageQueueLimit)
     val roundExpiry = qbftOptions.roundExpiry ?: forkSpec.blockTimeSeconds.toInt().seconds
+    val roundTimeExpiryCalculator =
+      if (protocolConfig.validatorSet.size == 1) {
+        ConstantRoundTimeExpiryCalculator((roundExpiry))
+      } else {
+        LinearRoundTimeExpiryCalculator(roundExpiry)
+      }
     val roundTimer =
       RoundTimer(
         /* queue = */ bftEventQueue,
-        /* roundExpiryTimeCalculator = */ ConstantRoundTimeExpiryCalculator(roundExpiry),
+        /* roundExpiryTimeCalculator = */ roundTimeExpiryCalculator,
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
@@ -224,12 +232,12 @@ class QbftValidatorFactory(
         .number
         .toLong()
     val futureMessageBuffer =
-      FutureMessageBuffer(
+      FutureMessageBuffer<QbftMessage>(
         /* futureMessagesMaxDistance = */ qbftOptions.futureMessageMaxDistance,
         /* futureMessagesLimit = */ qbftOptions.futureMessagesLimit,
         /* chainHeight = */ chainHeaderNumber,
       )
-    val gossiper = QbftGossip(validatorMulticaster, blockCodec)
+    val gossiper = QbftGossiper(validatorMulticaster)
     val qbftController =
       QbftController(
         /* blockchain = */ blockChain,
@@ -244,6 +252,13 @@ class QbftValidatorFactory(
     val eventMultiplexer = QbftEventMultiplexer(qbftController)
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())
+
+    // Subscribe to QBFT messages from P2P network and add them to the event queue
+    p2PNetwork.subscribeToQbftMessages { qbftMessage ->
+      bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())
+      // TODO: Validate QBFT messages and return the appropriate ValidationResult
+      SafeFuture.completedFuture(ValidationResult.Companion.Valid)
+    }
 
     return QbftConsensusValidator(
       qbftController = qbftController,

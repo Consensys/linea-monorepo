@@ -8,12 +8,16 @@
  */
 package maru.p2p
 
+import io.libp2p.core.pubsub.ValidationResult.Ignore
+import io.libp2p.core.pubsub.ValidationResult.Invalid
+import io.libp2p.core.pubsub.ValidationResult.Valid
 import java.io.Closeable
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.ethereum.beacon.discovery.schema.NodeRecord
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.peer.NodeId
 
@@ -25,6 +29,13 @@ enum class ValidationResultCode {
   REJECT,
   IGNORE,
 }
+
+fun ValidationResultCode.toLibP2P() =
+  when (this) {
+    ValidationResultCode.ACCEPT -> Valid
+    ValidationResultCode.REJECT -> Invalid
+    ValidationResultCode.IGNORE -> Ignore
+  }
 
 sealed interface ValidationResult {
   val code: ValidationResultCode
@@ -62,6 +73,10 @@ fun interface SealedBeaconBlockHandler<T> {
   fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<T>
 }
 
+fun interface QbftMessageHandler<T> {
+  fun handleQbftMessage(qbftMessage: QbftMessage): SafeFuture<T>
+}
+
 /**
  * Interface for the P2P Network functionality.
  *
@@ -93,6 +108,13 @@ interface P2PNetwork : Closeable {
   fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int
 
   fun unsubscribeFromBlocks(subscriptionId: Int)
+
+  /**
+   * @return subscription id
+   */
+  fun subscribeToQbftMessages(subscriber: QbftMessageHandler<ValidationResult>): Int
+
+  fun unsubscribeFromQbftMessages(subscriptionId: Int)
 
   val port: UInt
 

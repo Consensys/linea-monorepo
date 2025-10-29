@@ -29,6 +29,7 @@ import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.DefaultBlockRetrievalStrategy
 import maru.p2p.messages.StatusManager
+import maru.p2p.testutils.TestUtils.findFreePort
 import maru.serialization.SerDe
 import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
@@ -47,7 +48,6 @@ import org.junit.jupiter.api.Test
 import testutils.FourEmptyResponsesStrategy
 import testutils.MisbehavingP2PNetwork
 import testutils.PeeringNodeNetworkStack
-import testutils.TestUtils.findFreePort
 import testutils.TimeOutResponsesStrategy
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper

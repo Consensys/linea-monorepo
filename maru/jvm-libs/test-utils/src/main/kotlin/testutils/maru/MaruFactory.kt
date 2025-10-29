@@ -66,10 +66,10 @@ import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
  */
 class MaruFactory(
   validatorPrivateKey: ByteArray = generatePrivateKey(),
-  shanghaiTimestamp: ULong? = null,
-  cancunTimestamp: ULong? = null,
-  pragueTimestamp: ULong? = null,
-  ttd: ULong? = null,
+  private val shanghaiTimestamp: ULong? = null,
+  private val cancunTimestamp: ULong? = null,
+  private val pragueTimestamp: ULong? = null,
+  private val ttd: ULong? = null,
 ) {
   init {
     // If one of pragueTimestamp, cancunTimestamp, shanghaiTimestamp is defined and some other is not, throw
@@ -115,6 +115,7 @@ class MaruFactory(
   val qbftValidator =
     Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(validatorPrivateKeyWithPrefix.bytes()))
   val validatorAddress = qbftValidator.address.encodeHex()
+  val initialValidators = setOf(Validator(validatorAddress.fromHexToByteArray()))
 
   private val validatorQbftOptions =
     QbftConfig(
@@ -122,7 +123,13 @@ class MaruFactory(
       minBlockBuildTime = 200.milliseconds,
     )
 
-  private val beaconGenesisConfig: ForksSchedule =
+  private fun buildForkSchedule(
+    pragueTimestamp: ULong?,
+    cancunTimestamp: ULong?,
+    shanghaiTimestamp: ULong?,
+    ttd: ULong?,
+    validatorSet: Set<Validator>,
+  ): ForksSchedule =
     if (pragueTimestamp != null && cancunTimestamp != null && shanghaiTimestamp != null) {
       ForksSchedule(
         1337u,
@@ -162,7 +169,7 @@ class MaruFactory(
             blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
-                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                validatorSet = validatorSet,
                 fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
               ),
           ),
@@ -177,7 +184,7 @@ class MaruFactory(
             blockTimeSeconds = 1u,
             configuration =
               QbftConsensusConfig(
-                validatorSet = setOf(Validator(validatorAddress.fromHexToByteArray())),
+                validatorSet = validatorSet,
                 fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
               ),
           ),
@@ -237,8 +244,6 @@ class MaruFactory(
     desyncTolerance: ULong = 10UL,
   ): MaruApp {
     val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
-    val beaconGenesisConfig = beaconGenesisConfig
-
     val syncingConfig =
       SyncingConfig(
         peerChainHeightPollingInterval = 1.seconds,
@@ -257,7 +262,6 @@ class MaruFactory(
       )
     return buildApp(
       config = config,
-      beaconGenesisConfig = beaconGenesisConfig,
       overridingP2PNetwork = overridingP2PNetwork,
     )
   }
@@ -311,7 +315,7 @@ class MaruFactory(
 
   private fun buildApp(
     config: MaruConfig,
-    beaconGenesisConfig: ForksSchedule = this.beaconGenesisConfig,
+    initialValidators: Set<Validator> = this.initialValidators,
     overridingP2PNetwork: P2PNetwork? = null,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
@@ -332,7 +336,14 @@ class MaruFactory(
   ): MaruApp =
     MaruAppFactory().create(
       config = config,
-      beaconGenesisConfig = beaconGenesisConfig,
+      beaconGenesisConfig =
+        buildForkSchedule(
+          pragueTimestamp,
+          cancunTimestamp,
+          shanghaiTimestamp,
+          ttd,
+          initialValidators,
+        ),
       overridingP2PNetwork = overridingP2PNetwork,
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
@@ -350,6 +361,7 @@ class MaruFactory(
   private fun buildP2pConfig(
     p2pPort: UInt = 0u,
     validatorPortForStaticPeering: UInt? = null,
+    validatorNodeIdForStaticPeering: String? = validatorNodeId.toString(),
     discoveryPort: UInt? = null,
     bootnode: String? = null,
     banPeriod: Duration = 2000.milliseconds,
@@ -358,7 +370,7 @@ class MaruFactory(
     val ip = "127.0.0.1"
     val staticPeers =
       if (validatorPortForStaticPeering != null) {
-        val validatorPeer = "/ip4/$ip/tcp/$validatorPortForStaticPeering/p2p/$validatorNodeId"
+        val validatorPeer = "/ip4/$ip/tcp/$validatorPortForStaticPeering/p2p/$validatorNodeIdForStaticPeering"
         listOf(validatorPeer)
       } else {
         emptyList()
@@ -405,6 +417,8 @@ class MaruFactory(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
+    validatorPortForStaticPeering: UInt? = null,
+    validatorNodeIdForStaticPeering: String? = null,
     overridingP2PNetwork: P2PNetwork? = null,
     overridingFinalizationProvider: FinalizationProvider? = null,
     overridingLineaContractClient: LineaRollupSmartContractClientReadOnly? = null,
@@ -425,8 +439,14 @@ class MaruFactory(
       P2PState,
       () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
+    initialValidators: Set<Validator> = this.initialValidators,
   ): MaruApp {
-    val p2pConfig = buildP2pConfig(p2pPort = p2pPort)
+    val p2pConfig =
+      buildP2pConfig(
+        p2pPort = p2pPort,
+        validatorPortForStaticPeering = validatorPortForStaticPeering,
+        validatorNodeIdForStaticPeering = validatorNodeIdForStaticPeering,
+      )
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
@@ -447,6 +467,7 @@ class MaruFactory(
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,
       p2pNetworkFactory = p2pNetworkFactory,
+      initialValidators = initialValidators,
     )
   }
 
@@ -644,8 +665,7 @@ class MaruFactory(
     followers: FollowersConfig = FollowersConfig(emptyMap()),
     syncingConfig: SyncingConfig = defaultSyncingConfig,
   ): MaruApp {
-    val beaconGenesisConfig = beaconGenesisConfig
-    val p2pConfig = buildP2pConfig(p2pPort = p2pPort)
+    val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
@@ -662,7 +682,6 @@ class MaruFactory(
 
     return buildApp(
       config = config,
-      beaconGenesisConfig = beaconGenesisConfig,
       overridingP2PNetwork = overridingP2PNetwork,
       overridingFinalizationProvider = overridingFinalizationProvider,
       overridingLineaContractClient = overridingLineaContractClient,

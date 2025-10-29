@@ -10,6 +10,7 @@ package maru.app
 
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
+import maru.p2p.testutils.TestUtils.findFreePort
 import org.apache.logging.log4j.LogManager
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -23,7 +24,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import testutils.Checks.assertMinedBlocks
 import testutils.PeeringNodeNetworkStack
-import testutils.TestUtils.findFreePort
 import testutils.besu.BesuFactory
 import testutils.besu.BesuTransactionsHelper
 import testutils.maru.MaruFactory
