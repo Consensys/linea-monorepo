@@ -192,10 +192,18 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
         var eventFilter =
             new TransactionEventFilter(
                 address,
-                parts[1].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[1], Bytes32.SIZE)),
-                parts[2].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[2], Bytes32.SIZE)),
-                parts[3].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[3], Bytes32.SIZE)),
-                parts[4].isEmpty() ? null : LogTopic.wrap(Bytes.fromHexString(parts[4], Bytes32.SIZE)));
+                parts[1].isEmpty()
+                    ? null
+                    : LogTopic.wrap(Bytes.fromHexString(parts[1], Bytes32.SIZE)),
+                parts[2].isEmpty()
+                    ? null
+                    : LogTopic.wrap(Bytes.fromHexString(parts[2], Bytes32.SIZE)),
+                parts[3].isEmpty()
+                    ? null
+                    : LogTopic.wrap(Bytes.fromHexString(parts[3], Bytes32.SIZE)),
+                parts[4].isEmpty()
+                    ? null
+                    : LogTopic.wrap(Bytes.fromHexString(parts[4], Bytes32.SIZE)));
         eventFilters.computeIfAbsent(address, (a) -> new HashSet<>()).add(eventFilter);
       }
       return eventFilters;
