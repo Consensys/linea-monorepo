@@ -263,6 +263,10 @@ export default class SubmitInvoice extends Command {
       "Failed to fetch Ethereum price from CoinGecko",
     );
 
+    if (!etherPriceInUsd || etherPriceInUsd === 0) {
+      this.error(`Invalid Ethereum price fetched from CoinGecko. priceFetchedInUsd=${etherPriceInUsd}`);
+    }
+
     const awsCostsInEth = awsCostsInUsd / etherPriceInUsd;
     const totalCostsInEth = parseEther((awsCostsInEth + onChainCostsInEth).toString());
 
