@@ -44,6 +44,15 @@ object NoOpP2PNetwork : P2PNetwork {
     log.debug("Unsubscription called for subscriptionId={}", subscriptionId)
   }
 
+  override fun subscribeToQbftMessages(subscriber: QbftMessageHandler<ValidationResult>): Int {
+    log.debug("QBFT subscription called for subscriber={}", subscriber)
+    return 0
+  }
+
+  override fun unsubscribeFromQbftMessages(subscriptionId: Int) {
+    log.debug("QBFT unsubscription called for subscriptionId={}", subscriptionId)
+  }
+
   override val port: UInt
     get() = 0u
 

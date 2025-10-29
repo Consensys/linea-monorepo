@@ -51,6 +51,7 @@ dependencies {
   implementation ("tech.pegasys.discovery:discovery")
 
   integrationTestImplementation(project(":jvm-libs:test-utils"))
+  integrationTestImplementation(testFixtures(project(":p2p")))
   integrationTestImplementation "org.hyperledger.besu.internal:besu-ethereum-api"
   integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
   integrationTestImplementation("org.hyperledger.besu.internal:besu-ethereum-p2p")

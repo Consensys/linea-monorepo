@@ -46,11 +46,11 @@ class MaruApp(
   clock: Clock = Clock.systemUTC(),
   // This will only be used if config.p2pConfig is undefined
   val p2pNetwork: P2PNetwork,
+  val beaconChain: BeaconChain,
   private val privateKeyProvider: () -> ByteArray,
   private val finalizationProvider: FinalizationProvider,
   private val vertx: Vertx,
   private val metricsFacade: MetricsFacade,
-  private val beaconChain: BeaconChain,
   private val metricsSystem: MetricsSystem,
   private val validatorELNodeEthJsonRpcClient: Web3JClient,
   private val validatorELNodeEngineApiWeb3JClient: Web3JClient,

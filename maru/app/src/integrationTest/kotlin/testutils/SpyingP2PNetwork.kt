@@ -22,6 +22,7 @@ import org.hyperledger.besu.consensus.qbft.core.messagedata.CommitMessageData
 import org.hyperledger.besu.consensus.qbft.core.messagedata.PrepareMessageData
 import org.hyperledger.besu.consensus.qbft.core.messagedata.ProposalMessageData
 import org.hyperledger.besu.consensus.qbft.core.messagedata.RoundChangeMessageData
+import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
@@ -29,15 +30,15 @@ class SpyingP2PNetwork(
   val p2pNetwork: P2PNetwork,
 ) : P2PNetwork by p2pNetwork {
   companion object {
-    private fun Message<*, *>.toBesuMessageData(): BesuMessageData {
+    private fun Message<*, *>.toQbftMessage(): QbftMessage {
       require(this.type == GossipMessageType.QBFT) {
         "Unsupported message type: ${this.type}"
       }
-      require(this.payload is BesuMessageData) {
+      require(this.payload is QbftMessage) {
         "Message is QBFT, but its payload is of type: ${this.payload
           ?.javaClass}"
       }
-      return this.payload as BesuMessageData
+      return this.payload as QbftMessage
     }
   }
 
@@ -61,7 +62,7 @@ class SpyingP2PNetwork(
   override fun broadcastMessage(message: Message<*, GossipMessageType>): SafeFuture<Unit> {
     when (message.type) {
       GossipMessageType.QBFT -> {
-        val decodedMessage = decodedMessage(message.toBesuMessageData())
+        val decodedMessage = decodedMessage(message.toQbftMessage().data)
         log.debug("Got new message {}", decodedMessage)
         emittedQbftMessages.add(decodedMessage)
         p2pNetwork.broadcastMessage(message)

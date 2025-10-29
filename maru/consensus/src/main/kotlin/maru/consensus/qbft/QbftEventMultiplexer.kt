@@ -12,11 +12,11 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.events.BftEvent
 import org.hyperledger.besu.consensus.common.bft.events.BftEvents
-import org.hyperledger.besu.consensus.common.bft.events.BftReceivedMessageEvent
 import org.hyperledger.besu.consensus.common.bft.events.BlockTimerExpiry
 import org.hyperledger.besu.consensus.common.bft.events.RoundExpiry
 import org.hyperledger.besu.consensus.qbft.core.types.QbftEventHandler
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
+import org.hyperledger.besu.consensus.qbft.core.types.QbftReceivedMessageEvent
 
 class QbftEventMultiplexer(
   private val eventHandler: QbftEventHandler,
@@ -25,11 +25,12 @@ class QbftEventMultiplexer(
 
   fun handleEvent(event: BftEvent) {
     try {
+      log.trace("Received event type: {}, event: {},", event.type, event)
       when (event.type) {
         BftEvents.Type.ROUND_EXPIRY -> eventHandler.handleRoundExpiry(event as RoundExpiry)
         BftEvents.Type.NEW_CHAIN_HEAD -> eventHandler.handleNewBlockEvent(event as QbftNewChainHead)
         BftEvents.Type.BLOCK_TIMER_EXPIRY -> eventHandler.handleBlockTimerExpiry(event as BlockTimerExpiry)
-        BftEvents.Type.MESSAGE -> eventHandler.handleMessageEvent(event as BftReceivedMessageEvent)
+        BftEvents.Type.MESSAGE -> eventHandler.handleMessageEvent(event as QbftReceivedMessageEvent)
         else -> {
           throw IllegalStateException("Unhandled event type: ${event.type}")
         }
