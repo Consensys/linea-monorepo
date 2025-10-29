@@ -22,6 +22,12 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       `submitWithdrawalRequestsToFulfilAmount started: amountWei=${amountWei.toString()}; validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
     );
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
+    if (sortedValidatorList === undefined) {
+      this.logger.error(
+        "submitWithdrawalRequestsToFulfilAmount failed to get sortedValidatorList with pending withdrawals",
+      );
+      return;
+    }
     const totalPendingPartialWithdrawalsWei =
       this.validatorDataClient.getTotalPendingPartialWithdrawalsWei(sortedValidatorList);
     const requiredWithdrawalAmountWei = safeSub(amountWei, totalPendingPartialWithdrawalsWei);
@@ -31,6 +37,12 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
   async submitMaxAvailableWithdrawalRequests(): Promise<void> {
     this.logger.debug(`submitMaxAvailableWithdrawalRequests started`);
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
+    if (sortedValidatorList === undefined) {
+      this.logger.error(
+        "submitMaxAvailableWithdrawalRequests failed to get sortedValidatorList with pending withdrawals",
+      );
+      return;
+    }
     const remainingWithdrawals = await this._submitPartialWithdrawalRequests(sortedValidatorList, maxUint256);
     await this._submitValidatorExits(sortedValidatorList, remainingWithdrawals);
   }

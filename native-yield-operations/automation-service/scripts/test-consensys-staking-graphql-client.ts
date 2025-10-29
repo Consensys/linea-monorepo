@@ -64,6 +64,10 @@ async function main() {
 
   try {
     const validators = await consensysStakingClient.getActiveValidatorsWithPendingWithdrawals();
+    if (validators === undefined) {
+      console.error("Failed getActiveValidatorsWithPendingWithdrawals");
+      throw "Failed getActiveValidatorsWithPendingWithdrawals";
+    }
     console.log(`Fetched ${validators.length} validators with pending withdrawals.`);
     console.log(validators);
     const totalPendingWei = consensysStakingClient.getTotalPendingPartialWithdrawalsWei(validators);

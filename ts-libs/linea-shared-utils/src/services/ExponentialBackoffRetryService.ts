@@ -44,6 +44,7 @@ export class ExponentialBackoffRetryService implements IRetryService {
       }
     }
 
+    // Unreachable, but required to simplify TS return type.
     throw lastError;
   }
 

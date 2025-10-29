@@ -93,9 +93,9 @@ export class OperationModeMetricsRecorder implements IOperationModeMetricsRecord
     const receipt = txReceiptResult.value;
     if (!receipt) return;
 
-    const withdrawalReport = this.yieldManagerClient.getWithdrawalEventFromTxReceipt(receipt);
-    if (!withdrawalReport) return;
-    const { reserveIncrementAmount } = withdrawalReport;
+    const event = this.yieldManagerClient.getWithdrawalEventFromTxReceipt(receipt);
+    if (!event) return;
+    const { reserveIncrementAmount } = event;
 
     this.metricsUpdater.recordRebalance(RebalanceDirection.UNSTAKE, weiToGweiNumber(reserveIncrementAmount));
 

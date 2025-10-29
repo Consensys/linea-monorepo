@@ -12,17 +12,17 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     private readonly beaconNodeApiClient: IBeaconNodeAPIClient,
   ) {}
 
-  async getActiveValidators(): Promise<ValidatorBalance[]> {
+  async getActiveValidators(): Promise<ValidatorBalance[] | undefined> {
     const { data, error } = await this.retryService.retry(() =>
       this.apolloClient.query({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY }),
     );
     if (error) {
       this.logger.error("getActiveValidators error:", { error });
-      return [];
+      return undefined;
     }
     if (data === undefined) {
       this.logger.error("getActiveValidators data undefined");
-      return [];
+      return undefined;
     }
     const resp = data?.allValidators.nodes;
     this.logger.debug("getActiveValidators succeded", { resp });
@@ -30,11 +30,12 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
   }
 
   // Return sorted in descending order of withdrawableValue
-  async getActiveValidatorsWithPendingWithdrawals(): Promise<ValidatorBalanceWithPendingWithdrawal[]> {
+  async getActiveValidatorsWithPendingWithdrawals(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined> {
     const [allValidators, pendingWithdrawalsQueue] = await Promise.all([
       this.getActiveValidators(),
       this.beaconNodeApiClient.getPendingPartialWithdrawals(),
     ]);
+    if (allValidators === undefined || pendingWithdrawalsQueue === undefined) return undefined;
 
     // 1️⃣ Aggregate duplicate pending withdrawals by validator index
     const pendingByValidator = new Map<number, bigint>();
