@@ -481,7 +481,9 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const call = yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, EMPTY_CALLDATA);
 
       // Assert
-      await expectRevertWithCustomError(yieldManager, call, "YieldProviderHasRemainingFunds");
+      await expectRevertWithCustomError(yieldManager, call, "YieldProviderHasRemainingFunds", [
+        initialFundAmount + yieldEarned,
+      ]);
     });
     it("Can migrate funds successfully to a new YieldProvider", async () => {
       // Arrange - fund a single vault

@@ -358,8 +358,9 @@ interface IYieldManager {
 
   /**
    * @dev Thrown when removing a YieldProvider with remaining user funds.
+   * @param remainingUserFunds Remaining user funds.
    */
-  error YieldProviderHasRemainingFunds();
+  error YieldProviderHasRemainingFunds(uint256 remainingUserFunds);
 
   /**
    * @dev Thrown when removing a YieldProvider with remaining negative yield.

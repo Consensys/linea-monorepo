@@ -1037,8 +1037,9 @@ contract YieldManager is
     address _yieldProvider,
     bytes memory _vendorExitData
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
-    if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
-      revert YieldProviderHasRemainingFunds();
+    uint256 userFundsCached = _getYieldProviderStorage(_yieldProvider).userFunds;
+    if (userFundsCached != 0) {
+      revert YieldProviderHasRemainingFunds(userFundsCached);
     }
     _removeYieldProvider(_yieldProvider, _vendorExitData);
     emit YieldProviderRemoved(_yieldProvider, false);
