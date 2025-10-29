@@ -1,6 +1,7 @@
 package poseidon2
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
@@ -170,13 +171,17 @@ func getGnarkHasherCircuitWitness() (*GnarkHasherCircuit, *GnarkHasherCircuit) {
 	nbElmts := 2
 	vals := make([]field.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		vals[i].SetRandom()
+		// vals[i].SetRandom()
+		vals[i].SetUint64(uint64(10 + i))
 	}
 
 	// sum
 	phasher := Poseidon2()
 	phasher.WriteElements(vals)
 	res := phasher.SumElement()
+	for i := 0; i < len(res); i++ {
+		fmt.Println(res[i].String())
+	}
 
 	// create witness and circuit
 	var circuit, witness GnarkHasherCircuit

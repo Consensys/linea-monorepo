@@ -85,7 +85,7 @@ func (h *GnarkHasher) Sum() GHash {
 			h.buffer = h.buffer[blockSize:]
 		}
 
-		// h.state = CompressPoseidon2(h.apiGen, h.state, buf)
+		h.state = CompressPoseidon2(h.apiGen, h.state, buf)
 	}
 	return h.state
 }
@@ -187,57 +187,73 @@ func (h *permutation) matMulExternalInPlace(apiGen zk.GenericApi, input []zk.Wra
 	// at this stage t is supposed to be a multiple of 4
 	// the MDS matrix is circ(2M4,M4,..,M4)
 	h.matMulM4InPlace(apiGen, input)
-	// tmp := make([]zk.WrappedVariable, 4)
-	// for i := 0; i < h.params.Width/4; i++ {
-	// 	tmp[0] = *apiGen.Add(&tmp[0], &input[4*i])
-	// 	tmp[1] = *apiGen.Add(&tmp[1], &input[4*i+1])
-	// 	tmp[2] = *apiGen.Add(&tmp[2], &input[4*i+2])
-	// 	tmp[3] = *apiGen.Add(&tmp[3], &input[4*i+3])
-	// }
-	// for i := 0; i < h.params.Width/4; i++ {
-	// 	input[4*i] = *apiGen.Add(&input[4*i], &tmp[0])
-	// 	input[4*i+1] = *apiGen.Add(&input[4*i+1], &tmp[1])
-	// 	input[4*i+2] = *apiGen.Add(&input[4*i+2], &tmp[2])
-	// 	input[4*i+3] = *apiGen.Add(&input[4*i+3], &tmp[3])
-	// }
+	tmp := make([]zk.WrappedVariable, 4)
+	tmp[0] = zk.ValueOf(0)
+	tmp[1] = zk.ValueOf(0)
+	tmp[2] = zk.ValueOf(0)
+	tmp[3] = zk.ValueOf(0)
+	for i := 0; i < h.params.Width/4; i++ {
+		tmp[0] = *apiGen.Add(&tmp[0], &input[4*i])
+		tmp[1] = *apiGen.Add(&tmp[1], &input[4*i+1])
+		tmp[2] = *apiGen.Add(&tmp[2], &input[4*i+2])
+		tmp[3] = *apiGen.Add(&tmp[3], &input[4*i+3])
+	}
+	for i := 0; i < h.params.Width/4; i++ {
+		input[4*i] = *apiGen.Add(&input[4*i], &tmp[0])
+		input[4*i+1] = *apiGen.Add(&input[4*i+1], &tmp[1])
+		input[4*i+2] = *apiGen.Add(&input[4*i+2], &tmp[2])
+		input[4*i+3] = *apiGen.Add(&input[4*i+3], &tmp[3])
+	}
 }
 
 // when t=2,3 the matrix are respectively [[2,1][1,3]] and [[2,1,1][1,2,1][1,1,3]]
 // otherwise the matrix is filled with ones except on the diagonal,
 func (h *permutation) matMulInternalInPlace(apiGen zk.GenericApi, input []zk.WrappedVariable) {
-	for i := 0; i < len(input); i++ {
-		apiGen.Println(&input[i])
+	// width = 16
+	sum := input[0]
+	for i := 1; i < h.params.Width; i++ {
+		sum = *apiGen.Add(&sum, &input[i])
 	}
-	// two := zk.ValueOf(2)
-	// if h.params.Width == 2 {
-	// 	sum := *apiGen.Add(&input[0], &input[1])
-	// 	input[0] = *apiGen.Add(&input[0], &sum)
-	// 	input[1] = *apiGen.Mul(&two, &input[1])
-	// 	input[1] = *apiGen.Add(&input[1], &sum)
-	// } else if h.params.Width == 3 {
-	// 	sum := *apiGen.Add(&input[0], &input[1])
-	// 	sum = *apiGen.Add(&sum, &input[2])
-	// 	input[0] = *apiGen.Add(&input[0], &sum)
-	// 	input[1] = *apiGen.Add(&input[1], &sum)
-	// 	input[2] = *apiGen.Mul(&input[2], &two)
-	// 	input[2] = *apiGen.Add(&input[2], &sum)
-	// } else {
-	// 	// TODO: we don't have general case implemented in gnark-crypto side.
-	// 	// Currently we only have the hardcoded matrices for t=2,3. If we would
-	// 	// use `h.params.diagInternalMatrices` we would need to set it, but
-	// 	// currently they are nil.
-
-	// 	// var sum frontend.Variable
-	// 	// sum = input[0]
-	// 	// for i := 1; i < h.params.width; i++ {
-	// 	// 	sum = api.Add(sum, input[i])
-	// 	// }
-	// 	// for i := 0; i < h.params.width; i++ {
-	// 	// 	input[i] = api.Mul(input[i], h.params.diagInternalMatrices[i])
-	// 	// 	input[i] = api.Add(input[i], sum)
-	// 	// }
-	// 	panic("only T=2,3 is supported")
-	// }
+	// mul by diag16:
+	// [-2, 1, 2, 1/2, 3, 4, -1/2, -3, -4, 1/2^8, 1/8, 1/2^24, -1/2^8, -1/8, -1/16, -1/2^24]
+	v := zk.ValueOf(2)
+	var temp zk.WrappedVariable
+	temp = *apiGen.Add(&input[0], &input[0])
+	input[0] = *apiGen.Sub(&sum, &temp)
+	input[1] = *apiGen.Add(&sum, &input[1])
+	temp = *apiGen.Add(&input[2], &input[2])
+	input[2] = *apiGen.Add(&sum, &temp)
+	temp = *apiGen.Div(&input[3], &v)
+	input[3] = *apiGen.Add(&sum, &temp)
+	temp = *apiGen.Add(&input[4], &input[4])
+	temp = *apiGen.Add(&temp, &input[4])
+	input[4] = *apiGen.Add(&sum, &temp)
+	temp = *apiGen.Add(&input[5], &input[5])
+	temp = *apiGen.Add(&temp, &temp)
+	input[5] = *apiGen.Add(&sum, &v)
+	temp = *apiGen.Div(&input[6], &v)
+	input[6] = *apiGen.Sub(&sum, &temp)
+	temp = *apiGen.Add(&input[7], &input[7])
+	temp = *apiGen.Add(&temp, &input[7])
+	input[7] = *apiGen.Sub(&sum, &temp)
+	temp = *apiGen.Add(&input[8], &input[8])
+	temp = *apiGen.Add(&temp, &temp)
+	input[8] = *apiGen.Sub(&sum, &temp)
+	v = zk.ValueOf(1 << 8)
+	temp = *apiGen.Div(&input[9], &v)
+	input[9] = *apiGen.Add(&sum, &temp)
+	v = zk.ValueOf(1 << 3)
+	input[10] = *apiGen.Add(&sum, &v)
+	v = zk.ValueOf(1 << 24)
+	input[11] = *apiGen.Add(&sum, &v)
+	v = zk.ValueOf(1 << 8)
+	input[12] = *apiGen.Sub(&sum, &v)
+	v = zk.ValueOf(1 << 3)
+	input[13] = *apiGen.Sub(&sum, &v)
+	v = zk.ValueOf(1 << 4)
+	input[14] = *apiGen.Sub(&sum, &v)
+	v = zk.ValueOf(1 << 24)
+	input[15] = *apiGen.Sub(&sum, &v)
 }
 
 // addRoundKeyInPlace adds the round-th key to the buffer
@@ -258,30 +274,30 @@ func (h *permutation) Permutation(apiGen zk.GenericApi, input []zk.WrappedVariab
 	// external matrix multiplication, cf https://eprint.iacr.org/2023/323.pdf page 14 (part 6)
 	h.matMulExternalInPlace(apiGen, input)
 
-	// rf := h.params.NbFullRounds / 2
-	// for i := 0; i < rf; i++ {
-	// 	// one round = matMulExternal(sBox_Full(addRoundKey))
-	// 	h.addRoundKeyInPlace(apiGen, i, input)
-	// 	for j := 0; j < h.params.Width; j++ {
-	// 		h.sBox(apiGen, j, input)
-	// 	}
-	// 	h.matMulExternalInPlace(apiGen, input)
-	// }
+	rf := h.params.NbFullRounds / 2
+	for i := 0; i < rf; i++ {
+		// one round = matMulExternal(sBox_Full(addRoundKey))
+		h.addRoundKeyInPlace(apiGen, i, input)
+		for j := 0; j < h.params.Width; j++ {
+			h.sBox(apiGen, j, input)
+		}
+		h.matMulExternalInPlace(apiGen, input)
+	}
 
-	// for i := rf; i < rf+h.params.NbPartialRounds; i++ {
-	// 	// one round = matMulInternal(sBox_sparse(addRoundKey))
-	// 	h.addRoundKeyInPlace(apiGen, i, input)
-	// 	h.sBox(apiGen, 0, input)
-	// 	h.matMulInternalInPlace(apiGen, input)
-	// }
-	// for i := rf + h.params.NbPartialRounds; i < h.params.NbFullRounds+h.params.NbPartialRounds; i++ {
-	// 	// one round = matMulExternal(sBox_Full(addRoundKey))
-	// 	h.addRoundKeyInPlace(apiGen, i, input)
-	// 	for j := 0; j < h.params.Width; j++ {
-	// 		h.sBox(apiGen, j, input)
-	// 	}
-	// 	h.matMulExternalInPlace(apiGen, input)
-	// }
+	for i := rf; i < rf+h.params.NbPartialRounds; i++ {
+		// one round = matMulInternal(sBox_sparse(addRoundKey))
+		h.addRoundKeyInPlace(apiGen, i, input)
+		h.sBox(apiGen, 0, input)
+		h.matMulInternalInPlace(apiGen, input)
+	}
+	for i := rf + h.params.NbPartialRounds; i < h.params.NbFullRounds+h.params.NbPartialRounds; i++ {
+		// one round = matMulExternal(sBox_Full(addRoundKey))
+		h.addRoundKeyInPlace(apiGen, i, input)
+		for j := 0; j < h.params.Width; j++ {
+			h.sBox(apiGen, j, input)
+		}
+		h.matMulExternalInPlace(apiGen, input)
+	}
 
 	return nil
 }
