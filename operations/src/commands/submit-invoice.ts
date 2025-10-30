@@ -13,9 +13,10 @@ import {
   TransactionSerializable,
 } from "viem";
 import { linea } from "viem/chains";
+import { getBlock } from "viem/actions";
 import { Agent } from "https";
 import { GetCostAndUsageCommandInput } from "@aws-sdk/client-cost-explorer";
-import { formatInTimeZone } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { addDays } from "date-fns";
 import { Result } from "neverthrow";
 import { computeInvoicePeriod, InvoicePeriod } from "../utils/submit-invoice/time.js";
@@ -232,9 +233,10 @@ export default class SubmitInvoice extends Command {
       return;
     }
 
-    this.log(
-      `Invoice period to process: from=${invoicePeriod.startDate.toISOString()} to=${invoicePeriod.endDate.toISOString()}`,
-    );
+    const invoicePeriodFromDateStr = invoicePeriod.startDate.toISOString();
+    const invoicePeriodToDateStr = invoicePeriod.endDate.toISOString();
+
+    this.log(`Invoice period to process: fromDate=${invoicePeriodFromDateStr} toDate=${invoicePeriodToDateStr}`);
 
     /******************************
             AWS COSTS FETCHING
@@ -242,7 +244,9 @@ export default class SubmitInvoice extends Command {
 
     const awsCostsInUsd = await this.getAWSCosts(invoicePeriod, awsCostsApiFilters);
 
-    this.log(`Total AWS costs for the period: costs=${awsCostsInUsd} USD`);
+    this.log(
+      `Total AWS costs for the period: costsInUsd=${awsCostsInUsd} fromDate=${invoicePeriodFromDateStr} toDate=${invoicePeriodToDateStr}`,
+    );
 
     /******************************
         ONCHAIN COSTS FETCHING
@@ -250,18 +254,24 @@ export default class SubmitInvoice extends Command {
 
     const onChainCostsInEth = await this.getOnChainCosts(duneApiKey, duneQueryId, invoicePeriod);
 
-    this.log(`Total on-chain costs for the period: costs=${onChainCostsInEth} ETH`);
+    this.log(
+      `Total on-chain costs for the period: costsInEth=${onChainCostsInEth} fromDate=${invoicePeriodFromDateStr} toDate=${invoicePeriodToDateStr}`,
+    );
 
     /******************************
         TOTAL COSTS COMPUTATION
      ******************************/
 
-    const {
-      ethereum: { usd: etherPriceInUsd },
-    } = this.unwrapOrError(
+    const ethPriceResponse = this.unwrapOrError(
       await fetchEthereumPrice(coingeckoApiBaseUrl, coingeckoApiKey),
       "Failed to fetch Ethereum price from CoinGecko",
     );
+
+    if (!ethPriceResponse?.ethereum || !ethPriceResponse?.ethereum?.usd) {
+      this.error("Ethereum price data is missing in the CoinGecko response.");
+    }
+
+    const etherPriceInUsd = ethPriceResponse.ethereum.usd;
 
     if (!etherPriceInUsd || etherPriceInUsd === 0) {
       this.error(`Invalid Ethereum price fetched from CoinGecko. priceFetchedInUsd=${etherPriceInUsd}`);
@@ -380,36 +390,47 @@ export default class SubmitInvoice extends Command {
     awsCostsApiFilters: GetCostAndUsageCommandInput,
   ): Promise<number> {
     const awsClient = createAwsCostExplorerClient({ region: "us-east-1" });
-    this.log(
-      `Fetching AWS costs for the invoice period from=${formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd")} to=${formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd")}`,
-    );
+    const startDateStr = formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd");
+    const endDateStr = formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd");
 
-    const { ResultsByTime } = this.unwrapOrError(
-      await getDailyAwsCosts(awsClient, {
-        ...awsCostsApiFilters,
-        TimePeriod: {
-          Start: formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd"),
-          End: formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd"),
-        },
-      }),
-      "Failed to fetch AWS costs",
-    );
-
-    if (!ResultsByTime || ResultsByTime.length === 0) {
-      this.error("No AWS cost data returned for the specified period.");
-    }
+    this.log(`Fetching AWS costs for the invoice period from=${startDateStr} to=${endDateStr}`);
 
     if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
       this.error("AWS Costs API Filters must specify one metric.");
     }
 
-    const totalDailyCosts = ResultsByTime[0].Total?.[awsCostsApiFilters.Metrics[0]].Amount;
+    const { ResultsByTime } = this.unwrapOrError(
+      await getDailyAwsCosts(awsClient, {
+        ...awsCostsApiFilters,
+        TimePeriod: {
+          Start: startDateStr,
+          End: endDateStr,
+        },
+      }),
+      "Failed to fetch AWS costs",
+    );
 
-    if (!totalDailyCosts) {
-      this.error("No AWS cost data found for the specified metric.");
+    if (!Array.isArray(ResultsByTime) || ResultsByTime.length === 0) {
+      this.error(`No AWS cost data returned for the specified period. fromDate=${startDateStr} toDate=${endDateStr}`);
     }
 
-    return parseFloat(totalDailyCosts);
+    const metric = awsCostsApiFilters.Metrics[0];
+    const firstResult = ResultsByTime[0];
+    const totalForMetric = firstResult?.Total?.[metric];
+
+    if (!totalForMetric || !totalForMetric.Amount) {
+      this.error(
+        `AWS cost data does not contain the specified metric or Amount field. metric=${metric} fromDate=${startDateStr} toDate=${endDateStr}`,
+      );
+    }
+
+    if (!totalForMetric?.Amount) {
+      this.error(
+        `AWS cost data does not contain the specified metric: ${metric} fromDate=${startDateStr} toDate=${endDateStr}`,
+      );
+    }
+
+    return parseFloat(totalForMetric.Amount);
   }
 
   /**
@@ -417,7 +438,7 @@ export default class SubmitInvoice extends Command {
    * @param duneApiKey Dune API key.
    * @param duneQueryId Dune query ID.
    * @param invoicePeriod Invoice period with start and end dates.
-   * @returns The total on-chain costs for the specified invoice period.
+   * @returns The total on-chain costs in ETH for the specified invoice period.
    */
   private async getOnChainCosts(
     duneApiKey: string,
@@ -438,7 +459,9 @@ export default class SubmitInvoice extends Command {
     );
 
     if (!result || !result.rows || result.rows.length === 0) {
-      this.error("No Dune query result returned for the specified period.");
+      this.error(
+        `No Dune query result returned for the specified period. fromDate=${invoicePeriod.startDate.toISOString()} toDate=${invoicePeriod.endDate.toISOString()}`,
+      );
     }
     return result.rows.reduce((acc, row) => acc + (row.total_costs_per_day as number), 0);
   }
@@ -504,7 +527,12 @@ export default class SubmitInvoice extends Command {
 
     this.log(`Broadcasting submitInvoice transaction to the network...`);
 
+    const startTxDate = fromZonedTime(new Date(), "UTC");
     const receipt = this.unwrapOrError(await sendTransaction(client, signed), "Failed to send transaction");
+
+    const block = await getBlock(client, { blockNumber: receipt.blockNumber });
+
+    const transactionConfirmationTime = block.timestamp - BigInt(Math.floor(startTxDate.getTime() / 1000));
 
     if (receipt.status === "reverted") {
       this.error(`Invoice submission failed. transactionHash=${receipt.transactionHash}`);
@@ -517,7 +545,7 @@ export default class SubmitInvoice extends Command {
     });
 
     this.log(
-      `Invoice successfully submitted: transactionHash=${receipt.transactionHash} eventName=${event.eventName} receiver=${event.args.receiver} startTimestamp=${event.args.startTimestamp} endTimestamp=${event.args.endTimestamp} amountPaid=${event.args.amountPaid} amountRequested=${event.args.amountRequested}`,
+      `Invoice successfully submitted: transactionHash=${receipt.transactionHash} transactionConfirmationTimeInSeconds=${transactionConfirmationTime} eventName=${event.eventName} receiver=${event.args.receiver} startTimestamp=${event.args.startTimestamp} endTimestamp=${event.args.endTimestamp} amountPaid=${event.args.amountPaid} amountRequested=${event.args.amountRequested}`,
     );
   }
 
