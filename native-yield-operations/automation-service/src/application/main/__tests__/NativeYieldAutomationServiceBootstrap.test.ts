@@ -25,7 +25,7 @@ jest.mock("@consensys/linea-shared-utils", () => ({
 }));
 
 jest.mock(
-  "../../../../services/OperationModeSelector.js",
+  "../../../services/OperationModeSelector.js",
   () => ({
     OperationModeSelector: mockOperationModeSelector,
   }),
@@ -33,21 +33,21 @@ jest.mock(
 );
 
 jest.mock(
-  "../../../../services/operation-mode-processors/YieldReportingProcessor.js",
+  "../../../services/operation-mode-processors/YieldReportingProcessor.js",
   () => ({
     YieldReportingProcessor: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
 jest.mock(
-  "../../../../services/operation-mode-processors/OssificationPendingProcessor.js",
+  "../../../services/operation-mode-processors/OssificationPendingProcessor.js",
   () => ({
     OssificationPendingProcessor: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
 jest.mock(
-  "../../../../services/operation-mode-processors/OssificationCompleteProcessor.js",
+  "../../../services/operation-mode-processors/OssificationCompleteProcessor.js",
   () => ({
     OssificationCompleteProcessor: jest.fn().mockImplementation(() => ({})),
   }),
@@ -55,28 +55,28 @@ jest.mock(
 );
 
 jest.mock(
-  "../../../../clients/contracts/YieldManagerContractClient.js",
+  "../../../clients/contracts/YieldManagerContractClient.js",
   () => ({
     YieldManagerContractClient: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
 jest.mock(
-  "../../../../clients/contracts/LazyOracleContractClient.js",
+  "../../../clients/contracts/LazyOracleContractClient.js",
   () => ({
     LazyOracleContractClient: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
 jest.mock(
-  "../../../../clients/contracts/VaultHubContractClient.js",
+  "../../../clients/contracts/VaultHubContractClient.js",
   () => ({
     VaultHubContractClient: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
 jest.mock(
-  "../../../../clients/contracts/LineaRollupYieldExtensionContractClient.js",
+  "../../../clients/contracts/LineaRollupYieldExtensionContractClient.js",
   () => ({
     LineaRollupYieldExtensionContractClient: jest.fn().mockImplementation(() => ({})),
   }),
@@ -84,21 +84,21 @@ jest.mock(
 );
 
 jest.mock(
-  "../../../../clients/ConsensysStakingApiClient.js",
+  "../../../clients/ConsensysStakingApiClient.js",
   () => ({
     ConsensysStakingApiClient: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
 jest.mock(
-  "../../../../clients/LidoAccountingReportClient.js",
+  "../../../clients/LidoAccountingReportClient.js",
   () => ({
     LidoAccountingReportClient: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
 jest.mock(
-  "../../../../clients/BeaconChainStakingClient.js",
+  "../../../clients/BeaconChainStakingClient.js",
   () => ({
     BeaconChainStakingClient: jest.fn().mockImplementation(() => ({})),
   }),
@@ -106,21 +106,21 @@ jest.mock(
 );
 
 jest.mock(
-  "../../../metrics/NativeYieldAutomationMetricsService.js",
+  "../../metrics/NativeYieldAutomationMetricsService.js",
   () => ({
     NativeYieldAutomationMetricsService: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
 jest.mock(
-  "../../../metrics/NativeYieldAutomationMetricsUpdater.js",
+  "../../metrics/NativeYieldAutomationMetricsUpdater.js",
   () => ({
     NativeYieldAutomationMetricsUpdater: jest.fn().mockImplementation(() => ({})),
   }),
   { virtual: true },
 );
 jest.mock(
-  "../../../metrics/OperationModeMetricsRecorder.js",
+  "../../metrics/OperationModeMetricsRecorder.js",
   () => ({
     OperationModeMetricsRecorder: jest.fn().mockImplementation(() => ({})),
   }),
@@ -128,7 +128,7 @@ jest.mock(
 );
 
 jest.mock(
-  "../../../../utils/createApolloClient.js",
+  "../../../utils/createApolloClient.js",
   () => ({
     createApolloClient: jest.fn().mockReturnValue({}),
   }),
@@ -143,7 +143,7 @@ jest.mock("viem/chains", () => ({
 let NativeYieldAutomationServiceBootstrap: any;
 
 beforeAll(async () => {
-  ({ NativeYieldAutomationServiceBootstrap } = await import("../../NativeYieldAutomationServiceBootstrap.js"));
+  ({ NativeYieldAutomationServiceBootstrap } = await import("../NativeYieldAutomationServiceBootstrap.js"));
 });
 
 const createBootstrapConfig = () => ({

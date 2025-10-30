@@ -189,7 +189,8 @@ describe("ViemBlockchainClientAdapter", () => {
     contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
 
     mockedWithTimeout
-      .mockImplementationOnce(async (_fn: any, _opts?: any) => {
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
         throw timeoutError;
       })
       .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
@@ -202,8 +203,19 @@ describe("ViemBlockchainClientAdapter", () => {
       "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=3",
       { error: timeoutError },
     );
-    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
-    expect(contractSignerClient.sign).toHaveBeenCalledWith({
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenNthCalledWith(1, {
+      to: contractAddress,
+      type: "eip1559",
+      data: calldata,
+      chainId: chain.id,
+      gas: 200n,
+      maxFeePerGas: 10n,
+      maxPriorityFeePerGas: 3n,
+      nonce: 5,
+      value: 0n,
+    });
+    expect(contractSignerClient.sign).toHaveBeenNthCalledWith(2, {
       to: contractAddress,
       type: "eip1559",
       data: calldata,
@@ -285,7 +297,8 @@ describe("ViemBlockchainClientAdapter", () => {
       maxPriorityFeePerGas: 1n,
     });
 
-    mockedWithTimeout.mockImplementation(async (_fn: any, _opts?: any) => {
+    mockedWithTimeout.mockImplementation(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
       throw timeoutError;
     });
 
@@ -297,5 +310,6 @@ describe("ViemBlockchainClientAdapter", () => {
       { error: timeoutError },
     );
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
   });
 });
