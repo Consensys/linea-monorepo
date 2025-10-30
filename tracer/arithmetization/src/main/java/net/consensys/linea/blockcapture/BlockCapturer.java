@@ -44,7 +44,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
   /**
    * The {@link Reaper} will collect all the data that will need to be mimicked to replay the block.
    */
-  private final Reaper reaper = new Reaper();
+  private final Reaper reaper;
 
   /** Opcode information for the given fork. */
   private final OpCodes opcodes;
@@ -63,6 +63,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
    */
   public BlockCapturer(Fork fork, Map<Long, Hash> historicalBlockHashes) {
     opcodes = OpCodes.load(fork);
+    reaper = new Reaper(fork);
     for (Map.Entry<Long, Hash> entry : historicalBlockHashes.entrySet())
       reaper.touchBlockHash(entry.getKey(), entry.getValue());
   }

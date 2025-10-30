@@ -30,6 +30,7 @@ import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
 import net.consensys.linea.blockcapture.snapshots.StorageSnapshot;
 import net.consensys.linea.blockcapture.snapshots.TransactionResultSnapshot;
 import net.consensys.linea.blockcapture.snapshots.TransactionSnapshot;
+import net.consensys.linea.zktracer.Fork;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
@@ -50,6 +51,9 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
  */
 @Slf4j
 public class Reaper {
+  /** Fork provides useful environmental information * */
+  private final Fork fork;
+
   /** Collect storage locations read / written by the entire conflation */
   private final StorageReaper conflationStorage = new StorageReaper();
 
@@ -73,6 +77,10 @@ public class Reaper {
 
   /** Collect the account address read / written by the current transaction */
   private AddressReaper txAddresses = null;
+
+  public Reaper(Fork fork) {
+    this.fork = fork;
+  }
 
   public void enterBlock(
       final BlockHeader header, final BlockBody body, final Address miningBeneficiary) {
@@ -189,6 +197,6 @@ public class Reaper {
     // Collapse storage
     final List<StorageSnapshot> storage = conflationStorage.collapse(world);
     // Done
-    return ConflationSnapshot.from(blocks, accounts, storage, conflationHashes);
+    return ConflationSnapshot.from(fork.name(), blocks, accounts, storage, conflationHashes);
   }
 }
