@@ -967,12 +967,15 @@ contract YieldManager is
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    bytes memory data = _delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(IYieldProvider.progressPendingOssification, (_yieldProvider))
+    
+    progressOssificationResult = abi.decode(
+      _delegatecallYieldProvider(
+        _yieldProvider,
+        abi.encodeCall(IYieldProvider.progressPendingOssification, (_yieldProvider))
+      ),
+      (ProgressOssificationResult)
     );
-    progressOssificationResult = abi.decode(data, (ProgressOssificationResult));
-    if (progressOssificationResult == ProgressOssificationResult.Complete) {
+    if (progressOssificationResult == ProgressOssificationResult.COMPLETE) {
       $$.isOssified = true;
     }
     emit YieldProviderOssificationProcessed(_yieldProvider, progressOssificationResult);
@@ -996,7 +999,7 @@ contract YieldManager is
     }
 
     YieldProviderRegistration memory registrationData = abi.decode(
-      delegatecallYieldProvider(
+      _delegatecallYieldProvider(
         _yieldProvider,
         abi.encodeCall(IYieldProvider.initializeVendorContracts, (_vendorInitializationData))
       ),
@@ -1100,7 +1103,7 @@ contract YieldManager is
     emit L2YieldRecipientRemoved(_l2YieldRecipient);
     $.isL2YieldRecipientKnown[_l2YieldRecipient] = false;
   }
-   
+
   /**
    * @notice Update withdrawal reserve parameters.
    * @dev WITHDRAWAL_RESERVE_SETTER_ROLE is required to execute.

@@ -230,10 +230,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     if ($$.isOssified) return 0;
     IDashboard dashboard = IDashboard($$.primaryEntrypoint);
     address vault = $$.ossifiedEntrypoint;
-    uint256 availableVaultBalanceBeforeRebalance = IStakingVault(vault).availableBalance();
-    uint256 availableRebalanceShares = STETH.getSharesByPooledEth(availableVaultBalanceBeforeRebalance);
-    uint256 liabilityShares = dashboard.liabilityShares();
-    uint256 rebalanceShares = Math256.min(liabilityShares, availableRebalanceShares);
+    uint256 rebalanceShares = Math256.min(
+      dashboard.liabilityShares(),
+      STETH.getSharesByPooledEth(IStakingVault(vault).availableBalance())
+    );
     if (rebalanceShares > 0) {
       // Cheaper lookup for before-after compare than availableBalance()
       uint256 vaultBalanceBeforeRebalance = vault.balance;
@@ -275,16 +275,16 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
 
   /**
    * @notice Helper function to pay obligations.
-   * @dev Greedily pay fees. settleLidoFees is permissionless, so better to trigger it ourselves.
+   * @dev Greedily pay Lido fees. `settleLidoFees` is permissionless, and is better settled eagerly.
+   * @dev There are multiple revert conditions on the Lido implementation.
+   * @dev Settling failures shouldn't block other flows in this scenario.
    * @param $$ Storage pointer for the YieldProvider-scoped storage.
    * @return obligationsPaid Amount of ETH used to pay obligations.
    */
   function _payObligations(YieldProviderStorage storage $$) internal returns (uint256 obligationsPaid) {
     address vault = $$.ossifiedEntrypoint;
     uint256 beforeVaultBalance = vault.balance;
-    // There are multiple revert conditions on the Lido implementation
-    // We just want to greedily attempt Lido fee payment
-    // We don't care if or how it fails
+
     try VAULT_HUB.settleLidoFees(vault) {
       obligationsPaid = beforeVaultBalance - vault.balance;
     } catch {
@@ -294,6 +294,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
 
   /**
    * @notice Helper function to pay node operator fees.
+   * @dev Does not allow partial payment of node operator fees, unlike settleLidoFees.
    * @param $$ Storage pointer for the YieldProvider-scoped storage.
    * @param _availableYield Amount of yield available.
    * @return nodeOperatorFeesPaid Amount of ETH used to pay node operator fees.
@@ -305,8 +306,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     if (_availableYield == 0) return 0;
     IDashboard dashboard = _getDashboard($$);
     uint256 currentFees = dashboard.nodeOperatorDisbursableFee();
-    
-    // Does not allow partial payment of node operator fees, unlike settleLidoFees
+
     if (_getVault($$).availableBalance() > currentFees) {
       dashboard.disburseNodeOperatorFee();
       nodeOperatorFeesPaid = currentFees;
@@ -315,8 +315,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
 
   /**
    * @notice Reduces the outstanding LST liability principal.
-   * @dev Called after the YieldManager has reserved `_availableFunds` for liability
-   *      settlement.
+   * @dev Called after the YieldManager has reserved `_availableFunds` for liability settlement.
    *      - Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
    *      - Implementations should ensure lstPrincipalPaid <= _availableFunds
    * @param _yieldProvider The yield provider address.
@@ -363,7 +362,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   /**
    * @notice Requests beacon chain withdrawal via EIP-7002 withdrawal contract.
    * @dev Parameters are ABI encoded by the YieldManager and understood by the yield provider.
-   * @dev Dynamic withdrawal fee is sourced from `msg.value`
+   * @dev Dynamic withdrawal fee is sourced from `msg.value`.
    * @param _yieldProvider The yield provider address.
    * @param _withdrawalParams Provider-specific payload describing the withdrawals to trigger.
    */
@@ -373,7 +372,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       (bytes, uint64[], address)
     );
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
-    // Intentional choice to not emit event as downstream StakingVault will emit ValidatorWithdrawalsTriggered event.
+    /// @dev Intentional choice to not emit event as downstream StakingVault will emit ValidatorWithdrawalsTriggered event.
   }
 
   /**
@@ -391,7 +390,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     uint64[] memory _amounts,
     address _refundRecipient
   ) internal {
-    // Lido StakingVault.sol will handle the param validation
+    /// @dev Lido StakingVault.sol will handle the param validation
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).triggerValidatorWithdrawals{ value: msg.value }(
       _pubkeys,
       _amounts,
@@ -508,6 +507,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   /**
    * @notice Withdraws liquid staking tokens (LST) to a recipient.
    * @dev Implementations must `lstLiabilityPrincipal` state for the yield provider.
+   * @dev Caller emits minting event.
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount of LST (denominated in ETH) to withdraw.
    * @param _recipient Address receiving the LST.
@@ -568,14 +568,14 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       // Unstage all ETH
       vault.setDepositor(address(this));
       vault.unstage(vault.stagedBalance());
-      progressOssificationResult = ProgressOssificationResult.Complete;
+      progressOssificationResult = ProgressOssificationResult.COMPLETE;
     } else if (VAULT_HUB.isPendingDisconnect(address(vault))) {
       // No-op, needs accounting report to progress
-      progressOssificationResult = ProgressOssificationResult.Noop;
+      progressOssificationResult = ProgressOssificationResult.NOOP;
     } else {
       // Previous disconnect attempt has aborted, must re-execute
       _initiateOssification($$);
-      progressOssificationResult = ProgressOssificationResult.Reinitiated;
+      progressOssificationResult = ProgressOssificationResult.REINITIATED;
     }
   }
 

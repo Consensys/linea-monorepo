@@ -176,7 +176,7 @@ interface IYieldManager {
   /**
    * @notice Emitted when a previously initiated ossification has progressed to the next stage.
    * @param yieldProvider The yield provider address.
-   * @return progressOssificationResult The operation result.
+   * @param progressOssificationResult The operation result.
    */
   event YieldProviderOssificationProcessed(
     address indexed yieldProvider,
