@@ -9,7 +9,11 @@ import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.
 import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
 
-import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
+import {
+  DEFAULT_ADMIN_ROLE,
+  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+} from "contracts/common/constants";
 import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
@@ -55,6 +59,8 @@ import {
   generateBlobParentShnarfData,
   calculateLastFinalizedState,
   getAccountsFixture,
+  expectEvents,
+  generateKeccak256,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
 import { LineaRollupV7ReinitializationData } from "./helpers/types";
@@ -355,6 +361,17 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithCustomError(lineaRollup, reinitializeCall, "ZeroAddressNotAllowed");
     });
 
+    it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializeLineaRollupV6", async () => {
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        roleAddresses: [...roleAddresses, { addressWithRole: ZeroAddress, role: DEFAULT_ADMIN_ROLE }],
+        yieldManager: ZeroAddress,
+      };
+      const reinitializeCall = reinitializeLineaRollupFixtureV7(lineaRollup, reinitData);
+      await expectRevertWithCustomError(lineaRollup, reinitializeCall, "ZeroAddressNotAllowed");
+    });
+
     it("Should configure roles, set the YieldManager and emit version change events", async () => {
       // Arrange - unfortunately 'upgrades.upgradeProxy' does not seem to expose the reinitialize call so we need to construct it manually
       const newYieldManager = await deployMockYieldManager();
@@ -382,14 +399,53 @@ describe("Linea Rollup contract", () => {
       // Act
       const reinitCall = proxyAdmin.upgradeAndCall(lineaRollup, await newImplementation.getAddress(), calldata);
 
-      // Assert
+      // Assert events
       await expect(reinitCall)
         .to.emit(lineaRollup, "LineaRollupVersionChanged")
         .withArgs(VERSION_6_BYTES, VERSION_7_BYTES)
         .and.to.emit(lineaRollup, "YieldManagerChanged")
         .withArgs(mockYieldManager, newYieldManager);
 
+      await Promise.all([
+        expectEvents(
+          lineaRollup,
+          reinitCall,
+          LINEA_ROLLUP_PAUSE_TYPES_ROLES.map(({ pauseType, role }) => ({
+            name: "PauseTypeRoleSet",
+            args: [pauseType, role],
+          })),
+        ),
+        expectEvents(
+          lineaRollup,
+          reinitCall,
+          LINEA_ROLLUP_UNPAUSE_TYPES_ROLES.map(({ pauseType, role }) => ({
+            name: "UnPauseTypeRoleSet",
+            args: [pauseType, role],
+          })),
+        ),
+      ]);
+
+      const pauseTypeRolesMappingSlot = 219;
+      const unpauseTypeRolesMappingSlot = 220;
+
+      for (const { pauseType, role } of LINEA_ROLLUP_PAUSE_TYPES_ROLES) {
+        const slot = generateKeccak256(["uint8", "uint256"], [pauseType, pauseTypeRolesMappingSlot]);
+        const roleInMapping = await ethers.provider.getStorage(lineaRollup.getAddress(), slot);
+        expect(roleInMapping).to.equal(role);
+      }
+
+      for (const { pauseType, role } of LINEA_ROLLUP_UNPAUSE_TYPES_ROLES) {
+        const slot = generateKeccak256(["uint8", "uint256"], [pauseType, unpauseTypeRolesMappingSlot]);
+        const roleInMapping = await ethers.provider.getStorage(lineaRollup.getAddress(), slot);
+        expect(roleInMapping).to.equal(role);
+      }
+
       expect(await lineaRollup.yieldManager()).to.equal(newYieldManager);
+
+      // Assert permissions set
+      for (const { role, addressWithRole } of reinitData.roleAddresses) {
+        expect(await lineaRollup.hasRole(role, addressWithRole)).to.be.true;
+      }
     });
 
     it("Should revert if reinitializeLineaRollupV7 is invoked more than once", async () => {
