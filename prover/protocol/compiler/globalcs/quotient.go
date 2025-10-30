@@ -133,10 +133,8 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 	}
 
 	sortColumns(ctx.AllInvolvedColumns)
-	sortColumns(ctx.AllInvolvedRoots)
 
-	for k := range ctx.ColumnsForRatio {
-		sortColumns(ctx.ColumnsForRatio[k])
+	for k := range ctx.RootsForRatio {
 		sortColumns(ctx.RootsForRatio[k])
 	}
 
