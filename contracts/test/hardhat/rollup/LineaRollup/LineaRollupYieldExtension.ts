@@ -29,7 +29,7 @@ import {
   encodeSendMessage,
 } from "../../common/helpers";
 
-describe("Linea Rollup contract", () => {
+describe("Linea Rollup Yield Extension", () => {
   let lineaRollup: TestLineaRollup;
   let mockYieldManager: string;
   let operator: SignerWithAddress;
