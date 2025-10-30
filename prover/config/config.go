@@ -302,11 +302,10 @@ type ExecutionLimitless struct {
 	MetadataDir         string `mapstructure:"metadata_dir"`
 	WitnessDir          string `mapstructure:"witness_dir"`
 	SubproofsDir        string `mapstructure:"subproofs_dir"`
-	CommitsDir          string `mapstructure:"commits_dir"`
 	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
 	SharedFailureDir    string `mapstructure:"shared_failure_dir"`
 
-	Timeout int `mapstructure:"timeout" validate:"gt=0,number"`
+	Timeout int `mapstructure:"timeout_seconds" validate:"gt=0,number"`
 }
 
 type Execution struct {

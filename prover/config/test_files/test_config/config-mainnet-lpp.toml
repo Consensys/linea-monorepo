@@ -1,5 +1,5 @@
 environment = "mainnet"
-version = "6.0.3"                              # TODO @gbotrel hunt all version definitions.
+version = "6.0.5"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
@@ -30,12 +30,8 @@ ignore_compatibility_check = true
 metadata_dir = "/tmp/exec-limitless/metadata"
 witness_dir = "/tmp/exec-limitless/witness"
 subproofs_dir = "/tmp/exec-limitless/subproofs"
-commits_dir = "/tmp/exec-limitless/commits"
 shared_rnd_dir = "/tmp/exec-limitless/commit"
-
-gl_subproofs_timeout = 1800 # seconds
-lpp_subproofs_timeout = 2400 # seconds  
-rnd_beacon_timeout = 1900 # seconds. SHOULD be greater than gl_subproofs_timeout
+timeout_seconds = 2100 
 
 [blob_decompression]
 prover_mode = "full"
