@@ -27,7 +27,7 @@ func toGiB(b uint64) float64 {
 
 // ---- Test for GL modules ----
 func TestMemUseAllCompGL(t *testing.T) {
-	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
+	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.5/mainnet/execution-limitless"
 	files, err := os.ReadDir(assetsDir)
 	if err != nil {
 		t.Fatalf("failed to read assets dir: %v", err)
@@ -104,19 +104,19 @@ func TestMemUseAllCompGL(t *testing.T) {
 
 // ---- Test for LPP modules ----
 func TestMemUseAllCompLPP(t *testing.T) {
-	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
+	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.5/mainnet/execution-limitless"
 	files, err := os.ReadDir(assetsDir)
 	if err != nil {
 		t.Fatalf("failed to read assets dir: %v", err)
 	}
 
-	var lppModules [][]string
+	var lppModules []string
 	for _, f := range files {
 		name := f.Name()
 		if strings.HasPrefix(name, "dw-compiled-lpp-") && strings.HasSuffix(name, ".bin") {
 			base := strings.TrimSuffix(strings.TrimPrefix(name, "dw-compiled-lpp-"), ".bin")
 			base = strings.Trim(base, "[]")
-			lppModules = append(lppModules, []string{base})
+			lppModules = append(lppModules, base)
 		}
 	}
 
@@ -136,7 +136,7 @@ func TestMemUseAllCompLPP(t *testing.T) {
 	baseRSS := getRSSBytes()
 	maxRSS := baseRSS
 
-	for i, mods := range lppModules {
+	for i, mod := range lppModules {
 		// snapshot before
 		runtime.ReadMemStats(&ms)
 		beforeTotal := ms.TotalAlloc
@@ -144,9 +144,9 @@ func TestMemUseAllCompLPP(t *testing.T) {
 		beforeRSS := getRSSBytes()
 
 		// load
-		compLPP, err := zkevm.LoadCompiledLPP(cfg, []distributed.ModuleName{distributed.ModuleName(mods[0])})
+		compLPP, err := zkevm.LoadCompiledLPP(cfg, distributed.ModuleName(mod))
 		if err != nil {
-			t.Fatalf("failed to load compiled LPP %v: %v", mods, err)
+			t.Fatalf("failed to load compiled LPP %v: %v", mod, err)
 		}
 		dw.CompiledLPPs[i] = compLPP
 
@@ -160,7 +160,7 @@ func TestMemUseAllCompLPP(t *testing.T) {
 		}
 
 		fmt.Printf("[LPP %s] TotalAlloc Δ: %.3f GiB | LiveHeap Δ: %.3f GiB | RSS Δ: %.3f GiB\n",
-			mods[0],
+			mod,
 			toGiB(afterTotal-beforeTotal),
 			toGiB(afterAlloc-beforeAlloc),
 			toGiB(afterRSS-beforeRSS),
@@ -182,7 +182,7 @@ func TestMemUseAllCompLPP(t *testing.T) {
 
 // --- Measure per GL module ---
 func TestMemUsePerCompGL(t *testing.T) {
-	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
+	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.5/mainnet/execution-limitless"
 	files, err := os.ReadDir(assetsDir)
 	if err != nil {
 		t.Fatalf("failed to read assets dir: %v", err)
@@ -225,19 +225,19 @@ func TestMemUsePerCompGL(t *testing.T) {
 
 // --- Measure per LPP module ---
 func TestMemUsePerCompLPP(t *testing.T) {
-	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.3/mainnet/execution-limitless"
+	assetsDir := "/home/ubuntu/linea-monorepo/prover/prover-assets/6.0.5/mainnet/execution-limitless"
 	files, err := os.ReadDir(assetsDir)
 	if err != nil {
 		t.Fatalf("failed to read assets dir: %v", err)
 	}
 
-	var lppModules [][]string
+	var lppModules []string
 	for _, f := range files {
 		name := f.Name()
 		if strings.HasPrefix(name, "dw-compiled-lpp-") && strings.HasSuffix(name, ".bin") {
 			base := strings.TrimSuffix(strings.TrimPrefix(name, "dw-compiled-lpp-"), ".bin")
 			base = strings.Trim(base, "[]")
-			lppModules = append(lppModules, []string{base})
+			lppModules = append(lppModules, base)
 		}
 	}
 
@@ -249,10 +249,10 @@ func TestMemUsePerCompLPP(t *testing.T) {
 	var prevRSS = getRSSBytes()
 	maxRSS := prevRSS
 	fmt.Printf("\n[LPP Modules RSS Delta]\n")
-	for i, mods := range lppModules {
-		compLPP, err := zkevm.LoadCompiledLPP(cfg, []distributed.ModuleName{distributed.ModuleName(mods[0])})
+	for i, mod := range lppModules {
+		compLPP, err := zkevm.LoadCompiledLPP(cfg, distributed.ModuleName(mod))
 		if err != nil {
-			t.Fatalf("failed to load compiled LPP %v: %v", mods, err)
+			t.Fatalf("failed to load compiled LPP %v: %v", mod, err)
 		}
 		dw.CompiledLPPs[i] = compLPP
 
@@ -263,6 +263,6 @@ func TestMemUsePerCompLPP(t *testing.T) {
 		if currRSS > maxRSS {
 			maxRSS = currRSS
 		}
-		fmt.Printf("LPP[%s]: ΔRSS = %.3f GiB, Peak RSS = %.3f GiB\n", mods[0], toGiB(delta), toGiB(maxRSS))
+		fmt.Printf("LPP[%s]: ΔRSS = %.3f GiB, Peak RSS = %.3f GiB\n", mod, toGiB(delta), toGiB(maxRSS))
 	}
 }
