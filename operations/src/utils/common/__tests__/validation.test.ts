@@ -6,14 +6,14 @@ describe("Validation utils", () => {
   describe("validateEthereumAddress", () => {
     it("should throw an error when the input is not a valid Ethereum address", () => {
       const invalidAddress = "0x0a0e";
-      expect(() => validateEthereumAddress("Address", invalidAddress)).toThrow(
+      expect(() => validateEthereumAddress(invalidAddress, "Address")).toThrow(
         `Address is not a valid Ethereum address.`,
       );
     });
 
     it("should return the input when it is a valid Ethereum address", () => {
       const address = ethers.hexlify(ethers.randomBytes(20));
-      expect(validateEthereumAddress("Address", address)).toStrictEqual(address);
+      expect(validateEthereumAddress(address, "Address")).toStrictEqual(address);
     });
   });
 
