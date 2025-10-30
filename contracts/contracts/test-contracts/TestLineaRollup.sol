@@ -6,6 +6,10 @@ import { Utils } from "../lib/Utils.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestLineaRollup is LineaRollup {
+  function setFallbackOperatorAddress(address _fallbackOperator) external {
+    fallbackOperator = _fallbackOperator;
+  }
+  
   function addRollingHash(uint256 _messageNumber, bytes32 _messageHash) external {
     _addRollingHash(_messageNumber, _messageHash);
   }
