@@ -105,7 +105,7 @@ func TestInsertionRootHashPoseidon2(t *testing.T) {
 		require.Equal(t, "0x7172ab730766d9b6367938c031afbd13607d95796a60930945ab6b88434339b2", leaf.Hex())
 	}
 
-	// check the value of the second leaf opening, corresponds to the inserted entry
+	// check the value of the third leaf opening, corresponds to the inserted entry
 	{
 		leafOpening := acc.Data.MustGet(2).LeafOpening
 		require.Equal(
@@ -134,7 +134,7 @@ func TestInsertionRootHashPoseidon2(t *testing.T) {
 	)
 }
 
-// Test the root after inserting a new entry
+// Test the root after inserting a new entry, and then updateting it
 func TestInsertAndUpdateRootHashPoseidon2(t *testing.T) {
 
 	acc := newTestAccumulatorPoseidon2DummyVal()
@@ -147,7 +147,8 @@ func TestInsertAndUpdateRootHashPoseidon2(t *testing.T) {
 	_ = acc.UpdateAndProve(key, newval)
 
 	// Note : the tree should be in exactly the same state as after directly
-	// inserting 42
+	// inserting 42,
+	// The same roots as in TestInsertionRootHashPoseidon2
 
 	// We inserted, so the next free node should have been increased
 	require.Equal(t, int64(3), acc.NextFreeNode)
@@ -178,14 +179,12 @@ func TestInsertAndDeleteRootHashPoseidon2(t *testing.T) {
 	_ = acc.InsertAndProve(key, val)
 	_ = acc.DeleteAndProve(key)
 
-	// Note : the tree should be in exactly the same state as after directly
-	// inserting 42
-
 	// We inserted, so the next free node should have been increased
 	require.Equal(t, int64(3), acc.NextFreeNode)
 
 	// root of the subtree (e.g. exluding the next free node). It equals the one
 	// of the empty tree
+	// The same SubTreeRoot as in TestEmptyAccumulatorPoseidon2, but the TopRoot are different as the NextFreeNode are distinct
 	require.Equal(
 		t,
 		"0x3a00a8e34a16f8a1225fee734816edb326f783bd6678d793345a28f046586ba6",
@@ -210,14 +209,14 @@ func newTestAccumulatorPoseidon2() *accumulator.ProverState[types.EthAddress, ty
 	return accumulator.InitializeProverState[types.EthAddress, types.Account](config, locationTesting)
 }
 
-// Test the root after inserting a new entry
+// Test the root after inserting a new entry, without dummy key and value types
 func TestRealKeyAndVal(t *testing.T) {
 
 	acc := newTestAccumulatorPoseidon2()
 
 	key, _ := types.AddressFromHex("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
 
-	accountOld :=
+	account :=
 		types.Account{
 			Nonce:             65,
 			Balance:           big.NewInt(5690),
@@ -227,20 +226,7 @@ func TestRealKeyAndVal(t *testing.T) {
 			CodeSize:          0,
 		}
 
-	accountNew :=
-		types.Account{
-			Nonce:             65,
-			Balance:           big.NewInt(835),
-			StorageRoot:       types.Bytes32FromHex("0x1c41acc261451aae253f621857172d6339919d18059f35921a50aafc69eb5c39"),
-			Poseidon2CodeHash: types.Bytes32FromHex("0x7b688b215329825e5b00e4aa4e1857bc17afab503a87ecc063614b9b227106b2"),
-			KeccakCodeHash:    types.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
-			CodeSize:          0,
-		}
-	_ = acc.InsertAndProve(key, accountOld)
-	_ = acc.UpdateAndProve(key, accountNew)
-
-	// Note : the tree should be in exactly the same state as after directly
-	// inserting 42
+	_ = acc.InsertAndProve(key, account)
 
 	// We inserted, so the next free node should have been increased
 	require.Equal(t, int64(3), acc.NextFreeNode)
@@ -248,14 +234,14 @@ func TestRealKeyAndVal(t *testing.T) {
 	// root of the subtree (e.g. exluding the next free node)
 	require.Equal(
 		t,
-		"0x2cc9db392ca6c1bd12ddeefd1f8c08001499e97e7adfc0250d5a93a134b5adb4",
+		"0x06d0e7c249cff5d00868a56f2007b81b33a71efa265c5f97694e350923ce19d6",
 		acc.SubTreeRoot().Hex(),
 	)
 
 	// root of the complete accumulator (e.g including the last node)
 	require.Equal(
 		t,
-		"0x269418196b00f3076c4d3e1c4c612a65734b30c9188523863680cac6279b15bc",
+		"0x17ae4260246c749f10ef846b704305b35956df8f26efdc2b3634a0ec787ac1f3",
 		acc.TopRoot().Hex(),
 	)
 }
