@@ -94,13 +94,21 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
       eventName: "VaultsReportDataUpdated",
       pollingInterval: this.pollIntervalMs,
       onLogs: (logs) => {
-        // Filter out reorgs
-        const valid = logs.find((l) => !l.removed);
-        if (!valid) {
+        const nonRemovedLogs = logs.filter((log) => !log.removed);
+        if (nonRemovedLogs.length === 0) {
           this.logger.warn("waitForVaultsReportDataUpdatedEvent: Dropped VaultsReportDataUpdated event");
+          // Continue polling for the next VaultsReportDataUpdated event.
           return;
         }
-        this.logger.info("waitForVaultsReportDataUpdatedEvent succeeded, VaultsReportDataUpdated event detected");
+        if (nonRemovedLogs.length !== logs.length) {
+          this.logger.debug("waitForVaultsReportDataUpdatedEvent: Ignored removed reorg logs", { logs });
+        }
+        const firstEvent = nonRemovedLogs[0];
+        this.logger.info("waitForVaultsReportDataUpdatedEvent succeeded, VaultsReportDataUpdated event detected", {
+          txHash: firstEvent.transactionHash,
+          timestamp: firstEvent.topics[1],
+          root: firstEvent.topics[3],
+        });
         // Call resolve through 2nd reference
         resolvePromise();
       },
