@@ -1,19 +1,18 @@
 package keccakfkoalabear
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/protocols"
 )
 
 const BaseChi = 11
@@ -25,13 +24,14 @@ type block [numLanesInBlock][numSlices]ifaces.Column
 type chi struct {
 	Inputs *chiInputs
 	// internal state  recomposing each [numSlices] bits into a base clean BaseChi.
-	stateInternal state
+	// it is a placeholder for the linear combination expressions, to facilitate the assignment.
+	stateInternal [5][5][numSlices]*sym.Expression
 	// state after applying the chi step.
 	// It is in the expression form since it will be combined with Iota step
 	// to get the standard state later. This avoid declaring extra columns.
 	StateNext [5][5][numSlices]ifaces.Column
 	// prover actions for linear combinations
-	paLinearCombinations [5][5][numSlices]*protocols.LinearCombination
+	// paLinearCombinations [5][5][numSlices]*protocols.LinearCombination
 	// the round constant
 	rc [numSlices]*dedicated.RepeatedPattern
 }
@@ -57,7 +57,7 @@ type chiInputs struct {
 func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
 
 	chi := &chi{
-		stateInternal: state{},
+		stateInternal: [5][5][numSlices]*sym.Expression{},
 		Inputs:        &in,
 		StateNext:     [5][5][numSlices]ifaces.Column{},
 	}
@@ -70,12 +70,8 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < numSlices; z++ {
-				chi.paLinearCombinations[x][y][z] = protocols.NewLinearCombination(comp,
-					fmt.Sprintf("CHI_STATE_INTERNAL_%v_%v_%v", x, y, z),
-					in.stateCurr[x][y][z*numSlices:z*numSlices+numSlices],
-					BaseChi)
 				// set the internal state column to the result of the linear combination
-				chi.stateInternal[x][y][z] = chi.paLinearCombinations[x][y][z].CombinationRes
+				chi.stateInternal[x][y][z] = wizardutils.LinCombExpr(BaseChi, in.stateCurr[x][y][z*numSlices:z*numSlices+numSlices])
 				// define the state next columns
 				chi.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_NEXT_%v_%v_%v", x, y, z), size)
 			}
@@ -142,8 +138,9 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < numSlices; z++ {
-				chi.paLinearCombinations[x][y][z].Run(run)
-				stateInternal[x][y][z] = chi.stateInternal[x][y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
+				// get the assignment of the internal state
+				stateInternal[x][y][z] = column.EvalExprColumn(run, chi.stateInternal[x][y][z].Board()).IntoRegVecSaveAlloc()
+
 			}
 		}
 	}

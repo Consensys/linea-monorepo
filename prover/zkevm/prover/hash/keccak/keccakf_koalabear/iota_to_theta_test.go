@@ -1,4 +1,4 @@
-package protocols_test
+package keccakfkoalabear_test
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/protocols"
+	keccakfkoalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,11 +16,11 @@ const (
 	limit = 214358881 // 11^8
 )
 
-func TestBaseConversion(t *testing.T) {
+func TestConvertAndClean(t *testing.T) {
 	var (
 		size      = 1024
 		stateCurr [5][5][8]ifaces.Column
-		bc        *protocols.BaseConversion
+		mod       keccakfkoalabear.Module
 	)
 
 	define := func(b *wizard.Builder) {
@@ -36,7 +36,7 @@ func TestBaseConversion(t *testing.T) {
 			}
 		}
 
-		bc = protocols.NewBaseConversion(b.CompiledIOP, stateCurr)
+		mod.IotaToTheta = keccakfkoalabear.NewConvertAndClean(b.CompiledIOP, stateCurr)
 	}
 	prover := func(run *wizard.ProverRuntime) {
 		// assign values to input state
@@ -59,14 +59,14 @@ func TestBaseConversion(t *testing.T) {
 		}
 
 		// assign the base conversion module
-		bc.Run(run)
+		mod.IotaToTheta.Run(run)
 		expected0 := uint64(256)  // 4^4
 		expected1 := uint64(4352) // 1*4^6 +1*4^4
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 8; z++ {
 					// verify the output values are correct
-					actualState := bc.StateNext[x][y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
+					actualState := mod.IotaToTheta.StateNext[x][y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
 					for i := 0; i < size; i++ {
 						if i%2 == 0 {
 							if actualState[i].Uint64() != expected0 {
