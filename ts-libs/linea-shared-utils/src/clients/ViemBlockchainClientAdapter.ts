@@ -163,9 +163,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
           throw error;
         }
         const isTimeout =
-          error instanceof TimeoutError ||
-          (error instanceof BaseError && error.name === "TimeoutError") ||
-          (error as any)?.name === "TimeoutError";
+          error instanceof TimeoutError || (error instanceof BaseError && error.name === "TimeoutError");
         if (!isTimeout) {
           this.logger.error(`sendSignedTransaction error`, { error });
           throw error; // not a timeout → bail

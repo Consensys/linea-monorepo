@@ -161,4 +161,50 @@ describe("ExpressApiApplication", () => {
     app.onBeforeStop = undefined;
     app.onAfterStop = undefined;
   });
+
+  it("propagates errors from server.close and skips after-stop hook", async () => {
+    type ServerMock = {
+      on: jest.MockedFunction<(event: string, handler: () => void) => ServerMock>;
+      close: jest.MockedFunction<(callback?: (err?: Error | null) => void) => ServerMock>;
+    };
+    const serverMock = {
+      on: jest.fn(),
+      close: jest.fn(),
+    } as ServerMock;
+    serverMock.on.mockImplementation((event, handler) => {
+      if (event === "listening") handler();
+      return serverMock;
+    });
+    const closeError = new Error("close failure");
+    serverMock.close.mockImplementation((callback) => {
+      callback?.(closeError);
+      return serverMock;
+    });
+    const listenSpy = jest.spyOn(app["app"], "listen").mockImplementation(() => serverMock as any);
+
+    const onBeforeStop = jest.fn();
+    const onAfterStop = jest.fn();
+    app.onBeforeStop = onBeforeStop;
+    app.onAfterStop = onAfterStop;
+
+    await app.start();
+
+    await expect(app.stop()).rejects.toThrow(closeError);
+
+    expect(onBeforeStop).toHaveBeenCalledTimes(1);
+    expect(onAfterStop).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalledWith("Closing API server on port 0");
+    expect(app["server"]).toBe(serverMock);
+
+    // cleanup: allow stop to succeed so afterEach does not throw
+    app.onBeforeStop = undefined;
+    app.onAfterStop = undefined;
+    serverMock.close.mockImplementation((callback) => {
+      callback?.();
+      return serverMock;
+    });
+    logger.info.mockClear();
+    await app.stop().catch(() => {});
+    listenSpy.mockRestore();
+  });
 });

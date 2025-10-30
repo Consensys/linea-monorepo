@@ -125,6 +125,62 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(1);
   });
 
+  it("uses default constructor parameters and default tx value", async () => {
+    const defaultsAdapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient);
+
+    const timeoutError = new TimeoutError({
+      body: { message: "timeout" },
+      url: "local:default",
+    });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(4);
+    publicClientMock.estimateGas.mockResolvedValue(200n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 3n })
+      .mockResolvedValueOnce({ maxFeePerGas: 8n, maxPriorityFeePerGas: 2n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw timeoutError;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await defaultsAdapter.sendSignedTransaction(contractAddress, calldata);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=3",
+      { error: timeoutError },
+    );
+    expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenNthCalledWith(1, {
+      to: contractAddress,
+      type: "eip1559",
+      data: calldata,
+      chainId: chain.id,
+      gas: 200n,
+      maxFeePerGas: 10n,
+      maxPriorityFeePerGas: 3n,
+      nonce: 4,
+      value: 0n,
+    });
+    expect(contractSignerClient.sign).toHaveBeenNthCalledWith(2, {
+      to: contractAddress,
+      type: "eip1559",
+      data: calldata,
+      chainId: chain.id,
+      gas: 220n,
+      maxFeePerGas: 11n,
+      maxPriorityFeePerGas: 3n,
+      nonce: 4,
+      value: 0n,
+    });
+  });
+
   it("successfully sends a signed transaction on the first attempt", async () => {
     publicClientMock.getTransactionCount.mockResolvedValue(7);
     publicClientMock.estimateGas.mockResolvedValue(21_000n);
@@ -184,7 +240,7 @@ describe("ViemBlockchainClientAdapter", () => {
     publicClientMock.getChainId.mockResolvedValue(chain.id);
     publicClientMock.estimateFeesPerGas
       .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 3n })
-      .mockResolvedValueOnce({ maxFeePerGas: 15n, maxPriorityFeePerGas: 4n });
+      .mockResolvedValueOnce({ maxFeePerGas: 8n, maxPriorityFeePerGas: 2n });
     contractSignerClient.getAddress.mockReturnValue("0xSIGNER");
     contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
 
@@ -221,8 +277,8 @@ describe("ViemBlockchainClientAdapter", () => {
       data: calldata,
       chainId: chain.id,
       gas: 220n,
-      maxFeePerGas: 16n,
-      maxPriorityFeePerGas: 4n,
+      maxFeePerGas: 11n,
+      maxPriorityFeePerGas: 3n,
       nonce: 5,
       value: 0n,
     });
@@ -278,6 +334,36 @@ describe("ViemBlockchainClientAdapter", () => {
       shortMessage: revertError.shortMessage,
     });
     expect(logger.error).toHaveBeenNthCalledWith(2, "Reason:", { reason: "RevertReason" });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to ContractFunctionRevertedError revert message when error name missing", async () => {
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(50n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 5n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    const revertError = new ContractFunctionRevertedError({
+      abi: [] as any,
+      functionName: "test",
+      message: "execution reverted",
+    });
+    (revertError as any).data = undefined;
+
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw revertError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(revertError);
+    expect(logger.error).toHaveBeenNthCalledWith(1, "❌ sendSignedTransaction contract call reverted:", {
+      shortMessage: revertError.shortMessage,
+    });
+    expect(logger.error).toHaveBeenNthCalledWith(2, "Reason:", { reason: revertError.message });
     expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
   });
 
