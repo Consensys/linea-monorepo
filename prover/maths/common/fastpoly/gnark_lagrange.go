@@ -48,8 +48,8 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []zk.WrappedVariable, x g
 
 	res := gnarkfext.NewE4GenFromBase(0)
 	for i := 0; i < size; i++ {
-		tmp := *e4Api.MulByFp(&dens[i], &poly[i])
-		res = *e4Api.Add(&res, &tmp)
+		tmp := e4Api.MulByFp(&dens[i], poly[i])
+		res = *e4Api.Add(&res, tmp)
 	}
 
 	var tmp gnarkfext.E4Gen
@@ -58,7 +58,7 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []zk.WrappedVariable, x g
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
 	wInvSize := zk.ValueOf(invSize)
-	tmp = *e4Api.MulByFp(&tmp, &wInvSize)
+	tmp = *e4Api.MulByFp(&tmp, wInvSize)
 	res = *e4Api.Mul(&res, &tmp)
 
 	return res
@@ -90,32 +90,32 @@ func EvaluateLagrangeGnark(api frontend.API, poly []zk.WrappedVariable, x zk.Wra
 	wAccW := zk.ValueOf(accw)
 	dens := make([]zk.WrappedVariable, size) // [x-1, x-ω, x-ω², ...]
 	for i := 0; i < size; i++ {
-		dens[i] = *apiGen.Sub(&x, &wAccW)
+		dens[i] = apiGen.Sub(x, wAccW)
 		accw.Mul(&accw, &omega)
 	}
 	invdens := make([]zk.WrappedVariable, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
 	for i := 0; i < size; i++ {
-		invdens[i] = *apiGen.Inverse(&dens[i])
+		invdens[i] = apiGen.Inverse(dens[i])
 	}
 
 	var tmp zk.WrappedVariable
 	wOne := zk.ValueOf(1)
 	tmp = gnarkutil.Exp(api, x, size)
-	tmp = *apiGen.Sub(&tmp, &wOne) // xⁿ-1
+	tmp = apiGen.Sub(tmp, wOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size))
 	invSize.Inverse(&invSize)
 	li := zk.ValueOf(invSize)
-	li = *apiGen.Mul(&tmp, &li) // 1/n * (xⁿ-1)
+	li = apiGen.Mul(tmp, li) // 1/n * (xⁿ-1)
 
 	res := zk.ValueOf(0)
 	wOmega := zk.ValueOf(omega)
 	for i := 0; i < size; i++ {
-		li = *apiGen.Mul(&li, &invdens[i])
-		tmp = *apiGen.Mul(&li, &poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
-		res = *apiGen.Add(&res, &tmp)
-		li = *apiGen.Mul(&li, &dens[i])
-		li = *apiGen.Mul(&li, &wOmega)
+		li = apiGen.Mul(li, invdens[i])
+		tmp = apiGen.Mul(li, poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
+		res = apiGen.Add(res, tmp)
+		li = apiGen.Mul(li, dens[i])
+		li = apiGen.Mul(li, wOmega)
 	}
 
 	return res
@@ -162,17 +162,17 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]zk.WrappedVariable, 
 
 	wOne := zk.ValueOf(1)
 	for i := range innerProductTerms {
-		innerProductTerms[i] = *apiGen.Mul(&powersOfOmegaInv[i], &x)
-		innerProductTerms[i] = *apiGen.Sub(&innerProductTerms[i], &wOne)
-		innerProductTerms[i] = *apiGen.Inverse(&innerProductTerms[i])
+		innerProductTerms[i] = apiGen.Mul(powersOfOmegaInv[i], x)
+		innerProductTerms[i] = apiGen.Sub(innerProductTerms[i], wOne)
+		innerProductTerms[i] = apiGen.Inverse(innerProductTerms[i])
 	}
 
 	for i, n := range sizes {
 		var nField field.Element
 		nField.SetInt64(int64(n))
-		scalingTerms[i] = *apiGen.Sub(&xNs[i], &wOne)
+		scalingTerms[i] = apiGen.Sub(xNs[i], wOne)
 		wn := zk.ValueOf(n)
-		scalingTerms[i] = *apiGen.Div(&scalingTerms[i], &wn)
+		scalingTerms[i] = apiGen.Div(scalingTerms[i], wn)
 	}
 
 	for i := range polys {
@@ -209,11 +209,11 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]zk.WrappedVariable, 
 				continue
 			}
 
-			tmp := *apiGen.Mul(&poly[k], &innerProductTerms[k*maxSize/n])
-			yUnscaled = *apiGen.Add(&tmp, &yUnscaled)
+			tmp := apiGen.Mul(poly[k], innerProductTerms[k*maxSize/n])
+			yUnscaled = apiGen.Add(tmp, yUnscaled)
 		}
 
-		res[i] = *apiGen.Mul(&yUnscaled, &scalingFactor)
+		res[i] = apiGen.Mul(yUnscaled, scalingFactor)
 	}
 
 	return res
@@ -258,7 +258,7 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]zk.WrappedVaria
 	)
 	e4one := ext4.One()
 	for i := range innerProductTerms {
-		innerProductTerms[i] = *ext4.MulByFp(&x, &powersOfOmegaInv[i])
+		innerProductTerms[i] = *ext4.MulByFp(&x, powersOfOmegaInv[i])
 		innerProductTerms[i] = *ext4.Sub(&innerProductTerms[i], e4one)
 		innerProductTerms[i] = *ext4.Inverse(&innerProductTerms[i])
 	}
@@ -268,7 +268,7 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]zk.WrappedVaria
 		nField.SetInt64(int64(n))
 		wn := zk.ValueOf(n)
 		scalingTerms[i] = *ext4.Sub(&xNs[i], e4one)
-		scalingTerms[i] = *ext4.DivByBase(&xNs[i], &wn)
+		scalingTerms[i] = *ext4.DivByBase(&xNs[i], wn)
 	}
 
 	for i := range polys {
@@ -307,7 +307,7 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]zk.WrappedVaria
 				continue
 			}
 
-			tmp = *ext4.MulByFp(&innerProductTerms[k*maxSize/n], &poly[k])
+			tmp = *ext4.MulByFp(&innerProductTerms[k*maxSize/n], poly[k])
 			yUnscaled = *ext4.Add(&tmp, &yUnscaled)
 		}
 
@@ -356,7 +356,7 @@ func raiseToPowersOfTwos(api frontend.API, x zk.WrappedVariable, ns []int) []zk.
 		}
 
 		for currN < n {
-			curr = *apiGen.Mul(&curr, &curr)
+			curr = apiGen.Mul(curr, curr)
 			currN *= 2
 		}
 

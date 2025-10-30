@@ -58,7 +58,7 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
 	wInvSize := zk.ValueOf(invSize)
-	tmp = *e4Api.MulByFp(&tmp, &wInvSize)
+	tmp = *e4Api.MulByFp(&tmp, wInvSize)
 	res = *e4Api.Mul(&res, &tmp)
 
 	return res
@@ -93,7 +93,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.E4Gen, x g
 	res := make([]gnarkfext.E4Gen, len(polys))
 
 	for i := range innerProductTerms {
-		innerProductTerms[i] = *e4Api.MulByFp(&x, &powersOfOmegaInv[i])
+		innerProductTerms[i] = *e4Api.MulByFp(&x, powersOfOmegaInv[i])
 		innerProductTerms[i] = *e4Api.Sub(&innerProductTerms[i], &one)
 		innerProductTerms[i] = *e4Api.Inverse(&innerProductTerms[i])
 	}
@@ -103,7 +103,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]gnarkfext.E4Gen, x g
 		nField.SetInt64(int64(n))
 		scalingTerms[i] = *e4Api.Sub(&xNs[i], &one)
 		wn := zk.ValueOf(n)
-		scalingTerms[i] = *e4Api.DivByBase(&scalingTerms[i], &wn)
+		scalingTerms[i] = *e4Api.DivByBase(&scalingTerms[i], wn)
 	}
 
 	for i := range polys {

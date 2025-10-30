@@ -50,7 +50,7 @@ func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
 	}
 
 	if n < 0 {
-		x = *apiGen.Inverse(&x)
+		x = apiGen.Inverse(x)
 		n = -n
 	}
 
@@ -60,9 +60,9 @@ func Exp(api frontend.API, x zk.WrappedVariable, n int) zk.WrappedVariable {
 	// right-to-left
 	for n != 0 {
 		if n&1 == 1 {
-			res = *apiGen.Mul(&res, &acc)
+			res = apiGen.Mul(res, acc)
 		}
-		acc = *apiGen.Mul(&acc, &acc)
+		acc = apiGen.Mul(acc, acc)
 		n >>= 1
 	}
 	return res
@@ -82,10 +82,10 @@ func ExpVariableExponent(api frontend.API, x zk.WrappedVariable, exp zk.WrappedV
 
 	for i := len(expBits) - 1; i >= 0; i-- {
 		if i != len(expBits)-1 {
-			res = *apiGen.Mul(&res, &res)
+			res = apiGen.Mul(res, res)
 		}
-		tmp := apiGen.Mul(&res, &x)
-		res = *apiGen.Select(expBits[i], tmp, &res)
+		tmp := apiGen.Mul(res, x)
+		res = apiGen.Select(expBits[i], tmp, res)
 	}
 
 	return res
