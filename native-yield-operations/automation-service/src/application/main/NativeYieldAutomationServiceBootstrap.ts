@@ -238,6 +238,7 @@ export class NativeYieldAutomationServiceBootstrap {
 
   public async connectServices(): Promise<void> {}
 
+  // Purposely refrain from awaiting .start() methods so they don't becoming blocking calls.
   public startAllServices(): void {
     this.api.start();
     this.logger.info("Metrics API server started");

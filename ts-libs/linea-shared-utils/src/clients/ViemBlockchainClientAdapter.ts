@@ -94,16 +94,47 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
   ): Promise<TransactionReceipt> {
     this.logger.debug("sendSignedTransaction started");
     let gasMultiplierBps = MAX_BPS; // Start at 100%
+    let maxFeePerGas = 0n;
+    let maxPriorityFeePerGas = 0n;
     let lastError: unknown;
 
     // Use a single nonce for all retries.
-    const nonce = await this.blockchainClient.getTransactionCount({ address: this.contractSignerClient.getAddress() });
+    const [nonce, gasLimit, chainId] = await Promise.all([
+      this.blockchainClient.getTransactionCount({ address: this.contractSignerClient.getAddress() }),
+      this.blockchainClient.estimateGas({
+        account: this.contractSignerClient.getAddress(),
+        to: contractAddress,
+        data: calldata,
+        value,
+      }),
+      this.getChainId(),
+    ]);
 
     for (let attempt = 1; attempt <= this.sendTransactionsMaxRetries; attempt += 1) {
       // Try to send tx with a timeout
       try {
+        // Get new fee estimate each time
+        const { maxFeePerGas: maxFeePerGasCandidate, maxPriorityFeePerGas: maxPriorityFeePerGasCandidate } =
+          await this.estimateGasFees();
+
+        // Use the highest fee estimate retrieved
+        maxFeePerGas = maxFeePerGasCandidate > maxFeePerGas ? maxFeePerGasCandidate : maxFeePerGas;
+        maxPriorityFeePerGas =
+          maxPriorityFeePerGasCandidate > maxPriorityFeePerGas ? maxPriorityFeePerGasCandidate : maxPriorityFeePerGas;
+
         const receipt = await withTimeout(
-          () => this._sendSignedTransaction(contractAddress, calldata, value, nonce, gasMultiplierBps),
+          () =>
+            this._sendSignedEIP1559Transaction(
+              contractAddress,
+              calldata,
+              value,
+              nonce,
+              gasLimit,
+              chainId,
+              maxFeePerGas,
+              maxPriorityFeePerGas,
+              gasMultiplierBps,
+            ),
           {
             timeout: this.sendTransactionAttemptTimeoutMs,
             signal: false, // don’t try to abort, just reject
@@ -155,26 +186,17 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     throw lastError;
   }
 
-  private async _sendSignedTransaction(
+  private async _sendSignedEIP1559Transaction(
     contractAddress: Address,
     calldata: Hex,
     value: bigint,
     nonce: number,
-    gasMultiplierBps = 10000n,
+    gasLimit: bigint,
+    chainId: number,
+    maxFeePerGas: bigint,
+    maxPriorityFeePerGas: bigint,
+    gasMultiplierBps: bigint,
   ): Promise<TransactionReceipt> {
-    // TODO - Move out of this fn
-    const [fees, gasLimit, chainId] = await Promise.all([
-      this.estimateGasFees(),
-      this.blockchainClient.estimateGas({
-        account: this.contractSignerClient.getAddress(),
-        to: contractAddress,
-        data: calldata,
-        value,
-      }),
-      this.getChainId(),
-    ]);
-    const { maxFeePerGas, maxPriorityFeePerGas } = fees;
-
     const tx: TransactionSerializableEIP1559 = {
       to: contractAddress,
       type: "eip1559",
