@@ -52,6 +52,23 @@ describe("loadConfigFromEnv", () => {
     expect(toClientConfigSpy).toHaveBeenCalledWith(configSchema.parse(env));
   });
 
+  it("falls back to process.env when no environment object is provided", () => {
+    const env = createValidEnv();
+    const expectedConfig = { sentinel: "process-env" } as unknown as ReturnType<typeof configModule.toClientConfig>;
+    const toClientConfigSpy = jest.spyOn(configModule, "toClientConfig").mockReturnValue(expectedConfig);
+    const originalEnv = process.env;
+    process.env = { ...env } as unknown as NodeJS.ProcessEnv;
+
+    try {
+      const result = loadConfigFromEnv();
+
+      expect(result).toBe(expectedConfig);
+      expect(toClientConfigSpy).toHaveBeenCalledWith(configSchema.parse(env));
+    } finally {
+      process.env = originalEnv;
+    }
+  });
+
   it("logs errors and exits the process when validation fails", () => {
     const env = {
       ...createValidEnv(),
