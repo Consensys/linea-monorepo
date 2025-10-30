@@ -74,7 +74,7 @@ func setDefaultExecLimitlessParams() {
 	viper.SetDefault("exec_limitless.witness_dir", "/tmp/exec-limitless/witness")
 	viper.SetDefault("exec_limitless.subproofs_dir", "/tmp/exec-limitless/subproofs")
 	viper.SetDefault("exec_limitless.shared_rnd_dir", "/tmp/exec-limitless/commit")
-	viper.SetDefault("exec_limitless.timeout_seconds", 2400)
+	viper.SetDefault("exec_limitless.timeout_seconds", 4800)
 }
 
 func setDefaultDebugFlags() {
