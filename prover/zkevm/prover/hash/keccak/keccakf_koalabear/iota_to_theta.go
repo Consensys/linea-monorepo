@@ -1,4 +1,4 @@
-package protocols
+package keccakfkoalabear
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	BaseChi    = 11
 	BaseChi4   = 14641 // 11^4
 	BaseTheta  = 4
 	BaseTheta4 = 256 // 4^4
@@ -22,17 +21,8 @@ var (
 	BaseTheta4Fr = field.NewElement(BaseTheta4)
 )
 
-// each lane is 64 bits, represented as 8 bytes.
-type lane = [8]ifaces.Column
-
-// keccakf state is a 5x5 matrix of lanes.
-type state = [5][5]lane
-
-// state after each base conversion, each lane is decomposed into 16 slices of 4 bits each.
-type stateIn4Bits = [5][5][16]ifaces.Column
-
-// BaseConversion module, responsible for converting the state from base dirty BaseChi to BaseTheta.
-type BaseConversion struct {
+// convertAndClean module, responsible for converting the state from base dirty BaseChi to BaseTheta.
+type convertAndClean struct {
 	// state before applying the base conversion step, in base dirty BaseChi.
 	stateCurr state
 	// state after applying the base conversion step, in base clean BaseTheta.
@@ -44,10 +34,10 @@ type BaseConversion struct {
 }
 
 // newBaseConversion creates a new base conversion module, declares the columns and constraints and returns its pointer
-func NewBaseConversion(comp *wizard.CompiledIOP, stateCurr [5][5]lane) *BaseConversion {
+func NewConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane) *convertAndClean {
 
 	var (
-		bc = &BaseConversion{
+		bc = &convertAndClean{
 			stateCurr: stateCurr,
 		}
 		size = stateCurr[0][0][0].Size()
@@ -76,7 +66,7 @@ func NewBaseConversion(comp *wizard.CompiledIOP, stateCurr [5][5]lane) *BaseConv
 }
 
 // assignBaseConversion assigns the values to the columns of base conversion step.
-func (bc *BaseConversion) Run(run *wizard.ProverRuntime) BaseConversion {
+func (bc *convertAndClean) Run(run *wizard.ProverRuntime) convertAndClean {
 	// decompose each bytes of the lane into 4 bits (base 12)
 	var (
 		size = bc.stateCurr[0][0][0].Size()
@@ -115,5 +105,5 @@ func (bc *BaseConversion) Run(run *wizard.ProverRuntime) BaseConversion {
 			}
 		}
 	}
-	return BaseConversion{stateCurr: bc.stateCurr}
+	return convertAndClean{stateCurr: bc.stateCurr}
 }
