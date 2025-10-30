@@ -245,7 +245,7 @@ export default class SubmitInvoice extends Command {
     const awsCostsInUsd = await this.getAWSCosts(invoicePeriod, awsCostsApiFilters);
 
     this.log(
-      `Total AWS costs for the period: costsInUsd=${awsCostsInUsd} startDate=${invoicePeriodStartDateStr} endDate=${invoicePeriodEndDateStr}`,
+      `Total AWS costs costsInUsd=${awsCostsInUsd} for the period: startDate=${invoicePeriodStartDateStr} endDate=${invoicePeriodEndDateStr}`,
     );
 
     /******************************
@@ -255,7 +255,7 @@ export default class SubmitInvoice extends Command {
     const onChainCostsInEth = await this.getOnChainCosts(duneApiKey, duneQueryId, invoicePeriod);
 
     this.log(
-      `Total on-chain costs for the period: costsInEth=${onChainCostsInEth} startDate=${invoicePeriodStartDateStr} endDate=${invoicePeriodEndDateStr}`,
+      `Total on-chain costs costsInEth=${onChainCostsInEth} for the period: startDate=${invoicePeriodStartDateStr} endDate=${invoicePeriodEndDateStr}`,
     );
 
     /******************************
