@@ -74,7 +74,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 
 	var (
 		lppProofFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-proof.bin", req.StartBlock, req.EndBlock, req.SegID, witnessLPP.ModuleIndex)
-		proofLPPFile     = path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), config.RequestsFromSubDir, lppProofFileName)
+		proofLPPFile     = path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", string(witnessLPP.ModuleName), config.RequestsFromSubDir, lppProofFileName)
 	)
 
 	// Incase the prev. process was interrupted, we clear the previous corrupted files (if it exists)
