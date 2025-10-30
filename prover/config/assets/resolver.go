@@ -51,6 +51,7 @@ func (r *AssetResolver) bootstrapAssets() ([]string, []string, error) {
 		filepath.Join(r.SetupDir, "dw-bootstrapper.bin"),
 		filepath.Join(r.SetupDir, "zkevm-wiop.bin"),
 		filepath.Join(r.SetupDir, "disc.bin"),
+		filepath.Join(r.SetupDir, "verification-key-merkle-tree.bin"),
 	}
 	glBlueprints, _ := filepath.Glob(filepath.Join(r.SetupDir, "dw-blueprint-gl-*.bin"))
 	lppBlueprints, _ := filepath.Glob(filepath.Join(r.SetupDir, "dw-blueprint-lpp-*.bin"))
@@ -75,6 +76,7 @@ func (r *AssetResolver) bootstrapAssets() ([]string, []string, error) {
 func (r *AssetResolver) conglomerationAssets() ([]string, []string, error) {
 	all := []string{
 		filepath.Join(r.SetupDir, "dw-compiled-conglomeration.bin"),
+		filepath.Join(r.SetupDir, "verification-key-merkle-tree.bin"),
 		filepath.Join(r.SetupDir, "circuit.bin"),
 		filepath.Join(r.SetupDir, "verifying_key.bin"),
 		filepath.Join(r.SetupDir, "manifest.json"),
@@ -101,7 +103,7 @@ func (r *AssetResolver) glAssets(module string) ([]string, []string, error) {
 
 func (r *AssetResolver) lppAssets(module string) ([]string, []string, error) {
 	all := []string{}
-	compiled := filepath.Join(r.SetupDir, "dw-compiled-lpp-["+module+"].bin")
+	compiled := filepath.Join(r.SetupDir, "dw-compiled-lpp-"+module+".bin")
 	if _, err := os.Stat(compiled); err == nil {
 		all = append(all, compiled)
 	}
