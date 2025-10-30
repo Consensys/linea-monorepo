@@ -29,7 +29,6 @@ export const configSchema = z
     VAULT_HUB_ADDRESS: Address,
     YIELD_MANAGER_ADDRESS: Address,
     LIDO_YIELD_PROVIDER_ADDRESS: Address,
-    LIDO_STAKING_VAULT_ADDRESS: Address,
     // L2 contract addresses
     L2_YIELD_RECIPIENT: Address,
     // Timing intervals

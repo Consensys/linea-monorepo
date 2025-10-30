@@ -74,18 +74,19 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
 
     this.logger.info("_process - Fetching latest vault report");
     // Submit vault report if available
-    await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams();
+    const vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
+    await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(vault);
     const isSimulateSubmitLatestVaultReportSuccessful =
-      await this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful();
+      await this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful(vault);
     if (isSimulateSubmitLatestVaultReportSuccessful) {
       this.logger.info("_process - Submitting latest vault report");
       const vaultReportResult = await attempt(
         this.logger,
-        () => this.lidoAccountingReportClient.submitLatestVaultReport(),
+        () => this.lidoAccountingReportClient.submitLatestVaultReport(vault),
         "submitLatestVaultReport failed (tolerated)",
       );
       if (vaultReportResult.isOk()) {
-        this.metricsUpdater.incrementLidoVaultAccountingReport(this.lidoAccountingReportClient.getVault());
+        this.metricsUpdater.incrementLidoVaultAccountingReport(vault);
       }
     }
 

@@ -183,6 +183,45 @@ describe("BeaconChainStakingClient", () => {
   });
 
   describe("_submitPartialWithdrawalRequests (private)", () => {
+    it("returns max validator slots and skips unstake when the validator list is empty", async () => {
+      const maxValidatorsPerTx = 3;
+      const { client, unstakeMock } = setupClient(maxValidatorsPerTx);
+
+      const remaining = await (
+        client as unknown as {
+          _submitPartialWithdrawalRequests(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            amountWei: bigint,
+          ): Promise<number>;
+        }
+      )._submitPartialWithdrawalRequests([], 1n * ONE_GWEI);
+
+      expect(remaining).toBe(maxValidatorsPerTx);
+      expect(unstakeMock).not.toHaveBeenCalled();
+    });
+
+    it("returns max validator slots when no validator has withdrawable balance", async () => {
+      const maxValidatorsPerTx = 3;
+      const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);
+      const validators = [
+        createValidator({ publicKey: "validator-1", withdrawableAmount: 0n }),
+        createValidator({ publicKey: "validator-2", withdrawableAmount: 0n }),
+      ];
+
+      const remaining = await (
+        client as unknown as {
+          _submitPartialWithdrawalRequests(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            amountWei: bigint,
+          ): Promise<number>;
+        }
+      )._submitPartialWithdrawalRequests(validators, 5n * ONE_GWEI);
+
+      expect(remaining).toBe(maxValidatorsPerTx);
+      expect(unstakeMock).not.toHaveBeenCalled();
+      expect(mocks.addValidatorPartialUnstakeAmount).not.toHaveBeenCalled();
+    });
+
     it("stops building requests once the required amount is met even if the validator limit is not reached", async () => {
       const maxValidatorsPerTx = 3;
       const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);
@@ -257,6 +296,46 @@ describe("BeaconChainStakingClient", () => {
   });
 
   describe("_submitValidatorExits (private)", () => {
+    it("returns immediately when no withdrawal slots remain", async () => {
+      const { client, unstakeMock, mocks } = setupClient();
+      const validators = [
+        createValidator({ publicKey: "validator-1", withdrawableAmount: 0n }),
+        createValidator({ publicKey: "validator-2", withdrawableAmount: 0n }),
+      ];
+
+      await (
+        client as unknown as {
+          _submitValidatorExits(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            remainingWithdrawals: number,
+          ): Promise<void>;
+        }
+      )._submitValidatorExits(validators, 0);
+
+      expect(unstakeMock).not.toHaveBeenCalled();
+      expect(mocks.incrementValidatorExit).not.toHaveBeenCalled();
+    });
+
+    it("returns without unstaking when no validators qualify for exits", async () => {
+      const { client, unstakeMock, mocks } = setupClient();
+      const validators = [
+        createValidator({ publicKey: "validator-1", withdrawableAmount: 1n }),
+        createValidator({ publicKey: "validator-2", withdrawableAmount: 2n }),
+      ];
+
+      await (
+        client as unknown as {
+          _submitValidatorExits(
+            list: ValidatorBalanceWithPendingWithdrawal[],
+            remainingWithdrawals: number,
+          ): Promise<void>;
+        }
+      )._submitValidatorExits(validators, 2);
+
+      expect(unstakeMock).not.toHaveBeenCalled();
+      expect(mocks.incrementValidatorExit).not.toHaveBeenCalled();
+    });
+
     it("stops adding exits when reaching the maximum per-transaction limit even with remaining capacity", async () => {
       const maxValidatorsPerTx = 3;
       const { client, unstakeMock, mocks } = setupClient(maxValidatorsPerTx);

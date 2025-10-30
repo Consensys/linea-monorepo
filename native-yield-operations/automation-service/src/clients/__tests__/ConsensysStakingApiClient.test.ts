@@ -174,6 +174,105 @@ describe("ConsensysStakingApiClient", () => {
 
       getActiveValidatorsSpy.mockRestore();
     });
+
+    it("keeps already sorted validators when the first entry has the largest withdrawable amount", async () => {
+      const { client, pendingWithdrawalsMock } = createClient();
+
+      const validatorHigh: ValidatorBalance = {
+        balance: 45n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-high",
+        validatorIndex: 10n,
+      };
+
+      const validatorLow: ValidatorBalance = {
+        balance: 40n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-low",
+        validatorIndex: 11n,
+      };
+
+      const getActiveValidatorsSpy = jest
+        .spyOn(client, "getActiveValidators")
+        .mockResolvedValueOnce([validatorHigh, validatorLow]);
+
+      pendingWithdrawalsMock.mockResolvedValueOnce([
+        {
+          validator_index: Number(validatorHigh.validatorIndex),
+          amount: 2n * ONE_GWEI,
+          withdrawable_epoch: 0,
+        },
+        {
+          validator_index: Number(validatorLow.validatorIndex),
+          amount: 6n * ONE_GWEI,
+          withdrawable_epoch: 0,
+        },
+      ]);
+
+      const result = await client.getActiveValidatorsWithPendingWithdrawals();
+
+      const expectedHigh: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorHigh,
+        pendingWithdrawalAmount: 2n * ONE_GWEI,
+        withdrawableAmount: safeSub(safeSub(validatorHigh.balance, 2n * ONE_GWEI), ONE_GWEI * 32n),
+      };
+      const expectedLow: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorLow,
+        pendingWithdrawalAmount: 6n * ONE_GWEI,
+        withdrawableAmount: safeSub(safeSub(validatorLow.balance, 6n * ONE_GWEI), ONE_GWEI * 32n),
+      };
+
+      expect(result).toEqual([expectedHigh, expectedLow]);
+
+      getActiveValidatorsSpy.mockRestore();
+    });
+
+    it("handles validators with equal withdrawable amounts", async () => {
+      const { client, pendingWithdrawalsMock } = createClient();
+
+      const validatorEqualA: ValidatorBalance = {
+        balance: 36n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-equal-a",
+        validatorIndex: 20n,
+      };
+      const validatorEqualB: ValidatorBalance = {
+        balance: 32n * ONE_GWEI,
+        effectiveBalance: 32n * ONE_GWEI,
+        publicKey: "validator-equal-b",
+        validatorIndex: 21n,
+      };
+
+      const getActiveValidatorsSpy = jest
+        .spyOn(client, "getActiveValidators")
+        .mockResolvedValueOnce([validatorEqualA, validatorEqualB]);
+
+      pendingWithdrawalsMock.mockResolvedValueOnce([
+        {
+          validator_index: Number(validatorEqualA.validatorIndex),
+          amount: 4n * ONE_GWEI,
+          withdrawable_epoch: 0,
+        },
+      ]);
+
+      const result = await client.getActiveValidatorsWithPendingWithdrawals();
+
+      const expectedEqualA: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorEqualA,
+        pendingWithdrawalAmount: 4n * ONE_GWEI,
+        withdrawableAmount: safeSub(safeSub(validatorEqualA.balance, 4n * ONE_GWEI), ONE_GWEI * 32n),
+      };
+
+      const expectedEqualB: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorEqualB,
+        pendingWithdrawalAmount: 0n,
+        withdrawableAmount: safeSub(safeSub(validatorEqualB.balance, 0n), ONE_GWEI * 32n),
+      };
+
+      expect(result).toEqual(expect.arrayContaining([expectedEqualA, expectedEqualB]));
+
+      getActiveValidatorsSpy.mockRestore();
+    });
   });
 
   describe("getTotalPendingPartialWithdrawalsWei", () => {

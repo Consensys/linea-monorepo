@@ -169,7 +169,6 @@ export class NativeYieldAutomationServiceBootstrap {
       this.exponentialBackoffRetryService,
       this.lazyOracleContractClient,
       config.dataSources.ipfsBaseUrl,
-      this.config.contractAddresses.lidoStakingVaultAddress,
     );
     this.beaconChainStakingClient = new BeaconChainStakingClient(
       new WinstonLogger(BeaconChainStakingClient.name, config.loggerOptions),

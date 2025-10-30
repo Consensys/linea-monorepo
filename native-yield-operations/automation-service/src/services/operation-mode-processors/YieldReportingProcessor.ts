@@ -14,6 +14,8 @@ import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationMode
 
 // FIRST PRIORITY FOR UNIT TESTING
 export class YieldReportingProcessor implements IOperationModeProcessor {
+  private vault: Address;
+
   constructor(
     private readonly logger: ILogger,
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
@@ -97,10 +99,11 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    */
   private async _process(): Promise<void> {
     // Fetch initial data
-    await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams();
+    this.vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
+    await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault);
     const [initialRebalanceRequirements, isSimulateSubmitLatestVaultReportSuccessful] = await Promise.all([
       this.yieldManagerContractClient.getRebalanceRequirements(),
-      this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful(),
+      this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful(this.vault),
     ]);
     this.logger.info(
       `_process - Initial data fetch: initialRebalanceRequirements=${JSON.stringify(initialRebalanceRequirements, bigintReplacer, 2)} isSimulateSubmitLatestVaultReportSuccessful=${isSimulateSubmitLatestVaultReportSuccessful}`,
@@ -247,14 +250,14 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     // First call: submit vault report
     const vaultResult = await attempt(
       this.logger,
-      () => this.lidoAccountingReportClient.submitLatestVaultReport(),
+      () => this.lidoAccountingReportClient.submitLatestVaultReport(this.vault),
       "_handleSubmitLatestVaultReport: submitLatestVaultReport failed; skipping yield report",
     );
     // Early return, no point reporting Linea yield without a new vault report beforehand
     if (vaultResult.isErr()) {
       return;
     } else {
-      this.metricsUpdater.incrementLidoVaultAccountingReport(this.lidoAccountingReportClient.getVault());
+      this.metricsUpdater.incrementLidoVaultAccountingReport(this.vault);
     }
 
     // Second call: report yield
