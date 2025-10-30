@@ -119,7 +119,7 @@ func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
 	xU64 := binary.BigEndian.Uint64(data[:])
 
 	if n < 0 {
-		panic("we are only reading 8 bits so this should not overflow")
+		panic("invalid n, should never be negative")
 	}
 	xU64 &= 0x7fffffffffffffff  // TODO delete this if negative numbers are allowed
 	return int64(xU64), 64, err // #nosec G115 -- above line precludes overflowing
