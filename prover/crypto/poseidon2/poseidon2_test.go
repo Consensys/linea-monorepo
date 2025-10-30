@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -197,17 +198,17 @@ func getGnarkHasherCircuitWitness() (*GnarkHasherCircuit, *GnarkHasherCircuit) {
 
 func TestCircuit(t *testing.T) {
 
-	// {
-	// 	circuit, witness := getGnarkHasherCircuitWitness()
+	{
+		circuit, witness := getGnarkHasherCircuitWitness()
 
-	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	// 	assert.NoError(t, err)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
 
-	// 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
+		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 
 	{
 		circuit, witness := getGnarkHasherCircuitWitness()
