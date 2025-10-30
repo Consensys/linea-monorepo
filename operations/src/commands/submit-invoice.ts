@@ -233,10 +233,10 @@ export default class SubmitInvoice extends Command {
       return;
     }
 
-    const invoicePeriodFromDateStr = invoicePeriod.startDate.toISOString();
-    const invoicePeriodToDateStr = invoicePeriod.endDate.toISOString();
+    const invoicePeriodStartDateStr = invoicePeriod.startDate.toISOString();
+    const invoicePeriodEndDateStr = invoicePeriod.endDate.toISOString();
 
-    this.log(`Invoice period to process: fromDate=${invoicePeriodFromDateStr} toDate=${invoicePeriodToDateStr}`);
+    this.log(`Invoice period to process: startDate=${invoicePeriodStartDateStr} endDate=${invoicePeriodEndDateStr}`);
 
     /******************************
             AWS COSTS FETCHING
@@ -245,7 +245,7 @@ export default class SubmitInvoice extends Command {
     const awsCostsInUsd = await this.getAWSCosts(invoicePeriod, awsCostsApiFilters);
 
     this.log(
-      `Total AWS costs for the period: costsInUsd=${awsCostsInUsd} fromDate=${invoicePeriodFromDateStr} toDate=${invoicePeriodToDateStr}`,
+      `Total AWS costs for the period: costsInUsd=${awsCostsInUsd} startDate=${invoicePeriodStartDateStr} endDate=${invoicePeriodEndDateStr}`,
     );
 
     /******************************
@@ -255,7 +255,7 @@ export default class SubmitInvoice extends Command {
     const onChainCostsInEth = await this.getOnChainCosts(duneApiKey, duneQueryId, invoicePeriod);
 
     this.log(
-      `Total on-chain costs for the period: costsInEth=${onChainCostsInEth} fromDate=${invoicePeriodFromDateStr} toDate=${invoicePeriodToDateStr}`,
+      `Total on-chain costs for the period: costsInEth=${onChainCostsInEth} startDate=${invoicePeriodStartDateStr} endDate=${invoicePeriodEndDateStr}`,
     );
 
     /******************************
@@ -393,7 +393,7 @@ export default class SubmitInvoice extends Command {
     const startDateStr = formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd");
     const endDateStr = formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd");
 
-    this.log(`Fetching AWS costs for the invoice period from=${startDateStr} to=${endDateStr}`);
+    this.log(`Fetching AWS costs for the invoice period startDate=${startDateStr} endDate=${endDateStr}`);
 
     if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
       this.error("AWS Costs API Filters must specify one metric.");
@@ -411,7 +411,7 @@ export default class SubmitInvoice extends Command {
     );
 
     if (!Array.isArray(ResultsByTime) || ResultsByTime.length === 0) {
-      this.error(`No AWS cost data returned for the specified period. fromDate=${startDateStr} toDate=${endDateStr}`);
+      this.error(`No AWS cost data returned for the specified period. startDate=${startDateStr} endDate=${endDateStr}`);
     }
 
     const metric = awsCostsApiFilters.Metrics[0];
@@ -420,7 +420,7 @@ export default class SubmitInvoice extends Command {
 
     if (!totalForMetric || !totalForMetric?.Amount) {
       this.error(
-        `AWS cost data does not contain the specified metric or Amount field. metric=${metric} fromDate=${startDateStr} toDate=${endDateStr}`,
+        `AWS cost data does not contain the specified metric or Amount field. metric=${metric} startDate=${startDateStr} endDate=${endDateStr}`,
       );
     }
 
@@ -445,8 +445,8 @@ export default class SubmitInvoice extends Command {
         duneClient,
         duneQueryId,
         generateQueryParameters({
-          fromDate: invoicePeriod.startDate,
-          toDate: invoicePeriod.endDate,
+          startDate: invoicePeriod.startDate,
+          endDate: invoicePeriod.endDate,
         }),
       ),
       "Failed to run Dune query",
@@ -454,7 +454,7 @@ export default class SubmitInvoice extends Command {
 
     if (!result || !result.rows || result.rows.length === 0) {
       this.error(
-        `No Dune query result returned for the specified period. fromDate=${invoicePeriod.startDate.toISOString()} toDate=${invoicePeriod.endDate.toISOString()}`,
+        `No Dune query result returned for the specified period. startDate=${invoicePeriod.startDate.toISOString()} endDate=${invoicePeriod.endDate.toISOString()}`,
       );
     }
     return result.rows.reduce((acc, row) => acc + (row.total_costs_per_day as number), 0);
