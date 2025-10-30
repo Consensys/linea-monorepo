@@ -17,17 +17,26 @@ type LinearCombination struct {
 	scalar int
 	// input columns
 	cols []ifaces.Column
-	// output column
-	CombinationRes ifaces.Column
+	// output column, if withExprOnly is false
+	LinCombCol ifaces.Column
+	// output in the expression form
+	LinCombExpr *sym.Expression
+	// witness for the linear combination expression only.
+	LinCombWitness []field.Element
 	// size of columns
 	size int
+	// withExprOnly indicates whether only the expression is created,
+	// without creating the output column and constraint.
+	withExprOnly bool
 }
 
 // LinearCombination is similar to polynomial evaluation, implementing [wizard.ProverAction].
-func NewLinearCombination(comp *wizard.CompiledIOP, name string, r []ifaces.Column, base int) *LinearCombination {
+// withExprOnly is an optional boolean parameter (default to false) to indicate whether to create only the expression without creating the output column and constraint. This is useful when the linear combination is only used in the  global constraints.
+func NewLinearCombination(comp *wizard.CompiledIOP, name string, r []ifaces.Column, base int, withExprOnly ...bool) *LinearCombination {
 	var (
-		size = r[0].Size()
-		col  = comp.InsertCommit(0, ifaces.ColIDf("%v", name), size)
+		size     = r[0].Size()
+		col      ifaces.Column
+		exprOnly = true
 	)
 	// .. using the Horner method
 	s := sym.NewConstant(0)
@@ -36,15 +45,22 @@ func NewLinearCombination(comp *wizard.CompiledIOP, name string, r []ifaces.Colu
 		s = sym.Add(s, r[i])
 	}
 
-	comp.InsertGlobal(0, ifaces.QueryIDf("%v_QUERY", name),
-		sym.Sub(col, s),
-	)
+	if len(withExprOnly) == 0 || !withExprOnly[0] {
+		col = comp.InsertCommit(0, ifaces.ColIDf("%v", name), size)
+
+		comp.InsertGlobal(0, ifaces.QueryIDf("%v_QUERY", name),
+			sym.Sub(col, s),
+		)
+		exprOnly = false
+	}
 
 	return &LinearCombination{
-		scalar:         base,
-		cols:           r,
-		CombinationRes: col,
-		size:           size,
+		scalar:       base,
+		cols:         r,
+		LinCombCol:   col,
+		LinCombExpr:  s,
+		size:         size,
+		withExprOnly: exprOnly,
 	}
 }
 
@@ -77,7 +93,12 @@ func (bc *LinearCombination) Run(run *wizard.ProverRuntime) {
 
 	}
 
-	run.AssignColumn(bc.CombinationRes.GetColID(), smartvectors.NewRegular(ss))
+	// assign the witness for withExprOnly mode.
+	bc.LinCombWitness = ss
+
+	if !bc.withExprOnly {
+		run.AssignColumn(bc.LinCombCol.GetColID(), smartvectors.NewRegular(ss))
+	}
 }
 
 func DecomposeForTesting(r uint64, base int, nb int) (res []uint64) {

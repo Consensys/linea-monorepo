@@ -6,14 +6,14 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/protocols"
 )
 
 const (
 	// Number of 64bits lanes in a keccak block
 	numLanesInBlock = 17
 	numRounds       = 24
-	numSlices       = 8 // the number of slices of lane for working with BaseTheta and BaseChi
+	// the number of slices of lane for working with BaseTheta and BaseChi
+	numSlices = 8
 )
 
 type (
@@ -54,12 +54,12 @@ type Module struct {
 	inputs keccakfInputs
 	// theta module, responsible for updating the state in the theta step of keccakf
 	theta *theta
-	// base conversion module, responsible for converting the state from base dirty 12 to base 2.
-	bc *protocols.BaseConversion
 	// rho pi module, responsible for updating the state in the rho and pi steps of keccakf
 	RhoPi *rho
 	// chi module, responsible for updating the state in the chi step of keccakf
-	Chi *chi
+	ChiIota *chi
+	// iota to theta module, responsible for bringing back the state from [ChiIota] to the representation proper for theta step.
+	IotaToTheta *convertAndClean
 }
 
 // NewModule creates a new keccakf module, declares the columns and constraints and returns its pointer
@@ -131,7 +131,7 @@ func (m *Module) Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [numLa
 	// assign the theta module with the state including the message-blocks
 	m.theta.assignTheta(run, state)
 	// assign the base conversion module with the state after theta
-	m.bc.Run(run)
+	m.IotaToTheta.Run(run)
 	// assign the rho pi module with the state after theta
 	// m.RhoPi.assignRoh(run, m.bc.StateNext)
 

@@ -64,7 +64,7 @@ func TestChi(t *testing.T) {
 				for x := 0; x < 5; x++ {
 					for y := 0; y < 5; y++ {
 						for z := 0; z < numSlices; z++ {
-							k := mod.Chi.StateNext[x][y][z].GetColAssignmentAt(run, permId*keccak.NumRound+round)
+							k := mod.ChiIota.StateNext[x][y][z].GetColAssignmentAt(run, permId*keccak.NumRound+round)
 							res := common.CleanBase(common.DecomposeUint32(k.Uint64(), BaseChi, numSlices))
 							for j := range res {
 								stateBits[z*numSlices+j] = res[j]
@@ -128,7 +128,7 @@ func chiTestingModule(
 
 		isBlockOther = comp.InsertCommit(0, "IS_BLOCK_OTHER", size)
 
-		mod.Chi = newChi(comp, chiInputs{
+		mod.ChiIota = newChi(comp, chiInputs{
 			stateCurr:    stateCurr,
 			blocks:       blocks,
 			isBlockOther: isBlockOther,
@@ -246,7 +246,7 @@ func chiTestingModule(
 			run.AssignColumn(isBlockOther.GetColID(), smartvectors.RightZeroPadded(isBlockOtherWit, size))
 
 			// Then assigns all the columns of the rho module
-			mod.Chi.assignChi(run, stateCurr)
+			mod.ChiIota.assignChi(run, stateCurr)
 		}
 	}
 
