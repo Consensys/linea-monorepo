@@ -96,12 +96,15 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		// with capacity large enough so producers won't block
 		proofStream = make(chan *distributed.SegmentProof, totalProofs)
 		resultCh    = make(chan congResult, 1)
+
+		cong *distributed.RecursedSegmentCompilation
 	)
 
 	// -- 2. Launch background hierarchical reduction pipeline to recursively conglomerate as 2 or more
 	// proofs come in. It will exit when it collects `totalProofs` or when ctx is cancelled.
 	go func() {
-		cong, err := zkevm.LoadCompiledConglomeration(cfg)
+		var err error
+		cong, err = zkevm.LoadCompiledConglomeration(cfg)
 		if err != nil || cong == nil {
 			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
 		}
@@ -137,6 +140,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				defer func() {
 					if r := recover(); r != nil {
 						jobErr = fmt.Errorf("GL prover for witness index=%v panicked: %v", i, r)
+						logrus.Error(jobErr)
 						debug.PrintStack()
 						return
 					}
@@ -210,6 +214,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 				defer func() {
 					if r := recover(); r != nil {
 						jobErr = fmt.Errorf("LPP prover for witness index=%v panicked: %v", i, r)
+						logrus.Error(jobErr)
 						debug.PrintStack()
 						return
 					}
@@ -256,10 +261,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 
 	logrus.Infof("HIERARCHICAL CONGLOMERATION SUCCESSFUL!!!")
 
-	// congFinalproof := res.proof
-
-	// TODO: Sanity check the final conglomerated proof using wizard.VerifyRuntime
-	// For that we should be able to extract a wizard.proof from segment proof
+	congFinalproof := res.proof
 
 	// -- 5. Load setup (in background started earlier maybe)
 	var (
@@ -279,13 +281,13 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		utils.Panic("could not load setup: %v", errSetup)
 	}
 
-	// out.Proof = execCirc.MakeProof(
-	// 	&cfg.TracesLimits,
-	// 	setup,
-	// 	cong.HierarchicalConglomeration.Wiop,
-	// 	congFinalproof,
-	// 	*witness.FuncInp,
-	// )
+	out.Proof = execCirc.MakeProof(
+		&cfg.TracesLimits,
+		setup,
+		cong.HierarchicalConglomeration.Wiop,
+		congFinalproof.Witness.Proof,
+		*witness.FuncInp,
+	)
 
 	logrus.Infof("Returning dummy outer proof for now.")
 	out.Proof = "dummy-proof"
