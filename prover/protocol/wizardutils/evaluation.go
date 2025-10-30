@@ -58,3 +58,15 @@ func RandLinCombColAssignment(run *wizard.ProverRuntime, coinVal fext.Element, h
 	}
 	return smartvectors.NewRegularExt(vWitness)
 }
+
+// LinCombExpr generates a symbolic expression representing a linear combination
+// the expression can be evaluated at point x over the columns hs via [column.EvalExprColumn].
+func LinCombExpr(x int, hs []ifaces.Column) *symbolic.Expression {
+	cols := make([]*symbolic.Expression, len(hs))
+	xExpr := symbolic.NewConstant(int64(x))
+	for c := range cols {
+		cols[c] = ifaces.ColumnAsVariable(hs[c])
+	}
+	expr := symbolic.NewPolyEval(xExpr, cols)
+	return expr
+}
