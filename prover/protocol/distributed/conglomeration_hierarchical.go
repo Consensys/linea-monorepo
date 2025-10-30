@@ -373,7 +373,7 @@ func (c *ModuleConglo) Assign(
 	// This assigns the Merkle proofs in the verification key merkle tree
 	for i := range proofs {
 		mProof := mt.GetVkMerkleProof(proofs[i])
-		recursionWitnesses = append(recursionWitnesses, proofs[i].Witness)
+		recursionWitnesses = append(recursionWitnesses, proofs[i].RecursionWitness)
 		for j := range mProof {
 			run.AssignColumn(
 				c.VerificationKeyMerkleProofs[i][j].GetColID(),
@@ -1145,56 +1145,4 @@ func cmpWizardIOP(c1, c2 *wizard.CompiledIOP) (diff1, diff2 []string) {
 // dumpWizardIOP dumps a compiled IOP to a file.
 func dumpWizardIOP(c *wizard.CompiledIOP, name string) {
 	logdata.GenCSV(files.MustOverwrite(name), logdata.IncludeAllFilter)(c)
-}
-
-// SanityCheckPublicInputsForConglo checks that a list of runtime is compatible
-// with each other. The function will perform the same checks that the
-// conglomerator but can be used on debugging-circuits.
-func SanityCheckPublicInputsForConglo(wiop *wizard.CompiledIOP, proofs SegmentProof) error {
-
-	var (
-		mainErr error
-		run, _  = wizard.VerifyWithRuntime(wiop, proofs.Witness.Proof)
-		pi      = collectAllPublicInputs(run)
-	)
-
-	if !pi.GrandProduct.IsOne() {
-		mainErr = errors.Join(mainErr, errors.New("grand product is not 1"))
-	}
-
-	if !pi.LogDerivativeSum.IsZero() {
-		mainErr = errors.Join(mainErr, errors.New("log derivative sum is not 0"))
-	}
-
-	if !pi.HornerSum.IsZero() {
-		mainErr = errors.Join(mainErr, errors.New("horner sum is not 0"))
-	}
-
-	for i := range pi.GeneralMultiSetHash {
-		if !pi.GeneralMultiSetHash[i].IsZero() {
-			mainErr = errors.Join(mainErr, errors.New("general multi set hash is not 0"))
-			break
-		}
-	}
-
-	for i := range pi.TargetNbSegments {
-		if !pi.TargetNbSegments[i].Equal(&pi.SegmentCountGL[i]) {
-			mainErr = errors.Join(mainErr, errors.New("target nb segments is not equal to segment count gl"))
-		}
-
-		if !pi.TargetNbSegments[i].Equal(&pi.SegmentCountLPP[i]) {
-			mainErr = errors.Join(mainErr, errors.New("target nb segments is not equal to segment count lpp"))
-		}
-	}
-
-	sharedRandSum := mimc.HashVec(pi.SharedRandomnessMultiSetHash)
-	if sharedRandSum != pi.SharedRandomness {
-		mainErr = errors.Join(mainErr, errors.New("shared randomness sum is not equal to shared randomness multi set hash"))
-	}
-
-	if mainErr != nil {
-		fmt.Printf("conglomeration failed: err=%v\n", mainErr)
-	}
-
-	return mainErr
 }
