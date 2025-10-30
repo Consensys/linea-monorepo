@@ -65,7 +65,7 @@ func TestChi(t *testing.T) {
 					for y := 0; y < 5; y++ {
 						for z := 0; z < numSlices; z++ {
 							k := mod.ChiIota.StateNext[x][y][z].GetColAssignmentAt(run, permId*keccak.NumRound+round)
-							res := common.CleanBase(common.DecomposeUint32(k.Uint64(), BaseChi, numSlices))
+							res := common.CleanBaseChi(common.DecomposeU64(k.Uint64(), BaseChi, numSlices))
 							for j := range res {
 								stateBits[z*numSlices+j] = res[j]
 							}
