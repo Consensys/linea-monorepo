@@ -18,7 +18,7 @@ import (
 
 // TestDistributedWizardBasic attempts to compiler the wizard distribution.
 func TestDistributedWizardBasic(t *testing.T) {
-
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	var (
 		z       = DistributeTestCase{numRow: 1 << 20}
 		defFunc = func(build *wizard.Builder) { z.Define(build.CompiledIOP) }

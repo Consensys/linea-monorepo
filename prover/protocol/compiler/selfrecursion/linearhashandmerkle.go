@@ -134,7 +134,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		}
 		if stackedSisLeaves.IsSourceColsArePadded {
 			mimcW.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
-				ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, stackedSisLeaves.UnpaddedColumn)
+				ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, *stackedSisLeaves.UnpaddedColumn)
 		} else {
 			mimcW.CheckLinearHash(ctx.Comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
 				ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, stackedSisLeaves.Column)
@@ -285,7 +285,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 			round,
 			ctx.leafConsistencyName(),
 			[]smartvectors.SmartVector{s_smart},
-			[]ifaces.Column{stackedCleanLeaves.UnpaddedColumn},
+			[]ifaces.Column{*stackedCleanLeaves.UnpaddedColumn},
 			[]ifaces.Column{ctx.Columns.MerkleProofsLeaves},
 		)
 	} else {

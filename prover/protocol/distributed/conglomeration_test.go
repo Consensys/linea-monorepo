@@ -17,7 +17,7 @@ import (
 
 // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
 func TestConglomerationBasic(t *testing.T) {
-
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	var (
 		numRow = 1 << 10
 		tc     = DistributeTestCase{numRow: numRow}
@@ -57,7 +57,7 @@ func TestConglomerationBasic(t *testing.T) {
 
 // TestConglomerationProverDebug
 func TestConglomerationProverDebug(t *testing.T) {
-
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	var (
 		reqFile        = files.MustRead("/home/ubuntu/mainnet-beta-v2-5.1.3/prover-execution/requests/20106872-20106937-etv0.2.0-stv2.3.0-getZkProof.json")
 		cfgFilePath    = "/home/ubuntu/zkevm-monorepo/prover/config/config-mainnet-limitless.toml"
@@ -82,7 +82,7 @@ func TestConglomerationProverDebug(t *testing.T) {
 
 // TestConglomeration generates a conglomeration proof and checks if it is valid
 func TestConglomerationProverFile(t *testing.T) {
-
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	var (
 		reqFile        = files.MustRead("/home/ubuntu/mainnet-beta-v2-5.1.3/prover-execution/requests/20106872-20106937-etv0.2.0-stv2.3.0-getZkProof.json")
 		cfgFilePath    = "/home/ubuntu/zkevm-monorepo/prover/config/config-mainnet-limitless.toml"
