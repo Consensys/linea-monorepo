@@ -16,3 +16,4 @@ export const BLOCK_COINBASE = "0xc014ba5ec014ba5ec014ba5ec014ba5ec014ba5e";
 export const ONE_GWEI = ethers.parseUnits("1", "gwei");
 export const ONE_ETHER = ethers.parseEther("1");
 export const ONE_THOUSAND_ETHER = ethers.parseEther("1000");
+export const UINT64_MAX = BigInt("18446744073709551615");

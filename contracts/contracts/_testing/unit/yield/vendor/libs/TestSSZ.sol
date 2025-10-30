@@ -2,7 +2,7 @@
 pragma solidity ^0.8.25;
 
 import { SSZ } from "../../../../../yield/libs/vendor/lido/SSZ.sol";
-import { Validator } from "../../../../../yield/libs/vendor/lido/BeaconTypes.sol";
+import { Validator, BeaconBlockHeader } from "../../../../../yield/libs/vendor/lido/BeaconTypes.sol";
 import { GIndex } from "../../../../../yield/libs/vendor/lido/GIndex.sol";
 
 contract TestSSZ {
@@ -10,7 +10,11 @@ contract TestSSZ {
   error BranchHasExtraItem();
   error InvalidProof();
 
-  function hashTreeRoot(Validator memory validator) external view returns (bytes32) {
+  function hashTreeRoot_BeaconBlockHeader(BeaconBlockHeader memory header) external view returns (bytes32) {
+    return SSZ.hashTreeRoot(header);
+  }
+
+  function hashTreeRoot_Validator(Validator memory validator) external view returns (bytes32) {
     return SSZ.hashTreeRoot(validator);
   }
 

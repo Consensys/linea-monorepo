@@ -35,8 +35,8 @@ export interface Validator {
 }
 
 export interface BeaconBlockHeader {
-  slot: number;
-  proposerIndex: number;
+  slot: number | bigint;
+  proposerIndex: number | bigint;
   parentRoot: string;
   stateRoot: string;
   bodyRoot: string;

@@ -3,8 +3,9 @@ import { expect } from "chai";
 import { TestGIndex, TestSSZ } from "contracts/typechain-types";
 import { deployFromFactory } from "contracts/test/common/deployment";
 import { hexlify, randomBytes, ZeroHash, zeroPadBytes } from "ethers";
-import { ValidatorContainer } from "contracts/test/yield/helpers/types";
+import { BeaconBlockHeader, ValidatorContainer } from "contracts/test/yield/helpers/types";
 import { expectRevertWithCustomError } from "contracts/test/common/helpers";
+import { UINT64_MAX } from "contracts/test/common/constants";
 
 describe("SSZ", () => {
   let ssz: TestSSZ;
@@ -71,7 +72,7 @@ describe("SSZ", () => {
       };
 
       const expected = "0xe4674dc5c27e7d3049fcd298745c00d3e314f03d33c877f64bf071d3b77eb942";
-      const actual = await ssz.hashTreeRoot(validator);
+      const actual = await ssz.hashTreeRoot_Validator(validator);
       expect(actual).to.equal(expected);
     });
 
@@ -87,7 +88,7 @@ describe("SSZ", () => {
         withdrawableEpoch: BigInt("0xffffffffffffffff"),
       };
 
-      const actual = await ssz.hashTreeRoot(validator);
+      const actual = await ssz.hashTreeRoot_Validator(validator);
       const expected = "0x60fb91184416404ddfc62bef6df9e9a52c910751daddd47ea426aabaf19dfa09";
       expect(actual).to.equal(expected);
     });
@@ -105,7 +106,7 @@ describe("SSZ", () => {
         withdrawableEpoch: BigInt("0xffffffffffffffff"),
       };
 
-      const actual = await ssz.hashTreeRoot(validator);
+      const actual = await ssz.hashTreeRoot_Validator(validator);
       const expected = "0x60fb91184416404ddfc62bef6df9e9a52c910751daddd47ea426aabaf19dfa09";
       expect(actual).to.equal(expected);
     });
@@ -122,7 +123,7 @@ describe("SSZ", () => {
         withdrawableEpoch: 0n,
       };
 
-      const actual = await ssz.hashTreeRoot(validator);
+      const actual = await ssz.hashTreeRoot_Validator(validator);
       const expected = "0xfa324a462bcb0f10c24c9e17c326a4e0ebad204feced523eccaf346c686f06ee";
       expect(actual).to.equal(expected);
     });
@@ -139,8 +140,52 @@ describe("SSZ", () => {
         withdrawableEpoch: BigInt("0xffffffffffffffff"),
       };
 
-      const actual = await ssz.hashTreeRoot(validator);
+      const actual = await ssz.hashTreeRoot_Validator(validator);
       const expected = "0x29c03a7cc9a8047ff05619a04bb6e60440a791e6ac3fe7d72e6fe9037dd3696f";
+      expect(actual).to.equal(expected);
+    });
+  });
+
+  describe("hashTreeRoot(BeaconBlockHeader)", () => {
+    it("mainnet header example", async () => {
+      const header: BeaconBlockHeader = {
+        slot: 7472518,
+        proposerIndex: 152834,
+        parentRoot: "0x4916af1ff31b06f1b27125d2d20cd26e123c425a4b34ebd414e5f0120537e78d",
+        stateRoot: "0x76ca64f3732754bc02c7966271fb6356a9464fe5fce85be8e7abc403c8c7b56b",
+        bodyRoot: "0x6d858c959f1c95f411dba526c4ae9ab8b2690f8b1e59ed1b79ad963ab798b01a",
+      };
+
+      const expected = "0x26631ee28ab4dd44a39c3756e03714d6a35a256560de5e2885caef9c3efd5516";
+      const actual = await ssz.hashTreeRoot_BeaconBlockHeader(header);
+      expect(actual).to.equal(expected);
+    });
+
+    it("all zeroes", async () => {
+      const header: BeaconBlockHeader = {
+        slot: 0,
+        proposerIndex: 0,
+        parentRoot: ZeroHash,
+        stateRoot: ZeroHash,
+        bodyRoot: ZeroHash,
+      };
+
+      const expected = "0xc78009fdf07fc56a11f122370658a353aaa542ed63e44c4bc15ff4cd105ab33c";
+      const actual = await ssz.hashTreeRoot_BeaconBlockHeader(header);
+      expect(actual).to.equal(expected);
+    });
+
+    it("all ones", async () => {
+      const header: BeaconBlockHeader = {
+        slot: UINT64_MAX,
+        proposerIndex: UINT64_MAX,
+        parentRoot: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        stateRoot: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        bodyRoot: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      };
+
+      const expected = "0x5ebe9f2b0267944bd80dd5cde20317a91d07225ff12e9cd5ba1e834c05cc2b05";
+      const actual = await ssz.hashTreeRoot_BeaconBlockHeader(header);
       expect(actual).to.equal(expected);
     });
   });
