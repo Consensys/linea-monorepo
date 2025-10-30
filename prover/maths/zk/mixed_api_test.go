@@ -26,20 +26,20 @@ func (c *TestCircuit) Define(api frontend.API) error {
 		return err
 	}
 
-	tmp := genApi.Mul(&c.A, &c.B)
-	genApi.AssertIsEqual(tmp, &c.MulAB)
+	tmp := genApi.Mul(c.A, c.B)
+	genApi.AssertIsEqual(tmp, c.MulAB)
 
-	tmp = genApi.Add(&c.A, &c.B)
-	genApi.AssertIsEqual(tmp, &c.AddAB)
+	tmp = genApi.Add(c.A, c.B)
+	genApi.AssertIsEqual(tmp, c.AddAB)
 
-	tmp = genApi.Sub(&c.A, &c.B)
-	genApi.AssertIsEqual(tmp, &c.SubAB)
+	tmp = genApi.Sub(c.A, c.B)
+	genApi.AssertIsEqual(tmp, c.SubAB)
 
-	tmp = genApi.Div(&c.A, &c.B)
-	genApi.AssertIsEqual(tmp, &c.DivAB)
+	tmp = genApi.Div(c.A, c.B)
+	genApi.AssertIsEqual(tmp, c.DivAB)
 
-	tmp = genApi.Neg(&c.A)
-	genApi.AssertIsEqual(tmp, &c.NegA)
+	tmp = genApi.Neg(c.A)
+	genApi.AssertIsEqual(tmp, c.NegA)
 
 	return nil
 }

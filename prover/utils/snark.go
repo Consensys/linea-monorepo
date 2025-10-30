@@ -105,7 +105,7 @@ func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.WrappedVa
 		if i == 0 {
 			bitsEnd = len(bits)
 		}
-		res[i] = *apiGen.FromBinary(bits[bitsStart:bitsEnd]...)
+		res[i] = apiGen.FromBinary(bits[bitsStart:bitsEnd]...)
 	}
 
 	return res
@@ -113,24 +113,25 @@ func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.WrappedVa
 
 // NewElementFromBytes range checks the bytes and gives a reduced field element
 // TODO @thomas fixme
-func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.WrappedVariable) *zk.WrappedVariable {
+func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []*zk.WrappedVariable) zk.WrappedVariable {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-
-	bits := make([]frontend.Variable, 8*len(bytes))
-	for i := range bytes {
-		copy(bits[8*i:], apiGen.ToBinary(bytes[len(bytes)-i-1], 8))
-	}
-
-	// f, err := emulated.NewField[T](api)
+	// apiGen, err := zk.NewGenericApi(api)
 	// if err != nil {
 	// 	panic(err)
 	// }
 
-	// return f.Reduce(f.Add(f.FromBits(bits...), f.Zero()))
+	// bits := make([]frontend.Variable, 8*len(bytes))
+	// for i := range bytes {
+	// 	copy(bits[8*i:], apiGen.ToBinary(bytes[len(bytes)-i-1], 8))
+	// }
 
-	return nil
+	// // f, err := emulated.NewField[T](api)
+	// // if err != nil {
+	// // 	panic(err)
+	// // }
+
+	// // return f.Reduce(f.Add(f.FromBits(bits...), f.Zero()))
+
+	// return nil
+	return zk.WrappedVariable{}
 }

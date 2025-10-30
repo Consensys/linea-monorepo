@@ -83,7 +83,7 @@ func (ext4 *Ext4) IsZero(e *E4Gen) frontend.Variable {
 	)
 }
 
-func (ext4 *Ext4) assign(e1 []*zk.WrappedVariable) *E4Gen {
+func (ext4 *Ext4) assign(e1 []zk.WrappedVariable) *E4Gen {
 	return &E4Gen{
 		B0: *ext4.Ext2.assign(e1[:2]),
 		B1: *ext4.Ext2.assign(e1[2:4]),
@@ -107,10 +107,10 @@ func (ext4 *Ext4) Add(e1, e2 *E4Gen) *E4Gen {
 }
 
 // e = e1+e2
-func (ext4 *Ext4) AddByBase(e1 *E4Gen, e2 *zk.WrappedVariable) *E4Gen {
-	b0a0 := ext4.mixedAPI.Add(&e1.B0.A0, e2)
+func (ext4 *Ext4) AddByBase(e1 *E4Gen, e2 zk.WrappedVariable) *E4Gen {
+	b0a0 := ext4.mixedAPI.Add(e1.B0.A0, e2)
 	return &E4Gen{
-		B0: E2Gen{A0: *b0a0, A1: e1.B0.A1},
+		B0: E2Gen{A0: b0a0, A1: e1.B0.A1},
 		B1: e1.B1,
 	}
 }
@@ -184,7 +184,7 @@ func (ext4 *Ext4) MulByE2(e1 *E4Gen, c *E2Gen) *E4Gen {
 }
 
 // MulByFp multiplies an Fp4 elmt by an fp elmt
-func (ext4 *Ext4) MulByFp(e1 *E4Gen, c *zk.WrappedVariable) *E4Gen {
+func (ext4 *Ext4) MulByFp(e1 *E4Gen, c zk.WrappedVariable) *E4Gen {
 	return &E4Gen{
 		B0: *ext4.Ext2.MulByFp(&e1.B0, c),
 		B1: *ext4.Ext2.MulByFp(&e1.B1, c),
@@ -236,7 +236,7 @@ func (ext4 *Ext4) Inverse(e1 *E4Gen) *E4Gen {
 
 	invE4 := inverseE4Hint(ext4.apiGen.Type())
 
-	res, err := ext4.mixedAPI.NewHint(invE4, 4, &e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1)
+	res, err := ext4.mixedAPI.NewHint(invE4, 4, e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1)
 	if err != nil {
 		// err is non-nil only for invalid number of inputs
 		panic(err)
@@ -257,8 +257,8 @@ func (ext4 *Ext4) Div(e1, e2 *E4Gen) *E4Gen {
 
 	res, err := ext4.mixedAPI.NewHint(
 		divE4, 4,
-		&e1.B0.A0, &e1.B0.A1, &e1.B1.A0, &e1.B1.A1,
-		&e2.B0.A0, &e2.B0.A1, &e2.B1.A0, &e2.B1.A1)
+		e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1,
+		e2.B0.A0, e2.B0.A1, e2.B1.A0, e2.B1.A1)
 	if err != nil {
 		// err is non nil only for invalid number of inputs
 		panic(err)
@@ -270,7 +270,7 @@ func (ext4 *Ext4) Div(e1, e2 *E4Gen) *E4Gen {
 }
 
 // Sub Element elmts
-func (ext4 *Ext4) DivByBase(e1 *E4Gen, e2 *zk.WrappedVariable) *E4Gen {
+func (ext4 *Ext4) DivByBase(e1 *E4Gen, e2 zk.WrappedVariable) *E4Gen {
 	return &E4Gen{
 		B0: *ext4.Ext2.DivByBase(&e1.B0, e2),
 		B1: *ext4.Ext2.DivByBase(&e1.B1, e2),
