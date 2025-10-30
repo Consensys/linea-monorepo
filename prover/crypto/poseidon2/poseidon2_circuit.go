@@ -186,23 +186,23 @@ func (h *permutation) matMulExternalInPlace(apiGen zk.GenericApi, input []zk.Wra
 	// at this stage t is supposed to be a multiple of 4
 	// the MDS matrix is circ(2M4,M4,..,M4)
 	h.matMulM4InPlace(apiGen, input)
-	// tmp := make([]zk.WrappedVariable, 4)
-	// tmp[0] = zk.ValueOf(0)
-	// tmp[1] = zk.ValueOf(0)
-	// tmp[2] = zk.ValueOf(0)
-	// tmp[3] = zk.ValueOf(0)
-	// for i := 0; i < h.params.Width/4; i++ {
-	// 	tmp[0] = *apiGen.Add(&tmp[0], &input[4*i])
-	// 	tmp[1] = *apiGen.Add(&tmp[1], &input[4*i+1])
-	// 	tmp[2] = *apiGen.Add(&tmp[2], &input[4*i+2])
-	// 	tmp[3] = *apiGen.Add(&tmp[3], &input[4*i+3])
-	// }
-	// for i := 0; i < h.params.Width/4; i++ {
-	// 	input[4*i] = *apiGen.Add(&input[4*i], &tmp[0])
-	// 	input[4*i+1] = *apiGen.Add(&input[4*i+1], &tmp[1])
-	// 	input[4*i+2] = *apiGen.Add(&input[4*i+2], &tmp[2])
-	// 	input[4*i+3] = *apiGen.Add(&input[4*i+3], &tmp[3])
-	// }
+	tmp := make([]zk.WrappedVariable, 4)
+	tmp[0] = zk.ValueOf(0)
+	tmp[1] = zk.ValueOf(0)
+	tmp[2] = zk.ValueOf(0)
+	tmp[3] = zk.ValueOf(0)
+	for i := 0; i < h.params.Width/4; i++ {
+		tmp[0] = apiGen.Add(tmp[0], input[4*i])
+		tmp[1] = apiGen.Add(tmp[1], input[4*i+1])
+		tmp[2] = apiGen.Add(tmp[2], input[4*i+2])
+		tmp[3] = apiGen.Add(tmp[3], input[4*i+3])
+	}
+	for i := 0; i < h.params.Width/4; i++ {
+		input[4*i] = apiGen.Add(input[4*i], tmp[0])
+		input[4*i+1] = apiGen.Add(input[4*i+1], tmp[1])
+		input[4*i+2] = apiGen.Add(input[4*i+2], tmp[2])
+		input[4*i+3] = apiGen.Add(input[4*i+3], tmp[3])
+	}
 }
 
 // when t=2,3 the matrix are respectively [[2,1][1,3]] and [[2,1,1][1,2,1][1,1,3]]
@@ -278,7 +278,7 @@ func (h *permutation) Permutation(apiGen zk.GenericApi, input []zk.WrappedVariab
 
 	// external matrix multiplication, cf https://eprint.iacr.org/2023/323.pdf page 14 (part 6)
 	h.matMulExternalInPlace(apiGen, input)
-	apiGen.Mul(input[0], input[0])
+	// apiGen.Mul(input[0], input[0])
 
 	rf := h.params.NbFullRounds / 2
 	for i := 0; i < rf; i++ {
@@ -287,24 +287,24 @@ func (h *permutation) Permutation(apiGen zk.GenericApi, input []zk.WrappedVariab
 		for j := 0; j < h.params.Width; j++ {
 			h.sBox(apiGen, j, input)
 		}
-		// h.matMulExternalInPlace(apiGen, input)
+		h.matMulExternalInPlace(apiGen, input)
 	}
 
-	// for i := rf; i < rf+h.params.NbPartialRounds; i++ {
-	// 	// one round = matMulInternal(sBox_sparse(addRoundKey))
-	// 	h.addRoundKeyInPlace(apiGen, i, input)
-	// 	h.sBox(apiGen, 0, input)
-	// 	h.matMulInternalInPlace(apiGen, input)
-	// }
+	for i := rf; i < rf+h.params.NbPartialRounds; i++ {
+		// one round = matMulInternal(sBox_sparse(addRoundKey))
+		h.addRoundKeyInPlace(apiGen, i, input)
+		h.sBox(apiGen, 0, input)
+		h.matMulInternalInPlace(apiGen, input)
+	}
 
-	// for i := rf + h.params.NbPartialRounds; i < h.params.NbFullRounds+h.params.NbPartialRounds; i++ {
-	// 	// one round = matMulExternal(sBox_Full(addRoundKey))
-	// 	h.addRoundKeyInPlace(apiGen, i, input)
-	// 	for j := 0; j < h.params.Width; j++ {
-	// 		h.sBox(apiGen, j, input)
-	// 	}
-	// 	h.matMulExternalInPlace(apiGen, input)
-	// }
+	for i := rf + h.params.NbPartialRounds; i < h.params.NbFullRounds+h.params.NbPartialRounds; i++ {
+		// one round = matMulExternal(sBox_Full(addRoundKey))
+		h.addRoundKeyInPlace(apiGen, i, input)
+		for j := 0; j < h.params.Width; j++ {
+			h.sBox(apiGen, j, input)
+		}
+		h.matMulExternalInPlace(apiGen, input)
+	}
 
 	return nil
 }
