@@ -222,7 +222,7 @@ func (dist *DistributedWizard) CompileSegments(params CompilationParams) *Distri
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
-func GetSharedRandomnessFromSegmentProofs(gLWitnesses []SegmentProof) field.Element {
+func GetSharedRandomnessFromSegmentProofs(gLWitnesses []*SegmentProof) field.Element {
 
 	mset := cmimc.MSetHash{}
 

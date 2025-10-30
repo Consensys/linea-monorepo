@@ -88,7 +88,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	var (
 		totalProofs = numGL + numLPP
 
-		proofGLs   = make([]distributed.SegmentProof, numGL)
+		proofGLs   = make([]*distributed.SegmentProof, numGL)
 		glErrGroup = &errgroup.Group{}
 
 		lppErrGroup = &errgroup.Group{}
@@ -160,7 +160,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 			}
 
 			// Store local copy for shared randomness computation
-			proofGLs[i] = *proofGL
+			proofGLs[i] = proofGL
 
 			// Safe send: if ctx cancelled, abort send
 			select {
@@ -285,8 +285,8 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 	out.Proof = execCirc.MakeProof(
 		&cfg.TracesLimits,
 		setup,
-		cong.HierarchicalConglomeration.Wiop,
-		congFinalproof.Witness.Proof,
+		cong.RecursionComp,
+		congFinalproof.GetOuterProofInput(),
 		*witness.FuncInp,
 	)
 
@@ -460,11 +460,11 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 
 	logrus.Infof("Loaded the compiled GL for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	_proofGL := compiledGL.ProveSegment(witness)
+	_proofGL := compiledGL.ProveSegment(witness).ClearRuntime()
 
 	logrus.Infof("Finished running the GL-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	return &_proofGL, nil
+	return _proofGL, nil
 }
 
 // RunLPP runs the LPP prover for the provided witness index
@@ -489,11 +489,11 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element
 
 	logrus.Infof("Loaded the compiled LPP for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	_proofLPP := compiledLPP.ProveSegment(witness)
+	_proofLPP := compiledLPP.ProveSegment(witness).ClearRuntime()
 
 	logrus.Infof("Finished running the LPP-prover for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
-	return &_proofLPP, nil
+	return _proofLPP, nil
 }
 
 // RunConglomerationHierarchical aggregates segment proofs into a single proof.
@@ -512,18 +512,20 @@ func RunConglomerationHierarchical(ctx context.Context,
 	for {
 		// First, aggregate while we have at least 2 items
 		for len(stack) >= 2 {
-			_proof1 := *stack[len(stack)-1]
-			_proof2 := *stack[len(stack)-2]
+
+			// _proof2 normally has already its runtime cleared
+			_proof1 := stack[len(stack)-1].ClearRuntime()
+			_proof2 := stack[len(stack)-2]
 			stack = stack[:len(stack)-2]
 
 			logrus.Infof("Conglomerating sub-proofs for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
 				_proof1.ProofType, _proof1.ModuleIndex, _proof1.SegmentIndex,
 				_proof2.ProofType, _proof2.ModuleIndex, _proof2.SegmentIndex)
 			aggregated := cong.ProveSegment(&distributed.ModuleWitnessConglo{
-				SegmentProofs:             []distributed.SegmentProof{_proof1, _proof2},
+				SegmentProofs:             []distributed.SegmentProof{*_proof1, *_proof2},
 				VerificationKeyMerkleTree: *mt,
 			})
-			stack = append(stack, &aggregated)
+			stack = append(stack, aggregated)
 		}
 
 		// If we've received all proofs and have exactly one on the stack -> done

@@ -221,18 +221,16 @@ func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round i
 	return &runtime
 }
 
-// func RunProverUntilRound(c *CompiledIOP, highLevelprover MainProverStep, round int) *ProverRuntime {
-// 	runtime := c.createProver()
-// 	runtime.exec("high-level-prover", highLevelprover)
-// 	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
-
-// 	for runtime.currRound+1 < round {
-// 		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
-// 		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
-// 	}
-
-// 	return &runtime
-// }
+// Resume resumes a [ProverRuntime] from a checkpoint till the end (the last
+// round) and returns a pointer to self.
+func (runtime *ProverRuntime) Resume() *ProverRuntime {
+	round := runtime.Spec.NumRounds()
+	for runtime.currRound+1 < round {
+		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
+		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
+	}
+	return runtime
+}
 
 // ExtractProof extracts the proof from a [ProverRuntime]. If the runtime has
 // been obtained via a [RunProverUntilRound], then it may be the case that
