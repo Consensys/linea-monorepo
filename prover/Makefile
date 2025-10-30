@@ -15,6 +15,7 @@ PACKAGES := \
 	github.com/consensys/linea-monorepo/prover/maths/... \
   github.com/consensys/linea-monorepo/prover/crypto/... \
 	github.com/consensys/linea-monorepo/prover/symbolic/... \
+  github.com/consensys/linea-monorepo/prover/utils/types/... \
 	github.com/consensys/linea-monorepo/prover/protocol/accessors/... \
 	github.com/consensys/linea-monorepo/prover/protocol/query/... \
 	github.com/consensys/linea-monorepo/prover/protocol/wizard/... \

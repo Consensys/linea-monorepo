@@ -198,7 +198,7 @@ func (s *ProverState[K, V]) rmTuple(i int64) smt.Proof {
 // `SubTreeRoot`
 func (s *ProverState[K, V]) TopRoot() Bytes32 {
 	hasher := s.Config().HashFunc()
-	WriteInt64On32Bytes(hasher, s.NextFreeNode)
+	WriteInt64On64Bytes(hasher, s.NextFreeNode)
 	subTreeRoot := s.SubTreeRoot()
 	subTreeRoot.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)

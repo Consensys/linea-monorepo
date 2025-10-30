@@ -135,8 +135,8 @@ func AsBytes32(b []byte) (d Bytes32) {
 }
 
 // Creates a bytes32 from an hexstring. Panic if it fails. Mostly useful for testing.
-// the string s is left padded with zeroes if less than 64 characters are provided
-// if more than 64 characters are provided, the function will panic
+// the string s is left padded with zeroes if less than 32 characters are provided
+// if more than 32 characters are provided, the function will panic
 // function expects an even number of chars
 // Ox prefix is optional
 func Bytes32FromHex(s string) Bytes32 {
@@ -150,9 +150,12 @@ func Bytes32FromHex(s string) Bytes32 {
 
 	var res Bytes32
 	copy(res[32-len(b):], b)
-	var f field.Element
-	if err := f.SetBytesCanonical(res[:]); err != nil {
-		utils.Panic("Invalid field element %v", err.Error())
+
+	var f [8]field.Element
+	for i := 0; i < 8; i++ {
+		if err := f[i].SetBytesCanonical(res[4*i : 4*i+4]); err != nil {
+			utils.Panic("Invalid field element %v", err.Error())
+		}
 	}
 	return res
 }
