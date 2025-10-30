@@ -40,17 +40,7 @@ describe("OAuth2TokenClient", () => {
     mockedAxios.post.mockReset();
     getCurrentUnixTimestampSecondsMock.mockReset();
 
-    client = new OAuth2TokenClient(
-      logger,
-      retryService,
-      tokenUrl,
-      clientId,
-      clientSecret,
-      audience,
-      grantType,
-      60,
-      3600,
-    );
+    client = new OAuth2TokenClient(logger, retryService, tokenUrl, clientId, clientSecret, audience, grantType, 60);
   });
 
   it("returns the cached token when it is still valid", async () => {
@@ -134,6 +124,38 @@ describe("OAuth2TokenClient", () => {
 
     expect(token).toBeUndefined();
     expect(logger.error).toHaveBeenCalledWith("Failed to retrieve OAuth2 access token");
+    expect(logger.info).toHaveBeenCalledWith("getBearerToken requesting new token");
+    expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
+  });
+
+  it("returns undefined and logs when expires_at is already elapsed", async () => {
+    getCurrentUnixTimestampSecondsMock.mockReturnValue(2_000);
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        access_token: "expired-token",
+        expires_at: 1_000,
+      },
+    });
+
+    const token = await client.getBearerToken();
+
+    expect(token).toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith("OAuth2 access token already expired at 1000");
+    expect(logger.info).toHaveBeenCalledWith("getBearerToken requesting new token");
+    expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
+  });
+
+  it("returns undefined and logs when expiry metadata is missing", async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        access_token: "no-expiry-token",
+      },
+    });
+
+    const token = await client.getBearerToken();
+
+    expect(token).toBeUndefined();
+    expect(logger.error).toHaveBeenCalledWith("OAuth2 access token did not provide expiry data");
     expect(logger.info).toHaveBeenCalledWith("getBearerToken requesting new token");
     expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
   });
