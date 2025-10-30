@@ -83,9 +83,6 @@ func cobraControllerRunCmd(c *cobra.Command, args []string) {
 
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsFromSubDir))
 		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", mod, config.RequestsDoneSubDir))
-
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.CommitsDir, mod, config.RequestsFromSubDir))
-		limitlessDirs = append(limitlessDirs, path.Join(cfg.ExecutionLimitless.CommitsDir, mod, config.RequestsDoneSubDir))
 	}
 
 	dirs = append(dirs, limitlessDirs...)
