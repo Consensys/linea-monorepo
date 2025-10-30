@@ -82,11 +82,11 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 
 	logrus.Infof("Running the LPP-prover for witness module name=%s at index=%d", witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
-	_proofLPP := compiledLPP.ProveSegment(witnessLPP)
+	proofLPP := compiledLPP.ProveSegment(witnessLPP)
 
 	logrus.Infof("Finished running the LPP-prover for witness module=%v at index=%d", witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
-	if err := serialization.StoreToDisk(proofLPPFile, _proofLPP, true); err != nil {
+	if err := serialization.StoreToDisk(proofLPPFile, *proofLPP, true); err != nil {
 		return fmt.Errorf("could not store LPP proof: %w", err)
 	}
 

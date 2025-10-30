@@ -59,11 +59,11 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 
 	logrus.Infof("Loaded the compiled GL for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	_proofGL := compiledGL.ProveSegment(witnessGL)
+	proofGL := compiledGL.ProveSegment(witnessGL)
 
 	logrus.Infof("Finished running the GL-prover for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	if err := serialization.StoreToDisk(proofGLFile, _proofGL, true); err != nil {
+	if err := serialization.StoreToDisk(proofGLFile, *proofGL, true); err != nil {
 		return fmt.Errorf("could not store GL proof: %w", err)
 	}
 

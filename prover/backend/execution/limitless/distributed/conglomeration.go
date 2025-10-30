@@ -39,7 +39,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(cfg.ExecutionLimitless.Timeout)*time.Second)
 		totalProofs = req.NumGL + req.NumLPP
 
-		proofGLs = make([]distributed.SegmentProof, req.NumGL)
+		proofGLs = make([]*distributed.SegmentProof, req.NumGL)
 
 		// Conglomeration proof pipeline setup: have a buffered channel proofStream
 		// with capacity large enough so producers won't block
@@ -77,6 +77,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 		if err != nil || cong == nil {
 			panic(fmt.Errorf("could not load compiled conglomeration: %w", err))
 		}
+		logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
 		proof, err := runConglomerationHierarchical(ctx, cfg, cong, proofStream, totalProofs)
 		resultCh <- congResult{proof: proof, err: err}
 	}()
@@ -100,18 +101,18 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 
 			jobErr = files.WaitForFileAtPath(ctx, req.GLProofFiles[i], true, fmt.Sprintf("Waiting for GL proof %d", i))
 			if jobErr != nil {
-				logrus.Errorf("Error waiting for GL proof %d: %s - Cancelling context", i, jobErr)
+				logrus.Errorf("error waiting for GL proof %d: %s - Cancelling context", i, jobErr)
 				return jobErr
 			}
 
 			// Once the GL-proof file has arrived - deserialize it and send it to the pipeline
 			if err := serialization.LoadFromDisk(req.GLProofFiles[i], proofGL, true); err != nil {
-				logrus.Errorf("Error deserializing GL proof %d: %s - Cancelling context", i, err)
+				logrus.Errorf("error deserializing GL proof %d: %s - Cancelling context", i, err)
 				return err
 			}
 
 			// Store local copy for shared randomness computation
-			proofGLs[i] = *proofGL
+			proofGLs[i] = proofGL
 
 			// Safe send: if ctx cancelled, abort send
 			select {
@@ -140,7 +141,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 	sharedRandomness := distributed.GetSharedRandomnessFromSegmentProofs(proofGLs)
 	proofGLs = nil // Free the slice as we no longer need it
 	if err = serialization.StoreToDisk(req.SharedRndFile, sharedRandomness, true); err != nil {
-		logrus.Errorf("Error saving shared randomness: %s. Cancelling context", err)
+		logrus.Errorf("error saving shared randomness: %s. Cancelling context", err)
 		cancel()
 		return nil, fmt.Errorf("could not save shared randomness: %w", err)
 	}
@@ -166,13 +167,13 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 
 			jobErr = files.WaitForFileAtPath(ctx, req.LPPProofFiles[i], true, fmt.Sprintf("Waiting for LPP proof %d", i))
 			if jobErr != nil {
-				logrus.Errorf("Error waiting for LPP proof %d: %s - Cancelling context", i, jobErr)
+				logrus.Errorf("error waiting for LPP proof %d: %s - Cancelling context", i, jobErr)
 				return jobErr
 			}
 
 			// Once the GL-proof file has arrived - deserialize it and send it to the pipeline
 			if err := serialization.LoadFromDisk(req.LPPProofFiles[i], proofLPP, true); err != nil {
-				logrus.Errorf("Error deserializing LPP proof %d: %s - Cancelling context", i, err)
+				logrus.Errorf("error deserializing LPP proof %d: %s - Cancelling context", i, err)
 				return err
 			}
 
@@ -208,11 +209,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 		return nil, fmt.Errorf("conglomeration failed: %w", res.err)
 	}
 
-	logrus.Infof("HIERARCHICAL CONGLOMERATION SUCCESSFUL!!!")
-
-	// TODO: Return outer-proof
-
-	congFinalproof := res.proof
+	logrus.Infoln("Successfully aggregated all GL and LPP execution sub-proofs.")
 
 	// -- 5. Load setup (in background started earlier maybe)
 	execReq := &execution.Request{}
@@ -223,9 +220,10 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 	out := execution.CraftProverOutput(cfg, execReq)
 	execResp = &out
 	var (
-		witness  = execution.NewWitness(cfg, execReq, execResp)
-		setup    circuits.Setup
-		errSetup error
+		witness        = execution.NewWitness(cfg, execReq, execResp)
+		congFinalproof = res.proof
+		setup          circuits.Setup
+		errSetup       error
 	)
 
 	logrus.Infof("Loading setup - circuitID: %s", circuits.ExecutionLimitlessCircuitID)
@@ -234,12 +232,11 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 	if errSetup != nil {
 		utils.Panic("could not load setup: %v", errSetup)
 	}
-
 	out.Proof = execCirc.MakeProof(
 		&cfg.TracesLimits,
 		setup,
-		cong.HierarchicalConglomeration.Wiop,
-		congFinalproof.Witness.Proof,
+		cong.RecursionComp,
+		congFinalproof.GetOuterProofInput(),
 		*witness.FuncInp,
 	)
 
@@ -258,8 +255,6 @@ func runConglomerationHierarchical(ctx context.Context, cfg *config.Config, cong
 		return nil, fmt.Errorf("could not load verification key merkle tree: %w", err)
 	}
 
-	logrus.Infoln("Succesfully loaded the compiled conglomeration and starting to run hierarchical conglomeration")
-
 	// Stack is a slice for channel-based pairing logic
 	var stack []*distributed.SegmentProof
 	proofsReceived := 0
@@ -268,18 +263,20 @@ func runConglomerationHierarchical(ctx context.Context, cfg *config.Config, cong
 	for {
 		// First, aggregate while we have at least 2 items
 		for len(stack) >= 2 {
-			_proof1 := *stack[len(stack)-1]
-			_proof2 := *stack[len(stack)-2]
+
+			// _proof2 normally has already its runtime cleared
+			_proof1 := stack[len(stack)-1].ClearRuntime()
+			_proof2 := stack[len(stack)-2]
 			stack = stack[:len(stack)-2]
 
 			logrus.Infof("Conglomerating sub-proofs for (proofType, moduleIdx, segmentIdx) = (%d, %d, %d) and (%d, %d, %d)",
 				_proof1.ProofType, _proof1.ModuleIndex, _proof1.SegmentIndex,
 				_proof2.ProofType, _proof2.ModuleIndex, _proof2.SegmentIndex)
 			aggregated := cong.ProveSegment(&distributed.ModuleWitnessConglo{
-				SegmentProofs:             []distributed.SegmentProof{_proof1, _proof2},
+				SegmentProofs:             []distributed.SegmentProof{*_proof1, *_proof2},
 				VerificationKeyMerkleTree: *mt,
 			})
-			stack = append(stack, &aggregated)
+			stack = append(stack, aggregated)
 		}
 
 		// If we've received all proofs and have exactly one on the stack -> done

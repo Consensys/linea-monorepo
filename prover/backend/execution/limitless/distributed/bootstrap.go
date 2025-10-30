@@ -213,7 +213,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 
 				var (
 					witnessLPPFileName = fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-wit.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPP.ModuleIndex)
-					witnessLPPDirFrom  = path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", string(witnessLPP.ModuleName[0]), config.RequestsFromSubDir)
+					witnessLPPDirFrom  = path.Join(cfg.ExecutionLimitless.WitnessDir, "LPP", string(witnessLPP.ModuleName), config.RequestsFromSubDir)
 					witnessLPPFile     = path.Join(witnessLPPDirFrom, witnessLPPFileName)
 				)
 
@@ -222,7 +222,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 				}
 
 				lppProofFileName := fmt.Sprintf("%s-%s-seg-%d-mod-%d-lpp-proof.bin", metadata.StartBlock, metadata.EndBlock, i, witnessLPPs[i].ModuleIndex)
-				lppProofFile := path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", string(witnessLPP.ModuleName[0]), config.RequestsFromSubDir, lppProofFileName)
+				lppProofFile := path.Join(cfg.ExecutionLimitless.SubproofsDir, "LPP", string(witnessLPP.ModuleName), config.RequestsFromSubDir, lppProofFileName)
 				metadata.LPPProofFiles[i] = lppProofFile
 				witnessLPP = nil
 				return nil
