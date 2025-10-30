@@ -192,13 +192,28 @@ func (j *Job) DoneFile(status Status) string {
 // the priority of the job. The 100 value is chosen to make the score easy to
 // mentally compute.
 func (j *Job) Score() int {
+	var (
+		score = 100*j.End + j.Def.Priority
 
+		// offset is used to make sure that GL jobs are always priortized and processed before LPP jobs for the same block height.
+		// NOTE: this is a hack and only works if the number of segments produced by limitless prover in lesser than the offset
+		// value - Currently this is a reasonable practical assumption.
+		offset = 500
+	)
+
+	// For GL and LPP jobs, add segPriority for finer ordering
 	if strings.Contains(j.Def.Name, "gl-") || strings.Contains(j.Def.Name, "lpp-") {
-		// Determine priority score also based on the segment id
-		return 100*j.End + j.Def.Priority + segPriority(j.OriginalFile)
+		score += segPriority(j.OriginalFile)
 	}
 
-	return 100*j.End + j.Def.Priority
+	// Adjust relative ordering: for the same j.End, GL wins over LPP
+	// We do this by adding a small offset *only* for LPP jobs.
+	// This offset is smaller than 100 (the per-End spacing),
+	// so it never affects ordering between different Ends.
+	if strings.Contains(j.Def.Name, "lpp-") {
+		score += offset // ensure LPP jobs come *after* GL jobs of same End
+	}
+	return score
 }
 
 // If the regexp is provided and non-nil, return the first match and returns the
