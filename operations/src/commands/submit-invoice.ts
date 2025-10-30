@@ -418,15 +418,9 @@ export default class SubmitInvoice extends Command {
     const firstResult = ResultsByTime[0];
     const totalForMetric = firstResult?.Total?.[metric];
 
-    if (!totalForMetric || !totalForMetric.Amount) {
+    if (!totalForMetric || !totalForMetric?.Amount) {
       this.error(
         `AWS cost data does not contain the specified metric or Amount field. metric=${metric} fromDate=${startDateStr} toDate=${endDateStr}`,
-      );
-    }
-
-    if (!totalForMetric?.Amount) {
-      this.error(
-        `AWS cost data does not contain the specified metric: ${metric} fromDate=${startDateStr} toDate=${endDateStr}`,
       );
     }
 
