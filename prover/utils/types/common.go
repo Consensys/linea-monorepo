@@ -140,7 +140,7 @@ func ReadBigIntOn64Bytes(r io.Reader) (*big.Int, error) {
 	buf := [64]byte{}
 	_, err := r.Read(buf[:])
 	if err != nil {
-		return nil, fmt.Errorf("reading big int, could not 32 bytes from reader: %v", err)
+		return nil, fmt.Errorf("reading big int, could not 64 bytes from reader: %v", err)
 	}
 
 	res := RemovePadding(buf[:])
