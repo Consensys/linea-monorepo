@@ -290,8 +290,6 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		*witness.FuncInp,
 	)
 
-	logrus.Infof("Returning dummy outer proof for now.")
-	out.Proof = "dummy-proof"
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()
 
 	return &out, nil
