@@ -60,6 +60,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       hardfork: "prague",
+      allowUnlimitedContractSize: true, // TODO - Remove when ready for PR
     },
     mainnet: {
       accounts: [process.env.MAINNET_PRIVATE_KEY || EMPTY_HASH],
@@ -135,6 +136,7 @@ const config: HardhatUserConfig = {
       "security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol",
       "tokens",
       "verifiers",
+      "yield", // TODO - Remove this when we are ready for PR
     ],
     pages: "files",
     outputDir: "docs/api/",

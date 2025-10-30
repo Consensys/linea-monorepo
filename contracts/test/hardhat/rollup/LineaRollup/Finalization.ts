@@ -11,7 +11,7 @@ import fourthCompressedDataContent from "../../_testData/compressedData/blocks-1
 import fourthMultipleCompressedDataContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
 
 import { TestLineaRollup } from "contracts/typechain-types";
-import { expectSuccessfulFinalize, getAccountsFixture, deployLineaRollupFixture } from "./../helpers";
+import { expectSuccessfulFinalize, deployLineaRollupFixture } from "./../helpers";
 import {
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
@@ -34,6 +34,7 @@ import {
   generateParentAndExpectedShnarfForIndex,
   generateParentAndExpectedShnarfForMulitpleIndex,
   generateParentShnarfData,
+  getAccountsFixture,
 } from "../../common/helpers";
 
 describe("Linea Rollup contract: Finalization", () => {

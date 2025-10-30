@@ -6,11 +6,12 @@ import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
-
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
+import { MessageHashing } from "../messaging/libraries/MessageHashing.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
- * @author ConsenSys Software Inc.
+ * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 abstract contract LineaRollupBase is

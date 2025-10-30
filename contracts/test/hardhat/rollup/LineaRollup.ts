@@ -9,14 +9,19 @@ import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.
 import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
 
-import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
+import {
+  DEFAULT_ADMIN_ROLE,
+  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+} from "contracts/common/constants";
 import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
   deployLineaRollupFixture,
+  deployMockYieldManager,
   expectSuccessfulFinalizeViaCallForwarder,
-  getAccountsFixture,
   getRoleAddressesFixture,
+  reinitializeLineaRollupFixtureV7,
   sendBlobTransactionViaCallForwarder,
 } from "./helpers";
 import {
@@ -29,16 +34,17 @@ import {
   INITIAL_WITHDRAW_LIMIT,
   ONE_DAY_IN_SECONDS,
   OPERATOR_ROLE,
+  YIELD_PROVIDER_STAKING_ROLE,
   VERIFIER_SETTER_ROLE,
   VERIFIER_UNSETTER_ROLE,
   GENESIS_L2_TIMESTAMP,
   EMPTY_CALLDATA,
   INITIALIZED_ALREADY_MESSAGE,
   CALLDATA_SUBMISSION_PAUSE_TYPE,
-  DEFAULT_ADMIN_ROLE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+  SET_YIELD_MANAGER_ROLE,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -52,8 +58,13 @@ import {
   expectRevertWithReason,
   generateBlobParentShnarfData,
   calculateLastFinalizedState,
+  getAccountsFixture,
+  expectEvents,
+  generateKeccak256,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
+import { LineaRollupV7ReinitializationData } from "./helpers/types";
+import { ZeroAddress } from "ethers";
 
 kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 
@@ -61,6 +72,7 @@ describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
   let verifier: string;
   let callForwardingProxy: CallForwardingProxy;
+  let mockYieldManager: string;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
@@ -72,6 +84,8 @@ describe("Linea Rollup contract", () => {
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentStateRootHash } =
     firstCompressedDataContent;
   const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
+  const VERSION_6_BYTES = ethers.encodeBytes32String("6.0").slice(0, 18);
+  const VERSION_7_BYTES = ethers.encodeBytes32String("7.0").slice(0, 18);
 
   before(async () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount } = await loadFixture(getAccountsFixture));
@@ -79,7 +93,7 @@ describe("Linea Rollup contract", () => {
   });
 
   beforeEach(async () => {
-    ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    ({ verifier, mockYieldManager, lineaRollup } = await loadFixture(deployLineaRollupFixture));
   });
 
   describe("Fallback/Receive tests", () => {
@@ -108,6 +122,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
@@ -131,6 +146,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: ADDRESS_ZERO,
         defaultAdmin: securityCouncil.address,
       };
@@ -154,6 +170,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: ADDRESS_ZERO,
       };
@@ -174,9 +191,34 @@ describe("Linea Rollup contract", () => {
         defaultVerifier: verifier,
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
+        roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: OPERATOR_ROLE }, ...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
+        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
+        defaultAdmin: securityCouncil.address,
+      };
+
+      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
+        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+        unsafeAllow: ["constructor", "incorrect-initializer-order"],
+      });
+
+      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
+    });
+
+    it("Should revert if an initialYieldManager is zero address", async () => {
+      const initializationData = {
+        initialStateRootHash: parentStateRootHash,
+        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
+        genesisTimestamp: GENESIS_L2_TIMESTAMP,
+        defaultVerifier: verifier,
+        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+        roleAddresses: [...roleAddresses.slice(1)],
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: ADDRESS_ZERO,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
@@ -194,6 +236,11 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.verifiers(0)).to.be.equal(verifier);
     });
 
+    it("Should store yield manager address in storage", async () => {
+      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+      expect(await lineaRollup.yieldManager()).to.be.equal(mockYieldManager);
+    });
+
     it("Should assign the OPERATOR_ROLE to operator addresses", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, operator.address)).to.be.true;
@@ -209,6 +256,16 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.hasRole(VERIFIER_UNSETTER_ROLE, securityCouncil.address)).to.be.true;
     });
 
+    it("Should assign the SET_YIELD_MANAGER_ROLE to securityCouncil addresses", async () => {
+      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+      expect(await lineaRollup.hasRole(SET_YIELD_MANAGER_ROLE, securityCouncil.address)).to.be.true;
+    });
+
+    it("Should assign the YIELD_PROVIDER_STAKING_ROLE to securityCouncil addresses", async () => {
+      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+      expect(await lineaRollup.hasRole(YIELD_PROVIDER_STAKING_ROLE, securityCouncil.address)).to.be.true;
+    });
+
     it("Should store the startingRootHash in storage for the first block number", async () => {
       const initializationData = {
         initialStateRootHash: parentStateRootHash,
@@ -220,6 +277,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
@@ -247,6 +305,7 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
@@ -281,11 +340,151 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        initialYieldManager: mockYieldManager,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       });
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
+    });
+  });
+
+  describe("reinitializeLineaRollupV7", () => {
+    it("Should revert if the YieldManager address is zero", async () => {
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        roleAddresses,
+        yieldManager: ZeroAddress,
+      };
+      const reinitializeCall = reinitializeLineaRollupFixtureV7(lineaRollup, reinitData);
+      await expectRevertWithCustomError(lineaRollup, reinitializeCall, "ZeroAddressNotAllowed");
+    });
+
+    it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializeLineaRollupV6", async () => {
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        roleAddresses: [...roleAddresses, { addressWithRole: ZeroAddress, role: DEFAULT_ADMIN_ROLE }],
+        yieldManager: ZeroAddress,
+      };
+      const reinitializeCall = reinitializeLineaRollupFixtureV7(lineaRollup, reinitData);
+      await expectRevertWithCustomError(lineaRollup, reinitializeCall, "ZeroAddressNotAllowed");
+    });
+
+    it("Should configure roles, set the YieldManager and emit version change events", async () => {
+      // Arrange - unfortunately 'upgrades.upgradeProxy' does not seem to expose the reinitialize call so we need to construct it manually
+      const newYieldManager = await deployMockYieldManager();
+
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        roleAddresses: [...roleAddresses],
+        yieldManager: newYieldManager,
+      };
+
+      const reinitArgs = [
+        reinitData.roleAddresses,
+        reinitData.pauseTypeRoles,
+        reinitData.unpauseTypeRoles,
+        reinitData.yieldManager,
+      ];
+
+      const rollupFactory = await ethers.getContractFactory("TestLineaRollup");
+      const newImplementation = await rollupFactory.deploy();
+      const proxyAdminAddr = await upgrades.erc1967.getAdminAddress(await lineaRollup.getAddress());
+      const proxyAdmin = await ethers.getContractAt("ProxyAdmin", proxyAdminAddr);
+      const calldata = lineaRollup.interface.encodeFunctionData("reinitializeLineaRollupV7", reinitArgs);
+
+      // Act
+      const reinitCall = proxyAdmin.upgradeAndCall(lineaRollup, await newImplementation.getAddress(), calldata);
+
+      // Assert events
+      await expect(reinitCall)
+        .to.emit(lineaRollup, "LineaRollupVersionChanged")
+        .withArgs(VERSION_6_BYTES, VERSION_7_BYTES)
+        .and.to.emit(lineaRollup, "YieldManagerChanged")
+        .withArgs(mockYieldManager, newYieldManager);
+
+      await Promise.all([
+        expectEvents(
+          lineaRollup,
+          reinitCall,
+          LINEA_ROLLUP_PAUSE_TYPES_ROLES.map(({ pauseType, role }) => ({
+            name: "PauseTypeRoleSet",
+            args: [pauseType, role],
+          })),
+        ),
+        expectEvents(
+          lineaRollup,
+          reinitCall,
+          LINEA_ROLLUP_UNPAUSE_TYPES_ROLES.map(({ pauseType, role }) => ({
+            name: "UnPauseTypeRoleSet",
+            args: [pauseType, role],
+          })),
+        ),
+      ]);
+
+      const pauseTypeRolesMappingSlot = 219;
+      const unpauseTypeRolesMappingSlot = 220;
+
+      for (const { pauseType, role } of LINEA_ROLLUP_PAUSE_TYPES_ROLES) {
+        const slot = generateKeccak256(["uint8", "uint256"], [pauseType, pauseTypeRolesMappingSlot]);
+        const roleInMapping = await ethers.provider.getStorage(lineaRollup.getAddress(), slot);
+        expect(roleInMapping).to.equal(role);
+      }
+
+      for (const { pauseType, role } of LINEA_ROLLUP_UNPAUSE_TYPES_ROLES) {
+        const slot = generateKeccak256(["uint8", "uint256"], [pauseType, unpauseTypeRolesMappingSlot]);
+        const roleInMapping = await ethers.provider.getStorage(lineaRollup.getAddress(), slot);
+        expect(roleInMapping).to.equal(role);
+      }
+
+      expect(await lineaRollup.yieldManager()).to.equal(newYieldManager);
+
+      // Assert permissions set
+      for (const { role, addressWithRole } of reinitData.roleAddresses) {
+        expect(await lineaRollup.hasRole(role, addressWithRole)).to.be.true;
+      }
+    });
+
+    it("Should revert if reinitializeLineaRollupV7 is invoked more than once", async () => {
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        roleAddresses,
+        yieldManager: mockYieldManager,
+      };
+      await reinitializeLineaRollupFixtureV7(lineaRollup, reinitData);
+
+      const secondCall = lineaRollup.reinitializeLineaRollupV7(
+        roleAddresses,
+        LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        mockYieldManager,
+      );
+
+      await expectRevertWithReason(secondCall, INITIALIZED_ALREADY_MESSAGE);
+    });
+
+    it("Should revert if reinitializeLineaRollupV7 is invoked by non-ProxyAdmin", async () => {
+      const rollupFactory = await ethers.getContractFactory("TestLineaRollup");
+      const rollup = await rollupFactory.deploy();
+      await rollup.waitForDeployment();
+
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        roleAddresses,
+        yieldManager: mockYieldManager,
+      };
+      const call = rollup.reinitializeLineaRollupV7(
+        reinitData.roleAddresses,
+        reinitData.pauseTypeRoles,
+        reinitData.unpauseTypeRoles,
+        reinitData.yieldManager,
+      );
+      expectRevertWithCustomError(rollup, call, "CallerNotProxyAdmin");
     });
   });
 

@@ -16,4 +16,14 @@ interface IGenericErrors {
    * @dev Thrown when a parameter is the zero hash.
    */
   error ZeroHashNotAllowed();
+
+  /**
+   * @dev Thrown when no ETH is sent.
+   */
+  error NoEthSent();
+
+  /**
+   * @dev Thrown when the caller is not the ProxyAdmin.
+   */
+  error CallerNotProxyAdmin();
 }
