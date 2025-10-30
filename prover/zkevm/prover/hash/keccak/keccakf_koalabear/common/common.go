@@ -3,14 +3,19 @@ package common
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 )
 
-func Decompose(n []field.Element, base, nb int) [][]field.Element {
+const (
+	BaseChi   = 11
+	BaseTheta = 4
+	BaseChi4  = 14641 // 11^4
+)
+
+func DecomposeCol(n []field.Element, base, nb int) [][]field.Element {
 
 	res := make([][]field.Element, nb)
 	for i := range n {
-		a := DecomposeUint32(n[i].Uint64(), base, nb)
+		a := DecomposeU64(n[i].Uint64(), base, nb)
 		for j := range res {
 			res[j] = append(res[j], a[j])
 		}
@@ -18,8 +23,8 @@ func Decompose(n []field.Element, base, nb int) [][]field.Element {
 	return res
 }
 
-// CleanBase takes as input a slice of uint64 numbers in base BaseChi (11) and clean the representation.
-func CleanBase(in []field.Element) (out []field.Element) {
+// CleanBaseChi takes as input a slice of uint64 numbers in base BaseChi (11) and clean the representation.
+func CleanBaseChi(in []field.Element) (out []field.Element) {
 	out = make([]field.Element, len(in))
 	for i := 0; i < len(in); i++ {
 		// take the second bit
@@ -29,17 +34,8 @@ func CleanBase(in []field.Element) (out []field.Element) {
 	return out
 }
 
-func DecomposeAndClean(n []field.Element, base, nb int) [][]field.Element {
-
-	limbs := Decompose(n, base, nb)             // in base 'base', nb limbs
-	bits := make([][]field.Element, len(limbs)) // bits representation of each limb
-	for i := range limbs {
-		bits[i] = CleanBase(limbs[i])
-	}
-	return bits
-}
-
-func BaseRecompose(n [][]field.Element, base *field.Element) (res []field.Element) {
+// it recompose the given columns of field elements n into the given base.
+func RecomposeCols(n [][]field.Element, base *field.Element) (res []field.Element) {
 
 	for j := range n[0] {
 
@@ -48,13 +44,24 @@ func BaseRecompose(n [][]field.Element, base *field.Element) (res []field.Elemen
 			t = append(t, n[i][j])
 		}
 
-		res = append(res, keccakf.BaseRecompose(t, base))
+		res = append(res, RecomposeRow(t, base))
 	}
 	return res
 }
 
+// it recompose the given slice of field elements r into the given base.
+func RecomposeRow(r []field.Element, base *field.Element) field.Element {
+	// .. using the Horner method
+	s := field.Zero()
+	for i := len(r) - 1; i >= 0; i-- {
+		s.Mul(&s, base)
+		s.Add(&s, &r[i])
+	}
+	return s
+}
+
 // it decompose the given field element n into the given base.
-func DecomposeUint32(n uint64, base, nb int) []field.Element {
+func DecomposeU64(n uint64, base, nb int) []field.Element {
 	// It will essentially be used for chunk to slice decomposition
 	var (
 		res    = make([]field.Element, 0, nb)
@@ -74,6 +81,53 @@ func DecomposeUint32(n uint64, base, nb int) []field.Element {
 	// Complete with zeroes
 	for len(res) < nb {
 		res = append(res, field.Zero())
+	}
+
+	return res
+}
+
+func DecomposeAndCleanFr(n field.Element, base, nb int) []field.Element {
+
+	var (
+		bits  []field.Element
+		limbs = DecomposeU64(n.Uint64(), base, nb) // in base 'base', nb limbs
+	)
+
+	switch {
+	case base == BaseChi:
+		bits = CleanBaseChi(limbs) // bits representation of each limb
+	case base == BaseTheta:
+		bits = cleanBaseTheta(limbs) // bits representation of each limb
+	default:
+		utils.Panic("unsupported base %v for cleaning", base)
+	}
+
+	return bits
+}
+
+func cleanBaseTheta(in []field.Element) (out []field.Element) {
+	out = make([]field.Element, 0, len(in))
+	for _, element := range in {
+		if element.Uint64()%2 == 0 {
+			out = append(out, field.Zero())
+		} else {
+			out = append(out, field.One())
+		}
+	}
+	return out
+}
+
+func DecomposeAndCleanCol(n []field.Element, base, nb int) [][]field.Element {
+
+	var (
+		res = make([][]field.Element, nb)
+		dec = make([]field.Element, nb)
+	)
+	for i := range n {
+		dec = DecomposeAndCleanFr(n[i], base, nb)
+		for j := range dec {
+			res[j] = append(res[j], dec[j])
+		}
 	}
 
 	return res
