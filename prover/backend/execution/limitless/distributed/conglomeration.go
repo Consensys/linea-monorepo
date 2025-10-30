@@ -171,7 +171,7 @@ func RunConglomerator(cfg *config.Config, req *Metadata) (execResp *execution.Re
 				return jobErr
 			}
 
-			// Once the GL-proof file has arrived - deserialize it and send it to the pipeline
+			// Once the LPP-proof file has arrived - deserialize it and send it to the pipeline
 			if err := serialization.LoadFromDisk(req.LPPProofFiles[i], proofLPP, true); err != nil {
 				logrus.Errorf("error deserializing LPP proof %d: %s - Cancelling context", i, err)
 				return err

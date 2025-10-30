@@ -14,9 +14,9 @@ termination_grace_period_seconds = 30
 [controller.limitless_jobs]
 enable_bootstrapper   = false 
 enable_conglomerator = false
-enable_gl = false  
+enable_gl = true 
+enable_lpp = true  
 gl_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
-enable_lpp = true 
 lpp_mods =  ["ARITH-OPS", "ELLIPTIC_CURVES", "HUB-KECCAK", "SHA2", "ECDSA", "MODEXP_256", "G2_CHECK", "STATIC", "TINY-STUFFS", "MODEXP_4096"]
 
 [execution]
@@ -31,7 +31,7 @@ metadata_dir = "/tmp/exec-limitless/metadata"
 witness_dir = "/tmp/exec-limitless/witness"
 subproofs_dir = "/tmp/exec-limitless/subproofs"
 shared_rnd_dir = "/tmp/exec-limitless/commit"
-timeout_seconds = 3600 
+ 
 
 [blob_decompression]
 prover_mode = "full"

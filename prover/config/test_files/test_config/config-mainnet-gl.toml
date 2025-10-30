@@ -31,7 +31,7 @@ metadata_dir = "/tmp/exec-limitless/metadata"
 witness_dir = "/tmp/exec-limitless/witness"
 subproofs_dir = "/tmp/exec-limitless/subproofs"
 shared_rnd_dir = "/tmp/exec-limitless/commit"
-timeout_seconds = 2100 
+timeout_seconds = 3600 
 
 [blob_decompression]
 prover_mode = "full"
