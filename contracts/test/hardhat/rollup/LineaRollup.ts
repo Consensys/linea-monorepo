@@ -410,6 +410,26 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithReason(secondCall, INITIALIZED_ALREADY_MESSAGE);
     });
+
+    it("Should revert if reinitializeLineaRollupV7 is invoked by non-ProxyAdmin", async () => {
+      const rollupFactory = await ethers.getContractFactory("TestLineaRollup");
+      const rollup = await rollupFactory.deploy();
+      await rollup.waitForDeployment();
+
+      const reinitData: LineaRollupV7ReinitializationData = {
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        roleAddresses,
+        yieldManager: mockYieldManager,
+      };
+      const call = rollup.reinitializeLineaRollupV7(
+        reinitData.roleAddresses,
+        reinitData.pauseTypeRoles,
+        reinitData.unpauseTypeRoles,
+        reinitData.yieldManager,
+      );
+      expectRevertWithCustomError(rollup, call, "CallerNotProxyAdmin");
+    });
   });
 
   describe("Change verifier address", () => {

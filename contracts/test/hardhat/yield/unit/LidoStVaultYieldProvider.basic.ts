@@ -495,7 +495,6 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(registrationData[0]).eq(YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR);
       expect(registrationData[1]).eq(expectedDashboardAddress);
       expect(registrationData[2]).eq(expectedVaultAddress);
-      console.log(await getBalance(yieldManager));
       expect(await getBalance(yieldManager)).eq(beforeYieldManagerBalance - ONE_ETHER);
       expect(await getBalance(mockVaultFactory)).eq(beforeVaultFactoryBalance + ONE_ETHER);
     });

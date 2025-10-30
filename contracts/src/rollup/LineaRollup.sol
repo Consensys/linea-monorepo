@@ -53,7 +53,8 @@ contract LineaRollup is LineaRollupYieldExtension {
     assembly {
       proxyAdmin := sload(PROXY_ADMIN_SLOT)
     }
-    require(msg.sender == proxyAdmin, "");
+    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
+
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
