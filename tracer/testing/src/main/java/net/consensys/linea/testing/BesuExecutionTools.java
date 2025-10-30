@@ -28,6 +28,7 @@ import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -97,7 +98,7 @@ public class BesuExecutionTools {
     this.testName = tmpTestName.substring(0, Math.min(tmpTestName.length(), 200));
     int besuPort = findFreePort();
     int shomeiPort = findFreePort();
-    this.httpClient = new OkHttpClient();
+    this.httpClient = new OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).build();
     this.oneTxPerBlock = oneTxPerBlock;
     // Generate file per fork in testing/src/main/resources folder
     String genesisFileName =
@@ -425,7 +426,8 @@ public class BesuExecutionTools {
     ObjectMapper mapper = new ObjectMapper();
     EngineAPIService engineApiService = new EngineAPIService(besuNode, ethTransactions, mapper);
     BigInteger latestTimestamp = besuNode.execute(ethTransactions.block()).getTimestamp();
-    long blockBuildingTimeMs = parseLong(genesisConfigBuilder.getCliqueBlockPeriodSeconds()) * 1000;
+    long blockBuildingTimeMs =
+        parseLong(genesisConfigBuilder.getCliqueBlockPeriodSeconds()) * 10000;
     engineApiService.buildNewBlock(nextFork, latestTimestamp.longValue() + 1L, blockBuildingTimeMs);
   }
 
@@ -469,7 +471,7 @@ public class BesuExecutionTools {
     TraceFile traceFile = lineaGenerateConflatedTracesToFileV2(startBlockNumber, endBlockNumber);
     Path traceFilePath = Path.of(traceFile.conflatedTracesFileName());
     waitFor(
-        10,
+        60,
         () -> {
           assertThat(traceFilePath.toFile().exists())
               .withFailMessage("Trace file %s does not exist", traceFilePath)

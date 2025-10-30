@@ -19,7 +19,6 @@ import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.consensus.clique.CliqueBlockHeaderFunctions;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Quantity;
@@ -27,6 +26,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
 import org.hyperledger.besu.ethereum.core.Difficulty;
+import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions;
 import org.hyperledger.besu.evm.log.LogsBloomFilter;
 
 public record BlockHeaderSnapshot(
@@ -87,10 +87,13 @@ public record BlockHeaderSnapshot(
             .mixHash(Hash.fromHexString(this.mixHashOrPrevRandao))
             .prevRandao(Bytes32.fromHexString(this.mixHashOrPrevRandao))
             .nonce(this.nonce)
-            .blockHeaderFunctions(new CliqueBlockHeaderFunctions());
+            .blockHeaderFunctions(new MainnetBlockHeaderFunctions());
 
     this.baseFee.ifPresent(baseFee -> builder.baseFee(Wei.fromHexString(baseFee)));
-    // Following null check appears to be necessary for older replays.
+    // Following null check is required for older replays only.  Eventually, it can be removed (i.e.
+    // once all LONDON
+    // replays are dropped).  Also, this is necessary despite the fact that this field is already an
+    // Optional.
     if (this.parentBeaconBlockRoot != null) {
       this.parentBeaconBlockRoot.ifPresent(
           root -> builder.parentBeaconBlockRoot(Bytes32.fromHexString(root)));

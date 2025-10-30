@@ -32,6 +32,7 @@ import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
 import net.consensys.linea.testing.ReplayExecutionEnvironment;
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.datatypes.Hash;
 import org.junit.jupiter.api.TestInfo;
@@ -98,6 +99,7 @@ public class ReplayTestTools {
         .filename(filename)
         .zkTracer(new ZkTracer(chain, historicalBlockHashes))
         .txResultChecking(resultChecking)
+        .useCoinbaseAddressFromBlockHeader(Fork.isPostPrague(chain.fork))
         .build()
         .replay(chain, testInfo, conflation);
   }

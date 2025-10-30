@@ -35,12 +35,14 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
  * @param storage storage cells that will be accessed during the conflation execution
  */
 public record ConflationSnapshot(
+    String fork,
     List<BlockSnapshot> blocks,
     List<AccountSnapshot> accounts,
     List<StorageSnapshot> storage,
     List<BlockHashSnapshot> blockHashes) {
 
   public static ConflationSnapshot from(
+      String fork,
       List<BlockSnapshot> blocks,
       List<AccountSnapshot> accounts,
       List<StorageSnapshot> storage,
@@ -52,7 +54,7 @@ public record ConflationSnapshot(
       blockHashSnapshots.add(new BlockHashSnapshot(e.getKey(), h));
     }
     //
-    return new ConflationSnapshot(blocks, accounts, storage, blockHashSnapshots);
+    return new ConflationSnapshot(fork, blocks, accounts, storage, blockHashSnapshots);
   }
 
   public long firstBlockNumber() {
