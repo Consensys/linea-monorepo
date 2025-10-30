@@ -135,7 +135,7 @@ func WriteBigIntOn64Bytes(w io.Writer, b *big.Int) (int64, error) {
 	return int64(n), err
 }
 
-// Read a bigint from a reader assuming it takes 32 bytes
+// Read a bigint from a reader assuming it takes 64 bytes
 func ReadBigIntOn64Bytes(r io.Reader) (*big.Int, error) {
 	buf := [64]byte{}
 	_, err := r.Read(buf[:])
@@ -147,7 +147,7 @@ func ReadBigIntOn64Bytes(r io.Reader) (*big.Int, error) {
 
 	bi := new(big.Int).SetBytes(res[:])
 	if bi.IsUint64() && bi.Uint64() == 0 {
-		// there is an edge-case here that breaks the test. Namely, giving 32
+		// there is an edge-case here that breaks the test. Namely, giving 64
 		// zero bytes to a big.Int or calling NewInt with `0` do not produce the
 		// same instances although they are both equivalent. This case handling
 		// aims at preventing this.
