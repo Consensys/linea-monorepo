@@ -17,7 +17,7 @@ import { getBlock } from "viem/actions";
 import { Agent } from "https";
 import { GetCostAndUsageCommandInput } from "@aws-sdk/client-cost-explorer";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
-import { addDays } from "date-fns";
+import { addDays, subDays } from "date-fns";
 import { Result } from "neverthrow";
 import { computeInvoicePeriod, InvoicePeriod } from "../utils/submit-invoice/time.js";
 import { generateQueryParameters, getDuneClient, runDuneQuery } from "../utils/common/dune.js";
@@ -277,6 +277,8 @@ export default class SubmitInvoice extends Command {
       this.error(`Invalid Ethereum price fetched from CoinGecko. priceFetchedInUsd=${etherPriceInUsd}`);
     }
 
+    this.log(`Fetched Ethereum price: etherPriceInUsd=${etherPriceInUsd}`);
+
     const awsCostsInEth = awsCostsInUsd / etherPriceInUsd;
     const totalCostsInEth = parseEther((awsCostsInEth + onChainCostsInEth).toString());
 
@@ -286,7 +288,7 @@ export default class SubmitInvoice extends Command {
       return;
     }
 
-    this.log(`Total costs to invoice: costs=${formatEther(totalCostsInEth)} ETH`);
+    this.log(`Total costs to invoice: costsInEth=${formatEther(totalCostsInEth)} etherPriceInUsd=${etherPriceInUsd}`);
 
     /******************************
       TRANSACTION GAS ESTIMATION
@@ -393,7 +395,9 @@ export default class SubmitInvoice extends Command {
     const startDateStr = formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd");
     const endDateStr = formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd");
 
-    this.log(`Fetching AWS costs for the invoice period startDate=${startDateStr} endDate=${endDateStr}`);
+    this.log(
+      `Fetching AWS costs for the invoice period startDate=${startDateStr} endDate=${formatInTimeZone(subDays(endDateStr, 1), "UTC", "yyyy-MM-dd")}`,
+    );
 
     if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
       this.error("AWS Costs API Filters must specify one metric.");
