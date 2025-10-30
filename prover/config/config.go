@@ -63,9 +63,6 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 			return nil, err
 		}
 
-		// Struct-level validator for ExecutionLimitless
-		validate.RegisterStructValidation(validateExecutionLimitlessTimeoutOrder, ExecutionLimitless{})
-
 		// Validate the struct after registering all custom validators
 		if err = validate.Struct(cfg); err != nil {
 			return nil, err
@@ -159,17 +156,6 @@ func validateModEntries(fl validator.FieldLevel) bool {
 		}
 	}
 	return true
-}
-
-// validateExecutionLimitlessTimeoutOrder ensures GLSubproofsTimeout < RndBeaconTimeout < LPPSubproofsTimeout
-func validateExecutionLimitlessTimeoutOrder(sl validator.StructLevel) {
-	cfg := sl.Current().Interface().(ExecutionLimitless)
-
-	if !(cfg.GLSubproofsTimeout < cfg.RndBeaconTimeout && cfg.RndBeaconTimeout < cfg.LPPSubproofsTimeout) {
-		sl.ReportError(cfg.GLSubproofsTimeout, "GLSubproofsTimeout", "GLSubproofsTimeout", "timeout_order", "")
-		sl.ReportError(cfg.RndBeaconTimeout, "RndBeaconTimeout", "RndBeaconTimeout", "timeout_order", "")
-		sl.ReportError(cfg.LPPSubproofsTimeout, "LPPSubproofsTimeout", "LPPSubproofsTimeout", "timeout_order", "")
-	}
 }
 
 // TODO @gbotrel add viper hook to decode custom types (instead of having duplicate string and custom type.)
@@ -320,9 +306,7 @@ type ExecutionLimitless struct {
 	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
 	SharedFailureDir    string `mapstructure:"shared_failure_dir"`
 
-	GLSubproofsTimeout  int `mapstructure:"gl_subproofs_timeout" validate:"gt=0,number"`
-	RndBeaconTimeout    int `mapstructure:"rnd_beacon_timeout" validate:"gt=0,number"`
-	LPPSubproofsTimeout int `mapstructure:"lpp_subproofs_timeout" validate:"gt=0,number"`
+	Timeout int `mapstructure:"timeout" validate:"gt=0,number"`
 }
 
 type Execution struct {

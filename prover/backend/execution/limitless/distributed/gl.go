@@ -63,15 +63,11 @@ func RunGL(cfg *config.Config, req *GLRequest) error {
 
 	logrus.Infof("Finished running the GL-prover for witness module=%v at index=%d", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-	// It is important to write the GL proof files first and then the LPP commitments. This is because
-	// in the conglomeration prover, we have a watcher for all LPP commitments to get shared randomness and
-	// hence the presence of LPP commitment files signal that GL proof files also exist. We want to make sure to
-	// avoid partial writes - the case where only one file is written.
 	if err := serialization.StoreToDisk(proofGLFile, _proofGL, true); err != nil {
 		return fmt.Errorf("could not store GL proof: %w", err)
 	}
 
-	logrus.Infof("Generated GL proof for witness module=%v at index=%d and stored to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
+	logrus.Infof("Stored GL proof for witness module=%v at index=%d  to disk", witnessGL.ModuleName, witnessGL.ModuleIndex)
 
 	return nil
 }

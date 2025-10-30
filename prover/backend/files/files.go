@@ -201,50 +201,33 @@ func RemoveMatchingFiles(pattern string, isLog bool) (bool, error) {
 	return true, nil
 }
 
-// WaitForAllFilesAtPath waits until all expected files exist or the context is done.
+// WaitForFileAtPath waits until the given file exists or the context is done.
 // It returns nil on success, or ctx.Err() / watcher error otherwise.
-func WaitForAllFilesAtPath(ctx context.Context, files []string, reportMissing bool, msg string) error {
-
+func WaitForFileAtPath(ctx context.Context, file string, reportMissing bool, msg string) error {
 	logrus.Infoln(msg)
 
-	// Map of expected files
-	expected := make(map[string]bool)
-	dirs := make(map[string]struct{})
-	for _, f := range files {
-		expected[f] = false
-		dirs[filepath.Dir(f)] = struct{}{}
-	}
+	dir := filepath.Dir(file)
 
-	// Watcher
+	// Create watcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return fmt.Errorf("creating watcher: %w", err)
 	}
 	defer watcher.Close()
 
-	for dir := range dirs {
-		if err := watcher.Add(dir); err != nil {
-			return fmt.Errorf("adding watch on %s: %w", dir, err)
-		}
+	if err := watcher.Add(dir); err != nil {
+		return fmt.Errorf("adding watch on %s: %w", dir, err)
 	}
 
-	// Initial scan
-	total, count := len(files), 0
-	for f := range expected {
-		if _, err := os.Stat(f); err == nil {
-			expected[f] = true
-			count++
-			logrus.Infof("found:%s", f)
-			logrus.Infof("remaining files:%d", total-count)
-		}
-	}
-	if count == len(expected) {
+	// Initial check
+	if _, err := os.Stat(file); err == nil {
+		logrus.Infof("found: %s", file)
 		return nil
 	}
 
 	done := make(chan struct{})
 
-	// Run a simple event loop (watch loop)
+	// Event loop
 	go func() {
 		defer close(done)
 		for {
@@ -256,35 +239,27 @@ func WaitForAllFilesAtPath(ctx context.Context, files []string, reportMissing bo
 					return
 				}
 				if event.Has(fsnotify.Create) || event.Has(fsnotify.Write) {
-					if _, need := expected[event.Name]; need && !expected[event.Name] {
-						expected[event.Name] = true
-						count++
-						logrus.Infof("found:%s", event.Name)
-						logrus.Infof("remaining files:%d", total-count)
-						if count == len(expected) {
-							logrus.Infof("All %d file(s) have arrived", total)
-							return
-						}
+					if event.Name == file {
+						logrus.Infof("found: %s", event.Name)
+						return
 					}
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				logrus.Errorf("watcher error:%v", err)
+				logrus.Errorf("watcher error: %v", err)
 			}
 		}
 	}()
 
 	<-done
 
-	// Did we finish because of success or timeout?
+	// Success or context timeout?
 	if ctx.Err() != nil {
 		if reportMissing {
-			for f, ok := range expected {
-				if !ok {
-					logrus.Infof("missing file: %s", f)
-				}
+			if _, err := os.Stat(file); err != nil {
+				logrus.Infof("missing file: %s", file)
 			}
 		}
 		return ctx.Err()

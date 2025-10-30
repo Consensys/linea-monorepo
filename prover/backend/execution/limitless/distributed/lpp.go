@@ -90,7 +90,7 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 		return fmt.Errorf("could not store LPP proof: %w", err)
 	}
 
-	logrus.Infof("Generated LPP proof for witness module=%v at index=%d and stored to disk", witnessLPP.ModuleName, witnessLPP.ModuleIndex)
+	logrus.Infof("Stored LPP proof for witness module=%v at index=%d to disk", witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
 	return nil
 }
@@ -98,11 +98,11 @@ func RunLPP(cfg *config.Config, req *LPPRequest) error {
 func waitForSharedRandomnessFile(cfg *config.Config, req *LPPRequest) error {
 
 	// Set timeout for all randomness beacon timeout
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.ExecutionLimitless.RndBeaconTimeout)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.ExecutionLimitless.Timeout)*time.Second)
 	defer cancel()
 
-	msg := fmt.Sprintf("Waiting for shared randomness file with configured timeout:%d sec", cfg.ExecutionLimitless.RndBeaconTimeout)
-	err := files.WaitForAllFilesAtPath(ctx, []string{req.SharedRandomnessFile}, true, msg)
+	msg := fmt.Sprintf("Waiting for shared randomness file with configured timeout:%d sec", cfg.ExecutionLimitless.Timeout)
+	err := files.WaitForFileAtPath(ctx, req.SharedRandomnessFile, true, msg)
 	if err != nil {
 		return fmt.Errorf("error waiting for shared randomness file: %w", err)
 	}
