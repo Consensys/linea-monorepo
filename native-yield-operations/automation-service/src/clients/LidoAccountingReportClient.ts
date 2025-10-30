@@ -48,6 +48,7 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
     return params;
   }
 
+  // Uses latest known result of this.getLatestSubmitVaultReportParams()
   // Return true is simulation succeeded, false otherwise
   async isSimulateSubmitLatestVaultReportSuccessful(): Promise<boolean> {
     const params = await this._getLatestSubmitVaultReportParams();
@@ -70,6 +71,7 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
     }
   }
 
+  // Uses latest known result of this.getLatestSubmitVaultReportParams()
   async submitLatestVaultReport(): Promise<void> {
     const params = await this._getLatestSubmitVaultReportParams();
     await this.lazyOracleContractClient.updateVaultData(params);

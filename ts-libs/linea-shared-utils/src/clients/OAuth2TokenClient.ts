@@ -17,7 +17,6 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
     private readonly audience: string,
     private readonly grantType: string = "client_credentials",
     private readonly expiryBufferSeconds: number = 60,
-    private readonly defaultExpiresInSeconds: number = 3_600,
   ) {}
 
   async getBearerToken(): Promise<string | undefined> {
@@ -58,11 +57,17 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
     this.bearerToken = `${tokenType} ${data.access_token}`.trim();
 
     if (data?.expires_at) {
-      this.tokenExpiresAtSeconds = data?.expires_at;
+      const tokenExpiresAtSecondsCandidate = data?.expires_at;
+      if (tokenExpiresAtSecondsCandidate < getCurrentUnixTimestampSeconds()) {
+        this.logger.error(`OAuth2 access token already expired at ${tokenExpiresAtSecondsCandidate}`);
+        return undefined;
+      }
+      this.tokenExpiresAtSeconds = tokenExpiresAtSecondsCandidate;
     } else if (data?.expires_in) {
       this.tokenExpiresAtSeconds = getCurrentUnixTimestampSeconds() + data?.expires_in;
     } else {
-      this.tokenExpiresAtSeconds = getCurrentUnixTimestampSeconds() + this.defaultExpiresInSeconds;
+      this.logger.error(`OAuth2 access token did not provide expiry data`);
+      return undefined;
     }
 
     this.logger.info(

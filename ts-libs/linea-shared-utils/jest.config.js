@@ -2,7 +2,7 @@ module.exports = {
   preset: "ts-jest",
   testEnvironment: "node",
   rootDir: ".",
-  testRegex: "test.ts$",
+  testRegex: ".test.ts$",
   verbose: true,
   collectCoverage: true,
   collectCoverageFrom: ["src/**/*.ts"],

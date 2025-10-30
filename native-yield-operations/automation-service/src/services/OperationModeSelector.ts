@@ -28,8 +28,8 @@ export class OperationModeSelector implements IOperationModeSelector {
     }
 
     this.isRunning = true;
-    this.logger.info(`Starting ${this.logger.name}...`, { loggerName: this.logger.name });
-    void this.selectOperationModeLoop();
+    this.logger.info(`Starting selectOperationModeLoop`);
+    await this.selectOperationModeLoop();
   }
 
   public stop(): void {
@@ -38,7 +38,7 @@ export class OperationModeSelector implements IOperationModeSelector {
     }
 
     this.isRunning = false;
-    this.logger.info(`Stopped ${this.logger.name}...`, { loggerName: this.logger.name });
+    this.logger.info(`Stopped selectOperationModeLoop`);
   }
 
   private async selectOperationModeLoop(): Promise<void> {

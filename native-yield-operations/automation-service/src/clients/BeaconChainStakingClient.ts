@@ -58,6 +58,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       pubkeys: [],
       amountsGwei: [],
     };
+    if (sortedValidatorList.length === 0) return this.maxValidatorWithdrawalRequestsPerTransaction;
     let totalWithdrawalRequestAmountWei = 0n;
 
     for (const v of sortedValidatorList) {
@@ -77,6 +78,9 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     }
 
     // Do unstake
+    if (totalWithdrawalRequestAmountWei === 0n || withdrawalRequests.amountsGwei.length === 0) {
+      return this.maxValidatorWithdrawalRequestsPerTransaction;
+    }
     await this.yieldManagerContractClient.unstake(this.yieldProvider, withdrawalRequests);
 
     // Instrument metrics after tx success
@@ -99,6 +103,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     this.logger.debug(`_submitValidatorExits started remainingWithdrawals=${remainingWithdrawals}`, {
       sortedValidatorList,
     });
+    if (remainingWithdrawals === 0 || sortedValidatorList.length === 0) return;
     const withdrawalRequests: WithdrawalRequests = {
       pubkeys: [],
       amountsGwei: [],
@@ -115,6 +120,7 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       }
     }
 
+    if (withdrawalRequests.amountsGwei.length === 0) return;
     // Do unstake
     await this.yieldManagerContractClient.unstake(this.yieldProvider, withdrawalRequests);
 

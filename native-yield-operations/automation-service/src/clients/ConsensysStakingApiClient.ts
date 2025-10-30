@@ -20,7 +20,7 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
       this.logger.error("getActiveValidators error:", { error });
       return undefined;
     }
-    if (data === undefined) {
+    if (!data) {
       this.logger.error("getActiveValidators data undefined");
       return undefined;
     }
