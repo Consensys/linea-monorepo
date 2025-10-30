@@ -1,10 +1,9 @@
 package poseidon2
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -148,18 +147,19 @@ func (ghc *GnarkHasherCircuit) Define(api frontend.API) error {
 	h.Write(ghc.Inputs...)
 
 	// sum
-	res := h.Sum()
+	// res := h.Sum()
+	h.Sum()
 
 	// check the result
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return err
-	}
-	for i := 0; i < len(res); i++ {
-		apiGen.Println(&res[i])
-	}
+	// apiGen, err := zk.NewGenericApi(api)
+	// if err != nil {
+	// 	return err
+	// }
+	// for i := 0; i < len(res); i++ {
+	// 	apiGen.Println(&res[i])
+	// }
 	// for i := 0; i < 8; i++ {
-	// 	apiGen.AssertIsEqual(&ghc.Ouput[i], &res[i])
+	// apiGen.AssertIsEqual(&ghc.Ouput[i], &res[i])
 	// }
 
 	return nil
@@ -179,19 +179,16 @@ func getGnarkHasherCircuitWitness() (*GnarkHasherCircuit, *GnarkHasherCircuit) {
 	phasher := Poseidon2()
 	phasher.WriteElements(vals)
 	res := phasher.SumElement()
-	for i := 0; i < len(res); i++ {
-		fmt.Println(res[i].String())
-	}
 
 	// create witness and circuit
 	var circuit, witness GnarkHasherCircuit
 	circuit.Inputs = make([]zk.WrappedVariable, nbElmts)
 	witness.Inputs = make([]zk.WrappedVariable, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = zk.ValueOf(vals[i])
+		witness.Inputs[i] = zk.ValueOf(vals[i].String())
 	}
 	for i := 0; i < 8; i++ {
-		witness.Ouput[i] = zk.ValueOf(res[i])
+		witness.Ouput[i] = zk.ValueOf(res[i].String())
 	}
 
 	return &circuit, &witness
@@ -200,31 +197,28 @@ func getGnarkHasherCircuitWitness() (*GnarkHasherCircuit, *GnarkHasherCircuit) {
 
 func TestCircuit(t *testing.T) {
 
-	{
-		circuit, witness := getGnarkHasherCircuitWitness()
-
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-		assert.NoError(t, err)
-
-		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-		assert.NoError(t, err)
-		err = ccs.IsSolved(fullWitness)
-		assert.NoError(t, err)
-	}
-
 	// {
-	// 	witness := testApiGenWitness()
+	// 	circuit, witness := getGnarkHasherCircuitWitness()
 
-	// 	var circuit ApiCircuitGen
-	// 	circuit.n.SetUint64(uint64(sizeExpo))
-
-	// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 	// 	assert.NoError(t, err)
 
-	// 	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+	// 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
 	// 	assert.NoError(t, err)
 	// 	err = ccs.IsSolved(fullWitness)
 	// 	assert.NoError(t, err)
 	// }
+
+	{
+		circuit, witness := getGnarkHasherCircuitWitness()
+
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 
 }

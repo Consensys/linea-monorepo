@@ -21,6 +21,8 @@ type WrappedVariable struct {
 	EV emulated.Element[emulated.KoalaBear]
 }
 
+type Octuplet [8]WrappedVariable
+
 func (w *WrappedVariable) AsNative() frontend.Variable {
 	return w.V
 }
