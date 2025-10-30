@@ -18,7 +18,7 @@ func EvaluateUnivariateGnarkMixed(api frontend.API, pol []zk.WrappedVariable, x 
 	res := gnarkfext.NewE4GenFromBase(0)
 	for i := len(pol) - 1; i >= 0; i-- {
 		res = *e4Api.Mul(&res, &x)
-		res = *e4Api.AddByBase(&res, &pol[i])
+		res = *e4Api.AddByBase(&res, pol[i])
 	}
 	return res
 }

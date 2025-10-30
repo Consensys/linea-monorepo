@@ -90,15 +90,10 @@ func FFTInverse(api frontend.API, p []zk.WrappedVariable, genInv field.Element, 
 	}
 
 	// res of the fft inverse
-	_p := toPtr(p)
-	for i := 0; i < len(_p); i++ {
-		_p[i] = &p[i]
-	}
-	_res, err := apiGen.NewHint(fftInverseHint(apiGen.Type()), len(p), _p...)
+	res, err := apiGen.NewHint(fftInverseHint(apiGen.Type()), len(p), p...)
 	if err != nil {
 		return nil, err
 	}
-	res := fromPtr(_res)
 	// probabilistically check the result of the FFT
 	// multicommit.WithCommitment(
 	// 	api,
@@ -137,8 +132,8 @@ func gnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z zk.WrappedVa
 	res := zk.ValueOf(0)
 	s := len(p)
 	for i := 0; i < len(p); i++ {
-		res = *apiGen.Mul(&res, &z)
-		res = *apiGen.Add(&res, &p[s-1-i])
+		res = apiGen.Mul(res, z)
+		res = apiGen.Add(res, p[s-1-i])
 	}
 	return res
 }
@@ -154,8 +149,8 @@ func gnarkEvaluateLagrange(api frontend.API, p []zk.WrappedVariable, z zk.Wrappe
 
 	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
 	for i := uint64(0); i < cardinality; i++ {
-		tmp := *apiGen.Mul(&lagranges[i], &p[i])
-		res = *apiGen.Add(&res, &tmp)
+		tmp := apiGen.Mul(lagranges[i], p[i])
+		res = apiGen.Add(res, tmp)
 	}
 
 	return res
@@ -177,21 +172,21 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z zk.WrappedVariable, gen field.E
 	// ζⁿ-1
 	res[0] = z
 	for i := 0; i < tb; i++ {
-		res[0] = *apiGen.Mul(&res[0], &res[0])
+		res[0] = apiGen.Mul(res[0], res[0])
 	}
 	wOne := zk.ValueOf(1)
-	res[0] = *apiGen.Sub(&res[0], &wOne)
+	res[0] = apiGen.Sub(res[0], wOne)
 
 	// ζ-1
 	var accZetaMinusOmegai zk.WrappedVariable
-	accZetaMinusOmegai = *apiGen.Sub(&z, &wOne)
+	accZetaMinusOmegai = apiGen.Sub(z, wOne)
 
 	// (ζⁿ-1)/(ζ-1)
-	res[0] = *apiGen.Div(&res[0], &accZetaMinusOmegai)
+	res[0] = apiGen.Div(res[0], accZetaMinusOmegai)
 
 	// 1/n*(ζⁿ-1)/(ζ-1)
 	wCardinality := zk.ValueOf(cardinality)
-	res[0] = *apiGen.Div(&res[0], &wCardinality)
+	res[0] = apiGen.Div(res[0], wCardinality)
 
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
 	var accOmega field.Element
@@ -200,12 +195,12 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z zk.WrappedVariable, gen field.E
 	wGen := zk.ValueOf(gen)
 	var wAccOmega zk.WrappedVariable
 	for i := uint64(1); i < cardinality; i++ {
-		res[i] = *apiGen.Mul(&res[i-1], &wGen)             // res[i] <- ω * res[i-1]
-		res[i] = *apiGen.Mul(&res[i], &accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
-		accOmega.Mul(&accOmega, &gen)                      // accOmega <- accOmega * ω
+		res[i] = apiGen.Mul(res[i-1], wGen)             // res[i] <- ω * res[i-1]
+		res[i] = apiGen.Mul(res[i], accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
+		accOmega.Mul(&accOmega, &gen)                   // accOmega <- accOmega * ω
 		wAccOmega = zk.ValueOf(accOmega)
-		accZetaMinusOmegai = *apiGen.Sub(&z, &wAccOmega)   // accZetaMinusOmegai <- ζ-ωⁱ
-		res[i] = *apiGen.Div(&res[i], &accZetaMinusOmegai) // res[i]  <- res[i]/(ζ-ωⁱ)
+		accZetaMinusOmegai = apiGen.Sub(z, wAccOmega)   // accZetaMinusOmegai <- ζ-ωⁱ
+		res[i] = apiGen.Div(res[i], accZetaMinusOmegai) // res[i]  <- res[i]/(ζ-ωⁱ)
 	}
 
 	return res
