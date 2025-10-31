@@ -8,9 +8,23 @@ import { readFileSync } from "fs";
 import path from "path";
 import { ILogger } from "../logging/ILogger";
 
-// TODO - Test through manual script, before writing unit tests
+/**
+ * Adapter for Web3Signer service that provides contract signing functionality via remote API.
+ * Uses HTTPS client authentication with P12 keystore and trusted store certificates.
+ */
 export class Web3SignerClientAdapter implements IContractSignerClient {
   private readonly agent: Agent;
+  /**
+   * Creates a new Web3SignerClientAdapter instance.
+   *
+   * @param {ILogger} logger - The logger instance for logging signing operations.
+   * @param {string} web3SignerUrl - The base URL of the Web3Signer service.
+   * @param {Hex} web3SignerPublicKey - The public key in hex format for the signing key.
+   * @param {string} web3SignerKeystorePath - Path to the P12 keystore file for client authentication.
+   * @param {string} web3SignerKeystorePassphrase - Passphrase for the keystore file.
+   * @param {string} web3SignerTrustedStorePath - Path to the P12 trusted store file for CA certificate.
+   * @param {string} web3SignerTrustedStorePassphrase - Passphrase for the trusted store file.
+   */
   constructor(
     private readonly logger: ILogger,
     private readonly web3SignerUrl: string,
@@ -29,6 +43,13 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
     );
   }
 
+  /**
+   * Signs a transaction by sending it to the remote Web3Signer service.
+   * The transaction is serialized and sent via HTTPS POST request with client certificate authentication.
+   *
+   * @param {TransactionSerializable} tx - The transaction to sign.
+   * @returns {Promise<Hex>} The signature as a hex string returned from the Web3Signer service.
+   */
   async sign(tx: TransactionSerializable): Promise<Hex> {
     this.logger.debug("Signing transaction via remote Web3Signer");
     const { data } = await axios.post(
@@ -48,16 +69,36 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
     return data;
   }
 
+  // TODO - This function doesn't seem to work correctly in manual testing. For investigation.
+  /**
+   * Gets the Ethereum address associated with the Web3Signer public key.
+   *
+   * @returns {Address} The Ethereum address derived from the public key.
+   */
   getAddress(): Address {
     return publicKeyToAddress(this.web3SignerPublicKey);
   }
 
+  /**
+   * Converts a P12 certificate to PEM format.
+   *
+   * @param {string | forge.util.ByteStringBuffer} p12base64 - The P12 certificate data in base64 or ByteStringBuffer format.
+   * @param {string} password - The password to decrypt the P12 certificate.
+   * @returns {{ pemCertificate: string }} An object containing the PEM-formatted certificate.
+   */
   private convertToPem(p12base64: string | forge.util.ByteStringBuffer, password: string) {
     const p12Asn1 = forge.asn1.fromDer(p12base64);
     const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
     return this.getCertificateFromP12(p12);
   }
 
+  /**
+   * Extracts a PEM certificate from a PKCS12 object.
+   *
+   * @param {forge.pkcs12.Pkcs12Pfx} p12 - The PKCS12 object containing the certificate.
+   * @returns {{ pemCertificate: string }} An object containing the PEM-formatted certificate.
+   * @throws {Error} If the certificate is not found in the P12 object.
+   */
   private getCertificateFromP12(p12: forge.pkcs12.Pkcs12Pfx) {
     const certData = p12.getBags({ bagType: forge.pki.oids.certBag });
     const certificate = certData[forge.pki.oids.certBag]?.[0];
@@ -69,6 +110,16 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
     return { pemCertificate };
   }
 
+  /**
+   * Creates an HTTPS agent configured with client certificate authentication.
+   * Loads the keystore (client certificate) and trusted store (CA certificate) from P12 files.
+   *
+   * @param {string} keystorePath - Path to the P12 keystore file for client authentication.
+   * @param {string} keystorePassphrase - Passphrase for the keystore file.
+   * @param {string} trustedStorePath - Path to the P12 trusted store file for CA certificate.
+   * @param {string} trustedStorePassphrase - Passphrase for the trusted store file.
+   * @returns {Agent} An HTTPS agent configured with the client and CA certificates.
+   */
   private getHttpsAgent(
     keystorePath: string,
     keystorePassphrase: string,

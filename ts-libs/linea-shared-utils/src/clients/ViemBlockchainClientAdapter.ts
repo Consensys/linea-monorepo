@@ -20,12 +20,26 @@ import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { ILogger } from "../logging/ILogger";
 import { MAX_BPS } from "../core/constants/maths";
 
-// TODO - Ponder the edge cases for retry/timeout/throw logic in sendSignedTransaction before writing unit tests
-// Re-use via composition in ContractClients
-// Hope that using strategy pattern like this makes us more 'viem-agnostic'
+/**
+ * Adapter that wraps viem's PublicClient to provide blockchain interaction functionality.
+ * Implements transaction sending with retry logic, gas fee estimation, and connection pooling.
+ * Uses a single PublicClient instance for better connection pooling and memory efficiency.
+ */
 export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClient, TransactionReceipt> {
   blockchainClient: PublicClient;
 
+  /**
+   * Creates a new ViemBlockchainClientAdapter instance.
+   *
+   * @param {ILogger} logger - The logger instance for logging blockchain operations.
+   * @param {string} rpcUrl - The RPC URL for the blockchain network.
+   * @param {Chain} chain - The blockchain chain configuration.
+   * @param {IContractSignerClient} contractSignerClient - The client for signing transactions.
+   * @param {number} [sendTransactionsMaxRetries=3] - Maximum number of retry attempts for sending transactions (must be at least 1).
+   * @param {bigint} [gasRetryBumpBps=1000n] - Gas price bump in basis points per retry (e.g., 1000n = +10% per retry).
+   * @param {number} [sendTransactionAttemptTimeoutMs=300000] - Timeout in milliseconds for each transaction attempt (default: 5 minutes).
+   * @throws {Error} If sendTransactionsMaxRetries is less than 1.
+   */
   constructor(
     private readonly logger: ILogger,
     rpcUrl: string,
@@ -83,29 +97,58 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     });
   }
 
+  /**
+   * Gets the underlying viem PublicClient instance.
+   *
+   * @returns {PublicClient} The viem PublicClient instance used for blockchain interactions.
+   */
   getBlockchainClient(): PublicClient {
     return this.blockchainClient;
   }
 
+  /**
+   * Gets the chain ID of the connected blockchain network.
+   *
+   * @returns {Promise<number>} The chain ID of the blockchain network.
+   */
   async getChainId(): Promise<number> {
     return await this.blockchainClient.getChainId();
   }
 
+  /**
+   * Gets the balance of an Ethereum address in wei.
+   *
+   * @param {Address} address - The Ethereum address to query the balance for.
+   * @returns {Promise<bigint>} The balance in wei.
+   */
   async getBalance(address: Address): Promise<bigint> {
     return await this.blockchainClient.getBalance({
       address,
     });
   }
 
+  /**
+   * Estimates the current gas fees for EIP-1559 transactions.
+   *
+   * @returns {Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }>} An object containing the estimated maxFeePerGas and maxPriorityFeePerGas values.
+   */
   async estimateGasFees(): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }> {
     const { maxFeePerGas, maxPriorityFeePerGas } = await this.blockchainClient.estimateFeesPerGas();
     return { maxFeePerGas, maxPriorityFeePerGas };
   }
 
   /**
-   * Attempts to send a signed tx with retry-on-timeout semantics.
-   * On each retry, bumps gas by `gasRetryBumpBps`.
-   * Does not retry on errors, only on timeout.
+   * Attempts to send a signed transaction with retry-on-timeout semantics.
+   * On each retry, bumps gas fees by `gasRetryBumpBps` basis points.
+   * Uses a single nonce for all retry attempts to prevent nonce conflicts.
+   * Does not retry on contract revert errors or non-timeout errors, only on timeout.
+   *
+   * @param {Address} contractAddress - The address of the contract to interact with.
+   * @param {Hex} calldata - The encoded function call data.
+   * @param {bigint} [value=0n] - The amount of ether to send with the transaction (default: 0).
+   * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
+   * @throws {ContractFunctionRevertedError} If the contract call reverts (not retried).
+   * @throws {Error} If retry attempts are exhausted or a non-timeout error occurs.
    */
   async sendSignedTransaction(
     contractAddress: Address,
@@ -204,6 +247,22 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     throw lastError;
   }
 
+  /**
+   * Internal method that sends a signed EIP-1559 transaction to the blockchain.
+   * Signs the transaction using the contract signer client, serializes it, and broadcasts it.
+   * Waits for the transaction receipt before returning.
+   *
+   * @param {Address} contractAddress - The address of the contract to interact with.
+   * @param {Hex} calldata - The encoded function call data.
+   * @param {bigint} value - The amount of ether to send with the transaction.
+   * @param {number} nonce - The transaction nonce.
+   * @param {bigint} gasLimit - The estimated gas limit for the transaction.
+   * @param {number} chainId - The chain ID of the blockchain network.
+   * @param {bigint} maxFeePerGas - The maximum fee per gas (EIP-1559).
+   * @param {bigint} maxPriorityFeePerGas - The maximum priority fee per gas (EIP-1559).
+   * @param {bigint} gasMultiplierBps - Gas multiplier in basis points to apply to gas values.
+   * @returns {Promise<TransactionReceipt>} The transaction receipt after the transaction is mined.
+   */
   private async _sendSignedEIP1559Transaction(
     contractAddress: Address,
     calldata: Hex,

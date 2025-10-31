@@ -4,10 +4,27 @@ import { getCurrentUnixTimestampSeconds } from "../utils/time";
 import { IOAuth2TokenClient, OAuth2TokenResponse } from "../core/client/IOAuth2TokenClient";
 import { IRetryService } from "../core/services/IRetryService";
 
+/**
+ * Client for obtaining and managing OAuth2 bearer tokens.
+ * Implements token caching with automatic refresh when tokens are near expiration.
+ * Uses the client credentials grant type to obtain access tokens.
+ */
 export class OAuth2TokenClient implements IOAuth2TokenClient {
   private bearerToken?: string;
   private tokenExpiresAtSeconds?: number;
 
+  /**
+   * Creates a new OAuth2TokenClient instance.
+   *
+   * @param {ILogger} logger - The logger instance for logging token operations.
+   * @param {IRetryService} retryService - The retry service for handling failed token requests.
+   * @param {string} tokenUrl - The OAuth2 token endpoint URL.
+   * @param {string} clientId - The OAuth2 client ID.
+   * @param {string} clientSecret - The OAuth2 client secret.
+   * @param {string} audience - The OAuth2 audience identifier.
+   * @param {string} [grantType="client_credentials"] - The OAuth2 grant type to use.
+   * @param {number} [expiryBufferSeconds=60] - Buffer time in seconds before token expiration to trigger refresh.
+   */
   constructor(
     private readonly logger: ILogger,
     private readonly retryService: IRetryService,
@@ -19,6 +36,13 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
     private readonly expiryBufferSeconds: number = 60,
   ) {}
 
+  /**
+   * Retrieves a valid bearer token, using cached token if available and not expired.
+   * Automatically requests a new token if the cached token is expired or missing.
+   * The token is refreshed when it's within the expiry buffer time of expiration.
+   *
+   * @returns {Promise<string | undefined>} The bearer token string (e.g., "Bearer <token>") if successful, undefined if the request fails or the token is invalid.
+   */
   async getBearerToken(): Promise<string | undefined> {
     // Serve cached token while it remains valid.
     if (

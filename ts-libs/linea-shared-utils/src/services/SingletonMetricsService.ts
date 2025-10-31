@@ -10,9 +10,6 @@ import {
 import { IMetricsService } from "../core/services/IMetricsService";
 
 /**
- * Take care to instantiate as a singleton because there should be only be one instance of prom-client Registry
- * TODO - Implement Singleton pattern for this class
- *
  * MetricsService class that implements the IMetricsService interface.
  * This class provides methods to create and manage Prometheus metrics.
  */

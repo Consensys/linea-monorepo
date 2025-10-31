@@ -1,5 +1,9 @@
 import { MS_PER_SECOND } from "../core/constants/time";
 
+/**
+ * Gets the current Unix timestamp in seconds.
+ * @returns The current Unix timestamp as a number of seconds since the Unix epoch (January 1, 1970 UTC), floored.
+ */
 export function getCurrentUnixTimestampSeconds(): number {
   return Math.floor(Date.now() / 1000);
 }
