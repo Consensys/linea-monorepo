@@ -9,7 +9,24 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 
+/**
+ * Processor for OSSIFICATION_PENDING_MODE operations.
+ * Handles ossification pending state by performing max unstake, submitting vault reports,
+ * progressing pending ossification, and performing max withdrawals if ossification completes.
+ */
 export class OssificationPendingProcessor implements IOperationModeProcessor {
+  /**
+   * Creates a new OssificationPendingProcessor instance.
+   *
+   * @param {ILogger} logger - Logger instance for logging operations.
+   * @param {INativeYieldAutomationMetricsUpdater} metricsUpdater - Service for updating operation mode metrics.
+   * @param {IOperationModeMetricsRecorder} operationModeMetricsRecorder - Service for recording operation mode metrics from transaction receipts.
+   * @param {IYieldManager<TransactionReceipt>} yieldManagerContractClient - Client for interacting with YieldManager contracts.
+   * @param {ILazyOracle<TransactionReceipt>} lazyOracleContractClient - Client for waiting on LazyOracle events.
+   * @param {ILidoAccountingReportClient} lidoAccountingReportClient - Client for submitting Lido accounting reports.
+   * @param {IBeaconChainStakingClient} beaconChainStakingClient - Client for managing beacon chain staking operations.
+   * @param {Address} yieldProvider - The yield provider address to process.
+   */
   constructor(
     private readonly logger: ILogger,
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
@@ -26,6 +43,9 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
    * - Waits for the next `VaultsReportDataUpdated` event **or** a timeout, whichever happens first.
    * - Once triggered, runs the main processing logic (`_process()`).
    * - Always cleans up the event watcher afterward.
+   * Records operation mode trigger metrics and execution duration metrics.
+   *
+   * @returns {Promise<void>} A promise that resolves when the processing cycle completes.
    */
   public async process(): Promise<void> {
     const triggerEvent = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
@@ -38,10 +58,12 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
 
   /**
    * Main processing loop:
-   * 1. Submit vault report if available
-   * 2. Perform processPendingOssifcation
-   * 3. Max withdraw
-   * 4. Max unstake
+   * 1. Max unstake - Submit maximum available withdrawal requests from beacon chain
+   * 2. Submit vault report if available - Fetch and submit latest vault report if simulation succeeds
+   * 3. Process Pending Ossification - Progress pending ossification (stops if failed)
+   * 4. Max withdraw if ossified - Perform max safe withdrawal if ossification completed
+   *
+   * @returns {Promise<void>} A promise that resolves when processing completes (or early returns if ossification fails).
    */
   private async _process(): Promise<void> {
     // Max unstake

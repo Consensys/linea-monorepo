@@ -11,10 +11,27 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 
-// FIRST PRIORITY FOR UNIT TESTING
+/**
+ * Processor for YIELD_REPORTING_MODE operations.
+ * Handles native yield reporting cycles including rebalancing, vault report submission, and beacon chain withdrawals.
+ */
 export class YieldReportingProcessor implements IOperationModeProcessor {
   private vault: Address;
 
+  /**
+   * Creates a new YieldReportingProcessor instance.
+   *
+   * @param {ILogger} logger - Logger instance for logging operations.
+   * @param {INativeYieldAutomationMetricsUpdater} metricsUpdater - Service for updating operation mode metrics.
+   * @param {IOperationModeMetricsRecorder} operationModeMetricsRecorder - Service for recording operation mode metrics from transaction receipts.
+   * @param {IYieldManager<TransactionReceipt>} yieldManagerContractClient - Client for interacting with YieldManager contracts.
+   * @param {ILazyOracle<TransactionReceipt>} lazyOracleContractClient - Client for waiting on LazyOracle events.
+   * @param {ILineaRollupYieldExtension<TransactionReceipt>} lineaRollupYieldExtensionClient - Client for interacting with LineaRollupYieldExtension contracts.
+   * @param {ILidoAccountingReportClient} lidoAccountingReportClient - Client for submitting Lido accounting reports.
+   * @param {IBeaconChainStakingClient} beaconChainStakingClient - Client for managing beacon chain staking operations.
+   * @param {Address} yieldProvider - The yield provider address to process.
+   * @param {Address} l2YieldRecipient - The L2 yield recipient address for yield reporting.
+   */
   constructor(
     private readonly logger: ILogger,
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
@@ -33,6 +50,9 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * - Waits for the next `VaultsReportDataUpdated` event **or** a timeout, whichever happens first.
    * - Once triggered, runs the main processing logic (`_process()`).
    * - Always cleans up the event watcher afterward.
+   * Records operation mode trigger metrics and execution duration metrics.
+   *
+   * @returns {Promise<void>} A promise that resolves when the processing cycle completes.
    */
   public async process(): Promise<void> {
     const triggerEvent = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
@@ -134,6 +154,17 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     }
   }
 
+  /**
+   * Handles rebalancing operations based on rebalance requirements.
+   * Routes to appropriate handler based on rebalance direction:
+   * - NONE: No-op if report simulation fails, otherwise simple submit report
+   * - STAKE: Handles staking rebalance (surplus)
+   * - UNSTAKE: Handles unstaking rebalance (deficit)
+   *
+   * @param {RebalanceRequirement} rebalanceRequirements - The rebalance requirements containing direction and amount.
+   * @param {boolean} isSimulateSubmitLatestVaultReportSuccessful - Whether the vault report submission simulation was successful.
+   * @returns {Promise<void>} A promise that resolves when rebalancing is handled.
+   */
   private async _handleRebalance(
     rebalanceRequirements: RebalanceRequirement,
     isSimulateSubmitLatestVaultReportSuccessful: boolean,
@@ -162,6 +193,20 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     }
   }
 
+  /**
+   * Handles staking rebalance operations when there is a reserve surplus.
+   * Rebalance first - tolerate failures because fresh vault report should not be blocked.
+   * Only do YieldManager->YieldProvider, if L1MessageService->YieldManager succeeded.
+   * Submit report last.
+   *
+   * Assumptions:
+   * - i.) We count rebalance once funds have been moved away from the L1MessageService
+   * - ii.) Only the initial rebalance will call this fn
+   *
+   * @param {bigint} rebalanceAmount - The amount to rebalance in wei.
+   * @param {boolean} isSimulateSubmitLatestVaultReportSuccessful - Whether the vault report submission simulation was successful.
+   * @returns {Promise<void>} A promise that resolves when staking rebalance is handled.
+   */
   // Surplus
   private async _handleStakingRebalance(
     rebalanceAmount: bigint,
@@ -195,6 +240,14 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     }
   }
 
+  /**
+   * Handles unstaking rebalance operations when there is a reserve deficit.
+   * Submit report first, then perform rebalance.
+   *
+   * @param {bigint} rebalanceAmount - The amount to rebalance in wei.
+   * @param {boolean} isSimulateSubmitLatestVaultReportSuccessful - Whether the vault report submission simulation was successful.
+   * @returns {Promise<void>} A promise that resolves when unstaking rebalance is handled.
+   */
   // Deficit
   private async _handleUnstakingRebalance(
     rebalanceAmount: bigint,
