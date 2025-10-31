@@ -19,6 +19,9 @@ async function main() {
   console.log(`Fetching pending partial withdrawals from ${rpcUrl}...`);
   try {
     const withdrawals = await client.getPendingPartialWithdrawals();
+    if (!withdrawals) {
+      throw "undefined withdrawals";
+    }
     console.log(`Received ${withdrawals.length} withdrawals.`);
     if (withdrawals.length > 0) {
       console.log("Sample entry:", withdrawals[0]);

@@ -50,10 +50,10 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         // Hypothesis - Default Viem timeout of 10s will kick in first. It should still retry because we are using the native Viem Timeout error.
         retryCount: 3,
         onFetchRequest: (request) => {
-          this.logger.debug("onFetchRequest", request);
+          this.logger.debug("onFetchRequest", { method: request.method, url: request.url });
         },
         onFetchResponse: (resp) => {
-          this.logger.debug("onFetchResponse", resp);
+          this.logger.debug("onFetchResponse", { text: resp.clone().text() });
         },
       }),
       batch: {

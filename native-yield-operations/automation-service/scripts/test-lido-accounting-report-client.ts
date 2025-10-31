@@ -61,6 +61,7 @@ async function main() {
     contractClientLibrary,
     lazyOracleAddress,
     pollIntervalMs,
+    300_000,
   );
 
   const retryService = new ExponentialBackoffRetryService(
@@ -71,12 +72,11 @@ async function main() {
     retryService,
     lazyOracleClient,
     ipfsGatewayUrl,
-    lidoVaultAddress,
   );
 
   try {
     console.log("Fetching latest vault report parameters...");
-    const params = await lidoAccountingClient.getLatestSubmitVaultReportParams();
+    const params = await lidoAccountingClient.getLatestSubmitVaultReportParams(lidoVaultAddress);
     console.log("Latest updateVaultData params:");
     console.log({
       ...params,
@@ -91,13 +91,13 @@ async function main() {
       console.log("Skipping transaction simulation (SKIP_SIMULATION=true).");
     } else {
       console.log("Simulating updateVaultData call...");
-      const didSimulate = await lidoAccountingClient.isSimulateSubmitLatestVaultReportSuccessful();
+      const didSimulate = await lidoAccountingClient.isSimulateSubmitLatestVaultReportSuccessful(lidoVaultAddress);
       console.log(`Simulation ${didSimulate ? "succeeded ✅" : "failed ❌"}.`);
     }
 
     if (process.env.SUBMIT_LATEST_REPORT === "true") {
       console.log("Submitting latest vault report...");
-      await lidoAccountingClient.submitLatestVaultReport();
+      await lidoAccountingClient.submitLatestVaultReport(lidoVaultAddress);
       console.log("Submission transaction sent ✔️");
     } else {
       console.log("Submission skipped. Set SUBMIT_LATEST_REPORT=true to send the transaction.");
