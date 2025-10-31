@@ -17,17 +17,17 @@ package net.consensys.linea.plugins.config;
 
 import lombok.Builder;
 import net.consensys.linea.plugins.LineaOptionsConfiguration;
-import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 
 /** The Linea L1 L2 bridge configuration. */
 @Builder(toBuilder = true)
-public record LineaL1L2BridgeSharedConfiguration(Address contract, Bytes topic)
+public record LineaL1L2BridgeSharedConfiguration(Address contract, Bytes32 topic)
     implements LineaOptionsConfiguration {
 
   // = Hash(MessageSent(address,address,uint256,uint256,uint256,bytes,bytes32))
-  private static Bytes LINEA_L2L1TOPIC =
-      Bytes.fromHexString("0xe856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
+  private static Bytes32 LINEA_L2L1TOPIC =
+      Bytes32.fromHexString("0xe856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
 
   private static final Address SEPOLIA_L2L1LOGS_SMC =
       Address.fromHexString("0x971e727e956690b9957be6d51Ec16E73AcAC83A7");
@@ -41,6 +41,6 @@ public record LineaL1L2BridgeSharedConfiguration(Address contract, Bytes topic)
   public static final LineaL1L2BridgeSharedConfiguration EMPTY =
       LineaL1L2BridgeSharedConfiguration.builder()
           .contract(Address.ZERO)
-          .topic(Bytes.EMPTY)
+          .topic(Bytes32.ZERO)
           .build();
 }
