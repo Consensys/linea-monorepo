@@ -128,4 +128,15 @@ describe("ExponentialBackoffRetryService", () => {
 
     jest.useRealTimers();
   });
+
+  it("throws when executeWithTimeout receives a non-positive timeout", async () => {
+    const logger = createLogger();
+    const service = new ExponentialBackoffRetryService(logger);
+    const fn = jest.fn().mockResolvedValue("ok");
+
+    const executeWithTimeout = (service as any).executeWithTimeout.bind(service);
+
+    expect(() => executeWithTimeout(fn, 0)).toThrow("timeoutMs must be greater than 0");
+    expect(fn).not.toHaveBeenCalled();
+  });
 });

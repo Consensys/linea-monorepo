@@ -134,6 +134,16 @@ describe("Web3SignerClientAdapter", () => {
     });
   });
 
+  it("throws when the trusted store certificate is missing", () => {
+    const logger = createLogger();
+    getBagsMock.mockReturnValue({});
+
+    expect(() => createAdapter(logger)).toThrow("Certificate not found in P12");
+    expect(logger.info).toHaveBeenCalledWith("Initialising HTTPS agent");
+    expect(certificateToPemMock).not.toHaveBeenCalled();
+    expect(AgentMock).not.toHaveBeenCalled();
+  });
+
   it("signs transactions via Web3Signer", async () => {
     const logger = createLogger();
     const adapter = createAdapter(logger);

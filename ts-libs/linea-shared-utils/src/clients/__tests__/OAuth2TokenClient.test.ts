@@ -159,4 +159,36 @@ describe("OAuth2TokenClient", () => {
     expect(logger.info).toHaveBeenCalledWith("getBearerToken requesting new token");
     expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("successfully retrived"));
   });
+
+  it("uses default grant type and expiry buffer when omitted", async () => {
+    client = new OAuth2TokenClient(logger, retryService, tokenUrl, clientId, clientSecret, audience);
+
+    expect((client as any).grantType).toBe("client_credentials");
+    expect((client as any).expiryBufferSeconds).toBe(60);
+
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        access_token: "default-token",
+        expires_in: 120,
+      },
+    });
+
+    getCurrentUnixTimestampSecondsMock.mockReturnValueOnce(1_000).mockReturnValueOnce(1_000);
+
+    const token = await client.getBearerToken();
+    expect(token).toBe("Bearer default-token");
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      tokenUrl,
+      {
+        client_id: clientId,
+        client_secret: clientSecret,
+        audience,
+        grant_type: grantType,
+      },
+      expect.objectContaining({
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  });
 });
