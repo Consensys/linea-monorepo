@@ -38,6 +38,7 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
       },
       { httpsAgent: this.agent },
     );
+    this.logger.debug(`Signing successful signature=${data}`);
     // Debugging logs
     // const address = await recoverAddress({
     //   hash: serializeTransaction(tx),
