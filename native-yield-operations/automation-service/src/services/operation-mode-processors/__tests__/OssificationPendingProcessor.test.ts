@@ -186,4 +186,18 @@ describe("OssificationPendingProcessor", () => {
 
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
   });
+
+  it("tolerates failure of submitMaxAvailableWithdrawalRequests", async () => {
+    const failure = new Error("unstake failed");
+    beaconClient.submitMaxAvailableWithdrawalRequests.mockRejectedValueOnce(failure);
+    yieldManager.isOssified.mockResolvedValueOnce(true);
+
+    const processor = createProcessor();
+    await processor.process();
+
+    expect(beaconClient.submitMaxAvailableWithdrawalRequests).toHaveBeenCalledTimes(1);
+    expect(lidoReportClient.getLatestSubmitVaultReportParams).toHaveBeenCalledWith(vaultAddress);
+    expect(metricsRecorder.recordProgressOssificationMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
+    expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledWith(yieldProvider, expect.anything());
+  });
 });

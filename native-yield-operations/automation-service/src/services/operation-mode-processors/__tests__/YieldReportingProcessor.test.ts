@@ -252,7 +252,7 @@ describe("YieldReportingProcessor", () => {
     expect(submitSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("_handleRebalance routes staking directions to _handleStakingRebalance", async () => {
+  it("_handleRebalance routes excess directions to _handleStakingRebalance", async () => {
     const processor = createProcessor();
     const stakingSpy = jest
       .spyOn(
