@@ -143,7 +143,7 @@ describe("YieldReportingProcessor", () => {
       l2Recipient,
     );
 
-  it("processes staking surplus flow and records metrics", async () => {
+  it("_process - processes staking surplus flow and records metrics", async () => {
     yieldManager.getRebalanceRequirements
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.STAKE, rebalanceAmount: stakeAmount })
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
@@ -176,7 +176,7 @@ describe("YieldReportingProcessor", () => {
     performanceSpy.mockRestore();
   });
 
-  it("pauses staking when starting in deficit and skips unpause", async () => {
+  it("_process - pauses staking when starting in deficit and skips unpause", async () => {
     yieldManager.getRebalanceRequirements
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.UNSTAKE, rebalanceAmount: 8n })
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n })
@@ -195,7 +195,7 @@ describe("YieldReportingProcessor", () => {
     performanceSpy.mockRestore();
   });
 
-  it("performs an amendment unstake when stake flow flips to deficit mid-cycle", async () => {
+  it("_process - performs an amendment unstake when stake flow flips to deficit mid-cycle", async () => {
     yieldManager.getRebalanceRequirements
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.STAKE, rebalanceAmount: 4n })
       .mockResolvedValueOnce({ rebalanceDirection: RebalanceDirection.UNSTAKE, rebalanceAmount: 6n })
@@ -288,6 +288,72 @@ describe("YieldReportingProcessor", () => {
     expect(unstakeSpy).toHaveBeenCalledWith(17n, true);
   });
 
+  it("_handleStakingRebalance successfully calls rebalance functions and reports yield", async () => {
+    const processor = createProcessor();
+    const submitSpy = jest
+      .spyOn(
+        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
+        "_handleSubmitLatestVaultReport",
+      )
+      .mockResolvedValue(undefined);
+
+    await (
+      processor as unknown as {
+        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
+      }
+    )._handleStakingRebalance(18n, true);
+
+    expect(yieldExtension.transferFundsForNativeYield).toHaveBeenCalledWith(18n);
+    expect(metricsUpdater.recordRebalance).toHaveBeenCalledWith(RebalanceDirection.STAKE, Number(18n));
+    expect(yieldManager.fundYieldProvider).toHaveBeenCalledWith(yieldProvider, 18n);
+    expect(metricsRecorder.recordTransferFundsMetrics).toHaveBeenCalledTimes(1);
+    const transferResult = metricsRecorder.recordTransferFundsMetrics.mock.calls[0][1];
+    expect(transferResult.isOk()).toBe(true);
+    expect(submitSpy).toHaveBeenCalledTimes(1);
+    submitSpy.mockRestore();
+  });
+
+  it("_handleStakingRebalance tolerates failure of fundYieldProvider", async () => {
+    yieldManager.fundYieldProvider.mockRejectedValueOnce(new Error("fund fail"));
+
+    const processor = createProcessor();
+    const submitSpy = jest
+      .spyOn(
+        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
+        "_handleSubmitLatestVaultReport",
+      )
+      .mockResolvedValue(undefined);
+
+    await (
+      processor as unknown as {
+        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
+      }
+    )._handleStakingRebalance(11n, true);
+
+    expect(yieldExtension.transferFundsForNativeYield).toHaveBeenCalledWith(11n);
+    expect(metricsUpdater.recordRebalance).toHaveBeenCalledWith(RebalanceDirection.STAKE, Number(11n));
+    expect(metricsRecorder.recordTransferFundsMetrics).toHaveBeenCalledTimes(1);
+    const result = metricsRecorder.recordTransferFundsMetrics.mock.calls[0][1];
+    expect(result.isErr()).toBe(true);
+    expect(submitSpy).toHaveBeenCalledTimes(1);
+    submitSpy.mockRestore();
+  });
+
+  it("_handleStakingRebalance tolerates failure of transferFundsForNativeYieldResult, but will skip fundYieldProvider and metrics update", async () => {
+    yieldExtension.transferFundsForNativeYield.mockRejectedValueOnce(new Error("transfer fail"));
+
+    const processor = createProcessor();
+    await (
+      processor as unknown as {
+        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
+      }
+    )._handleStakingRebalance(9n, true);
+
+    expect(metricsUpdater.recordRebalance).not.toHaveBeenCalled();
+    expect(yieldManager.fundYieldProvider).not.toHaveBeenCalled();
+    expect(metricsRecorder.recordTransferFundsMetrics).not.toHaveBeenCalled();
+  });
+
   it("_handleStakingRebalance omits report submission when simulation fails", async () => {
     const processor = createProcessor();
     const submitSpy = jest.spyOn(
@@ -355,72 +421,6 @@ describe("YieldReportingProcessor", () => {
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledTimes(1);
     const result = metricsRecorder.recordSafeWithdrawalMetrics.mock.calls[0][1];
     expect(result.isErr()).toBe(true);
-  });
-
-  it("_handleStakingRebalance successfully calls rebalance functions and reports yield", async () => {
-    const processor = createProcessor();
-    const submitSpy = jest
-      .spyOn(
-        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-        "_handleSubmitLatestVaultReport",
-      )
-      .mockResolvedValue(undefined);
-
-    await (
-      processor as unknown as {
-        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
-      }
-    )._handleStakingRebalance(18n, true);
-
-    expect(yieldExtension.transferFundsForNativeYield).toHaveBeenCalledWith(18n);
-    expect(metricsUpdater.recordRebalance).toHaveBeenCalledWith(RebalanceDirection.STAKE, Number(18n));
-    expect(yieldManager.fundYieldProvider).toHaveBeenCalledWith(yieldProvider, 18n);
-    expect(metricsRecorder.recordTransferFundsMetrics).toHaveBeenCalledTimes(1);
-    const transferResult = metricsRecorder.recordTransferFundsMetrics.mock.calls[0][1];
-    expect(transferResult.isOk()).toBe(true);
-    expect(submitSpy).toHaveBeenCalledTimes(1);
-    submitSpy.mockRestore();
-  });
-
-  it("_handleStakingRebalance tolerates failure of fundYieldProvider", async () => {
-    yieldManager.fundYieldProvider.mockRejectedValueOnce(new Error("fund fail"));
-
-    const processor = createProcessor();
-    const submitSpy = jest
-      .spyOn(
-        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-        "_handleSubmitLatestVaultReport",
-      )
-      .mockResolvedValue(undefined);
-
-    await (
-      processor as unknown as {
-        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
-      }
-    )._handleStakingRebalance(11n, true);
-
-    expect(yieldExtension.transferFundsForNativeYield).toHaveBeenCalledWith(11n);
-    expect(metricsUpdater.recordRebalance).toHaveBeenCalledWith(RebalanceDirection.STAKE, Number(11n));
-    expect(metricsRecorder.recordTransferFundsMetrics).toHaveBeenCalledTimes(1);
-    const result = metricsRecorder.recordTransferFundsMetrics.mock.calls[0][1];
-    expect(result.isErr()).toBe(true);
-    expect(submitSpy).toHaveBeenCalledTimes(1);
-    submitSpy.mockRestore();
-  });
-
-  it("_handleStakingRebalance tolerates failure of transferFundsForNativeYieldResult, but will skip fundYieldProvider and metrics update", async () => {
-    yieldExtension.transferFundsForNativeYield.mockRejectedValueOnce(new Error("transfer fail"));
-
-    const processor = createProcessor();
-    await (
-      processor as unknown as {
-        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
-      }
-    )._handleStakingRebalance(9n, true);
-
-    expect(metricsUpdater.recordRebalance).not.toHaveBeenCalled();
-    expect(yieldManager.fundYieldProvider).not.toHaveBeenCalled();
-    expect(metricsRecorder.recordTransferFundsMetrics).not.toHaveBeenCalled();
   });
 
   it("_handleSubmitLatestVaultReport returns early when vault submission fails", async () => {
