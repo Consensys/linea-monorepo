@@ -1125,32 +1125,7 @@ const (
 	opLinComb = 0x03
 	opProd    = 0x04
 	opPoly    = 0x05
-
-	nodeTableMagic   = "XNT1"
-	nodeTableVersion = byte(1)
 )
-
-// zigzag encode/decode for signed ints -> uvarint safe
-func encodeZigZag(x int64) uint64 {
-	return uint64((x << 1) ^ (x >> 63))
-}
-
-func decodeZigZag(u uint64) int64 {
-	return int64((u >> 1) ^ uint64((int64(u&1)<<63)>>63))
-}
-
-// compute flat index given underlying nodeID (uint64 layout: level<<32 | pos)
-// board.Nodes must be available to compute cumulative offsets.
-func getFlatIndexFromUint(u uint64, board symbolic.ExpressionBoard) int {
-	level := int(u >> 32)
-	pos := int(u & ((1 << 32) - 1))
-	// compute cumulative start of level
-	cum := 0
-	for i := 0; i < level; i++ {
-		cum += len(board.Nodes[i])
-	}
-	return cum + pos
-}
 
 func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
 	if e == nil {
@@ -1194,10 +1169,6 @@ func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *ser
 	numMeta := len(metadataList)
 
 	var buf bytes.Buffer
-	// header magic 'XNT1' + version (keeps compatibility with earlier node-table format)
-	// TODO: Get rid
-	buf.WriteString(nodeTableMagic)
-	buf.WriteByte(nodeTableVersion)
 
 	// metadata table
 	writeVarint(&buf, uint64(numMeta))
@@ -1301,22 +1272,6 @@ func (d *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serdeE
 		return reflect.Value{}, newSerdeErrorf("UnpackExpression: expected []byte payload in PackedStructObject, got %T", rawObj[0])
 	}
 	r := bytes.NewReader(dataBytes)
-
-	// header
-	magic := make([]byte, len(nodeTableMagic))
-	if _, err := io.ReadFull(r, magic); err != nil {
-		return reflect.Value{}, newSerdeErrorf("UnpackExpression: read magic failed: %v", err)
-	}
-	if string(magic) != nodeTableMagic {
-		return reflect.Value{}, newSerdeErrorf("UnpackExpression: invalid magic")
-	}
-	ver, err := r.ReadByte()
-	if err != nil {
-		return reflect.Value{}, newSerdeErrorf("UnpackExpression: read version: %v", err)
-	}
-	if ver != nodeTableVersion {
-		return reflect.Value{}, newSerdeErrorf("UnpackExpression: unsupported version %v", ver)
-	}
 
 	numMeta, err := readVarint(r)
 	if err != nil {
@@ -1522,4 +1477,26 @@ func writeVarint(w *bytes.Buffer, v uint64) {
 
 func readVarint(r *bytes.Reader) (uint64, error) {
 	return binary.ReadUvarint(r)
+}
+
+// zigzag encode/decode for signed ints -> uvarint safe
+func encodeZigZag(x int64) uint64 {
+	return uint64((x << 1) ^ (x >> 63))
+}
+
+func decodeZigZag(u uint64) int64 {
+	return int64((u >> 1) ^ uint64((int64(u&1)<<63)>>63))
+}
+
+// compute flat index given underlying nodeID (uint64 layout: level<<32 | pos)
+// board.Nodes must be available to compute cumulative offsets.
+func getFlatIndexFromUint(u uint64, board symbolic.ExpressionBoard) int {
+	level := int(u >> 32)
+	pos := int(u & ((1 << 32) - 1))
+	// compute cumulative start of level
+	cum := 0
+	for i := 0; i < level; i++ {
+		cum += len(board.Nodes[i])
+	}
+	return cum + pos
 }
