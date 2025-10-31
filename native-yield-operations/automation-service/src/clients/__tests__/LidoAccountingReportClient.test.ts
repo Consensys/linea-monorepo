@@ -177,7 +177,14 @@ describe("LidoAccountingReportClient", () => {
 
     expect(success).toBe(false);
     expect(logger.error).toHaveBeenNthCalledWith(1, "Failed isSimulateSubmitLatestVaultReportSuccessful");
-    expect(logger.error).toHaveBeenNthCalledWith(2, "⚠️ Other error:", { shortMessage: "baseShort" });
+    const [, secondCall] = logger.error.mock.calls;
+    expect(secondCall).toBeDefined();
+    expect(secondCall[0]).toBe("⚠️ Error:");
+    const metadata = secondCall[1] as Record<string, unknown>;
+    expect(metadata).toBeDefined();
+    expect(metadata).toHaveProperty("decodedError");
+    expect(metadata.decodedError).toBeInstanceOf(Error);
+    expect((metadata.decodedError as Error).message).toBe("base error");
   });
 
   it("logs unexpected errors when simulation throws an unknown error", async () => {
