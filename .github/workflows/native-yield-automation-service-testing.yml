@@ -22,11 +22,12 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
 
+      - name: Build
+        run: |
+          pnpm --filter @consensys/linea-shared-utils build
+          pnpm --filter @consensys/linea-native-yield-automation-service build
+        
       - name: Run tests and generate coverage report
         run: |
-          pnpm run -F ts-libs/linea-shared-utils build;
-          pnpm run -F ./sdk/sdk-core build;
-          pnpm run -F linea-native-yield-automation-service build;
-          pnpm run -F ts-libs/linea-shared-utils test;
-          pnpm run -F ./sdk/sdk-ethers test;
-          pnpm run -F linea-native-yield-automation-service test;
+          pnpm --filter @consensys/linea-shared-utils test
+          pnpm --filter @consensys/linea-native-yield-automation-service test 
