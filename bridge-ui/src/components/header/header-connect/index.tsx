@@ -1,34 +1,41 @@
 "use client";
-
-import { useAccount, useConnect, useConnectors, useDisconnect } from "wagmi";
 import Button from "@/components/ui/button";
-import styles from "./header-connect.module.scss";
+import { useModal } from "@/contexts/ModalProvider";
+import { useAccount, useConnect, useConnectors } from "wagmi";
+import UserAvatar from "@/components/user-avatar";
+import { usePrefetchPoh } from "@/hooks/useCheckPoh";
+import { useEffect } from "react";
+import { useEnsInfo } from "@/hooks/user/useEnsInfo";
 
-export default function Connect() {
-  const { address, isConnected } = useAccount();
-  const { connectAsync } = useConnect();
-  const { disconnect } = useDisconnect();
+export default function HeaderConnect() {
+  const { isConnected, address } = useAccount();
+  const { connectAsync, isPending: isConnecting } = useConnect();
+  const { ensAvatar } = useEnsInfo();
+  const { updateModal } = useModal();
   const connectors = useConnectors();
+  const prefetchPoh = usePrefetchPoh();
 
-  const handleConnect = async () => {
-    const web3authConnector = connectors.find((c) => c.id === "web3auth");
-    if (web3authConnector) {
-      await connectAsync({ connector: web3authConnector });
+  const handleConnectionToggle = async () => {
+    if (isConnected) {
+      updateModal(true, "user-wallet");
+    } else {
+      const web3authConnector = connectors.find((c) => c.id === "web3auth");
+      if (web3authConnector) {
+        await connectAsync({ connector: web3authConnector });
+      }
     }
   };
 
-  if (isConnected && address) {
-    return (
-      <div className={styles.connected}>
-        <Button className={styles.disconnectButton} onClick={() => disconnect()}>
-          Disconnect
-        </Button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (address) {
+      prefetchPoh(address);
+    }
+  }, [address, prefetchPoh]);
+
+  if (isConnected) return <UserAvatar src={ensAvatar ?? ""} size="small" onClick={handleConnectionToggle} />;
 
   return (
-    <Button className={styles.connectButton} onClick={handleConnect}>
+    <Button variant="primary" fullWidth disabled={isConnecting} onClick={handleConnectionToggle}>
       Connect
     </Button>
   );
