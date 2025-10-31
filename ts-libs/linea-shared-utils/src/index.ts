@@ -17,7 +17,6 @@ export * from "./core/services/IRetryService";
 export * from "./core/services/IMetricsService";
 export * from "./logging/ILogger";
 export * from "./logging/WinstonLogger";
-export * from "./clients/OAuth2TokenClient";
 export * from "./services/ExponentialBackoffRetryService";
 export * from "./services/SingletonMetricsService";
 export * from "./utils/blockchain";
