@@ -57,7 +57,8 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
         this.logger.error("❌ Reverted:", { shortMessage: err.shortMessage });
         this.logger.error("Reason:", { reason: err.data?.errorName || err.message });
       } else if (err instanceof BaseError) {
-        this.logger.error("⚠️ Other error:", { shortMessage: err.shortMessage });
+        const decodedError = err.walk();
+        this.logger.error("⚠️ Error:", { decodedError });
       } else {
         this.logger.error("Unexpected error:", { error: err });
       }

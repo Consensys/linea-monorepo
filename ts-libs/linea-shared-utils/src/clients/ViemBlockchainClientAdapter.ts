@@ -49,11 +49,31 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         // TODO - How does this interact with our custom retry logic in sendSignedTransaction?
         // Hypothesis - Default Viem timeout of 10s will kick in first. It should still retry because we are using the native Viem Timeout error.
         retryCount: 3,
-        onFetchRequest: (request) => {
-          this.logger.debug("onFetchRequest", { method: request.method, url: request.url });
+        onFetchRequest: async (request) => {
+          const cloned = request.clone(); // clone before reading body
+          try {
+            const bodyText = await cloned.text();
+            this.logger.debug("onFetchRequest", {
+              method: request.method,
+              url: request.url,
+              body: bodyText,
+            });
+          } catch (err) {
+            this.logger.warn("Failed to read request body", { err });
+          }
         },
-        onFetchResponse: (resp) => {
-          this.logger.debug("onFetchResponse", { text: resp.clone().text() });
+        onFetchResponse: async (resp) => {
+          const cloned = resp.clone(); // clone before reading body
+          try {
+            const bodyText = await cloned.text();
+            this.logger.debug("onFetchResponse", {
+              status: resp.status,
+              statusText: resp.statusText,
+              body: bodyText,
+            });
+          } catch (err) {
+            this.logger.warn("Failed to read response body", { err });
+          }
         },
       }),
       batch: {
