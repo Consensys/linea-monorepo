@@ -20,17 +20,15 @@ import {
   MockDashboard,
   MockStakingVault,
   TestLidoStVaultYieldProvider,
-  TestCLProofVerifier,
+  ValidatorContainerProofVerifier,
   SSZMerkleTree,
+  TestValidatorContainerProofVerifier,
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";
 import { parseUnits, ZeroAddress } from "ethers";
 import {
-  GI_FIRST_VALIDATOR,
-  GI_FIRST_VALIDATOR_AFTER_CHANGE,
-  CHANGE_SLOT,
   ONE_ETHER,
   ZERO_VALUE,
   EMPTY_CALLDATA,
@@ -40,6 +38,7 @@ import {
   MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
   ProgressOssificationResult,
   YieldProviderVendor,
+  OperationType,
 } from "../../common/constants";
 import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
 
@@ -55,7 +54,8 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let mockDashboard: MockDashboard;
   let mockStakingVault: MockStakingVault;
   let sszMerkleTree: SSZMerkleTree;
-  let verifier: TestCLProofVerifier;
+  let verifier: ValidatorContainerProofVerifier;
+  let testVerifier: TestValidatorContainerProofVerifier;
 
   let l1MessageServiceAddress: string;
   let yieldManagerAddress: string;
@@ -65,6 +65,8 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let mockDashboardAddress: string;
   let mockStakingVaultAddress: string;
   let yieldProviderAddress: string;
+  let verifierAddress: string;
+
   before(async () => {
     ({ nativeYieldOperator, securityCouncil } = await loadFixture(getAccountsFixture));
   });
@@ -82,6 +84,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       mockLineaRollup,
       sszMerkleTree,
       verifier,
+      testVerifier,
     } = await loadFixture(deployAndAddSingleLidoStVaultYieldProvider));
 
     l1MessageServiceAddress = await mockLineaRollup.getAddress();
@@ -91,6 +94,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     stethAddress = await mockSTETH.getAddress();
     mockDashboardAddress = await mockDashboard.getAddress();
     mockStakingVaultAddress = await mockStakingVault.getAddress();
+    verifierAddress = await verifier.getAddress();
   });
 
   describe("Constructor", () => {
@@ -102,9 +106,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         vaultHubAddress,
         vaultFactoryAddress,
         stethAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
+        verifierAddress,
       );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
@@ -118,9 +120,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
           vaultHubAddress,
           vaultFactoryAddress,
           stethAddress,
-          GI_FIRST_VALIDATOR,
-          GI_FIRST_VALIDATOR_AFTER_CHANGE,
-          CHANGE_SLOT,
+          verifierAddress,
         );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
@@ -132,9 +132,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         ZeroAddress,
         vaultFactoryAddress,
         stethAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
+        verifierAddress,
       );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
@@ -146,9 +144,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         vaultHubAddress,
         ZeroAddress,
         stethAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
+        verifierAddress,
       );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
@@ -161,9 +157,20 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         vaultHubAddress,
         vaultFactoryAddress,
         ZeroAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
+        verifierAddress,
+      );
+      await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
+    });
+
+    it("Should revert if 0 address provided for _validatorContainerProofVerifier", async () => {
+      const contractFactory = await ethers.getContractFactory("TestLidoStVaultYieldProvider");
+      const call = contractFactory.deploy(
+        l1MessageServiceAddress,
+        yieldManagerAddress,
+        vaultHubAddress,
+        vaultFactoryAddress,
+        stethAddress,
+        ZeroAddress,
       );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
@@ -176,9 +183,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         vaultHubAddress,
         vaultFactoryAddress,
         stethAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
+        verifierAddress,
       );
       expect(contract.deploymentTransaction)
         .to.emit(contract, "LidoStVaultYieldProviderDeployed")
@@ -188,9 +193,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
           vaultHubAddress,
           vaultFactoryAddress,
           stethAddress,
-          GI_FIRST_VALIDATOR,
-          GI_FIRST_VALIDATOR_AFTER_CHANGE,
-          CHANGE_SLOT,
+          verifierAddress,
         );
     });
   });
@@ -207,6 +210,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
     it("Should deploy with correct YieldManager address", async () => {
       expect(await yieldProvider.YIELD_MANAGER()).eq(await yieldManager.getAddress());
+    });
+    it("Should deploy with correct ValidatorContainerProofVerifier address", async () => {
+      expect(await yieldProvider.VALIDATOR_CONTAINER_PROOF_VERIFIER()).eq(await verifier.getAddress());
     });
   });
 
@@ -276,12 +282,13 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
       expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
     });
-    it("If ossified, should fund the StakingVault", async () => {
+    it("Should revert if ossified", async () => {
       await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
-      const beforeVaultBalance = await ethers.provider.getBalance(mockStakingVaultAddress);
       const fundAmount = ONE_ETHER;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
+      const call = fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
+        OperationType.FUND_YIELD_PROVIDER,
+      ]);
     });
   });
 
@@ -296,9 +303,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
     });
     it("Should successfully withdraw when ossified", async () => {
-      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
       const withdrawAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+      await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
       await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
     });
   });
@@ -371,14 +378,23 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     });
     it("Should revert withdraw LST when ossifed", async () => {
       const withdrawAmount = ONE_ETHER;
+      const recipient = ethers.Wallet.createRandom().address;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+
+      // Add gas fees
+      const l1MessageService = await yieldManager.L1_MESSAGE_SERVICE();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+
       await yieldManager.connect(securityCouncil).setYieldProviderIsOssified(yieldProviderAddress, true);
-      const call = getWithdrawLSTCall(
-        mockLineaRollup,
-        yieldManager,
-        yieldProvider,
-        nativeYieldOperator,
-        withdrawAmount,
-      );
+
+      // Act
+      const call = yieldManager
+        .connect(l1Signer)
+        .withdrawLST(await yieldProvider.getAddress(), withdrawAmount, recipient);
+
+      // Assert
       await expectRevertWithCustomError(yieldProvider, call, "MintLSTDisabledDuringOssification");
     });
   });
@@ -479,7 +495,6 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(registrationData[0]).eq(YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR);
       expect(registrationData[1]).eq(expectedDashboardAddress);
       expect(registrationData[2]).eq(expectedVaultAddress);
-      console.log(await getBalance(yieldManager));
       expect(await getBalance(yieldManager)).eq(beforeYieldManagerBalance - ONE_ETHER);
       expect(await getBalance(mockVaultFactory)).eq(beforeVaultFactoryBalance + ONE_ETHER);
     });
@@ -574,16 +589,16 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await expect(call).to.be.reverted;
     });
     it("Should succeed and emit the expected event", async () => {
-      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
         sszMerkleTree,
-        verifier,
+        testVerifier,
         mockStakingVaultAddress,
       );
       const refundAddress = nativeYieldOperator.address;
       const unstakeAmount = [32000000000n];
       const withdrawalParams = ethers.AbiCoder.defaultAbiCoder().encode(
         ["bytes", "uint64[]", "address"],
-        [validatorWitness.pubkey, unstakeAmount, refundAddress],
+        [pubkey, unstakeAmount, refundAddress],
       );
       const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
         [VALIDATOR_WITNESS_TYPE],
@@ -606,13 +621,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       }
       await expect(call)
         .to.emit(yieldManager, "LidoVaultUnstakePermissionlessRequest")
-        .withArgs(
-          mockStakingVaultAddress,
-          refundAddress,
-          maxUnstakeAmountGwei * ONE_GWEI,
-          validatorWitness.pubkey,
-          unstakeAmount,
-        );
+        .withArgs(mockStakingVaultAddress, refundAddress, maxUnstakeAmountGwei * ONE_GWEI, pubkey, unstakeAmount);
     });
   });
 
@@ -621,7 +630,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const invalidPubkeys = "0x" + "22".repeat(32);
       const call = yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessHarness(yieldProviderAddress, invalidPubkeys, [1n], EMPTY_CALLDATA);
+        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, invalidPubkeys, [1n], EMPTY_CALLDATA);
 
       await expectRevertWithCustomError(yieldProvider, call, "SingleValidatorOnlyForUnstakePermissionless");
     });
@@ -631,7 +640,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const amounts = [1n, 1n];
       const call = yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessHarness(yieldProviderAddress, pubkeys, amounts, EMPTY_CALLDATA);
+        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, pubkeys, amounts, EMPTY_CALLDATA);
 
       await expectRevertWithCustomError(yieldProvider, call, "SingleValidatorOnlyForUnstakePermissionless");
     });
@@ -640,7 +649,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const pubkeys = "0x" + "11".repeat(48);
       const call = yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessHarness(yieldProviderAddress, pubkeys, [0n], EMPTY_CALLDATA);
+        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, pubkeys, [0n], EMPTY_CALLDATA);
 
       await expectRevertWithCustomError(yieldProvider, call, "NoValidatorExitForUnstakePermissionless");
     });
@@ -649,16 +658,16 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const pubkeys = "0x" + "11".repeat(48);
       const call = yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessHarness(yieldProviderAddress, pubkeys, [1n], EMPTY_CALLDATA);
+        .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, pubkeys, [1n], EMPTY_CALLDATA);
 
       await expect(call).to.be.reverted;
     });
     it("If withdrawal amount leaves validator < activation balance, return maximum available unstake", async () => {
       // Choose 2049 ETH which is > maximum effective balance of 2048 ETH.
       const EXCESSIVE_WITHDRAWAL_AMOUNT = parseUnits("2049", "gwei");
-      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
         sszMerkleTree,
-        verifier,
+        testVerifier,
         mockStakingVaultAddress,
       );
       const withdrawalParamsProof = ethers.AbiCoder.defaultAbiCoder().encode(
@@ -669,9 +678,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       // Act
       const maxUnstakeAmount = await yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessHarness.staticCall(
+        .validateUnstakePermissionlessRequestHarness.staticCall(
           yieldProviderAddress,
-          validatorWitness.pubkey,
+          pubkey,
           [EXCESSIVE_WITHDRAWAL_AMOUNT],
           withdrawalParamsProof,
         );
@@ -685,9 +694,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       expect(expectedMaxUnstakeAmountGwei * ONE_GWEI).eq(maxUnstakeAmount);
     });
     it("If withdrawal amount leaves validator > activation balance, return amount", async () => {
-      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
         sszMerkleTree,
-        verifier,
+        testVerifier,
         mockStakingVaultAddress,
         MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
       );
@@ -701,9 +710,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       // Act
       const maxUnstakeAmount = await yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessHarness.staticCall(
+        .validateUnstakePermissionlessRequestHarness.staticCall(
           yieldProviderAddress,
-          validatorWitness.pubkey,
+          pubkey,
           [WITHDRAWAL_AMOUNT_GWEI],
           withdrawalParamsProof,
         );
@@ -714,9 +723,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("If effective balance < 32 ETH, return 0", async () => {
       const WITHDRAWAL_AMOUNT = parseUnits("2049", "gwei");
       const INSUFFICIENT_EFFECTIVE_BALANCE = parseUnits("31", "gwei");
-      const { validatorWitness } = await generateLidoUnstakePermissionlessWitness(
+      const { validatorWitness, pubkey } = await generateLidoUnstakePermissionlessWitness(
         sszMerkleTree,
-        verifier,
+        testVerifier,
         mockStakingVaultAddress,
         INSUFFICIENT_EFFECTIVE_BALANCE,
       );
@@ -728,9 +737,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       // Act
       const maxUnstakeAmount = await yieldManager
         .connect(securityCouncil)
-        .validateUnstakePermissionlessHarness.staticCall(
+        .validateUnstakePermissionlessRequestHarness.staticCall(
           yieldProviderAddress,
-          validatorWitness.pubkey,
+          pubkey,
           [WITHDRAWAL_AMOUNT],
           withdrawalParamsProof,
         );

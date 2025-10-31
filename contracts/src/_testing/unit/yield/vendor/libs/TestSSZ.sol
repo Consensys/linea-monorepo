@@ -14,7 +14,7 @@ contract TestSSZ {
     return SSZ.hashTreeRoot(validator);
   }
 
-  function verifyProof(bytes32[] memory proof, bytes32 root, bytes32 leaf, GIndex gI) external view {
+  function verifyProof(bytes32[] calldata proof, bytes32 root, bytes32 leaf, GIndex gI) external view {
     SSZ.verifyProof(proof, root, leaf, gI);
   }
 

@@ -584,6 +584,9 @@ contract YieldManager is
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
     );
     maxUnstakeAmount = abi.decode(data, (uint256));
+    if (maxUnstakeAmount == 0) {
+      revert YieldProviderReturnedZeroUnstakeAmount();
+    }
     // Validiate maxUnstakeAmount
     uint256 targetDeficit = getTargetReserveDeficit();
     uint256 availableFundsToSettleTargetDeficit = address(this).balance +
@@ -1045,8 +1048,9 @@ contract YieldManager is
     address _yieldProvider,
     bytes memory _vendorExitData
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
-    if (_getYieldProviderStorage(_yieldProvider).userFunds != 0) {
-      revert YieldProviderHasRemainingFunds();
+    uint256 userFundsCached = _getYieldProviderStorage(_yieldProvider).userFunds;
+    if (userFundsCached != 0) {
+      revert YieldProviderHasRemainingFunds(userFundsCached);
     }
     _removeYieldProvider(_yieldProvider, _vendorExitData);
     emit YieldProviderRemoved(_yieldProvider, false);

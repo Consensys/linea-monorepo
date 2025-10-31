@@ -478,6 +478,27 @@ describe("YieldManager contract - ETH transfer operations", () => {
       );
     });
 
+    it("Should revert when the YieldProvider returns 0 unstake amount", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();
+      await ethers.provider.send("hardhat_setBalance", [
+        await yieldManager.getAddress(),
+        ethers.toBeHex(targetReserveAmount),
+      ]);
+      const unstakeAmount = 0n;
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakeAmount);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager
+          .connect(nativeYieldOperator)
+          .unstakePermissionless(mockYieldProviderAddress, mockWithdrawalParams, mockWithdrawalParamsProof),
+        "YieldProviderReturnedZeroUnstakeAmount",
+      );
+    });
+
     it("Should successfully submit the unstake request, change state and emit the expected event", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const targetReserveAmount = await yieldManager.getTargetWithdrawalReserveAmount();

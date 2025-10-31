@@ -909,12 +909,14 @@ describe("YieldManager contract - basic operations", () => {
     it("Should revert when the yield provider has remaining user funds", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, 1n);
+      const userFunds = 1n;
+      await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, userFunds);
 
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
         "YieldProviderHasRemainingFunds",
+        [userFunds],
       );
     });
 

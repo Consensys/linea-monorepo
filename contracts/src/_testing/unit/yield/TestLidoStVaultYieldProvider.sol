@@ -12,9 +12,7 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     address _vaultHub,
     address _vaultFactory,
     address _steth,
-    GIndex _gIFirstValidator,
-    GIndex _gIFirstValidatorAfterChange,
-    uint64 _changeSlot
+    address _validatorContainerProofVerifier
   )
     LidoStVaultYieldProvider(
       _l1MessageService,
@@ -22,9 +20,7 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
       _vaultHub,
       _vaultFactory,
       _steth,
-      _gIFirstValidator,
-      _gIFirstValidatorAfterChange,
-      _changeSlot
+      _validatorContainerProofVerifier
     )
   {}
 
@@ -46,7 +42,7 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     address _yieldProvider,
     uint256 _liabilityShares,
     uint256 _lstLiabilityPrincipalCached
-  ) external returns (uint256, bool) {
+  ) external returns (uint256) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     return _syncExternalLiabilitySettlement($$, _liabilityShares, _lstLiabilityPrincipalCached);
   }
@@ -75,13 +71,13 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     _unstake(_yieldProvider, _pubkeys, _amounts, _refundRecipient);
   }
 
-  function validateUnstakePermissionlessHarness(
+  function validateUnstakePermissionlessRequestHarness(
     address _yieldProvider,
     bytes calldata _pubkeys,
     uint64[] calldata _amounts,
     bytes calldata _withdrawalParamsProof
   ) external view returns (uint256) {
-    return _validateUnstakePermissionless(_yieldProvider, _pubkeys, _amounts, _withdrawalParamsProof);
+    return _validateUnstakePermissionlessRequest(_yieldProvider, _pubkeys, _amounts, _withdrawalParamsProof);
   }
 
   function payMaximumPossibleLSTLiability(address _yieldProvider) external returns (uint256) {

@@ -8,10 +8,10 @@ import {
   MockVaultHub,
   MockVaultFactory,
   TestYieldManager,
+  ValidatorContainerProofVerifier,
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { CHANGE_SLOT, GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE } from "../../common/constants";
 import { ethers } from "hardhat";
 import { ZeroAddress } from "ethers";
 
@@ -22,6 +22,7 @@ describe("LidoStVaultYieldProviderFactory", () => {
   let mockSTETH: MockSTETH;
   let mockLineaRollup: MockLineaRollup;
   let yieldManager: TestYieldManager;
+  let verifier: ValidatorContainerProofVerifier;
 
   let nativeYieldOperator: SignerWithAddress;
 
@@ -30,19 +31,29 @@ describe("LidoStVaultYieldProviderFactory", () => {
   let vaultHubAddress: string;
   let vaultFactoryAddress: string;
   let stethAddress: string;
+  let verifierAddress: string;
 
   before(async () => {
     ({ nativeYieldOperator } = await loadFixture(getAccountsFixture));
   });
 
   beforeEach(async () => {
-    ({ lidoStVaultYieldProviderFactory, mockVaultHub, mockVaultFactory, mockLineaRollup, yieldManager, mockSTETH } =
-      await loadFixture(deployLidoStVaultYieldProviderFactory));
+    ({
+      lidoStVaultYieldProviderFactory,
+      mockVaultHub,
+      mockVaultFactory,
+      mockLineaRollup,
+      yieldManager,
+      mockSTETH,
+      verifier,
+      verifierAddress,
+    } = await loadFixture(deployLidoStVaultYieldProviderFactory));
     l1MessageServiceAddress = await mockLineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
     vaultHubAddress = await mockVaultHub.getAddress();
     vaultFactoryAddress = await mockVaultFactory.getAddress();
     stethAddress = await mockSTETH.getAddress();
+    verifierAddress = await verifier.getAddress();
   });
 
   describe("Constructor", () => {
@@ -54,9 +65,7 @@ describe("LidoStVaultYieldProviderFactory", () => {
         vaultHubAddress,
         vaultFactoryAddress,
         stethAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
+        verifierAddress,
       );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
@@ -70,9 +79,7 @@ describe("LidoStVaultYieldProviderFactory", () => {
           vaultHubAddress,
           vaultFactoryAddress,
           stethAddress,
-          GI_FIRST_VALIDATOR,
-          GI_FIRST_VALIDATOR_AFTER_CHANGE,
-          CHANGE_SLOT,
+          verifierAddress,
         );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
@@ -84,23 +91,7 @@ describe("LidoStVaultYieldProviderFactory", () => {
         ZeroAddress,
         vaultFactoryAddress,
         stethAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
-      );
-      await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
-    });
-    it("Should revert if 0 address provided for _steth", async () => {
-      const contractFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
-      const call = contractFactory.deploy(
-        l1MessageServiceAddress,
-        yieldManagerAddress,
-        vaultHubAddress,
-        vaultFactoryAddress,
-        ZeroAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
+        verifierAddress,
       );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
@@ -112,9 +103,31 @@ describe("LidoStVaultYieldProviderFactory", () => {
         vaultHubAddress,
         ZeroAddress,
         stethAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
+        verifierAddress,
+      );
+      await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
+    });
+    it("Should revert if 0 address provided for _steth", async () => {
+      const contractFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
+      const call = contractFactory.deploy(
+        l1MessageServiceAddress,
+        yieldManagerAddress,
+        vaultHubAddress,
+        vaultFactoryAddress,
+        ZeroAddress,
+        verifierAddress,
+      );
+      await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
+    });
+    it("Should revert if 0 address provided for _validatorContainerProofVerifier", async () => {
+      const contractFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
+      const call = contractFactory.deploy(
+        l1MessageServiceAddress,
+        yieldManagerAddress,
+        vaultHubAddress,
+        vaultFactoryAddress,
+        stethAddress,
+        ZeroAddress,
       );
       await expectRevertWithCustomError(contractFactory, call, "ZeroAddressNotAllowed");
     });
@@ -126,9 +139,7 @@ describe("LidoStVaultYieldProviderFactory", () => {
         vaultHubAddress,
         vaultFactoryAddress,
         stethAddress,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT,
+        verifierAddress,
       );
       expect(call.deploymentTransaction)
         .to.emit(lidoStVaultYieldProviderFactory, "LidoStVaultYieldProviderFactoryDeployed")
@@ -138,9 +149,7 @@ describe("LidoStVaultYieldProviderFactory", () => {
           vaultHubAddress,
           vaultFactoryAddress,
           stethAddress,
-          GI_FIRST_VALIDATOR,
-          GI_FIRST_VALIDATOR_AFTER_CHANGE,
-          CHANGE_SLOT,
+          verifierAddress,
         );
     });
   });
@@ -161,16 +170,8 @@ describe("LidoStVaultYieldProviderFactory", () => {
     it("Should deploy with correct VaultFactory address", async () => {
       expect(await lidoStVaultYieldProviderFactory.VAULT_FACTORY()).eq(await mockVaultFactory.getAddress());
     });
-    it("Should deploy with correct GI_FIRST_VALIDATOR", async () => {
-      expect(await lidoStVaultYieldProviderFactory.GI_FIRST_VALIDATOR()).eq(GI_FIRST_VALIDATOR);
-    });
-    it("Should deploy with correct GI_FIRST_VALIDATOR_AFTER_CHANGE", async () => {
-      expect(await lidoStVaultYieldProviderFactory.GI_FIRST_VALIDATOR_AFTER_CHANGE()).eq(
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-      );
-    });
-    it("Should deploy with correct CHANGE_SLOT", async () => {
-      expect(await lidoStVaultYieldProviderFactory.CHANGE_SLOT()).eq(CHANGE_SLOT);
+    it("Should deploy with correct ValidatorContainerProofVerifier address", async () => {
+      expect(await lidoStVaultYieldProviderFactory.VALIDATOR_CONTAINER_PROOF_VERIFIER()).eq(verifierAddress);
     });
   });
 

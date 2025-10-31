@@ -191,7 +191,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     address _yieldProvider,
     uint256 _liabilityShares,
     uint256 _lstLiabilityPrincipalCached
-  ) external returns (uint256, bool) {
+  ) external returns (uint256) {
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(
@@ -199,7 +199,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
         (_yieldProvider, _liabilityShares, _lstLiabilityPrincipalCached)
       )
     );
-    return abi.decode(data, (uint256, bool));
+    return abi.decode(data, (uint256));
   }
 
   function payObligations(address _yieldProvider) external returns (uint256) {
@@ -249,7 +249,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     );
   }
 
-  function validateUnstakePermissionlessHarness(
+  function validateUnstakePermissionlessRequestHarness(
     address _yieldProvider,
     bytes memory _pubkeys,
     uint64[] memory _amounts,
@@ -258,7 +258,7 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(
-        TestLidoStVaultYieldProvider.validateUnstakePermissionlessHarness,
+        TestLidoStVaultYieldProvider.validateUnstakePermissionlessRequestHarness,
         (_yieldProvider, _pubkeys, _amounts, _withdrawalParamsProof)
       )
     );

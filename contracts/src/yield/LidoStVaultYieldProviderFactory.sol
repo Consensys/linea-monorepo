@@ -17,9 +17,7 @@ contract LidoStVaultYieldProviderFactory {
    * @param vaultHub Lido VaultHub contract.
    * @param vaultFactory Lido VaultFactory contract.
    * @param steth Lido stETH contract.
-   * @param gIFirstValidator Packed generalized index for the first validator before the pivot slot.
-   * @param gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
-   * @param changeSlot Beacon chain slot at which the validator generalized index changes.
+   * @param _validatorContainerProofVerifier Linea ValidatorContainerProofVerifier contract.
    */
   event LidoStVaultYieldProviderFactoryDeployed(
     address l1MessageService,
@@ -27,9 +25,7 @@ contract LidoStVaultYieldProviderFactory {
     address vaultHub,
     address vaultFactory,
     address steth,
-    GIndex gIFirstValidator,
-    GIndex gIFirstValidatorAfterChange,
-    uint64 changeSlot
+    address _validatorContainerProofVerifier
   );
 
   /**
@@ -53,57 +49,44 @@ contract LidoStVaultYieldProviderFactory {
   /// @notice Lido stETH contract.
   address public immutable STETH;
 
-  /// @notice Packed generalized index for the first validator before the pivot slot.
-  GIndex public immutable GI_FIRST_VALIDATOR;
-
-  /// @notice Packed generalized index after the pivot slot.
-  GIndex public immutable GI_FIRST_VALIDATOR_AFTER_CHANGE;
-
-  /// @notice Beacon chain slot at which the validator generalized index changes.
-  uint64 public immutable CHANGE_SLOT;
+  /// @notice Linea ValidatorContainerProofVerifier contract.
+  address public immutable VALIDATOR_CONTAINER_PROOF_VERIFIER;
 
   /// @notice Used to set immutable variables, but not storage.
   /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve holding contract.
   /// @param _yieldManager The Linea YieldManager.
   /// @param _vaultHub Lido VaultHub contract.
   /// @param _vaultFactory Lido VaultFactory contract.
-  /// @param _stEth Lido stETH contract.
-  /// @param _gIFirstValidator Packed generalized index for the first validator before the pivot slot.
-  /// @param _gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
-  /// @param _changeSlot Beacon chain slot at which the validator generalized index changes.
+  /// @param _steth Lido stETH contract.
+  /// @param _validatorContainerProofVerifier Linea ValidatorContainerProofVerifier contract.
   constructor(
     address _l1MessageService,
     address _yieldManager,
     address _vaultHub,
     address _vaultFactory,
-    address _stEth,
-    GIndex _gIFirstValidator,
-    GIndex _gIFirstValidatorAfterChange,
-    uint64 _changeSlot
+    address _steth,
+    address _validatorContainerProofVerifier
   ) {
     ErrorUtils.revertIfZeroAddress(_l1MessageService);
     ErrorUtils.revertIfZeroAddress(_yieldManager);
     ErrorUtils.revertIfZeroAddress(_vaultHub);
     ErrorUtils.revertIfZeroAddress(_vaultFactory);
-    ErrorUtils.revertIfZeroAddress(_stEth);
+    ErrorUtils.revertIfZeroAddress(_steth);
+    ErrorUtils.revertIfZeroAddress(_validatorContainerProofVerifier);
     L1_MESSAGE_SERVICE = _l1MessageService;
     YIELD_MANAGER = _yieldManager;
     VAULT_HUB = _vaultHub;
     VAULT_FACTORY = _vaultFactory;
-    STETH = _stEth;
-    GI_FIRST_VALIDATOR = _gIFirstValidator;
-    GI_FIRST_VALIDATOR_AFTER_CHANGE = _gIFirstValidatorAfterChange;
-    CHANGE_SLOT = _changeSlot;
+    STETH = _steth;
+    VALIDATOR_CONTAINER_PROOF_VERIFIER = _validatorContainerProofVerifier;
 
     emit LidoStVaultYieldProviderFactoryDeployed(
       _l1MessageService,
       _yieldManager,
       _vaultHub,
       _vaultFactory,
-      _stEth,
-      _gIFirstValidator,
-      _gIFirstValidatorAfterChange,
-      _changeSlot
+      _steth,
+      _validatorContainerProofVerifier
     );
   }
 
@@ -120,9 +103,7 @@ contract LidoStVaultYieldProviderFactory {
         VAULT_HUB,
         VAULT_FACTORY,
         STETH,
-        GI_FIRST_VALIDATOR,
-        GI_FIRST_VALIDATOR_AFTER_CHANGE,
-        CHANGE_SLOT
+        VALIDATOR_CONTAINER_PROOF_VERIFIER
       )
     );
     emit LidoStVaultYieldProviderCreated(yieldProviderAddress);

@@ -291,6 +291,11 @@ interface IYieldManager {
   error WithdrawalReserveNotInDeficit();
 
   /**
+   * @dev Returned when YieldProvider returns that 0 amount was unstaked.
+   */
+  error YieldProviderReturnedZeroUnstakeAmount();
+
+  /**
    * @dev Thrown when a permissionless unstake request exceeds the minimum required amount to restore the reserve to the target threshold,
    *      taking into consideration available funds in the system that can be routed to the reserve.
    */
@@ -353,8 +358,9 @@ interface IYieldManager {
 
   /**
    * @dev Thrown when removing a YieldProvider with remaining user funds.
+   * @param remainingUserFunds Remaining user funds.
    */
-  error YieldProviderHasRemainingFunds();
+  error YieldProviderHasRemainingFunds(uint256 remainingUserFunds);
 
   /**
    * @dev Thrown when removing a YieldProvider with remaining negative yield.

@@ -44,7 +44,6 @@ export interface BeaconBlockHeader {
 
 export interface ValidatorWitness {
   proof: string[];
-  pubkey: string;
   validatorIndex: bigint;
   effectiveBalance: bigint;
   childBlockTimestamp: bigint;

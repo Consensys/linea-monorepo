@@ -10,18 +10,18 @@ import { IVaultHub } from "./interfaces/vendor/lido/IVaultHub.sol";
 import { IVaultFactory } from "./interfaces/vendor/lido/IVaultFactory.sol";
 import { IStakingVault } from "./interfaces/vendor/lido/IStakingVault.sol";
 import { Math256 } from "../libraries/Math256.sol";
-import { CLProofVerifier } from "./libs/CLProofVerifier.sol";
 import { GIndex } from "./libs/vendor/lido/GIndex.sol";
 import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 import { IPermissionsManager } from "../security/access/interfaces/IPermissionsManager.sol";
 import { ProgressOssificationResult, YieldProviderRegistration, YieldProviderVendor } from "./interfaces/YieldTypes.sol";
+import { IValidatorContainerProofVerifier } from "./interfaces/IValidatorContainerProofVerifier.sol";
 
 /**
  * @title Contract to handle native yield operations with Lido Staking Vault.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGenericErrors {
+contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
   /// @notice Byte-length of a validator BLS pubkey.
   uint256 private constant PUBLIC_KEY_LENGTH = 48;
 
@@ -37,7 +37,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   /// @notice Address of the Lido stETH contract.
   IStETH public immutable STETH;
 
-  /// @notice Amount of ETH that is locked on the vault on connect and can be withdrawn on disconnect only.
+  /// @notice Linea ValidatorContainerProofVerifier contract.
+  IValidatorContainerProofVerifier public immutable VALIDATOR_CONTAINER_PROOF_VERIFIER;
+
+  /// @notice amount of ETH that is locked on the vault on connect and can be withdrawn on disconnect only
   uint256 public constant CONNECT_DEPOSIT = 1 ether;
 
   /**
@@ -46,20 +49,16 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param yieldManager The Linea YieldManager.
    * @param vaultHub Lido VaultHub contract.
    * @param vaultFactory Lido VaultFactory contract.
-   * @param stEth Lido stETH contract.
-   * @param gIFirstValidator Packed generalized index for the first validator before the pivot slot.
-   * @param gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
-   * @param changeSlot Beacon chain slot at which the validator generalized index changes.
+   * @param steth Lido stETH contract.
+   * @param validatorContainerProofVerifier Linea ValidatorContainerProofVerifier contract.
    */
   event LidoStVaultYieldProviderDeployed(
     address l1MessageService,
     address yieldManager,
     address vaultHub,
     address vaultFactory,
-    address stEth,
-    GIndex gIFirstValidator,
-    GIndex gIFirstValidatorAfterChange,
-    uint64 changeSlot
+    address steth,
+    address validatorContainerProofVerifier
   );
 
   /// @notice Emitted when a permissionless beacon chain withdrawal is requested.
@@ -81,42 +80,34 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   /// @param _yieldManager The Linea YieldManager.
   /// @param _vaultHub Lido VaultHub contract.
   /// @param _vaultFactory Lido VaultFactory contract.
-  /// @param _stEth Lido stETH contract.
-  /// @param _gIFirstValidator Packed generalized index for the first validator before the pivot slot.
-  /// @param _gIFirstValidatorAfterChange Packed generalized index after the pivot slot.
-  /// @param _changeSlot Beacon chain slot at which the validator generalized index changes.
+  /// @param _steth Lido stETH contract.
+  /// @param _validatorContainerProofVerifier Linea ValidatorContainerProofVerifier contract.
   constructor(
     address _l1MessageService,
     address _yieldManager,
     address _vaultHub,
     address _vaultFactory,
-    address _stEth,
-    GIndex _gIFirstValidator,
-    GIndex _gIFirstValidatorAfterChange,
-    uint64 _changeSlot
-  )
-    YieldProviderBase(_l1MessageService, _yieldManager)
-    CLProofVerifier(_gIFirstValidator, _gIFirstValidatorAfterChange, _changeSlot)
-  {
+    address _steth,
+    address _validatorContainerProofVerifier
+  ) YieldProviderBase(_l1MessageService, _yieldManager) {
     ErrorUtils.revertIfZeroAddress(_l1MessageService);
     ErrorUtils.revertIfZeroAddress(_yieldManager);
     ErrorUtils.revertIfZeroAddress(_vaultHub);
     ErrorUtils.revertIfZeroAddress(_vaultFactory);
-    ErrorUtils.revertIfZeroAddress(_stEth);
-
+    ErrorUtils.revertIfZeroAddress(_steth);
+    ErrorUtils.revertIfZeroAddress(_validatorContainerProofVerifier);
     VAULT_HUB = IVaultHub(_vaultHub);
     VAULT_FACTORY = IVaultFactory(_vaultFactory);
-    STETH = IStETH(_stEth);
+    STETH = IStETH(_steth);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER = IValidatorContainerProofVerifier(_validatorContainerProofVerifier);
 
     emit LidoStVaultYieldProviderDeployed(
       _l1MessageService,
       _yieldManager,
       _vaultHub,
       _vaultFactory,
-      _stEth,
-      _gIFirstValidator,
-      _gIFirstValidatorAfterChange,
-      _changeSlot
+      _steth,
+      _validatorContainerProofVerifier
     );
   }
 
@@ -168,6 +159,9 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param _amount Amount of ETH supplied by the YieldManager.
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
+    // Ossified -> Vault cannot generate yield -> Should fully withdraw
+    if (_getYieldProviderStorage(_yieldProvider).isOssified)
+      revert OperationNotSupportedDuringOssification(OperationType.FundYieldProvider);
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).fund{ value: _amount }();
   }
 
@@ -188,9 +182,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     address _yieldProvider
   ) external onlyDelegateCall returns (uint256 newReportedYield, uint256 outstandingNegativeYield) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if ($$.isOssified) {
-      revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
-    }
+    if ($$.isOssified) revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
     // First compute the total yield
     uint256 lastUserFunds = $$.userFunds;
     uint256 totalVaultFunds = _getDashboard($$).totalValue();
@@ -255,21 +247,19 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param _liabilityShares Current outstanding liabilityShares.
    * @param _lstLiabilityPrincipalCached Recorded LST liability principal.
    * @return lstLiabilityPrincipalSynced New LST liability principal.
-   * @return isLstLiabilityPrincipalChanged True if LST liability principal was updated.
    */
   function _syncExternalLiabilitySettlement(
     YieldProviderStorage storage $$,
     uint256 _liabilityShares,
     uint256 _lstLiabilityPrincipalCached
-  ) internal returns (uint256 lstLiabilityPrincipalSynced, bool isLstLiabilityPrincipalChanged) {
+  ) internal returns (uint256 lstLiabilityPrincipalSynced) {
     uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(_liabilityShares);
     // If true, this means an external actor settled liabilities.
     if (liabilityETH < _lstLiabilityPrincipalCached) {
-      uint256 lstLiabilityPrincipalDecrement = _lstLiabilityPrincipalCached - liabilityETH;
       $$.lstLiabilityPrincipal = liabilityETH;
-      return (liabilityETH, true);
+      return liabilityETH;
     } else {
-      return (_lstLiabilityPrincipalCached, false);
+      return _lstLiabilityPrincipalCached;
     }
   }
 
@@ -305,11 +295,17 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
   ) internal returns (uint256 nodeOperatorFeesPaid) {
     if (_availableYield == 0) return 0;
     IDashboard dashboard = _getDashboard($$);
-    uint256 currentFees = dashboard.nodeOperatorDisbursableFee();
-
-    if (_getVault($$).availableBalance() > currentFees) {
-      dashboard.disburseNodeOperatorFee();
-      nodeOperatorFeesPaid = currentFees;
+    IStakingVault vault = _getVault($$);
+    uint256 currentFees = dashboard.accruedFee();
+    uint256 availableVaultBalance = vault.availableBalance();
+    // Does not allow partial payment of node operator fees, unlike settleLidoFees
+    if (availableVaultBalance > currentFees) {
+      // External call to dashboard may revert for reasons beyond YieldManager control
+      try dashboard.disburseFee() {
+        nodeOperatorFeesPaid = currentFees;
+      } catch {
+        return 0;
+      }
     }
   }
 
@@ -347,7 +343,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
     uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
     if (lstLiabilityPrincipalCached == 0) return 0;
     IDashboard dashboard = _getDashboard($$);
-    (uint256 lstLiabilityPrincipalSynced, ) = _syncExternalLiabilitySettlement(
+    uint256 lstLiabilityPrincipalSynced = _syncExternalLiabilitySettlement(
       $$,
       dashboard.liabilityShares(),
       lstLiabilityPrincipalCached
@@ -417,7 +413,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       _withdrawalParams,
       (bytes, uint64[], address)
     );
-    maxUnstakeAmount = _validateUnstakePermissionless(_yieldProvider, pubkeys, amounts, _withdrawalParamsProof);
+    maxUnstakeAmount = _validateUnstakePermissionlessRequest(_yieldProvider, pubkeys, amounts, _withdrawalParamsProof);
     _unstake(_yieldProvider, pubkeys, amounts, refundRecipient);
 
     emit LidoVaultUnstakePermissionlessRequest(
@@ -441,7 +437,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
    * @param _withdrawalParamsProof Proof data containing a beacon chain Merkle proof against the EIP-4788 beacon chain root.
    * @return maxUnstakeAmount Maximum ETH amount expected to be withdrawn as a result of this request.
    */
-  function _validateUnstakePermissionless(
+  function _validateUnstakePermissionlessRequest(
     address _yieldProvider,
     bytes memory _pubkeys,
     uint64[] memory _amounts,
@@ -457,7 +453,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       revert NoValidatorExitForUnstakePermissionless();
     }
 
-    ValidatorWitness memory witness = abi.decode(_withdrawalParamsProof, (ValidatorWitness));
+    IValidatorContainerProofVerifier.ValidatorContainerWitness memory witness = abi.decode(
+      _withdrawalParamsProof,
+      (IValidatorContainerProofVerifier.ValidatorContainerWitness)
+    );
 
     // 0x02 withdrawal credential scheme
     address vault = _getYieldProviderStorage(_yieldProvider).ossifiedEntrypoint;
@@ -466,7 +465,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       withdrawalCredentials := or(shl(248, 0x2), vault)
     }
 
-    _validateValidatorContainerForPermissionlessUnstake(witness, withdrawalCredentials);
+    VALIDATOR_CONTAINER_PROOF_VERIFIER.verifyActiveValidatorContainer(witness, _pubkeys, withdrawalCredentials);
 
     // https://github.com/ethereum/consensus-specs/blob/master/specs/electra/beacon-chain.md#modified-get_expected_withdrawals
     uint256 maxUnstakeAmountGwei = Math256.min(

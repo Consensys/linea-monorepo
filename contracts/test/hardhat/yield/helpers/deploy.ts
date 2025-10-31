@@ -12,9 +12,9 @@ import {
   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
   MINIMUM_WITHDRAWAL_RESERVE_AMOUNT,
   TARGET_WITHDRAWAL_RESERVE_AMOUNT,
-  GI_FIRST_VALIDATOR,
-  GI_FIRST_VALIDATOR_AFTER_CHANGE,
-  CHANGE_SLOT,
+  GI_FIRST_VALIDATOR_PREV,
+  GI_FIRST_VALIDATOR_CURR,
+  PIVOT_SLOT,
   YIELD_PROVIDER_STAKING_ROLE,
   ONE_ETHER,
 } from "../../common/constants";
@@ -33,7 +33,8 @@ import {
   MockDashboard,
   MockStakingVault,
   TestLidoStVaultYieldProvider,
-  TestCLProofVerifier,
+  TestValidatorContainerProofVerifier,
+  ValidatorContainerProofVerifier,
   SSZMerkleTree,
   TestLidoStVaultYieldProviderFactory,
 } from "contracts/typechain-types";
@@ -87,16 +88,23 @@ export async function deployMockYieldProvider(): Promise<MockYieldProvider> {
   return await mockYieldManager;
 }
 
-export async function deployTestCLProofVerifier(): Promise<TestCLProofVerifier> {
-  const factory = await ethers.getContractFactory("TestCLProofVerifier");
-  const contract = await factory.deploy(GI_FIRST_VALIDATOR, GI_FIRST_VALIDATOR_AFTER_CHANGE, CHANGE_SLOT);
+export async function deployValidatorContainerProofVerifier(): Promise<ValidatorContainerProofVerifier> {
+  const factory = await ethers.getContractFactory("ValidatorContainerProofVerifier");
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV, GI_FIRST_VALIDATOR_CURR, PIVOT_SLOT);
+  await contract.waitForDeployment();
+  return contract;
+}
+
+export async function deployTestValidatorContainerProofVerifier(): Promise<TestValidatorContainerProofVerifier> {
+  const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV, GI_FIRST_VALIDATOR_CURR, PIVOT_SLOT);
   await contract.waitForDeployment();
   return contract;
 }
 
 export async function deploySSZMerkleTree(): Promise<SSZMerkleTree> {
   const factory = await ethers.getContractFactory("SSZMerkleTree");
-  const contract = await factory.deploy(GI_FIRST_VALIDATOR);
+  const contract = await factory.deploy(GI_FIRST_VALIDATOR_PREV);
   await contract.waitForDeployment();
   return contract;
 }
@@ -191,12 +199,14 @@ export async function deployLidoStVaultYieldProviderFactory() {
   const mockVaultHub = await deployMockVaultHub();
   const mockVaultFactory = await deployMockVaultFactory();
   const mockSTETH = await deployMockSTETH();
+  const verifier = await deployValidatorContainerProofVerifier();
 
   const l1MessageServiceAddress = await mockLineaRollup.getAddress();
   const yieldManagerAddress = await yieldManager.getAddress();
   const mockVaultHubAddress = await mockVaultHub.getAddress();
   const mockVaultFactoryAddress = await mockVaultFactory.getAddress();
   const mockSTETHAddress = await mockSTETH.getAddress();
+  const verifierAddress = await verifier.getAddress();
 
   const yieldProviderFactoryFactory = await ethers.getContractFactory("LidoStVaultYieldProviderFactory");
   const lidoStVaultYieldProviderFactory = await yieldProviderFactoryFactory.deploy(
@@ -205,13 +215,20 @@ export async function deployLidoStVaultYieldProviderFactory() {
     mockVaultHubAddress,
     mockVaultFactoryAddress,
     mockSTETHAddress,
-    GI_FIRST_VALIDATOR,
-    GI_FIRST_VALIDATOR_AFTER_CHANGE,
-    CHANGE_SLOT,
+    verifierAddress,
   );
   await lidoStVaultYieldProviderFactory.waitForDeployment();
 
-  return { mockLineaRollup, yieldManager, mockVaultHub, mockVaultFactory, mockSTETH, lidoStVaultYieldProviderFactory };
+  return {
+    mockLineaRollup,
+    yieldManager,
+    mockVaultHub,
+    mockVaultFactory,
+    mockSTETH,
+    lidoStVaultYieldProviderFactory,
+    verifier,
+    verifierAddress,
+  };
 }
 
 async function deployLidoStVaultYieldProviderDependenciesFixture() {
@@ -223,7 +240,8 @@ async function deployLidoStVaultYieldProviderDependenciesFixture() {
   const mockDashboard = await deployMockDashboard();
   const mockStakingVault = await deployMockStakingVault();
   const sszMerkleTree = await deploySSZMerkleTree();
-  const verifier = await deployTestCLProofVerifier();
+  const verifier = await deployValidatorContainerProofVerifier();
+  const testVerifier = await deployTestValidatorContainerProofVerifier();
 
   return {
     securityCouncil,
@@ -236,6 +254,7 @@ async function deployLidoStVaultYieldProviderDependenciesFixture() {
     mockStakingVault,
     sszMerkleTree,
     verifier,
+    testVerifier,
   };
 }
 
@@ -251,6 +270,7 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
     mockStakingVault,
     sszMerkleTree,
     verifier,
+    testVerifier,
   } = await loadFixture(deployLidoStVaultYieldProviderDependenciesFixture);
 
   const l1MessageServiceAddress = await mockLineaRollup.getAddress();
@@ -258,6 +278,7 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
   const mockVaultHubAddress = await mockVaultHub.getAddress();
   const mockVaultFactoryAddress = await mockVaultFactory.getAddress();
   const mockSTETHAddress = await mockSTETH.getAddress();
+  const verifierAddress = await verifier.getAddress();
 
   // Deploy Factory
   const yieldProviderFactoryFactory = await ethers.getContractFactory("TestLidoStVaultYieldProviderFactory");
@@ -267,9 +288,7 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
     mockVaultHubAddress,
     mockVaultFactoryAddress,
     mockSTETHAddress,
-    GI_FIRST_VALIDATOR,
-    GI_FIRST_VALIDATOR_AFTER_CHANGE,
-    CHANGE_SLOT,
+    verifierAddress,
   );
   await lidoStVaultYieldProviderFactory.waitForDeployment();
 
@@ -300,6 +319,8 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
     mockLineaRollup,
     sszMerkleTree,
     verifier,
+    verifierAddress,
+    testVerifier,
   };
 }
 
@@ -340,11 +361,13 @@ export async function deployYieldManagerIntegrationTestFixture() {
   const mockSTETH = await deployMockSTETH();
   const mockDashboard = await deployMockDashboard();
   const mockStakingVault = await deployMockStakingVault();
+  const verifier = await deployValidatorContainerProofVerifier();
 
   const yieldManagerAddress = await yieldManager.getAddress();
   const mockVaultHubAddress = await mockVaultHub.getAddress();
   const mockVaultFactoryAddress = await mockVaultFactory.getAddress();
   const mockSTETHAddress = await mockSTETH.getAddress();
+  const verifierAddress = await verifier.getAddress();
 
   const yieldProviderFactoryFactory = await ethers.getContractFactory("TestLidoStVaultYieldProviderFactory");
   const lidoStVaultYieldProviderFactory = await yieldProviderFactoryFactory.deploy(
@@ -353,9 +376,7 @@ export async function deployYieldManagerIntegrationTestFixture() {
     mockVaultHubAddress,
     mockVaultFactoryAddress,
     mockSTETHAddress,
-    GI_FIRST_VALIDATOR,
-    GI_FIRST_VALIDATOR_AFTER_CHANGE,
-    CHANGE_SLOT,
+    verifierAddress,
   );
   await lidoStVaultYieldProviderFactory.waitForDeployment();
 
@@ -390,7 +411,7 @@ export async function deployYieldManagerIntegrationTestFixture() {
 
   // Deploy EIP-4788 Beacon Proof utils
   const sszMerkleTree = await deploySSZMerkleTree();
-  const verifier = await deployTestCLProofVerifier();
+  const testVerifier = await deployTestValidatorContainerProofVerifier();
 
   return {
     lineaRollup,
@@ -406,6 +427,8 @@ export async function deployYieldManagerIntegrationTestFixture() {
     lidoStVaultYieldProviderFactory,
     sszMerkleTree,
     verifier,
+    verifierAddress,
+    testVerifier,
   };
 }
 

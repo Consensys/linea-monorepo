@@ -2,7 +2,7 @@ import { hexlify, parseUnits, randomBytes } from "ethers";
 import { ethers } from "hardhat";
 import { BeaconBlockHeader, EIP4788Witness, Validator, ValidatorContainer, ValidatorWitness } from "./types";
 import { SecretKey } from "@chainsafe/blst";
-import { SSZMerkleTree, TestCLProofVerifier } from "contracts/typechain-types";
+import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
 import { FAR_FUTURE_EXIT_EPOCH, SHARD_COMMITTEE_PERIOD, SLOTS_PER_EPOCH } from "../../common/constants";
 
 // min = 0 will cause flaky test with NoValidatorExitForUnstakePermissionless() error
@@ -205,7 +205,7 @@ export const ACTIVE_0X01_VALIDATOR_PROOF: EIP4788Witness = {
 // Fine for unit tests where we need to stub the hash values anyway
 export const generateEIP4478Witness = async (
   sszMerkleTree: SSZMerkleTree,
-  verifier: TestCLProofVerifier,
+  verifier: TestValidatorContainerProofVerifier,
   address: string,
   effectiveBalance?: bigint,
 ) => {
@@ -264,7 +264,7 @@ export const generateEIP4478Witness = async (
 
 export const generateLidoUnstakePermissionlessWitness = async (
   sszMerkleTree: SSZMerkleTree,
-  verifier: TestCLProofVerifier,
+  verifier: TestValidatorContainerProofVerifier,
   address: string,
   effectiveBalance?: bigint,
 ) => {
@@ -279,7 +279,6 @@ export const generateLidoUnstakePermissionlessWitness = async (
 
   const validatorWitness: ValidatorWitness = {
     proof: concatenatedProof,
-    pubkey: eip4788Witness.witness.validator.pubkey,
     validatorIndex: eip4788Witness.witness.validatorIndex,
     childBlockTimestamp: BigInt(timestamp),
     slot: BigInt(eip4788Witness.beaconBlockHeader.slot),
@@ -288,8 +287,9 @@ export const generateLidoUnstakePermissionlessWitness = async (
     activationEpoch: BigInt(eip4788Witness.witness.validator.activationEpoch),
     activationEligibilityEpoch: BigInt(eip4788Witness.witness.validator.activationEligibilityEpoch),
   };
+  const pubkey = eip4788Witness.witness.validator.pubkey;
 
-  return { validatorWitness, eip4788Witness };
+  return { validatorWitness, eip4788Witness, pubkey };
 };
 
 // Got from this tx - https://hoodi.etherscan.io/tx/0x765837701107347325179c5510959482686456b513776346977617062c294522
