@@ -26,7 +26,7 @@ Terminal 3 - Run script
 
 RPC_URL=http://127.0.0.1:8545 \
 WEB3_SIGNER_URL=https://127.0.0.1:9000 \
-WEB3_SIGNER_PUBLIC_KEY=4a788ad6fa008beed58de6418369717d7492f37d173d70e2c26d9737e2c6eeae929452ef8602a19410844db3e200a0e73f5208fd76259a8766b73953fc3e7023 \
+WEB3_SIGNER_PUBLIC_KEY=0x4a788ad6fa008beed58de6418369717d7492f37d173d70e2c26d9737e2c6eeae929452ef8602a19410844db3e200a0e73f5208fd76259a8766b73953fc3e7023 \
 WEB3_SIGNER_KEYSTORE_PATH="$(pwd)/docker/config/linea-besu-sequencer/tls-files/sequencer_client_keystore.p12" \
 WEB3_SIGNER_KEYSTORE_PASSPHRASE=changeit \
 WEB3_SIGNER_TRUST_STORE_PATH="$(pwd)/docker/config/linea-besu-sequencer/tls-files/web3signer_truststore.p12" \
