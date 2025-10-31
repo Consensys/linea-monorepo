@@ -4,8 +4,8 @@ import (
 	"math"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash"
 	locmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -21,7 +21,7 @@ import (
 // of the verifier of a protocol calling [State] as it allows having a very
 // similar code for both tasks.
 type GnarkFiatShamir struct {
-	hasher hash.StateStorer
+	hasher poseidon2.GnarkHasher
 	// pointer to the gnark-API (also passed to the hasher but behind an
 	// interface). This is needed to perform bit-decomposition.
 	api frontend.API
@@ -35,8 +35,7 @@ func NewGnarkFiatShamir(api frontend.API, factory locmimc.HasherFactory) *GnarkF
 	if factory == nil {
 		factory = &locmimc.BasicHasherFactory{Api: api}
 	}
-
-	hasher := factory.NewHasher()
+	hasher, _ := poseidon2.NewGnarkHasher(api)
 
 	return &GnarkFiatShamir{
 		hasher: hasher,
@@ -114,7 +113,7 @@ func (fs *GnarkFiatShamir) UpdateVecExt(mat ...[]gnarkfext.E4Gen) {
 }
 
 // RandomField returns a single valued fiat-shamir hash
-func (fs *GnarkFiatShamir) RandomField() zk.WrappedVariable {
+func (fs *GnarkFiatShamir) RandomField() poseidon2.GHash {
 	defer fs.safeguardUpdate()
 	return fs.hasher.Sum()
 }
