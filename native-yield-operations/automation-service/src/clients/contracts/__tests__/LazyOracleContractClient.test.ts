@@ -159,6 +159,7 @@ describe("LazyOracleContractClient", () => {
 
   it("resolves with VaultReportResult when VaultsReportDataUpdated event arrives", async () => {
     const client = createClient();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
     const promise = client.waitForVaultsReportDataUpdatedEvent();
 
     expect(watchContractEvent).toHaveBeenCalledWith({
@@ -171,6 +172,7 @@ describe("LazyOracleContractClient", () => {
     });
 
     const watchArgs = watchContractEvent.mock.calls[0][0];
+    expect(stopWatching).not.toHaveBeenCalled();
     const log = {
       removed: false,
       args: {
@@ -183,7 +185,6 @@ describe("LazyOracleContractClient", () => {
     };
 
     watchArgs.onLogs?.([log as any]);
-
     await expect(promise).resolves.toEqual({
       result: OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT,
       txHash: log.transactionHash,
@@ -194,7 +195,9 @@ describe("LazyOracleContractClient", () => {
         reportCid: log.args.cid,
       },
     });
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
     expect(stopWatching).toHaveBeenCalledTimes(1);
+    clearTimeoutSpy.mockRestore();
     expect(logger.info).toHaveBeenCalledWith(
       "waitForVaultsReportDataUpdatedEvent detected",
       expect.objectContaining({
@@ -207,16 +210,19 @@ describe("LazyOracleContractClient", () => {
 
   it("resolves with timeout result when no event is observed", async () => {
     const client = createClient();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
     const promise = client.waitForVaultsReportDataUpdatedEvent();
 
     expect(logger.info).toHaveBeenCalledWith(
       `waitForVaultsReportDataUpdatedEvent started with timeout=${eventWatchTimeoutMs}ms`,
     );
 
+    expect(stopWatching).not.toHaveBeenCalled();
     jest.advanceTimersByTime(eventWatchTimeoutMs);
-
     await expect(promise).resolves.toEqual({ result: OperationTrigger.TIMEOUT });
+    expect(clearTimeoutSpy).toHaveBeenCalled();
     expect(stopWatching).toHaveBeenCalledTimes(1);
+    clearTimeoutSpy.mockRestore();
     expect(logger.info).toHaveBeenCalledWith(
       `waitForVaultsReportDataUpdatedEvent timed out after timeout=${eventWatchTimeoutMs}ms`,
     );
@@ -234,5 +240,118 @@ describe("LazyOracleContractClient", () => {
 
     jest.advanceTimersByTime(eventWatchTimeoutMs);
     await expect(promise).resolves.toEqual({ result: OperationTrigger.TIMEOUT });
+    expect(stopWatching).toHaveBeenCalledTimes(1);
+  });
+
+  it("warns when all received logs are removed before resolving later events", async () => {
+    const client = createClient();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const promise = client.waitForVaultsReportDataUpdatedEvent();
+    const watchArgs = watchContractEvent.mock.calls[0][0];
+
+    watchArgs.onLogs?.([{ removed: true }] as any);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "waitForVaultsReportDataUpdatedEvent: Dropped VaultsReportDataUpdated event",
+    );
+    expect(stopWatching).not.toHaveBeenCalled();
+
+    const log = {
+      removed: false,
+      args: {
+        timestamp: 123n,
+        refSlot: 456n,
+        root: "0xbeef" as Hex,
+        cid: "cid",
+      },
+      transactionHash: "0xhash" as Hex,
+    };
+
+    watchArgs.onLogs?.([log as any]);
+
+    await expect(promise).resolves.toEqual({
+      result: OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT,
+      txHash: log.transactionHash,
+      report: {
+        timestamp: log.args.timestamp,
+        refSlot: log.args.refSlot,
+        treeRoot: log.args.root,
+        reportCid: log.args.cid,
+      },
+    });
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(stopWatching).toHaveBeenCalledTimes(1);
+    clearTimeoutSpy.mockRestore();
+  });
+
+  it("logs debug details when reorg logs are filtered out", async () => {
+    const client = createClient();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const promise = client.waitForVaultsReportDataUpdatedEvent();
+    const watchArgs = watchContractEvent.mock.calls[0][0];
+
+    const logs = [
+      { removed: true, args: {}, transactionHash: "0xdead" },
+      {
+        removed: false,
+        args: {
+          timestamp: 1n,
+          refSlot: 2n,
+          root: "0xroot" as Hex,
+          cid: "cid",
+        },
+        transactionHash: "0xlive" as Hex,
+      },
+    ];
+
+    watchArgs.onLogs?.(logs as any);
+
+    expect(logger.debug).toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent: Ignored removed reorg logs", {
+      logs,
+    });
+
+    await expect(promise).resolves.toEqual({
+      result: OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT,
+      txHash: logs[1].transactionHash as Hex,
+      report: {
+        timestamp: logs[1].args.timestamp,
+        refSlot: logs[1].args.refSlot,
+        treeRoot: logs[1].args.root,
+        reportCid: logs[1].args.cid,
+      },
+    });
+    expect(clearTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(stopWatching).toHaveBeenCalledTimes(1);
+    clearTimeoutSpy.mockRestore();
+  });
+
+  it("ignores logs that lack the expected arguments", async () => {
+    const client = createClient();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const promise = client.waitForVaultsReportDataUpdatedEvent();
+    const watchArgs = watchContractEvent.mock.calls[0][0];
+
+    const incompleteLog = {
+      removed: false,
+      args: {
+        timestamp: 123n,
+        refSlot: undefined,
+        root: "0xroot" as Hex,
+        cid: "cid",
+      },
+      transactionHash: "0xincomplete" as Hex,
+    };
+
+    watchArgs.onLogs?.([incompleteLog as any]);
+
+    expect(stopWatching).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent detected", expect.anything());
+    expect(clearTimeoutSpy).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(eventWatchTimeoutMs);
+    await expect(promise).resolves.toEqual({ result: OperationTrigger.TIMEOUT });
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    expect(stopWatching).toHaveBeenCalledTimes(1);
+    clearTimeoutSpy.mockRestore();
   });
 });

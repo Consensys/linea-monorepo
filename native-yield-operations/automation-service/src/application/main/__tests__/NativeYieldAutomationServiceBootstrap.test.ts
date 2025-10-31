@@ -260,6 +260,14 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
     expect(bootstrap.getConfig()).toBe(config);
   });
 
+  it("connectServices resolves without errors", async () => {
+    const config = createBootstrapConfig();
+
+    const bootstrap = new NativeYieldAutomationServiceBootstrap(config);
+
+    await expect(bootstrap.connectServices()).resolves.toBeUndefined();
+  });
+
   it("creates blockchain client using hoodi chain when configured", () => {
     const config = createBootstrapConfig();
     config.dataSources.chainId = 2;
