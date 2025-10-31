@@ -176,7 +176,7 @@ interface IYieldManager {
   /**
    * @notice Emitted when a previously initiated ossification has progressed to the next stage.
    * @param yieldProvider The yield provider address.
-   * @return progressOssificationResult The operation result.
+   * @param progressOssificationResult The operation result.
    */
   event YieldProviderOssificationProcessed(
     address indexed yieldProvider,
@@ -614,14 +614,14 @@ interface IYieldManager {
   function replenishWithdrawalReserve(address _yieldProvider) external;
 
   /**
-   * @notice Pauses beacon chain deposits for specified yield provier.
+   * @notice Pauses beacon chain deposits for specified yield provider.
    * @dev STAKING_PAUSE_CONTROLLER_ROLE is required to execute.
    * @param _yieldProvider The yield provider address.
    */
   function pauseStaking(address _yieldProvider) external;
 
   /**
-   * @notice Unpauses beacon chain deposits for specified yield provier.
+   * @notice Unpauses beacon chain deposits for specified yield provider.
    * @dev STAKING_PAUSE_CONTROLLER_ROLE is required to execute.
    * @dev Will revert if:
    *      - The withdrawal reserve is in deficit, or

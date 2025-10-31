@@ -12,7 +12,7 @@ import { ErrorUtils } from "../libraries/ErrorUtils.sol";
 contract LidoStVaultYieldProviderFactory {
   /**
    * @notice Emitted whenever LidoStVaultYieldProviderFactoryDeployed is deployed.
-   * @param l1MessageService The Linea L1MessageService, also the withdrawal reserve.
+   * @param l1MessageService The Linea L1MessageService, also the withdrawal reserve holding contract.
    * @param yieldManager The Linea YieldManager.
    * @param vaultHub Lido VaultHub contract.
    * @param vaultFactory Lido VaultFactory contract.
@@ -34,7 +34,7 @@ contract LidoStVaultYieldProviderFactory {
    */
   event LidoStVaultYieldProviderCreated(address indexed providerAddress);
 
-  /// @notice The Linea L1MessageService, also the withdrawal reserve.
+  /// @notice The Linea L1MessageService, also the withdrawal reserve holding contract.
   address public immutable L1_MESSAGE_SERVICE;
 
   /// @notice The Linea YieldManager.
@@ -53,7 +53,7 @@ contract LidoStVaultYieldProviderFactory {
   address public immutable VALIDATOR_CONTAINER_PROOF_VERIFIER;
 
   /// @notice Used to set immutable variables, but not storage.
-  /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve.
+  /// @param _l1MessageService The Linea L1MessageService, also the withdrawal reserve holding contract.
   /// @param _yieldManager The Linea YieldManager.
   /// @param _vaultHub Lido VaultHub contract.
   /// @param _vaultFactory Lido VaultFactory contract.
@@ -92,7 +92,7 @@ contract LidoStVaultYieldProviderFactory {
 
   /**
    * @notice Creates LidoStVaultYieldProvider instance.
-   * @dev LidoStVaultYieldProvider initialization is handled via permissioned YieldManager.addYieldProvider().
+   * @dev LidoStVaultYieldProvider Initialization is handled via permissioned YieldManager.addYieldProvider().
    * @return yieldProviderAddress The address of the deployed LidoStVaultYieldProvider beacon proxy.
    */
   function createLidoStVaultYieldProvider() external returns (address yieldProviderAddress) {
