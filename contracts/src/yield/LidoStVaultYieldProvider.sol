@@ -570,10 +570,10 @@ contract LidoStVaultYieldProvider is YieldProviderBase, CLProofVerifier, IGeneri
       vault.unstage(vault.stagedBalance());
       progressOssificationResult = ProgressOssificationResult.COMPLETE;
     } else if (VAULT_HUB.isPendingDisconnect(address(vault))) {
-      // No-op, needs accounting report to progress
+      // No-op, needs accounting report to progress.
       progressOssificationResult = ProgressOssificationResult.NOOP;
     } else {
-      // Previous disconnect attempt has aborted, must re-execute
+      // Previous disconnect attempt has aborted, must re-execute.
       _initiateOssification($$);
       progressOssificationResult = ProgressOssificationResult.REINITIATED;
     }

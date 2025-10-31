@@ -823,7 +823,7 @@ contract YieldManager is
   }
 
   /**
-   * @notice Pauses beacon chain deposits for specified yield provier.
+   * @notice Pauses beacon chain deposits for specified yield provider.
    * @dev STAKING_PAUSE_CONTROLLER_ROLE is required to execute.
    * @param _yieldProvider The yield provider address.
    */
@@ -837,11 +837,19 @@ contract YieldManager is
     emit YieldProviderStakingPaused(_yieldProvider);
   }
 
+  /**
+   * @notice Pauses beacon chain deposits for specified yield provider.
+   * @param _yieldProvider The yield provider address.
+   */
   function _pauseStaking(address _yieldProvider) internal {
     _delegatecallYieldProvider(_yieldProvider, abi.encodeCall(IYieldProvider.pauseStaking, (_yieldProvider)));
     _getYieldProviderStorage(_yieldProvider).isStakingPaused = true;
   }
 
+  /**
+   * @notice Pauses beacon chain deposits for specified yield provider if not paused.
+   * @param _yieldProvider The yield provider address.
+   */
   function _pauseStakingIfNotAlready(address _yieldProvider) internal {
     if (!_getYieldProviderStorage(_yieldProvider).isStakingPaused) {
       _pauseStaking(_yieldProvider);
@@ -889,7 +897,7 @@ contract YieldManager is
 
   /**
    * @notice Withdraw LST from a specified YieldProvider instance.
-   * @dev Callable only by the L1MessageService
+   * @dev Callable only by the L1MessageService.
    * @dev Will pause staking to mitigate further reserve deficits.
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount of LST (ETH-denominated) to withdraw.
@@ -911,10 +919,8 @@ contract YieldManager is
       revert LSTWithdrawalNotAllowed();
     }
     // Enshrine assumption that LST withdrawals are an advance on user withdrawal of funds already on a YieldProvider.
-    if (
-      _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal + _amount >
-      _getYieldProviderStorage(_yieldProvider).userFunds
-    ) {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    if ($$.lstLiabilityPrincipal + _amount > _$$.userFunds) {
       revert LSTWithdrawalExceedsYieldProviderFunds();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
@@ -967,7 +973,7 @@ contract YieldManager is
     if ($$.isOssified) {
       revert AlreadyOssified();
     }
-    
+
     progressOssificationResult = abi.decode(
       _delegatecallYieldProvider(
         _yieldProvider,
