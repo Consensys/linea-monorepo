@@ -180,10 +180,10 @@ func newEvaluation(b *ExpressionBoard, chunkSize int, vArena *arena.VectorArena)
 	return eval
 }
 
-func getIndex(id nodeID, b *ExpressionBoard) uint32 {
+func getIndex(id NodeID, b *ExpressionBoard) uint32 {
 	// note: quite inefficient, but it's only during initialization
-	lvl := id.level()
-	pos := id.posInLevel()
+	lvl := id.Level()
+	pos := id.PosInLevel()
 	cum := 0
 	for i := 0; i < lvl; i++ {
 		cum += len(b.Nodes[i])
@@ -467,7 +467,7 @@ func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
 			*/
 			childrenDeg := make([]int, len(node.Children))
 			for i, childID := range node.Children {
-				childrenDeg[i] = intermediateRes[childID.level()][childID.posInLevel()]
+				childrenDeg[i] = intermediateRes[childID.Level()][childID.PosInLevel()]
 			}
 
 			/*
@@ -527,7 +527,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 			*/
 			nodeInputs := make([]frontend.Variable, len(node.Children))
 			for i, childID := range node.Children {
-				nodeInputs[i] = intermediateRes[childID.level()][childID.posInLevel()]
+				nodeInputs[i] = intermediateRes[childID.Level()][childID.PosInLevel()]
 			}
 
 			/*

@@ -20,26 +20,26 @@ type ExpressionBoard struct {
 	// Maps nodes to their level in the DAG structure. The 32 MSB bits
 	// of the ID indicates the level and the LSB bits indicates the position
 	// in the level.
-	EsHashesToPos map[field.Element]nodeID
+	EsHashesToPos map[field.Element]NodeID
 }
 
 // emptyBoard initializes a board with no Node in it.
 func emptyBoard() ExpressionBoard {
 	return ExpressionBoard{
 		Nodes:         [][]Node{},
-		EsHashesToPos: map[field.Element]nodeID{},
+		EsHashesToPos: map[field.Element]NodeID{},
 	}
 }
 
 /*
-nodeID represents the position of a Node in the ExpressionBoard. It consists of
+NodeID represents the position of a Node in the ExpressionBoard. It consists of
 two subIDs:
   - the 32 MSB represents the level of the node in the DAG
   - the 32 LSB represents the index of the node in its level
 
 The two together gives the position of the node = expression.Nodes[level][pos]
 */
-type nodeID uint64
+type NodeID uint64
 
 /*
 Node consists of an operator and a list of operands and is meant to be stored
@@ -57,30 +57,30 @@ type Node struct {
 	// Indicates the IDs of the parents of the current node; corresponding to
 	// the nodes representing admitting this node as an input.
 	// Parents  []nodeID
-	Children []nodeID
+	Children []NodeID
 
 	// Operator contains the logic to evaluate an expression
 	Operator Operator
 }
 
-// posInLevel returns the position in the level from a NodeID
-func (i nodeID) posInLevel() int {
+// PosInLevel returns the position in the level from a NodeID
+func (i NodeID) PosInLevel() int {
 	res := i & ((1 << 32) - 1)
 	return utils.ToInt(res)
 }
 
-// level returns the level from a NodeID
-func (i nodeID) level() int {
+// Level returns the Level from a NodeID
+func (i NodeID) Level() int {
 	return utils.ToInt(i >> 32)
 }
 
 // newNodeID returns the node id given its level and its position in a level
-func newNodeID(level, posInLevel int) nodeID {
+func newNodeID(level, posInLevel int) NodeID {
 	if level >= 1<<32 {
 		utils.Panic("Level is too large %v", level)
 	}
 	if posInLevel >= 1<<32 {
 		utils.Panic("Pos in level is too large %v", posInLevel)
 	}
-	return nodeID(uint64(level)<<32 | uint64(posInLevel))
+	return NodeID(uint64(level)<<32 | uint64(posInLevel))
 }
