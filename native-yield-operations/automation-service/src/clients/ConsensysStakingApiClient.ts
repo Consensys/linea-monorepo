@@ -4,7 +4,19 @@ import { IValidatorDataClient } from "../core/clients/IValidatorDataClient.js";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
 import { ValidatorBalance, ValidatorBalanceWithPendingWithdrawal } from "../core/entities/ValidatorBalance.js";
 
+/**
+ * Client for retrieving validator data from Consensys Staking API via GraphQL.
+ * Fetches active validators and combines them with pending withdrawal data from the beacon chain.
+ */
 export class ConsensysStakingApiClient implements IValidatorDataClient {
+  /**
+   * Creates a new ConsensysStakingApiClient instance.
+   *
+   * @param {ILogger} logger - Logger instance for logging operations.
+   * @param {IRetryService} retryService - Service for retrying failed operations.
+   * @param {ApolloClient} apolloClient - Apollo GraphQL client for querying Consensys Staking API.
+   * @param {IBeaconNodeAPIClient} beaconNodeApiClient - Client for retrieving pending partial withdrawals from beacon chain.
+   */
   constructor(
     private readonly logger: ILogger,
     private readonly retryService: IRetryService,
@@ -12,6 +24,12 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     private readonly beaconNodeApiClient: IBeaconNodeAPIClient,
   ) {}
 
+  /**
+   * Retrieves all active validators from the Consensys Staking GraphQL API.
+   * Uses retry logic to handle transient failures.
+   *
+   * @returns {Promise<ValidatorBalance[] | undefined>} Array of active validators, or undefined if the query fails or returns no data.
+   */
   async getActiveValidators(): Promise<ValidatorBalance[] | undefined> {
     const { data, error } = await this.retryService.retry(() =>
       this.apolloClient.query({ query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY }),
@@ -29,7 +47,16 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     return resp;
   }
 
-  // Return sorted in descending order of withdrawableValue
+  /**
+   * Retrieves active validators with pending withdrawal information.
+   * Returns sorted in descending order of withdrawableValue (largest withdrawableAmount first).
+   * Performs the following steps:
+   * 1️⃣ Aggregate duplicate pending withdrawals by validator index
+   * 2️⃣ Join with validators and compute total pending amount
+   * ✅ Sort descending (largest withdrawableAmount first)
+   *
+   * @returns {Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined>} Array of validators with pending withdrawal data, sorted descending by withdrawableAmount, or undefined if data retrieval fails.
+   */
   async getActiveValidatorsWithPendingWithdrawals(): Promise<ValidatorBalanceWithPendingWithdrawal[] | undefined> {
     const [allValidators, pendingWithdrawalsQueue] = await Promise.all([
       this.getActiveValidators(),
@@ -67,7 +94,13 @@ export class ConsensysStakingApiClient implements IValidatorDataClient {
     return joined;
   }
 
-  // Should be static, but bit tricky to use static and interface together
+  /**
+   * Calculates the total pending partial withdrawals across all validators in wei.
+   * Should be static, but bit tricky to use static and interface together.
+   *
+   * @param {ValidatorBalanceWithPendingWithdrawal[]} validatorList - List of validators with pending withdrawal information.
+   * @returns {bigint} Total pending partial withdrawals amount in wei.
+   */
   getTotalPendingPartialWithdrawalsWei(validatorList: ValidatorBalanceWithPendingWithdrawal[]): bigint {
     const totalGwei = validatorList.reduce((acc, v) => acc + v.pendingWithdrawalAmount, 0n);
     const totalWei = totalGwei * ONE_GWEI;

@@ -18,8 +18,22 @@ import {
 } from "../../core/clients/contracts/ILazyOracle.js";
 import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
+/**
+ * Client for interacting with LazyOracle smart contracts.
+ * Provides methods for reading report data, updating vault data, simulating transactions,
+ * and waiting for VaultsReportDataUpdated events with timeout handling.
+ */
 export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt> {
   private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;
+  /**
+   * Creates a new LazyOracleContractClient instance.
+   *
+   * @param {ILogger} logger - Logger instance for logging operations.
+   * @param {IBlockchainClient<PublicClient, TransactionReceipt>} contractClientLibrary - Blockchain client for sending transactions.
+   * @param {Address} contractAddress - The address of the LazyOracle contract.
+   * @param {number} pollIntervalMs - Polling interval in milliseconds for event watching.
+   * @param {number} eventWatchTimeoutMs - Timeout in milliseconds for waiting for events.
+   */
   constructor(
     private readonly logger: ILogger,
     private readonly contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
@@ -34,14 +48,29 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     });
   }
 
+  /**
+   * Gets the address of the LazyOracle contract.
+   *
+   * @returns {Address} The contract address.
+   */
   getAddress(): Address {
     return this.contractAddress;
   }
 
+  /**
+   * Gets the viem contract instance.
+   *
+   * @returns {GetContractReturnType} The contract instance.
+   */
   getContract(): GetContractReturnType {
     return this.contract;
   }
 
+  /**
+   * Retrieves the latest report data from the LazyOracle contract.
+   *
+   * @returns {Promise<LazyOracleReportData>} The latest report data containing timestamp, refSlot, treeRoot, and reportCid.
+   */
   async latestReportData(): Promise<LazyOracleReportData> {
     const resp = await this.contract.read.latestReportData();
     const returnVal = {
@@ -54,6 +83,13 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     return returnVal;
   }
 
+  /**
+   * Updates vault data in the LazyOracle contract by submitting a transaction.
+   * Encodes the function call and sends a signed transaction via the blockchain client.
+   *
+   * @param {UpdateVaultDataParams} params - The vault data parameters including vault address, totalValue, cumulativeLidoFees, liabilityShares, maxLiabilityShares, slashingReserve, and proof.
+   * @returns {Promise<TransactionReceipt>} The transaction receipt if successful.
+   */
   async updateVaultData(params: UpdateVaultDataParams): Promise<TransactionReceipt> {
     const { vault, totalValue, cumulativeLidoFees, liabilityShares, maxLiabilityShares, slashingReserve, proof } =
       params;
@@ -68,6 +104,13 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     return txReceipt;
   }
 
+  /**
+   * Simulates updating vault data without sending a transaction.
+   * Useful for checking if a transaction would succeed before actually submitting it.
+   *
+   * @param {UpdateVaultDataParams} params - The vault data parameters to simulate.
+   * @returns {Promise<void>} A promise that resolves if simulation succeeds, or rejects if it would fail.
+   */
   async simulateUpdateVaultData(params: UpdateVaultDataParams): Promise<void> {
     const { vault, totalValue, cumulativeLidoFees, liabilityShares, maxLiabilityShares, slashingReserve, proof } =
       params;
@@ -82,6 +125,16 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     ]);
   }
 
+  /**
+   * Waits for a VaultsReportDataUpdated event from the LazyOracle contract.
+   * Creates placeholder Promise resolve fn. Creates Promise that we will return.
+   * Sets placeholder resolve fn, to resolve fn here - decouples Promise creation from resolve fn creation.
+   * Creates placeholders for unwatch fns. Starts timeout and event watching.
+   * Filters out removed logs (could be due to reorg) and logs that don't fit our interface.
+   * On success, cleans up and returns. Tolerates errors - we don't want to interrupt L1MessageService<->YieldProvider rebalancing.
+   *
+   * @returns {Promise<WaitForVaultReportDataEventResult>} The event result containing the operation trigger and report data, or TIMEOUT if the event is not detected within the timeout period.
+   */
   async waitForVaultsReportDataUpdatedEvent(): Promise<WaitForVaultReportDataEventResult> {
     // Create placeholder Promise resolve fn
     let resolvePromise: (value: WaitForVaultReportDataEventResult) => void;

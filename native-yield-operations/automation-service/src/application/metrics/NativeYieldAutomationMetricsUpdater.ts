@@ -11,8 +11,18 @@ import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INative
 // Buckets range up to 20 minutes to account for long-running modes.
 const OPERATION_MODE_DURATION_BUCKETS = [1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200];
 
-// Focused on defining the specific metrics, and methods for updating them
+/**
+ * Focused on defining the specific metrics, and methods for updating them.
+ * Handles creation and updates of all metrics for the Native Yield Automation Service,
+ * including rebalances, validator operations, vault reporting, fees, and operation mode tracking.
+ */
 export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomationMetricsUpdater {
+  /**
+   * Creates a new NativeYieldAutomationMetricsUpdater instance.
+   * Initializes all metrics (counters, gauges, and histograms) used by the service.
+   *
+   * @param {IMetricsService<LineaNativeYieldAutomationServiceMetrics>} metricsService - The metrics service used to create and update metrics.
+   */
   constructor(private readonly metricsService: IMetricsService<LineaNativeYieldAutomationServiceMetrics>) {
     this.metricsService.createCounter(
       LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
@@ -94,6 +104,13 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Records a rebalance operation amount.
+   * Increments the rebalance amount counter for the specified direction.
+   *
+   * @param {RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE} direction - The direction of the rebalance (STAKE or UNSTAKE).
+   * @param {number} amountGwei - The rebalance amount in gwei. Must be greater than 0 to be recorded.
+   */
   public recordRebalance(direction: RebalanceDirection.STAKE | RebalanceDirection.UNSTAKE, amountGwei: number): void {
     if (amountGwei <= 0) return;
     this.metricsService.incrementCounter(
@@ -103,6 +120,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Adds to the total amount partially unstaked for a specific validator.
+   *
+   * @param {Hex} validatorPubkey - The validator's public key in hex format.
+   * @param {number} amountGwei - The partial unstake amount in gwei. Must be greater than 0 to be recorded.
+   */
   public addValidatorPartialUnstakeAmount(validatorPubkey: Hex, amountGwei: number): void {
     if (amountGwei <= 0) return;
     this.metricsService.incrementCounter(
@@ -112,6 +135,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Increments the counter for validator exits initiated by automation.
+   *
+   * @param {Hex} validatorPubkey - The validator's public key in hex format.
+   * @param {number} [count=1] - The number of exits to record. Must be greater than 0 to be recorded.
+   */
   public incrementValidatorExit(validatorPubkey: Hex, count: number = 1): void {
     if (count <= 0) return;
     this.metricsService.incrementCounter(
@@ -121,6 +150,11 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Increments the counter for accounting reports submitted to Lido for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   */
   public incrementLidoVaultAccountingReport(vaultAddress: Address): void {
     this.metricsService.incrementCounter(
       LineaNativeYieldAutomationServiceMetrics.LidoVaultAccountingReportSubmittedTotal,
@@ -128,12 +162,23 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Increments the counter for yield reports submitted to YieldManager for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   */
   public incrementReportYield(vaultAddress: Address): void {
     this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal, {
       vault_address: vaultAddress,
     });
   }
 
+  /**
+   * Adds to the total yield amount reported for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} amountGwei - The yield amount in gwei. Must be greater than 0 to be recorded.
+   */
   public addReportedYieldAmount(vaultAddress: Address, amountGwei: number): void {
     if (amountGwei <= 0) return;
     this.metricsService.incrementCounter(
@@ -143,6 +188,13 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Sets the current outstanding negative yield as of the latest report for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} negativeYield - The negative yield amount. Must be non-negative to be recorded.
+   * @returns {Promise<void>} A promise that resolves when the gauge is set.
+   */
   public async setCurrentNegativeYieldLastReport(vaultAddress: Address, negativeYield: number): Promise<void> {
     if (negativeYield < 0) return;
     this.metricsService.setGauge(
@@ -152,6 +204,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Adds to the total node operator fees paid by automation for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} amountGwei - The fees amount in gwei. Must be greater than 0 to be recorded.
+   */
   public addNodeOperatorFeesPaid(vaultAddress: Address, amountGwei: number): void {
     this._incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
@@ -160,6 +218,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Adds to the total liabilities paid by automation for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} amountGwei - The liabilities amount in gwei. Must be greater than 0 to be recorded.
+   */
   public addLiabilitiesPaid(vaultAddress: Address, amountGwei: number): void {
     this._incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.LiabilitiesPaidTotal,
@@ -168,6 +232,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Adds to the total Lido fees paid by automation for a specific vault.
+   *
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} amountGwei - The fees amount in gwei. Must be greater than 0 to be recorded.
+   */
   public addLidoFeesPaid(vaultAddress: Address, amountGwei: number): void {
     this._incrementVaultAmountCounter(
       LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
@@ -176,6 +246,12 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Increments the counter for operation mode triggers, grouped by mode and trigger type.
+   *
+   * @param {OperationMode} mode - The operation mode that was triggered.
+   * @param {OperationTrigger} trigger - The trigger that caused the mode to be activated.
+   */
   public incrementOperationModeTrigger(mode: OperationMode, trigger: OperationTrigger): void {
     this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeTriggerTotal, {
       mode,
@@ -183,12 +259,24 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     });
   }
 
+  /**
+   * Increments the counter for operation mode executions, grouped by mode.
+   *
+   * @param {OperationMode} mode - The operation mode that was executed.
+   */
   public incrementOperationModeExecution(mode: OperationMode): void {
     this.metricsService.incrementCounter(LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal, {
       mode,
     });
   }
 
+  /**
+   * Records the execution duration of an operation mode in a histogram.
+   * Uses buckets that range up to 20 minutes to account for long-running modes.
+   *
+   * @param {OperationMode} mode - The operation mode that was executed.
+   * @param {number} durationSeconds - The duration in seconds. Must be non-negative to be recorded.
+   */
   public recordOperationModeDuration(mode: OperationMode, durationSeconds: number): void {
     if (durationSeconds < 0) return;
     this.metricsService.addValueToHistogram(
@@ -198,6 +286,13 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
     );
   }
 
+  /**
+   * Internal helper method to increment a vault-specific amount counter.
+   *
+   * @param {LineaNativeYieldAutomationServiceMetrics} metric - The metric to increment.
+   * @param {Address} vaultAddress - The address of the vault.
+   * @param {number} amountGwei - The amount in gwei. Must be greater than 0 to be recorded.
+   */
   private _incrementVaultAmountCounter(
     metric: LineaNativeYieldAutomationServiceMetrics,
     vaultAddress: Address,

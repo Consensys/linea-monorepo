@@ -2,6 +2,24 @@ import { Hex } from "viem";
 import { FlattenedConfigSchema } from "./config.schema.js";
 import { transports } from "winston";
 
+/**
+ * Converts a flattened configuration schema to a client configuration object.
+ * Transforms environment variables into a structured configuration with nested objects
+ * for data sources, OAuth2 settings, contract addresses, timing settings, and Web3Signer configuration.
+ *
+ * @param {FlattenedConfigSchema} env - The flattened configuration schema containing environment variables.
+ * @returns {Object} A client configuration object with the following structure:
+ *   - dataSources: Chain ID, RPC URLs, GraphQL URL, and IPFS base URL
+ *   - consensysStakingOAuth2: OAuth2 token endpoint and credentials
+ *   - contractAddresses: All contract addresses used by the service
+ *   - apiPort: Port for the metrics API server
+ *   - timing: Poll intervals and retry timing configuration
+ *   - rebalanceToleranceBps: Rebalance tolerance in basis points
+ *   - maxValidatorWithdrawalRequestsPerTransaction: Maximum withdrawal requests per transaction
+ *   - minWithdrawalThresholdEth: Minimum withdrawal threshold in ETH
+ *   - web3signer: Web3Signer URL, public key (address or secp pubkey compressed/uncompressed), keystore, truststore, and TLS settings
+ *   - loggerOptions: Winston logger configuration with console transport
+ */
 export const toClientConfig = (env: FlattenedConfigSchema) => ({
   dataSources: {
     chainId: env.CHAIN_ID,
@@ -56,4 +74,8 @@ export const toClientConfig = (env: FlattenedConfigSchema) => ({
   },
 });
 
+/**
+ * Type representing the bootstrap configuration for the Native Yield Automation Service.
+ * Derived from the return type of toClientConfig function.
+ */
 export type NativeYieldAutomationServiceBootstrapConfig = ReturnType<typeof toClientConfig>;

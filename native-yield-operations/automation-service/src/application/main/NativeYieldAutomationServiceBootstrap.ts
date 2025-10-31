@@ -50,6 +50,12 @@ import { VaultHubContractClient } from "../../clients/contracts/VaultHubContract
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 import { OperationModeMetricsRecorder } from "../metrics/OperationModeMetricsRecorder.js";
 
+/**
+ * Bootstrap class for the Native Yield Automation Service.
+ * Initializes and configures all service dependencies including observability (logging and metrics),
+ * blockchain clients, contract clients, API clients, and operation mode processors.
+ * Manages the lifecycle of all services (start/stop) and provides access to configuration.
+ */
 export class NativeYieldAutomationServiceBootstrap {
   private readonly config: NativeYieldAutomationServiceBootstrapConfig;
   private readonly logger: ILogger;
@@ -78,6 +84,15 @@ export class NativeYieldAutomationServiceBootstrap {
   private ossificationPendingOperationModeProcessor: IOperationModeProcessor;
   private ossificationCompleteOperationModeProcessor: IOperationModeProcessor;
 
+  /**
+   * Creates a new NativeYieldAutomationServiceBootstrap instance.
+   * Initializes all service dependencies in the following order:
+   * 1. Observability - logging and metrics
+   * 2. Clients - blockchain, contract, and API clients
+   * 3. Processor Services - operation mode processors and selector
+   *
+   * @param {NativeYieldAutomationServiceBootstrapConfig} config - Configuration object containing all service settings.
+   */
   constructor(config: NativeYieldAutomationServiceBootstrapConfig) {
     this.config = config;
 
@@ -234,9 +249,19 @@ export class NativeYieldAutomationServiceBootstrap {
     );
   }
 
+  /**
+   * Connects services to external dependencies.
+   * Currently a no-op but reserved for future connection logic.
+   *
+   * @returns {Promise<void>} A promise that resolves when services are connected.
+   */
   public async connectServices(): Promise<void> {}
 
-  // Purposely refrain from awaiting .start() methods so they don't becoming blocking calls.
+  /**
+   * Starts all services.
+   * Purposely refrains from awaiting .start() methods so they don't become blocking calls.
+   * Starts the metrics API server and the operation mode selector.
+   */
   public startAllServices(): void {
     this.api.start();
     this.logger.info("Metrics API server started");
@@ -244,6 +269,10 @@ export class NativeYieldAutomationServiceBootstrap {
     this.logger.info("Native yield automation service started");
   }
 
+  /**
+   * Stops all services gracefully.
+   * Stops the metrics API server and the operation mode selector.
+   */
   public stopAllServices(): void {
     this.api.stop();
     this.logger.info("Metrics API server stopped");
@@ -251,6 +280,11 @@ export class NativeYieldAutomationServiceBootstrap {
     this.logger.info("Native yield automation service stopped");
   }
 
+  /**
+   * Gets the bootstrap configuration.
+   *
+   * @returns {NativeYieldAutomationServiceBootstrapConfig} The configuration object used to initialize this bootstrap instance.
+   */
   public getConfig(): NativeYieldAutomationServiceBootstrapConfig {
     return this.config;
   }

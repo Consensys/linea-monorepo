@@ -7,7 +7,21 @@ import { Address, maxUint256, stringToHex, TransactionReceipt } from "viem";
 import { IYieldManager } from "../core/clients/contracts/IYieldManager.js";
 import { INativeYieldAutomationMetricsUpdater } from "../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 
+/**
+ * Client for managing beacon chain staking operations including withdrawal requests and validator exits.
+ * Handles partial withdrawal requests up to a configured maximum per transaction and tracks metrics.
+ */
 export class BeaconChainStakingClient implements IBeaconChainStakingClient {
+  /**
+   * Creates a new BeaconChainStakingClient instance.
+   *
+   * @param {ILogger} logger - Logger instance for logging operations.
+   * @param {INativeYieldAutomationMetricsUpdater} metricsUpdater - Service for updating metrics.
+   * @param {IValidatorDataClient} validatorDataClient - Client for retrieving validator data.
+   * @param {number} maxValidatorWithdrawalRequestsPerTransaction - Maximum number of withdrawal requests allowed per transaction.
+   * @param {IYieldManager<TransactionReceipt>} yieldManagerContractClient - Client for interacting with YieldManager contracts.
+   * @param {Address} yieldProvider - The yield provider address.
+   */
   constructor(
     private readonly logger: ILogger,
     private readonly metricsUpdater: INativeYieldAutomationMetricsUpdater,
@@ -17,6 +31,14 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     private readonly yieldProvider: Address,
   ) {}
 
+  /**
+   * Submits withdrawal requests to fulfill a specific amount.
+   * Calculates the remaining withdrawal amount needed after accounting for existing pending partial withdrawals,
+   * then submits partial withdrawal requests for validators to meet the target amount.
+   *
+   * @param {bigint} amountWei - The target withdrawal amount in wei.
+   * @returns {Promise<void>} A promise that resolves when withdrawal requests are submitted (or silently returns if validator list is unavailable).
+   */
   async submitWithdrawalRequestsToFulfilAmount(amountWei: bigint): Promise<void> {
     this.logger.debug(
       `submitWithdrawalRequestsToFulfilAmount started: amountWei=${amountWei.toString()}; validatorLimit=${this.maxValidatorWithdrawalRequestsPerTransaction}`,
@@ -35,6 +57,13 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     await this._submitPartialWithdrawalRequests(sortedValidatorList, remainingWithdrawalAmountWei);
   }
 
+  /**
+   * Submits the maximum available withdrawal requests.
+   * First submits partial withdrawal requests for validators with withdrawable amounts,
+   * then submits validator exit requests for validators with no withdrawable amount remaining.
+   *
+   * @returns {Promise<void>} A promise that resolves when all withdrawal requests are submitted (or silently returns if validator list is unavailable).
+   */
   async submitMaxAvailableWithdrawalRequests(): Promise<void> {
     this.logger.debug(`submitMaxAvailableWithdrawalRequests started`);
     const sortedValidatorList = await this.validatorDataClient.getActiveValidatorsWithPendingWithdrawals();
@@ -48,7 +77,16 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
     await this._submitValidatorExits(sortedValidatorList, remainingWithdrawals);
   }
 
-  // Returns # of withdrawal requests remaining
+  /**
+   * Submits partial withdrawal requests for validators up to the specified amount or transaction limit.
+   * Returns the number of withdrawal requests remaining (remaining shots) after this submission.
+   * Processes validators in order, withdrawing up to their withdrawable amount until the target amount is reached
+   * or the maximum validators per transaction limit is hit. Does unstake operation and instruments metrics after transaction success.
+   *
+   * @param {ValidatorBalanceWithPendingWithdrawal[]} sortedValidatorList - List of validators sorted by priority with pending withdrawals.
+   * @param {bigint} amountWei - The target withdrawal amount in wei (use maxUint256 for maximum available).
+   * @returns {Promise<number>} The number of withdrawal requests remaining (remaining shots) after this submission.
+   */
   private async _submitPartialWithdrawalRequests(
     sortedValidatorList: ValidatorBalanceWithPendingWithdrawal[],
     amountWei: bigint,
@@ -90,12 +128,21 @@ export class BeaconChainStakingClient implements IBeaconChainStakingClient {
       this.metricsUpdater.addValidatorPartialUnstakeAmount(pubkey, Number(amountGwei));
     }
 
-    // Return # of remaining shots
+    // Return # of remaining shots (withdrawal requests remaining)
     const remainingWithdrawals = this.maxValidatorWithdrawalRequestsPerTransaction - withdrawalRequests.pubkeys.length;
     this.logger.debug(`_submitPartialWithdrawalRequests remainingWithdrawal=${remainingWithdrawals}`);
     return remainingWithdrawals;
   }
 
+  /**
+   * Submits validator exit requests for validators with no withdrawable amount remaining.
+   * Processes validators that have 0 withdrawable amount, submitting them for exit using 0 amount as a signal for validator exit.
+   * Respects the remaining withdrawal slots available. Does unstake operation and instruments metrics after transaction success.
+   *
+   * @param {ValidatorBalanceWithPendingWithdrawal[]} sortedValidatorList - List of validators sorted by priority with pending withdrawals.
+   * @param {number} remainingWithdrawals - The number of remaining withdrawal request slots available.
+   * @returns {Promise<void>} A promise that resolves when validator exit requests are submitted (or silently returns if no slots available or no validators to exit).
+   */
   private async _submitValidatorExits(
     sortedValidatorList: ValidatorBalanceWithPendingWithdrawal[],
     remainingWithdrawals: number,
