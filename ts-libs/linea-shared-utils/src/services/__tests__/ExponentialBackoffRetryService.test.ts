@@ -85,23 +85,24 @@ describe("ExponentialBackoffRetryService", () => {
 
   it("throws when provided timeout is not greater than zero", async () => {
     const logger = createLogger();
+    const service = new ExponentialBackoffRetryService(logger);
+    const fn = jest.fn().mockResolvedValue(undefined);
+
+    await expect(service.retry(fn, 0)).rejects.toThrow("timeoutMs must be greater than 0");
+  });
+
+  it("does not perform retry side effects when timeout validation fails", async () => {
+    const logger = createLogger();
     const service = new ExponentialBackoffRetryService(logger, 2, 25);
     const fn = jest.fn<Promise<void>, []>(() => Promise.resolve());
-    const randomSpy = jest.spyOn(Math, "random").mockReturnValue(0);
 
     await expect(service.retry(fn, -5)).rejects.toThrow("timeoutMs must be greater than 0");
 
     expect(fn).not.toHaveBeenCalled();
-    expect(logger.warn).toHaveBeenCalledTimes(1);
-    expect(logger.warn.mock.calls[0][0]).toBe("Retry attempt failed attempt=1 maxRetryAttempts=2");
-    expect(logger.warn.mock.calls[0][1].error).toBeInstanceOf(Error);
-    expect(logger.debug).toHaveBeenCalledWith("Retrying after delay=25ms");
-    expect(waitMock).toHaveBeenCalledWith(25);
-    expect(logger.error).toHaveBeenCalledWith("Retry attempts exhausted maxRetryAttempts=2", {
-      error: expect.any(Error),
-    });
-
-    randomSpy.mockRestore();
+    expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.debug).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(waitMock).not.toHaveBeenCalled();
   });
 
   it("uses the provided timeout value and times out when the operation does not resolve in time", async () => {

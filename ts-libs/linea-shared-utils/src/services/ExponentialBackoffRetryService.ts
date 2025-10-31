@@ -22,11 +22,17 @@ export class ExponentialBackoffRetryService implements IRetryService {
    * @param fn An async callback returning a promise of type TReturn.
    */
   public async retry<TReturn>(fn: () => Promise<TReturn>, timeoutMs?: number): Promise<TReturn> {
+    const effectiveTimeoutMs = timeoutMs ?? this.defaultTimeoutMs;
+
+    if (effectiveTimeoutMs <= 0) {
+      throw new Error("timeoutMs must be greater than 0");
+    }
+
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= this.maxRetryAttempts; attempt += 1) {
       try {
-        return await this.executeWithTimeout(fn, timeoutMs ? timeoutMs : this.defaultTimeoutMs);
+        return await this.executeWithTimeout(fn, effectiveTimeoutMs);
       } catch (error) {
         if (attempt >= this.maxRetryAttempts) {
           this.logger.error(`Retry attempts exhausted maxRetryAttempts=${this.maxRetryAttempts}`, { error });
