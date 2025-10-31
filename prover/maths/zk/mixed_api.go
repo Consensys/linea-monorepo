@@ -52,6 +52,7 @@ func (w *WrappedVariable) Initialize(field *big.Int) {
 		return
 	} else {
 		w.EV.Initialize(field)
+		// w.EVpointer = &w.EV
 	}
 }
 
@@ -264,6 +265,7 @@ func (g *GenericApi) NewHint(f solver.Hint, nbOutputs int, inputs ...WrappedVari
 	}
 }
 
+// @thomas fixme this function does not print constants
 func (g *GenericApi) Println(a ...WrappedVariable) {
 	if g.Type() == Native {
 		for i := 0; i < len(a); i++ {
@@ -271,8 +273,14 @@ func (g *GenericApi) Println(a ...WrappedVariable) {
 		}
 	} else {
 		for i := 0; i < len(a); i++ {
-			for j := 0; j < len(a[i].EV.Limbs); j++ {
-				g.nativeApi.Println(a[i].EV.Limbs[j])
+			if a[i].EVpointer == nil {
+				for j := 0; j < len(a[i].EV.Limbs); j++ {
+					g.nativeApi.Println(a[i].EV.Limbs[j])
+				}
+			} else {
+				for j := 0; j < len(a[i].EVpointer.Limbs); j++ {
+					g.nativeApi.Println(a[i].EVpointer.Limbs[j])
+				}
 			}
 		}
 	}

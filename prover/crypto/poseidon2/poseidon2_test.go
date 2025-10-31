@@ -147,20 +147,16 @@ func (ghc *GnarkHasherCircuit) Define(api frontend.API) error {
 	h.Write(ghc.Inputs...)
 
 	// sum
-	// res := h.Sum()
-	h.Sum()
+	res := h.Sum()
 
 	// check the result
-	// apiGen, err := zk.NewGenericApi(api)
-	// if err != nil {
-	// 	return err
-	// }
-	// for i := 0; i < len(res); i++ {
-	// 	apiGen.Println(&res[i])
-	// }
-	// for i := 0; i < 8; i++ {
-	// apiGen.AssertIsEqual(&ghc.Ouput[i], &res[i])
-	// }
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < 8; i++ {
+		apiGen.AssertIsEqual(ghc.Ouput[i], res[i])
+	}
 
 	return nil
 }
