@@ -76,6 +76,7 @@ func Bytes32ToOctuplet(input Bytes32) field.Octuplet {
 
 // Writes the bytes32 into the given write.
 func (b Bytes32) WriteTo(w io.Writer) (int64, error) {
+	fmt.Printf("Writing Bytes32: %x\n", b)
 	_, err := w.Write(b[:])
 	if err != nil {
 		panic(err) // hard forbid any error

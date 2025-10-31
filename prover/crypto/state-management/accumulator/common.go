@@ -1,6 +1,7 @@
 package accumulator
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
@@ -12,6 +13,7 @@ import (
 // Generic hashing for object satisfying the io.WriterTo interface
 func hash[T io.WriterTo](conf *smt.Config, m T) Bytes32 {
 	hasher := conf.HashFunc()
+	fmt.Printf("Hashing object: %v\n", m)
 	m.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
 	return AsBytes32(Bytes32)

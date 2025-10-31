@@ -32,13 +32,13 @@ type KVOpeningTuple[K, V io.WriterTo] struct {
 // WriteTo implements the [io.WriterTo] interface and is used to hash the leaf
 // opening into the leaves that we store in the tree.
 func (leaf *LeafOpening) WriteTo(w io.Writer) (int64, error) {
-	n0, _ := WriteInt64On64Bytes(w, leaf.Prev) // n0 = 64 (bytes)
-	n1, _ := WriteInt64On64Bytes(w, leaf.Next) // n1 = 64 (bytes)
+	n0, _ := WriteInt64On32Bytes(w, leaf.Prev) // n0 = 64 (bytes)
+	n1, _ := WriteInt64On32Bytes(w, leaf.Next) // n1 = 64 (bytes)
 	n2, _ := leaf.HKey.WriteTo(w)              // n2 = 32 (bytes)
 	n3, _ := leaf.HVal.WriteTo(w)              // n3 = 32 (bytes)
 	// Sanity-check the written size of the leaf opening
 	total := n0 + n1 + n2 + n3
-	if total != 192 {
+	if total != 128 {
 		utils.Panic("bad size")
 	}
 	return total, nil
@@ -46,6 +46,9 @@ func (leaf *LeafOpening) WriteTo(w io.Writer) (int64, error) {
 
 // Hash returns a hash of the leaf opening
 func (leaf LeafOpening) Hash(conf *smt.Config) Bytes32 {
+	fmt.Printf("Hashing leaf opening: %s\n", leaf)
+
+	fmt.Printf("Hashing leaf opening: %x\n", leaf)
 	return hash(conf, &leaf)
 }
 

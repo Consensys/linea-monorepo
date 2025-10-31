@@ -31,7 +31,7 @@ func TestEmptyAccumulatorPoseidon2(t *testing.T) {
 		)
 
 		// also checks its hash value (i.e, the corresponding leaf in the tree)
-		require.Equal(t, "0x2f5de7ad279a134761de0d89702e52743b2f04f41b86cc5400dfae1d4b981340", leafOpening.Hash(acc.Config()).Hex())
+		require.Equal(t, "0x7097ec8b2b4beecf1986c5c244fe5b7b54e0626741494ced60b68360719a80fc", leafOpening.Hash(acc.Config()).Hex())
 	}
 
 	// check the value of the second leaf opening. It should be tail with an updated prev value
@@ -44,20 +44,20 @@ func TestEmptyAccumulatorPoseidon2(t *testing.T) {
 		)
 
 		// also check its hash value
-		require.Equal(t, "0x5c73480b5e85fc2c3ab61fc155cf475b74590d005d8916b85fdd5c32773b1255", leafOpening.Hash(acc.Config()).Hex())
+		require.Equal(t, "0x088e8d326cd388b41347959041c11a9d6082eeb15868a9f62b1bc777123949fa", leafOpening.Hash(acc.Config()).Hex())
 	}
 
 	// root of the subtree (e.g. exluding the next free node)
 	require.Equal(
 		t,
-		"0x3a00a8e34a16f8a1225fee734816edb326f783bd6678d793345a28f046586ba6",
+		"0x16cb2617218f334532c8fc4b7a9689166ea7488d5d93457913a0b72216437033",
 		acc.SubTreeRoot().Hex(),
 	)
 
 	// root of the complete accumulator (e.g including the last node)
 	require.Equal(
 		t,
-		"0x2fa0344a2fab2b310d2af3155c330261263f887379aef18b4941e3ea1cc59df7",
+		"0x5138a2ab3bdc003b3a3664ab02bf93c52c9d9c156dbf2079241e5e3319540985",
 		acc.TopRoot().Hex(),
 	)
 }

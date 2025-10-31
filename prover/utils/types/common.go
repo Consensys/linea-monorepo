@@ -57,8 +57,8 @@ func LeftPadded48Zeros(b []byte) []byte {
 		panic("input length must be 16")
 	}
 
-	res := make([]byte, 64)
-	copy(res[48:], b[:])
+	res := make([]byte, 32)
+	copy(res[16:], b[:])
 	return res
 }
 
@@ -80,16 +80,16 @@ func RemovePadding(b []byte) []byte {
 // Remove48Padding removes the 48 zero padding from the byte slice.
 func Remove48Padding(b []byte) []byte {
 
-	if len(b) != 64 {
+	if len(b) != 32 {
 		panic("input length must be 64")
 	}
 
 	data := make([]byte, 16)
-	copy(data[:], b[48:])
+	copy(data[:], b[16:])
 	return data
 }
 
-func WriteInt64On64Bytes(w io.Writer, x int64) (int64, error) {
+func WriteInt64On32Bytes(w io.Writer, x int64) (int64, error) {
 	xBytes := [8]byte{}
 
 	// Convert the int64 to its 8-byte representation
@@ -98,6 +98,7 @@ func WriteInt64On64Bytes(w io.Writer, x int64) (int64, error) {
 	// We copy every 2 bytes from tmp into res, left padded by 2 zero-bytes.
 	res := LeftPadded48Zeros(LeftPadded(xBytes[:]))
 
+	fmt.Printf("Writing int64 %d as bytes: %x\n", x, res)
 	n, err := w.Write(res[:])
 	if err != nil {
 		return int64(n), fmt.Errorf("could not write 64 bytes into Writer : %w", err)
@@ -105,8 +106,8 @@ func WriteInt64On64Bytes(w io.Writer, x int64) (int64, error) {
 	return int64(n), nil
 }
 
-func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
-	var buf [64]byte
+func ReadInt64On32Bytes(r io.Reader) (x, n_ int64, err error) {
+	var buf [32]byte
 	n, err := r.Read(buf[:])
 	if err != nil {
 		return 0, int64(n), fmt.Errorf("could not read 64 bytes: %w", err)
@@ -122,7 +123,7 @@ func ReadInt64On64Bytes(r io.Reader) (x, n_ int64, err error) {
 		panic("invalid n, should never be negative")
 	}
 	xU64 &= 0x7fffffffffffffff  // TODO delete this if negative numbers are allowed
-	return int64(xU64), 64, err // #nosec G115 -- above line precludes overflowing
+	return int64(xU64), 32, err // #nosec G115 -- above line precludes overflowing
 }
 
 // Big int are assumed to fit on 64 bytes and are written as a single
