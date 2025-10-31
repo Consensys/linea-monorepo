@@ -60,6 +60,7 @@ func NewGnarkHasher(api frontend.API) (GnarkHasher, error) {
 }
 
 func (h *GnarkHasher) Reset() {
+	h.buffer = h.buffer[:0]
 	for i := 0; i < 8; i++ {
 		h.state[i] = zk.ValueOf(0)
 	}
