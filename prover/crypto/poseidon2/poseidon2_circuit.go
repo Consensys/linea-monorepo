@@ -60,6 +60,7 @@ func NewGnarkHasher(api frontend.API) (GnarkHasher, error) {
 }
 
 func (h *GnarkHasher) Reset() {
+	h.buffer = h.buffer[:0]
 	for i := 0; i < 8; i++ {
 		h.state[i] = zk.ValueOf(0)
 	}
@@ -204,7 +205,6 @@ func (h *permutation) matMulExternalInPlace(apiGen zk.GenericApi, input []zk.Wra
 		input[4*i+2] = apiGen.Add(input[4*i+2], tmp[2])
 		input[4*i+3] = apiGen.Add(input[4*i+3], tmp[3])
 	}
-
 }
 
 // when t=2,3 the matrix are respectively [[2,1][1,3]] and [[2,1,1][1,2,1][1,1,3]]
