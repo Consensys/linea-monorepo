@@ -30,6 +30,13 @@ describe("SingletonMetricsService", () => {
     expect((await counter.get()).values[0].value).toBe(1);
   });
 
+  it("should increment a counter using default labels and value", async () => {
+    metricService.createCounter(ExampleMetrics.ExampleMetrics, "A test counter");
+    metricService.incrementCounter(ExampleMetrics.ExampleMetrics);
+    const counterValue = await metricService.getCounterValue(ExampleMetrics.ExampleMetrics, {});
+    expect(counterValue).toBe(1);
+  });
+
   it("should leave counter untouched when incrementing a missing counter", async () => {
     metricService.incrementCounter(ExampleMetrics.ExampleMetrics, {}, 3);
     const counterValue = await metricService.getCounterValue(ExampleMetrics.ExampleMetrics, {});
@@ -64,6 +71,12 @@ describe("SingletonMetricsService", () => {
     metricService.createGauge(ExampleMetrics.ExampleMetrics, "A test gauge");
     metricService.setGauge(ExampleMetrics.ExampleMetrics, {}, 12);
     expect(await metricService.getGaugeValue(ExampleMetrics.ExampleMetrics, {})).toBe(12);
+  });
+
+  it("should set a gauge when labels are omitted", async () => {
+    metricService.createGauge(ExampleMetrics.ExampleMetrics, "A test gauge");
+    metricService.setGauge(ExampleMetrics.ExampleMetrics, undefined, 9);
+    expect(await metricService.getGaugeValue(ExampleMetrics.ExampleMetrics, {})).toBe(9);
   });
 
   it("should increment and decrement gauges using default step", async () => {

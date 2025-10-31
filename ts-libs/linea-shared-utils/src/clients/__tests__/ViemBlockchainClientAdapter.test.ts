@@ -95,6 +95,71 @@ describe("ViemBlockchainClientAdapter", () => {
     adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 3, 1000n, 300_000);
   });
 
+  it("logs request and response bodies in viem transport hooks", async () => {
+    expect(mockedHttp).toHaveBeenCalled();
+    const transportConfig = mockedHttp.mock.calls[0]?.[1] as {
+      onFetchRequest: (request: any) => Promise<void>;
+      onFetchResponse: (response: any) => Promise<void>;
+    };
+    expect(transportConfig).toBeDefined();
+
+    const requestBody = JSON.stringify({ foo: "bar" });
+    const requestClone = { text: jest.fn().mockResolvedValue(requestBody) };
+    const request = {
+      method: "POST",
+      url: "https://rpc.local",
+      clone: jest.fn().mockReturnValue(requestClone),
+    };
+
+    await transportConfig.onFetchRequest(request);
+
+    expect(logger.debug).toHaveBeenCalledWith("onFetchRequest", {
+      method: "POST",
+      url: "https://rpc.local",
+      body: requestBody,
+    });
+
+    const failingRequest = {
+      clone: jest.fn().mockReturnValue({
+        text: jest.fn().mockRejectedValue(new Error("request-read-fail")),
+      }),
+    };
+
+    await transportConfig.onFetchRequest(failingRequest);
+
+    expect(logger.warn).toHaveBeenCalledWith("Failed to read request body", {
+      err: expect.any(Error),
+    });
+
+    const responseBody = JSON.stringify({ ok: true });
+    const responseClone = { text: jest.fn().mockResolvedValue(responseBody) };
+    const response = {
+      status: 200,
+      statusText: "OK",
+      clone: jest.fn().mockReturnValue(responseClone),
+    };
+
+    await transportConfig.onFetchResponse(response);
+
+    expect(logger.debug).toHaveBeenCalledWith("onFetchResponse", {
+      status: 200,
+      statusText: "OK",
+      body: responseBody,
+    });
+
+    const responseError = {
+      clone: jest.fn().mockReturnValue({
+        text: jest.fn().mockRejectedValue(new Error("read-fail")),
+      }),
+    };
+
+    await transportConfig.onFetchResponse(responseError);
+
+    expect(logger.warn).toHaveBeenCalledWith("Failed to read response body", {
+      err: expect.any(Error),
+    });
+  });
+
   it("throws if sendTransactionsMaxRetries is less than 1", () => {
     expect(() => new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 0, 1000n, 1_000)).toThrow(
       "sendTransactionsMaxRetries must be at least 1",
