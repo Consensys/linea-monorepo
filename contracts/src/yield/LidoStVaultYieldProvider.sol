@@ -125,7 +125,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
   /**
    * @notice Helper function to get the associated Lido Dashboard contract.
    * @param $$ The yield provider storage pointer.
-   * @return dashboard The dashboard contract.
+   * @return dashboard The Dashboard contract.
    */
   function _getDashboard(YieldProviderStorage storage $$) internal view returns (IDashboard dashboard) {
     dashboard = IDashboard($$.primaryEntrypoint);
