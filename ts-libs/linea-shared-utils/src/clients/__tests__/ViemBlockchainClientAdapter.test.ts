@@ -5,6 +5,7 @@ import {
   Hex,
   PublicClient,
   TimeoutError,
+  BaseError,
   createPublicClient,
   http,
   parseSignature,
@@ -347,6 +348,38 @@ describe("ViemBlockchainClientAdapter", () => {
       nonce: 5,
       value: 0n,
     });
+  });
+
+  it("retries when viem BaseError reports a timeout", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const baseTimeout = new BaseError("timeout", { name: "TimeoutError", details: "timeout" });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(9);
+    publicClientMock.estimateGas.mockResolvedValue(150n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 12n, maxPriorityFeePerGas: 4n })
+      .mockResolvedValueOnce({ maxFeePerGas: 15n, maxPriorityFeePerGas: 5n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw baseTimeout;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
+      { error: baseTimeout },
+    );
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+    expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
   });
 
   it("rethrows non-timeout errors without retrying", async () => {
