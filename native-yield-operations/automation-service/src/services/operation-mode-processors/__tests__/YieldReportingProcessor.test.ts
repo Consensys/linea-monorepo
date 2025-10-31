@@ -493,13 +493,12 @@ describe("YieldReportingProcessor", () => {
     const processor = createProcessor();
     (processor as unknown as { vault: Address }).vault = vaultAddress;
 
-    const result = await (
+    await (
       processor as unknown as {
-        _handleSubmitLatestVaultReport(): Promise<unknown>;
+        _handleSubmitLatestVaultReport(): Promise<void>;
       }
     )._handleSubmitLatestVaultReport();
 
-    expect(result).toBeDefined();
     expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
     expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
       yieldProvider,
