@@ -129,6 +129,7 @@ export class NativeYieldAutomationServiceBootstrap {
       new WinstonLogger(LazyOracleContractClient.name, config.loggerOptions),
       this.viemBlockchainClientAdapter,
       config.contractAddresses.lazyOracleAddress,
+      config.timing.trigger.pollIntervalMs,
       config.timing.trigger.maxInactionMs,
     );
     this.vaultHubContractClient = new VaultHubContractClient(
@@ -196,7 +197,6 @@ export class NativeYieldAutomationServiceBootstrap {
       this.lineaRollupYieldExtensionContractClient,
       this.lidoAccountingReportClient,
       this.beaconChainStakingClient,
-      config.timing.trigger.maxInactionMs,
       config.contractAddresses.lidoYieldProviderAddress,
       config.contractAddresses.l2YieldRecipientAddress,
     );
@@ -209,7 +209,6 @@ export class NativeYieldAutomationServiceBootstrap {
       this.lazyOracleContractClient,
       this.lidoAccountingReportClient,
       this.beaconChainStakingClient,
-      config.timing.trigger.maxInactionMs,
       config.contractAddresses.lidoYieldProviderAddress,
     );
 

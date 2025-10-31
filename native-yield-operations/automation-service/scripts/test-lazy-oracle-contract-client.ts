@@ -10,6 +10,7 @@
  *
  * Optional flags:
  * POLL_INTERVAL_MS=60000 \
+ * WAIT_TIMEOUT_MS=300000 \
  */
 
 import {
@@ -35,6 +36,7 @@ async function main() {
   const privateKey = process.env.PRIVATE_KEY as Hex;
   const lazyOracleAddress = process.env.LAZY_ORACLE_ADDRESS as Address;
   const pollIntervalMs = Number.parseInt(process.env.POLL_INTERVAL_MS ?? "60000", 10);
+  const waitTimeoutMs = Number.parseInt(process.env.WAIT_TIMEOUT_MS ?? "300000", 10);
 
   const signer = new ViemWalletSignerClientAdapter(
     new WinstonLogger("ViemWalletSignerClientAdapter.integration"),
@@ -54,16 +56,14 @@ async function main() {
     contractClientLibrary,
     lazyOracleAddress,
     pollIntervalMs,
+    waitTimeoutMs,
   );
-  const { unwatch, waitForEvent } = lazyOracleClient.waitForVaultsReportDataUpdatedEvent();
 
   try {
-    await waitForEvent;
+    await lazyOracleClient.waitForVaultsReportDataUpdatedEvent();
   } catch (err) {
     console.error("LazyOracleContractClient integration script failed:", err);
     process.exitCode = 1;
-  } finally {
-    unwatch();
   }
 }
 

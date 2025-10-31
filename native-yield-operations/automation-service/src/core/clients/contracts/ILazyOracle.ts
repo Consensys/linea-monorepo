@@ -1,11 +1,12 @@
-import { Address, Hex, WatchContractEventReturnType } from "viem";
+import { Address, Hex } from "viem";
 import { IBaseContractClient } from "@consensys/linea-shared-utils";
+import { OperationTrigger } from "../../metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
 export interface ILazyOracle<TransactionReceipt> extends IBaseContractClient {
   updateVaultData(params: UpdateVaultDataParams): Promise<TransactionReceipt>;
   simulateUpdateVaultData(params: UpdateVaultDataParams): Promise<void>;
   latestReportData(): Promise<LazyOracleReportData>;
-  waitForVaultsReportDataUpdatedEvent(): WaitForVaultsReportDataUpdatedEventReturnType;
+  waitForVaultsReportDataUpdatedEvent(): Promise<WaitForVaultReportDataEventResult>;
 }
 
 export interface UpdateVaultDataParams {
@@ -18,11 +19,15 @@ export interface UpdateVaultDataParams {
   proof: Hex[];
 }
 
-export interface WaitForVaultsReportDataUpdatedEventReturnType {
-  // Cleanup fn for event subscription
-  unwatch: WatchContractEventReturnType;
-  // Resolves when event detected
-  waitForEvent: Promise<void>;
+export type WaitForVaultReportDataEventResult = VaultReportResult | TimeoutResult;
+export interface VaultReportResult {
+  result: OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT;
+  report: LazyOracleReportData;
+  txHash: Hex;
+}
+
+export interface TimeoutResult {
+  result: OperationTrigger.TIMEOUT;
 }
 
 export interface LazyOracleReportData {

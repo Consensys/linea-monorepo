@@ -1,7 +1,7 @@
 import { Address, TransactionReceipt } from "viem";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
-import { bigintReplacer, ILogger, attempt, msToSeconds, weiToGweiNumber, wait } from "@consensys/linea-shared-utils";
+import { bigintReplacer, ILogger, attempt, msToSeconds, weiToGweiNumber } from "@consensys/linea-shared-utils";
 import { ILazyOracle } from "../../core/clients/contracts/ILazyOracle.js";
 import { ILidoAccountingReportClient } from "../../core/clients/ILidoAccountingReportClient.js";
 import { RebalanceDirection, RebalanceRequirement } from "../../core/entities/RebalanceRequirement.js";
@@ -9,7 +9,6 @@ import { ILineaRollupYieldExtension } from "../../core/clients/contracts/ILineaR
 import { IBeaconChainStakingClient } from "../../core/clients/IBeaconChainStakingClient.js";
 import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
-import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 import { IOperationModeMetricsRecorder } from "../../core/metrics/IOperationModeMetricsRecorder.js";
 
 // FIRST PRIORITY FOR UNIT TESTING
@@ -25,7 +24,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     private readonly lineaRollupYieldExtensionClient: ILineaRollupYieldExtension<TransactionReceipt>,
     private readonly lidoAccountingReportClient: ILidoAccountingReportClient,
     private readonly beaconChainStakingClient: IBeaconChainStakingClient,
-    private readonly maxInactionMs: number,
     private readonly yieldProvider: Address,
     private readonly l2YieldRecipient: Address,
   ) {}
@@ -37,30 +35,12 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * - Always cleans up the event watcher afterward.
    */
   public async process(): Promise<void> {
-    const { unwatch, waitForEvent } = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
-    try {
-      this.logger.info(
-        `process - Waiting for VaultsReportDataUpdated event vs timeout race, timeout=${this.maxInactionMs}ms`,
-      );
-      // Race: event vs. timeout
-      const winner = await Promise.race([
-        waitForEvent.then(() => OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT),
-        wait(this.maxInactionMs).then(() => OperationTrigger.TIMEOUT),
-      ]);
-      this.logger.info(
-        `process - race won by ${winner === OperationTrigger.TIMEOUT ? `time out after ${this.maxInactionMs}ms` : "VaultsReportDataUpdated event"}`,
-      );
-      this.metricsUpdater.incrementOperationModeTrigger(OperationMode.YIELD_REPORTING_MODE, winner);
-
-      const startedAt = performance.now();
-      await this._process();
-      const durationMs = performance.now() - startedAt;
-      this.metricsUpdater.recordOperationModeDuration(OperationMode.YIELD_REPORTING_MODE, msToSeconds(durationMs));
-    } finally {
-      // clean up watcher
-      this.logger.debug("Cleaning up VaultsReportDataUpdated event watcher");
-      unwatch();
-    }
+    const triggerEvent = await this.lazyOracleContractClient.waitForVaultsReportDataUpdatedEvent();
+    this.metricsUpdater.incrementOperationModeTrigger(OperationMode.YIELD_REPORTING_MODE, triggerEvent.result);
+    const startedAt = performance.now();
+    await this._process();
+    const durationMs = performance.now() - startedAt;
+    this.metricsUpdater.recordOperationModeDuration(OperationMode.YIELD_REPORTING_MODE, msToSeconds(durationMs));
   }
 
   /**

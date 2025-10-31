@@ -6,14 +6,17 @@ import {
   GetContractReturnType,
   PublicClient,
   TransactionReceipt,
+  WatchContractEventReturnType,
 } from "viem";
 import { LazyOracleABI } from "../../core/abis/LazyOracle.js";
 import {
   ILazyOracle,
   UpdateVaultDataParams,
-  WaitForVaultsReportDataUpdatedEventReturnType,
   LazyOracleReportData,
+  WaitForVaultReportDataEventResult,
+  VaultReportResult,
 } from "../../core/clients/contracts/ILazyOracle.js";
+import { OperationTrigger } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
 export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt> {
   private readonly contract: GetContractReturnType<typeof LazyOracleABI, PublicClient, Address>;
@@ -22,6 +25,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     private readonly contractClientLibrary: IBlockchainClient<PublicClient, TransactionReceipt>,
     private readonly contractAddress: Address,
     private readonly pollIntervalMs: number,
+    private readonly eventWatchTimeoutMs: number,
   ) {
     this.contract = getContract({
       abi: LazyOracleABI,
@@ -78,45 +82,82 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     ]);
   }
 
-  waitForVaultsReportDataUpdatedEvent(): WaitForVaultsReportDataUpdatedEventReturnType {
-    // Create placeholder variable. Initialize to empty fn so it's callable before being reassigned (TS safety).
-    let resolvePromise: () => void = () => {};
-    // Create the waitForEvent Promise, create a 2nd reference to 'resolve' fn
-    // Decouple Promise creation from resolve fn creation
-    const waitForEvent = new Promise<void>((resolve) => {
+  async waitForVaultsReportDataUpdatedEvent(): Promise<WaitForVaultReportDataEventResult> {
+    // Create placeholder Promise resolve fn
+    let resolvePromise: (value: WaitForVaultReportDataEventResult) => void;
+    // Create Promise that we will return
+    // Set placeholder resolve fn, to resolve fn here - decouple Promise creation from resolve fn creation
+    const waitForEvent = new Promise<WaitForVaultReportDataEventResult>((resolve) => {
       resolvePromise = resolve;
     });
 
-    this.logger.info("waitForVaultsReportDataUpdatedEvent started...");
-    const unwatch = this.contractClientLibrary.getBlockchainClient().watchContractEvent({
+    // Create placeholders for unwatch fns
+    let unwatchEvent: WatchContractEventReturnType = () => {};
+    let unwatchTimeout: () => void = () => {};
+
+    // Start timeout
+    this.logger.info(`waitForVaultsReportDataUpdatedEvent started with timeout=${this.eventWatchTimeoutMs}ms`);
+    const timeoutId = setTimeout(() => {
+      unwatchTimeout();
+      unwatchEvent();
+      this.logger.info(`waitForVaultsReportDataUpdatedEvent timed out after timeout=${this.eventWatchTimeoutMs}ms`);
+      resolvePromise({ result: OperationTrigger.TIMEOUT });
+    }, this.eventWatchTimeoutMs);
+    unwatchTimeout = () => clearTimeout(timeoutId);
+
+    // Start event watching
+    unwatchEvent = this.contractClientLibrary.getBlockchainClient().watchContractEvent({
       address: this.contractAddress,
       abi: this.contract.abi,
       eventName: "VaultsReportDataUpdated",
       pollingInterval: this.pollIntervalMs,
       onLogs: (logs) => {
+        // Filter out removed logs - could be due to reorg
         const nonRemovedLogs = logs.filter((log) => !log.removed);
         if (nonRemovedLogs.length === 0) {
           this.logger.warn("waitForVaultsReportDataUpdatedEvent: Dropped VaultsReportDataUpdated event");
-          // Continue polling for the next VaultsReportDataUpdated event.
           return;
         }
+
         if (nonRemovedLogs.length !== logs.length) {
           this.logger.debug("waitForVaultsReportDataUpdatedEvent: Ignored removed reorg logs", { logs });
         }
+
+        // Filter out logs that don't fit our interface
         const firstEvent = nonRemovedLogs[0];
-        this.logger.info("waitForVaultsReportDataUpdatedEvent succeeded, VaultsReportDataUpdated event detected", {
+        if (
+          firstEvent.args?.timestamp === undefined ||
+          firstEvent.args?.refSlot === undefined ||
+          firstEvent.args?.root === undefined ||
+          firstEvent.args?.cid === undefined
+        ) {
+          return;
+        }
+
+        // Success -> cleanup and return
+        unwatchTimeout();
+        unwatchEvent();
+        const result: VaultReportResult = {
+          result: OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT,
           txHash: firstEvent.transactionHash,
-          timestamp: firstEvent.args?.timestamp,
-          root: firstEvent.args?.root,
+          report: {
+            timestamp: firstEvent.args?.timestamp,
+            refSlot: firstEvent.args?.refSlot,
+            treeRoot: firstEvent.args?.root,
+            reportCid: firstEvent.args?.cid,
+          },
+        };
+        this.logger.info("waitForVaultsReportDataUpdatedEvent detected", {
+          result,
         });
-        // Call resolve through 2nd reference
-        resolvePromise();
+        resolvePromise(result);
       },
       onError: (error) => {
+        // Tolerate errors, we don't want to interrupt L1MessageService<->YieldProvider rebalancing
         this.logger.error("waitForVaultsReportDataUpdatedEvent error", { error });
       },
     });
 
-    return { unwatch, waitForEvent };
+    return await waitForEvent;
   }
 }
