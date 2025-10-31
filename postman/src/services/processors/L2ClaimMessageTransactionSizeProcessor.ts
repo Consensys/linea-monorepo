@@ -7,7 +7,7 @@ import {
   TransactionResponse,
 } from "ethers";
 import { MessageStatus } from "../../core/enums";
-import { ILogger } from "../../core/utils/logging/ILogger";
+import { ILogger } from "@consensys/linea-shared-utils";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { IL2MessageServiceClient } from "../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import {
