@@ -58,37 +58,6 @@ jobs:
   # ==================================================================
   # Unit Tests
   # ==================================================================
-  unit-tests-london:
-    if: github.event.pull_request.draft == false && github.base_ref != 'main'
-    needs: [ build ]
-    uses: ./.github/workflows/reusable-unit-tests.yml
-    with:
-      zkevm_fork: LONDON
-      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
-
-  unit-tests-paris:
-    if: github.event.pull_request.draft == false && github.base_ref != 'main'
-    needs: [ build ]
-    uses: ./.github/workflows/reusable-unit-tests.yml
-    with:
-      zkevm_fork: PARIS
-      tests-with-ssh: ${{ inputs.tests-with-ssh || false}}
-
-  unit-tests-shanghai:
-    if: github.event.pull_request.draft == false && github.base_ref != 'main'
-    needs: [ build ]
-    uses: ./.github/workflows/reusable-unit-tests.yml
-    with:
-      zkevm_fork: SHANGHAI
-      tests-with-ssh: ${{ inputs.tests-with-ssh || false}}
-
-  unit-tests-cancun:
-    needs: [ build ]
-    uses: ./.github/workflows/reusable-unit-tests.yml
-    with:
-      zkevm_fork: CANCUN
-      tests-with-ssh: ${{ inputs.tests-with-ssh || false}}
-
   unit-tests-prague:
     needs: [ build ]
     uses: ./.github/workflows/reusable-unit-tests.yml

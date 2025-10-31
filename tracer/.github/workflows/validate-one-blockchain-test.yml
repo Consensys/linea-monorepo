@@ -1,4 +1,6 @@
 name: "Validate One Blockchain Test"
+permissions:
+  contents: read
 on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
@@ -10,31 +12,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # run only one specific blockchain reference test for validation
   validation-reference-test-flow:
-    if: github.event.pull_request.draft == false && github.base_ref != 'main'
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          submodules: recursive
-
-      - name: get-branch-name
-        id: extract_branch
-        run: |
-          echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-
-      - name: Setup Test Environment
-        uses: ./.github/actions/setup-environment
-
-      - name: Generate Reference Blockchain tests
-        run: ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.caching=true
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-
-      - name: Run Reference Blockchain test sample
-        run: ./gradlew referenceBlockchainTests -x spotlessCheck --tests "BlockchainReferenceTest_104"
-        timeout-minutes: 15
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-          GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
+    uses: ./.github/workflows/reusable-blockchain-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: PRAGUE
+      test_filter: ${{ 'BlockchainReferenceTest_10' }}
+      failed_module: ${{ inputs.failed_module || '' }}
+      failed_constraint: ${{ inputs.failed_constraint || '' }}
+      commit: ${{ inputs.commit || '' }}

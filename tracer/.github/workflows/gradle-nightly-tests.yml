@@ -12,34 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  nightly-tests-london:
-    uses: ./.github/workflows/reusable-nightly-tests.yml
-    secrets: inherit
-    with:
-      zkevm_fork: LONDON
-      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
-
-  nightly-tests-paris:
-    uses: ./.github/workflows/reusable-nightly-tests.yml
-    secrets: inherit
-    with:
-      zkevm_fork: PARIS
-      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
-
-  nightly-tests-shanghai:
-    uses: ./.github/workflows/reusable-nightly-tests.yml
-    secrets: inherit
-    with:
-      zkevm_fork: SHANGHAI
-      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
-
-  nightly-tests-cancun:
-    uses: ./.github/workflows/reusable-nightly-tests.yml
-    secrets: inherit
-    with:
-      zkevm_fork: CANCUN
-      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
-
   nightly-tests-prague:
     uses: ./.github/workflows/reusable-nightly-tests.yml
     secrets: inherit
