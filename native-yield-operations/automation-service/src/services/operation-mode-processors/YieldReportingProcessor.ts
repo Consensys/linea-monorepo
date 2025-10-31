@@ -278,6 +278,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    *      - If yield reporting fails, the function logs the error but continues without rethrowing,
    *        allowing the caller or scheduler to proceed without interruption.
    * @dev We tolerate report submission errors because they should not block rebalances
+   * @returns {Promise<void>} A promise that resolves when the vault report and yield report are submitted (or early returns on failure).
    */
   private async _handleSubmitLatestVaultReport() {
     // First call: submit vault report
@@ -307,6 +308,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
     // Both calls succeeded
     this.logger.info("_handleSubmitLatestVaultReport: vault report + yield report succeeded");
-    return yieldResult;
+    return;
   }
 }
