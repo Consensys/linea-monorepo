@@ -11,9 +11,9 @@ enum YieldProviderVendor {
 
 /// @notice Enum defining the outcome of progressPendingOssification
 enum ProgressOssificationResult {
-  Reinitiated,
-  Noop,
-  Complete
+  REINITIATED,
+  NOOP,
+  COMPLETE
 }
 
 /**
