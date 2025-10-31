@@ -125,6 +125,14 @@ describe("OperationModeSelector", () => {
     expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
   });
 
+  it("does nothing when stop is called before start", () => {
+    const selector = createSelector();
+
+    selector.stop();
+
+    expect(logger.info).not.toHaveBeenCalled();
+  });
+
   it("logs errors, waits, and retries before succeeding", async () => {
     const error = new Error("boom");
     const retryTime = 321;

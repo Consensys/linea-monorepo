@@ -135,19 +135,33 @@ describe("YieldManagerContractClient", () => {
   });
 
   it("delegates simple reads to the viem contract", async () => {
+    const stakingPaused = true;
+    const ossificationInitiated = true;
+    const ossified = true;
     contractStub.read.getTotalSystemBalance.mockResolvedValueOnce(123n);
     contractStub.read.getEffectiveTargetWithdrawalReserve.mockResolvedValueOnce(456n);
     contractStub.read.getTargetReserveDeficit.mockResolvedValueOnce(789n);
+    contractStub.read.isStakingPaused.mockResolvedValueOnce(stakingPaused);
+    contractStub.read.isOssificationInitiated.mockResolvedValueOnce(ossificationInitiated);
+    contractStub.read.isOssified.mockResolvedValueOnce(ossified);
 
     const client = createClient();
 
     await expect(client.getTotalSystemBalance()).resolves.toBe(123n);
     await expect(client.getEffectiveTargetWithdrawalReserve()).resolves.toBe(456n);
     await expect(client.getTargetReserveDeficit()).resolves.toBe(789n);
+    await expect(client.L1_MESSAGE_SERVICE()).resolves.toBe(l1MessageServiceAddress);
+    await expect(client.isStakingPaused(yieldProvider)).resolves.toBe(stakingPaused);
+    await expect(client.isOssificationInitiated(yieldProvider)).resolves.toBe(ossificationInitiated);
+    await expect(client.isOssified(yieldProvider)).resolves.toBe(ossified);
 
     expect(contractStub.read.getTotalSystemBalance).toHaveBeenCalledTimes(1);
     expect(contractStub.read.getEffectiveTargetWithdrawalReserve).toHaveBeenCalledTimes(1);
     expect(contractStub.read.getTargetReserveDeficit).toHaveBeenCalledTimes(1);
+    expect(contractStub.read.L1_MESSAGE_SERVICE).toHaveBeenCalledTimes(1);
+    expect(contractStub.read.isStakingPaused).toHaveBeenCalledWith([yieldProvider]);
+    expect(contractStub.read.isOssificationInitiated).toHaveBeenCalledWith([yieldProvider]);
+    expect(contractStub.read.isOssified).toHaveBeenCalledWith([yieldProvider]);
   });
 
   it("reads withdrawableValue via simulate and returns the result", async () => {
@@ -443,6 +457,15 @@ describe("YieldManagerContractClient", () => {
     expect(addSpy).toHaveBeenCalledWith(yieldProvider, available);
   });
 
+  it("skips safeMaxAddToWithdrawalReserve when below the threshold", async () => {
+    const client = createClient({ minWithdrawalThresholdEth: 2n });
+    const addSpy = jest.spyOn(client, "safeAddToWithdrawalReserve").mockResolvedValue(undefined as any);
+    jest.spyOn(client, "getAvailableUnstakingRebalanceBalance").mockResolvedValue(2n * ONE_ETHER - 1n);
+
+    await expect(client.safeMaxAddToWithdrawalReserve(yieldProvider)).resolves.toBeUndefined();
+    expect(addSpy).not.toHaveBeenCalled();
+  });
+
   it("extracts withdrawal events from receipts emitted by the contract", () => {
     const client = createClient();
     const log = { address: contractAddress, data: "0xdata", topics: ["0x01"] };
@@ -475,6 +498,16 @@ describe("YieldManagerContractClient", () => {
     expect(mockedDecodeEventLog).toHaveBeenCalledTimes(1);
   });
 
+  it("ignores withdrawal events from other contracts", () => {
+    const client = createClient();
+    const foreignLog = { address: "0x1234567890123456789012345678901234567890", data: "0x", topics: [] };
+
+    const event = client.getWithdrawalEventFromTxReceipt(buildReceipt([foreignLog]));
+
+    expect(event).toBeUndefined();
+    expect(mockedDecodeEventLog).not.toHaveBeenCalled();
+  });
+
   it("extracts yield reports from receipts emitted by the contract", () => {
     const client = createClient();
     const log = { address: contractAddress, data: "0xfeed", topics: ["0x1111"] };
@@ -505,5 +538,15 @@ describe("YieldManagerContractClient", () => {
     );
 
     expect(report).toBeUndefined();
+  });
+
+  it("ignores yield report logs from other contracts", () => {
+    const client = createClient();
+    const foreignLog = { address: "0x1234567890123456789012345678901234567890", data: "0x", topics: [] };
+
+    const report = client.getYieldReportFromTxReceipt(buildReceipt([foreignLog]));
+
+    expect(report).toBeUndefined();
+    expect(mockedDecodeEventLog).not.toHaveBeenCalled();
   });
 });

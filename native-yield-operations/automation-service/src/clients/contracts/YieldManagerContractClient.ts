@@ -141,6 +141,28 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     return txReceipt;
   }
 
+  private _encodeLidoWithdrawalParams(params: LidoStakingVaultWithdrawalParams): Hex {
+    return encodeAbiParameters(
+      [
+        {
+          type: "tuple",
+          components: [
+            { name: "pubkeys", type: "bytes[]" },
+            { name: "amounts", type: "uint64[]" },
+            { name: "refundRecipient", type: "address" },
+          ],
+        },
+      ],
+      [
+        {
+          pubkeys: params.pubkeys,
+          amounts: params.amountsGwei,
+          refundRecipient: params.refundRecipient,
+        },
+      ],
+    );
+  }
+
   // Compute EIP7002 Withdrawal Fee for beacon chain unstaking
   private async _getValidatorWithdrawalFee(
     yieldProvider: Address,
@@ -262,28 +284,6 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
       return true;
     }
     return false;
-  }
-
-  private _encodeLidoWithdrawalParams(params: LidoStakingVaultWithdrawalParams): Hex {
-    return encodeAbiParameters(
-      [
-        {
-          type: "tuple",
-          components: [
-            { name: "pubkeys", type: "bytes[]" },
-            { name: "amounts", type: "uint64[]" },
-            { name: "refundRecipient", type: "address" },
-          ],
-        },
-      ],
-      [
-        {
-          pubkeys: params.pubkeys,
-          amounts: params.amountsGwei,
-          refundRecipient: params.refundRecipient,
-        },
-      ],
-    );
   }
 
   async getLidoStakingVaultAddress(yieldProvider: Address): Promise<Address> {
