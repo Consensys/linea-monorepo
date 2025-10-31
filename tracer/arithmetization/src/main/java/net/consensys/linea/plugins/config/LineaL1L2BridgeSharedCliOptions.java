@@ -19,7 +19,7 @@ import com.google.common.base.MoreObjects;
 import net.consensys.linea.plugins.LineaCliOptions;
 import net.consensys.linea.plugins.config.converters.AddressConverter;
 import net.consensys.linea.plugins.config.converters.BytesConverter;
-import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import picocli.CommandLine;
 
@@ -42,7 +42,7 @@ public class LineaL1L2BridgeSharedCliOptions implements LineaCliOptions {
       paramLabel = "<HEX_STRING>",
       converter = BytesConverter.class,
       description = "The log topic of the L1 L2 bridge (default: ${DEFAULT-VALUE})")
-  private Bytes l1l2BridgeTopic = Bytes.EMPTY;
+  private Bytes32 l1l2BridgeTopic = Bytes32.ZERO;
 
   private LineaL1L2BridgeSharedCliOptions() {}
 

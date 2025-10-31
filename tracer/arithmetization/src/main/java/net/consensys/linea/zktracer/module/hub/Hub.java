@@ -117,6 +117,7 @@ import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.MemoryRange;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -434,7 +435,7 @@ public abstract class Hub implements Module {
     gasProjector = new GasProjector(fork, gasCalculator);
     checkState(chain.id.signum() >= 0, "Hub constructor: chain id must be non-negative");
     final Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
-    final Bytes l2l1Topic = chain.bridgeConfiguration.topic();
+    final Bytes32 l2l1Topic = chain.bridgeConfiguration.topic();
     if (l2l1ContractAddress.equals(TEST_DEFAULT.contract())) {
       log.info("WARN: Using default testing L2L1 contract address");
     }

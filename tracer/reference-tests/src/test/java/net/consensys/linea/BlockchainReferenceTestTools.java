@@ -918,8 +918,10 @@ public class BlockchainReferenceTestTools {
 
   public static void executeTest(final BlockchainReferenceTestCaseSpec spec) {
     final BlockHeader genesisBlockHeader = spec.getGenesisBlockHeader();
+    final ProtocolContext context = spec.buildProtocolContext();
     final MutableWorldState worldState =
-        spec.getWorldStateArchive()
+        context
+            .getWorldStateArchive()
             .getWorldState(
                 WorldStateQueryParams.withStateRootAndBlockHashAndUpdateNodeHead(
                     genesisBlockHeader.getStateRoot(), genesisBlockHeader.getHash()))
@@ -933,7 +935,6 @@ public class BlockchainReferenceTestTools {
         REFERENCE_TEST_PROTOCOL_SCHEDULES.getByName(spec.getNetwork());
     final ChainConfig chain = ChainConfig.ETHEREUM_CHAIN(fork);
     final MutableBlockchain blockchain = spec.getBlockchain();
-    final ProtocolContext context = spec.getProtocolContext();
 
     // Add system accounts if the fork requires it.
     addSystemAccountsIfRequired(worldState.updater(), chain.fork);
