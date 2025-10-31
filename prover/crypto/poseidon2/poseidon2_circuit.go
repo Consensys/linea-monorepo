@@ -187,6 +187,7 @@ func (h *permutation) matMulExternalInPlace(apiGen zk.GenericApi, input []zk.Wra
 	// at this stage t is supposed to be a multiple of 4
 	// the MDS matrix is circ(2M4,M4,..,M4)
 	h.matMulM4InPlace(apiGen, input)
+
 	tmp := make([]zk.WrappedVariable, 4)
 	tmp[0] = zk.ValueOf(0)
 	tmp[1] = zk.ValueOf(0)
@@ -279,7 +280,6 @@ func (h *permutation) Permutation(apiGen zk.GenericApi, input []zk.WrappedVariab
 
 	// external matrix multiplication, cf https://eprint.iacr.org/2023/323.pdf page 14 (part 6)
 	h.matMulExternalInPlace(apiGen, input)
-	// apiGen.Mul(input[0], input[0])
 
 	rf := h.params.NbFullRounds / 2
 	for i := 0; i < rf; i++ {
