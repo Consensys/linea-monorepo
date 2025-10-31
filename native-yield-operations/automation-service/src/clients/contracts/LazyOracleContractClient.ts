@@ -92,14 +92,24 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
     });
 
     // Create placeholders for unwatch fns
-    let unwatchEvent: WatchContractEventReturnType = () => {};
-    let unwatchTimeout: () => void = () => {};
+    let unwatchEvent: WatchContractEventReturnType | undefined;
+    let unwatchTimeout: (() => void) | undefined;
+
+    const cleanup = () => {
+      if (unwatchTimeout) {
+        unwatchTimeout();
+        unwatchTimeout = undefined;
+      }
+      if (unwatchEvent) {
+        unwatchEvent();
+        unwatchEvent = undefined;
+      }
+    };
 
     // Start timeout
     this.logger.info(`waitForVaultsReportDataUpdatedEvent started with timeout=${this.eventWatchTimeoutMs}ms`);
     const timeoutId = setTimeout(() => {
-      unwatchTimeout();
-      unwatchEvent();
+      cleanup();
       this.logger.info(`waitForVaultsReportDataUpdatedEvent timed out after timeout=${this.eventWatchTimeoutMs}ms`);
       resolvePromise({ result: OperationTrigger.TIMEOUT });
     }, this.eventWatchTimeoutMs);
@@ -135,8 +145,7 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
         }
 
         // Success -> cleanup and return
-        unwatchTimeout();
-        unwatchEvent();
+        cleanup();
         const result: VaultReportResult = {
           result: OperationTrigger.VAULTS_REPORT_DATA_UPDATED_EVENT,
           txHash: firstEvent.transactionHash,
