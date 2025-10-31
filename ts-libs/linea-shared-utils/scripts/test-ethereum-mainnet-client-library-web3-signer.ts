@@ -2,6 +2,9 @@
 
 Terminal 1 - Run anvil
 
+Prefund the Signer
+cast rpc anvil_setBalance 0x74F6253E2A11B5540964dD8c9a2270E20F504fbE 0x8AC7230489E80000 --rpc-url http://localhost:8545
+
 Terminal 2 - Run Web3Signer
 
 docker run --rm \
@@ -62,7 +65,7 @@ async function main() {
   const web3SignerTrustedStorePath = process.env.WEB3_SIGNER_TRUST_STORE_PATH as string;
   const web3SignerTrustedStorePassphrase = process.env.WEB3_SIGNER_TRUST_STORE_PASSPHRASE as string;
 
-  const logger = new WinstonLogger("Web3SignerClientAdapter.integration");
+  const logger = new WinstonLogger("Web3SignerClientAdapter.integration", { level: "debug" });
   const signer = new Web3SignerClientAdapter(
     logger,
     web3SignerUrl,
@@ -73,7 +76,7 @@ async function main() {
     web3SignerTrustedStorePassphrase,
   );
   const clientLibrary = new ViemBlockchainClientAdapter(
-    new WinstonLogger("ViemBlockchainClientAdapter.integration"),
+    new WinstonLogger("ViemBlockchainClientAdapter.integration", { level: "debug" }),
     rpcUrl,
     anvil,
     signer,
