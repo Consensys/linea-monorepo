@@ -39,8 +39,13 @@ jobs:
       - name: Setup Test Environment
         uses: ./.github/actions/setup-environment
 
-      - name: Generate blockchain reference tests
-        run: ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.caching=true
+      - name: Download execution spec fixtures
+        run: ./gradlew :reference-tests:downloadExecutionSpecFixtures
+        env:
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+
+      - name: Generate execution spec blockchain reference tests
+        run: ./gradlew :reference-tests:generateExecutionSpecBlockchainTests -Dorg.gradle.caching=true
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
 
@@ -58,8 +63,8 @@ jobs:
         if: ${{ inputs.failed_module != '' }}
         run: mv ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests.json ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests-input.json
 
-      - name: Run reference blockchain tests
-        run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew referenceBlockchainTests -x spotlessCheck --tests "${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}"
+      - name: Run reference execution spec blockchain tests
+        run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew referenceExecutionSpecBlockchainTests -x spotlessCheck --tests "${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}"
         timeout-minutes: 360
         env:
           REFERENCE_TESTS_PARALLELISM: 3
@@ -85,19 +90,19 @@ jobs:
           name: blockchain-reference-tests-report-${{ inputs.zkevm_fork }}
           path: reference-tests/build/reports/tests/**/*
 
-      - name: Upload jacoco blockchain tests coverage report
+      - name: Upload jacoco exec spec blockchain tests coverage report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: jacoco-blockchain-tests-coverage-report-${{ inputs.zkevm_fork }}
-          path: reference-tests/build/reports/jacoco/jacocoReferenceBlockchainTestsReport/**/*
+          path: reference-tests/build/reports/jacoco/jacocoReferenceExecutionSpecBlockchainTestsReport/**/*
 
       - name: Upload jacoco blockchain tests exec file
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: jacoco-blockchain-tests-exec-file-${{ inputs.zkevm_fork }}
-          path: reference-tests/build/jacoco/referenceBlockchainTests.exec
+          path: reference-tests/build/jacoco/referenceExecutionSpecBlockchainTests.exec
 
       - name: Extract Metrics
         if: ${{ failure() || cancelled() }}
