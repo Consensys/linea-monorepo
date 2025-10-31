@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/signal"
 	"sync"
@@ -9,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/cmd/controller/controller/metrics"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -243,6 +245,27 @@ func runController(ctx context.Context, cfg *config.Config) {
 					// Note that the operation is an `rm -f`.
 					os.Remove(tmpRespFile)
 					cLog.Errorf("Error renaming %v to %v: %v, removed tmp file", tmpRespFile, respFile, err)
+				}
+
+				// After the successful execution proof request, we delete the associated trace file to save costs on EFS
+				if job.Def.Name == jobNameExecution {
+					req := &execution.Request{}
+					f, err := os.Open(job.InProgressPath())
+					if err != nil {
+						cLog.Errorf("could not open file: %s", err.Error())
+					}
+					defer f.Close()
+
+					if err := json.NewDecoder(f).Decode(req); err != nil {
+						cLog.Errorf("could not decode input file: %s", err.Error())
+					}
+					// Get the trace file and delete it. It is gauranteed that trace file will exist
+					// If otherwise, the prover would panic at the beginning.
+					traceFile := req.ConflatedExecTraceFilepath(cfg.Execution.ConflatedTracesDir)
+					if err := os.Remove(traceFile); err != nil {
+						cLog.Errorf("could not remove trace file: %s", err.Error())
+					}
+					cLog.Infof("Deleted trace file: %s after successful execution proof request", traceFile)
 				}
 
 				// Move the inprogress to the done directory
