@@ -106,8 +106,8 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
         const firstEvent = nonRemovedLogs[0];
         this.logger.info("waitForVaultsReportDataUpdatedEvent succeeded, VaultsReportDataUpdated event detected", {
           txHash: firstEvent.transactionHash,
-          timestamp: firstEvent.topics[1],
-          root: firstEvent.topics[3],
+          timestamp: firstEvent.args?.timestamp,
+          root: firstEvent.args?.root,
         });
         // Call resolve through 2nd reference
         resolvePromise();
