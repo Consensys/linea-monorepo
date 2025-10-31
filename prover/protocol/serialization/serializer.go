@@ -1152,8 +1152,6 @@ func getFlatIndexFromUint(u uint64, board symbolic.ExpressionBoard) int {
 	return cum + pos
 }
 
-// --- pack / unpack node-table for symbolic.Expression (drop-in replacement) ---
-
 func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
 	if e == nil {
 		return 0, nil
@@ -1164,7 +1162,7 @@ func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *ser
 		return BackReference(idx), nil
 	}
 
-	// build board & flatten nodes in topo order (children before parent)
+	// Build board & flatten nodes in topo order (children before parent)
 	board := e.Board()
 	var flatNodes []symbolic.Node
 	metadataMap := map[string]int{}
@@ -1197,6 +1195,7 @@ func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *ser
 
 	var buf bytes.Buffer
 	// header magic 'XNT1' + version (keeps compatibility with earlier node-table format)
+	// TODO: Get rid
 	buf.WriteString(nodeTableMagic)
 	buf.WriteByte(nodeTableVersion)
 
