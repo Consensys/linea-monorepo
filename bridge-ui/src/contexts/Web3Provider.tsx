@@ -10,6 +10,8 @@ import useGTM from "@/hooks/useGtm";
 import { useCachedIdentityToken } from "@/hooks/useCachedIdentityToken";
 import { isProd } from "../../next.config.mjs";
 import { config as appConfig } from "@/config";
+import { localL1Network, localL2Network } from "@/constants";
+import { toHex } from "viem";
 
 interface DynamicProviderProps {
   children: ReactNode;
@@ -26,6 +28,32 @@ const web3AuthContextConfig: Web3AuthContextConfig = {
       appUrl: "https://linea.build/hub/bridge",
       displayErrorsOnModal: true,
     },
+    ...(appConfig.e2eTestMode === true
+      ? {
+          chains: [
+            {
+              chainNamespace: "eip155",
+              logo: "https://images.web3auth.io/chains/1.svg",
+              displayName: localL1Network.name,
+              tickerName: localL1Network.nativeCurrency.name,
+              ticker: localL1Network.nativeCurrency.symbol,
+              chainId: toHex(localL1Network.id),
+              rpcTarget: localL1Network.rpcUrls.default.http[0],
+              blockExplorerUrl: localL1Network.blockExplorers?.default.url,
+            },
+            {
+              chainNamespace: "eip155",
+              logo: "https://images.web3auth.io/chains/59144.svg",
+              displayName: localL2Network.name,
+              tickerName: localL2Network.nativeCurrency.name,
+              ticker: localL2Network.nativeCurrency.symbol,
+              chainId: toHex(localL2Network.id),
+              rpcTarget: localL2Network.rpcUrls.default.http[0],
+              blockExplorerUrl: localL2Network.blockExplorers?.default.url,
+            },
+          ],
+        }
+      : {}),
     modalConfig: {
       connectors: {
         auth: {
