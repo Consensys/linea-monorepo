@@ -18,7 +18,7 @@ const blockSize = 8
 const maxSizeBuf = 1024
 
 // Poseidon2FieldHasherDigest implements a Poseidon2-based hasher that works with both field elements and bytes
-type Poseidon2FieldHasherDigest struct {
+type Hasher struct {
 	maxValue Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
@@ -97,20 +97,20 @@ func (d *Hasher) Sum(msg []byte) []byte {
 	return bytes[:]
 }
 
-func (d *Poseidon2FieldHasherDigest) State() []byte {
+func (d *Hasher) State() []byte {
 	hashBytes := HashToBytes32(d.state)
 	return hashBytes[:]
 }
 
-func (d *Poseidon2FieldHasherDigest) BlockSize() int {
+func (d *Hasher) BlockSize() int {
 	return 32
 }
 
-func (d *Poseidon2FieldHasherDigest) Size() int {
+func (d *Hasher) Size() int {
 	return 32
 }
 
-func (d *Poseidon2FieldHasherDigest) SetState(state []byte) error {
+func (d *Hasher) SetState(state []byte) error {
 	stateBytes, err := cloneLeftPadded(state, d.BlockSize())
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (d *Poseidon2FieldHasherDigest) SetState(state []byte) error {
 	return err
 }
 
-func (d Poseidon2FieldHasherDigest) MaxBytes32() Bytes32 {
+func (d Hasher) MaxBytes32() Bytes32 {
 	return d.maxValue
 }
 
@@ -131,7 +131,7 @@ func Poseidon2() *Hasher {
 		maxVal[i] = *field.MaxVal
 		initialState[i] = field.Zero()
 	}
-	return &Poseidon2FieldHasherDigest{
+	return &Hasher{
 		maxValue: HashToBytes32(maxVal),
 		state:    initialState,
 		buffer:   make([]field.Element, 0),
