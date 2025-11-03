@@ -14,7 +14,7 @@ TODO
 
 ### Environment Variables
 
-TODO
+See the [configuration schema file](native-yield-operations/automation-service/src/application/main/config/config.schema.ts)
 
 ## Development
 
@@ -24,24 +24,23 @@ TODO
 
 TODO
 
-#### Run the postman locally:
+#### Run the automation service locally:
 
 TODO
 
-### Building
+### Build
 
 ```bash
-# Build the Postman service
-pnpm run build
+# Dependency on pnpm --filter @consensys/linea-shared-utils build
+pnpm --filter @consensys/linea-native-yield-automation-service build
 ```
 
-### Testing
+### Unit Test
 
 ```bash
-# Run unit tests
-pnpm run test
+pnpm --filter @consensys/linea-shared-utils test
 ```
 
 ## License
 
-This package is licensed under the [Apache 2.0](../LICENSE-APACHE) and the [MIT](../../LICENSE-MIT) licenses.
+This package is licensed under the [Apache 2.0](../../LICENSE-APACHE) and the [MIT](../../LICENSE-MIT) licenses.
