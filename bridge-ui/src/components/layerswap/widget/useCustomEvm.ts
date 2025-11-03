@@ -76,10 +76,6 @@ export default function useEVM({ networks }: WalletConnectionProviderProps): Wal
     disconnect();
   }, [disconnect]);
 
-  const switchAccount = async (connector: Wallet, address: string) => {
-    throw new Error("Switch account not implemented");
-  };
-
   // Map connected wallet to Layerswap Wallet shape
   const connectedWallets: Wallet[] = useMemo(() => {
     if (!isConnected || !activeAddress || !activeConnector) {
@@ -112,7 +108,6 @@ export default function useEVM({ networks }: WalletConnectionProviderProps): Wal
 
   return {
     connectWallet,
-    switchAccount,
     availableWalletsForConnect: availableConnectors,
     activeWallet: connectedWallets.find((w) => w.isActive),
     connectedWallets,
