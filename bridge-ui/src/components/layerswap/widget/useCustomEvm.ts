@@ -1,27 +1,22 @@
-import { useAccount, useConnectors } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useConnectors } from "wagmi";
 import { useCallback, useMemo } from "react";
+import { resolveWalletConnectorIcon, NetworkWithTokens, NetworkType } from "@layerswap/widget";
 import {
-  WalletProvider,
+  WalletConnectionProvider,
   Wallet,
-  resolveWalletConnectorIcon,
-  useSettingsState,
-  NetworkWithTokens,
-  NetworkType,
-} from "@layerswap/widget";
-import { useWeb3AuthConnect, useWeb3AuthDisconnect } from "@web3auth/modal/react";
+  WalletConnectionProviderProps,
+  InternalConnector,
+} from "@layerswap/widget/types";
 
-export default function useEVM(): WalletProvider {
+export default function useEVM({ networks }: WalletConnectionProviderProps): WalletConnectionProvider {
   const name = "EVM";
   const id = "evm";
 
   // wagmi
   const { connector: activeConnector, address: activeAddress, isConnected } = useAccount();
-  const { connect } = useWeb3AuthConnect();
-  const { disconnect } = useWeb3AuthDisconnect();
+  const { connectAsync } = useConnect();
+  const { disconnect } = useDisconnect();
   const connectors = useConnectors();
-
-  // Layerswap settings
-  const { networks } = useSettingsState();
 
   // Gather the EVM‐type network names
   const evmNetworkNames = useMemo(
@@ -54,16 +49,16 @@ export default function useEVM(): WalletProvider {
       }
 
       // Connect
-      await connect();
+      const result = await connectAsync({ connector: web3authConnector });
 
-      if (!activeAddress) {
+      if (!result.accounts[0]) {
         return undefined;
       }
 
       return resolveWallet({
         connectorId: web3authConnector.id,
         connectorName: web3authConnector.name,
-        address: activeAddress,
+        address: result.accounts[0],
         isActive: true,
         networks,
         supportedNetworks,
@@ -74,12 +69,16 @@ export default function useEVM(): WalletProvider {
       console.error("Failed to connect wallet:", error);
       return undefined;
     }
-  }, [isConnected, connectors, connect, activeAddress, networks, supportedNetworks, disconnect]);
+  }, [isConnected, disconnect, connectors, connectAsync, networks, supportedNetworks]);
 
   // Logout
   const disconnectWallets = useCallback(async () => {
     disconnect();
   }, [disconnect]);
+
+  const switchAccount = async (connector: Wallet, address: string) => {
+    throw new Error("Switch account not implemented");
+  };
 
   // Map connected wallet to Layerswap Wallet shape
   const connectedWallets: Wallet[] = useMemo(() => {
@@ -102,10 +101,19 @@ export default function useEVM(): WalletProvider {
   }, [isConnected, activeAddress, activeConnector, networks, supportedNetworks, disconnectWallets]);
 
   const logo = networks.find((n) => n.name.toLowerCase().includes("linea"))?.logo;
+  const availableConnectors: InternalConnector[] = [
+    {
+      id: "web3auth",
+      name: "Web3Auth",
+      icon: logo,
+      providerName: "EVM",
+    },
+  ];
 
   return {
     connectWallet,
-    connectConnector: connectWallet,
+    switchAccount,
+    availableWalletsForConnect: availableConnectors,
     activeWallet: connectedWallets.find((w) => w.isActive),
     connectedWallets,
     asSourceSupportedNetworks: supportedNetworks.asSource,
