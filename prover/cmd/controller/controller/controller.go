@@ -252,20 +252,31 @@ func runController(ctx context.Context, cfg *config.Config) {
 					req := &execution.Request{}
 					f, err := os.Open(job.InProgressPath())
 					if err != nil {
+						// This is sort of unexpected. It could happen if the underlying prover binary
+						// could delete or move the request folder. If it fails open, the file then
+						// we cannot delete the trace file and we simply continue as if nothing happened
+						// on the normal flow.
 						cLog.Errorf("could not open file: %s", err.Error())
 					}
-					defer f.Close()
 
-					if err := json.NewDecoder(f).Decode(req); err != nil {
-						cLog.Errorf("could not decode input file: %s", err.Error())
+					// This if-clause is to avoid panicking when trying to reference `f` while it could
+					// not be open.
+					if err == nil && f != nil {
+			
+						if err := json.NewDecoder(f).Decode(req); err != nil {
+							cLog.Errorf("could not decode input file: %s", err.Error())
+						}
+						
+						// Get the trace file and delete it. It is gauranteed that trace file will exist
+						// If otherwise, the prover would panic at the beginning.
+						traceFile := req.ConflatedExecTraceFilepath(cfg.Execution.ConflatedTracesDir)
+						if err := os.Remove(traceFile); err != nil {
+							cLog.Errorf("could not remove trace file: %s", err.Error())
+						}
+						
+						cLog.Infof("Deleted trace file: %s after successful execution proof request", traceFile)
+						f.Close()
 					}
-					// Get the trace file and delete it. It is gauranteed that trace file will exist
-					// If otherwise, the prover would panic at the beginning.
-					traceFile := req.ConflatedExecTraceFilepath(cfg.Execution.ConflatedTracesDir)
-					if err := os.Remove(traceFile); err != nil {
-						cLog.Errorf("could not remove trace file: %s", err.Error())
-					}
-					cLog.Infof("Deleted trace file: %s after successful execution proof request", traceFile)
 				}
 
 				// Move the inprogress to the done directory
