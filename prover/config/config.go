@@ -22,7 +22,9 @@ func NewConfigFromFile(path string) (*Config, error) {
 	return newConfigFromFile(path, true)
 }
 
-// NewConfigFromFileUnchecked reads the configuration and skips the validation.
+// NewConfigFromFileUnchecked is as [NewConfigFromFile] but does not run
+// the config validation. It will return an error if it fails reading
+// the file or if the config contains unknown fields.
 func NewConfigFromFileUnchecked(path string) (*Config, error) {
 	return newConfigFromFile(path, false)
 }
@@ -183,6 +185,12 @@ type Controller struct {
 	// List of exit codes for which the job will retry in large mode
 	RetryLocallyWithLargeCodes []int `mapstructure:"retry_locally_with_large_codes"`
 
+	// The number of seconds infra (AWS) waits before reclaiming a spot instance
+	SpotInstanceReclaimTime int `mapstructure:"spot_instance_reclaim_time_seconds"`
+
+	// The number of seconds the controller should wait before killing a worker after receiving a SIGTERM
+	TerminationGracePeriod int `mapstructure:"termination_grace_period_seconds"`
+
 	// defaults to true; the controller will not pick associated jobs if false.
 	EnableExecution         bool `mapstructure:"enable_execution"`
 	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`
@@ -194,10 +202,6 @@ type Controller struct {
 	WorkerCmdLarge     string             `mapstructure:"worker_cmd_large_tmpl"`
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
-
-	// SpotInstanceMode tells the controller to gracefully exit as soon as it
-	// receives a SIGTERM.
-	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
 }
 
 type Prometheus struct {
@@ -214,7 +218,7 @@ type Execution struct {
 	WithRequestDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
-	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only"`
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only limitless"`
 
 	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
 	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
@@ -227,6 +231,13 @@ type Execution struct {
 	// used within the prover was generated from the same commit of linea-constraints as the generated lt trace file.
 	// Set this to true to disable compatibility checks (default: false).
 	IgnoreCompatibilityCheck bool `mapstructure:"ignore_compatibility_check"`
+
+	// LimitlessWithDebug is only looked at when the limitless prover is
+	// activated. When set to true, the limitless prover will only run in
+	// debug mode and not produce any proof. This is useful to investigate
+	// bugs in the limitless prover. The field is optional and defaults to
+	// false.
+	LimitlessWithDebug bool `mapstructure:"limitless_with_debug"`
 }
 
 type BlobDecompression struct {
@@ -255,7 +266,7 @@ type Aggregation struct {
 
 	// AllowedInputs determines the "inner" plonk circuits the "outer" aggregation circuit can aggregate.
 	// Order matters.
-	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large blob-decompression-dummy blob-decompression-v0 blob-decompression-v1 emulation-dummy aggregation emulation public-input-interconnection"`
+	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large execution-limitless blob-decompression-dummy blob-decompression-v0 blob-decompression-v1 emulation-dummy aggregation emulation public-input-interconnection"`
 
 	// note @gbotrel keeping that around in case we need to support two emulation contract
 	// during a migration.

@@ -1,24 +1,16 @@
 package ringsis
 
 import (
-	"bytes"
-	"encoding/binary"
-	"io"
-	"math"
 	"runtime"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/sis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_32_8"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_8"
 )
 
 const (
@@ -29,26 +21,32 @@ const (
 // Key encapsulates the public parameters of an instance of the ring-SIS hash
 // instance.
 type Key struct {
-	// lock guards the access to the SIS key and prevents the user from hashing
-	// concurrently with the same SIS key.
-	lock *sync.Mutex
-	// gnarkInternal stores the SIS key itself and some precomputed domain
-	// twiddles.
-	gnarkInternal *sis.RSis
 	// Params provides the parameters of the ring-SIS instance (logTwoBound,
 	// degree etc)
-	Params
+	*KeyGen
+
+	// lock guards the access to the SIS key and prevents the user from hashing
+	// concurrently with the same SIS key.
+	lock *sync.Mutex `serde:"omit"`
+	// gnarkInternal stores the SIS key itself and some precomputed domain
+	// twiddles.
+	gnarkInternal *sis.RSis `serde:"omit"`
+
 	// twiddleCosets stores the list of twiddles that we use to implement the
 	// SIS parameters. The twiddleAreInternally are only used when dealing with
 	// the parameters modulusDegree=64 and logTwoBound=8 and is passed as input
 	// to the specially unrolled [sis.FFT64] function. They are thus optionally
 	// constructed when [GenerateKey] is called.
-	twiddleCosets []field.Element
+}
+
+type KeyGen struct {
+	*Params
+	MaxNumFieldToHash int
 }
 
 // GenerateKey generates a ring-SIS key from a set of a [Params] and a max
 // number of elements to hash
-func GenerateKey(params Params, maxNumFieldToHash int) Key {
+func GenerateKey(params Params, maxNumFieldToHash int) *Key {
 
 	// Sanity-check : if the logTwoBound is larger or equal than 64 it can
 	// create overflows as we cast the small-norm limbs into
@@ -61,32 +59,13 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 		panic(err)
 	}
 
-	res := Key{
+	res := &Key{
 		lock:          &sync.Mutex{},
 		gnarkInternal: rsis,
-		Params:        params,
-	}
-
-	// Optimization for these specific parameters
-	if params.LogTwoBound == 8 && 1<<params.LogTwoDegree == 64 {
-		res.twiddleCosets = ringsis_64_8.PrecomputeTwiddlesCoset(
-			rsis.Domain.Generator,
-			rsis.Domain.FrMultiplicativeGen,
-		)
-	}
-
-	if params.LogTwoBound == 16 && 1<<params.LogTwoDegree == 64 {
-		res.twiddleCosets = ringsis_64_16.PrecomputeTwiddlesCoset(
-			rsis.Domain.Generator,
-			rsis.Domain.FrMultiplicativeGen,
-		)
-	}
-
-	if params.LogTwoBound == 8 && 1<<params.LogTwoDegree == 32 {
-		res.twiddleCosets = ringsis_32_8.PrecomputeTwiddlesCoset(
-			rsis.Domain.Generator,
-			rsis.Domain.FrMultiplicativeGen,
-		)
+		KeyGen: &KeyGen{
+			Params:            &params,
+			MaxNumFieldToHash: maxNumFieldToHash,
+		},
 	}
 
 	return res
@@ -109,30 +88,12 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// write the input as byte
-	s.gnarkInternal.Reset()
-	for i := range v {
-		_, err := s.gnarkInternal.Write(v[i].Marshal())
-		if err != nil {
-			panic(err)
-		}
-	}
-	sum := s.gnarkInternal.Sum(make([]byte, 0, field.Bytes*s.OutputSize()))
-
-	// unmarshal the result
-	var rlen [4]byte
-	if len(sum) > math.MaxUint32*fr.Bytes {
-		panic("slice too long")
-	}
-	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes)) // #nosec G115 -- Overflow checked
-	reader := io.MultiReader(bytes.NewReader(rlen[:]), bytes.NewReader(sum))
-	var result fr.Vector
-	_, err := result.ReadFrom(reader)
-	if err != nil {
+	res := make([]field.Element, s.OutputSize())
+	if err := s.gnarkInternal.Hash(v, res); err != nil {
 		panic(err)
 	}
 
-	return result
+	return res
 }
 
 // LimbSplit breaks down the entries of `v` into short limbs representing
@@ -140,23 +101,26 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 // vector, casted as field elements in Montgommery form.
 func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 
-	writer := bytes.Buffer{}
-	for i := range vReg {
-		b := vReg[i].Bytes() // big endian serialization
-		writer.Write(b[:])
+	it := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound/8)
+
+	var (
+		numLimbs = len(vReg) * field.Bytes * 8 / s.LogTwoBound
+		res      = make([]field.Element, 0, numLimbs)
+	)
+
+	for i := 0; i < numLimbs; i++ {
+
+		limb, ok := it.NextLimb()
+		if !ok {
+			break
+		}
+
+		var v field.Element
+		v.SetUint64(limb)
+		res = append(res, v)
 	}
 
-	buf := writer.Bytes()
-	m := make([]field.Element, len(vReg)*s.NumLimbs())
-	sis.LimbDecomposeBytes(buf, m, s.LogTwoBound)
-
-	// The limbs are in regular form, we reconvert them back into montgommery
-	// form
-	for i := range m {
-		m[i] = field.MulR(m[i])
-	}
-
-	return m
+	return res
 }
 
 // HashModXnMinus1 applies the SIS hash modulo X^n - 1, (instead of X^n + 1).
@@ -268,99 +232,70 @@ func (s *Key) FlattenedKey() []field.Element {
 //   - modulus degree: 	64  log2(bound): 	16
 //   - modulus degree: 	32  log2(bound): 	8
 func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
-
-	// numRows stores the number of rows in the matrix to hash it must be
-	// strictly positive and be within the bounds of MaxNumFieldHashable.
-	numRows := len(v)
-
-	if numRows == 0 {
-		utils.Panic("Attempted to transversally hash a matrix with no rows")
+	// nbRows is the number of rows in the matrix
+	nbRows := len(v)
+	if nbRows == 0 || nbRows > s.MaxNumFieldToHash {
+		utils.Panic("nbRows=%v out of bounds [1,%v]", nbRows, s.MaxNumFieldToHash)
 	}
 
-	if numRows > s.MaxNumFieldHashable() {
-		utils.Panic("Attempted to hash %v rows, but the limit is %v", numRows, s.MaxNumFieldHashable())
-	}
-
-	// numCols stores the number of columns in the matrix to hash et must be
-	// positive and all the rows must have the same size.
-	numCols := v[0].Len()
-
-	if numCols == 0 {
+	// nbCols is the number of columns in the matrix
+	nbCols := v[0].Len()
+	if nbCols == 0 {
 		utils.Panic("Provided a 0-colums matrix")
 	}
 
 	for i := range v {
-		if v[i].Len() != numCols {
+		if v[i].Len() != nbCols {
 			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
-				numCols, i, v[i].Len())
+				nbCols, i, v[i].Len())
 		}
 	}
 
-	if s.LogTwoBound == 8 && s.LogTwoDegree == 6 {
-		return ringsis_64_8.TransversalHash(
-			s.gnarkInternal.Ag,
-			v,
-			s.twiddleCosets,
-			s.gnarkInternal.Domain,
-		)
-	}
+	sisKeySize := s.OutputSize()
 
-	if s.LogTwoBound == 16 && s.LogTwoDegree == 6 {
-		return ringsis_64_16.TransversalHash(
-			s.gnarkInternal.Ag,
-			v,
-			s.twiddleCosets,
-			s.gnarkInternal.Domain,
-		)
-	}
+	res := make([]field.Element, nbCols*sisKeySize)
+	transposedArena := arena.NewVectorArena[field.Element](nbRows * 2 * runtime.GOMAXPROCS(0))
+	parallel.Execute(nbCols, func(start, end int) {
+		// we transpose the columns using a windowed approach
+		// this is done to improve memory accesses when transposing the matrix
 
-	if s.LogTwoBound == 8 && s.LogTwoDegree == 5 {
-		return ringsis_32_8.TransversalHash(
-			s.gnarkInternal.Ag,
-			v,
-			s.twiddleCosets,
-			s.gnarkInternal.Domain,
-		)
-	}
+		// perf note; we could allocate only blocks of 256 elements here and do the SIS hash
+		// block by block, but surprisingly it is slower than the current implementation
+		// it would however save some memory allocation.
+		windowSize := 2
+		n := end - start
+		for n%windowSize != 0 {
+			windowSize /= 2
+		}
+		// using arena here just favors contiguous memory allocation
 
-	res := make([]field.Element, numCols*s.OutputSize())
-
-	// Will contain keys per threads
-	keys := make([]*Key, runtime.GOMAXPROCS(0))
-	buffers := make([][]field.Element, runtime.GOMAXPROCS(0))
-
-	parallel.ExecuteThreadAware(
-		numCols,
-		func(threadID int) {
-			keys[threadID] = s.CopyWithFreshBuffer()
-			buffers[threadID] = make([]field.Element, numRows)
-		},
-		func(col, threadID int) {
-			buffer := buffers[threadID]
-			key := keys[threadID]
-			for row := 0; row < numRows; row++ {
-				buffer[row] = v[row].Get(col)
+		transposed := make([][]field.Element, windowSize)
+		for i := range transposed {
+			transposed[i] = arena.Get[field.Element](transposedArena, nbRows)
+		}
+		for col := start; col < end; col += windowSize {
+			for i := 0; i < nbRows; i++ {
+				switch vi := v[i].(type) {
+				case *smartvectors.Constant:
+					cst := vi.Value
+					for j := range transposed {
+						transposed[j][i] = cst
+					}
+				case *smartvectors.Regular:
+					for j := range transposed {
+						transposed[j][i] = (*vi)[col+j]
+					}
+				default:
+					for j := range transposed {
+						transposed[j][i] = v[i].Get(col + j)
+					}
+				}
 			}
-			copy(res[col*key.OutputSize():(col+1)*key.OutputSize()], key.Hash(buffer))
-		})
+			for j := range transposed {
+				s.gnarkInternal.Hash(transposed[j], res[(col+j)*sisKeySize:(col+j)*sisKeySize+sisKeySize])
+			}
+		}
+	})
 
 	return res
-}
-
-// CopyWithFreshBuffer creates a copy of the key with fresh buffers. Shallow
-// copies the the key itself.
-func (s *Key) CopyWithFreshBuffer() *Key {
-
-	// Since hashing consumes and mutates the buffer stored internally in
-	// `gnarkInternal` go race had figured there might be a race condition
-	// possibility.
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	clonedRsis := s.gnarkInternal.CopyWithFreshBuffer()
-	return &Key{
-		lock:          &sync.Mutex{},
-		gnarkInternal: &clonedRsis,
-		Params:        s.Params,
-	}
 }

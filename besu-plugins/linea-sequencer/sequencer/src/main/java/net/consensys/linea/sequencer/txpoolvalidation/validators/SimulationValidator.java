@@ -10,10 +10,8 @@ package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
-import static net.consensys.linea.zktracer.Fork.LONDON;
 import static org.hyperledger.besu.plugin.services.TransactionSimulationService.SimulationParameters.ALLOW_FUTURE_NONCE;
 
-import java.math.BigInteger;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
@@ -26,14 +24,17 @@ import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
+import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionSimulationResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
+import org.hyperledger.besu.plugin.services.WorldStateService;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
 /**
@@ -43,6 +44,7 @@ import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolVal
 @Slf4j
 public class SimulationValidator implements PluginTransactionPoolValidator {
   private final BlockchainService blockchainService;
+  private final WorldStateService worldStateService;
   private final TransactionSimulationService transactionSimulationService;
   private final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
@@ -51,12 +53,14 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
 
   public SimulationValidator(
       final BlockchainService blockchainService,
+      final WorldStateService worldStateService,
       final TransactionSimulationService transactionSimulationService,
       final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf,
       final LineaTracerConfiguration tracerConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager) {
     this.blockchainService = blockchainService;
+    this.worldStateService = worldStateService;
     this.transactionSimulationService = transactionSimulationService;
     this.txPoolValidatorConf = txPoolValidatorConf;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
@@ -86,7 +90,7 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
       final var pendingBlockHeader = transactionSimulationService.simulatePendingBlockHeader();
 
       final var lineCountingTracer =
-          createLineCountingTracer(pendingBlockHeader, blockchainService.getChainId().get());
+          createLineCountingTracer(pendingBlockHeader, blockchainService);
       final var maybeSimulationResults =
           transactionSimulationService.simulate(
               transaction,
@@ -163,13 +167,28 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
   }
 
   private LineCountingTracer createLineCountingTracer(
-      final ProcessableBlockHeader pendingBlockHeader, BigInteger chainId) {
+      final ProcessableBlockHeader pendingBlockHeader, BlockchainService blockchainService) {
+    final var forkId =
+        blockchainService.getNextBlockHardforkId(
+            blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond());
+
     var lineCountingTracer =
         tracerConfiguration.isLimitless()
             ? new ZkCounter(l1L2BridgeConfiguration)
-            : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
+            : new ZkTracer(
+                switch (forkId) {
+                  case HardforkId.MainnetHardforkId.LONDON -> Fork.LONDON;
+                  case HardforkId.MainnetHardforkId.PARIS -> Fork.PARIS;
+                  case HardforkId.MainnetHardforkId.SHANGHAI -> Fork.SHANGHAI;
+                  case HardforkId.MainnetHardforkId.CANCUN -> Fork.CANCUN;
+                  case HardforkId.MainnetHardforkId.PRAGUE -> Fork.PRAGUE;
+                  default -> throw new RuntimeException("Unknown fork id " + forkId);
+                },
+                l1L2BridgeConfiguration,
+                blockchainService.getChainId().get());
     lineCountingTracer.traceStartConflation(1L);
-    lineCountingTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
+    lineCountingTracer.traceStartBlock(
+        worldStateService.getWorldView(), pendingBlockHeader, pendingBlockHeader.getCoinbase());
     return lineCountingTracer;
   }
 

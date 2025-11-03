@@ -1,52 +1,53 @@
-import { Address, decodeAbiParameters } from "viem";
+import { Address, Client, decodeAbiParameters } from "viem";
 import { getPublicClient } from "@wagmi/core";
-import { LineaSDK } from "@consensys/linea-sdk";
-import { config as wagmiConfig } from "@/lib/wagmi";
+import {
+  getL1ToL2MessageStatus,
+  getL2ToL1MessageStatus,
+  getMessagesByTransactionHash,
+} from "@consensys/linea-sdk-viem";
 import {
   BridgeTransaction,
   BridgeTransactionType,
+  BridgingInitiatedV2ABIEvent,
+  BridgingInitiatedV2LogEvent,
   Chain,
   ChainLayer,
   Token,
-  BridgingInitiatedV2LogEvent,
-  BridgingInitiatedV2ABIEvent,
 } from "@/types";
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
-import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
 import { isUndefined, isUndefinedOrNull } from "@/utils";
 import { config } from "@/config";
-import { localL1Network, localL2Network } from "@/constants";
+import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
+import { saveToTransactionCache } from "./saveToTransactionCache";
+import { Config } from "wagmi";
 
 export async function fetchERC20BridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
-  lineaSDK: LineaSDK,
   address: Address,
   fromChain: Chain,
   toChain: Chain,
   tokens: Token[],
+  wagmiConfig: Config,
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
 
-  const client = getPublicClient(wagmiConfig, {
+  const originLayerClient = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
 
-  const l1Contract = lineaSDK.getL1Contract(
-    config.e2eTestMode ? config.chains[localL1Network.id].messageServiceAddress : undefined,
-    config.e2eTestMode ? config.chains[localL2Network.id].messageServiceAddress : undefined,
-  );
-  const l2Contract = lineaSDK.getL2Contract(
-    config.e2eTestMode ? config.chains[localL2Network.id].messageServiceAddress : undefined,
-  );
+  if (!originLayerClient) {
+    throw new Error(`No public client found for chain ID ${fromChain.id}`);
+  }
 
-  const [originContract, destinationContract] =
-    fromChain.layer === ChainLayer.L1 ? [l1Contract, l2Contract] : [l2Contract, l1Contract];
+  const destinationLayerClient = getPublicClient(wagmiConfig, {
+    chainId: toChain.id,
+  });
 
   const tokenBridgeAddress = fromChain.tokenBridgeAddress;
   const [erc20LogsForSender, erc20LogsForRecipient] = await Promise.all([
-    client.getLogs({
+    originLayerClient.getLogs({
       event: BridgingInitiatedV2ABIEvent,
       fromBlock: "earliest",
       toBlock: "latest",
@@ -55,7 +56,7 @@ export async function fetchERC20BridgeEvents(
         sender: address,
       },
     }),
-    client.getLogs({
+    originLayerClient.getLogs({
       event: BridgingInitiatedV2ABIEvent,
       fromBlock: "earliest",
       toBlock: "latest",
@@ -81,22 +82,50 @@ export async function fetchERC20BridgeEvents(
       const transactionHash = log.transactionHash;
 
       // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
-      const cacheKey = getCompleteTxStoreKey(fromChain.id, transactionHash);
-      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
-      if (cachedCompletedTx) {
-        transactionsMap.set(transactionHash, cachedCompletedTx);
+      if (
+        restoreFromTransactionCache(
+          historyStoreActions,
+          fromChain.id,
+          transactionHash,
+          transactionsMap,
+          transactionHash,
+        )
+      ) {
         return;
       }
 
-      const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
+      const block = await originLayerClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
       if (isBlockTooOld(block)) return;
 
-      const message = await originContract.getMessagesByTransactionHash(transactionHash);
+      const message = await getMessagesByTransactionHash(originLayerClient as Client, {
+        transactionHash,
+        ...(config.e2eTestMode
+          ? { messageServiceAddress: config.chains[fromChain.id].messageServiceAddress as Address }
+          : {}),
+      });
+
       if (isUndefinedOrNull(message) || message.length === 0) {
         return;
       }
 
-      const messageStatus = await destinationContract.getMessageStatus(message[0].messageHash);
+      const messageStatus =
+        fromChain.layer === ChainLayer.L1
+          ? await getL1ToL2MessageStatus(destinationLayerClient as Client, {
+              messageHash: message[0].messageHash,
+              ...(config.e2eTestMode
+                ? { l2MessageServiceAddress: config.chains[toChain.id].messageServiceAddress as Address }
+                : {}),
+            })
+          : await getL2ToL1MessageStatus(destinationLayerClient as Client, {
+              messageHash: message[0].messageHash,
+              l2Client: originLayerClient as Client,
+              ...(config.e2eTestMode
+                ? {
+                    lineaRollupAddress: config.chains[toChain.id].messageServiceAddress as Address,
+                    l2MessageServiceAddress: config.chains[fromChain.id].messageServiceAddress as Address,
+                  }
+                : {}),
+            });
 
       const token = tokens.find(
         (token) =>
@@ -118,19 +147,18 @@ export async function fetchERC20BridgeEvents(
         timestamp: block.timestamp,
         bridgingTx: log.transactionHash,
         message: {
-          from: message[0].messageSender as Address,
-          to: message[0].destination as Address,
+          from: message[0].from as Address,
+          to: message[0].to as Address,
           fee: message[0].fee,
           value: message[0].value,
-          nonce: message[0].messageNonce,
+          nonce: message[0].nonce,
           calldata: message[0].calldata,
           messageHash: message[0].messageHash,
           amountSent: amount,
         },
       };
 
-      // Store COMPLETE tx in cache
-      historyStoreActions.setCompleteTx(tx);
+      saveToTransactionCache(historyStoreActions, tx);
       transactionsMap.set(transactionHash, tx);
     }),
   );

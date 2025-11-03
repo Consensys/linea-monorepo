@@ -22,24 +22,24 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// evaluationCtx collects the compilation artefacts related to the evaluation
+// EvaluationCtx collects the compilation artefacts related to the evaluation
 // part of the Plonk quotient technique.
-type evaluationCtx struct {
-	quotientCtx
+type EvaluationCtx struct {
+	QuotientCtx
 	QuotientEvals []query.UnivariateEval
 	WitnessEval   query.UnivariateEval
 	EvalCoin      coin.Info
 }
 
-// evaluationProver wraps [evaluationCtx] to implement the [wizard.ProverAction]
+// EvaluationProver wraps [evaluationCtx] to implement the [wizard.ProverAction]
 // interface.
-type evaluationProver evaluationCtx
+type EvaluationProver EvaluationCtx
 
-// evaluationVerifier wraps [evaluationCtx] to implement the [wizard.VerifierAction]
+// EvaluationVerifier wraps [evaluationCtx] to implement the [wizard.VerifierAction]
 // interface.
-type evaluationVerifier struct {
-	evaluationCtx
-	skipped bool
+type EvaluationVerifier struct {
+	EvaluationCtx
+	Skipped bool
 }
 
 // declareUnivariateQueries declares the univariate queries over all the quotient
@@ -48,16 +48,16 @@ type evaluationVerifier struct {
 // compiler.
 func declareUnivariateQueries(
 	comp *wizard.CompiledIOP,
-	qCtx quotientCtx,
-) evaluationCtx {
+	qCtx QuotientCtx,
+) EvaluationCtx {
 
 	var (
 		round       = qCtx.QuotientShares[0][0].Round()
 		ratios      = qCtx.Ratios
 		maxRatio    = utils.Max(ratios...)
 		queriesPols = make([][]ifaces.Column, maxRatio)
-		res         = evaluationCtx{
-			quotientCtx: qCtx,
+		res         = EvaluationCtx{
+			QuotientCtx: qCtx,
 			EvalCoin: comp.InsertCoin(
 				round+1,
 				coin.Name(deriveName(comp, EVALUATION_RANDOMESS)),
@@ -94,7 +94,9 @@ func declareUnivariateQueries(
 
 // Run computes the evaluation of the univariate queries and implements the
 // [wizard.ProverAction] interface.
-func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
+func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
+
+	// TODO @gbotrel this use a lot of memory, investigate why.
 
 	var (
 		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
@@ -165,7 +167,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 }
 
 // Run evaluate the constraint and checks that
-func (ctx *evaluationVerifier) Run(run *wizard.VerifierRuntime) error {
+func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 	var (
 		// Will be assigned to "X", the random point at which we check the constraint.
@@ -201,7 +203,7 @@ func (ctx *evaluationVerifier) Run(run *wizard.VerifierRuntime) error {
 
 	for i, ratio := range ctx.Ratios {
 
-		board := ctx.AggregateExpressionsBoard[i]
+		board := ctx.AggregateExpressions[i].Board()
 		metadatas := board.ListVariableMetadata()
 
 		evalInputs := make([]sv.SmartVector, len(metadatas))
@@ -239,7 +241,7 @@ func (ctx *evaluationVerifier) Run(run *wizard.VerifierRuntime) error {
 }
 
 // Verifier step, evaluate the constraint and checks that
-func (ctx *evaluationVerifier) RunGnark(api frontend.API, c *wizard.WizardVerifierCircuit) {
+func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
 
 	// Will be assigned to "X", the random point at which we check the constraint.
 	r := c.GetRandomCoinField(ctx.EvalCoin.Name)
@@ -263,7 +265,7 @@ func (ctx *evaluationVerifier) RunGnark(api frontend.API, c *wizard.WizardVerifi
 
 	for i, ratio := range ctx.Ratios {
 
-		board := ctx.AggregateExpressionsBoard[i]
+		board := ctx.AggregateExpressions[i].Board()
 		metadatas := board.ListVariableMetadata()
 
 		evalInputs := make([]frontend.Variable, len(metadatas))
@@ -299,7 +301,7 @@ func (ctx *evaluationVerifier) RunGnark(api frontend.API, c *wizard.WizardVerifi
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run *wizard.VerifierRuntime, r field.Element) ([]field.Element, error) {
+func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runtime, r field.Element) ([]field.Element, error) {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
@@ -386,7 +388,7 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run *wizard.Veri
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx evaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run *wizard.WizardVerifierCircuit, r frontend.Variable) []frontend.Variable {
+func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r frontend.Variable) []frontend.Variable {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
@@ -467,10 +469,10 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	return recombinedYs
 }
 
-func (ctx *evaluationVerifier) Skip() {
-	ctx.skipped = true
+func (ctx *EvaluationVerifier) Skip() {
+	ctx.Skipped = true
 }
 
-func (ctx *evaluationVerifier) IsSkipped() bool {
-	return ctx.skipped
+func (ctx *EvaluationVerifier) IsSkipped() bool {
+	return ctx.Skipped
 }

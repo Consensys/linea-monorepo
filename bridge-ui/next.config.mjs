@@ -1,4 +1,4 @@
-const isProd = process.env.NEXT_PUBLIC_ENVIRONMENT === "production";
+export const isProd = process.env.NEXT_PUBLIC_ENVIRONMENT === "production";
 const basePath = isProd ? "/hub/bridge" : "";
 
 /** @type {import('next').NextConfig} */
@@ -21,19 +21,30 @@ const nextConfig = {
         hostname: "assets.coingecko.com",
         pathname: "/coins/images/**",
       },
+      {
+        protocol: "https",
+        hostname: "linea.build",
+        pathname: "/icons/**",
+      },
+      {
+        protocol: "https",
+        hostname: "images.ctfassets.net",
+        pathname: `/${process.env.CONTENTFUL_SPACE_ID}/**`,
+      },
     ],
   },
   sassOptions: {
     prependData: `@use 'sass:math'; @use 'src/scss/breakpoints' as *;`,
   },
+  turbopack: {
+    rules: {
+      "*.svg": {
+        loaders: ["@svgr/webpack"],
+        as: "*.js",
+      },
+    },
+  },
   webpack: (config) => {
-    const warning = [...(config.ignoreWarnings || []), { module: /typeorm/ }];
-
-    config.ignoreWarnings = warning;
-
-    config.resolve.fallback = {
-      fs: false,
-    };
     config.externals.push("pino-pretty", "lokijs", "encoding");
 
     const fileLoaderRule = config.module.rules.find((rule) => rule.test?.test?.(".svg"));
