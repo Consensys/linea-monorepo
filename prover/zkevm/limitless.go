@@ -267,22 +267,6 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "EXECUTION_DATA_MIMC_TAGS_SPAGHETTI"},
 	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "MIMC_HASHER_STATE"},
 	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "BLOCK_EXECUTION_DATA_MIMC_AccNumLane"},
-
-	{BaseSize: 8192, Cluster: "TINY-STUFFS", Column: "BLOCK_TX_METADATA_BLOCK_ID"},
-	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "MIMC_CODE_HASH_CFI"},
-	{BaseSize: 8192, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_RLP_TXN_FETCHER_NBYTES"},
-
-	// TINY-STUFFS: rlputils composition
-
-	// TINY-STUFFS: trm updated variants
-	{BaseSize: 2048, Cluster: "TINY-STUFFS", Column: "TABLE_trm.ADDRESS_HI,trm.IS_PRECOMPILE,trm.RAW_ADDRESS'0,trm.RAW_ADDRESS'1_0_LOGDERIVATIVE_M"},
-	{BaseSize: 2048, Cluster: "TINY-STUFFS", Column: "TABLE_trm.ADDRESS_HI,trm.RAW_ADDRESS'0,trm.RAW_ADDRESS'1_0_LOGDERIVATIVE_M"},
-
-	// TINY-STUFFS
-	{BaseSize: 8192, Cluster: "TINY-STUFFS", Column: "PUBLIC_INPUT_RLP_TXN_FETCHER_N_BYTES_CHAIN_ID"},
-
-	// STATIC: missing REPEATED_PATTERN tables
-
 }
 
 // NewLimitlessZkEVM returns a new LimitlessZkEVM object.
