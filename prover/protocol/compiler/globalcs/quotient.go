@@ -3,6 +3,7 @@ package globalcs
 import (
 	"math/big"
 	"runtime"
+	"sort"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -119,6 +120,22 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 			}
 
 		}
+	}
+
+	// The above loop is supposedly iterating in deterministic order but we have
+	// noticed some hard-to-find non-determinism in the compilation and this
+	// cause problems in practice. So we sort the slices of the context to be
+	// sure there is no issue.
+	sortColumns := func(v []ifaces.Column) {
+		sort.Slice(v, func(i, j int) bool {
+			return v[i].GetColID() < v[j].GetColID()
+		})
+	}
+
+	sortColumns(ctx.AllInvolvedColumns)
+
+	for k := range ctx.RootsForRatio {
+		sortColumns(ctx.RootsForRatio[k])
 	}
 
 	return ctx

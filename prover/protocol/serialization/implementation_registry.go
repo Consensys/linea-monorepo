@@ -100,6 +100,7 @@ func init() {
 	RegisterImplementation(verifiercol.ConstCol{})
 	RegisterImplementation(verifiercol.FromYs{})
 	RegisterImplementation(verifiercol.FromAccessors{})
+	RegisterImplementation(verifiercol.ExpandedVerifCol{})
 	RegisterImplementation(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{})
 	RegisterImplementation(verifiercol.RepeatedAccessor{})
 

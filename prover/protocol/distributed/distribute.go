@@ -216,9 +216,9 @@ func (dist *DistributedWizard) CompileSegments(params CompilationParams) *Distri
 	return dist
 }
 
-// GetSharedRandomnessFromRuntime returns the shared randomness used by the protocol
-// to generate the LPP proofs. The LPP commitments are supposed to be the
-// one extractable from the [recursion.Witness] of the LPPs.
+// GetSharedRandomnessFromSegmentProofs returns the shared randomness used by
+// the protocol to generate the LPP proofs. The LPP commitments are supposed to
+// be the one extractable from the [recursion.Witness] of the LPPs.
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.

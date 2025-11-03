@@ -9,6 +9,7 @@ import com.github.michaelbull.result.runCatching
 import io.vertx.core.Vertx
 import linea.domain.Block
 import net.consensys.linea.async.AsyncRetryer
+import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.BlocksConflation
 import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandler
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinator
@@ -21,13 +22,14 @@ class ProofGeneratingConflationHandlerImpl(
   private val tracesProductionCoordinator: TracesConflationCoordinator,
   private val zkProofProductionCoordinator: ZkProofCreationCoordinator,
   private val batchProofHandler: BatchProofHandler,
+  private val batchAlreadyProvenSupplier: (Batch) -> SafeFuture<Boolean>,
   private val vertx: Vertx,
   private val config: Config,
 ) : ConflationHandler {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   data class Config(
-    val conflationAndProofGenerationRetryInterval: Duration,
+    val conflationAndProofGenerationRetryBackoffDelay: Duration,
   )
 
   override fun handleConflatedBatch(conflation: BlocksConflation): SafeFuture<*> {
@@ -41,12 +43,13 @@ class ProofGeneratingConflationHandlerImpl(
       )
       AsyncRetryer.retry(
         vertx = vertx,
-        backoffDelay = config.conflationAndProofGenerationRetryInterval,
+        backoffDelay = config.conflationAndProofGenerationRetryBackoffDelay,
         exceptionConsumer = {
           // log failure as warning, but keeps on retrying...
           log.warn(
-            "conflation and proof creation flow failed batch={} errorMessage={}",
+            "conflation and proof creation flow failed batch={} will retry in backOff={} errorMessage={}",
             blockIntervalString,
+            config.conflationAndProofGenerationRetryBackoffDelay,
             it.message,
           )
         },
@@ -68,37 +71,46 @@ class ProofGeneratingConflationHandlerImpl(
     val blockIntervalString = conflation.conflationResult.intervalString()
     return assertConsecutiveBlocksRange(conflation.blocks)
       .getOrThrow().let { blocksRange ->
-        tracesProductionCoordinator
-          .conflateExecutionTraces(blocksRange)
-          .whenException { th ->
-            log.debug(
-              "traces conflation failed: batch={} errorMessage={}",
-              conflation.conflationResult.intervalString(),
-              th.message,
-              th,
-            )
+        val batch = Batch(conflation.startBlockNumber, conflation.endBlockNumber)
+        batchAlreadyProvenSupplier(batch)
+          .thenCompose { responseAlreadyDone ->
+            if (responseAlreadyDone) {
+              log.info("skipping conflation and proof request: batch={} already proven", blockIntervalString)
+              SafeFuture.completedFuture(batch)
+            } else {
+              tracesProductionCoordinator
+                .conflateExecutionTraces(blocksRange)
+                .whenException { th ->
+                  log.debug(
+                    "traces conflation failed: batch={} errorMessage={}",
+                    blockIntervalString,
+                    th.message,
+                    th,
+                  )
+                }
+                .thenCompose { blocksTracesConflated: BlocksTracesConflated ->
+                  log.debug(
+                    "requesting execution proof: batch={} tracesFile={}",
+                    blockIntervalString,
+                    blocksTracesConflated.tracesResponse.tracesFileName,
+                  )
+                  zkProofProductionCoordinator
+                    .createZkProof(conflation, blocksTracesConflated)
+                    .thenPeek {
+                      log.info("execution proof generated: batch={}", blockIntervalString)
+                    }
+                    .whenException { th ->
+                      log.debug(
+                        "execution proof failure: batch={} errorMessage={}",
+                        blockIntervalString,
+                        th.message,
+                        th,
+                      )
+                    }
+                }
+            }
           }
-          .thenCompose { blocksTracesConflated: BlocksTracesConflated ->
-            log.debug(
-              "requesting execution proof: batch={} tracesFile={}",
-              blockIntervalString,
-              blocksTracesConflated.tracesResponse.tracesFileName,
-            )
-            zkProofProductionCoordinator
-              .createZkProof(conflation, blocksTracesConflated)
-              .thenPeek {
-                log.info("execution proof generated: batch={}", blockIntervalString)
-              }
-              .whenException { th ->
-                log.debug(
-                  "execution proof failure: batch={} errorMessage={}",
-                  blockIntervalString,
-                  th.message,
-                  th,
-                )
-              }
-          }
-          .thenCompose { batchProofHandler.acceptNewBatch(it) }
+          .thenCompose { batchProofHandler.acceptNewBatch(batch) }
       }
   }
 }

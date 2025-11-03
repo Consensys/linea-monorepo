@@ -118,6 +118,45 @@ func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
 	return key.KeyGen.MaxNumFieldToHash, nil
 }
 
+func marshalGnarkFFTDomain(ser *Serializer, val reflect.Value) (any, *serdeError) {
+	domain := val.Interface().(*fft.Domain)
+
+	if domain == nil {
+		return nil, nil
+	}
+
+	var buf bytes.Buffer
+	if _, err := domain.WriteTo(&buf); err != nil {
+		return nil, newSerdeErrorf("could not marshal fft.Domain: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+func unmarshalGnarkFFtDomain(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
+
+	// nil case
+	if val == nil {
+		return reflect.Zero(TypeOfGnarkFFTDomainPtr), nil
+	}
+
+	// Expect a []byte coming from CBOR decoding
+	var b []byte
+	switch v := val.(type) {
+	case []byte:
+		b = v
+	default:
+		// defensive: CBOR typically decodes bytes to []byte, but return a helpful error if not.
+		return reflect.Value{}, newSerdeErrorf("expected []byte for fft.Domain deserialization, got %T", val)
+	}
+
+	d := &fft.Domain{}
+	if _, err := d.ReadFrom(bytes.NewReader(b)); err != nil {
+		return reflect.Value{}, newSerdeErrorf("could not unmarshal fft.Domain: %w", err)
+	}
+
+	return reflect.ValueOf(d), nil
+}
+
 func unmarshalRingSisKey(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 	maxNumFieldToHash, ok := val.(uint64)
 	if !ok {
@@ -273,22 +312,24 @@ func marshalArithmetization(ser *Serializer, val reflect.Value) (any, *serdeErro
 }
 
 func unmarshalArithmetization(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
+	var errA error
+	//
 	if v_, ok := val.(PackedStructObject); ok {
 		val = []any(v_)
 	}
-
 	res, err := des.UnpackStructObject(val.([]any), TypeOfArithmetization)
 	if err != nil {
 		return reflect.Value{}, newSerdeErrorf("could not unmarshal arithmetization: %w", err)
 	}
-
 	arith := res.Interface().(arithmetization.Arithmetization)
-	schema, meta, errA := arithmetization.UnmarshalZkEVMBin(arith.ZkEVMBin, arith.Settings.OptimisationLevel)
+	// Parse binary file
+	arith.BinaryFile, arith.Metadata, errA = arithmetization.UnmarshalZkEVMBin(arith.ZkEVMBin)
 	if errA != nil {
 		return reflect.Value{}, newSerdeErrorf("could not unmarshal arithmetization: %w", err)
 	}
-	arith.Schema = schema
-	arith.Metadata = meta
+	// Compile binary file into an air.Schema
+	arith.AirSchema, arith.LimbMapping = arithmetization.CompileZkevmBin(arith.BinaryFile, arith.Settings.OptimisationLevel)
+	// Done
 	return reflect.ValueOf(arith), nil
 }
 
