@@ -11,7 +11,18 @@ Operation modes are selected dynamically based on the yield provider's state:
 - `OSSIFICATION_PENDING_MODE` during transition
 - `OSSIFICATION_COMPLETE_MODE` once ossified.
 
-## Folder structure
+## Codebase Architecture
+
+The codebase follows a **Layered Architecture with Dependency Inversion**, incorporating concepts from Hexagonal Architecture (Ports and Adapters) and Domain-Driven Design:
+
+- **`core/`** - Domain layer containing interfaces (ports), entities, enums, and ABIs. This layer has no dependencies on other internal layers.
+- **`services/`** - Application layer containing business logic that orchestrates operations using interfaces from `core/`.
+- **`clients/`** - Infrastructure layer containing adapter implementations of interfaces defined in `core/`.
+- **`application/`** - Composition layer that wires dependencies and bootstraps the service.
+
+Dependencies flow inward: `application` → `services/clients` → `core`. This ensures business logic remains independent of infrastructure concerns, making the codebase testable and maintainable.
+
+## Folder Structure
 
 ```
 automation-service/
@@ -21,7 +32,7 @@ automation-service/
 │   │   └── metrics/          # Metrics service and updaters
 │   ├── clients/              # External service clients
 │   │   ├── contracts/        # Smart contract clients (LazyOracle, YieldManager, VaultHub, etc.)
-│   ├── core/                 # Core domain logic and interfaces
+│   ├── core/                 # Interfaces
 │   │   ├── abis/             # Contract ABIs
 │   │   ├── clients/          # Client interfaces
 │   │   ├── entities/         # Domain entities and data models
