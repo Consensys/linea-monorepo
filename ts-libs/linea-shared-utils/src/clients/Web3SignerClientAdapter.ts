@@ -60,23 +60,25 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
       { httpsAgent: this.agent },
     );
     this.logger.debug(`Signing successful signature=${data}`);
-    // Debugging logs
-    // const address = await recoverAddress({
-    //   hash: serializeTransaction(tx),
-    //   signature: data,
-    // });
-    // this.logger.info(`sign address=${address}`);
     return data;
   }
 
-  // TODO - This function doesn't seem to work correctly in manual testing. For investigation.
   /**
    * Gets the Ethereum address associated with the Web3Signer public key.
    *
    * @returns {Address} The Ethereum address derived from the public key.
    */
   getAddress(): Address {
-    return publicKeyToAddress(this.web3SignerPublicKey);
+    // Seems that Viem `publicKeyToAddress` expects the secp256k1 pubkey with the 0x04 format identifier byte - `0x04 || <32-byte X> || <32-byte Y>`
+    // However Web3Signer does not accept the 0x04 format identifier byte, and instead expects either:
+    // - `<32-byte X> || <32-byte Y>` (no prefix)
+    // - `0x<32-byte X> || <32-byte Y>` (with hex prefix)
+    const uncompressedStrippedPubkey = this.web3SignerPublicKey.startsWith("0x")
+      ? this.web3SignerPublicKey.slice(2)
+      : this.web3SignerPublicKey;
+
+    const uncompressedPubkeyWithKeyPrefix = `0x04${uncompressedStrippedPubkey}` as const;
+    return publicKeyToAddress(uncompressedPubkeyWithKeyPrefix);
   }
 
   /**

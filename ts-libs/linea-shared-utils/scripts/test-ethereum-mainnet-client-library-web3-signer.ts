@@ -3,7 +3,7 @@
 Terminal 1 - Run anvil
 
 Prefund the Signer
-cast rpc anvil_setBalance 0x74F6253E2A11B5540964dD8c9a2270E20F504fbE 0x8AC7230489E80000 --rpc-url http://localhost:8545
+cast rpc anvil_setBalance 0xD42E308FC964b71E18126dF469c21B0d7bcb86cC 0x8AC7230489E80000 --rpc-url http://localhost:8545
 
 Terminal 2 - Run Web3Signer
 
@@ -20,7 +20,7 @@ docker run --rm \
   --tls-known-clients-file=/tls-files/known-clients.txt \
   --http-host-allowlist='*' \
   eth1 \
-  --chain-id=1337
+  --chain-id=31337
 
 Terminal 3 - Run script
 

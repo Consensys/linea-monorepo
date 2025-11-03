@@ -51,10 +51,8 @@ export const configSchema = z
     // If you only want addresses, replace with `Address`.
     WEB3SIGNER_PUBLIC_KEY: Hex.refine(
       (v) =>
-        /^0x[a-fA-F0-9]{40}$/.test(v) || // address
-        /^0x04[a-fA-F0-9]{128}$/.test(v) || // uncompressed pubkey (65 bytes)
-        /^0x0[23][a-fA-F0-9]{64}$/.test(v), // compressed pubkey (33 bytes)
-      "Expected 0x-hex Ethereum address, or secp256k1 public key (compressed/uncompressed).",
+        /^(?:0x)?[a-fA-F0-9]{128}$/.test(v) || // uncompressed pubkey (64 bytes, without ...04-prefix, optional 0x prefix)
+        "Expected secp256k1 public key (uncompressed, without 0x04 prefix).",
     ),
     WEB3SIGNER_KEYSTORE_PATH: z.string().min(1),
     WEB3SIGNER_KEYSTORE_PASSPHRASE: z.string().min(1),
