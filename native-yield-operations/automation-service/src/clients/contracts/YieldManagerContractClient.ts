@@ -47,8 +47,6 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
     private readonly rebalanceToleranceBps: number,
     private readonly minWithdrawalThresholdEth: bigint,
   ) {
-    this.contractClientLibrary = contractClientLibrary;
-    this.contractAddress = contractAddress;
     this.contract = getContract({
       abi: YieldManagerABI,
       address: contractAddress,
