@@ -262,36 +262,12 @@ func runController(ctx context.Context, cfg *config.Config) {
 					cLog.Errorf("Error renaming %v to %v: %v, removed tmp file", tmpRespFile, respFile, err)
 				}
 
-				// After the successful execution proof request, we delete the associated trace file to save costs on EFS
+				// After the successful execution proof request, we delete the
+				// associated trace file to save costs on EFS. This steps won't
+				// alter the controller flow if it fail as it is meant as an
+				// optimization.
 				if job.Def.Name == jobNameExecution {
-					req := &execution.Request{}
-					f, err := os.Open(job.InProgressPath())
-					if err != nil {
-						// This is sort of unexpected. It could happen if the underlying prover binary
-						// could delete or move the request folder. If it fails open, the file then
-						// we cannot delete the trace file and we simply continue as if nothing happened
-						// on the normal flow.
-						cLog.Errorf("could not open file: %s", err.Error())
-					}
-
-					// This if-clause is to avoid panicking when trying to reference `f` while it could
-					// not be open.
-					if err == nil && f != nil {
-
-						if err := json.NewDecoder(f).Decode(req); err != nil {
-							cLog.Errorf("could not decode input file: %s", err.Error())
-						}
-
-						// Get the trace file and delete it. It is gauranteed that trace file will exist
-						// If otherwise, the prover would panic at the beginning.
-						traceFile := req.ConflatedExecTraceFilepath(cfg.Execution.ConflatedTracesDir)
-						if err := os.Remove(traceFile); err != nil {
-							cLog.Errorf("could not remove trace file: %s", err.Error())
-						}
-
-						cLog.Infof("Deleted trace file: %s after successful execution proof request", traceFile)
-						f.Close()
-					}
+					tryDeleteExecution(cLog, job, cfg)
 				}
 
 				// Move the inprogress to the done directory
@@ -397,4 +373,44 @@ func retryDelay(retryDelaysSec []int, numRetrySoFar int) <-chan time.Time {
 	}
 
 	return time.After(ttw)
+}
+
+// tryDeleteExecution attemps to delete the execution trace file to free up some
+// space. It will log a warning if it fails to delete and keep going if it fails
+// to do so.
+//
+// The function expects to be provided an execution job or it will panic.
+func tryDeleteExecution(cLog *logrus.Entry, job *Job, cfg *config.Config) {
+
+	if job.Def.Name != jobNameExecution {
+		panic("expected an execution job")
+	}
+
+	req := &execution.Request{}
+	f, err := os.Open(job.InProgressPath())
+	if err != nil {
+		// This is sort of unexpected. It could happen if the underlying prover binary
+		// could delete or move the request folder. If it fails open, the file then
+		// we cannot delete the trace file and we simply continue as if nothing happened
+		// on the normal flow.
+		cLog.Errorf("could not open file: %s", err.Error())
+		return
+	}
+
+	defer f.Close()
+
+	if err := json.NewDecoder(f).Decode(req); err != nil {
+		cLog.Errorf("could not decode input file: %s", err.Error())
+		return
+	}
+
+	// Get the trace file and delete it. It is gauranteed that trace file will exist
+	// If otherwise, the prover would panic at the beginning.
+	traceFile := req.ConflatedExecTraceFilepath(cfg.Execution.ConflatedTracesDir)
+	if err := os.Remove(traceFile); err != nil {
+		cLog.Errorf("could not remove trace file: %s", err.Error())
+		return
+	}
+
+	cLog.Infof("Deleted trace file: %s after successful execution proof request", traceFile)
 }
