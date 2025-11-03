@@ -24,7 +24,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 		executor  = NewExecutor(cfg)
 
 		// Track currently active job for safe requeue
-		activeJob *Job
+		activeJob      *Job
+		activeJobMutex = &sync.Mutex{}
 
 		// Track the number of retries so far
 		numRetrySoFar int
@@ -95,12 +96,14 @@ func runController(ctx context.Context, cfg *config.Config) {
 				}
 
 				// Requeue active job immediately for spot reclaim
+				activeJobMutex.Lock()
 				if activeJob != nil {
 					cLog.Infof("Spot reclaim detected during job: %v", activeJob.OriginalFile)
 					requeueJob(activeJob)
 					activeJob = nil
 					notifyJobDone()
 				}
+				activeJobMutex.Unlock()
 			case syscall.SIGTERM:
 				gracefulShutdownRequested.Store(true)
 				if !spotReclaimDetected.Load() {
@@ -108,7 +111,10 @@ func runController(ctx context.Context, cfg *config.Config) {
 				}
 				// NOTE: DO NOT call cancel() here to respect the termination grace period
 				// If there's an active job, start a timer to enforce grace period
+				activeJobMutex.Lock()
 				if activeJob != nil {
+					activeJob := *activeJob
+					activeJobMutex.Unlock()
 					jobDoneChanMu.Lock()
 					if jobDoneChan == nil {
 						jobDoneChan = make(chan struct{})
@@ -133,6 +139,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 						}
 					}()
 				} else {
+					activeJobMutex.Unlock()
 					cLog.Info("No active job during SIGTERM, cancelling context to exit immediately")
 					cancel()
 				}
@@ -152,11 +159,13 @@ func runController(ctx context.Context, cfg *config.Config) {
 		if spotReclaimDetected.Load() {
 			cLog.Infof("Context done due to spot reclaim. Aborting ASAP (max %ds)...", cfg.Controller.SpotInstanceReclaimTime)
 		} else if gracefulShutdownRequested.Load() {
+			activeJobMutex.Lock()
 			if activeJob != nil {
 				cLog.Infof("Context done: grace period expired, forcing shutdown")
 			} else {
 				cLog.Info("Context done: graceful shutdown complete")
 			}
+			activeJobMutex.Unlock()
 		} else {
 			cLog.Infoln("Context done due to cancellation request.")
 		}
@@ -175,11 +184,15 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 			// For graceful shutdown, do not sleep here and requeue only if
 			// the job is still active (timer already slept in signal handler) - See signal handler go routine
+			activeJobMutex.Lock()
 			if !spotReclaimDetected.Load() && gracefulShutdownRequested.Load() && activeJob != nil {
 				cLog.Infof("Job %v did not finish before termination grace period. Requeuing...", activeJob.OriginalFile)
 				requeueJob(activeJob)
 				activeJob = nil
+				activeJobMutex.Unlock()
 				notifyJobDone()
+			} else {
+				activeJobMutex.Unlock()
 			}
 
 			return
@@ -221,7 +234,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 			numRetrySoFar = 0
 
 			// Important: Set the active job to the current job for safe requeue mechanism
+			activeJobMutex.Lock()
 			activeJob = job
+			activeJobMutex.Unlock()
 
 			// Run the command (potentially retrying in large mode)
 			status := executor.Run(cmdCtx, job)
@@ -262,18 +277,18 @@ func runController(ctx context.Context, cfg *config.Config) {
 					// This if-clause is to avoid panicking when trying to reference `f` while it could
 					// not be open.
 					if err == nil && f != nil {
-			
+
 						if err := json.NewDecoder(f).Decode(req); err != nil {
 							cLog.Errorf("could not decode input file: %s", err.Error())
 						}
-						
+
 						// Get the trace file and delete it. It is gauranteed that trace file will exist
 						// If otherwise, the prover would panic at the beginning.
 						traceFile := req.ConflatedExecTraceFilepath(cfg.Execution.ConflatedTracesDir)
 						if err := os.Remove(traceFile); err != nil {
 							cLog.Errorf("could not remove trace file: %s", err.Error())
 						}
-						
+
 						cLog.Infof("Deleted trace file: %s after successful execution proof request", traceFile)
 						f.Close()
 					}
@@ -292,7 +307,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 				}
 
 				// Set active job to nil once the job is successful
+				activeJobMutex.Lock()
 				activeJob = nil
+				activeJobMutex.Unlock()
 				notifyJobDone()
 
 			// Defer to the large prover:
@@ -321,7 +338,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 				// From the controller perspective, it has completed its job by renaming and
 				// moving it to the large prover’s queue. Setting activeJob to nil prevents
 				// incorrect requeuing during shutdown, avoiding filesystem errors
+				activeJobMutex.Lock()
 				activeJob = nil
+				activeJobMutex.Unlock()
 				notifyJobDone()
 
 			// Controller killed the job via external signal handlers
@@ -350,7 +369,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 				}
 
 				// Set active job to nil as there is nothing more to retry
+				activeJobMutex.Lock()
 				activeJob = nil
+				activeJobMutex.Unlock()
 				notifyJobDone()
 			}
 		}
