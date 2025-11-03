@@ -13,6 +13,28 @@ Operation modes are selected dynamically based on the yield provider's state:
 
 ## Folder structure
 
+```
+automation-service/
+├── src/
+│   ├── application/          # Application bootstrap and configuration
+│   │   ├── main/             # Service entry point and config loading
+│   │   └── metrics/          # Metrics service and updaters
+│   ├── clients/              # External service clients
+│   │   ├── contracts/        # Smart contract clients (LazyOracle, YieldManager, VaultHub, etc.)
+│   ├── core/                 # Core domain logic and interfaces
+│   │   ├── abis/             # Contract ABIs
+│   │   ├── clients/          # Client interfaces
+│   │   ├── entities/         # Domain entities and data models
+│   │   ├── enums/            # Enums
+│   │   ├── metrics/          # Metrics interfaces and types
+│   │   └── services/         # Service interfaces
+│   ├── services/             # Business logic services
+│   │   ├── operation-mode-processors/  # Mode-specific processors
+│   │   └── OperationModeSelector.ts    # Mode selection orchestrator
+│   └── utils/                # Utility functions
+└── scripts/                  # Testing and utility scripts
+```
+
 ## Configuration
 
 See the [configuration schema file](native-yield-operations/automation-service/src/application/main/config/config.schema.ts)
