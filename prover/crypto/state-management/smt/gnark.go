@@ -21,25 +21,23 @@ func GnarkRecoverRoot(
 	leaf poseidon2.GHash,
 	h poseidon2.GnarkHasher) poseidon2.GHash {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	// apiGen, err := zk.NewGenericApi(api)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	current := leaf
-	nbBits := len(proof.Siblings)
-	b := apiGen.ToBinary(proof.Path, nbBits)
+	// nbBits := len(proof.Siblings)
+	// b := apiGen.ToBinary(proof.Path, nbBits)
+	// fmt.Printf("proof.Path: %v\n", proof.Path)
+	// fmt.Printf("nbBits: %d\n", nbBits)
+	// fmt.Printf("b: %v\n", b)
 	for i := 0; i < len(proof.Siblings); i++ {
 		h.Reset()
 		var left, right poseidon2.GHash
-		if b[i] == 1 {
-			left = proof.Siblings[i]
-			right = current
 
-		} else {
-			left = current
-			right = proof.Siblings[i]
-		}
+		left = current
+		right = proof.Siblings[i]
 
 		slices := make([]zk.WrappedVariable, 16)
 		copy(slices[0:8], left[:])
@@ -59,6 +57,11 @@ func GnarkVerifyMerkleProof(
 	root poseidon2.GHash,
 	h poseidon2.GnarkHasher) {
 
+	// check the result
+	apiGen, _ := zk.NewGenericApi(api)
 	r := GnarkRecoverRoot(api, proof, leaf, h)
-	api.AssertIsEqual(root, r)
+
+	for i := 0; i < 8; i++ {
+		apiGen.AssertIsEqual(root[i], r[i])
+	}
 }

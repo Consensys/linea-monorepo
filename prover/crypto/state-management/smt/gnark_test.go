@@ -1,6 +1,7 @@
 package smt
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -47,14 +48,20 @@ type MerkleProofCircuit struct {
 }
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
+	fmt.Printf("ok15\n")
 
 	h, err := poseidon2.NewGnarkHasher(api)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("ok16\n")
+
 	for i := 0; i < len(circuit.Proofs); i++ {
 		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root, h)
+
 	}
+	fmt.Printf("ok15\n")
+
 	return nil
 }
 
