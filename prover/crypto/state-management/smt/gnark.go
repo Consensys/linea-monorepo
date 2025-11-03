@@ -1,7 +1,8 @@
 package smt
 
 import (
-	"github.com/consensys/gnark/frontend"
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
@@ -16,28 +17,25 @@ type GnarkProof struct {
 // position is range-checked against the number of siblings in the Merkle proof
 // object.
 func GnarkRecoverRoot(
-	api frontend.API,
+	apiGen zk.GenericApi,
 	proof GnarkProof,
 	leaf poseidon2.GHash,
 	h poseidon2.GnarkHasher) poseidon2.GHash {
 
-	// apiGen, err := zk.NewGenericApi(api)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	current := leaf
-	// nbBits := len(proof.Siblings)
-	// b := apiGen.ToBinary(proof.Path, nbBits)
-	// fmt.Printf("proof.Path: %v\n", proof.Path)
-	// fmt.Printf("nbBits: %d\n", nbBits)
-	// fmt.Printf("b: %v\n", b)
+	nbBits := len(proof.Siblings)
+	b := apiGen.ToBinary(proof.Path, nbBits)
+
+	fmt.Printf("nbBits=%d\n", nbBits)
+	fmt.Printf("len(proof.Siblings)=%d\n", len(b))
 	for i := 0; i < len(proof.Siblings); i++ {
 		h.Reset()
 		var left, right poseidon2.GHash
 
-		left = current
-		right = proof.Siblings[i]
+		for j := 0; j < 8; j++ {
+			left[j] = apiGen.Select(b[i], proof.Siblings[i][j], current[j])
+			right[j] = apiGen.Select(b[i], current[j], proof.Siblings[i][j])
+		}
 
 		slices := make([]zk.WrappedVariable, 16)
 		copy(slices[0:8], left[:])
@@ -51,15 +49,14 @@ func GnarkRecoverRoot(
 
 // GnarkVerifyMerkleProof asserts the validity of a [GnarkProof] against a root.
 func GnarkVerifyMerkleProof(
-	api frontend.API,
+	apiGen zk.GenericApi,
 	proof GnarkProof,
 	leaf poseidon2.GHash,
 	root poseidon2.GHash,
 	h poseidon2.GnarkHasher) {
 
 	// check the result
-	apiGen, _ := zk.NewGenericApi(api)
-	r := GnarkRecoverRoot(api, proof, leaf, h)
+	r := GnarkRecoverRoot(apiGen, proof, leaf, h)
 
 	for i := 0; i < 8; i++ {
 		apiGen.AssertIsEqual(root[i], r[i])

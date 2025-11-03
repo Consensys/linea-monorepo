@@ -1,10 +1,9 @@
 package smt
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
@@ -12,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,20 +48,20 @@ type MerkleProofCircuit struct {
 }
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
-	fmt.Printf("ok15\n")
 
 	h, err := poseidon2.NewGnarkHasher(api)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("ok16\n")
 
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		return err
+	}
 	for i := 0; i < len(circuit.Proofs); i++ {
-		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root, h)
+		GnarkVerifyMerkleProof(apiGen, circuit.Proofs[i], circuit.Leafs[i], circuit.Root, h)
 
 	}
-	fmt.Printf("ok15\n")
-
 	return nil
 }
 
@@ -107,23 +107,35 @@ func getCircuitAndWitness(t *testing.T) (MerkleProofCircuit, MerkleProofCircuit)
 
 func TestMerkleProofGnark(t *testing.T) {
 
+	// {
+	// 	circuit, witness := getCircuitAndWitness(t)
+
+	// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+
+	// 	// solve the circuit
+	// 	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// 	err = ccs.IsSolved(twitness)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// }
+
 	{
 		circuit, witness := getCircuitAndWitness(t)
 
-		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
-		if err != nil {
-			t.Fatal(err)
-		}
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+		assert.NoError(t, err)
 
-		// solve the circuit
-		twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = ccs.IsSolved(twitness)
-		if err != nil {
-			t.Fatal(err)
-		}
+		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
 	}
 
 }
