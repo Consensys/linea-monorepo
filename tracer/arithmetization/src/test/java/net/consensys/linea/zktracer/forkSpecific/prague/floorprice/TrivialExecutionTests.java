@@ -49,12 +49,18 @@ public class TrivialExecutionTests extends TracerTestBase {
       Bytes callData,
       boolean provideAccessList,
       DominantCost dominantCostPrediction,
+      boolean imposeSenderRecipientCollision,
       TestInfo testInfo) {
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(Bytes.EMPTY);
     AccessListEntry accessListEntry =
         new AccessListEntry(Address.fromHexString("0xABCD"), List.of());
     List<AccessListEntry> accessList = provideAccessList ? List.of(accessListEntry) : List.of();
-    bytecodeRunner.run(callData, accessList, chainConfig, testInfo);
+    if (!imposeSenderRecipientCollision) {
+      bytecodeRunner.run(callData, accessList, chainConfig, testInfo);
+    } else {
+      bytecodeRunner.runWithImposedSenderRecipientAddressCollision(
+          callData, accessList, chainConfig, testInfo);
+    }
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
@@ -71,6 +77,7 @@ public class TrivialExecutionTests extends TracerTestBase {
       Bytes callData,
       boolean provideAccessList,
       DominantCost dominantCostPrediction,
+      boolean imposeSenderRecipientCollision,
       TestInfo testInfo) {
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
     program.op(OpCode.STOP);
@@ -78,7 +85,12 @@ public class TrivialExecutionTests extends TracerTestBase {
     AccessListEntry accessListEntry =
         new AccessListEntry(Address.fromHexString("0xABCD"), List.of());
     List<AccessListEntry> accessList = provideAccessList ? List.of(accessListEntry) : List.of();
-    bytecodeRunner.run(callData, accessList, chainConfig, testInfo);
+    if (!imposeSenderRecipientCollision) {
+      bytecodeRunner.run(callData, accessList, chainConfig, testInfo);
+    } else {
+      bytecodeRunner.runWithImposedSenderRecipientAddressCollision(
+          callData, accessList, chainConfig, testInfo);
+    }
     // Test blocks contain 4 transactions: 2 system transactions, 1 user transaction (the one we
     // created) and 1 noop transaction.
     if (isPostPrague(fork)) {
@@ -89,6 +101,8 @@ public class TrivialExecutionTests extends TracerTestBase {
   }
 
   static Stream<Arguments> testSource() {
+    final boolean noSenderRecipientCollision = false;
+    final boolean senderRecipientCollision = true;
     /*
     Here we change the callData (specifically the length and the CallDataSetting) to make comparingEffectiveRefundsVsFloorCost.result()
     become true in UserTransaction.comparingEffectiveRefundToFloorCostComputationRow.
@@ -103,12 +117,14 @@ public class TrivialExecutionTests extends TracerTestBase {
         Arguments.of(
             buildCallData(CallDataSetting.ALL_ZEROS, true, 400),
             true,
-            DominantCost.EXECUTION_COST_DOMINATES));
+            DominantCost.EXECUTION_COST_DOMINATES,
+            noSenderRecipientCollision));
     arguments.add(
         Arguments.of(
             buildCallData(CallDataSetting.ALL_ZEROS, true, 401),
             true,
-            DominantCost.FLOOR_COST_DOMINATES));
+            DominantCost.FLOOR_COST_DOMINATES,
+            noSenderRecipientCollision));
 
     // Case ALL_NON_ZEROS_EXCEPT_FOR_FIRST.
     // The transaction execution cost (TX_SKIP) is 21000 + 2400 + 16*length.
@@ -118,12 +134,14 @@ public class TrivialExecutionTests extends TracerTestBase {
         Arguments.of(
             buildCallData(CallDataSetting.ALL_NON_ZEROS_EXCEPT_FOR_FIRST, false, 100),
             true,
-            DominantCost.EXECUTION_COST_DOMINATES));
+            DominantCost.EXECUTION_COST_DOMINATES,
+            noSenderRecipientCollision));
     arguments.add(
         Arguments.of(
             buildCallData(CallDataSetting.ALL_NON_ZEROS_EXCEPT_FOR_FIRST, false, 101),
             true,
-            DominantCost.FLOOR_COST_DOMINATES));
+            DominantCost.FLOOR_COST_DOMINATES,
+            noSenderRecipientCollision));
 
     // Case ZEROS_AND_NON_ZEROS.
     // caveat for simplicity we consider even sizes.
@@ -134,12 +152,28 @@ public class TrivialExecutionTests extends TracerTestBase {
         Arguments.of(
             buildCallData(CallDataSetting.ZEROS_AND_NON_ZEROS, false, 160),
             true,
-            DominantCost.EXECUTION_COST_DOMINATES));
+            DominantCost.EXECUTION_COST_DOMINATES,
+            noSenderRecipientCollision));
     arguments.add(
         Arguments.of(
             buildCallData(CallDataSetting.ZEROS_AND_NON_ZEROS, false, 162),
             true,
-            DominantCost.FLOOR_COST_DOMINATES));
+            DominantCost.FLOOR_COST_DOMINATES,
+            noSenderRecipientCollision));
+
+    // Case ALL_ZEROS with sender-recipient collision.
+    // This explores a case which blew up on mainnet, where a transaction had sender == recipient,
+    // non-empty call
+    // data, and a bug in the senderAddressCollision() case of TxSkipSection was triggered.
+    //
+    // The transaction execution cost (TX_SKIP) is 21000 + 4.
+    // The floor cost is 21000 + 10.
+    arguments.add(
+        Arguments.of(
+            buildCallData(CallDataSetting.ALL_ZEROS, true, 1),
+            false,
+            DominantCost.FLOOR_COST_DOMINATES,
+            senderRecipientCollision));
 
     return arguments.stream();
   }
@@ -152,7 +186,9 @@ public class TrivialExecutionTests extends TracerTestBase {
   }
 
   static Bytes buildCallData(CallDataSetting callDataSetting, boolean startsWithZero, int length) {
-    Preconditions.checkArgument(length > 1, "length must be at least 2");
+    Preconditions.checkArgument(
+        callDataSetting != CallDataSetting.ZEROS_AND_NON_ZEROS || length > 1,
+        "length must be at least 2");
     return switch (callDataSetting) {
       case ALL_ZEROS -> Bytes.fromHexString("00".repeat(length));
       case ZEROS_AND_NON_ZEROS -> Bytes.fromHexString(
