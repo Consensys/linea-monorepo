@@ -7,7 +7,7 @@ import {
   TransactionResponse,
 } from "ethers";
 import { Direction, wait } from "@consensys/linea-sdk";
-import { ILogger } from "../../core/utils/logging/ILogger";
+import { ILogger } from "@consensys/linea-shared-utils";
 import { DEFAULT_INITIAL_FROM_BLOCK } from "../../core/constants";
 import { IMessageSentEventProcessor } from "../../core/services/processors/IMessageSentEventProcessor";
 import { Message } from "../../core/entities/Message";
