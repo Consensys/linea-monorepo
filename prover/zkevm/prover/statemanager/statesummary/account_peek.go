@@ -282,7 +282,7 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 	}
 
 	ss.codeSize.PushInt(int(acc.CodeSize))
-	ss.miMCCodeHash.PushBytes32(acc.MimcCodeHash)
+	ss.miMCCodeHash.PushBytes32(acc.Poseidon2CodeHash)
 	ss.storageRoot.PushBytes32(acc.StorageRoot)
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
 }
@@ -314,7 +314,7 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	}
 
 	ss.codeSize.PushInt(int(acc.CodeSize))
-	ss.miMCCodeHash.PushBytes32(acc.MimcCodeHash)
+	ss.miMCCodeHash.PushBytes32(acc.Poseidon2CodeHash)
 	ss.storageRoot.PushBytes32(storageRoot)
 	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
 }

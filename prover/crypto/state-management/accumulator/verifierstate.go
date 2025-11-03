@@ -52,7 +52,7 @@ func updateCheckRoot(conf *smt.Config, proof smt.Proof, root, old, new Bytes32) 
 // `SubTreeRoot`
 func (v *VerifierState[K, V]) TopRoot() Bytes32 {
 	hasher := v.Config.HashFunc()
-	WriteInt64On32Bytes(hasher, v.NextFreeNode)
+	WriteInt64On64Bytes(hasher, v.NextFreeNode)
 	v.SubTreeRoot.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
 	return AsBytes32(Bytes32)
