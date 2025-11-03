@@ -24,7 +24,7 @@ const createValidEnv = () => ({
   MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: "16",
   MIN_WITHDRAWAL_THRESHOLD_ETH: "42",
   WEB3SIGNER_URL: "https://web3signer.linea.build",
-  WEB3SIGNER_PUBLIC_KEY: `0x02${"a".repeat(64)}`,
+  WEB3SIGNER_PUBLIC_KEY: `0x${"a".repeat(128)}`,
   WEB3SIGNER_KEYSTORE_PATH: "/path/to/keystore",
   WEB3SIGNER_KEYSTORE_PASSPHRASE: "keystore-pass",
   WEB3SIGNER_TRUSTSTORE_PATH: "/path/to/truststore",

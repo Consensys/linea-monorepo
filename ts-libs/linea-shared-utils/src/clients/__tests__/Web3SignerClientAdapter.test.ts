@@ -2,7 +2,6 @@ import path from "path";
 import axios from "axios";
 import { Agent } from "https";
 import { Hex, serializeTransaction } from "viem";
-import { publicKeyToAddress } from "viem/accounts";
 import { readFileSync } from "fs";
 import forge from "node-forge";
 import { Web3SignerClientAdapter } from "../Web3SignerClientAdapter";
@@ -45,14 +44,9 @@ jest.mock("viem", () => {
   };
 });
 
-jest.mock("viem/accounts", () => ({
-  publicKeyToAddress: jest.fn(),
-}));
-
 const AgentMock = Agent as unknown as jest.Mock;
 const axiosPostMock = axios.post as jest.MockedFunction<typeof axios.post>;
 const serializeTransactionMock = serializeTransaction as jest.MockedFunction<typeof serializeTransaction>;
-const publicKeyToAddressMock = publicKeyToAddress as jest.MockedFunction<typeof publicKeyToAddress>;
 const readFileSyncMock = readFileSync as unknown as jest.Mock;
 const fromDerMock = forge.asn1.fromDer as jest.Mock;
 const pkcs12FromAsn1Mock = forge.pkcs12.pkcs12FromAsn1 as jest.Mock;
@@ -98,7 +92,6 @@ describe("Web3SignerClientAdapter", () => {
     AgentMock.mockImplementation(() => agentInstance);
     serializeTransactionMock.mockReturnValue("0x02serialized");
     axiosPostMock.mockResolvedValue({ data: "0xsigned" } as any);
-    publicKeyToAddressMock.mockReturnValue("0xderived");
   });
 
   const createAdapter = (logger: jest.Mocked<ILogger>) =>
@@ -178,7 +171,6 @@ describe("Web3SignerClientAdapter", () => {
 
     const address = adapter.getAddress();
 
-    expect(publicKeyToAddressMock).toHaveBeenCalledWith(web3SignerPublicKey);
-    expect(address).toBe("0xderived");
+    expect(address).toBe("0xD42E308FC964b71E18126dF469c21B0d7bcb86cC");
   });
 });

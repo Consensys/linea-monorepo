@@ -50,9 +50,8 @@ export const configSchema = z
     // Accept either an Ethereum address (20 bytes) OR a secp256k1 pubkey (33/65 bytes).
     // If you only want addresses, replace with `Address`.
     WEB3SIGNER_PUBLIC_KEY: Hex.refine(
-      (v) =>
-        /^(?:0x)?[a-fA-F0-9]{128}$/.test(v) || // uncompressed pubkey (64 bytes, without ...04-prefix, optional 0x prefix)
-        "Expected secp256k1 public key (uncompressed, without 0x04 prefix).",
+      (v) => /^(?:0x)?[a-fA-F0-9]{128}$/.test(v), // uncompressed pubkey (64 bytes, without ...04-prefix, optional 0x prefix)
+      "Expected secp256k1 public key (uncompressed, without 0x04 prefix).",
     ),
     WEB3SIGNER_KEYSTORE_PATH: z.string().min(1),
     WEB3SIGNER_KEYSTORE_PASSPHRASE: z.string().min(1),
