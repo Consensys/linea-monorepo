@@ -156,7 +156,7 @@ func TestSerdeZkEVM(t *testing.T) {
 
 func TestSerdeZKEVMFull(t *testing.T) {
 
-	cfg, err := config.NewConfigFromFileUnchecked("/home/ubuntu/linea-monorepo/prover/config/config-mainnet-limitless.toml")
+	cfg, err := config.NewConfigFromFileUnchecked("../../config/config-mainnet-limitless.toml")
 	if err != nil {
 		t.Fatalf("failed to read config file: %s", err)
 	}
