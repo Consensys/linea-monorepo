@@ -2,7 +2,11 @@ package poseidon2
 
 import (
 	"fmt"
+	"hash"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
+	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark/frontend"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
@@ -19,6 +23,8 @@ const maxSizeBuf = 1024
 
 // Poseidon2FieldHasherDigest implements a Poseidon2-based hasher that works with both field elements and bytes
 type Hasher struct {
+	hash.Hash
+
 	maxValue Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
@@ -132,9 +138,20 @@ func Poseidon2() *Hasher {
 		initialState[i] = field.Zero()
 	}
 	return &Hasher{
+		Hash: gnarkposeidon2.NewMerkleDamgardHasher(),
+
 		maxValue: HashToBytes32(maxVal),
 		state:    initialState,
 		buffer:   make([]field.Element, 0),
+	}
+}
+
+// Create a new MiMC hasher
+func MiMC() *Hasher {
+	maxVal, _ := new(fr.Element).SetString("-1")
+	return &Hasher{
+		Hash:     mimc.NewMiMC(),
+		maxValue: maxVal.Bytes(),
 	}
 }
 

@@ -4,18 +4,20 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
 func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 
 	config := &Config{
-		HashFunc: poseidon2.Poseidon2,
+		HashFunc: poseidon2.MiMC,
 		Depth:    40,
 	}
 
@@ -40,9 +42,9 @@ func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 }
 
 type MerkleProofCircuit struct {
-	Proofs []GnarkProof           `gnark:",public"`
-	Leafs  [][8]frontend.Variable `gnark:",public"`
-	Root   [8]frontend.Variable
+	Proofs []GnarkProof        `gnark:",public"`
+	Leafs  []frontend.Variable `gnark:",public"`
+	Root   frontend.Variable
 }
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
@@ -64,30 +66,33 @@ func TestMerkleProofGnark(t *testing.T) {
 	nbProofs := len(proofs)
 	var witness MerkleProofCircuit
 	witness.Proofs = make([]GnarkProof, nbProofs)
-	witness.Leafs = make([][8]frontend.Variable, nbProofs)
+	witness.Leafs = make([]frontend.Variable, nbProofs)
+	var buf fr.Element
 	for i := 0; i < nbProofs; i++ {
-		witness.Proofs[i].Siblings = make([][8]frontend.Variable, len(proofs[i].Siblings))
+		witness.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
 		for j := 0; j < len(proofs[i].Siblings); j++ {
-			for k := 0; k < 8; k++ {
-				witness.Proofs[i].Siblings[j][k] = proofs[i].Siblings[j][k]
-			}
+			siblingBytes := types.HashToBytes32(proofs[i].Siblings[j])
+			buf.SetBytes(siblingBytes[:])
+			witness.Proofs[i].Siblings[j] = buf.String()
 		}
 		witness.Proofs[i].Path = proofs[i].Path
-		for k := 0; k < 8; k++ {
-			witness.Leafs[i][k] = leafs[i][k].String()
-		}
+		leafsBytes := types.HashToBytes32(leafs[i])
+		buf.SetBytes(leafsBytes[:])
+		witness.Leafs[i] = buf.String()
 	}
-	for k := 0; k < 8; k++ {
-		witness.Root[k] = root[k].String()
-	}
+	rootBytes := types.HashToBytes32(root)
+
+	buf.SetBytes(rootBytes[:])
+	witness.Root = buf.String()
+
 	// compile circuit
 	var circuit MerkleProofCircuit
 	circuit.Proofs = make([]GnarkProof, nbProofs)
-	circuit.Leafs = make([][8]frontend.Variable, nbProofs)
+	circuit.Leafs = make([]frontend.Variable, nbProofs)
 	for i := 0; i < nbProofs; i++ {
-		circuit.Proofs[i].Siblings = make([][8]frontend.Variable, len(proofs[i].Siblings))
+		circuit.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
 	}
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 	if err != nil {
 		t.Fatal(err)
 	}

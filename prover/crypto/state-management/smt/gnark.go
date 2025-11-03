@@ -8,7 +8,7 @@ import (
 // GnarkProof mirrors [Proof] in a gnark circuit.
 type GnarkProof struct {
 	Path     frontend.Variable
-	Siblings [][8]frontend.Variable
+	Siblings []frontend.Variable
 }
 
 // GnarkRecoverRoot is as [RecoverRoot] in a gnark circuit. The provided
@@ -38,8 +38,8 @@ func GnarkRecoverRoot(
 func GnarkVerifyMerkleProof(
 	api frontend.API,
 	proof GnarkProof,
-	leaf [8]frontend.Variable,
-	root [8]frontend.Variable,
+	leaf frontend.Variable,
+	root frontend.Variable,
 	h hash.FieldHasher) {
 
 	r := GnarkRecoverRoot(api, proof, leaf, h)
