@@ -1,18 +1,17 @@
 # Linea Native Yield Automation Service
 
-Trigger
-- Event-based on Lido contract
-- Fallback to cronjob
-
-TODO
-
 ## Overview
 
-TODO
+The Linea Native Yield Automation Service automates native yield yield management operations by continuously monitoring the YieldManager contract's ossification state and executing mode-specific processors. 
+
+The service is triggered through an event-driven mechanism that watches for `VaultsReportDataUpdated` events from the LazyOracle contract. The `waitForVaultsReportDataUpdatedEvent()` function implements a race condition between event detection and a configurable timeout — whichever occurs first triggers the operation cycle, ensuring timely execution even when events are delayed.
+
+Operation modes are selected dynamically based on the yield provider's state:
+- `YIELD_REPORTING_MODE` for normal operations
+- `OSSIFICATION_PENDING_MODE` during transition
+- `OSSIFICATION_COMPLETE_MODE` once ossified.
 
 ## Configuration
-
-### Environment Variables
 
 See the [configuration schema file](native-yield-operations/automation-service/src/application/main/config/config.schema.ts)
 
