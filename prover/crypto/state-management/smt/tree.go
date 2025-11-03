@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
@@ -56,9 +57,17 @@ func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
 
 	if config.HashFunc != nil {
 		hasher := config.HashFunc()
-		hasher.WriteElements(nodeL[:])
-		hasher.WriteElements(nodeR[:])
-		d = hasher.SumElement()
+		hasher.Reset()
+
+		nodeLBytes := field.OctupletToBytes(nodeL)
+		types.AsBytes32(nodeLBytes[:]).WriteTo(hasher)
+
+		nodeRBytes := field.OctupletToBytes(nodeR)
+		types.AsBytes32(nodeRBytes[:]).WriteTo(hasher)
+
+		dbytes := types.AsBytes32(hasher.Sum(nil))
+		d = types.Bytes32ToOctuplet(dbytes)
+
 	} else {
 		panic("missing a hash function")
 	}
