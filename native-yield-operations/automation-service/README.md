@@ -48,7 +48,7 @@ automation-service/
 
 ## Configuration
 
-See the [configuration schema file](native-yield-operations/automation-service/src/application/main/config/config.schema.ts)
+See the [configuration schema file](./src/application/main/config/config.schema.ts)
 
 ## Development
 
