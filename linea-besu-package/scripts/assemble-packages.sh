@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Enable fail-fast behavior
+set -e
+
 source ./versions.env
 
 mkdir -p ./tmp
@@ -19,9 +22,10 @@ cd ./besu/plugins
 echo "downloading the plugins"
 echo "getting linea_sequencer_plugin_version: $LINEA_SEQUENCER_PLUGIN_VERSION"
 wget -nv https://github.com/Consensys/linea-monorepo/releases/download/linea-sequencer-v$LINEA_SEQUENCER_PLUGIN_VERSION/linea-sequencer-v$LINEA_SEQUENCER_PLUGIN_VERSION.zip
-unzip -o linea-sequencer-v$LINEA_SEQUENCER_PLUGIN_VERSION.zip
+unzip -j -o linea-sequencer-v$LINEA_SEQUENCER_PLUGIN_VERSION.zip
 rm linea-sequencer-v$LINEA_SEQUENCER_PLUGIN_VERSION.zip
 
+# This would be removed soon as now Maru controls EL "finalized" tag
 echo "getting linea_finalized_tag_updater_plugin_version: $LINEA_FINALIZED_TAG_UPDATER_PLUGIN_VERSION"
 wget -nv https://github.com/Consensys/linea-monorepo/releases/download/linea-finalized-tag-updater-v$LINEA_FINALIZED_TAG_UPDATER_PLUGIN_VERSION/linea-finalized-tag-updater-v$LINEA_FINALIZED_TAG_UPDATER_PLUGIN_VERSION.jar
 

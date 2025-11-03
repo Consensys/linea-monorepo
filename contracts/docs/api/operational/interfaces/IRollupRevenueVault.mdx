@@ -1,0 +1,245 @@
+# `IRollupRevenueVault`
+
+Accepts rollup revenue, and performs burning operations.
+
+### ZeroAddressNotAllowed
+
+```solidity
+error ZeroAddressNotAllowed()
+```
+
+_Thrown when a parameter is the zero address._
+
+### ZeroTimestampNotAllowed
+
+```solidity
+error ZeroTimestampNotAllowed()
+```
+
+_Thrown when a timestamp is zero._
+
+### InvoiceTransferFailed
+
+```solidity
+error InvoiceTransferFailed()
+```
+
+_Thrown when the invoice transfer fails._
+
+### EthBurnFailed
+
+```solidity
+error EthBurnFailed()
+```
+
+_Thrown when the burn of ETH fails._
+
+### TimestampsNotInSequence
+
+```solidity
+error TimestampsNotInSequence()
+```
+
+_Thrown when the timestamps are not in sequence._
+
+### EndTimestampMustBeGreaterThanStartTimestamp
+
+```solidity
+error EndTimestampMustBeGreaterThanStartTimestamp()
+```
+
+_Thrown when the end timestamp is not greater than the start timestamp._
+
+### ZeroInvoiceAmount
+
+```solidity
+error ZeroInvoiceAmount()
+```
+
+_Thrown when the invoice amount is zero._
+
+### InvoiceDateTooOld
+
+```solidity
+error InvoiceDateTooOld()
+```
+
+_Thrown when the invoice date is too old._
+
+### ExistingAddressTheSame
+
+```solidity
+error ExistingAddressTheSame()
+```
+
+_Thrown when the provided address is the same as the existing address._
+
+### DexSwapFailed
+
+```solidity
+error DexSwapFailed()
+```
+
+_Thrown when the DEX swap fails._
+
+### FutureInvoicesNotAllowed
+
+```solidity
+error FutureInvoicesNotAllowed()
+```
+
+_Thrown when the invoice is in the future._
+
+### NoEthSent
+
+```solidity
+error NoEthSent()
+```
+
+_Thrown when no ETH is sent and the fallback or receive functions are reached._
+
+### InvoiceProcessed
+
+```solidity
+event InvoiceProcessed(address receiver, uint256 startTimestamp, uint256 endTimestamp, uint256 amountPaid, uint256 amountRequested)
+```
+
+_Emitted when an invoice is processed.
+If amountRequested < amountPaid, the difference is previous unpaid invoice amount._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| receiver | address | The address of the invoice receiver. |
+| startTimestamp | uint256 | The start timestamp of the invoicing period. |
+| endTimestamp | uint256 | The end timestamp of the invoicing period. |
+| amountPaid | uint256 | The amount that was paid. |
+| amountRequested | uint256 | The amount that was requested. |
+
+### EthBurntSwappedAndBridged
+
+```solidity
+event EthBurntSwappedAndBridged(uint256 ethBurnt, uint256 lineaTokensBridged)
+```
+
+_Emitted when ETH is burnt, swapped, and bridged._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| ethBurnt | uint256 | The amount of ETH that was burnt. |
+| lineaTokensBridged | uint256 | The amount of LINEA tokens that were bridged. |
+
+### L1LineaTokenBurnerUpdated
+
+```solidity
+event L1LineaTokenBurnerUpdated(address previousValue, address newValue)
+```
+
+_Emitted when the L1 LINEA token burner contract address is updated._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| previousValue | address | The previous L1 LINEA token burner contract address. |
+| newValue | address | The new L1 LINEA token burner contract address. |
+
+### DexSwapAdapterUpdated
+
+```solidity
+event DexSwapAdapterUpdated(address previousValue, address newValue)
+```
+
+_Emitted when the DEX swap adapter contract address is updated._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| previousValue | address | The previous DEX swap adapter contract address. |
+| newValue | address | The new DEX swap adapter contract address. |
+
+### EthReceived
+
+```solidity
+event EthReceived(uint256 amount)
+```
+
+_Emitted when ETH is received._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| amount | uint256 | The amount of ETH received. |
+
+### ArrearsPaid
+
+```solidity
+event ArrearsPaid(uint256 amount, uint256 remainingArrears)
+```
+
+_Emitted when arrears is paid when calling burnAndBridge._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| amount | uint256 | The amount of ETH paid. |
+| remainingArrears | uint256 | The arrears remaining in ETH. |
+
+### InvoiceArrearsUpdated
+
+```solidity
+event InvoiceArrearsUpdated(uint256 previousInvoiceArrears, uint256 newInvoiceArrears, uint256 previousLastInvoiceDate, uint256 newLastInvoiceDate)
+```
+
+_Emitted when the invoice arrears are updated._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| previousInvoiceArrears | uint256 | The previous invoice arrears value. |
+| newInvoiceArrears | uint256 | The new invoice arrears value. |
+| previousLastInvoiceDate | uint256 | The previous timestamp of the last invoice processed. |
+| newLastInvoiceDate | uint256 | The new timestamp of the last invoice processed. |
+
+### InvoicePaymentReceiverUpdated
+
+```solidity
+event InvoicePaymentReceiverUpdated(address previousValue, address newValue)
+```
+
+_Emitted when the invoice payment receiver is updated._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| previousValue | address | The previous invoice payment receiver address. |
+| newValue | address | The new invoice payment receiver address. |
+
+### RollupRevenueVaultInitialized
+
+```solidity
+event RollupRevenueVaultInitialized(uint256 lastInvoiceDate, address invoicePaymentReceiver, address tokenBridge, address messageService, address l1LineaTokenBurner, address lineaToken, address dexSwapAdapter)
+```
+
+_Emitted when the Rollup Revenue Vault is initialized._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| lastInvoiceDate | uint256 | The default or starting timestamp for invoices less 1 second. |
+| invoicePaymentReceiver | address | The address that receives invoice payments. |
+| tokenBridge | address | The address of the token bridge contract. |
+| messageService | address | The address of the message service contract. |
+| l1LineaTokenBurner | address | The address of the L1 LINEA token burner contract. |
+| lineaToken | address | The address of the LINEA token contract. |
+| dexSwapAdapter | address | The address of the DEX swap adapter contract. |
+
