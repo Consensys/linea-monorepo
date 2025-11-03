@@ -36,7 +36,6 @@ export class OperationModeSelector implements IOperationModeSelector {
     private readonly yieldProvider: Address,
     private readonly contractReadRetryTimeMs: number,
   ) {
-    this.yieldReportingOperationModeProcessor = yieldReportingOperationModeProcessor;
   }
 
   /**
