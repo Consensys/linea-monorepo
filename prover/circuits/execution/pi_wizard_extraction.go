@@ -121,7 +121,7 @@ func checkPublicInputs(
 	// The constraint ensures that either:
 	// 1. wizard chainID is 0 (legacy transactions case), OR
 	// 2. wizard chainID equals functional chainID
-	wizardChainID := wvc.GetPublicInput(api, wvc, publicInput.ChainID, limitlessMode)
+	wizardChainID := getPublicInput(api, wvc, publicInput.ChainID, limitlessMode)
 	functionalChainID := gnarkFuncInp.ChainID
 
 	// (wizardChainID - functionalChainID) * wizardChainID == 0

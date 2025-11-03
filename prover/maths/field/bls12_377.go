@@ -19,8 +19,6 @@ import (
 type Element = fr.Element
 type Vector = fr.Vector
 
-type Vector = fr.Vector
-
 const (
 	// RootOfUnityOrder is the smallest integer such that
 	// 		[RootOfUnity] ** (2 ** RootOfUnityOrder) == 1
