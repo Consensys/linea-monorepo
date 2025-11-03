@@ -16,6 +16,7 @@ ignore_compatibility_check = false
 
 
 [blob_decompression]
+prover_mode = "full"
 requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/compression"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
