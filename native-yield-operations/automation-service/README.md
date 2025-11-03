@@ -56,11 +56,13 @@ See the [configuration schema file](./src/application/main/config/config.schema.
 
 #### Start the docker local stack
 
-TODO
+TODO - Planning to write E2E tests with mock Lido contracts once this branch + Native Yield contracts are together
 
 #### Run the automation service locally:
 
-TODO
+1. Create `.env` as per `.env.sample` and the [configuration schema](./src/application/main/config/config.schema.ts)
+
+2. `pnpm --filter @consensys/linea-native-yield-automation-service exec tsx run.ts`
 
 ### Build
 

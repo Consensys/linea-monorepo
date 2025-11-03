@@ -6,7 +6,7 @@
  * PRIVATE_KEY=0xabc123... \
  * LAZY_ORACLE_ADDRESS=0x... \
  * LIDO_VAULT_ADDRESS=0x... \
- * pnpm --filter @consensys/linea-native-yield-cron-job exec tsx scripts/test-lazy-oracle-contract-client.ts
+ * pnpm --filter @consensys/linea-native-yield-automation-service exec tsx scripts/test-lazy-oracle-contract-client.ts
  *
  * Optional flags:
  * POLL_INTERVAL_MS=60000 \

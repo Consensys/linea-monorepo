@@ -7,7 +7,7 @@
  * LAZY_ORACLE_ADDRESS=0x... \
  * LIDO_VAULT_ADDRESS=0x... \
  * IPFS_BASE_URL=https://gateway.ipfs.io/ipfs \
- * pnpm --filter @consensys/linea-native-yield-cron-job exec tsx scripts/test-lido-accounting-report-client.ts
+ * pnpm --filter @consensys/linea-native-yield-automation-service exec tsx scripts/test-lido-accounting-report-client.ts
  *
  * Optional flags:
  * POLL_INTERVAL_MS=60000 \

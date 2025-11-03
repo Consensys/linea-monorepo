@@ -8,7 +8,7 @@
  * CLIENT_SECRET=... \
  * AUDIENCE=... \
  * BEACON_NODE_RPC_URL=https://example/beacon \
- * pnpm --filter @consensys/linea-native-yield-cron-job exec tsx scripts/test-consensys-staking-graphql-client.ts
+ * pnpm --filter @consensys/linea-native-yield-automation-service exec tsx scripts/test-consensys-staking-graphql-client.ts
  */
 
 import {
