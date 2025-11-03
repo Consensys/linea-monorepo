@@ -196,7 +196,7 @@ export default class SubmitInvoice extends Command {
       description: "Whether to use the testnet chain (Linea Sepolia)",
       required: false,
       default: false,
-      env: "BURN_AND_BRIDGE_IS_TESTNET",
+      env: "SUBMIT_INVOICE_IS_TESTNET",
     }),
   };
 
