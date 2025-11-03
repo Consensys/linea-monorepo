@@ -83,7 +83,7 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
     if (data?.expires_at) {
       const tokenExpiresAtSecondsCandidate = data?.expires_at;
       if (tokenExpiresAtSecondsCandidate < getCurrentUnixTimestampSeconds()) {
-        this.logger.error(`OAuth2 access token already expired`);
+        this.logger.error(`OAuth2 access token already expired at ${tokenExpiresAtSecondsCandidate}`);
         return undefined;
       }
       this.tokenExpiresAtSeconds = tokenExpiresAtSecondsCandidate;
@@ -94,7 +94,9 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
       return undefined;
     }
 
-    this.logger.info(`getBearerToken successfully retrived new OAuth2 Bearer token`);
+    this.logger.info(
+      `getBearerToken successfully retrived new OAuth2 Bearer token tokenExpiresAtSeconds=${this.tokenExpiresAtSeconds}`,
+    );
 
     return this.bearerToken;
   }
