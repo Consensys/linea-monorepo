@@ -31,25 +31,46 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 	state = matMulExternalExpression(state)
 
 	interm := make([][]ifaces.Column, fullRounds)
-
+	counter := 0
 	// External rounds
 	for round := 1; round < 1+partialRounds; round++ {
 		state = addRoundKeyExpression(round-1, state)
 		state = sBoxFullExpression(state)
 		state = matMulExternalExpression(state)
-		cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, round), state)
+		cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
 		state = asExprs(cols)
-		interm[round] = cols
+		interm[counter] = cols
+		counter++
+
 	}
 
 	// Internal rounds
+	// The Key Optimizations: avoid the high cost of creating new columns every single round, but also reset the expressions before their fan-in becomes high enough to slow down the prover
+	//
+	// - 1. Partial S-Box: instead of constraining the full S-Box every round, we only apply it on the first element of the state.
+	// For most internal rounds, we generate 1 constraint/column instead of 16.
+	// This dramatically reduces the total number of columns and constraints the compiler has to manage.
+	// - 2. Batched Anchoring: instead of anchoring every round, we do it every `internalPackedSize` rounds. we fully anchor the entire state every internalPackedSize rounds
+	// (e.g., the optimial choice is every 3 rounds), we "collapse" the growing linear expressions for state[1] through state[15] back into simple variables.
 	for round := 1 + partialRounds; round < fullRounds-partialRounds; round++ {
 		state = addRoundKeyExpression(round-1, state)
-		state = sBoxPartialExpression(state)
+		state[0] = sBoxPartialExpression(state[0])
+
+		if round%internalPackedSize == 0 {
+			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
+			state = asExprs(cols)
+			interm[counter] = cols
+			counter++
+		} else if partialSBox {
+			// Constrain only the first one
+			col := anchorSingleColumn(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state[0])
+			state[0] = symbolic.NewVariable(col)
+			interm[counter] = []ifaces.Column{col}
+			counter++
+		}
+
 		state = matMulInternalExpression(state)
-		cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, round), state)
-		state = asExprs(cols)
-		interm[round] = cols
+
 	}
 
 	// External rounds
@@ -59,9 +80,10 @@ func checkPoseidon2BlockCompressionExpression(comp *wizard.CompiledIOP, oldState
 		state = matMulExternalExpression(state)
 
 		if round < fullRounds-1 {
-			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, round), state)
+			cols := anchorColumns(comp, fmt.Sprintf("POSEIDON2_ROUND_%v_%v", comp.SelfRecursionCount, counter), state)
 			state = asExprs(cols)
-			interm[round] = cols
+			interm[counter] = cols
+			counter++
 		}
 	}
 
@@ -96,14 +118,8 @@ func sBoxFullExpression(input []*symbolic.Expression) []*symbolic.Expression {
 }
 
 // sBoxPartialExpression applies the partial s-box over an array of expression.
-func sBoxPartialExpression(input []*symbolic.Expression) []*symbolic.Expression {
-	if len(input) != width {
-		utils.Panic("Input slice length must be %v", width)
-	}
-
-	res := make([]*symbolic.Expression, width)
-	res[0] = symbolic.Mul(input[0], input[0], input[0])
-	copy(res[1:], input[1:])
+func sBoxPartialExpression(input *symbolic.Expression) *symbolic.Expression {
+	res := symbolic.Mul(input, input, input)
 	return res
 }
 
@@ -258,6 +274,26 @@ func asExprs(columns []ifaces.Column) []*symbolic.Expression {
 		res[i] = symbolic.NewVariable(column)
 	}
 	return res
+}
+
+func anchorSingleColumn(comp *wizard.CompiledIOP, name string, column *symbolic.Expression) ifaces.Column {
+
+	_, round, size := wizardutils.AsExpr(column)
+
+	news := comp.InsertCommit(
+		round,
+		ifaces.ColIDf("%v_%v", name, 0),
+		size,
+		true,
+	)
+
+	comp.InsertGlobal(
+		round,
+		ifaces.QueryIDf("%v_%v_GLOBAL", name, 0),
+		symbolic.Sub(column, news),
+	)
+
+	return news
 }
 
 // makeArrayOfZeroes returns an array of zero expressions.

@@ -2,10 +2,17 @@
 
 package accumulator_test
 
-/*TODO@yao
-func TestInitializationMiMC(t *testing.T) {
+import (
+	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestInitializationPoseidon2(t *testing.T) {
 	// Just check that the code returns
-	acc := newTestAccumulatorMiMC()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 	ver := acc.VerifierState()
 
 	// The next free nodes are well initialized
@@ -19,21 +26,21 @@ func TestInitializationMiMC(t *testing.T) {
 	tailHash := accumulator.Tail(acc.Config()).Hash(acc.Config())
 
 	// First leaf is head
-	assert.Equal(t, acc.Tree.MustGetLeaf(0), accumulator.Head().Hash(acc.Config()))
-	assert.Equal(t, acc.Tree.MustGetLeaf(1), accumulator.Tail(acc.Config()).Hash(acc.Config()))
+	assert.Equal(t, acc.Tree.MustGetLeaf(0), accumulator.Head().Hash(acc.Config()).ToOctuplet())
+	assert.Equal(t, acc.Tree.MustGetLeaf(1), accumulator.Tail(acc.Config()).Hash(acc.Config()).ToOctuplet())
 
 	// Can we prover membership of the leaf
 	proofHead := acc.Tree.MustProve(0)
-	proofHead.Verify(acc.Config(), headHash, acc.SubTreeRoot())
+	proofHead.Verify(acc.Config(), headHash.ToOctuplet(), acc.SubTreeRoot().ToOctuplet())
 
 	proofTail := acc.Tree.MustProve(1)
-	proofTail.Verify(acc.Config(), tailHash, acc.SubTreeRoot())
+	proofTail.Verify(acc.Config(), tailHash.ToOctuplet(), acc.SubTreeRoot().ToOctuplet())
 }
 
-func TestInsertionMiMC(t *testing.T) {
+func TestInsertionPoseidon2(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorMiMC()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 	ver := acc.VerifierState()
 
 	for i := 0; i < numRepetion; i++ {
@@ -47,10 +54,10 @@ func TestInsertionMiMC(t *testing.T) {
 	assert.Equal(t, acc.SubTreeRoot(), ver.SubTreeRoot)
 }
 
-func TestReadZeroMiMC(t *testing.T) {
+func TestReadZeroPoseidon2(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorMiMC()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 	ver := acc.VerifierState()
 
 	for i := 0; i < numRepetion; i++ {
@@ -65,10 +72,10 @@ func TestReadZeroMiMC(t *testing.T) {
 	assert.Equal(t, acc.SubTreeRoot(), ver.SubTreeRoot)
 }
 
-func TestReadNonZeroMiMC(t *testing.T) {
+func TestReadNonZeroPoseidon2(t *testing.T) {
 
 	// Performs an insertion
-	acc := newTestAccumulatorMiMC()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
@@ -90,9 +97,9 @@ func TestReadNonZeroMiMC(t *testing.T) {
 	assert.Equal(t, acc.SubTreeRoot(), ver.SubTreeRoot)
 }
 
-func TestUpdateMiMC(t *testing.T) {
+func TestUpdatePoseidon2(t *testing.T) {
 	// Performs an insertion
-	acc := newTestAccumulatorMiMC()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
@@ -113,9 +120,9 @@ func TestUpdateMiMC(t *testing.T) {
 	assert.Equal(t, acc.SubTreeRoot(), ver.SubTreeRoot)
 }
 
-func TestDeletionMiMC(t *testing.T) {
+func TestDeletionPoseidon2(t *testing.T) {
 	// Performs an insertion
-	acc := newTestAccumulatorMiMC()
+	acc := newTestAccumulatorPoseidon2DummyVal()
 
 	// Fill the tree
 	for i := 0; i < numRepetion; i++ {
@@ -135,4 +142,3 @@ func TestDeletionMiMC(t *testing.T) {
 	assert.Equal(t, acc.NextFreeNode, ver.NextFreeNode)
 	assert.Equal(t, acc.SubTreeRoot(), ver.SubTreeRoot)
 }
-*/

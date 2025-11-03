@@ -58,8 +58,8 @@ func HashToBytes32(hash vortex.Hash) Bytes32 {
 	return result
 }
 
-// Bytes32ToHash converts Bytes32 to []koalabear.Element
-func Bytes32ToHash(input Bytes32) field.Octuplet {
+// Bytes32ToOctuplet converts Bytes32 to []koalabear.Element
+func Bytes32ToOctuplet(input Bytes32) field.Octuplet {
 
 	var result field.Octuplet
 	for i := 0; i < 8; i++ {
@@ -135,8 +135,8 @@ func AsBytes32(b []byte) (d Bytes32) {
 }
 
 // Creates a bytes32 from an hexstring. Panic if it fails. Mostly useful for testing.
-// the string s is left padded with zeroes if less than 64 characters are provided
-// if more than 64 characters are provided, the function will panic
+// the string s is left padded with zeroes if less than 32 characters are provided
+// if more than 32 characters are provided, the function will panic
 // function expects an even number of chars
 // Ox prefix is optional
 func Bytes32FromHex(s string) Bytes32 {
@@ -150,9 +150,12 @@ func Bytes32FromHex(s string) Bytes32 {
 
 	var res Bytes32
 	copy(res[32-len(b):], b)
-	var f field.Element
-	if err := f.SetBytesCanonical(res[:]); err != nil {
-		utils.Panic("Invalid field element %v", err.Error())
+
+	var f [8]field.Element
+	for i := 0; i < 8; i++ {
+		if err := f[i].SetBytesCanonical(res[4*i : 4*i+4]); err != nil {
+			utils.Panic("Invalid field element %v", err.Error())
+		}
 	}
 	return res
 }
@@ -163,17 +166,7 @@ func DummyDigest(i int) (d Bytes32) {
 	return d
 }
 
-// SetField sets the bytes32 from a field.Element
-func (b *Bytes32) SetField(f field.Element) {
-	panic("The bytes32 should be settable with an array of 8 koalabear elements, and the function name should be SetField's'")
-}
-
-// ToField returns the bytes32 as a field.Element
-func (b Bytes32) ToField() field.Element {
-	panic("The bytes32 should be settable with an array of 8 koalabear elements and the function name should be ToField's'")
-	// var f field.Element
-	// if err := f.SetBytesCanonical(b[:]); err != nil {
-	// 	panic(err)
-	// }
-	// return f
+// ToOctuplet returns an octuplet from the Bytes32
+func (d Bytes32) ToOctuplet() field.Octuplet {
+	return Bytes32ToOctuplet(d)
 }

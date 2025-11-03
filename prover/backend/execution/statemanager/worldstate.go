@@ -14,7 +14,7 @@ import (
 const WS_LOCATION = "0x"
 
 var MIMC_CONFIG = &smt.Config{
-	HashFunc: hashtypes.MiMC,
+	HashFunc: hashtypes.Poseidon2,
 	Depth:    40,
 }
 
@@ -46,12 +46,12 @@ func EmptyCodeHash(config *smt.Config) Digest {
 // Returns an EOA account
 func NewEOA(config *smt.Config, nonce int64, balance *big.Int) Account {
 	return types.Account{
-		Nonce:          nonce,
-		Balance:        balance,
-		StorageRoot:    EmptyStorageTrieHash(config), // The eth
-		MimcCodeHash:   EmptyCodeHash(config),
-		KeccakCodeHash: types.AsFullBytes32(LEGACY_KECCAK_EMPTY_CODEHASH),
-		CodeSize:       0,
+		Nonce:             nonce,
+		Balance:           balance,
+		StorageRoot:       EmptyStorageTrieHash(config), // The eth
+		Poseidon2CodeHash: EmptyCodeHash(config),
+		KeccakCodeHash:    types.AsFullBytes32(LEGACY_KECCAK_EMPTY_CODEHASH),
+		CodeSize:          0,
 	}
 }
 
@@ -65,12 +65,12 @@ func NewContractEmptyStorage(
 	codeSize int64,
 ) types.Account {
 	return types.Account{
-		Nonce:          nonce,
-		Balance:        balance,
-		StorageRoot:    EmptyStorageTrieHash(config),
-		MimcCodeHash:   codeHash,
-		KeccakCodeHash: keccakCodeHash,
-		CodeSize:       codeSize,
+		Nonce:             nonce,
+		Balance:           balance,
+		StorageRoot:       EmptyStorageTrieHash(config),
+		Poseidon2CodeHash: codeHash,
+		KeccakCodeHash:    keccakCodeHash,
+		CodeSize:          codeSize,
 	}
 }
 

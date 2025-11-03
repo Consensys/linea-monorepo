@@ -57,7 +57,7 @@ func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 	p.Data.Update(i, tuple)
 
 	newLeaf := tuple.LeafOpening.Hash(p.Config())
-	p.Tree.Update(int(i), types.Bytes32ToHash(newLeaf))
+	p.Tree.Update(int(i), types.Bytes32ToOctuplet(newLeaf))
 
 	return UpdateTrace[K, V]{
 		Location:        p.Location,
@@ -97,7 +97,7 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 		return errors.WithMessage(err, "read update verifier failed")
 	}
 
-	if !trace.Proof.Verify(v.Config, types.Bytes32ToHash(leaf), types.Bytes32ToHash(trace.OldSubRoot)) {
+	if !trace.Proof.Verify(v.Config, types.Bytes32ToOctuplet(leaf), types.Bytes32ToOctuplet(trace.OldSubRoot)) {
 		return fmt.Errorf("merkle proof verification failed")
 	}
 

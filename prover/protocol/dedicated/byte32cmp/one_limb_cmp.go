@@ -68,7 +68,7 @@ func CmpSmallCols(comp *wizard.CompiledIOP, a, b ifaces.Column, numBits int) (g,
 	var (
 		size       = a.Size()
 		round      = max(a.Round(), b.Round())
-		identifier = len(comp.Columns.AllKeys())
+		identifier = comp.Columns.NumEntriesTotal()
 		ctxName    = func(subName string) string {
 			return fmt.Sprintf("CMP_ONE_LIMB_CTX_%v_%v", identifier, subName)
 		}

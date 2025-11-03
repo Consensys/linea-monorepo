@@ -93,7 +93,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		SisHashes:         sisHashes,
 		MimcHashes:        mimcHashes,
 		Trees:             trees,
-		FinalFS:           types.Bytes32ToHash(types.AsBytes32(run.FS.State())),
+		FinalFS:           types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State())),
 		Pub:               pubs,
 	}
 }

@@ -3,14 +3,13 @@ package poseidon2
 import (
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 
-	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 const blockSize = 8
@@ -18,10 +17,9 @@ const blockSize = 8
 // TODO @thomas fixme arbitrary max size of the buffer
 const maxSizeBuf = 1024
 
-// Hasher implements a Poseidon2-based hasher that works with both field elements and bytes
-type Hasher struct {
-	hash.StateStorer
-	maxValue types.Bytes32 // the maximal value obtainable with that hasher
+// Poseidon2FieldHasherDigest implements a Poseidon2-based hasher that works with both field elements and bytes
+type Poseidon2FieldHasherDigest struct {
+	maxValue Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
 	state field.Octuplet
@@ -33,7 +31,10 @@ type Hasher struct {
 // Reset clears the buffer, and reset state to iv
 func (d *Hasher) Reset() {
 	d.buffer = d.buffer[:0]
-	d.state = field.Octuplet{}
+
+	for i := range d.state {
+		d.state[i] = field.Zero()
+	}
 }
 
 // WriteElements adds a slice of field elements to the running hash.
@@ -95,26 +96,79 @@ func (d *Hasher) Sum(msg []byte) []byte {
 	bytes := types.HashToBytes32(h)
 	return bytes[:]
 }
-func (d Hasher) MaxBytes32() types.Bytes32 {
+
+func (d *Poseidon2FieldHasherDigest) State() []byte {
+	hashBytes := HashToBytes32(d.state)
+	return hashBytes[:]
+}
+
+func (d *Poseidon2FieldHasherDigest) BlockSize() int {
+	return 32
+}
+
+func (d *Poseidon2FieldHasherDigest) Size() int {
+	return 32
+}
+
+func (d *Poseidon2FieldHasherDigest) SetState(state []byte) error {
+	stateBytes, err := cloneLeftPadded(state, d.BlockSize())
+	if err != nil {
+		return err
+	}
+
+	d.state = Bytes32ToOctuplet(AsBytes32(stateBytes))
+	return err
+}
+
+func (d Poseidon2FieldHasherDigest) MaxBytes32() Bytes32 {
 	return d.maxValue
 }
 
 // ///// Constructor for Poseidon2Hasher /////
 func Poseidon2() *Hasher {
-	var maxVal field.Octuplet
+	var maxVal, initialState field.Octuplet
 	for i := range maxVal {
-		maxVal[i] = field.NewFromString("-1")
+		maxVal[i] = *field.MaxVal
+		initialState[i] = field.Zero()
 	}
-	return &Hasher{
-		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
-		maxValue:    types.HashToBytes32(maxVal),
-		state:       field.Octuplet{},
-		buffer:      make([]field.Element, 0),
+	return &Poseidon2FieldHasherDigest{
+		maxValue: HashToBytes32(maxVal),
+		state:    initialState,
+		buffer:   make([]field.Element, 0),
 	}
+}
+
+// Poseidon2Sponge returns a Poseidon2 hash of an array of field elements
+func Poseidon2Sponge(x []field.Element) (newState field.Octuplet) {
+	var state, xBlock field.Octuplet
+	for len(x) != 0 {
+		if len(x) < blockSize {
+			padded := make([]field.Element, blockSize)
+			copy(padded[blockSize-len(x):], x) // left-padding
+			x = padded
+		}
+
+		copy(xBlock[:], x[:])
+		state = vortex.CompressPoseidon2(state, xBlock)
+		x = x[blockSize:]
+	}
+	return state
 }
 
 // GnarkBlockCompression applies the MiMC permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
 func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]zk.WrappedVariable) (newState [blockSize]zk.WrappedVariable) {
 	panic("unimplemented")
+}
+
+// cloneLeftPadded copies b into a new byte slice of size n.
+// If len(b) < n, it will be padded on the left.
+// len(b) > n will result in an error.
+func cloneLeftPadded(b []byte, n int) ([]byte, error) {
+	if len(b) > n {
+		return nil, fmt.Errorf("state/iv must not exceed the hash block size: %d > %d", len(b), n)
+	}
+	res := make([]byte, n)
+	copy(res[n-len(b):], b)
+	return res, nil
 }

@@ -268,7 +268,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 	}
 
-	seed := types.Bytes32ToHash(types.AsBytes32(run.FS.State()))
+	seed := types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State()))
 
 	/*
 		Then assigns the coins for the new round. As the round incrementation

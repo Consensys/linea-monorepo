@@ -1,10 +1,10 @@
 package distributed
 
-import (
-	"errors"
-	"fmt"
-	"slices"
-	"strings"
+// import (
+// 	"errors"
+// 	"fmt"
+// 	"slices"
+// 	"strings"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/frontend"
@@ -31,139 +31,139 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// The prerecursion prefix is a prefix to apply to the name of the public
-// inputs to be able to access them in the conglomerated wizard-IOP.
-const preRecursionPrefix = "wizard-recursion-0."
+// // The prerecursion prefix is a prefix to apply to the name of the public
+// // inputs to be able to access them in the conglomerated wizard-IOP.
+// const preRecursionPrefix = "wizard-recursion-0."
 
-// ConglomeratorCompilation hold the compilation context of the conglomeration
-// proof. It stores pointers to the type of proof it can conglomerate and
-// pointers of the resulting compiled IOP object.
-type ConglomeratorCompilation struct {
-	// MaxNbProofs is the maximum number of proofs that can be conglomerated
-	// by the conglomeration proof at once.
-	MaxNbProofs int
+// // ConglomeratorCompilation hold the compilation context of the conglomeration
+// // proof. It stores pointers to the type of proof it can conglomerate and
+// // pointers of the resulting compiled IOP object.
+// type ConglomeratorCompilation struct {
+// 	// MaxNbProofs is the maximum number of proofs that can be conglomerated
+// 	// by the conglomeration proof at once.
+// 	MaxNbProofs int
 
-	// ModuleProofs lists the wizard whose proof are supported by the current
-	// instance of the conglomerator.
-	ModuleGLIops  []*wizard.CompiledIOP `serde:"omit"`
-	ModuleLPPIops []*wizard.CompiledIOP `serde:"omit"`
+// 	// ModuleProofs lists the wizard whose proof are supported by the current
+// 	// instance of the conglomerator.
+// 	ModuleGLIops  []*wizard.CompiledIOP `serde:"omit"`
+// 	ModuleLPPIops []*wizard.CompiledIOP `serde:"omit"`
 
-	// DefaultIops is the wizard IOP used for filling
-	DefaultIops *RecursedSegmentCompilation
+// 	// DefaultIops is the wizard IOP used for filling
+// 	DefaultIops *RecursedSegmentCompilation
 
-	// DefaultWitness is the assignment of the default IOP.
-	DefaultWitness recursion.Witness
+// 	// DefaultWitness is the assignment of the default IOP.
+// 	DefaultWitness recursion.Witness
 
-	// Wiop is the compiled IOP of the conglomeration wizard.
-	Wiop *wizard.CompiledIOP
-	// Recursion is the recursion context used to compile the conglomeration
-	// proof.
-	Recursion *recursion.Recursion
+// 	// Wiop is the compiled IOP of the conglomeration wizard.
+// 	Wiop *wizard.CompiledIOP
+// 	// Recursion is the recursion context used to compile the conglomeration
+// 	// proof.
+// 	Recursion *recursion.Recursion
 
-	// HolisticLookupMappedLPPVK is a pair of column corresponding such that
-	// row "i" is equal to the LPP vk of the GL module of the i-th proof.
-	HolisticLookupMappedLPPVK [2]ifaces.Column
+// 	// HolisticLookupMappedLPPVK is a pair of column corresponding such that
+// 	// row "i" is equal to the LPP vk of the GL module of the i-th proof.
+// 	HolisticLookupMappedLPPVK [2]ifaces.Column
 
-	// HolisticLookupMappedLPPPostion is complementary to [HolisticLookupMappedLPPVK]
-	// and indicates for the corresponding GL verifying key, which column of the
-	// corresponding LPP module to look for when doing the LPP commitment consistency
-	// check. The column takes values in [0, lppGroupingArity) and is constrained by
-	// the same lookup as [HolisticLookupMappedLPPVK].
-	HolisticLookupMappedLPPPostion ifaces.Column
+// 	// HolisticLookupMappedLPPPostion is complementary to [HolisticLookupMappedLPPVK]
+// 	// and indicates for the corresponding GL verifying key, which column of the
+// 	// corresponding LPP module to look for when doing the LPP commitment consistency
+// 	// check. The column takes values in [0, lppGroupingArity) and is constrained by
+// 	// the same lookup as [HolisticLookupMappedLPPVK].
+// 	HolisticLookupMappedLPPPostion ifaces.Column
 
-	// PrecomputedLPPVks is a pair of precomputed column listing the whitelisted
-	// LPP columns.
-	PrecomputedLPPVks [2]ifaces.Column
+// 	// PrecomputedLPPVks is a pair of precomputed column listing the whitelisted
+// 	// LPP columns.
+// 	PrecomputedLPPVks [2]ifaces.Column
 
-	// PrecomputedGLVks is a pair of precomputed column listing the whitelisted
-	// GL columns. Each entry i corresponds to the GK vks that can be mapped to
-	// the i-th LPP module of the same row of [PrecomputedLPPVks].
-	PrecomputedGLVks [lppGroupingArity][2]ifaces.Column
+// 	// PrecomputedGLVks is a pair of precomputed column listing the whitelisted
+// 	// GL columns. Each entry i corresponds to the GK vks that can be mapped to
+// 	// the i-th LPP module of the same row of [PrecomputedLPPVks].
+// 	PrecomputedGLVks [lppGroupingArity][2]ifaces.Column
 
-	// IsGL is a column constructing by agglomerating accessors the IsGL public
-	// input of every segment.
-	IsGL ifaces.Column
+// 	// IsGL is a column constructing by agglomerating accessors the IsGL public
+// 	// input of every segment.
+// 	IsGL ifaces.Column
 
-	// VerifyingKeyColumns is a pair of column constructing by agglomerating the
-	// public inputs corresponding to the verifying key for every segment.
-	VerifyingKeyColumns [2]ifaces.Column
-}
+// 	// VerifyingKeyColumns is a pair of column constructing by agglomerating the
+// 	// public inputs corresponding to the verifying key for every segment.
+// 	VerifyingKeyColumns [2]ifaces.Column
+// }
 
-// ConglomerationHolisticCheck is a [wizard.VerifierAction] checking that all
-// the public inputs of the subproofs are the right ones.
-type ConglomerateHolisticCheck struct {
-	ConglomeratorCompilation
-}
+// // ConglomerationHolisticCheck is a [wizard.VerifierAction] checking that all
+// // the public inputs of the subproofs are the right ones.
+// type ConglomerateHolisticCheck struct {
+// 	ConglomeratorCompilation
+// }
 
-// ConglomerationAssignHolisticCheckColumn is a [wizard.ProverAction] responsible
-// for assigning the [HolisticLookupMappedLPPVK] columns.
-type ConglomerationAssignHolisticCheckColumn struct {
-	ConglomeratorCompilation
-}
+// // ConglomerationAssignHolisticCheckColumn is a [wizard.ProverAction] responsible
+// // for assigning the [HolisticLookupMappedLPPVK] columns.
+// type ConglomerationAssignHolisticCheckColumn struct {
+// 	ConglomeratorCompilation
+// }
 
-// conglomerate constructs and returns a new ConglomeratorCompilation object.
-// The Wiop of the returned object is compiled with iterative layers of
-// self-recursion.
-func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompilation, moduleDefault *RecursedSegmentCompilation) *ConglomeratorCompilation {
+// // conglomerate constructs and returns a new ConglomeratorCompilation object.
+// // The Wiop of the returned object is compiled with iterative layers of
+// // self-recursion.
+// func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompilation, moduleDefault *RecursedSegmentCompilation) *ConglomeratorCompilation {
 
-	cong := &ConglomeratorCompilation{
-		MaxNbProofs: maxNbProofs,
-		DefaultIops: moduleDefault,
-	}
+// 	cong := &ConglomeratorCompilation{
+// 		MaxNbProofs: maxNbProofs,
+// 		DefaultIops: moduleDefault,
+// 	}
 
-	for i := range moduleGLs {
-		cong.ModuleGLIops = append(cong.ModuleGLIops, moduleGLs[i].RecursionComp)
-	}
+// 	for i := range moduleGLs {
+// 		cong.ModuleGLIops = append(cong.ModuleGLIops, moduleGLs[i].RecursionComp)
+// 	}
 
-	for i := range moduleLpps {
-		cong.ModuleLPPIops = append(cong.ModuleLPPIops, moduleLpps[i].RecursionComp)
-	}
+// 	for i := range moduleLpps {
+// 		cong.ModuleLPPIops = append(cong.ModuleLPPIops, moduleLpps[i].RecursionComp)
+// 	}
 
-	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+// 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
-	cong.Wiop = wizard.Compile(
-		func(build *wizard.Builder) {
-			cong.Compile(build.CompiledIOP)
-		},
-		mimc.CompileMiMC,
-		plonkinwizard.Compile,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<17),
-		),
-		logdata.Log("before first vortex"),
-		vortex.Compile(
-			2,
-			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&sisInstance),
-			vortex.WithOptionalSISHashingThreshold(64),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<15),
-		),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(32),
-			vortex.WithSISParams(&sisInstance),
-			vortex.WithOptionalSISHashingThreshold(64),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<13),
-		),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(32),
-			vortex.WithOptionalSISHashingThreshold(1<<20),
-		),
-	)
+// 	cong.Wiop = wizard.Compile(
+// 		func(build *wizard.Builder) {
+// 			cong.Compile(build.CompiledIOP)
+// 		},
+// 		mimc.CompileMiMC,
+// 		plonkinwizard.Compile,
+// 		compiler.Arcane(
+// 			compiler.WithTargetColSize(1<<17),
+// 		),
+// 		logdata.Log("before first vortex"),
+// 		vortex.Compile(
+// 			2,
+// 			vortex.ForceNumOpenedColumns(256),
+// 			vortex.WithSISParams(&sisInstance),
+// 			vortex.WithOptionalSISHashingThreshold(64),
+// 		),
+// 		selfrecursion.SelfRecurse,
+// 		cleanup.CleanUp,
+// 		mimc.CompileMiMC,
+// 		compiler.Arcane(
+// 			compiler.WithTargetColSize(1<<15),
+// 		),
+// 		vortex.Compile(
+// 			8,
+// 			vortex.ForceNumOpenedColumns(32),
+// 			vortex.WithSISParams(&sisInstance),
+// 			vortex.WithOptionalSISHashingThreshold(64),
+// 		),
+// 		selfrecursion.SelfRecurse,
+// 		cleanup.CleanUp,
+// 		mimc.CompileMiMC,
+// 		compiler.Arcane(
+// 			compiler.WithTargetColSize(1<<13),
+// 		),
+// 		vortex.Compile(
+// 			8,
+// 			vortex.ForceNumOpenedColumns(32),
+// 			vortex.WithOptionalSISHashingThreshold(1<<20),
+// 		),
+// 	)
 
-	return cong
-}
+// 	return cong
+// }
 
 // Compile compiles the conglomeration proof. The function first checks if the public
 // inputs are compatible and then compiles the conglomeration proof.
