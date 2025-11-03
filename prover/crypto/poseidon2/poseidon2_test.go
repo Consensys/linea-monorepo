@@ -1,7 +1,9 @@
 package poseidon2_test
 
 import (
+	"encoding/hex"
 	"math/rand/v2"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,6 +26,73 @@ var testCases = []struct {
 	{"SmallInput", 10},
 	{"LargeInput", 512},
 	{"SingleBlock", 8},
+}
+
+// TestPoseidonTestVectors ensures that the test vectors that we use for
+// besu-native are working.
+func TestPoseidonTestVectors(t *testing.T) {
+
+	type testVec struct {
+		name      string
+		inputHex  string
+		outputHex string
+	}
+
+	testVectors := []testVec{
+		{
+			name:      "empty",
+			inputHex:  "0x",
+			outputHex: "0x0000000000000000000000000000000000000000000000000000000000000000",
+		},
+		{
+			name:      "just-one-byte",
+			inputHex:  "0x01",
+			outputHex: "0x0000000000000000000000000000000000000000000000000000000000000000",
+		},
+		{
+			name:      "4-bytes",
+			inputHex:  "0x01020304",
+			outputHex: "0x1d1620185895cf146bed58674aa2156f72d95ae2644cf35e7a80f8bb7bbe8f5d",
+		},
+		{
+			name:      "few-bytes",
+			inputHex:  "0x0102040405050606090c0201",
+			outputHex: "0x1f617ad3102d502a2852fe482e2ce6c24bb4ecb31dbcfd0f79249fa1576649a8",
+		},
+		{
+			name:      "32-zero-bytes",
+			inputHex:  "0x0000000000000000000000000000000000000000000000000000000000000000",
+			outputHex: "0x0656ab853b3f52840362a8177e217b630c3f876b11e848365145aa24220647fc",
+		},
+		{
+			name:      "31-zero-and-1-byte",
+			inputHex:  "0x0000000000000000000000000000000000000000000000000000000000000001",
+			outputHex: "0x532d760a239087f458d23ee549db4a5771815a387616ec5f31be90fd690886a5",
+		},
+		{
+			name:      "long-string",
+			inputHex:  "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000700000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000009000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000b000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000d000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000f",
+			outputHex: "0x254c857251520cbd40981dd74c2b3ee345acf16978e701324181926236278aaa",
+		},
+	}
+
+	for _, tc := range testVectors {
+		t.Run(tc.name, func(t *testing.T) {
+			input, e := hex.DecodeString(strings.TrimPrefix(tc.inputHex, "0x"))
+			if e != nil {
+				t.Fatal(e)
+			}
+
+			h := poseidon2.Poseidon2()
+			h.Reset()
+			h.Write(input)
+			out := h.Sum(nil)
+
+			outHex := "0x" + hex.EncodeToString(out)
+			require.Equal(t, tc.outputHex, outHex)
+		})
+	}
+
 }
 
 // This test ensures that the Poseidon2BlockCompression function is correctly implemented and produces the same output as
@@ -49,7 +118,6 @@ func TestPoseidon2BlockCompression(t *testing.T) {
 
 		// Compute hash using the NewMerkleDamgardHasher implementation.
 		merkleHasher := poseidon2.Poseidon2()
-		merkleHasher.Reset()
 		merkleHasher.Write(inputBytes[:]) // write one 32 bytes (equivalent to one Octuplet)
 		newBytes := merkleHasher.Sum(nil)
 
