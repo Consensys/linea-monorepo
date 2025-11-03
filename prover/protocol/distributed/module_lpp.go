@@ -652,7 +652,7 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 	if hasHorner && segmentIndexInt < numSegmentOfLastModule.Uint64()-1 {
 		n1Hash := modLPP.N1Hash.GetColAssignmentAt(run, 0)
 		// This is a local module
-		mset.Remove(moduleIndex, segmentIndex, typeOfProof, n1Hash)
+		mset.Insert(moduleIndex, segmentIndex, typeOfProof, n1Hash)
 	}
 
 	// If the segment is not the first one of its module, we add the received
@@ -666,7 +666,7 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 		)
 
 		prevSegmentIndex.Sub(&segmentIndex, &one)
-		mset.Insert(moduleIndex, prevSegmentIndex, typeOfProof, n0Hash)
+		mset.Remove(moduleIndex, prevSegmentIndex, typeOfProof, n0Hash)
 	}
 
 	if !vector.Equal(targetMSet, mset[:]) {
