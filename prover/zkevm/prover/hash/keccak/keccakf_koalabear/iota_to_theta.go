@@ -20,6 +20,7 @@ const (
 
 var (
 	BaseChi4Fr   = field.NewElement(BaseChi4)
+	BaseChiFr    = field.NewElement(BaseChi)
 	BaseThetaFr  = field.NewElement(BaseTheta)
 	BaseTheta4Fr = field.NewElement(BaseTheta4)
 )
