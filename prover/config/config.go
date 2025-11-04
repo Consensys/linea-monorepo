@@ -243,7 +243,7 @@ type Execution struct {
 	// maximum block height under which the prover will *not* delete the
 	// execution traces from EFS. The block height that is compared to this
 	// value is the "end" block of the request range.
-	KeepTraceUntilBlock int `mapstructure:"keep_trace_until_block"`
+	KeepTracesUntilBlock int `mapstructure:"keep_traces_until_block"`
 }
 
 type BlobDecompression struct {
