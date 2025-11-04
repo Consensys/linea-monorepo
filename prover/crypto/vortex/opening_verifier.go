@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 var (
@@ -211,7 +212,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			}
 
 			// Check the Merkle-proof for the obtained leaf
-			ok := mProof.Verify(mTreeHashConfig, leaf, root)
+			ok := mProof.Verify(mTreeHashConfig, types.HashToBytes32(leaf), types.HashToBytes32(root))
 			if !ok {
 				return fmt.Errorf("merkle proof failed for com #%v and entry %v (mProof.path=%v)", i, j, mProof.Path)
 			}

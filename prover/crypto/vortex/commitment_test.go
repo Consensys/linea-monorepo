@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -235,7 +236,7 @@ func TestProver(t *testing.T) {
 					} else {
 						committedMatrices[i], trees[i], _ = params.CommitMerkleWithoutSIS(polyLists[i])
 					}
-					roots[i] = trees[i].Root
+					roots[i] = types.Bytes32ToOctuplet(trees[i].Root)
 				}
 
 				// Generate the proof
@@ -484,7 +485,7 @@ func TestVerifierNegative(t *testing.T) {
 			committedMatrices := make([]EncodedMatrix, numCommitments)
 			for i := range trees {
 				committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
-				roots[i] = trees[i].Root
+				roots[i] = types.Bytes32ToOctuplet(trees[i].Root)
 			}
 
 			// Generate the proof

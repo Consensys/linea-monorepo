@@ -19,6 +19,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -334,7 +335,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	for j := range trees {
 		// As Gnark does not support SIS, we commit without SIS hashing
 		committedMatrices[j], trees[j], _ = params.CommitMerkleWithoutSIS(polyLists[j])
-		roots[j] = trees[j].Root
+		roots[j] = types.Bytes32ToOctuplet(trees[j].Root)
 		// We set the SIS replaced by Poseidon2 to true, as Gnark does not support SIS
 		isSISReplacedByPoseidon2[j] = true
 	}

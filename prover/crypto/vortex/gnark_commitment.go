@@ -42,7 +42,7 @@ func AllocateCircuitVariablesWithMerkleTree(
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		verifyCircuit.Proof.MerkleProofs[i] = make([]smt.GnarkProof, len(proof.MerkleProofs[i]))
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]zk.WrappedVariable, len(proof.MerkleProofs[i][j].Siblings))
+			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]frontend.Variable, len(proof.MerkleProofs[i][j].Siblings))
 		}
 	}
 

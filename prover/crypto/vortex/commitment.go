@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -45,8 +46,12 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 		// Hash the SIS digests to obtain the leaves of the Merkle tree.
 		leavesOcts := p.hashSisHash(colHashes)
 
+		var leavesHashesBytes []types.Bytes32
+		for i := range leavesOcts {
+			leavesHashesBytes = append(leavesHashesBytes, types.HashToBytes32(leavesOcts[i]))
+		}
 		tree = smt.BuildComplete(
-			leavesOcts,
+			leavesHashesBytes,
 			p.MerkleHashFunc,
 		)
 	})
@@ -85,8 +90,13 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 		for i := range colHashesOcts {
 			colHashes = append(colHashes, colHashesOcts[i][:]...)
 		}
+
+		var colHashesBytes []types.Bytes32
+		for i := range colHashesOcts {
+			colHashesBytes = append(colHashesBytes, types.HashToBytes32(colHashesOcts[i]))
+		}
 		tree = smt.BuildComplete(
-			colHashesOcts,
+			colHashesBytes,
 			p.MerkleHashFunc,
 		)
 	})
