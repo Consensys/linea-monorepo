@@ -70,8 +70,8 @@ func newLookUpTables(comp *wizard.CompiledIOP, maxNumKeccakf int) lookUpTables {
 	l.RC = dedicated.NewRepeatedPattern(
 		comp,
 		0,
-		valRCBase2Pattern(),
-		verifiercol.NewConstantCol(field.One(), NumRows(maxNumKeccakf), "keccak-rc-pattern"),
+		ValRCBase2Pattern(),
+		verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf), "keccak-rc-pattern"),
 	)
 
 	// tables to indicate when to use the output of the previous round as
@@ -138,9 +138,9 @@ func valBaseXToBaseY(
 		smartvectors.RightZeroPadded(byClean, utils.ToInt(colSize))
 }
 
-// valRCBase2Pattern returns the list of the round constant of keccakf in base
+// ValRCBase2Pattern returns the list of the round constant of keccakf in base
 // [baseBF].
-func valRCBase2Pattern() []field.Element {
+func ValRCBase2Pattern() []field.Element {
 
 	var (
 		res    = make([]field.Element, len(keccak.RC))
