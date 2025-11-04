@@ -18,6 +18,10 @@ object CliEntrypoint {
   @JvmStatic
   fun main(args: Array<String>) {
     val cmd = CommandLine(MaruAppCli())
+    cmd.registerConverter(
+      Network::class.java,
+      KebabToEnumConverter(Network::class.java),
+    )
     cmd.setExecutionExceptionHandler { ex, _, _ ->
       log.error("Execution failure: ", ex)
       1

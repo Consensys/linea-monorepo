@@ -13,6 +13,7 @@ import com.sksamuel.hoplite.ExperimentalHoplite
 import com.sksamuel.hoplite.json.JsonPropertySource
 import com.sksamuel.hoplite.toml.TomlPropertySource
 import java.io.File
+import kotlin.io.path.Path
 import maru.config.MaruConfigLoader.appTomlConfigLoaderBuilder
 import maru.config.consensus.ForkConfigDecoder
 import maru.config.consensus.JsonFriendlyForksSchedule
@@ -62,9 +63,9 @@ object MaruConfigLoader {
       confLoaderBuilderFn = { strict -> appTomlConfigLoaderBuilder(strict).build() },
     )
 
-  fun loadGenesisConfig(genesisFile: File): JsonFriendlyForksSchedule =
+  fun loadGenesisConfig(genesisFilePath: String): JsonFriendlyForksSchedule =
     loadConfigs<JsonFriendlyForksSchedule>(
-      listOf(genesisFile.toPath()),
+      listOf(Path(genesisFilePath)),
       confLoaderBuilderFn = { strict -> genesisConfigLoaderBuilder(false).build() },
     )
 }
