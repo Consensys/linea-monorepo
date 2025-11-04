@@ -32,7 +32,7 @@ import { privateKeyToAccount, privateKeyToAddress } from "viem/accounts";
 export default class BurnAndBridge extends Command {
   static examples = [
     `<%= config.bin %> <%= command.id %> 
-      --signerPrivateKey=0xYourSenderAddress
+      --signerPrivateKey=0xYourSignerPrivateKey
       --rollupRevenueVaultContractAddress=0xYourContractAddress
       --l2MessageServiceContractAddress=0xYourL2MessageServiceContractAddress
       --quoteContractAddress=0xYourQuoteContractAddress
@@ -43,7 +43,7 @@ export default class BurnAndBridge extends Command {
     `,
     // Dry run
     `<%= config.bin %> <%= command.id %>
-      --signerPrivateKey=0xYourSenderAddress
+      --signerPrivateKey=0xYourSignerPrivateKey
       --rollupRevenueVaultContractAddress=0xYourContractAddress
       --l2MessageServiceContractAddress=0xYourL2MessageServiceContractAddress
       --quoteContractAddress=0xYourQuoteContractAddress
