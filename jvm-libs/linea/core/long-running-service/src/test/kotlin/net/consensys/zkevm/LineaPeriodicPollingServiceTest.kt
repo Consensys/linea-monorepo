@@ -11,6 +11,8 @@ import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.MethodSource
 import org.mockito.Mockito
 import org.mockito.Mockito.atMostOnce
 import org.mockito.Mockito.mock
@@ -26,28 +28,56 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.reflect.KClass
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
-class PeriodicPollingServiceTest {
+class LineaPeriodicPollingServiceTest {
   private lateinit var log: Logger
-  private val pollingInterval = 50.milliseconds.inWholeMilliseconds
+  private val pollingInterval = 50.milliseconds
+
+  companion object {
+    @JvmStatic
+    fun timerFactories() = listOf(
+      VertxTimerFactory::class,
+      JvmTimerFactory::class,
+    )
+  }
 
   @BeforeEach
   fun beforeEach() {
     log = Mockito.spy(LogManager.getLogger(PollingService::class.java))
   }
 
-  @Test
+  fun createTimerFactory(timerFactoryType: KClass<out TimerFactory>, vertx: Vertx): TimerFactory {
+    return when (timerFactoryType) {
+      VertxTimerFactory::class -> VertxTimerFactory(vertx)
+      JvmTimerFactory::class -> JvmTimerFactory()
+      else -> throw IllegalArgumentException("Unknown timer factory type")
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("timerFactories")
   @Timeout(3, timeUnit = TimeUnit.SECONDS)
-  fun `on error periodic polling service is passed to handleError`(vertx: Vertx, testContext: VertxTestContext) {
+  fun `on error periodic polling service is passed to handleError`(
+    timerFactoryType: KClass<out TimerFactory>,
+    vertx: Vertx,
+    testContext: VertxTestContext,
+  ) {
     val action = { _: Unit ->
       SafeFuture.failedFuture<Unit>(IllegalStateException("Test error"))
     }
-    val pollingService = PollingService(vertx, pollingInterval, log, mockAction = action)
+    val pollingService = PollingService(
+      vertx,
+      pollingInterval,
+      log,
+      mockAction = action,
+      timerFactory = createTimerFactory(timerFactoryType, vertx),
+    )
 
     pollingService.start()
       .thenApply {
@@ -63,13 +93,24 @@ class PeriodicPollingServiceTest {
       }.whenException(testContext::failNow)
   }
 
-  @Test
+  @ParameterizedTest
+  @MethodSource("timerFactories")
   @Timeout(3, timeUnit = TimeUnit.SECONDS)
-  fun `action handles a throw`(vertx: Vertx, testContext: VertxTestContext) {
+  fun `action handles a throw`(
+    timerFactoryType: KClass<out TimerFactory>,
+    vertx: Vertx,
+    testContext: VertxTestContext,
+  ) {
     val action = { _: Unit ->
       throw IllegalStateException("Throw test")
     }
-    val pollingService = PollingService(vertx, pollingInterval, log, mockAction = action)
+    val pollingService = PollingService(
+      vertx,
+      pollingInterval,
+      log,
+      mockAction = action,
+      timerFactory = createTimerFactory(timerFactoryType, vertx),
+    )
 
     pollingService.start()
       .thenApply {
@@ -85,9 +126,14 @@ class PeriodicPollingServiceTest {
       }.whenException(testContext::failNow)
   }
 
-  @Test
+  @ParameterizedTest
+  @MethodSource("timerFactories")
   @Timeout(3, timeUnit = TimeUnit.SECONDS)
-  fun `periodicPollingService continues to poll after an exception`(vertx: Vertx, testContext: VertxTestContext) {
+  fun `periodicPollingService continues to poll after an exception`(
+    timerFactoryType: KClass<out TimerFactory>,
+    vertx: Vertx,
+    testContext: VertxTestContext,
+  ) {
     val actionCallCount = AtomicInteger(0)
 
     val action = { _: Unit ->
@@ -102,7 +148,13 @@ class PeriodicPollingServiceTest {
         result
       }
     }
-    val pollingService = PollingService(vertx, pollingInterval, log, mockAction = action)
+    val pollingService = PollingService(
+      vertx,
+      pollingInterval,
+      log,
+      mockAction = action,
+      timerFactory = createTimerFactory(timerFactoryType, vertx),
+    )
 
     pollingService.start()
       .thenApply {
@@ -119,9 +171,14 @@ class PeriodicPollingServiceTest {
       }.whenException(testContext::failNow)
   }
 
-  @Test
+  @ParameterizedTest
+  @MethodSource("timerFactories")
   @Timeout(3, timeUnit = TimeUnit.SECONDS)
-  fun `periodicPollingService continues to poll after throwing exception`(vertx: Vertx, testContext: VertxTestContext) {
+  fun `periodicPollingService continues to poll after throwing exception`(
+    timerFactoryType: KClass<out TimerFactory>,
+    vertx: Vertx,
+    testContext: VertxTestContext,
+  ) {
     val actionCallCount = AtomicInteger(0)
 
     val action = { _: Unit ->
@@ -136,7 +193,13 @@ class PeriodicPollingServiceTest {
         result
       }
     }
-    val pollingService = PollingService(vertx, pollingInterval, log, mockAction = action)
+    val pollingService = PollingService(
+      vertx,
+      pollingInterval,
+      log,
+      mockAction = action,
+      timerFactory = createTimerFactory(timerFactoryType, vertx),
+    )
 
     pollingService.start()
       .thenApply {
@@ -153,13 +216,15 @@ class PeriodicPollingServiceTest {
       }.whenException(testContext::failNow)
   }
 
-  @Test
+  @ParameterizedTest
+  @MethodSource("timerFactories")
   @Timeout(3, timeUnit = TimeUnit.SECONDS)
   fun `ticks shouldn't run concurrently if execution is longer than polling interval`(
+    timerFactoryType: KClass<out TimerFactory>,
     vertx: Vertx,
     testContext: VertxTestContext,
   ) {
-    val pollingInterval = 5.milliseconds.inWholeMilliseconds
+    val pollingInterval = 5.milliseconds
     val numberOfInvocations = AtomicInteger(0)
     val prevActionIsRunning = AtomicBoolean(false)
     val actionWasCalledInParallel = AtomicBoolean(false)
@@ -171,7 +236,13 @@ class PeriodicPollingServiceTest {
       prevActionIsRunning.set(true)
       asyncDelay(vertx, 10.milliseconds).thenApply { prevActionIsRunning.set(false) }
     }
-    val pollingService = PollingService(vertx, pollingInterval, log, mockAction = action)
+    val pollingService = PollingService(
+      vertx,
+      pollingInterval,
+      log,
+      mockAction = action,
+      timerFactory = createTimerFactory(timerFactoryType, vertx),
+    )
     pollingService.start()
       .thenApply {
         await()
@@ -198,11 +269,20 @@ class PeriodicPollingServiceTest {
   fun `periodicPollingService start should be idempotent`(
     testContext: VertxTestContext,
   ) {
-    val pollingInterval = 60.milliseconds.inWholeMilliseconds
-    val mockVertx = mock<Vertx>()
-    val pollingService = spy(PollingService(mockVertx, pollingInterval, log))
+    val pollingInterval = 60.milliseconds
+    val mockVertx = mock<Vertx> ()
+    val mockTimerFactory = mock<TimerFactory>()
+    val pollingService = spy(PollingService(mockVertx, pollingInterval, log, timerFactory = mockTimerFactory))
 
-    whenever(mockVertx.setTimer(any(), any())).thenReturn(1)
+    whenever(
+      mockTimerFactory.createTimer(
+        any(),
+        any(),
+        any(),
+        any(),
+        any(),
+      ),
+    ).thenReturn(mock<LineaTimer>())
 
     pollingService.start().thenApply {
       pollingService.start()
@@ -211,20 +291,23 @@ class PeriodicPollingServiceTest {
         await()
           .pollInterval(12.milliseconds.toJavaDuration())
           .untilAsserted {
-            verify(mockVertx, atMostOnce()).setTimer(any(), any())
+            verify(mockTimerFactory, atMostOnce()).createTimer(any(), any(), any(), any(), any())
           }
         testContext.completeNow()
       }.whenException(testContext::failNow)
   }
 
-  @Test
+  @ParameterizedTest
+  @MethodSource("timerFactories")
   @Timeout(3, timeUnit = TimeUnit.SECONDS)
   fun `periodicPollingService stop should be idempotent`(
+    timerFactoryType: KClass<out TimerFactory>,
     vertx: Vertx,
     testContext: VertxTestContext,
   ) {
     val log: Logger = Mockito.spy(LogManager.getLogger(PollingService::class.java))
-    val pollingService = PollingService(vertx, pollingInterval, log)
+    val pollingService =
+      PollingService(vertx, pollingInterval, log, timerFactory = createTimerFactory(timerFactoryType, vertx))
 
     pollingService.start()
     await()
@@ -250,12 +333,13 @@ class PeriodicPollingServiceTest {
 
 class PollingService(
   private val vertx: Vertx,
-  pollingInterval: Long,
+  pollingInterval: Duration,
   private val log: Logger,
+  timerFactory: TimerFactory,
   val mockAction: (_: Unit) -> SafeFuture<Unit> = { SafeFuture.completedFuture(Unit) },
-) : PeriodicPollingService(
-  vertx = vertx,
-  pollingIntervalMs = pollingInterval,
+) : LineaPeriodicPollingService(
+  timerFactory = timerFactory,
+  pollingInterval = pollingInterval,
   log = log,
 ) {
   override fun action(): SafeFuture<Unit> {
