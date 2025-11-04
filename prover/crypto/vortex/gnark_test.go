@@ -5,6 +5,7 @@ package vortex
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/stretchr/testify/assert"
@@ -217,6 +218,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 
 }
 */
+
 // ------------------------------------------------------------
 // EvaluateLagrange
 
@@ -235,8 +237,6 @@ func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	apiGen.Println(res)
-	apiGen.Println(circuit.Y)
 
 	apiGen.AssertIsEqual(res, circuit.Y)
 
@@ -291,17 +291,17 @@ func TestEvaluateLagrangeCircuit(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// {
-	// 	circuit, witness := getEvaluateLagrangeCircuitWitness(size)
+	{
+		circuit, witness := getEvaluateLagrangeCircuitWitness(size)
 
-	// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
-	// 	assert.NoError(t, err)
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
 
-	// 	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 
 }
 
