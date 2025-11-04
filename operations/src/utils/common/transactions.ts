@@ -33,7 +33,7 @@ export async function sendRawTransaction(
     return ok(receipt);
   } catch (error) {
     if (error instanceof BaseError) {
-      const decodedError = error.walk();
+      const decodedError = (error.walk((err) => "data" in (err as BaseError)) || error.walk()) as BaseError;
       return err(decodedError as BaseError);
     }
     return err(error as BaseError);
@@ -50,7 +50,7 @@ export async function sendTransaction(
     return ok(receipt);
   } catch (error) {
     if (error instanceof BaseError) {
-      const decodedError = error.walk();
+      const decodedError = (error.walk((err) => "data" in (err as BaseError)) || error.walk()) as BaseError;
       return err(decodedError as BaseError);
     }
     return err(error as BaseError);
