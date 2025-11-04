@@ -3,8 +3,6 @@ package smt
 import (
 	"testing"
 
-	"github.com/consensys/gnark/frontend"
-	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -45,17 +43,17 @@ type MerkleProofCircuit struct {
 	Root   zk.WrappedVariable
 }
 
-func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
+// func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 
-	h, err := gmimc.NewMiMC(api)
-	if err != nil {
-		return err
-	}
-	for i := 0; i < len(circuit.Proofs); i++ {
-		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root, &h)
-	}
-	return nil
-}
+// 	h, err := gmimc.NewMiMC(api)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	for i := 0; i < len(circuit.Proofs); i++ {
+// 		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root, &h)
+// 	}
+// 	return nil
+// }
 
 // func getCircuitAndWitness(t *testing.T) (MerkleProofCircuit, MerkleProofCircuit) {
 
