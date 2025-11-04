@@ -213,12 +213,12 @@ func IntExp(base uint64, exponent int) uint64 {
 // Returns the number of rows required to prove `numKeccakf` calls to the
 // permutation function. The result is padded to the next power of 2 in order to
 // satisfy the requirements of the Wizard to have only powers of 2.
-func NumRows(numKeccakf int) int {
+func numRows(numKeccakf int) int {
 	return utils.NextPowerOfTwo(numKeccakf * numRounds)
 }
 
 // derive column names
-func DeriveName(mainName string, ids ...int) ifaces.ColID {
+func deriveName(mainName string, ids ...int) ifaces.ColID {
 	idStr := []string{}
 	for i := range ids {
 		idStr = append(idStr, strconv.Itoa(ids[i]))

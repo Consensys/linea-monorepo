@@ -159,7 +159,7 @@ func (io *InputOutput) newOutput(comp *wizard.CompiledIOP, maxNumKeccakF int,
 // It declares the columns specific to the submodule.
 func (io *InputOutput) declareColumnsInput(comp *wizard.CompiledIOP, maxNumKeccakF int) {
 	var (
-		size      = NumRows(maxNumKeccakF)
+		size      = numRows(maxNumKeccakF)
 		createCol = common.CreateColFn(comp, "KECCAKF_INPUT_MODULE", size, pragmas.RightPadded)
 	)
 
@@ -182,7 +182,7 @@ func (io *InputOutput) declareColumnsOutput(comp *wizard.CompiledIOP, maxNumKecc
 	io.IsActive = createCol("HASH_IS_ACTIVE")
 
 	var (
-		sizeState = NumRows(maxNumKeccakF)
+		sizeState = numRows(maxNumKeccakF)
 	)
 	io.IsHashOutPut = comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_IS_HASH_OUTPUT"), sizeState)
 }

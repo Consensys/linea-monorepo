@@ -56,7 +56,7 @@ func TestTheta(t *testing.T) {
 				for y := 0; y < 5; y++ {
 					for z := 0; z < 64; z++ {
 						// Recompose the slice into a complete base 2 representation
-						recomposed[z] = mod.Theta.stateNext[x][y][z].GetColAssignmentAt(run,
+						recomposed[z] = mod.theta.stateNext[x][y][z].GetColAssignmentAt(run,
 							permId*keccak.NumRound)
 
 					}
@@ -111,7 +111,7 @@ func thetaTestingModule(
 			}
 		}
 
-		mod.Theta = newTheta(comp, maxNumKeccakf, stateCurr)
+		mod.theta = newTheta(comp, maxNumKeccakf, stateCurr)
 	}
 
 	prover := func(
@@ -176,7 +176,7 @@ func thetaTestingModule(
 			}
 
 			// Then assign all the columns of the theta module
-			mod.Theta.assignTheta(run, stateCurr)
+			mod.theta.assignTheta(run, stateCurr)
 		}
 	}
 

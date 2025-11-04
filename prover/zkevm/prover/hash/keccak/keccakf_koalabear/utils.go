@@ -1,10 +1,14 @@
 package keccakfkoalabear
 
 import (
+	"strconv"
+	"strings"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// Decompose decomposes the non-negative integer r into digits (limbs) in the given base.
+// decompose decomposes the non-negative integer r into digits (limbs) in the given base.
 //
 // The function returns a slice of uint64 holding the base-"base" representation of r,
 // with the least-significant limb first (little-endian digit order). The returned slice
@@ -23,7 +27,7 @@ import (
 //   - If the decomposition requires more than numLimbs limbs, the function triggers utils.Panic
 //     with an explanatory message ("expected %v limbs, but got %v").
 //   - res may contain fewer than numLimbs limbs if r is small.
-func Decompose(r uint64, base int, numLimbs int, useFullLength bool) (res []uint64) {
+func decompose(r uint64, base int, numLimbs int, useFullLength bool) (res []uint64) {
 	// It will essentially be used for chunk to slice decomposition
 	if base < 2 {
 		utils.Panic("base must be at least 2, got %v", base)
@@ -60,4 +64,20 @@ func Decompose(r uint64, base int, numLimbs int, useFullLength bool) (res []uint
 	}
 
 	return res
+}
+
+// numRowsKeccakSmallField returns the number of rows required to prove `numKeccakf` calls to the
+// permutation function. The result is padded to the next power of 2 in order to
+// satisfy the requirements of the Wizard to have only powers of 2.
+func numRowsKeccakSmallField(numKeccakf int) int {
+	return utils.NextPowerOfTwo(numKeccakf * numRounds)
+}
+
+// deriveNameKeccakFSmallField derive column names
+func deriveNameKeccakFSmallField(mainName string, ids ...int) ifaces.ColID {
+	idStr := []string{}
+	for i := range ids {
+		idStr = append(idStr, strconv.Itoa(ids[i]))
+	}
+	return ifaces.ColIDf("%v_%v_%v", "KECCAKF", mainName, strings.Join(idStr, "_"))
 }

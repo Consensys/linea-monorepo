@@ -48,8 +48,8 @@ func piChiIotaTestingModule(
 				// chi module.
 				mod.Rho.ARho[x][y] = comp.InsertCommit(
 					round,
-					DeriveName("A_RHO", x, y),
-					NumRows(maxNumKeccakf),
+					deriveName("A_RHO", x, y),
+					numRows(maxNumKeccakf),
 				)
 			}
 		}
@@ -119,7 +119,7 @@ func piChiIotaTestingModule(
 						mod.Rho.ARho[x][y].GetColID(),
 						smartvectors.RightZeroPadded(
 							aRho[x][y],
-							NumRows(maxNumKeccakf),
+							numRows(maxNumKeccakf),
 						),
 					)
 				}

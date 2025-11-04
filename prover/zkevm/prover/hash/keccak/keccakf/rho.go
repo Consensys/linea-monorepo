@@ -44,12 +44,12 @@ func newRho(
 
 // Declares the columns for the rhopi module
 func (r *rho) declareColumns(comp *wizard.CompiledIOP, round, numKeccakf int) {
-	colSize := NumRows(numKeccakf)
+	colSize := numRows(numKeccakf)
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			r.ARho[x][y] = comp.InsertCommit(
 				round,
-				DeriveName("A_RHO", x, y),
+				deriveName("A_RHO", x, y),
 				colSize,
 			)
 
@@ -62,7 +62,7 @@ func (r *rho) declareColumns(comp *wizard.CompiledIOP, round, numKeccakf int) {
 			for s := 0; s < numChunkBaseX; s++ {
 				r.TargetSliceDecompose[x][y][s] = comp.InsertCommit(
 					round,
-					DeriveName("TARGET_SLICE_DECOMPOSE", x, y, s),
+					deriveName("TARGET_SLICE_DECOMPOSE", x, y, s),
 					colSize,
 				)
 			}

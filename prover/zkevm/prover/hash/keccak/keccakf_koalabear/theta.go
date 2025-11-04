@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 )
 
 const (
@@ -82,7 +81,7 @@ func newTheta(comp *wizard.CompiledIOP,
 // declareColumnsTheta declares the intermediate columns generated during theta step, including the new state.
 func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int) {
 	// size of the columns to declare
-	colSize := keccakf.NumRows(numKeccakf)
+	colSize := numRowsKeccakSmallField(numKeccakf)
 	// declare the new state
 	theta.stateInternal = state{}
 	theta.stateNext = stateInBits{}
@@ -91,7 +90,7 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 			for z := 0; z < 8; z++ {
 				theta.stateInternal[x][y][z] = comp.InsertCommit(
 					0,
-					keccakf.DeriveName("STATE_THETA_%v_%v_%v", x, y, z),
+					deriveNameKeccakFSmallField("STATE_THETA_%v_%v_%v", x, y, z),
 					colSize,
 				)
 
@@ -99,7 +98,7 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 				for i := 0; i < 8; i++ {
 					theta.stateNext[x][y][z*8+i] = comp.InsertCommit(
 						0,
-						keccakf.DeriveName("STATE_THETA_BIT_%v_%v_%v", x, y, z*8+i),
+						deriveNameKeccakFSmallField("STATE_THETA_BIT_%v_%v_%v", x, y, z*8+i),
 						colSize,
 					)
 				}
@@ -161,7 +160,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 			// clean the cm by decomposing each element into base thetaBase and recomposing
 			for i := 0; i < len(cm[x][z]); i++ {
 				v := cm[x][z][i].Uint64()
-				resc := clean(Decompose(v, thetaBase, 8, true))
+				resc := clean(decompose(v, thetaBase, 8, true))
 
 				cleaned := 0
 				for k := len(resc) - 1; k >= 0; k-- {
@@ -182,7 +181,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		for z := 0; z < 8; z++ {
 			for i := 0; i < len(cf[x][z]); i++ {
 				v := cf[x][z][i].Uint64()
-				resf := clean(Decompose(v, thetaBase, 8, true))
+				resf := clean(decompose(v, thetaBase, 8, true))
 
 				msb[x][z][i] = field.NewElement(uint64(resf[len(resf)-1]))
 
@@ -207,7 +206,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 				// cc[x][z] = cf[x][z] * thetaBase - msb[x][z] * thetaBase^8 + msb of previous slice
 				a := int(cf[x][z][i].Uint64())*thetaBase - int(msb[x][z][i].Uint64())*thetaBase8 + int(msb[x][prev][i].Uint64())
 				// clean a
-				res := clean(Decompose(uint64(a), thetaBase, 8, true))
+				res := clean(decompose(uint64(a), thetaBase, 8, true))
 				cleanedA := 0
 				for k := len(res) - 1; k >= 0; k-- {
 					cleanedA = cleanedA*thetaBase + res[k]
@@ -235,7 +234,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 
 				// clean the state
 				for i := 0; i < len(col); i++ {
-					res := clean(Decompose(col[i].Uint64(), thetaBase, 8, true))
+					res := clean(decompose(col[i].Uint64(), thetaBase, 8, true))
 					// recompse to get clean state
 					stateCleaned := 0
 					for i := len(res) - 1; i >= 0; i-- {

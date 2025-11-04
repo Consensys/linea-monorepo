@@ -43,7 +43,7 @@ func newPiChiIota(
 // Declares the columns for the chi step
 func (c *piChiIota) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccakF int) {
 
-	colSize := NumRows(maxNumKeccakF)
+	colSize := numRows(maxNumKeccakF)
 
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
@@ -51,7 +51,7 @@ func (c *piChiIota) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccak
 			// declares a_chi_base_B
 			c.AIotaBaseB[x][y] = comp.InsertCommit(
 				round,
-				DeriveName("AIOTA_BASE2", x, y),
+				deriveName("AIOTA_BASE2", x, y),
 				colSize,
 			)
 
@@ -60,13 +60,13 @@ func (c *piChiIota) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccak
 				// base B
 				c.AIotaBaseBSliced[x][y][k] = comp.InsertCommit(
 					round,
-					DeriveName("AIOTA_BASE2_SLICED", x, y, k),
+					deriveName("AIOTA_BASE2_SLICED", x, y, k),
 					colSize,
 				)
 				// base A
 				c.AIotaBaseASliced[x][y][k] = comp.InsertCommit(
 					round,
-					DeriveName("AIOTA_BASE1_SLICED", x, y, k),
+					deriveName("AIOTA_BASE1_SLICED", x, y, k),
 					colSize,
 				)
 			}

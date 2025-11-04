@@ -45,8 +45,8 @@ func rhoTestingModule(
 				for k := 0; k < NumSlice; k++ {
 					mod.Theta.AThetaSlicedBaseB[x][y][k] = comp.InsertCommit(
 						round,
-						DeriveName("A_THETA_BASE2_SLICED", x, y, k),
-						NumRows(maxNumKeccakf),
+						deriveName("A_THETA_BASE2_SLICED", x, y, k),
+						numRows(maxNumKeccakf),
 					)
 				}
 			}
@@ -123,7 +123,7 @@ func rhoTestingModule(
 							mod.Theta.AThetaSlicedBaseB[x][y][k].GetColID(),
 							smartvectors.RightZeroPadded(
 								aTheta[x][y][k],
-								NumRows(maxNumKeccakf),
+								numRows(maxNumKeccakf),
 							),
 						)
 					}

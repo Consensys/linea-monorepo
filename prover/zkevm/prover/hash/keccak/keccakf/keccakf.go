@@ -262,17 +262,17 @@ func (mod *Module) assignStateAndBlocks(
 
 // declare the columns of the state and the message.
 func (mod *Module) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccakF int) {
-	size := NumRows(maxNumKeccakF)
+	size := numRows(maxNumKeccakF)
 
 	// Initialize the column isActive
-	mod.IsActive = comp.InsertCommit(round, DeriveName("IS_ACTIVE"), size)
+	mod.IsActive = comp.InsertCommit(round, deriveName("IS_ACTIVE"), size)
 
 	// Initializes the state columns
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			mod.State[x][y] = comp.InsertCommit(
 				round,
-				DeriveName("A_INPUT", x, y),
+				deriveName("A_INPUT", x, y),
 				size,
 			)
 		}
@@ -282,7 +282,7 @@ func (mod *Module) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccakF
 	for m := 0; m < numLanesInBlock; m++ {
 		mod.Blocks[m] = comp.InsertCommit(
 			round,
-			DeriveName("BLOCK_BASE_2", m),
+			deriveName("BLOCK_BASE_2", m),
 			size,
 		)
 	}

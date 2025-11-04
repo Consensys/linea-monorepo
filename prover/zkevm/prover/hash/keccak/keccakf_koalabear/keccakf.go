@@ -129,7 +129,7 @@ func (m *Module) Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [numLa
 	// assign the blocks of the message to the state
 
 	// assign the theta module with the state including the message-blocks
-	m.Theta.assignTheta(run, state)
+	m.theta.assignTheta(run, state)
 	// assign the base conversion module with the state after theta
 	m.IotaToTheta.Run(run)
 	// assign the rho pi module with the state after theta
