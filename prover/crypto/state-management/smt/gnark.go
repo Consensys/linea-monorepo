@@ -1,8 +1,6 @@
 package smt
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 )
@@ -29,7 +27,6 @@ func GnarkRecoverRoot(
 		h.Reset()
 		left := api.Select(b[i], proof.Siblings[i], current)
 		right := api.Select(b[i], current, proof.Siblings[i])
-		fmt.Printf("left=%v, right=%v\n", left, right)
 		h.Write(left, right)
 		current = h.Sum()
 	}
@@ -46,5 +43,6 @@ func GnarkVerifyMerkleProof(
 	h hash.FieldHasher) {
 
 	r := GnarkRecoverRoot(api, proof, leaf, h)
+
 	api.AssertIsEqual(root, r)
 }

@@ -6,8 +6,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
+
+// Deterministically creates random Bytes32s
+func RandBytes32(pos int) Bytes32 {
+	res := Bytes32{}
+	for i := range res {
+		res[i] = byte(pos ^ (i + pos*156) ^ (pos + i*256) ^ (i * pos))
+	}
+	return res
+}
 
 // Creates a empty SMT, test its root hash in hard and tests that
 // all the leaves are zero.
@@ -37,10 +47,8 @@ func TestTreeUpdateLeaf(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		var newLeaf field.Octuplet
-		for i := range newLeaf {
-			newLeaf[i] = field.RandomElement()
-		}
+		newLeaf := RandBytes32(pos)
+
 		tree.Update(pos, newLeaf)
 		recovered, _ := tree.GetLeaf(pos)
 		require.Equal(t, newLeaf, recovered)
@@ -79,10 +87,8 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 
 		// Updat the leaf with a random-looking value before
 		// checking the proof
-		var newLeaf field.Octuplet
-		for i := range newLeaf {
-			newLeaf[i] = field.RandomElement()
-		}
+		newLeaf := RandBytes32(pos)
+
 		tree.Update(pos, newLeaf)
 
 		// After updating the old proof should still be valid
@@ -106,11 +112,11 @@ func TestBuildFromScratch(t *testing.T) {
 		leavesFr[i] = field.RandomElement()
 	}
 
-	leaves := make([]field.Octuplet, len(leavesFr)/8)
+	leaves := make([]Bytes32, len(leavesFr)/8)
 	for i := range leaves {
 		var arr [8]field.Element
 		copy(arr[:], leavesFr[8*i:8*i+8])
-		leaves[i] = arr
+		leaves[i] = HashToBytes32(arr)
 	}
 
 	// And generate the

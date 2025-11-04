@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -21,7 +20,7 @@ const blockSize = 8
 // TODO @thomas fixme arbitrary max size of the buffer
 const maxSizeBuf = 1024
 
-// Poseidon2FieldHasherDigest implements a Poseidon2-based hasher that works with both field elements and bytes
+// Hasher implements a Poseidon2-based hasher that works with both field elements and bytes
 type Hasher struct {
 	hash.Hash
 
@@ -57,28 +56,6 @@ func (d *Hasher) WriteElements(elmts []field.Element) {
 	d.buffer = append(d.buffer, elmts[:rem-off]...)
 }
 
-// WriteElements adds a slice of field elements to the running hash.
-func (d *Hasher) Write(p []byte) (int, error) {
-
-	elemByteSize := field.Bytes // 4 bytes = 1 field element
-
-	if len(p)%elemByteSize != 0 {
-		return 0, fmt.Errorf("input length is not a multiple of 4 byte size")
-	}
-	elems := make([]field.Element, 0, len(p)/elemByteSize)
-
-	for start := 0; start < len(p); start += elemByteSize {
-		chunk := p[start : start+elemByteSize]
-
-		var elem field.Element
-		elem.SetBytes(chunk)
-		elems = append(elems, elem)
-
-	}
-	d.WriteElements(elems)
-	return len(p), nil
-}
-
 func (d *Hasher) SumElement() field.Octuplet {
 	for len(d.buffer) != 0 {
 		var buf [blockSize]field.Element
@@ -93,14 +70,6 @@ func (d *Hasher) SumElement() field.Octuplet {
 		d.state = vortex.CompressPoseidon2(d.state, buf)
 	}
 	return d.state
-}
-
-// Sum computes the poseidon2 hash of msg
-func (d *Hasher) Sum(msg []byte) []byte {
-	d.Write(msg)
-	h := d.SumElement()
-	bytes := types.HashToBytes32(h)
-	return bytes[:]
 }
 
 func (d *Hasher) State() []byte {
@@ -146,15 +115,6 @@ func Poseidon2() *Hasher {
 	}
 }
 
-// Create a new MiMC hasher
-func MiMC() *Hasher {
-	maxVal, _ := new(fr.Element).SetString("-1")
-	return &Hasher{
-		Hash:     mimc.NewMiMC(),
-		maxValue: maxVal.Bytes(),
-	}
-}
-
 // Poseidon2Sponge returns a Poseidon2 hash of an array of field elements
 func Poseidon2Sponge(x []field.Element) (newState field.Octuplet) {
 	var state, xBlock field.Octuplet
@@ -188,4 +148,13 @@ func cloneLeftPadded(b []byte, n int) ([]byte, error) {
 	res := make([]byte, n)
 	copy(res[n-len(b):], b)
 	return res, nil
+}
+
+// Create a new MiMC hasher
+func MiMC() *Hasher {
+	maxVal, _ := new(fr.Element).SetString("-1")
+	return &Hasher{
+		Hash:     mimc.NewMiMC(),
+		maxValue: maxVal.Bytes(),
+	}
 }

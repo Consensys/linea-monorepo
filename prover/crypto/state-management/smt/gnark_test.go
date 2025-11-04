@@ -9,12 +9,11 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
-func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
+func getMerkleProof(t *testing.T) ([]Proof, []types.Bytes32, types.Bytes32) {
 
 	config := &Config{
 		HashFunc: poseidon2.MiMC,
@@ -26,7 +25,7 @@ func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 	// Only contains empty leaves
 	nbProofs := 1
 	proofs := make([]Proof, nbProofs)
-	leafs := make([]field.Octuplet, nbProofs)
+	leafs := make([]types.Bytes32, nbProofs)
 	for pos := 0; pos < nbProofs; pos++ {
 
 		// Make a valid Bytes32
@@ -71,16 +70,16 @@ func TestMerkleProofGnark(t *testing.T) {
 	for i := 0; i < nbProofs; i++ {
 		witness.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
 		for j := 0; j < len(proofs[i].Siblings); j++ {
-			siblingBytes := types.HashToBytes32(proofs[i].Siblings[j])
+			siblingBytes := proofs[i].Siblings[j]
 			buf.SetBytes(siblingBytes[:])
 			witness.Proofs[i].Siblings[j] = buf.String()
 		}
 		witness.Proofs[i].Path = proofs[i].Path
-		leafsBytes := types.HashToBytes32(leafs[i])
+		leafsBytes := leafs[i]
 		buf.SetBytes(leafsBytes[:])
 		witness.Leafs[i] = buf.String()
 	}
-	rootBytes := types.HashToBytes32(root)
+	rootBytes := root
 
 	buf.SetBytes(rootBytes[:])
 	witness.Root = buf.String()

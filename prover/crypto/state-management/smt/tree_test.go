@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/go-playground/assert/v2"
 )
 
@@ -34,7 +35,7 @@ func TestHashNodeLR(t *testing.T) {
 	bytesHasher := cfg.HashFunc()
 	bytesHasher.Write(lrBytes)
 	digestBytesHashing := bytesHasher.Sum(nil)
-	digestNodeLR := field.OctupletToBytes(hashLR(cfg, l, r))
+	digestNodeLR := hashLR(cfg, types.HashToBytes32(l), types.HashToBytes32(r))
 
 	assert.Equal(t, digestBytesHashing, digestNodeLR[:])
 
