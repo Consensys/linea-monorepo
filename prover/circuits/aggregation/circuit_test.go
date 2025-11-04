@@ -111,15 +111,15 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 	maxNC := utils.Max(ncs...)
 
 	piConfig := config.PublicInput{
-		MaxNbDecompression: maxNC,
-		MaxNbExecution:     maxNC,
+		MaxNbDA:        maxNC,
+		MaxNbExecution: maxNC,
 	}
 
 	piCircuit := pi_interconnection.DummyCircuit{
 		ExecutionPublicInput:     make([]frontend.Variable, piConfig.MaxNbExecution),
 		ExecutionFPI:             make([]frontend.Variable, piConfig.MaxNbExecution),
-		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDecompression),
-		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDecompression),
+		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDA),
+		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDA),
 	}
 
 	piCs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &piCircuit)

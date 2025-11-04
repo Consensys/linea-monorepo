@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"hash"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
-	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	decompression "github.com/consensys/linea-monorepo/prover/circuits/data-availability/v1"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
@@ -40,8 +41,8 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	}
 	a = allocateCircuit(cfg)
 
-	if len(r.Decompressions) > cfg.MaxNbDecompression {
-		err = fmt.Errorf("failing CHECK_DECOMP_LIMIT:\n\t%d decompression proofs exceeds maximum of %d", len(r.Decompressions), cfg.MaxNbDecompression)
+	if len(r.Decompressions) > cfg.MaxNbDA {
+		err = fmt.Errorf("failing CHECK_DECOMP_LIMIT:\n\t%d decompression proofs exceeds maximum of %d", len(r.Decompressions), cfg.MaxNbDA)
 		return
 	}
 	if len(r.Executions) > cfg.MaxNbExecution {
@@ -69,7 +70,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	// the corresponding execution data hashes. These are then checked against
 	// the execution proof public inputs.
 	execDataChecksums := make([][]byte, 0, len(r.Executions))
-	shnarfs := make([][]byte, cfg.MaxNbDecompression)
+	shnarfs := make([][]byte, cfg.MaxNbDA)
 	// Decompression FPI
 	for i, p := range r.Decompressions {
 		var blobData [1024 * 128]byte
@@ -109,7 +110,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 			return
 		}
 		a.DecompressionFPIQ[i] = sfpi.FunctionalPublicInputQSnark
-		if a.DecompressionPublicInput[i], err = fpi.Sum(decompression.WithHash(hshM)); err != nil {
+		if a.DecompressionPublicInput[i], err = fpi.Sum(); err != nil {
 			return
 		}
 

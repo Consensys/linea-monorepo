@@ -40,7 +40,7 @@ func AssertIsLessIf(api frontend.API, cond, a, b frontend.Variable) {
 	api.AssertIsLessOrEqual(a_, b_)
 }
 
-func SliceToTable(api frontend.API, slice []frontend.Variable) *logderivlookup.Table {
+func SliceToTable(api frontend.API, slice []frontend.Variable) logderivlookup.Table {
 	table := logderivlookup.New(api)
 	for i := range slice {
 		table.Insert(slice[i])
@@ -271,7 +271,7 @@ func (s VarSlice) Range(api frontend.API) *Range {
 func Concat(api frontend.API, maxLinearizedLength int, slices ...VarSlice) Slice[frontend.Variable] {
 
 	res := Slice[frontend.Variable]{make([]frontend.Variable, maxLinearizedLength), 0}
-	var outT *logderivlookup.Table
+	var outT logderivlookup.Table
 	{ // hint
 		inLen := 2 * len(slices)
 		for i := range slices {
@@ -348,7 +348,7 @@ func SubSlice(api frontend.API, slice Slice[frontend.Variable], start, length fr
 	return Slice[frontend.Variable]{res, length}
 }
 
-// ChecksumSlice returns H(len(slice), partial) where partial is slice[0] if length is 1, and hsh(slice[0], slice[1], ..., slice[len(slice)-1]) otherwise
+// ChecksumSlice returns C(len(slice), partial) where partial is slice[0] if length is 1, and C(...C(slice[0], slice[1])hsh(slice[0], slice[1], ..., slice[len(slice)-1]) otherwise
 // Proof of collision resistance: By the collision resistance of H, we may assume that f(a_1, ..., a_n) = f(b_1, ..., b_m) implies
 // m=1 and f(a_1,...,a_n) = f(b) = b. If n = 1, then f(a) = a and thus a = b.
 // Otherwise, n ≠ 1 implies H(n, f(a_1,...,a_n)) ≠ H(1, b).
@@ -414,7 +414,7 @@ func ChecksumSubSlices(api frontend.API, hsh snarkHash.FieldHasher, slice []fron
 		lastElems[i] =
 			plonk.EvaluateExpression(api, e, endpointsR.InRange[i], 0, -1-len(slice), 1, len(slice))
 	}
-	var lastElemsT *logderivlookup.Table
+	var lastElemsT logderivlookup.Table
 	if len(slice) > 1 {
 		lastElemsT = SliceToTable(api, lastElems)
 		lastElemsT.Insert(len(slice)) // in case subEndPoints is tight
@@ -730,7 +730,7 @@ func PartitionSlice(api frontend.API, s []frontend.Variable, selectors []fronten
 		panic(err)
 	}
 
-	subsT := make([]*logderivlookup.Table, len(subs))
+	subsT := make([]logderivlookup.Table, len(subs))
 	for i := range subs {
 		copy(subs[i], subsGlued[:len(subs[i])])
 		subsGlued = subsGlued[len(subs[i]):]

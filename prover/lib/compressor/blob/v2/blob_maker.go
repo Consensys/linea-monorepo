@@ -9,6 +9,7 @@ const (
 	// These also impact the circuit constraints (compile / setup time)
 	MaxUncompressedBytes = 780000    // This defines the max we can do including some leeway with 2**27 constraints
 	MaxUsableBytes       = 32 * 4096 // defines the number of bytes available in a blob
+	PackingSizeU256      = v1.PackingSizeU256
 )
 
 // NewBlobMaker returns a new bm.

@@ -1,10 +1,12 @@
 package gnarkutil
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	hashinterface "hash"
+	"io"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/hash"
@@ -112,4 +114,26 @@ func (h hashAsCompressor) Compress(left []byte, right []byte) (compressed []byte
 		panic(err)
 	}
 	return h.Sum(nil), nil
+}
+
+// PackLoose packs the input bytes into blocks of elements,
+// with each element's leftmost byte equal to 0.
+func PackLoose(out io.Writer, input []byte, elemNbBytes, blockNbElems int) error {
+	elemNbBytesUnpadded := elemNbBytes - 1
+	nbElems := (len(input) + elemNbBytesUnpadded - 1) / elemNbBytesUnpadded
+	nbBlocks := (nbElems + blockNbElems - 1) / blockNbElems
+	for i := range nbElems {
+		// left pad the element
+		if _, err := out.Write([]byte{0}); err != nil {
+			return err
+		}
+		if _, err := out.Write(input[i*elemNbBytesUnpadded : min(i*elemNbBytesUnpadded+elemNbBytesUnpadded, len(input))]); err != nil {
+			return err
+		}
+	}
+	// right pad
+	if _, err := out.Write(make([]byte, nbBlocks*blockNbElems*elemNbBytes-len(input))); err != nil {
+		return err
+	}
+
 }

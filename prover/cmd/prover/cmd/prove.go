@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
-	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/backend/data-availability"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -86,12 +86,12 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 
 // handleBlobDecompressionJob processes a blob decompression job
 func handleBlobDecompressionJob(cfg *config.Config, args ProverArgs) error {
-	req := &blobdecompression.Request{}
+	req := &data-availability.Request{}
 	if err := readRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
-	resp, err := blobdecompression.Prove(cfg, req)
+	resp, err := data-availability.Prove(cfg, req)
 	if err != nil {
 		return fmt.Errorf("could not prove the blob decompression: %w", err)
 	}

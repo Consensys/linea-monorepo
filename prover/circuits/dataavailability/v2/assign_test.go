@@ -1,0 +1,97 @@
+//go:build !fuzzlight
+
+package v2_test
+
+import (
+	"encoding/base64"
+	"encoding/hex"
+	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+
+	"github.com/consensys/gnark-crypto/ecc"
+	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/test"
+	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
+	blobtestutils "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	blobcompressorv2 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func prepareTestBlob(t require.TestingT) (c, a frontend.Circuit) {
+	return prepare(t, blobtestutils.GenTestBlob(t, 1000000))
+}
+
+func prepare(t require.TestingT, blobBytes []byte) (c *v2.Circuit, a frontend.Circuit) {
+
+	dictStore, err := dictionary.SingletonStore(blobtestutils.GetDict(t), 1)
+	assert.NoError(t, err)
+	r, err := blobcompressorv2.DecompressBlob(blobBytes, dictStore)
+	assert.NoError(t, err)
+
+	resp, err := blobsubmission.CraftResponse(&blobsubmission.Request{
+		Eip4844Enabled: true,
+		CompressedData: base64.StdEncoding.EncodeToString(blobBytes),
+	})
+	assert.NoError(t, err)
+
+	b, err := hex.DecodeString(resp.ExpectedX[2:])
+	assert.NoError(t, err)
+	var x [32]byte
+	copy(x[:], b)
+
+	b, err = hex.DecodeString(resp.ExpectedY[2:])
+	assert.NoError(t, err)
+	var y fr381.Element
+	y.SetBytes(b)
+
+	blobBytes = append(blobBytes, make([]byte, blobcompressorv2.MaxUsableBytes-len(blobBytes))...)
+	a, _, snarkHash, err := dataavailability.Assign(blobBytes, dictStore, true, x, y)
+	assert.NoError(t, err)
+
+	_, ok := a.(*v2.Circuit)
+	assert.True(t, ok)
+
+	assert.Equal(t, resp.SnarkHash[2:], hex.EncodeToString(snarkHash))
+
+	return &v2.Circuit{
+		Dict:      make([]frontend.Variable, len(r.Dict)),
+		BlobBytes: make([]frontend.Variable, blobcompressorv2.MaxUsableBytes),
+		Config: v2.Config{
+			MaxUncompressedNbBytes: len(r.RawPayload) * 3 / 2, // small max blobcompressorv1 size so it compiles in manageable time
+			MaxNbBatches:           r.Header.NbBatches() + 2,
+		},
+	}, a
+}
+
+func TestSmallBlob(t *testing.T) {
+	c, a := prepareTestBlob(t)
+	assert.NoError(t, test.IsSolved(c, a, ecc.BLS12_377.ScalarField()))
+}
+
+func TestTinyTwoBatchBlob(t *testing.T) {
+	c, a := prepare(t, blobtestutils.TinyTwoBatchBlob(t))
+	assert.NoError(t, test.IsSolved(c, a, ecc.BLS12_377.ScalarField()))
+}
+
+func TestSingleBlockBlob(t *testing.T) {
+	c, a := prepare(t, blobtestutils.SingleBlockBlob(t))
+	assert.NoError(t, test.IsSolved(c, a, ecc.BLS12_377.ScalarField()))
+}
+
+func TestSingleBlockBlobNoEngine(t *testing.T) {
+
+	c, a := prepare(t, blobtestutils.SingleBlockBlob(t))
+	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c)
+	assert.NoError(t, err)
+
+	w, err := frontend.NewWitness(a, ecc.BLS12_377.ScalarField())
+	assert.NoError(t, err)
+
+	assert.NoError(t, cs.IsSolved(w))
+}

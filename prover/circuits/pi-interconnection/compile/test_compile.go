@@ -19,11 +19,11 @@ func main() {
 	fmt.Println("creating wizard circuit")
 
 	c, err := pi_interconnection.Compile(config.PublicInput{
-		MaxNbDecompression: 400,
-		MaxNbExecution:     400,
-		ExecutionMaxNbMsg:  16,
-		L2MsgMerkleDepth:   5,
-		L2MsgMaxNbMerkle:   10,
+		MaxNbDA:           400,
+		MaxNbExecution:    400,
+		ExecutionMaxNbMsg: 16,
+		L2MsgMerkleDepth:  5,
+		L2MsgMaxNbMerkle:  10,
 	}, dummy.Compile)
 
 	var t test_utils.FakeTestingT

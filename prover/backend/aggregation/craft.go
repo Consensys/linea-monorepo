@@ -15,7 +15,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/backend/dataavailability"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -154,8 +154,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.DecompressionProofs))
 
 	for i, decompReqFPath := range req.DecompressionProofs {
-		dp := &blobdecompression.Response{}
-		fpath := path.Join(cfg.BlobDecompression.DirTo(), decompReqFPath)
+		dp := &dataavailability.Response{}
+		fpath := path.Join(cfg.DataAvailability.DirTo(), decompReqFPath)
 		f := files.MustRead(fpath)
 
 		if err := json.NewDecoder(f).Decode(dp); err != nil {

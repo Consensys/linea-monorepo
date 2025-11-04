@@ -21,7 +21,7 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/cmp"
-	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	decompression "github.com/consensys/linea-monorepo/prover/circuits/data-availability/v1"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
@@ -314,20 +314,20 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 		}
 	}
 	return config.PublicInput{
-		MaxNbDecompression: len(c.Circuit.DecompressionFPIQ),
-		MaxNbExecution:     len(c.Circuit.ExecutionFPIQ),
-		ExecutionMaxNbMsg:  executionNbMsg,
-		L2MsgMerkleDepth:   c.Circuit.L2MessageMerkleDepth,
-		L2MsgMaxNbMerkle:   c.Circuit.L2MessageMaxNbMerkle,
-		MaxNbCircuits:      c.Circuit.MaxNbCircuits,
+		MaxNbDA:           len(c.Circuit.DecompressionFPIQ),
+		MaxNbExecution:    len(c.Circuit.ExecutionFPIQ),
+		ExecutionMaxNbMsg: executionNbMsg,
+		L2MsgMerkleDepth:  c.Circuit.L2MessageMerkleDepth,
+		L2MsgMaxNbMerkle:  c.Circuit.L2MessageMaxNbMerkle,
+		MaxNbCircuits:     c.Circuit.MaxNbCircuits,
 	}, nil
 }
 
 func allocateCircuit(cfg config.PublicInput) Circuit {
 	res := Circuit{
-		DecompressionPublicInput: make([]frontend.Variable, cfg.MaxNbDecompression),
+		DecompressionPublicInput: make([]frontend.Variable, cfg.MaxNbDA),
 		ExecutionPublicInput:     make([]frontend.Variable, cfg.MaxNbExecution),
-		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, cfg.MaxNbDecompression),
+		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, cfg.MaxNbDA),
 		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
 		L2MessageMerkleDepth:     cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:     cfg.L2MsgMaxNbMerkle,
@@ -345,7 +345,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 }
 
 func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
-	nbShnarf := c.MaxNbDecompression
+	nbShnarf := c.MaxNbDA
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
 	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, 2)
 	for i := 0; i < nbShnarf; i++ {
@@ -434,7 +434,7 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 
 }
 
-// GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system
+// GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution from the compiled constraint system
 // TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
 	return cs.GetNbPublicVariables() - 2
@@ -450,6 +450,6 @@ const (
 func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
 	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
 	return utils.RightPad(
-		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDecompression)
+		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDA)
 
 }
