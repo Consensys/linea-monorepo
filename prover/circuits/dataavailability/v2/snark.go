@@ -23,7 +23,6 @@ import (
 	"github.com/consensys/gnark/std/compress/lzss"
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
-	public_input "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/publicinput"
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
@@ -388,7 +387,7 @@ func CheckBatchesSums(api frontend.API, compressor snarkHash.Compressor, maxNbBa
 		HASH = 0
 		EVAL = 1
 	)
-	var partialsTables [2]*logderivlookup.Table
+	var partialsTables [2]logderivlookup.Table
 	partialsTables[HASH] = internal.SliceToTable(api, partialSums[:maxNbBatches])
 	partialsTables[HASH].Insert(0) // dummy in case of maximum nbBatches
 	partialsTables[EVAL] = internal.SliceToTable(api, partialSums[maxNbBatches:])

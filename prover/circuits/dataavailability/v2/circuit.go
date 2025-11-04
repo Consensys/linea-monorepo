@@ -1,14 +1,17 @@
 package v2
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"hash"
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/std/compress/lzss"
 	gkrposeidon2 "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
 	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
+	gcposeidon2permutation "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/publicinput"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
@@ -418,17 +421,67 @@ func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x
 
 // the result for each batch is <data (31 bytes)> ... <data (31 bytes)>
 // for soundness some kind of length indicator must later be incorporated.
-func batchesChecksumAssign(ends []int, payload []byte) []BatchSums {
+func batchesChecksumAssign(ends []int, payload []byte) ([]BatchSums, error) {
+
 	res := make([]BatchSums, len(ends))
 
-	in := make([]byte, len(payload)+31)
-	copy(in, payload) // pad with 31 bytes to avoid out of range panic
+	nativeHash := gcHash.POSEIDON2_BLS12_377.New()
+	smallFieldHash := gcHash.POSEIDON2_KOALABEAR.New()
+	nativeCompressor := gcposeidon2permutation.NewDefaultPermutation()
+
+	var batchNativeBuffer bytes.Buffer
 
 	batchStart := 0
 	for i := range res {
-		res[i] = gnarkutil.ChecksumMiMCLooselyPackedBytes(payload[batchStart:ends[i]])
+		nativeHash.Reset()
+		smallFieldHash.Reset()
+
+		if err := gnarkutil.PackLoose(smallFieldHash, payload[batchStart:ends[i]], koalabear.Bytes, smallFieldHash.BlockSize()/koalabear.Bytes); err != nil {
+			return nil, err
+		}
+
+		batchNativeBuffer.Reset()
+		if err := gnarkutil.PackLoose(&batchNativeBuffer, payload[batchStart:ends[i]], fr377.Bytes, 1); err != nil {
+			return nil, err
+		}
+
+		if _, err := nativeHash.Write(batchNativeBuffer.Bytes()); err != nil {
+			return nil, err
+		}
+
+		res[i].Native = nativeHash.Sum(nil)
+		res[i].SmallField = smallFieldHash.Sum(nil)
+
+		evaluationPoint, err := nativeCompressor.Compress(res[i].Native, res[i].SmallField)
+		if err != nil {
+			return nil, err
+		}
+
+		if res[i].Total, err = polyEvalBls12377(batchNativeBuffer.Bytes(), evaluationPoint); err != nil {
+			return nil, err
+		}
+
 		batchStart = ends[i]
 	}
 
-	return res
+	return res, nil
+}
+
+func polyEvalBls12377(data []byte, evaluationPoint []byte) ([]byte, error) {
+	var res, c, x fr377.Element
+	if err := x.SetBytesCanonical(evaluationPoint); err != nil {
+		return nil, err
+	}
+	nbBlocks := len(data) / fr377.Bytes
+	if nbBlocks*fr377.Bytes != nbBlocks {
+		return nil, fmt.Errorf("data must consist of %d-byte blocks, but the length is %d bytes", fr377.Bytes, len(data))
+	}
+	for i := range nbBlocks {
+		if err := c.SetBytesCanonical(data[i*fr377.Bytes : (i+1)*fr377.Bytes]); err != nil {
+			return nil, err
+		}
+		res.Mul(&c, &x)
+		res.Add(&res, &c)
+	}
+	return res.Marshal(), nil
 }

@@ -1,7 +1,6 @@
 package gnarkutil
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -122,18 +121,22 @@ func PackLoose(out io.Writer, input []byte, elemNbBytes, blockNbElems int) error
 	elemNbBytesUnpadded := elemNbBytes - 1
 	nbElems := (len(input) + elemNbBytesUnpadded - 1) / elemNbBytesUnpadded
 	nbBlocks := (nbElems + blockNbElems - 1) / blockNbElems
+	buf := make([]byte, elemNbBytes)
 	for i := range nbElems {
-		// left pad the element
-		if _, err := out.Write([]byte{0}); err != nil {
+		copy(buf[1:], input[i*elemNbBytesUnpadded:])
+		if _, err := out.Write(buf); err != nil {
 			return err
 		}
-		if _, err := out.Write(input[i*elemNbBytesUnpadded : min(i*elemNbBytesUnpadded+elemNbBytesUnpadded, len(input))]); err != nil {
-			return err
-		}
-	}
-	// right pad
-	if _, err := out.Write(make([]byte, nbBlocks*blockNbElems*elemNbBytes-len(input))); err != nil {
-		return err
 	}
 
+	// right padding
+	for i := range buf {
+		buf[i] = 0
+	}
+	for range nbBlocks*blockNbElems - nbElems {
+		if _, err := out.Write(buf); err != nil {
+			return err
+		}
+	}
+	return nil
 }
