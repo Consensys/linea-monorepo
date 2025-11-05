@@ -1,6 +1,6 @@
 replicaCount: 3
 image:
-  name: hyperledger/besu:25.8.0
+  name: hyperledger/besu:25.11.0
   pullPolicy: IfNotPresent
 service:
   name: besu

@@ -14,7 +14,7 @@ k3s-run:
 		-p 80:80 \
 		-p 443:443 \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		rancher/k3s:v1.33.2-k3s1 \
+		rancher/k3s:v1.34.1-k3s1 \
 		server --token a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p
 
 k3s-setup-kubeconfig:
