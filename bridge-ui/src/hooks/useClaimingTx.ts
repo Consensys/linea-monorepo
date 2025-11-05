@@ -1,17 +1,16 @@
-import { BridgeTransaction, BridgeTransactionType, CctpMessageReceivedAbiEvent, TransactionStatus } from "@/types";
+import { BridgeTransaction, BridgeTransactionType, TransactionStatus, CctpMessageReceivedAbiEvent } from "@/types";
 import { getPublicClient } from "@wagmi/core";
-import { isCctpV2BridgeMessage, isNativeBridgeMessage } from "@/utils/message";
+import { config as wagmiConfig } from "@/lib/wagmi";
+import { isNativeBridgeMessage, isCctpV2BridgeMessage } from "@/utils/message";
 import { useQuery } from "@tanstack/react-query";
-import { getNativeBridgeMessageClaimedTxHash, isUndefined, isUndefinedOrEmptyString } from "@/utils";
-import { Config, useConfig } from "wagmi";
+import { getNativeBridgeMessageClaimedTxHash } from "@/utils";
+import { isUndefinedOrEmptyString, isUndefined } from "@/utils";
 
 const useClaimingTx = (transaction: BridgeTransaction | undefined): string | undefined => {
-  const wagmiConfig = useConfig();
-
   // queryFn for useQuery cannot return undefined - https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
   const { data } = useQuery({
     queryKey: ["useClaimingTx", transaction?.bridgingTx, transaction?.toChain?.id, transaction?.status],
-    queryFn: async () => getClaimTx(transaction, wagmiConfig),
+    queryFn: async () => getClaimTx(transaction),
   });
 
   if (isUndefinedOrEmptyString(data)) return;
@@ -20,7 +19,7 @@ const useClaimingTx = (transaction: BridgeTransaction | undefined): string | und
 
 export default useClaimingTx;
 
-async function getClaimTx(transaction: BridgeTransaction | undefined, wagmiConfig: Config): Promise<string> {
+async function getClaimTx(transaction: BridgeTransaction | undefined): Promise<string> {
   if (isUndefined(transaction)) return "";
   if (transaction?.claimingTx) return "";
   const { status, type, toChain, message } = transaction;
@@ -31,10 +30,6 @@ async function getClaimTx(transaction: BridgeTransaction | undefined, wagmiConfi
   const toChainClient = getPublicClient(wagmiConfig, {
     chainId: toChain.id,
   });
-
-  if (!toChainClient) {
-    throw new Error(`No public client found for chain ID ${toChain.id}`);
-  }
 
   switch (type) {
     case BridgeTransactionType.ETH: {

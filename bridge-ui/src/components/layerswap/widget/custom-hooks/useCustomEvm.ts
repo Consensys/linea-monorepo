@@ -1,5 +1,11 @@
-import { useAccount, useConnectors } from "wagmi";
-import { useCallback, useMemo } from "react";
+import { useAccount, useSwitchAccount } from "wagmi";
+import { useCallback, useEffect, useMemo } from "react";
+import {
+  useUserWallets,
+  useDynamicContext,
+  dynamicEvents,
+  Wallet as DynamicWallet,
+} from "@dynamic-labs/sdk-react-core";
 import {
   WalletProvider,
   Wallet,
@@ -8,18 +14,17 @@ import {
   NetworkWithTokens,
   NetworkType,
 } from "@layerswap/widget";
-import { useWeb3AuthConnect, useWeb3AuthDisconnect } from "@web3auth/modal/react";
 
 export default function useEVM(): WalletProvider {
   const name = "EVM";
   const id = "evm";
 
   // wagmi
-  const { connector: activeConnector, address: activeAddress, isConnected } = useAccount();
-  const { connect } = useWeb3AuthConnect();
-  const { disconnect } = useWeb3AuthDisconnect();
-  const connectors = useConnectors();
-
+  const { connectors: activeConnectors } = useSwitchAccount();
+  const { connector: activeConnector, address: activeAddress } = useAccount();
+  // Dynamic SDK
+  const { setShowAuthFlow, handleLogOut } = useDynamicContext();
+  const userWallets = useUserWallets();
   // Layerswap settings
   const { networks } = useSettingsState();
 
@@ -39,67 +44,76 @@ export default function useEVM(): WalletProvider {
     [evmNetworkNames],
   );
 
-  // connectWallet: trigger Web3Auth connection
+  // Clean up dynamicEvents listeners on unmount
+  useEffect(() => {
+    return () => {
+      dynamicEvents.removeAllListeners("walletAdded");
+      dynamicEvents.removeAllListeners("authFlowCancelled");
+    };
+  }, []);
+
+  // connectWallet: log out existing, show authFlow, wait for event, then resolve
   const connectWallet = useCallback(async (): Promise<Wallet | undefined> => {
-    try {
-      // Disconnect if already connected
-      if (isConnected) {
-        disconnect();
-      }
-
-      // Find Web3Auth connector
-      const web3authConnector = connectors.find((c) => c.id === "web3auth");
-      if (!web3authConnector) {
-        throw new Error("Web3Auth connector not found");
-      }
-
-      // Connect
-      await connect();
-
-      if (!activeAddress) {
-        return undefined;
-      }
-
-      return resolveWallet({
-        connectorId: web3authConnector.id,
-        connectorName: web3authConnector.name,
-        address: activeAddress,
-        isActive: true,
-        networks,
-        supportedNetworks,
-        disconnect: async () => disconnect(),
-        providerName: name,
-      });
-    } catch (error) {
-      console.error("Failed to connect wallet:", error);
-      return undefined;
+    if (userWallets.length) {
+      await handleLogOut();
     }
-  }, [isConnected, connectors, connect, activeAddress, networks, supportedNetworks, disconnect]);
+
+    const newDynWallet = await new Promise<DynamicWallet>((resolve, reject) => {
+      setShowAuthFlow(true);
+
+      const onAdded = (w: DynamicWallet) => {
+        cleanup();
+        resolve(w);
+      };
+      const onCancelled = () => {
+        cleanup();
+        reject(new Error("User cancelled the connection"));
+      };
+      const cleanup = () => {
+        dynamicEvents.off("walletAdded", onAdded);
+        dynamicEvents.off("authFlowCancelled", onCancelled);
+      };
+
+      dynamicEvents.on("walletAdded", onAdded);
+      dynamicEvents.on("authFlowCancelled", onCancelled);
+    });
+
+    return resolveWallet({
+      connection: newDynWallet,
+      activeConnection:
+        activeConnector && activeAddress ? { id: activeConnector.id, address: activeAddress } : undefined,
+      networks,
+      supportedNetworks,
+      disconnect: handleLogOut,
+      providerName: name,
+    });
+  }, [userWallets, handleLogOut, setShowAuthFlow, activeConnector, activeAddress, networks, supportedNetworks]);
 
   // Logout
   const disconnectWallets = useCallback(async () => {
-    disconnect();
-  }, [disconnect]);
+    await handleLogOut();
+  }, [handleLogOut]);
 
-  // Map connected wallet to Layerswap Wallet shape
-  const connectedWallets: Wallet[] = useMemo(() => {
-    if (!isConnected || !activeAddress || !activeConnector) {
-      return [];
-    }
-
-    const wallet = resolveWallet({
-      connectorId: activeConnector.id,
-      connectorName: activeConnector.name,
-      address: activeAddress,
-      isActive: true,
-      networks,
-      supportedNetworks,
-      disconnect: disconnectWallets,
-      providerName: name,
-    });
-
-    return wallet ? [wallet] : [];
-  }, [isConnected, activeAddress, activeConnector, networks, supportedNetworks, disconnectWallets]);
+  // Map wagmi connectors → Dynamic SDK wallets → our Wallet shape
+  const connectedWallets: Wallet[] = useMemo(
+    () =>
+      activeConnectors
+        .map(() => {
+          const dyn = userWallets.find(() => true);
+          if (!dyn) return;
+          return resolveWallet({
+            connection: dyn,
+            activeConnection:
+              activeConnector && activeAddress ? { id: activeConnector.id, address: activeAddress } : undefined,
+            networks,
+            supportedNetworks,
+            disconnect: disconnectWallets,
+            providerName: name,
+          });
+        })
+        .filter(Boolean) as Wallet[],
+    [activeConnectors, userWallets, activeConnector, activeAddress, networks, supportedNetworks, disconnectWallets],
+  );
 
   const logo = networks.find((n) => n.name.toLowerCase().includes("linea"))?.logo;
 
@@ -117,12 +131,10 @@ export default function useEVM(): WalletProvider {
   };
 }
 
-/** Reusable helper to turn a wagmi connector + address into Layerswap `Wallet` shape */
+/** Reusable helper to turn a DynamicWallet + context into our `Wallet` shape */
 function resolveWallet(props: {
-  connectorId: string;
-  connectorName: string;
-  address: string;
-  isActive: boolean;
+  connection: DynamicWallet;
+  activeConnection?: { id: string; address: string };
   networks: NetworkWithTokens[];
   supportedNetworks: {
     asSource: string[];
@@ -132,16 +144,18 @@ function resolveWallet(props: {
   disconnect: () => Promise<void>;
   providerName: string;
 }): Wallet | undefined {
-  const { connectorId, connectorName, address, isActive, networks, supportedNetworks, disconnect, providerName } =
-    props;
+  const { connection, activeConnection, networks, supportedNetworks, disconnect, providerName } = props;
 
-  if (!address) return;
+  const connectorName = connection.connector.name;
+  const address = connection.address;
+  if (!connectorName || !address) return;
 
+  const isActive = activeConnection?.address === address;
   const displayName = `${connectorName} – ${providerName}`;
   const networkIcon = networks.find((n) => n.name.toLowerCase().includes("linea"))?.logo;
 
   return {
-    id: connectorId,
+    id: connectorName,
     isActive,
     address,
     addresses: [address],

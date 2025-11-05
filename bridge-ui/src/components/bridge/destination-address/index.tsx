@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { Address, isAddress } from "viem";
 import clsx from "clsx";
@@ -31,7 +31,6 @@ function formatMessage({
 
 export function DestinationAddress() {
   const { address, isConnected } = useAccount();
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const toChain = useChainStore.useToChain();
   const recipient = useFormStore((state) => state.recipient);
@@ -56,25 +55,9 @@ export function DestinationAddress() {
     } else {
       setError(null);
     }
-    resizeInput();
   }, [inputValue]);
 
-  const resizeInput = () => {
-    const inputEl = inputRef.current;
-    if (inputEl) {
-      inputEl.style.height = "auto";
-      inputEl.style.height = `${inputEl.scrollHeight}px`;
-    }
-  };
-
-  useEffect(() => {
-    resizeInput();
-
-    window.addEventListener("resize", resizeInput);
-    return () => window.removeEventListener("resize", resizeInput);
-  }, []);
-
-  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(() => e.target.value as `0x${string}`);
     if (isAddress(e.target.value)) {
       setRecipient(e.target.value);
@@ -105,18 +88,17 @@ export function DestinationAddress() {
       </div>
 
       <div className={styles["input-container"]}>
-        <textarea
+        <input
+          type="text"
           id="address"
-          ref={inputRef}
           required
           maxLength={42}
           value={inputValue}
-          rows={1}
-          spellCheck={false}
+          pattern="^0x[a-fA-F0-9]{40}$"
           onChange={handleChange}
           className={clsx(styles.input, {
             [styles["error"]]: error,
-            [styles["extra-padding"]]: isConnected && inputValue !== address,
+            [styles["not-connected"]]: !isConnected,
           })}
         />
         {isConnected && (
