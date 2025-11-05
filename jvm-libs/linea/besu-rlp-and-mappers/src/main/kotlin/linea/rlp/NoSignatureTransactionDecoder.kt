@@ -7,7 +7,6 @@ import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.TransactionType
 import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.ethereum.core.Transaction
-import org.hyperledger.besu.ethereum.core.encoding.CodeDelegationTransactionDecoder
 import org.hyperledger.besu.ethereum.rlp.RLP
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import java.math.BigInteger
@@ -22,10 +21,7 @@ class NoSignatureTransactionDecoder {
         return decodeAccessList(transactionInput)
       }
       if (transactionType.toInt() == 0x02) {
-        return decode1559CompatibleEnvelope(transactionInput, TransactionType.EIP1559)
-      }
-      if (transactionType.toInt() == 0x04) {
-        return decode1559CompatibleEnvelope(transactionInput, TransactionType.DELEGATE_CODE)
+        return decode1559(transactionInput)
       }
       throw IllegalArgumentException("Unsupported transaction type")
     } else { // Frontier transaction
@@ -70,12 +66,12 @@ class NoSignatureTransactionDecoder {
     return builder.signature(SECPSignature(BigInteger.ZERO, BigInteger.ZERO, 0.toByte())).build()
   }
 
-  private fun decode1559CompatibleEnvelope(transactionInput: RLPInput, txType: TransactionType): Transaction {
+  private fun decode1559(transactionInput: RLPInput): Transaction {
     val builder = Transaction.builder()
     transactionInput.enterList()
     val chainId = transactionInput.readBigIntegerScalar()
     builder
-      .type(txType)
+      .type(TransactionType.EIP1559)
       .chainId(chainId)
       .nonce(transactionInput.readLongScalar())
       .maxPriorityFeePerGas(Wei.of(transactionInput.readUInt256Scalar()))
@@ -106,11 +102,6 @@ class NoSignatureTransactionDecoder {
           accessListEntry
         },
       )
-      .apply {
-        if (txType == TransactionType.DELEGATE_CODE) {
-          codeDelegations(transactionInput.readList(CodeDelegationTransactionDecoder::decodeInnerPayload))
-        }
-      }
     transactionInput.readUnsignedByteScalar()
     builder.sender(Address.extract(transactionInput.readUInt256Scalar()))
     transactionInput.readUInt256Scalar()

@@ -11,6 +11,7 @@ package net.consensys.linea.rpc.methods;
 
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static net.consensys.linea.zktracer.Fork.LONDON;
 import static org.hyperledger.besu.ethereum.api.jsonrpc.internal.results.Quantity.create;
 import static org.hyperledger.besu.plugin.services.TransactionSimulationService.SimulationParameters.ALLOW_FUTURE_NONCE;
 
@@ -19,7 +20,6 @@ import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,7 +32,6 @@ import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
@@ -42,7 +41,6 @@ import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.hyperledger.besu.crypto.SECPSignature;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.StateOverrideMap;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.exception.InvalidJsonRpcParameters;
@@ -259,7 +257,8 @@ public class LineaEstimateGas {
       final long logId) {
 
     final var pendingBlockHeader = transactionSimulationService.simulatePendingBlockHeader();
-    final var lineCountingTracer = createLineCountingTracer(pendingBlockHeader, blockchainService);
+    final var lineCountingTracer =
+        createLineCountingTracer(pendingBlockHeader, blockchainService.getChainId().get());
 
     final var maybeSimulationResults =
         transactionSimulationService.simulate(
@@ -429,25 +428,11 @@ public class LineaEstimateGas {
   }
 
   private LineCountingTracer createLineCountingTracer(
-      final ProcessableBlockHeader pendingBlockHeader, final BlockchainService blockchainService) {
-    final var forkId =
-        blockchainService.getNextBlockHardforkId(
-            blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond());
-
+      final ProcessableBlockHeader pendingBlockHeader, final BigInteger chainId) {
     final var lineCountingTracer =
         tracerConfiguration.isLimitless()
             ? new ZkCounter(l1L2BridgeConfiguration)
-            : new ZkTracer(
-                switch (forkId) {
-                  case HardforkId.MainnetHardforkId.LONDON -> Fork.LONDON;
-                  case HardforkId.MainnetHardforkId.PARIS -> Fork.PARIS;
-                  case HardforkId.MainnetHardforkId.SHANGHAI -> Fork.SHANGHAI;
-                  case HardforkId.MainnetHardforkId.CANCUN -> Fork.CANCUN;
-                  case HardforkId.MainnetHardforkId.PRAGUE -> Fork.PRAGUE;
-                  default -> throw new RuntimeException("Unknown fork id " + forkId);
-                },
-                l1L2BridgeConfiguration,
-                blockchainService.getChainId().get());
+            : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
     lineCountingTracer.traceStartConflation(1L);
     lineCountingTracer.traceStartBlock(
         worldStateService.getWorldView(), pendingBlockHeader, pendingBlockHeader.getCoinbase());

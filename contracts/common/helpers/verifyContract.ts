@@ -1,20 +1,16 @@
 import { run } from "hardhat";
 import { delay } from "./general";
 
-export async function tryVerifyContract(contractAddress: string, contractForVerification?: string) {
-  if (process.env.VERIFY_CONTRACT === "true") {
+export async function tryVerifyContract(contractAddress: string) {
+  if (process.env.VERIFY_CONTRACT) {
     console.log("Waiting 30 seconds for contract propagation...");
     await delay(30000);
     console.log("Etherscan verification ongoing...");
     // Verify contract
     try {
-      const verifyArgs: Record<string, string> = {
+      await run("verify", {
         address: contractAddress,
-      };
-      if (contractForVerification) {
-        verifyArgs.contract = contractForVerification;
-      }
-      await run("verify", verifyArgs);
+      });
     } catch (err) {
       console.log(`Error happened during verification: ${err}`);
     }
@@ -27,7 +23,7 @@ export async function tryVerifyContractWithConstructorArgs(
   contractForVerification: string,
   args: unknown[],
 ) {
-  if (process.env.VERIFY_CONTRACT === "true") {
+  if (process.env.VERIFY_CONTRACT) {
     console.log("Waiting 30 seconds for contract propagation...");
     await delay(30000);
     console.log("Etherscan verification ongoing...");

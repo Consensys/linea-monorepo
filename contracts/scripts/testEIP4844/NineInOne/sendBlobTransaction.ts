@@ -13,8 +13,6 @@ import submissionDataJson9 from "./blocks-266-305.json";
 import aggregateProof1to305 from "./aggregatedProof-1-305.json";
 import { DataHexString } from "ethers/lib.commonjs/utils/data";
 
-const chainId = 31648428;
-
 const dataItems = [
   submissionDataJson1,
   submissionDataJson2,
@@ -269,7 +267,7 @@ async function sendMessage() {
     maxPriorityFeePerGas: maxPriorityFeePerGas!,
     maxFeePerGas: maxFeePerGas!,
     to: destinationAddress,
-    chainId,
+    chainId: 31648428,
     nonce,
     value: 1050000000000000000n,
     gasLimit: 5_000_000,
@@ -298,7 +296,7 @@ async function submitBlob(
     maxPriorityFeePerGas: maxPriorityFeePerGas!,
     maxFeePerGas: maxFeePerGas!,
     to: destinationAddress,
-    chainId,
+    chainId: 31648428,
     type: 3,
     nonce,
     value: 0,
@@ -386,7 +384,7 @@ async function sendProof(
     maxPriorityFeePerGas: maxPriorityFeePerGas!,
     maxFeePerGas: maxFeePerGas!,
     to: destinationAddress,
-    chainId,
+    chainId: 31648428,
     nonce,
     value: 0,
     gasLimit: 5_000_000,

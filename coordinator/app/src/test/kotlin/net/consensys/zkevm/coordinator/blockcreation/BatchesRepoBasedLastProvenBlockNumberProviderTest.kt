@@ -17,12 +17,7 @@ class BatchesRepoBasedLastProvenBlockNumberProviderTest {
     whenever(batchesRepositoryMock.findHighestConsecutiveEndBlockNumberFromBlockNumber(anyOrNull()))
       .thenReturn(SafeFuture.completedFuture(null))
     val startingBlockNumber = 3L
-    val provider =
-      BatchesRepoBasedLastProvenBlockNumberProvider(
-        startingBlockNumber,
-        startingBlockNumber - 1L,
-        batchesRepositoryMock,
-      )
+    val provider = BatchesRepoBasedLastProvenBlockNumberProvider(startingBlockNumber, batchesRepositoryMock)
     val initialProvenBlockNumber = provider.getLastProvenBlockNumber()
     assertThat(initialProvenBlockNumber.get()).isEqualTo(startingBlockNumber)
   }
@@ -33,16 +28,10 @@ class BatchesRepoBasedLastProvenBlockNumberProviderTest {
     whenever(batchesRepositoryMock.findHighestConsecutiveEndBlockNumberFromBlockNumber(anyOrNull()))
       .thenReturn(SafeFuture.completedFuture(null))
     val startingBlockNumber = 3L
-    val provider =
-      BatchesRepoBasedLastProvenBlockNumberProvider(
-        startingBlockNumber,
-        startingBlockNumber - 1L,
-        batchesRepositoryMock,
-      )
+    val provider = BatchesRepoBasedLastProvenBlockNumberProvider(startingBlockNumber, batchesRepositoryMock)
     val newFinalizedBlock = 10L
     provider.updateLatestL1FinalizedBlock(newFinalizedBlock)
     assertThat(provider.getLastProvenBlockNumber().get()).isEqualTo(newFinalizedBlock)
-    assertThat(provider.getLatestL1FinalizedBlock()).isEqualTo(newFinalizedBlock)
   }
 
   @Test
@@ -52,16 +41,10 @@ class BatchesRepoBasedLastProvenBlockNumberProviderTest {
     whenever(batchesRepositoryMock.findHighestConsecutiveEndBlockNumberFromBlockNumber(anyOrNull()))
       .thenReturn(SafeFuture.completedFuture(dataInDb))
     val startingBlockNumber = 3L
-    val provider =
-      BatchesRepoBasedLastProvenBlockNumberProvider(
-        startingBlockNumber,
-        startingBlockNumber - 1L,
-        batchesRepositoryMock,
-      )
+    val provider = BatchesRepoBasedLastProvenBlockNumberProvider(startingBlockNumber, batchesRepositoryMock)
     val newFinalizedBlock = 10L
     provider.updateLatestL1FinalizedBlock(newFinalizedBlock)
     assertThat(provider.getLastProvenBlockNumber().get()).isEqualTo(dataInDb)
-    assertThat(provider.getLatestL1FinalizedBlock()).isEqualTo(newFinalizedBlock)
   }
 
   @Test
@@ -71,17 +54,11 @@ class BatchesRepoBasedLastProvenBlockNumberProviderTest {
     whenever(batchesRepositoryMock.findHighestConsecutiveEndBlockNumberFromBlockNumber(anyOrNull()))
       .thenReturn(SafeFuture.completedFuture(dataInDb))
     val startingBlockNumber = 3L
-    val provider =
-      BatchesRepoBasedLastProvenBlockNumberProvider(
-        startingBlockNumber,
-        startingBlockNumber - 1L,
-        batchesRepositoryMock,
-      )
+    val provider = BatchesRepoBasedLastProvenBlockNumberProvider(startingBlockNumber, batchesRepositoryMock)
     provider.getLastProvenBlockNumber()
     whenever(batchesRepositoryMock.findHighestConsecutiveEndBlockNumberFromBlockNumber(anyOrNull()))
       .thenReturn(SafeFuture.completedFuture(null))
     assertThat(provider.getLastProvenBlockNumber().get()).isEqualTo(dataInDb)
-    assertThat(provider.getLatestL1FinalizedBlock()).isEqualTo(startingBlockNumber - 1L)
   }
 
   @Test
@@ -91,15 +68,9 @@ class BatchesRepoBasedLastProvenBlockNumberProviderTest {
     whenever(batchesRepositoryMock.findHighestConsecutiveEndBlockNumberFromBlockNumber(anyOrNull()))
       .thenReturn(SafeFuture.completedFuture(dataInDb))
     val startingBlockNumber = 3L
-    val provider =
-      BatchesRepoBasedLastProvenBlockNumberProvider(
-        startingBlockNumber,
-        startingBlockNumber - 1L,
-        batchesRepositoryMock,
-      )
+    val provider = BatchesRepoBasedLastProvenBlockNumberProvider(startingBlockNumber, batchesRepositoryMock)
     provider.getLastProvenBlockNumber()
     assertThat(provider.getLastKnownProvenBlockNumber()).isEqualTo(dataInDb)
-    assertThat(provider.getLatestL1FinalizedBlock()).isEqualTo(startingBlockNumber - 1L)
 
     verify(batchesRepositoryMock, times(1)).findHighestConsecutiveEndBlockNumberFromBlockNumber(anyOrNull())
   }

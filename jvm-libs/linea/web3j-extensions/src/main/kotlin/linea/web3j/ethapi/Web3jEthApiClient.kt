@@ -8,9 +8,9 @@ import linea.ethapi.EthApiClient
 import linea.kotlin.toULong
 import linea.web3j.domain.toDomain
 import linea.web3j.domain.toWeb3j
-import linea.web3j.mappers.mapToDomainWithTxHashes
-import linea.web3j.mappers.toDomain
+import linea.web3j.mapToDomainWithTxHashes
 import linea.web3j.requestAsync
+import linea.web3j.toDomain
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.methods.request.EthFilter
 import org.web3j.protocol.core.methods.response.Log
@@ -29,14 +29,6 @@ class Web3jEthApiClient(
       .ethChainId()
       .requestAsync { resp ->
         resp.chainId?.toULong() ?: throw IllegalStateException("Chain ID not found in response")
-      }
-  }
-
-  override fun blockNumber(): SafeFuture<ULong> {
-    return web3jClient
-      .ethBlockNumber()
-      .requestAsync { resp ->
-        resp.blockNumber?.toULong() ?: throw IllegalStateException("Block number not found in response")
       }
   }
 

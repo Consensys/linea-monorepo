@@ -32,9 +32,7 @@ public class TestCommandLineOptionsBuilder {
     cliOptions.setProperty("--plugin-linea-max-block-gas=", MAX_VALUE);
     cliOptions.setProperty(
         "--plugin-linea-l1l2-bridge-contract=", "0x00000000000000000000000000000000DEADBEEF");
-    cliOptions.setProperty(
-        "--plugin-linea-l1l2-bridge-topic=",
-        "0x1234567812345678123456781234567812345678123456781234567812345678");
+    cliOptions.setProperty("--plugin-linea-l1l2-bridge-topic=", "0x123456");
   }
 
   public TestCommandLineOptionsBuilder set(String option, String value) {

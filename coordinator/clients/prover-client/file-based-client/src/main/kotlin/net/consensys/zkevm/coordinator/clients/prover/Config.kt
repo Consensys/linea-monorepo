@@ -7,7 +7,6 @@ data class ProversConfig(
   val proverA: ProverConfig,
   val switchBlockNumberInclusive: ULong?,
   val proverB: ProverConfig?,
-  val enableRequestFilesCleanup: Boolean = false,
 )
 
 data class ProverConfig(

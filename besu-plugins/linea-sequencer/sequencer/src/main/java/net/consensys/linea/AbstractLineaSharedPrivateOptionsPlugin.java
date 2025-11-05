@@ -38,7 +38,6 @@ import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.plugins.config.LineaTracerSharedCliOptions;
 import net.consensys.linea.plugins.config.LineaTracerSharedConfiguration;
-import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.utils.Compressor;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
@@ -73,7 +72,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   protected static BundlePoolService bundlePoolService;
   protected static MetricCategoryRegistry metricCategoryRegistry;
   protected static RpcEndpointService rpcEndpointService;
-  protected static InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
@@ -166,10 +164,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public LineaLivenessServiceConfiguration livenessServiceConfiguration() {
     return (LineaLivenessServiceConfiguration)
         getConfigurationByKey(LineaLivenessServiceCliOptions.CONFIG_KEY).optionsConfig();
-  }
-
-  protected InvalidTransactionByLineCountCache getInvalidTransactionByLineCountCache() {
-    return invalidTransactionByLineCountCache;
   }
 
   @Override
@@ -267,10 +261,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
             besuEvents,
             blockchainService);
     bundlePoolService.loadFromDisk();
-
-    invalidTransactionByLineCountCache =
-        new InvalidTransactionByLineCountCache(
-            transactionSelectorConfiguration().overLinesLimitCacheSize());
   }
 
   @Override

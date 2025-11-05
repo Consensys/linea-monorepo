@@ -35,7 +35,7 @@ interface AggregationsRepository {
   ): SafeFuture<List<ProofToFinalize>>
 
   fun findHighestConsecutiveEndBlockNumber(
-    fromBlockNumber: Long? = null,
+    fromBlockNumber: Long,
   ): SafeFuture<Long?>
 
   fun findAggregationProofByEndBlockNumber(
