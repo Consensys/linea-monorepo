@@ -3,6 +3,7 @@
 package accumulator_test
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -242,6 +243,89 @@ func TestRealKeyAndVal(t *testing.T) {
 	require.Equal(
 		t,
 		"0x17ae4260246c749f10ef846b704305b35956df8f26efdc2b3634a0ec787ac1f3",
+		acc.TopRoot().Hex(),
+	)
+}
+
+// Test ReadAndProve after inserting a new entry
+func TestReadAndProve(t *testing.T) {
+
+	acc := newTestAccumulatorPoseidon2DummyVal()
+
+	key := dumkey(36) // "KEY_36"
+	val := dumval(32) // "VAL_32"
+
+	_ = acc.InsertAndProve(key, val)
+	// Snapshot the verifier after the insertions because of the verifier
+	ver := acc.VerifierState()
+	trace := acc.ReadNonZeroAndProve(key)
+
+	fmt.Printf("key: %v\n", key.Hex())
+	fmt.Printf("val: %v\n", val.Hex())
+	fmt.Printf("Proof: %v\n", trace.Proof.String())
+
+	err := ver.ReadNonZeroVerify(trace)
+	require.NoErrorf(t, err, "check #%v - trace %++v", key, trace)
+	require.Equal(t, val, trace.Value)
+
+	// We inserted, so the next free node should have been increased
+	require.Equal(t, int64(3), acc.NextFreeNode)
+
+	// Check the value of the first leaf, it should be "head" with an updated next value
+	{
+		leafOpening := acc.Data.MustGet(0).LeafOpening
+		require.Equal(t, int64(0), leafOpening.Prev)
+		require.Equal(t, int64(2), leafOpening.Next)
+		require.Equal(
+			t,
+			"LeafOpening{Prev: 0, Next: 2, HKey: 0x0000000000000000000000000000000000000000000000000000000000000000, HVal: 0x0000000000000000000000000000000000000000000000000000000000000000}",
+			leafOpening.String(),
+		)
+
+		// also checks its hash value (i.e, the corresponding leaf in the tree)
+		leaf := leafOpening.Hash(acc.Config())
+		require.Equal(t, "0x22e7a2ea33304d915fd93eac62b418ba7ca915131bea42827670d7f31a3b3445", leaf.Hex())
+	}
+
+	// check the value of the second leaf opening. It should be tail with an updated prev value
+	{
+		leafOpening := acc.Data.MustGet(1).LeafOpening
+		require.Equal(
+			t,
+			"LeafOpening{Prev: 2, Next: 1, HKey: 0x7f0000007f0000007f0000007f0000007f0000007f0000007f0000007f000000, HVal: 0x0000000000000000000000000000000000000000000000000000000000000000}",
+			leafOpening.String(),
+		)
+
+		// also check its hash value
+		leaf := leafOpening.Hash(acc.Config())
+		require.Equal(t, "0x7172ab730766d9b6367938c031afbd13607d95796a60930945ab6b88434339b2", leaf.Hex())
+	}
+
+	// check the value of the third leaf opening, corresponds to the inserted entry
+	{
+		leafOpening := acc.Data.MustGet(2).LeafOpening
+		require.Equal(
+			t,
+			"LeafOpening{Prev: 0, Next: 1, HKey: 0x4e7ab8ef1c7169ed5e4646a10bbd448c253fa80c72898e462679db3d3d8d4982, HVal: 0x063751a85c47372931137aa30fa12640658f6b730ddf9aa66022caa84394be65}",
+			leafOpening.String(),
+		)
+
+		// also check its hash value
+		leaf := leafOpening.Hash(acc.Config())
+		require.Equal(t, "0x658ab2dd5ca7d5372612204e29e1186e67bfd72f57555a001446adf373012440", leaf.Hex())
+	}
+
+	// root of the subtree (e.g. exluding the next free node)
+	require.Equal(
+		t,
+		"0x172eb5732c890a817a2f3e1c0fb160d427de56f1382ec516285566dd4b388598",
+		acc.SubTreeRoot().Hex(),
+	)
+
+	// root of the complete accumulator (e.g including the last node)
+	require.Equal(
+		t,
+		"0x41b102f54c543dcb7e6435031a31890b6f2d8ad2729345ed10dfa7432ec9cd9c",
 		acc.TopRoot().Hex(),
 	)
 }
