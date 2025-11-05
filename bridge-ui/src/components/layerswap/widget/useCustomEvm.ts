@@ -1,5 +1,6 @@
-import { useAccount, useConnect, useDisconnect, useConnectors } from "wagmi";
+import { useAccount, useConfig } from "wagmi";
 import { useCallback, useMemo } from "react";
+import { watchAccount, getAccount } from "@wagmi/core";
 import { resolveWalletConnectorIcon, NetworkWithTokens, NetworkType } from "@layerswap/widget";
 import {
   WalletConnectionProvider,
@@ -7,16 +8,17 @@ import {
   WalletConnectionProviderProps,
   InternalConnector,
 } from "@layerswap/widget/types";
+import { useWeb3AuthConnect, useWeb3AuthDisconnect } from "@web3auth/modal/react";
 
 export default function useEVM({ networks }: WalletConnectionProviderProps): WalletConnectionProvider {
   const name = "EVM";
   const id = "evm";
 
   // wagmi
+  const wagmiConfig = useConfig();
   const { connector: activeConnector, address: activeAddress, isConnected } = useAccount();
-  const { connectAsync } = useConnect();
-  const { disconnect } = useDisconnect();
-  const connectors = useConnectors();
+  const { connect } = useWeb3AuthConnect();
+  const { disconnect } = useWeb3AuthDisconnect();
 
   // Gather the EVM‐type network names
   const evmNetworkNames = useMemo(
@@ -39,26 +41,23 @@ export default function useEVM({ networks }: WalletConnectionProviderProps): Wal
     try {
       // Disconnect if already connected
       if (isConnected) {
-        disconnect();
-      }
-
-      // Find Web3Auth connector
-      const web3authConnector = connectors.find((c) => c.id === "web3auth");
-      if (!web3authConnector) {
-        throw new Error("Web3Auth connector not found");
+        await disconnect();
       }
 
       // Connect
-      const result = await connectAsync({ connector: web3authConnector });
+      await connect();
 
-      if (!result.accounts[0]) {
+      // Wait for account address to become available
+      const address = await waitForAccountAddress(wagmiConfig);
+
+      if (!address) {
         return undefined;
       }
 
       return resolveWallet({
-        connectorId: web3authConnector.id,
-        connectorName: web3authConnector.name,
-        address: result.accounts[0],
+        connectorId: "web3auth",
+        connectorName: "Web3Auth",
+        address,
         isActive: true,
         networks,
         supportedNetworks,
@@ -69,7 +68,7 @@ export default function useEVM({ networks }: WalletConnectionProviderProps): Wal
       console.error("Failed to connect wallet:", error);
       return undefined;
     }
-  }, [isConnected, disconnect, connectors, connectAsync, networks, supportedNetworks]);
+  }, [isConnected, connect, wagmiConfig, networks, supportedNetworks, disconnect]);
 
   // Logout
   const disconnectWallets = useCallback(async () => {
@@ -102,7 +101,7 @@ export default function useEVM({ networks }: WalletConnectionProviderProps): Wal
       id: "web3auth",
       name: "Web3Auth",
       icon: logo,
-      providerName: "EVM",
+      providerName: name,
     },
   ];
 
@@ -157,4 +156,38 @@ function resolveWallet(props: {
     withdrawalSupportedNetworks: supportedNetworks.withdrawal,
     networkIcon,
   };
+}
+
+/**
+ * Helper function to wait for account address to become available
+ * @param wagmiConfig - Wagmi configuration
+ * @param timeout - Maximum time to wait in milliseconds (default: 30000)
+ * @returns Promise that resolves with the account address or rejects on timeout
+ */
+function waitForAccountAddress(wagmiConfig: ReturnType<typeof useConfig>, timeout: number = 30000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // Check immediately in case account is already available
+    const account = getAccount(wagmiConfig);
+    if (account.address) {
+      resolve(account.address);
+      return;
+    }
+
+    // Watch for account changes
+    const unwatch = watchAccount(wagmiConfig, {
+      onChange(account) {
+        if (account.address) {
+          unwatch();
+          clearTimeout(timeoutId);
+          resolve(account.address);
+        }
+      },
+    });
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      unwatch();
+      reject(new Error("Timeout waiting for wallet connection"));
+    }, timeout);
+  });
 }
