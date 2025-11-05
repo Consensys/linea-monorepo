@@ -89,8 +89,8 @@ contract YieldManager is
    * @param _initializationData Struct bundling pause/unpause roles, permissions, reserve targets, and default recipients.
    */
   function initialize(YieldManagerInitializationData calldata _initializationData) external initializer {
+    ErrorUtils.revertIfZeroAddress(_initializationData.defaultAdmin);
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
-    if (_initializationData.defaultAdmin == address(0)) revert ZeroAddressNotAllowed();
     _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
     __Permissions_init(_initializationData.roleAddresses);
 
