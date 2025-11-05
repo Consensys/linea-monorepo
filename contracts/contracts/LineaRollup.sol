@@ -2,12 +2,15 @@
 pragma solidity 0.8.30;
 
 import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
+import { ErrorUtils } from "./lib/ErrorUtils.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 contract LineaRollup is LineaRollupYieldExtension {
+  
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -21,10 +24,8 @@ contract LineaRollup is LineaRollupYieldExtension {
    * @param _initializationData The initial data used for proof verification.
    */
   function initialize(InitializationData calldata _initializationData) external initializer {
+    ErrorUtils.revertIfZeroAddress(_initializationData.initialYieldManager);
     __LineaRollup_init(_initializationData);
-    if (_initializationData.initialYieldManager == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
     __LineaRollupYieldExtension_init(_initializationData.initialYieldManager);
   }
 
@@ -50,6 +51,8 @@ contract LineaRollup is LineaRollupYieldExtension {
     PauseTypeRole[] calldata _unpauseTypeRoles,
     address _yieldManager
   ) external reinitializer(7) {
+    ErrorUtils.revertIfZeroAddress(_yieldManager);
+    
     address proxyAdmin;
     assembly {
       proxyAdmin := sload(PROXY_ADMIN_SLOT)
@@ -58,10 +61,6 @@ contract LineaRollup is LineaRollupYieldExtension {
 
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-
-    if (_yieldManager == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
     __LineaRollupYieldExtension_init(_yieldManager);
 
     /// @dev using the constants requires string memory and more complex code.
