@@ -253,6 +253,11 @@ export default class SubmitInvoice extends Command {
 
     const awsCostsInUsd = await this.getAWSCosts(invoicePeriod, awsCostsApiFilters);
 
+    if (awsCostsInUsd === undefined) {
+      this.warn("AWS costs are undefined, likely due to data still being estimated. Stopping invoice processing.");
+      return;
+    }
+
     this.log(
       `Total AWS costs costsInUsd=${awsCostsInUsd} for the period: startDate=${invoicePeriodStartDateStr} endDate=${invoicePeriodEndDateStr}`,
     );
@@ -395,6 +400,7 @@ export default class SubmitInvoice extends Command {
 
   /**
    * Fetch AWS costs for the given invoice period using the provided AWS Costs API filters.
+   * Returns undefined if the data is still being estimated.
    * @param invoicePeriod Invoice period with start and end dates.
    * @param awsCostsApiFilters AWS Costs API filters to apply.
    * @returns The total AWS costs for the specified invoice period.
@@ -402,7 +408,7 @@ export default class SubmitInvoice extends Command {
   private async getAWSCosts(
     invoicePeriod: InvoicePeriod,
     awsCostsApiFilters: GetCostAndUsageCommandInput,
-  ): Promise<number> {
+  ): Promise<number | undefined> {
     const awsClient = createAwsCostExplorerClient({ region: "us-east-1" });
     const startDateStr = formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd");
     const endDateStr = formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd");
@@ -427,14 +433,17 @@ export default class SubmitInvoice extends Command {
     );
 
     if (!Array.isArray(ResultsByTime) || ResultsByTime.length === 0) {
-      this.error(`No AWS cost data returned for the specified period. startDate=${startDateStr} endDate=${endDateStr}`);
+      this.error(
+        `No AWS cost data returned for the specified period. startDate=${startDateStr} endDate=${formatInTimeZone(subDays(endDateStr, 1), "UTC", "yyyy-MM-dd")}`,
+      );
     }
 
     const estimated = ResultsByTime[0]?.Estimated;
-    if (!estimated || estimated === true) {
-      this.error(
-        `AWS cost data for the specified period is still under estimation. startDate=${startDateStr} endDate=${endDateStr}`,
+    if (estimated === undefined || estimated === true) {
+      this.warn(
+        `AWS cost data for the specified period is still under estimation. startDate=${startDateStr} endDate=${formatInTimeZone(subDays(endDateStr, 1), "UTC", "yyyy-MM-dd")}`,
       );
+      return;
     }
 
     const metric = awsCostsApiFilters.Metrics[0];
@@ -443,7 +452,7 @@ export default class SubmitInvoice extends Command {
 
     if (!totalForMetric || !totalForMetric?.Amount) {
       this.error(
-        `AWS cost data does not contain the specified metric or Amount field. metric=${metric} startDate=${startDateStr} endDate=${endDateStr}`,
+        `AWS cost data does not contain the specified metric or Amount field. metric=${metric} startDate=${startDateStr} endDate=${formatInTimeZone(subDays(endDateStr, 1), "UTC", "yyyy-MM-dd")}`,
       );
     }
 
