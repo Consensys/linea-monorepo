@@ -264,6 +264,7 @@ describe("YieldManager contract - control operations", () => {
 
     it("Should revert if staking already unpaused", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      await setWithdrawalReserveToMinimum(yieldManager);
 
       await expectRevertWithCustomError(
         yieldManager,
