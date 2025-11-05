@@ -3,9 +3,11 @@ package innerproduct
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -28,13 +30,13 @@ func (v *VerifierForSize) Run(run wizard.Runtime) error {
 
 	var (
 		// ys stores the list of all the inner-product openings
-		ys = []field.Element{}
+		ys = []fext.Element{}
 		// expected stores the random linear combinations of the ys by batching
 		// coin
-		expected field.Element
+		expected fext.Element
 		// actual stores the opening value of the last entry of Summation. The
 		// verifier checks the equality between it and `expected`.
-		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).Y
+		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).ExtY
 	)
 
 	for _, q := range v.Queries {
@@ -43,8 +45,8 @@ func (v *VerifierForSize) Run(run wizard.Runtime) error {
 	}
 
 	if len(ys) > 1 {
-		batchingCoin := run.GetRandomCoinField(v.BatchOpening.Name)
-		expected = poly.EvalUnivariate(ys, batchingCoin)
+		batchingCoin := run.GetRandomCoinFieldExt(v.BatchOpening.Name)
+		expected = vortex.EvalFextPolyHorner(ys, batchingCoin)
 	}
 
 	if len(ys) <= 1 {
@@ -63,13 +65,13 @@ func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		// ys stores the list of all the inner-product openings
-		ys = []frontend.Variable{}
+		ys = []gnarkfext.Element{}
 		// expected stores the random linear combinations of the ys by batching
 		// coin
 		expected frontend.Variable
 		// actual stores the opening value of the last entry of Summation. The
 		// verifier checks the equality between it and `expected`.
-		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).Y
+		actual = run.GetLocalPointEvalParams(v.SummationOpening.ID).ExtY
 	)
 
 	for _, q := range v.Queries {
@@ -78,8 +80,8 @@ func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	}
 
 	if len(ys) > 1 {
-		batchingCoin := run.GetRandomCoinField(v.BatchOpening.Name)
-		expected = poly.EvaluateUnivariateGnark(api, ys, batchingCoin)
+		batchingCoin := run.GetRandomCoinFieldExt(v.BatchOpening.Name)
+		expected = poly.EvaluateUnivariateGnarkExt(api, ys, batchingCoin)
 	}
 
 	if len(ys) <= 1 {

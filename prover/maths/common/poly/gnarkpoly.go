@@ -3,6 +3,7 @@ package poly
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
 // EvaluateLagrangeAnyDomainGnark mirrors [EvaluateLagrangesAnyDomain] but in
@@ -33,13 +34,26 @@ func EvaluateLagrangeAnyDomainGnark(api frontend.API, domain []frontend.Variable
 
 }
 
-// EvaluateUnivariateGnark evaluate a univariate polynomial in a gnark circuit.
+// EvaluateUnivariateGnarkMixed evaluate a univariate polynomial in a gnark circuit.
 // It mirrors [EvalUnivariate].
-func EvaluateUnivariateGnark(api frontend.API, pol []frontend.Variable, x frontend.Variable) frontend.Variable {
-	res := frontend.Variable(0)
+func EvaluateUnivariateGnarkMixed(api frontend.API, pol []frontend.Variable, x gnarkfext.Element) gnarkfext.Element {
+	var res gnarkfext.Element
+	res.SetZero()
 	for i := len(pol) - 1; i >= 0; i-- {
-		res = api.Mul(res, x)
-		res = api.Add(res, pol[i])
+		res.Mul(api, res, x)
+		res.AddByBase(api, res, pol[i])
+	}
+	return res
+}
+
+// EvaluateUnivariateGnarkExt evaluate a univariate polynomial in a gnark circuit.
+// It mirrors [EvalUnivariate].
+func EvaluateUnivariateGnarkExt(api frontend.API, pol []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
+	var res gnarkfext.Element
+	res.SetZero()
+	for i := len(pol) - 1; i >= 0; i-- {
+		res.Mul(api, res, x)
+		res.Add(api, res, pol[i])
 	}
 	return res
 }

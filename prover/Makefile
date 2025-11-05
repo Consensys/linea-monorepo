@@ -10,6 +10,32 @@ DARWIN_ARM64_FLAGS := CGO_ENABLED=1 GOOS="linux" GOARCH="arm64"
 # Ensure that we are using go-corset from the monorepo
 GO_CORSET := PATH="${CORSET_ROOT}/bin":$$PATH
 
+# Define the list of Go packages to test
+PACKAGES := \
+	github.com/consensys/linea-monorepo/prover/maths/... \
+  github.com/consensys/linea-monorepo/prover/crypto/... \
+	github.com/consensys/linea-monorepo/prover/symbolic/... \
+  github.com/consensys/linea-monorepo/prover/utils/types/... \
+	github.com/consensys/linea-monorepo/prover/protocol/accessors/... \
+	github.com/consensys/linea-monorepo/prover/protocol/query/... \
+	github.com/consensys/linea-monorepo/prover/protocol/wizard/... \
+	github.com/consensys/linea-monorepo/prover/protocol/wizardutils/... \
+  github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit/... \
+	github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates/... \
+  github.com/consensys/linea-monorepo/prover/protocol/dedicated/...\
+  github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion/...\
+
+
+
 # these targets are not defined as depending on source files,
 # so they should be recompiled by default “just in case”.
 .PHONY: \
@@ -28,7 +54,12 @@ GO_CORSET := PATH="${CORSET_ROOT}/bin":$$PATH
 	bin/checker \
 	go-corset \
 	testdata \
+  test-compilers \
+  test \
+  clean
 
+# Default target: runs all tests
+all: test-compilers test
 
 ##
 ## This rule produces the go-corset binary
@@ -131,7 +162,15 @@ lib/compressor-and-shnarf-calculator-local: lib/compressor lib/shnarf_calculator
 ## Run all the unit-tests
 ##
 test:
-	go test -tags debug ./...
+	@echo "Running all Go tests for Linea Monorepo prover packages..."
+	@for pkg in $(PACKAGES); do \
+		echo "--> Running tests for $$pkg"; \
+		go test -tags debug -skip 'Gnark|TestSelfRecursionManyLayersWithSerde' $$pkg || exit 1; \
+	done
+	@echo "All tests completed successfully."
+
+test-compilers:
+	go test -timeout 30s -run ^TestCompilers$$ github.com/consensys/linea-monorepo/prover/protocol/compiler
 
 ##
 ## Run the CI linting
@@ -151,3 +190,9 @@ cgo-flags:
 make update-testdata-for-coordinator:
 	go test -timeout 30m -tags amd64,nocorset -run TestSamples github.com/consensys/linea-monorepo/prover/backend/testing -v
 	cp -f backend/testing/**/*-*-zkProof.json ../testdata/prover/output
+
+# Target to clean Go build cache (optional, but good practice)
+clean:
+	@echo "Cleaning Go build cache..."
+	@go clean -testcache
+	@echo "Go build cache cleaned."

@@ -34,8 +34,12 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	}
 
 	// commit to powers of a
-	committer := api.(frontend.Committer)
-	_, err := committer.Commit(powersOfA...)
+	//committer := api.(frontend.Committer)
+	//_, err := committer.Commit(powersOfA...)
+
+	committer := api.(frontend.WideCommitter)
+	// width is the size of the output slice of WideCommit, this 4 could be later interpreted as a field extension
+	_, err := committer.WideCommit(4, powersOfA...)
 	if err != nil {
 		return err
 	}
@@ -59,7 +63,7 @@ func TestPlonkWizardCircuitWithCommit(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5})})
 	})
 
 	err := wizard.Verify(compiled, proof)
@@ -82,9 +86,9 @@ func TestPlonkWizardCircuitWithCommitMultiInstance(t *testing.T) {
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 		pa.Run(run, []witness.Witness{
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5}),
 		})
 	})
 

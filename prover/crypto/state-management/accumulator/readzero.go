@@ -9,6 +9,7 @@ import (
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -88,13 +89,13 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 
 	// Test membership of leaf minus
 	leafMinus := hash(v.Config, &trace.OpeningMinus)
-	if !trace.ProofMinus.Verify(v.Config, leafMinus, trace.SubRoot) {
+	if !trace.ProofMinus.Verify(v.Config, types.Bytes32ToOctuplet(leafMinus), types.Bytes32ToOctuplet(trace.SubRoot)) {
 		return fmt.Errorf("merkle proof verification failed : minus")
 	}
 
 	// Test membership of leaf plus
 	leafPlus := hash(v.Config, &trace.OpeningPlus)
-	if !trace.ProofPlus.Verify(v.Config, leafPlus, trace.SubRoot) {
+	if !trace.ProofPlus.Verify(v.Config, types.Bytes32ToOctuplet(leafPlus), types.Bytes32ToOctuplet(trace.SubRoot)) {
 		return fmt.Errorf("merkle proof verification failed : plus")
 	}
 
@@ -118,8 +119,8 @@ func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
 	// Test membership of leaf plus
 	leafPlus := hash(config, &trace.OpeningPlus)
 
-	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.ProofMinus, Root: trace.SubRoot, Leaf: leafMinus})
-	return append(appendTo, smt.ProvedClaim{Proof: trace.ProofPlus, Root: trace.SubRoot, Leaf: leafPlus})
+	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.ProofMinus, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leafMinus)})
+	return append(appendTo, smt.ProvedClaim{Proof: trace.ProofPlus, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leafPlus)})
 }
 
 func (trace ReadZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {

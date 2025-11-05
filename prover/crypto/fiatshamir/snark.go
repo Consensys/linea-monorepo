@@ -6,9 +6,10 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	locmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"golang.org/x/crypto/blake2b"
 )
 
 // GnarkFiatShamir mirrors [State] in a gnark circuit. It provides analogous
@@ -91,6 +92,26 @@ func (fs *GnarkFiatShamir) UpdateVec(mat ...[]frontend.Variable) {
 	}
 }
 
+// Update updates the Fiat-Shamir state with a vector of frontend.Variable
+// representing field element each.
+func (fs *GnarkFiatShamir) UpdateExt(vec ...gnarkfext.Element) {
+	// Safeguard against nil
+	for i := range vec {
+		fs.Update(vec[i].B0.A0)
+		fs.Update(vec[i].B0.A1)
+		fs.Update(vec[i].B1.A0)
+		fs.Update(vec[i].B1.A1)
+
+	}
+}
+
+// UpdateVec updates the Fiat-Shamir state with a matrix of field element.
+func (fs *GnarkFiatShamir) UpdateVecExt(mat ...[]gnarkfext.Element) {
+	for i := range mat {
+		fs.UpdateExt(mat[i]...)
+	}
+}
+
 // RandomField returns a single valued fiat-shamir hash
 func (fs *GnarkFiatShamir) RandomField() frontend.Variable {
 	defer fs.safeguardUpdate()
@@ -155,31 +176,6 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Va
 
 		fs.safeguardUpdate()
 	}
-}
-
-// RandomFieldFromSeed generates a new field element from the given seed
-// and a name. The 'fs' is left unchanged by the call (aside from the
-// underlying [frontend.API]).
-func (fs *GnarkFiatShamir) RandomFieldFromSeed(seed frontend.Variable, name string) frontend.Variable {
-
-	// The first step encodes the 'name' into a single field element. The
-	// field element is obtained by hashing and taking the modulo of the
-	// result to fit into a field element.
-	nameBytes := []byte(name)
-	hasher, _ := blake2b.New256(nil)
-	hasher.Write(nameBytes)
-	nameBytes = hasher.Sum(nil)
-	nameField := new(field.Element).SetBytes(nameBytes)
-
-	// The seed is then obtained by calling the compression function over
-	// the seed and the encoded name.
-	oldState := fs.State()
-	defer fs.SetState(oldState)
-
-	fs.SetState([]frontend.Variable{seed})
-	fs.hasher.Write(nameField)
-
-	return fs.hasher.Sum()
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element

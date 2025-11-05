@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/iop"
+	"github.com/consensys/gnark-crypto/field/koalabear/iop"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -49,7 +50,7 @@ func PlonkCheck(
 	maxNbInstance int,
 	// function to call to get an assignment
 	options ...Option,
-) *compilationCtx {
+) *CompilationCtx {
 
 	// Create the ctx
 	ctx := createCtx(comp, name, Round, circuit, maxNbInstance, options...)
@@ -89,7 +90,7 @@ func PlonkCheck(
 
 // This function registers the Plonk gate's columns inside of the wizard. It
 // does not add any constraints whatsoever.
-func (ctx *compilationCtx) commitGateColumns() {
+func (ctx *CompilationCtx) commitGateColumns() {
 
 	nbRow := ctx.DomainSize()
 
@@ -122,38 +123,38 @@ func (ctx *compilationCtx) commitGateColumns() {
 
 		// First Round, for the committed value and the PI
 		for i := 0; i < ctx.MaxNbInstances; i++ {
-			if ctx.tinyPISize() > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), ctx.tinyPISize())
-				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
+			if tinyPISize(ctx.Plonk.SPR) > 0 {
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR), true)
+				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, fext.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
 			}
-			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("Cp_%v", i), nbRow)
-			ctx.Columns.Activators[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1)
+			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("Cp_%v", i), nbRow, true)
+			ctx.Columns.Activators[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1, true)
 		}
 
 		// Second rounds, after sampling HCP
-		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.Round+1, coin.Name(ctx.Sprintf("HCP")), coin.Field)
+		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.Round+1, coin.Name(ctx.Sprintf("HCP")), coin.FieldExt)
 
 		// And assigns the LRO polynomials
 		for i := 0; i < ctx.MaxNbInstances; i++ {
-			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("L_%v", i), nbRow)
-			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("R_%v", i), nbRow)
-			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("O_%v", i), nbRow)
+			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("L_%v", i), nbRow, true)
+			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("R_%v", i), nbRow, true)
+			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("O_%v", i), nbRow, true)
 		}
 	} else {
 		// Else no additional selector, and just commit to LRO + PI at the same Round
 		for i := 0; i < ctx.MaxNbInstances; i++ {
-			if ctx.tinyPISize() > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), ctx.tinyPISize())
-				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
+			if tinyPISize(ctx.Plonk.SPR) > 0 {
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR), true)
+				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, fext.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
 			}
-			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("L_%v", i), nbRow)
-			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("R_%v", i), nbRow)
-			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("O_%v", i), nbRow)
-			ctx.Columns.Activators[i] = ctx.comp.InsertColumn(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1, column.Proof)
+			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("L_%v", i), nbRow, true)
+			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("R_%v", i), nbRow, true)
+			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("O_%v", i), nbRow, true)
+			ctx.Columns.Activators[i] = ctx.comp.InsertColumn(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1, column.Proof, true)
 		}
 	}
 }
@@ -178,7 +179,7 @@ func iopToSV(pol *iop.Polynomial, nbRow int) smartvectors.SmartVector {
 // [plonk.newExternalRangeChecker] to obtain the result in "[]field.Element"
 // form and then it converts it into assignable smartvectors after having
 // checked a few hypothesis.
-func (ctx *compilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) {
+func (ctx *CompilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) {
 	v := [3][]field.Element{
 		make([]field.Element, ctx.DomainSize()),
 		make([]field.Element, ctx.DomainSize()),
@@ -193,24 +194,19 @@ func (ctx *compilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) 
 }
 
 // extractPermutationColumns computes and tracks the values for ctx.Columns.S
-func (ctx *compilationCtx) extractPermutationColumns() {
-	varena := arena.NewVectorArena[field.Element](ctx.DomainSize() * len(ctx.Columns.S))
-	parallel.Execute(len(ctx.Columns.S), func(start, end int) {
-		for i := start; i < end; i++ {
-			si := ctx.Plonk.trace.S[i*ctx.DomainSize() : (i+1)*ctx.DomainSize()]
-			sField := arena.Get[field.Element](varena, ctx.DomainSize())
-			for j := range sField {
-				sField[j].SetInt64(si[j])
-			}
-			// Track it, no need to register it since the compiler
-			// will do it on its own.
-			ctx.Columns.S[i] = smartvectors.NewRegular(sField)
+func (ctx *CompilationCtx) extractPermutationColumns() {
+	for i := range ctx.Columns.S {
+		// Directly use the ints from the trace instead of the fresh Plonk ones
+		si := ctx.Plonk.trace.S[i*ctx.DomainSize() : (i+1)*ctx.DomainSize()]
+		sField := make([]field.Element, len(si))
+		for j := range sField {
+			sField[j].SetInt64(si[j])
 		}
 	})
 }
 
 // add gate constraint
-func (ctx *compilationCtx) addGateConstraint() {
+func (ctx *CompilationCtx) addGateConstraint() {
 
 	for i := 0; i < ctx.MaxNbInstances; i++ {
 
@@ -260,7 +256,7 @@ func (ctx *compilationCtx) addGateConstraint() {
 }
 
 // add add the copy constraint
-func (ctx *compilationCtx) addCopyConstraint() {
+func (ctx *CompilationCtx) addCopyConstraint() {
 
 	// Creates a special handle for the permutation by
 	// computing a linear combination of the columns
@@ -280,7 +276,7 @@ func (ctx *compilationCtx) addCopyConstraint() {
 		randLin := ctx.comp.InsertCoin(
 			roundPermutation,
 			coin.Name(ctx.Sprintf("PERMUTATION_RANDLIN")),
-			coin.Field,
+			coin.FieldExt,
 		)
 		// And declare special columns for the linear combination
 		l = expr_handle.RandLinCombCol(

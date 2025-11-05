@@ -1,12 +1,11 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Final circuit - commitment using Merkle trees
@@ -24,9 +23,9 @@ type VerifyOpeningCircuitMerkleTree struct {
 func AllocateCircuitVariablesWithMerkleTree(
 	verifyCircuit *VerifyOpeningCircuitMerkleTree,
 	proof OpeningProof,
-	ys [][]field.Element,
+	ys [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32) {
+	roots []field.Octuplet) {
 
 	verifyCircuit.Proof.LinearCombination = make([]frontend.Variable, proof.LinearCombination.Len())
 
@@ -61,11 +60,11 @@ func AllocateCircuitVariablesWithMerkleTree(
 func AssignCicuitVariablesWithMerkleTree(
 	verifyCircuit *VerifyOpeningCircuitMerkleTree,
 	proof OpeningProof,
-	ys [][]field.Element,
+	ys [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32) {
+	roots []field.Octuplet) {
 
-	frLinComb := make([]fr.Element, proof.LinearCombination.Len())
+	frLinComb := make([]field.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSlice(frLinComb)
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
 		verifyCircuit.Proof.LinearCombination[i] = frLinComb[i].String()
@@ -79,13 +78,11 @@ func AssignCicuitVariablesWithMerkleTree(
 		}
 	}
 
-	var buf fr.Element
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
 			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path
 			for k := 0; k < len(proof.MerkleProofs[i][j].Siblings); k++ {
-				buf.SetBytes(proof.MerkleProofs[i][j].Siblings[k][:])
-				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = buf.String()
+				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = proof.MerkleProofs[i][j].Siblings[k]
 			}
 		}
 	}
@@ -101,8 +98,7 @@ func AssignCicuitVariablesWithMerkleTree(
 	}
 
 	for i := 0; i < len(roots); i++ {
-		buf.SetBytes(roots[i][:])
-		verifyCircuit.Roots[i] = buf.String()
+		verifyCircuit.Roots[i] = roots[i][:]
 	}
 
 }

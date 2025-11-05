@@ -2,6 +2,7 @@ package bits
 
 import (
 	"encoding/binary"
+
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -36,12 +37,10 @@ func BitDecompose(comp *wizard.CompiledIOP, packed []ifaces.Column, numBits int)
 		}
 	)
 
-	var bitExpr = make([]*symbolic.Expression, numBits)
-
-	for j := 0; j < numBits; j++ {
-		bd.Bits[j] = comp.InsertCommit(round, ifaces.ColIDf("%v_BIT_%v", packed[0].GetColID(), j), packed[0].Size())
-		MustBeBoolean(comp, bd.Bits[j])
-		bitExpr = append(bitExpr, symbolic.NewVariable(bd.Bits[j]))
+	for i := 0; i < numBits; i++ {
+		bd.Bits[i] = comp.InsertCommit(round, ifaces.ColIDf("%v_BIT_%v", packed.GetColID(), i), packed.Size(), true)
+		MustBeBoolean(comp, bd.Bits[i])
+		bitExpr = append(bitExpr, symbolic.NewVariable(bd.Bits[i]))
 	}
 
 	// This constraint ensures that the recombined bits are equal to the
@@ -82,41 +81,11 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 	var elements [][]field.Element
 	for i, packed := range bd.Packed {
 
-		v := packed.GetColAssignment(run)
-		var packedElements []field.Element
-		var packedElementsIsZero []field.Element
+		x := x.Uint64()
 
-		for colElement := range v.IterateCompact() {
-			packedElements = append(packedElements, colElement)
-
-			isPackedLimbNotZero := field.One()
-			if colElement.IsZero() {
-				isPackedLimbNotZero = field.Zero()
-			}
-
-			packedElementsIsZero = append(packedElementsIsZero, isPackedLimbNotZero)
-		}
-
-		run.AssignColumn(bd.isPackedLimbNotZero[i].GetColID(), smartvectors.RightZeroPadded(packedElementsIsZero, bd.Packed[0].Size()))
-
-		elements = append(elements, packedElements)
-	}
-
-	for i := range elements[0] {
-		var elementBytes []byte
-		for j := range elements {
-			limbBytes := elements[j][i].Bytes()
-			elementBytes = append(elementBytes, limbBytes[fr.Bytes-common.LimbBytes:]...)
-		}
-
-		if len(elementBytes) > 8 {
-			panic("can handle 64 bits at most")
-		}
-
-		xNum := binary.BigEndian.Uint64(elementBytes)
-		for j := range len(bd.Bits) {
-			if xNum>>j&1 == 1 {
-				bits[j] = append(bits[j], field.One())
+		for i := range bd.Bits {
+			if x>>i&1 == 1 {
+				bits[i] = append(bits[i], field.One())
 			} else {
 				bits[j] = append(bits[j], field.Zero())
 			}

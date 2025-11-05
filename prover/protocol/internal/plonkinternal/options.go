@@ -1,11 +1,11 @@
 package plonkinternal
 
 // PlonkOption allows modifying Plonk circuit arithmetization.
-type Option func(*compilationCtx)
+type Option func(*CompilationCtx)
 
 // WithSubscript allows setting the [Subscript] of the plonk circuit.
 func WithSubscript(subscript string) Option {
-	return func(c *compilationCtx) {
+	return func(c *CompilationCtx) {
 		c.Subscript = subscript
 	}
 }
@@ -14,7 +14,7 @@ func WithSubscript(subscript string) Option {
 // total of bits being range-checked are nbBits*nbLimbs. If addGateForRangeCheck
 // is true, then new gates are added for wires not present in existing gates.
 func WithRangecheck(nbBits, nbLimbs int, addGateForRangeCheck bool) Option {
-	return func(c *compilationCtx) {
+	return func(c *CompilationCtx) {
 
 		if c.RangeCheckOption.Enabled {
 			panic("external range-check and external hasher are incompatible")
@@ -33,7 +33,7 @@ func WithRangecheck(nbBits, nbLimbs int, addGateForRangeCheck bool) Option {
 // number of rows must be higher than the number of constraints of the
 // circuit otherwise, the compilation will fail with panic.
 func WithFixedNbRows(nbRow int) Option {
-	return func(c *compilationCtx) {
+	return func(c *CompilationCtx) {
 		c.FixedNbRowsOption.Enabled = true
 		c.FixedNbRowsOption.NbRow = nbRow
 	}
@@ -53,7 +53,7 @@ func WithFixedNbPublicInput(nbPublicInput int) Option {
 // WithExternalHasher allows using an external hasher for the witness
 // commitment. The hash function is MiMC.
 func WithExternalHasher(fixedNbRow int) Option {
-	return func(c *compilationCtx) {
+	return func(c *CompilationCtx) {
 
 		if c.RangeCheckOption.Enabled {
 			panic("external range-check and external hasher are incompatible")

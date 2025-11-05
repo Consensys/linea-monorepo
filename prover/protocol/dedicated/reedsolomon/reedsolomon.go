@@ -3,9 +3,12 @@ package reedsolomon
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
@@ -28,8 +31,24 @@ type ReedSolomonProverAction struct {
 
 func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	witness := a.H.GetColAssignment(assi)
-	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.CodeDim)
-	assi.AssignColumn(a.Coeff.GetColID(), coeffs)
+	domain := fft.NewDomain(uint64(witness.Len()), fft.WithCache())
+
+	if a.H.IsBase() {
+		coeffs := make([]field.Element, witness.Len())
+		witness.WriteInSlice(coeffs)
+		domain.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(1))
+		utils.BitReverse(coeffs)
+		// Take only the first `CodeDim` coefficients
+		assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegular(coeffs[:a.CodeDim]))
+		return
+	}
+
+	coeffs := make([]fext.Element, witness.Len())
+	witness.WriteInSliceExt(coeffs)
+	domain.FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
+	utils.BitReverse(coeffs)
+	// Take only the first `CodeDim` coefficients
+	assi.AssignColumn(a.Coeff.GetColID(), smartvectors.NewRegularExt(coeffs[:a.CodeDim]))
 }
 
 type ReedSolomonVerifierAction struct {
@@ -39,8 +58,9 @@ type ReedSolomonVerifierAction struct {
 }
 
 func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
-	y := a.CoeffCheck.GetVal(run)
-	y_ := a.EvalCheck.GetVal(run)
+	y := a.CoeffCheck.GetValExt(run)
+	y_ := a.EvalCheck.GetValExt(run)
+
 	if y != y_ {
 		return fmt.Errorf("reed-solomon check failed - %v is not a codeword", a.HColID)
 	}
@@ -62,12 +82,13 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 		round,
 		ifaces.ColIDf("%v_%v", REED_SOLOMON_COEFF, h.GetColID()),
 		codeDim,
+		h.IsBase(),
 	)
 
 	beta := comp.InsertCoin(
 		round+1,
 		coin.Namef("%v_%v", REED_SOLOMON_BETA, h.GetColID()),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	// Inserts the prover before calling the sub-wizard so that it is executed

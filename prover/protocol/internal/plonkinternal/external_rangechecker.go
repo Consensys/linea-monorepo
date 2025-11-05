@@ -48,7 +48,7 @@ type externalRangeChecker struct {
 // storeCommitBuilder implements [frontend.Builder], [frontend.Committer] and
 // [kvstore.Store].
 type storeCommitBuilder interface {
-	frontend.Builder
+	frontend.Builder[constraint.U32]
 	frontend.Committer
 	SetKeyValue(key, value any)
 	GetKeyValue(key any) (value any)
@@ -75,10 +75,10 @@ type storeCommitBuilder interface {
 //	// This returns the position of the wires to range-check.
 //	checkedWires := rcGetter()
 //	```
-func newExternalRangeChecker(addGateForRangeCheck bool) (frontend.NewBuilder, func() [][2]int) {
+func newExternalRangeChecker(addGateForRangeCheck bool) (frontend.NewBuilderU32, func() [][2]int) {
 	rcCols := make(chan [][2]int)
-	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder, error) {
-			b, err := scs.NewBuilder(field, config)
+	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder[constraint.U32], error) {
+			b, err := scs.NewBuilder[constraint.U32](field, config)
 			if err != nil {
 				return nil, fmt.Errorf("could not create new native builder: %w", err)
 			}
@@ -113,7 +113,7 @@ func (builder *externalRangeChecker) Check(v frontend.Variable, bits int) {
 
 // Compile processes range checked variables and then calls Compile method of
 // the underlying builder.
-func (builder *externalRangeChecker) Compile() (constraint.ConstraintSystem, error) {
+func (builder *externalRangeChecker) Compile() (constraint.ConstraintSystemU32, error) {
 	// GetWireGates may add gates if [addGateForRangeCheck] is true. Call it
 	// synchronously before calling compile on the circuit.
 	cols, err := builder.storeCommitBuilder.GetWireConstraints(builder.checked, builder.addGateForRangeCheck)
@@ -134,7 +134,7 @@ func (builder *externalRangeChecker) Compiler() frontend.Compiler {
 
 // addRangeCheckConstraints adds the wizard constraints implementing the range-checks
 // requested by the gnark circuit.
-func (ctx *compilationCtx) addRangeCheckConstraint() {
+func (ctx *CompilationCtx) addRangeCheckConstraint() {
 
 	var (
 		round                            = ctx.Columns.L[0].Round()
@@ -167,7 +167,7 @@ func (ctx *compilationCtx) addRangeCheckConstraint() {
 			l            = ctx.Columns.L[i]
 			r            = ctx.Columns.R[i]
 			o            = ctx.Columns.O[i]
-			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), utils.ToInt(totalNumRangeCheckedValuesPadded))
+			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), utils.ToInt(totalNumRangeCheckedValuesPadded), true)
 		)
 
 		ctx.RangeCheckOption.RangeChecked[i] = rangeChecked

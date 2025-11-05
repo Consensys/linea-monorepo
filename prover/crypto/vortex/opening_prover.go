@@ -3,7 +3,9 @@ package vortex
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -29,7 +31,7 @@ type OpeningProof struct {
 	MerkleProofs [][]smt.Proof
 }
 
-// InitOpeningWithLC initiates the construction of a Vortex proof by returning the
+// Open initiates the construction of a Vortex proof by returning the
 // encoding of the linear combinations of the committed row-vectors contained
 // in committedSV by the successive powers of randomCoin.
 //
@@ -40,36 +42,41 @@ type OpeningProof struct {
 // list of the committed matrices. This contrasts with the API of the other
 // functions and is motivated by the fact that this is simpler to construct in
 // our settings.
-func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, randomCoin field.Element) *OpeningProof {
+func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, randomCoin fext.Element) *OpeningProof {
 
 	if len(committedSV) == 0 {
 		utils.Panic("attempted to open an empty witness")
 	}
 
 	// Compute the linear combination
-	linComb := make([]field.Element, params.NbColumns)
+	linComb := make([]fext.Element, params.NbColumns)
 
 	parallel.Execute(len(linComb), func(start, stop int) {
 
-		x := field.One()
-		scratch := make(field.Vector, stop-start)
-		localLinComb := make(field.Vector, stop-start)
+		x := fext.One()
+		scratch := make(vectorext.Vector, stop-start)
+		localLinComb := make(vectorext.Vector, stop-start)
 		for i := range committedSV {
 			_sv := committedSV[i]
 			// we distinguish the case of a regular vector and constant to avoid
 			// unnecessary allocations and copies
 			switch _svt := _sv.(type) {
 			case *smartvectors.Constant:
-				cst := _svt.Value
+				cst := _svt.GetExt(0)
 				cst.Mul(&cst, &x)
 				for j := range localLinComb {
 					localLinComb[j].Add(&localLinComb[j], &cst)
 				}
 				x.Mul(&x, &randomCoin)
 				continue
+			case *smartvectors.Regular:
+				sv := field.Vector((*_svt)[start:stop])
+				for i := range scratch {
+					fext.SetFromBase(&scratch[i], &sv[i])
+				}
 			default:
 				sv := _svt.SubVector(start, stop)
-				sv.WriteInSlice(scratch)
+				sv.WriteInSliceExt(scratch)
 			}
 			scratch.ScalarMul(scratch, &x)
 			localLinComb.Add(localLinComb, scratch)
@@ -79,10 +86,10 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 		copy(linComb[start:stop], localLinComb)
 	})
 
-	linCombSV := smartvectors.NewRegular(linComb)
+	linCombSV := smartvectors.NewRegularExt(linComb)
 
 	return &OpeningProof{
-		LinearCombination: params.rsEncode(linCombSV),
+		LinearCombination: params.rsEncodeExt(linCombSV),
 	}
 }
 
@@ -92,28 +99,28 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 //
 // The returned proof is partially assigned and must be completed using
 // [WithEntryList] to conclude the opening protocol.
-func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV EncodedMatrix, randomCoin field.Element) *OpeningProof {
+func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV EncodedMatrix, randomCoin fext.Element) *OpeningProof {
 
 	if len(rsCommittedSV) == 0 {
 		utils.Panic("attempted to open an empty witness")
 	}
 
 	// Compute the linear combination
-	linComb := make([]field.Element, params.NumEncodedCols())
+	linComb := make([]fext.Element, params.NumEncodedCols())
 
-	parallel.ExecuteChunky(len(linComb), func(start, stop int) {
+	parallel.Execute(len(linComb), func(start, stop int) {
 		subTask := make([]smartvectors.SmartVector, 0, len(rsCommittedSV))
 		for i := range rsCommittedSV {
 			subTask = append(subTask, rsCommittedSV[i].SubVector(start, stop))
 		}
 
 		// Collect the result in the larger slice at the end
-		subResult := smartvectors.PolyEval(subTask, randomCoin)
-		subResult.WriteInSlice(linComb[start:stop])
+		subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
+		subResult.WriteInSliceExt(linComb[start:stop])
 	})
 
 	return &OpeningProof{
-		LinearCombination: smartvectors.NewRegular(linComb),
+		LinearCombination: smartvectors.NewRegularExt(linComb),
 	}
 }
 

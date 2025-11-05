@@ -5,15 +5,17 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
-	// HashFunc is a function returning initialized hashers
-	HashFunc func() hashtypes.Hasher
+	// HashFunc is a function returning initialized hashers.
+	HashFunc func() *poseidon2.Poseidon2FieldHasherDigest
 	// Depth is the depth of the tree
 	Depth int
 }
@@ -23,17 +25,17 @@ type Tree struct {
 	// Config of the hash function
 	Config *Config
 	// Root stores the root of the tree
-	Root types.Bytes32
+	Root field.Octuplet
 	// OccupiedLeaves continuously list of the occupied leaves. For the toy
 	// implementation we track all the leaves.
-	OccupiedLeaves []types.Bytes32
+	OccupiedLeaves []field.Octuplet
 	// Occupied not stores all the node with a non-trivial value in the tree.
 	//
 	// Does not include the root. (So there are 39 levels and not 40).
 	// Returns a node at a given level:
 	// 	- 0 is the level just above the leaves
 	// 	- 38 is the level just below the root
-	OccupiedNodes [][]types.Bytes32
+	OccupiedNodes [][]field.Octuplet
 	// EmptyNodes stores the value of the trivial nodes of the SMT (i.e the one
 	// corresponding to empty sub-trees).
 	//
@@ -41,28 +43,35 @@ type Tree struct {
 	// so the first position contains the empty node for the level one.
 	// So there are 39, and not 40 levels. That way, the indexing stays
 	// consistent with "OccupiedNode"
-	EmptyNodes []types.Bytes32
+	EmptyNodes []field.Octuplet
 }
 
-// EmptyLeaf returns an empty leaf (e.g. the zero bytes value).
-func EmptyLeaf() types.Bytes32 {
-	return types.Bytes32{}
+// EmptyLeaf returns an empty leaf (e.g. the zero value).
+func EmptyLeaf() field.Octuplet {
+	return field.Octuplet{}
 }
 
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
-func hashLR(hasher hashtypes.Hasher, nodeL, nodeR types.Bytes32) types.Bytes32 {
-	hasher.Reset()
-	nodeL.WriteTo(hasher)
-	nodeR.WriteTo(hasher)
-	d := types.AsBytes32(hasher.Sum(nil))
+func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
+	var d field.Octuplet
+
+	if config.HashFunc != nil {
+		hasher := config.HashFunc()
+		hasher.WriteElements(nodeL[:])
+		hasher.WriteElements(nodeR[:])
+		d = hasher.SumElement()
+	} else {
+		panic("missing a hash function")
+	}
+
 	return d
 }
 
 // NewEmptyTree creates and returns an empty tree with the provided config.
 func NewEmptyTree(conf *Config) *Tree {
 	// Computes the empty nodes
-	emptyNodes := make([]types.Bytes32, conf.Depth-1)
+	emptyNodes := make([]field.Octuplet, conf.Depth-1)
 	prevNode := EmptyLeaf()
 
 	hasher := conf.HashFunc()
@@ -79,22 +88,22 @@ func NewEmptyTree(conf *Config) *Tree {
 	return &Tree{
 		Config:         conf,
 		Root:           root,
-		OccupiedLeaves: make([]types.Bytes32, 0),
-		OccupiedNodes:  make([][]types.Bytes32, conf.Depth-1),
+		OccupiedLeaves: make([]field.Octuplet, 0),
+		OccupiedNodes:  make([][]field.Octuplet, conf.Depth-1),
 		EmptyNodes:     emptyNodes,
 	}
 }
 
 // GetLeaf returns a leaf by position or an error if the leaf is out of bounds.
-func (t *Tree) GetLeaf(pos int) (types.Bytes32, error) {
+func (t *Tree) GetLeaf(pos int) (field.Octuplet, error) {
 	// Check that the accessed node is within the bounds of the SMT
 	maxPos := 1 << t.Config.Depth
 	if pos >= maxPos {
-		return types.Bytes32{}, fmt.Errorf("out of bound: %v", pos)
+		return field.Octuplet{}, fmt.Errorf("out of bound: %v", pos)
 	}
 
 	if pos < 0 {
-		return types.Bytes32{}, fmt.Errorf("negative position: %v", pos)
+		return field.Octuplet{}, fmt.Errorf("negative position: %v", pos)
 	}
 	// Check if this is an empty leaf
 	if pos >= len(t.OccupiedLeaves) {
@@ -105,7 +114,7 @@ func (t *Tree) GetLeaf(pos int) (types.Bytes32, error) {
 }
 
 // MustGetLeaf is as [Tree.GetLeaf] but panics on errors.
-func (t *Tree) MustGetLeaf(pos int) types.Bytes32 {
+func (t *Tree) MustGetLeaf(pos int) field.Octuplet {
 	l, err := t.GetLeaf(pos)
 	if err != nil {
 		utils.Panic("could not get leaf: %v", err.Error())
@@ -119,7 +128,7 @@ func (t *Tree) MustGetLeaf(pos int) types.Bytes32 {
 //   - 40 is the root
 //
 // (for config.Depth == 40)
-func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
+func (t *Tree) getNode(level, posInLevel int) field.Octuplet {
 	switch {
 	case level == t.Config.Depth:
 		// The only logical posInLevels value is zero in this case
@@ -128,7 +137,7 @@ func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
 		}
 		// Opportunistic sanity-checks. Parenthesis are necessary because
 		// of a hole in my linter.
-		if t.Root == (types.Bytes32{}) {
+		if t.Root == (field.Octuplet{}) {
 			utils.Panic("sanity-check failed : the root is zero.")
 		}
 		return t.Root
@@ -144,7 +153,7 @@ func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
 		}
 		// Or return an non-empty one
 		res := t.OccupiedNodes[level-1][posInLevel]
-		if res == (types.Bytes32{}) {
+		if res == (field.Octuplet{}) {
 			utils.Panic("sanity-check : intermediary node is 0")
 		}
 		return res
@@ -166,7 +175,7 @@ func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
 //   - 40 is the root
 //
 // (for config.Depth == 40)
-func (t *Tree) updateNode(level, posInLevel int, newVal types.Bytes32) {
+func (t *Tree) updateNode(level, posInLevel int, newVal field.Octuplet) {
 	switch {
 	case level == t.Config.Depth:
 		// The only logical posInLevels value is zero in this case
@@ -175,7 +184,7 @@ func (t *Tree) updateNode(level, posInLevel int, newVal types.Bytes32) {
 		}
 		// Opportunistic sanity-checks. Parenthesis are necessary because
 		// of a hole in my linter.
-		if t.Root == (types.Bytes32{}) {
+		if t.Root == (field.Octuplet{}) {
 			utils.Panic("sanity-check failed : the root is zero.")
 		}
 		t.Root = newVal
@@ -239,7 +248,7 @@ func (t *Tree) reserveLevel(level, newSize int) {
 			return
 		}
 		// else, we add extra "empty leaves" at the end of the slice
-		padding := make([]types.Bytes32, newSize-len(t.OccupiedLeaves))
+		padding := make([]field.Octuplet, newSize-len(t.OccupiedLeaves))
 		for i := range padding {
 			padding[i] = EmptyLeaf()
 		}
@@ -255,7 +264,7 @@ func (t *Tree) reserveLevel(level, newSize int) {
 		return
 	}
 	// else, we add extra "empty nodes" at the end of the slice
-	padding := make([]types.Bytes32, newSize-len(t.OccupiedNodes[level-1]))
+	padding := make([]field.Octuplet, newSize-len(t.OccupiedNodes[level-1]))
 	for i := range padding {
 		padding[i] = t.EmptyNodes[level-1]
 	}
@@ -266,29 +275,40 @@ func (t *Tree) reserveLevel(level, newSize int) {
 // input leaves are powers of 2. The depth of the tree is deduced from the list.
 //
 // It panics if the number of leaves is a non-power of 2.
-func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tree {
-	// TODO @gbotrel this accumulates to 50sec of runtime for proof creation
-	// plenty of innefficenies to optimize for.
-	// it also stores a lot of data in memory, investigate why.
+func BuildComplete(leaves []field.Octuplet, hashFunc func() *poseidon2.Poseidon2FieldHasherDigest) *Tree {
 
 	numLeaves := len(leaves)
 
-	// Sanity check : there should be a power of two number of leaves
 	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
+	if hashFunc == nil {
+		panic("missing a hash function")
+	}
 	depth := utils.Log2Ceil(numLeaves)
 	config := &Config{HashFunc: hashFunc, Depth: depth}
-
-	// Builds an empty tree and passes the leaves
 	tree := NewEmptyTree(config)
 	tree.OccupiedLeaves = leaves
+	currLevels := leaves
 
-	// pre-allocate the memory for all levels
-	nbTotalNodes := 0
-	for d := 1; d < depth; d++ {
-		nbTotalNodes += 1 << (depth - d)
+	for i := 0; i < depth-1; i++ {
+		nextLevel := make([]field.Octuplet, len(currLevels)/2)
+		// TODO @gbotrel revisit parallelization here
+		if len(nextLevel) >= 64 {
+			parallel.Execute(len(nextLevel), func(start, end int) {
+				for k := start; k < end; k++ {
+					nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
+				}
+			})
+		} else {
+			for k := range nextLevel {
+				nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
+			}
+		}
+
+		tree.OccupiedNodes[i] = nextLevel
+		currLevels = nextLevel
 	}
 	arena := make([]types.Bytes32, nbTotalNodes)
 	offset := 0

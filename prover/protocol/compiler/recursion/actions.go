@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // AssignVortexUAlpha assigns the UAlpha column for all the subproofs. As
@@ -54,7 +55,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 			committedMatrix, _ = run.State.TryGet(pcs.VortexProverStateName(round))
 			sisHash, _         = run.State.TryGet(pcs.SisHashName(round))
 			tree, _            = run.State.TryGet(pcs.MerkleTreeName(round))
-			mimcHash, _        = run.State.TryGet(pcs.MIMCHashName(round))
+			mimcHash, _        = run.State.TryGet(pcs.NoSisHashName(round))
 		)
 
 		if committedMatrix != nil {
@@ -92,7 +93,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		SisHashes:         sisHashes,
 		MimcHashes:        mimcHashes,
 		Trees:             trees,
-		FinalFS:           run.FS.State()[0],
+		FinalFS:           types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State())),
 		Pub:               pubs,
 	}
 }
@@ -126,43 +127,47 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		params := run.GetUnivariateParams(pcsCtx.Query.QueryID)
 		pcsMRoot := pcsCtx.Items.MerkleRoots
 
-		if circX != params.X {
-			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX.String(), params.X.String())
+		//TODO@yao: check all values
+		if circX[0] != params.ExtX.B0.A0 || circX[1] != params.ExtX.B0.A1 || circX[2] != params.ExtX.B1.A0 || circX[3] != params.ExtX.B1.A1 {
+			return fmt.Errorf("proof no=%v, x value does not match %v != %v", i, circX, params.ExtX)
 		}
 
-		if len(circYs) != len(params.Ys) {
+		if len(circYs) != 4*len(params.ExtYs) {
 			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
 		}
 
-		for i := range circYs {
-			if circYs[i] != params.Ys[i] {
-				return fmt.Errorf("proof no=%v, Y[%v] does not match; %v != %v", i, i, circYs[i].String(), params.Ys[i].String())
+		for j := range params.ExtYs {
+			if circYs[4*j] != params.ExtYs[j].B0.A0 || circYs[4*j+1] != params.ExtYs[j].B0.A1 || circYs[4*j+2] != params.ExtYs[j].B1.A0 || circYs[4*j+3] != params.ExtYs[j].B1.A1 {
+				return fmt.Errorf("proof no=%v, Y[%v] does not match; %v != %v", i, j, circYs[4*j:4*j+4], params.ExtYs[j])
 			}
 		}
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
 
-			com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentAt(run, 0)
-			if com != circMRoots[0] {
-				return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com.String(), circMRoots[0].String())
-			}
+			for j := 0; j < blockSize; j++ {
+				com := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColAssignmentAt(run, 0)
+				if com != circMRoots[0] {
+					return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", j, com.String(), circMRoots[0].String())
+				}
 
-			circMRoots = circMRoots[1:]
+				circMRoots = circMRoots[1:]
+			}
 		}
 
 		nonEmptyCount := 0
 		for j := range pcsMRoot {
+			for k := 0; k < blockSize; k++ {
+				if pcsMRoot[j][k] == nil {
+					continue
+				}
 
-			if pcsMRoot[j] == nil {
-				continue
+				com := pcsMRoot[j][k].GetColAssignmentAt(run, 0)
+				if com != circMRoots[nonEmptyCount] {
+					return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com.String(), circMRoots[nonEmptyCount].String())
+				}
+
+				nonEmptyCount++
 			}
-
-			com := pcsMRoot[j].GetColAssignmentAt(run, 0)
-			if com != circMRoots[nonEmptyCount] {
-				return fmt.Errorf("proof no=%v, MRoot does not match; %v != %v", i, com.String(), circMRoots[nonEmptyCount].String())
-			}
-
-			nonEmptyCount++
 		}
 	}
 
@@ -183,14 +188,20 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			pcsMRoot                     = pcsCtx.Items.MerkleRoots
 		)
 
-		api.AssertIsEqual(circX, params.X)
+		api.AssertIsEqual(circX[0], params.ExtX.B0.A0)
+		api.AssertIsEqual(circX[1], params.ExtX.B0.A1)
+		api.AssertIsEqual(circX[2], params.ExtX.B1.A0)
+		api.AssertIsEqual(circX[3], params.ExtX.B1.A1)
 
 		if len(circYs) != len(params.Ys) {
 			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
 		}
 
-		for i := range circYs {
-			api.AssertIsEqual(circYs[i], params.Ys[i])
+		for j := range params.ExtYs {
+			api.AssertIsEqual(circYs[4*j], params.ExtYs[j].B0.A0)
+			api.AssertIsEqual(circYs[4*j+1], params.ExtYs[j].B0.A1)
+			api.AssertIsEqual(circYs[4*j+2], params.ExtYs[j].B1.A0)
+			api.AssertIsEqual(circYs[4*j+3], params.ExtYs[j].B1.A1)
 		}
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
@@ -203,25 +214,29 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			// to a round "0" Proof column. And its value is removed from the
 			// comp.Precomputed table. We use that fact to check if we can deactivate the
 			// equality assertion.
-			mRootName := pcsCtx.Items.Precomputeds.MerkleRoot.GetColID()
-			if cc.Ctx.InputCompiledIOP.Precomputed.Exists(mRootName) {
-				com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentGnarkAt(run, 0)
-				api.AssertIsEqual(com, circMRoots[0])
-			}
+			for j := 0; j < blockSize; j++ {
+				mRootName := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColID()
+				if cc.Ctx.InputCompiledIOP.Precomputed.Exists(mRootName) {
+					com := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColAssignmentGnarkAt(run, 0)
+					api.AssertIsEqual(com, circMRoots[0])
+				}
 
-			circMRoots = circMRoots[1:]
+				circMRoots = circMRoots[1:]
+			}
 		}
 
 		nonEmptyCount := 0
 		for j := range pcsMRoot {
 
-			if pcsMRoot[j] == nil {
-				continue
-			}
+			for k := 0; k < blockSize; k++ {
+				if pcsMRoot[j][k] == nil {
+					continue
+				}
 
-			com := pcsMRoot[j].GetColAssignmentGnarkAt(run, 0)
-			api.AssertIsEqual(com, circMRoots[nonEmptyCount])
-			nonEmptyCount++
+				com := pcsMRoot[j][k].GetColAssignmentGnarkAt(run, 0)
+				api.AssertIsEqual(com, circMRoots[nonEmptyCount])
+				nonEmptyCount++
+			}
 		}
 	}
 }

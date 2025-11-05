@@ -108,7 +108,7 @@ func compareSymbolicExpressions(a, b reflect.Value, path string) bool {
 	}
 
 	if ae.ESHash != be.ESHash {
-		logrus.Errorf("Mismatch at %s: hashes differ (v1: %v, v2: %v)\n", path, ae.ESHash.Text(16), be.ESHash.Text(16))
+		logrus.Errorf("Mismatch at %s: hashes differ (v1: %v, v2: %v)\n", path, ae.ESHash.String(), be.ESHash.String())
 		return false
 	}
 

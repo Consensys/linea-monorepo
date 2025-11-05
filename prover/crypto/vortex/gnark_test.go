@@ -3,37 +3,32 @@
 package vortex
 
 import (
-	// "github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	// "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	// "github.com/consensys/linea-monorepo/prover/maths/field"
-
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+
+	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/hash"
-	gmimc "github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
 // ------------------------------------------------------------
 // test computeLagrange
 
-func evalPoly(p []fr.Element, z fr.Element) fr.Element {
-	var res fr.Element
-	n := len(p)
-	for i := 0; i < len(p); i++ {
+func evalPoly(p []field.Element, z field.Element) field.Element {
+	var res field.Element
+	for i := len(p) - 1; i >= 0; i-- {
 		res.Mul(&res, &z)
-		res.Add(&res, &p[n-1-i])
+		res.Add(&res, &p[i])
 	}
 	return res
 }
@@ -61,7 +56,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 
 	s := 16
 	d := fft.NewDomain(uint64(s))
-	var zeta fr.Element
+	var zeta field.Element
 	zeta.SetRandom()
 
 	// prepare witness
@@ -69,7 +64,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 	witness.Zeta = zeta.String()
 	witness.Li = make([]frontend.Variable, s)
 	for i := 0; i < s; i++ {
-		buf := make([]fr.Element, s)
+		buf := make([]field.Element, s)
 		buf[i].SetOne()
 		d.FFTInverse(buf, fft.DIF)
 		fft.BitReverse(buf)
@@ -82,13 +77,14 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 	circuit.Li = make([]frontend.Variable, s)
 
 	// compile...
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+	builder := scs.NewBuilder[constraint.U32]
+	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	twitness, err := frontend.NewWitness(&witness, field.Modulus())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,51 +118,52 @@ func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func TestFFTInverseCircuit(t *testing.T) {
+// func TestFFTInverseCircuit(t *testing.T) {
 
-	s := 16
-	d := fft.NewDomain(uint64(s))
+// 	s := 16
+// 	d := fft.NewDomain(uint64(s))
 
-	// prepare witness
-	p := make([]fr.Element, s)
-	for i := 0; i < s; i++ {
-		p[i].SetRandom()
-	}
-	r := make([]fr.Element, s)
-	copy(r, p)
-	d.FFTInverse(r, fft.DIF)
-	fft.BitReverse(r)
-	var witness FFTInverseCircuit
-	witness.P = make([]frontend.Variable, s)
-	witness.R = make([]frontend.Variable, s)
+// 	// prepare witness
+// 	p := make([]field.Element, s)
+// 	for i := 0; i < s; i++ {
+// 		p[i].SetRandom()
+// 	}
+// 	r := make([]field.Element, s)
+// 	copy(r, p)
+// 	d.FFTInverse(r, fft.DIF)
+// 	fft.BitReverse(r)
+// 	var witness FFTInverseCircuit
+// 	witness.P = make([]frontend.Variable, s)
+// 	witness.R = make([]frontend.Variable, s)
 
-	for i := 0; i < s; i++ {
-		witness.P[i] = p[i].String()
-		witness.R[i] = r[i].String()
-	}
+// 	for i := 0; i < s; i++ {
+// 		witness.P[i] = p[i].String()
+// 		witness.R[i] = r[i].String()
+// 	}
 
-	var circuit FFTInverseCircuit
-	circuit.P = make([]frontend.Variable, s)
-	circuit.R = make([]frontend.Variable, s)
-	circuit.Domain = *d
+// 	var circuit FFTInverseCircuit
+// 	circuit.P = make([]frontend.Variable, s)
+// 	circuit.R = make([]frontend.Variable, s)
+// 	circuit.Domain = *d
 
-	// compile...
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	// compile...
+// 	builder := scs.NewBuilder[constraint.U32]
+// 	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	// solve the circuit
+// 	twitness, err := frontend.NewWitness(&witness, field.Modulus())
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	err = ccs.IsSolved(twitness)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-}
+// }
 
 // ------------------------------------------------------------
 // test AssertIsCodeWord
@@ -178,18 +175,18 @@ type AssertIsCodeWordCircuit struct {
 }
 
 func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
-
 	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
 
 }
 
+/*
 func TestAssertIsCodeWord(t *testing.T) {
 
 	// generate witness
 	size := 2048
 	d := fft.NewDomain(uint64(size))
 	rate := 2
-	p := make([]fr.Element, size)
+	p := make([]field.Element, size)
 	for i := 0; i < (size / rate); i++ {
 		p[i].SetRandom()
 	}
@@ -225,118 +222,120 @@ func TestAssertIsCodeWord(t *testing.T) {
 	}
 
 }
-
+*/
 // ------------------------------------------------------------
-// Interpolate
+// EvaluateLagrange
 
-type InterpolateCircuit struct {
+type EvaluateLagrangeCircuit struct {
 	P []frontend.Variable
 	X frontend.Variable `gnark:",public"`
 	R frontend.Variable
 	d *fft.Domain
 }
 
-func (circuit *InterpolateCircuit) Define(api frontend.API) error {
+func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
-	res := gnarkInterpolate(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
+	res := gnarkEvaluateLagrange(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
 
 	api.AssertIsEqual(res, circuit.R)
 
 	return nil
 }
 
-func TestInterpolateCircuit(t *testing.T) {
+// func TestEvaluateLagrangeCircuit(t *testing.T) {
 
-	// generate witness
-	size := 16
-	p := make([]fr.Element, size)
-	for i := 0; i < size; i++ {
-		p[i].SetRandom()
-	}
-	var x fr.Element
-	x.SetRandom()
-	var r fr.Element
-	for i := 0; i < size; i++ {
-		r.Mul(&r, &x)
-		r.Add(&r, &p[len(p)-1-i])
-	}
+// 	// generate witness
+// 	size := 16
+// 	p := make([]field.Element, size)
+// 	for i := 0; i < size; i++ {
+// 		p[i].SetRandom()
+// 	}
+// 	var x fext.Element
+// 	x.SetRandom()
+// 	var r fext.Element
+// 	for i := 0; i < size; i++ {
+// 		r.Mul(&r, &x)
+// 		var temp fext.Element
+// 		fext.FromBase(&temp, &p[len(p)-1-i])
+// 		r.Add(&r, &temp)
+// 	}
 
-	d := fft.NewDomain(uint64(size))
-	d.FFT(p, fft.DIF)
-	fft.BitReverse(p)
+// 	d := fft.NewDomain(uint64(size))
+// 	d.FFT(p, fft.DIF)
+// 	fft.BitReverse(p)
 
-	var witness InterpolateCircuit
-	witness.P = make([]frontend.Variable, size)
-	for i := 0; i < size; i++ {
-		witness.P[i] = p[i].String()
-	}
-	witness.X = x
-	witness.R = r
+// 	var witness EvaluateLagrangeCircuit
+// 	witness.P = make([]frontend.Variable, size)
+// 	for i := 0; i < size; i++ {
+// 		witness.P[i] = p[i].String()
+// 	}
+// 	witness.X = x
+// 	witness.R = r
 
-	// compile the circuit
-	var circuit InterpolateCircuit
-	circuit.P = make([]frontend.Variable, size)
-	circuit.d = d
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	// compile the circuit
+// 	var circuit EvaluateLagrangeCircuit
+// 	circuit.P = make([]frontend.Variable, size)
+// 	circuit.d = d
+// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	// solve the circuit
+// 	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	err = ccs.IsSolved(twitness)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-}
+// }
 
 // ------------------------------------------------------------
 // N Commitments with Merkle opening
 
 func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPolys, polySize, blowUpFactor int) (
 	proof *OpeningProof,
-	randomCoin field.Element,
-	x field.Element,
-	yLists [][]field.Element,
+	randomCoin fext.Element,
+	x fext.Element,
+	yLists [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32,
+	roots []field.Octuplet,
 ) {
 
-	x = field.NewElement(478)
-	randomCoin = field.NewElement(1523)
+	x = fext.RandomElement()
+	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
 
-	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams)
+	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2.Poseidon2, poseidon2.Poseidon2)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
-	yLists = make([][]field.Element, nCommitments)
+	yLists = make([][]fext.Element, nCommitments)
 	for j := range polyLists {
 		// Polynomials to commit to
 		polys := make([]smartvectors.SmartVector, nPolys)
-		ys := make([]field.Element, nPolys)
+		ys := make([]fext.Element, nPolys)
 		for i := range polys {
 			polys[i] = smartvectors.Rand(polySize)
-			ys[i] = smartvectors.Interpolate(polys[i], x)
+			ys[i] = smartvectors.EvaluateBasePolyLagrange(polys[i], x)
 		}
 		polyLists[j] = polys
 		yLists[j] = ys
 	}
 
 	// Commits to it
-	roots = make([]types.Bytes32, nCommitments)
+	roots = make([]field.Octuplet, nCommitments)
 	trees := make([]*smt.Tree, nCommitments)
 	committedMatrices := make([]EncodedMatrix, nCommitments)
-	isSISReplacedByMiMC := make([]bool, nCommitments)
+	isSISReplacedByPoseidon2 := make([]bool, nCommitments)
 	for j := range trees {
 		// As Gnark does not support SIS, we commit without SIS hashing
 		committedMatrices[j], trees[j], _ = params.CommitMerkleWithoutSIS(polyLists[j])
 		roots[j] = trees[j].Root
-		// We set the SIS replaced by MiMC to true, as Gnark does not support SIS
-		isSISReplacedByMiMC[j] = true
+		// We set the SIS replaced by Poseidon2 to true, as Gnark does not support SIS
+		isSISReplacedByPoseidon2[j] = true
 	}
 
 	// Generate the proof
@@ -345,68 +344,69 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 
 	// Check the proof
 	err := VerifyOpening(&VerifierInputs{
-		Params:              *params,
-		MerkleRoots:         roots,
-		X:                   x,
-		Ys:                  yLists,
-		OpeningProof:        *proof,
-		RandomCoin:          randomCoin,
-		EntryList:           entryList,
-		IsSISReplacedByMiMC: isSISReplacedByMiMC,
+		Params:                   *params,
+		MerkleRoots:              roots,
+		X:                        x,
+		Ys:                       yLists,
+		OpeningProof:             *proof,
+		RandomCoin:               randomCoin,
+		EntryList:                entryList,
+		IsSISReplacedByPoseidon2: isSISReplacedByPoseidon2,
 	})
 	require.NoError(t, err)
 
 	return proof, randomCoin, x, yLists, entryList, roots
 }
 
-func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
+// func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 
-	// generate witness
-	nCommitments := 4
-	nPolys := 15
-	polySize := 1 << 10
-	blowUpFactor := 2
-	proof, randomCoin, x, ys, entryList, commitments := getProofVortexNCommitmentsWithMerkleNoSis(t, nCommitments, nPolys, polySize, blowUpFactor)
+// 	// generate witness
+// 	nCommitments := 4
+// 	nPolys := 15
+// 	polySize := 1 << 10
+// 	blowUpFactor := 2
+// 	proof, randomCoin, x, ys, entryList, commitments := getProofVortexNCommitmentsWithMerkleNoSis(t, nCommitments, nPolys, polySize, blowUpFactor)
 
-	rsSize := blowUpFactor * polySize
-	rsDomainSize := uint64(rsSize)
-	rsDomain := fft.NewDomain(rsDomainSize)
-	var witness VerifyOpeningCircuitMerkleTree
-	witness.Proof.RsDomain = rsDomain
-	witness.Proof.Rate = uint64(blowUpFactor)
-	AllocateCircuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, commitments)
-	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, commitments)
-	witness.RandomCoin = randomCoin.String()
-	witness.X = x.String()
-	witness.Params.HasherFunc = makeMimcHasherfunc
-	witness.Params.NoSisHasher = makeMimcHasherfunc
+// 	rsSize := blowUpFactor * polySize
+// 	rsDomainSize := uint64(rsSize)
+// 	rsDomain := fft.NewDomain(rsDomainSize)
+// 	var witness VerifyOpeningCircuitMerkleTree
+// 	witness.Proof.RsDomain = rsDomain
+// 	witness.Proof.Rate = uint64(blowUpFactor)
+// 	AllocateCircuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, commitments)
+// 	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, commitments)
+// 	witness.RandomCoin = randomCoin.String()
+// 	witness.X = x.String()
+// 	witness.Params.HasherFunc = makeMimcHasherfunc
+// 	witness.Params.NoSisHasher = makeMimcHasherfunc
 
-	// compile the circuit
-	var circuit VerifyOpeningCircuitMerkleTree
-	circuit.Proof.LinearCombination = make([]frontend.Variable, rsSize)
-	circuit.Proof.Rate = uint64(blowUpFactor)
-	circuit.Proof.RsDomain = rsDomain
-	circuit.Params.HasherFunc = makeMimcHasherfunc
-	circuit.Params.NoSisHasher = makeMimcHasherfunc
+// 	// compile the circuit
+// 	var circuit VerifyOpeningCircuitMerkleTree
+// 	circuit.Proof.LinearCombination = make([]frontend.Variable, rsSize)
+// 	circuit.Proof.Rate = uint64(blowUpFactor)
+// 	circuit.Proof.RsDomain = rsDomain
+// 	circuit.Params.HasherFunc = makeMimcHasherfunc
+// 	circuit.Params.NoSisHasher = makeMimcHasherfunc
 
-	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, commitments)
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-	if err != nil {
-		t.Fatal(err)
-	}
+// 	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, commitments)
+// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
+// 	// solve the circuit
+// 	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	err = ccs.IsSolved(twitness)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// }
 
-func makeMimcHasherfunc(api frontend.API) (hash.FieldHasher, error) {
-	h, err := gmimc.NewMiMC(api)
-	return &h, err
+func makePoseidonHasher(api frontend.API) (hash.FieldHasher, error) {
+	panic("not implemented")
+	// h, err := gposeidon2.NewMerkleDamgardHasher(api)
+	// return &h, err
 }

@@ -6,11 +6,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // ExplicitPolynomialEval is a [wizard.VerifierAction] that evaluates the
@@ -37,13 +37,14 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 	if ctx.IsSelfrecursed {
 		return nil
 	}
+
 	var (
 		// The roots of the merkle trees. We stack the no SIS round
 		// roots before the SIS roots. The precomputed root is the
 		// first root of the SIS roots if SIS hash is applied on the
 		// precomputed. Otherwise, it is the first root of the no SIS roots.
-		noSisRoots = []types.Bytes32{}
-		sisRoots   = []types.Bytes32{}
+		noSisRoots = []field.Octuplet{}
+		sisRoots   = []field.Octuplet{}
 		// Slice of true value of length equal to the number of no SIS round
 		// + 1 (if SIS is not applied to precomputed)
 		flagForNoSISRounds = []bool{}
@@ -54,17 +55,21 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
-		precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-		precompRootF := precompRootSv.Get(0)                                         // root as a field element
+		var precompRootF field.Octuplet
+		for i := 0; i < blockSize; i++ {
+			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
+			precompRootF[i] = precompRootSv.IntoRegVecSaveAlloc()[0]
+		}
 
 		if ctx.IsSISAppliedToPrecomputed() {
-			sisRoots = append(sisRoots, types.Bytes32(precompRootF.Bytes()))
+			sisRoots = append(sisRoots, precompRootF)
 			flagForSISRounds = append(flagForSISRounds, false)
 		} else {
-			noSisRoots = append(noSisRoots, types.Bytes32(precompRootF.Bytes()))
+			noSisRoots = append(noSisRoots, precompRootF)
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		}
 	}
+
 	// Collect all the roots: rounds by rounds
 	// and append them to the sis or no sis roots
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
@@ -77,24 +82,30 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 			continue
 		}
 
-		rootSv := run.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
-		rootF := rootSv.Get(0)                                           // root as field element
+		var precompRootF field.Octuplet
+		for i := 0; i < blockSize; i++ {
+			rootSv := run.GetColumn(ctx.Items.MerkleRoots[round][i].GetColID())
+			precompRootF[i] = rootSv.IntoRegVecSaveAlloc()[0]
+		}
 
-		// Append the isSISApplied flag
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
-			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
+		switch ctx.RoundStatus[round] {
+		case IsOnlyPoseidon2Applied:
+			noSisRoots = append(noSisRoots, precompRootF)
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
-		} else if ctx.RoundStatus[round] == IsSISApplied {
-			sisRoots = append(sisRoots, types.Bytes32(rootF.Bytes()))
+		case IsSISApplied:
+			sisRoots = append(sisRoots, precompRootF)
 			flagForSISRounds = append(flagForSISRounds, false)
+		default:
+			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
 		}
 	}
-	// assign the roots and the isSisReplacedByMiMC flags
+
+	// assign the roots and the IsSISReplacedByPoseidon2 flags
 	roots := append(noSisRoots, sisRoots...)
-	isSISReplacedByMiMC := append(flagForNoSISRounds, flagForSISRounds...)
+	IsSISReplacedByPoseidon2 := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
-	randomCoin := run.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
 	proof.LinearCombination = run.GetColumn(ctx.LinCombName())
@@ -104,20 +115,24 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
 	// Collect the opened columns and split them "by-commitment-rounds"
 	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
-	x := run.GetUnivariateParams(ctx.Query.QueryID).X
+	x := run.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
-	packedMProofs := run.GetColumn(ctx.MerkleProofName())
+	packedMProofs := [8]smartvectors.SmartVector{}
+	for i := range packedMProofs {
+		packedMProofs[i] = run.GetColumn(ctx.MerkleProofName(i))
+	}
+
 	proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
 
 	return vortex.VerifyOpening(&vortex.VerifierInputs{
-		Params:              *ctx.VortexParams,
-		MerkleRoots:         roots,
-		X:                   x,
-		Ys:                  ctx.getYs(run),
-		OpeningProof:        *proof,
-		RandomCoin:          randomCoin,
-		EntryList:           entryList,
-		IsSISReplacedByMiMC: isSISReplacedByMiMC,
+		Params:                   *ctx.VortexParams,
+		MerkleRoots:              roots,
+		X:                        x,
+		Ys:                       ctx.getYs(run),
+		OpeningProof:             *proof,
+		RandomCoin:               randomCoin,
+		EntryList:                entryList,
+		IsSISReplacedByPoseidon2: IsSISReplacedByPoseidon2,
 	})
 }
 
@@ -128,20 +143,20 @@ func (ctx *Ctx) getNbCommittedRows(round int) int {
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]field.Element) {
+func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]fext.Element) {
 
 	var (
 		query   = ctx.Query
 		params  = run.GetUnivariateParams(ctx.Query.QueryID)
-		ysNoSIS = [][]field.Element{}
-		ysSIS   = [][]field.Element{}
+		ysNoSIS = [][]fext.Element{}
+		ysSIS   = [][]fext.Element{}
 	)
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.
-	ysMap := make(map[ifaces.ColID]field.Element, len(params.Ys))
+	ysMap := make(map[ifaces.ColID]fext.Element, len(params.Ys))
 	for i := range query.Pols {
-		ysMap[query.Pols[i].GetColID()] = params.Ys[i]
+		ysMap[query.Pols[i].GetColID()] = params.ExtYs[i]
 	}
 
 	// Also add the shadow evaluations into ysMap. Since the shadow columns
@@ -154,7 +169,7 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]field.Element) {
 	})
 
 	for _, shadowID := range shadowIDs {
-		ysMap[shadowID] = field.Zero()
+		ysMap[shadowID] = fext.Zero()
 	}
 
 	// add ys for precomputed
@@ -163,7 +178,7 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]field.Element) {
 		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
 			names[i] = poly.GetColID()
 		}
-		ysPrecomputed := make([]field.Element, len(names))
+		ysPrecomputed := make([]fext.Element, len(names))
 		for i, name := range names {
 			ysPrecomputed[i] = ysMap[name]
 		}
@@ -186,12 +201,12 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]field.Element) {
 			continue
 		}
 		names := ctx.CommitmentsByRounds.MustGet(round)
-		ysRounds := make([]field.Element, len(names))
+		ysRounds := make([]fext.Element, len(names))
 		for i, name := range names {
 			ysRounds[i] = ysMap[name]
 		}
 		// conditionally append ysRounds to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
 			ysNoSIS = append(ysNoSIS, ysRounds)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			ysSIS = append(ysSIS, ysRounds)
@@ -248,7 +263,7 @@ func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][]
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		// conditionally append the numRowsForRound
 		// to the SIS or no SIS list
-		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+		if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
 			numRowsPerNonSisRound = append(numRowsPerNonSisRound, numRowsForRound)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			numRowsPerSisRound = append(numRowsPerSisRound, numRowsForRound)
@@ -299,8 +314,8 @@ func (ctx *Ctx) explicitPublicEvaluation(run wizard.Runtime) error {
 
 		val := pol.GetColAssignment(run)
 
-		y := smartvectors.Interpolate(val, params.X)
-		if y != params.Ys[i] {
+		y := smartvectors.EvaluateFextPolyLagrange(val, params.ExtX)
+		if y != params.ExtYs[i] {
 			return fmt.Errorf("inconsistent evaluation")
 		}
 	}
@@ -313,6 +328,7 @@ type ShadowRowProverAction struct {
 	Size int
 }
 
+// Run assigns the column to a constant column of zeros, which is a shadow row.
 func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.Name, smartvectors.NewConstant(field.Zero(), a.Size))
 }
@@ -323,7 +339,7 @@ func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime) {
 func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces.Column {
 
 	name := ifaces.ColIDf("VORTEX_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
-	col := comp.InsertCommit(round, name, size)
+	col := comp.InsertCommit(round, name, size, true)
 
 	comp.RegisterProverAction(round, &ShadowRowProverAction{
 		Name: name,

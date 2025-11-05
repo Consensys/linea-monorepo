@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -76,22 +77,20 @@ type BackReference int
 // Serializer manages the serialization process, packing objects into a PackedObject.
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
-	PackedObject     *PackedObject                // The output structure containing serialized data.
-	typeMap          map[string]int               // Maps type names to indices in PackedObject.Types.
-	pointerMap       map[uintptr]int              // Maps pointer values to indices in PackedObject.Pointers.
-	coinMap          map[uuid.UUID]int            // Maps coin UUIDs to indices in PackedObject.Coins.
-	coinIdMap        map[string]int               // Maps coin IDs to indices in PackedObject.CoinIDs.
-	columnMap        map[uuid.UUID]int            // Maps column UUIDs to indices in PackedObject.Columns.
-	columnIdMap      map[string]int               // Maps column IDs to indices in PackedObject.ColumnIDs.
-	queryMap         map[uuid.UUID]int            // Maps query UUIDs to indices in PackedObject.Queries.
-	queryIDMap       map[string]int               // Maps query IDs to indices in PackedObject.QueryIDs.
-	compiledIOPsFast map[*wizard.CompiledIOP]int  // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
-	stores           map[*column.Store]int        // Maps Store pointers to indices in PackedObject.Store.
-	circuitMap       map[*cs.SparseR1CS]int       // Maps circuit pointers to indices in PackedObject.Circuits.
-	exprMap          map[*symbolic.Expression]int // Maps expression pointers to indices in PackedObject.Expressions
-	warnings         []string                     // Collects warnings (e.g., unexported fields) for debugging.
-
-	// compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
+	PackedObject *PackedObject               // The output structure containing serialized data.
+	typeMap      map[string]int              // Maps type names to indices in PackedObject.Types.
+	pointerMap   map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
+	coinMap      map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
+	coinIdMap    map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
+	columnMap    map[uuid.UUID]int           // Maps column UUIDs to indices in PackedObject.Columns.
+	columnIdMap  map[string]int              // Maps column IDs to indices in PackedObject.ColumnIDs.
+	queryMap     map[uuid.UUID]int           // Maps query UUIDs to indices in PackedObject.Queries.
+	queryIDMap   map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
+	compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
+	Stores       map[*column.Store]int       // Maps Store pointers to indices in PackedObject.Store.
+	circuitMap   map[*cs.SparseR1CS]int      // Maps circuit pointers to indices in PackedObject.Circuits.
+	ExprMap      map[fext.Element]int        // Maps expression pointers to indices in PackedObject.Expressions
+	Warnings     []string                    // Collects warnings (e.g., unexported fields) for debugging.
 }
 
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
@@ -153,19 +152,19 @@ type PackedStructObject []any
 
 func NewSerializer() *Serializer {
 	return &Serializer{
-		PackedObject:     &PackedObject{},
-		typeMap:          map[string]int{},
-		pointerMap:       map[uintptr]int{},
-		coinMap:          map[uuid.UUID]int{},
-		coinIdMap:        map[string]int{},
-		columnMap:        map[uuid.UUID]int{},
-		columnIdMap:      map[string]int{},
-		queryMap:         map[uuid.UUID]int{},
-		queryIDMap:       map[string]int{},
-		compiledIOPsFast: map[*wizard.CompiledIOP]int{},
-		stores:           map[*column.Store]int{},
-		circuitMap:       map[*cs.SparseR1CS]int{},
-		exprMap:          map[*symbolic.Expression]int{},
+		PackedObject: &PackedObject{},
+		typeMap:      map[string]int{},
+		pointerMap:   map[uintptr]int{},
+		coinMap:      map[uuid.UUID]int{},
+		coinIdMap:    map[string]int{},
+		columnMap:    map[uuid.UUID]int{},
+		columnIdMap:  map[string]int{},
+		queryMap:     map[uuid.UUID]int{},
+		queryIDMap:   map[string]int{},
+		compiledIOPs: map[*wizard.CompiledIOP]int{},
+		Stores:       map[*column.Store]int{},
+		circuitMap:   map[*cs.SparseR1CS]int{},
+		ExprMap:      map[fext.Element]int{},
 	}
 }
 

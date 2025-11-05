@@ -3,6 +3,9 @@ package accessors
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -18,6 +21,28 @@ type FromIntVecCoinPositionAccessor struct {
 	Info coin.Info
 	// Pos indexes the pointed position in the coin.
 	Pos int
+}
+
+func (c *FromIntVecCoinPositionAccessor) IsBase() bool {
+	return true
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	return field.NewElement(uint64(run.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos])), nil
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	base := field.NewElement(uint64(run.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]))
+	return fext.Lift(base)
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+	return circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos], nil
+}
+
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Element {
+	elem := circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]
+	return gnarkfext.NewFromBase(elem)
 }
 
 // NewFromIntegerVecCoinPosition constructs an [ifaces.Accessor] object refering

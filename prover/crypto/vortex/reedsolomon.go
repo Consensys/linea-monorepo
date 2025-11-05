@@ -3,32 +3,28 @@ package vortex
 import (
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	wfft "github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils/arena"
 )
 
-// rsEncode encodes a vector `v` and returns the corresponding the Reed-Solomon
+// _rsEncodeBase encodes a vector `v` and returns the corresponding the Reed-Solomon
 // codeword. The input vector is interpreted as a polynomial in Lagrange basis
 // over a domain of n-roots of unity Omega_n and returns its representation in
 // the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
 // inverse-rate of the code. The code is systematic as the original vector is
 // interleaved within the encoded vector.
-func (p *Params) rsEncode(v smartvectors.SmartVector, vArena ...*arena.VectorArena) smartvectors.SmartVector {
+func (p *Params) _rsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVector {
 
 	// Short path, v is a constant vector. It's encoding is also a constant vector
 	// with the same value.
 	if cons, ok := v.(*smartvectors.Constant); ok {
 		return smartvectors.NewConstant(cons.Val(), p.NumEncodedCols())
 	}
-	var expandedCoeffs []field.Element
-	if len(vArena) > 0 {
-		expandedCoeffs = arena.Get[field.Element](vArena[0], p.NumEncodedCols())
-	} else {
-		expandedCoeffs = make([]field.Element, p.NumEncodedCols())
-	}
+
+	expandedCoeffs := make([]field.Element, p.NumEncodedCols())
 
 	// copy the input
 	v.WriteInSlice(expandedCoeffs[:v.Len()])
@@ -39,16 +35,24 @@ func (p *Params) rsEncode(v smartvectors.SmartVector, vArena ...*arena.VectorAre
 		largeDomain := p.Domains[1]
 
 		smallDomain.FFTInverse(expandedCoeffs[:v.Len()], fft.DIF, fft.WithNbTasks(1))
-		fft.BitReverse(expandedCoeffs[:v.Len()])
 
-		largeDomain.FFT(expandedCoeffs, fft.DIF, fft.WithNbTasks(1))
-		fft.BitReverse(expandedCoeffs)
+		n := v.Len()
+		rho := p.BlowUpFactor
+
+		// this loop dispatches the values that are all located at the beginning
+		// of the domain to the entire domain by homothety
+		for j := n - 1; j > 0; j-- {
+			expandedCoeffs[rho*j] = expandedCoeffs[j]
+			expandedCoeffs[j] = field.Element{}
+		}
+
+		largeDomain.FFT(expandedCoeffs, fft.DIT, fft.WithNbTasks(1))
 
 		return smartvectors.NewRegular(expandedCoeffs)
 	}
 
 	// fast path; we avoid the bit reverse operations and work on the smaller domain.
-	inputCoeffs := field.Vector(expandedCoeffs[:p.NbColumns])
+	inputCoeffs := koalabear.Vector(expandedCoeffs[:p.NbColumns])
 
 	p.Domains[0].FFTInverse(inputCoeffs, fft.DIF, fft.WithNbTasks(1))
 	inputCoeffs.Mul(inputCoeffs, p.CosetTableBitReverse)
@@ -65,9 +69,15 @@ func (p *Params) rsEncode(v smartvectors.SmartVector, vArena ...*arena.VectorAre
 // IsCodeword returns nil iff the argument `v` is a correct codeword and an
 // error is returned otherwise.
 func (p *Params) isCodeword(v smartvectors.SmartVector) error {
-	coeffs := smartvectors.FFTInverse(v, wfft.DIT, true, 0, 0, nil)
+	if v.Len() != p.NumEncodedCols() {
+		return fmt.Errorf("invalid length for a codeword")
+	}
+	coeffs := make([]field.Element, p.NumEncodedCols())
+	v.WriteInSlice(coeffs)
+	utils.BitReverse(coeffs)
+	p.Domains[1].FFTInverse(coeffs, fft.DIT, fft.WithNbTasks(1))
 	for i := p.NbColumns; i < p.NumEncodedCols(); i++ {
-		c := coeffs.Get(i)
+		c := coeffs[i]
 		if !c.IsZero() {
 			return fmt.Errorf("not a reed-solomon codeword")
 		}

@@ -2,8 +2,10 @@ package gnarkutil
 
 import (
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
 /*
@@ -11,6 +13,13 @@ Allocate a slice of field element
 */
 func AllocateSlice(n int) []frontend.Variable {
 	return make([]frontend.Variable, n)
+}
+
+/*
+AllocateSliceExt allocates a slice of field extension elements
+*/
+func AllocateSliceExt(n int) []gnarkfext.Element {
+	return make([]gnarkfext.Element, n)
 }
 
 // AsWitness converts a slice of field elements to a slice of witness variables
@@ -35,19 +44,24 @@ func AsWitnessPublic(v []frontend.Variable) witness.Witness {
 	return wit
 }
 
-// GetSlicePosition returns a position in a slice of variables. Or zero if no match
-// is found.
-func GetSlicePosition(api frontend.API, v []frontend.Variable, pos frontend.Variable) (res, isMatched frontend.Variable) {
+// AsWitnessPublicSmallField converts a slice of base field elements to a slice of witness variables
+// of the same length with only public inputs.
+func AsWitnessPublicSmallField(v []frontend.Variable) witness.Witness {
 
-	res, isMatched = frontend.Variable(0), frontend.Variable(0)
+	var (
+		wit, _  = witness.New(koalabear.Modulus())
+		witChan = make(chan any, len(v))
+	)
 
-	for i, v := range v {
-		iIsMatch := api.IsZero(api.Sub(pos, frontend.Variable(i)))
-		res = api.Select(iIsMatch, v, res)
-		// No need to use "Or" is since all the "i" are distinct, pos cannot be
-		// equal to more than one "i".
-		isMatched = api.Add(isMatched, iIsMatch)
+	for _, w := range v {
+		witChan <- w
 	}
 
-	return res, isMatched
+	close(witChan)
+
+	if err := wit.Fill(len(v), 0, witChan); err != nil {
+		panic(err)
+	}
+
+	return wit
 }

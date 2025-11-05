@@ -3,7 +3,6 @@ package symbolic
 import (
 	"sort"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -22,14 +21,14 @@ type ExpressionBoard struct {
 	// Maps nodes to their level in the DAG structure. The 32 MSB bits
 	// of the ID indicates the level and the LSB bits indicates the position
 	// in the level.
-	EsHashesToPos map[field.Element]nodeID
+	ESHashesToPos map[esHash]nodeID
 }
 
 // emptyBoard initializes a board with no Node in it.
 func emptyBoard() ExpressionBoard {
 	return ExpressionBoard{
 		Nodes:         [][]Node{},
-		EsHashesToPos: map[field.Element]nodeID{},
+		ESHashesToPos: map[esHash]nodeID{},
 	}
 }
 

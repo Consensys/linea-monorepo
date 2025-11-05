@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/consensys/linea-monorepo/prover/crypto"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
@@ -28,12 +29,13 @@ type roundStatus int
 const (
 	// Denotes a round with no polynomials to commit to
 	IsEmpty roundStatus = iota
-	// Denotes a round when we apply only MiMC hashing
+	// Denotes a round when we apply only Poseidon2 hashing
 	// on the columns of the round matrix
-	IsOnlyMiMCApplied
-	// Denotes a round when we apply SIS+MiMC hashing
+	IsOnlyPoseidon2Applied
+	// Denotes a round when we apply SIS+Poseidon2 hashing
 	// on the columns of the round matrix
 	IsSISApplied
+	blockSize = 8
 )
 
 /*
@@ -42,7 +44,7 @@ Applies the Vortex compiler over the current polynomial-IOP
   - SISTreshold : minimal number of polynomial in rounds to consider
     applying the SIS hashing on the columns of the round matrix. Implicitly, we
     consider that applying SIS hash over too few vectors is not worth it.
-    For these rounds we will use the MiMC hash function directly to compute
+    For these rounds we will use the Poseidon2 hash function directly to compute
     the leaves of the Merkle tree.
 
 There are the following requirements:
@@ -122,36 +124,42 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 					name = fmt.Sprintf("%v_%v", ctx.AddMerkleRootToPublicInputsOpt.Name, round)
 					mr   = ctx.Items.MerkleRoots[round]
 				)
-				if mr == nil {
+
+				if mr[0] == nil {
 					utils.Panic("merkle root not found for round %v", round)
 				}
-				comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.MerkleRoots[round], 0))
+
+				for i := 0; i < len(field.Octuplet{}); i++ {
+					name := fmt.Sprintf("%v_%v", name, i)
+					comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.MerkleRoots[round][i], 0))
+				}
 			}
 		}
 
 		if ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Enabled {
 
 			var (
-				merkleRootColumn = ctx.Items.Precomputeds.MerkleRoot
-				merkleRootValue  = ctx.Comp.Precomputed.MustGet(merkleRootColumn.GetColID())
+				merkleRootColumn   = ctx.Items.Precomputeds.MerkleRoot
+				merkleRootSV       [blockSize]smartvectors.SmartVector
+				merkleRootOctuplet field.Octuplet
 			)
-
-			ctx.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue = merkleRootValue.Get(0)
-			ctx.Comp.Columns.SetStatus(merkleRootColumn.GetColID(), column.Proof)
-			ctx.Comp.Precomputed.Del(merkleRootColumn.GetColID())
-			ctx.Comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootValue.Get(0)
+			for i := 0; i < blockSize; i++ {
+				merkleRootSV[i] = ctx.Comp.Precomputed.MustGet(merkleRootColumn[i].GetColID())
+				merkleRootOctuplet[i] = merkleRootSV[i].Get(0)
+				ctx.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[i] = merkleRootOctuplet[i]
+				ctx.Comp.Columns.SetStatus(merkleRootColumn[i].GetColID(), column.Proof)
+				ctx.Comp.Precomputed.Del(merkleRootColumn[i].GetColID())
+			}
+			ctx.Comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootOctuplet
 
 			comp.RegisterProverAction(0, &ReassignPrecomputedRootAction{
 				Ctx: ctx,
 			})
 
-			comp.InsertPublicInput(
-				ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name,
-				accessors.NewFromPublicColumn(
-					ctx.Items.Precomputeds.MerkleRoot,
-					0,
-				),
-			)
+			for i := 0; i < len(field.Octuplet{}); i++ {
+				name := fmt.Sprintf("%v_%v", ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name, i)
+				comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.Precomputeds.MerkleRoot[i], 0))
+			}
 		}
 	}
 }
@@ -174,8 +182,8 @@ type Ctx struct {
 	// Parameters for the optional SIS hashing feature
 	// If the number of commitments for a given round
 	// is more than this threshold, we apply SIS hashing
-	//  and then MiMC hashing for computing the leaves of the Merkle tree.
-	// Otherwise, we replace SIS and directly apply MiMC hashing
+	//  and then Poseidon2 hashing for computing the leaves of the Merkle tree.
+	// Otherwise, we replace SIS and directly apply Poseidon2 hashing
 	// for computing the leaves of the Merkle tree.
 	ApplySISHashThreshold int
 	RoundStatus           []roundStatus
@@ -220,7 +228,7 @@ type Ctx struct {
 			// the precomputed flag is set.
 			PrecomputedColums []ifaces.Column
 			// Merkle Root of the precomputeds columns
-			MerkleRoot ifaces.Column
+			MerkleRoot [blockSize]ifaces.Column
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
@@ -242,10 +250,10 @@ type Ctx struct {
 		OpenedNonSISColumns []ifaces.Column
 		// MerkleProofs
 		// We represents all the Merkle proof as specfied here:
-		MerkleProofs ifaces.Column
+		MerkleProofs [blockSize]ifaces.Column
 		// The Merkle roots are represented by a size 1 column
 		// in the wizard.
-		MerkleRoots []ifaces.Column
+		MerkleRoots [][blockSize]ifaces.Column
 	}
 
 	// IsSelfrecursed is a flag that tells the verifier Vortex to perform a
@@ -273,7 +281,7 @@ type Ctx struct {
 	AddPrecomputedMerkleRootToPublicInputsOpt struct {
 		Enabled          bool
 		Name             string
-		PrecomputedValue field.Element
+		PrecomputedValue [blockSize]field.Element
 	}
 }
 
@@ -291,7 +299,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		Items: struct {
 			Precomputeds struct {
 				PrecomputedColums []ifaces.Column
-				MerkleRoot        ifaces.Column
+				MerkleRoot        [blockSize]ifaces.Column
 				CommittedMatrix   vortex.EncodedMatrix
 				Tree              *smt.Tree
 				DhWithMerkle      []field.Element
@@ -302,8 +310,8 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			OpenedColumns       []ifaces.Column
 			OpenedSISColumns    []ifaces.Column
 			OpenedNonSISColumns []ifaces.Column
-			MerkleProofs        ifaces.Column
-			MerkleRoots         []ifaces.Column
+			MerkleProofs        [blockSize]ifaces.Column
+			MerkleRoots         [][blockSize]ifaces.Column
 		}{},
 		// Declare the by rounds/sis rounds/non-sis rounds commitments
 		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
@@ -320,7 +328,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	}
 
 	// Preallocate all the merkle roots for all rounds
-	ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
+	ctx.Items.MerkleRoots = make([][blockSize]ifaces.Column, comp.NumRounds())
 
 	// Declare the RoundStatus slice
 	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
@@ -378,11 +386,11 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		// Also, the order in which the precomputed columns are taken must be the one
 		// matching the query. Otherwise, we would not be able to obtain standard
 		// proofs for the limitless prover.
-		_, comUnconstrained = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
-		coms                = ctx.commitmentsAtRoundFromQuery(round)
-		numComsActual       = len(coms) // actual == not shadow and not unconstrained
-		fillUpTo            = len(coms)
-		onlyMiMCApplied     = len(coms) < ctx.ApplySISHashThreshold
+		_, comUnconstrained  = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
+		coms                 = ctx.commitmentsAtRoundFromQuery(round)
+		numComsActual        = len(coms) // actual == not shadow and not unconstrained
+		fillUpTo             = len(coms)
+		onlyPoseidon2Applied = len(coms) < ctx.ApplySISHashThreshold
 	)
 
 	// This part corresponds to an edge-case that is not supposed to happen
@@ -416,9 +424,9 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	// To ensure the number limbs in each subcol divides the degree, we pad the
 	// list with shadow columns. This is required for self-recursion to work
 	// correctly. In practice they do not cost anything to the prover. When
-	// using MiMC, the number of limbs is equal to 1. This skips the
+	// using Poseidon2, the number of limbs is equal to 1. This skips the
 	// aforementioned behaviour.
-	if !onlyMiMCApplied && ctx.SisParams.NumFieldPerPoly() > 1 {
+	if !onlyPoseidon2Applied && ctx.SisParams.NumFieldPerPoly() > 1 {
 		fillUpTo = utils.NextMultipleOf(fillUpTo, ctx.SisParams.NumFieldPerPoly())
 	}
 
@@ -433,15 +441,15 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	logrus.
 		WithField("where", "compileRoundWithVortex").
-		WithField("using-only-MiMC", onlyMiMCApplied).
+		WithField("using-only-Poseidon2", onlyPoseidon2Applied).
 		WithField("numComs", numComsActual).
 		WithField("numShadowRows", numShadowRows).
 		WithField("numUnconstrained", len(comUnconstrained)).
 		WithField("round", round).
 		Info("Compiled Vortex round")
 
-	if onlyMiMCApplied {
-		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyMiMCApplied)
+	if onlyPoseidon2Applied {
+		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyPoseidon2Applied)
 		ctx.CommitmentsByRoundsNonSIS.AppendToInner(round, coms...)
 		ctx.MaxCommittedRoundNonSIS = utils.Max(ctx.MaxCommittedRoundNonSIS, round)
 	} else {
@@ -463,11 +471,14 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	// Instead, we send Merkle roots that are symbolized with 1-sized
 	// columns.
-	ctx.Items.MerkleRoots[round] = ctx.Comp.InsertProof(
-		round,
-		ifaces.ColID(ctx.MerkleRootName(round)),
-		1,
-	)
+	for i := 0; i < blockSize; i++ {
+		ctx.Items.MerkleRoots[round][i] = ctx.Comp.InsertProof(
+			round,
+			ifaces.ColID(ctx.MerkleRootName(round, i)),
+			len(field.Element{}),
+			true,
+		)
+	}
 }
 
 // asserts that the compiled IOP has only a single query and that this query
@@ -540,7 +551,7 @@ func (ctx *Ctx) generateVortexParams() {
 		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams)
+	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2.Poseidon2, poseidon2.Poseidon2)
 }
 
 // return the number of columns to open
@@ -585,7 +596,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	ctx.Items.Alpha = ctx.Comp.InsertCoin(
 		lastRound+1,
 		ctx.LinCombRandCoinName(),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	// registers the linear combination claimed by the prover
@@ -593,6 +604,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		lastRound+1,
 		ctx.LinCombName(),
 		ctx.NumEncodedCols(),
+		false,
 	)
 
 	// registers the random's verifier column selection
@@ -613,6 +625,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			lastRound+2,
 			ctx.SelectedColName(col),
 			numRows,
+			true,
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
 		if numRowsSIS != 0 {
@@ -620,6 +633,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 				lastRound+2,
 				ctx.SelectedColSISName(col),
 				numRowsSIS,
+				true,
 			)
 			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
 		}
@@ -628,6 +642,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 				lastRound+2,
 				ctx.SelectedColNonSISName(col),
 				numRowsNonSIS,
+				true,
 			)
 			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
 		}
@@ -637,11 +652,14 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	// column that will contain the Merkle proofs altogether. But
 	// first, we need to evaluate its size. The proof size needs to
 	// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
-	ctx.Items.MerkleProofs = ctx.Comp.InsertProof(
-		lastRound+2,
-		ifaces.ColID(ctx.MerkleProofName()),
-		ctx.MerkleProofSize(),
-	)
+	for i := range ctx.Items.MerkleProofs {
+		ctx.Items.MerkleProofs[i] = ctx.Comp.InsertProof(
+			lastRound+2,
+			ifaces.ColID(ctx.MerkleProofName(i)),
+			ctx.MerkleProofSize(),
+			true,
+		)
+	}
 
 }
 
@@ -739,7 +757,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	var (
 		nbUnskippedPrecomputedCols = len(precomputedCols)
 		fillUpTo                   = nbUnskippedPrecomputedCols
-		onlyMiMCApplied            = nbUnskippedPrecomputedCols < ctx.ApplySISHashThreshold
+		onlyPoseidon2Applied       = nbUnskippedPrecomputedCols < ctx.ApplySISHashThreshold
 	)
 
 	// Note: the above "if-clause" ensures that the fillUpTo >= len(coms), so
@@ -752,9 +770,9 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	// To ensure the number limbs in each subcol divides the degree, we pad the
 	// list with shadow columns. This is required for self-recursion to work
 	// correctly. In practice they do not cost anything to the prover. When
-	// using MiMC, the number of limbs is equal to 1. This skips the
+	// using Poseidon2, the number of limbs is equal to 1. This skips the
 	// aforementioned behaviour.
-	if !onlyMiMCApplied && ctx.SisParams.NumFieldPerPoly() > 1 {
+	if !onlyPoseidon2Applied && ctx.SisParams.NumFieldPerPoly() > 1 {
 		fillUpTo = utils.NextMultipleOf(fillUpTo, ctx.SisParams.NumFieldPerPoly())
 	}
 
@@ -784,7 +802,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
 
 	log := logrus.
-		WithField("where isSISAppliedForCommitment", !onlyMiMCApplied).
+		WithField("where isSISAppliedForCommitment", !onlyPoseidon2Applied).
 		WithField("nbPrecomputedRows", nbUnskippedPrecomputedCols).
 		WithField("nbShadowRows", numShadowRows)
 
@@ -795,6 +813,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 			Warnf("Found unconstrained columns. Skipping them and mark them as ignored")
 		return
 	}
+
 	log.Info("processed the precomputed columns")
 }
 
@@ -845,7 +864,7 @@ func (ctx *Ctx) NumCommittedRoundsNoSis() int {
 	// the compileRound method. Careful, the stopping condition is
 	// an LE and not a strict LT condition.
 	for i := 0; i <= ctx.MaxCommittedRound; i++ {
-		if ctx.RoundStatus[i] != IsOnlyMiMCApplied {
+		if ctx.RoundStatus[i] != IsOnlyPoseidon2Applied {
 			// We skip the SIS and the empty rounds
 			continue
 		}
@@ -874,7 +893,9 @@ func (ctx *Ctx) MerkleProofSize() int {
 		utils.Panic("something was zero : %v, %v, %v", depth, numComs, numOpening)
 	}
 
-	return utils.NextPowerOfTwo(depth * numComs * numOpening)
+	res := utils.NextPowerOfTwo(depth * numComs * numOpening)
+
+	return res
 }
 
 // Commit to the precomputed columns
@@ -912,10 +933,8 @@ func (ctx *Ctx) commitPrecomputeds() {
 		// We increase the number of committed rows for SIS rounds
 		// in this case
 		ctx.CommittedRowsCountSIS += numPrecomputeds
-		logrus.Infof("committing to precomputed columns with SIS")
 		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
 	} else {
-		logrus.Infof("committing to precomputed columns without SIS")
 		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
 	}
 	ctx.Items.Precomputeds.DhWithMerkle = colHashes
@@ -923,10 +942,13 @@ func (ctx *Ctx) commitPrecomputeds() {
 	ctx.Items.Precomputeds.Tree = tree
 
 	// And assign the 1-sized column to contain the root
-	var root field.Element
-	root.SetBytes(tree.Root[:])
-	ctx.Items.Precomputeds.MerkleRoot = ctx.Comp.RegisterVerifyingKey(ctx.PrecomputedMerkleRootName(), smartvectors.NewConstant(root, 1))
-
+	for i := 0; i < blockSize; i++ {
+		ctx.Items.Precomputeds.MerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(
+			ctx.PrecomputedMerkleRootName(i),
+			smartvectors.NewConstant(tree.Root[i], 1),
+			true,
+		)
+	}
 }
 
 // GetPrecomputedSelectedCol returns the selected column
@@ -949,7 +971,7 @@ func (ctx *Ctx) GetPrecomputedSelectedCol(index int) []field.Element {
 // non SIS round
 func (ctx *Ctx) GetNumPolsForNonSisRounds(round int) int {
 	// Sanity check
-	if ctx.RoundStatus[round] != IsOnlyMiMCApplied {
+	if ctx.RoundStatus[round] != IsOnlyPoseidon2Applied {
 		utils.Panic("Expected a non SIS round!")
 	}
 	return ctx.CommitmentsByRounds.LenOf(round)

@@ -1,8 +1,10 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	gutils "github.com/consensys/gnark-crypto/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -33,9 +35,14 @@ type Params struct {
 	// polynomial p is appended whose size if not 0 mod MaxNbRows, it is padded
 	// as p' so that len(p')=0 mod MaxNbRows.
 	MaxNbRows int
+	// LeafHashFunc returns a `hash.Hash` which is used
+	// to compute the leaves of the Merkle tree.
+	LeafHashFunc func() *poseidon2.Poseidon2FieldHasherDigest
+	// MerkleHashFunc returns a `hash.Hash` which is used
+	// to hash the nodes of the Merkle tree.
+	MerkleHashFunc func() *poseidon2.Poseidon2FieldHasherDigest
 
-	// CosetTableBitReverse is the coset table of the small domain in bit
-	// reversed order. It is used to speed-up the encoding of the rows.
+	// Coset table of the small domain, bit reversed
 	CosetTableBitReverse field.Vector
 }
 
@@ -54,6 +61,8 @@ func NewParams(
 	nbColumns int,
 	maxNbRows int,
 	sisParams ringsis.Params,
+	merkleHashFunc func() *poseidon2.Poseidon2FieldHasherDigest,
+	leafHashFunc func() *poseidon2.Poseidon2FieldHasherDigest,
 ) *Params {
 
 	if !utils.IsPowerOfTwo(nbColumns) {
@@ -64,11 +73,15 @@ func NewParams(
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
 	}
 
+	if merkleHashFunc == nil || leafHashFunc == nil {
+		utils.Panic("Hash function is not provided")
+	}
+
 	if maxNbRows < 1 {
 		utils.Panic("The number of rows per matrix cannot be zero of negative: %v", maxNbRows)
 	}
 
-	shift, err := fr.Generator(uint64(nbColumns * blowUpFactor))
+	shift, err := koalabear.Generator(uint64(nbColumns * blowUpFactor))
 	if err != nil {
 		panic(err)
 	}
@@ -83,6 +96,16 @@ func NewParams(
 		BlowUpFactor: blowUpFactor,
 		Key:          ringsis.GenerateKey(sisParams, maxNbRows),
 	}
+	smallDomain := res.Domains[0]
+	cosetTable, err := smallDomain.CosetTable()
+	if err != nil {
+		panic(err)
+	}
+	cosetTableBitReverse := make(field.Vector, len(cosetTable))
+	copy(cosetTableBitReverse, cosetTable)
+	gutils.BitReverse(cosetTableBitReverse)
+
+	res.CosetTableBitReverse = cosetTableBitReverse
 
 	smallDomain := res.Domains[0]
 	cosetTable, err := smallDomain.CosetTable()

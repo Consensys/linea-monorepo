@@ -3,6 +3,8 @@ package ifaces
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 )
 
@@ -14,8 +16,10 @@ type Runtime interface {
 	GetColumn(ColID) ColAssignment
 	// GetColumnAt returns a particular position of an assigned column.
 	GetColumnAt(ColID, int) field.Element
-	// GetRandomCoinField returns the value of a random challenge coin
-	GetRandomCoinField(name coin.Name) field.Element
+	GetColumnAtBase(ColID, int) (field.Element, error)
+	GetColumnAtExt(ColID, int) fext.Element
+	// GetRandomCoinFieldExt returns the value of a random challenge coin
+	GetRandomCoinFieldExt(name coin.Name) fext.Element
 	// GetRandomCoinIntegerVec returns the value of a coin.IntegerVec coin
 	GetRandomCoinIntegerVec(name coin.Name) []int
 	// GetParams returns the runtime parameters of a query
@@ -27,10 +31,14 @@ type Runtime interface {
 type GnarkRuntime interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
 	GetColumn(ColID) []frontend.Variable
+	GetColumnBase(ColID) ([]frontend.Variable, error)
+	GetColumnExt(ColID) []gnarkfext.Element
 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
 	GetColumnAt(ColID, int) frontend.Variable
-	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
-	GetRandomCoinField(name coin.Name) frontend.Variable
+	GetColumnAtBase(ColID, int) (frontend.Variable, error)
+	GetColumnAtExt(ColID, int) gnarkfext.Element
+	// GetRandomCoinFieldExt is as [Runtime.GetRandomCoinFieldExt] but in a gnark circuit
+	GetRandomCoinFieldExt(name coin.Name) gnarkfext.Element
 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
 	GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable
 	// GetParams is as [Runtime.GetParams] but in a gnark circuit

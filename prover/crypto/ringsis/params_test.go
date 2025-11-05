@@ -16,13 +16,13 @@ func TestStdParams(t *testing.T) {
 	}{
 		{
 			Params:        StdParams,
-			ModulusDegree: 64,
-			NumLimbs:      16,
+			ModulusDegree: 512,
+			NumLimbs:      2,
 		},
 		{
 			Params:        Params{LogTwoBound: 2, LogTwoDegree: 3},
 			ModulusDegree: 8,
-			NumLimbs:      128,
+			NumLimbs:      16,
 		},
 	}
 

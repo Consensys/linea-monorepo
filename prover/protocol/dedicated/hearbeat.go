@@ -104,8 +104,13 @@ func cleanIsActive(isActiveAny any) (isActive *sym.Expression, fullyActive bool,
 		board := act.Board()
 		size = column.ExprIsOnSameLengthHandles(&board)
 	case verifiercol.ConstCol:
-		isActive = sym.NewConstant(act.F)
-		fullyActive = act.F.IsOne()
+		if !act.IsBase() {
+			utils.Panic("activator column is defined over field extensions with value=%v", act.Ext.String())
+			return
+		}
+
+		isActive = sym.NewConstant(act.Base)
+		fullyActive = act.Base.IsOne()
 		size = act.Size()
 	case ifaces.Column:
 		isActive = sym.NewVariable(act)

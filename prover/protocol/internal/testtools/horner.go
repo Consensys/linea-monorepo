@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -35,10 +36,10 @@ type HornerTestcase struct {
 	N1s []int
 
 	// Xs are the X values for each parts of the query
-	Xs []field.Element
+	Xs []fext.Element
 
 	// FinalResult is the expected final result of the query
-	FinalResult field.Element
+	FinalResult fext.Element
 
 	// Query is the Horner query
 	Query query.Horner
@@ -60,8 +61,23 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 		}},
 		N0s:         []int{0},
 		N1s:         []int{0},
-		Xs:          []field.Element{field.One()},
-		FinalResult: field.Zero(),
+		Xs:          []fext.Element{fext.One()},
+		FinalResult: fext.Zero(),
+	},
+
+	{
+		NameStr:           "positive/just-counting",
+		SignNegativeParts: []bool{false},
+		Coefficients: [][]smartvectors.SmartVector{{
+			smartvectors.NewConstant(field.One(), 8),
+		}},
+		Selectors: [][]smartvectors.SmartVector{{
+			smartvectors.NewConstant(field.One(), 8),
+		}},
+		N0s:         []int{0},
+		N1s:         []int{8},
+		Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+		FinalResult: fext.NewFromUint(255, 0, 0, 0),
 	},
 
 	{
@@ -85,8 +101,8 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 		},
 		N0s:         []int{0, 0},
 		N1s:         []int{8, 8},
-		Xs:          []field.Element{field.One(), field.One()},
-		FinalResult: field.Zero(),
+		Xs:          []fext.Element{fext.One(), fext.One()},
+		FinalResult: fext.Zero(),
 	},
 
 	{
@@ -100,8 +116,8 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 		}},
 		N0s:         []int{0},
 		N1s:         []int{8},
-		Xs:          []field.Element{field.One()},
-		FinalResult: field.NewElement(8),
+		Xs:          []fext.Element{fext.One()},
+		FinalResult: fext.NewFromUint(8, 0, 0, 0),
 	},
 
 	{
@@ -115,8 +131,8 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 		}},
 		N0s:         []int{0},
 		N1s:         []int{8},
-		Xs:          []field.Element{field.NewElement(2)},
-		FinalResult: field.NewElement(255),
+		Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+		FinalResult: fext.NewFromUint(255, 0, 0, 0),
 	},
 
 	{
@@ -130,8 +146,8 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 		}},
 		N0s:         []int{0},
 		N1s:         []int{8},
-		Xs:          []field.Element{field.NewElement(2)},
-		FinalResult: field.NewElement(1538),
+		Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+		FinalResult: fext.NewFromUint(1538, 0, 0, 0),
 	},
 
 	{
@@ -151,8 +167,8 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 		},
 		N0s:         []int{0},
 		N1s:         []int{16},
-		Xs:          []field.Element{field.NewElement(2)},
-		FinalResult: field.NewElement(917506),
+		Xs:          []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+		FinalResult: fext.NewFromUint(917506, 0, 0, 0),
 	},
 }
 
@@ -169,8 +185,8 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 		}},
 		N0s:          []int{0},
 		N1s:          []int{1},
-		Xs:           []field.Element{field.One()},
-		FinalResult:  field.Zero(),
+		Xs:           []fext.Element{fext.One()},
+		FinalResult:  fext.Zero(),
 		MustFailFlag: true,
 	},
 
@@ -185,8 +201,8 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 		}},
 		N0s:          []int{0},
 		N1s:          []int{0},
-		Xs:           []field.Element{field.One()},
-		FinalResult:  field.One(),
+		Xs:           []fext.Element{fext.One()},
+		FinalResult:  fext.One(),
 		MustFailFlag: true,
 	},
 
@@ -203,8 +219,8 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 		}},
 		N0s:          []int{0, 0},
 		N1s:          []int{8, 8},
-		Xs:           []field.Element{field.One(), field.One()},
-		FinalResult:  field.One(),
+		Xs:           []fext.Element{fext.One(), fext.One()},
+		FinalResult:  fext.One(),
 		MustFailFlag: true,
 	},
 
@@ -221,8 +237,8 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 		}},
 		N0s:          []int{0, 0},
 		N1s:          []int{8, 7},
-		Xs:           []field.Element{field.One(), field.One()},
-		FinalResult:  field.Zero(),
+		Xs:           []fext.Element{fext.One(), fext.One()},
+		FinalResult:  fext.Zero(),
 		MustFailFlag: true,
 	},
 
@@ -237,8 +253,8 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 		}},
 		N0s:          []int{1},
 		N1s:          []int{8},
-		Xs:           []field.Element{field.One()},
-		FinalResult:  field.NewElement(8),
+		Xs:           []fext.Element{fext.One()},
+		FinalResult:  fext.NewFromUint(8, 0, 0, 0),
 		MustFailFlag: true,
 	},
 
@@ -253,8 +269,8 @@ var ListOfHornerTestcaseNegative = []*HornerTestcase{
 		}},
 		N0s:          []int{0},
 		N1s:          []int{8},
-		Xs:           []field.Element{field.NewElement(2)},
-		FinalResult:  field.NewElement(510),
+		Xs:           []fext.Element{fext.NewFromUint(2, 0, 0, 0)},
+		FinalResult:  fext.NewFromUint(510, 0, 0, 0),
 		MustFailFlag: true,
 	},
 }
@@ -268,7 +284,7 @@ func (t *HornerTestcase) Define(comp *wizard.CompiledIOP) {
 			SignNegative: t.SignNegativeParts[i],
 			Coefficients: make([]*sym.Expression, len(t.Coefficients[i])),
 			Selectors:    make([]ifaces.Column, len(t.Selectors[i])),
-			X:            accessors.NewConstant(t.Xs[i]),
+			X:            accessors.NewConstantExt(t.Xs[i]),
 		}
 
 		for j := range parts[i].Coefficients {
@@ -276,12 +292,14 @@ func (t *HornerTestcase) Define(comp *wizard.CompiledIOP) {
 				0,
 				formatName[ifaces.ColID]("Horner", t.NameStr, "Coefficient", i, j),
 				t.Coefficients[i][j].Len(),
+				smartvectors.IsBase(t.Coefficients[i][j]),
 			))
 
 			parts[i].Selectors[j] = comp.InsertCommit(
 				0,
 				formatName[ifaces.ColID]("Horner", t.NameStr, "Selector", i, j),
 				t.Selectors[i][j].Len(),
+				true,
 			)
 		}
 	}

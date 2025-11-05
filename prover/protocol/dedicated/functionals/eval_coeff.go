@@ -2,7 +2,7 @@ package functionals
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -26,19 +26,19 @@ type CoeffEvalProverAction struct {
 }
 
 func (a *CoeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
-	x := assi.GetRandomCoinField(a.X.Name)
+	x := assi.GetRandomCoinFieldExt(a.X.Name)
 	p := a.Pol.GetColAssignment(assi)
 
-	h := make([]field.Element, a.Length)
-	h[a.Length-1] = p.Get(a.Length - 1)
+	h := make([]fext.Element, a.Length)
+	h[a.Length-1] = p.GetExt(a.Length - 1)
 
 	for i := a.Length - 2; i >= 0; i-- {
-		pi := p.Get(i)
+		pi := p.GetExt(i)
 		h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
 	}
 
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_COEFF_POLY), smartvectors.NewRegular(h))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.Name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_COEFF_POLY), smartvectors.NewRegularExt(h))
+	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.Name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
 }
 
 // Create a dedicated wizard to perform an evaluation in coefficient basis.
@@ -49,14 +49,46 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 	length := pol.Size()
 	maxRound := utils.Max(x.Round, pol.Round())
 
+	// When the length of the input is 1 (this can happen when meeting edge-cases
+	// ). Then the general purpose solution does not work due to the shift being
+	// incorrect. So instead, we simply make "P" to be a proof element and we
+	// return an accessor for it. The cost of making it public is essentially
+	// zero.
+	if length == 1 {
+
+		// When the column is precomputed, we can just return a constant accessor
+		// as the return value will be static anyway.
+		if comp.Precomputed.Exists(pol.GetColID()) {
+			val := comp.Precomputed.MustGet(pol.GetColID()).Get(0)
+			return accessors.NewConstant(val)
+		}
+
+		// Else, we promote the column to a proof column if it is not already
+		// one.
+		status := comp.Columns.Status(pol.GetColID())
+
+		switch status {
+		case column.Committed:
+			comp.Columns.SetStatus(pol.GetColID(), column.Proof)
+		case column.Proof:
+			// Do nothing
+		default:
+			panic("the column is neither committed nor proof; this is sort of an unexpected case and this indicates that one missing case has not been implemented.")
+		}
+
+		return accessors.NewFromPublicColumn(pol, 0)
+	}
+
 	hornerPoly := comp.InsertCommit(
 		maxRound,
 		ifaces.ColIDf("%v_%v", name, EVAL_COEFF_POLY),
 		length,
+		false,
 	)
 
 	// (x * h[i+1]) + expr[i] == h[i]
 	// This will be cancelled at the border already
+	// if length == 1, we skip the shift as the poly is constant
 	globalExpr := ifaces.ColumnAsVariable(column.Shift(hornerPoly, 1)).
 		Mul(x.AsVariable()).
 		Add(ifaces.ColumnAsVariable(pol)).

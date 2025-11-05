@@ -13,8 +13,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -60,7 +60,7 @@ func TestLookup(t *testing.T) {
 		},
 		{
 			cleanup.CleanUp,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1 << 13),
 			),
@@ -72,7 +72,7 @@ func TestLookup(t *testing.T) {
 			),
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1 << 13),
 			),

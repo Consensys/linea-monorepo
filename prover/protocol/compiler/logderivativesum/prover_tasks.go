@@ -5,8 +5,11 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
@@ -54,9 +57,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 	)
 
 	for i := range p.MAssignmentTasks {
-		// the passing of the index `i` is there to ensure that the go-routine
-		// is running over a local copy of `i` which is not incremented every
-		// time the loop goes to the next iteration.
 		go func(i int) {
 			// In case the subtask panics, we recover so that we can repanic in
 			// the main goroutine. Simplifying the process of tracing back the
@@ -79,9 +79,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 	}
 
 	for i := range p.ZAssignmentTasks {
-		// the passing of the index `i` is there to ensure that the go-routine
-		// is running over a local copy of `i` which is not incremented every
-		// time the loop goes to the next iteration.
 		go func(i int) {
 			// In case the subtask panics, we recover so that we can repanic in
 			// the main goroutine. Simplifying the process of tracing back the
@@ -96,7 +93,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 
 				wg.Done()
 			}()
-
 			p.ZAssignmentTasks[i].Run(run)
 		}(i)
 	}
@@ -204,10 +200,8 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		// collapsingRandomness is the randomness used in the collapsing trick.
 		// It is sampled via `crypto/rand` internally to ensure it cannot be
 		// predicted ahead of time by an adversary.
-		var collapsingRandomness field.Element
-		if _, err := collapsingRandomness.SetRandom(); err != nil {
-			utils.Panic("could not sample the collapsing randomness: %v", err.Error())
-		}
+		var collapsingRandomness fext.Element
+		collapsingRandomness.MustSetRandom()
 
 		for frag := range a.T {
 			tCollapsed[frag] = wizardutils.RandLinCombColAssignment(run, collapsingRandomness, a.T[frag])
@@ -230,7 +224,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		//
 		// It is used to let us know where an entry of S appears in T. The stored
 		// 2-uple of integers indicate [fragment, row]
-		mapM = make(map[field.Element][2]uint32, fragmentUnionSize)
+		mapM = make(map[fext.Element][2]uint32, fragmentUnionSize)
 	)
 
 	// This loops initializes mapM so that it tracks to the positions of the
@@ -257,8 +251,10 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 		m[frag] = make([]field.Element, tCollapsed[frag].Len())
 
-		for k := max(0, start); k < min(size, end); k++ {
-			v := tCollapsed[frag].Get(k)
+		start = max(0, start)
+		end = min(size, end)
+		for k := start; k < end; k++ {
+			v := tCollapsed[frag].GetExt(k)
 			mapM[v] = [2]uint32{uint32(frag), uint32(k)}
 		}
 	}
@@ -307,21 +303,21 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 			var (
 				// v stores the entry of S that we are examining and looking for
 				// in the look up table.
-				v = sCollapsed[i].Get(k)
+				v = sCollapsed[i].GetExt(k)
 
 				// posInM stores the position of `v` in the look-up table
 				posInM, ok = mapM[v]
 			)
 
 			if !ok {
-				tableRow := make([]field.Element, len(a.S[i]))
+				tableRow := make([]fext.Element, len(a.S[i]))
 				for j := range tableRow {
-					tableRow[j] = a.S[i][j].GetColAssignmentAt(run, k)
+					tableRow[j] = a.S[i][j].GetColAssignmentAtExt(run, k)
 				}
 
 				err := fmt.Errorf(
 					"entry %v of the table %v is not included in the table. tableRow=%v T-mapSize=%v T-name=%v",
-					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow), len(mapM), NameTable(a.T),
+					k, NameTable([][]ifaces.Column{a.S[i]}), vectorext.Prettify(tableRow), len(mapM), NameTable(a.T),
 				)
 
 				exit.OnUnsatisfiedConstraints(err)
@@ -362,34 +358,70 @@ type ZAssignmentTask ZCtx
 
 func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(z.ZDenominatorBoarded), func(start, stop int) {
+
+		sb0 := make(field.Vector, z.Size)
+		se0 := make(extensions.Vector, z.Size)
+
 		for frag := start; frag < stop; frag++ {
 
-			var (
-				numeratorMetadata = z.ZNumeratorBoarded[frag].ListVariableMetadata()
-				denominator       = column.EvalExprColumn(run, z.ZDenominatorBoarded[frag]).IntoRegVecSaveAlloc()
-				numerator         []field.Element
-				packedZ           = field.BatchInvert(denominator)
-			)
+			numeratorMetadata := z.ZNumeratorBoarded[frag].ListVariableMetadata()
 
-			if len(numeratorMetadata) == 0 {
-				numerator = vector.Repeat(field.One(), z.Size)
-			}
+			svDenominator := column.EvalExprColumn(run, z.ZDenominatorBoarded[frag])
 
-			if len(numeratorMetadata) > 0 {
-				numerator = column.EvalExprColumn(run, z.ZNumeratorBoarded[frag]).IntoRegVecSaveAlloc()
-			}
-
-			for k := range packedZ {
-				packedZ[k].Mul(&numerator[k], &packedZ[k])
-				if k > 0 {
+			// This case does not corresponds to an actual production case
+			// because log-derivative sums are always defined in such a way that
+			// the denominator depends on a randomness. The case is still here
+			// for completeness but we don't optimize for it.
+			if sv.IsBase(svDenominator) {
+				numerator := sb0
+				denominator := svDenominator.IntoRegVecSaveAlloc()
+				packedZ := field.BatchInvert(denominator)
+				if len(numeratorMetadata) == 0 {
+					for i := range numerator {
+						numerator[i].SetOne()
+					}
+				} else {
+					evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
+					evalResult.WriteInSlice(numerator)
+				}
+				vp := field.Vector(packedZ)
+				vp.Mul(vp, numerator)
+				for k := 1; k < len(packedZ); k++ {
 					packedZ[k].Add(&packedZ[k], &packedZ[k-1])
 				}
+
+				run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
+				run.AssignLocalPointExt(z.ZOpenings[frag].ID, fext.Lift(packedZ[len(packedZ)-1]))
+				continue
+			}
+			// we are dealing with extension denominators
+			numerator := se0
+			// denominator := se1
+			denominator := svDenominator.IntoRegVecSaveAllocExt()
+			packedZ := fext.BatchInvert(denominator)
+
+			if len(numeratorMetadata) == 0 {
+				for i := range numerator {
+					numerator[i].SetOne()
+				}
+			} else {
+				evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
+				evalResult.WriteInSliceExt(numerator)
 			}
 
-			run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegular(packedZ))
-			run.AssignLocalPoint(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
+			vp := extensions.Vector(packedZ)
+			vp.Mul(vp, numerator)
+
+			for k := 1; k < len(packedZ); k++ {
+				packedZ[k].Add(&packedZ[k], &packedZ[k-1])
+			}
+
+			run.AssignColumn(z.Zs[frag].GetColID(), sv.NewRegularExt(packedZ))
+			run.AssignLocalPointExt(z.ZOpenings[frag].ID, packedZ[len(packedZ)-1])
+
 		}
 	})
+
 }
 
 func inspectWiop(run *wizard.ProverRuntime) {

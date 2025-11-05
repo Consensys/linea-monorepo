@@ -19,7 +19,7 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Ele
 	var (
 		size              = isActive.Size()
 		period            = len(pattern)
-		name              = fmt.Sprintf("REPEATED_PATTERN_%v_%v", len(comp.Columns.AllKeys()), period)
+		name              = fmt.Sprintf("REPEATED_PATTERN_%v_%v", comp.Columns.NumEntriesTotal(), period)
 		patternSizePadded = utils.NextPowerOfTwo(period)
 		patternPos        = make([]field.Element, period)
 	)
@@ -29,7 +29,7 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Ele
 	}
 
 	res := &RepeatedPattern{
-		Natural: comp.InsertCommit(round, ifaces.ColID(name)+"_NATURAL", size).(column.Natural),
+		Natural: comp.InsertCommit(round, ifaces.ColID(name)+"_NATURAL", size, true).(column.Natural),
 		Pattern: pattern,
 		PatternPrecomp: comp.InsertPrecomputed(
 			ifaces.ColID(name)+"_PATTERN",

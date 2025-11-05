@@ -5,12 +5,13 @@ import (
 	"runtime/debug"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,44 +21,44 @@ func TestLinearCombination(t *testing.T) {
 	polySize := 1 << 10
 	blowUpFactor := 2
 
-	x := field.NewElement(478)
-	randomCoin := field.NewElement(1523)
+	x := fext.NewFromInt(478, 763, 890, 123)
+	randomCoin := fext.NewFromInt(1523, 6783, 32, 789)
 
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams)
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, poseidon2.Poseidon2, poseidon2.Poseidon2)
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
-	ys := make([]field.Element, nPolys)
+	ys := make([]fext.Element, nPolys)
 	for i := range polys {
 		polys[i] = smartvectors.Rand(polySize)
-		ys[i] = smartvectors.Interpolate(polys[i], x)
+		ys[i] = smartvectors.EvaluateBasePolyLagrange(polys[i], x)
 	}
 
 	// Make a linear combination of the poly
-	lc := smartvectors.PolyEval(polys, randomCoin)
+	lc := smartvectors.LinearCombinationExt(polys, randomCoin)
 
 	// Generate the proof
 	proof := params.InitOpeningWithLC(polys, randomCoin)
 
 	// Evaluate the two on a random-ish point. Should
 	// yield the same result.
-	y0 := smartvectors.Interpolate(lc, x)
-	y1 := smartvectors.Interpolate(proof.LinearCombination, x)
+	y0 := smartvectors.EvaluateBasePolyLagrange(lc, x)
+	y1 := smartvectors.EvaluateBasePolyLagrange(proof.LinearCombination, x)
 
 	require.Equal(t, y0, y1)
 }
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
-	NewParams(2, 1<<4, 32, ringsis.StdParams),
-	NewParams(4, 1<<3, 32, ringsis.StdParams),
+	NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2.Poseidon2, poseidon2.Poseidon2),
+	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2.Poseidon2, poseidon2.Poseidon2),
 }
 
 func TestProver(t *testing.T) {
 
 	var (
-		x          = field.NewElement(478)
-		randomCoin = field.NewElement(1523)
+		x          = fext.NewFromInt(478, 78, 456, 23)
+		randomCoin = fext.NewFromInt(1523, 67, 37, 89)
 		entryList  = []int{1, 7, 5, 6, 4, 5, 1, 2}
 	)
 
@@ -71,33 +72,33 @@ func TestProver(t *testing.T) {
 		// the testCase provides to the prover. If nil, then this is equivalent
 		// to `f(n) -> n`.
 		ChangeAssignmentSize func(int) int
-		// Flag denoting if we are committing with SIS+MiMC hash or MiMC hash
-		IsSisReplacedByMiMC []bool
-		MustPanic           bool
+		// Flag denoting if we are committing with SIS+Poseidon2 hash or Poseidon2 hash
+		IsSisReplacedByPoseidon2 []bool
+		MustPanic                bool
 	}{
 		{
-			Explainer:             "1 matrix commitment with one poly with SIS commitment",
-			NumPolysPerCommitment: []int{1},
-			IsSisReplacedByMiMC:   []bool{false},
-			NumOpenedColumns:      4,
+			Explainer:                "1 matrix commitment with one poly with SIS commitment",
+			NumPolysPerCommitment:    []int{1},
+			IsSisReplacedByPoseidon2: []bool{false},
+			NumOpenedColumns:         4,
 		},
 		{
-			Explainer:             "1 matrix commitment with several polys without SIS commitment",
-			NumPolysPerCommitment: []int{3},
-			IsSisReplacedByMiMC:   []bool{true},
-			NumOpenedColumns:      4,
+			Explainer:                "1 matrix commitment with several polys without SIS commitment",
+			NumPolysPerCommitment:    []int{3},
+			IsSisReplacedByPoseidon2: []bool{true},
+			NumOpenedColumns:         4,
 		},
 		{
-			Explainer:             "2 matrix commitment with several polys with SIS commitment",
-			NumPolysPerCommitment: []int{3, 3},
-			IsSisReplacedByMiMC:   []bool{false, false},
-			NumOpenedColumns:      8,
+			Explainer:                "2 matrix commitment with several polys with SIS commitment",
+			NumPolysPerCommitment:    []int{3, 3},
+			IsSisReplacedByPoseidon2: []bool{false, false},
+			NumOpenedColumns:         8,
 		},
 		{
-			Explainer:             "1 matrix commitment with several polys with SIS and no SIS commitment",
-			NumPolysPerCommitment: []int{1, 15},
-			IsSisReplacedByMiMC:   []bool{false, true},
-			NumOpenedColumns:      8,
+			Explainer:                "1 matrix commitment with several polys with SIS and no SIS commitment",
+			NumPolysPerCommitment:    []int{1, 15},
+			IsSisReplacedByPoseidon2: []bool{false, true},
+			NumOpenedColumns:         8,
 		},
 		{
 			Explainer:             "too many rows",
@@ -176,26 +177,26 @@ func TestProver(t *testing.T) {
 				t.Logf("params=%++v test-case=%++v", params, testCase)
 
 				var (
-					numCommitments      = len(testCase.NumPolysPerCommitment)
-					effPolySize         = params.NbColumns
-					polyLists           = make([][]smartvectors.SmartVector, numCommitments)
-					yLists              = make([][]field.Element, numCommitments)
-					roots               = make([]types.Bytes32, numCommitments)
-					trees               = make([]*smt.Tree, numCommitments)
-					isSisReplacedByMiMC = make([]bool, numCommitments)
+					numCommitments           = len(testCase.NumPolysPerCommitment)
+					effPolySize              = params.NbColumns
+					polyLists                = make([][]smartvectors.SmartVector, numCommitments)
+					yLists                   = make([][]fext.Element, numCommitments)
+					roots                    = make([]field.Octuplet, numCommitments)
+					trees                    = make([]*smt.Tree, numCommitments)
+					isSisReplacedByPoseidon2 = make([]bool, numCommitments)
 				)
 
 				if testCase.ChangeAssignmentSize != nil {
 					effPolySize = testCase.ChangeAssignmentSize(effPolySize)
 				}
-				if testCase.IsSisReplacedByMiMC != nil {
-					isSisReplacedByMiMC = testCase.IsSisReplacedByMiMC
+				if testCase.IsSisReplacedByPoseidon2 != nil {
+					isSisReplacedByPoseidon2 = testCase.IsSisReplacedByPoseidon2
 				}
 
 				for i := range polyLists {
 					// Polynomials to commit to
 					polys := make([]smartvectors.SmartVector, testCase.NumPolysPerCommitment[i])
-					ys := make([]field.Element, testCase.NumPolysPerCommitment[i])
+					ys := make([]fext.Element, testCase.NumPolysPerCommitment[i])
 					for j := range polys {
 						polys[j] = smartvectors.Rand(effPolySize)
 
@@ -203,7 +204,7 @@ func TestProver(t *testing.T) {
 						// the interpolation algorithm will panic as this counts
 						// as invalid inputs.
 						if utils.IsPowerOfTwo(effPolySize) {
-							ys[j] = smartvectors.Interpolate(polys[j], x)
+							ys[j] = smartvectors.EvaluateBasePolyLagrange(polys[j], x)
 						} else {
 							ys[j].SetRandom()
 						}
@@ -229,7 +230,7 @@ func TestProver(t *testing.T) {
 				// Commits to it
 				committedMatrices := make([]EncodedMatrix, numCommitments)
 				for i := range trees {
-					if !isSisReplacedByMiMC[i] {
+					if !isSisReplacedByPoseidon2[i] {
 						committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
 					} else {
 						committedMatrices[i], trees[i], _ = params.CommitMerkleWithoutSIS(polyLists[i])
@@ -244,14 +245,14 @@ func TestProver(t *testing.T) {
 				// Check the proof
 				err := VerifyOpening(
 					&VerifierInputs{
-						Params:              *params,
-						MerkleRoots:         roots,
-						X:                   x,
-						Ys:                  yLists,
-						OpeningProof:        *proof,
-						RandomCoin:          randomCoin,
-						EntryList:           entryList[:testCase.NumOpenedColumns],
-						IsSISReplacedByMiMC: isSisReplacedByMiMC,
+						Params:                   *params,
+						MerkleRoots:              roots,
+						X:                        x,
+						Ys:                       yLists,
+						OpeningProof:             *proof,
+						RandomCoin:               randomCoin,
+						EntryList:                entryList[:testCase.NumOpenedColumns],
+						IsSISReplacedByPoseidon2: isSisReplacedByPoseidon2,
 					})
 
 				require.NoError(t, err)
@@ -269,8 +270,8 @@ func TestVerifierNegative(t *testing.T) {
 			{3, 1, 15},
 		}
 		params = []*Params{
-			NewParams(2, 8, 17, ringsis.StdParams),
-			NewParams(2, 8, 17, ringsis.StdParams),
+
+			NewParams(2, 8, 17, ringsis.StdParams, poseidon2.Poseidon2, poseidon2.Poseidon2),
 		}
 
 		statementMutatorCorpus = []struct {
@@ -281,7 +282,7 @@ func TestVerifierNegative(t *testing.T) {
 				Explainer: "Increment the first y",
 				Func: func(v *VerifierInputs) bool {
 					one := field.One()
-					v.Ys[0][0].Add(&v.Ys[0][0], &one)
+					fext.AddByBase(&v.Ys[0][0], &v.Ys[0][0], &one)
 					return true
 				},
 			},
@@ -313,7 +314,7 @@ func TestVerifierNegative(t *testing.T) {
 					}
 					y := v.Ys[0][len(v.Ys[0])-1]
 					v.Ys[0] = v.Ys[0][:len(v.Ys[0])-1]
-					v.Ys[1] = append([]field.Element{y}, v.Ys[1]...)
+					v.Ys[1] = append([]fext.Element{y}, v.Ys[1]...)
 					return true
 				},
 			},
@@ -321,7 +322,7 @@ func TestVerifierNegative(t *testing.T) {
 				Explainer: "Bump the X value",
 				Func: func(v *VerifierInputs) bool {
 					one := field.One()
-					v.X.Add(&v.X, &one)
+					fext.AddByBase(&v.X, &v.X, &one)
 					return true
 				},
 			},
@@ -399,9 +400,9 @@ func TestVerifierNegative(t *testing.T) {
 			{
 				Explainer: "Swap two positions in the linear combination",
 				Func: func(v *VerifierInputs) bool {
-					lc := v.OpeningProof.LinearCombination.IntoRegVecSaveAlloc()
+					lc := v.OpeningProof.LinearCombination.IntoRegVecSaveAllocExt()
 					lc[0], lc[1] = lc[1], lc[0]
-					lc_ := smartvectors.Regular(lc)
+					lc_ := smartvectors.RegularExt(lc)
 					v.OpeningProof.LinearCombination = &lc_
 					return true
 				},
@@ -409,9 +410,9 @@ func TestVerifierNegative(t *testing.T) {
 			{
 				Explainer: "Overwrite a position in the linear combination",
 				Func: func(v *VerifierInputs) bool {
-					lc := v.OpeningProof.LinearCombination.IntoRegVecSaveAlloc()
+					lc := v.OpeningProof.LinearCombination.IntoRegVecSaveAllocExt()
 					lc[0] = lc[1]
-					lc_ := smartvectors.Regular(lc)
+					lc_ := smartvectors.RegularExt(lc)
 					v.OpeningProof.LinearCombination = &lc_
 					return true
 				},
@@ -448,21 +449,21 @@ func TestVerifierNegative(t *testing.T) {
 		) *VerifierInputs {
 
 			var (
-				x              = field.NewElement(43)
-				randomCoin     = field.NewElement(393280)
+				x              = fext.NewFromInt(43, 21, 98, 76)
+				randomCoin     = fext.NewFromInt(393280, 123, 123, 123)
 				entryList      = []int{1, 2, 3, 4, 5, 6, 7, 8}
 				numCommitments = len(numPolyPerCommitment)
 				effPolySize    = params.NbColumns
 				polyLists      = make([][]smartvectors.SmartVector, numCommitments)
-				yLists         = make([][]field.Element, numCommitments)
-				roots          = make([]types.Bytes32, numCommitments)
+				yLists         = make([][]fext.Element, numCommitments)
+				roots          = make([]field.Octuplet, numCommitments)
 				trees          = make([]*smt.Tree, numCommitments)
 			)
 
 			for i := range polyLists {
 				// Polynomials to commit to
 				polys := make([]smartvectors.SmartVector, numPolyPerCommitment[i])
-				ys := make([]field.Element, numPolyPerCommitment[i])
+				ys := make([]fext.Element, numPolyPerCommitment[i])
 				for j := range polys {
 					polys[j] = smartvectors.Rand(effPolySize)
 
@@ -470,7 +471,7 @@ func TestVerifierNegative(t *testing.T) {
 					// the interpolation algorithm will panic as this counts
 					// as invalid inputs.
 					if utils.IsPowerOfTwo(effPolySize) {
-						ys[j] = smartvectors.Interpolate(polys[j], x)
+						ys[j] = smartvectors.EvaluateBasePolyLagrange(polys[j], x)
 					} else {
 						ys[j].SetRandom()
 					}

@@ -42,7 +42,7 @@ type ExternalHasher struct {
 	state frontend.Variable
 }
 
-// ExternalHasherBuilder is an implementation of the [frontend.Builder]
+// externalHasherBuilder is an implementation of the [frontend.Builder]
 // interface.
 type ExternalHasherBuilder struct {
 	storeCommitBuilder
@@ -65,7 +65,7 @@ type externalHashBuilderIFace interface {
 // storeCommitBuilder implements [frontend.Builder], [frontend.Committer] and
 // other methods useful to define a custom external hasher.
 type storeCommitBuilder interface {
-	frontend.Builder
+	frontend.Builder[constraint.U32]
 	frontend.Committer
 	SetKeyValue(key, value any)
 	GetKeyValue(key any) (value any)
@@ -166,10 +166,10 @@ func (h *ExternalHasher) compress(state, block frontend.Variable) frontend.Varia
 // NewExternalHasherBuilder constructs and returns a new external hasher builder
 // and a function to get the position of the wires corresponding to the variables
 // taking part in each claim.
-func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilder, func() [][3][2]int) {
+func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilderU32, func() [][3][2]int) {
 	rcCols := make(chan [][3][2]int)
-	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder, error) {
-			b, err := scs.NewBuilder(field, config)
+	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder[constraint.U32], error) {
+			b, err := scs.NewBuilder[constraint.U32](field, config)
 			if err != nil {
 				return nil, fmt.Errorf("could not create new native builder: %w", err)
 			}
@@ -194,7 +194,7 @@ func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState fr
 
 // Compile processes range checked variables and then calls Compile method of
 // the underlying builder.
-func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystem, error) {
+func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystemU32, error) {
 
 	// As [GetWireConstraints] requires a list of variables and can only be
 	// called once, we have to pack all the claims in a single slice and unpack

@@ -9,12 +9,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -127,7 +127,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 			}
 
 			if round < tc.NumRound-1 {
-				b.RegisterRandomCoin(dummyCoinName(round), coin.Field)
+				b.RegisterRandomCoin(dummyCoinName(round), coin.FieldExt)
 			}
 		}
 
@@ -138,12 +138,12 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 	// and the columns with random values
 	prove = func(run *wizard.ProverRuntime) {
 		// the evaluation point
-		x := field.NewElement(42)
-		var ys []field.Element
+		x := fext.RandomElement()
+		var ys []fext.Element
 		if tc.IsCommitPrecomp {
-			ys = make([]field.Element, (tc.Numpoly + tc.NumPrecomp))
+			ys = make([]fext.Element, (tc.Numpoly + tc.NumPrecomp))
 		} else {
-			ys = make([]field.Element, tc.Numpoly)
+			ys = make([]fext.Element, tc.Numpoly)
 		}
 		numColPerRound := tc.Numpoly / tc.NumRound
 
@@ -151,7 +151,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 		if tc.IsCommitPrecomp {
 			for i := 0; i < tc.NumPrecomp; i++ {
 				p := run.Spec.Precomputed.MustGet(precompColName(i))
-				ys[i] = smartvectors.Interpolate(p, x)
+				ys[i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 			}
 		}
 
@@ -174,15 +174,15 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 			for i := start; i < stop; i++ {
 				v := smartvectors.Rand(tc.PolSize)
 				run.AssignColumn(dummyColName(i), v)
-				ys[i] = smartvectors.Interpolate(v, x)
+				ys[i] = smartvectors.EvaluateBasePolyLagrange(v, x)
 			}
 
 			if round < tc.NumRound-1 {
-				_ = run.GetRandomCoinField(dummyCoinName(round))
+				_ = run.GetRandomCoinFieldExt(dummyCoinName(round))
 			}
 		}
 
-		run.AssignUnivariate(QNAME, x, ys...)
+		run.AssignUnivariateExt(QNAME, x, ys...)
 	}
 	return define, prove
 }
@@ -234,7 +234,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
@@ -243,7 +243,7 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
@@ -251,7 +251,6 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 				vortex.WithSISParams(&tc.SisInstance),
 			),
-			dummy.Compile,
 		)
 
 		proof := wizard.Prove(
@@ -313,7 +312,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
@@ -322,7 +321,7 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 				vortex.WithSISParams(&tc.SisInstance),
 			),
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
@@ -364,7 +363,7 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 		comp = wizard.ContinueCompilation(
 			comp,
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13),
 			),
@@ -405,7 +404,7 @@ func TestSelfRecursionManyLayersWithSerde(t *testing.T) {
 		comp = wizard.ContinueCompilation(
 			comp,
 			selfrecursion.SelfRecurse,
-			mimc.CompileMiMC,
+			poseidon2.CompilePoseidon2,
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13),
 			),

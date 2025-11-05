@@ -5,15 +5,16 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/backend/witness"
 	globalCs "github.com/consensys/gnark/constraint"
-	cs "github.com/consensys/gnark/constraint/bls12-377"
+	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
 	fcs "github.com/consensys/gnark/frontend/cs"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -24,7 +25,7 @@ type solverSync struct {
 	// The commitment witness
 	comChan chan []field.Element
 	// The commitment value
-	randChan chan field.Element
+	randChan chan fext.Element
 	// The final solution
 	solChan chan *cs.SparseR1CSSolution
 }
@@ -76,7 +77,7 @@ func (pa InitialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 			// Initialize the channels
 			solSync := solverSync{
 				comChan:  make(chan []field.Element, 1),
-				randChan: make(chan field.Element, 1),
+				randChan: make(chan fext.Element, 1),
 				solChan:  make(chan *cs.SparseR1CSSolution, 1),
 			}
 
@@ -95,11 +96,17 @@ func (pa InitialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 				utils.Panic("[witness.Public()] returned an error: %v", err)
 			}
 
-			if pa.NbPublicInputs > 0 {
+			if tinyPISize(ctx.SPR) > 0 {
+
+				v, ok := pubWitness.Vector().(koalabear.Vector)
+				if !ok {
+					utils.Panic("Public witness is not an [fr.Vector], but %T", pubWitness.Vector())
+				}
+
 				// Convert public witness to smart-vector
 				pubWitSV := smartvectors.RightZeroPadded(
-					[]field.Element(pubWitness.Vector().(fr.Vector)),
-					pa.NbPublicInputs,
+					[]field.Element(v),
+					tinyPISize(ctx.SPR),
 				)
 
 				// Assign the public witness
@@ -151,7 +158,7 @@ func (pa LROCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 			// Inject the coin which will be assigned to the randomness
 			solsync := solsync_.(solverSync)
-			solsync.randChan <- run.GetRandomCoinField(ctx.Columns.Hcp.Name)
+			solsync.randChan <- run.GetRandomCoinFieldExt(ctx.Columns.Hcp.Name) // TODO@yao: GetRandomCoinFieldExt?
 			close(solsync.randChan)
 
 			// And we block until the solver has completely finished
@@ -222,7 +229,7 @@ func (ctx *GenericPlonkProverAction) solverCommitmentHint(
 	// Channel through which the committed poly is obtained
 	pi2Chan chan []field.Element,
 	// Channel through which the randomness is injected back
-	randChan chan field.Element,
+	randChan chan fext.Element,
 ) func(_ *big.Int, ins, outs []*big.Int) error {
 
 	return func(_ *big.Int, ins, outs []*big.Int) error {
@@ -260,13 +267,13 @@ func (ctx *GenericPlonkProverAction) solverCommitmentHint(
 		// Use a custom way of deriving the commitment from a random coin
 		// that is injected by the wizard runtime thereafter.
 		commitmentVal := <-randChan
-		commitmentVal.BigInt(outs[0])
+		commitmentVal.B0.A0.BigInt(outs[0]) //TODO@yao: check here commitmentVal field or fext element?
 		return nil
 	}
 }
 
 // Return whether the current circuit uses api.Commit
-func (ctx *compilationCtx) HasCommitment() bool {
+func (ctx *CompilationCtx) HasCommitment() bool {
 	// goes through all the type casting and accesses
 	commitmentsInfo := ctx.
 		Plonk.SPR.
@@ -283,7 +290,7 @@ func (ctx *compilationCtx) HasCommitment() bool {
 // Returns the Plonk commitment info of the compiled gnark circuit. This is used
 // derive information such as which wires are being committed and how many
 // commitments there are.
-func (ctx *compilationCtx) CommitmentInfo() globalCs.PlonkCommitment {
+func (ctx *CompilationCtx) CommitmentInfo() globalCs.PlonkCommitment {
 	// goes through all the type casting and accesses
 	commitmentsInfo := ctx.
 		Plonk.SPR.

@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 var (
@@ -34,22 +33,22 @@ type VerifierInputs struct {
 	// Params are the public parameters
 	Params Params
 	// MerkleRoots are the commitment to verify the opening for
-	MerkleRoots []types.Bytes32
+	MerkleRoots []field.Octuplet
 	// X is the univariate evaluation point
-	X field.Element
+	X fext.Element
 	// Ys are the alleged evaluation at point X
-	Ys [][]field.Element
+	Ys [][]fext.Element
 	// OpeningProof contains the messages of the prover
 	OpeningProof OpeningProof
 	// RandomCoin is the random coin sampled by the verifier to be used to
 	// construct the linear combination of the columns.
-	RandomCoin field.Element
+	RandomCoin fext.Element
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
 	// Flag indicating if the SIS hash is replaced for the particular round
 	// the default behavior is to use the SIS hash function along with the
-	// MiMC hash function
-	IsSISReplacedByMiMC []bool
+	// Poseidon2 hash function
+	IsSISReplacedByPoseidon2 []bool
 }
 
 // VerifyOpening verifies a Vortex opening proof, see [VerifierInputs] for
@@ -93,7 +92,7 @@ func VerifyOpening(v *VerifierInputs) error {
 		}
 	}
 
-	if err := v.Params.isCodeword(v.OpeningProof.LinearCombination); err != nil {
+	if err := v.Params.isCodewordExt(v.OpeningProof.LinearCombination); err != nil {
 		return err
 	}
 
@@ -108,7 +107,6 @@ func VerifyOpening(v *VerifierInputs) error {
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -130,14 +128,14 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := poly.EvalUnivariate(fullCol, v.RandomCoin)
+		y := vortex.EvalBasePolyHorner(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")
 		}
 
-		if y != linearCombination.Get(selectedColID) {
-			other := linearCombination.Get(selectedColID)
+		if y != linearCombination.GetExt(selectedColID) {
+			other := linearCombination.GetExt(selectedColID)
 			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
 		}
 	}
@@ -149,14 +147,14 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 // with the statement. The function returns an error if the check fails.
 func (v *VerifierInputs) checkStatement() (err error) {
 
-	// Check the consistency of Ys and proof.Linear combination
-	var (
-		Yjoined     = utils.Join(v.Ys...)
-		alphaY      = smartvectors.Interpolate(v.OpeningProof.LinearCombination, v.X)
-		alphaYProme = poly.EvalUnivariate(Yjoined, v.RandomCoin)
-	)
+	smartvectors_mixed.IsBase(v.OpeningProof.LinearCombination)
 
-	if alphaY != alphaYProme {
+	// Check the consistency of Ys and proof.Linear combination
+	Yjoined := utils.Join(v.Ys...)
+	alphaY := smartvectors.EvaluateFextPolyLagrange(v.OpeningProof.LinearCombination, v.X)
+	alphaYPrime := vortex.EvalFextPolyHorner(Yjoined, v.RandomCoin)
+
+	if alphaY != alphaYPrime {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
 	}
 
@@ -170,16 +168,14 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 	var (
 		mTreeHashConfig = &smt.Config{
-			HashFunc: func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: mimc.NewMiMC()}
-			},
-			Depth: utils.Log2Ceil(v.Params.NumEncodedCols()),
+			HashFunc: v.Params.MerkleHashFunc,
+			Depth:    utils.Log2Ceil(v.Params.NumEncodedCols()),
 		}
 	)
 
-	// If IsSISReplacedByMiMC is not assigned, we assign them with default false values
-	if v.IsSISReplacedByMiMC == nil {
-		v.IsSISReplacedByMiMC = make([]bool, len(v.MerkleRoots))
+	// If IsSISReplacedByPoseidon2 is not assigned, we assign them with default false values
+	if v.IsSISReplacedByPoseidon2 == nil {
+		v.IsSISReplacedByPoseidon2 = make([]bool, len(v.MerkleRoots))
 	}
 
 	for i := 0; i < len(v.MerkleRoots); i++ {
@@ -188,14 +184,13 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			var (
 				// Selected columns #j contained in the commitment #i.
 				selectedSubCol = v.OpeningProof.Columns[i][j]
-				leaf           types.Bytes32
+				leaf           field.Octuplet
 				entry          = v.EntryList[j]
 				root           = v.MerkleRoots[i]
 				mProof         = v.OpeningProof.MerkleProofs[i][j]
 			)
-			// We verify the SIS hash of the current sub-column
-			// only if the SIS hash is applied for the current round.
-			if !v.IsSISReplacedByMiMC[i] {
+
+			if !v.IsSISReplacedByPoseidon2[i] {
 				var (
 					// SIS hash of the current sub-column
 					sisHash = v.Params.Key.Hash(selectedSubCol)
@@ -203,21 +198,16 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 					// based on SIS)
 					hasher = mimc.NewMiMC()
 				)
-
 				hasher.Reset()
-				for _, x := range sisHash {
-					xBytes := x.Bytes()
-					hasher.Write(xBytes[:])
-				}
-				copy(leaf[:], hasher.Sum(nil))
-
+				hasher.WriteElements(sisHash)
+				leaf = hasher.SumElement()
 			} else {
 				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
-				// (to be used for in place of SIS hash) are the same i.e. the MiMC hash function
-				hasher := mimc.NewMiMC()
+				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
+				hasher := v.Params.LeafHashFunc()
 				hasher.Reset()
-				s := hasher.SumElements(selectedSubCol)
-				leaf = s.Bytes()
+				hasher.WriteElements(selectedSubCol)
+				leaf = hasher.SumElement()
 			}
 
 			// Check the Merkle-proof for the obtained leaf

@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -101,7 +101,7 @@ func (ctx *mergingCtx) aggregateConstraints(comp *wizard.CompiledIOP) []*symboli
 	var (
 		aggregateExpressions = make([]*symbolic.Expression, len(ctx.Ratios))
 		initialRound         = comp.NumRounds()
-		mergingCoin          = comp.InsertCoin(initialRound, coin.Name(deriveName(comp, DEGREE_RANDOMNESS)), coin.Field)
+		mergingCoin          = comp.InsertCoin(initialRound, coin.Name(deriveName(comp, DEGREE_RANDOMNESS)), coin.FieldExt)
 	)
 
 	for i, ratio := range ctx.Ratios {
@@ -145,7 +145,7 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 		res         = cs.Expression
 		domainSize  = cs.DomainSize
 		x           = variables.NewXVar()
-		omega       = fft.GetOmega(domainSize)
+		omega, _    = fft.Generator(uint64(domainSize))
 		// factors is a list of expression to multiply to obtain the return expression. It
 		// is initialized with "only" the initial expression and we iteratively add the
 		// terms (X-i) to it. At the end, we call [sym.Mul] a single time. This structure

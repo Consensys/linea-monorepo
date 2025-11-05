@@ -19,10 +19,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
@@ -34,7 +34,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
-	dmimc "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
+	dposeidon2 "github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -179,7 +179,6 @@ func init() {
 	RegisterImplementation(smartvectors.Regular{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
 	RegisterImplementation(smartvectors.Constant{})
-	RegisterImplementation(smartvectors.Pooled{})
 
 	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
 	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
@@ -190,7 +189,7 @@ func init() {
 
 	RegisterImplementation(cleanup.CleanupProverAction{})
 
-	RegisterImplementation(dmimc.LinearHashProverAction{})
+	RegisterImplementation(dposeidon2.LinearHashProverAction{})
 	RegisterImplementation(merkle.MerkleProofProverAction{})
 
 	RegisterImplementation(univariates.NaturalizeProverAction{})
@@ -240,7 +239,7 @@ func init() {
 	RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
 
-	RegisterImplementation(mimc.MimcContext{})
+	RegisterImplementation(poseidon2.Poseidon2Context{})
 	RegisterImplementation(mpts.QuotientAccumulation{})
 	RegisterImplementation(mpts.RandomPointEvaluation{})
 	RegisterImplementation(mpts.ShadowRowProverAction{})

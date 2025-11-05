@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -28,7 +29,7 @@ func (p *ProverState[K, V]) VerifierState() VerifierState[K, V] {
 	return VerifierState[K, V]{
 		Location:     p.Location,
 		NextFreeNode: p.NextFreeNode,
-		SubTreeRoot:  p.Tree.Root,
+		SubTreeRoot:  types.HashToBytes32(p.Tree.Root),
 		Config:       p.Tree.Config,
 	}
 }
@@ -37,21 +38,21 @@ func (p *ProverState[K, V]) VerifierState() VerifierState[K, V] {
 // returns the new root
 func updateCheckRoot(conf *smt.Config, proof smt.Proof, root, old, new Bytes32) (newRoot Bytes32, err error) {
 
-	if ok := proof.Verify(conf, old, root); !ok {
+	if ok := proof.Verify(conf, types.Bytes32ToOctuplet(old), types.Bytes32ToOctuplet(root)); !ok {
 		return Bytes32{}, errors.New("root update audit failed : could not authenticate the old")
 	}
 
 	// Note: all possible errors are already convered by `proof.Verify`
-	newRoot, _ = proof.RecoverRoot(conf, new)
-	logrus.Tracef("update check root %v leaf: %x->%x root: %x->%x\n", proof.Path, old, new, root, newRoot)
-	return newRoot, nil
+	newRootOct, _ := proof.RecoverRoot(conf, types.Bytes32ToOctuplet(new))
+	logrus.Tracef("update check root %v leaf: %x->%x root: %x->%x\n", proof.Path, old, new, root, newRootOct)
+	return types.HashToBytes32(newRootOct), nil
 }
 
 // TopRoot returns the top-root hash which includes `NextFreeNode` and the
 // `SubTreeRoot`
 func (v *VerifierState[K, V]) TopRoot() Bytes32 {
 	hasher := v.Config.HashFunc()
-	WriteInt64On32Bytes(hasher, v.NextFreeNode)
+	WriteInt64On64Bytes(hasher, v.NextFreeNode)
 	v.SubTreeRoot.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
 	return AsBytes32(Bytes32)
@@ -66,15 +67,14 @@ func deferCheckUpdateRoot(
 	root, old, new Bytes32,
 	appendTo []smt.ProvedClaim,
 ) (appended []smt.ProvedClaim, newRoot Bytes32) {
-	var err error
-	newRoot, err = proof.RecoverRoot(conf, new)
+	newRootOct, err := proof.RecoverRoot(conf, types.Bytes32ToOctuplet(new))
 	if err != nil {
 		panic(err)
 	}
-
+	newRoot = types.HashToBytes32(newRootOct)
 	appended = append(appendTo,
-		smt.ProvedClaim{Proof: proof, Leaf: old, Root: root},
-		smt.ProvedClaim{Proof: proof, Leaf: new, Root: newRoot},
+		smt.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToOctuplet(old), Root: types.Bytes32ToOctuplet(root)},
+		smt.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToOctuplet(new), Root: types.Bytes32ToOctuplet(newRoot)},
 	)
 
 	return appended, newRoot

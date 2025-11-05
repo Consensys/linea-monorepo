@@ -1,9 +1,13 @@
 package verifiercol
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -11,17 +15,32 @@ import (
 
 // Represents a constant column
 type ConstCol struct {
-	F     field.Element
-	Size_ int
-	Name  string
+	Base       field.Element
+	Ext        fext.Element
+	IsBaseFlag bool
+	Size_      int
+	Name       string
 }
 
-// NewConstCol creates a new ConstCol column. The function take also an optional
-// identifier that can be added in the name. Without it, the column will be
-// identified by its size and its not what we want for the bootstrapper as the
-// wizard should be elastic.
-func NewConstantCol(f field.Element, size int, name string) ifaces.Column {
-	return ConstCol{F: f, Size_: size, Name: name}
+// NewConstantCol creates a new ConstCol column
+func NewConstantCol(elem field.Element, size int, name string) ifaces.Column {
+	return ConstCol{
+		Base:       elem,
+		Ext:        fext.Lift(elem),
+		IsBaseFlag: true,
+		Size_:      size,
+		Name:       name,
+	}
+}
+
+func NewConstantColExt(elem fext.Element, size int, name string) ifaces.Column {
+	return ConstCol{
+		Base:       field.Zero(),
+		Ext:        elem,
+		IsBaseFlag: false,
+		Size_:      size,
+		Name:       name,
+	}
 }
 
 // Returns the round of definition of the column (always zero)
@@ -33,10 +52,17 @@ func (cc ConstCol) Round() int {
 
 // Returns a generic name from the column. Defined from the coin's.
 func (cc ConstCol) GetColID() ifaces.ColID {
-	if len(cc.Name) > 0 {
-		return ifaces.ColIDf("CONSTCOL_%v_%v", cc.F.String(), cc.Name)
+
+	val := cc.Base.String()
+	if !cc.IsBaseFlag {
+		val = cc.Ext.String()
 	}
-	return ifaces.ColIDf("CONSTCOL_%v_%v", cc.F.String(), cc.Size_)
+
+	if len(cc.Name) > 0 {
+		return ifaces.ColIDf("CONSTCOL_%v_%v", val, cc.Name)
+	}
+
+	return ifaces.ColIDf("CONSTCOL_%v_%v", val, cc.Size_)
 }
 
 // Always return true
@@ -49,26 +75,80 @@ func (cc ConstCol) Size() int {
 
 // Returns a constant smart-vector
 func (cc ConstCol) GetColAssignment(_ ifaces.Runtime) ifaces.ColAssignment {
-	return smartvectors.NewConstant(cc.F, cc.Size_)
+	return smartvectors.NewConstant(cc.Base, cc.Size_)
+}
+
+func (cc ConstCol) GetColAssignmentAtBase(_ ifaces.Runtime, _ int) (field.Element, error) {
+	if cc.IsBaseFlag {
+		return cc.Base, nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element from a verifier col over field extensions")
+	}
+}
+
+func (cc ConstCol) GetColAssignmentAtExt(_ ifaces.Runtime, _ int) fext.Element {
+	return cc.Ext
 }
 
 // Returns the column as a list of gnark constants
 func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []frontend.Variable {
 	res := make([]frontend.Variable, cc.Size_)
 	for i := range res {
-		res[i] = cc.F
+		res[i] = cc.Base
+	}
+	return res
+}
+
+func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	if cc.IsBaseFlag {
+		res := make([]frontend.Variable, cc.Size_)
+		for i := range res {
+			res[i] = cc.Base
+		}
+		return res, nil
+	} else {
+		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
+	}
+}
+
+func (cc ConstCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+	res := make([]gnarkfext.Element, cc.Size_)
+	for i := range res {
+		var temp gnarkfext.Element
+		temp.Assign(cc.Ext)
+		res[i] = temp
 	}
 	return res
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
-	return cc.F
+	return cc.Base
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
-	return cc.F
+	if cc.IsBaseFlag {
+		return cc.Base
+	} else {
+		panic("requested a base element from a verifier col over field extensions")
+	}
+}
+
+// Returns a particular position of the coin value
+func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+	if cc.IsBaseFlag {
+		return cc.Base, nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element from a verifier col over field extensions")
+	}
+}
+
+// Returns a particular position of the coin value
+func (cc ConstCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
+	var temp gnarkfext.Element
+	temp.Assign(cc.Ext)
+	return temp
 }
 
 // Since the column is directly defined from the
@@ -91,5 +171,34 @@ func (cc ConstCol) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column {
 	}
 
 	// Copy the underlying cc, and assigns the new from and to
-	return NewConstantCol(cc.F, to-from, cc.Name)
+	return NewConstantCol(cc.Base, to-from, cc.Name)
+}
+
+func (cc ConstCol) IsBase() bool {
+	return cc.IsBaseFlag
+}
+
+func (cc ConstCol) IsZero() bool {
+	if cc.IsBaseFlag {
+		return cc.Base.IsZero()
+	} else {
+		return cc.Ext.IsZero()
+	}
+}
+
+func (cc ConstCol) IsOne() bool {
+	if cc.IsBaseFlag {
+		return cc.Base.IsOne()
+	} else {
+		return cc.Ext.IsOne()
+	}
+}
+
+// Returns the string representation of the underlying field element
+func (cc ConstCol) StringField() string {
+	if cc.IsBaseFlag {
+		return cc.Base.String()
+	} else {
+		return cc.Ext.String()
+	}
 }

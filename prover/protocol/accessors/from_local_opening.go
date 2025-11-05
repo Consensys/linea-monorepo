@@ -3,6 +3,9 @@ package accessors
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -18,6 +21,30 @@ type FromLocalOpeningYAccessor struct {
 	Q query.LocalOpening
 	// QRound is the declaration round of the query
 	QRound int
+}
+
+func (l *FromLocalOpeningYAccessor) IsBase() bool {
+	return l.Q.Pol.IsBase()
+}
+
+func (l *FromLocalOpeningYAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
+	return params.BaseY, nil
+}
+
+func (l *FromLocalOpeningYAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
+	return params.ExtY
+}
+
+func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLocalOpeningYAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewLocalOpeningAccessor creates an [ifaces.Accessor] returning the opening
@@ -39,13 +66,13 @@ func (l *FromLocalOpeningYAccessor) String() string {
 // GetVal implements [ifaces.Accessor]
 func (l *FromLocalOpeningYAccessor) GetVal(run ifaces.Runtime) field.Element {
 	params := run.GetParams(l.Q.ID).(query.LocalOpeningParams)
-	return params.Y
+	return params.BaseY
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (l *FromLocalOpeningYAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
-	return params.Y
+	return params.BaseY
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

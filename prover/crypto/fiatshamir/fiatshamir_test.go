@@ -2,23 +2,23 @@ package fiatshamir
 
 import (
 	"fmt"
-	"math/rand/v2"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFiatShamirSafeguardUpdate(t *testing.T) {
 
-	fs := NewMiMCFiatShamir()
+	fs := poseidon2.Poseidon2()
 
-	a := fs.RandomField()
-	b := fs.RandomField()
+	a := RandomFext(fs)
+	b := RandomFext(fs)
 
 	// Two consecutive call to fs do not return the same result
 	require.NotEqual(t, a.String(), b.String())
@@ -30,19 +30,24 @@ func TestFiatShamirRandomVec(t *testing.T) {
 		testName := fmt.Sprintf("%v-integers-of-%v-bits", testCase.NumIntegers, testCase.IntegerBitSize)
 		t.Run(testName, func(t *testing.T) {
 
-			fs := NewMiMCFiatShamir()
-			fs.Update(field.NewElement(420))
+			fs := poseidon2.Poseidon2()
+			Update(fs, field.NewElement(420))
 
 			var oldState, newState field.Element
+			d := types.HashToBytes32(fs.SumElement())
+			var ss [32]byte
+			copy(ss[:], d[:])
 
-			if err := oldState.SetBytesCanonical(fs.hasher.Sum(nil)); err != nil {
+			if err := oldState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			a := fs.RandomManyIntegers(testCase.NumIntegers, 1<<testCase.IntegerBitSize)
+			a := RandomManyIntegers(fs, testCase.NumIntegers, 1<<testCase.IntegerBitSize)
 			t.Logf("the generated vector= %v", a)
 
-			if err := newState.SetBytesCanonical(fs.hasher.Sum(nil)); err != nil {
+			d = types.HashToBytes32(fs.SumElement())
+			copy(ss[:], d[:])
+			if err := newState.SetBytesCanonical(ss[:4]); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
@@ -50,148 +55,54 @@ func TestFiatShamirRandomVec(t *testing.T) {
 			assert.NoError(t, errIfHasDuplicate(a...))
 
 			if testCase.ShouldUpdate {
-				assert.NotEqualf(t, oldState.String(), newState.String(), "the state was not updated (%v)", oldState.String())
+				errStr := fmt.Sprintf("the state was not updated (%v)", oldState.String())
+				if oldState.Equal(&newState) {
+					t.Fatal(errStr)
+				}
 			} else {
-				assert.Equal(t, oldState.String(), newState.String(), "the state was updated")
+				errStr := "the state was updated"
+				if !oldState.Equal(&newState) {
+					t.Fatal(errStr)
+				}
 			}
 		})
 	}
 }
-
 func TestBatchUpdates(t *testing.T) {
 
-	fs := NewMiMCFiatShamir()
-	fs.Update(field.NewElement(2))
-	fs.Update(field.NewElement(2))
-	fs.Update(field.NewElement(1))
-	expectedVal := fs.RandomField()
+	fs := poseidon2.Poseidon2()
+	Update(fs, field.NewElement(2))
+	Update(fs, field.NewElement(2))
+	Update(fs, field.NewElement(1))
+	expectedVal := RandomFext(fs)
 
 	t.Run("for a variadic call", func(t *testing.T) {
-		fs := NewMiMCFiatShamir()
-		fs.Update(field.NewElement(2), field.NewElement(2), field.NewElement(1))
-		actualValue := fs.RandomField()
+		fs := poseidon2.Poseidon2()
+		Update(fs, field.NewElement(2), field.NewElement(2), field.NewElement(1))
+		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for slice of field elements", func(t *testing.T) {
-		fs := NewMiMCFiatShamir()
-		fs.UpdateVec(vector.ForTest(2, 2, 1))
-		actualValue := fs.RandomField()
+		fs := poseidon2.Poseidon2()
+		UpdateVec(fs, vector.ForTest(2, 2, 1))
+		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for multi-slice of field elements", func(t *testing.T) {
-		fs := NewMiMCFiatShamir()
-		fs.UpdateVec(vector.ForTest(2, 2), vector.ForTest(1))
-		actualValue := fs.RandomField()
+		fs := poseidon2.Poseidon2()
+		UpdateVec(fs, vector.ForTest(2, 2), vector.ForTest(1))
+		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for a smart-vector", func(t *testing.T) {
 		sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
-		fs := NewMiMCFiatShamir()
-		fs.UpdateSV(sv)
-		actualValue := fs.RandomField()
+		fs := poseidon2.Poseidon2()
+		UpdateSV(fs, sv)
+		actualValue := RandomFext(fs)
 		assert.Equal(t, expectedVal.String(), actualValue.String())
-	})
-
-}
-
-// TestSamplingFromSeed tests that sampling from seed is consistent, does not forget
-// bytes from the seed and does not depends on the state.
-func TestSamplingFromSeed(t *testing.T) {
-
-	t.Run("dependence-on-name", func(t *testing.T) {
-
-		var (
-			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-			rng          = rand.New(utils.NewRandSource(789))
-			initialState = field.PseudoRand(rng)
-			seed         = field.PseudoRand(rng)
-			resMap       = map[field.Element]struct{}{}
-			name         = ""
-			totalSize    = 1000
-		)
-
-		fs := NewMiMCFiatShamir()
-		fs.SetState([]field.Element{initialState})
-
-		for i := 0; i < totalSize; i++ {
-
-			x := fs.RandomFieldFromSeed(seed, name)
-			if _, found := resMap[x]; found {
-				t.Errorf("found a collision for i=%v", i)
-			}
-
-			resMap[x] = struct{}{}
-			name += "a"
-		}
-	})
-
-	t.Run("non-dependance-curr-state", func(t *testing.T) {
-
-		var (
-			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-			rng    = rand.New(utils.NewRandSource(789))
-			state1 = field.PseudoRand(rng)
-			state2 = field.PseudoRand(rng)
-			fs1    = NewMiMCFiatShamir()
-			fs2    = NewMiMCFiatShamir()
-			seed   = field.PseudoRand(rng)
-			name   = "string-name"
-		)
-
-		fs1.SetState([]field.Element{state1})
-		fs2.SetState([]field.Element{state2})
-
-		y1 := fs1.RandomFieldFromSeed(seed, name)
-		y2 := fs2.RandomFieldFromSeed(seed, name)
-
-		if y1 != y2 {
-			t.Errorf("starting from different state does not give the same results")
-		}
-	})
-
-	t.Run("does-not-modify-state", func(t *testing.T) {
-
-		var (
-			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-			rng          = rand.New(utils.NewRandSource(789))
-			initialState = field.PseudoRand(rng)
-			seed         = field.PseudoRand(rng)
-			name         = "ddqsdjqskljd"
-			fs           = NewMiMCFiatShamir()
-		)
-
-		fs.SetState([]field.Element{initialState})
-
-		fs.RandomFieldFromSeed(seed, name)
-
-		newState := fs.State()
-		if initialState != newState[0] {
-			t.Errorf("state was modified")
-		}
-	})
-
-	t.Run("is-repeatable", func(t *testing.T) {
-
-		var (
-			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-			rng          = rand.New(utils.NewRandSource(789))
-			initialState = field.PseudoRand(rng)
-			seed         = field.PseudoRand(rng)
-			name         = "ddqsdjqskljd"
-			fs           = NewMiMCFiatShamir()
-		)
-
-		fs.SetState([]field.Element{initialState})
-
-		y1 := fs.RandomFieldFromSeed(seed, name)
-		y2 := fs.RandomFieldFromSeed(seed, name)
-
-		if y1 != y2 {
-			t.Errorf("state was modified")
-		}
 	})
 
 }

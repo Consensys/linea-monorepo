@@ -86,18 +86,13 @@ type RecursedSegmentCompilation struct {
 
 // SegmentProof stores a proof for a segment or for the conglomeration proof
 type SegmentProof struct {
-	RecursionWitness recursion.Witness
-	ProofType        ProofType
-	ModuleIndex      int
-	SegmentIndex     int
+	Witness      recursion.Witness
+	ProofType    ProofType
+	ModuleIndex  int
+	SegmentIndex int
 	// LppCommitment is the commitment of the LPP witness. It is only populated
 	// for a GL segment proof.
 	LppCommitment field.Element
-
-	// recursionRuntime is the runtime of the recursion proof. The reason for
-	// this field is that we need to generate the input proof of the outer-proof,
-	// without it
-	recursionRuntime *wizard.ProverRuntime `serde:"omit"`
 }
 
 // CompileSegment applies all the compilation steps required to compile an LPP
@@ -350,7 +345,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 }
 
 // ProveSegment runs the prover for a segment of the protocol
-func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
+func (r *RecursedSegmentCompilation) ProveSegment(wit any) SegmentProof {
 
 	var (
 		comp               *wizard.CompiledIOP
@@ -448,12 +443,11 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 		WithField("segment-type", fmt.Sprintf("%T", wit)).
 		Infof("Ran prover segment")
 
-	segmentProof := &SegmentProof{
-		ModuleIndex:      moduleIndex,
-		SegmentIndex:     segmentModuleIndex,
-		ProofType:        proofType,
-		RecursionWitness: recursion.ExtractWitness(run),
-		recursionRuntime: run,
+	segmentProof := SegmentProof{
+		ModuleIndex:  moduleIndex,
+		SegmentIndex: segmentModuleIndex,
+		ProofType:    proofType,
+		Witness:      recursion.ExtractWitness(run),
 	}
 
 	if proofType == proofTypeGL {
@@ -467,17 +461,6 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 func (c *RecursedSegmentCompilation) GetVerifyingKeyPair() [2]field.Element {
 	vk0, vk1 := getVerifyingKeyPair(c.RecursionComp)
 	return [2]field.Element{vk0, vk1}
-}
-
-// GetOuterProofInput runs the final Vortex opening in the proof.
-func (c *SegmentProof) GetOuterProofInput() wizard.Proof {
-	return c.recursionRuntime.Resume().ExtractProof()
-}
-
-// ClearRuntime clears the ProverRuntime from the segment proof.
-func (c *SegmentProof) ClearRuntime() *SegmentProof {
-	c.recursionRuntime = nil
-	return c
 }
 
 // sortPublicInput is small compiler sorting the public inputs by name.

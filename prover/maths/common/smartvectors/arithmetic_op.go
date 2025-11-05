@@ -1,6 +1,7 @@
 package smartvectors
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -75,6 +76,57 @@ type operator interface {
 	//
 	// res += term or res *= term
 	constTermIntoVec(res []field.Element, term *field.Element)
+
+	// Same functions for extension vectors
+	// constExtIntoConstExt applies the operator over `res` and `(c, coeff)` and sets
+	// the result into res. This is specialized for the case where both res and
+	// x are scalars.
+	//
+	// 		res += x * coeff or res *= x^coeff
+	constExtIntoConstExt(res, x *fext.Element, coeff int)
+	// vecExtIntoVecExt applies the operator over `res` and `(c, coeff)` and sets
+	// the result into res. This is specialized for the case where both res and
+	// x are vectors.
+	//
+	// 		res += x * coeff or res *= x^coeff
+	vecExtIntoVecExt(res, x []fext.Element, coeff int)
+	// VecIntoVec applies the operator over `res` and `(c, coeff)` and sets
+	// the result into res. This is specialized for the case where res is a
+	// vector and c is a constant.
+	//
+	// 		res += x * coeff or res *= x^coeff
+	constExtIntoVecExt(res []fext.Element, x *fext.Element, coeff int)
+	// constExtIntoTermExt evaluates the operator over (x, coeff) and sets the result
+	// into `res`, overwriting it.
+	// It is specialized for the case where x and res are both scalars.
+	//
+	// 		res = x * coeff or res = x^coeff
+	constExtIntoTermExt(res, x *fext.Element, coeff int)
+	// vecExtIntoTermExt evaluates the operator over (x, coeff) and sets the result
+	// into `res`, overwriting it.
+	// It is specialized for the case where x and res are both vectors.
+	//
+	// 		res = x * coeff or res = x^coeff where x is a vector
+	vecExtIntoTermExt(res, x []fext.Element, coeff int)
+	// constTermIntoConst updates applies the operator over res and term and
+	// sets the result into res.
+	// This function is specialized for the case where the term and res are
+	// scalar.
+	//
+	// res += term or res *= term for constants
+	constTermExtIntoConstExt(res, term *fext.Element)
+	// vecTermExtIntoVecExt updates applies the operator over res and term and
+	// sets the result into res.
+	// This function is specialized for the case where the term and res are
+	// vector.
+	//
+	// res += term or res *= term
+	vecTermExtIntoVecExt(res, term []fext.Element)
+	// constTermExtIntoVecExt updates a vector `res` by applying the operator over
+	// it
+	//
+	// res += term or res *= term
+	constTermExtIntoVecExt(res []fext.Element, term *fext.Element)
 }
 
 // linCompOp is an implementation of the [operator] interface. It represents a

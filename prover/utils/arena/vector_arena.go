@@ -32,6 +32,7 @@ func (a *VectorArena) get(nbBytes int64) []byte {
 	start := n - nbBytes
 	end := n
 	if end > int64(len(a.data)) {
+		atomic.AddInt64(&a.offset, -nbBytes)
 		return nil
 	}
 	return a.data[start:end]
@@ -41,7 +42,6 @@ func (a *VectorArena) get(nbBytes int64) []byte {
 // This should only be called when previously allocated vectors are no longer in use.
 // Offset should be 0 to reuse the entire arena, or set to a specific value (returned by Offset())
 // There is no safety check, use at your own risk.
-// Note that this is not safe for concurrent use with calls to Get.
 func (a *VectorArena) Reset(offset int64) {
 	atomic.StoreInt64(&a.offset, offset)
 }
@@ -50,21 +50,9 @@ func (a *VectorArena) Offset() int64 {
 	return atomic.LoadInt64(&a.offset)
 }
 
-// Remaining returns the number of elements of type T that can still be allocated
-// from the arena before it is exhausted.
-func Remaining[T any](a *VectorArena) int {
-	var zero T
-	totalBytes := int64(unsafe.Sizeof(zero)) * int64(1)
-	used := atomic.LoadInt64(&a.offset)
-	return int((int64(len(a.data)) - used) / totalBytes)
-}
-
 // Get is a generic function that retrieves a typed vector from the arena.
 // It ensures that the requested type and length match the arena's chunk size.
 func Get[T any](a *VectorArena, vectorLen int) []T {
-	if vectorLen == 0 {
-		return make([]T, 0)
-	}
 	var zero T
 
 	// Runtime safety check: ensure the requested slice fits the arena's chunk size.
