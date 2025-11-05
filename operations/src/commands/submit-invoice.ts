@@ -17,7 +17,7 @@ import { getBlock } from "viem/actions";
 import { Agent } from "https";
 import { GetCostAndUsageCommandInput } from "@aws-sdk/client-cost-explorer";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
-import { addDays, subDays } from "date-fns";
+import { addDays } from "date-fns";
 import { Result } from "neverthrow";
 import { computeInvoicePeriod, InvoicePeriod } from "../utils/submit-invoice/time.js";
 import { generateQueryParameters, getDuneClient, runDuneQuery } from "../utils/common/dune.js";
@@ -411,11 +411,10 @@ export default class SubmitInvoice extends Command {
   ): Promise<number | undefined> {
     const awsClient = createAwsCostExplorerClient({ region: "us-east-1" });
     const startDateStr = formatInTimeZone(invoicePeriod.startDate, "UTC", "yyyy-MM-dd");
-    const endDateStr = formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd");
+    const endDateStr = formatInTimeZone(invoicePeriod.endDate, "UTC", "yyyy-MM-dd");
+    const awsEndDateStr = formatInTimeZone(addDays(invoicePeriod.endDate, 1), "UTC", "yyyy-MM-dd");
 
-    this.log(
-      `Fetching AWS costs for the invoice period startDate=${startDateStr} endDate=${formatInTimeZone(subDays(endDateStr, 1), "UTC", "yyyy-MM-dd")}`,
-    );
+    this.log(`Fetching AWS costs for the invoice period startDate=${startDateStr} endDate=${endDateStr}`);
 
     if (!awsCostsApiFilters.Metrics || awsCostsApiFilters.Metrics.length !== 1) {
       this.error("AWS Costs API Filters must specify one metric.");
@@ -426,22 +425,20 @@ export default class SubmitInvoice extends Command {
         ...awsCostsApiFilters,
         TimePeriod: {
           Start: startDateStr,
-          End: endDateStr,
+          End: awsEndDateStr,
         },
       }),
       "Failed to fetch AWS costs",
     );
 
     if (!Array.isArray(ResultsByTime) || ResultsByTime.length === 0) {
-      this.error(
-        `No AWS cost data returned for the specified period. startDate=${startDateStr} endDate=${formatInTimeZone(subDays(endDateStr, 1), "UTC", "yyyy-MM-dd")}`,
-      );
+      this.error(`No AWS cost data returned for the specified period. startDate=${startDateStr} endDate=${endDateStr}`);
     }
 
     const estimated = ResultsByTime[0]?.Estimated;
     if (estimated === undefined || estimated === true) {
       this.warn(
-        `AWS cost data for the specified period is still under estimation. startDate=${startDateStr} endDate=${formatInTimeZone(subDays(endDateStr, 1), "UTC", "yyyy-MM-dd")}`,
+        `AWS cost data for the specified period is still under estimation. startDate=${startDateStr} endDate=${endDateStr}`,
       );
       return;
     }
@@ -452,7 +449,7 @@ export default class SubmitInvoice extends Command {
 
     if (!totalForMetric || !totalForMetric?.Amount) {
       this.error(
-        `AWS cost data does not contain the specified metric or Amount field. metric=${metric} startDate=${startDateStr} endDate=${formatInTimeZone(subDays(endDateStr, 1), "UTC", "yyyy-MM-dd")}`,
+        `AWS cost data does not contain the specified metric or Amount field. metric=${metric} startDate=${startDateStr} endDate=${endDateStr}`,
       );
     }
 
