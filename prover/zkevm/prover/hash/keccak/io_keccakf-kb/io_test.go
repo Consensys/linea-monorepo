@@ -1,6 +1,7 @@
 package iokeccakf_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -14,9 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBaseConversionInput(t *testing.T) {
+func TestKeccakFBlockPreparation(t *testing.T) {
 	var (
-		b              = &iokeccakf.KeccakfBlockPreparation{}
+		b              = &iokeccakf.KeccakfInputPreparation{}
 		numRowsPerLane = 4
 		numBlocks      = 12
 		keccak         = generic.KeccakUsecase
@@ -29,7 +30,7 @@ func TestBaseConversionInput(t *testing.T) {
 			createCol = common.CreateColFn(comp, "BASE_CONVERSION_TEST", size, pragmas.RightPadded)
 		)
 
-		inp := iokeccakf.KeccakfBlockPreparationInputs{
+		inp := iokeccakf.KeccakfInputPreparationData{
 			Lane:                 createCol("LANE"),
 			IsBeginningOfNewHash: createCol("IS_FIRST_LANE_NEW_HASH"),
 			IsLaneActive:         createCol("IS_ACTIVE"),
@@ -38,7 +39,7 @@ func TestBaseConversionInput(t *testing.T) {
 			NbBitsPerBaseX:       4,
 		}
 
-		b = iokeccakf.NewKeccakfBlockPreparation(comp, inp)
+		b = iokeccakf.NewKeccakfInputPreparation(comp, inp)
 
 	}
 	prover := func(run *wizard.ProverRuntime) {
@@ -52,9 +53,7 @@ func TestBaseConversionInput(t *testing.T) {
 		)
 
 		for row := 0; row < effectiveSize; row++ {
-			// input lanes are uint64 big-endian
-			// choose 8 random bytes
-			f := field.NewElement(0x35CA) // bytes = [0x35, 0xCA]
+			f := field.NewElement(0x35ca) // bytes = [0xca, 0x35]
 			lane.PushField(f)
 			isActive.PushInt(1)
 			if row%unmRowsPerBlock == 0 && (row/unmRowsPerBlock == 2) {
@@ -70,18 +69,18 @@ func TestBaseConversionInput(t *testing.T) {
 
 		b.Run(run)
 
-		expected := []uint64{10, 12, 13, 0} // see example comment below
+		expected := []uint64{30, 36, 10, 4} // see example in comment
 		laneX := make([][]field.Element, len(b.LaneX))
 		for i := range b.LaneX {
 			laneX[i] = run.GetColumn(b.LaneX[i].GetColID()).IntoRegVecSaveAlloc()
 		}
-		//for row := 0; row < effectiveSize; row++ {
-		for i := 0; i < len(b.LaneX); i++ {
-			val := laneX[i][0]
-			expectedVal := field.NewElement(expected[i])
-			assert.Equalf(t, expectedVal, val, "invalid base conversion at laneX[%d] row %d", i, 0)
+		for row := 0; row < effectiveSize; row++ {
+			for i := 0; i < len(b.LaneX); i++ {
+				val := laneX[i][0]
+				assert.Equalf(t, fmt.Sprintf("%d", expected[i]),
+					fmt.Sprintf("%d", val.Uint64()), "invalid base conversion at laneX[%d] row %d is %d", i, 0, val.Uint64())
+			}
 		}
-		// }
 
 	}
 
@@ -91,32 +90,33 @@ func TestBaseConversionInput(t *testing.T) {
 
 }
 
-// Example:
+//  Example:
+//  input: 0x35ca
+//	inputBytes := []byte{0b11001010, 0b00110101}
+//	bitsPerChunk := 4
+//	nbSlices := 4
+//	base := uint64(3)
 //
-//   Suppose:
-//     MAXNBYTE        = 2
-//     nbBitsPerBaseX  = 4
-//     len(b.LaneX)    = 4
-//     b.Inputs.BaseA  = 3
-//     b.Inputs.BaseB  = 5
+//	vals := extractLittleEndianBaseX(data, bitsPerChunk, nbSlices, base)
 //
-//   And for a given lane element:
-//     lane[j] = field.NewElement(0x35CA) // bytes = [0x35, 0xCA]
+// Combined bitstream (LSB-first):
 //
-//   Steps:
-//     - Big-endian bytes: [0x35, 0xCA] = [00110101, 11001010]
-//     - After reversal (little-endian): [0xCA, 0x35]
-//     - Bitstream (LSB-first):
-//         0,1,0,1,0,0,1,1,1,0,1,1,0,0,0,0
+//	[0 1 0 1 0 0 1 1 1 0 1 0 1 1 0 0]
 //
-//   Extract 4 chunks of 4 bits each (in base 3):
-//     Chunk 0: 0101₂ = 10₁₀
-//     Chunk 1: 0011₂ = 12₁₀
-//     Chunk 2: 1011₂ = 13₁₀
-//     Chunk 3: 0000₂ = 0₁₀
+// Grouped into 4-bit chunks (little-endian within each group):
 //
-//   Therefore:
-//     a = []uint64{10, 12, 13, 0}
+//	chunk 0 → [0 1 0 1]
+//	chunk 1 → [0 0 1 1]
+//	chunk 2 → [1 0 1 0]
+//	chunk 3 → [1 1 0 0]
 //
-//   These values are pushed into laneX[0..3]:
-//     laneX[0].PushInt(10)
+// Interpretation in base 3 (each bit contributes bit_j * 3^j):
+//
+//	val[0] = 0*3^0 + 1*3^1 + 0*3^2 + 1*3^3 = 30
+//	val[1] = 0*3^0 + 0*3^1 + 1*3^2 + 1*3^3 = 36
+//	val[2] = 1*3^0 + 0*3^1 + 1*3^2 + 0*3^3 = 10
+//	val[3] = 1*3^0 + 1*3^1 + 0*3^2 + 0*3^3 = 4
+//
+// So the function returns:
+//
+//	[]uint64{30, 36, 10, 4}

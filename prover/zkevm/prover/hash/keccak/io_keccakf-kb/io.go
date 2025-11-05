@@ -1,11 +1,11 @@
 package iokeccakf
 
-/* io-keccakf package prepare the input and output for keccakf.
+/* iokeccakf package prepares the input and output for keccakf.
 The inputs to keccakf are blocks in BaseA or BaseB (little-endian).
 The output from keccakf is the hash result in baseB (little-endian).
  Thus, the implementation applies a base conversion over the blocks;
-going from uint-BE to BaseA/BaseB-LE. Also, a base conversion over the hash result,
-going from BaseB-LE to uint-BE. */
+going from uint to BaseA/BaseB. Also, a base conversion over the hash result,
+going from BaseB to uint. */
 
 import (
 	"slices"
@@ -25,61 +25,55 @@ import (
 )
 
 const (
-	BASE_CONVERSION = "BASE_CONVERSION"
-	BLOCK           = "BLOCK"
-	HASH_OUTPUT     = "HASH_OUTPUT"
-	MAXNBYTE        = 2 // maximum number of bytes due to the field size.
+	MAXNBYTE                  = 2 // maximum number of bytes due to the field size.
+	KECCAKF_INPUT_PREPARATION = "KECCAKF_INPUT_PREPARATION"
 )
 
+// lookup holds the lookup tables for base conversion.
 type lookup struct {
-	colMAXNBYTE ifaces.Column
-	colBaseA    []ifaces.Column
-	colBaseB    []ifaces.Column
+	colMAXNBYTE ifaces.Column   // holds the uint values from 0 to 2^(8*MAXNBYTE)-1
+	colBaseA    []ifaces.Column // holds the baseA representation of uint values
+	colBaseB    []ifaces.Column // holds the baseB representation of uint values
 }
 
-// KeccakfBlockPreparationInputs stores the inputs for [newBlockBaseConversion]
-type KeccakfBlockPreparationInputs struct {
+// KeccakfInputPreparationData stores the data [NewKeccakfInputPreparation] requireds as inputs.
+type KeccakfInputPreparationData struct {
+	// for keccakf each lane is 64 bits (8 bytes),
+	// but due to the MAXNBYTE constraint, a lane is stored over multiple rows.
 	Lane ifaces.Column
 	// IsBeginningOfNewHash is 1 if the associated row is the beginning of a new hash.
 	IsBeginningOfNewHash ifaces.Column
 	IsLaneActive         ifaces.Column
-	// bases for conversion, note that baseA^8 and BaseB^8 should be less than the field modulus.
+	// bases for conversion
 	BaseA, BaseB int
 	// number of bits per baseX (baseA or baseB)
 	// the constraint is that BaseX^nbBitPerBaseX < field.Modulus and nbBitPerBaseX is a power of 2.
 	NbBitsPerBaseX int
 }
 
-// The submodule KeccakfBlockPreparation implements the base conversion over
+// The submodule KeccakfInputPreparation implements the base conversion over
 // the inputs to the keccakf (i.e., blocks/lanes), in order to export them to the keccakf.
 // The lanes from the first block of hash should be in baseA and others are in baseB.
-type KeccakfBlockPreparation struct {
-	Inputs *KeccakfBlockPreparationInputs
-	// It is 1 when the lane is from the first block of the hash
-	IsFromFirstBlock ifaces.Column
-	// IsFromBlockBaseB := 1-isFromFirstBlock
-	IsFromBlockBaseB ifaces.Column
-	// lanes from first block in baseA, others in baseB
-	LaneX []ifaces.Column
-	// Size of the module
-	Size int
-	// lookup table for base conversion
-	// the first column in in base uint16, the second in baseA, the third in baseB
-	Lookup lookup
+type KeccakfInputPreparation struct {
+	Inputs           *KeccakfInputPreparationData
+	IsFromFirstBlock ifaces.Column   // It is 1 when the lane is from the first block of the hash
+	IsFromBlockBaseB ifaces.Column   // 1 when the lane is from other blocks (not the first block)
+	LaneX            []ifaces.Column // lanes from first block in baseA, others in baseB
+	Lookup           lookup          // lookup table for base conversion
+	Size             int             // number of rows
 }
 
-// NewKeccakfBlockPreparation declare the intermediate columns,
+// NewKeccakfInputPreparation declare the intermediate columns,
 // and the constraints for changing the blocks in base uint64 into baseA/baseB.
-// It also change the order of Bytes from Big-Endian to Little-Endian.
-func NewKeccakfBlockPreparation(
+func NewKeccakfInputPreparation(
 	comp *wizard.CompiledIOP,
-	inp KeccakfBlockPreparationInputs,
-) *KeccakfBlockPreparation {
+	inp KeccakfInputPreparationData,
+) *KeccakfInputPreparation {
 
 	var (
 		nbSlicesBaseX = MAXNBYTE * 8 / inp.NbBitsPerBaseX
 
-		b = &KeccakfBlockPreparation{
+		b = &KeccakfInputPreparation{
 			Inputs: &inp,
 			Size:   inp.Lane.Size(),
 			Lookup: lookup{
@@ -89,7 +83,7 @@ func NewKeccakfBlockPreparation(
 			LaneX: make([]ifaces.Column, nbSlicesBaseX),
 		}
 		// declare the columns
-		createCol = common.CreateColFn(comp, BASE_CONVERSION, b.Size, pragmas.RightPadded)
+		createCol = common.CreateColFn(comp, KECCAKF_INPUT_PREPARATION, b.Size, pragmas.RightPadded)
 
 		param            = generic.KeccakUsecase
 		nbOfRowsPerLane  = param.LaneSizeBytes() / MAXNBYTE
@@ -132,24 +126,23 @@ func NewKeccakfBlockPreparation(
 
 	// if isFromFirstBlock = 1  ---> convert to keccak.BaseA
 	// otherwise convert to keccak.BaseB
-	/*comp.InsertInclusionConditionalOnIncluded(0,
+	comp.InsertInclusionConditionalOnIncluded(0,
 		ifaces.QueryIDf("BaseConversion_Into_BaseA_"),
 		append(b.Lookup.colBaseA, b.Lookup.colMAXNBYTE),
 		append(b.LaneX, b.Inputs.Lane),
 		b.IsFromFirstBlock)
 
 	comp.InsertInclusionConditionalOnIncluded(0,
-	ifaces.QueryIDf("BaseConversion_Into_BaseB_"),
-	append(b.Lookup.colBaseB, b.Lookup.colMAXNBYTE),
-	append(b.LaneX, b.Inputs.Lane),
-	b.IsFromBlockBaseB)
-	*/
+		ifaces.QueryIDf("BaseConversion_Into_BaseB_"),
+		append(b.Lookup.colBaseB, b.Lookup.colMAXNBYTE),
+		append(b.LaneX, b.Inputs.Lane),
+		b.IsFromBlockBaseB)
 
 	return b
 }
 
 // assign column isFromFirstBlock and laneX
-func (b *KeccakfBlockPreparation) Run(run *wizard.ProverRuntime) {
+func (b *KeccakfInputPreparation) Run(run *wizard.ProverRuntime) {
 
 	var (
 		size                 = b.Size
@@ -351,7 +344,7 @@ func createLookupTablesBaseX(baseA, baseB int, nbSlices int) (uint16Col smartvec
 //
 // Example:
 //
-//	data := []byte{0b11001010, 0b00110101} // bitstream (LSB-first)
+//	data := []byte{0b11001010, 0b00110101}  which is the byte slice for 0x35ca
 //	bitsPerChunk := 4
 //	nbSlices := 4
 //	base := uint64(3)
