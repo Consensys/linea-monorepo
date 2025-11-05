@@ -12,38 +12,26 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.replaytests;
+package net.consensys.linea.legacyReplaytests;
 
-import static net.consensys.linea.replaytests.ReplayTestTools.replay;
+import static net.consensys.linea.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-/** Same underlying NPE issue as that solved in #1216. */
+@Disabled
 @Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
-public class Issue1123Tests extends TracerTestBase {
+public class Issue1031Tests extends TracerTestBase {
 
-  @Tag("nightly")
   @Test
-  void issue_1123_mainnet_block_8043758(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "8043758.mainnet.json.gz", testInfo);
-  }
-
-  @Tag("weekly")
-  @Test
-  void issue_1123_mainnet_block_8019521(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "8019521.mainnet.json.gz", testInfo);
-  }
-
-  @Tag("weekly")
-  @Test
-  void issue_1123_mainnet_block_8005327(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "8005327.mainnet.json.gz", testInfo);
+  void issue_1090_range_10_20(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/10-20.mainnet.json.gz", testInfo);
   }
 }

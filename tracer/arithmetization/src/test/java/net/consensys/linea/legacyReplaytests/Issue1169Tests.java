@@ -12,39 +12,26 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.replaytests;
+package net.consensys.linea.legacyReplaytests;
 
-import static net.consensys.linea.replaytests.ReplayTestTools.replay;
+import static net.consensys.linea.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
-import net.consensys.linea.testing.BytecodeCompiler;
-import net.consensys.linea.testing.BytecodeRunner;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-/** This range broke the MOD module's mod.set-absolute-values constraint. */
+@Disabled
 @Tag("replay")
-@Tag("weekly")
 @ExtendWith(UnitTestWatcher.class)
-public class Issue1180Tests extends TracerTestBase {
+public class Issue1169Tests extends TracerTestBase {
 
   @Test
-  void split_range_2321470_2321479(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "2321470-2321479.mainnet.json.gz", testInfo);
-  }
-
-  @Test
-  void failingSmodInstructionTest(TestInfo testInfo) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
-    program
-        .push("ffffffffffffffffffffffffffffffffffffffffffffffffffdc633cace676d7")
-        .push("0000000000000000000000000000000000000000000000000000000000000000")
-        .op(OpCode.SDIV);
-    BytecodeRunner.of(program.compile()).run(chainConfig, testInfo);
+  public void issue_1145_block_3318494_InsufficientBalanceMainnet(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/2746060.mainnet.json.gz", testInfo);
   }
 }

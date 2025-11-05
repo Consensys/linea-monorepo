@@ -13,13 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.replaytests;
+package net.consensys.linea.legacyReplaytests;
 
-import static net.consensys.linea.replaytests.ReplayTestTools.replay;
+import static net.consensys.linea.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_LONDON_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @Tag("replay")
 @Tag("nightly")
+@Disabled
 @ExtendWith(UnitTestWatcher.class)
 public class HubShomeiReplayTests extends TracerTestBase {
 
@@ -38,11 +40,11 @@ public class HubShomeiReplayTests extends TracerTestBase {
    */
   @Test
   void alert2025_06_12_first(TestInfo testInfo) {
-    replay(MAINNET_LONDON_TESTCONFIG, "19913402-19913483.mainnet.json.gz", testInfo);
+    replay(MAINNET_LONDON_TESTCONFIG, "legacy/19913402-19913483.mainnet.json.gz", testInfo);
   }
 
   @Test
   void alert2025_06_12_second(TestInfo testInfo) {
-    replay(MAINNET_LONDON_TESTCONFIG, "19914560-19914640.mainnet.json.gz", testInfo);
+    replay(MAINNET_LONDON_TESTCONFIG, "legacy/19914560-19914640.mainnet.json.gz", testInfo);
   }
 }

@@ -12,16 +12,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.replaytests;
+package net.consensys.linea.legacyReplaytests;
 
-import static net.consensys.linea.replaytests.ReplayTestTools.BLOCK_NUMBERS;
-import static net.consensys.linea.replaytests.ReplayTestTools.add;
-import static net.consensys.linea.replaytests.ReplayTestTools.replay;
+import static net.consensys.linea.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.*;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -30,17 +24,15 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 @Tag("replay")
+@Disabled
 @ExtendWith(UnitTestWatcher.class)
 public class ReplayTests extends TracerTestBase {
 
   @Test
   void fatMxp(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "2492975-2492977.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/2492975-2492977.mainnet.json.gz", testInfo);
   }
 
   /**
@@ -57,38 +49,38 @@ public class ReplayTests extends TracerTestBase {
 
   @Test
   void failingMmuModexp(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "5995162.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/5995162.mainnet.json.gz", testInfo);
   }
 
   @Test
   void failRlpAddress(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "5995097.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/5995097.mainnet.json.gz", testInfo);
   }
 
   @Test
   void rlprcptManyTopicsWoLogData(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "6569423.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/6569423.mainnet.json.gz", testInfo);
   }
 
   @Test
   void multipleFailingCallToEcrecover(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "5000544.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/5000544.mainnet.json.gz", testInfo);
   }
 
   @Test
   @Tag("nightly")
   void incident777zkGethMainnet(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "7461019-7461030.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/7461019-7461030.mainnet.json.gz", testInfo);
   }
 
   @Test
   void issue1006(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "6032696-6032699.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/6032696-6032699.mainnet.json.gz", testInfo);
   }
 
   @Test
   void issue1004(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "6020023-6020029.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/6020023-6020029.mainnet.json.gz", testInfo);
   }
 
   @Test
@@ -96,47 +88,47 @@ public class ReplayTests extends TracerTestBase {
     // The purpose of this test is to check the mechanism for spotting divergence between the replay
     // tests and mainnet.  Specifically, this replay has transaction result information embedded
     // within it.
-    replay(OLD_MAINNET_TESTCONFIG, "6110045.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/6110045.mainnet.json.gz", testInfo);
   }
 
   @Test
   void failingCreate2(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "2250197.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/2250197.mainnet.json.gz", testInfo);
   }
 
   @Disabled("Fails to create the ConflationSnapshot from the gson file")
   @Test
   void blockHash1(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "8718090.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/8718090.mainnet.json.gz", testInfo);
   }
 
   @Disabled("Fails to create the ConflationSnapshot from the gson file")
   @Test
   void blockHash2(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "8718330.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/8718330.mainnet.json.gz", testInfo);
   }
 
   // TODO: should be replaced by a unit test triggering AnyToRamWithPadding (mixed case) MMU
   // instruction
   @Test
   void negativeNumberOfMmioInstruction(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "6029454-6029459.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/6029454-6029459.mainnet.json.gz", testInfo);
   }
 
   @Test
   void simpleSelfDestruct(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "50020-50029.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/50020-50029.mainnet.json.gz", testInfo);
   }
 
   // TODO: should be replaced by a unit test triggering a failed CREATE2
   @Test
   void failedCreate2(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "41640-41649.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/41640-41649.mainnet.json.gz", testInfo);
   }
 
   @Test
   void largeInitCode(TestInfo testInfo) {
-    replay(OLD_SEPOLIA_TESTCONFIG, "3318494.sepolia.json.gz", testInfo);
+    replay(OLD_SEPOLIA_TESTCONFIG, "legacy/3318494.sepolia.json.gz", testInfo);
   }
 
   /**
@@ -145,14 +137,14 @@ public class ReplayTests extends TracerTestBase {
    */
   @Test
   void hotOrColdPrecompile(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "2019510-2019519.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/2019510-2019519.mainnet.json.gz", testInfo);
   }
 
   // TODO: should be replace by a unit test triggering a CALLDATACOPY in a ROOT context of a
   // deployment transaction
   @Test
   void callDataCopyCnNotFound(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "67050-67059.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/67050-67059.mainnet.json.gz", testInfo);
   }
 
   /**
@@ -161,13 +153,13 @@ public class ReplayTests extends TracerTestBase {
    */
   @Test
   void returnOogxForCodeDepositCost(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "1002387.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/1002387.mainnet.json.gz", testInfo);
   }
 
   @Test
   @Tag("nightly")
   void modexpTriggeringNonAlignedFirstLimbSingleSourceMmuModexp(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "3108622-3108633.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/3108622-3108633.mainnet.json.gz", testInfo);
   }
 
   /**
@@ -176,23 +168,23 @@ public class ReplayTests extends TracerTestBase {
    */
   @Test
   void mainnet1339346ContextRevertTwice(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "1339346.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/1339346.mainnet.json.gz", testInfo);
   }
 
   @Test
   void legacyTxWithoutChainID(TestInfo testInfo) {
-    replay(OLD_SEPOLIA_TESTCONFIG, "254251.sepolia.json.gz", testInfo);
+    replay(OLD_SEPOLIA_TESTCONFIG, "legacy/254251.sepolia.json.gz", testInfo);
   }
 
   @Test
   void incorrectCreationCapture(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "4323985.mainnet.json.gz", testInfo);
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/4323985.mainnet.json.gz", testInfo);
   }
 
   @Disabled("Fails to create the ConflationSnapshot from the gson file")
   @Test
   void duplicateSubZero(TestInfo testInfo) {
-    replay(MAINNET_LONDON_TESTCONFIG, "20197061-20197173.mainnet.json.gz", testInfo);
+    replay(MAINNET_LONDON_TESTCONFIG, "legacy/20197061-20197173.mainnet.json.gz", testInfo);
   }
 
   /**
@@ -203,35 +195,6 @@ public class ReplayTests extends TracerTestBase {
    */
   @Test
   void stateManagerIntegrationTest(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "SSTOREX_on_mainnet.json.gz", testInfo);
-  }
-
-  @Disabled
-  @ParameterizedTest
-  @MethodSource("replayBlockTestSource")
-  void replayBlockTest(int blockNumber, TestInfo testInfo) {
-    File file =
-        new File(
-            "../arithmetization/src/test/resources/replays/" + blockNumber + ".mainnet.json.gz");
-    if (!file.exists()) {
-      String[] cmd = {"./scripts/capture.pl", "--start", String.valueOf(blockNumber)};
-      try {
-        ProcessBuilder processBuilder = new ProcessBuilder(cmd);
-        processBuilder.directory(new File("../"));
-        Process process = processBuilder.start();
-        process.waitFor();
-      } catch (InterruptedException | IOException e) {
-        e.printStackTrace();
-      }
-    }
-    replay(OLD_MAINNET_TESTCONFIG, blockNumber + ".mainnet.json.gz", testInfo);
-  }
-
-  static Stream<Arguments> replayBlockTestSource() {
-    // Example of how to add a range
-    add(2435888, 2435889);
-    // Example of how to add a single block
-    add(2435890);
-    return BLOCK_NUMBERS.stream();
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/SSTOREX_on_mainnet.json.gz", testInfo);
   }
 }

@@ -26,7 +26,7 @@ jobs:
         run: GOMAXPROCS=1 GOMEMLIMIT=10GiB ./gradlew prcCallTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          WEEKLY_TESTS_PARALLELISM: 24
+          JUNIT_TESTS_PARALLELISM: 24
           GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --mir
           ZKEVM_FORK: ${{ inputs.zkevm_fork }}
 

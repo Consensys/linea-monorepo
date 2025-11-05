@@ -12,26 +12,29 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.replaytests;
+package net.consensys.linea.pragueReplayTests;
 
-import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
+import static net.consensys.linea.ReplayTestTools.replay;
+import static net.consensys.linea.zktracer.ChainConfig.SEPOLIA_PRAGUE_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-@Disabled
 @Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
-public class Issue1169Tests extends TracerTestBase {
+public class SepoliaTests extends TracerTestBase {
 
   @Test
-  public void issue_1145_block_3318494_InsufficientBalanceMainnet(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "2746060.mainnet.json.gz", testInfo);
+  void block_19562398(TestInfo testInfo) {
+    replay(SEPOLIA_PRAGUE_TESTCONFIG, "prague/19562398.sepolia.prague.json.gz", testInfo);
+  }
+
+  @Test
+  void block_19562399_19562417(TestInfo testInfo) {
+    replay(SEPOLIA_PRAGUE_TESTCONFIG, "prague/19562399-19562417.sepolia.prague.json.gz", testInfo);
   }
 }

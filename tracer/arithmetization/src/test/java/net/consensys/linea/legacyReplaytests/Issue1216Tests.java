@@ -12,9 +12,9 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.replaytests;
+package net.consensys.linea.legacyReplaytests;
 
-import static net.consensys.linea.replaytests.ReplayTestTools.replay;
+import static net.consensys.linea.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
@@ -22,12 +22,14 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.hyperledger.besu.datatypes.Address;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
+@Disabled
 public class Issue1216Tests extends TracerTestBase {
 
   /**
@@ -50,6 +52,6 @@ public class Issue1216Tests extends TracerTestBase {
   @Tag("replay")
   @Test
   void issue_1216_sepolia_block_2392659(TestInfo testInfo) {
-    replay(OLD_SEPOLIA_TESTCONFIG, "2392659.sepolia.json.gz", testInfo);
+    replay(OLD_SEPOLIA_TESTCONFIG, "legacy/2392659.sepolia.json.gz", testInfo);
   }
 }

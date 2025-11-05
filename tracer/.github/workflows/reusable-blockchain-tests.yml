@@ -67,7 +67,7 @@ jobs:
         run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew referenceExecutionSpecBlockchainTests -x spotlessCheck --tests "${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}"
         timeout-minutes: 360
         env:
-          REFERENCE_TESTS_PARALLELISM: 3
+          JUNIT_TESTS_PARALLELISM: 3
           JAVA_OPTS: -Dorg.gradle.daemon=false
           GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
           FAILED_TEST_JSON_DIRECTORY: ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/

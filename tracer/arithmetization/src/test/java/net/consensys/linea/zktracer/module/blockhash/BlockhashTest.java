@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blockhash;
 
-import static net.consensys.linea.replaytests.ReplayTestTools.replay;
+import static net.consensys.linea.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.SEPOLIA_PRAGUE_TESTCONFIG;
 import static net.consensys.linea.zktracer.Trace.BLOCKHASH_MAX_HISTORY;
 
@@ -98,12 +98,6 @@ public class BlockhashTest extends TracerTestBase {
                 .op(OpCode.STOP)
                 .compile())
         .run(chainConfig, testInfo);
-  }
-
-  @Tag("replay")
-  @Test
-  void someHistoricalHashesAreChecked(TestInfo testInfo) {
-    replay(SEPOLIA_PRAGUE_TESTCONFIG, "19562398.mainnet.json.gz", testInfo);
   }
 
   /**

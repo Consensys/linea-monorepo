@@ -12,9 +12,9 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.replaytests;
+package net.consensys.linea.legacyReplaytests;
 
-import static net.consensys.linea.replaytests.ReplayTestTools.replay;
+import static net.consensys.linea.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
@@ -25,14 +25,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-/** Failing block for ADD ?! */
-@Disabled
+/** Insufficient balance at some address */
 @Tag("replay")
+@Disabled
 @ExtendWith(UnitTestWatcher.class)
-public class Issue1274Tests extends TracerTestBase {
+public class Issue1116Tests extends TracerTestBase {
 
   @Test
-  void issue_1274_mainnet_block_7734306(TestInfo testInfo) {
-    replay(OLD_MAINNET_TESTCONFIG, "7734306.mainnet.json.gz", testInfo);
+  void issue_1116_block_8019521(TestInfo testInfo) {
+    replay(OLD_MAINNET_TESTCONFIG, "legacy/8019521.mainnet.json.gz", testInfo);
   }
 }

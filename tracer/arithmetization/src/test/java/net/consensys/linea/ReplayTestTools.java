@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.replaytests;
+package net.consensys.linea;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -28,8 +28,8 @@ import java.util.zip.GZIPInputStream;
 
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
+import net.consensys.linea.legacyReplaytests.ReplayTests;
 import net.consensys.linea.testing.ReplayExecutionEnvironment;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
