@@ -53,7 +53,6 @@ func (c *piChiIota) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccak
 				round,
 				deriveName("AIOTA_BASE2", x, y),
 				colSize,
-				true,
 			)
 
 			// declares the subslices in base B and base A
@@ -63,14 +62,12 @@ func (c *piChiIota) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccak
 					round,
 					deriveName("AIOTA_BASE2_SLICED", x, y, k),
 					colSize,
-					true,
 				)
 				// base A
 				c.AIotaBaseASliced[x][y][k] = comp.InsertCommit(
 					round,
 					deriveName("AIOTA_BASE1_SLICED", x, y, k),
 					colSize,
-					true,
 				)
 			}
 		}
@@ -191,9 +188,9 @@ func (c *piChiIota) assign(
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for k := 0; k < numSlice; k++ {
-				aPiOut[x][y] = aRho[x][y].GetColAssignment(run).
-					SubVector(0, effNumRows).
-					IntoRegVecSaveAlloc()
+				aPiOut[x][y] = aRho[x][y].GetColAssignment(run). // #nosec G602 -- the slice is an array and not a slice
+											SubVector(0, effNumRows).
+											IntoRegVecSaveAlloc()
 			}
 		}
 	}

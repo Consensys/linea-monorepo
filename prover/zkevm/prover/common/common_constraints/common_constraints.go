@@ -22,22 +22,17 @@ func MustZeroWhenInactive(comp *wizard.CompiledIOP, isActive any, cs ...ifaces.C
 
 	if ccol, isc := isActive.(verifiercol.ConstCol); isc {
 
-		if !ccol.IsBase() {
-			utils.Panic("activator column is defined over field extensions with value=%v", ccol.Ext.String())
-			return
-		}
-
-		if ccol.Base.IsOne() {
+		if ccol.F.IsOne() {
 			// The constraint is meaningless in that situation
 			return
 		}
 
-		if !ccol.Base.IsZero() {
-			utils.Panic("activator column is not boolean: is const-col with value=%v", ccol.Base.String())
+		if !ccol.F.IsZero() {
+			utils.Panic("activator column is not boolean: is const-col with value=%v", ccol.F.String())
 		}
 
 		// expectedly, the only possibility
-		isActive = sym.NewConstant(ccol.Base)
+		isActive = sym.NewConstant(ccol.F)
 	}
 
 	for _, c := range cs {

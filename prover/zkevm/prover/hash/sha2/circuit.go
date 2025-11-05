@@ -30,12 +30,12 @@ func (sc *SHA2Circuit) Define(api frontend.API) error {
 
 // sha2BlockPermutationInstance represents a instance of the sha2 block permutation.
 type sha2BlockPermutationInstance struct {
-	// prevDigest is the previous digest formatted as 8 uint32
-	PrevDigest [2]frontend.Variable
-	// the block formatted as [16]uint32
-	Block [16]frontend.Variable
-	// the current digest on 8 x uint32
-	NewDigest [2]frontend.Variable
+	// prevDigest is the previous digest formatted as 16 uint16
+	PrevDigest [numLimbsPerState]frontend.Variable
+	// the block formatted as [32]uint16
+	Block [numLimbsPerBlock]frontend.Variable
+	// the current digest on 16 x uint16
+	NewDigest [numLimbsPerState]frontend.Variable
 }
 
 // checkSha2Permutation adds the constraints ensuring the correctness of the

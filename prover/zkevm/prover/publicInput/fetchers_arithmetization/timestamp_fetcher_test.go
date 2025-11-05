@@ -35,8 +35,13 @@ func TestTimestampFetcher(t *testing.T) {
 		// assign the timestamp fetcher
 		AssignTimestampFetcher(run, fetcher, bdc)
 		// two simple sanity checks based on the mock test data
-		assert.Equal(t, fetcher.First.GetColAssignmentAt(run, 0), field.NewElement(0xa))
-		assert.Equal(t, fetcher.Last.GetColAssignmentAt(run, 0), field.NewElement(0xcd))
+		nbLimbs := len(fetcher.First)
+		assert.Equal(t, fetcher.First[nbLimbs-1].GetColAssignmentAt(run, 0), field.NewElement(0xa))
+		assert.Equal(t, fetcher.Last[nbLimbs-1].GetColAssignmentAt(run, 0), field.NewElement(0xcd))
+		for i := range nbLimbs - 1 {
+			assert.Equal(t, fetcher.First[i].GetColAssignmentAt(run, 0), field.Zero())
+			assert.Equal(t, fetcher.Last[i].GetColAssignmentAt(run, 0), field.Zero())
+		}
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)

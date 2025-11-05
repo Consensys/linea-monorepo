@@ -1,9 +1,13 @@
 package statesummary
 
 import (
+	"encoding/binary"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 /*
@@ -52,41 +56,46 @@ for each address, storage key and block number, it uses the last key occurrence 
 to find out the last corresponding storage value present in the arithmetization's scp.
 */
 func (sr *ArithmetizationStorageParser) Process() {
+	if sr.scp == nil {
+		// for testing without using an scp (storage consistency permutation) table
+		return
+	}
+	for index := 0; index < sr.scp.PeekAtStorage.Size(); index++ {
+		isLastKOCBlock := sr.scp.LastKOCBlock.GetColAssignmentAt(sr.run, index)
+		if isLastKOCBlock.IsOne() {
+			blockFieldElemBytes := getLimbBytes(sr.scp.BlockNumber[:], sr.run, index)
+			block := binary.BigEndian.Uint64(blockFieldElemBytes)
+			keyHIBytes := getLimbBytes(sr.scp.KeyHI[:], sr.run, index)
+			keyLOBytes := getLimbBytes(sr.scp.KeyLO[:], sr.run, index)
+			keyBytes := make([]byte, 0, 32)
+			keyBytes = append(keyBytes, keyHIBytes...)
+			keyBytes = append(keyBytes, keyLOBytes...)
+			address := getLimbBytes(sr.scp.Address[:], sr.run, index)
+			mapKey := KeysAndBlock{
+				address:    types.Bytes32(address),
+				storageKey: types.FullBytes32(keyBytes),
+				block:      utils.ToInt(block),
+			}
 
-	utils.Panic("adjust for koalabear")
+			valueHIBytes := getLimbBytes(sr.scp.ValueHINext[:], sr.run, index)
+			valueLOBytes := getLimbBytes(sr.scp.ValueLONext[:], sr.run, index)
+			valueBytes := make([]byte, 0, 32)
+			valueBytes = append(valueBytes, valueHIBytes[16:]...)
+			valueBytes = append(valueBytes, valueLOBytes[16:]...)
+			sr.Values[mapKey] = types.FullBytes32(valueBytes)
+		}
+	}
+}
 
-	// if sr.scp == nil {
-	// 	// for testing without using an scp (storage consistency permutation) table
-	// 	return
-	// }
-	// for index := 0; index < sr.scp.PeekAtStorage.Size(); index++ {
-	// 	isLastKOCBlock := sr.scp.LastKOCBlock.GetColAssignmentAt(sr.run, index)
-	// 	if isLastKOCBlock.IsOne() {
-	// 		blockFieldElem := sr.scp.BlockNumber.GetColAssignmentAt(sr.run, index)
-	// 		block := blockFieldElem.Uint64()
-	// 		keyHI := sr.scp.KeyHI.GetColAssignmentAt(sr.run, index)
-	// 		keyHIBytes := keyHI.Bytes()
-	// 		keyLO := sr.scp.KeyLO.GetColAssignmentAt(sr.run, index)
-	// 		keyLOBytes := keyLO.Bytes()
-	// 		keyBytes := make([]byte, 0, 32)
-	// 		keyBytes = append(keyBytes, keyHIBytes[16:]...)
-	// 		keyBytes = append(keyBytes, keyLOBytes[16:]...)
-	// 		address := sr.scp.Address.GetColAssignmentAt(sr.run, index)
-	// 		mapKey := KeysAndBlock{
-	// 			address:    address.Bytes(),
-	// 			storageKey: types.FullBytes32(keyBytes),
-	// 			block:      utils.ToInt(block),
-	// 		}
+// getLimbBytes receives limbs of some element and returns byte representation of those limbs from the
+// runtime. It is assumed that limb size is equal to common.LimbBytes.
+func getLimbBytes(cols []ifaces.Column, run *wizard.ProverRuntime, index int) []byte {
+	var colBytes []byte
+	for i := range cols {
+		colLimb := cols[i].GetColAssignmentAt(run, index)
+		colLimbBytes := colLimb.Bytes()
+		colBytes = append(colBytes, colLimbBytes[fr.Bytes-common.LimbBytes:]...)
+	}
 
-	// 		valueHI := sr.scp.ValueHINext.GetColAssignmentAt(sr.run, index)
-	// 		valueHIBytes := valueHI.Bytes()
-	// 		valueLO := sr.scp.ValueLONext.GetColAssignmentAt(sr.run, index)
-	// 		valueLOBytes := valueLO.Bytes()
-
-	// 		valueBytes := make([]byte, 0, 32)
-	// 		valueBytes = append(valueBytes, valueHIBytes[16:]...)
-	// 		valueBytes = append(valueBytes, valueLOBytes[16:]...)
-	// 		sr.Values[mapKey] = types.FullBytes32(valueBytes)
-	// 	}
-	// }
+	return colBytes
 }

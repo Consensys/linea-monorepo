@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/gnark/std/math/bitslice"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/math/emulated/emparams"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 var fpParams sw_bn254.BaseField
@@ -20,9 +21,9 @@ type (
 	fpElement = emulated.Element[emparams.BN254Fp]
 )
 
-// G1ElementWizard represents G1 element as Wizard limbs (2 limbs of 128 bits)
+// G1ElementWizard represents G1 element as Wizard limbs (8 columns, 2 limbs of 128 bits)
 type G1ElementWizard struct {
-	P [nbG1Limbs]frontend.Variable
+	P [nbG1Limbs * common.NbLimbU128]frontend.Variable
 }
 
 // ToG1Element converts G1ElementWizard to G1Affine used in circuit
@@ -42,9 +43,9 @@ func (c *G1ElementWizard) ToG1Element(api frontend.API, fp *emulated.Field[sw_bn
 	return P
 }
 
-// G2ElementWizard represents G2 element as Wizard limbs (4 limbs of 128 bits)
+// G2ElementWizard represents G2 element as Wizard limbs (8 columns, 4 limbs of 16 bits)
 type G2ElementWizard struct {
-	Q [nbG2Limbs]frontend.Variable
+	Q [nbG2Limbs * common.NbLimbU128]frontend.Variable
 }
 
 // ToG2Element converts G2ElementWizard to G2Affine used in circuit
@@ -90,7 +91,7 @@ func (c *G2ElementWizard) ToG2Element(api frontend.API, fp *emulated.Field[sw_bn
 
 // GtElementWizard represents Gt element as Wizard limbs (24 limbs of 128 bits)
 type GtElementWizard struct {
-	T [nbGtLimbs]frontend.Variable
+	T [nbGtLimbs * common.NbLimbU128]frontend.Variable
 }
 
 // ToGtElement converts GtElementWizard to target group element used in circuit
@@ -108,30 +109,30 @@ func (c *GtElementWizard) ToGtElement(api frontend.API, fp *emulated.Field[sw_bn
 	C1B2XLimbs := make([]frontend.Variable, fpParams.NbLimbs())
 	C1B2YLimbs := make([]frontend.Variable, fpParams.NbLimbs())
 
-	C0B0XLimbs[2], C0B0XLimbs[3] = bitslice.Partition(api, c.T[0], 64, bitslice.WithNbDigits(128))
-	C0B0XLimbs[0], C0B0XLimbs[1] = bitslice.Partition(api, c.T[1], 64, bitslice.WithNbDigits(128))
-	C0B0YLimbs[2], C0B0YLimbs[3] = bitslice.Partition(api, c.T[2], 64, bitslice.WithNbDigits(128))
-	C0B0YLimbs[0], C0B0YLimbs[1] = bitslice.Partition(api, c.T[3], 64, bitslice.WithNbDigits(128))
-	C0B1XLimbs[2], C0B1XLimbs[3] = bitslice.Partition(api, c.T[4], 64, bitslice.WithNbDigits(128))
-	C0B1XLimbs[0], C0B1XLimbs[1] = bitslice.Partition(api, c.T[5], 64, bitslice.WithNbDigits(128))
-	C0B1YLimbs[2], C0B1YLimbs[3] = bitslice.Partition(api, c.T[6], 64, bitslice.WithNbDigits(128))
-	C0B1YLimbs[0], C0B1YLimbs[1] = bitslice.Partition(api, c.T[7], 64, bitslice.WithNbDigits(128))
-	C0B2XLimbs[2], C0B2XLimbs[3] = bitslice.Partition(api, c.T[8], 64, bitslice.WithNbDigits(128))
-	C0B2XLimbs[0], C0B2XLimbs[1] = bitslice.Partition(api, c.T[9], 64, bitslice.WithNbDigits(128))
-	C0B2YLimbs[2], C0B2YLimbs[3] = bitslice.Partition(api, c.T[10], 64, bitslice.WithNbDigits(128))
-	C0B2YLimbs[0], C0B2YLimbs[1] = bitslice.Partition(api, c.T[11], 64, bitslice.WithNbDigits(128))
-	C1B0XLimbs[2], C1B0XLimbs[3] = bitslice.Partition(api, c.T[12], 64, bitslice.WithNbDigits(128))
-	C1B0XLimbs[0], C1B0XLimbs[1] = bitslice.Partition(api, c.T[13], 64, bitslice.WithNbDigits(128))
-	C1B0YLimbs[2], C1B0YLimbs[3] = bitslice.Partition(api, c.T[14], 64, bitslice.WithNbDigits(128))
-	C1B0YLimbs[0], C1B0YLimbs[1] = bitslice.Partition(api, c.T[15], 64, bitslice.WithNbDigits(128))
-	C1B1XLimbs[2], C1B1XLimbs[3] = bitslice.Partition(api, c.T[16], 64, bitslice.WithNbDigits(128))
-	C1B1XLimbs[0], C1B1XLimbs[1] = bitslice.Partition(api, c.T[17], 64, bitslice.WithNbDigits(128))
-	C1B1YLimbs[2], C1B1YLimbs[3] = bitslice.Partition(api, c.T[18], 64, bitslice.WithNbDigits(128))
-	C1B1YLimbs[0], C1B1YLimbs[1] = bitslice.Partition(api, c.T[19], 64, bitslice.WithNbDigits(128))
-	C1B2XLimbs[2], C1B2XLimbs[3] = bitslice.Partition(api, c.T[20], 64, bitslice.WithNbDigits(128))
-	C1B2XLimbs[0], C1B2XLimbs[1] = bitslice.Partition(api, c.T[21], 64, bitslice.WithNbDigits(128))
-	C1B2YLimbs[2], C1B2YLimbs[3] = bitslice.Partition(api, c.T[22], 64, bitslice.WithNbDigits(128))
-	C1B2YLimbs[0], C1B2YLimbs[1] = bitslice.Partition(api, c.T[23], 64, bitslice.WithNbDigits(128))
+	//C0B0XLimbs[2], C0B0XLimbs[3] = bitslice.Partition(api, c.T[0], 64, bitslice.WithNbDigits(128))
+	//C0B0XLimbs[0], C0B0XLimbs[1] = bitslice.Partition(api, c.T[1], 64, bitslice.WithNbDigits(128))
+	//C0B0YLimbs[2], C0B0YLimbs[3] = bitslice.Partition(api, c.T[2], 64, bitslice.WithNbDigits(128))
+	//C0B0YLimbs[0], C0B0YLimbs[1] = bitslice.Partition(api, c.T[3], 64, bitslice.WithNbDigits(128))
+	//C0B1XLimbs[2], C0B1XLimbs[3] = bitslice.Partition(api, c.T[4], 64, bitslice.WithNbDigits(128))
+	//C0B1XLimbs[0], C0B1XLimbs[1] = bitslice.Partition(api, c.T[5], 64, bitslice.WithNbDigits(128))
+	//C0B1YLimbs[2], C0B1YLimbs[3] = bitslice.Partition(api, c.T[6], 64, bitslice.WithNbDigits(128))
+	//C0B1YLimbs[0], C0B1YLimbs[1] = bitslice.Partition(api, c.T[7], 64, bitslice.WithNbDigits(128))
+	//C0B2XLimbs[2], C0B2XLimbs[3] = bitslice.Partition(api, c.T[8], 64, bitslice.WithNbDigits(128))
+	//C0B2XLimbs[0], C0B2XLimbs[1] = bitslice.Partition(api, c.T[9], 64, bitslice.WithNbDigits(128))
+	//C0B2YLimbs[2], C0B2YLimbs[3] = bitslice.Partition(api, c.T[10], 64, bitslice.WithNbDigits(128))
+	//C0B2YLimbs[0], C0B2YLimbs[1] = bitslice.Partition(api, c.T[11], 64, bitslice.WithNbDigits(128))
+	//C1B0XLimbs[2], C1B0XLimbs[3] = bitslice.Partition(api, c.T[12], 64, bitslice.WithNbDigits(128))
+	//C1B0XLimbs[0], C1B0XLimbs[1] = bitslice.Partition(api, c.T[13], 64, bitslice.WithNbDigits(128))
+	//C1B0YLimbs[2], C1B0YLimbs[3] = bitslice.Partition(api, c.T[14], 64, bitslice.WithNbDigits(128))
+	//C1B0YLimbs[0], C1B0YLimbs[1] = bitslice.Partition(api, c.T[15], 64, bitslice.WithNbDigits(128))
+	//C1B1XLimbs[2], C1B1XLimbs[3] = bitslice.Partition(api, c.T[16], 64, bitslice.WithNbDigits(128))
+	//C1B1XLimbs[0], C1B1XLimbs[1] = bitslice.Partition(api, c.T[17], 64, bitslice.WithNbDigits(128))
+	//C1B1YLimbs[2], C1B1YLimbs[3] = bitslice.Partition(api, c.T[18], 64, bitslice.WithNbDigits(128))
+	//C1B1YLimbs[0], C1B1YLimbs[1] = bitslice.Partition(api, c.T[19], 64, bitslice.WithNbDigits(128))
+	//C1B2XLimbs[2], C1B2XLimbs[3] = bitslice.Partition(api, c.T[20], 64, bitslice.WithNbDigits(128))
+	//C1B2XLimbs[0], C1B2XLimbs[1] = bitslice.Partition(api, c.T[21], 64, bitslice.WithNbDigits(128))
+	//C1B2YLimbs[2], C1B2YLimbs[3] = bitslice.Partition(api, c.T[22], 64, bitslice.WithNbDigits(128))
+	//C1B2YLimbs[0], C1B2YLimbs[1] = bitslice.Partition(api, c.T[23], 64, bitslice.WithNbDigits(128))
 
 	e12Tower := [12]*fpElement{
 		fp.NewElement(C0B0XLimbs),
@@ -184,7 +185,7 @@ func (c *MultiG2GroupcheckCircuit) Define(api frontend.API) error {
 // G2GroupCheckInstance is a single instance of G2 group check.
 type G2GroupCheckInstance struct {
 	Q         G2ElementWizard
-	IsSuccess frontend.Variable
+	IsSuccess [common.NbLimbU128]frontend.Variable
 }
 
 func (c *G2GroupCheckInstance) Check(api frontend.API, fp *emulated.Field[sw_bn254.BaseField], pairing *sw_bn254.Pairing) error {
@@ -194,7 +195,7 @@ func (c *G2GroupCheckInstance) Check(api frontend.API, fp *emulated.Field[sw_bn2
 	return nil
 }
 
-// MultiG1GroupcheckCircuit is a circuit that checks multiple Miller loop
+// MultiMillerLoopMulCircuit is a circuit that checks multiple Miller loop
 // computation correctness. Use [newMultiMillerLoopMulCircuit] to create a new
 // instance with bounded number of allowed checks.
 type MultiMillerLoopMulCircuit struct {
@@ -277,7 +278,7 @@ type MillerLoopFinalExpInstance struct {
 	Prev     GtElementWizard
 	P        G1ElementWizard
 	Q        G2ElementWizard
-	Expected [2]frontend.Variable
+	Expected [2 * common.NbLimbU128]frontend.Variable
 }
 
 func (c *MillerLoopFinalExpInstance) Check(api frontend.API, fp *emulated.Field[sw_bn254.BaseField], pairing *sw_bn254.Pairing) error {

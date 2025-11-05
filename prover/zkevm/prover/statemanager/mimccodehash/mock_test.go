@@ -1,6 +1,8 @@
 package mimccodehash
 
 import (
+	"fmt"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"os"
 	"testing"
 
@@ -32,7 +34,7 @@ func TestMiMCCodeHash(t *testing.T) {
 
 	var (
 		romInput    *RomInput
-		romLexInput *RomLexInput
+		romLexInput = &RomLexInput{}
 		mod         Module
 	)
 
@@ -40,18 +42,26 @@ func TestMiMCCodeHash(t *testing.T) {
 
 		// Define romInput
 		romInput = &RomInput{
-			CFI:      ctRom.GetCommit(build, "CFI"),
-			Acc:      ctRom.GetCommit(build, "ACC"),
-			NBytes:   ctRom.GetCommit(build, "NBYTES"),
-			Counter:  ctRom.GetCommit(build, "COUNTER"),
-			CodeSize: ctRom.GetCommit(build, "CODESIZE"),
+			NBytes:  ctRom.GetCommit(build, "NBYTES"),
+			Counter: ctRom.GetCommit(build, "COUNTER"),
+		}
+
+		for i := range common.NbLimbU128 {
+			romInput.Acc[i] = ctRom.GetCommit(build, fmt.Sprintf("ACC_%d", i))
+		}
+
+		for i := range common.NbLimbU32 {
+			romInput.CFI[i] = ctRom.GetCommit(build, fmt.Sprintf("CFI_%d", i))
+			romInput.CodeSize[i] = ctRom.GetCommit(build, fmt.Sprintf("CODESIZE_%d", i))
 		}
 
 		// Define romLexInput
-		romLexInput = &RomLexInput{
-			CFIRomLex:  ctRomLex.GetCommit(build, "CFI_ROMLEX"),
-			CodeHashHi: ctRomLex.GetCommit(build, "CODEHASH_HI"),
-			CodeHashLo: ctRomLex.GetCommit(build, "CODEHASH_LO"),
+		for i := range common.NbLimbU256 {
+			romLexInput.CodeHash[i] = ctRomLex.GetCommit(build, fmt.Sprintf("CODEHASH_%d", i))
+		}
+
+		for i := range common.NbLimbU32 {
+			romLexInput.CFIRomLex[i] = ctRomLex.GetCommit(build, fmt.Sprintf("CFI_ROMLEX_%d", i))
 		}
 
 		mod = NewModule(
@@ -67,30 +77,49 @@ func TestMiMCCodeHash(t *testing.T) {
 	}, dummy.Compile)
 
 	proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
-		ctRom.Assign(run,
-			"CFI",
-			"ACC",
-			"NBYTES",
-			"COUNTER",
-			"CODESIZE")
+		codeHashNames := make([]string, len(romLexInput.CodeHash))
+		for i := range romLexInput.CodeHash {
+			codeHashNames[i] = string(romLexInput.CodeHash[i].GetColID())
+		}
+
+		codeSizeNames := make([]string, len(romInput.CodeSize))
+		for i := range romInput.CodeSize {
+			codeSizeNames[i] = string(romInput.CodeSize[i].GetColID())
+		}
+
+		accNames := make([]string, len(romInput.Acc))
+		for i := range romInput.Acc {
+			accNames[i] = string(romInput.Acc[i].GetColID())
+		}
+
+		var ctRomCols = []string{"CFI_0", "CFI_1"}
+		ctRomCols = append(ctRomCols, accNames[:]...)
+		ctRomCols = append(ctRomCols, "NBYTES", "COUNTER")
+		ctRomCols = append(ctRomCols, codeSizeNames[:]...)
+
+		ctRom.Assign(run, ctRomCols[:]...)
 		romInput.completeAssign(run)
 		ctRomLex.Assign(run,
-			"CFI_ROMLEX",
-			"CODEHASH_HI",
-			"CODEHASH_LO")
+			append([]string{"CFI_ROMLEX_0", "CFI_ROMLEX_1"},
+				codeHashNames...)...)
 		mod.Assign(run)
+
+		var ctRomColIds = []string{string(romInput.CFI[0].GetColID()), string(romInput.CFI[1].GetColID())}
+		ctRomColIds = append(ctRomColIds, accNames[:]...)
+		ctRomColIds = append(ctRomColIds, string(romInput.NBytes.GetColID()))
+		ctRomColIds = append(ctRomColIds, string(romInput.Counter.GetColID()))
+		ctRomColIds = append(ctRomColIds, codeSizeNames[:]...)
+
 		ctRom.CheckAssignment(run,
 			// TODO: add also auxiliary columns
-			string(romInput.CFI.GetColID()),
-			string(romInput.Acc.GetColID()),
-			string(romInput.NBytes.GetColID()),
-			string(romInput.Counter.GetColID()),
-			string(romInput.CodeSize.GetColID()),
+			ctRomColIds[:]...,
 		)
+
 		ctRomLex.CheckAssignment(run,
-			string(romLexInput.CFIRomLex.GetColID()),
-			string(romLexInput.CodeHashHi.GetColID()),
-			string(romLexInput.CodeHashLo.GetColID()),
+			append(
+				[]string{string(romLexInput.CFIRomLex[0].GetColID()), string(romLexInput.CFIRomLex[1].GetColID())},
+				codeHashNames[:]...,
+			)...,
 		)
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {

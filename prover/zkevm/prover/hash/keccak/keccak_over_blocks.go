@@ -5,11 +5,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/base_conversion"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 type LaneInfo struct {
