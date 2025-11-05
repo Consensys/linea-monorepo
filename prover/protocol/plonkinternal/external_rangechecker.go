@@ -70,11 +70,10 @@ func newExternalRangeChecker(addGateForRangeCheck bool) (frontend.NewBuilderU32,
 	rcCols := make(chan [][2]int)
 	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder[constraint.U32], error) {
 			b, err := plonkbuilder.From(scs.NewBuilder[constraint.U32])(field, config)
-			// b, err := scs.NewBuilder[constraint.U32](field, config)
 			if err != nil {
 				return nil, fmt.Errorf("could not create new native builder: %w", err)
 			}
-			scb, ok := b.(plonkbuilder.PlonkInWizardBuilder)
+			scb, ok := b.(plonkbuilder.Builder)
 			if !ok {
 				return nil, fmt.Errorf("native builder doesn't implement committer or kvstore")
 			}

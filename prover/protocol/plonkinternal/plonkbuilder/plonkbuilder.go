@@ -11,9 +11,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
-// implementedWideCommitter is an interface grouping the necessary methods
-// for implementing wide commitment over a PLONK-in-Wizard builder. We type
-type implementedWideCommitter interface {
+// Builder is an interface grouping the necessary methods
+// for implementing wide commitment over a PLONK-in-Wizard builder.
+type Builder interface {
 	// StorerBuilder wraps the given builder
 	PlonkInWizardBuilder
 	// WideCommitter allows to commit to variable and obtain extension field element
@@ -21,7 +21,7 @@ type implementedWideCommitter interface {
 }
 
 // ensure that the widecommitter struct implements all required interfaces
-var _ implementedWideCommitter = &widecommitter{}
+var _ Builder = &widecommitter{}
 
 // PlonkInWizardBuilder is the interface for a builder for implemeting
 // PLONK-in-Wizard protocols. It is [frontend.Builder] with some additional
