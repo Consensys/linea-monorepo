@@ -740,7 +740,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       const verifier = await sepoliaFullVerifierFactory.deploy();
       await verifier.waitForDeployment();
       const mainnetFullVerifier = await verifier.getAddress();
-  
+
       // Deploy and initialize LineaRollup
       const initializationData = {
         initialStateRootHash: betaV4_FinalizationData.parentStateRootHash,
@@ -755,27 +755,27 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
       };
-  
+
       const betaV4_1_LineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
         initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor", "incorrect-initializer-order"],
       })) as unknown as TestLineaRollup;
-  
+
       await betaV4_1_LineaRollup.setupParentShnarf(betaV4_FinalizationData.parentAggregationFinalShnarf);
-  
+
       // Send blobs
       const blobFiles = getVersionedBlobFiles("betaV4_1");
-  
+
       await betaV4_1_LineaRollup.setupParentShnarf(betaV4_BlobData.prevShnarf);
-  
+
       for (let i = 0; i < blobFiles.length; i++) {
         await sendVersionedBlobTransactionFromFile(lineaRollup, blobFiles[i], betaV4_1_LineaRollup, "betaV4_1");
       }
-  
+
       const finalBlobFile = JSON.parse(
         fs.readFileSync(`${__dirname}/../../_testData/betaV4_1/${blobFiles.slice(-1)[0]}`, "utf-8"),
       );
-  
+
       // Setup finalize call
       const finalizationData = await generateFinalizationData({
         l1RollingHash: betaV4_FinalizationData.l1RollingHash,
@@ -796,12 +796,12 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
           dataEvaluationClaim: finalBlobFile.expectedY,
         },
       });
-  
+
       finalizationData.lastFinalizedL1RollingHash = betaV4_FinalizationData.parentAggregationLastL1RollingHash;
       finalizationData.lastFinalizedL1RollingHashMessageNumber = BigInt(
         betaV4_FinalizationData.parentAggregationLastL1RollingHashMessageNumber,
       );
-  
+
       // Setup LineaRollup state so that its references to past state, mirror the references in the finalization proof
       await betaV4_1_LineaRollup.setLastFinalizedShnarf(betaV4_FinalizationData.parentAggregationFinalShnarf);
       await betaV4_1_LineaRollup.setLastFinalizedState(
@@ -813,12 +813,12 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         betaV4_FinalizationData.l1RollingHashMessageNumber,
         betaV4_FinalizationData.l1RollingHash,
       );
-  
+
       // *** ACT ***
       const finalizeCompressedCall = betaV4_1_LineaRollup
         .connect(operator)
         .finalizeBlocks(betaV4_FinalizationData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
-  
+
       // *** ASSERT ***
       const eventArgs = [
         BigInt(betaV4_FinalizationData.lastFinalizedBlockNumber) + 1n,
@@ -827,15 +827,15 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         finalizationData.parentStateRootHash,
         finalBlobFile.finalStateRootHash,
       ];
-  
+
       await expectEvent(betaV4_1_LineaRollup, finalizeCompressedCall, "DataFinalizedV3", eventArgs);
-  
+
       const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
         betaV4_1_LineaRollup.stateRootHashes(finalizationData.endBlockNumber),
         betaV4_1_LineaRollup.currentL2BlockNumber(),
         betaV4_1_LineaRollup.currentFinalizedState(),
       ]);
-  
+
       expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
       expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
       expect(lastFinalizedState).to.equal(
