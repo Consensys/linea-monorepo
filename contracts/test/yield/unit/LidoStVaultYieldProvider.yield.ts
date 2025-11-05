@@ -16,7 +16,7 @@ import {
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { ONE_ETHER, OperationType, ZERO_VALUE } from "../../common/constants";
+import { ONE_ETHER, OperationType, ZERO_VALUE, YieldProviderVendor } from "../../common/constants";
 import { ethers } from "hardhat";
 
 describe("LidoStVaultYieldProvider contract - yield operations", () => {
@@ -76,9 +76,11 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const lstLiabilityPrincipalSynced = await yieldManager
         .connect(securityCouncil)
         .syncExternalLiabilitySettlement.staticCall(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore);
-      await yieldManager
-        .connect(securityCouncil)
-        .syncExternalLiabilitySettlement(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore);
+      await expect(
+        yieldManager
+          .connect(securityCouncil)
+          .syncExternalLiabilitySettlement(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore),
+      ).to.not.emit(yieldManager, "LSTLiabilityPrincipalSynced");
 
       // Assert
       expect(lstLiabilityPrincipalSynced).eq(liabilityPrincipalBefore);
@@ -110,9 +112,19 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const lstLiabilityPrincipalSynced = await yieldManager
         .connect(securityCouncil)
         .syncExternalLiabilitySettlement.staticCall(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore);
-      await yieldManager
-        .connect(securityCouncil)
-        .syncExternalLiabilitySettlement(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore);
+      const yieldProviderIndex = await yieldManager.getYieldProviderIndex(yieldProviderAddress);
+      await expect(
+        yieldManager
+          .connect(securityCouncil)
+          .syncExternalLiabilitySettlement(yieldProviderAddress, liabilityShares, liabilityPrincipalBefore),
+      )
+        .to.emit(yieldManager, "LSTLiabilityPrincipalSynced")
+        .withArgs(
+          YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR,
+          yieldProviderIndex,
+          liabilityPrincipalBefore,
+          ethValueOfLidoLiabilityShares,
+        );
 
       // Assert
       expect(lstLiabilityPrincipalSynced).eq(ethValueOfLidoLiabilityShares);

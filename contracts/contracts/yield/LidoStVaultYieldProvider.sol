@@ -256,6 +256,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     // If true, this means an external actor settled liabilities.
     if (liabilityETH < _lstLiabilityPrincipalCached) {
       $$.lstLiabilityPrincipal = liabilityETH;
+      emit LSTLiabilityPrincipalSynced(YieldProviderVendor.LIDO_STVAULT, $$.yieldProviderIndex, _lstLiabilityPrincipalCached, liabilityETH);
       return liabilityETH;
     } else {
       return _lstLiabilityPrincipalCached;
