@@ -6,13 +6,13 @@ import (
 	"errors"
 	"testing"
 
+	gkrposeidon2 "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2/test_utils"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v1/test_utils"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -143,31 +143,38 @@ func testChecksumBatches(t *testing.T, blob []byte, batchEndss ...[]int) {
 		Blob: make([]frontend.Variable, len(blob)),
 	}
 	for _, batchEnds := range batchEndss {
-		var sums, lengths [MaxNbBatches]frontend.Variable
-		batchStart := 0
-
-		for j := range sums {
-			if j < len(batchEnds) {
-				lengths[j] = batchEnds[j] - batchStart
-				sums[j] = gnarkutil.ChecksumMiMCLooselyPackedBytes(blob[batchStart:batchEnds[j]])
-				batchStart = batchEnds[j]
-			} else {
-				sums[j], lengths[j] = 0, 0
-			}
-		}
 
 		assignment := testChecksumCircuit{
-			Blob:      utils.ToVariableSlice(blob),
-			Lengths:   lengths,
-			Sums:      sums,
+			Blob: utils.ToVariableSlice(blob),
+			//Lengths:   lengths,
+			//Sums:      sums,
 			NbBatches: len(batchEnds),
 		}
-		assignment.Sums[blobtestutils.RandIntn(len(batchEnds))] = 3
 
-		assert.Error(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
+		sums, err := batchesChecksumAssign(batchEnds[:], blob)
+		require.NoError(t, err)
 
-		assignment.Sums = sums
+		batchStart := 0
+		for i := range batchEnds {
+			assignment.NativeSums[i] = sums[i].Native
+			assignment.EvaluationPoints[i], err = sums[i].EvaluationPoint()
+			require.NoError(t, err)
+			assignment.TotalSums[i] = sums[i].Total
+			assignment.Lengths[i] = batchEnds[i] - batchStart
+			batchStart = batchEnds[i]
+		}
+
+		for i := len(batchEnds); i < len(assignment.TotalSums); i++ {
+			assignment.TotalSums[i] = 0
+			assignment.Lengths[i] = 0
+			assignment.EvaluationPoints[i] = 0
+			assignment.NativeSums[i] = 0
+		}
+
 		assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
+
+		assignment.TotalSums[blobtestutils.RandIntn(len(batchEnds))] = 3
+		assert.Error(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
 	}
 }
 
@@ -191,22 +198,30 @@ func (c *testParseHeaderCircuit) Define(api frontend.API) error {
 }
 
 type testChecksumCircuit struct {
-	Blob          []frontend.Variable
-	Lengths, Sums [MaxNbBatches]frontend.Variable
-	NbBatches     frontend.Variable
+	Blob                        []frontend.Variable
+	Lengths, NativeSums         [MaxNbBatches]frontend.Variable
+	EvaluationPoints, TotalSums [MaxNbBatches]frontend.Variable
+	NbBatches                   frontend.Variable
 }
 
 func (c *testChecksumCircuit) Define(api frontend.API) error {
 	api.AssertIsLessOrEqual(c.NbBatches, MaxNbBatches-1)
-	api.AssertIsEqual(len(c.Lengths), MaxNbBatches)
-	api.AssertIsEqual(len(c.Sums), MaxNbBatches)
 
-	hsh, err := mimc.NewMiMC(api)
+	compressor, err := gkrposeidon2.NewCompressor(api)
 	if err != nil {
 		return err
 	}
 
-	if err = CheckBatchesSums(api, &hsh, c.NbBatches, c.Blob, c.Lengths[:], c.Sums[:]); err != nil {
+	if err = CheckBatchesSums(
+		api,
+		compressor,
+		MaxNbBatches,
+		c.NbBatches,
+		c.Blob,
+		c.Lengths[:],
+		c.EvaluationPoints[:],
+		[2][]frontend.Variable{c.NativeSums[:], c.TotalSums[:]},
+	); err != nil {
 		return err
 	}
 	return nil

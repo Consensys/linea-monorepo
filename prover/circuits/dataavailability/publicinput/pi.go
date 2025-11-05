@@ -211,24 +211,15 @@ func packCrumbsEmulated(api frontend.API, words []frontend.Variable) []*emulated
 	return res
 }
 
-// bls12377ScalarToBls12381Scalar converts a scalar in the BLS12-377 field to a scalar in the BLS12-381 field. It assumes the input is only 252 bits long to accommodate arbitrary data
-func bls12377ScalarToBls12381Scalar(api frontend.API, v frontend.Variable) *emulated.Element[emulated.BLS12381Fr] {
-	field, err := emulated.NewField[emulated.BLS12381Fr](api)
-	if err != nil {
-		panic(err)
-	}
-	return field.FromBits(api.ToBinary(v, api.Compiler().FieldBitLen()-1)...)
-}
-
 func bls12381ScalarToBls12377Scalars(api frontend.API, e *emulated.Element[emulated.BLS12381Fr]) (r [2]frontend.Variable) {
 	field, err := emulated.NewField[emulated.BLS12381Fr](api)
 	if err != nil {
 		panic(err)
 	}
-	snarkFieldLen := api.Compiler().FieldBitLen()
+	const nbLowerBits = fr381.Bytes / 2 * 8
 	e = field.Reduce(e)
 	bts := field.ToBits(e)
-	r[1] = api.FromBinary(bts[:snarkFieldLen-1]...)
-	r[0] = api.FromBinary(bts[snarkFieldLen-1:]...)
+	r[1] = api.FromBinary(bts[:nbLowerBits]...)
+	r[0] = api.FromBinary(bts[nbLowerBits:]...)
 	return
 }

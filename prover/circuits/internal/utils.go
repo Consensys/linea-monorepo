@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"slices"
 
-	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark-crypto/hash"
 	hint "github.com/consensys/gnark/constraint/solver"
@@ -605,9 +604,9 @@ func CombineBytesIntoElements(api frontend.API, b [32]frontend.Variable) [2]fron
 }
 
 // Bls12381ScalarToBls12377Scalars interprets its input as a BLS12-381 scalar, with a modular reduction if necessary, returning two BLS12-377 scalars
-// r[1] is the lower 252 bits. r[0] is the higher 3 bits.
+// r[1] is the lower 16 bytes and r[0] is the higher ones.
 // useful in circuit "assign" functions
-func Bls12381ScalarToBls12377Scalars(v interface{}) (r [2][]byte, err error) {
+func Bls12381ScalarToBls12377Scalars(v interface{}) (r [2][16]byte, err error) {
 	var x fr381.Element
 	if _, err = x.SetInterface(v); err != nil {
 		return
@@ -615,11 +614,9 @@ func Bls12381ScalarToBls12377Scalars(v interface{}) (r [2][]byte, err error) {
 
 	b := x.Bytes()
 
-	r[0] = make([]byte, fr377.Bytes)
-	r[0][fr381.Bytes-1] = b[0] >> 4
+	copy(r[0][:], b[:fr381.Bytes/2])
+	copy(r[1][:], b[fr381.Bytes/2:])
 
-	b[0] &= 0x0f
-	r[1] = b[:]
 	return
 }
 

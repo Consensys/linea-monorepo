@@ -4,16 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"hash"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	gcposeidon2permutation "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark/std/compress/lzss"
 	gkrposeidon2 "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
 	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
-	gcposeidon2permutation "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/publicinput"
-	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
@@ -100,9 +98,16 @@ type BatchSums struct {
 	SmallField []byte // batch checksums over small field; unverified by the blob circuit
 	Total      []byte // the batch evaluated at H(batchSumNative, batchSumSmallField)
 }
+
+func (bs BatchSums) EvaluationPoint() ([]byte, error) {
+	return gcposeidon2permutation.
+		NewDefaultPermutation().
+		Compress(bs.Native, bs.SmallField)
+}
+
 type FunctionalPublicInput struct {
 	X              [32]byte
-	Y              [32]byte
+	Y              [2][16]byte
 	SnarkHash      []byte
 	Eip4844Enabled bool
 	BatchSums      []BatchSums // BatchSums checksums for batches of execution data - each corresponding to one exec proof
@@ -180,8 +185,8 @@ func (i *FunctionalPublicInput) Sum() ([]byte, error) {
 	hsh.Reset()
 	hsh.Write(i.X[:16])
 	hsh.Write(i.X[16:])
-	hsh.Write(i.Y[:16])
-	hsh.Write(i.Y[16:])
+	hsh.Write(i.Y[0][:])
+	hsh.Write(i.Y[1][:])
 	hsh.Write(i.SnarkHash)
 	hsh.Write(utils.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
 	hsh.Write(batchesSum)
@@ -365,7 +370,9 @@ func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool
 		batchEnds[i] = batchEnds[i-1] + r.Header.BatchSizes[i]
 	}
 
-	fpi.BatchSums = batchesChecksumAssign(batchEnds, r.RawPayload)
+	if fpi.BatchSums, err = batchesChecksumAssign(batchEnds, r.RawPayload); err != nil {
+		return
+	}
 
 	fpi.X = x
 
@@ -388,7 +395,7 @@ func init() {
 	registerHints()
 }
 
-func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
+func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element, maxNbBatches int) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
 
 	fpi, dict, err := AssignFPI(blobBytes, dictStore, eip4844Enabled, x, y)
 	if err != nil {
@@ -404,7 +411,7 @@ func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x
 		return
 	}
 
-	sfpi, err := fpi.ToSnarkType()
+	sfpi, err := fpi.ToSnarkType(maxNbBatches)
 	if err != nil {
 		return
 	}
@@ -427,7 +434,6 @@ func batchesChecksumAssign(ends []int, payload []byte) ([]BatchSums, error) {
 
 	nativeHash := gcHash.POSEIDON2_BLS12_377.New()
 	smallFieldHash := gcHash.POSEIDON2_KOALABEAR.New()
-	nativeCompressor := gcposeidon2permutation.NewDefaultPermutation()
 
 	var batchNativeBuffer bytes.Buffer
 
@@ -452,7 +458,7 @@ func batchesChecksumAssign(ends []int, payload []byte) ([]BatchSums, error) {
 		res[i].Native = nativeHash.Sum(nil)
 		res[i].SmallField = smallFieldHash.Sum(nil)
 
-		evaluationPoint, err := nativeCompressor.Compress(res[i].Native, res[i].SmallField)
+		evaluationPoint, err := res[i].EvaluationPoint()
 		if err != nil {
 			return nil, err
 		}
