@@ -15,9 +15,6 @@ abstract contract LineaRollupYieldExtension is LineaRollupBase, ILineaRollupYiel
   /// @notice The role required to send ETH to the YieldManager.
   bytes32 public constant YIELD_PROVIDER_STAKING_ROLE = keccak256("YIELD_PROVIDER_STAKING_ROLE");
 
-  /// @notice The role required to call fund().
-  bytes32 public constant FUNDER_ROLE = keccak256("FUNDER_ROLE");
-
   /// @notice The role required to set the YieldManager address.
   bytes32 public constant SET_YIELD_MANAGER_ROLE = keccak256("SET_YIELD_MANAGER_ROLE");
 
