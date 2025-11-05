@@ -78,6 +78,10 @@ type CompilationCtx struct {
 		S [3]ifaces.ColAssignment
 		// Commitment randomness
 		Hcp coin.Info
+		// The random coin output is an extension field element, but gnark
+		// expects it to vector of base field elements. HcpEl contains the base
+		// field decomposition of the extension field element.
+		HcpEl []ifaces.Column
 	}
 
 	// Optional field used for specifying range checks option
@@ -391,6 +395,7 @@ func (ctx CompilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
 			O          []ifaces.Column
 			Cp         []ifaces.Column
 			Hcp        coin.Info
+			HcpEl      []ifaces.Column
 			Activators []ifaces.Column
 			TinyPI     []ifaces.Column
 		}{
@@ -399,6 +404,7 @@ func (ctx CompilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
 			O:          ctx.Columns.O,
 			Cp:         ctx.Columns.Cp,
 			Hcp:        ctx.Columns.Hcp,
+			HcpEl:      ctx.Columns.HcpEl,
 			Activators: ctx.Columns.Activators,
 			TinyPI:     ctx.Columns.TinyPI,
 		},
@@ -459,6 +465,7 @@ type GenericPlonkProverAction struct {
 		O          []ifaces.Column
 		Cp         []ifaces.Column
 		Hcp        coin.Info
+		HcpEl      []ifaces.Column
 		Activators []ifaces.Column
 		TinyPI     []ifaces.Column
 	}
