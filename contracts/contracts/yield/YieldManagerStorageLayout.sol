@@ -18,7 +18,7 @@ abstract contract YieldManagerStorageLayout {
 
   /**
    * @notice ERC-7201 namespaced storage layout for a YieldProvider adaptor contract
-   * @custom:storage-location erc7201:linea.storage.YieldManager
+   * @custom:storage-location erc7201:linea.storage.YieldManagerStorage
    * @param minimumWithdrawalReservePercentageBps Minimum withdrawal reserve expressed as basis points of total user funds.
    * @param targetWithdrawalReservePercentageBps Target withdrawal reserve expressed as basis points of total user funds.
    * @param minimumWithdrawalReserveAmount Minimum withdrawal reserve expressed as an absolute number.
