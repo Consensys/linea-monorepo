@@ -71,7 +71,33 @@ tasks.withType(Test).configureEach {
       systemProperty name, System.getProperty(name)
     }
   }
-
+  // Configure default parallelism
+  if (System.getenv().containsKey("JUNIT_TESTS_PARALLELISM")) {
+    systemProperty("junit.jupiter.execution.parallel.enabled", true)
+    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+      System.getenv().getOrDefault("JUNIT_TESTS_PARALLELISM", "4").toInteger())
+  }
+  // Configure BESU-related paths
+  delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/prague")    
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
+  System.setProperty("besu.plugins.dir",
+          System.getenv().getOrDefault("besu.plugins.dir",
+                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/plugins/"
+          )
+  )
+  System.setProperty("besu.traces.dir",
+          System.getenv().getOrDefault("besu.traces.dir",
+                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/traces/"
+          )
+  )
+  systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
+  systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
+  // 
   testlogger {
     // pick a theme - mocha, standard, plain, mocha-parallel, standard-parallel or plain-parallel
     theme 'plain-parallel'
@@ -122,149 +148,92 @@ tasks.withType(Test).configureEach {
   useJUnitPlatform()
 }
 
-jacocoTestReport {
-  reports {
-    xml.required = true
-  }
-}
+// =============================================================================
+// Test Tasks
+// =============================================================================
 
 tasks.test.configure {
+  // Following required as some unit tests run BESU checks
   dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
-
-  delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
-  System.setProperty("besu.plugins.dir",
-          System.getenv().getOrDefault("besu.plugins.dir",
-                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/plugins/"
-          )
-  )
-  System.setProperty("besu.traces.dir",
-          System.getenv().getOrDefault("besu.traces.dir",
-                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/traces/"
-          )
-  )
-
-  systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
-  systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
-
-  systemProperty("junit.jupiter.execution.parallel.enabled", true)
-  systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
-  systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-      System.getenv().getOrDefault("UNIT_TESTS_PARALLELISM", "4").toInteger())
   //
-
   useJUnitPlatform {
-    excludeTags("nightly")
-    excludeTags("replay")
-    excludeTags("weekly")
-    excludeTags("prc-calltests")
-    if (System.getenv("ZKEVM_FORK") == "CANCUN") {
-      excludeTags("disabled-for-cancun-temporarily")
-    }
-  }
-  finalizedBy(jacocoTestReport)
-}
-
-tasks.register("besuNodeTests", Test) {
-  forkEvery = 1
-  maxParallelForks = 3
-
-  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
-
-  delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
-  System.setProperty("besu.plugins.dir",
-          System.getenv().getOrDefault("besu.plugins.dir",
-                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/plugins/"
-          )
-  )
-  System.setProperty("besu.traces.dir",
-          System.getenv().getOrDefault("besu.traces.dir",
-                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/traces/"
-          )
-  )
-
-
-  systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
-  systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
-  environment("RUN_WITH_BESU_NODE", true)
-
-  systemProperty("junit.jupiter.execution.parallel.enabled", false)
-  useJUnitPlatform {
-    excludeTags("nightly")
-    excludeTags("replay")
-    excludeTags("weekly")
+    excludeTags("nightly | replay | weekly")
     excludeTags("prc-calltests")
   }
   finalizedBy(jacocoTestReport)
 }
-
-tasks.register("copyTracerPlugin", Copy) {
-  dependsOn(project(":plugins").tasks.findByPath("jar"))
-  from project(":plugins").tasks.findByPath("jar").outputs.files.collect()
-  into "${System.getProperty("besu.plugins.dir")}"
-}
-
-tasks.register("downloadShoemiBesuPlugin", Download) {
-  src "${besuShomeiPluginBaseUrl}${besuShomeiPluginVersion}/besu-shomei-plugin-${besuShomeiPluginVersion}.jar"
-  dest "${System.getProperty("besu.plugins.dir")}"
-  overwrite false
-}
-
-/*
-  * Fast replay tests (only tagged with replay)
-  * Nightly replay tests (tagged with replay and nightly+replay)
-  * Nightly tests (no replay)
- */
 
 tasks.register("fastReplayTests", Test) {
-  if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
-    systemProperty("junit.jupiter.execution.parallel.enabled", true)
-    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
-    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
-    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
-    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-      System.getenv().getOrDefault("REPLAY_TESTS_PARALLELISM", "1").toInteger())
-  }
-
   useJUnitPlatform {
     includeTags("replay")
-    excludeTags("nightly")
-    excludeTags("weekly")
+    excludeTags("nightly | weekly")
   }
   finalizedBy(jacocoFastReplayTestsReport)
 }
 
-tasks.register("besuNodeFastReplayTests", Test) {
+tasks.register("nightlyReplayTests", Test) {
+  useJUnitPlatform {
+    includeTags("nightly & replay")
+  }
+}
+
+tasks.register("nightlyTests", Test) {
+  useJUnitPlatform {
+    includeTags("nightly")
+    excludeTags("replay")
+  }
+  finalizedBy(jacocoNightlyTestsReport)
+}
+
+tasks.register("weeklyTests", Test) {
+  useJUnitPlatform {
+        includeTags("weekly")
+        excludeTags("replay")
+  }
+  finalizedBy(jacocoWeeklyTestsReport)
+}
+
+tasks.register("weeklyReplayTests", Test) {
+  useJUnitPlatform {
+        includeTags("weekly & replay")
+  }
+  finalizedBy(jacocoWeeklyTestsReport)
+}
+
+tasks.register("prcCallTests", Test) {
+  useJUnitPlatform {
+    includeTags("prc-calltests")
+  }
+  finalizedBy(jacocoPrcCallTestsReport)
+}
+
+// =============================================================================
+// Besu Test Tasks
+// =============================================================================
+
+tasks.register("besuNodeTests", Test) {
+  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
+  //
   forkEvery = 1
   maxParallelForks = 3
-
-  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
-
-  delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
-  System.setProperty("besu.plugins.dir",
-          System.getenv().getOrDefault("besu.plugins.dir",
-                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/plugins/"
-          )
-  )
-  System.setProperty("besu.traces.dir",
-          System.getenv().getOrDefault("besu.traces.dir",
-                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/traces/"
-          )
-  )
-
-
-  systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
-  systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
   environment("RUN_WITH_BESU_NODE", true)
+  //
+  useJUnitPlatform {
+    excludeTags("nightly")
+    excludeTags("replay")
+    excludeTags("weekly")
+    excludeTags("prc-calltests")
+  }
+  finalizedBy(jacocoTestReport)
+}
 
-  systemProperty("junit.jupiter.execution.parallel.enabled", false)
+tasks.register("besuNodeFastReplayTests", Test) {
+  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
+  //
+  forkEvery = 1
+  maxParallelForks = 3
+  environment("RUN_WITH_BESU_NODE", true)
+  //
   useJUnitPlatform {
     includeTags("replay")
     excludeTags("nightly")
@@ -273,6 +242,9 @@ tasks.register("besuNodeFastReplayTests", Test) {
   finalizedBy(jacocoTestReport)
 }
 
+// =============================================================================
+// Jacoco Reports
+// =============================================================================
 
 tasks.register("jacocoFastReplayTestsReport", JacocoReport) {
   reports {
@@ -281,39 +253,6 @@ tasks.register("jacocoFastReplayTestsReport", JacocoReport) {
 
   sourceSets project(":arithmetization").sourceSets.main
   executionData(fastReplayTests)
-}
-
-tasks.register("nightlyReplayTests", Test) {
-  if (System.getenv().containsKey("NIGHTLY_REPLAY_TESTS_PARALLELISM")) {
-    systemProperty("junit.jupiter.execution.parallel.enabled", true)
-    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
-    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
-    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
-    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-      System.getenv().getOrDefault("NIGHTLY_REPLAY_TESTS_PARALLELISM", "1").toInteger())
-  }
-
-  useJUnitPlatform {
-    includeTags("replay")
-    excludeTags("weekly")
-  }
-}
-
-tasks.register("nightlyTests", Test) {
-  if (System.getenv().containsKey("NIGHTLY_TESTS_PARALLELISM")) {
-  systemProperty("junit.jupiter.execution.parallel.enabled", true)
-  systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
-  systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-          System.getenv().getOrDefault("NIGHTLY_TESTS_PARALLELISM", "1").toInteger())
-  }
-
-  useJUnitPlatform {
-    includeTags("nightly")
-    excludeTags("replay")
-  }
-  finalizedBy(jacocoNightlyTestsReport)
 }
 
 tasks.register("jacocoNightlyTestsReport", JacocoReport) {
@@ -325,25 +264,6 @@ tasks.register("jacocoNightlyTestsReport", JacocoReport) {
   executionData(nightlyTests)
 }
 
-/*
-  * Weekly tests (include weekly replays and weekly tests)
-  * Prc Calls tests (only prc calls tests)
- */
-
-tasks.register("weeklyTests", Test) {
-  systemProperty("junit.jupiter.execution.parallel.enabled", true)
-  systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
-  systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-          System.getenv().getOrDefault("WEEKLY_TESTS_PARALLELISM", "8").toInteger())
-
-  useJUnitPlatform {
-    includeTags("weekly")
-  }
-  finalizedBy(jacocoWeeklyTestsReport)
-}
-
 tasks.register("jacocoWeeklyTestsReport", JacocoReport) {
   reports {
     xml.required = true
@@ -353,20 +273,6 @@ tasks.register("jacocoWeeklyTestsReport", JacocoReport) {
   executionData(weeklyTests)
 }
 
-tasks.register("prcCallTests", Test) {
-  systemProperty("junit.jupiter.execution.parallel.enabled", true)
-  systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
-  systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-          System.getenv().getOrDefault("WEEKLY_TESTS_PARALLELISM", "8").toInteger())
-
-  useJUnitPlatform {
-    includeTags("prc-calltests")
-  }
-  finalizedBy(jacocoPrcCallTestsReport)
-}
-
 tasks.register("jacocoPrcCallTestsReport", JacocoReport) {
   reports {
     xml.required = true
@@ -374,6 +280,12 @@ tasks.register("jacocoPrcCallTestsReport", JacocoReport) {
 
   sourceSets project(":arithmetization").sourceSets.main
   executionData(prcCallTests)
+}
+
+jacocoTestReport {
+  reports {
+    xml.required = true
+  }
 }
 
 // Gradle task to concatenate Unit, FastReplay, Nightly, Weekly and Reference Blockchain and State tests exec files
@@ -387,6 +299,23 @@ tasks.register("jacocoUnitFastReplayWeeklyNightlyReferenceBlockchainAndStateTest
   sourceSets project(":arithmetization").sourceSets.main
   executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
 }
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+tasks.register("copyTracerPlugin", Copy) {
+  dependsOn(project(":plugins").tasks.findByPath("jar"))
+  from project(":plugins").tasks.findByPath("jar").outputs.files.collect()
+  into "${System.getProperty("besu.plugins.dir")}"
+}
+
+tasks.register("downloadShoemiBesuPlugin", Download) {
+  src "${besuShomeiPluginBaseUrl}${besuShomeiPluginVersion}/besu-shomei-plugin-${besuShomeiPluginVersion}.jar"
+  dest "${System.getProperty("besu.plugins.dir")}"
+  overwrite false
+}
+
 
 // Configure default build task to require the tracer is built first.
 // This only makes sense for projects which need the tracer.
