@@ -430,6 +430,13 @@ export default class SubmitInvoice extends Command {
       this.error(`No AWS cost data returned for the specified period. startDate=${startDateStr} endDate=${endDateStr}`);
     }
 
+    const estimated = ResultsByTime[0]?.Estimated;
+    if (!estimated || estimated === true) {
+      this.error(
+        `AWS cost data for the specified period is still under estimation. startDate=${startDateStr} endDate=${endDateStr}`,
+      );
+    }
+
     const metric = awsCostsApiFilters.Metrics[0];
     const firstResult = ResultsByTime[0];
     const totalForMetric = firstResult?.Total?.[metric];
