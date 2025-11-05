@@ -264,6 +264,8 @@ type Aggregation struct {
 	// Number of proofs that are supported by the aggregation circuit.
 	NumProofs []int `mapstructure:"num_proofs" validate:"required,dive,gt=0,number"`
 
+	// Remove it as it will be replaced by a constant containing all the circuits
+	//
 	// AllowedInputs determines the "inner" plonk circuits the "outer" aggregation circuit can aggregate.
 	// Order matters.
 	AllowedInputs []string `mapstructure:"allowed_inputs" validate:"required,dive,oneof=execution-dummy execution execution-large execution-limitless blob-decompression-dummy blob-decompression-v0 blob-decompression-v1 emulation-dummy aggregation emulation public-input-interconnection"`

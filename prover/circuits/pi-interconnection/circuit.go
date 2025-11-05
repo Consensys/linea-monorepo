@@ -43,6 +43,25 @@ type Circuit struct {
 	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
 	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
 
+	// IsAllowedCircuitID is a public input parroting up the value of
+	// [AggregationFPIQSnark.IsAllowedCircuitID]. It is needed so that the
+	// aggregation can "see" this value while it cannot access directly the
+	// content of the dynamic chain configuration.
+	//
+	// Its bits encodes which circuit is being allowed in the dynamic chain
+	// configuration. For instance, the bits of weight "3" indicates whether the
+	// circuit ID "3" is allowed and so on.  The packing order of the bits is
+	// LSb to MSb. For instance if
+	//
+	// Circuit ID 0 -> Disallowed
+	// Circuit ID 1 -> Allowed
+	// Circuit ID 2 -> Allowed
+	// Circuit ID 3 -> Disallowed
+	// Circuit ID 4 -> Allowed
+	//
+	// Then the IsAllowedCircuitID public input must be encoded as 0b10110
+	IsAllowedCircuitID frontend.Variable `gnark:",public"`
+
 	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
 
@@ -58,6 +77,8 @@ type Circuit struct {
 	L2MessageServiceAddr types.EthAddress
 	ChainID              uint64
 
+	// TODO: Wiring up all the coin base and base fee
+
 	MaxNbCircuits int // possibly useless TODO consider removing
 	UseGkrMimc    bool
 }
@@ -66,6 +87,9 @@ type Circuit struct {
 // compile and provides internal parameters for the wizard package.
 type compilationSuite = []func(*wizard.CompiledIOP)
 
+// TODO: adds a check to ensure that the value of IsAllowedCircuitID is the
+// same in the public inputs and the public input of the aggregation circuits.
+// + DO the assignment part of it.
 func (c *Circuit) Define(api frontend.API) error {
 	// TODO @Tabaie @alexandre.belling remove hard coded values once these are included in aggregation PI sum
 	api.AssertIsEqual(c.ChainID, c.AggregationFPIQSnark.ChainID)

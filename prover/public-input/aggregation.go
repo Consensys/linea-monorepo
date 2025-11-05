@@ -31,11 +31,16 @@ type Aggregation struct {
 	L1RollingHashMessageNumber              uint
 	L2MsgRootHashes                         []string
 	L2MsgMerkleTreeDepth                    int
-	ChainID                                 uint64
-	L2MessageServiceAddr                    types.EthAddress
+	// TODO add coin base and base fee
+	ChainID              uint64
+	L2MessageServiceAddr types.EthAddress
+	IsAllowedCircuitID   uint64
 }
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
+
+	// TODO: Make sure the dynamic chain configuration is hashed correctly
+
 	if hsh == nil {
 		hsh = sha3.NewLegacyKeccak256()
 	}
@@ -106,6 +111,7 @@ type AggregationFPI struct {
 	LastFinalizedRollingHashMsgNumber uint64
 	ChainID                           uint64 // for now we're forcing all executions to have the same chain ID
 	L2MessageServiceAddr              types.EthAddress
+	IsAllowedCircuitID                uint64
 	L2MsgMerkleTreeRoots              [][32]byte
 	FinalBlockNumber                  uint64
 	FinalBlockTimestamp               uint64
@@ -127,6 +133,7 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			NbDecompression:      pi.NbDecompression,
 			ChainID:              pi.ChainID,
 			L2MessageServiceAddr: pi.L2MessageServiceAddr[:],
+			IsAllowedCircuitID:   pi.IsAllowedCircuitID,
 		},
 		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, len(pi.L2MsgMerkleTreeRoots)),
 		FinalBlockNumber:       pi.FinalBlockNumber,
@@ -157,6 +164,22 @@ type AggregationFPIQSnark struct {
 	LastFinalizedRollingHashNumber frontend.Variable
 	ChainID                        frontend.Variable // WARNING: Currently not bound in Sum
 	L2MessageServiceAddr           frontend.Variable // WARNING: Currently not bound in Sum
+	// IsAllowedCircuitID encode which circuits are allowed in the dynamic
+	// chain configuration.
+	//
+	// Its bits encodes which circuit is being allowed in the dynamic chain
+	// configuration. For instance, the bits of weight "3" indicates whether the
+	// circuit ID "3" is allowed and so on.  The packing order of the bits is
+	// LSb to MSb. For instance if
+	//
+	// Circuit ID 0 -> Disallowed
+	// Circuit ID 1 -> Allowed
+	// Circuit ID 2 -> Allowed
+	// Circuit ID 3 -> Disallowed
+	// Circuit ID 4 -> Allowed
+	//
+	// Then the IsAllowedCircuitID public input must be encoded as 0b10110
+	IsAllowedCircuitID frontend.Variable
 }
 
 type AggregationFPISnark struct {
@@ -175,6 +198,8 @@ type AggregationFPISnark struct {
 
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
 func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
+
+	// TODO: make sure the construction is still correct
 	s = &AggregationFPI{
 		LastFinalizedBlockNumber:          uint64(fpi.LastFinalizedBlockNumber),
 		LastFinalizedBlockTimestamp:       uint64(fpi.ParentAggregationLastBlockTimestamp),
@@ -213,6 +238,9 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 }
 
 func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [32]frontend.Variable {
+
+	// TODO: adds the dynamic chain configuration in it.
+
 	// number of hashes: 12
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,

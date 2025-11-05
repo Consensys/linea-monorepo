@@ -43,6 +43,8 @@ type Circuit struct {
 	// is treated as a constant by the circuit.
 	verifyingKeys []emVkey `gnark:"-"`
 
+	// TODO: Make sure to add always ALL of the verifying keys and that it is no
+	// longer configurable. e.g. they always all added.
 	publicInputVerifyingKey        emVkey              `gnark:"-"`
 	PublicInputProof               emProof             `gnark:",secret"`
 	PublicInputWitness             emWitness           `gnark:",secret"` // ordered for the PI circuit
@@ -69,8 +71,26 @@ func (c *Circuit) Define(api frontend.API) error {
 	vks := append(slices.Clone(c.verifyingKeys), c.publicInputVerifyingKey)
 	piVkIndex := len(vks) - 1
 
+	mask := c.PublicInputWitness.Public[len(c.PublicInputWitness.Public)-1]
+	isCircuitAllowed := api.ToBinary(mask, len(c.verifyingKeys))
+
 	for i := range c.ProofClaims {
-		api.AssertIsDifferent(c.ProofClaims[i].CircuitID, piVkIndex) // TODO @Tabaie is this necessary? can't think of an attack if this is removed
+		// TODO @Tabaie is this necessary? can't think of an attack if this is removed
+		api.AssertIsDifferent(c.ProofClaims[i].CircuitID, piVkIndex)
+
+		// Select the position corresponding to CircuitID in the list of
+		// isActiveCirc. The implementation is naive but also has no concrete
+		// impact on the efficiency of the circuit.
+		//
+		// Zero corresponds to the current circuit being forbidden. It will be
+		// overwritten only if the circuit ID is matched with a whitelisted circuit.
+		isAllowed := frontend.Variable(0)
+		for j := range isCircuitAllowed {
+			isGoodPod := api.IsZero(api.Sub(c.ProofClaims[i].CircuitID, j))
+			isAllowed = api.Select(isGoodPod, isCircuitAllowed[j], isAllowed)
+		}
+
+		api.AssertIsEqual(isAllowed, frontend.Variable(1))
 	}
 
 	// create a lookup table of actual public inputs
