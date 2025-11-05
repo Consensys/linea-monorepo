@@ -22,7 +22,7 @@ func Checksum(dict []byte, version uint16) ([]byte, error) {
 		hsh.Write(b)
 		return hsh.Sum(nil), err
 	case 1:
-		return encode.MiMCChecksumPackedData(dict, 8)
+		return encode.Poseidon2ChecksumPackedData(dict, 8)
 	case 0:
 		return compress.ChecksumPaddedBytes(dict, len(dict), hash.MIMC_BLS12_377.New(), fr.Bits), nil
 	}

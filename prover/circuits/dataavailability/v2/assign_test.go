@@ -62,7 +62,7 @@ func prepare(t require.TestingT, blobBytes []byte) (c *v2.Circuit, a frontend.Ci
 	return &v2.Circuit{
 		Dict:      make([]frontend.Variable, len(r.Dict)),
 		BlobBytes: make([]frontend.Variable, blobcompressorv2.MaxUsableBytes),
-		Config: v2.Config{
+		CircuitSizes: v2.Config{
 			MaxUncompressedNbBytes: len(r.RawPayload) * 3 / 2, // small max blobcompressorv1 size so it compiles in manageable time
 			MaxNbBatches:           r.Header.NbBatches() + 2,
 		},

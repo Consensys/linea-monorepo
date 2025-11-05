@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
-	"github.com/consensys/linea-monorepo/prover/backend/data-availability"
+	"github.com/consensys/linea-monorepo/prover/backend/dataavailability"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
@@ -48,7 +48,7 @@ func Prove(args ProverArgs) error {
 	case jobExecution:
 		return handleExecutionJob(cfg, args)
 	case jobBlobDecompression:
-		return handleBlobDecompressionJob(cfg, args)
+		return handleDataAvailabilityJob(cfg, args)
 	case jobAggregation:
 		return handleAggregationJob(cfg, args)
 	default:
@@ -84,16 +84,16 @@ func handleExecutionJob(cfg *config.Config, args ProverArgs) error {
 	return writeResponse(args.Output, resp)
 }
 
-// handleBlobDecompressionJob processes a blob decompression job
-func handleBlobDecompressionJob(cfg *config.Config, args ProverArgs) error {
-	req := &data-availability.Request{}
+// handleDataAvailabilityJob processes a data availability proof job
+func handleDataAvailabilityJob(cfg *config.Config, args ProverArgs) error {
+	req := &dataavailability.Request{}
 	if err := readRequest(args.Input, req); err != nil {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
-	resp, err := data-availability.Prove(cfg, req)
+	resp, err := dataavailability.Prove(cfg, req)
 	if err != nil {
-		return fmt.Errorf("could not prove the blob decompression: %w", err)
+		return fmt.Errorf("could not prove the data availability: %w", err)
 	}
 
 	return writeResponse(args.Output, resp)

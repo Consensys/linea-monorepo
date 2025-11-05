@@ -72,7 +72,7 @@ func CraftResponseCalldata(req *Request) (*Response, error) {
 	}
 
 	// Compute all the prover fields
-	snarkHash, err := encode.MiMCChecksumPackedData(compressedStream, fr381.Bits-1, encode.NoTerminalSymbol())
+	snarkHash, err := encode.Poseidon2ChecksumPackedData(compressedStream, fr381.Bits-1, encode.NoTerminalSymbol())
 	if err != nil {
 		return nil, fmt.Errorf("crafting response: could not compute snark hash: %w", err)
 	}

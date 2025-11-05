@@ -19,9 +19,9 @@ const maxNbBatches = 100
 func nbConstraints(config v2.Config) int {
 	fmt.Printf("*********************\nfor blob of size %d B or %.2fKB:\n", config.MaxUncompressedNbBytes, float32(config.MaxUncompressedNbBytes)/1024)
 	c := v2.Circuit{
-		BlobBytes: make([]frontend.Variable, 32*4096),
-		Dict:      make([]frontend.Variable, 64*1024),
-		Config:    config,
+		BlobBytes:    make([]frontend.Variable, 32*4096),
+		Dict:         make([]frontend.Variable, 64*1024),
+		CircuitSizes: config,
 	}
 	runtime.GC()
 

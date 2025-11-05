@@ -218,12 +218,12 @@ func PackData(data []byte, inputPackingSize int, hashPackingOptions ...packAlign
 	return bb.Bytes(), err
 }
 
-// MiMCChecksumPackedData re-packs the data tightly into bls12-377 elements and computes the MiMC checksum.
+// Poseidon2ChecksumPackedData re-packs the data tightly into bls12-377 elements and computes the MiMC checksum.
 // only supporting packing without a terminal symbol. Input with a terminal symbol will be interpreted in full padded length.
-func MiMCChecksumPackedData(data []byte, inputPackingSize int, hashPackingOptions ...packAlignOption) ([]byte, error) {
+func Poseidon2ChecksumPackedData(data []byte, inputPackingSize int, hashPackingOptions ...packAlignOption) ([]byte, error) {
 	b, err := PackData(data, inputPackingSize, hashPackingOptions...)
 
-	hsh := hash.MIMC_BLS12_377.New()
+	hsh := hash.POSEIDON2_BLS12_377.New()
 	hsh.Write(b)
 	return hsh.Sum(nil), err
 }

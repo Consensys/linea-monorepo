@@ -2,7 +2,6 @@ package v2
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/consensys/gnark/std/compress/lzss"
 	gkrposeidon2 "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
 	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
+	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
 	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability/publicinput"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
@@ -32,11 +32,6 @@ import (
 	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2"
 )
 
-type Config struct {
-	MaxUncompressedNbBytes int
-	MaxNbBatches           int
-}
-
 // Circuit used to prove data compression and blob submission related operations
 // It performs the following operations:
 //   - Proves the compression
@@ -52,7 +47,7 @@ type Config struct {
 // equivalence of the compressed data stream in the witness and the one claimed
 // on L1.
 type Circuit struct {
-	Config
+	config.CircuitSizes
 
 	// The dictionary used in the compression algorithm
 	Dict []frontend.Variable
@@ -114,7 +109,7 @@ type FunctionalPublicInput struct {
 }
 
 // Check checks that values are within range
-func (i *FunctionalPublicInputQSnark) Check(api frontend.API, config Config) error {
+func (i *FunctionalPublicInputQSnark) Check(api frontend.API, config config.CircuitSizes) error {
 	if len(i.BatchSumsNative) != config.MaxNbBatches {
 		return fmt.Errorf("native batch sums capacity: expected %d, got %d", config.MaxNbBatches, len(i.BatchSumsNative))
 	}
@@ -128,7 +123,7 @@ func (i *FunctionalPublicInputQSnark) Check(api frontend.API, config Config) err
 	return nil
 }
 
-func (i *FunctionalPublicInputSnark) Check(api frontend.API, config Config) error {
+func (i *FunctionalPublicInputSnark) Check(api frontend.API, config config.CircuitSizes) error {
 	if len(i.BatchSumsTotal) != config.MaxNbBatches {
 		return fmt.Errorf("batch sums capacity: expected %d, got %d", config.MaxNbBatches, len(i.BatchSumsTotal))
 	}
@@ -150,7 +145,7 @@ func (i *FunctionalPublicInput) ToSnarkType(maxNbBatches int) (FunctionalPublicI
 	utils.Copy(res.X[:], i.X[:])
 
 	if len(i.BatchSums) > maxNbBatches {
-		return res, errors.New("batches do not fit in circuit")
+		return res, fmt.Errorf("too many batches: expected at most %d, got %d", maxNbBatches, len(i.BatchSums))
 	}
 	res.BatchSumsNative = make([]frontend.Variable, maxNbBatches)
 	res.BatchSumsSmallField = make([]frontend.Variable, maxNbBatches)
@@ -174,21 +169,31 @@ func (i *FunctionalPublicInput) ToSnarkType(maxNbBatches int) (FunctionalPublicI
 func (i *FunctionalPublicInput) Sum() ([]byte, error) {
 	hsh := gcHash.POSEIDON2_BLS12_377.New()
 
-	hsh.Reset()
 	for n := range i.BatchSums {
-		hsh.Write(i.BatchSums[n].Native)
-		hsh.Write(i.BatchSums[n].SmallField)
+		// The evaluation point is a hash of the native and small field batch sums.
+		if evalPt, err := i.BatchSums[n].EvaluationPoint(); err != nil {
+			return nil, err
+		} else {
+			hsh.Write(evalPt)
+		}
 		hsh.Write(i.BatchSums[n].Total)
 	}
-	batchesSum := hsh.Sum(nil)
 
+	batchesSum := hsh.Sum(nil)
 	hsh.Reset()
+
 	hsh.Write(i.X[:16])
 	hsh.Write(i.X[16:])
 	hsh.Write(i.Y[0][:])
-	hsh.Write(i.Y[1][:])
+
+	// To elimintate a hash permutation, incorporate Eip4844Enabled flag into Y[1], which
+	// is never full
+	var buf [len(i.Y[1]) + 1]byte
+	copy(buf[:], i.Y[1][:])
+	buf[len(i.Y[1])] = utils.Ite(i.Eip4844Enabled, byte(1), 0)
+	hsh.Write(buf[:])
+
 	hsh.Write(i.SnarkHash)
-	hsh.Write(utils.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
 	hsh.Write(batchesSum)
 	return hsh.Sum(nil), nil
 }
@@ -198,13 +203,20 @@ func (i *FunctionalPublicInput) Sum() ([]byte, error) {
 func (i *FunctionalPublicInputQSnark) Sum(api frontend.API, hsh snarkHash.FieldHasher, batchesSum frontend.Variable) frontend.Variable {
 	radix := big.NewInt(256)
 	hsh.Reset()
-	hsh.Write(compress.ReadNum(api, i.X[:16], radix), compress.ReadNum(api, i.X[16:], radix), i.Y[0], i.Y[1], i.SnarkHash, i.Eip4844Enabled, batchesSum)
+	hsh.Write(
+		compress.ReadNum(api, i.X[:16], radix),
+		compress.ReadNum(api, i.X[16:], radix),
+		i.Y[0],
+		api.Add(api.Mul(i.Y[1], 256), i.Eip4844Enabled),
+		i.SnarkHash,
+		batchesSum,
+	)
 	return hsh.Sum()
 }
 
 // Sum hashes the inputs together into a single "de facto" public input
 // WARNING: i.X[-] are not range-checked here
-func (i *FunctionalPublicInputSnark) Sum(api frontend.API) frontend.Variable {
+func (i *FunctionalPublicInputSnark) Sum(api frontend.API) (sum frontend.Variable, batchEvaluationPoints []frontend.Variable) {
 	var (
 		hsh        snarkHash.FieldHasher
 		compressor snarkHash.Compressor
@@ -218,18 +230,23 @@ func (i *FunctionalPublicInputSnark) Sum(api frontend.API) frontend.Variable {
 		panic(err)
 	}
 
-	batchesToHash := make([]frontend.Variable, 3*len(i.BatchSumsNative))
+	batchesToHash := make([]frontend.Variable, 2*len(i.BatchSumsNative))
+	batchEvaluationPoints = make([]frontend.Variable, len(i.BatchSumsNative))
 	for n := range i.BatchSumsNative {
-		batchesToHash[3*n] = i.BatchSumsNative[n]
-		batchesToHash[3*n+1] = i.BatchSumsNative[n]
-		batchesToHash[3*n+2] = i.BatchSumsSmallField[n]
+		batchEvaluationPoints[n] = compressor.Compress(i.BatchSumsNative[n], i.BatchSumsSmallField[n])
+		batchesToHash[2*n] = batchEvaluationPoints[n]
+		batchesToHash[2*n+1] = i.BatchSumsTotal[n]
 	}
-	allBatchesHash := snarkHash.SumMerkleDamgardDynamicLength(api, compressor, 0, api.Mul(3, i.NbBatches), batchesToHash)
+	allBatchesHash := snarkHash.SumMerkleDamgardDynamicLength(api, compressor, 0, api.Mul(2, i.NbBatches), batchesToHash)
 
-	return i.FunctionalPublicInputQSnark.Sum(api, hsh, allBatchesHash)
+	return i.FunctionalPublicInputQSnark.Sum(api, hsh, allBatchesHash), batchEvaluationPoints
 }
 
 func (c Circuit) Define(api frontend.API) error {
+
+	if c.CircuitSizes.DictNbBytes != len(c.Dict) {
+		return fmt.Errorf("dictionary length mismatch: expected %d, got %d", c.CircuitSizes.DictNbBytes, len(c.Dict))
+	}
 
 	var (
 		err        error
@@ -244,7 +261,7 @@ func (c Circuit) Define(api frontend.API) error {
 	}
 
 	// validate the input's form and range
-	if err = c.FuncPI.Check(api, c.Config); err != nil {
+	if err = c.FuncPI.Check(api, c.CircuitSizes); err != nil {
 		return err
 	}
 
@@ -253,7 +270,7 @@ func (c Circuit) Define(api frontend.API) error {
 	blobPacked377 := internal.PackFull(api, blobCrumbs, 2) // repack into bls12-377 elements to compute a checksum
 	hsh.Reset()
 	hsh.Write(blobPacked377...)
-	blobSum := hsh.Sum()
+	api.AssertIsEqual(c.FuncPI.SnarkHash, hsh.Sum())
 
 	// EIP-4844 stuff
 	if evaluation, err := publicinput.VerifyBlobConsistency(api, blobCrumbs, c.FuncPI.X, c.FuncPI.Eip4844Enabled); err != nil {
@@ -268,7 +285,7 @@ func (c Circuit) Define(api frontend.API) error {
 	blobUnpackedBytes, blobUnpackedNbBytes := crumbStreamToByteStream(api, blobCrumbs)
 
 	// get header length, number of batches, and length of each batch
-	headerLen, dictChecksum, nbBatches, bytesPerBatch, err := parseHeader(api, blobUnpackedBytes[:maxBlobNbBytes], blobUnpackedNbBytes)
+	headerLen, dictChecksum, nbBatches, bytesPerBatch, err := parseHeader(api, c.MaxNbBatches, blobUnpackedBytes[:maxBlobNbBytes], blobUnpackedNbBytes)
 	if err != nil {
 		return err
 	}
@@ -293,11 +310,10 @@ func (c Circuit) Define(api frontend.API) error {
 	}
 	api.AssertIsDifferent(payloadLen, -1) // decompression should not fail
 
-	batchEvaluationPoints := make([]frontend.Variable, c.MaxNbBatches)
+	publicInput, batchEvaluationPoints := c.FuncPI.Sum(api)
+	api.AssertIsEqual(c.PublicInput, publicInput)
+
 	// validate "total" batch hashes
-	for i := range c.MaxNbBatches {
-		batchEvaluationPoints[i] = compressor.Compress(c.FuncPI.BatchSumsNative[i], c.FuncPI.BatchSumsSmallField[i])
-	}
 	batchEvaluations := [2][]frontend.Variable{c.FuncPI.BatchSumsNative, c.FuncPI.BatchSumsTotal}
 
 	// compute checksum for each batch
@@ -305,39 +321,29 @@ func (c Circuit) Define(api frontend.API) error {
 		return err
 	}
 
-	api.AssertIsEqual(c.FuncPI.SnarkHash, blobSum)
-
-	api.AssertIsEqual(c.PublicInput, c.FuncPI.Sum(api, hsh))
 	return nil
 }
 
-/*
- *
-*  type builder struct {
-	dictionaryLength int
+type builder struct {
+	config.CircuitSizes
 }
 
- func NewBuilder(dictionaryLength int) *builder {
-	return &builder{dictionaryLength: dictionaryLength}
-}*/
+func NewBuilder(cfg config.CircuitSizes) *builder {
+	return &builder{cfg}
+}
 
 // Compile the decompression circuit
 // Make sure to add the gkrmimc solver options in proving time
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
-	return Compile(b.dictionaryLength), nil
+	return Compile(b.CircuitSizes)
 }
 
-func (config Config) Compile() (constraint.ConstraintSystem, error) {
-	if cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &Circuit{
-		Dict:                  make([]frontend.Variable, dictionaryLength),
-		BlobBytes:             make([]frontend.Variable, blob.MaxUsableBytes),
-		MaxBlobPayloadNbBytes: blob.MaxUncompressedBytes,
-		UseGkrMiMC:            true,
-	}, frontend.WithCapacity(1<<27)); err != nil {
-		panic(err)
-	} else {
-		return cs
-	}
+func Compile(sizes config.CircuitSizes) (constraint.ConstraintSystem, error) {
+	return frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &Circuit{
+		Dict:         make([]frontend.Variable, sizes.DictNbBytes),
+		BlobBytes:    make([]frontend.Variable, blob.MaxUsableBytes),
+		CircuitSizes: sizes,
+	}, frontend.WithCapacity(1<<27))
 }
 
 func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (fpi FunctionalPublicInput, dict []byte, err error) {
@@ -354,11 +360,6 @@ func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool
 
 	if len(r.RawPayload) > blob.MaxUncompressedBytes {
 		err = fmt.Errorf("decompression circuit assignment: blob payload too large : %d. max %d", len(r.RawPayload), blob.MaxUncompressedBytes)
-		return
-	}
-
-	if r.Header.NbBatches() > MaxNbBatches {
-		err = fmt.Errorf("decompression circuit assignment : too many batches in the header : %d. max %d", r.Header.NbBatches(), MaxNbBatches)
 		return
 	}
 
@@ -386,17 +387,13 @@ func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool
 	if len(blobBytes) != 128*1024 {
 		panic("blobBytes length is not 128*1024")
 	}
-	fpi.SnarkHash, err = encode.MiMCChecksumPackedData(blobBytes, fr381.Bits-1, encode.NoTerminalSymbol()) // TODO if forced to remove the above check, pad with zeros
+	fpi.SnarkHash, err = encode.Poseidon2ChecksumPackedData(blobBytes, fr381.Bits-1, encode.NoTerminalSymbol()) // TODO if forced to remove the above check, pad with zeros
 
 	return
 }
 
-func init() {
-	registerHints()
-}
-
-func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element, maxNbBatches int) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
-
+func Assign(circuitSizes config.CircuitSizes, blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
+	registerHints(circuitSizes.MaxNbBatches)
 	fpi, dict, err := AssignFPI(blobBytes, dictStore, eip4844Enabled, x, y)
 	if err != nil {
 		return
@@ -411,7 +408,7 @@ func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x
 		return
 	}
 
-	sfpi, err := fpi.ToSnarkType(maxNbBatches)
+	sfpi, err := fpi.ToSnarkType(circuitSizes.MaxNbBatches)
 	if err != nil {
 		return
 	}

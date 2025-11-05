@@ -6,18 +6,17 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/dataavailability"
-	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
-	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	daconfig "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
+	blobv2 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2"
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-	v1 "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v1"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 )
@@ -56,14 +55,10 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		expectedMaxUncompressedBytes int
 	)
 	switch version {
-	case 0:
-		circuitID = circuits.BlobDecompressionV0CircuitID
-		expectedMaxUsableBytes = blob_v0.MaxUsableBytes
-		expectedMaxUncompressedBytes = blob_v0.MaxUncompressedBytes
-	case 1:
-		circuitID = circuits.BlobDecompressionV1CircuitID
-		expectedMaxUsableBytes = blob_v1.MaxUsableBytes
-		expectedMaxUncompressedBytes = blob_v1.MaxUncompressedBytes
+	case 2:
+		circuitID = circuits.DataAvailabilityV2CircuitID
+		expectedMaxUsableBytes = blobv2.MaxUsableBytes
+		expectedMaxUncompressedBytes = cfg.DataAvailability.MaxUncompressedNbBytes
 	default:
 		return nil, fmt.Errorf("unsupported blob version: %v", version)
 	}
@@ -82,6 +77,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	}
 
 	assignment, pubInput, _snarkHash, err := dataavailability.Assign(
+		daconfig.FromGlobalConfig(cfg.DataAvailability),
 		utils.RightPad(blobBytes, expectedMaxUsableBytes),
 		dictStore,
 		req.Eip4844Enabled,
@@ -144,17 +140,6 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		opts := []any{
 			emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
 			emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
-		}
-
-		// Add the MaxUncompressedBytes field
-		// This is actually not required for an assignment
-		// But in case the proof fails, ProveCheck will use
-		// the assignment as a circuit for the test engine
-		switch c := assignment.(type) {
-		case *v1.Circuit:
-			c.MaxBlobPayloadNbBytes = maxUncompressedBytes
-		default:
-			logrus.Warnf("decompression circuit of type %T. test engine might give an incorrect result.", c)
 		}
 
 		// This actually runs the compression prover

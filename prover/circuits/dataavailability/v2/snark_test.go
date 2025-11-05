@@ -324,7 +324,7 @@ func TestBlobChecksum(t *testing.T) { // aka "snark hash"
 		assignment := testDataChecksumCircuit{
 			DataBytes: dataVarsPadded[:nPadded],
 		}
-		assignment.Checksum, err = encode.MiMCChecksumPackedData(dataPadded[:nPadded], fr381.Bits-1, encode.NoTerminalSymbol())
+		assignment.Checksum, err = encode.Poseidon2ChecksumPackedData(dataPadded[:nPadded], fr381.Bits-1, encode.NoTerminalSymbol())
 		assert.NoError(t, err)
 
 		assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))

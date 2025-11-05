@@ -244,6 +244,9 @@ type Execution struct {
 	LimitlessWithDebug bool `mapstructure:"limitless_with_debug"`
 }
 
+type DataAvailabilitySize struct {
+}
+
 type DataAvailability struct {
 	WithRequestDir `mapstructure:",squash"`
 

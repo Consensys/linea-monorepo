@@ -28,7 +28,6 @@ import (
 
 const (
 	checkSumSize   = 32
-	MaxNbBatches   = 100 // TODO ensure this is a reasonable maximum
 	maxBlobNbBytes = 128 * 1024 * blob.PackingSizeU256 / 256
 )
 
@@ -49,7 +48,7 @@ func readNum(api frontend.API, bytes []frontend.Variable) frontend.Variable {
 // it ignores the dict checksum
 // past nbBatches, the lengths are considered zero
 // all lengths l are guaranteed to be within 0 ≤ l - 31 ≤ nextPowerOfTwo(maxPayloadBytes - 31)
-func parseHeader(api frontend.API, blobBytes []frontend.Variable, blobLen frontend.Variable) (headerLen frontend.Variable, dictHash frontend.Variable, nbBatches frontend.Variable, bytesPerBatch []frontend.Variable, err error) {
+func parseHeader(api frontend.API, maxNbBatches int, blobBytes []frontend.Variable, blobLen frontend.Variable) (headerLen frontend.Variable, dictHash frontend.Variable, nbBatches frontend.Variable, bytesPerBatch []frontend.Variable, err error) {
 	if len(blobBytes) < 2+checkSumSize+blob.NbElemsEncodingBytes { // version + checksum + nbBatches
 		return 0, 0, 0, nil, errors.New("blob too short - no room for header")
 	}
@@ -68,17 +67,17 @@ func parseHeader(api frontend.API, blobBytes []frontend.Variable, blobLen fronte
 	blobBytes = blobBytes[blob.NbElemsEncodingBytes:]
 
 	// read MaxNbBatches 24-bit numbers
-	blobWords := combine(api, blobBytes[:min(MaxNbBatches*blob.ByteLenEncodingBytes, len(blobBytes))], blob.ByteLenEncodingBytes)
+	blobWords := combine(api, blobBytes[:min(maxNbBatches*blob.ByteLenEncodingBytes, len(blobBytes))], blob.ByteLenEncodingBytes)
 
 	// header length is the length of the checksum and nbBatches, plus the length of the batch lengths
 	headerLen = api.Add(2+checkSumSize+blob.NbElemsEncodingBytes, api.Mul(blob.ByteLenEncodingBytes, nbBatches)) // length in words
-	bytesPerBatch = internal.Truncate(api, blobWords[:MaxNbBatches], nbBatches)                                  // zero out the "length" of the batches that don't exist
+	bytesPerBatch = internal.Truncate(api, blobWords[:maxNbBatches], nbBatches)                                  // zero out the "length" of the batches that don't exist
 
 	// range checks for the batch lengths
 	rc := rangecheck.New(api)
 	const maxLMinus31 = blob.MaxUncompressedBytes - 31
 	maxLMinus31Bits := bits.Len(uint(maxLMinus31))
-	iterateInRange(api, nbBatches, MaxNbBatches, func(i int, inRange frontend.Variable) { // TODO-perf decide whether or not to merge this "loop" with the truncation above. PROBABLY NOT WORTH IT: currently this entire function is not even showing up in the profile graph
+	iterateInRange(api, nbBatches, maxNbBatches, func(i int, inRange frontend.Variable) { // TODO-perf decide whether or not to merge this "loop" with the truncation above. PROBABLY NOT WORTH IT: currently this entire function is not even showing up in the profile graph
 		rc.Check(api.MulAcc(api.Mul(-31, inRange), inRange, bytesPerBatch[i]), maxLMinus31Bits) // check for inRange * (bytesPerBatch[i] - 31). i.e. don't check past nbBatches
 	})
 
@@ -434,9 +433,9 @@ func (c *BatchesSumsChecker) PartialChecksumBatchesPackedHint(_ *big.Int, ins, o
 	return gnarkutil.PartialChecksumBatchesLooselyPackedHint(c.MaxNbBatches, c.Compressor, ins, outs)
 }
 
-func registerHints() {
+func registerHints(maxNbBatches int) {
 	lzss.RegisterHints()
-	solver.RegisterHint(batchesSumChecker.PartialChecksumBatchesPackedHint, divBy31Hint)
+	solver.RegisterHint(calculatePartialSumsHint(maxNbBatches), divBy31Hint)
 	internal.RegisterHints()
 }
 
