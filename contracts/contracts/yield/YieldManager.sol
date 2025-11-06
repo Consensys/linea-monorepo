@@ -921,6 +921,11 @@ contract YieldManager is
     if (!ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
     }
+    // Synchronize lstLiabilityPrincipal before using it for a check.
+    _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.syncLSTLiabilityPrincipal, (_yieldProvider))
+    );
     // Enshrine assumption that LST withdrawals are an advance on user withdrawal of funds already on a YieldProvider.
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if ($$.lstLiabilityPrincipal + _amount > $$.userFunds) {

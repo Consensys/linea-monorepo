@@ -397,6 +397,38 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       // Assert
       await expectRevertWithCustomError(yieldProvider, call, "MintLSTDisabledDuringOssification");
     });
+
+    it("Should successfully synchronize LSTLiabilityPrincipal", async () => {
+      // Setup withdrawal
+      const initialFundAmount = 10n * ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, initialFundAmount);
+      const l1MessageService = await yieldManager.L1_MESSAGE_SERVICE();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+
+      // Setup initial LST liability principal
+      const initialLSTLiabilityPrincipal = 10n * ONE_ETHER;
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProvider, initialLSTLiabilityPrincipal);
+
+      // Setup LST sync
+      const syncedLSTLiabilityPrincipal = 5n * ONE_ETHER;
+      await mockSTETH.connect(securityCouncil).setPooledEthBySharesRoundUpReturn(syncedLSTLiabilityPrincipal);
+
+      // Act
+      const withdrawAmount = ONE_ETHER;
+
+      const call = await yieldManager
+        .connect(l1Signer)
+        .withdrawLST(await yieldProvider.getAddress(), withdrawAmount, ethers.Wallet.createRandom().address);
+
+      await call;
+
+      // Assert
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(
+        syncedLSTLiabilityPrincipal + withdrawAmount,
+      );
+    });
   });
 
   describe("initiate ossification", () => {
