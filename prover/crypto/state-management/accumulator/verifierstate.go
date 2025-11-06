@@ -3,7 +3,7 @@ package accumulator
 import (
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -20,7 +20,7 @@ type VerifierState[K, V io.WriterTo] struct {
 	// Internal tree
 	SubTreeRoot Bytes32
 	// Config contains the parameters of the tree
-	Config *smt.Config
+	Config *smt_koalabear.Config
 }
 
 // VerifierState create a verifier state from a prover state. The returned
@@ -36,7 +36,7 @@ func (p *ProverState[K, V]) VerifierState() VerifierState[K, V] {
 
 // updateCheckRoot audit an atomic update of the merkle tree (e.g. one leaf) and
 // returns the new root
-func updateCheckRoot(conf *smt.Config, proof smt.Proof, root, old, new Bytes32) (newRoot Bytes32, err error) {
+func updateCheckRoot(conf *smt_koalabear.Config, proof smt_koalabear.Proof, root, old, new Bytes32) (newRoot Bytes32, err error) {
 
 	if ok := proof.Verify(conf, types.Bytes32ToHash(old), types.Bytes32ToHash(root)); !ok {
 		return Bytes32{}, errors.New("root update audit failed : could not authenticate the old")
@@ -62,19 +62,19 @@ func (v *VerifierState[K, V]) TopRoot() Bytes32 {
 // audited when checking the updates of a leaf in the tree. The function panics
 // if the proof malformed.
 func deferCheckUpdateRoot(
-	conf *smt.Config,
-	proof smt.Proof,
+	conf *smt_koalabear.Config,
+	proof smt_koalabear.Proof,
 	root, old, new Bytes32,
-	appendTo []smt.ProvedClaim,
-) (appended []smt.ProvedClaim, newRoot Bytes32) {
+	appendTo []smt_koalabear.ProvedClaim,
+) (appended []smt_koalabear.ProvedClaim, newRoot Bytes32) {
 	newRootOct, err := proof.RecoverRoot(conf, types.Bytes32ToHash(new))
 	if err != nil {
 		panic(err)
 	}
 	newRoot = types.HashToBytes32(newRootOct)
 	appended = append(appendTo,
-		smt.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToHash(old), Root: types.Bytes32ToHash(root)},
-		smt.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToHash(new), Root: types.Bytes32ToHash(newRoot)},
+		smt_koalabear.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToHash(old), Root: types.Bytes32ToHash(root)},
+		smt_koalabear.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToHash(new), Root: types.Bytes32ToHash(newRoot)},
 	)
 
 	return appended, newRoot

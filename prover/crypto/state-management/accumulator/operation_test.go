@@ -7,7 +7,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +32,7 @@ func dumval(i int) DummyVal {
 }
 
 func newTestAccumulatorPoseidon2() *accumulator.ProverState[DummyKey, DummyVal] {
-	config := &smt.Config{
+	config := &smt_koalabear.Config{
 		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}

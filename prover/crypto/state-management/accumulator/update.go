@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -24,11 +24,11 @@ type UpdateTrace[K, V io.WriterTo] struct {
 	NewValue V      `json:"newValue"`
 	// We call it new next free node, but the value is not updated
 	// during the update.
-	NewNextFreeNode int         `json:"newNextFreeNode"`
-	OldSubRoot      Bytes32     `json:"oldSubRoot"`
-	NewSubRoot      Bytes32     `json:"newSubRoot"`
-	OldOpening      LeafOpening `json:"priorUpdatedLeaf"`
-	Proof           smt.Proof   `json:"proof"`
+	NewNextFreeNode int                 `json:"newNextFreeNode"`
+	OldSubRoot      Bytes32             `json:"oldSubRoot"`
+	NewSubRoot      Bytes32             `json:"newSubRoot"`
+	OldOpening      LeafOpening         `json:"priorUpdatedLeaf"`
+	Proof           smt_koalabear.Proof `json:"proof"`
 }
 
 // UpdateAndProve performs a read on the accumulator. Panics if the associated
@@ -129,9 +129,9 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 
 // DeferMerkleChecks implements the [Trace] interface.
 func (trace UpdateTrace[K, V]) DeferMerkleChecks(
-	config *smt.Config,
-	appendTo []smt.ProvedClaim,
-) []smt.ProvedClaim {
+	config *smt_koalabear.Config,
+	appendTo []smt_koalabear.ProvedClaim,
+) []smt_koalabear.ProvedClaim {
 
 	tuple := KVOpeningTuple[K, V]{
 		Key:         trace.Key,
@@ -151,7 +151,7 @@ func (trace UpdateTrace[K, V]) DeferMerkleChecks(
 	return appendTo
 }
 
-func (trace UpdateTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
+func (trace UpdateTrace[K, V]) HKey(cfg *smt_koalabear.Config) Bytes32 {
 	return hash(cfg, trace.Key)
 }
 

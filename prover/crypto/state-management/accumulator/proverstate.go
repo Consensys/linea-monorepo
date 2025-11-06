@@ -3,7 +3,7 @@ package accumulator
 import (
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -21,14 +21,14 @@ type ProverState[K, V io.WriterTo] struct {
 	// Track the index of the next free node
 	NextFreeNode int64
 	// Internal tree
-	Tree *smt.Tree
+	Tree *smt_koalabear.Tree
 	// Keys associated to the leaf #i
 	Data collection.Mapping[int64, KVOpeningTuple[K, V]]
 }
 
 // InitializeProverState returns an initialized empty accumulator state
-func InitializeProverState[K, V io.WriterTo](conf *smt.Config, location string) *ProverState[K, V] {
-	tree := smt.NewEmptyTree(conf)
+func InitializeProverState[K, V io.WriterTo](conf *smt_koalabear.Config, location string) *ProverState[K, V] {
+	tree := smt_koalabear.NewEmptyTree(conf)
 
 	// Insert the head and the tail in the tree
 	head, tail := Head(), Tail(conf)
@@ -48,7 +48,7 @@ func InitializeProverState[K, V io.WriterTo](conf *smt.Config, location string) 
 }
 
 // Config returns the configuration of the accumulator.
-func (s *ProverState[K, V]) Config() *smt.Config {
+func (s *ProverState[K, V]) Config() *smt_koalabear.Config {
 	return s.Tree.Config
 }
 
@@ -128,7 +128,7 @@ func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 }
 
 // upsertTuple cleanly upsert a tuple in the accumulator, returns a Merkle proof
-func (s *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt.Proof {
+func (s *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt_koalabear.Proof {
 
 	leaf, err := tuple.CheckAndLeaf(s.Config())
 	if err != nil {
@@ -181,16 +181,16 @@ func (s *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt
 }
 
 // rmTuple erases a leaf from the tree.
-func (s *ProverState[K, V]) rmTuple(i int64) smt.Proof {
+func (s *ProverState[K, V]) rmTuple(i int64) smt_koalabear.Proof {
 	oldRoot := s.SubTreeRoot()
 
 	// Update the tree with an empty leaf
 	s.Data.MustExists(i)
 	s.Data.Del(i)
-	s.Tree.Update(int(i), smt.EmptyLeaf())
+	s.Tree.Update(int(i), smt_koalabear.EmptyLeaf())
 	newRoot := s.SubTreeRoot()
 
-	logrus.Tracef("upsert pos %v, leaf %x, root=%x -> %x", i, smt.EmptyLeaf(), oldRoot, newRoot)
+	logrus.Tracef("upsert pos %v, leaf %x, root=%x -> %x", i, smt_koalabear.EmptyLeaf(), oldRoot, newRoot)
 	return s.Tree.MustProve(int(i))
 }
 

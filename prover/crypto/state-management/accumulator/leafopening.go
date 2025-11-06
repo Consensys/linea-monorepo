@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -45,7 +45,7 @@ func (leaf *LeafOpening) WriteTo(w io.Writer) (int64, error) {
 }
 
 // Hash returns a hash of the leaf opening
-func (leaf LeafOpening) Hash(conf *smt.Config) Bytes32 {
+func (leaf LeafOpening) Hash(conf *smt_koalabear.Config) Bytes32 {
 	return hash(conf, &leaf)
 }
 
@@ -60,7 +60,7 @@ func Head() LeafOpening {
 }
 
 // Tail returns the "tail" of the accumulator set
-func Tail(config *smt.Config) LeafOpening {
+func Tail(config *smt_koalabear.Config) LeafOpening {
 	return LeafOpening{
 		Prev: 0,
 		Next: 1, // Points to itself
@@ -70,13 +70,13 @@ func Tail(config *smt.Config) LeafOpening {
 }
 
 // HeadOrTail returns true if the leaf opening is either head or tail
-func (leaf *LeafOpening) HeadOrTail(config *smt.Config) bool {
+func (leaf *LeafOpening) HeadOrTail(config *smt_koalabear.Config) bool {
 	return leaf.HKey == config.HashFunc().MaxBytes32() || leaf.HKey == Bytes32{}
 }
 
 // CheckAndLeaf check the internal consistency of the tuple and returns the hash
 // of the leaf opening (corresponding to a leaf).
-func (t KVOpeningTuple[K, V]) CheckAndLeaf(conf *smt.Config) (Bytes32, error) {
+func (t KVOpeningTuple[K, V]) CheckAndLeaf(conf *smt_koalabear.Config) (Bytes32, error) {
 
 	if t.LeafOpening.HeadOrTail(conf) {
 		return t.LeafOpening.Hash(conf), nil
@@ -106,13 +106,13 @@ func (leaf LeafOpening) CopyWithNext(next int64) LeafOpening {
 }
 
 // MatchValue returns true if the leaf opening opening matches the value
-func (l *LeafOpening) MatchValue(conf *smt.Config, v io.WriterTo) bool {
+func (l *LeafOpening) MatchValue(conf *smt_koalabear.Config, v io.WriterTo) bool {
 	hval := hash(conf, v)
 	return l.HVal == hval
 }
 
 // MatchKey returns true if the leaf opening opening matches the value
-func (l *LeafOpening) MatchKey(conf *smt.Config, k io.WriterTo) bool {
+func (l *LeafOpening) MatchKey(conf *smt_koalabear.Config, k io.WriterTo) bool {
 	hkey := hash(conf, k)
 	return l.HKey == hkey
 }
@@ -130,7 +130,7 @@ func (t KVOpeningTuple[K, V]) CopyWithNext(next int64) KVOpeningTuple[K, V] {
 }
 
 // CopyWithVal copies the tuple and give it a new new value
-func (t KVOpeningTuple[K, V]) CopyWithVal(conf *smt.Config, val V) KVOpeningTuple[K, V] {
+func (t KVOpeningTuple[K, V]) CopyWithVal(conf *smt_koalabear.Config, val V) KVOpeningTuple[K, V] {
 	t.Value = val
 	t.LeafOpening.HVal = hash(conf, val)
 	return t

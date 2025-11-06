@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -25,11 +25,11 @@ type InsertionTrace[K, V io.WriterTo] struct {
 	NewSubRoot      Bytes32 `json:"newSubRoot"`
 
 	// `New` correspond to the inserted leaf
-	ProofMinus smt.Proof `json:"leftProof"`
-	ProofNew   smt.Proof `json:"newProof"`
-	ProofPlus  smt.Proof `json:"rightProof"`
-	Key        K         `json:"key"`
-	Val        V         `json:"value"`
+	ProofMinus smt_koalabear.Proof `json:"leftProof"`
+	ProofNew   smt_koalabear.Proof `json:"newProof"`
+	ProofPlus  smt_koalabear.Proof `json:"rightProof"`
+	Key        K                   `json:"key"`
+	Val        V                   `json:"value"`
 
 	// Value of the leaf opening before being modified
 	OldOpenMinus LeafOpening `json:"priorLeftLeaf"`
@@ -150,7 +150,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 		HVal: hash(v.Config, trace.Val),
 	}.Hash(v.Config)
 
-	currentRoot, err = updateCheckRoot(v.Config, trace.ProofNew, currentRoot, types.HashToBytes32(smt.EmptyLeaf()), newLeaf)
+	currentRoot, err = updateCheckRoot(v.Config, trace.ProofNew, currentRoot, types.HashToBytes32(smt_koalabear.EmptyLeaf()), newLeaf)
 	if err != nil {
 		return fmt.Errorf("audit of the update of the middle leaf failed %v", err)
 	}
@@ -181,9 +181,9 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 
 // DeferMerkleChecks implements [Trace]
 func (trace InsertionTrace[K, V]) DeferMerkleChecks(
-	config *smt.Config,
-	appendTo []smt.ProvedClaim,
-) []smt.ProvedClaim {
+	config *smt_koalabear.Config,
+	appendTo []smt_koalabear.ProvedClaim,
+) []smt_koalabear.ProvedClaim {
 
 	iInserted := int64(trace.ProofNew.Path)
 
@@ -206,7 +206,7 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 		HVal: hash(config, trace.Val),
 	}.Hash(config)
 
-	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofNew, currentRoot, types.HashToBytes32(smt.EmptyLeaf()), newLeaf, appendTo)
+	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofNew, currentRoot, types.HashToBytes32(smt_koalabear.EmptyLeaf()), newLeaf, appendTo)
 
 	// Audit the update of the "plus"
 	oldLeafPlus := trace.OldOpenPlus.Hash(config)
@@ -216,7 +216,7 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 	return appendTo
 }
 
-func (trace InsertionTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
+func (trace InsertionTrace[K, V]) HKey(cfg *smt_koalabear.Config) Bytes32 {
 	return hash(cfg, trace.Key)
 }
 

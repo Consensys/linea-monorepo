@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -18,14 +18,14 @@ import (
 // access to an existing key in the map.
 type ReadNonZeroTrace[K, V io.WriterTo] struct {
 	// Identifier for the tree this trace belongs to
-	Type         int         `json:"type"`
-	Location     string      `json:"location"`
-	NextFreeNode int         `json:"nextFreeNode"`
-	Key          K           `json:"key"`
-	Value        V           `json:"value"`
-	SubRoot      Bytes32     `json:"subRoot"`
-	LeafOpening  LeafOpening `json:"leaf"`
-	Proof        smt.Proof   `json:"proof"`
+	Type         int                 `json:"type"`
+	Location     string              `json:"location"`
+	NextFreeNode int                 `json:"nextFreeNode"`
+	Key          K                   `json:"key"`
+	Value        V                   `json:"value"`
+	SubRoot      Bytes32             `json:"subRoot"`
+	LeafOpening  LeafOpening         `json:"leaf"`
+	Proof        smt_koalabear.Proof `json:"proof"`
 }
 
 // ReadNonZeroAndProve perform a read on the accumulator and returns a trace.
@@ -93,9 +93,9 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 
 // DeferMerkleChecks implements [Trace]
 func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
-	config *smt.Config,
-	appendTo []smt.ProvedClaim,
-) []smt.ProvedClaim {
+	config *smt_koalabear.Config,
+	appendTo []smt_koalabear.ProvedClaim,
+) []smt_koalabear.ProvedClaim {
 	tuple := KVOpeningTuple[K, V]{
 		Key:         trace.Key,
 		Value:       trace.Value,
@@ -103,11 +103,11 @@ func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
 	}
 
 	leaf, _ := tuple.CheckAndLeaf(config)
-	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.Proof, Root: types.Bytes32ToHash(trace.SubRoot), Leaf: types.Bytes32ToHash(leaf)})
+	appendTo = append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.Proof, Root: types.Bytes32ToHash(trace.SubRoot), Leaf: types.Bytes32ToHash(leaf)})
 	return appendTo
 }
 
-func (trace ReadNonZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
+func (trace ReadNonZeroTrace[K, V]) HKey(cfg *smt_koalabear.Config) Bytes32 {
 	return hash(cfg, trace.Key)
 }
 
