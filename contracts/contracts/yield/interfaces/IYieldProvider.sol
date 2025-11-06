@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
-import { ProgressOssificationResult, YieldProviderRegistration } from "./YieldTypes.sol";
+import { YieldProviderVendor, ProgressOssificationResult, YieldProviderRegistration } from "./YieldTypes.sol";
 
 /**
  * @title Interface for a YieldProvider adaptor contract to handle vendor-specific interactions.
@@ -14,6 +14,20 @@ interface IYieldProvider {
     FundYieldProvider,
     ReportYield
   }
+
+  /**
+   * @notice Emitted when LST Liability Principal is synchronized with an external data source.
+   * @param yieldProviderVendor Specific type of YieldProvider adaptor.
+   * @param yieldProviderIndex Index of the YieldProvider.
+   * @param oldLSTLiabilityPrincipal Old value of lstLiabilityPrincipal.
+   * @param newLSTLiabilityPrincipal New value of lstLiabilityPrincipal.
+   */
+  event LSTLiabilityPrincipalSynced(
+    YieldProviderVendor indexed yieldProviderVendor, 
+    uint96 indexed yieldProviderIndex, 
+    uint256 oldLSTLiabilityPrincipal, 
+    uint256 newLSTLiabilityPrincipal
+  );
 
   /// @notice Thrown when an operation is blocked because ossification is either pending or complete.
   /// @param operationType The operation that was attempted.

@@ -316,4 +316,18 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     bytes pubkeys,
     uint64[] amounts
   );
+
+  /**
+   * @notice Emitted when LST Liability Principal is synchronized with an external data source.
+   * @param yieldProviderVendor Specific type of YieldProvider adaptor.
+   * @param yieldProviderIndex Index of the YieldProvider.
+   * @param oldLSTLiabilityPrincipal Old value of lstLiabilityPrincipal.
+   * @param newLSTLiabilityPrincipal New value of lstLiabilityPrincipal.
+   */
+  event LSTLiabilityPrincipalSynced(
+    YieldProviderVendor indexed yieldProviderVendor, 
+    uint96 indexed yieldProviderIndex, 
+    uint256 oldLSTLiabilityPrincipal, 
+    uint256 newLSTLiabilityPrincipal
+  );
 }
