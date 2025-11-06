@@ -1,4 +1,4 @@
-package smt
+package smt_bls12377
 
 import (
 	"fmt"
@@ -8,30 +8,30 @@ import (
 )
 
 // ProvedClaim is the composition of a proof with the claim it proves.
-type OuterProvedClaim struct {
-	Proof      OuterProof
+type ProvedClaim struct {
+	Proof      Proof
 	Root, Leaf types.Bytes32
 }
 
 // Proof represents a Merkle proof of membership for the Merkle-tree
-type OuterProof struct {
+type Proof struct {
 	Path     int             `json:"leafIndex"` // Position of the leaf
 	Siblings []types.Bytes32 `json:"siblings"`  // length 40
 }
 
 // Prove returns a Merkle proof  of membership of the leaf at position `pos` and
 // an error if the position is out of bounds.
-func (t *OuterTree) Prove(pos int) (OuterProof, error) {
+func (t *Tree) Prove(pos int) (Proof, error) {
 	depth := t.Config.Depth
 	siblings := make([]types.Bytes32, depth)
 	idx := pos
 
 	if pos >= 1<<depth {
-		return OuterProof{}, fmt.Errorf("pos=%v is too high: max is %v for depth %v", pos, 1<<depth, depth)
+		return Proof{}, fmt.Errorf("pos=%v is too high: max is %v for depth %v", pos, 1<<depth, depth)
 	}
 
 	if pos < 0 {
-		return OuterProof{}, fmt.Errorf("pos=%v is negative should be positive or zero", pos)
+		return Proof{}, fmt.Errorf("pos=%v is negative should be positive or zero", pos)
 	}
 
 	for level := 0; level < depth; level++ {
@@ -45,14 +45,14 @@ func (t *OuterTree) Prove(pos int) (OuterProof, error) {
 		panic("idx should be zero")
 	}
 
-	return OuterProof{
+	return Proof{
 		Siblings: siblings,
 		Path:     pos,
 	}, nil
 }
 
-// MustProve runs [OuterTree.Prove] and panics on error
-func (t *OuterTree) MustProve(pos int) OuterProof {
+// MustProve runs [Tree.Prove] and panics on error
+func (t *Tree) MustProve(pos int) Proof {
 	proof, err := t.Prove(pos)
 	if err != nil {
 		utils.Panic("could not prover: %v", err.Error())
@@ -61,7 +61,7 @@ func (t *OuterTree) MustProve(pos int) OuterProof {
 }
 
 // RecoverRoot returns the root recovered from the Merkle proof.
-func (p *OuterProof) RecoverRoot(conf *OuterConfig, leaf types.Bytes32) (types.Bytes32, error) {
+func (p *Proof) RecoverRoot(conf *Config, leaf types.Bytes32) (types.Bytes32, error) {
 
 	if p.Path > 1<<conf.Depth {
 		return types.Bytes32{}, fmt.Errorf("invalid proof: path is %v larger than the number of leaves in the tree %v", p.Path, 1<<len(p.Siblings))
@@ -99,7 +99,7 @@ func (p *OuterProof) RecoverRoot(conf *OuterConfig, leaf types.Bytes32) (types.B
 }
 
 // Verify the Merkle-proof against a hash and a root
-func (p *OuterProof) Verify(conf *OuterConfig, leaf, root types.Bytes32) bool {
+func (p *Proof) Verify(conf *Config, leaf, root types.Bytes32) bool {
 	actual, err := p.RecoverRoot(conf, leaf)
 	if err != nil {
 		fmt.Printf("mtree verify: %v\n", err.Error())
@@ -109,6 +109,6 @@ func (p *OuterProof) Verify(conf *OuterConfig, leaf, root types.Bytes32) bool {
 }
 
 // String pretty-prints a proof
-func (p *OuterProof) String() string {
+func (p *Proof) String() string {
 	return fmt.Sprintf("&smt.Proof{Path: %d, Siblings: %x}", p.Path, p.Siblings)
 }

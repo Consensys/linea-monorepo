@@ -1,4 +1,4 @@
-package smt
+package smt_koalabear
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"

@@ -1,10 +1,9 @@
-package smt_test
+package smt_koalabear
 
 import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
@@ -13,27 +12,27 @@ import (
 // all the leaves are zero.
 func TestTreeInitialization(t *testing.T) {
 
-	config := &smt.Config{
+	config := &Config{
 		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 
-	tree := smt.NewEmptyTree(config)
+	tree := NewEmptyTree(config)
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
 		x, _ := tree.GetLeaf(pos)
-		require.Equal(t, x, smt.EmptyLeaf())
+		require.Equal(t, x, EmptyLeaf())
 	}
 }
 
 func TestTreeUpdateLeaf(t *testing.T) {
-	config := &smt.Config{
+	config := &Config{
 		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 
-	tree := smt.NewEmptyTree(config)
+	tree := NewEmptyTree(config)
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -47,12 +46,12 @@ func TestTreeUpdateLeaf(t *testing.T) {
 	}
 }
 func TestMerkleProofNative(t *testing.T) {
-	config := &smt.Config{
+	config := &Config{
 		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 
-	tree := smt.NewEmptyTree(config)
+	tree := NewEmptyTree(config)
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -66,12 +65,12 @@ func TestMerkleProofNative(t *testing.T) {
 }
 
 func TestMerkleProofWithUpdate(t *testing.T) {
-	config := &smt.Config{
+	config := &Config{
 		HashFunc: poseidon2.Poseidon2,
 		Depth:    40,
 	}
 
-	tree := smt.NewEmptyTree(config)
+	tree := NewEmptyTree(config)
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -94,7 +93,7 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 
 func TestBuildFromScratch(t *testing.T) {
 
-	config := &smt.Config{
+	config := &Config{
 		HashFunc: poseidon2.Poseidon2,
 		Depth:    8,
 	}
@@ -114,7 +113,7 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// And generate the
-	tree := smt.BuildComplete(leaves, config.HashFunc)
+	tree := BuildComplete(leaves, config.HashFunc)
 
 	// Test-Merkle tests the merkle proof point by point
 	for i := range leaves {
@@ -127,7 +126,7 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// Build the same tree by adding the leaves one by one
-	oneByoneTree := smt.NewEmptyTree(config)
+	oneByoneTree := NewEmptyTree(config)
 	for i := range leaves {
 		oneByoneTree.Update(i, leaves[i])
 	}

@@ -1,4 +1,4 @@
-package smt
+package smt_bls12377
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 )
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
-type OuterConfig struct {
+type Config struct {
 	// HashFunc is a function returning initialized hashers.
 	HashFunc func() hashtypes.Hasher
 	// Depth is the depth of the tree
@@ -18,9 +18,9 @@ type OuterConfig struct {
 }
 
 // Tree represents a binary sparse Merkle-tree (SMT).
-type OuterTree struct {
+type Tree struct {
 	// Config of the hash function
-	Config *OuterConfig
+	Config *Config
 	// Root stores the root of the tree
 	Root types.Bytes32
 	// OccupiedLeaves continuously list of the occupied leaves. For the toy
@@ -44,13 +44,13 @@ type OuterTree struct {
 }
 
 // EmptyLeaf returns an empty leaf (e.g. the zero bytes value).
-func OuterEmptyLeaf() types.Bytes32 {
+func EmptyLeaf() types.Bytes32 {
 	return types.Bytes32{}
 }
 
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
-func outerHashLR(config *OuterConfig, nodeL, nodeR types.Bytes32) types.Bytes32 {
+func outerHashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
 
 	var d types.Bytes32
 	if config.HashFunc != nil {
@@ -66,10 +66,10 @@ func outerHashLR(config *OuterConfig, nodeL, nodeR types.Bytes32) types.Bytes32 
 }
 
 // NewEmptyTree creates and returns an empty tree with the provided config.
-func OuterNewEmptyTree(conf *OuterConfig) *OuterTree {
+func NewEmptyTree(conf *Config) *Tree {
 	// Computes the empty nodes
 	emptyNodes := make([]types.Bytes32, conf.Depth-1)
-	prevNode := OuterEmptyLeaf()
+	prevNode := EmptyLeaf()
 
 	for i := range emptyNodes {
 		newNode := outerHashLR(conf, prevNode, prevNode)
@@ -80,7 +80,7 @@ func OuterNewEmptyTree(conf *OuterConfig) *OuterTree {
 	// Stores the initial root separately
 	root := outerHashLR(conf, prevNode, prevNode)
 
-	return &OuterTree{
+	return &Tree{
 		Config:         conf,
 		Root:           root,
 		OccupiedLeaves: make([]types.Bytes32, 0),
@@ -90,7 +90,7 @@ func OuterNewEmptyTree(conf *OuterConfig) *OuterTree {
 }
 
 // GetLeaf returns a leaf by position or an error if the leaf is out of bounds.
-func (t *OuterTree) GetLeaf(pos int) (types.Bytes32, error) {
+func (t *Tree) GetLeaf(pos int) (types.Bytes32, error) {
 	// Check that the accessed node is within the bounds of the SMT
 	maxPos := 1 << t.Config.Depth
 	if pos >= maxPos {
@@ -102,14 +102,14 @@ func (t *OuterTree) GetLeaf(pos int) (types.Bytes32, error) {
 	}
 	// Check if this is an empty leaf
 	if pos >= len(t.OccupiedLeaves) {
-		return OuterEmptyLeaf(), nil
+		return EmptyLeaf(), nil
 	}
 	// Return the leaf if occupied
 	return t.OccupiedLeaves[pos], nil
 }
 
-// MustGetLeaf is as [OuterTree.GetLeaf] but panics on errors.
-func (t *OuterTree) MustGetLeaf(pos int) types.Bytes32 {
+// MustGetLeaf is as [Tree.GetLeaf] but panics on errors.
+func (t *Tree) MustGetLeaf(pos int) types.Bytes32 {
 	l, err := t.GetLeaf(pos)
 	if err != nil {
 		utils.Panic("could not get leaf: %v", err.Error())
@@ -123,7 +123,7 @@ func (t *OuterTree) MustGetLeaf(pos int) types.Bytes32 {
 //   - 40 is the root
 //
 // (for config.Depth == 40)
-func (t *OuterTree) getNode(level, posInLevel int) types.Bytes32 {
+func (t *Tree) getNode(level, posInLevel int) types.Bytes32 {
 	switch {
 	case level == t.Config.Depth:
 		// The only logical posInLevels value is zero in this case
@@ -170,7 +170,7 @@ func (t *OuterTree) getNode(level, posInLevel int) types.Bytes32 {
 //   - 40 is the root
 //
 // (for config.Depth == 40)
-func (t *OuterTree) updateNode(level, posInLevel int, newVal types.Bytes32) {
+func (t *Tree) updateNode(level, posInLevel int, newVal types.Bytes32) {
 	switch {
 	case level == t.Config.Depth:
 		// The only logical posInLevels value is zero in this case
@@ -220,7 +220,7 @@ func (t *OuterTree) updateNode(level, posInLevel int, newVal types.Bytes32) {
 // Level == 40 : panic, can't reserve at the root level
 //
 // (for config.Depth == 40)
-func (t *OuterTree) reserveLevel(level, newSize int) {
+func (t *Tree) reserveLevel(level, newSize int) {
 
 	// Edge-case, level out of bound
 	if level > t.Config.Depth {
@@ -245,7 +245,7 @@ func (t *OuterTree) reserveLevel(level, newSize int) {
 		// else, we add extra "empty leaves" at the end of the slice
 		padding := make([]types.Bytes32, newSize-len(t.OccupiedLeaves))
 		for i := range padding {
-			padding[i] = OuterEmptyLeaf()
+			padding[i] = EmptyLeaf()
 		}
 		t.OccupiedLeaves = append(t.OccupiedLeaves, padding...)
 		return
@@ -270,7 +270,7 @@ func (t *OuterTree) reserveLevel(level, newSize int) {
 // input leaves are powers of 2. The depth of the tree is deduced from the list.
 //
 // It panics if the number of leaves is a non-power of 2.
-func OuterBuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *OuterTree {
+func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tree {
 
 	numLeaves := len(leaves)
 
@@ -282,9 +282,9 @@ func OuterBuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher
 		panic("missing a hash function")
 	}
 	depth := utils.Log2Ceil(numLeaves)
-	config := &OuterConfig{HashFunc: hashFunc, Depth: depth}
+	config := &Config{HashFunc: hashFunc, Depth: depth}
 
-	tree := OuterNewEmptyTree(config)
+	tree := NewEmptyTree(config)
 	tree.OccupiedLeaves = leaves
 	currLevels := leaves
 
