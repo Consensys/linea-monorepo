@@ -9,8 +9,8 @@ import { useEffect } from "react";
 import { useEnsInfo } from "@/hooks/user/useEnsInfo";
 
 export default function HeaderConnect() {
-  const { isConnected, address } = useAccount();
-  const { connect, loading: isConnecting } = useWeb3AuthConnect();
+  const { address } = useAccount();
+  const { connect, loading: isConnecting, isConnected } = useWeb3AuthConnect();
   const { ensAvatar } = useEnsInfo();
   const { updateModal } = useModal();
   const prefetchPoh = usePrefetchPoh();

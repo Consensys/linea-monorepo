@@ -7,6 +7,7 @@ import CloudCheck from "@/assets/icons/cloud-check.svg";
 import CloudCheckOutline from "@/assets/icons/cloud-check-outline.svg";
 import styles from "./poh-check.module.scss";
 import { getAddress } from "viem";
+import { linea } from "viem/chains";
 
 type Props = {
   isHuman: boolean;
@@ -30,13 +31,18 @@ export default function PohCheck({ isHuman, refetchPoh, setStep, isCheckingPoh }
   useEffect(() => {
     // Only generate if we haven't generated yet, or if the address has changed
     if (!hasGeneratedMessageRef.current || lastAddressRef.current !== formattedAddress) {
-      const date = new Date().toISOString();
-      const generatedMessage = `localhost:3000 wants you to sign in with your Ethereum account:\n${formattedAddress}\n\nI confirm that I am the owner of this wallet and consent to performing a risk assessment and issuing a Verax attestation to this address.\n\nURI: https://in.sumsub.com\nVersion: 1\nChain ID: 59144\nNonce: 12345678Abc\nIssued At: ${date}`;
+      const generatedMessage = generateSignInMessage(formattedAddress);
       setMessage(generatedMessage);
       hasGeneratedMessageRef.current = true;
       lastAddressRef.current = formattedAddress;
     }
   }, [formattedAddress]);
+
+  const generateSignInMessage = (addr: string) => {
+    const nonce = Math.random().toString(36).slice(2);
+    const issuedAt = new Date().toISOString();
+    return `${window.location.host} wants you to sign in with your Ethereum account:\n${addr}\n\nI confirm that I am the owner of this wallet and consent to performing a risk assessment and issuing a Verax attestation to this address.\n\nURI: https://in.sumsub.com\nVersion: 1\nChain ID: ${linea.id}\nNonce: ${nonce}\nIssued At: ${issuedAt}`;
+  };
 
   const handleCardClick = () => {
     if (isHuman || !message) return;
