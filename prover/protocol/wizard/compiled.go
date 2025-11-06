@@ -236,8 +236,7 @@ func (c *CompiledIOP) InsertGlobal(round int, name ifaces.QueryID, expr *symboli
 	// The constructor of the global constraint is assumed to perform all the
 	// well-formation checks of the constraint.
 	cs := query.NewGlobalConstraint(name, expr, noBoundCancel...)
-	boarded := cs.Board()
-	metadatas := boarded.ListVariableMetadata()
+	metadatas := cs.BoardListVariableMetadata()
 
 	// Test the existence of all variable in the instance
 	for _, metadataInterface := range metadatas {
@@ -278,8 +277,7 @@ func (c *CompiledIOP) InsertLocal(round int, name ifaces.QueryID, cs_ *symbolic.
 	c.checkExpressionInStore(cs_)
 
 	cs := query.NewLocalConstraint(name, cs_)
-	boarded := cs.Board()
-	metadatas := boarded.ListVariableMetadata()
+	metadatas := cs.BoardListVariableMetadata()
 
 	// Test the existence of all variable in the instance
 	for _, metadataInterface := range metadatas {
@@ -749,13 +747,12 @@ func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) Public
 	return res
 }
 
-// GetPublicInputAccessor attempts to find a public input with the provided name
-// and panic if it fails to do so. The method returns the accessor in case of
-// success.
-func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
+// GetPublicInput attempts to find a public input with the provided name and
+// panics if it fails to do so.
+func (c *CompiledIOP) GetPublicInput(name string) PublicInput {
 	for _, pi := range c.PublicInputs {
 		if pi.Name == name {
-			return pi.Acc
+			return pi
 		}
 	}
 
@@ -765,7 +762,14 @@ func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
 	}
 
 	utils.Panic("could not find public input %v, the list of the public inputs is: %v", name, pubInputNames)
-	return nil // unreachable
+	return PublicInput{} // unreachable
+}
+
+// GetPublicInputAccessor attempts to find a public input with the provided name
+// and panics if it fails to do so. The method returns the accessor in case of
+// success.
+func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
+	return c.GetPublicInput(name).Acc
 }
 
 // InsertPlonkInWizard inserts a [query.PlonkInWizard] in the current compilation

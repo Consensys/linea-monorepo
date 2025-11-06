@@ -1,5 +1,5 @@
 environment = "sepolia"
-version = "6.0.8"                              # TODO @gbotrel hunt all version definitions.
+version = "6.1.0"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
@@ -12,6 +12,7 @@ conflated_traces_dir = "./"
 requests_root_dir = "./"
 limitless_with_debug = false
 ignore_compatibility_check = false
+keep_traces_until_block = 0
 
 [blob_decompression]
 prover_mode = "full"
