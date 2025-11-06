@@ -95,6 +95,14 @@ public enum Fork {
     return forkIsAtLeast(fork, OSAKA);
   }
 
+  private static boolean forkPredates(Fork fork, Fork threshold) {
+    return !forkIsAtLeast(fork, threshold);
+  }
+
+  public static boolean forkPredatesOsaka(Fork fork) {
+    return forkPredates(fork, OSAKA);
+  }
+
   /**
    * Map MainnetHardforkId, datatype from Besu, to Fork enum instance
    *

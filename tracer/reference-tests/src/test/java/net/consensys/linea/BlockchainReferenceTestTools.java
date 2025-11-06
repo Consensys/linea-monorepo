@@ -66,7 +66,7 @@ import org.junit.jupiter.api.Assumptions;
 @Slf4j
 public class BlockchainReferenceTestTools {
   // Keep the forkName and the zkevm_fork in github worklow in PascalCase
-  private static final Fork fork = getForkOrDefault(LONDON);
+  private static final Fork fork = getForkOrDefault(PRAGUE);
   private static final ReferenceTestProtocolSchedules REFERENCE_TEST_PROTOCOL_SCHEDULES =
       ReferenceTestProtocolSchedules.create();
   private static final List<String> NETWORKS_TO_RUN = List.of(toPascalCase(fork));
@@ -701,6 +701,57 @@ public class BlockchainReferenceTestTools {
       PARAMS.ignore("idPrecomps_d4g0v0_*");
       PARAMS.ignore("modexp_modsize0_returndatasize_d4g0v0_*");
       PARAMS.ignore("randomStatetest650_d0g0v0_*");
+    }
+
+    // Prior to Osaka MODEXP had unsupported arguments in the arithmetization
+    if (forkPredatesOsaka(fork)) {
+      // massive mbs
+      PARAMS.ignore(
+          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d2-g[0-3]\\]");
+      PARAMS.ignore(
+          "test_modexp.py::test_modexp\\[fork_.*-blockchain_test_from_state_test-EIP-198-case3-raw-input-out-of-gas\\]");
+      PARAMS.ignore(
+          "modexp_modsize0_returndatasizeFiller\\.json::modexp_modsize0_returndatasize\\[fork_.*-blockchain_test_from_state_test-d4\\]");
+
+      // massive bbs
+      PARAMS.ignore(
+          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d28-g[0-3]\\]");
+      PARAMS.ignore(
+          "test_precompiles.py::test_precompiles\\[fork_.*-address_0x0000000000000000000000000000000000000005-precompile_exists_True-blockchain_test_from_state_test\\]");
+
+      // massive ebs
+      PARAMS.ignore(
+          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d29-g[0-3]\\]");
+      PARAMS.ignore(
+          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d30-g[0-3]\\]");
+      PARAMS.ignore(
+          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d36-g[0-3]\\]");
+      PARAMS.ignore(
+          "modexpFiller.json::modexp\\[fork_.*-blockchain_test_from_state_test-d37-g[0-3]\\]");
+      PARAMS.ignore(
+          "randomStatetest650Filler.json::randomStatetest650\\[fork_.*-blockchain_test_from_state_test-\\]");
+
+      // byte sizes 512 < xbs ≤ 1024
+      PARAMS.ignore(
+          "test_modexp_thresholds.py::test_modexp_variable_gas_cost_exceed_tx_gas_cap\\[fork_.*-blockchain_test_from_state_test-Z16-gas-cap-test\\]");
+      PARAMS.ignore(
+          "test_modexp_thresholds.py::test_vectors_from_eip\\[fork_.*-blockchain_test_from_state_test-guido-3-even\\]");
+      PARAMS.ignore(
+          "test_modexp_thresholds.py::test_vectors_from_eip\\[fork_.*-blockchain_test_from_state_test-nagydani-5-pow0x10001\\]");
+      PARAMS.ignore(
+          "test_modexp_thresholds.py::test_vectors_from_eip\\[fork_.*-blockchain_test_from_state_test-nagydani-5-qube\\]");
+      PARAMS.ignore(
+          "test_modexp_thresholds.py::test_vectors_from_eip\\[fork_.*-blockchain_test_from_state_test-nagydani-5-square\\]");
+
+      // massive xbs'
+      PARAMS.ignore(
+          "test_modexp_thresholds.py::test_modexp_invalid_inputs\\[fork_.*-blockchain_test_from_state_test--invalid-case-[1-3]\\]");
+
+      // Osaka legal xbs's (at most one being 1024)
+      PARAMS.ignore(
+          "test_modexp_thresholds.py::test_modexp_variable_gas_cost\\[fork_.*-blockchain_test_from_state_test-Z[2347]\\]");
+      PARAMS.ignore(
+          "test_modexp_thresholds.py::test_modexp_variable_gas_cost\\[fork_.*-blockchain_test_from_state_test-Z1[2-5]\\]");
     }
 
     // unsupported behaviour: uncle blocks, re-orgs, forks, side chain (?)
