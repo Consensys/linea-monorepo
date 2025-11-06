@@ -1,4 +1,5 @@
-allow-empty-blocks = true
+[fork-transition]
+l2-eth-api-endpoint = { endpoint = "http://sequencer:8545" }
 
 [persistence]
 data-path="/tmp/maru-db"
@@ -20,7 +21,7 @@ refresh-interval = "2 minutes"
 
 [payload-validator]
 engine-api-endpoint = { endpoint = "http://sequencer:8550" }
-eth-api-endpoint = { endpoint = "http://sequencer:8545" }
+allow-empty-blocks = true
 
 [follower-engine-apis]
 "follower-erigon" = { endpoint = "http://follower-erigon:8551", jwt-secret-path = "../docker/jwt" }

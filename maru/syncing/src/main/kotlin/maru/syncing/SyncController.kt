@@ -13,10 +13,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import linea.kotlin.minusCoercingUnderflow
-import maru.consensus.NewBlockHandler
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
-import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.p2p.PeerLookup
 import maru.p2p.PeersHeadBlockProvider
 import maru.services.LongRunningService
@@ -195,16 +193,14 @@ class BeaconSyncControllerImpl(
   companion object {
     fun create(
       beaconChain: BeaconChain,
-      blockValidatorHandler: NewBlockHandler<ForkChoiceUpdatedResult>,
-      blockImportHandler: NewBlockHandler<Unit>,
       peersHeadsProvider: PeersHeadBlockProvider,
       targetChainHeadCalculator: SyncTargetSelector,
-      peerChainTrackerConfig: PeerChainTracker.Config,
       validatorProvider: ValidatorProvider,
       peerLookup: PeerLookup,
       besuMetrics: MetricsSystem,
       metricsFacade: MetricsFacade,
-      elSyncServiceConfig: ELSyncService.Config,
+      peerChainTrackerConfig: PeerChainTracker.Config,
+      elSyncServiceFactory: ((ELSyncStatus) -> Unit) -> LongRunningService,
       desyncTolerance: ULong,
       pipelineConfig: BeaconChainDownloadPipelineFactory.Config,
       allowEmptyBlocks: Boolean = true,
@@ -228,14 +224,7 @@ class BeaconSyncControllerImpl(
           desyncTolerance = desyncTolerance,
         )
 
-      val elSyncService =
-        ELSyncService(
-          config = elSyncServiceConfig,
-          beaconChain = beaconChain,
-          eLValidatorBlockImportHandler = blockValidatorHandler,
-          followerELBLockImportHandler = blockImportHandler,
-          onStatusChange = controller::updateElSyncStatus,
-        )
+      val elSyncService = elSyncServiceFactory(controller::updateElSyncStatus)
 
       val peerChainTracker =
         PeerChainTracker(

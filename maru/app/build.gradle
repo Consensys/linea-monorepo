@@ -56,6 +56,7 @@ dependencies {
   integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
   integrationTestImplementation("org.hyperledger.besu.internal:besu-ethereum-p2p")
   integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
+  testImplementation(testFixtures(project(":core")))
 }
 
 // Besu and Teku have similar versioning and some modules are also named the same. This creates conflicts when

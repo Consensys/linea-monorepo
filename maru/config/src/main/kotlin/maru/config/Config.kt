@@ -124,7 +124,6 @@ data class P2PConfig(
 }
 
 data class ValidatorElNode(
-  val ethApiEndpoint: ApiEndpointConfig,
   val engineApiEndpoint: ApiEndpointConfig,
   val payloadValidationEnabled: Boolean,
 )
@@ -190,9 +189,10 @@ data class ObservabilityConfig(
 
 data class LineaConfig(
   val contractAddress: ByteArray,
-  val l1EthApi: ApiEndpointConfig,
+  val l1EthApiEndpoint: ApiEndpointConfig,
   val l1PollingInterval: Duration = 6.seconds,
   val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
+  val l2EthApiEndpoint: ApiEndpointConfig,
 ) {
   init {
     contractAddress.assertIs20Bytes("contractAddress")
@@ -205,18 +205,20 @@ data class LineaConfig(
     other as LineaConfig
 
     if (!contractAddress.contentEquals(other.contractAddress)) return false
-    if (l1EthApi != other.l1EthApi) return false
+    if (l1EthApiEndpoint != other.l1EthApiEndpoint) return false
     if (l1PollingInterval != other.l1PollingInterval) return false
     if (l1HighestBlockTag != other.l1HighestBlockTag) return false
+    if (l2EthApiEndpoint != other.l2EthApiEndpoint) return false
 
     return true
   }
 
   override fun hashCode(): Int {
     var result = contractAddress.contentHashCode()
-    result = 31 * result + l1EthApi.hashCode()
+    result = 31 * result + l1EthApiEndpoint.hashCode()
     result = 31 * result + l1PollingInterval.hashCode()
     result = 31 * result + l1HighestBlockTag.hashCode()
+    result = 31 * result + l2EthApiEndpoint.hashCode()
     return result
   }
 }
@@ -256,26 +258,38 @@ data class SyncingConfig(
   )
 }
 
-data class MaruConfig(
+data class ForkTransition(
+  val l2EthApiEndpoint: ApiEndpointConfig? = null,
   val protocolTransitionPollingInterval: Duration = 1.seconds,
+)
+
+data class MaruConfig(
   val allowEmptyBlocks: Boolean = false,
   val persistence: Persistence,
   val qbft: QbftConfig?,
   val p2p: P2PConfig?,
-  val validatorElNode: ValidatorElNode,
+  val validatorElNode: ValidatorElNode?,
   val followers: FollowersConfig,
   val observability: ObservabilityConfig,
   val linea: LineaConfig? = null,
   val api: ApiConfig,
   val syncing: SyncingConfig,
+  val forkTransition: ForkTransition,
 ) {
   init {
-    require(
-      !followers.followers.values
-        .map { it.endpoint }
-        .contains(validatorElNode.engineApiEndpoint.endpoint),
-    ) {
-      "Validator EL node cannot be defined as a follower"
+    if (qbft != null) {
+      require(validatorElNode != null) {
+        "Validator EL node is required when a node is a QBFT Validator"
+      }
+    }
+    if (validatorElNode != null) {
+      require(
+        !followers.followers.values
+          .map { it.endpoint }
+          .contains(validatorElNode.engineApiEndpoint.endpoint),
+      ) {
+        "Validator EL node cannot be defined as a follower"
+      }
     }
   }
 }
