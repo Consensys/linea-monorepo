@@ -3,7 +3,7 @@ package common
 import (
 	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mock"
 )
@@ -21,11 +21,8 @@ type TestContext struct {
 }
 
 func InitializeContext(initialBlock int) *TestContext {
-
-	utils.Panic("adjust for koalabear")
-
-	// fieldOne := field.One()
-	// oneBytes := fieldOne.Bytes()
+	fieldOne := field.One()
+	oneBytes := fieldOne.Bytes()
 	var (
 		addresses = []types.EthAddress{
 			types.DummyAddress(32),
@@ -46,7 +43,7 @@ func InitializeContext(initialBlock int) *TestContext {
 			types.DummyFullByte(2002),
 			types.DummyFullByte(2012),
 			types.DummyFullByte(2023),
-			// oneBytes,
+			oneBytes,
 		}
 	)
 
@@ -208,14 +205,14 @@ func InitializeContext(initialBlock int) *TestContext {
 					ReadStorage(storageKeys[3]).
 					EraseAccount(). // Erase account 2
 					GoNextBlock().
-					WithAddress(addresses[2]).                                            // block 2
+					WithAddress(addresses[2]). // block 2
 					InitContract(45, types.DummyFullByte(5679), types.DummyBytes32(346)). // redeploy at address 2 deplNo 1
 					WriteStorage(storageKeys[2], storageValues[1]).
 					ReadStorage(storageKeys[0]).
 					GoNextBlock().
 					WithAddress(addresses[2]). // block 3, account 2
 					ReadStorage(storageKeys[3]).
-					EraseAccount().                                                       //delete account 2
+					EraseAccount(). //delete account 2
 					InitContract(45, types.DummyFullByte(5679), types.DummyBytes32(346)). // redeploy 2 deplNo 2
 					WriteStorage(storageKeys[2], storageValues[1]).
 					ReadStorage(storageKeys[0]).
@@ -262,7 +259,7 @@ func InitializeContext(initialBlock int) *TestContext {
 			StateLogsGens: func(initState mock.State) [][]mock.StateAccessLog {
 				return mock.NewStateLogBuilder(initialBlock, initState).
 					WithAddress(addresses[3]).
-					EraseAccount().            // erase account 3
+					EraseAccount(). // erase account 3
 					WithAddress(addresses[2]). // switch to account 2
 					WriteStorage(storageKeys[1], storageValues[3]).
 					ReadStorage(storageKeys[3]).
@@ -276,17 +273,17 @@ func InitializeContext(initialBlock int) *TestContext {
 			StateLogsGens: func(initState mock.State) [][]mock.StateAccessLog {
 				return mock.NewStateLogBuilder(initialBlock, initState).
 					WithAddress(addresses[2]).
-					EraseAccount().                                                       // Erase account 2
-					GoNextBlock().                                                        // block 1
-					WithAddress(addresses[2]).                                            // switch to account 2
+					EraseAccount(). // Erase account 2
+					GoNextBlock(). // block 1
+					WithAddress(addresses[2]). // switch to account 2
 					InitContract(45, types.DummyFullByte(5679), types.DummyBytes32(346)). // deploy at address 2
 					WriteStorage(storageKeys[2], storageValues[1]).
 					ReadStorage(storageKeys[0]).
-					GoNextBlock().               // block 2
-					WithAddress(addresses[3]).   // switch to account 3
+					GoNextBlock(). // block 2
+					WithAddress(addresses[3]). // switch to account 3
 					ReadStorage(storageKeys[1]). // READ_ZERO
-					EraseAccount().              // erase account 3
-					WithAddress(addresses[2]).   // switch to account 2
+					EraseAccount(). // erase account 3
+					WithAddress(addresses[2]). // switch to account 2
 					WriteStorage(storageKeys[1], storageValues[4]).
 					ReadCodeSize().
 					Done()
@@ -303,9 +300,9 @@ func InitializeContext(initialBlock int) *TestContext {
 					ReadStorage(storageKeys[3]).
 					GoNextBlock(). // block 1
 					WithAddress(addresses[2]).
-					EraseAccount().                                                       // Erase account 2
-					GoNextBlock().                                                        // block 2
-					WithAddress(addresses[2]).                                            // switch to account 2
+					EraseAccount(). // Erase account 2
+					GoNextBlock(). // block 2
+					WithAddress(addresses[2]). // switch to account 2
 					InitContract(45, types.DummyFullByte(5679), types.DummyBytes32(346)). // deploy at address 2
 					WriteStorage(storageKeys[2], storageValues[1]).
 					ReadStorage(storageKeys[0]).
@@ -314,14 +311,14 @@ func InitializeContext(initialBlock int) *TestContext {
 					ReadStorage(storageKeys[0]).
 					ReadStorage(storageKeys[1]).
 					ReadStorage(storageKeys[3]).
-					GoNextBlock().               // block 3
-					WithAddress(addresses[3]).   // switch to account 3
+					GoNextBlock(). // block 3
+					WithAddress(addresses[3]). // switch to account 3
 					ReadStorage(storageKeys[1]). // READ_ZERO
-					EraseAccount().              // erase account 3
-					WithAddress(addresses[2]).   // switch to account 2
+					EraseAccount(). // erase account 3
+					WithAddress(addresses[2]). // switch to account 2
 					WriteStorage(storageKeys[1], storageValues[3]).
 					ReadStorage(storageKeys[3]).
-					EraseAccount().                                                       // erase account 2
+					EraseAccount(). // erase account 2
 					InitContract(45, types.DummyFullByte(5679), types.DummyBytes32(346)). // redeploy 2
 					WriteStorage(storageKeys[2], storageValues[1]).
 					ReadStorage(storageKeys[0]).

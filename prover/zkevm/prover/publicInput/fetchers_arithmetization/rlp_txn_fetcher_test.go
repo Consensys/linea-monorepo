@@ -11,6 +11,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var (
+	testChainIDLimbs = []field.Element{
+		field.NewFromString("0xccc0"),
+		field.NewFromString("0x0000"),
+		field.NewFromString("0x0000"),
+		field.NewFromString("0x0000"),
+		field.NewFromString("0x0000"),
+		field.NewFromString("0x0000"),
+		field.NewFromString("0x0000"),
+		field.NewFromString("0x0000"),
+	}
+)
+
 // TestRlpTxnFetcher tests the fetching of the rlp txn data
 func TestRlpTxnFetcher(t *testing.T) {
 
@@ -32,7 +45,10 @@ func TestRlpTxnFetcher(t *testing.T) {
 		// assign the CSV columns
 		arith.AssignTestingArithModules(run, nil, nil, ctRlpTxn)
 		AssignRlpTxnFetcher(run, &fetcher, rt)
-		assert.Equal(t, field.NewFromString("0xccc00000000000000000000000000000"), fetcher.ChainID.GetColAssignmentAt(run, 0), "ChainID value is incorrect.")
+
+		for i := range fetcher.Limbs {
+			assert.Equal(t, testChainIDLimbs[i], fetcher.ChainID[i].GetColAssignmentAt(run, 0), "ChainID value is incorrect.")
+		}
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)

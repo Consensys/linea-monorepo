@@ -26,26 +26,36 @@ func (mch *Module) ConnectToRom(comp *wizard.CompiledIOP,
 
 	romInput.complete(comp)
 
+	var colA []ifaces.Column
+	colA = append(colA, romInput.CFI[:]...)
+	colA = append(colA, romInput.Acc[:]...)
+	colA = append(colA, romInput.CodeSize[:]...)
+
+	var colB []ifaces.Column
+	colB = append(colB, mch.CFI[:]...)
+	colB = append(colB, mch.Limb[:]...)
+	colB = append(colB, mch.CodeSize[:]...)
+
 	// Projection query between romInput and MiMCCodeHash module
 	comp.InsertProjection(
 		ifaces.QueryIDf("PROJECTION_ROM_MIMC_CODE_HASH_%v", mch.Inputs.Name),
-		query.ProjectionInput{ColumnA: []ifaces.Column{romInput.CFI, romInput.Acc, romInput.CodeSize},
-			ColumnB: []ifaces.Column{mch.CFI, mch.Limb, mch.CodeSize},
+		query.ProjectionInput{ColumnA: colA,
+			ColumnB: colB,
 			FilterA: romInput.CounterIsEqualToNBytesMinusOne,
 			FilterB: mch.IsActive})
 
 	// Lookup between romLexInput and mch for
-	// {CFI, codeHashHi, codeHashLo}
+	// {CFI, codeHash}
 	comp.InsertInclusion(0,
 		ifaces.QueryIDf("LOOKUP_MIMC_CODE_HASH_ROMLEX_%v", mch.Inputs.Name),
-		[]ifaces.Column{mch.CFI, mch.CodeHashHi, mch.CodeHashLo},
-		[]ifaces.Column{romLexInput.CFIRomLex, romLexInput.CodeHashHi, romLexInput.CodeHashLo})
+		append(mch.CFI[:], mch.CodeHash[:]...),
+		append(romLexInput.CFIRomLex[:], romLexInput.CodeHash[:]...))
 
 	// And the reverse lookup
 	comp.InsertInclusion(0,
 		ifaces.QueryIDf("LOOKUP_ROMLEX_MIMC_CODE_HASH_%v", mch.Inputs.Name),
-		[]ifaces.Column{romLexInput.CFIRomLex, romLexInput.CodeHashHi, romLexInput.CodeHashLo},
-		[]ifaces.Column{mch.CFI, mch.CodeHashHi, mch.CodeHashLo})
+		append(romLexInput.CFIRomLex[:], romLexInput.CodeHash[:]...),
+		append(mch.CFI[:], mch.CodeHash[:]...))
 
 	mch.InputModules = &inputModules{
 		RomInput:    romInput,

@@ -1,10 +1,10 @@
 package statesummary
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	dedicatedmimc "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -24,18 +24,18 @@ type StoragePeek struct {
 
 	// OldValueIsZero and NewValueIsZero are indicator columns set to 1 when the
 	// old/new value is set to zero and 0 otherwise.
-	OldValueIsZero, NewValueIsZero ifaces.Column
+	OldValueIsZero, NewValueIsZero [common.NbLimbU256]ifaces.Column
 
 	// ComputeOldValueIsZero and ComputeNewValueIsZero are respectively
 	// responsible for assigning OldValueIsZero and NewValueIsZero.
-	ComputeOldValueIsZero, ComputeNewValueIsZero wizard.ProverAction
+	ComputeOldValueIsZero, ComputeNewValueIsZero [common.NbLimbU256]wizard.ProverAction
 
 	// KeyLimbs represents the key in limb decomposition.
-	KeyLimbs byte32cmp.LimbColumns
+	KeyLimbs [common.NbLimbU256]byte32cmp.LimbColumns
 
 	// ComputeKeyLimbs and ComputeKeyLimbLo are responsible for computing the
 	// "hi" and the "lo" limbs of the KeyLimbs.
-	ComputeKeyLimbs wizard.ProverAction
+	ComputeKeyLimbs [common.NbLimbU256]wizard.ProverAction
 
 	// KeyIncreased is a column indicating whether the current storage
 	// key is strictly greater than the previous one.
@@ -47,24 +47,24 @@ type StoragePeek struct {
 	// OldValueHash and NewValueHash store the hash of the storage
 	// peek. It is not passed to the accumulator statement directly as we have
 	// special handling for the case where the storage value is zero.
-	OldValueHash, NewValueHash ifaces.Column
+	OldValueHash, NewValueHash [common.NbLimbU256]ifaces.Column
 
 	// ComputeOldValueHash and ComputeNewStorageValue hash compute
 	// respectively OldStorageValueHash and NewStorageValueHash
-	ComputeOldValueHash, ComputeNewValueHash wizard.ProverAction
+	ComputeOldValueHash, ComputeNewValueHash *dedicatedmimc.HashingCtx
 
 	// KeyHash stores the hash of the storage keys
-	KeyHash ifaces.Column
+	KeyHash [common.NbLimbU256]ifaces.Column
 
 	// ComputeStorageKeyHash computes the KeyHash column.
-	ComputeKeyHash wizard.ProverAction
+	ComputeKeyHash *dedicatedmimc.HashingCtx
 
 	// OldAndNewAreEqual is an indicator column telling whether the old and the
 	// new storage value are equal with a 1 and 0 else.
-	OldAndNewValuesAreEqual ifaces.Column
+	OldAndNewValuesAreEqual [common.NbLimbU256]ifaces.Column
 
 	// ComputeOldAndNewValuesAreEqual computes OldAndNewValuesAreEqual
-	ComputeOldAndNewValuesAreEqual wizard.ProverAction
+	ComputeOldAndNewValuesAreEqual [common.NbLimbU256]wizard.ProverAction
 }
 
 // newStoragePeek returns a new StoragePeek object with initialized and
@@ -76,50 +76,69 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 		NewValue: common.NewHiLoColumns(comp, size, name+"_NEW_VALUE"),
 	}
 
-	res.OldValueHash, res.ComputeOldValueHash = common.HashOf(
+	res.ComputeOldValueHash = dedicatedmimc.HashOf(
 		comp,
-		[]ifaces.Column{
-			res.OldValue.Lo,
-			res.OldValue.Hi,
+		[][]ifaces.Column{
+			res.OldValue.Lo[:],
+			res.OldValue.Hi[:],
 		},
 	)
 
-	res.NewValueHash, res.ComputeNewValueHash = common.HashOf(
+	res.OldValueHash = res.ComputeOldValueHash.Result()
+
+	panic("add Poseidon query here")
+	res.ComputeNewValueHash = dedicatedmimc.HashOf(
 		comp,
-		[]ifaces.Column{
-			res.NewValue.Lo,
-			res.NewValue.Hi,
+		[][]ifaces.Column{
+			res.NewValue.Lo[:],
+			res.NewValue.Hi[:],
 		},
 	)
 
-	res.OldAndNewValuesAreEqual, res.ComputeOldAndNewValuesAreEqual = dedicated.IsZero(
-		comp,
-		sym.Sub(res.OldValueHash, res.NewValueHash),
-	).GetColumnAndProverAction()
+	res.NewValueHash = res.ComputeNewValueHash.Result()
 
-	res.KeyHash, res.ComputeKeyHash = common.HashOf(
+	for i := range common.NbLimbU256 {
+		res.OldAndNewValuesAreEqual[i], res.ComputeOldAndNewValuesAreEqual[i] = dedicated.IsZero(
+			comp,
+			sym.Sub(res.OldValueHash[i], res.NewValueHash[i]),
+		).GetColumnAndProverAction()
+	}
+
+	res.ComputeKeyHash = dedicatedmimc.HashOf(
 		comp,
-		[]ifaces.Column{
-			res.Key.Lo,
-			res.Key.Hi,
+		[][]ifaces.Column{
+			res.Key.Lo[:],
+			res.Key.Hi[:],
 		},
 	)
 
-	res.OldValueIsZero, res.ComputeOldValueIsZero = dedicated.IsZero(
-		comp,
-		sym.Sub(res.OldValueHash, hashOfZeroStorage()),
-	).GetColumnAndProverAction()
+	res.KeyHash = res.ComputeKeyHash.Result()
+	zeroStorageHash := hashOfZeroStorage()
 
-	res.NewValueIsZero, res.ComputeNewValueIsZero = dedicated.IsZero(
-		comp,
-		sym.Sub(res.NewValueHash, hashOfZeroStorage()),
-	).GetColumnAndProverAction()
+	for i := range common.NbLimbU256 {
+		res.OldValueIsZero[i], res.ComputeOldValueIsZero[i] = dedicated.IsZero(
+			comp,
+			sym.Sub(res.OldValueHash[i], zeroStorageHash[i]),
+		).GetColumnAndProverAction()
 
-	res.KeyLimbs, res.ComputeKeyLimbs = byte32cmp.Decompose(comp, res.KeyHash, 16, 16)
+		res.NewValueIsZero[i], res.ComputeNewValueIsZero[i] = dedicated.IsZero(
+			comp,
+			sym.Sub(res.NewValueHash[i], zeroStorageHash[i]),
+		).GetColumnAndProverAction()
+	}
+
+	keyLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
+	shiftedLimbColumbs := byte32cmp.LimbColumns{LimbBitSize: common.LimbBytes * 8, IsBigEndian: true}
+	for i := range common.NbLimbU256 {
+		res.KeyLimbs[i], res.ComputeKeyLimbs[i] = byte32cmp.Decompose(comp, res.KeyHash[i], 1, common.LimbBytes*8)
+
+		keyLimbColumbs.Limbs = append(keyLimbColumbs.Limbs, res.KeyLimbs[i].Limbs...)
+		shiftedLimbColumbs.Limbs = append(shiftedLimbColumbs.Limbs, res.KeyLimbs[i].Shift(-1).Limbs...)
+	}
 
 	res.KeyIncreased, _, _, res.ComputeKeyIncreased = byte32cmp.CmpMultiLimbs(
 		comp,
-		res.KeyLimbs, res.KeyLimbs.Shift(-1),
+		keyLimbColumbs, shiftedLimbColumbs,
 	)
 
 	return res
@@ -151,7 +170,10 @@ func (sh *storagePeekAssignmentBuilder) pushAllZeroes() {
 // pushOnlyKey pushes the key onto the the "key" columns builder and zero on
 // the others
 func (sh *storagePeekAssignmentBuilder) pushOnlyKey(key types.FullBytes32) {
-	sh.key.Push(key)
+	var keyLimbs [common.NbLimbU256][]byte
+	copy(keyLimbs[:], common.SplitBytes(key[:]))
+
+	sh.key.Push(keyLimbs)
 	sh.oldValue.PushZeroes()
 	sh.newValue.PushZeroes()
 }
@@ -159,38 +181,59 @@ func (sh *storagePeekAssignmentBuilder) pushOnlyKey(key types.FullBytes32) {
 // pushOnlyOld pushes a row where the keys and the old value are the one provided
 // by the caller and the new value is zero.
 func (sh *storagePeekAssignmentBuilder) pushOnlyOld(key, oldVal types.FullBytes32) {
-	sh.key.Push(key)
-	sh.oldValue.Push(oldVal)
+	var keyLimbs [common.NbLimbU256][]byte
+	copy(keyLimbs[:], common.SplitBytes(key[:]))
+
+	var oldValueLimbs [common.NbLimbU256][]byte
+	copy(oldValueLimbs[:], common.SplitBytes(oldVal[:]))
+
+	sh.key.Push(keyLimbs)
+	sh.oldValue.Push(oldValueLimbs)
 	sh.newValue.PushZeroes()
 }
 
 // pushOnlyNew pushes a row where the key and the new value are the one provided
 // by the caller and the old value is set to zero.
 func (sh *storagePeekAssignmentBuilder) pushOnlyNew(key, newVal types.FullBytes32) {
-	sh.key.Push(key)
+	var keyLimbs [common.NbLimbU256][]byte
+	copy(keyLimbs[:], common.SplitBytes(key[:]))
+
+	var newValueLimbs [common.NbLimbU256][]byte
+	copy(newValueLimbs[:], common.SplitBytes(newVal[:]))
+
+	sh.key.Push(keyLimbs)
 	sh.oldValue.PushZeroes()
-	sh.newValue.Push(newVal)
+	sh.newValue.Push(newValueLimbs)
 }
 
 // push pushes a row where the key, the old value and the new value are the
 // one provided by the caller.
 func (sh *storagePeekAssignmentBuilder) push(key, oldVal, newVal types.FullBytes32) {
-	sh.key.Push(key)
-	sh.oldValue.Push(oldVal)
-	sh.newValue.Push(newVal)
+	var keyLimbs [common.NbLimbU256][]byte
+	copy(keyLimbs[:], common.SplitBytes(key[:]))
+
+	var oldValueLimbs [common.NbLimbU256][]byte
+	copy(oldValueLimbs[:], common.SplitBytes(oldVal[:]))
+
+	var newValueLimbs [common.NbLimbU256][]byte
+	copy(newValueLimbs[:], common.SplitBytes(newVal[:]))
+
+	sh.key.Push(keyLimbs)
+	sh.oldValue.Push(oldValueLimbs)
+	sh.newValue.Push(newValueLimbs)
 }
 
 // padAssign pads and assigns the columns of the storage peek into `run`.
 func (sh *storagePeekAssignmentBuilder) padAssign(run *wizard.ProverRuntime) {
-	sh.key.PadAssign(run, types.FullBytes32{})
-	sh.oldValue.PadAssign(run, types.FullBytes32{})
-	sh.newValue.PadAssign(run, types.FullBytes32{})
+	sh.key.PadAssign(run, [common.NbLimbU256][]byte{})
+	sh.oldValue.PadAssign(run, [common.NbLimbU256][]byte{})
+	sh.newValue.PadAssign(run, [common.NbLimbU256][]byte{})
 }
 
 // hashOfZeroStorage returns the hash of (0, 0) which is what we use for empty
 // storage slots.
-func hashOfZeroStorage() field.Element {
-	res := field.Zero()
-	res = mimc.BlockCompression(res, field.Zero())
-	return mimc.BlockCompression(res, field.Zero())
+func hashOfZeroStorage() []field.Element {
+	res := []field.Element{field.Zero()}
+	res = common.BlockCompression(res, []field.Element{field.Zero()})
+	return common.BlockCompression(res, []field.Element{field.Zero()})
 }

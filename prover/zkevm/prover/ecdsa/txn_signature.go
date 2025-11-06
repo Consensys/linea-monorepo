@@ -1,6 +1,7 @@
 package ecdsa
 
 import (
+	"fmt"
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -9,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
@@ -21,8 +23,7 @@ import (
 // columns for rlp-txn lives on the arithmetization side.
 type TxSignature struct {
 	Inputs   *txSignatureInputs
-	TxHashHi ifaces.Column
-	TxHashLo ifaces.Column
+	TxHash   [common.NbLimbU256]ifaces.Column
 	IsTxHash ifaces.Column
 
 	// Provider for keccak, Provider contains the inputs and outputs of keccak hash.
@@ -35,17 +36,16 @@ type txSignatureInputs struct {
 }
 
 func newTxSignatures(comp *wizard.CompiledIOP, inp txSignatureInputs) *TxSignature {
-	var (
-		createCol = createColFn(comp, NAME_TXSIGNATURE, inp.Ac.Size)
+	var createCol = createColFn(comp, NAME_TXSIGNATURE, inp.Ac.Size)
 
-		res = &TxSignature{
-			TxHashHi: createCol("TX_HASH_HI"),
-			TxHashLo: createCol("TX_HASH_LO"),
-			IsTxHash: createCol("TX_IS_HASH_HI"),
+	var res = &TxSignature{
+		IsTxHash: createCol("TX_IS_HASH_HI"),
+		Inputs:   &inp,
+	}
 
-			Inputs: &inp,
-		}
-	)
+	for i := 0; i < common.NbLimbU256; i++ {
+		res.TxHash[i] = createCol(fmt.Sprintf("TX_HASH_%d", i))
+	}
 
 	commonconstraints.MustBeBinary(comp, res.IsTxHash)
 
@@ -57,19 +57,13 @@ func newTxSignatures(comp *wizard.CompiledIOP, inp txSignatureInputs) *TxSignatu
 	)
 
 	// txHashHi remains the same between two fetchings.
-	comp.InsertGlobal(0, "txHashHI_REMAIN_SAME",
-		sym.Mul(inp.Ac.IsActive,
-			sym.Sub(1, inp.Ac.IsFetching),
-			sym.Sub(res.TxHashHi, column.Shift(res.TxHashHi, -1))),
-	)
-
-	// txHashLo remains the same between two fetchings.
-	comp.InsertGlobal(0, "txHashLO_REMAIN_SAME",
-		sym.Mul(inp.Ac.IsActive,
-			sym.Sub(1, inp.Ac.IsFetching),
-			sym.Sub(res.TxHashLo, column.Shift(res.TxHashLo, -1)),
-		),
-	)
+	for i := 0; i < common.NbLimbU256; i++ {
+		comp.InsertGlobal(0, ifaces.QueryIDf("txHash_REMAIN_SAME_%d", i),
+			sym.Mul(inp.Ac.IsActive,
+				sym.Sub(1, inp.Ac.IsFetching),
+				sym.Sub(res.TxHash[i], column.Shift(res.TxHash[i], -1))),
+		)
+	}
 
 	res.Provider = res.GetProvider(comp, inp.RlpTxn)
 
@@ -93,10 +87,8 @@ func (txn *TxSignature) GetProvider(comp *wizard.CompiledIOP, rlpTxn generic.Gen
 // it builds an infoModule from native columns
 func (txn *TxSignature) buildInfoModule() generic.GenInfoModule {
 	info := generic.GenInfoModule{
-		HashHi:   txn.TxHashHi,
-		HashLo:   txn.TxHashLo,
-		IsHashHi: txn.IsTxHash,
-		IsHashLo: txn.IsTxHash,
+		Hash:   txn.TxHash[:],
+		IsHash: txn.IsTxHash,
 	}
 	return info
 }
@@ -107,33 +99,39 @@ func (txn *TxSignature) assignTxSignature(run *wizard.ProverRuntime, nbActualEcR
 	var (
 		nbEcRecover = nbActualEcRecover
 		n           = startAt(nbEcRecover)
-		hashHi      = vector.Repeat(field.Zero(), n)
-		hashLo      = vector.Repeat(field.Zero(), n)
 		isTxHash    = vector.Repeat(field.Zero(), n)
 		size        = txn.Inputs.Ac.Size
 		permTrace   = keccak.GenerateTrace(txn.Inputs.RlpTxn.ScanStreams(run))
-		v, w        field.Element
+
+		hashColumns [common.NbLimbU256][]field.Element
 	)
 
+	for i := 0; i < common.NbLimbU256; i++ {
+		hashColumns[i] = vector.Repeat(field.Zero(), n)
+	}
+
 	for _, digest := range permTrace.HashOutPut {
-		hi := digest[:halfDigest]
-		lo := digest[halfDigest:]
+		hashLimbs := common.SplitBytes(digest[:])
 
-		v.SetBytes(hi[:])
-		w.SetBytes(lo[:])
+		// Initialize limb values for each column of txHash
+		for j, limb := range hashLimbs {
+			var element field.Element
+			element.SetBytes(limb[:])
 
-		repeatLo := vector.Repeat(w, nbRowsPerTxSign)
-		repeatHi := vector.Repeat(v, nbRowsPerTxSign)
+			repeat := vector.Repeat(element, nbRowsPerTxSign)
+			hashColumns[j] = append(hashColumns[j], repeat...)
+		}
+
 		repeatIsTxHash := vector.Repeat(field.Zero(), nbRowsPerTxSign-1)
 
-		hashHi = append(hashHi, repeatHi...)
-		hashLo = append(hashLo, repeatLo...)
 		isTxHash = append(isTxHash, field.One())
 		isTxHash = append(isTxHash, repeatIsTxHash...)
 	}
 
-	run.AssignColumn(txn.TxHashHi.GetColID(), smartvectors.RightZeroPadded(hashHi, size))
-	run.AssignColumn(txn.TxHashLo.GetColID(), smartvectors.RightZeroPadded(hashLo, size))
+	for i := 0; i < common.NbLimbU256; i++ {
+		run.AssignColumn(txn.TxHash[i].GetColID(), smartvectors.RightZeroPadded(hashColumns[i], size))
+	}
+
 	run.AssignColumn(txn.IsTxHash.GetColID(), smartvectors.RightZeroPadded(isTxHash, size))
 }
 

@@ -12,12 +12,12 @@ type Account struct {
 	// Implicitly we assume that the nonce fits into
 	// a int64 but the obtained encoding is consistent
 	// with how it would be if it was a big.Int
-	Nonce          int64
-	Balance        *big.Int
-	StorageRoot    Bytes32
-	MimcCodeHash   Bytes32
-	KeccakCodeHash FullBytes32
-	CodeSize       int64
+	Nonce             int64
+	Balance           *big.Int
+	StorageRoot       Bytes32
+	Poseidon2CodeHash Bytes32
+	KeccakCodeHash    FullBytes32
+	CodeSize          int64
 }
 
 func (a Account) WriteTo(w io.Writer) (int64, error) {
@@ -35,23 +35,23 @@ func (a *Account) ReadFrom(r io.Reader) (int64, error) {
 //
 // If the account contains a "nil" balance is will be written as zero.
 func (a Account) writeTo(w io.Writer, packed bool) (int64, error) {
-	n0, _ := WriteInt64On32Bytes(w, a.Nonce)
+	n0, _ := WriteInt64On64Bytes(w, a.Nonce)
 	// Without this edge-case handling, the function panics if called over
 	// Account{}
 	balance := a.Balance
 	if balance == nil {
 		balance = &big.Int{}
 	}
-	n1, _ := WriteBigIntOn32Bytes(w, balance)
+	n1, _ := WriteBigIntOn64Bytes(w, balance)
 	n2, _ := a.StorageRoot.WriteTo(w)
-	n3, _ := a.MimcCodeHash.WriteTo(w)
+	n3, _ := a.Poseidon2CodeHash.WriteTo(w)
 	var n4 int64
 	if packed {
 		n4, _ = a.KeccakCodeHash.Write1Word(w)
 	} else {
 		n4, _ = a.KeccakCodeHash.WriteTo(w)
 	}
-	n5, _ := WriteInt64On32Bytes(w, a.CodeSize)
+	n5, _ := WriteInt64On64Bytes(w, a.CodeSize)
 	return n0 + n1 + n2 + n3 + n4 + n5, nil
 }
 
@@ -61,11 +61,11 @@ func (a *Account) readFrom(r io.Reader, packed bool) (int64, error) {
 
 	var err error
 
-	a.Nonce, _, err = ReadInt64On32Bytes(r)
+	a.Nonce, _, err = ReadInt64On64Bytes(r)
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading nonce : %w", err)
 	}
-	a.Balance, err = ReadBigIntOn32Bytes(r)
+	a.Balance, err = ReadBigIntOn64Bytes(r)
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading balance : %w", err)
 	}
@@ -73,7 +73,7 @@ func (a *Account) readFrom(r io.Reader, packed bool) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading storage root : %w", err)
 	}
-	_, err = a.MimcCodeHash.ReadFrom(r)
+	_, err = a.Poseidon2CodeHash.ReadFrom(r)
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading code-hash : %w", err)
 	}
@@ -86,12 +86,12 @@ func (a *Account) readFrom(r io.Reader, packed bool) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading keccak codehash : %w", err)
 	}
-	a.CodeSize, _, err = ReadInt64On32Bytes(r)
+	a.CodeSize, _, err = ReadInt64On64Bytes(r)
 	if err != nil {
 		return 0, fmt.Errorf("reading account : reading codesize : %w", err)
 	}
 
-	return 32*5 + nK, nil
+	return 256 + nK, nil
 }
 
 func (a Account) MarshalJSON() ([]byte, error) {

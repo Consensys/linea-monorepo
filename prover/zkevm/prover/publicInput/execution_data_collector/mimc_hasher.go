@@ -3,7 +3,6 @@ package execution_data_collector
 import (
 	"math"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -23,16 +22,16 @@ type MIMCHasher struct {
 	// the data to be hashed, this column is provided as an input to the module
 	InputData      ifaces.Column
 	InputIsActive  ifaces.Column
-	Data           ifaces.Column
+	Data           [common.NbLimbU256]ifaces.Column
 	IsData         ifaces.Column //isActive * canBeData
 	IsDataFirstRow *dedicated.HeartBeatColumn
 	IsDataOddRows  *dedicated.HeartBeatColumn
 	// this column stores the MiMC hashes
-	Hash ifaces.Column
+	Hash [common.NbLimbU256]ifaces.Column
 	// a constant column that stores the last relevant value of the hash
-	HashFinal ifaces.Column
-	// State is an intermediary column used to enforce the MiMC constraints
-	State ifaces.Column
+	HashFinal [common.NbLimbU256]ifaces.Column
+	// state is an intermediary column used to enforce the MiMC constraints
+	State [common.NbLimbU256]ifaces.Column
 }
 
 func NewMIMCHasher(comp *wizard.CompiledIOP, inputData, inputIsActive ifaces.Column, name string) *MIMCHasher {
@@ -40,11 +39,7 @@ func NewMIMCHasher(comp *wizard.CompiledIOP, inputData, inputIsActive ifaces.Col
 	res := &MIMCHasher{
 		InputData:     inputData,
 		InputIsActive: inputIsActive,
-		Data:          util.CreateCol(name, "DATA", size, comp),
 		IsActive:      util.CreateCol(name, "ACTIVE", size, comp),
-		Hash:          util.CreateCol(name, "HASH", size, comp),
-		HashFinal:     util.CreateCol(name, "HASH_FINAL", size, comp),
-		State:         util.CreateCol(name, "STATE", size, comp),
 		IsData:        util.CreateCol(name, "IS_DATA", size, comp),
 	}
 	// Passing a very large size will ensure that the heartbeat produces the
@@ -90,40 +85,45 @@ func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 	// MiMC constraints
 	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), hasher.Data, hasher.State, hasher.Hash, nil)
 
-	// intermediary state integrity
-	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "CONSISTENCY_STATE_AND_HASH_LAST"), // LAST is either hashSecond
-		sym.Add(
-			sym.Mul(
-				hasher.IsData,
-				sym.Sub(hasher.State,
-					column.Shift(hasher.Hash, -1),
+	for i := range hasher.Hash {
+		// intermediary state integrity
+		comp.InsertGlobal(0, ifaces.QueryIDf("%s_CONSISTENCY_STATE_AND_HASH_LAST_%d", name, i), // LAST is either hashSecond
+			sym.Add(
+				sym.Mul(
+					hasher.IsData,
+					sym.Sub(hasher.State[i],
+						column.Shift(hasher.Hash[i], -1),
+					),
+				),
+				sym.Mul(
+					sym.Sub(1, hasher.IsData),
+					sym.Sub(hasher.State[i],
+						0,
+					),
 				),
 			),
+		)
+
+		// LAST is either hashSecond
+		comp.InsertGlobal(0, ifaces.QueryIDf("%s_CONSISTENCY_STATE_AND_HASH_LAST_2_%d", name, i),
 			sym.Mul(
+				hasher.IsActive,
 				sym.Sub(1, hasher.IsData),
-				sym.Sub(hasher.State,
-					0,
+				sym.Sub(hasher.Data[i],
+					column.Shift(hasher.Hash[i], -1),
 				),
 			),
-		),
-	)
+		)
 
-	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "CONSISTENCY_STATE_AND_HASH_LAST_2"), // LAST is either hashSecond
-		sym.Mul(
-			hasher.IsActive,
-			sym.Sub(1, hasher.IsData),
-			sym.Sub(hasher.Data,
-				column.Shift(hasher.Hash, -1),
-			),
-		),
-	)
+		// state, the current state column, is initially zero
+		comp.InsertLocal(0, ifaces.QueryIDf("%s_INTER_LOCAL_%d", name, i),
+			ifaces.ColumnAsVariable(hasher.State[i]),
+		)
 
-	// state, the current state column, is initially zero
-	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "INTER_LOCAL"), ifaces.ColumnAsVariable(hasher.State))
-
-	// constrain HashFinal
-	commonconstraints.MustBeConstant(comp, hasher.HashFinal)
-	util.CheckLastELemConsistency(comp, hasher.IsActive, hasher.Hash, hasher.HashFinal, name)
+		// constrain HashFinal
+		commonconstraints.MustBeConstant(comp, hasher.HashFinal[i])
+		util.CheckLastELemConsistency(comp, hasher.IsActive, hasher.Hash[i], hasher.HashFinal[i], name)
+	}
 
 	// constraint isActive
 	DefineHashFilterConstraints(comp, hasher, name)
@@ -131,75 +131,119 @@ func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 	comp.InsertProjection(
 		ifaces.QueryIDf("%s_%s", name, "PROJECTION_DATA"),
 		query.ProjectionInput{
-			ColumnA: []ifaces.Column{hasher.Data},
+			ColumnA: []ifaces.Column{hasher.Data[common.NbLimbU256-1]}, // input data is the last limb of the data column
 			ColumnB: []ifaces.Column{hasher.InputData},
 			FilterA: hasher.IsData,
 			FilterB: hasher.InputIsActive,
 		},
 	)
 
+	// Check that the data column is zero for all but the last limb
+	for i := 0; i < common.NbLimbU256-1; i++ {
+		comp.InsertGlobal(0, ifaces.QueryIDf("%s_DATA_ZERO_LIMBS_AT_INPUT_%d", name, i),
+			sym.Mul(hasher.IsData, hasher.Data[i]),
+		)
+	}
 }
 
 // AssignHasher assigns the data in the MIMCHasher. The data and isActive columns are fetched from another module.
 func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 
 	var (
+		state, hash, data [common.NbLimbU256]*common.VectorBuilder
+
 		inputSize = hasher.InputData.Size()
 		isData    = common.NewVectorBuilder(hasher.IsData)
 		isActive  = common.NewVectorBuilder(hasher.IsActive)
-		state     = common.NewVectorBuilder(hasher.State)
-		data      = common.NewVectorBuilder(hasher.Data)
-		hash      = common.NewVectorBuilder(hasher.Hash)
-		finalHash field.Element
 	)
 
+	for i := range state {
+		state[i] = common.NewVectorBuilder(hasher.State[i])
+		hash[i] = common.NewVectorBuilder(hasher.Hash[i])
+		data[i] = common.NewVectorBuilder(hasher.Data[i])
+
+		// the initial state is zero
+		state[i].PushZero()
+	}
+
+	// Helper function to perform BlockCompression and update hash
+	var prevState, dataToHash [common.NbLimbU256]field.Element
+	performBlockCompression := func(isDataVal field.Element) {
+		isData.PushField(isDataVal)
+		isActive.PushOne()
+
+		for i := range prevState {
+			prevState[i] = state[i].Last()
+			dataToHash[i] = data[i].Last()
+		}
+
+		dataHash := common.BlockCompression(prevState[:], dataToHash[:])
+		for i := range hash {
+			hash[i].PushField(dataHash[i])
+		}
+	}
+
+	// Helper to push data with only the last limb set
+	pushDataWithLastLimb := func(value field.Element) {
+		for i := 0; i < common.NbLimbU256-1; i++ {
+			dataToHash[i].SetZero()
+		}
+
+		dataToHash[common.NbLimbU256-1] = value
+		for i := range data {
+			data[i].PushField(dataToHash[i])
+		}
+	}
+
 	// Writing the first row
-	isData.PushOne()
-	isActive.PushOne()
-	state.PushZero()
-	data.PushField(hasher.InputData.GetColAssignmentAt(run, 0))
-	hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
+	pushDataWithLastLimb(hasher.InputData.GetColAssignmentAt(run, 0))
+	performBlockCompression(field.One())
+
+	// Assign the state for the next hashing
+	for i := range state {
+		state[i].PushField(hash[i].Last())
+	}
 
 	// Writing the second row
-	isData.PushOne()
-	isActive.PushOne()
-	state.PushField(hash.Last())
-	data.PushField(hasher.InputData.GetColAssignmentAt(run, 1))
-	hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
+	pushDataWithLastLimb(hasher.InputData.GetColAssignmentAt(run, 1))
+	performBlockCompression(field.One())
 
+	// Process remaining rows
 	for j := 2; j < inputSize; j++ {
-
 		inputIsActive := hasher.InputIsActive.GetColAssignmentAt(run, j)
-		if !inputIsActive.IsOne() {
-			finHash := hash.Last()
-			finalHash.Set(&finHash)
+		if inputIsActive.IsZero() {
 			break
 		}
 
-		// Odds rows, we start a new hash from zero, using the previous hash
-		// as data.
-		isData.PushZero()
-		isActive.PushOne()
-		state.PushZero()
-		data.PushField(hash.Last())
-		hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
+		// Odd rows: start a new hash from zero, using the previous hash as data
+		for i := range state {
+			state[i].PushZero()
+			data[i].PushField(hash[i].Last())
+		}
+		performBlockCompression(field.Zero())
 
-		// Evens rows, we continue the hash by adding the input data corresponding
-		// to "j".
-		isData.PushOne()
-		isActive.PushOne()
-		state.PushField(hash.Last())
-		data.PushField(hasher.InputData.GetColAssignmentAt(run, j))
-		hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
+		// Even rows: continue the hash by adding the input data
+		for i := range state {
+			state[i].PushField(hash[i].Last())
+		}
+		pushDataWithLastLimb(hasher.InputData.GetColAssignmentAt(run, j))
+		performBlockCompression(field.One())
 	}
 
-	// assign the hasher columns
+	zeroLimbs := []field.Element{field.Zero()}
+	zeroHash := common.BlockCompression(zeroLimbs, zeroLimbs) // scalar
+
+	// Assign the hasher columns
 	isData.PadAndAssign(run, field.Zero())
 	isActive.PadAndAssign(run, field.Zero())
-	state.PadAndAssign(run, field.Zero())
-	data.PadAndAssign(run, field.Zero())
-	hash.PadAndAssign(run, mimc.BlockCompression(field.Zero(), field.Zero()))
-	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(finalHash, hasher.HashFinal.Size()))
+	for i := range hash {
+		// The order is important here, we assign the final hash, and then pad and assign the hash column
+		run.AssignColumn(hasher.HashFinal[i].GetColID(), smartvectors.NewConstant(hash[i].Last(), hasher.HashFinal[i].Size()))
+
+		state[i].PadAndAssign(run, field.Zero())
+		data[i].PadAndAssign(run, field.Zero())
+		hash[i].PadAndAssign(run, zeroHash[i])
+	}
 
 	hasher.IsDataFirstRow.Assign(run)
 	hasher.IsDataOddRows.Assign(run)

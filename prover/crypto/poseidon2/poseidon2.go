@@ -3,10 +3,8 @@ package poseidon2
 import (
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 
-	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -19,7 +17,6 @@ const maxSizeBuf = 1024
 
 // Poseidon2FieldHasherDigest implements a Poseidon2-based hasher that works with both field elements and bytes
 type Poseidon2FieldHasherDigest struct {
-	hash.StateStorer
 	maxValue Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
@@ -30,7 +27,10 @@ type Poseidon2FieldHasherDigest struct {
 // Reset clears the buffer, and reset state to iv
 func (d *Poseidon2FieldHasherDigest) Reset() {
 	d.buffer = d.buffer[:0]
-	d.state = field.Octuplet{}
+
+	for i := range d.state {
+		d.state[i] = field.Zero()
+	}
 }
 
 // WriteElements adds a slice of field elements to the running hash.
@@ -92,21 +92,45 @@ func (d *Poseidon2FieldHasherDigest) Sum(msg []byte) []byte {
 	bytes := HashToBytes32(h)
 	return bytes[:]
 }
+
+func (d *Poseidon2FieldHasherDigest) State() []byte {
+	hashBytes := HashToBytes32(d.state)
+	return hashBytes[:]
+}
+
+func (d *Poseidon2FieldHasherDigest) BlockSize() int {
+	return 32
+}
+
+func (d *Poseidon2FieldHasherDigest) Size() int {
+	return 32
+}
+
+func (d *Poseidon2FieldHasherDigest) SetState(state []byte) error {
+	stateBytes, err := cloneLeftPadded(state, d.BlockSize())
+	if err != nil {
+		return err
+	}
+
+	d.state = Bytes32ToOctuplet(AsBytes32(stateBytes))
+	return err
+}
+
 func (d Poseidon2FieldHasherDigest) MaxBytes32() Bytes32 {
 	return d.maxValue
 }
 
 // ///// Constructor for Poseidon2Hasher /////
 func Poseidon2() *Poseidon2FieldHasherDigest {
-	var maxVal field.Octuplet
+	var maxVal, initialState field.Octuplet
 	for i := range maxVal {
-		maxVal[i] = field.NewFromString("-1")
+		maxVal[i] = *field.MaxVal
+		initialState[i] = field.Zero()
 	}
 	return &Poseidon2FieldHasherDigest{
-		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
-		maxValue:    HashToBytes32(maxVal),
-		state:       field.Octuplet{},
-		buffer:      make([]field.Element, 0),
+		maxValue: HashToBytes32(maxVal),
+		state:    initialState,
+		buffer:   make([]field.Element, 0),
 	}
 }
 
@@ -131,4 +155,16 @@ func Poseidon2Sponge(x []field.Element) (newState field.Octuplet) {
 // a gnark circuit and mirrors exactly [BlockCompression].
 func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]frontend.Variable) (newState [blockSize]frontend.Variable) {
 	panic("unimplemented")
+}
+
+// cloneLeftPadded copies b into a new byte slice of size n.
+// If len(b) < n, it will be padded on the left.
+// len(b) > n will result in an error.
+func cloneLeftPadded(b []byte, n int) ([]byte, error) {
+	if len(b) > n {
+		return nil, fmt.Errorf("state/iv must not exceed the hash block size: %d > %d", len(b), n)
+	}
+	res := make([]byte, n)
+	copy(res[n-len(b):], b)
+	return res, nil
 }

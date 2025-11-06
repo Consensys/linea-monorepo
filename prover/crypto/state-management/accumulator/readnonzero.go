@@ -79,7 +79,7 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 		return errors.WithMessage(err, "read non zero verifier failed")
 	}
 
-	if !trace.Proof.Verify(v.Config, types.Bytes32ToHash(leaf), types.Bytes32ToHash(trace.SubRoot)) {
+	if !trace.Proof.Verify(v.Config, types.Bytes32ToOctuplet(leaf), types.Bytes32ToOctuplet(trace.SubRoot)) {
 		return fmt.Errorf("merkle proof verification failed")
 	}
 
@@ -103,7 +103,7 @@ func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
 	}
 
 	leaf, _ := tuple.CheckAndLeaf(config)
-	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.Proof, Root: types.Bytes32ToHash(trace.SubRoot), Leaf: types.Bytes32ToHash(leaf)})
+	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.Proof, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leaf)})
 	return appendTo
 }
 

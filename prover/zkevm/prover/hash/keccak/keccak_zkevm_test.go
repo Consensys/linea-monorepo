@@ -23,8 +23,8 @@ func MakeTestCaseKeccakZkEVM(t *testing.T, c []makeTestCaseGBM) (
 	define = func(builder *wizard.Builder) {
 		comp := builder.CompiledIOP
 		for i := range gdms {
-			gdms[i] = testdata.CreateGenDataModule(comp, c[i].Name, c[i].SizeData)
-			gims[i] = testdata.CreateGenInfoModule(comp, c[i].Name, c[i].SizeInfo)
+			gdms[i] = testdata.CreateGenDataModule(comp, c[i].Name, c[i].SizeData, 1)
+			gims[i] = testdata.CreateGenInfoModule(comp, c[i].Name, c[i].SizeInfo, 1)
 			gbm[i] = generic.GenericByteModule{
 				Data: gdms[i],
 				Info: gims[i],

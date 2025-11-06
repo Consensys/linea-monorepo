@@ -265,7 +265,7 @@ func (mod *Module) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccakF
 	size := numRows(maxNumKeccakF)
 
 	// Initialize the column isActive
-	mod.IsActive = comp.InsertCommit(round, deriveName("IS_ACTIVE"), size, true)
+	mod.IsActive = comp.InsertCommit(round, deriveName("IS_ACTIVE"), size)
 
 	// Initializes the state columns
 	for x := 0; x < 5; x++ {
@@ -274,7 +274,6 @@ func (mod *Module) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccakF
 				round,
 				deriveName("A_INPUT", x, y),
 				size,
-				true,
 			)
 		}
 	}
@@ -285,7 +284,6 @@ func (mod *Module) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccakF
 			round,
 			deriveName("BLOCK_BASE_2", m),
 			size,
-			true,
 		)
 	}
 }

@@ -2,7 +2,6 @@ package ecarith
 
 import (
 	"fmt"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra"
 	"github.com/consensys/gnark/std/algebra/algopts"
@@ -13,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 const (
@@ -29,21 +29,29 @@ type EcMul struct {
 	*EcDataMulSource
 	AlignedGnarkData *plonk.Alignment
 
+	FlattenLimbs *common.FlattenColumn
+
 	Size int
 	*Limits
 }
 
 func NewEcMulZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcMul {
+	src := &EcDataMulSource{
+		CsEcMul: comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECMUL"),
+		Index:   comp.Columns.GetHandle("ecdata.INDEX"),
+		IsData:  comp.Columns.GetHandle("ecdata.IS_ECMUL_DATA"),
+		IsRes:   comp.Columns.GetHandle("ecdata.IS_ECMUL_RESULT"),
+	}
+
+	for i := 0; i < common.NbLimbU128; i++ {
+		src.Limbs[i] = comp.Columns.GetHandle(ifaces.ColIDf("ecdata.LIMB_%d", i))
+	}
+
 	return newEcMul(
 		comp,
 		limits,
-		&EcDataMulSource{
-			CsEcMul: comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECMUL"),
-			Limb:    comp.Columns.GetHandle("ecdata.LIMB"),
-			Index:   comp.Columns.GetHandle("ecdata.INDEX"),
-			IsData:  comp.Columns.GetHandle("ecdata.IS_ECMUL_DATA"),
-			IsRes:   comp.Columns.GetHandle("ecdata.IS_ECMUL_RESULT"),
-		},
+
+		src,
 		[]query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 	)
 }
@@ -52,11 +60,13 @@ func NewEcMulZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcMul {
 func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, plonkOptions []query.PlonkOption) *EcMul {
 	size := limits.sizeEcMulIntegration()
 
+	flattenLimbs := common.NewFlattenColumn(comp, common.NbLimbU128, src.Limbs[:], src.CsEcMul)
+
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_ECMUL + "_ALIGNMENT",
 		Round:              ROUND_NR,
-		DataToCircuitMask:  src.CsEcMul,
-		DataToCircuit:      src.Limb,
+		DataToCircuitMask:  flattenLimbs.Mask(),
+		DataToCircuit:      flattenLimbs.Limbs(),
 		Circuit:            NewECMulCircuit(limits),
 		NbCircuitInstances: limits.NbCircuitInstances,
 		PlonkOptions:       plonkOptions,
@@ -68,14 +78,18 @@ func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, pl
 	res := &EcMul{
 		EcDataMulSource:  src,
 		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),
+		FlattenLimbs:     flattenLimbs,
 		Size:             size,
 	}
+
+	flattenLimbs.CsFlattenProjection(comp)
 
 	return res
 }
 
 // Assign assigns the data from the trace to the gnark inputs.
 func (em *EcMul) Assign(run *wizard.ProverRuntime) {
+	em.FlattenLimbs.Run(run)
 	em.AlignedGnarkData.Assign(run)
 }
 
@@ -83,7 +97,7 @@ func (em *EcMul) Assign(run *wizard.ProverRuntime) {
 // fetch data from the EC_DATA module from the arithmetization.
 type EcDataMulSource struct {
 	CsEcMul ifaces.Column
-	Limb    ifaces.Column
+	Limbs   [common.NbLimbU128]ifaces.Column
 	Index   ifaces.Column
 	IsData  ifaces.Column
 	IsRes   ifaces.Column
@@ -103,15 +117,15 @@ type ECMulInstance struct {
 	// significant bits. The values are already range checked to be in 128 bit
 	// range.
 
-	P_X_hi, P_X_lo frontend.Variable `gnark:",public"`
-	P_Y_hi, P_Y_lo frontend.Variable `gnark:",public"`
+	P_X_hi, P_X_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	P_Y_hi, P_Y_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
 
-	N_hi, N_lo frontend.Variable `gnark:",public"`
+	N_hi, N_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
 
 	// The result of the multiplication. Is provided by the caller, we have to
 	// ensure that the result is correct.
-	R_X_hi, R_X_lo frontend.Variable `gnark:",public"`
-	R_Y_hi, R_Y_lo frontend.Variable `gnark:",public"`
+	R_X_hi, R_X_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	R_Y_hi, R_Y_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
 }
 
 // NewECMulCircuit creates a new circuit for verifying the EC_MUL precompile

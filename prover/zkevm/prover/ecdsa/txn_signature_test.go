@@ -36,7 +36,7 @@ func TestTxnSignature(t *testing.T) {
 					Size:       size,
 					Inputs:     &antichamberInput{Settings: settings},
 				},
-				RlpTxn: testdata.CreateGenDataModule(comp, "RLP_TXN", 128),
+				RlpTxn: testdata.CreateGenDataModule(comp, "RLP_TXN", 128, common.NbLimbU128),
 			}
 		)
 

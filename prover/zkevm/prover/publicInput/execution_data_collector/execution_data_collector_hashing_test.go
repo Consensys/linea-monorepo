@@ -162,7 +162,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 				Index:   execDataCollector.Ct,
 				ToHash:  execDataCollector.IsActive,
 				NBytes:  execDataCollector.NoBytes,
-				Limb:    execDataCollector.Limb,
+				Limbs:   execDataCollector.Limbs[:],
 			}},
 			PaddingStrategy: generic.MiMCUsecase,
 		}

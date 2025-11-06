@@ -184,7 +184,7 @@ func (io *InputOutput) declareColumnsOutput(comp *wizard.CompiledIOP, maxNumKecc
 	var (
 		sizeState = numRows(maxNumKeccakF)
 	)
-	io.IsHashOutPut = comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_IS_HASH_OUTPUT"), sizeState, true)
+	io.IsHashOutPut = comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_IS_HASH_OUTPUT"), sizeState)
 }
 
 // The constrain over the next sate;
