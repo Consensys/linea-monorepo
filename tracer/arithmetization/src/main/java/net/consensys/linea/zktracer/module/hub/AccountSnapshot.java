@@ -281,6 +281,6 @@ public class AccountSnapshot {
   }
 
   public boolean tracedHasCode() {
-    return !this.tracedCodeHash().equals(EWord.of(Hash.EMPTY));
+    return !this.deploymentStatus() && !this.code().isEmpty();
   }
 }
