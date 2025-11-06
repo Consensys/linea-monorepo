@@ -147,9 +147,9 @@ class MaruApp(
     followerELNodeEngineApiWeb3JClients.forEach { (_, web3jClient) -> web3jClient.eth1Web3j.shutdown() }
     p2pNetwork.close()
     vertx.close()
+    protocolStarter.close()
     // close db last, otherwise other components may fail trying to save data
     beaconChain.close()
-    protocolStarter.close()
   }
 
   private fun start(

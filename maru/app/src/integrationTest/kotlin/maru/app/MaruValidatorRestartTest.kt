@@ -10,7 +10,7 @@ package maru.app
 
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.p2p.testutils.TestUtils.findFreePort
+import maru.test.util.NetworkUtil.findFreePorts
 import org.apache.logging.log4j.LogManager
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
@@ -65,7 +65,7 @@ class MaruValidatorRestartTest {
   @Test
   fun `Maru validator restarted from scratch is able to sync state`() {
     PeeringNodeNetworkStack.startBesuNodes(cluster, validatorStack, followerStack)
-    val freePorts = List(6) { findFreePort() }
+    val freePorts = findFreePorts(6)
     val followerMaruApp =
       maruFactory.buildTestMaruFollowerWithDiscovery(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),

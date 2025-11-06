@@ -48,6 +48,8 @@ fun BesuNode.latestBlock(returnFullTransactionObjects: Boolean = true): EthBlock
     returnFullTransactionObjects,
   )
 
+fun Cluster.startWithRetry(besuNodes: List<BesuNode>) = startWithRetry(*besuNodes.toTypedArray())
+
 fun Cluster.startWithRetry(vararg besuNodes: BesuNode) {
   val maxAttempts = 10
   var lastException: IllegalStateException? = null
