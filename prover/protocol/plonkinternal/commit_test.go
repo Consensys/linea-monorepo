@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/require"
@@ -34,14 +34,13 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	}
 
 	// commit to powers of a
-	//committer := api.(frontend.Committer)
-	//_, err := committer.Commit(powersOfA...)
-
 	committer := api.(frontend.WideCommitter)
-	// width is the size of the output slice of WideCommit, this 4 could be later interpreted as a field extension
-	_, err := committer.WideCommit(4, powersOfA...)
+	committed, err := committer.WideCommit(4, powersOfA...)
 	if err != nil {
 		return err
+	}
+	for i := range committed {
+		api.AssertIsDifferent(committed[i], 0)
 	}
 
 	api.AssertIsEqual(circuit.Y, a)
@@ -63,7 +62,7 @@ func TestPlonkWizardCircuitWithCommit(t *testing.T) {
 	)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5})})
+		pa.Run(run, []witness.Witness{gnarkutil.AsWitnessPublic([]any{0, 5})})
 	})
 
 	err := wizard.Verify(compiled, proof)
@@ -86,9 +85,9 @@ func TestPlonkWizardCircuitWithCommitMultiInstance(t *testing.T) {
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 		pa.Run(run, []witness.Witness{
-			gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublicSmallField([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
 		})
 	})
 
@@ -112,9 +111,9 @@ func TestPlonkWizardCircuitWithCommitMultiInstanceFixedNbRow(t *testing.T) {
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 		pa.Run(run, []witness.Witness{
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
-			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
+			gnarkutil.AsWitnessPublic([]any{0, 5}),
 		})
 	})
 

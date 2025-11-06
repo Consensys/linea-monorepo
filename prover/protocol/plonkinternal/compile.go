@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -133,6 +134,10 @@ func (ctx *CompilationCtx) commitGateColumns() {
 
 		// Second rounds, after sampling HCP
 		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.Round+1, coin.Name(ctx.Sprintf("HCP")), coin.FieldExt)
+		ctx.Columns.HcpEl = make([]ifaces.Column, fext.ExtensionDegree)
+		for i := 0; i < fext.ExtensionDegree; i++ {
+			ctx.Columns.HcpEl[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("HCP_BASE_%v", i), nbRow, true)
+		}
 
 		// And assigns the LRO polynomials
 		for i := 0; i < ctx.MaxNbInstances; i++ {
@@ -228,15 +233,47 @@ func (ctx *CompilationCtx) addGateConstraint() {
 		if ctx.HasCommitment() {
 			// full length of a column
 			fullLength := ctx.Columns.PI[i].Size()
-			hcpPosition := ctx.CommitmentInfo().CommitmentIndex + ctx.Plonk.SPR.GetNbPublicVariables()
+			commitmentInfo := ctx.CommitmentInfo()
+			if commitmentInfo.Width != fext.ExtensionDegree {
+				utils.Panic("unexpected commitment width %v", commitmentInfo.Width)
+			}
+			hcpPosition := commitmentInfo.CommitmentIndex + ctx.Plonk.SPR.GetNbPublicVariables()
+			// the random coin is an extension field element, but gnark circuit
+			// expects to have as a vector of base field elements we have
+			// already decomposed the random coin into base field elements in
+			// [ctx.Columns.HcpEl]. We now assert that the committed value is
+			// equal to the random coin.
+			cmtOutExp := sym.NewConstant(0)
+			for j := range fext.ExtensionDegree {
+				cmtOutExp = sym.Add(
+					cmtOutExp,
+					sym.Mul(
+						// selector indicating the row where the commitmend output is stored as random coin.
+						// equivalent to using Lagrange
+						variables.NewPeriodicSample(fullLength, hcpPosition+j),
+						// random coin value (base field element)
+						ctx.Columns.HcpEl[j],
+					),
+				)
+			}
+			// additionally, we need to assert that the decomposition of
+			// extension field element to base field element is correct
+			ctx.comp.InsertGlobal(
+				roundLRO+1,
+				ctx.queryIDf("HCP_DECOMPOSITION_%v", i),
+				sym.Sub(
+					ctx.Columns.Hcp,
+					sym.Mul(ctx.Columns.HcpEl[0], fext.NewFromUint(1, 0, 0, 0)),
+					sym.Mul(ctx.Columns.HcpEl[1], fext.NewFromUint(0, 1, 0, 0)),
+					sym.Mul(ctx.Columns.HcpEl[2], fext.NewFromUint(0, 0, 1, 0)),
+					sym.Mul(ctx.Columns.HcpEl[3], fext.NewFromUint(0, 0, 0, 1)),
+				),
+			)
+
 			exp = sym.Add(
 				exp,
 				sym.Mul(ctx.Columns.Cp[i], ctx.Columns.Qcp),
-				sym.Mul(
-					ctx.Columns.Hcp,
-					// equivalent to using Lagrange
-					variables.NewPeriodicSample(fullLength, hcpPosition),
-				),
+				cmtOutExp,
 			)
 
 			// increase the LRO

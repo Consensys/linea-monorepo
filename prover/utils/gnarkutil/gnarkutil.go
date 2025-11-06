@@ -1,7 +1,6 @@
 package gnarkutil
 
 import (
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
@@ -22,42 +21,20 @@ func AllocateSliceExt(n int) []gnarkfext.Element {
 	return make([]gnarkfext.Element, n)
 }
 
-// AsWitness converts a slice of field elements to a slice of witness variables
-// of the same length with only public inputs.
-func AsWitnessPublic(v []frontend.Variable) witness.Witness {
-
-	var (
-		wit, _  = witness.New(ecc.BLS12_377.ScalarField())
-		witChan = make(chan any, len(v))
-	)
-
-	for _, w := range v {
-		witChan <- w
-	}
-
-	close(witChan)
-
-	if err := wit.Fill(len(v), 0, witChan); err != nil {
-		panic(err)
-	}
-
-	return wit
-}
-
-// AsWitnessPublicSmallField converts a slice of base field elements to a slice of witness variables
-// of the same length with only public inputs.
-func AsWitnessPublicSmallField(v []frontend.Variable) witness.Witness {
-
+// AsWitnessPublic converts a slice of small field elements to a slice
+// of witness variables of the same length with only public inputs.
+func AsWitnessPublic(v []any) witness.Witness {
 	var (
 		wit, _  = witness.New(koalabear.Modulus())
-		witChan = make(chan any, len(v))
+		witChan = make(chan any)
 	)
 
-	for _, w := range v {
-		witChan <- w
-	}
-
-	close(witChan)
+	go func() {
+		for _, w := range v {
+			witChan <- w
+		}
+		close(witChan)
+	}()
 
 	if err := wit.Fill(len(v), 0, witChan); err != nil {
 		panic(err)
