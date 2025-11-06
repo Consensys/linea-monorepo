@@ -46,7 +46,7 @@ type ExternalHasher struct {
 // externalHasherBuilder is an implementation of the [frontend.Builder]
 // interface.
 type ExternalHasherBuilder struct {
-	plonkbuilder.PlonkInWizardBuilder
+	plonkbuilder.Builder
 	// claimTriplets stores the tripled [oldState, block, newState]
 	claimTriplets [][3]frontend.Variable
 	// rcCols is a channel used to pass back the position of the wires
@@ -169,9 +169,9 @@ func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilderU32,
 				return nil, fmt.Errorf("native builder doesn't implement committer or kvstore")
 			}
 			return &ExternalHasherBuilder{
-				PlonkInWizardBuilder: scb,
-				rcCols:               rcCols,
-				addGateForHashCheck:  addGateForHashCheck,
+				Builder:             scb,
+				rcCols:              rcCols,
+				addGateForHashCheck: addGateForHashCheck,
 			}, nil
 		}, func() [][3][2]int {
 			return <-rcCols
@@ -199,7 +199,7 @@ func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystemU32,
 
 	// GetWireGates may add gates if [addGateForRangeCheck] is true. Call it
 	// synchronously before calling compile on the circuit.
-	cols, err := builder.PlonkInWizardBuilder.GetWiresConstraintExact(allCheckedVariables, builder.addGateForHashCheck)
+	cols, err := builder.Builder.GetWiresConstraintExact(allCheckedVariables, builder.addGateForHashCheck)
 	if err != nil {
 		return nil, fmt.Errorf("get wire gates: %w", err)
 	}
@@ -219,12 +219,12 @@ func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystemU32,
 		builder.rcCols <- packedResult
 	}()
 
-	return builder.PlonkInWizardBuilder.Compile()
+	return builder.Builder.Compile()
 }
 
 // Compiler returns the compiler of the underlying builder.
 func (builder *ExternalHasherBuilder) Compiler() frontend.Compiler {
-	return builder.PlonkInWizardBuilder.Compiler()
+	return builder.Builder.Compiler()
 }
 
 // MimcHintfunc is a gnark hint that computes the MiMC compression function, it

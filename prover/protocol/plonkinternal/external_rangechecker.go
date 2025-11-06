@@ -40,7 +40,7 @@ var _ frontend.Rangechecker = &externalRangeChecker{}
 // these variables using a custom gate which allows later to map these variables
 // into Wizard column which can be range checked.
 type externalRangeChecker struct {
-	plonkbuilder.PlonkInWizardBuilder
+	plonkbuilder.Builder
 	checked              []frontend.Variable
 	rcCols               chan [][2]int
 	addGateForRangeCheck bool
@@ -78,7 +78,7 @@ func newExternalRangeChecker(addGateForRangeCheck bool) (frontend.NewBuilderU32,
 				return nil, fmt.Errorf("native builder doesn't implement committer or kvstore")
 			}
 			return &externalRangeChecker{
-				PlonkInWizardBuilder: scb,
+				Builder:              scb,
 				rcCols:               rcCols,
 				addGateForRangeCheck: addGateForRangeCheck,
 			}, nil
@@ -107,7 +107,7 @@ func (builder *externalRangeChecker) Check(v frontend.Variable, bits int) {
 func (builder *externalRangeChecker) Compile() (constraint.ConstraintSystemU32, error) {
 	// GetWireGates may add gates if [addGateForRangeCheck] is true. Call it
 	// synchronously before calling compile on the circuit.
-	cols, err := builder.PlonkInWizardBuilder.GetWireConstraints(builder.checked, builder.addGateForRangeCheck)
+	cols, err := builder.Builder.GetWireConstraints(builder.checked, builder.addGateForRangeCheck)
 	if err != nil {
 		return nil, fmt.Errorf("get wire gates: %w", err)
 	}
@@ -115,12 +115,12 @@ func (builder *externalRangeChecker) Compile() (constraint.ConstraintSystemU32, 
 	go func() {
 		builder.rcCols <- cols
 	}()
-	return builder.PlonkInWizardBuilder.Compile()
+	return builder.Builder.Compile()
 }
 
 // Compiler returns the compiler of the underlying builder.
 func (builder *externalRangeChecker) Compiler() frontend.Compiler {
-	return builder.PlonkInWizardBuilder.Compiler()
+	return builder.Builder.Compiler()
 }
 
 // addRangeCheckConstraints adds the wizard constraints implementing the range-checks
