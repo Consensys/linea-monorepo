@@ -16,6 +16,7 @@ import kotlin.time.Duration.Companion.seconds
 import maru.config.ApiConfig
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
+import maru.config.ForkTransition
 import maru.config.MaruConfig
 import maru.config.ObservabilityConfig
 import maru.config.P2PConfig
@@ -32,12 +33,8 @@ val configTemplate: MaruConfig =
   MaruConfig(
     allowEmptyBlocks = true,
     persistence = Persistence(dataPath = Path.of("maru-data")),
-    validatorElNode =
-      ValidatorElNode(
-        payloadValidationEnabled = false,
-        ethApiEndpoint = ApiEndpointConfig(URI.create("http://replace-me:8545").toURL()),
-        engineApiEndpoint = ApiEndpointConfig(URI.create("http://replace-me:8551").toURL()),
-      ),
+    forkTransition = ForkTransition(),
+    validatorElNode = null,
     api = ApiConfig(port = 0u),
     qbft = null, // Followers by default
     p2p =
@@ -124,19 +121,24 @@ internal fun setValidatorConfig(
   config: MaruConfig,
   elNode: ElNode?,
 ): MaruConfig {
-  val validatorConfig =
-    elNode
-      ?.let {
-        config.validatorElNode.copy(
-          ethApiEndpoint =
-            config.validatorElNode.ethApiEndpoint.copy(
-              endpoint = URI.create(it.ethApiUrl()).toURL(),
-            ),
-          engineApiEndpoint =
-            config.validatorElNode.engineApiEndpoint.copy(
-              endpoint = URI.create(it.engineApiUrl()).toURL(),
-            ),
-        )
-      } ?: throw IllegalArgumentException("Maru still depends on a El Node")
-  return config.copy(validatorElNode = validatorConfig)
+  if (elNode == null) return config
+
+  val updatedValidatorConfig =
+    config.validatorElNode?.copy(
+      engineApiEndpoint =
+        config.validatorElNode!!.engineApiEndpoint.copy(
+          endpoint = URI.create(elNode.engineApiUrl()).toURL(),
+        ),
+    ) ?: ValidatorElNode(
+      payloadValidationEnabled = false,
+      engineApiEndpoint = ApiEndpointConfig(endpoint = URI.create(elNode.engineApiUrl()).toURL()),
+    )
+  val updatedForkTransition =
+    config.forkTransition.copy(
+      l2EthApiEndpoint =
+        config.forkTransition.l2EthApiEndpoint?.copy(
+          endpoint = URI.create(elNode.ethApiUrl()).toURL(),
+        ) ?: ApiEndpointConfig(URI.create(elNode.ethApiUrl()).toURL()),
+    )
+  return config.copy(validatorElNode = updatedValidatorConfig, forkTransition = updatedForkTransition)
 }
