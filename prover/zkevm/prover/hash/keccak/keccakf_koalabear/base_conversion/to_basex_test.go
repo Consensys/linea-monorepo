@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
@@ -95,7 +94,6 @@ func TestKeccakFBlockPreparation(t *testing.T) {
 		}
 		for i := range b.Inputs.BaseX {
 			isBaseXFr[i] = isBaseX[i].Slice()
-			fmt.Printf("isBaseXFr[%d]: %v\n", i, vector.Prettify(isBaseXFr[i]))
 		}
 
 		for row := 0; row < size; row++ {
