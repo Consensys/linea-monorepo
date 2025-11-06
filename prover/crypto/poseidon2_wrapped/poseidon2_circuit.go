@@ -1,4 +1,4 @@
-package poseidon2
+package poseidon2_wrapped
 
 import (
 	"errors"
@@ -6,8 +6,33 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark/frontend"
+	local_poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
+
+// type GnarkFiatShamir struct {
+
+// 	hasher hash.StateStorer
+// Write(zkWrappedVariable) Sum() Reset()
+// SetState(state zkWrappedVariable), State()
+
+// 	api frontend.API
+// }
+
+// Sum() frontend.Variable
+
+// // Write populate the internal state of the hash function with data. The inputs are native field elements.
+// Write(data ...frontend.Variable)
+
+// // Reset empty the internal state and put the intermediate state to zero.
+// Reset()
+
+// State() []frontend.Variable
+// // SetState sets the state of the hash function from a previously stored
+// // state retrieved using [StateStorer.State] method. The implementation
+// // returns an error if the number of supplied Variable does not match the
+// // number of Variable expected.
+// SetState(state []frontend.Variable) error
 
 type GHash zk.Octuplet
 
@@ -49,17 +74,17 @@ func (h *GnarkHasher) Write(data ...zk.WrappedVariable) {
 func (h *GnarkHasher) Sum() GHash {
 
 	for len(h.buffer) != 0 {
-		var buf [BlockSize]zk.WrappedVariable
-		for i := 0; i < BlockSize; i++ {
+		var buf [local_poseidon2.BlockSize]zk.WrappedVariable
+		for i := 0; i < local_poseidon2.BlockSize; i++ {
 			buf[i] = zk.ValueOf(0)
 		}
 		// in this case we left pad by zeroes
-		if len(h.buffer) < BlockSize {
-			copy(buf[BlockSize-len(h.buffer):], h.buffer)
+		if len(h.buffer) < local_poseidon2.BlockSize {
+			copy(buf[local_poseidon2.BlockSize-len(h.buffer):], h.buffer)
 			h.buffer = h.buffer[:0]
 		} else {
 			copy(buf[:], h.buffer)
-			h.buffer = h.buffer[BlockSize:]
+			h.buffer = h.buffer[local_poseidon2.BlockSize:]
 		}
 
 		h.state = CompressPoseidon2(h.apiGen, h.state, buf)
@@ -86,10 +111,6 @@ func CompressPoseidon2(apiGen zk.GenericApi, a, b GHash) GHash {
 	}
 	return res
 }
-
-//----------------------------------------------------------------------
-//------------------------- copy from gnark ----------------
-//----------------------------------------------------------------------
 
 var (
 	ErrInvalidSizebuffer = errors.New("the size of the input should match the size of the hash buffer")
