@@ -8,7 +8,6 @@ going from uint to BaseA/BaseB. Also, a base conversion over the hash result,
 going from BaseB to uint. */
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -158,7 +157,6 @@ func (b *ToBaseX) Run(run *wizard.ProverRuntime) {
 			}
 		}
 
-		fmt.Printf("ToBaseX Run: row %d,  base %d\n", j, base)
 		a := extractLittleEndianBaseX(bytes, b.Inputs.NbBitsPerBaseX, len(b.LaneX), base)
 		for k := range laneX {
 			laneX[k].PushInt(int(a[k]))
