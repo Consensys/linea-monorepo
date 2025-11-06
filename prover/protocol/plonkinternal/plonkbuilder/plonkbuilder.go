@@ -14,7 +14,7 @@ import (
 // Builder is an interface grouping the necessary methods
 // for implementing wide commitment over a PLONK-in-Wizard builder.
 type Builder interface {
-	// StorerBuilder wraps the given builder
+	// PlonkInWizardBuilder wraps the given builder
 	PlonkInWizardBuilder
 	// WideCommitter allows to commit to variable and obtain extension field element
 	frontend.WideCommitter
@@ -23,7 +23,7 @@ type Builder interface {
 // ensure that the widecommitter struct implements all required interfaces
 var _ Builder = &widecommitter{}
 
-// PlonkInWizardBuilder is the interface for a builder for implemeting
+// PlonkInWizardBuilder is the interface for a builder for implementing
 // PLONK-in-Wizard protocols. It is [frontend.Builder] with some additional
 // methods for allowing to:
 // - manage key-value pairs storage (redefinition of gnark internal kvstore methods)
@@ -39,7 +39,7 @@ type PlonkInWizardBuilder interface {
 	// Builder is the underlying frontend builder
 	frontend.Builder[constraint.U32]
 
-	// redefiniton of gnark internal kvstore methods
+	// redefinition of gnark internal kvstore methods
 	SetKeyValue(key, value any)
 	GetKeyValue(key any) (value any)
 
@@ -75,7 +75,7 @@ func From(newBaseBuilder frontend.NewBuilderU32) frontend.NewBuilderU32 {
 		}
 		scb, ok := baseBuilder.(PlonkInWizardBuilder)
 		if !ok {
-			return nil, fmt.Errorf("base builder doesn't implement StorerWideCommitterBuilder")
+			return nil, fmt.Errorf("base builder doesn't implement PlonkInWizardBuilder")
 		}
 		return &widecommitter{
 			PlonkInWizardBuilder: scb,
