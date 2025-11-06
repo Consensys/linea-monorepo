@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // ProvedClaim is the composition of a proof with the claim it proves.
@@ -110,5 +111,9 @@ func (p *Proof) Verify(conf *Config, leaf, root field.Octuplet) bool {
 
 // String pretty-prints a proof
 func (p *Proof) String() string {
-	return fmt.Sprintf("&smt.Proof{Path: %d, Siblings: %x}", p.Path, p.Siblings)
+	siblingsBytes := make([]types.Bytes32, 0, len(p.Siblings))
+	for _, s := range p.Siblings {
+		siblingsBytes = append(siblingsBytes, types.HashToBytes32(s))
+	}
+	return fmt.Sprintf("&smt.Proof{Path: %d, Siblings: %x}", p.Path, siblingsBytes)
 }
