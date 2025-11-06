@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -27,10 +27,10 @@ type DeletionTrace[K, V io.WriterTo] struct {
 	NewSubRoot      Bytes32 `json:"newSubRoot"`
 
 	// `New` correspond to the inserted leaf
-	ProofMinus   smt.Proof `json:"leftProof"`
-	ProofDeleted smt.Proof `json:"deletedProof"`
-	ProofPlus    smt.Proof `json:"rightProof"`
-	Key          K         `json:"key"`
+	ProofMinus   smt_koalabear.Proof `json:"leftProof"`
+	ProofDeleted smt_koalabear.Proof `json:"deletedProof"`
+	ProofPlus    smt_koalabear.Proof `json:"rightProof"`
+	Key          K                   `json:"key"`
 
 	// Value of the leaf opening before being modified
 	OldOpenMinus LeafOpening `json:"priorLeftLeaf"`
@@ -141,7 +141,7 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 
 	// Audit the update of the deleted leaf
 	deletedLeaf := hash(v.Config, &trace.DeletedOpen)
-	currentRoot, err = updateCheckRoot(v.Config, trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt.EmptyLeaf()))
+	currentRoot, err = updateCheckRoot(v.Config, trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt_koalabear.EmptyLeaf()))
 	if err != nil {
 		return fmt.Errorf("audit of the update of the middle leaf failed %v", err)
 	}
@@ -171,9 +171,9 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 
 // DeferMerkleChecks implements [Trace]
 func (trace DeletionTrace[K, V]) DeferMerkleChecks(
-	config *smt.Config,
-	appendTo []smt.ProvedClaim,
-) []smt.ProvedClaim {
+	config *smt_koalabear.Config,
+	appendTo []smt_koalabear.ProvedClaim,
+) []smt_koalabear.ProvedClaim {
 	currentRoot := trace.OldSubRoot
 	iMinus := int64(trace.ProofMinus.Path)
 	iPlus := int64(trace.ProofPlus.Path)
@@ -185,7 +185,7 @@ func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 
 	// the proof verification for the deleted leaf
 	deletedLeaf := hash(config, &trace.DeletedOpen)
-	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt.EmptyLeaf()), appendTo)
+	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt_koalabear.EmptyLeaf()), appendTo)
 
 	// Audit the update of the "plus"
 	oldLeafPlus := trace.OldOpenPlus.Hash(config)
@@ -195,7 +195,7 @@ func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 	return appendTo
 }
 
-func (trace DeletionTrace[K, V]) HKey(_ *smt.Config) Bytes32 {
+func (trace DeletionTrace[K, V]) HKey(_ *smt_koalabear.Config) Bytes32 {
 	return trace.DeletedOpen.HKey
 }
 

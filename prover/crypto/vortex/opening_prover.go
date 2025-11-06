@@ -1,7 +1,7 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -28,7 +28,7 @@ type OpeningProof struct {
 	//
 	// MerkleProofs[i][j] corresponds to the Merkle proof attesting the j-th
 	// column of the i-th commitment root hash.
-	MerkleProofs [][]smt.Proof
+	MerkleProofs [][]smt_koalabear.Proof
 }
 
 // Open initiates the construction of a Vortex proof by returning the
@@ -129,7 +129,7 @@ func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV EncodedMatri
 func (proof *OpeningProof) Complete(
 	entryList []int,
 	committedMatrices []EncodedMatrix,
-	trees []*smt.Tree,
+	trees []*smt_koalabear.Tree,
 ) {
 
 	if len(entryList) == 0 {
@@ -150,14 +150,14 @@ func (proof *OpeningProof) Complete(
 	}
 
 	numTrees := len(trees)
-	proofs := make([][]smt.Proof, numTrees)
+	proofs := make([][]smt_koalabear.Proof, numTrees)
 
 	// Generate the proofs for each tree and each entry
 	for treeID, tree := range trees {
 		if tree == nil {
 			utils.Panic("tree is nil")
 		}
-		proofs[treeID] = make([]smt.Proof, len(entryList))
+		proofs[treeID] = make([]smt_koalabear.Proof, len(entryList))
 		for k, entry := range entryList {
 			var err error
 			proofs[treeID][k], err = tree.Prove(entry)

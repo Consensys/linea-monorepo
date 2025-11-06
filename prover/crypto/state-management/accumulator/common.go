@@ -3,14 +3,14 @@ package accumulator
 import (
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Generic hashing for object satisfying the io.WriterTo interface
-func hash[T io.WriterTo](conf *smt.Config, m T) Bytes32 {
+func hash[T io.WriterTo](conf *smt_koalabear.Config, m T) Bytes32 {
 	hasher := conf.HashFunc()
 	m.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
@@ -22,9 +22,9 @@ func hash[T io.WriterTo](conf *smt.Config, m T) Bytes32 {
 type Trace interface {
 	// DeferMerkleChecks appends all the merkle-proofs checks happening in a trace
 	// verification into a slice of smt.ProvedClaim
-	DeferMerkleChecks(config *smt.Config, appendTo []smt.ProvedClaim) []smt.ProvedClaim
+	DeferMerkleChecks(config *smt_koalabear.Config, appendTo []smt_koalabear.ProvedClaim) []smt_koalabear.ProvedClaim
 	// HKey returns the HKey of the trace
-	HKey(cfg *smt.Config) Bytes32
+	HKey(cfg *smt_koalabear.Config) Bytes32
 	// RWInt returns 0 is the trace is a read-only operation and 1 if it is a
 	// read-write operation.
 	RWInt() int

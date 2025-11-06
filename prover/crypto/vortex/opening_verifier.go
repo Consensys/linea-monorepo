@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -167,7 +167,7 @@ func (v *VerifierInputs) checkStatement() (err error) {
 func (v *VerifierInputs) checkColumnInclusion() error {
 
 	var (
-		mTreeHashConfig = &smt.Config{
+		mTreeHashConfig = &smt_koalabear.Config{
 			HashFunc: v.Params.MerkleHashFunc,
 			Depth:    utils.Log2Ceil(v.Params.NumEncodedCols()),
 		}

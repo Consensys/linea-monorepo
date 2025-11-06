@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -15,15 +15,15 @@ import (
 
 // Trace that allows checking a read zero operation: e.g. proof of non-membership
 type ReadZeroTrace[K, V io.WriterTo] struct {
-	Type         int         `json:"type"`
-	Location     string      `json:"location"`
-	Key          K           `json:"key"`
-	SubRoot      Bytes32     `json:"subRoot"`
-	NextFreeNode int         `json:"nextFreeNode"`
-	OpeningMinus LeafOpening `json:"leftLeaf"`
-	OpeningPlus  LeafOpening `json:"rightLeaf"`
-	ProofMinus   smt.Proof   `json:"leftProof"`
-	ProofPlus    smt.Proof   `json:"rightProof"`
+	Type         int                 `json:"type"`
+	Location     string              `json:"location"`
+	Key          K                   `json:"key"`
+	SubRoot      Bytes32             `json:"subRoot"`
+	NextFreeNode int                 `json:"nextFreeNode"`
+	OpeningMinus LeafOpening         `json:"leftLeaf"`
+	OpeningPlus  LeafOpening         `json:"rightLeaf"`
+	ProofMinus   smt_koalabear.Proof `json:"leftProof"`
+	ProofPlus    smt_koalabear.Proof `json:"rightProof"`
 }
 
 // ReadZeroAndProve performs a read-zero on the accumulator. Panics if the
@@ -109,9 +109,9 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 
 // DeferMerkleChecks implements the [Trace] interface.
 func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
-	config *smt.Config,
-	appendTo []smt.ProvedClaim,
-) []smt.ProvedClaim {
+	config *smt_koalabear.Config,
+	appendTo []smt_koalabear.ProvedClaim,
+) []smt_koalabear.ProvedClaim {
 
 	// Test membership of leaf minus
 	leafMinus := hash(config, &trace.OpeningMinus)
@@ -119,11 +119,11 @@ func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
 	// Test membership of leaf plus
 	leafPlus := hash(config, &trace.OpeningPlus)
 
-	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.ProofMinus, Root: types.Bytes32ToHash(trace.SubRoot), Leaf: types.Bytes32ToHash(leafMinus)})
-	return append(appendTo, smt.ProvedClaim{Proof: trace.ProofPlus, Root: types.Bytes32ToHash(trace.SubRoot), Leaf: types.Bytes32ToHash(leafPlus)})
+	appendTo = append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.ProofMinus, Root: types.Bytes32ToHash(trace.SubRoot), Leaf: types.Bytes32ToHash(leafMinus)})
+	return append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.ProofPlus, Root: types.Bytes32ToHash(trace.SubRoot), Leaf: types.Bytes32ToHash(leafPlus)})
 }
 
-func (trace ReadZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
+func (trace ReadZeroTrace[K, V]) HKey(cfg *smt_koalabear.Config) Bytes32 {
 	return hash(cfg, trace.Key)
 }
 

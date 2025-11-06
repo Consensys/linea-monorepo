@@ -7,7 +7,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -182,7 +182,7 @@ func TestProver(t *testing.T) {
 					polyLists                = make([][]smartvectors.SmartVector, numCommitments)
 					yLists                   = make([][]fext.Element, numCommitments)
 					roots                    = make([]field.Octuplet, numCommitments)
-					trees                    = make([]*smt.Tree, numCommitments)
+					trees                    = make([]*smt_koalabear.Tree, numCommitments)
 					isSisReplacedByPoseidon2 = make([]bool, numCommitments)
 				)
 
@@ -457,7 +457,7 @@ func TestVerifierNegative(t *testing.T) {
 				polyLists      = make([][]smartvectors.SmartVector, numCommitments)
 				yLists         = make([][]fext.Element, numCommitments)
 				roots          = make([]field.Octuplet, numCommitments)
-				trees          = make([]*smt.Tree, numCommitments)
+				trees          = make([]*smt_koalabear.Tree, numCommitments)
 			)
 
 			for i := range polyLists {
