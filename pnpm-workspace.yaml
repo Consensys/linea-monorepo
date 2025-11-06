@@ -1,8 +1,11 @@
 # 3 days
 minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
-  - '@web3auth/*'
-  - '@toruslabs/*'
+  - '@web3auth/modal'
+  - '@web3auth/no-modal'
+  - '@toruslabs/base-controllers'
+  - '@toruslabs/ethereum-controllers'
+  - '@web3auth/ws-embed'
 
 packages:
   - 'contracts/**'
