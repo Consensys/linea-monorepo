@@ -67,7 +67,7 @@ class ProtocolStarter(
           protocolStarter.pause()
         }
       }
-      syncStatusProvider.onFullSyncComplete {
+      syncStatusProvider.onBeaconSyncComplete {
         try {
           protocolStarter.start()
         } catch (th: Throwable) {

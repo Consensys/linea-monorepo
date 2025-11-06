@@ -13,3 +13,9 @@ interface LongRunningService {
 
   fun stop()
 }
+
+object NoOpLongRunningService : LongRunningService {
+  override fun start() {}
+
+  override fun stop() {}
+}

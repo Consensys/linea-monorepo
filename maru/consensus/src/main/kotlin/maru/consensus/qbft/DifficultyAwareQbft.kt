@@ -23,15 +23,19 @@ import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 
 class DifficultyAwareQbftFactory(
-  private val ethereumJsonRpcClient: Web3j,
+  private val ethereumJsonRpcClient: Web3j?,
   private val postTtdProtocolFactory: ProtocolFactory,
 ) : ProtocolFactory {
-  override fun create(forkSpec: ForkSpec): DifficultyAwareQbft =
-    DifficultyAwareQbft(
+  override fun create(forkSpec: ForkSpec): DifficultyAwareQbft {
+    require(ethereumJsonRpcClient != null) {
+      "L2 Ethereum API endpoint has to be set if the DifficultyAwareQbftFactory needs to be created"
+    }
+    return DifficultyAwareQbft(
       ethereumJsonRpcClient = ethereumJsonRpcClient,
       postTtdProtocolFactory = postTtdProtocolFactory,
       forkSpec = forkSpec,
     )
+  }
 }
 
 class DifficultyAwareQbft(
