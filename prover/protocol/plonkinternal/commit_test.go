@@ -39,7 +39,9 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	_ = committed // skip use of committed values for this test
+	for i := range committed {
+		api.AssertIsDifferent(committed[i], 0)
+	}
 
 	api.AssertIsEqual(circuit.Y, a)
 	return nil
