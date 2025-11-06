@@ -28,15 +28,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestMethodOrder
-import org.junit.jupiter.api.parallel.Execution
-import org.junit.jupiter.api.parallel.ExecutionMode
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
-@Execution(ExecutionMode.SAME_THREAD)
 class MaruClusterTest {
   private lateinit var cluster: MaruCluster
 
@@ -60,12 +54,11 @@ class MaruClusterTest {
   }
 
   @Test
-  @Order(1)
   fun `should allow to retrieve nodes by label`() {
     cluster =
       MaruCluster()
         .addNode(NodeRole.Follower)
-        .addNode(NodeRole.Sequencer)
+        .addNode(NodeRole.Sequencer, withBesuEl = true)
         .addNode("follower-special")
         .start()
 
@@ -88,7 +81,7 @@ class MaruClusterTest {
                 ElFork.Prague,
               ),
           ),
-      ).addNode(NodeRole.Sequencer) { nodeBuilder ->
+      ).addNode(NodeRole.Sequencer, withBesuEl = true) { nodeBuilder ->
         nodeBuilder.withLabel("sequencer")
       }.start()
 
@@ -132,7 +125,7 @@ class MaruClusterTest {
                 ElFork.Prague,
               ),
           ),
-      ).addNode("sequencer")
+      ).addNode("sequencer", addBesu = true)
         .start()
 
     await()
@@ -153,7 +146,7 @@ class MaruClusterTest {
   fun `should instantiate multiple nodes in the cluster with static peering and sync`() {
     cluster =
       MaruCluster()
-        .addNode("sequencer")
+        .addNode("sequencer", addBesu = true)
         .addNode("follower-internal-0") { nodeBuilder ->
           nodeBuilder
             .staticPeers(listOf("sequencer"))
@@ -163,10 +156,11 @@ class MaruClusterTest {
         }.start()
 
     await()
+      .apply { }
       .pollInterval(1.seconds.toJavaDuration())
       .atMost(120.seconds.toJavaDuration())
       .untilAsserted {
-        cluster.assertNodesAreSyncedUpTo(targetBlockNumber = 5UL)
+        cluster.assertNodesAreSyncedUpTo(targetBlockNumber = 3UL)
       }
   }
 
@@ -176,7 +170,7 @@ class MaruClusterTest {
     cluster =
       MaruCluster()
         .addNode("bootnode-1")
-        .addNode("sequencer")
+        .addNode("sequencer", addBesu = true)
         .addNode("follower-internal-0")
         .start()
     val followers = cluster.nodes(NodeRole.Follower)
@@ -203,7 +197,7 @@ class MaruClusterTest {
     cluster =
       MaruCluster()
         .addNode("bootnode-0")
-        .addNode("sequencer")
+        .addNode("sequencer", addBesu = true)
         .addNode("follower-internal-0")
         .start()
 

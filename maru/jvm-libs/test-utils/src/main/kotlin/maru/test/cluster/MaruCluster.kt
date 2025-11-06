@@ -117,6 +117,7 @@ class MaruCluster(
 
   private fun createNodeBuilder(
     label: String,
+    addBesu: Boolean = false,
     configurator: (NodeBuilder) -> Unit,
   ): NodeBuilder {
     assertUniqueLabel(label)
@@ -124,18 +125,20 @@ class MaruCluster(
       maruConfigTemplate = maruConfigTemplate,
       clusterDataDir = maruClusterDataDir,
       nodeLabel = label,
+      createDefaultElBesuNode = addBesu,
     ).also(configurator)
   }
 
   @Synchronized
   fun addNode(
     label: String,
+    addBesu: Boolean = false,
     configurator: (NodeBuilder) -> Unit = {},
   ): MaruCluster {
     if (runningState == RunningState.RUNNING || runningState == RunningState.STARTING) {
-      addNewExtraNodeAndStart(label, configurator)
+      addNewExtraNodeAndStart(label, addBesu, configurator)
     } else {
-      nodesBuilders.add(createNodeBuilder(label, configurator))
+      nodesBuilders.add(createNodeBuilder(label, addBesu, configurator))
     }
     return this
   }
@@ -145,14 +148,15 @@ class MaruCluster(
    */
   private fun addNewExtraNodeAndStart(
     nodeLabel: String,
+    addBesu: Boolean = false,
     configurator: (NodeBuilder) -> Unit = {},
   ): MaruCluster {
-    val nodeStatConfigs =
-      createNodeBuilder(nodeLabel, configurator)
+    val nodeStartConfigs =
+      createNodeBuilder(nodeLabel, addBesu, configurator)
         .build(genesisFactory::besuGenesis, besuCluster)
     val node =
       buildClusterNode(
-        nodeStartingConfig = nodeStatConfigs,
+        nodeStartingConfig = nodeStartConfigs,
         bootNodesEnrs = getBootnodesEnrs(),
       )
     nodes += node
@@ -162,9 +166,10 @@ class MaruCluster(
   @Synchronized
   fun addNode(
     role: NodeRole,
+    withBesuEl: Boolean = false,
     configurator: (NodeBuilder) -> Unit = {},
   ): MaruCluster =
-    addNode(label = role.name.lowercase()) { nodeBuilder ->
+    addNode(label = role.name.lowercase(), withBesuEl) { nodeBuilder ->
       nodeBuilder.withRole(role).let(configurator)
     }
 
