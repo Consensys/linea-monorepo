@@ -31,7 +31,8 @@ import maru.database.InMemoryP2PState
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.Status
 import maru.p2p.messages.StatusManager
-import maru.p2p.testutils.TestUtils.findFreePort
+import maru.p2p.testutils.NetworkUtil.findFreePort
+import maru.p2p.testutils.NetworkUtil.findFreePorts
 import maru.p2p.topics.BesuMessageDataSerDe
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
@@ -80,11 +81,13 @@ class P2PTest {
     private const val PEER_ID_NODE_3: String = "16Uiu2HAkzq767a82zfyUz4VLgPbFrxSQBrdmUYxgNDbwgvmjwWo5"
 
     @JvmStatic
-    fun p2pPorts(): Stream<Arguments> =
-      Stream.of(
-        Arguments.of(findFreePort().toInt(), findFreePort().toInt(), findFreePort().toInt()),
+    fun p2pPorts(): Stream<Arguments> {
+      val freePorts = findFreePorts(3).map { it.toInt() }
+      return Stream.of(
+        Arguments.of(freePorts[0], freePorts[1], freePorts[2]),
         Arguments.of(0, 0, 0),
       )
+    }
 
     private fun createPeerAddress(
       port: UInt,

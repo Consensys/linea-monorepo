@@ -310,6 +310,9 @@ class MaruFactory(
   }
 
   private fun writeValidatorPrivateKey(config: MaruConfig) {
+    if (!Files.exists(config.persistence.dataPath)) {
+      Files.createDirectories(config.persistence.dataPath)
+    }
     Files.writeString(config.persistence.privateKeyPath, validatorPrivateKeyWithPrefixString)
   }
 

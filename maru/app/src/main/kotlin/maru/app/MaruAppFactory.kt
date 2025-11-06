@@ -124,7 +124,6 @@ class MaruAppFactory {
         vertx = vertx,
       )
 
-    ensureDirectoryExists(config.persistence.dataPath)
     val kvDatabase =
       KvDatabaseFactory
         .createRocksDbDatabase(
@@ -405,12 +404,14 @@ class MaruAppFactory {
         log.info("Maru is using private key defined in file={}", privateKeyPath.toString())
       }
 
+      ensureDirectoryExists(privateKeyPath.parent)
+
       return GeneratingFilePrivateKeySource(privateKeyPath.toString()).privateKeyBytes.toArray()
     }
-  }
 
-  private fun ensureDirectoryExists(path: Path) {
-    if (!path.exists()) Files.createDirectories(path)
+    private fun ensureDirectoryExists(path: Path) {
+      if (!path.exists()) Files.createDirectories(path)
+    }
   }
 
   private fun dbInitialization(

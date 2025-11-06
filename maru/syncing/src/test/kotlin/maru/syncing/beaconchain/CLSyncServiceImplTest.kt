@@ -39,12 +39,12 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.PeerLookup
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
-import maru.p2p.testutils.TestUtils.findFreePort
 import maru.serialization.rlp.RLPSerializers
 import maru.syncing.CLSyncStatus
 import maru.syncing.ELSyncStatus
 import maru.syncing.SyncStatusProvider
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
+import maru.test.util.NetworkUtil.findFreePort
 import net.consensys.linea.metrics.Counter
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.tuweni.bytes.Bytes32

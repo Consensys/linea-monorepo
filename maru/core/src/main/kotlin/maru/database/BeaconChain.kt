@@ -9,6 +9,7 @@
 package maru.database
 
 import kotlin.math.min
+import maru.core.BeaconBlock
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 
@@ -42,6 +43,11 @@ interface BeaconChain : AutoCloseable {
         getSealedBeaconBlock(blockNumber)
           ?: throw IllegalStateException("Missing sealed beacon block $blockNumber")
       }.toList()
+
+  fun getLatestBeaconBlock(): BeaconBlock =
+    getSealedBeaconBlock(getLatestBeaconState().beaconBlockHeader.number)
+      ?.beaconBlock
+      ?: throw IllegalStateException("Missing latest sealed beacon block")
 
   fun newBeaconChainUpdater(): Updater
 

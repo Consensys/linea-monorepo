@@ -10,13 +10,15 @@ package testutils.besu
 
 import java.util.Collections.singletonList
 import java.util.Optional
-import java.util.UUID
 import kotlin.jvm.optionals.getOrDefault
+import kotlin.random.Random
+import linea.kotlin.encodeHex
 import org.hyperledger.besu.crypto.KeyPairUtil
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration
 import org.hyperledger.besu.ethereum.core.AddressHelpers
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration
 import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration.MutableInitValues
+import org.hyperledger.besu.ethereum.eth.sync.SynchronizerConfiguration
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorageFactory
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory
@@ -37,8 +39,9 @@ object BesuFactory {
     validator: Boolean = true,
     engineRpcPort: Optional<Int> = Optional.empty(),
     jsonRpcPort: Optional<Int> = Optional.empty(),
+    nodeName: String = "miner-${Random.nextBytes(4).encodeHex(false)}",
   ): BesuNode =
-    BesuNodeFactory().createNode("miner-${UUID.randomUUID()}") { builder: BesuNodeConfigurationBuilder ->
+    BesuNodeFactory().createNode(nodeName) { builder: BesuNodeConfigurationBuilder ->
       val persistentStorageFactory: KeyValueStorageFactory =
         RocksDBKeyValueStorageFactory(
           RocksDBCLIOptions.create()::toDomainObject,
@@ -65,9 +68,15 @@ object BesuFactory {
             genesisFile,
           )
         }.devMode(false)
+        .discoveryEnabled(true)
         .engineJsonRpcConfiguration(engineRpcConfig)
         .jsonRpcConfiguration(jsonRpcConfig)
-        .webSocketEnabled()
+        .synchronizerConfiguration(
+          SynchronizerConfiguration
+            .builder()
+            .syncMinimumPeerCount(1)
+            .build(),
+        )
 
       if (validator) {
         val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")

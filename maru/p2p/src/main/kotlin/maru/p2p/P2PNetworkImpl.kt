@@ -183,7 +183,8 @@ class P2PNetworkImpl(
   override val nodeId: String = p2pNetwork.nodeId.toBase58()
   override val discoveryAddresses: List<String>
     get() = p2pNetwork.discoveryAddresses.getOrElse { emptyList() }
-  override val nodeAddresses: List<String> = p2pNetwork.nodeAddresses
+  override val nodeAddresses: List<String>
+    get() = p2pNetwork.nodeAddresses
 
   private fun logEnr(nodeRecord: NodeRecord) {
     log.info(
@@ -208,10 +209,14 @@ class P2PNetworkImpl(
             ?.let { address -> addStaticPeer(address as MultiaddrPeerAddress) }
         }
         discoveryService =
-          p2pConfig.discovery?.let {
+          p2pConfig.discovery?.let { discoveryConfig ->
             MaruDiscoveryService(
               privateKeyBytes = privateKeyBytesWithoutPrefix(privateKeyBytes),
-              p2pConfig = if (p2pConfig.port == 0u) p2pConfig.copy(port = port) else p2pConfig,
+              p2pConfig =
+                p2pConfig.copy(
+                  port = port, // use actual listening port
+                  discovery = if (discoveryConfig.port == 0u) discoveryConfig.copy(port = port) else discoveryConfig,
+                ),
               forkIdHashManager = forkIdHashManager,
               p2PState = p2PState,
             )
