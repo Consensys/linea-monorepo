@@ -17,6 +17,7 @@ class NodeBuilder(
   maruConfigTemplate: MaruConfig,
   var nodeLabel: String,
   val clusterDataDir: Path,
+  val createDefaultElBesuNode: Boolean,
 ) {
   class NodeBuildingConfig(
     val nodeRole: NodeRole,
@@ -55,10 +56,15 @@ class NodeBuilder(
         ),
     )
 
-  // fun withBesu(besuBuilder: () -> BesuNode): NodeBuilder {
+  // fun withElBesu(besuBuilder: () -> BesuNode): NodeBuilder {
   //   this.elNodeBuilder = { BesuElNode(besu = besuBuilder(), besuCluster = besuCluster) }
   //   return this
   // }
+
+  fun withElNode(elNodeBuilder: ElNodeBuilder): NodeBuilder {
+    this.elNodeBuilder = elNodeBuilder
+    return this
+  }
 
   fun withRole(nodeRole: NodeRole): NodeBuilder {
     this.nodeRole = nodeRole
@@ -101,7 +107,7 @@ class NodeBuilder(
     besuGenesisProvider: () -> String,
     besuCluster: BesuCluster,
   ) {
-    if (elNodeBuilder == null) {
+    if (elNodeBuilder == null && createDefaultElBesuNode) {
       this.elNodeBuilder = {
         BesuElNode(
           BesuFactory.buildTestBesu(
@@ -122,6 +128,9 @@ class NodeBuilder(
     initBesuBuilderFunctionIfNecessary(besuGenesisProvider, besuCluster)
     if (!this::nodeRole.isInitialized) {
       nodeRole = getNodeRoleFromLabel(this.nodeLabel)
+    }
+    require(!(nodeRole.isSequencer() && elNodeBuilder == null)) {
+      "Node with $nodeRole role needs an EL node builder defined"
     }
 
     return NodeBuildingConfig(
