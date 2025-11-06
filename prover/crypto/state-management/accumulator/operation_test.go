@@ -21,7 +21,7 @@ const numRepetion = 255
 type DummyKey = Bytes32
 type DummyVal = Bytes32
 
-const locationTesting = "location"
+const locationTesting = "0x"
 
 func dumkey(i int) DummyKey {
 	return DummyBytes32(i)

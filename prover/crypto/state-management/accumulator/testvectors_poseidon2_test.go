@@ -337,6 +337,18 @@ func TestProofFromInsertAndProve(t *testing.T) {
 
 }
 
+// Dummy hashable type that we can use for the accumulator
+type DummyFullKey = types.FullBytes32
+type DummyFullVal = types.FullBytes32
+
+func newTestAccumulatorPoseidon2DummyFullVal() *accumulator.ProverState[DummyFullKey, DummyFullVal] {
+	config := &smt.Config{
+		HashFunc: poseidon2.Poseidon2,
+		Depth:    40,
+	}
+	return accumulator.InitializeProverState[DummyFullKey, DummyFullVal](config, locationTesting)
+}
+
 // Test Proof from InsertAndProve after inserting two new entries
 func TestProofFromInsertTwoAndProve(t *testing.T) {
 
@@ -448,7 +460,7 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 
 	fmt.Printf("------------------- Trace 3: add a dummy account in another accumulator, with key2 as the location  ------------------\n")
 
-	accdum := newTestAccumulatorPoseidon2DummyVal()
+	accdum := newTestAccumulatorPoseidon2DummyFullVal()
 	{
 		leafOpening := accdum.Data.MustGet(0).LeafOpening
 		require.Equal(
@@ -469,8 +481,8 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 
 	}
 
-	key3 := types.Bytes32FromHex("0x0e00000000000000000000000000000000000000000000000000000000000000")
-	val3 := types.Bytes32FromHex("0x1200000000000000000000000000000000000000000000000000000000000000")
+	key3 := types.FullBytes32FromHex("0x0e00000000000000000000000000000000000000000000000000000000000000")
+	val3 := types.FullBytes32FromHex("0x1200000000000000000000000000000000000000000000000000000000000000")
 
 	accdum.Location = key2.Hex()
 	trace3 := accdum.InsertAndProve(key3, val3)
@@ -491,7 +503,7 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 		leafOpening := accdum.Data.MustGet(2).LeafOpening
 		require.Equal(
 			t,
-			"LeafOpening{Prev: 0, Next: 1, HKey: 0x0105708d7310079770ac42225b1438171a270b785005e90d222c489e6ae1fd75, HVal: 0x324e9d37336d8c414b2ba79f234f878847ad7dea60537c0b60ab935c3365d30e}",
+			"LeafOpening{Prev: 0, Next: 1, HKey: 0x3e59e46d51db286e504cbdf15ee428501786c73a574a96d06cc0f84b527c0954, HVal: 0x454eebb36976d82c78601ad67bd131797dd516b36b6b62b2457fcdd443662bc6}",
 			leafOpening.String(),
 		)
 
@@ -507,7 +519,7 @@ func TestProofFromInsertTwoAndProve(t *testing.T) {
 
 	require.Equal(
 		t,
-		"0x34653c6562f742100b9966b1121db857560ad166294f67da05640af076b9ed3b", //???
+		"0x7a47390f07bccddb52ea3dd3746e54c14c79361d08cf35f35f293e7d5a85db92",
 		trace3.NewSubRoot.Hex(),
 	)
 
