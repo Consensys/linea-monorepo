@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -254,7 +254,7 @@ type GProofWoMerkle struct {
 // Opening proof with Merkle proofs
 type GProof struct {
 	GProofWoMerkle
-	MerkleProofs [][]smt.GnarkProof
+	MerkleProofs [][]smt_bls12377.GnarkProof
 }
 
 // Gnark params

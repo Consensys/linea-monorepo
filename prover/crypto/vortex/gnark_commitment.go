@@ -1,14 +1,13 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
-
-//------------------------------------------------
-// verifer without merkle tree
 
 // Final circuit - commitment using Merkle trees
 type VerifyOpeningCircuitMerkleTree struct {
@@ -23,7 +22,6 @@ type VerifyOpeningCircuitMerkleTree struct {
 
 // allocate the variables for the verification circuit with Merkle trees
 func AllocateCircuitVariablesWithMerkleTree(
-
 	verifyCircuit *VerifyOpeningCircuitMerkleTree,
 	proof OpeningProof,
 	ys [][]fext.Element,
@@ -40,11 +38,11 @@ func AllocateCircuitVariablesWithMerkleTree(
 		}
 	}
 
-	verifyCircuit.Proof.MerkleProofs = make([][]smt.GnarkProof, len(proof.MerkleProofs))
+	verifyCircuit.Proof.MerkleProofs = make([][]smt_bls12377.GnarkProof, len(proof.MerkleProofs))
 	for i := 0; i < len(proof.MerkleProofs); i++ {
-		verifyCircuit.Proof.MerkleProofs[i] = make([]smt.GnarkProof, len(proof.MerkleProofs[i]))
+		verifyCircuit.Proof.MerkleProofs[i] = make([]smt_bls12377.GnarkProof, len(proof.MerkleProofs[i]))
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]zk.WrappedVariable, len(proof.MerkleProofs[i][j].Siblings))
+			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]frontend.Variable, len(proof.MerkleProofs[i][j].Siblings))
 		}
 	}
 
@@ -110,67 +108,67 @@ func AssignCicuitVariablesWithMerkleTree(
 
 }
 
-// func (circuit *VerifyOpeningCircuitMerkleTree) Define(api frontend.API) error {
+func (circuit *VerifyOpeningCircuitMerkleTree) Define(api frontend.API) error {
 
-// 	// Generic checks
-// 	err := GnarkVerifyOpeningWithMerkleProof(
-// 		api,
-// 		circuit.Params,
-// 		circuit.Roots,
-// 		circuit.Proof,
-// 		circuit.X,
-// 		circuit.Ys,
-// 		circuit.RandomCoin,
-// 		circuit.EntryList,
-// 	)
-// 	return err
-// }
+	// Generic checks
+	err := GnarkVerifyOpeningWithMerkleProof(
+		api,
+		circuit.Params,
+		circuit.Roots,
+		circuit.Proof,
+		circuit.X,
+		circuit.Ys,
+		circuit.RandomCoin,
+		circuit.EntryList,
+	)
+	return err
+}
 
-// func GnarkVerifyOpeningWithMerkleProof(
-// 	api frontend.API,
-// 	params GParams,
-// 	roots []zk.WrappedVariable,
-// 	proof GProof,
-// 	x zk.WrappedVariable,
-// 	ys [][]zk.WrappedVariable,
-// 	randomCoin zk.WrappedVariable,
-// 	entryList []zk.WrappedVariable,
-// ) error {
+func GnarkVerifyOpeningWithMerkleProof(
+	api frontend.API,
+	params GParams,
+	roots []zk.WrappedVariable,
+	proof GProof,
+	x zk.WrappedVariable,
+	ys [][]zk.WrappedVariable,
+	randomCoin zk.WrappedVariable,
+	entryList []zk.WrappedVariable,
+) error {
 
-// 	if !params.HasNoSisHasher() {
-// 		utils.Panic("the verifier circuit can only be instantiated using a NoSisHasher")
-// 	}
+	if !params.HasNoSisHasher() {
+		utils.Panic("the verifier circuit can only be instantiated using a NoSisHasher")
+	}
 
-// 	// Generic checks
-// 	selectedColsHashes, err := GnarkVerifyCommon(
-// 		api,
-// 		params,
-// 		proof.GProofWoMerkle,
-// 		x,
-// 		ys,
-// 		randomCoin,
-// 		entryList,
-// 	)
-// 	if err != nil {
-// 		return err
-// 	}
+	// Generic checks
+	selectedColsHashes, err := GnarkVerifyCommon(
+		api,
+		params,
+		proof.GProofWoMerkle,
+		x,
+		ys,
+		randomCoin,
+		entryList,
+	)
+	if err != nil {
+		return err
+	}
 
-// 	hasher, _ := params.HasherFunc(api)
-// 	hasher.Reset()
+	hasher, _ := params.HasherFunc(api)
+	hasher.Reset()
 
-// 	for i, root := range roots {
-// 		for j, entry := range entryList {
+	for i, root := range roots {
+		for j, entry := range entryList {
 
-// 			// Hash the SIS hash
-// 			var leaf = selectedColsHashes[i][j]
+			// Hash the SIS hash
+			var leaf = selectedColsHashes[i][j]
 
-// 			// Check the Merkle-proof for the obtained leaf
-// 			smt.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
+			// Check the Merkle-proof for the obtained leaf
+			smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
 
-// 			// And check that the Merkle proof is related to the correct entry
-// 			api.AssertIsEqual(proof.MerkleProofs[i][j].Path, entry)
-// 		}
-// 	}
+			// And check that the Merkle proof is related to the correct entry
+			api.AssertIsEqual(proof.MerkleProofs[i][j].Path, entry)
+		}
+	}
 
-// 	return nil
-// }
+	return nil
+}

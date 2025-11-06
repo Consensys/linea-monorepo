@@ -4,7 +4,7 @@ import (
 	"runtime"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -25,7 +25,7 @@ type EncodedMatrix []smartvectors.SmartVector
 //
 // We apply SIS+Poseidon2 hashing on the columns to compute leaves
 // Should be used when the number of rows to commit is more than the [ApplySISThreshold]
-func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt_koalabear.Tree, colHashes []field.Element) {
 
 	if len(ps) > p.MaxNbRows {
 		utils.
@@ -45,7 +45,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 		// Hash the SIS digests to obtain the leaves of the Merkle tree.
 		leavesOcts := p.hashSisHash(colHashes)
 
-		tree = smt.BuildComplete(
+		tree = smt_koalabear.BuildComplete(
 			leavesOcts,
 			p.MerkleHashFunc,
 		)
@@ -67,7 +67,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 //
 // We apply Poseidon2 hashing on the columns to compute leaves.
 // Should be used when the number of rows to commit is less than the [ApplySISThreshold]
-func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt_koalabear.Tree, colHashes []field.Element) {
 
 	if len(ps) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
@@ -85,7 +85,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 		for i := range colHashesOcts {
 			colHashes = append(colHashes, colHashesOcts[i][:]...)
 		}
-		tree = smt.BuildComplete(
+		tree = smt_koalabear.BuildComplete(
 			colHashesOcts,
 			p.MerkleHashFunc,
 		)
