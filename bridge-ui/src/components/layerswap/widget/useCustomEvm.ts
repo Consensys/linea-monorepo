@@ -1,6 +1,5 @@
-import { useAccount, useConfig } from "wagmi";
+import { useAccount } from "wagmi";
 import { useCallback, useMemo } from "react";
-import { watchAccount, getAccount } from "@wagmi/core";
 import { resolveWalletConnectorIcon, NetworkWithTokens, NetworkType } from "@layerswap/widget";
 import {
   WalletConnectionProvider,
@@ -8,15 +7,16 @@ import {
   WalletConnectionProviderProps,
   InternalConnector,
 } from "@layerswap/widget/types";
-import { useWeb3AuthConnect, useWeb3AuthDisconnect } from "@web3auth/modal/react";
+import { useWeb3Auth, useWeb3AuthConnect, useWeb3AuthDisconnect } from "@web3auth/modal/react";
+import { ADAPTER_EVENTS } from "@web3auth/base";
 
 export default function useEVM({ networks }: WalletConnectionProviderProps): WalletConnectionProvider {
   const name = "EVM";
   const id = "evm";
 
   // wagmi
-  const wagmiConfig = useConfig();
   const { connector: activeConnector, address: activeAddress, isConnected } = useAccount();
+  const { web3Auth } = useWeb3Auth();
   const { connect } = useWeb3AuthConnect();
   const { disconnect } = useWeb3AuthDisconnect();
 
@@ -47,8 +47,8 @@ export default function useEVM({ networks }: WalletConnectionProviderProps): Wal
       // Connect
       await connect();
 
-      // Wait for account address to become available
-      const address = await waitForAccountAddress(wagmiConfig);
+      // Wait for Web3Auth connection and get address
+      const address = await waitForWeb3AuthConnection(web3Auth);
 
       if (!address) {
         return undefined;
@@ -68,7 +68,7 @@ export default function useEVM({ networks }: WalletConnectionProviderProps): Wal
       console.error("Failed to connect wallet:", error);
       return undefined;
     }
-  }, [isConnected, connect, wagmiConfig, networks, supportedNetworks, disconnect]);
+  }, [isConnected, connect, web3Auth, networks, supportedNetworks, disconnect, name]);
 
   // Logout
   const disconnectWallets = useCallback(async () => {
@@ -159,35 +159,106 @@ function resolveWallet(props: {
 }
 
 /**
- * Helper function to wait for account address to become available
- * @param wagmiConfig - Wagmi configuration
+ * Helper function to wait for Web3Auth connection and get account address
+ * @param web3Auth - Web3Auth instance
  * @param timeout - Maximum time to wait in milliseconds (default: 30000)
  * @returns Promise that resolves with the account address or rejects on timeout
  */
-function waitForAccountAddress(wagmiConfig: ReturnType<typeof useConfig>, timeout: number = 30000): Promise<string> {
+function waitForWeb3AuthConnection(
+  web3Auth: ReturnType<typeof useWeb3Auth>["web3Auth"],
+  timeout: number = 30000,
+): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Check immediately in case account is already available
-    const account = getAccount(wagmiConfig);
-    if (account.address) {
-      resolve(account.address);
+    if (!web3Auth) {
+      reject(new Error("Web3Auth instance not available"));
       return;
     }
 
-    // Watch for account changes
-    const unwatch = watchAccount(wagmiConfig, {
-      onChange(account) {
-        if (account.address) {
-          unwatch();
-          clearTimeout(timeoutId);
-          resolve(account.address);
-        }
-      },
-    });
+    let web3AuthUnsubscribe: (() => void) | undefined;
+
+    const cleanup = () => {
+      if (web3AuthUnsubscribe) {
+        web3AuthUnsubscribe();
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
 
     // Set up timeout
     const timeoutId = setTimeout(() => {
-      unwatch();
+      cleanup();
       reject(new Error("Timeout waiting for wallet connection"));
     }, timeout);
+
+    // Get address from Web3Auth provider
+    const getAddressFromProvider = async (): Promise<string | null> => {
+      try {
+        const provider = web3Auth.provider;
+        if (!provider) {
+          return null;
+        }
+
+        // Request accounts from the provider
+        const accounts = (await provider.request({
+          method: "eth_accounts",
+        })) as string[];
+
+        if (accounts && Array.isArray(accounts) && accounts.length > 0) {
+          return accounts[0];
+        }
+
+        return null;
+      } catch (error) {
+        console.error("Error getting address from Web3Auth provider:", error);
+        return null;
+      }
+    };
+
+    // Handle Web3Auth connection
+    const onConnected = async () => {
+      if (web3AuthUnsubscribe) {
+        web3AuthUnsubscribe();
+        web3AuthUnsubscribe = undefined;
+      }
+
+      // Get address directly from Web3Auth provider
+      const address = await getAddressFromProvider();
+      if (address) {
+        cleanup();
+        resolve(address);
+      } else {
+        // If address not immediately available, wait a bit and retry
+        setTimeout(async () => {
+          const retryAddress = await getAddressFromProvider();
+          if (retryAddress) {
+            cleanup();
+            resolve(retryAddress);
+          } else {
+            cleanup();
+            reject(new Error("Failed to get account address from Web3Auth"));
+          }
+        }, 500);
+      }
+    };
+
+    const onErrored = () => {
+      cleanup();
+      reject(new Error("Web3Auth connection error"));
+    };
+
+    // Listen to Web3Auth events
+    web3Auth.on(ADAPTER_EVENTS.CONNECTED, onConnected);
+    web3Auth.on(ADAPTER_EVENTS.ERRORED, onErrored);
+
+    web3AuthUnsubscribe = () => {
+      web3Auth.off(ADAPTER_EVENTS.CONNECTED, onConnected);
+      web3Auth.off(ADAPTER_EVENTS.ERRORED, onErrored);
+    };
+
+    // Check if already connected
+    if (web3Auth.connected) {
+      onConnected();
+    }
   });
 }
