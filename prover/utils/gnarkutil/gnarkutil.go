@@ -1,8 +1,6 @@
 package gnarkutil
 
 import (
-	"sync"
-
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
@@ -31,11 +29,7 @@ func AsWitnessPublic(v []any) witness.Witness {
 		witChan = make(chan any)
 	)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-
 	go func() {
-		defer wg.Done()
 		for _, w := range v {
 			witChan <- w
 		}
@@ -45,7 +39,6 @@ func AsWitnessPublic(v []any) witness.Witness {
 	if err := wit.Fill(len(v), 0, witChan); err != nil {
 		panic(err)
 	}
-	wg.Wait()
 
 	return wit
 }
