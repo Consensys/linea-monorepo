@@ -47,16 +47,6 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     return _syncExternalLiabilitySettlement($$, _liabilityShares, _lstLiabilityPrincipalCached);
   }
 
-  function payObligations(address _yieldProvider) external returns (uint256) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return _payObligations($$);
-  }
-
-  function payNodeOperatorFees(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return _payNodeOperatorFees($$, _availableYield);
-  }
-
   function payLSTPrincipalInternal(address _yieldProvider, uint256 _availableFunds) external returns (uint256) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     return _payLSTPrincipal($$, _availableFunds);

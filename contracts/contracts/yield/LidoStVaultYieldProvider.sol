@@ -185,31 +185,25 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
   ) external onlyDelegateCall returns (uint256 newReportedYield, uint256 outstandingNegativeYield) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if ($$.isOssified) revert OperationNotSupportedDuringOssification(OperationType.ReportYield);
-    // First compute the total yield
-    uint256 lastUserFunds = $$.userFunds;
-    uint256 totalVaultFunds = _getDashboard($$).totalValue();
-    // Gross positive yield
-    if (totalVaultFunds > lastUserFunds) {
-      newReportedYield = totalVaultFunds - lastUserFunds;
-      // 1. Pay liabilities
-      uint256 lstLiabilityPayment = _payMaximumPossibleLSTLiability($$);
-      newReportedYield = Math256.safeSub(newReportedYield, lstLiabilityPayment);
-      // 2. Pay obligations
-      uint256 obligationsPaid = _payObligations($$);
-      newReportedYield = Math256.safeSub(newReportedYield, obligationsPaid);
-      // 3. Pay node operator fees
-      uint256 nodeOperatorFeesPaid = _payNodeOperatorFees($$, newReportedYield);
-      newReportedYield = Math256.safeSub(newReportedYield, nodeOperatorFeesPaid);
+    IDashboard dashboard = _getDashboard($$);
+    uint256 totalValue = dashboard.totalValue();
+    (,uint256 lidoProtocolFees) = dashboard.obligations();
+    // Obligations to L1MessageService users + LST liabilities + Lido protocol fees + Node operator fees
+    uint256 systemObligations = $$.userFunds + STETH.getPooledEthBySharesRoundUp(dashboard.liabilityShares()) + lidoProtocolFees + dashboard.accruedFee();
 
-      outstandingNegativeYield = Math256.safeSub(
-        lstLiabilityPayment + obligationsPaid + nodeOperatorFeesPaid,
-        totalVaultFunds - lastUserFunds
-      );
-      // Gross negative yield
+    // Compute yield
+    if (totalValue > systemObligations) {
+      newReportedYield = totalValue - systemObligations;
+      outstandingNegativeYield = 0;
     } else {
       newReportedYield = 0;
-      outstandingNegativeYield = lastUserFunds - totalVaultFunds;
+      outstandingNegativeYield = systemObligations - totalValue;
     }
+
+    // Attempt system obligation payment
+    _payMaximumPossibleLSTLiability($$);
+    try VAULT_HUB.settleLidoFees(address(_getVault($$))) {} catch {}
+    try dashboard.disburseFee() {} catch {}
   }
 
   /**
@@ -262,52 +256,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       return liabilityETH;
     } else {
       return _lstLiabilityPrincipalCached;
-    }
-  }
-
-  /**
-   * @notice Helper function to pay obligations.
-   * @dev Greedily pay Lido fees. `settleLidoFees` is permissionless, and is better settled eagerly.
-   * @dev There are multiple revert conditions on the Lido implementation.
-   * @dev Settling failures shouldn't block other flows in this scenario.
-   * @param $$ Storage pointer for the YieldProvider-scoped storage.
-   * @return obligationsPaid Amount of ETH used to pay obligations.
-   */
-  function _payObligations(YieldProviderStorage storage $$) internal returns (uint256 obligationsPaid) {
-    address vault = $$.ossifiedEntrypoint;
-    uint256 beforeVaultBalance = vault.balance;
-
-    try VAULT_HUB.settleLidoFees(vault) {
-      obligationsPaid = beforeVaultBalance - vault.balance;
-    } catch {
-      return 0;
-    }
-  }
-
-  /**
-   * @notice Helper function to pay node operator fees.
-   * @dev Does not allow partial payment of node operator fees, unlike settleLidoFees.
-   * @param $$ Storage pointer for the YieldProvider-scoped storage.
-   * @param _availableYield Amount of yield available.
-   * @return nodeOperatorFeesPaid Amount of ETH used to pay node operator fees.
-   */
-  function _payNodeOperatorFees(
-    YieldProviderStorage storage $$,
-    uint256 _availableYield
-  ) internal returns (uint256 nodeOperatorFeesPaid) {
-    if (_availableYield == 0) return 0;
-    IDashboard dashboard = _getDashboard($$);
-    IStakingVault vault = _getVault($$);
-    uint256 currentFees = dashboard.accruedFee();
-    uint256 availableVaultBalance = vault.availableBalance();
-    // Does not allow partial payment of node operator fees, unlike settleLidoFees
-    if (availableVaultBalance > currentFees) {
-      // External call to dashboard may revert for reasons beyond YieldManager control
-      try dashboard.disburseFee() {
-        nodeOperatorFeesPaid = currentFees;
-      } catch {
-        return 0;
-      }
     }
   }
 
