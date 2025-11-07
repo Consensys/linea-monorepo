@@ -21,9 +21,11 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.bundles.TransactionBundle;
@@ -33,7 +35,6 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.HardforkId;
@@ -60,8 +61,8 @@ class LineaTransactionSelectorFactoryTest {
 
   private static final Address BRIDGE_CONTRACT =
       Address.fromHexString("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec");
-  private static final Bytes BRIDGE_LOG_TOPIC =
-      Bytes.fromHexString("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
+  private static final Bytes32 BRIDGE_LOG_TOPIC =
+      Bytes32.fromHexString("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
 
   private BlockchainService mockBlockchainService;
   private LineaTransactionSelectorConfiguration mockTxSelectorConfiguration;
@@ -123,7 +124,9 @@ class LineaTransactionSelectorFactoryTest {
             Optional.empty(),
             Optional.empty(),
             bundlePool,
-            invalidTransactionByLineCountCache);
+            invalidTransactionByLineCountCache,
+            new AtomicReference<>(Collections.emptyMap()),
+            new AtomicReference<>(Collections.emptyMap()));
     factory.create(new SelectorsStateManager());
   }
 

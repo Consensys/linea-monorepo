@@ -22,6 +22,13 @@ func factorExpressionList(exprList []*symbolic.Expression) []*symbolic.Expressio
 	}
 
 	wg.Wait()
+
+	// for i := range res {
+	// 	fmt.Printf("============================\n")
+	// 	fmt.Printf("Expression: %v\n", i)
+	// 	simplify.ProfileExpression(res[i])
+	// }
+
 	return res
 }
 
@@ -30,7 +37,10 @@ func factorExpressionList(exprList []*symbolic.Expression) []*symbolic.Expressio
 // compute intensive operation.
 func factorExpression(expr *symbolic.Expression) *symbolic.Expression {
 	flattenedExpr := flattenExpr(expr)
-	return simplify.AutoSimplify(flattenedExpr)
+	flattenedExpr = simplify.AutoSimplify(flattenedExpr)
+	symbolic.SortChildren(flattenedExpr)
+
+	return flattenedExpr
 }
 
 // flattenExpr returns an expression equivalent to expr where the
