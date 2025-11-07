@@ -78,7 +78,7 @@ tasks.register('referenceExecutionSpecBlockchainTests', Test) {
     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
     systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-            System.getenv().getOrDefault("REFERENCE_TESTS_PARALLELISM", "1").toInteger())
+            System.getenv().getOrDefault("JUNIT_TESTS_PARALLELISM", "1").toInteger())
   }
 
   useJUnitPlatform {

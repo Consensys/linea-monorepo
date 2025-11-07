@@ -26,15 +26,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
-public class SepoliaTests extends TracerTestBase {
+public class BlockHashTests extends TracerTestBase {
 
   @Test
-  void block_19562398(TestInfo testInfo) {
+  void someHistoricalHashesAreChecked(TestInfo testInfo) {
     replay(SEPOLIA_PRAGUE_TESTCONFIG, "prague/19562398.sepolia.prague.json.gz", testInfo);
   }
 
+  /**
+   * The purpose of this second replay tests is to provide two consecutive conflation to the prover,
+   * with BLOCKHASH checking the "historical hashes" in both conflations.
+   */
   @Test
-  void block_19562399_19562417(TestInfo testInfo) {
+  void conflationFollowingThePreviousOneWithAgainHistoricalBlockhashesChecked(TestInfo testInfo) {
     replay(SEPOLIA_PRAGUE_TESTCONFIG, "prague/19562399-19562417.sepolia.prague.json.gz", testInfo);
   }
 }
