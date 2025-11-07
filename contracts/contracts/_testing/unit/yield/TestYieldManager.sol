@@ -218,14 +218,6 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     return abi.decode(data, (uint256));
   }
 
-  function payLSTPrincipalExternal(address _yieldProvider, uint256 _availableFunds) external returns (uint256) {
-    bytes memory data = _delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _availableFunds))
-    );
-    return abi.decode(data, (uint256));
-  }
-
   function payLSTPrincipalInternal(address _yieldProvider, uint256 _availableFunds) external returns (uint256) {
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
@@ -271,14 +263,6 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
       abi.encodeCall(TestLidoStVaultYieldProvider.payMaximumPossibleLSTLiability, (_yieldProvider))
     );
     return abi.decode(data, (uint256));
-  }
-
-  function withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
-    address _yieldProvider,
-    uint256 _amount,
-    uint256 _targetDeficit
-  ) external returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
-    return _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, _targetDeficit);
   }
 
   function pauseStakingIfNotAlready(address _yieldProvider) external {

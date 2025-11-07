@@ -72,14 +72,10 @@ interface IYieldManager {
    * @notice Emitted when ETH is sent to a YieldProvider.
    * @param yieldProvider The yield provider address.
    * @param amount Gross amount transferred to the YieldProvider.
-   * @param userFundsIncrement Portion of `amount` that is dedicated to staking.
-   * @param lstPrincipalRepaid Portion of `amount` used to repay outstanding LST principal.
    */
   event YieldProviderFunded(
     address indexed yieldProvider,
-    uint256 amount,
-    uint256 userFundsIncrement,
-    uint256 lstPrincipalRepaid
+    uint256 amount
   );
 
   /**
@@ -99,35 +95,27 @@ interface IYieldManager {
   /**
    * @notice Emitted when ETH is requested from a yield provider.
    * @param yieldProvider The yield provider address.
-   * @param amountRequested Amount requested to withdraw from the YieldProvider.
    * @param amountWithdrawn Actual amount withdrawn from the YieldProvider.
    * @param reserveIncrementAmount Amount routed to the reserve.
-   * @param lstPrincipalPaid Amount of the YieldProvider withdrawal used to repay LST liability principal.
    */
   event YieldProviderWithdrawal(
     address indexed yieldProvider,
-    uint256 amountRequested,
     uint256 amountWithdrawn,
-    uint256 reserveIncrementAmount,
-    uint256 lstPrincipalPaid
+    uint256 reserveIncrementAmount
   );
 
   /**
    * @notice Emitted when the withdrawal reserve is augmented by an operator.
    * @param yieldProvider The yield provider address.
-   * @param requestedAmount Amount requested to route to the reserve.
-   * @param reserveIncrementAmount Total amount actually routed to the reserve.
+   * @param reserveIncrementAmount Total amount routed to the reserve.
    * @param fromYieldManager Portion filled  from the YieldManager balance.
    * @param fromYieldProvider Portion filled from the YieldProvider withdrawal.
-   * @param lstPrincipalPaid Amount of the YieldProvider withdrawal used to repay LST liability principal.
    */
   event WithdrawalReserveAugmented(
     address indexed yieldProvider,
-    uint256 requestedAmount,
     uint256 reserveIncrementAmount,
     uint256 fromYieldManager,
-    uint256 fromYieldProvider,
-    uint256 lstPrincipalPaid
+    uint256 fromYieldProvider
   );
 
   /**
@@ -162,9 +150,10 @@ interface IYieldManager {
    * @notice Emitted when LST is withdrawn from a YieldProvider.
    * @param yieldProvider The yield provider address.
    * @param recipient Address that received LST.
-   * @param amount Amount of LST minted (denominated in ETH).
+   * @param amountRequested Requested amount of LST to mint (denominated in ETH).
+   * @param lstLiabilityPrincipalIncrement Amount that LSTLiabilityPrincipal increased by (denominated in ETH).
    */
-  event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amount);
+  event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amountRequested, uint256 lstLiabilityPrincipalIncrement);
 
   /**
    * @notice Emitted when ossification is initiated for a YieldProvider instance.

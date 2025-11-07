@@ -66,18 +66,6 @@ interface IYieldProvider {
   ) external returns (uint256 newReportedYield, uint256 outstandingNegativeYield);
 
   /**
-   * @notice Reduces the outstanding LST liability principal.
-   * @dev Called after the YieldManager has reserved `_availableFunds` for liability
-   *      settlement.
-   *      - Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
-   *      - Implementations should ensure lstPrincipalPaid <= _availableFunds
-   * @param _yieldProvider The yield provider address.
-   * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
-   * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
-   */
-  function payLSTPrincipal(address _yieldProvider, uint256 _availableFunds) external returns (uint256 lstPrincipalPaid);
-
-  /**
    * @notice Requests beacon chain withdrawal via EIP-7002 withdrawal contract.
    * @dev Parameters are ABI encoded by the YieldManager and understood by the yield provider.
    * @dev Dynamic withdrawal fee is sourced from `msg.value`
@@ -128,8 +116,9 @@ interface IYieldProvider {
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount of LST (denominated in ETH) to withdraw.
    * @param _recipient Address receiving the LST.
+   * @return lstLiabilityPrincipalIncrementETH Increment in lstLiabilityPrincipal denominated in ETH.
    */
-  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external;
+  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external returns (uint256 lstLiabilityPrincipalIncrementETH);
 
   /**
    * @notice Begins the provider-specific ossification workflow.

@@ -158,10 +158,13 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _amount Amount of ETH supplied by the YieldManager.
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     // Ossified -> Vault cannot generate yield -> Should fully withdraw
-    if (_getYieldProviderStorage(_yieldProvider).isOssified)
+    if ($$.isOssificationInitiated || $$.isOssified)
       revert OperationNotSupportedDuringOssification(OperationType.FundYieldProvider);
-    ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).fund{ value: _amount }();
+    // If `fundYieldProvider` can only be used in non-ossified state, then it can only interact with Dashboard.
+    _getDashboard($$).fund{ value: _amount }();
+    _payLSTPrincipal(_getYieldProviderStorage(_yieldProvider), _amount);
   }
 
   /**
@@ -306,26 +309,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
         return 0;
       }
     }
-  }
-
-  /**
-   * @notice Reduces the outstanding LST liability principal.
-   * @dev Called after the YieldManager has reserved `_availableFunds` for liability settlement.
-   *      - Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
-   *      - Implementations should ensure lstPrincipalPaid <= _availableFunds
-   * @param _yieldProvider The yield provider address.
-   * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
-   * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
-   */
-  function payLSTPrincipal(
-    address _yieldProvider,
-    uint256 _availableFunds
-  ) external onlyDelegateCall returns (uint256 lstPrincipalPaid) {
-    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if ($$.isOssificationInitiated || $$.isOssified) {
-      return 0;
-    }
-    lstPrincipalPaid = _payLSTPrincipal($$, _availableFunds);
   }
 
   /**
@@ -481,6 +464,12 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _amount Amount of ETH to withdraw to the YieldManager.
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    if (!VAULT_HUB.isVaultConnected(address(_getVault($$)))) {
+      // For a connected Lido StakingVault, LST liabilities are locked and unavailable for withdrawal, so this will not "steal" from withdrawals.
+      // Because LST Liability is overcollateralized, repaying maximum LST liability first maximises the unlocked amount available for withdrawal.
+      _payMaximumPossibleLSTLiability(($$));
+    }
     ICommonVaultOperations(_getEntrypointContract(_yieldProvider)).withdraw(address(this), _amount);
   }
 
@@ -509,14 +498,15 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount of LST (denominated in ETH) to withdraw.
    * @param _recipient Address receiving the LST.
+   * @return lstLiabilityPrincipalIncrementETH Increment in lstLiabilityPrincipal denominated in ETH.
    */
-  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyDelegateCall {
+  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyDelegateCall returns (uint256 lstLiabilityPrincipalIncrementETH) {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if ($$.isOssificationInitiated || $$.isOssified) {
       revert MintLSTDisabledDuringOssification();
     }
     IDashboard($$.primaryEntrypoint).mintStETH(_recipient, _amount);
-    $$.lstLiabilityPrincipal += _amount;
+    lstLiabilityPrincipalIncrementETH = _amount;
   }
 
   /**
