@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
@@ -42,42 +43,10 @@ func newTheta(comp *wizard.CompiledIOP,
 
 	// declare the new state and intermediate columns
 	theta.declareColumnsTheta(comp, numKeccakf)
-
-	/*	var c, cc [5][8]*sym.Expression
-		for x := 0; x < 5; x++ {
-			for z := 0; z < 8; z++ {
-				// c[x][z] = A[x][0][z] + A[x][1][z] + A[x][2][z] + A[x][3][z] + A[x][4][z]
-				c[x][z] = sym.Add(
-					stateCurr[x][0][z],
-					stateCurr[x][1][z],
-					stateCurr[x][2][z],
-					stateCurr[x][3][z],
-					stateCurr[x][4][z])
-				// roate each theta.cleanBaseC by 1 position to get cc
-				cc[x][z] = sym.Add(
-					sym.Mul(theta.cFinal[x][z], thetaBase),
-					theta.lsb[x][z],
-					sym.Mul(theta.msb[x][z], -1*thetaBase8),
-				)
-			}
-		}
-		// Check that the next state of theta is correctly computed
-		for x := 0; x < 5; x++ {
-			for y := 0; y < 5; y++ {
-				for z := 0; z < 8; z++ {
-					eqTheta := sym.Sub(theta.stateInternal[x][y][z],
-						sym.Add(
-							stateCurr[x][y][z],
-							c[(x-1+5)%5][z],
-							cc[(x+1)%5][z]))
-					qName := ifaces.QueryIDf("EQ_THETA_%v_%v_%v", x, y, z)
-					comp.InsertGlobal(0, qName, eqTheta)
-				}
-			}
-		}
-
-		// check that  cleanBaseC[x][z] is correctly computed from c[x][z] (via lookup)
-	*/
+	
+	// declare the constraints
+	theta.computationStepConstraints(comp)
+	theta.lookupConstraints(comp)
 
 	return theta
 }
@@ -162,6 +131,116 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 	}
 }
 
+// computationStepConstraints declares the constraints for the computation steps of theta
+// (step by step)
+func (theta *theta) computationStepConstraints(comp *wizard.CompiledIOP) {
+	for x := 0; x < 5; x++ {
+		for z := 0; z < 8; z++ {
+			// cmDirty[x][z] =  A[x][0][z] + A[x][1][z] + A[x][2][z]
+			exprCm := sym.Sub(theta.cMiddleDirty[x][z],
+				theta.stateCurr[x][0][z],
+				theta.stateCurr[x][1][z],
+				theta.stateCurr[x][2][z],
+			)
+			comp.InsertGlobal(0, ifaces.QueryIDf("CM_DIRTY_THETA_%v_%v", x, z),
+				exprCm,
+			)
+			// cfDirty[x][z] = cmClean[x][z] + A[x][3][z] + A[x][4][z]
+			exprCf := sym.Sub(theta.cFinalDirty[x][z],
+				theta.cMiddleClean[x][z],
+				theta.stateCurr[x][3][z],
+				theta.stateCurr[x][4][z],
+			)
+			comp.InsertGlobal(0, ifaces.QueryIDf("CF_DIRTY_THETA_%v_%v", x, z),
+				exprCf,
+			)
+
+			// booleanity of msb[x][z]
+			exprMsbBool := sym.Mul(theta.msb[x][z],
+				sym.Sub(field.One(), theta.msb[x][z]),
+			)
+			comp.InsertGlobal(0, ifaces.QueryIDf("MSB_BOOL_THETA_%v_%v", x, z),
+				exprMsbBool,
+			)
+
+			// ccDirty[x][z] = cfClean[x][z] * thetaBase - msb[x][z] * thetaBase^8 + msb of previous slice
+			exprCc := sym.Sub(theta.ccDirty[x][z],
+				sym.Mul(theta.cFinalClean[x][z], thetaBase),
+				sym.Mul(theta.msb[x][z], -1*thetaBase8),
+				theta.msb[x][(z-1+8)%8],
+			)
+			comp.InsertGlobal(0, ifaces.QueryIDf("CC_DIRTY_THETA_%v_%v", x, z),
+				exprCc,
+			)
+		}
+	}
+	// constraint on the stateCurr, stateInternalDirty, cfClean, ccCleaned
+	for x := 0; x < 5; x++ {
+		for y := 0; y < 5; y++ {
+			for z := 0; z < 8; z++ {
+				eqTheta := sym.Sub(theta.stateInternalDirty[x][y][z],
+					theta.stateCurr[x][y][z],
+					theta.cFinalClean[(x-1+5)%5][z],
+					theta.ccCleaned[(x+1)%5][z],
+				)
+				qName := ifaces.QueryIDf("EQ_THETA_STATE_%v_%v_%v", x, y, z)
+				comp.InsertGlobal(0, qName, eqTheta)
+			}
+		}
+	}
+}
+
+// lookupConstraints use inclusion query to validate the dirty and clean versions
+func (theta *theta) lookupConstraints(comp *wizard.CompiledIOP) {
+	for x := 0; x < 5; x++ {
+		for z := 0; z < 8; z++ {
+			// lookup: (cMiddleDirty, cMiddleClean)
+			comp.InsertInclusion(0,
+				ifaces.QueryIDf("LOOKUP_THETA_C_MIDDLE_%v_%v", x, z),
+				theta.lookupTable[:],
+				[]ifaces.Column{
+					theta.cMiddleDirty[x][z],
+					theta.cMiddleClean[x][z],
+				},
+			)
+			// lookup: (cFinalDirty, cFinalClean)
+			comp.InsertInclusion(0,
+				ifaces.QueryIDf("LOOKUP_THETA_C_FINAL_%v_%v", x, z),
+				theta.lookupTable[:],
+				[]ifaces.Column{
+					theta.cFinalDirty[x][z],
+					theta.cFinalClean[x][z],
+				},
+			)
+			// lookup: (ccDirty, ccCleaned)
+			comp.InsertInclusion(0,
+				ifaces.QueryIDf("LOOKUP_THETA_CC_%v_%v", x, z),
+				theta.lookupTable[:],
+				[]ifaces.Column{
+					theta.ccDirty[x][z],
+					theta.ccCleaned[x][z],
+				},
+			)
+		}
+	}
+	// lookup: (stateInternalDirty, stateInternalClean)
+	for x := 0; x < 5; x++ {
+		for y := 0; y < 5; y++ {
+			for z := 0; z < 8; z++ {
+				comp.InsertInclusion(0,
+					ifaces.QueryIDf("LOOKUP_THETA_STATE_%v_%v_%v", x, y, z),
+					theta.lookupTable[:],
+					[]ifaces.Column{
+						theta.stateInternalDirty[x][y][z],
+						theta.stateInternalClean[x][y][z],
+					},
+				)
+			}
+		}
+	}
+}
+
+// assignTheta assigns the values to the columns of theta step.
 func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 
 	var (
