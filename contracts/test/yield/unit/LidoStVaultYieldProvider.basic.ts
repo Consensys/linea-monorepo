@@ -282,8 +282,29 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
       expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(beforeVaultBalance + fundAmount);
     });
+
+    it("Should revert if staking paused", async () => {
+      await yieldManager.connect(securityCouncil).pauseStaking(yieldProviderAddress);
+      const fundAmount = ONE_ETHER;
+      const call = fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringStakingPause", [
+        OperationType.FUND_YIELD_PROVIDER,
+      ]);
+    });
+
+    it("Should revert if initiated ossification", async () => {
+      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
+      await yieldManager.connect(securityCouncil).setYieldProviderIsStakingPaused(yieldProviderAddress, false);
+      const fundAmount = ONE_ETHER;
+      const call = fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
+      await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
+        OperationType.FUND_YIELD_PROVIDER,
+      ]);
+    });
+
     it("Should revert if ossified", async () => {
       await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
+      await yieldManager.connect(securityCouncil).setYieldProviderIsStakingPaused(yieldProviderAddress, false);
       const fundAmount = ONE_ETHER;
       const call = fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
       await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringOssification", [
@@ -365,15 +386,24 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       );
     });
     it("Should revert withdraw LST when ossification pending", async () => {
+      // Setup fund
       const withdrawAmount = ONE_ETHER;
+      const recipient = ethers.Wallet.createRandom().address;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
+
+      // Add L1MessageService balance
+      const l1MessageService = await yieldManager.L1_MESSAGE_SERVICE();
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(ONE_ETHER)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
+
+      // Initiate ossification
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      const call = getWithdrawLSTCall(
-        mockLineaRollup,
-        yieldManager,
-        yieldProvider,
-        nativeYieldOperator,
-        withdrawAmount,
-      );
+
+      const call = yieldManager
+        .connect(l1Signer)
+        .withdrawLST(await yieldProvider.getAddress(), withdrawAmount, recipient);
+
       await expectRevertWithCustomError(yieldProvider, call, "MintLSTDisabledDuringOssification");
     });
     it("Should revert withdraw LST when ossifed", async () => {
