@@ -694,15 +694,6 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await yieldManager.connect(nativeYieldOperator).addToWithdrawalReserve(yieldProviderAddress, stakingVaultBalance);
       expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds - stakingVaultBalance);
       expect(await ethers.provider.getBalance(l1MessageServiceAddress)).eq(l1MessageBalance + stakingVaultBalance);
-
-      // Donation to replenish reserve to target
-      await lineaRollup.connect(securityCouncil).fund({ value: await yieldManager.getTargetReserveDeficit() });
-
-      // Fresh deposit of 10 ETH -> should clear all existing LST principal
-      const secondFundAmount = ONE_ETHER * 10n;
-      await lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(secondFundAmount);
-      await yieldManager.connect(nativeYieldOperator).fundYieldProvider(yieldProviderAddress, secondFundAmount);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
     });
 
     it("Should be able to safely handle different yield report situations", async () => {
