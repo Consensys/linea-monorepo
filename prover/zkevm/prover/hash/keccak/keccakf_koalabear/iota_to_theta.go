@@ -12,17 +12,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
-const (
-	BaseChi4   = 14641 // 11^4
-	BaseTheta  = 4
-	BaseTheta4 = 256 // 4^4
-)
-
-var (
-	BaseChi4Fr   = field.NewElement(BaseChi4)
-	BaseChiFr    = field.NewElement(BaseChi)
-	BaseThetaFr  = field.NewElement(BaseTheta)
-	BaseTheta4Fr = field.NewElement(BaseTheta4)
+type (
+	state        = [5][5][8]ifaces.Column
+	stateIn4Bits = [5][5][16]ifaces.Column
+	lane         = [8]ifaces.Column
 )
 
 // convertAndClean module, responsible for converting the state from base dirty BaseChi to BaseTheta.
@@ -38,7 +31,7 @@ type convertAndClean struct {
 }
 
 // newBaseConversion creates a new base conversion module, declares the columns and constraints and returns its pointer
-func NewConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane) *convertAndClean {
+func newConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane) *convertAndClean {
 
 	var (
 		bc = &convertAndClean{
@@ -73,13 +66,13 @@ func NewConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane) *convert
 
 			for z := 0; z < 8; z++ {
 				// asset that stateCurr is decomposed correctly into two slices of stateInternalChi
-				exprChi := wizardutils.LinCombExpr(BaseChi4, []ifaces.Column{bc.stateInternalChi[x][y][2*z], bc.stateInternalChi[x][y][2*z+1]})
+				exprChi := wizardutils.LinCombExpr(common.BaseChi4, []ifaces.Column{bc.stateInternalChi[x][y][2*z], bc.stateInternalChi[x][y][2*z+1]})
 				comp.InsertGlobal(0, ifaces.QueryIDf("BC_LINCOMB_CHI_%v_%v_%v", x, y, z),
 					sym.Sub(exprChi, bc.stateCurr[x][y][z]),
 				)
 
 				// asset that stateNext is recomposed correctly from two slices of stateInternalTheta
-				exprTheta := wizardutils.LinCombExpr(BaseTheta4, []ifaces.Column{bc.stateInternalTheta[x][y][2*z], bc.stateInternalTheta[x][y][2*z+1]})
+				exprTheta := wizardutils.LinCombExpr(common.BaseTheta4, []ifaces.Column{bc.stateInternalTheta[x][y][2*z], bc.stateInternalTheta[x][y][2*z+1]})
 				comp.InsertGlobal(0, ifaces.QueryIDf("BC_LINCOMB_THETA_%v_%v_%v", x, y, z),
 					sym.Sub(exprTheta, bc.StateNext[x][y][z]),
 				)
@@ -102,12 +95,12 @@ func (bc *convertAndClean) Run(run *wizard.ProverRuntime) convertAndClean {
 				col := bc.stateCurr[x][y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
 
 				for i := range col {
-					if col[i].Uint64() >= BaseChi4*BaseChi4 {
+					if col[i].Uint64() >= common.BaseChi4*common.BaseChi4 {
 						panic("base conversion: input is out of range")
 					}
 				}
 				// q, r := vector.DivMod(col, BaseChi4Fr) // q = high limb, r = low limb
-				v := common.DecomposeCol(col, BaseChi4, 2)
+				v := common.DecomposeCol(col, common.BaseChi4, 2)
 				q := v[1] // high limb
 				r := v[0] // low limb
 
@@ -116,14 +109,14 @@ func (bc *convertAndClean) Run(run *wizard.ProverRuntime) convertAndClean {
 				// set the high limb (4 digits)
 				run.AssignColumn(bc.stateInternalChi[x][y][2*z+1].GetColID(), smartvectors.NewRegular(q))
 				// decompose in base BaseChi and convert to bits
-				lowLimb := common.RecomposeCols(common.DecomposeAndCleanCol(r, BaseChi, 4), &BaseThetaFr)
-				highLimb := common.RecomposeCols(common.DecomposeAndCleanCol(q, BaseChi, 4), &BaseThetaFr)
+				lowLimb := common.RecomposeCols(common.DecomposeAndCleanCol(r, common.BaseChi, 4), &common.BaseThetaFr)
+				highLimb := common.RecomposeCols(common.DecomposeAndCleanCol(q, common.BaseChi, 4), &common.BaseThetaFr)
 				// set stateInternalTheta
 				run.AssignColumn(bc.stateInternalTheta[x][y][2*z].GetColID(), smartvectors.NewRegular(lowLimb))
 				run.AssignColumn(bc.stateInternalTheta[x][y][2*z+1].GetColID(), smartvectors.NewRegular(highLimb))
 				// set StateNext (8 digits)
 				var recomposed = make([]field.Element, size)
-				vector.ScalarMul(recomposed, highLimb, BaseTheta4Fr)
+				vector.ScalarMul(recomposed, highLimb, common.BaseTheta4Fr)
 				vector.Add(recomposed, recomposed, lowLimb)
 
 				run.AssignColumn(bc.StateNext[x][y][z].GetColID(), smartvectors.NewRegular(recomposed))
@@ -138,20 +131,20 @@ func creatLookupTablesChiToTheta() (dirtyChi, cleanTheta smartvectors.SmartVecto
 		lookupDirtyBaseChi   []field.Element
 		lookupCleanBaseTheta []field.Element
 		cleanValueTheta      field.Element
-		targetSize           = utils.NextPowerOfTwo(BaseChi4)
+		targetSize           = utils.NextPowerOfTwo(common.BaseChi4)
 	)
 
 	// for each value in base dirty BaseChi (0 to 14640), compute its equivalent in base clean BaseTheta
-	for i := 0; i < BaseChi4; i++ {
+	for i := 0; i < common.BaseChi4; i++ {
 		// decompose in base BaseChi (4 digits) and clean it
-		v := common.DecomposeAndCleanFr(field.NewElement(uint64(i)), BaseChi, 4)
+		v := common.DecomposeAndCleanFr(field.NewElement(uint64(i)), common.BaseChi, 4)
 		// recompose in base BaseTheta
-		cleanValueTheta = common.RecomposeRow(v, &BaseThetaFr)
+		cleanValueTheta = common.RecomposeRow(v, &common.BaseThetaFr)
 
 		lookupDirtyBaseChi = append(lookupDirtyBaseChi, field.NewElement(uint64(i)))
 		lookupCleanBaseTheta = append(lookupCleanBaseTheta, cleanValueTheta)
 	}
-	dirtyChi = smartvectors.RightPadded(lookupDirtyBaseChi, field.NewElement(BaseChi4-1), targetSize)
+	dirtyChi = smartvectors.RightPadded(lookupDirtyBaseChi, field.NewElement(common.BaseChi4-1), targetSize)
 	cleanTheta = smartvectors.RightPadded(lookupCleanBaseTheta, cleanValueTheta, targetSize)
 	return dirtyChi, cleanTheta
 }

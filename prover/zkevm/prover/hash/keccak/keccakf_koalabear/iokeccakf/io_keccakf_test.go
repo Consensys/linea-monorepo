@@ -12,7 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	iokeccakf "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/io_keccakf-kb"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/iokeccakf"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -19,6 +19,7 @@ import (
 const (
 	NbOfRowsPerLane = 4
 	NumSlices       = 8
+	MAXNBYTE        = 2
 )
 
 type IOKeccakFInputs struct {
