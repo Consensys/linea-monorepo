@@ -43,7 +43,7 @@ func newTheta(comp *wizard.CompiledIOP,
 
 	// declare the new state and intermediate columns
 	theta.declareColumnsTheta(comp, numKeccakf)
-	
+
 	// declare the constraints
 	theta.computationStepConstraints(comp)
 	theta.lookupConstraints(comp)
@@ -246,12 +246,11 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 	var (
 		stateCurrWit                                                   [5][5][8][]field.Element
 		cmDirtyFr, cmCleanFr, cfDirtyFr, cfCleanFr, ccCleanedFr, msbFr [5][8][]field.Element
-		//cc, ccCleaned                [5][8][]field.Element
-		cmDirty, cfDirty, cmClean, cfClean, ccDirty, ccCleaned, msb [5][8]*common.VectorBuilder
-		col                                                         []field.Element
-		stateInternalClean                                          [5][5][8]*common.VectorBuilder
-		stateInternalDirty                                          [5][5][8]*common.VectorBuilder
-		stateBinary                                                 [5][5][64]*common.VectorBuilder
+		cmDirty, cfDirty, cmClean, cfClean, ccDirty, ccCleaned, msb    [5][8]*common.VectorBuilder
+		col                                                            []field.Element
+		stateInternalClean                                             [5][5][8]*common.VectorBuilder
+		stateInternalDirty                                             [5][5][8]*common.VectorBuilder
+		stateBinary                                                    [5][5][64]*common.VectorBuilder
 	)
 	// get the current state
 	for x := 0; x < 5; x++ {
@@ -279,7 +278,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 			ccCleanedFr[x][z] = make([]field.Element, size)
 			msbFr[x][z] = make([]field.Element, size)
 
-			// c[x][z] = A[x][0][z] + A[x][1][z] + A[x][2][z] + A[x][3][z] + A[x][4][z]
+			// cmDirty[x][z] = A[x][0][z] + A[x][1][z] + A[x][2][z]
 			vector.Add(cmDirtyFr[x][z],
 				stateCurrWit[x][0][z],
 				stateCurrWit[x][1][z],
@@ -433,7 +432,7 @@ func createLookupTablesTheta() (dirtyBaseTheta, cleanBaseTheta smartvectors.Smar
 		targetSize           = utils.NextPowerOfTwo(thetaBase8)
 	)
 
-	// for each value in base dirty BaseChi (0 to 65535), compute its equivalent in base clean BaseTheta
+	// for each value in base dirty BaseTheta (0 to 65535), compute its equivalent in base clean BaseTheta
 	for i := 0; i < thetaBase8; i++ {
 		// decompose in base thetaBase (8 digits) and clean it
 		v := clean(decompose(uint64(i), thetaBase, 8, true))
