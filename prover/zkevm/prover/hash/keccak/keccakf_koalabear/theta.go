@@ -1,10 +1,12 @@
 package keccakfkoalabear
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -20,13 +22,15 @@ type theta struct {
 	// state before applying the theta step, in base clean 4.
 	stateCurr state
 	// state after applying the theta step, in base clean 4.
-	stateInternal state
+	stateInternalDirty, stateInternalClean state
 	// state after applying the theta step, in bits.
 	stateNext stateInBits
 	// Intermediate columns, after each 3 additions
-	cMiddle, cFinal, cMiddleCleanBase, cFinalCleanBase [5][8]ifaces.Column
-	// masb, lsb of cFinal used for the rotation and computing cc.
-	msb, lsb [5][8]ifaces.Column
+	cMiddleDirty, cFinalDirty, cMiddleClean, cFinalClean, ccDirty, ccCleaned [5][8]ifaces.Column
+	// msb of cFinal used for the rotation and computing cc.
+	msb [5][8]ifaces.Column
+	// lookup tables to attest the correctness of base conversion from dirty to clean base. The first column is in dirty base and the second in clean base.
+	lookupTable [2]ifaces.Column
 }
 
 // newTheta creates a new theta module, declares the columns and constraints and returns its pointer
@@ -83,14 +87,19 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 	// size of the columns to declare
 	colSize := numRowsKeccakSmallField(numKeccakf)
 	// declare the new state
-	theta.stateInternal = state{}
+	theta.stateInternalClean = state{}
 	theta.stateNext = stateInBits{}
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
-				theta.stateInternal[x][y][z] = comp.InsertCommit(
+				theta.stateInternalDirty[x][y][z] = comp.InsertCommit(
 					0,
-					deriveNameKeccakFSmallField("STATE_THETA_%v_%v_%v", x, y, z),
+					deriveNameKeccakFSmallField("STATE_THETA_DIRTY_%v_%v_%v", x, y, z),
+					colSize,
+				)
+				theta.stateInternalClean[x][y][z] = comp.InsertCommit(
+					0,
+					deriveNameKeccakFSmallField("STATE_THETA_CLEAN_%v_%v_%v", x, y, z),
 					colSize,
 				)
 
@@ -105,29 +114,65 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 			}
 		}
 	}
-	// declare cm ,cf, msb, lsb columns
-	/*for x := 0; x < 5; x++ {
+
+	// declare the lookup table columns
+	dirtyBaseTheta, cleanBaseTheta := createLookupTablesTheta()
+	theta.lookupTable[0] = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_DIRTY_BASETHETA"), dirtyBaseTheta)
+	theta.lookupTable[1] = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASETHETA"), cleanBaseTheta)
+
+	// declare cm ,cf, cmCleaned, cfCleaned, cc, ccCleaned, and msb columns
+	for x := 0; x < 5; x++ {
 		for z := 0; z < 8; z++ {
-			theta.cFinal[x][z] = comp.InsertCommit(
+			theta.cMiddleDirty[x][z] = comp.InsertCommit(
 				0,
-				keccakf.DeriveName("CC_BIT_CONVERTED_ROTAYED_%v_%v", x, z),
+				deriveNameKeccakFSmallField("C_MIDDLE_%v_%v", x, z),
+				colSize,
+			)
+			theta.cFinalDirty[x][z] = comp.InsertCommit(
+				0,
+				deriveNameKeccakFSmallField("C_FINAL_%v_%v", x, z),
+				colSize,
+			)
+			theta.cMiddleClean[x][z] = comp.InsertCommit(
+				0,
+				deriveNameKeccakFSmallField("C_MIDDLE_CLEAN_%v_%v", x, z),
+				colSize,
+			)
+			theta.cFinalClean[x][z] = comp.InsertCommit(
+				0,
+				deriveNameKeccakFSmallField("C_FINAL_CLEAN_%v_%v", x, z),
+				colSize,
+			)
+			theta.ccDirty[x][z] = comp.InsertCommit(
+				0,
+				deriveNameKeccakFSmallField("CC_%v_%v", x, z),
+				colSize,
+			)
+			theta.ccCleaned[x][z] = comp.InsertCommit(
+				0,
+				deriveNameKeccakFSmallField("CC_CLEAN_%v_%v", x, z),
+				colSize,
+			)
+			theta.msb[x][z] = comp.InsertCommit(
+				0,
+				deriveNameKeccakFSmallField("THETA_MSB_%v_%v", x, z),
 				colSize,
 			)
 		}
-	}*/
+	}
 }
 
 func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 
 	var (
-		stateCurrWit [5][5][8][]field.Element
-		cm, cf       [5][8][]field.Element
-		cc           [5][8][]field.Element
-		// cmClean, cfClean, msb,lsb [5][8]*common.VectorBuilder
-		col           []field.Element
-		stateInternal [5][5][8]*common.VectorBuilder
-		stateBinary   [5][5][64]*common.VectorBuilder
-		msb           [5][8][]field.Element
+		stateCurrWit                                                   [5][5][8][]field.Element
+		cmDirtyFr, cmCleanFr, cfDirtyFr, cfCleanFr, ccCleanedFr, msbFr [5][8][]field.Element
+		//cc, ccCleaned                [5][8][]field.Element
+		cmDirty, cfDirty, cmClean, cfClean, ccDirty, ccCleaned, msb [5][8]*common.VectorBuilder
+		col                                                         []field.Element
+		stateInternalClean                                          [5][5][8]*common.VectorBuilder
+		stateInternalDirty                                          [5][5][8]*common.VectorBuilder
+		stateBinary                                                 [5][5][64]*common.VectorBuilder
 	)
 	// get the current state
 	for x := 0; x < 5; x++ {
@@ -138,65 +183,78 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		}
 	}
 	size := len(stateCurrWit[0][0][0])
-	// compute c and cc, cleanBaseC, msb, lsb
+	// compute c and cc, cleanBaseC, msb
 	for x := 0; x < 5; x++ {
 		for z := 0; z < 8; z++ {
-			cm[x][z] = make([]field.Element, size)
-			cf[x][z] = make([]field.Element, size)
-			msb[x][z] = make([]field.Element, size)
+			cmDirty[x][z] = common.NewVectorBuilder(theta.cMiddleDirty[x][z])
+			cfDirty[x][z] = common.NewVectorBuilder(theta.cFinalDirty[x][z])
+			cmClean[x][z] = common.NewVectorBuilder(theta.cMiddleClean[x][z])
+			cfClean[x][z] = common.NewVectorBuilder(theta.cFinalClean[x][z])
+			ccDirty[x][z] = common.NewVectorBuilder(theta.ccDirty[x][z])
+			ccCleaned[x][z] = common.NewVectorBuilder(theta.ccCleaned[x][z])
+			msb[x][z] = common.NewVectorBuilder(theta.msb[x][z])
+			cmDirtyFr[x][z] = make([]field.Element, size)
+			cmCleanFr[x][z] = make([]field.Element, size)
+			cfDirtyFr[x][z] = make([]field.Element, size)
+			cfCleanFr[x][z] = make([]field.Element, size)
+			ccCleanedFr[x][z] = make([]field.Element, size)
+			msbFr[x][z] = make([]field.Element, size)
 
-			// cmClean[x][z] = common.NewVectorBuilder(theta.cMiddleCleanBase[x][z])
-			// cfClean[x][z] = common.NewVectorBuilder(theta.cFinalCleanBase[x][z])
-
-			// msb[x][z] = common.NewVectorBuilder(theta.msb[x][z])
-			// lsb[x][z] = common.NewVectorBuilder(theta.lsb[x][z])
 			// c[x][z] = A[x][0][z] + A[x][1][z] + A[x][2][z] + A[x][3][z] + A[x][4][z]
-			vector.Add(cm[x][z],
+			vector.Add(cmDirtyFr[x][z],
 				stateCurrWit[x][0][z],
 				stateCurrWit[x][1][z],
 				stateCurrWit[x][2][z],
 			)
+			for i := 0; i < size; i++ {
+				cmDirty[x][z].PushField(cmDirtyFr[x][z][i])
+			}
 
 			// clean the cm by decomposing each element into base thetaBase and recomposing
-			for i := 0; i < len(cm[x][z]); i++ {
-				v := cm[x][z][i].Uint64()
+			for i := 0; i < len(cmDirtyFr[x][z]); i++ {
+				v := cmDirtyFr[x][z][i].Uint64()
 				resc := clean(decompose(v, thetaBase, 8, true))
 
 				cleaned := 0
 				for k := len(resc) - 1; k >= 0; k-- {
 					cleaned = cleaned*thetaBase + resc[k]
 				}
-				// cmClean[x][z].PushInt(cleaned)
-				cm[x][z][i] = field.NewElement(uint64(cleaned))
-			}
+				cmCleanFr[x][z][i] = field.NewElement(uint64(cleaned))
+				cmClean[x][z].PushInt(cleaned)
 
-			vector.Add(cf[x][z],
-				cm[x][z],
+			}
+			// Add the rest of the state to get the cFinal
+			vector.Add(cfDirtyFr[x][z],
+				cmCleanFr[x][z],
 				stateCurrWit[x][3][z],
 				stateCurrWit[x][4][z],
 			)
+			for i := 0; i < size; i++ {
+				cfDirty[x][z].PushField(cfDirtyFr[x][z][i])
+			}
 		}
-
 		// First pass: compute msb of the next slice for all z
 		for z := 0; z < 8; z++ {
-			for i := 0; i < len(cf[x][z]); i++ {
-				v := cf[x][z][i].Uint64()
+			for i := 0; i < len(cfDirtyFr[x][z]); i++ {
+				v := cfDirtyFr[x][z][i].Uint64()
 				resf := clean(decompose(v, thetaBase, 8, true))
 
-				msb[x][z][i] = field.NewElement(uint64(resf[len(resf)-1]))
+				msbFr[x][z][i] = field.NewElement(uint64(resf[len(resf)-1]))
 
 				cfCleaned := 0
 				for k := len(resf) - 1; k >= 0; k-- {
 					cfCleaned = cfCleaned*thetaBase + resf[k]
 				}
-				cf[x][z][i] = field.NewElement(uint64(cfCleaned))
+				cfCleanFr[x][z][i] = field.NewElement(uint64(cfCleaned))
+				cfClean[x][z].PushInt(cfCleaned)
+				msb[x][z].PushField(msbFr[x][z][i])
 			}
 		}
 
 		// Second pass: compute cc using previous slice lsb (wrap-around)
 		for z := 0; z < 8; z++ {
 			prev := (z - 1 + 8) % 8 // safe wrap-around
-			for i := 0; i < len(cf[x][z]); i++ {
+			for i := 0; i < len(cfCleanFr[x][z]); i++ {
 				// cc is the 1 bit left shifted version of cf
 				// to obtain cc we do:
 				// - left shift cf by 1 position (multiply by thetaBase)
@@ -204,15 +262,25 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 				// - add msb of previous slice (adding the bit shifted from previous slice)
 				// it is the previous slice because z slices are stored in little endian order
 				// cc[x][z] = cf[x][z] * thetaBase - msb[x][z] * thetaBase^8 + msb of previous slice
-				a := int(cf[x][z][i].Uint64())*thetaBase - int(msb[x][z][i].Uint64())*thetaBase8 + int(msb[x][prev][i].Uint64())
+				a := int(cfCleanFr[x][z][i].Uint64())*thetaBase - int(msbFr[x][z][i].Uint64())*thetaBase8 + int(msbFr[x][prev][i].Uint64())
+				ccDirty[x][z].PushInt(a)
 				// clean a
 				res := clean(decompose(uint64(a), thetaBase, 8, true))
 				cleanedA := 0
 				for k := len(res) - 1; k >= 0; k-- {
 					cleanedA = cleanedA*thetaBase + res[k]
 				}
-				cc[x][z] = append(cc[x][z], field.NewElement(uint64(cleanedA)))
+				ccCleanedFr[x][z][i] = field.NewElement(uint64(cleanedA))
+				ccCleaned[x][z].PushInt(cleanedA)
 			}
+			// Assign all the vector builders
+			cmDirty[x][z].PadAndAssign(run)
+			cfDirty[x][z].PadAndAssign(run)
+			cmClean[x][z].PadAndAssign(run)
+			cfClean[x][z].PadAndAssign(run)
+			ccDirty[x][z].PadAndAssign(run)
+			ccCleaned[x][z].PadAndAssign(run)
+			msb[x][z].PadAndAssign(run)
 		}
 
 	}
@@ -221,7 +289,8 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
-				stateInternal[x][y][z] = common.NewVectorBuilder(theta.stateInternal[x][y][z])
+				stateInternalClean[x][y][z] = common.NewVectorBuilder(theta.stateInternalClean[x][y][z])
+				stateInternalDirty[x][y][z] = common.NewVectorBuilder(theta.stateInternalDirty[x][y][z])
 				// assign the binary state
 				for j := 0; j < 8; j++ {
 					stateBinary[x][y][z*8+j] = common.NewVectorBuilder(theta.stateNext[x][y][z*8+j])
@@ -230,24 +299,26 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 				col = make([]field.Element, size)
 
 				// A'[x][y][z] = A[x][y][z] + c[(x-1+5)%5][z] + cc[(x+1)%5][z]
-				vector.Add(col, stateCurrWit[x][y][z], cf[(x-1+5)%5][z], cc[(x+1)%5][z])
+				vector.Add(col, stateCurrWit[x][y][z], cfCleanFr[(x-1+5)%5][z], ccCleanedFr[(x+1)%5][z])
 
-				// clean the state
+				// assign dirty and clean the state
 				for i := 0; i < len(col); i++ {
+					stateInternalDirty[x][y][z].PushField(col[i])
 					res := clean(decompose(col[i].Uint64(), thetaBase, 8, true))
 					// recompse to get clean state
 					stateCleaned := 0
 					for i := len(res) - 1; i >= 0; i-- {
 						stateCleaned = stateCleaned*thetaBase + res[i]
 					}
-					stateInternal[x][y][z].PushInt(stateCleaned)
+					stateInternalClean[x][y][z].PushInt(stateCleaned)
 					// assign the binary representation
 					for j := 0; j < 8; j++ {
 						stateBinary[x][y][z*8+j].PushInt(res[j])
 					}
 				}
 				// assign the internal state
-				stateInternal[x][y][z].PadAndAssign(run)
+				stateInternalDirty[x][y][z].PadAndAssign(run)
+				stateInternalClean[x][y][z].PadAndAssign(run)
 				// assign the binary state
 				for i := 0; i < 8; i++ {
 					stateBinary[x][y][z*8+i].PadAndAssign(run)
@@ -271,4 +342,33 @@ func clean(in []uint64) (out []int) {
 		}
 	}
 	return out
+}
+
+// createLookupTablesTheta creates the lookup tables for validating th
+// cleaning from dirty to clean version for theta step.
+func createLookupTablesTheta() (dirtyBaseTheta, cleanBaseTheta smartvectors.SmartVector) {
+	var (
+		lookupDirtyBaseTheta []field.Element
+		lookupCleanBaseTheta []field.Element
+		cleanValueTheta      int
+		targetSize           = utils.NextPowerOfTwo(thetaBase8)
+	)
+
+	// for each value in base dirty BaseChi (0 to 65535), compute its equivalent in base clean BaseTheta
+	for i := 0; i < thetaBase8; i++ {
+		// decompose in base thetaBase (8 digits) and clean it
+		v := clean(decompose(uint64(i), thetaBase, 8, true))
+		cleanValueTheta = 0
+		for k := len(v) - 1; k >= 0; k-- {
+			cleanValueTheta = cleanValueTheta*thetaBase + int(v[k])
+		}
+
+		lookupDirtyBaseTheta = append(lookupDirtyBaseTheta, field.NewElement(uint64(i)))
+		lookupCleanBaseTheta = append(lookupCleanBaseTheta, field.NewElement(uint64(cleanValueTheta)))
+	}
+
+	// pad to target size
+	dirtyBaseTheta = smartvectors.RightPadded(lookupDirtyBaseTheta, field.NewElement(thetaBase8-1), targetSize)
+	cleanBaseTheta = smartvectors.RightPadded(lookupCleanBaseTheta, field.NewElement(uint64(cleanValueTheta)), targetSize)
+	return dirtyBaseTheta, cleanBaseTheta
 }
