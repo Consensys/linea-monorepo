@@ -6,25 +6,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
-)
-
-const (
-	// Number of 64bits lanes in a keccak block
-	numLanesInBlock = 17
-	numRounds       = 24
-	// the number of slices of lane for working with BaseTheta and BaseChi
-	numSlices = 8
-)
-
-type (
-	//  each lane is 64 bits, represented as [numSlices] bytes.
-	lane = [numSlices]ifaces.Column
-	// keccakf state is a 5x5 matrix of lanes.
-	state = [5][5]lane
-	// state after each base conversion, each lane is decomposed into 16 slices of 4 bits each.
-	stateIn4Bits = [5][5][16]ifaces.Column
-	// state after bit rotation, each lane is decomposed into 64 bits.
-	stateInBits = [5][5][64]ifaces.Column
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
 // inputs to the keccakf module
@@ -32,12 +14,12 @@ type keccakfInputs struct {
 	// the state before the keccakf round
 	// Note : unlike the original keccakf where the initial State is zero,
 	// the initial State here is the first block of the message.
-	state state
+	state common.State
 	// the blocks of the message to be absorbed.
 	// first blocks of messages are located in positions 0 mod 24 and are represented in base clean 12,
 	// other blocks of message are located in positions 23 mod 24 and are represented in base clean 11.
 	// otherwise the blocks are zero.
-	blocks [numLanesInBlock]lane
+	blocks [common.NumLanesInBlock]common.Lane
 	// flag indicating if it is the first block of the message
 	isFirstBlock ifaces.Column
 	// flag indicating if it is a block of the message
@@ -59,7 +41,6 @@ type Module struct {
 	// chi module, responsible for updating the state in the chi step of keccakf
 	ChiIota *chi
 	// iota to theta module, responsible for bringing back the state from [ChiIota] to the representation proper for theta step.
-	IotaToTheta *convertAndClean
 }
 
 // NewModule creates a new keccakf module, declares the columns and constraints and returns its pointer
@@ -89,8 +70,8 @@ func NewModule(comp *wizard.CompiledIOP, numKeccakf int, inp keccakfInputs) *Mod
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			m := 5*y + x
-			if m < numLanesInBlock {
-				for z := 0; z < numSlices; z++ {
+			if m < common.NumLanesInBlock {
+				for z := 0; z < common.NumSlices; z++ {
 					// if it is the first block of the message, assign it to the state
 					comp.InsertGlobal(0, ifaces.QueryIDf("STATE_IS_SET_TO_FIRST_BLOCK_%v_%v_%v", x, y, z),
 						sym.Mul(inp.isFirstBlock,
@@ -99,7 +80,7 @@ func NewModule(comp *wizard.CompiledIOP, numKeccakf int, inp keccakfInputs) *Mod
 					)
 				}
 			} else {
-				for z := 0; z < numSlices; z++ {
+				for z := 0; z < common.NumSlices; z++ {
 					//  the remaining columns of the state are set to zero
 					comp.InsertGlobal(0, ifaces.QueryIDf("STATE_IS_SET_TO_ZERO_%v,%v_%v", x, y, z),
 						sym.Mul(inp.isFirstBlock, inp.state[x][y][z]),
@@ -123,15 +104,15 @@ func NewModule(comp *wizard.CompiledIOP, numKeccakf int, inp keccakfInputs) *Mod
 }
 
 // Assign the values to the columns of the keccakf module.
-func (m *Module) Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [numLanesInBlock]lane) {
+func (m *Module) Assign(run *wizard.ProverRuntime, numKeccakf int, blocks [common.NumLanesInBlock]common.Lane) {
 	// initial state is zero
-	var state state
+	var state common.State
 	// assign the blocks of the message to the state
 
 	// assign the theta module with the state including the message-blocks
 	m.theta.assignTheta(run, state)
 	// assign the base conversion module with the state after theta
-	m.IotaToTheta.Run(run)
+	// m.IotaToTheta.Run(run)
 	// assign the rho pi module with the state after theta
 	// m.RhoPi.assignRoh(run, m.bc.StateNext)
 
@@ -145,5 +126,5 @@ func declareColumns(comp *wizard.CompiledIOP, maxNumKeccakf int) {
 // permutation function. The result is padded to the next power of 2 in order to
 // satisfy the requirements of the Wizard to have only powers of 2.
 func numRows(numKeccakf int) int {
-	return utils.NextPowerOfTwo(numKeccakf * numRounds)
+	return utils.NextPowerOfTwo(numKeccakf * common.NumRounds)
 }

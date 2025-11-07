@@ -13,32 +13,29 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
-const BaseChi = 11
-
-var baseFr = field.NewElement(BaseChi)
-
-type block [numLanesInBlock][numSlices]ifaces.Column
+type block [common.NumLanesInBlock][common.NumSlices]ifaces.Column
 
 type chi struct {
 	Inputs *chiInputs
-	// internal state  recomposing each [numSlices] bits into a base clean BaseChi.
+	// internal state  recomposing each [common.NumSlices] bits into a base clean BaseChi.
 	// it is a placeholder for the linear combination expressions, to facilitate the assignment.
-	stateInternal [5][5][numSlices]*sym.Expression
+	stateInternal [5][5][common.NumSlices]*sym.Expression
 	// state after applying the chi step.
 	// It is in the expression form since it will be combined with Iota step
 	// to get the standard state later. This avoid declaring extra columns.
-	StateNext [5][5][numSlices]ifaces.Column
+	StateNext [5][5][common.NumSlices]ifaces.Column
 	// prover actions for linear combinations
-	// paLinearCombinations [5][5][numSlices]*protocols.LinearCombination
+	// paLinearCombinations [5][5][common.NumSlices]*protocols.LinearCombination
 	// the round constant
-	rc [numSlices]*dedicated.RepeatedPattern
+	rc [common.NumSlices]*dedicated.RepeatedPattern
 }
 
 type chiInputs struct {
 	// state before applying the chi step
-	stateCurr stateInBits
+	stateCurr common.StateInBits
 	// it contains the first block of the message at position 0 mod 24,
 	// and any other block at position 0 mod 23.
 	blocks block
@@ -57,21 +54,21 @@ type chiInputs struct {
 func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
 
 	chi := &chi{
-		stateInternal: [5][5][numSlices]*sym.Expression{},
+		stateInternal: [5][5][common.NumSlices]*sym.Expression{},
 		Inputs:        &in,
-		StateNext:     [5][5][numSlices]ifaces.Column{},
+		StateNext:     [5][5][common.NumSlices]ifaces.Column{},
 	}
 
 	var (
-		stateNext [5][5][numSlices]*sym.Expression
+		stateNext [5][5][common.NumSlices]*sym.Expression
 		size      = numRows(in.numKeccakf)
 	)
 
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
-			for z := 0; z < numSlices; z++ {
+			for z := 0; z < common.NumSlices; z++ {
 				// set the internal state column to the result of the linear combination
-				chi.stateInternal[x][y][z] = wizardutils.LinCombExpr(BaseChi, in.stateCurr[x][y][z*numSlices:z*numSlices+numSlices])
+				chi.stateInternal[x][y][z] = wizardutils.LinCombExpr(common.BaseChi, in.stateCurr[x][y][z*common.NumSlices:z*common.NumSlices+common.NumSlices])
 				// define the state next columns
 				chi.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_NEXT_%v_%v_%v", x, y, z), size)
 			}
@@ -80,7 +77,7 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
 
 	// define the round constant columns
 	rcCols := ValRCBase2Pattern()
-	for i := 0; i < numSlices; i++ {
+	for i := 0; i < common.NumSlices; i++ {
 		chi.rc[i] = dedicated.NewRepeatedPattern(
 			comp,
 			0,
@@ -92,13 +89,13 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
 	// apply complex binary. i.e., A[x][y] = A[x][y] + ( (not A[x+1][y]) and A[x+2][y] ) + block[x+5*Y]  and A[0,0] = A[0,0] + RC
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
-			for z := 0; z < numSlices; z++ {
+			for z := 0; z < common.NumSlices; z++ {
 				stateNext[x][y][z] = sym.Add(
 					sym.Mul(2, chi.stateInternal[x][y][z]),
 					chi.stateInternal[(x+1)%5][y][z],
 					sym.Mul(3, chi.stateInternal[(x+2)%5][y][z]),
 				)
-				if x+5*y < numLanesInBlock {
+				if x+5*y < common.NumLanesInBlock {
 					// add the message block for all blocks except the first one
 					stateNext[x][y][z] = sym.Add(
 						stateNext[x][y][z],
@@ -125,19 +122,19 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
 }
 
 // assignChi assigns the values to the columns of chi step.
-func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
+func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr common.StateInBits) {
 	var (
 		u, v          []field.Element
-		stateInternal [5][5][numSlices][]field.Element
+		stateInternal [5][5][common.NumSlices][]field.Element
 		size          = stateCurr[0][0][0].Size()
-		rcCols        [numSlices][]field.Element
+		rcCols        [common.NumSlices][]field.Element
 		isBlockOther  = chi.Inputs.isBlockOther.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
 
 	// assign the linear combinations for each lane in the state
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
-			for z := 0; z < numSlices; z++ {
+			for z := 0; z < common.NumSlices; z++ {
 				// get the assignment of the internal state
 				stateInternal[x][y][z] = column.EvalExprColumn(run, chi.stateInternal[x][y][z].Board()).IntoRegVecSaveAlloc()
 
@@ -147,14 +144,14 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 
 	// assign the state after chi step
 	two := field.NewElement(2)
-	for i := 0; i < numSlices; i++ {
+	for i := 0; i < common.NumSlices; i++ {
 		chi.rc[i].Assign(run)
 		rcCols[i] = chi.rc[i].Natural.GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
-			for z := 0; z < numSlices; z++ {
+			for z := 0; z < common.NumSlices; z++ {
 				// A[x][y] = A[x][y] + ( (not A[x+1][y]) and A[x+2][y])
 				u = make([]field.Element, size)
 				v = make([]field.Element, size)
@@ -169,7 +166,7 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 					vector.Add(u, u, tt)
 				}
 				// add the message block for all blocks
-				if x+5*y < numLanesInBlock {
+				if x+5*y < common.NumLanesInBlock {
 					blocks := chi.Inputs.blocks[x+5*y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
 					var tt = make([]field.Element, size)
 					vector.ScalarMul(tt, blocks, two)
@@ -186,17 +183,17 @@ func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr stateInBits) {
 }
 
 // ValRCBase2Pattern returns the round constants in base BaseChi (11) and sliced form.
-func ValRCBase2Pattern() [numSlices][]field.Element {
+func ValRCBase2Pattern() [common.NumSlices][]field.Element {
 
 	var (
-		res = [numSlices][]field.Element{}
+		res = [common.NumSlices][]field.Element{}
 	)
 
 	for j := range keccak.RC {
-		var out [numSlices]uint64
-		for i := 0; i < numSlices; i++ {
-			out[i] = (keccak.RC[j] >> (numSlices * i)) & 0xFF // take each byte, LSB first
-			a := keccakf.U64ToBaseX(out[i], &baseFr)
+		var out [common.NumSlices]uint64
+		for i := 0; i < common.NumSlices; i++ {
+			out[i] = (keccak.RC[j] >> (common.NumSlices * i)) & 0xFF // take each byte, LSB first
+			a := keccakf.U64ToBaseX(out[i], &common.BaseChiFr)
 			res[i] = append(res[i], a)
 		}
 
