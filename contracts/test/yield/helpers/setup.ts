@@ -10,6 +10,7 @@ import {
   TestLineaRollup,
   TestYieldManager,
   YieldManager,
+  MockSTETH,
 } from "contracts/typechain-types";
 import { ethers } from "hardhat";
 import {
@@ -274,4 +275,24 @@ export const incrementMockDashboardTotalValue = async (mockDashboard: MockDashbo
 
 export const decrementMockDashboardTotalValue = async (mockDashboard: MockDashboard, amount: bigint) => {
   await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - amount);
+};
+
+export const setupLSTPrincipalDecrementInPayLSTPrincipal = async (amount: bigint, mockSTETH: MockSTETH) => {
+  await mockSTETH.setPooledEthBySharesRoundUpReturn(amount);
+};
+
+export const setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability = async (
+  amount: bigint,
+  yieldManager: TestYieldManager,
+  yieldProviderAddress: string,
+  mockSTETH: MockSTETH,
+  mockDashboard: MockDashboard,
+) => {
+  // Setup rebalanceShares > 0
+  await mockDashboard.setLiabilitySharesReturn(1);
+  await mockSTETH.setSharesByPooledEthReturn(1);
+  // Setup _syncExternalLiabilitySettlement to deduct amount
+  await mockSTETH.setPooledEthBySharesRoundUpReturn(
+    (await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)) - amount,
+  );
 };
