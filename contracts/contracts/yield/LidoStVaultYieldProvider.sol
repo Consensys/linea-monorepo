@@ -192,7 +192,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     uint256 systemObligations = $$.userFunds + STETH.getPooledEthBySharesRoundUp(dashboard.liabilityShares()) + lidoProtocolFees + dashboard.accruedFee();
 
     // Compute yield
-    if (totalValue > systemObligations) {
+    if (totalValue >= systemObligations) {
       newReportedYield = totalValue - systemObligations;
       outstandingNegativeYield = 0;
     } else {

@@ -3,10 +3,10 @@ import { expectRevertWithCustomError, getAccountsFixture } from "../../common/he
 import {
   deployAndAddSingleLidoStVaultYieldProvider,
   fundLidoStVaultYieldProvider,
+  getBalance,
   getWithdrawLSTCall,
 } from "../helpers";
 import {
-  MockVaultHub,
   MockSTETH,
   MockLineaRollup,
   TestYieldManager,
@@ -24,7 +24,6 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
   let nativeYieldOperator: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let l2YieldRecipient: SignerWithAddress;
-  let mockVaultHub: MockVaultHub;
   let mockSTETH: MockSTETH;
   let mockLineaRollup: MockLineaRollup;
   let yieldManager: TestYieldManager;
@@ -48,7 +47,6 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       mockDashboard,
       mockStakingVault,
       yieldManager,
-      mockVaultHub,
       mockSTETH,
       mockLineaRollup,
     } = await loadFixture(deployAndAddSingleLidoStVaultYieldProvider));
@@ -302,19 +300,12 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
   });
 
   describe("payLSTPrincipal", () => {
-    it("Should revert if not invoked via delegatecall", async () => {
-      await expect(yieldProvider.payLSTPrincipal(yieldProviderAddress, ONE_ETHER)).to.be.revertedWithCustomError(
-        yieldProvider,
-        "ContextIsNotYieldManager",
-      );
-    });
-
     it("Should return 0 if ossification pending", async () => {
       await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
       const lstPrincipalPaid = await yieldManager
         .connect(securityCouncil)
-        .payLSTPrincipalExternal.staticCall(yieldProviderAddress, ONE_ETHER);
-      await yieldManager.connect(securityCouncil).payLSTPrincipalExternal(yieldProviderAddress, ONE_ETHER);
+        .payLSTPrincipal.staticCall(yieldProviderAddress, ONE_ETHER);
+      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, ONE_ETHER);
 
       expect(lstPrincipalPaid).eq(0);
     });
@@ -324,8 +315,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
       const lstPrincipalPaid = await yieldManager
         .connect(securityCouncil)
-        .payLSTPrincipalExternal.staticCall(yieldProviderAddress, ONE_ETHER);
-      await yieldManager.connect(securityCouncil).payLSTPrincipalExternal(yieldProviderAddress, ONE_ETHER);
+        .payLSTPrincipal.staticCall(yieldProviderAddress, ONE_ETHER);
+      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, ONE_ETHER);
 
       expect(lstPrincipalPaid).eq(0);
     });
@@ -338,8 +329,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       // Act
       const lstLiabilityPaid = await yieldManager
         .connect(securityCouncil)
-        .payLSTPrincipalExternal.staticCall(yieldProviderAddress, ONE_ETHER);
-      await yieldManager.connect(securityCouncil).payLSTPrincipalExternal(yieldProviderAddress, ONE_ETHER);
+        .payLSTPrincipal.staticCall(yieldProviderAddress, ONE_ETHER);
+      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, ONE_ETHER);
 
       // Arrange
       expect(lstLiabilityPaid).eq(0);
@@ -358,8 +349,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const amountAvailable = ZERO_VALUE;
       const lstLiabilityPaid = await yieldManager
         .connect(securityCouncil)
-        .payLSTPrincipalExternal.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payLSTPrincipalExternal(yieldProviderAddress, amountAvailable);
+        .payLSTPrincipal.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, amountAvailable);
 
       // Arrange
       expect(lstLiabilityPaid).eq(0);
@@ -378,8 +369,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const amountAvailable = ONE_ETHER * 2n;
       const lstLiabilityPaid = await yieldManager
         .connect(securityCouncil)
-        .payLSTPrincipalExternal.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payLSTPrincipalExternal(yieldProviderAddress, amountAvailable);
+        .payLSTPrincipal.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, amountAvailable);
 
       // Arrange
       expect(lstLiabilityPaid).eq(ONE_ETHER);
@@ -400,8 +391,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const amountAvailable = ONE_ETHER;
       const lstLiabilityPaid = await yieldManager
         .connect(securityCouncil)
-        .payLSTPrincipalExternal.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payLSTPrincipalExternal(yieldProviderAddress, amountAvailable);
+        .payLSTPrincipal.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, amountAvailable);
 
       // Arrange
       expect(lstLiabilityPaid).eq(ONE_ETHER);
@@ -432,8 +423,8 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const amountAvailable = ONE_ETHER;
       const lstLiabilityPaid = await yieldManager
         .connect(securityCouncil)
-        .payLSTPrincipalExternal.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payLSTPrincipalExternal(yieldProviderAddress, amountAvailable);
+        .payLSTPrincipal.staticCall(yieldProviderAddress, amountAvailable);
+      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, amountAvailable);
 
       // Arrange
       expect(lstLiabilityPaid).eq(ONE_ETHER);
@@ -443,138 +434,6 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
         liabilityPrincipalBefore - expectedExternalLiabilitySettlement - lstLiabilityPaid,
       );
-    });
-  });
-
-  describe("payObligations", () => {
-    it("If payLidoFees reverts, successfully return 0", async () => {
-      await mockVaultHub.setIsSettleLidoFeesReverting(true);
-      const obligationsPaid = await yieldManager
-        .connect(securityCouncil)
-        .payObligations.staticCall(yieldProviderAddress);
-      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress);
-      expect(obligationsPaid).eq(0);
-    });
-    it("If payLidoFees succeeds, return non-0", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER * 2n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Obligations paid
-      const expectedObligationsPaid = ONE_ETHER;
-      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
-      await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const obligationsPaid = await yieldManager
-        .connect(securityCouncil)
-        .payObligations.staticCall(yieldProviderAddress);
-      await yieldManager.connect(securityCouncil).payObligations(yieldProviderAddress);
-
-      // Assert
-      expect(expectedObligationsPaid).eq(obligationsPaid);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - obligationsPaid);
-    });
-  });
-
-  describe("payNodeOperatorFees", () => {
-    it("If 0 available yield, no-op", async () => {
-      const amountAvailable = ZERO_VALUE;
-      const nodeOperatorFeesPaid = await yieldManager
-        .connect(securityCouncil)
-        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
-      expect(nodeOperatorFeesPaid).eq(0);
-    });
-    it("If vault balance < current fees, no-op", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Set up current fees
-      const operatorFees = ONE_ETHER * 2n;
-      await mockDashboard.setAccruedFeeReturn(operatorFees);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const amountAvailable = ONE_ETHER;
-      const nodeOperatorFeesPaid = await yieldManager
-        .connect(securityCouncil)
-        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
-
-      // Assert
-      expect(nodeOperatorFeesPaid).eq(0);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore);
-    });
-    it("If vault balance > current fees, and feesPaid <= availableYield, succeed", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER * 2n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Set up current fees
-      const operatorFees = ONE_ETHER;
-      await mockDashboard.setAccruedFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const amountAvailable = (ONE_ETHER * 3n) / 2n;
-      const nodeOperatorFeesPaid = await yieldManager
-        .connect(securityCouncil)
-        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
-
-      // Assert
-      expect(nodeOperatorFeesPaid).eq(operatorFees);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - operatorFees);
-    });
-    it("If vault balance > current fees, and feesPaid > availableYield, succeed", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER * 2n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Set up current fees
-      const operatorFees = ONE_ETHER;
-      await mockDashboard.setAccruedFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const amountAvailable = 1n;
-      const nodeOperatorFeesPaid = await yieldManager
-        .connect(securityCouncil)
-        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
-
-      // Assert
-      expect(nodeOperatorFeesPaid).eq(operatorFees);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - operatorFees);
-    });
-    it("If vault balance > current fees, feesPaid > availableYield and disburseFee fails, succeed with 0 fees paid", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER * 2n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Set up current fees
-      const operatorFees = ONE_ETHER;
-      await mockDashboard.setAccruedFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
-      // Arrange - Setup revert
-      await mockDashboard.setIsDisburseFeeRevert(true);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const amountAvailable = 1n;
-      const nodeOperatorFeesPaid = await yieldManager
-        .connect(securityCouncil)
-        .payNodeOperatorFees.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payNodeOperatorFees(yieldProviderAddress, amountAvailable);
-
-      // Assert
-      expect(nodeOperatorFeesPaid).eq(0n);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore);
     });
   });
 
@@ -608,7 +467,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(newReportedYield).eq(vaultValue - userFunds);
       expect(outstandingNegativeYield).eq(0);
     });
-    it("If vault value <= user funds, should report 0 yield", async () => {
+    it("If vault value < user funds, should report negative yield", async () => {
       // Arrange
       const userFunds = ONE_ETHER * 2n;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, userFunds);
@@ -625,255 +484,79 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(newReportedYield).eq(0);
       expect(outstandingNegativeYield).eq(userFunds - vaultValue);
     });
-    it("If 0 LST liability, obligations or node operator fees, should report full _availableAmount", async () => {
-      // Act
+    it("It should decrement reported yield by liabilities and fees owing, for positive yield scenario", async () => {
+      // Arrange
       const userFunds = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, userFunds);
-      const vaultValue = ONE_ETHER + ONE_ETHER;
+      const lstLiabilities = ONE_ETHER;
+      await mockSTETH.setPooledEthBySharesRoundUpReturn(lstLiabilities);
+      const lidoFees = ONE_ETHER;
+      await mockDashboard.setObligationsFeesToSettleReturn(lidoFees);
+      const nodeOperatorFees = ONE_ETHER;
+      await mockDashboard.setAccruedFeeReturn(nodeOperatorFees);
+      const vaultValue = ONE_ETHER * 5n;
       await mockDashboard.setTotalValueReturn(vaultValue);
+
+      // Act
       const [newReportedYield, outstandingNegativeYield] = await yieldManager
         .connect(nativeYieldOperator)
         .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
       await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
 
       // Assert
-      expect(newReportedYield).eq(ONE_ETHER);
+      expect(newReportedYield).eq(vaultValue - userFunds - lstLiabilities - lidoFees - nodeOperatorFees);
       expect(outstandingNegativeYield).eq(0);
     });
-    it("If LST liability payment > availableYield, should succeed", async () => {
-      // Arrange - setup lst liability principal
-      const liabilityPrincipalBefore = ONE_ETHER;
-      await getWithdrawLSTCall(
-        mockLineaRollup,
-        yieldManager,
-        yieldProvider,
-        nativeYieldOperator,
-        liabilityPrincipalBefore,
-      );
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-      // Arrange - setup Lido liability
-      const liabilityShares = ONE_ETHER * 2n;
-      await mockDashboard.connect(securityCouncil).setLiabilitySharesReturn(liabilityShares);
-      // Arrange - setup Vault balance (counted in shares)
+    it("It should decrement reported yield by liabilities and fees owing, for negative yield scenario", async () => {
+      // Arrange
+      const userFunds = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, userFunds);
+      const lstLiabilities = ONE_ETHER;
+      await mockSTETH.setPooledEthBySharesRoundUpReturn(lstLiabilities);
+      const lidoFees = ONE_ETHER;
+      await mockDashboard.setObligationsFeesToSettleReturn(lidoFees);
+      const nodeOperatorFees = ONE_ETHER;
+      await mockDashboard.setAccruedFeeReturn(nodeOperatorFees);
+      const vaultValue = ONE_ETHER;
+      await mockDashboard.setTotalValueReturn(vaultValue);
+
+      // Act
+      const [newReportedYield, outstandingNegativeYield] = await yieldManager
+        .connect(nativeYieldOperator)
+        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
+      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
+
+      // Assert
+      expect(newReportedYield).eq(0);
+      expect(outstandingNegativeYield).eq(userFunds + lstLiabilities + lidoFees + nodeOperatorFees - vaultValue);
+    });
+    it("It should perform max lst liability payment", async () => {
+      // Arrange
+      const userFunds = ONE_ETHER;
+      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, userFunds);
+      const lstLiabilities = ONE_ETHER;
+      await mockSTETH.setPooledEthBySharesRoundUpReturn(lstLiabilities);
+      const lidoFees = ONE_ETHER;
+      await mockDashboard.setObligationsFeesToSettleReturn(lidoFees);
+      const nodeOperatorFees = ONE_ETHER;
+      await mockDashboard.setAccruedFeeReturn(nodeOperatorFees);
+      const vaultValue = ONE_ETHER * 5n;
+      await mockDashboard.setTotalValueReturn(vaultValue);
+
+      // Arrange - payMaximumPossibleLSTLiability to withdraw from dashboard
+      const expectedDashboardWithdrawal = 10n;
+      await mockDashboard.setLiabilitySharesReturn(expectedDashboardWithdrawal);
+      await mockSTETH.setSharesByPooledEthReturn(expectedDashboardWithdrawal);
       await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
-      await mockSTETH.connect(securityCouncil).setSharesByPooledEthReturn(ONE_ETHER);
-      // Arrange - setup post-rebalance Lido LST liability
-      const ethValueOfLidoLiabilitySharesAfterRebalance = ONE_ETHER;
-      await mockSTETH
-        .connect(securityCouncil)
-        .setPooledEthBySharesRoundUpReturn(ethValueOfLidoLiabilitySharesAfterRebalance);
+
+      // Arrange - Before figures
+      const vaultBalanceBefore = await getBalance(mockStakingVault);
 
       // Act
-      const availableYield = ONE_ETHER / 2n;
-
-      await mockDashboard.setTotalValueReturn(liabilityPrincipalBefore + availableYield);
-      const [newReportedYield, outstandingNegativeYield] = await yieldManager
-        .connect(nativeYieldOperator)
-        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
       await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
 
       // Assert
-      expect(newReportedYield).eq(0);
-      const expectedLiabilityPaidEth = ONE_ETHER;
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(
-        vaultBalanceBefore - expectedLiabilityPaidEth,
-      );
-      expect(outstandingNegativeYield).eq(liabilityPrincipalBefore - availableYield);
-    });
-    it("Should decrement reported yield by liabilities paid", async () => {
-      // Arrange - setup lst liability principal
-      const liabilityPrincipalBefore = ONE_ETHER;
-      await getWithdrawLSTCall(
-        mockLineaRollup,
-        yieldManager,
-        yieldProvider,
-        nativeYieldOperator,
-        liabilityPrincipalBefore,
-      );
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-      // Arrange - setup Lido liability
-      const liabilityShares = ONE_ETHER * 2n;
-      await mockDashboard.connect(securityCouncil).setLiabilitySharesReturn(liabilityShares);
-      // Arrange - setup Vault balance (counted in shares)
-      await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
-      await mockSTETH.connect(securityCouncil).setSharesByPooledEthReturn(ONE_ETHER);
-      // Arrange - setup post-rebalance Lido LST liability
-      const ethValueOfLidoLiabilitySharesAfterRebalance = ONE_ETHER;
-      await mockSTETH
-        .connect(securityCouncil)
-        .setPooledEthBySharesRoundUpReturn(ethValueOfLidoLiabilitySharesAfterRebalance);
-
-      // Act
-      const availableYield = ONE_ETHER * 2n;
-      await mockDashboard.setTotalValueReturn(liabilityPrincipalBefore + availableYield);
-      const [newReportedYield, outstandingNegativeYield] = await yieldManager
-        .connect(nativeYieldOperator)
-        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
-      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
-
-      // Assert
-      expect(newReportedYield).eq(availableYield - ethValueOfLidoLiabilitySharesAfterRebalance);
-      const expectedLiabilityPaidEth = ONE_ETHER;
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(
-        vaultBalanceBefore - expectedLiabilityPaidEth,
-      );
-      expect(outstandingNegativeYield).eq(0);
-    });
-    it("Should decrement reported yield by obligations paid", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER * 2n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Obligations paid
-      const expectedObligationsPaid = ONE_ETHER;
-      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
-      await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const availableYield = ONE_ETHER * 2n;
-      await mockDashboard.setTotalValueReturn(vaultBalance + availableYield);
-      const [newReportedYield, outstandingNegativeYield] = await yieldManager
-        .connect(nativeYieldOperator)
-        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
-      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
-
-      // Assert
-      expect(newReportedYield).eq(availableYield - expectedObligationsPaid);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(
-        vaultBalanceBefore - expectedObligationsPaid,
-      );
-      expect(outstandingNegativeYield).eq(0);
-    });
-    it("Should succeed when obligations paid > available yield", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER * 4n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Obligations paid
-      const expectedObligationsPaid = ONE_ETHER * 3n;
-      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
-      await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const availableYield = ONE_ETHER * 2n;
-      await mockDashboard.setTotalValueReturn(vaultBalance + availableYield);
-
-      const [newReportedYield, outstandingNegativeYield] = await yieldManager
-        .connect(nativeYieldOperator)
-        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
-      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
-
-      // Assert
-      expect(newReportedYield).eq(0);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(
-        vaultBalanceBefore - expectedObligationsPaid,
-      );
-      expect(outstandingNegativeYield).eq(expectedObligationsPaid - availableYield);
-    });
-    it("Will decrement reported yield by node operator fees paid", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER * 2n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Set up current fees
-      const operatorFees = ONE_ETHER;
-      await mockDashboard.setAccruedFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const availableYield = ONE_ETHER * 2n;
-      await mockDashboard.setTotalValueReturn(vaultBalance + availableYield);
-      const [newReportedYield, outstandingNegativeYield] = await yieldManager
-        .connect(nativeYieldOperator)
-        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
-      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
-
-      // Assert
-      expect(newReportedYield).eq(availableYield - operatorFees);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - operatorFees);
-      expect(outstandingNegativeYield).eq(0);
-    });
-    it("Should succeed when node operator fees paid > available yield", async () => {
-      // Arrange - Set up Vault balance
-      const vaultBalance = ONE_ETHER * 5n;
-      await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, vaultBalance);
-      // Arrange - Set up current fees
-      const operatorFees = ONE_ETHER * 4n;
-      await mockDashboard.setAccruedFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-
-      // Act
-      const availableYield = ONE_ETHER * 2n;
-      await mockDashboard.setTotalValueReturn(vaultBalance + availableYield);
-      const [newReportedYield, outstandingNegativeYield] = await yieldManager
-        .connect(nativeYieldOperator)
-        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
-      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
-
-      // Assert
-      expect(newReportedYield).eq(0);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - operatorFees);
-      expect(outstandingNegativeYield).eq(operatorFees - availableYield);
-    });
-    it("Will succeed with LST liability payment, obligation payment and node operator fee payment", async () => {
-      // Arrange - Setup node operator fees = 2 ETH
-      const operatorFees = ONE_ETHER * 2n;
-      await mockDashboard.setAccruedFeeReturn(operatorFees);
-      await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
-      // Arrange - Setup obligations paid  = 1 ETH
-      const expectedObligationsPaid = ONE_ETHER;
-      await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
-      await mockVaultHub.setSettleVaultObligationAmount(expectedObligationsPaid);
-      // Arrange - Setup LST liability payment  = 1 ETH
-      const expectedLiabilityPayment = ONE_ETHER;
-      await mockDashboard.connect(securityCouncil).setLiabilitySharesReturn(expectedLiabilityPayment);
-      await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
-      await mockSTETH.connect(securityCouncil).setSharesByPooledEthReturn(expectedLiabilityPayment);
-      // Arrange - Setup initial Vault balance + userFunds + liabilityPrincipal = 10 ETH
-      const initialVaultBalance = ONE_ETHER * 10n;
-      await getWithdrawLSTCall(mockLineaRollup, yieldManager, yieldProvider, nativeYieldOperator, initialVaultBalance);
-      // Arrange - Setup external liability settlement of 4 ETH
-      const ethValueOfLidoLiabilitySharesAfterRebalance = ONE_ETHER * 6n;
-      await mockSTETH
-        .connect(securityCouncil)
-        .setPooledEthBySharesRoundUpReturn(ethValueOfLidoLiabilitySharesAfterRebalance);
-
-      // Arrange - Get before figures
-      const vaultBalanceBefore = await ethers.provider.getBalance(mockStakingVaultAddress);
-      const userFundsInYieldProvidersTotalBefore = await yieldManager.userFundsInYieldProvidersTotal();
-      const userFundsBefore = await yieldManager.userFunds(yieldProvider);
-      const lstLiabilityPrincipalBefore =
-        await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
-
-      // Arrange - Provide 3.5 ETH positive yield
-      const availableYield = (ONE_ETHER * 7n) / 2n;
-      await mockDashboard.setTotalValueReturn(initialVaultBalance + availableYield);
-
-      // Act
-      const [newReportedYield, outstandingNegativeYield] = await yieldManager
-        .connect(nativeYieldOperator)
-        .reportYield.staticCall(yieldProviderAddress, l2YieldRecipientAddress);
-      await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipientAddress);
-
-      // Assert
-      expect(newReportedYield).eq(0);
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(
-        vaultBalanceBefore - operatorFees - expectedObligationsPaid - expectedLiabilityPayment,
-      );
-      const expectedExternalLiabilitySettlement = initialVaultBalance - ethValueOfLidoLiabilitySharesAfterRebalance;
-      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
-      expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
-        lstLiabilityPrincipalBefore - expectedExternalLiabilitySettlement,
-      );
-      expect(outstandingNegativeYield).eq(
-        operatorFees + expectedObligationsPaid + expectedLiabilityPayment - availableYield,
-      );
+      expect(await getBalance(mockStakingVault)).eq(vaultBalanceBefore - expectedDashboardWithdrawal);
     });
   });
 });
