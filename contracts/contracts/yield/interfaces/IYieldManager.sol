@@ -151,9 +151,8 @@ interface IYieldManager {
    * @param yieldProvider The yield provider address.
    * @param recipient Address that received LST.
    * @param amountRequested Requested amount of LST to mint (denominated in ETH).
-   * @param lstLiabilityPrincipalIncrement Amount that LSTLiabilityPrincipal increased by (denominated in ETH).
    */
-  event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amountRequested, uint256 lstLiabilityPrincipalIncrement);
+  event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amountRequested);
 
   /**
    * @notice Emitted when ossification is initiated for a YieldProvider instance.

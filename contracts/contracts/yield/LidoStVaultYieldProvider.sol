@@ -446,15 +446,13 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount of LST (denominated in ETH) to withdraw.
    * @param _recipient Address receiving the LST.
-   * @return lstLiabilityPrincipalIncrementETH Increment in lstLiabilityPrincipal denominated in ETH.
    */
-  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyDelegateCall returns (uint256 lstLiabilityPrincipalIncrementETH) {
+  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external onlyDelegateCall {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if ($$.isOssificationInitiated || $$.isOssified) {
       revert MintLSTDisabledDuringOssification();
     }
     IDashboard($$.primaryEntrypoint).mintStETH(_recipient, _amount);
-    lstLiabilityPrincipalIncrementETH = _amount;
   }
 
   /**

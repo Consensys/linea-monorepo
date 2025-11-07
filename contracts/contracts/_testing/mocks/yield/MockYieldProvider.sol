@@ -60,7 +60,7 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
 
   function unpauseStaking(address _yieldProvider) external {}
 
-  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external returns (uint256) {}
+  function withdrawLST(address _yieldProvider, uint256 _amount, address _recipient) external {}
 
   function initiateOssification(address _yieldProvider) external {
     if (getIsInitiateOssificationReverting(_yieldProvider)) {

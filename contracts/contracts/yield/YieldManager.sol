@@ -607,6 +607,7 @@ contract YieldManager is
     if (toReserve > 0) {
       _fundReserve(toReserve);
     }
+    if (targetDeficit > toReserve) _pauseStakingIfNotAlready(_yieldProvider);
     emit YieldProviderWithdrawal(_yieldProvider, _amount, toReserve);
   }
 
@@ -689,6 +690,7 @@ contract YieldManager is
    * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
    */
   function _addToWithdrawalReserve(address _yieldProvider, uint256 _amount) internal {
+    if (getTargetReserveDeficit() > _amount) _pauseStakingIfNotAlready(_yieldProvider);
     // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance >= _amount) {
@@ -700,9 +702,10 @@ contract YieldManager is
     // Insufficient balance on YieldManager, must withdraw from YieldProvider
     uint256 withdrawRequestAmount = _amount - yieldManagerBalance;
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawRequestAmount);
-
+    
     // Send to reserve
     _fundReserve(_amount);
+
     emit WithdrawalReserveAugmented(
       _yieldProvider,
       _amount,
@@ -855,21 +858,20 @@ contract YieldManager is
     if (!ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
     }
-    // Enshrine assumption that LST withdrawals are an advance on user withdrawal of funds already on a YieldProvider.
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    _pauseStakingIfNotAlready(_yieldProvider);
-    uint256 lstLiabilityPrincipalIncrement = abi.decode(_delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(IYieldProvider.withdrawLST, (_yieldProvider, _amount, _recipient))
-    ), (uint256));
-    // If L1MessageService users withdraw LST, then the amount "owed to users" is decremented.
-    if (lstLiabilityPrincipalIncrement > $$.userFunds) {
+    if (_amount > $$.userFunds) {
       revert LSTWithdrawalExceedsYieldProviderFunds();
     }
-    _getYieldManagerStorage().userFundsInYieldProvidersTotal -= lstLiabilityPrincipalIncrement;
-    $$.userFunds -= lstLiabilityPrincipalIncrement;
-    $$.lstLiabilityPrincipal += lstLiabilityPrincipalIncrement;
-    emit LSTMinted(_yieldProvider, _recipient, _amount, lstLiabilityPrincipalIncrement);
+    _pauseStakingIfNotAlready(_yieldProvider);
+    _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.withdrawLST, (_yieldProvider, _amount, _recipient))
+    );
+    // If L1MessageService users withdraw LST, then the amount "owed to users" is decremented.
+    _getYieldManagerStorage().userFundsInYieldProvidersTotal -= _amount;
+    $$.userFunds -= _amount;
+    $$.lstLiabilityPrincipal += _amount;
+    emit LSTMinted(_yieldProvider, _recipient, _amount);
   }
 
   /**
