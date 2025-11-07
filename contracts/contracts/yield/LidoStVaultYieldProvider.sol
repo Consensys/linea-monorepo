@@ -413,7 +413,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    */
   function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if (!VAULT_HUB.isVaultConnected(address(_getVault($$)))) {
+    if (VAULT_HUB.isVaultConnected(address(_getVault($$)))) {
       // For a connected Lido StakingVault, LST liabilities are locked and unavailable for withdrawal, so this will not "steal" from withdrawals.
       // Because LST Liability is overcollateralized, repaying maximum LST liability first maximises the unlocked amount available for withdrawal.
       _payMaximumPossibleLSTLiability(($$));
