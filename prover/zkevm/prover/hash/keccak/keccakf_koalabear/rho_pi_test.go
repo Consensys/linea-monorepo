@@ -95,7 +95,7 @@ func rhoTestingModule(
 	var (
 		mod       = &Module{}
 		size      = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * 24))
-		stateCurr = stateInBits{} // input to the rho module
+		stateCurr = [5][5][64]ifaces.Column{} // input to the rho module
 	)
 
 	/*

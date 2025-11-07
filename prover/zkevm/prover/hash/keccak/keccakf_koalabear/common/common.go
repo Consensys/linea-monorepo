@@ -5,12 +5,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-const (
-	BaseChi   = 11
-	BaseTheta = 4
-	BaseChi4  = 14641 // 11^4
-)
-
 func DecomposeCol(n []field.Element, base, nb int) [][]field.Element {
 
 	res := make([][]field.Element, nb)

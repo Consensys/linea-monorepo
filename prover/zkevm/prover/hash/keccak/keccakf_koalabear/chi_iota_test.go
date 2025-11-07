@@ -63,11 +63,11 @@ func TestChi(t *testing.T) {
 				stateBits := [64]field.Element{}
 				for x := 0; x < 5; x++ {
 					for y := 0; y < 5; y++ {
-						for z := 0; z < numSlices; z++ {
+						for z := 0; z < common.NumSlices; z++ {
 							k := mod.ChiIota.StateNext[x][y][z].GetColAssignmentAt(run, permId*keccak.NumRound+round)
-							res := common.CleanBaseChi(common.DecomposeU64(k.Uint64(), BaseChi, numSlices))
+							res := common.CleanBaseChi(common.DecomposeU64(k.Uint64(), common.BaseChi, common.NumSlices))
 							for j := range res {
-								stateBits[z*numSlices+j] = res[j]
+								stateBits[z*common.NumSlices+j] = res[j]
 							}
 						}
 						reconstructed[x][y] = reconstructU64(stateBits)
@@ -103,8 +103,8 @@ func chiTestingModule(
 	var (
 		mod          = &Module{}
 		size         = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * 24))
-		stateCurr    = stateInBits{} // input to the rho module
-		blocks       = [numLanesInBlock][numSlices]ifaces.Column{}
+		stateCurr    = common.StateInBits{} // input to the rho module
+		blocks       = [common.NumLanesInBlock][common.NumSlices]ifaces.Column{}
 		isBlockOther ifaces.Column
 	)
 
@@ -119,7 +119,7 @@ func chiTestingModule(
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 64; z++ {
 					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_CURR_%v_%v_%v", x, y, z), size)
-					if z < numSlices && (5*y)+x < numLanesInBlock {
+					if z < common.NumSlices && (5*y)+x < common.NumLanesInBlock {
 						blocks[(5*y)+x][z] = comp.InsertCommit(0, ifaces.ColIDf("MESSAGE_BLOCK_%v_%v", (5*y)+x, z), size)
 					}
 				}
@@ -157,9 +157,9 @@ func chiTestingModule(
 
 			// Initializes the input columns
 			stateCurrWit := [5][5][64][]field.Element{}
-			blockWit := [numLanesInBlock][numSlices][]field.Element{}
+			blockWit := [common.NumLanesInBlock][common.NumSlices][]field.Element{}
 			isBlockOtherWit := []field.Element{}
-			blockNext := [numLanesInBlock][numSlices]field.Element{}
+			blockNext := [common.NumLanesInBlock][common.NumSlices]field.Element{}
 			for permId := 0; permId < numKeccakf; permId++ {
 				state := traces.KeccakFInps[permId]
 				block := cleanBaseBlock(traces.Blocks[permId])
@@ -176,8 +176,8 @@ func chiTestingModule(
 					inputState := state.Pi()
 
 					// create the block columns
-					for i := 0; i < numLanesInBlock; i++ {
-						for j := 0; j < numSlices; j++ {
+					for i := 0; i < common.NumLanesInBlock; i++ {
+						for j := 0; j < common.NumSlices; j++ {
 							switch {
 							case rnd == 0 && traces.IsNewHash[permId] == true:
 								blockWit[i][j] = append(blockWit[i][j], block[i][j])
@@ -230,7 +230,7 @@ func chiTestingModule(
 							),
 						)
 
-						if k < numSlices && (5*y)+x < numLanesInBlock {
+						if k < common.NumSlices && (5*y)+x < common.NumLanesInBlock {
 							run.AssignColumn(
 								blocks[(5*y)+x][k].GetColID(),
 								smartvectors.RightZeroPadded(
@@ -253,16 +253,16 @@ func chiTestingModule(
 	return builder, prover, mod
 }
 
-func cleanBaseBlock(block keccak.Block) (res [numLanesInBlock][numSlices]field.Element) {
-	eleven := field.NewElement(BaseChi)
+func cleanBaseBlock(block keccak.Block) (res [common.NumLanesInBlock][common.NumSlices]field.Element) {
+	eleven := field.NewElement(common.BaseChi)
 	// extract the byte of each lane, in little endian
-	for i := 0; i < numLanesInBlock; i++ {
-		lanebytes := [numSlices]uint8{}
-		for j := 0; j < numSlices; j++ {
-			lanebytes[j] = uint8((block[i] >> (numSlices * j)) & 0xff)
+	for i := 0; i < common.NumLanesInBlock; i++ {
+		lanebytes := [common.NumSlices]uint8{}
+		for j := 0; j < common.NumSlices; j++ {
+			lanebytes[j] = uint8((block[i] >> (common.NumSlices * j)) & 0xff)
 		}
-		// convert each byte to clean base BaseChi
-		for j := 0; j < numSlices; j++ {
+		// convert each byte to clean base common.common.BaseChi
+		for j := 0; j < common.NumSlices; j++ {
 			res[i][j] = keccakf.U64ToBaseX(uint64(lanebytes[j]), &eleven)
 		}
 	}
