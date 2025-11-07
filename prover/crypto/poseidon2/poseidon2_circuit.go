@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 type GHash [8]frontend.Variable
@@ -27,6 +26,7 @@ func NewGnarkHasher(api frontend.API) (GnarkHasher, error) {
 	for i := 0; i < 8; i++ {
 		res.state[i] = 0
 	}
+	res.api = api
 	return res, nil
 }
 
@@ -126,7 +126,6 @@ func (h *permutation) matMulM4InPlace(api frontend.API, s []frontend.Variable) {
 	c := len(s) / 4
 	for i := 0; i < c; i++ {
 		var t01, t23, t0123, t01123, t01233 frontend.Variable
-		api.Add(s[4*i], s[4*i+1])
 		t01 = api.Add(s[4*i], s[4*i+1])
 		t23 = api.Add(s[4*i+2], s[4*i+3])
 		t0123 = api.Add(t01, t23)
@@ -184,7 +183,7 @@ func (h *permutation) matMulInternalInPlace(api frontend.API, input []frontend.V
 	}
 	// mul by diag16:
 	// [-2, 1, 2, 1/2, 3, 4, -1/2, -3, -4, 1/2^8, 1/8, 1/2^24, -1/2^8, -1/8, -1/16, -1/2^24]
-	v := zk.ValueOf(2)
+	v := 2
 	var temp frontend.Variable
 	temp = api.Add(input[0], input[0])
 	input[0] = api.Sub(sum, temp)
@@ -207,25 +206,25 @@ func (h *permutation) matMulInternalInPlace(api frontend.API, input []frontend.V
 	temp = api.Add(input[8], input[8])
 	temp = api.Add(temp, temp)
 	input[8] = api.Sub(sum, temp)
-	v = zk.ValueOf(1 << 8)
+	v = 1 << 8
 	temp = api.Div(input[9], v)
 	input[9] = api.Add(sum, temp)
-	v = zk.ValueOf(1 << 3)
+	v = 1 << 3
 	temp = api.Div(input[10], v)
 	input[10] = api.Add(sum, temp)
-	v = zk.ValueOf(1 << 24)
+	v = 1 << 24
 	temp = api.Div(input[11], v)
 	input[11] = api.Add(sum, temp)
-	v = zk.ValueOf(1 << 8)
+	v = 1 << 8
 	temp = api.Div(input[12], v)
 	input[12] = api.Sub(sum, temp)
-	v = zk.ValueOf(1 << 3)
+	v = 1 << 3
 	temp = api.Div(input[13], v)
 	input[13] = api.Sub(sum, temp)
-	v = zk.ValueOf(1 << 4)
+	v = 1 << 4
 	temp = api.Div(input[14], v)
 	input[14] = api.Sub(sum, temp)
-	v = zk.ValueOf(1 << 24)
+	v = 1 << 24
 	temp = api.Div(input[15], v)
 	input[15] = api.Sub(sum, temp)
 }
@@ -234,7 +233,7 @@ func (h *permutation) matMulInternalInPlace(api frontend.API, input []frontend.V
 func (h *permutation) addRoundKeyInPlace(api frontend.API, round int, input []frontend.Variable) {
 	var rk frontend.Variable
 	for i := 0; i < len(h.params.RoundKeys[round]); i++ {
-		rk = zk.ValueOf(h.params.RoundKeys[round][i])
+		rk = h.params.RoundKeys[round][i].String()
 		input[i] = api.Add(input[i], rk)
 	}
 }

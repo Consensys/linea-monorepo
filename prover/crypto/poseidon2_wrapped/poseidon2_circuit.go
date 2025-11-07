@@ -156,7 +156,6 @@ func (h *permutation) matMulM4InPlace(apiGen zk.GenericApi, s []zk.WrappedVariab
 	c := len(s) / 4
 	for i := 0; i < c; i++ {
 		var t01, t23, t0123, t01123, t01233 zk.WrappedVariable
-		apiGen.Add(s[4*i], s[4*i+1])
 		t01 = apiGen.Add(s[4*i], s[4*i+1])
 		t23 = apiGen.Add(s[4*i+2], s[4*i+3])
 		t0123 = apiGen.Add(t01, t23)
