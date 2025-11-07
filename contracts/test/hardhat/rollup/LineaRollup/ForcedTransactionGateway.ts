@@ -432,7 +432,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       // use a way future dated timestamp and mimic the calculation for the block number
       const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
         lineaRollup,
-        1754213624n,
+        1854213624n,
         defaultFinalizedState.timestamp,
       );
 
