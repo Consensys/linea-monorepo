@@ -1,21 +1,24 @@
 package iokeccakf
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	baseconversion "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/base_conversion"
 )
 
 const (
 	NbOfRowsPerLane = 4
-	numSlices       = 8
+	NumSlices       = 8
 )
 
 type IOKeccakFInputs struct {
@@ -27,14 +30,15 @@ type IOKeccakFInputs struct {
 
 type IOKeccakF struct {
 	Inputs           IOKeccakFInputs
-	isFromFirstBlock ifaces.Column              // built from isBeginningOfNewHash and rowsPerBlock of keccakf
-	isFromBlockBaseB ifaces.Column              //@azam how to construct this?
-	blocks           [][numSlices]ifaces.Column // the blocks of the message to be absorbed. first blocks of messages are located in positions 0 mod 24 and are represented in base clean 12, other blocks of message are located in positions 23 mod 24 and are represented in base clean 11. otherwise the blocks are zero.
+	isFromFirstBlock ifaces.Column // built from isBeginningOfNewHash and rowsPerBlock of keccakf
+	isFromBlockBaseB ifaces.Column
+	blocks           [][NumSlices]ifaces.Column // the blocks of the message to be absorbed. first blocks of messages are located in positions 0 mod 24 and are represented in base clean 12, other blocks of message are located in positions 23 mod 24 and are represented in base clean 11. otherwise the blocks are zero.
 	isBlock          ifaces.Column              // indicates whether the row corresponds to a block
 	// prover action for base conversion
-	bc           *baseconversion.ToBaseX
-	isFirstBlock ifaces.Column
-	isBlockBaseB ifaces.Column
+	bc            *baseconversion.ToBaseX
+	isFirstBlock  ifaces.Column
+	isBlockBaseB  ifaces.Column
+	isBlockActive ifaces.Column // active part of the blocks (technicaly it is the active part of the keccakf module).
 }
 
 // it first applies to-basex to get laneX, then a projection query to map lanex to blocks
@@ -44,8 +48,8 @@ func NewIOKeccakF(comp *wizard.CompiledIOP, inputs IOKeccakFInputs) *IOKeccakF {
 		laneSize          = inputs.Lane.Size()
 		params            = generic.KeccakUsecase
 		nbOfLanesPerBlock = params.NbOfLanesPerBlock()
-		//	nbOfRowsPerBlock  = nbOfLanesPerBlock * nbOfRowsPerLane
-		//	allBlocks         = []ifaces.Column{}
+		nbOfRowsPerBlock  = nbOfLanesPerBlock * NbOfRowsPerLane
+		allBlocks         = []ifaces.Column{}
 
 		io = &IOKeccakF{
 			Inputs: inputs,
@@ -57,10 +61,13 @@ func NewIOKeccakF(comp *wizard.CompiledIOP, inputs IOKeccakFInputs) *IOKeccakF {
 	io.isBlock = comp.InsertCommit(0, ifaces.ColIDf("IsBlock"), inputs.KeccakfSize)
 	io.isFirstBlock = comp.InsertCommit(0, ifaces.ColIDf("IsFirstBlock"), inputs.KeccakfSize)
 	io.isBlockBaseB = comp.InsertCommit(0, ifaces.ColIDf("IsBlockBaseB"), inputs.KeccakfSize)
+	io.isBlockActive = comp.InsertCommit(0, ifaces.ColIDf("IsActive"), inputs.KeccakfSize)
+	colRound := comp.InsertPrecomputed(ifaces.ColIDf("KeccakFRound"),
+		smartvectors.NewRegular(vector.PeriodicOne(keccak.NumRound, inputs.KeccakfSize)))
 
-	io.blocks = make([][numSlices]ifaces.Column, nbOfLanesPerBlock)
+	io.blocks = make([][NumSlices]ifaces.Column, nbOfLanesPerBlock)
 	for i := range io.blocks {
-		for j := 0; j < numSlices; j++ {
+		for j := 0; j < NumSlices; j++ {
 			io.blocks[i][j] = comp.InsertCommit(0,
 				ifaces.ColIDf("KeccakFBlock_%d_%d", i, j),
 				inputs.KeccakfSize)
@@ -70,31 +77,41 @@ func NewIOKeccakF(comp *wizard.CompiledIOP, inputs IOKeccakFInputs) *IOKeccakF {
 	// check isFirstBlock and isBlockBaseBaseB are correctly built
 	// isFromFirstBlock is well formed
 	// isFromFirstBlock = sum_j Shift(l.isFirstLaneFromNewHash,-j) for j:=0,...,
-	/*s := sym.NewConstant(0)
+	s := sym.NewConstant(0)
 	for j := 0; j < nbOfRowsPerBlock; j++ {
 		s = sym.Add(
-			s, column.Shift(io.Inputs.isBeginningOfNewHash, -j),
+			s, column.Shift(io.Inputs.IsBeginningOfNewHash, -j),
 		)
 	}
 	comp.InsertGlobal(0, ifaces.QueryIDf("IsFromFirstBlock"),
 		sym.Sub(s, io.isFromFirstBlock))
 
+	commonconstraints.MustBeMutuallyExclusiveBinaryFlags(comp,
+		io.Inputs.IsLaneActive,
+		[]ifaces.Column{io.isFromFirstBlock, io.isFromBlockBaseB},
+	)
 
+	commonconstraints.MustBeMutuallyExclusiveBinaryFlags(comp,
+		io.isBlock,
+		[]ifaces.Column{io.isFirstBlock, io.isBlockBaseB},
+	)
+
+	commonconstraints.MustZeroWhenInactive(comp, io.isBlock, io.isBlockActive)
+
+	comp.InsertGlobal(0, ifaces.QueryIDf("BLOCKS_POSITIONS_CHECK"),
+		sym.Mul(io.isBlockActive,
+			sym.Sub(
+				sym.Add(io.isFirstBlock, column.Shift(io.isBlockBaseB, -1)),
+				colRound,
+			),
+		),
+	)
+
+	commonconstraints.MustBeActivationColumns(comp, io.isBlockActive)
 
 	for i := 0; i < nbOfLanesPerBlock; i++ {
 		allBlocks = append(allBlocks, io.blocks[i][:]...)
 	}
-
-	// projection query to get blocks from lanes
-	comp.InsertProjection(ifaces.QueryIDf("KeccakFBlocksFromLanes"), query.ProjectionInput{
-		ColumnA: io.bc.LaneX,
-		ColumnB: allBlocks,
-		FilterA: io.Inputs.isLaneActive,
-		FilterB: io.isBlock,
-	})
-
-	// &TODO : constraints of block flags
-	*/
 
 	// apply to-base-x to get lanes in bases required for keccakf
 	io.bc = baseconversion.NewToBaseX(comp, baseconversion.ToBaseXInputs{
@@ -103,6 +120,28 @@ func NewIOKeccakF(comp *wizard.CompiledIOP, inputs IOKeccakFInputs) *IOKeccakF {
 		BaseX:          []int{4, 11},
 		NbBitsPerBaseX: 8,
 		IsBaseX:        []ifaces.Column{io.isFromFirstBlock, io.isFromBlockBaseB},
+	})
+
+	// to flatten lane columns over blocks columns, we use projection query
+	columnsA := make([][]ifaces.Column, len(io.bc.LaneX))
+	filterA := make([]ifaces.Column, len(io.bc.LaneX))
+	for i, col := range io.bc.LaneX {
+		columnsA[i] = []ifaces.Column{col}
+		filterA[i] = io.Inputs.IsLaneActive
+	}
+	columnsB := make([][]ifaces.Column, len(allBlocks))
+	filterB := make([]ifaces.Column, len(allBlocks))
+	for i := range allBlocks {
+		columnsB[i] = []ifaces.Column{allBlocks[i]}
+		filterB[i] = io.isBlock
+	}
+
+	// projection query to get blocks from lanes
+	comp.InsertProjection(ifaces.QueryIDf("KeccakFBlocksFromLanes"), query.ProjectionMultiAryInput{
+		ColumnsA: columnsA,
+		ColumnsB: columnsB,
+		FiltersA: filterA,
+		FiltersB: filterB,
 	})
 
 	return io
@@ -155,35 +194,36 @@ func (io *IOKeccakF) assignBlocks(
 		isBlock              = common.NewVectorBuilder(io.isBlock)
 		isBeginningOfNewHash = io.Inputs.IsBeginningOfNewHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 		laneX                = make([][]field.Element, len(io.bc.LaneX))
-		blocks               = make([][numSlices]*common.VectorBuilder, len(io.blocks))
+		blocks               = make([][NumSlices]*common.VectorBuilder, len(io.blocks))
 		numRowsPerBlock      = generic.KeccakUsecase.NbOfLanesPerBlock() * NbOfRowsPerLane
-		isActive             = io.Inputs.IsLaneActive.GetColAssignment(run).IntoRegVecSaveAlloc()
+		isLaneActive         = io.Inputs.IsLaneActive.GetColAssignment(run).IntoRegVecSaveAlloc()
+		isBlockActive        = *common.NewVectorBuilder(io.isBlockActive)
 	)
 
 	for i := range io.blocks {
-		for j := 0; j < numSlices; j++ {
+		for j := 0; j < NumSlices; j++ {
 			blocks[i][j] = common.NewVectorBuilder(io.blocks[i][j])
 		}
 	}
 
 	blockBuilder := &blockBuilder{blocks: blocks}
-	_ = blockBuilder.blocks[0][0].Slice()
-	blockBuilder.blocks[0][0].PushField(field.One())
 	for j := range io.bc.LaneX {
 		laneX[j] = run.GetColumn(io.bc.LaneX[j].GetColID()).IntoRegVecSaveAlloc()
 	}
 
 	// assign isFirstBlock, isBlockBaseB, isBlock
 	zeroes := make([]field.Element, keccak.NumRound-1)
+	laneActivePart := 0
 	ctr := 0
 	for i, isNewHash := range isBeginningOfNewHash {
 
-		if isActive[i].IsZero() {
+		if isLaneActive[i].IsZero() {
 			break
 		}
 		if i%numRowsPerBlock != 0 {
 			continue
 		}
+		laneActivePart++
 
 		if isNewHash.IsOne() {
 			isFirstBlock.PushOne()
@@ -216,13 +256,17 @@ func (io *IOKeccakF) assignBlocks(
 			ctr += numRowsPerBlock
 		}
 	}
-	fmt.Printf(" size of isBlock %d \n", isBlock.Height())
+
+	blockActivePart := ((laneActivePart + 1) / numRowsPerBlock) * keccak.NumRound
+	ones := vector.Repeat(field.One(), blockActivePart)
+	isBlockActive.PushSliceF(ones)
+	isBlockActive.PadAndAssign(run)
 	isBlock.PadAndAssign(run)
 	isFirstBlock.PadAndAssign(run)
 	isBlockBaseB.PadAndAssign(run)
 
 	for i := range io.blocks {
-		for j := 0; j < numSlices; j++ {
+		for j := 0; j < NumSlices; j++ {
 			blockBuilder.blocks[i][j].PadAndAssign(run, field.Zero())
 		}
 	}
@@ -230,7 +274,7 @@ func (io *IOKeccakF) assignBlocks(
 }
 
 type blockBuilder struct {
-	blocks [][numSlices]*common.VectorBuilder
+	blocks [][NumSlices]*common.VectorBuilder
 }
 
 func (b *blockBuilder) pushLaneToBlock(
@@ -238,7 +282,7 @@ func (b *blockBuilder) pushLaneToBlock(
 	rowStart int,
 	rowStop int,
 ) {
-	if (rowStop-rowStart)*len(laneX) != len(b.blocks)*numSlices {
+	if (rowStop-rowStart)*len(laneX) != len(b.blocks)*NumSlices {
 		panic("invalid size for pushLaneToBlock")
 	}
 
@@ -248,7 +292,7 @@ func (b *blockBuilder) pushLaneToBlock(
 		for i := range laneX {
 			b.blocks[iIndex][jIndex].PushField(laneX[i][row])
 			jIndex++
-			if jIndex == numSlices {
+			if jIndex == NumSlices {
 				jIndex = 0
 				iIndex++
 			}
@@ -259,7 +303,7 @@ func (b *blockBuilder) pushLaneToBlock(
 func (b *blockBuilder) pushZeroSliceToBlock(n int) {
 	zeros := vector.Zero(n)
 	for i := range b.blocks {
-		for j := 0; j < numSlices; j++ {
+		for j := 0; j < NumSlices; j++ {
 			b.blocks[i][j].PushSliceF(zeros)
 		}
 	}
@@ -274,11 +318,14 @@ func (b *blockBuilder) overWriteBlock(laneX [][]field.Element,
 		for i := range laneX {
 			b.blocks[iIndex][jIndex].OverWriteInt(int(laneX[i][row].Uint64()))
 			jIndex++
-			if jIndex == numSlices {
+			if jIndex == NumSlices {
 				jIndex = 0
 				iIndex++
 			}
 		}
 	}
 
+}
+func (io *IOKeccakF) Blocks() [][NumSlices]ifaces.Column {
+	return io.blocks
 }
