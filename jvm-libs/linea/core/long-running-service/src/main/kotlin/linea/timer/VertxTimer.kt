@@ -39,7 +39,7 @@ class VertxTimer(
 
   @Suppress("UNUSED_PARAMETER")
   private fun taskHandler(_timerId: Long) {
-    println(invocationCounter.incrementAndGet())
+    invocationCounter.incrementAndGet()
     firstInvocationTime.compareAndSet(null, Clock.System.now())
 
     val callable = Callable {

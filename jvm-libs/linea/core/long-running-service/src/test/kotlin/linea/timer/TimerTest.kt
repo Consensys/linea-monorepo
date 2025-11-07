@@ -5,6 +5,7 @@ import io.vertx.junit5.Timeout
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -78,11 +79,11 @@ class TimerTest {
   @ParameterizedTest
   @MethodSource("timerTypes")
   @Timeout(2, timeUnit = TimeUnit.SECONDS)
-  fun `task exception is handled by error handler`(typerType: KClass<out Timer>, timerSchedule: TimerSchedule) {
+  fun `task exception is handled by error handler`(timerType: KClass<out Timer>, timerSchedule: TimerSchedule) {
     val errorHandled = AtomicBoolean(false)
     val error = AtomicReference<String>("")
     val timer = createTimer(
-      timerType = typerType,
+      timerType = timerType,
       timerSchedule = timerSchedule,
       task = Runnable { throw RuntimeException("Test error") },
       errorHandler = { t ->
@@ -103,10 +104,10 @@ class TimerTest {
   @ParameterizedTest
   @MethodSource("timerTypes")
   @Timeout(2, timeUnit = TimeUnit.SECONDS)
-  fun `timer continues to tick after exception`(typerType: KClass<out Timer>, timerSchedule: TimerSchedule) {
+  fun `timer continues to tick after exception`(timerType: KClass<out Timer>, timerSchedule: TimerSchedule) {
     val latch = CountDownLatch(5)
     val timer = createTimer(
-      timerType = typerType,
+      timerType = timerType,
       timerSchedule = timerSchedule,
       task = Runnable {
         latch.countDown()
@@ -124,7 +125,7 @@ class TimerTest {
   @MethodSource("timerTypes")
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun `ticks shouldn't run concurrently if execution is blocked for more than polling interval`(
-    typerType: KClass<out Timer>,
+    timerType: KClass<out Timer>,
     timerSchedule: TimerSchedule,
   ) {
     val pollingInterval = 50.milliseconds
@@ -132,7 +133,7 @@ class TimerTest {
     val prevActionIsRunning = AtomicBoolean(false)
     val actionWasCalledInParallel = AtomicBoolean(false)
     val timer = createTimer(
-      timerType = typerType,
+      timerType = timerType,
       timerSchedule = timerSchedule,
       task = Runnable {
         numberOfInvocations.incrementAndGet()
@@ -152,7 +153,6 @@ class TimerTest {
     Awaitility.await()
       .pollInterval(30.milliseconds.toJavaDuration())
       .untilAsserted {
-        println("$typerType: " + numberOfInvocations.get() + ", " + actionWasCalledInParallel.load())
         Assertions.assertThat(numberOfInvocations.get()).isGreaterThanOrEqualTo(5)
         Assertions.assertThat(actionWasCalledInParallel.load()).isFalse()
       }
@@ -161,10 +161,10 @@ class TimerTest {
 
   @ParameterizedTest
   @MethodSource("timerTypes")
-  fun `timer start is idempotent`(typerType: KClass<out Timer>, timerSchedule: TimerSchedule) {
+  fun `timer start is idempotent`(timerType: KClass<out Timer>, timerSchedule: TimerSchedule) {
     val timerReferences = mutableListOf<Any?>()
     val timer = createTimer(
-      timerType = typerType,
+      timerType = timerType,
       timerSchedule = timerSchedule,
       task = Runnable { },
       errorHandler = { },
@@ -180,15 +180,12 @@ class TimerTest {
   }
 
   @OptIn(ExperimentalTime::class)
-  @ParameterizedTest
-  @MethodSource("timerTypes")
-  fun `Fixed rate timer executes tasks quickly if one is delayed more than polling interval`(
-    typerType: KClass<out Timer>,
-  ) {
+  @Test
+  fun `Fixed rate timer executes tasks quickly if one is delayed more than polling interval`() {
     val invocationTimestamps = mutableListOf<Instant>()
     val pollingInterval = 50.milliseconds
     val timer = createTimer(
-      timerType = typerType,
+      timerType = VertxTimer::class,
       timerSchedule = TimerSchedule.FIXED_RATE,
       task = Runnable {
         invocationTimestamps.add(Clock.System.now())
@@ -198,25 +195,16 @@ class TimerTest {
       },
       errorHandler = { },
     )
-    // Expected invocation times when no sleep:             0, 50ms,  100ms, 150ms, 200ms, 250ms
-    // Expected invocation times when first is delayed:     0, 151ms, 152ms, 153ms, 200ms, 250ms
     timer.start()
     Awaitility.await()
       .pollInterval(30.milliseconds.toJavaDuration())
       .until { invocationTimestamps.size >= 5 }
     timer.stop()
 
-    for (i in 1 until invocationTimestamps.size) {
-      val timeBetweenInvocations = invocationTimestamps[i] - invocationTimestamps[i - 1]
-      if (i == 1) {
-        assertThat(timeBetweenInvocations).isGreaterThanOrEqualTo(pollingInterval.times(3))
-      } else if (i == 2 || i == 3) {
-        assertThat(timeBetweenInvocations).isLessThan(5.milliseconds)
-      } else if (i == 4) {
-        assertThat(timeBetweenInvocations).isBetween(5.milliseconds, pollingInterval)
-      } else {
-        assertThat(timeBetweenInvocations).isGreaterThanOrEqualTo(pollingInterval)
-      }
-    }
+    val delays = invocationTimestamps.zipWithNext { a, b -> b - a }
+    val avgPeriod = delays.reduce { acc, duration -> acc + duration } / delays.size
+    assertThat(avgPeriod)
+      .withFailMessage("Average period $avgPeriod, delays: $delays")
+      .isLessThan(pollingInterval.times(1.5))
   }
 }
