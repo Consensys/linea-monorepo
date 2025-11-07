@@ -17,7 +17,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 const (
@@ -60,7 +59,8 @@ type ToBaseX struct {
 
 // NewToBaseX declare the intermediate columns,
 // and the constraints for changing the blocks in base uint64 into baseA/baseB.
-// note :  It also checks that the columns IsBaseX should be mutually exclusive binary flags over the active lanes.
+// Note : it does not check the validity of the inputs. Particularly it does not check that
+// IsBaseX are MustBeMutuallyExclusiveBinaryFlags w.r.t the IsLaneActive column.
 func NewToBaseX(
 	comp *wizard.CompiledIOP,
 	inp ToBaseXInputs,
@@ -97,13 +97,6 @@ func NewToBaseX(
 			b.Lookup.colBasex[k][i] = comp.InsertPrecomputed(ifaces.ColIDf("LOOKUP_BaseA_%v_%v", k, i), colBasex[k][i])
 		}
 	}
-
-	// constraints: only one base can be selected
-	commonconstraints.MustBeMutuallyExclusiveBinaryFlags(
-		comp,
-		b.Inputs.IsLaneActive,
-		b.Inputs.IsBaseX,
-	)
 
 	// if isBaseX = 1  ---> convert to basex
 	// otherwise convert to keccak.BaseB
