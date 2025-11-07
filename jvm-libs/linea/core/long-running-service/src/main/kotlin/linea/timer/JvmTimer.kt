@@ -1,17 +1,18 @@
-package net.consensys.zkevm
+package linea.timer
 
 import java.util.Timer
-import java.util.UUID
+import kotlin.concurrent.timer
 import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 
 class JvmTimer(
   override val name: String,
-  override val task: Runnable,
   override val initialDelay: Duration,
   override val period: Duration,
+  override val timerSchedule: TimerSchedule,
   override val errorHandler: (Throwable) -> Unit,
-) : LineaTimer {
+  override val task: Runnable,
+) : linea.timer.Timer {
   private var timer: Timer? = null
 
   internal fun timerReference(): Timer? = timer
@@ -22,17 +23,19 @@ class JvmTimer(
       return
     }
     timer = Timer(name, true)
-    timer!!.scheduleAtFixedRate(
-      timerTask {
-        try {
-          task.run()
-        } catch (e: Throwable) {
-          errorHandler(e)
-        }
-      },
-      initialDelay.inWholeMilliseconds,
-      period.inWholeMilliseconds,
-    )
+    val timerTask = timerTask {
+      try {
+        task.run()
+      } catch (e: Throwable) {
+        errorHandler(e)
+      }
+    }
+    when (timerSchedule) {
+      TimerSchedule.FIXED_DELAY ->
+        timer!!.schedule(timerTask, initialDelay.inWholeMilliseconds, period.inWholeMilliseconds)
+      TimerSchedule.FIXED_RATE ->
+        timer!!.scheduleAtFixedRate(timerTask, initialDelay.inWholeMilliseconds, period.inWholeMilliseconds)
+    }
   }
 
   @Synchronized
@@ -48,17 +51,19 @@ class JvmTimer(
 class JvmTimerFactory : TimerFactory {
   override fun createTimer(
     name: String,
-    task: Runnable,
     initialDelay: Duration,
     period: Duration,
+    timerSchedule: TimerSchedule,
     errorHandler: (Throwable) -> Unit,
-  ): LineaTimer {
+    task: Runnable,
+  ): linea.timer.Timer {
     return JvmTimer(
-      name = "$name-${UUID.randomUUID()}",
-      task = task,
+      name = name,
       initialDelay = initialDelay,
       period = period,
+      timerSchedule = timerSchedule,
       errorHandler = errorHandler,
+      task = task,
     )
   }
 }

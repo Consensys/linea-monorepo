@@ -1,35 +1,41 @@
-package net.consensys.zkevm
+package linea
 
+import linea.timer.Timer
+import linea.timer.TimerFactory
+import linea.timer.TimerSchedule
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration
 
-abstract class LineaPeriodicPollingService(
+abstract class GenericPeriodicPollingService(
   private val timerFactory: TimerFactory,
+  private val timerSchedule: TimerSchedule,
   private val pollingInterval: Duration,
   private val log: Logger,
+  private val name: String,
 ) : LongRunningService {
   init {
     require(pollingInterval.inWholeMilliseconds > 0) {
       "pollingInterval must be greater than 0"
     }
   }
-  private var timer: LineaTimer? = null
+  private var timer: Timer? = null
 
   abstract fun action(): SafeFuture<*>
 
   open fun handleError(error: Throwable) {
-    log.warn("Error with periodic polling service: errorMessage={}", error.message, error)
+    log.warn("Error with periodic polling service={}: errorMessage={}", name, error.message, error)
   }
 
   @Synchronized
   override fun start(): SafeFuture<Unit> {
     if (timer == null) {
       timer = timerFactory.createTimer(
-        name = this.javaClass.simpleName,
+        name = name,
         task = { action().get() },
         initialDelay = pollingInterval,
         period = pollingInterval,
+        timerSchedule = timerSchedule,
         errorHandler = this::handleError,
       )
       timer!!.start()

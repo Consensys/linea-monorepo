@@ -1,12 +1,12 @@
 package net.consensys.zkevm.coordinator.blockcreation
 
 import io.vertx.core.Vertx
+import linea.PeriodicPollingService
 import linea.domain.Block
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.kotlin.encodeHex
 import linea.web3j.ExtendedWeb3J
 import net.consensys.linea.async.AsyncRetryer
-import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreated
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreationListener
 import org.apache.logging.log4j.LogManager
@@ -30,6 +30,7 @@ class BlockCreationMonitor(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
   log = log,
+  name = "BlockCreationMonitor",
 ) {
   data class Config(
     val pollingInterval: Duration,

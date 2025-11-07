@@ -1,10 +1,10 @@
 package net.consensys.zkevm.ethereum.finalization
 
 import io.vertx.core.Vertx
+import linea.PeriodicPollingService
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.domain.BlockParameter
 import linea.kotlin.toBigInteger
-import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
@@ -26,6 +26,7 @@ class FinalizationMonitorImpl(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
   log = log,
+  name = "FinalizationMonitor",
 ) {
   data class Config(
     val pollingInterval: Duration = 500.milliseconds,

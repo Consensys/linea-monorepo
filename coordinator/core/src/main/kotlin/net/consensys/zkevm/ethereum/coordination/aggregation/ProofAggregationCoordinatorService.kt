@@ -3,6 +3,8 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import linea.LongRunningService
+import linea.PeriodicPollingService
 import linea.contract.l2.L2MessageServiceSmartContractClientReadOnly
 import linea.domain.BlockIntervals
 import linea.domain.toBlockIntervalsString
@@ -10,8 +12,6 @@ import linea.ethapi.EthApiClient
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.LongRunningService
-import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
@@ -48,6 +48,7 @@ class ProofAggregationCoordinatorService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
   log = log,
+  name = "ProofAggregationCoordinatorService",
 ) {
   data class Config(
     val pollingInterval: Duration,

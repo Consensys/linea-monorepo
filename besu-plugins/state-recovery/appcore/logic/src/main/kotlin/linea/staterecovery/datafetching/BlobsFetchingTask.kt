@@ -1,10 +1,10 @@
 package linea.staterecovery.datafetching
 
 import io.vertx.core.Vertx
+import linea.PeriodicPollingService
 import linea.staterecovery.BlobFetcher
 import linea.staterecovery.FinalizationAndDataEventsV3
 import linea.staterecovery.TransactionDetailsClient
-import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -24,6 +24,7 @@ internal class BlobsFetchingTask(
   vertx = vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
   log = log,
+  name = "BlobsFetchingTask",
 ) {
 
   override fun action(): SafeFuture<*> {

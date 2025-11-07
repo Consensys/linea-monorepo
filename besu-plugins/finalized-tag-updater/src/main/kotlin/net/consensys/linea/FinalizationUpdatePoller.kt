@@ -1,12 +1,12 @@
 package net.consensys.zkevm.ethereum.finalization
 
 import io.vertx.core.Vertx
+import linea.PeriodicPollingService
 import linea.consensus.HardForkIdProvider
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.domain.BlockParameter
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.datatypes.HardforkId
@@ -39,6 +39,7 @@ class FinalizationUpdatePoller(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
   log = log,
+  name = "FinalizationUpdatePoller",
 ) {
   private val lastFinalizationRef: AtomicReference<ULong> = AtomicReference(null)
 

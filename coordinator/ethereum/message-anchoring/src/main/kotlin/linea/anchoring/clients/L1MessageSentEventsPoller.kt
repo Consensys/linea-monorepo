@@ -2,10 +2,10 @@ package linea.anchoring.clients
 
 import io.vertx.core.Vertx
 import linea.EthLogsSearcher
+import linea.PeriodicPollingService
 import linea.contract.events.MessageSentEvent
 import linea.contract.l2.L2MessageServiceSmartContractClient
 import linea.domain.BlockParameter
-import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -31,6 +31,7 @@ class L1MessageSentEventsPoller(
   vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
   log = log,
+  name = "L1MessageSentEventsPoller",
 ) {
   private val eventsFetcher = L1MessageSentEventsFetcher(
     l1SmartContractAddress = l1SmartContractAddress,

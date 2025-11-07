@@ -1,6 +1,7 @@
 package linea.staterecovery.datafetching
 
 import io.vertx.core.Vertx
+import linea.PeriodicPollingService
 import linea.domain.BlockParameter
 import linea.staterecovery.BlobDecompressorAndDeserializer
 import linea.staterecovery.BlobFetcher
@@ -8,7 +9,6 @@ import linea.staterecovery.BlockFromL1RecoveredData
 import linea.staterecovery.FinalizationAndDataEventsV3
 import linea.staterecovery.LineaRollupSubmissionEventsClient
 import linea.staterecovery.TransactionDetailsClient
-import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -49,6 +49,7 @@ class SubmissionsFetchingTask(
   vertx = vertx,
   pollingIntervalMs = l1PollingInterval.inWholeMilliseconds,
   log = log,
+  name = "SubmissionsFetchingTask",
 ) {
   init {
     require(submissionEventsQueueLimit >= 1) {

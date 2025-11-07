@@ -1,13 +1,13 @@
 package linea.staterecovery.datafetching
 
 import io.vertx.core.Vertx
+import linea.PeriodicPollingService
 import linea.domain.BlockParameter
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.domain.EthLogEvent
 import linea.staterecovery.DataFinalizedV3
 import linea.staterecovery.FinalizationAndDataEventsV3
 import linea.staterecovery.LineaRollupSubmissionEventsClient
-import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -29,6 +29,7 @@ internal class SubmissionEventsFetchingTask(
   vertx = vertx,
   pollingIntervalMs = l1PollingInterval.inWholeMilliseconds,
   log = log,
+  name = "SubmissionEventsFetchingTask",
 ) {
   val latestFetchedFinalization: AtomicReference<EthLogEvent<DataFinalizedV3>> = AtomicReference(null)
 

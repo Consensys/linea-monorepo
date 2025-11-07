@@ -1,6 +1,7 @@
 package linea.test
 
 import io.vertx.core.Vertx
+import linea.PeriodicPollingService
 import linea.blob.BlobCompressorVersion
 import linea.blob.GoBackedBlobCompressor
 import linea.domain.Block
@@ -11,7 +12,6 @@ import linea.rlp.BesuRlpMainnetEncoderAsyncVertxImpl
 import linea.rlp.RLP
 import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
-import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -30,7 +30,12 @@ class BlockEncodingValidator(
   val decompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_2_0,
   val blobSizeLimitBytes: UInt = BLOB_COMPRESSOR_SIZE,
   val log: Logger = LogManager.getLogger(BlockEncodingValidator::class.java),
-) : PeriodicPollingService(vertx, pollingIntervalMs = 1.milliseconds.inWholeMilliseconds, log = log) {
+) : PeriodicPollingService(
+  vertx,
+  pollingIntervalMs = 1.milliseconds.inWholeMilliseconds,
+  log = log,
+  name = "BlockEncodingValidator",
+) {
 
   val compressor = GoBackedBlobCompressor.getInstance(compressorVersion, blobSizeLimitBytes.toInt())
   val decompressor = GoNativeBlobDecompressorFactory.getInstance(decompressorVersion)

@@ -1,11 +1,11 @@
 package linea.staterecovery
 
 import io.vertx.core.Vertx
+import linea.PeriodicPollingService
 import linea.domain.BlockParameter
 import linea.domain.CommonDomainFunctions
 import linea.kotlin.encodeHex
 import linea.staterecovery.datafetching.SubmissionsFetchingTask
-import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -27,6 +27,7 @@ class StateSynchronizerService(
   vertx = vertx,
   log = log,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
+  name = "StateSynchronizerService",
 ) {
   @get:Synchronized
   @set:Synchronized

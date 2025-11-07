@@ -1,10 +1,12 @@
-package net.consensys.zkevm
+package linea.timer
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
+import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
+import org.awaitility.Awaitility
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -18,20 +20,23 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 import kotlin.time.toJavaDuration
 
 @OptIn(ExperimentalAtomicApi::class)
-class LineaTimerTest {
+class TimerTest {
   companion object {
     @JvmStatic
     fun timerTypes() = listOf(
-      JvmTimer::class,
-      VertxTimer::class,
+      Arguments.of(JvmTimer::class, TimerSchedule.FIXED_DELAY),
+      Arguments.of(JvmTimer::class, TimerSchedule.FIXED_RATE),
+      Arguments.of(VertxTimer::class, TimerSchedule.FIXED_DELAY),
+      Arguments.of(VertxTimer::class, TimerSchedule.FIXED_RATE),
     )
 
-    fun timerReference(timer: LineaTimer): Any? {
+    fun timerReference(timer: Timer): Any? {
       return when (timer) {
-        is VertxTimer -> timer.timerReference()
+        is VertxTimer -> timer.timerIdReference()
         is JvmTimer -> timer.timerReference()
         else -> throw IllegalArgumentException("Unknown timer type")
       }
@@ -41,27 +46,30 @@ class LineaTimerTest {
   private val vertx = Vertx.vertx()
 
   fun createTimer(
-    timerType: KClass<out LineaTimer>,
+    timerType: KClass<out Timer>,
+    timerSchedule: TimerSchedule,
     task: Runnable,
     initialDelay: Duration = 50.milliseconds,
     period: Duration = 50.milliseconds,
     errorHandler: (Throwable) -> Unit,
-  ): LineaTimer {
+  ): Timer {
     return when (timerType) {
       JvmTimer::class -> JvmTimer(
-        name = "test-jvm-timer-${Random.nextInt()}",
+        name = "test-jvm-timer-${Random.Default.nextInt()}",
         task = task,
         initialDelay = initialDelay,
         period = period,
         errorHandler = errorHandler,
+        timerSchedule = timerSchedule,
       )
       VertxTimer::class -> VertxTimer(
         vertx = vertx,
-        name = "test-vertx-timer-${Random.nextInt()}",
+        name = "test-vertx-timer-${Random.Default.nextInt()}",
         task = task,
         initialDelay = initialDelay,
         period = period,
         errorHandler = errorHandler,
+        timerSchedule = timerSchedule,
       )
       else -> throw IllegalArgumentException("Unknown timer type: $timerType")
     }
@@ -70,11 +78,12 @@ class LineaTimerTest {
   @ParameterizedTest
   @MethodSource("timerTypes")
   @Timeout(2, timeUnit = TimeUnit.SECONDS)
-  fun `task exception is handled by error handler`(typerType: KClass<out LineaTimer>) {
+  fun `task exception is handled by error handler`(typerType: KClass<out Timer>, timerSchedule: TimerSchedule) {
     val errorHandled = AtomicBoolean(false)
     val error = AtomicReference<String>("")
     val timer = createTimer(
       timerType = typerType,
+      timerSchedule = timerSchedule,
       task = Runnable { throw RuntimeException("Test error") },
       errorHandler = { t ->
         errorHandled.store(true)
@@ -82,11 +91,11 @@ class LineaTimerTest {
       },
     )
     timer.start()
-    await()
+    Awaitility.await()
       .pollInterval(30.milliseconds.toJavaDuration())
       .untilAsserted {
-        assertThat(errorHandled.load()).isTrue()
-        assertThat(error.load()).isEqualTo("Test error")
+        Assertions.assertThat(errorHandled.load()).isTrue()
+        Assertions.assertThat(error.load()).isEqualTo("Test error")
       }
     timer.stop()
   }
@@ -94,10 +103,11 @@ class LineaTimerTest {
   @ParameterizedTest
   @MethodSource("timerTypes")
   @Timeout(2, timeUnit = TimeUnit.SECONDS)
-  fun `timer continues to tick after exception`(typerType: KClass<out LineaTimer>) {
+  fun `timer continues to tick after exception`(typerType: KClass<out Timer>, timerSchedule: TimerSchedule) {
     val latch = CountDownLatch(5)
     val timer = createTimer(
       timerType = typerType,
+      timerSchedule = timerSchedule,
       task = Runnable {
         latch.countDown()
         throw RuntimeException("Test error")
@@ -105,16 +115,17 @@ class LineaTimerTest {
       errorHandler = { },
     )
     timer.start()
-    assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue()
+    Assertions.assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue()
     timer.stop()
   }
 
   @OptIn(ExperimentalTime::class)
   @ParameterizedTest
   @MethodSource("timerTypes")
-  @Timeout(2, timeUnit = TimeUnit.SECONDS)
+  @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun `ticks shouldn't run concurrently if execution is blocked for more than polling interval`(
-    typerType: KClass<out LineaTimer>,
+    typerType: KClass<out Timer>,
+    timerSchedule: TimerSchedule,
   ) {
     val pollingInterval = 50.milliseconds
     val numberOfInvocations = AtomicInteger(0)
@@ -122,6 +133,7 @@ class LineaTimerTest {
     val actionWasCalledInParallel = AtomicBoolean(false)
     val timer = createTimer(
       timerType = typerType,
+      timerSchedule = timerSchedule,
       task = Runnable {
         numberOfInvocations.incrementAndGet()
         if (prevActionIsRunning.load()) {
@@ -137,22 +149,23 @@ class LineaTimerTest {
       errorHandler = { },
     )
     timer.start()
-    await()
+    Awaitility.await()
       .pollInterval(30.milliseconds.toJavaDuration())
       .untilAsserted {
         println("$typerType: " + numberOfInvocations.get() + ", " + actionWasCalledInParallel.load())
-        assertThat(numberOfInvocations.get()).isGreaterThanOrEqualTo(5)
-        assertThat(actionWasCalledInParallel.load()).isFalse()
+        Assertions.assertThat(numberOfInvocations.get()).isGreaterThanOrEqualTo(5)
+        Assertions.assertThat(actionWasCalledInParallel.load()).isFalse()
       }
     timer.stop()
   }
 
   @ParameterizedTest
   @MethodSource("timerTypes")
-  fun `timer start is idempotent`(typerType: KClass<out LineaTimer>) {
+  fun `timer start is idempotent`(typerType: KClass<out Timer>, timerSchedule: TimerSchedule) {
     val timerReferences = mutableListOf<Any?>()
     val timer = createTimer(
       timerType = typerType,
+      timerSchedule = timerSchedule,
       task = Runnable { },
       errorHandler = { },
     )
@@ -162,7 +175,48 @@ class LineaTimerTest {
     }
     val firstReference = timerReferences.first()
     timerReferences.forEach {
-      assertThat(it).isEqualTo(firstReference)
+      Assertions.assertThat(it).isEqualTo(firstReference)
+    }
+  }
+
+  @OptIn(ExperimentalTime::class)
+  @ParameterizedTest
+  @MethodSource("timerTypes")
+  fun `Fixed rate timer executes tasks quickly if one is delayed more than polling interval`(
+    typerType: KClass<out Timer>,
+  ) {
+    val invocationTimestamps = mutableListOf<Instant>()
+    val pollingInterval = 50.milliseconds
+    val timer = createTimer(
+      timerType = typerType,
+      timerSchedule = TimerSchedule.FIXED_RATE,
+      task = Runnable {
+        invocationTimestamps.add(Clock.System.now())
+        if (invocationTimestamps.size == 1) {
+          Thread.sleep(pollingInterval.inWholeMilliseconds * 3)
+        }
+      },
+      errorHandler = { },
+    )
+    // Expected invocation times when no sleep:             0, 50ms,  100ms, 150ms, 200ms, 250ms
+    // Expected invocation times when first is delayed:     0, 151ms, 152ms, 153ms, 200ms, 250ms
+    timer.start()
+    Awaitility.await()
+      .pollInterval(30.milliseconds.toJavaDuration())
+      .until { invocationTimestamps.size >= 5 }
+    timer.stop()
+
+    for (i in 1 until invocationTimestamps.size) {
+      val timeBetweenInvocations = invocationTimestamps[i] - invocationTimestamps[i - 1]
+      if (i == 1) {
+        assertThat(timeBetweenInvocations).isGreaterThanOrEqualTo(pollingInterval.times(3))
+      } else if (i == 2 || i == 3) {
+        assertThat(timeBetweenInvocations).isLessThan(5.milliseconds)
+      } else if (i == 4) {
+        assertThat(timeBetweenInvocations).isBetween(5.milliseconds, pollingInterval)
+      } else {
+        assertThat(timeBetweenInvocations).isGreaterThanOrEqualTo(pollingInterval)
+      }
     }
   }
 }
