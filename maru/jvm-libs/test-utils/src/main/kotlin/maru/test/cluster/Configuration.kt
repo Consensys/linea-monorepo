@@ -9,10 +9,9 @@
 package maru.test.cluster
 
 import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.core.LoggerContext
-import org.apache.logging.log4j.core.appender.ConsoleAppender
+import org.apache.logging.log4j.core.config.Configurator
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
+import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration
 
 fun configureLoggers(
   pattern: String = "%d{yyyy-MM-dd HH:mm:ss} [%level] - %msg | %logger{36}%n",
@@ -31,18 +30,17 @@ fun configureLoggers(
 ) {
   val builder = ConfigurationBuilderFactory.newConfigurationBuilder()
 
-  // Create pattern layout
+  // Create console appender with custom pattern
+  val appenderBuilder =
+    builder
+      .newAppender("Console", "CONSOLE")
+      .addAttribute("target", "SYSTEM_OUT")
+
   val layoutBuilder =
     builder
       .newLayout("PatternLayout")
       .addAttribute("pattern", pattern)
-
-  // Create console appender
-  val appenderBuilder =
-    builder
-      .newAppender("Console", "CONSOLE")
-      .addAttribute("target", ConsoleAppender.Target.SYSTEM_OUT)
-      .add(layoutBuilder)
+  appenderBuilder.add(layoutBuilder)
 
   builder.add(appenderBuilder)
 
@@ -51,21 +49,18 @@ fun configureLoggers(
     builder
       .newRootLogger(rootLevel)
       .add(builder.newAppenderRef("Console"))
-
   builder.add(rootLoggerBuilder)
 
-  // Add specific logger configurations
+  // Configure specific loggers
   logLevels.forEach { (loggerName, level) ->
-    builder.add(
+    val loggerBuilder =
       builder
         .newLogger(loggerName, level)
+        .addAttribute("additivity", false)
         .add(builder.newAppenderRef("Console"))
-        .addAttribute("additivity", false),
-    )
+    builder.add(loggerBuilder)
   }
 
-  // Apply configuration
-  val ctx = LogManager.getContext(false) as LoggerContext
-  ctx.configuration = builder.build()
-  ctx.updateLoggers()
+  val configuration: BuiltConfiguration = builder.build()
+  Configurator.initialize(configuration)
 }
