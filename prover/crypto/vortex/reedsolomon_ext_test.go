@@ -23,7 +23,7 @@ func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
 	vec := smartvectors.RandExt(1 << 10)
 	rsEncoded := params.rsEncodeExt(vec)
 
-	err := params.isCodewordExt(rsEncoded)
+	err := params.IsCodewordExt(rsEncoded)
 	require.NoError(t, err)
 
 	y0 := smartvectors.EvaluateFextPolyLagrange(vec, x)
@@ -45,7 +45,7 @@ func TestReedSolomonExtConstant(t *testing.T) {
 	vec := smartvectors.NewConstantExt(fext.RandomElement(), polySize)
 	rsEncoded := params.rsEncodeExt(vec)
 
-	err := params.isCodewordExt(rsEncoded)
+	err := params.IsCodewordExt(rsEncoded)
 	require.NoError(t, err)
 
 	y0 := smartvectors.EvaluateFextPolyLagrange(vec, x)

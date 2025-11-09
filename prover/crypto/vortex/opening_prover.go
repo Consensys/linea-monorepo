@@ -42,7 +42,7 @@ type OpeningProof struct {
 // list of the committed matrices. This contrasts with the API of the other
 // functions and is motivated by the fact that this is simpler to construct in
 // our settings.
-func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, randomCoin fext.Element) *OpeningProof {
+func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, randomCoin fext.Element) smartvectors.SmartVector {
 
 	if len(committedSV) == 0 {
 		utils.Panic("attempted to open an empty witness")
@@ -88,9 +88,8 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 
 	linCombSV := smartvectors.NewRegularExt(linComb)
 
-	return &OpeningProof{
-		LinearCombination: params.rsEncodeExt(linCombSV),
-	}
+	return params.rsEncodeExt(linCombSV)
+
 }
 
 // InitOpeningFromAlreadyEncodedLC initiates the construction of a Vortex proof

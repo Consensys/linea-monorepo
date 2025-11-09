@@ -38,7 +38,8 @@ func TestLinearCombination(t *testing.T) {
 	lc := smartvectors.LinearCombinationExt(polys, randomCoin)
 
 	// Generate the proof
-	proof := params.InitOpeningWithLC(polys, randomCoin)
+	proof := &OpeningProof{}
+	proof.LinearCombination = params.InitOpeningWithLC(polys, randomCoin)
 
 	// Evaluate the two on a random-ish point. Should
 	// yield the same result.
@@ -239,7 +240,8 @@ func TestProver(t *testing.T) {
 				}
 
 				// Generate the proof
-				proof := params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
+				proof := &OpeningProof{}
+				proof.LinearCombination = params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
 				proof.Complete(entryList[:testCase.NumOpenedColumns], committedMatrices, trees)
 
 				// Check the proof
@@ -488,7 +490,8 @@ func TestVerifierNegative(t *testing.T) {
 			}
 
 			// Generate the proof
-			proof := params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
+			proof := &OpeningProof{}
+			proof.LinearCombination = params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
 			proof.Complete(entryList, committedMatrices, trees)
 
 			return &VerifierInputs{

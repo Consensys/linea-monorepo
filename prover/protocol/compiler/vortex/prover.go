@@ -155,7 +155,8 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 	randomCoinLC := pr.GetRandomCoinFieldExt(ctx.Items.Alpha.Name)
 
 	// and compute and assign the random linear combination of the rows
-	proof := ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
+	proof := &vortex.OpeningProof{}
+	proof.LinearCombination = ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
 }
 
