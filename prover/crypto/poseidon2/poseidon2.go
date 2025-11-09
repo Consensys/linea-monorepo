@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-const blockSize = 8
+const BlockSize = 8
 
 // TODO @thomas fixme arbitrary max size of the buffer
 const maxSizeBuf = 1024
@@ -74,14 +74,14 @@ func (d *Hasher) Write(p []byte) (int, error) {
 
 func (d *Hasher) SumElement() field.Octuplet {
 	for len(d.buffer) != 0 {
-		var buf [blockSize]field.Element
+		var buf [BlockSize]field.Element
 		// in this case we left pad by zeroes
-		if len(d.buffer) < blockSize {
-			copy(buf[blockSize-len(d.buffer):], d.buffer)
+		if len(d.buffer) < BlockSize {
+			copy(buf[BlockSize-len(d.buffer):], d.buffer)
 			d.buffer = d.buffer[:0]
 		} else {
 			copy(buf[:], d.buffer)
-			d.buffer = d.buffer[blockSize:]
+			d.buffer = d.buffer[BlockSize:]
 		}
 		d.state = vortex.CompressPoseidon2(d.state, buf)
 	}
@@ -115,6 +115,6 @@ func Poseidon2() *Hasher {
 
 // GnarkBlockCompression applies the MiMC permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
-func GnarkBlockCompressionMekle(api frontend.API, oldState, block [blockSize]zk.WrappedVariable) (newState [blockSize]zk.WrappedVariable) {
+func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]zk.WrappedVariable) (newState [BlockSize]zk.WrappedVariable) {
 	panic("unimplemented")
 }
