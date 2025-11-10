@@ -58,7 +58,7 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 		// An instance is considered large if any of the operand has more than
 		// 2 16-bytes limbs.
 		for k := 0; k < modexpNumRowsPerInstance; k++ {
-			if k%32 < 30 && !limbs[currPosition+k].IsZero() {
+			if k%nbLargeModexpLimbs < (nbLargeModexpLimbs-2) && !limbs[currPosition+k].IsZero() {
 				isLarge = true
 				break
 			}
@@ -77,7 +77,7 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 			builder.isLarge.PushBoolean(isLarge)
 			builder.limbs.PushField(limbs[currPosition+k])
 
-			if !isLarge && k%32 >= 30 {
+			if !isLarge && k%nbLargeModexpLimbs >= (nbLargeModexpLimbs-2) {
 				builder.toSmallCirc.PushOne()
 			} else {
 				builder.toSmallCirc.PushZero()
@@ -91,15 +91,15 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 		exit.OnLimitOverflow(
 			settings.MaxNbInstance256,
 			modexpCountSmall,
-			fmt.Errorf("limit overflow: the modexp (256 bits) count is %v and the limit is %v", modexpCountSmall, settings.MaxNbInstance256),
+			fmt.Errorf("limit overflow: the modexp (%d bits) count is %v and the limit is %v", smallModexpSize, modexpCountSmall, settings.MaxNbInstance256),
 		)
 	}
 
-	if modexpCountLarge > settings.MaxNbInstance4096 {
+	if modexpCountLarge > settings.MaxNbInstanceLarge {
 		exit.OnLimitOverflow(
-			settings.MaxNbInstance4096,
+			settings.MaxNbInstanceLarge,
 			modexpCountLarge,
-			fmt.Errorf("limit overflow: the modexp (4096 bits) count is %v and the limit is %v", modexpCountLarge, settings.MaxNbInstance4096),
+			fmt.Errorf("limit overflow: the modexp (%d bits) count is %v and the limit is %v", largeModexpSize, modexpCountLarge, settings.MaxNbInstanceLarge),
 		)
 	}
 
@@ -113,6 +113,6 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 	// case we skip the corresponding assignment part.
 	if mod.HasCircuit {
 		mod.GnarkCircuitConnector256Bits.Assign(run)
-		mod.GnarkCircuitConnector4096Bits.Assign(run)
+		mod.GnarkCircuitConnectorLarge.Assign(run)
 	}
 }

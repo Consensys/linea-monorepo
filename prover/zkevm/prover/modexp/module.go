@@ -13,10 +13,20 @@ import (
 )
 
 const (
+	// bit-size bound for the operands in the small
+	smallModexpSize = 256
+	largeModexpSize = 8192
+	// limbSize is the size (in bits) of a limb as in the public inputs of the
+	// circuit. This is a parameter linked to how the arithmetization encodes
+	// 256 bits integers.
+	limbSizeBits = 128
+	// nbLargeModexpLimbs is the number of limbs used to represent
+	// large modexp operands
+	nbLargeModexpLimbs = largeModexpSize / limbSizeBits
 	// modexpNumRows corresponds to the number of rows present in the MODEXP
 	// module to represent a single instance. Each instance has 4 operands
 	// dispatched in limbs of
-	modexpNumRowsPerInstance = 32 * 4
+	modexpNumRowsPerInstance = nbLargeModexpLimbs * 4
 )
 
 // Module implements the wizard part responsible for checking the MODEXP
@@ -28,7 +38,7 @@ type Module struct {
 	// antichamber modules corresponding "active" rows: e.g. NOT padding rows.
 	IsActive ifaces.Column
 	// IsSmall, IsLarge are indicator columns that are constant per modexp
-	// instances. They are mutually exclusive and
+	// instances. They are mutually exclusive and activated by IsActive.
 	IsSmall, IsLarge ifaces.Column
 	// Limb contains the modexp arguments and is subjected to a projection
 	// constraint from the BLK_MDXP (using IsActive as filter). It is constrained
@@ -40,7 +50,7 @@ type Module struct {
 	ToSmallCirc ifaces.Column
 	// connection logic of the modexp circuit specialized for the small and
 	// large instances respectively
-	GnarkCircuitConnector256Bits, GnarkCircuitConnector4096Bits *plonk.Alignment
+	GnarkCircuitConnector256Bits, GnarkCircuitConnectorLarge *plonk.Alignment
 	// HasCircuit indicates whether the circuit has been set in the module. In
 	// production, it will be always set to true. But for convenience we omit
 	// the circuit in some of the test as this is CPU intensive.
@@ -61,7 +71,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 
 	var (
 		settings      = input.Settings
-		maxNbInstance = settings.MaxNbInstance256 + settings.MaxNbInstance4096
+		maxNbInstance = settings.MaxNbInstance256 + settings.MaxNbInstanceLarge
 		size          = utils.NextPowerOfTwo(maxNbInstance * modexpNumRowsPerInstance)
 		mod           = &Module{
 			Input:       input,
@@ -103,20 +113,20 @@ func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkO
 			Name:               "MODEXP_256_BITS",
 			DataToCircuit:      mod.Limbs,
 			DataToCircuitMask:  mod.ToSmallCirc,
-			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexp256, 256),
+			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexp256, smallModexpSize),
 			NbCircuitInstances: utils.DivCeil(settings.MaxNbInstance256, settings.NbInstancesPerCircuitModexp256),
 			PlonkOptions:       options,
 		},
 	)
 
-	mod.GnarkCircuitConnector4096Bits = plonk.DefineAlignment(
+	mod.GnarkCircuitConnectorLarge = plonk.DefineAlignment(
 		comp,
 		&plonk.CircuitAlignmentInput{
-			Name:               "MODEXP_4096_BITS",
+			Name:               "MODEXP_LARGE",
 			DataToCircuit:      mod.Limbs,
 			DataToCircuitMask:  mod.IsLarge,
-			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexp4096, 4096),
-			NbCircuitInstances: utils.DivCeil(settings.MaxNbInstance4096, settings.NbInstancesPerCircuitModexp4096),
+			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexpLarge, largeModexpSize),
+			NbCircuitInstances: utils.DivCeil(settings.MaxNbInstanceLarge, settings.NbInstancesPerCircuitModexpLarge),
 			PlonkOptions:       options,
 		},
 	)
@@ -190,10 +200,10 @@ func (mod *Module) csIsSmallAndLarge(comp *wizard.CompiledIOP) {
 
 	//
 	// The constraint below ensures that if the IS_SMALL flag is set, then the
-	// limbs 2..32 of the operands of the corresponding modexp must be zero
+	// limbs 2..64 of the operands of the corresponding modexp must be zero
 	// (otherwise, they would represent numbers larger than 256 bits).
 	//
-	// The converse constraint does not exists in the 4096 case because it would
+	// The converse constraint does not exists in the large (8192) case because it would
 	// not be wrong to supply
 	//
 
@@ -203,7 +213,10 @@ func (mod *Module) csIsSmallAndLarge(comp *wizard.CompiledIOP) {
 		sym.Mul(
 			mod.Limbs,
 			mod.IsSmall,
-			sym.Sub(1, variables.NewPeriodicSample(32, 30), variables.NewPeriodicSample(32, 31)),
+			sym.Sub(1,
+				variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-2),
+				variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-1),
+			),
 		),
 	)
 }
@@ -219,8 +232,8 @@ func (mod *Module) csToCirc(comp *wizard.CompiledIOP) {
 			sym.Mul(
 				mod.IsSmall,
 				sym.Add(
-					variables.NewPeriodicSample(32, 30),
-					variables.NewPeriodicSample(32, 31),
+					variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-2),
+					variables.NewPeriodicSample(nbLargeModexpLimbs, nbLargeModexpLimbs-1),
 				),
 			),
 		),

@@ -11,28 +11,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-const (
-	// bit-size bound for the operands in the small
-	smallModexpSize = 256
-	largeModexpSize = 8192
-	// limbSize is the size (in bits) of a limb as in the public inputs of the
-	// circuit. This is a parameter linked to how the arithmetization encodes
-	// 256 bits integers.
-	limbSizeBits = 128
-)
+// modLarge implements the emulated.FieldParams interface for the
+// large modexp circuit
+type modLarge struct{}
 
-// mod1e8192 implements the emulated.FieldParams interface for the
-// modulus p = 2^8192 - 1.
-type mod1e8192 struct{}
+var _ emulated.FieldParams = modLarge{}
 
-var _ emulated.FieldParams = mod1e8192{}
-
-func (mod1e8192) NbLimbs() uint     { return 128 }
-func (mod1e8192) BitsPerLimb() uint { return 64 }
-func (mod1e8192) IsPrime() bool     { return true }
-func (mod1e8192) Modulus() *big.Int {
+func (modLarge) NbLimbs() uint     { return 2 * nbLargeModexpLimbs }
+func (modLarge) BitsPerLimb() uint { return 64 }
+func (modLarge) IsPrime() bool     { return false }
+func (modLarge) Modulus() *big.Int {
 	one := new(big.Int).SetInt64(1)
-	m := new(big.Int).Lsh(one, 8192)
+	m := new(big.Int).Lsh(one, largeModexpSize)
 	m.Sub(m, one)
 	return m
 }
@@ -43,7 +33,7 @@ func (mod1e8192) Modulus() *big.Int {
 // The circuit is meant to be used in two variants:
 //   - 256 bits, where all the operands and the claimed result have a size
 //     smaller than 256 bits.
-//   - 8192, where the operands are bound to 8192 bits
+//   - large, where the operands are bound to [nbLargeModExpBits] bits (currently 8192 bits).
 type ModExpCircuit struct {
 	Instances []modexpCircuitInstance `gnark:",public"`
 }
@@ -99,7 +89,7 @@ func (m *ModExpCircuit) Define(api frontend.API) error {
 		case smallModexpSize:
 			checkModexpInstance[emparams.Mod1e256](api, &instance)
 		case largeModexpSize:
-			checkModexpInstance[mod1e8192](api, &instance)
+			checkModexpInstance[modLarge](api, &instance)
 		default:
 			utils.Panic(
 				"Unexpected field size = %v, should be either %v or %v",
