@@ -2,6 +2,7 @@ package vortex
 
 import (
 	"errors"
+	"math"
 	"math/big"
 	"math/bits"
 
@@ -275,8 +276,13 @@ func GnarkVerifyCommon(
 	x zk.WrappedVariable,
 	ys [][]zk.WrappedVariable,
 	randomCoin zk.WrappedVariable,
-	entryList []zk.WrappedVariable,
-) ([][]zk.WrappedVariable, error) {
+	entryList []frontend.Variable,
+) ([][]frontend.Variable, error) {
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
 
 	// check the linear combination is a codeword
 	api.Compiler().Defer(func(api frontend.API) error {
@@ -303,7 +309,7 @@ func GnarkVerifyCommon(
 	// Size of the hash of 1 column
 	numRounds := len(ys)
 
-	selectedColSisDigests := make([][]zk.WrappedVariable, numRounds)
+	selectedColSisDigests := make([][]frontend.Variable, numRounds)
 	tbl := logderivlookup.New(api)
 	for i := range proof.LinearCombination {
 		tbl.Insert(proof.LinearCombination[i])
@@ -316,7 +322,7 @@ func GnarkVerifyCommon(
 		for i := range selectedColSisDigests {
 
 			if j == 0 {
-				selectedColSisDigests[i] = make([]zk.WrappedVariable, len(entryList))
+				selectedColSisDigests[i] = make([]frontend.Variable, len(entryList))
 			}
 
 			// Entries of the selected columns #j contained in the commitment #i.
@@ -331,10 +337,20 @@ func GnarkVerifyCommon(
 			hasher, _ := params.NoSisHasher(api)
 			hasher.Reset()
 			// TODO @thomas fixme
-			// hasher.Write(selectedSubCol...)
-			// digest := hasher.Sum()
-			// selectedColSisDigests[i][j] = digest
-			selectedColSisDigests[i][j] = zk.ValueOf(3)
+			// TODO@yao: how to write 1 zero.element and then 7 field.Element to hasher? ...
+			var hashinput []frontend.Variable
+			var value frontend.Variable
+			for k := range selectedSubCol {
+				if k%7 != 0 || k == 0 {
+					tmp := apiGen.Mul(selectedSubCol[k], zk.ValueOf(math.Pow(256, float64(6-(k%7)))))
+					value = apiGen.Add(value, tmp)
+				}
+				hashinput = append(hashinput, value)
+				value = 0
+			}
+			hasher.Write(hashinput...)
+			digest := hasher.Sum()
+			selectedColSisDigests[i][j] = digest
 		}
 
 		// Check the linear combination is consistent with the opened column

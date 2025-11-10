@@ -33,7 +33,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 	}
 
 	timeEncoding := profiling.TimeIt(func() {
-		encodedMatrix = p.encodeRows(ps)
+		encodedMatrix = p.EncodeRows(ps)
 	})
 	timeSisHashing := profiling.TimeIt(func() {
 		// colHashes stores concatenation of SIS hashes of the columns
@@ -74,7 +74,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 	}
 
 	timeEncoding := profiling.TimeIt(func() {
-		encodedMatrix = p.encodeRows(ps)
+		encodedMatrix = p.EncodeRows(ps)
 	})
 
 	timeTree := profiling.TimeIt(func() {
@@ -99,10 +99,10 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 	return encodedMatrix, tree, colHashes
 }
 
-// encodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as
+// EncodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as
 // a list of rows of the Vortex witness and encodedMatrix is obtained by
 // encoding each of the [smartvectors.SmartVector] it contains separately.
-func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix) {
+func (params *Params) EncodeRows(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix) {
 
 	// Sanity-check, all the vectors must have the right length
 	for i := range ps {

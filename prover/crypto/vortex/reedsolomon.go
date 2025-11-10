@@ -68,7 +68,7 @@ func (p *Params) _rsEncodeBase(v smartvectors.SmartVector) smartvectors.SmartVec
 
 // IsCodeword returns nil iff the argument `v` is a correct codeword and an
 // error is returned otherwise.
-func (p *Params) isCodeword(v smartvectors.SmartVector) error {
+func (p *Params) IsCodeword(v smartvectors.SmartVector) error {
 	if v.Len() != p.NumEncodedCols() {
 		return fmt.Errorf("invalid length for a codeword")
 	}

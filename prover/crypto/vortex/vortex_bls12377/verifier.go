@@ -4,13 +4,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	gnarkVortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
+
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 var (
@@ -31,9 +34,10 @@ var (
 // coins as Vortex is used a sub-protocol of a larger protocol.
 type VerifierInputs struct {
 	// Params are the public parameters
-	Params Params
+	Koalabear_Params vortex.Params
+	BLS12_377_Params Params
 	// MerkleRoots are the commitment to verify the opening for
-	MerkleRoots []field.Octuplet
+	MerkleRoots []types.Bytes32
 	// X is the univariate evaluation point
 	X fext.Element
 	// Ys are the alleged evaluation at point X
@@ -71,7 +75,7 @@ func VerifyOpening(v *VerifierInputs) error {
 	if len(v.Ys) != numCommitments ||
 		len(proof.Columns) != numCommitments ||
 		len(proof.MerkleProofs) != numCommitments ||
-		proof.LinearCombination.Len() != v.Params.NumEncodedCols() {
+		proof.LinearCombination.Len() != v.Koalabear_Params.NumEncodedCols() {
 		return ErrInvalidVerifierInputs
 	}
 
@@ -80,7 +84,7 @@ func VerifyOpening(v *VerifierInputs) error {
 		if len(proof.Columns[i]) != numEntries ||
 			len(proof.MerkleProofs[i]) != numEntries ||
 			len(v.Ys[i]) == 0 ||
-			len(v.Ys[i]) > v.Params.MaxNbRows {
+			len(v.Ys[i]) > v.Koalabear_Params.MaxNbRows {
 			return ErrInvalidVerifierInputs
 		}
 
@@ -92,7 +96,7 @@ func VerifyOpening(v *VerifierInputs) error {
 		}
 	}
 
-	if err := v.Params.IsCodewordExt(v.OpeningProof.LinearCombination); err != nil {
+	if err := v.Koalabear_Params.IsCodewordExt(v.OpeningProof.LinearCombination); err != nil {
 		return err
 	}
 
@@ -128,7 +132,7 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := vortex.EvalBasePolyHorner(fullCol, v.RandomCoin)
+		y := gnarkVortex.EvalBasePolyHorner(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")
@@ -152,7 +156,7 @@ func (v *VerifierInputs) checkStatement() (err error) {
 	// Check the consistency of Ys and proof.Linear combination
 	Yjoined := utils.Join(v.Ys...)
 	alphaY := smartvectors.EvaluateFextPolyLagrange(v.OpeningProof.LinearCombination, v.X)
-	alphaYPrime := vortex.EvalFextPolyHorner(Yjoined, v.RandomCoin)
+	alphaYPrime := gnarkVortex.EvalFextPolyHorner(Yjoined, v.RandomCoin)
 
 	if alphaY != alphaYPrime {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
@@ -167,9 +171,9 @@ func (v *VerifierInputs) checkStatement() (err error) {
 func (v *VerifierInputs) checkColumnInclusion() error {
 
 	var (
-		mTreeHashConfig = &smt_koalabear.Config{
-			HashFunc: v.Params.MerkleHashFunc,
-			Depth:    utils.Log2Ceil(v.Params.NumEncodedCols()),
+		mTreeHashConfig = &smt_bls12377.Config{
+			HashFunc: v.BLS12_377_Params.MerkleHashFunc,
+			Depth:    utils.Log2Ceil(v.BLS12_377_Params.NumEncodedCols()),
 		}
 	)
 
@@ -184,30 +188,31 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			var (
 				// Selected columns #j contained in the commitment #i.
 				selectedSubCol = v.OpeningProof.Columns[i][j]
-				leaf           field.Octuplet
+				leaf           types.Bytes32
 				entry          = v.EntryList[j]
 				root           = v.MerkleRoots[i]
 				mProof         = v.OpeningProof.MerkleProofs[i][j]
 			)
 
 			if !v.IsSISReplacedByPoseidon2[i] {
-				var (
-					// SIS hash of the current sub-column
-					sisHash = v.Params.Key.Hash(selectedSubCol)
-					// hasher used to hash the SIS hash (and thus not a hasher
-					// based on SIS)
-					hasher = v.Params.LeafHashFunc()
-				)
-				hasher.Reset()
-				hasher.WriteElements(sisHash)
-				leaf = hasher.SumElement()
+				panic("the SIS hash function is not supported in BLS12-377 vortex verifier")
 			} else {
 				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
 				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
-				hasher := v.Params.LeafHashFunc()
+				hasher := v.BLS12_377_Params.LeafHashFunc()
 				hasher.Reset()
-				hasher.WriteElements(selectedSubCol)
-				leaf = hasher.SumElement()
+
+				for row := 0; row < len(selectedSubCol); row++ {
+					if row%7 == 0 {
+						// Overwrite with 4 zero bytes to prevent bls12377 overflow
+						zeroBytes := []byte{0, 0, 0, 0}
+						hasher.Write(zeroBytes)
+					}
+					x := selectedSubCol[row]
+					xBytes := x.Bytes()
+					hasher.Write(xBytes[:])
+				}
+				leaf = types.AsBytes32(hasher.Sum(nil))
 			}
 
 			// Check the Merkle-proof for the obtained leaf

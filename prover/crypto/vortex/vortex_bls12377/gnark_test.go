@@ -8,12 +8,25 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark/std/hash"
+	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // ------------------------------------------------------------
@@ -308,111 +321,128 @@ func TestEvaluateLagrangeCircuit(t *testing.T) {
 // ------------------------------------------------------------
 // N Commitments with Merkle opening
 
-// func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPolys, polySize, blowUpFactor int) (
-// 	proof *OpeningProof,
-// 	randomCoin fext.Element,
-// 	x fext.Element,
-// 	yLists [][]fext.Element,
-// 	entryList []int,
-// 	roots []field.Octuplet,
-// ) {
+func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPolys, polySize, blowUpFactor int) (
+	proof *OpeningProof,
+	randomCoin fext.Element,
+	x fext.Element,
+	yLists [][]fext.Element,
+	entryList []int,
+	roots []types.Bytes32,
+) {
 
-// 	x = fext.RandomElement()
-// 	randomCoin = fext.RandomElement()
-// 	entryList = []int{1, 5, 19, 645}
+	x = fext.RandomElement()
+	randomCoin = fext.RandomElement()
+	entryList = []int{1, 5, 19, 645}
 
-// 	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2.Poseidon2, poseidon2.Poseidon2)
+	blsParams := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
+	koalabearParams := vortex.NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2.Poseidon2, poseidon2.Poseidon2)
 
-// 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
-// 	yLists = make([][]fext.Element, nCommitments)
-// 	for j := range polyLists {
-// 		// Polynomials to commit to
-// 		polys := make([]smartvectors.SmartVector, nPolys)
-// 		ys := make([]fext.Element, nPolys)
-// 		for i := range polys {
-// 			polys[i] = smartvectors.Rand(polySize)
-// 			ys[i] = smartvectors.EvaluateBasePolyLagrange(polys[i], x)
-// 		}
-// 		polyLists[j] = polys
-// 		yLists[j] = ys
-// 	}
+	polyLists := make([][]smartvectors.SmartVector, nCommitments)
+	yLists = make([][]fext.Element, nCommitments)
+	for j := range polyLists {
+		// Polynomials to commit to
+		polys := make([]smartvectors.SmartVector, nPolys)
+		ys := make([]fext.Element, nPolys)
+		for i := range polys {
+			polys[i] = smartvectors.Rand(polySize)
+			ys[i] = smartvectors.EvaluateBasePolyLagrange(polys[i], x)
+		}
+		polyLists[j] = polys
+		yLists[j] = ys
+	}
 
-// 	// Commits to it
-// 	roots = make([]field.Octuplet, nCommitments)
-// 	trees := make([]*smt.Tree, nCommitments)
-// 	committedMatrices := make([]EncodedMatrix, nCommitments)
-// 	isSISReplacedByPoseidon2 := make([]bool, nCommitments)
-// 	for j := range trees {
-// 		// As Gnark does not support SIS, we commit without SIS hashing
-// 		committedMatrices[j], trees[j], _ = params.CommitMerkleWithoutSIS(polyLists[j])
-// 		roots[j] = trees[j].Root
-// 		// We set the SIS replaced by Poseidon2 to true, as Gnark does not support SIS
-// 		isSISReplacedByPoseidon2[j] = true
-// 	}
+	// Commits to it
+	roots = make([]types.Bytes32, nCommitments)
+	trees := make([]*smt_bls12377.Tree, nCommitments)
+	committedMatrices := make([]vortex.EncodedMatrix, nCommitments)
+	isSISReplacedByPoseidon2 := make([]bool, nCommitments)
+	for j := range trees {
+		// encode before committing
+		if len(polyLists[j]) > koalabearParams.MaxNbRows {
+			utils.Panic("too many rows: %v, capacity is %v\n", len(polyLists[j]), koalabearParams.MaxNbRows)
+		}
 
-// 	// Generate the proof
-// 	proof = params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
-// 	proof.Complete(entryList, committedMatrices, trees)
+		profiling.TimeIt(func() {
+			committedMatrices[j] = koalabearParams.EncodeRows(polyLists[j])
+		})
 
-// 	// Check the proof
-// 	err := VerifyOpening(&VerifierInputs{
-// 		Params:                   *params,
-// 		MerkleRoots:              roots,
-// 		X:                        x,
-// 		Ys:                       yLists,
-// 		OpeningProof:             *proof,
-// 		RandomCoin:               randomCoin,
-// 		EntryList:                entryList,
-// 		IsSISReplacedByPoseidon2: isSISReplacedByPoseidon2,
-// 	})
-// 	require.NoError(t, err)
+		// As Gnark does not support SIS, we commit without SIS hashing
+		trees[j], _ = blsParams.CommitMerkleWithoutSIS(committedMatrices[j])
+		roots[j] = trees[j].Root
+		// We set the SIS replaced by Poseidon2 to true, as Gnark does not support SIS
+		isSISReplacedByPoseidon2[j] = true
+	}
 
-// 	return proof, randomCoin, x, yLists, entryList, roots
-// }
+	// Generate the proof
+	proof.LinearCombination = koalabearParams.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
+	proof.Complete(entryList, committedMatrices, trees)
 
-// func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
+	// Check the proof
+	err := VerifyOpening(&VerifierInputs{
+		Koalabear_Params:         *koalabearParams,
+		BLS12_377_Params:         *blsParams,
+		MerkleRoots:              roots,
+		X:                        x,
+		Ys:                       yLists,
+		OpeningProof:             *proof,
+		RandomCoin:               randomCoin,
+		EntryList:                entryList,
+		IsSISReplacedByPoseidon2: isSISReplacedByPoseidon2,
+	})
+	require.NoError(t, err)
 
-// 	// generate witness
-// 	nCommitments := 4
-// 	nPolys := 15
-// 	polySize := 1 << 10
-// 	blowUpFactor := 2
-// 	proof, randomCoin, x, ys, entryList, commitments := getProofVortexNCommitmentsWithMerkleNoSis(t, nCommitments, nPolys, polySize, blowUpFactor)
+	return proof, randomCoin, x, yLists, entryList, roots
+}
 
-// 	rsSize := blowUpFactor * polySize
-// 	rsDomainSize := uint64(rsSize)
-// 	rsDomain := fft.NewDomain(rsDomainSize)
-// 	var witness VerifyOpeningCircuitMerkleTree
-// 	witness.Proof.RsDomain = rsDomain
-// 	witness.Proof.Rate = uint64(blowUpFactor)
-// 	AllocateCircuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, commitments)
-// 	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, commitments)
-// 	witness.RandomCoin = randomCoin.String()
-// 	witness.X = x.String()
-// 	witness.Params.HasherFunc = makeMimcHasherfunc
-// 	witness.Params.NoSisHasher = makeMimcHasherfunc
+func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 
-// 	// compile the circuit
-// 	var circuit VerifyOpeningCircuitMerkleTree
-// 	circuit.Proof.LinearCombination = make([]zk.WrappedVariable, rsSize)
-// 	circuit.Proof.Rate = uint64(blowUpFactor)
-// 	circuit.Proof.RsDomain = rsDomain
-// 	circuit.Params.HasherFunc = makeMimcHasherfunc
-// 	circuit.Params.NoSisHasher = makeMimcHasherfunc
+	// generate witness
+	nCommitments := 4
+	nPolys := 15
+	polySize := 1 << 10
+	blowUpFactor := 2
+	proof, randomCoin, x, ys, entryList, roots := getProofVortexNCommitmentsWithMerkleNoSis(t, nCommitments, nPolys, polySize, blowUpFactor)
 
-// 	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, commitments)
-// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	rsSize := blowUpFactor * polySize
+	rsDomainSize := uint64(rsSize)
+	rsDomain := fft.NewDomain(rsDomainSize)
+	var witness VerifyOpeningCircuitMerkleTree
+	witness.Proof.RsDomain = rsDomain
+	witness.Proof.Rate = uint64(blowUpFactor)
+	AllocateCircuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots)
+	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots)
+	witness.RandomCoin = zk.ValueOf(randomCoin.String()) // TODO@yao: check ext to zk.value correctness
+	witness.X = zk.ValueOf(x.String())
+	witness.Params.HasherFunc = makePoseidon2Hasherfunc
+	witness.Params.NoSisHasher = makePoseidon2Hasherfunc
 
-// 	// solve the circuit
-// 	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	err = ccs.IsSolved(twitness)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// }
+	// compile the circuit
+	var circuit VerifyOpeningCircuitMerkleTree
+	circuit.Proof.LinearCombination = make([]zk.WrappedVariable, rsSize)
+	circuit.Proof.Rate = uint64(blowUpFactor)
+	circuit.Proof.RsDomain = rsDomain
+	circuit.Params.HasherFunc = makePoseidon2Hasherfunc
+	circuit.Params.NoSisHasher = makePoseidon2Hasherfunc
+
+	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, roots)
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// solve the circuit
+	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ccs.IsSolved(twitness)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func makePoseidon2Hasherfunc(api frontend.API) (hash.FieldHasher, error) {
+
+	h, err := gposeidon2.NewMerkleDamgardHasher(api)
+
+	return h, err
+}

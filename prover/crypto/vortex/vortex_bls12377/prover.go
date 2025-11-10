@@ -1,9 +1,9 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -28,68 +28,7 @@ type OpeningProof struct {
 	//
 	// MerkleProofs[i][j] corresponds to the Merkle proof attesting the j-th
 	// column of the i-th commitment root hash.
-	MerkleProofs [][]smt_koalabear.Proof
-}
-
-// Open initiates the construction of a Vortex proof by returning the
-// encoding of the linear combinations of the committed row-vectors contained
-// in committedSV by the successive powers of randomCoin.
-//
-// The returned proof is partially assigned and must be completed using
-// [WithEntryList] to conclude the opening protocol.
-//
-// In the batch settings, the committedSV must be provided as the flattened
-// list of the committed matrices. This contrasts with the API of the other
-// functions and is motivated by the fact that this is simpler to construct in
-// our settings.
-func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, randomCoin fext.Element) smartvectors.SmartVector {
-
-	if len(committedSV) == 0 {
-		utils.Panic("attempted to open an empty witness")
-	}
-
-	// Compute the linear combination
-	linComb := make([]fext.Element, params.NbColumns)
-
-	parallel.Execute(len(linComb), func(start, stop int) {
-
-		x := fext.One()
-		scratch := make(vectorext.Vector, stop-start)
-		localLinComb := make(vectorext.Vector, stop-start)
-		for i := range committedSV {
-			_sv := committedSV[i]
-			// we distinguish the case of a regular vector and constant to avoid
-			// unnecessary allocations and copies
-			switch _svt := _sv.(type) {
-			case *smartvectors.Constant:
-				cst := _svt.GetExt(0)
-				cst.Mul(&cst, &x)
-				for j := range localLinComb {
-					localLinComb[j].Add(&localLinComb[j], &cst)
-				}
-				x.Mul(&x, &randomCoin)
-				continue
-			case *smartvectors.Regular:
-				sv := field.Vector((*_svt)[start:stop])
-				for i := range scratch {
-					fext.SetFromBase(&scratch[i], &sv[i])
-				}
-			default:
-				sv := _svt.SubVector(start, stop)
-				sv.WriteInSliceExt(scratch)
-			}
-			scratch.ScalarMul(scratch, &x)
-			localLinComb.Add(localLinComb, scratch)
-			x.Mul(&x, &randomCoin)
-
-		}
-		copy(linComb[start:stop], localLinComb)
-	})
-
-	linCombSV := smartvectors.NewRegularExt(linComb)
-
-	return params.rsEncodeExt(linCombSV)
-
+	MerkleProofs [][]smt_bls12377.Proof
 }
 
 // InitOpeningFromAlreadyEncodedLC initiates the construction of a Vortex proof
@@ -98,7 +37,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 //
 // The returned proof is partially assigned and must be completed using
 // [WithEntryList] to conclude the opening protocol.
-func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV EncodedMatrix, randomCoin fext.Element) *OpeningProof {
+func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV vortex.EncodedMatrix, randomCoin fext.Element) *OpeningProof {
 
 	if len(rsCommittedSV) == 0 {
 		utils.Panic("attempted to open an empty witness")
@@ -127,8 +66,8 @@ func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV EncodedMatri
 // (implictly the random positions pointed to by the verifier).
 func (proof *OpeningProof) Complete(
 	entryList []int,
-	committedMatrices []EncodedMatrix,
-	trees []*smt_koalabear.Tree,
+	committedMatrices []vortex.EncodedMatrix,
+	trees []*smt_bls12377.Tree,
 ) {
 
 	if len(entryList) == 0 {
@@ -149,14 +88,14 @@ func (proof *OpeningProof) Complete(
 	}
 
 	numTrees := len(trees)
-	proofs := make([][]smt_koalabear.Proof, numTrees)
+	proofs := make([][]smt_bls12377.Proof, numTrees)
 
 	// Generate the proofs for each tree and each entry
 	for treeID, tree := range trees {
 		if tree == nil {
 			utils.Panic("tree is nil")
 		}
-		proofs[treeID] = make([]smt_koalabear.Proof, len(entryList))
+		proofs[treeID] = make([]smt_bls12377.Proof, len(entryList))
 		for k, entry := range entryList {
 			var err error
 			proofs[treeID][k], err = tree.Prove(entry)

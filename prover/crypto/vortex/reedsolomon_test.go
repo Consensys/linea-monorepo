@@ -24,7 +24,7 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 	vec := smartvectors.Rand(1 << 10)
 	rsEncoded := params._rsEncodeBase(vec)
 
-	err := params.isCodeword(rsEncoded)
+	err := params.IsCodeword(rsEncoded)
 	require.NoError(t, err)
 
 	y0 := smartvectors.EvaluateBasePolyLagrange(vec, x)
@@ -46,7 +46,7 @@ func TestReedSolomonConstant(t *testing.T) {
 	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
 	rsEncoded := params._rsEncodeBase(vec)
 
-	err := params.isCodeword(rsEncoded)
+	err := params.IsCodeword(rsEncoded)
 	require.NoError(t, err)
 
 	y0 := smartvectors.EvaluateBasePolyLagrange(vec, x)

@@ -1,22 +1,31 @@
 package vortex
 
 import (
+	"hash"
+	"runtime"
+
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/sirupsen/logrus"
 )
 
 // Final circuit - commitment using Merkle trees
 type VerifyOpeningCircuitMerkleTree struct {
 	Proof      GProof                 `gnark:",public"`
-	Roots      []zk.WrappedVariable   `gnark:",public"`
+	Roots      []frontend.Variable    `gnark:",public"`
 	X          zk.WrappedVariable     `gnark:",public"`
 	RandomCoin zk.WrappedVariable     `gnark:",public"`
 	Ys         [][]zk.WrappedVariable `gnark:",public"`
-	EntryList  []zk.WrappedVariable   `gnark:",public"`
+	EntryList  []frontend.Variable    `gnark:",public"`
 	Params     GParams
 }
 
@@ -26,7 +35,7 @@ func AllocateCircuitVariablesWithMerkleTree(
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
-	roots []field.Octuplet) {
+	roots []types.Bytes32) {
 
 	verifyCircuit.Proof.LinearCombination = make([]zk.WrappedVariable, proof.LinearCombination.Len())
 
@@ -46,14 +55,14 @@ func AllocateCircuitVariablesWithMerkleTree(
 		}
 	}
 
-	verifyCircuit.EntryList = make([]zk.WrappedVariable, len(entryList))
+	verifyCircuit.EntryList = make([]frontend.Variable, len(entryList))
 
 	verifyCircuit.Ys = make([][]zk.WrappedVariable, len(ys))
 	for i := 0; i < len(ys); i++ {
 		verifyCircuit.Ys[i] = make([]zk.WrappedVariable, len(ys[i]))
 	}
 
-	verifyCircuit.Roots = make([]zk.WrappedVariable, len(roots))
+	verifyCircuit.Roots = make([]frontend.Variable, len(roots))
 
 }
 
@@ -63,12 +72,12 @@ func AssignCicuitVariablesWithMerkleTree(
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
-	roots []field.Octuplet) {
+	roots []types.Bytes32) {
 
-	frLinComb := make([]field.Element, proof.LinearCombination.Len())
-	proof.LinearCombination.WriteInSlice(frLinComb)
+	frLinComb := make([]fext.Element, proof.LinearCombination.Len())
+	proof.LinearCombination.WriteInSliceExt(frLinComb)
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		verifyCircuit.Proof.LinearCombination[i] = zk.ValueOf(frLinComb[i])
+		verifyCircuit.Proof.LinearCombination[i] = zk.ValueOf(frLinComb[i]) //write ext to zk.value
 	}
 
 	for i := 0; i < len(proof.Columns); i++ {
@@ -79,19 +88,19 @@ func AssignCicuitVariablesWithMerkleTree(
 		}
 	}
 
+	var buf fr.Element
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Path = zk.ValueOf(proof.MerkleProofs[i][j].Path)
+			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path
 			for k := 0; k < len(proof.MerkleProofs[i][j].Siblings); k++ {
-				// TODO @thomas fixme
-				// buf.SetBytes(proof.MerkleProofs[i][j].Siblings[k][:])
-				// verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = zk.ValueOf(buf)
+				buf.SetBytes(proof.MerkleProofs[i][j].Siblings[k][:])
+				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = buf.String()
 			}
 		}
 	}
 
 	for i := 0; i < len(entryList); i++ {
-		verifyCircuit.EntryList[i] = zk.ValueOf(entryList[i])
+		verifyCircuit.EntryList[i] = entryList[i]
 	}
 
 	for i := 0; i < len(ys); i++ {
@@ -101,9 +110,8 @@ func AssignCicuitVariablesWithMerkleTree(
 	}
 
 	for i := 0; i < len(roots); i++ {
-		// TODO @thomas fixme
-		// buf.SetBytes(roots[i][:])
-		// verifyCircuit.Roots[i] = zk.ValueOf(buf)
+		buf.SetBytes(roots[i][:])
+		verifyCircuit.Roots[i] = buf.String()
 	}
 
 }
@@ -127,12 +135,12 @@ func (circuit *VerifyOpeningCircuitMerkleTree) Define(api frontend.API) error {
 func GnarkVerifyOpeningWithMerkleProof(
 	api frontend.API,
 	params GParams,
-	roots []zk.WrappedVariable,
+	roots []frontend.Variable,
 	proof GProof,
 	x zk.WrappedVariable,
 	ys [][]zk.WrappedVariable,
 	randomCoin zk.WrappedVariable,
-	entryList []zk.WrappedVariable,
+	entryList []frontend.Variable,
 ) error {
 
 	if !params.HasNoSisHasher() {
@@ -162,6 +170,9 @@ func GnarkVerifyOpeningWithMerkleProof(
 			// Hash the SIS hash
 			var leaf = selectedColsHashes[i][j]
 
+			// TODO@yao: check if GnarkVerifyCommon compute the leaf, that is written by 7 field.Element to one frontend.Variable?
+			// maybe add a new variable type for bigfield leaf? check leaf = sum (7 field.Element ) relationship
+
 			// Check the Merkle-proof for the obtained leaf
 			smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
 
@@ -171,4 +182,83 @@ func GnarkVerifyOpeningWithMerkleProof(
 	}
 
 	return nil
+}
+
+/// below copy from github.com/consensys/linea-monorepo/prover/crypto/vortex/commitment.go
+
+// Commit to a sequence of columns and Merkle hash on top of that. Returns the
+// tree and an array containing the concatenated columns hashes. The final
+// short commitment can be obtained from the returned tree as:
+//
+//	tree.Root()
+//
+// We apply Poseidon2 hashing on the columns to compute leaves.
+// Should be used when the number of rows to commit is less than the [ApplySISThreshold]
+func (p *Params) CommitMerkleWithoutSIS(encodedMatrix vortex.EncodedMatrix) (tree *smt_bls12377.Tree, colHashes []fr.Element) {
+
+	timeTree := profiling.TimeIt(func() {
+		// colHashes stores the Poseidon2 hashes
+		// of the columns.
+		colHashes = p.noSisTransversalHash(encodedMatrix)
+		leaves := make([]types.Bytes32, len(colHashes))
+		for i := range leaves {
+			leaves[i] = colHashes[i].Bytes()
+		}
+
+		tree = smt_bls12377.BuildComplete(
+			leaves,
+			p.MerkleHashFunc,
+		)
+	})
+
+	logrus.Infof(
+		"[vortex-commitment-without-sis] numCol=%v numRow=%v numColEncoded=%v timeMerkleizing=%v",
+		p.NbColumns, len(encodedMatrix), p.NumEncodedCols(), timeTree,
+	)
+
+	return tree, colHashes
+}
+
+// Uses the no-sis hash function to hash the columns
+func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
+
+	// Assert that all smart-vectors have the same numCols
+	numCols := v[0].Len()
+	for i := range v {
+		if v[i].Len() != numCols {
+			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
+				numCols, i, v[i].Len())
+		}
+	}
+
+	numRows := len(v)
+
+	res := make([]fr.Element, numCols)
+	hashers := make([]hash.Hash, runtime.GOMAXPROCS(0))
+
+	parallel.ExecuteThreadAware(
+		numCols,
+		func(threadID int) {
+			hashers[threadID] = p.LeafHashFunc()
+		},
+		func(col, threadID int) {
+			hasher := hashers[threadID]
+			hasher.Reset()
+			for row := 0; row < numRows; row++ {
+				if row%7 == 0 {
+					// Overwrite with 4 zero bytes to prevent bls12377 overflow
+					zeroBytes := []byte{0, 0, 0, 0}
+					hasher.Write(zeroBytes)
+				}
+				x := v[row].Get(col)
+				xBytes := x.Bytes()
+				hasher.Write(xBytes[:])
+			}
+
+			digest := hasher.Sum(nil)
+			res[col].SetBytes(digest)
+		},
+	)
+
+	return res
 }
