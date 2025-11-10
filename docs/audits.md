@@ -4,20 +4,20 @@
 
 **2025**
 * [LeastAuthority - August 2025 - Limitless prover](https://github.com/Consensys/linea-monorepo/blob/4d5e19c4161acfba12fcabc7e9db4a624f39690b/docs/audits/2025%20August%20-%20Least%20Authority%20-%20Linea%20zkEVM%20Limitless%20Prover%20Final%20Audit%20Report.pdf)
----
+
 **2024**
 * [ZKSecurity.xyz - May 2024 - gnark standard library](https://github.com/Consensys/gnark/blob/53ce9b74e7ab372aa7358f1eac7fe3d689743f5f/audits/2024-05%20-%20zksecurity%20-%20gnark%20std.pdf)
 * [ZKSecurity.xyz - June 2024 - Wizard's crypto & math](https://reports.zksecurity.xyz/reports/consensys-wizard-crypto-math/)
 * [OpenZeppelin - June 2024 - gnark PLONK prover and verifier](https://blog.openzeppelin.com/linea-prover-audit)
 * [LeastAuthority - September 2024 - gnark general and GKR](https://github.com/Consensys/gnark/blob/53ce9b74e7ab372aa7358f1eac7fe3d689743f5f/audits/2024-09%20-%20Least%20Authority%20-%20arithm%20and%20GKR.pdf)
 * [LeastAuthority - November 2024 - Linea zkEVM](https://github.com/Consensys/gnark/blob/d9cbd38409edb5cfdbf9daa9dba841ad432feff9/audits/2024-11%20-%20Least%20Authority%20-%20Linea%20zkEVM.pdf)
----
+
 **2023**
 * [Sigma Prime - May 2023 - gnark-crypto KZG (contracted by Ethereum Foundation)](https://github.com/Consensys/gnark/blob/53ce9b74e7ab372aa7358f1eac7fe3d689743f5f/audits/2024-05%20-%20Sigma%20Prime%20-%20kzg.pdf)
 * [Consensys Diligence - June 2023 - gnark PLONK Solidity verifier](https://consensys.io/diligence/audits/2023/06/linea-plonk-verifier/)
 * [LeastAuthority - August 2023 - gnark Groth16 Solidity verifier template (contracted by Worldcoin)](https://leastauthority.com/wp-content/uploads/2023/08/Worldcoin_Groth16_Verifier_in_EVM_Smart_Contract_Final_Audit_Report.pdf)
 * [OpenZeppelin - November 2023 - gnark PLONK Solidity verifier template](https://blog.openzeppelin.com/linea-verifier-audit-1)
----
+
 **2022**
 * [Kudelski Security - October 2022 - gnark-crypto (contracted by Algorand Foundation)](https://github.com/Consensys/gnark/blob/53ce9b74e7ab372aa7358f1eac7fe3d689743f5f/audits/2022-10%20-%20Kudelski%20-%20gnark-crypto.pdf)
 
