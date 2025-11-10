@@ -3,7 +3,7 @@ package vortex
 import (
 	"runtime"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -168,7 +168,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 
 	res := make([]field.Octuplet, numCols)
 
-	hashers := make([]*poseidon2.Hasher, runtime.GOMAXPROCS(0))
+	hashers := make([]*poseidon2_koalabear.Hasher, runtime.GOMAXPROCS(0))
 
 	parallel.ExecuteThreadAware(
 		numCols,

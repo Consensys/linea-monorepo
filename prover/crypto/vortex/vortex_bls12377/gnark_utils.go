@@ -2,7 +2,6 @@ package vortex
 
 import (
 	"errors"
-	"math"
 	"math/big"
 	"math/bits"
 
@@ -295,10 +294,10 @@ func GnarkVerifyCommon(
 	entryList []frontend.Variable,
 ) ([][]frontend.Variable, error) {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	// apiGen, err := zk.NewGenericApi(api)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// check the linear combination is a codeword
 	api.Compiler().Defer(func(api frontend.API) error {
@@ -355,15 +354,15 @@ func GnarkVerifyCommon(
 			// TODO @thomas fixme
 			// TODO@yao: how to write 1 zero.element and then 7 field.Element to hasher? ...
 			var hashinput []frontend.Variable
-			var value frontend.Variable
-			for k := range selectedSubCol {
-				if k%7 != 0 || k == 0 {
-					tmp := apiGen.Mul(selectedSubCol[k], zk.ValueOf(math.Pow(256, float64(6-(k%7)))))
-					value = apiGen.Add(value, tmp)
-				}
-				hashinput = append(hashinput, value)
-				value = 0
-			}
+			// var value frontend.Variable
+			// for k := range selectedSubCol {
+			// 	if k%7 != 0 || k == 0 {
+			// 		tmp := apiGen.Mul(selectedSubCol[k], zk.ValueOf(math.Pow(256, float64(6-(k%7)))))
+			// 		value = apiGen.Add(value, tmp)
+			// 	}
+			// 	hashinput = append(hashinput, value)
+			// 	value = 0
+			// }
 			hasher.Write(hashinput...)
 			digest := hasher.Sum()
 			selectedColSisDigests[i][j] = digest
