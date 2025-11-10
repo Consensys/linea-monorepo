@@ -355,6 +355,42 @@ class GenericPeriodicPollingServiceTest {
           }.whenException(testContext::failNow)
       }
   }
+
+  @Test
+  fun `should not allow action of one timer affect another timer`(vertx: Vertx) {
+    val vertxTimerFactory = VertxTimerFactory(vertx)
+    val poller1Calls = AtomicInteger(0)
+    val poller2Calls = AtomicInteger(0)
+    PollingService(
+      vertx,
+      pollingInterval = 100.milliseconds,
+      log,
+      timerFactory = vertxTimerFactory,
+      timerSchedule = TimerSchedule.FIXED_DELAY,
+    ) {
+      poller1Calls.incrementAndGet()
+      asyncDelay(vertx, 500.milliseconds)
+    }
+    // 10x faster than poller 1
+    PollingService(
+      vertx,
+      pollingInterval = 10.milliseconds,
+      log,
+      timerFactory = vertxTimerFactory,
+      timerSchedule = TimerSchedule.FIXED_RATE,
+    ) {
+      poller2Calls.incrementAndGet()
+      asyncDelay(vertx, 5.milliseconds)
+    }
+
+    await()
+      .atMost(5.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(poller1Calls.get()).isGreaterThanOrEqualTo(1)
+        assertThat(poller2Calls.get()).isGreaterThanOrEqualTo(1)
+        assertThat(poller2Calls.get()).isGreaterThanOrEqualTo(poller1Calls.get() * 5)
+      }
+  }
 }
 
 class PollingService(
