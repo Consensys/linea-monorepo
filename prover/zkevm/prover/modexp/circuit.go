@@ -1,6 +1,8 @@
 package modexp
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/evmprecompiles"
 	"github.com/consensys/gnark/std/math/bitslice"
@@ -12,12 +14,28 @@ import (
 const (
 	// bit-size bound for the operands in the small
 	smallModexpSize = 256
-	largeModexpSize = 4096
+	largeModexpSize = 8192
 	// limbSize is the size (in bits) of a limb as in the public inputs of the
 	// circuit. This is a parameter linked to how the arithmetization encodes
 	// 256 bits integers.
 	limbSizeBits = 128
 )
+
+// mod1e8192 implements the emulated.FieldParams interface for the
+// modulus p = 2^8192 - 1.
+type mod1e8192 struct{}
+
+var _ emulated.FieldParams = mod1e8192{}
+
+func (mod1e8192) NbLimbs() uint     { return 128 }
+func (mod1e8192) BitsPerLimb() uint { return 64 }
+func (mod1e8192) IsPrime() bool     { return true }
+func (mod1e8192) Modulus() *big.Int {
+	one := new(big.Int).SetInt64(1)
+	m := new(big.Int).Lsh(one, 8192)
+	m.Sub(m, one)
+	return m
+}
 
 // ModExpCircuit implements the [frontend.Circuit] interface and is responsible
 // for ensuring all the modexp claims brought to the antichamber module.
@@ -25,7 +43,7 @@ const (
 // The circuit is meant to be used in two variants:
 //   - 256 bits, where all the operands and the claimed result have a size
 //     smaller than 256 bits.
-//   - 4096, where the operands are bound to 4096 bits
+//   - 8192, where the operands are bound to 8192 bits
 type ModExpCircuit struct {
 	Instances []modexpCircuitInstance `gnark:",public"`
 }
@@ -81,7 +99,7 @@ func (m *ModExpCircuit) Define(api frontend.API) error {
 		case smallModexpSize:
 			checkModexpInstance[emparams.Mod1e256](api, &instance)
 		case largeModexpSize:
-			checkModexpInstance[emparams.Mod1e4096](api, &instance)
+			checkModexpInstance[mod1e8192](api, &instance)
 		default:
 			utils.Panic(
 				"Unexpected field size = %v, should be either %v or %v",
@@ -93,7 +111,7 @@ func (m *ModExpCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-// defined4096 implements the circuit logic for the case where
+// checkModexpInstance checks a single modexp instance within the circuit.
 func checkModexpInstance[P emulated.FieldParams](api frontend.API, m *modexpCircuitInstance) {
 
 	var (
