@@ -10,10 +10,10 @@ import (
 
 type Octuplet [8]frontend.Variable
 
-// GnarkHasher Merkle Damgard implementation using poseidon2 as compression function with width 16
+// MerkleDamgardHasher Merkle Damgard implementation using poseidon2 as compression function with width 16
 // The hashing process goes as follow:
 // newState := compress(old state, buf) where buf is an octuplet, left padded with zeroes if needed
-type GnarkHasher struct {
+type MerkleDamgardHasher struct {
 	api frontend.API
 
 	// Sponge construction state
@@ -23,9 +23,9 @@ type GnarkHasher struct {
 	buffer []frontend.Variable
 }
 
-// NewGnarkHasher returns a new Octuplet
-func NewGnarkHasher(api frontend.API) (GnarkHasher, error) {
-	var res GnarkHasher
+// NewMerkleDamgardHasher returns a new Octuplet
+func NewMerkleDamgardHasher(api frontend.API) (MerkleDamgardHasher, error) {
+	var res MerkleDamgardHasher
 	for i := 0; i < 8; i++ {
 		res.state[i] = 0
 	}
@@ -33,18 +33,18 @@ func NewGnarkHasher(api frontend.API) (GnarkHasher, error) {
 	return res, nil
 }
 
-func (h *GnarkHasher) Reset() {
+func (h *MerkleDamgardHasher) Reset() {
 	h.buffer = h.buffer[:0]
 	for i := 0; i < 8; i++ {
 		h.state[i] = 0
 	}
 }
 
-func (h *GnarkHasher) Write(data ...frontend.Variable) {
+func (h *MerkleDamgardHasher) Write(data ...frontend.Variable) {
 	h.buffer = append(h.buffer, data...)
 }
 
-func (h *GnarkHasher) Sum() Octuplet {
+func (h *MerkleDamgardHasher) Sum() Octuplet {
 
 	for len(h.buffer) != 0 {
 		var buf [BlockSize]frontend.Variable

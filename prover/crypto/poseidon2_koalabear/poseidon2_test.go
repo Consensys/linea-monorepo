@@ -10,14 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type GnarkHasherCircuit struct {
+type MerkleDamgardHasherCircuit struct {
 	Inputs []frontend.Variable
 	Ouput  Octuplet
 }
 
-func (ghc *GnarkHasherCircuit) Define(api frontend.API) error {
+func (ghc *MerkleDamgardHasherCircuit) Define(api frontend.API) error {
 
-	h, err := NewGnarkHasher(api)
+	h, err := NewMerkleDamgardHasher(api)
 	if err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func (ghc *GnarkHasherCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func getGnarkHasherCircuitWitness() (*GnarkHasherCircuit, *GnarkHasherCircuit) {
+func getMerkleDamgardHasherCircuitWitness() (*MerkleDamgardHasherCircuit, *MerkleDamgardHasherCircuit) {
 
 	// values to hash
 	nbElmts := 2
@@ -52,7 +52,7 @@ func getGnarkHasherCircuitWitness() (*GnarkHasherCircuit, *GnarkHasherCircuit) {
 	res := phasher.SumElement()
 
 	// create witness and circuit
-	var circuit, witness GnarkHasherCircuit
+	var circuit, witness MerkleDamgardHasherCircuit
 	circuit.Inputs = make([]frontend.Variable, nbElmts)
 	witness.Inputs = make([]frontend.Variable, nbElmts)
 	for i := 0; i < nbElmts; i++ {
@@ -68,7 +68,7 @@ func getGnarkHasherCircuitWitness() (*GnarkHasherCircuit, *GnarkHasherCircuit) {
 
 func TestCircuit(t *testing.T) {
 
-	circuit, witness := getGnarkHasherCircuitWitness()
+	circuit, witness := getMerkleDamgardHasherCircuitWitness()
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 	assert.NoError(t, err)

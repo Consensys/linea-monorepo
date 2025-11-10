@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark/frontend"
-	local_poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
@@ -74,17 +74,17 @@ func (h *GnarkHasher) Write(data ...zk.WrappedVariable) {
 func (h *GnarkHasher) Sum() GHash {
 
 	for len(h.buffer) != 0 {
-		var buf [local_poseidon2.BlockSize]zk.WrappedVariable
-		for i := 0; i < local_poseidon2.BlockSize; i++ {
+		var buf [poseidon2_koalabear.BlockSize]zk.WrappedVariable
+		for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 			buf[i] = zk.ValueOf(0)
 		}
 		// in this case we left pad by zeroes
-		if len(h.buffer) < local_poseidon2.BlockSize {
-			copy(buf[local_poseidon2.BlockSize-len(h.buffer):], h.buffer)
+		if len(h.buffer) < poseidon2_koalabear.BlockSize {
+			copy(buf[poseidon2_koalabear.BlockSize-len(h.buffer):], h.buffer)
 			h.buffer = h.buffer[:0]
 		} else {
 			copy(buf[:], h.buffer)
-			h.buffer = h.buffer[local_poseidon2.BlockSize:]
+			h.buffer = h.buffer[poseidon2_koalabear.BlockSize:]
 		}
 
 		h.state = CompressPoseidon2(h.apiGen, h.state, buf)
