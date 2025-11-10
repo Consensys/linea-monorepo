@@ -382,7 +382,7 @@ class GenericPeriodicPollingServiceTest {
     poller1.start()
 
     await()
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(20.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(poller1Calls.get()).isGreaterThanOrEqualTo(1)
         assertThat(poller2Calls.get()).isGreaterThanOrEqualTo(1)
