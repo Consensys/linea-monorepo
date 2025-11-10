@@ -1,15 +1,22 @@
 package main
 
 import (
+	cryptorand "crypto/rand"
+	"crypto/sha3"
 	"fmt"
 	"io"
 	"math/big"
-	"math/rand/v2"
+	rand "math/rand"
 
-	"github.com/consensys/gnark/std/math/emulated/emparams"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 )
 
+const (
+	modexpSmallBits = 256
+	modexpLargeBits = 8192
+)
+
+//go:generate go run main.go
 func main() {
 
 	for _, tcase := range testCases {
@@ -29,8 +36,8 @@ var testCases = []struct {
 
 			var (
 				tab  = make([][]*big.Int, 5)
-				rng  = rand.New(rand.NewChaCha8([32]byte{}))
-				inst = createRandomModexp(rng, false)
+				rng  = sha3.NewCSHAKE128(nil, []byte("256 bits modexp testdata"))
+				inst = createRandomModexp(rng, 256)
 			)
 
 			pushModexpToInput(inst, tab)
@@ -43,8 +50,22 @@ var testCases = []struct {
 
 			var (
 				tab  = make([][]*big.Int, 5)
-				rng  = rand.New(rand.NewChaCha8([32]byte{}))
-				inst = createRandomModexp(rng, true)
+				rng  = sha3.NewCSHAKE128(nil, []byte("4096 bits modexp testdata"))
+				inst = createRandomModexp(rng, 4096)
+			)
+
+			pushModexpToInput(inst, tab)
+			return tab
+		}(),
+	},
+	{
+		name: "single_8192_bits",
+		tab: func() [][]*big.Int {
+
+			var (
+				tab  = make([][]*big.Int, 5)
+				rng  = sha3.NewCSHAKE128(nil, []byte("8192 bits modexp testdata"))
+				inst = createRandomModexp(rng, 8192)
 			)
 
 			pushModexpToInput(inst, tab)
@@ -53,20 +74,27 @@ var testCases = []struct {
 	},
 }
 
-func createRandomModexp(rng *rand.Rand, large bool) [4]*big.Int {
+func createRandomModexp(rng io.Reader, nbBits uint) [4]*big.Int {
 
 	var (
-		maxValue = emparams.Mod1e256{}.Modulus()
+		maxValue = new(big.Int).Lsh(big.NewInt(1), nbBits)
 		res      = [4]*big.Int{}
+		err      error
 	)
 
-	if large {
-		maxValue = emparams.Mod1e4096{}.Modulus()
+	res[0], err = cryptorand.Int(rng, maxValue)
+	if err != nil {
+		panic(err)
+	}
+	res[1], err = cryptorand.Int(rng, maxValue)
+	if err != nil {
+		panic(err)
+	}
+	res[2], err = cryptorand.Int(rng, maxValue)
+	if err != nil {
+		panic(err)
 	}
 
-	res[0] = new(big.Int).Rand(rng, maxValue)
-	res[1] = new(big.Int).Rand(rng, maxValue)
-	res[2] = new(big.Int).Rand(rng, maxValue)
 	res[3] = new(big.Int).Exp(res[0], res[1], res[2])
 
 	return res
@@ -142,11 +170,11 @@ func pushModexpToInput(inst [4]*big.Int, tab [][]*big.Int) {
 	}
 }
 
-func splitIn32LimbsOf128Bits(x *big.Int) [32]*big.Int {
+func splitIn32LimbsOf128Bits(x *big.Int) [64]*big.Int {
 
 	var (
-		res      = [32]*big.Int{}
-		extended = make([]byte, 512)
+		res      = [64]*big.Int{}
+		extended = make([]byte, 1024)
 		xBytes   = x.Bytes()
 	)
 
