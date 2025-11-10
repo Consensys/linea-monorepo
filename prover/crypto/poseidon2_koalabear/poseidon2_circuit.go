@@ -1,4 +1,4 @@
-package poseidon2
+package poseidon2_koalabear
 
 import (
 	"errors"
@@ -8,19 +8,22 @@ import (
 	"github.com/consensys/gnark/frontend"
 )
 
-type GHash [8]frontend.Variable
+type Octuplet [8]frontend.Variable
 
+// GnarkHasher Merkle Damgard implementation using poseidon2 as compression function with width 16
+// The hashing process goes as follow:
+// newState := compress(old state, buf) where buf is an octuplet, left padded with zeroes if needed
 type GnarkHasher struct {
 	api frontend.API
 
 	// Sponge construction state
-	state GHash
+	state Octuplet
 
 	// data to hash
 	buffer []frontend.Variable
 }
 
-// NewGnarkHasher returns a new GHash
+// NewGnarkHasher returns a new Octuplet
 func NewGnarkHasher(api frontend.API) (GnarkHasher, error) {
 	var res GnarkHasher
 	for i := 0; i < 8; i++ {
@@ -41,7 +44,7 @@ func (h *GnarkHasher) Write(data ...frontend.Variable) {
 	h.buffer = append(h.buffer, data...)
 }
 
-func (h *GnarkHasher) Sum() GHash {
+func (h *GnarkHasher) Sum() Octuplet {
 
 	for len(h.buffer) != 0 {
 		var buf [BlockSize]frontend.Variable
@@ -62,8 +65,8 @@ func (h *GnarkHasher) Sum() GHash {
 	return h.state
 }
 
-func CompressPoseidon2(api frontend.API, a, b GHash) GHash {
-	res := GHash{}
+func CompressPoseidon2(api frontend.API, a, b Octuplet) Octuplet {
+	res := Octuplet{}
 
 	var x [16]frontend.Variable
 	copy(x[:], a[:])

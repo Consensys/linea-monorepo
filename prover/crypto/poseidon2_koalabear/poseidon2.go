@@ -1,4 +1,4 @@
-package poseidon2
+package poseidon2_koalabear
 
 import (
 	"fmt"

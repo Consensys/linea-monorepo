@@ -1,4 +1,4 @@
-package poseidon2
+package poseidon2_koalabear
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 
 type GnarkHasherCircuit struct {
 	Inputs []frontend.Variable
-	Ouput  GHash
+	Ouput  Octuplet
 }
 
 func (ghc *GnarkHasherCircuit) Define(api frontend.API) error {
