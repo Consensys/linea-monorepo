@@ -1,17 +1,19 @@
 environment = "mainnet"
-version = "6.0.8"                              # TODO @gbotrel hunt all version definitions.
+version = "6.1.1"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]
 retry_delays = [0, 1]
+spot_instance_reclaim_time_seconds = 120
+termination_grace_period_seconds = 1800
 
 [execution]
-prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/linea-prover-integration-test/download/traces"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
-limitless_with_debug = true
+prover_mode = "limitless"
+conflated_traces_dir = "/home/ubuntu/20251104-hierarchical-conglo-testing"
+requests_root_dir = "/home/ubuntu/test_mainnet/prover-execution"
 ignore_compatibility_check = false
+keep_traces_until_block = 0
 
 
 [blob_decompression]
