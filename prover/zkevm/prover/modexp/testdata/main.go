@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	rand "math/rand"
 
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 )
@@ -106,20 +105,6 @@ func dumpAsCsv(w io.Writer, tab [][]*big.Int) {
 
 	for i := range tab[0] {
 		fmt.Fprintf(w, "0x%v,%v,%v,%v,%v\n", tab[0][i].Text(16), tab[1][i].String(), tab[2][i].String(), tab[3][i].String(), tab[4][i].String())
-	}
-}
-
-func pushFillerToInput(tab [][]*big.Int, rng *rand.Rand, numRow int) {
-
-	maxValue := emparams.Mod1e256{}.Modulus()
-
-	for i := 0; i < numRow; i++ {
-
-		tab[0] = append(tab[0], new(big.Int).Rand(rng, maxValue))
-		tab[1] = append(tab[1], &big.Int{})
-		tab[2] = append(tab[2], &big.Int{})
-		tab[3] = append(tab[3], &big.Int{})
-		tab[4] = append(tab[4], &big.Int{})
 	}
 }
 
