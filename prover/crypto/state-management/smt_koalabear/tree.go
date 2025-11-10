@@ -3,9 +3,8 @@ package smt_koalabear
 import (
 	"fmt"
 
-	// "github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -13,6 +12,7 @@ import (
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
+
 	// Depth depth of the tree
 	Depth int
 }

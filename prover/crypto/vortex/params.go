@@ -4,7 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	gutils "github.com/consensys/gnark-crypto/utils"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -37,10 +37,10 @@ type Params struct {
 	MaxNbRows int
 	// LeafHashFunc returns a `hash.Hash` which is used
 	// to compute the leaves of the Merkle tree.
-	LeafHashFunc func() *poseidon2.Hasher
+	LeafHashFunc func() *poseidon2_koalabear.Hasher
 	// MerkleHashFunc returns a `hash.Hash` which is used
 	// to hash the nodes of the Merkle tree.
-	MerkleHashFunc func() *poseidon2.Hasher
+	MerkleHashFunc func() *poseidon2_koalabear.Hasher
 
 	// Coset table of the small domain, bit reversed
 	CosetTableBitReverse field.Vector
@@ -61,8 +61,8 @@ func NewParams(
 	nbColumns int,
 	maxNbRows int,
 	sisParams ringsis.Params,
-	merkleHashFunc func() *poseidon2.Hasher,
-	leafHashFunc func() *poseidon2.Hasher,
+	merkleHashFunc func() *poseidon2_koalabear.Hasher,
+	leafHashFunc func() *poseidon2_koalabear.Hasher,
 ) *Params {
 
 	if !utils.IsPowerOfTwo(nbColumns) {

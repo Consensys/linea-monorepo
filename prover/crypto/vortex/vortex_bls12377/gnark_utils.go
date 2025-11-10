@@ -2,7 +2,6 @@ package vortex
 
 import (
 	"errors"
-	"math"
 	"math/big"
 	"math/bits"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -123,35 +123,50 @@ func FFTInverse(api frontend.API, p []zk.WrappedVariable, genInv field.Element, 
 }
 
 // gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
-func gnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z zk.WrappedVariable) zk.WrappedVariable {
+func gnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4Gen) gnarkfext.E4Gen {
 
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
 
-	res := zk.ValueOf(0)
+	res := *ext4.Zero()
 	s := len(p)
 	for i := 0; i < len(p); i++ {
-		res = apiGen.Mul(res, z)
-		res = apiGen.Add(res, p[s-1-i])
+		res = *ext4.Mul(&res, &z)
+		res = *ext4.AddByBase(&res, p[s-1-i])
 	}
 	return res
 }
 
-func gnarkEvaluateLagrange(api frontend.API, p []zk.WrappedVariable, z zk.WrappedVariable, gen field.Element, cardinality uint64) zk.WrappedVariable {
+// gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
+func gnarkEvalCanonicalExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4Gen) gnarkfext.E4Gen {
 
-	res := zk.ValueOf(0)
-
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
 
+	res := *ext4.Zero()
+	s := len(p)
+	for i := 0; i < len(p); i++ {
+		res = *ext4.Mul(&res, &z)
+		res = *ext4.Add(&res, &p[s-1-i])
+	}
+	return res
+}
+func gnarkEvaluateLagrange(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) gnarkfext.E4Gen {
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := *ext4.Zero()
 	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
 	for i := uint64(0); i < cardinality; i++ {
-		tmp := apiGen.Mul(lagranges[i], p[i])
-		res = apiGen.Add(res, tmp)
+		tmp := ext4.MulByFp(&lagranges[i], p[i])
+		res = *ext4.Add(&res, tmp)
 	}
 
 	return res
@@ -160,12 +175,13 @@ func gnarkEvaluateLagrange(api frontend.API, p []zk.WrappedVariable, z zk.Wrappe
 // computeLagrange returns Lᵢ(ζ) for i=1..n
 // with lᵢ(ζ) = ωⁱ/n*(ζⁿ-1)/(ζ - ωⁱ)
 // (the g stands for gnark)
-func gnarkComputeLagrangeAtZ(api frontend.API, z zk.WrappedVariable, gen field.Element, cardinality uint64) []zk.WrappedVariable {
+func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) []gnarkfext.E4Gen {
 
-	res := make([]zk.WrappedVariable, cardinality)
+	res := make([]gnarkfext.E4Gen, cardinality)
 	tb := bits.TrailingZeros(uint(cardinality))
 
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
+
 	if err != nil {
 		panic(err)
 	}
@@ -173,21 +189,20 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z zk.WrappedVariable, gen field.E
 	// ζⁿ-1
 	res[0] = z
 	for i := 0; i < tb; i++ {
-		res[0] = apiGen.Mul(res[0], res[0])
+		res[0] = *ext4.Mul(&res[0], &res[0])
 	}
-	wOne := zk.ValueOf(1)
-	res[0] = apiGen.Sub(res[0], wOne)
+	wOne := ext4.One()
+	res[0] = *ext4.Sub(&res[0], wOne)
 
 	// ζ-1
-	var accZetaMinusOmegai zk.WrappedVariable
-	accZetaMinusOmegai = apiGen.Sub(z, wOne)
+	accZetaMinusOmegai := *ext4.Sub(&z, wOne)
 
 	// (ζⁿ-1)/(ζ-1)
-	res[0] = apiGen.Div(res[0], accZetaMinusOmegai)
+	res[0] = *ext4.Div(&res[0], &accZetaMinusOmegai)
 
 	// 1/n*(ζⁿ-1)/(ζ-1)
 	wCardinality := zk.ValueOf(cardinality)
-	res[0] = apiGen.Div(res[0], wCardinality)
+	res[0] = *ext4.DivByBase(&res[0], wCardinality)
 
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
 	var accOmega field.Element
@@ -196,12 +211,12 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z zk.WrappedVariable, gen field.E
 	wGen := zk.ValueOf(gen)
 	var wAccOmega zk.WrappedVariable
 	for i := uint64(1); i < cardinality; i++ {
-		res[i] = apiGen.Mul(res[i-1], wGen)             // res[i] <- ω * res[i-1]
-		res[i] = apiGen.Mul(res[i], accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
-		accOmega.Mul(&accOmega, &gen)                   // accOmega <- accOmega * ω
+		res[i] = *ext4.MulByFp(&res[i-1], wGen)          // res[i] <- ω * res[i-1]
+		res[i] = *ext4.Mul(&res[i], &accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
+		accOmega.Mul(&accOmega, &gen)                    // accOmega <- accOmega * ω
 		wAccOmega = zk.ValueOf(accOmega)
-		accZetaMinusOmegai = apiGen.Sub(z, wAccOmega)   // accZetaMinusOmegai <- ζ-ωⁱ
-		res[i] = apiGen.Div(res[i], accZetaMinusOmegai) // res[i]  <- res[i]/(ζ-ωⁱ)
+		accZetaMinusOmegai = *ext4.SubByBase(&z, wAccOmega) // accZetaMinusOmegai <- ζ-ωⁱ
+		res[i] = *ext4.Div(&res[i], &accZetaMinusOmegai)    // res[i]  <- res[i]/(ζ-ωⁱ)
 	}
 
 	return res
@@ -273,16 +288,16 @@ func GnarkVerifyCommon(
 	api frontend.API,
 	params GParams,
 	proof GProofWoMerkle,
-	x zk.WrappedVariable,
-	ys [][]zk.WrappedVariable,
-	randomCoin zk.WrappedVariable,
+	x gnarkfext.E4Gen,
+	ys [][]gnarkfext.E4Gen,
+	randomCoin gnarkfext.E4Gen,
 	entryList []frontend.Variable,
 ) ([][]frontend.Variable, error) {
 
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+	// apiGen, err := zk.NewGenericApi(api)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// check the linear combination is a codeword
 	api.Compiler().Defer(func(api frontend.API) error {
@@ -303,7 +318,7 @@ func GnarkVerifyCommon(
 		x,
 		proof.RsDomain.Generator,
 		proof.RsDomain.Cardinality)
-	alphaYPrime := gnarkEvalCanonical(api, yjoined, randomCoin)
+	alphaYPrime := gnarkEvalCanonicalExt(api, yjoined, randomCoin)
 	api.AssertIsEqual(alphaY, alphaYPrime)
 
 	// Size of the hash of 1 column
@@ -339,15 +354,15 @@ func GnarkVerifyCommon(
 			// TODO @thomas fixme
 			// TODO@yao: how to write 1 zero.element and then 7 field.Element to hasher? ...
 			var hashinput []frontend.Variable
-			var value frontend.Variable
-			for k := range selectedSubCol {
-				if k%7 != 0 || k == 0 {
-					tmp := apiGen.Mul(selectedSubCol[k], zk.ValueOf(math.Pow(256, float64(6-(k%7)))))
-					value = apiGen.Add(value, tmp)
-				}
-				hashinput = append(hashinput, value)
-				value = 0
-			}
+			// var value frontend.Variable
+			// for k := range selectedSubCol {
+			// 	if k%7 != 0 || k == 0 {
+			// 		tmp := apiGen.Mul(selectedSubCol[k], zk.ValueOf(math.Pow(256, float64(6-(k%7)))))
+			// 		value = apiGen.Add(value, tmp)
+			// 	}
+			// 	hashinput = append(hashinput, value)
+			// 	value = 0
+			// }
 			hasher.Write(hashinput...)
 			digest := hasher.Sum()
 			selectedColSisDigests[i][j] = digest
