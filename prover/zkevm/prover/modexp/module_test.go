@@ -21,6 +21,10 @@ func TestModExpAntichamber(t *testing.T) {
 			InputFName:  "testdata/single_4096_bits_input.csv",
 			ModuleFName: "testdata/single_4096_bits_module.csv",
 		},
+		{
+			InputFName:  "testdata/single_8192_bits_input.csv",
+			ModuleFName: "testdata/single_8192_bits_module.csv",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -40,7 +44,7 @@ func TestModExpAntichamber(t *testing.T) {
 					IsModExpModulus:  inpCt.GetCommit(build, "IS_MODEXP_MODULUS"),
 					IsModExpResult:   inpCt.GetCommit(build, "IS_MODEXP_RESULT"),
 					Limbs:            inpCt.GetCommit(build, "LIMBS"),
-					Settings:         Settings{MaxNbInstance256: 1, MaxNbInstance4096: 1},
+					Settings:         Settings{MaxNbInstance256: 1, MaxNbInstanceLarge: 1},
 				}
 
 				mod = newModule(build.CompiledIOP, inp)
