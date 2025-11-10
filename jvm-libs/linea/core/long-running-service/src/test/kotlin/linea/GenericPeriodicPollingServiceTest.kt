@@ -356,39 +356,51 @@ class GenericPeriodicPollingServiceTest {
       }
   }
 
-  @Test
-  fun `should not allow action of one timer affect another timer`(vertx: Vertx) {
-    val vertxTimerFactory = VertxTimerFactory(vertx)
+  @ParameterizedTest
+  @MethodSource("timerFactories")
+  @Timeout(3, timeUnit = TimeUnit.SECONDS)
+  fun `should not allow action of one timer affect to delay another timer`(
+    timerFactoryType: KClass<out TimerFactory>,
+    timerSchedule: TimerSchedule,
+    vertx: Vertx,
+  ) {
+    val timerFactory = createTimerFactory(timerFactoryType, vertx)
     val poller1Calls = AtomicInteger(0)
     val poller2Calls = AtomicInteger(0)
-    PollingService(
-      vertx,
-      pollingInterval = 100.milliseconds,
-      log,
-      timerFactory = vertxTimerFactory,
-      timerSchedule = TimerSchedule.FIXED_DELAY,
-    ) {
-      poller1Calls.incrementAndGet()
-      asyncDelay(vertx, 500.milliseconds)
-    }
-    // 10x faster than poller 1
-    PollingService(
+    // 10x faster than poller 2
+    val poller1 = PollingService(
       vertx,
       pollingInterval = 10.milliseconds,
       log,
-      timerFactory = vertxTimerFactory,
-      timerSchedule = TimerSchedule.FIXED_RATE,
+      timerFactory = timerFactory,
+      timerSchedule = timerSchedule,
     ) {
-      poller2Calls.incrementAndGet()
-      asyncDelay(vertx, 5.milliseconds)
+      Thread.sleep(5L)
+      poller1Calls.incrementAndGet()
+      SafeFuture.completedFuture(Unit)
     }
+
+    val poller2 = PollingService(
+      vertx,
+      pollingInterval = 100.milliseconds,
+      log,
+      timerFactory = timerFactory,
+      timerSchedule = timerSchedule,
+    ) {
+      Thread.sleep(500L)
+      poller2Calls.incrementAndGet()
+      SafeFuture.completedFuture(Unit)
+    }
+
+    poller2.start()
+    poller1.start()
 
     await()
       .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(poller1Calls.get()).isGreaterThanOrEqualTo(1)
         assertThat(poller2Calls.get()).isGreaterThanOrEqualTo(1)
-        assertThat(poller2Calls.get()).isGreaterThanOrEqualTo(poller1Calls.get() * 5)
+        assertThat(poller1Calls.get()).isGreaterThanOrEqualTo(poller2Calls.get() * 9)
       }
   }
 }
@@ -407,13 +419,7 @@ class PollingService(
   timerSchedule = timerSchedule,
   name = "PollingService",
 ) {
-  override fun action(): SafeFuture<Unit> {
-    val future = SafeFuture<Unit>()
-    vertx.setTimer(1) { // just to make it async
-      future.complete(Unit)
-    }
-    return future.thenCompose(mockAction)
-  }
+  override fun action(): SafeFuture<Unit> = mockAction(Unit)
 
   override fun handleError(error: Throwable) {
     log.error("Error polling: errorMessage={}", error.message)
