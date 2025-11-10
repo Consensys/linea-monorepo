@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 
 	"github.com/consensys/gnark/frontend/cs/scs"
-	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
@@ -57,7 +57,7 @@ type MerkleProofCircuit struct {
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 
-	h, err := gposeidon2.NewMerkleDamgardHasher(api)
+	h, err := poseidon2_bls12377.NewMerkleDamgardHasher(api)
 	if err != nil {
 		return err
 	}
