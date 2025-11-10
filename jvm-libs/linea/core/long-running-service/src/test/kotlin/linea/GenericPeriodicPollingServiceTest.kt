@@ -347,7 +347,7 @@ class GenericPeriodicPollingServiceTest {
   @ParameterizedTest
   @MethodSource("timerFactories")
   @Timeout(3, timeUnit = TimeUnit.SECONDS)
-  fun `should not allow action of one timer affect to delay another timer`(
+  fun `should not allow action of one timer affect or delay another timer`(
     timerFactoryType: KClass<out TimerFactory>,
     timerSchedule: TimerSchedule,
     vertx: Vertx,
