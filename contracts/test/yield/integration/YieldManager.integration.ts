@@ -623,9 +623,9 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Drain all L1MessageService funds
       await setBalance(l1MessageServiceAddress, ZERO_VALUE);
 
-      // Max LST withdrawal for 10 ETH
+      // Max LST withdrawal for 5 ETH
       await lineaRollup.connect(securityCouncil).resetRateLimitAmount(ONE_ETHER * 100n);
-      const withdrawLSTAmount = initialFundAmount;
+      const withdrawLSTAmount = ONE_ETHER * 5n;
       const recipientAddress = await nonAuthorizedAccount.getAddress();
       const claimParams = await setupLineaRollupMessageMerkleTree(
         lineaRollup,

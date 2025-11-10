@@ -159,6 +159,15 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal = _lstLiabilityPrincipal;
   }
 
+  function getYieldProviderLastReportedNegativeYield(address _yieldProvider) external view returns (uint256) {
+    return _getYieldProviderStorage(_yieldProvider).lastReportedNegativeYield;
+  }
+
+  function setYieldProviderLastReportedNegativeYield(address _yieldProvider, uint256 _val) external {
+    _getYieldProviderStorage(_yieldProvider).lastReportedNegativeYield = _val;
+  }
+
+
   function delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
   }
