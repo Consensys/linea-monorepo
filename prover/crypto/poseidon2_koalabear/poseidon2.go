@@ -99,7 +99,7 @@ func (d Hasher) MaxBytes32() types.Bytes32 {
 	return d.maxValue
 }
 
-// ///// Constructor for Poseidon2Hasher /////
+// Constructor for Poseidon2Hasher
 func Poseidon2() *Hasher {
 	var maxVal field.Octuplet
 	for i := range maxVal {

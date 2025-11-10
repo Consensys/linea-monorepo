@@ -3,7 +3,6 @@ package smt_koalabear
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
@@ -13,8 +12,7 @@ import (
 func TestTreeInitialization(t *testing.T) {
 
 	config := &Config{
-		HashFunc: poseidon2.Poseidon2,
-		Depth:    40,
+		Depth: 40,
 	}
 
 	tree := NewEmptyTree(config)
@@ -28,8 +26,7 @@ func TestTreeInitialization(t *testing.T) {
 
 func TestTreeUpdateLeaf(t *testing.T) {
 	config := &Config{
-		HashFunc: poseidon2.Poseidon2,
-		Depth:    40,
+		Depth: 40,
 	}
 
 	tree := NewEmptyTree(config)
@@ -47,8 +44,7 @@ func TestTreeUpdateLeaf(t *testing.T) {
 }
 func TestMerkleProofNative(t *testing.T) {
 	config := &Config{
-		HashFunc: poseidon2.Poseidon2,
-		Depth:    40,
+		Depth: 40,
 	}
 
 	tree := NewEmptyTree(config)
@@ -66,8 +62,7 @@ func TestMerkleProofNative(t *testing.T) {
 
 func TestMerkleProofWithUpdate(t *testing.T) {
 	config := &Config{
-		HashFunc: poseidon2.Poseidon2,
-		Depth:    40,
+		Depth: 40,
 	}
 
 	tree := NewEmptyTree(config)
@@ -94,8 +89,7 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 func TestBuildFromScratch(t *testing.T) {
 
 	config := &Config{
-		HashFunc: poseidon2.Poseidon2,
-		Depth:    8,
+		Depth: 8,
 	}
 
 	// Generate random field elements and cast them into field.Octuplet
@@ -113,7 +107,7 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// And generate the
-	tree := BuildComplete(leaves, config.HashFunc)
+	tree := BuildComplete(leaves)
 
 	// Test-Merkle tests the merkle proof point by point
 	for i := range leaves {

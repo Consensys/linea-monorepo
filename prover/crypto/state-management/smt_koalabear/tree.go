@@ -3,8 +3,9 @@ package smt_koalabear
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	// "github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -12,9 +13,7 @@ import (
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
-	// HashFunc is a function returning initialized hashers.
-	HashFunc func() *poseidon2.Hasher
-	// Depth is the depth of the tree
+	// Depth depth of the tree
 	Depth int
 }
 
@@ -53,16 +52,10 @@ func EmptyLeaf() field.Octuplet {
 // taking H as the HashFunc of the config.
 func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
 	var d field.Octuplet
-
-	if config.HashFunc != nil {
-		hasher := config.HashFunc()
-		hasher.WriteElements(nodeL[:])
-		hasher.WriteElements(nodeR[:])
-		d = hasher.SumElement()
-	} else {
-		panic("missing a hash function")
-	}
-
+	hasher := poseidon2_koalabear.Poseidon2()
+	hasher.WriteElements(nodeL[:])
+	hasher.WriteElements(nodeR[:])
+	d = hasher.SumElement()
 	return d
 }
 
@@ -271,7 +264,8 @@ func (t *Tree) reserveLevel(level, newSize int) {
 // input leaves are powers of 2. The depth of the tree is deduced from the list.
 //
 // It panics if the number of leaves is a non-power of 2.
-func BuildComplete(leaves []field.Octuplet, hashFunc func() *poseidon2.Hasher) *Tree {
+// The hash function is by default poseidon2 over koalabear.
+func BuildComplete(leaves []field.Octuplet) *Tree {
 
 	numLeaves := len(leaves)
 
@@ -279,11 +273,8 @@ func BuildComplete(leaves []field.Octuplet, hashFunc func() *poseidon2.Hasher) *
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
-	if hashFunc == nil {
-		panic("missing a hash function")
-	}
 	depth := utils.Log2Ceil(numLeaves)
-	config := &Config{HashFunc: hashFunc, Depth: depth}
+	config := &Config{Depth: depth}
 	tree := NewEmptyTree(config)
 	tree.OccupiedLeaves = leaves
 	currLevels := leaves
