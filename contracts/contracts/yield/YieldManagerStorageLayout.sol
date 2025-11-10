@@ -60,6 +60,7 @@ abstract contract YieldManagerStorageLayout {
    *                                - Increases 1:1 with userFunds, as reported yield is distributed to users.
    * @param lstLiabilityPrincipal LST Liability Principal (denominated in ETH) as of the last yield report
    *                              - YieldProvider contract will mutate this field
+   * @param lastReportedNegativeYield Negative yield as of the last yield report.
    */
   struct YieldProviderStorage {
     // Slot 0
@@ -75,6 +76,7 @@ abstract contract YieldManagerStorageLayout {
     uint256 yieldReportedCumulative;
     // Exclusively mutated by YieldProvider, not YieldManager.
     uint256 lstLiabilityPrincipal;
+    uint256 lastReportedNegativeYield;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))

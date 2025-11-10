@@ -298,10 +298,40 @@ describe("YieldManager contract - ETH transfer operations", () => {
       );
     });
 
-    it("Should successfully report non-0 yield, update state and emit the expected event", async () => {
+    it("Should successfully report positive yield, update state and emit the expected event", async () => {
       // ARRANGE
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const reportedYield = ONE_ETHER;
+      const outstandingNegativeYield = 0n;
+
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setReportYieldReturnVal_NewReportedYield(mockYieldProviderAddress, reportedYield);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setReportYieldReturnVal_OutstandingNegativeYield(mockYieldProviderAddress, outstandingNegativeYield);
+
+      // ACT + ASSERT
+      await expect(
+        yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
+      )
+        .to.emit(yieldManager, "NativeYieldReported")
+        .withArgs(mockYieldProviderAddress, l2YieldRecipient.address, reportedYield, outstandingNegativeYield);
+
+      const providerData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
+      expect(providerData.userFunds).to.equal(reportedYield);
+      expect(providerData.yieldReportedCumulative).to.equal(reportedYield);
+      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(reportedYield);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(reportedYield);
+      expect(await yieldManager.getYieldProviderLastReportedNegativeYield(mockYieldProviderAddress)).to.equal(
+        outstandingNegativeYield,
+      );
+    });
+
+    it("Should successfully report negative yield, update state and emit the expected event", async () => {
+      // ARRANGE
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const reportedYield = 0n;
       const outstandingNegativeYield = ONE_ETHER * 2n;
 
       await yieldManager
@@ -323,6 +353,9 @@ describe("YieldManager contract - ETH transfer operations", () => {
       expect(providerData.yieldReportedCumulative).to.equal(reportedYield);
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(reportedYield);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(reportedYield);
+      expect(await yieldManager.getYieldProviderLastReportedNegativeYield(mockYieldProviderAddress)).to.equal(
+        outstandingNegativeYield,
+      );
     });
   });
 
