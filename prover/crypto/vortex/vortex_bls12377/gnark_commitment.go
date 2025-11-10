@@ -21,11 +21,11 @@ import (
 // Final circuit - commitment using Merkle trees
 type VerifyOpeningCircuitMerkleTree struct {
 	Proof      GProof                 `gnark:",public"`
-	Roots      []zk.WrappedVariable   `gnark:",public"`
+	Roots      []frontend.Variable    `gnark:",public"`
 	X          zk.WrappedVariable     `gnark:",public"`
 	RandomCoin zk.WrappedVariable     `gnark:",public"`
 	Ys         [][]zk.WrappedVariable `gnark:",public"`
-	EntryList  []zk.WrappedVariable   `gnark:",public"`
+	EntryList  []frontend.Variable    `gnark:",public"`
 	Params     GParams
 }
 
@@ -55,14 +55,14 @@ func AllocateCircuitVariablesWithMerkleTree(
 		}
 	}
 
-	verifyCircuit.EntryList = make([]zk.WrappedVariable, len(entryList))
+	verifyCircuit.EntryList = make([]frontend.Variable, len(entryList))
 
 	verifyCircuit.Ys = make([][]zk.WrappedVariable, len(ys))
 	for i := 0; i < len(ys); i++ {
 		verifyCircuit.Ys[i] = make([]zk.WrappedVariable, len(ys[i]))
 	}
 
-	verifyCircuit.Roots = make([]zk.WrappedVariable, len(roots))
+	verifyCircuit.Roots = make([]frontend.Variable, len(roots))
 
 }
 
@@ -88,19 +88,19 @@ func AssignCicuitVariablesWithMerkleTree(
 		}
 	}
 
+	var buf fr.Element
 	for i := 0; i < len(proof.MerkleProofs); i++ {
 		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Path = zk.ValueOf(proof.MerkleProofs[i][j].Path)
+			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path
 			for k := 0; k < len(proof.MerkleProofs[i][j].Siblings); k++ {
-				// TODO @thomas fixme
-				// buf.SetBytes(proof.MerkleProofs[i][j].Siblings[k][:])
-				// verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = zk.ValueOf(buf)
+				buf.SetBytes(proof.MerkleProofs[i][j].Siblings[k][:])
+				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = buf.String()
 			}
 		}
 	}
 
 	for i := 0; i < len(entryList); i++ {
-		verifyCircuit.EntryList[i] = zk.ValueOf(entryList[i])
+		verifyCircuit.EntryList[i] = entryList[i]
 	}
 
 	for i := 0; i < len(ys); i++ {
@@ -110,9 +110,8 @@ func AssignCicuitVariablesWithMerkleTree(
 	}
 
 	for i := 0; i < len(roots); i++ {
-		// TODO @thomas fixme
-		// buf.SetBytes(roots[i][:])
-		// verifyCircuit.Roots[i] = zk.ValueOf(buf)
+		buf.SetBytes(roots[i][:])
+		verifyCircuit.Roots[i] = buf.String()
 	}
 
 }
@@ -136,12 +135,12 @@ func (circuit *VerifyOpeningCircuitMerkleTree) Define(api frontend.API) error {
 func GnarkVerifyOpeningWithMerkleProof(
 	api frontend.API,
 	params GParams,
-	roots []zk.WrappedVariable,
+	roots []frontend.Variable,
 	proof GProof,
 	x zk.WrappedVariable,
 	ys [][]zk.WrappedVariable,
 	randomCoin zk.WrappedVariable,
-	entryList []zk.WrappedVariable,
+	entryList []frontend.Variable,
 ) error {
 
 	if !params.HasNoSisHasher() {
@@ -170,6 +169,9 @@ func GnarkVerifyOpeningWithMerkleProof(
 
 			// Hash the SIS hash
 			var leaf = selectedColsHashes[i][j]
+
+			// TODO@yao: check if GnarkVerifyCommon compute the leaf, that is written by 7 field.Element to one frontend.Variable?
+			// maybe add a new variable type for bigfield leaf? check leaf = sum (7 field.Element ) relationship
 
 			// Check the Merkle-proof for the obtained leaf
 			smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
