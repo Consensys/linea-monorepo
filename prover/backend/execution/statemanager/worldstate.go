@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -14,7 +14,7 @@ import (
 const WS_LOCATION = "0x"
 
 var MIMC_CONFIG = &smt.Config{
-	HashFunc: hashtypes.MiMC,
+	HashFunc: smt_bls12377.MiMC,
 	Depth:    40,
 }
 

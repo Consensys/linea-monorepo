@@ -47,7 +47,6 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 
 		tree = smt_koalabear.BuildComplete(
 			leavesOcts,
-			p.MerkleHashFunc,
 		)
 	})
 
@@ -87,7 +86,6 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 		}
 		tree = smt_koalabear.BuildComplete(
 			colHashesOcts,
-			p.MerkleHashFunc,
 		)
 	})
 

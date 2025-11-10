@@ -9,12 +9,12 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark-crypto/utils/unsafe"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 )
 
@@ -314,7 +314,7 @@ func marshalHashTypeHasher(ser *Serializer, val reflect.Value) (any, *serdeError
 }
 
 func unmarshalHashTypeHasher(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
-	return reflect.ValueOf(hashtypes.MiMC), nil
+	return reflect.ValueOf(smt_bls12377.MiMC), nil
 }
 
 // marshalAsNil is a custom serialization function that marshals the given value
