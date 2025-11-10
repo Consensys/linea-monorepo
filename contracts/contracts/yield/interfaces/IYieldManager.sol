@@ -511,7 +511,6 @@ interface IYieldManager {
    * @notice Send ETH to the specified YieldProvider instance.
    * @dev YIELD_PROVIDER_STAKING_ROLE is required to execute.
    * @dev Reverts if the withdrawal reserve is below the minimum threshold.
-   * @dev ETH sent to the YieldProvider will be eagerly used to settle any outstanding LST liabilities.
    * @param _yieldProvider The target yield provider contract.
    * @param _amount        The amount of ETH to send.
    */
@@ -571,8 +570,7 @@ interface IYieldManager {
    * @dev This function proactively allocates withdrawn funds in the following priority:
    *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
    *      to restore the deficit.
-   *      2. If there is an outstanding LST liability, it will be paid.
-   *      3. YieldManager will keep the remainder.
+   *      2. YieldManager will keep the remainder.
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount to withdraw..
    */
@@ -581,11 +579,6 @@ interface IYieldManager {
   /**
    * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
    * @dev YIELD_PROVIDER_UNSTAKING_ROLE is required to execute.
-   * @dev This function proactively allocates withdrawn funds in the following priority:
-   *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
-   *      to restore the deficit.
-   *      2. If there is no remaining target deficit and there is an outstanding LST liability, it will be paid.
-   *      3. The remainder will be sent to the withdrawal reserve.
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
    */
