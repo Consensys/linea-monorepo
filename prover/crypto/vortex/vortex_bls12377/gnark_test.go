@@ -15,7 +15,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
@@ -23,6 +23,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
@@ -237,8 +238,8 @@ func TestAssertIsCodeWord(t *testing.T) {
 
 type EvaluateLagrangeCircuit struct {
 	P []zk.WrappedVariable
-	X zk.WrappedVariable `gnark:",public"`
-	Y zk.WrappedVariable
+	X gnarkfext.E4Gen `gnark:",public"`
+	Y gnarkfext.E4Gen
 	d *fft.Domain
 }
 
@@ -246,12 +247,12 @@ func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
 	res := gnarkEvaluateLagrange(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
 
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		return err
 	}
 
-	apiGen.AssertIsEqual(res, circuit.Y)
+	ext4.AssertIsEqual(&res, &circuit.Y)
 
 	return nil
 }
@@ -264,12 +265,12 @@ func getEvaluateLagrangeCircuitWitness(size int) (*EvaluateLagrangeCircuit, *Eva
 	}
 	d := fft.NewDomain(uint64(size))
 
-	var x field.Element
+	var x fext.Element
 	x.SetRandom()
-	var y field.Element
+	var y fext.Element
 	for i := 0; i < size; i++ {
 		y.Mul(&y, &x)
-		y.Add(&y, &pCan[size-1-i])
+		fext.AddByBase(&y, &y, &pCan[size-1-i])
 	}
 
 	d.FFT(pCan, fft.DIF)
@@ -279,8 +280,8 @@ func getEvaluateLagrangeCircuitWitness(size int) (*EvaluateLagrangeCircuit, *Eva
 	circuit.P = make([]zk.WrappedVariable, size)
 	circuit.d = d
 	witness.P = make([]zk.WrappedVariable, size)
-	witness.X = zk.ValueOf(x.String())
-	witness.Y = zk.ValueOf(y.String())
+	witness.X = gnarkfext.NewE4Gen(x)
+	witness.Y = gnarkfext.NewE4Gen(y)
 	for i := 0; i < size; i++ {
 		witness.P[i] = zk.ValueOf(pCan[i].String())
 	}
@@ -335,7 +336,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	entryList = []int{1, 5, 19, 645}
 
 	blsParams := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
-	koalabearParams := vortex.NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2.Poseidon2, poseidon2.Poseidon2)
+	koalabearParams := vortex.NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
 	yLists = make([][]fext.Element, nCommitments)
@@ -411,8 +412,8 @@ func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 	witness.Proof.Rate = uint64(blowUpFactor)
 	AllocateCircuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots)
 	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots)
-	witness.RandomCoin = zk.ValueOf(randomCoin.String()) // TODO@yao: check ext to zk.value correctness
-	witness.X = zk.ValueOf(x.String())
+	witness.RandomCoin = gnarkfext.NewE4Gen(randomCoin)
+	witness.X = gnarkfext.NewE4Gen(x)
 	witness.Params.HasherFunc = makePoseidon2Hasherfunc
 	witness.Params.NoSisHasher = makePoseidon2Hasherfunc
 

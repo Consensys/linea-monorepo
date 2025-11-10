@@ -130,6 +130,12 @@ func (ext4 *Ext4) Sub(e1, e2 *E4Gen) *E4Gen {
 		B1: *ext4.Ext2.Sub(&e1.B1, &e2.B1),
 	}
 }
+func (ext4 *Ext4) SubByBase(e1 *E4Gen, e2 zk.WrappedVariable) *E4Gen {
+	return &E4Gen{
+		B0: *ext4.Ext2.SubByBase(&e1.B0, e2),
+		B1: *ext4.Ext2.SubByBase(&e1.B1, e2),
+	}
+}
 
 // Mul e2 elmts, e = e1*e2
 func (ext4 *Ext4) Mul(e1, e2 *E4Gen, in ...*E4Gen) *E4Gen {
@@ -269,7 +275,7 @@ func (ext4 *Ext4) Div(e1, e2 *E4Gen) *E4Gen {
 	return e3
 }
 
-// Sub Element elmts
+// Div Element elmts
 func (ext4 *Ext4) DivByBase(e1 *E4Gen, e2 zk.WrappedVariable) *E4Gen {
 	return &E4Gen{
 		B0: *ext4.Ext2.DivByBase(&e1.B0, e2),

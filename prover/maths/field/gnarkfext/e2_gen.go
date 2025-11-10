@@ -94,6 +94,13 @@ func (ext2 *Ext2) Sub(e1, e2 *E2Gen) *E2Gen {
 	}
 }
 
+func (ext2 *Ext2) SubByBase(e1 *E2Gen, e2 zk.WrappedVariable) *E2Gen {
+	return &E2Gen{
+		A0: ext2.apiGen.Sub(e1.A0, e2),
+		A1: ext2.apiGen.Sub(e1.A1, e2),
+	}
+}
+
 // Mul E2Gen[T zk.FType] elmts
 func (ext2 *Ext2) Mul(e1, e2 *E2Gen) *E2Gen {
 

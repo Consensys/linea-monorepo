@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -20,12 +21,12 @@ import (
 
 // Final circuit - commitment using Merkle trees
 type VerifyOpeningCircuitMerkleTree struct {
-	Proof      GProof                 `gnark:",public"`
-	Roots      []frontend.Variable    `gnark:",public"`
-	X          zk.WrappedVariable     `gnark:",public"`
-	RandomCoin zk.WrappedVariable     `gnark:",public"`
-	Ys         [][]zk.WrappedVariable `gnark:",public"`
-	EntryList  []frontend.Variable    `gnark:",public"`
+	Proof      GProof              `gnark:",public"`
+	Roots      []frontend.Variable `gnark:",public"`
+	X          gnarkfext.E4Gen     `gnark:",public"`
+	RandomCoin gnarkfext.E4Gen     `gnark:",public"`
+	Ys         [][]gnarkfext.E4Gen `gnark:",public"`
+	EntryList  []frontend.Variable `gnark:",public"`
 	Params     GParams
 }
 
@@ -57,9 +58,9 @@ func AllocateCircuitVariablesWithMerkleTree(
 
 	verifyCircuit.EntryList = make([]frontend.Variable, len(entryList))
 
-	verifyCircuit.Ys = make([][]zk.WrappedVariable, len(ys))
+	verifyCircuit.Ys = make([][]gnarkfext.E4Gen, len(ys))
 	for i := 0; i < len(ys); i++ {
-		verifyCircuit.Ys[i] = make([]zk.WrappedVariable, len(ys[i]))
+		verifyCircuit.Ys[i] = make([]gnarkfext.E4Gen, len(ys[i]))
 	}
 
 	verifyCircuit.Roots = make([]frontend.Variable, len(roots))
@@ -105,7 +106,7 @@ func AssignCicuitVariablesWithMerkleTree(
 
 	for i := 0; i < len(ys); i++ {
 		for j := 0; j < len(ys[i]); j++ {
-			verifyCircuit.Ys[i][j] = zk.ValueOf(ys[i][j])
+			verifyCircuit.Ys[i][j] = gnarkfext.NewE4Gen(ys[i][j])
 		}
 	}
 
@@ -137,9 +138,9 @@ func GnarkVerifyOpeningWithMerkleProof(
 	params GParams,
 	roots []frontend.Variable,
 	proof GProof,
-	x zk.WrappedVariable,
-	ys [][]zk.WrappedVariable,
-	randomCoin zk.WrappedVariable,
+	x gnarkfext.E4Gen,
+	ys [][]gnarkfext.E4Gen,
+	randomCoin gnarkfext.E4Gen,
 	entryList []frontend.Variable,
 ) error {
 
