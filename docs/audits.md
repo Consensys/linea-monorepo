@@ -21,6 +21,8 @@
 **2022**
 * [Kudelski Security - October 2022 - gnark-crypto (contracted by Algorand Foundation)](https://github.com/Consensys/gnark/blob/53ce9b74e7ab372aa7358f1eac7fe3d689743f5f/audits/2022-10%20-%20Kudelski%20-%20gnark-crypto.pdf)
 
+---
+
 ## Linea Burn Mechanism Smart Contract Audits
 **Diligence**
 - Linea Burn Mechanism - [https://diligence.consensys.io/audits/2025/10/linea-burn-mechanism/](https://diligence.consensys.io/audits/2025/10/linea-burn-mechanism/)
@@ -32,6 +34,7 @@
 - Linea Burn Mechanism - [https://github.com/Cyfrin/cyfrin-audit-reports/blob/2e780ec0c4c8401ff97a7e0cd509ece52ab35cb3/reports/2025-11-03-cyfrin-linea-burn-v2.2.pdf](https://github.com/Cyfrin/cyfrin-audit-reports/blob/2e780ec0c4c8401ff97a7e0cd509ece52ab35cb3/reports/2025-11-03-cyfrin-linea-burn-v2.2.pdf)
 
 ---
+
 ## Linea Tokens and Airdrop Smart Contract Audits
 **Diligence**
 - Linea Token and Airdrop Contracts: [https://diligence.consensys.io/audits/2025/07/linea-token-and-airdrop-contracts/](https://diligence.consensys.io/audits/2025/07/linea-token-and-airdrop-contracts/)
@@ -41,6 +44,8 @@
 
 **Cyfrin**
 - Linea Tokens Audit Report: [https://github.com/Cyfrin/cyfrin-audit-reports/blob/b9aace5911e3ff84488cb5199cfd28e7fe24d6aa/reports/2025-09-10-cyfrin-linea-tokens-v2.5.pdf](https://github.com/Cyfrin/cyfrin-audit-reports/blob/b9aace5911e3ff84488cb5199cfd28e7fe24d6aa/reports/2025-09-10-cyfrin-linea-tokens-v2.5.pdf)
+
+---
 
 ## Linea Rollup, L2MessageService and TokenBridge Smart Contract Audits
 ### Fifth Audit Round (latest)
@@ -54,6 +59,7 @@
 **Cyfrin**
 - LineaRollup, L2MessageService and TokenBridge Granular Role Updates: [https://github.com/Cyfrin/cyfrin-audit-reports/blob/642b409c207d0e31679467480c3d9b8797b98696/reports/2025-01-06-cyfrin-linea-v2.2.pdf](https://github.com/Cyfrin/cyfrin-audit-reports/blob/642b409c207d0e31679467480c3d9b8797b98696/reports/2025-01-06-cyfrin-linea-v2.2.pdf)
 
+
 ### Fourth Audit Round
 **Diligence**
 - Differential audit since second audit round: [https://consensys.io/diligence/audits/2024/07/linea-rollup-update/](https://consensys.io/diligence/audits/2024/07/linea-rollup-update/)
@@ -64,13 +70,14 @@
 **Cyfrin**
 - Full codebase audit including gas optimizations and TokenBridge updates: [https://github.com/Cyfrin/cyfrin-audit-reports/blob/main/reports/2024-05-24-cyfrin-linea-v2.0.pdf](https://github.com/Cyfrin/cyfrin-audit-reports/blob/main/reports/2024-05-24-cyfrin-linea-v2.0.pdf)
 
+
 ### Third Audit Round
 **OpenZeppelin**
 
 - Blob submission audit: [https://blog.openzeppelin.com/linea-blob-submission-audit](https://blog.openzeppelin.com/linea-blob-submission-audit)
 
-### Second Audit Round
 
+### Second Audit Round
 **Diligence**
 - Proof aggregation, data compression and message service updates Audit: [https://consensys.io/diligence/audits/2024/01/linea-contracts-update/](https://consensys.io/diligence/audits/2024/01/linea-contracts-update/)
 
@@ -78,8 +85,8 @@
 
 - Proof aggregation, data compression and message service updates Audit: [https://blog.openzeppelin.com/linea-v2-audit](https://blog.openzeppelin.com/linea-v2-audit)
 
-### First Audit Round
 
+### First Audit Round
 **Diligence**
 
 - Plonk Verifier: [https://consensys.io/diligence/audits/2023/06/linea-plonk-verifier/](https://consensys.io/diligence/audits/2023/06/linea-plonk-verifier/)
