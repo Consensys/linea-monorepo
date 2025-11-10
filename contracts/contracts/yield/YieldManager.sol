@@ -925,7 +925,7 @@ contract YieldManager is
     }
     // Enshrine assumption that LST withdrawals are an advance on user withdrawal of funds already on a YieldProvider.
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if ($$.lstLiabilityPrincipal + _amount > $$.userFunds) {
+    if ($$.lstLiabilityPrincipal + _amount + $$.lastReportedNegativeYield > $$.userFunds) {
       revert LSTWithdrawalExceedsYieldProviderFunds();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
