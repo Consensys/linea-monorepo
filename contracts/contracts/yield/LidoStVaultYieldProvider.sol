@@ -249,13 +249,13 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     uint256 _liabilityShares,
     uint256 _lstLiabilityPrincipalCached
   ) internal returns (uint256 lstLiabilityPrincipalSynced) {
-    uint256 liabilityETH = STETH.getPooledEthBySharesRoundUp(_liabilityShares);
+    lstLiabilityPrincipalSynced = STETH.getPooledEthBySharesRoundUp(_liabilityShares);
     // If true, this means an external actor settled liabilities.
-    if (liabilityETH < _lstLiabilityPrincipalCached) {
-      $$.lstLiabilityPrincipal = liabilityETH;
-      return liabilityETH;
+    if (lstLiabilityPrincipalSynced < _lstLiabilityPrincipalCached) {
+      $$.lstLiabilityPrincipal = lstLiabilityPrincipalSynced;
+      emit LSTLiabilityPrincipalSynced(YieldProviderVendor.LIDO_STVAULT, $$.yieldProviderIndex, _lstLiabilityPrincipalCached, lstLiabilityPrincipalSynced);
     } else {
-      return _lstLiabilityPrincipalCached;
+      lstLiabilityPrincipalSynced = _lstLiabilityPrincipalCached;
     }
   }
 
