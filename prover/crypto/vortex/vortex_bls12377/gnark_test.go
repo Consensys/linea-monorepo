@@ -43,7 +43,7 @@ func (c *EncodeTestCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func TestEncode(t *testing.T) {
+func TestEncodeCircuit(t *testing.T) {
 	var intValues [8]field.Element
 	var values [8]zk.WrappedVariable
 
@@ -80,80 +80,6 @@ func TestEncode(t *testing.T) {
 	assert.NoError(t, err)
 
 }
-
-// ------------------------------------------------------------
-// test computeLagrange
-
-// func evalPoly(p []field.Element, z field.Element) field.Element {
-// 	var res field.Element
-// 	for i := len(p) - 1; i >= 0; i-- {
-// 		res.Mul(&res, &z)
-// 		res.Add(&res, &p[i])
-// 	}
-// 	return res
-// }
-
-// type ComputeLagrangeCircuit struct {
-// 	Domain fft.Domain
-// 	Zeta   zk.WrappedVariable   `gnark:",public"` // random variable
-// 	Li     []zk.WrappedVariable // expected results
-// }
-
-// func (circuit *ComputeLagrangeCircuit) Define(api frontend.API) error {
-
-// 	n := circuit.Domain.Cardinality
-// 	gen := circuit.Domain.Generator
-// 	r := gnarkComputeLagrangeAtZ(api, circuit.Zeta, gen, n)
-
-// 	for i := 0; i < len(r); i++ {
-// 		api.AssertIsEqual(r[i], circuit.Li[i])
-// 	}
-
-// 	return nil
-// }
-
-// func TestComputeLagrangeCircuit(t *testing.T) {
-
-// 	s := 16
-// 	d := fft.NewDomain(uint64(s))
-// 	var zeta field.Element
-// 	zeta.SetRandom()
-
-// 	// prepare witness
-// 	var witness ComputeLagrangeCircuit
-// 	witness.Zeta = zk.ValueOf(zeta)
-// 	witness.Li = make([]zk.WrappedVariable, s)
-// 	for i := 0; i < s; i++ {
-// 		buf := make([]field.Element, s)
-// 		buf[i].SetOne()
-// 		d.FFTInverse(buf, fft.DIF)
-// 		fft.BitReverse(buf)
-// 		li := evalPoly(buf, zeta)
-// 		witness.Li[i] = zk.ValueOf(li)
-// 	}
-
-// 	var circuit ComputeLagrangeCircuit
-// 	circuit.Domain = *d
-// 	circuit.Li = make([]zk.WrappedVariable, s)
-
-// 	// compile...
-// 	builder := scs.NewBuilder[constraint.U32]
-// 	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	// solve the circuit
-// 	twitness, err := frontend.NewWitness(&witness, field.Modulus())
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	err = ccs.IsSolved(twitness)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// }
 
 // ------------------------------------------------------------
 // test FFT inverse
