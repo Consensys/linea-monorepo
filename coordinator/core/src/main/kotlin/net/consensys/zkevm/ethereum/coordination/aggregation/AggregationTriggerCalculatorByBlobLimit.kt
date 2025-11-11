@@ -33,7 +33,7 @@ class AggregationTriggerCalculatorByBlobLimit(private val maxBlobsPerAggregation
   @Synchronized
   override fun newBlob(blobCounters: BlobCounters) {
     val blobCount = (inFlightAggregation?.blobsCount ?: 0u) + 1u
-    if (blobCount > maxBlobsPerAggregation) {
+    if (blobCount >= maxBlobsPerAggregation) {
       throw IllegalArgumentException(
         "Aggregation blob limit overflow: maxBlobsPerAggregation=$maxBlobsPerAggregation " +
           "blobsCount=$blobCount " +
