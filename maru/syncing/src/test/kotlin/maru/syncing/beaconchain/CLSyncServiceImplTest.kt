@@ -30,6 +30,7 @@ import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics.TestMetricsFacade
 import maru.core.ext.metrics.TestMetrics.TestMetricsSystemAdapter
+import maru.crypto.SecpCrypto
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
@@ -52,7 +53,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.hyperledger.besu.crypto.KeyPair
 import org.hyperledger.besu.crypto.SignatureAlgorithm
-import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.ethereum.core.Util
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -151,7 +151,7 @@ class CLSyncServiceImplTest {
 
   @BeforeEach
   fun setUp() {
-    signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    signatureAlgorithm = SecpCrypto.signatureAlgorithm
     keypair = signatureAlgorithm.generateKeyPair()
     validators =
       sortedSetOf(Validator(Util.publicKeyToAddress(keypair.publicKey).toArray()))

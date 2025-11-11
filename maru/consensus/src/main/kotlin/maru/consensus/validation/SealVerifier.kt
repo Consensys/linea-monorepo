@@ -14,10 +14,10 @@ import com.github.michaelbull.result.Result
 import maru.core.BeaconBlockHeader
 import maru.core.Seal
 import maru.core.Validator
+import maru.crypto.SecpCrypto
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.crypto.SignatureAlgorithm
-import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.ethereum.core.Util
 
 interface SealVerifier {
@@ -32,7 +32,7 @@ interface SealVerifier {
 }
 
 class SCEP256SealVerifier(
-  private val signatureAlgorithm: SignatureAlgorithm = SignatureAlgorithmFactory.getInstance(),
+  private val signatureAlgorithm: SignatureAlgorithm = SecpCrypto.signatureAlgorithm,
 ) : SealVerifier {
   override fun extractValidator(
     seal: Seal,

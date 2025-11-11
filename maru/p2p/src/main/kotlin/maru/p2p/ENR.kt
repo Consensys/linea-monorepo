@@ -8,7 +8,7 @@
  */
 package maru.p2p
 
-import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
+import maru.crypto.SecpCrypto.privateKeyBytesWithoutPrefix
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.crypto.SECP256K1
 import org.ethereum.beacon.discovery.schema.IdentitySchemaInterpreter

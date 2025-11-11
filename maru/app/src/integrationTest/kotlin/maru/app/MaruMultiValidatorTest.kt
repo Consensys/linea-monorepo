@@ -14,7 +14,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.consensus.qbft.ProposerSelectorImpl
 import maru.core.SealedBeaconBlock
-import maru.crypto.Crypto
+import maru.crypto.SecpCrypto
 import maru.database.BeaconChain
 import maru.extensions.encodeHex
 import org.apache.logging.log4j.LogManager
@@ -80,8 +80,8 @@ class MaruMultiValidatorTest {
 
   @Test
   fun `maru with multiple validators is able to produce blocks`() {
-    val validator1Address = Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(key1))
-    val validator2Address = Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(key2))
+    val validator1Address = SecpCrypto.privateKeyToValidator(SecpCrypto.privateKeyBytesWithoutPrefix(key1))
+    val validator2Address = SecpCrypto.privateKeyToValidator(SecpCrypto.privateKeyBytesWithoutPrefix(key2))
     log.info("Validator 1 (key1) address: ${validator1Address.address.encodeHex()}")
     log.info("Validator 2 (key2) address: ${validator2Address.address.encodeHex()}")
     val initialValidators = setOf(validator1Address, validator2Address)

@@ -34,7 +34,6 @@ import maru.consensus.qbft.adapters.QbftFinalStateAdapter
 import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
 import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
-import maru.consensus.qbft.adapters.toQbftReceivedMessageEvent
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.StateTransition
@@ -44,6 +43,7 @@ import maru.core.BeaconState
 import maru.core.Protocol
 import maru.core.Validator
 import maru.crypto.Hashing
+import maru.crypto.SecpCrypto
 import maru.crypto.Signing
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -66,13 +66,11 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftMessage
 import org.hyperledger.besu.consensus.qbft.core.types.QbftMinedBlockObserver
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
 import org.hyperledger.besu.consensus.qbft.core.validation.MessageValidatorFactory
-import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.cryptoservices.KeyPairSecurityModule
 import org.hyperledger.besu.cryptoservices.NodeKey
 import org.hyperledger.besu.ethereum.core.Util
 import org.hyperledger.besu.plugin.services.MetricsSystem
 import org.hyperledger.besu.util.Subscribers
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class QbftValidatorFactory(
   private val beaconChain: BeaconChain,
@@ -91,7 +89,7 @@ class QbftValidatorFactory(
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
-    val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+    val signatureAlgorithm = SecpCrypto.signatureAlgorithm
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(privateKeyBytes))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
     val securityModule = KeyPairSecurityModule(keyPair)
@@ -253,12 +251,18 @@ class QbftValidatorFactory(
     val eventProcessor = QbftEventProcessor(bftEventQueue, eventMultiplexer)
     val eventQueueExecutor = Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().factory())
 
-    // Subscribe to QBFT messages from P2P network and add them to the event queue
-    p2PNetwork.subscribeToQbftMessages { qbftMessage ->
-      bftEventQueue.add(qbftMessage.toQbftReceivedMessageEvent())
-      // TODO: Validate QBFT messages and return the appropriate ValidationResult
-      SafeFuture.completedFuture(ValidationResult.Companion.Valid)
-    }
+    val messageDecoder = MinimalQbftMessageDecoder(SecpCrypto)
+    val qbftMessageProcessor =
+      QbftMessageProcessor(
+        blockChain = blockChain,
+        validatorProvider = besuValidatorProvider,
+        localAddress = localAddress,
+        bftEventQueue = bftEventQueue,
+        messageDecoder = messageDecoder,
+      )
+
+    // Subscribe to QBFT messages from P2P network and validate before adding to event queue
+    p2PNetwork.subscribeToQbftMessages(qbftMessageProcessor)
 
     return QbftConsensusValidator(
       qbftController = qbftController,

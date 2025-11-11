@@ -48,7 +48,7 @@ import maru.consensus.QbftConsensusConfig
 import maru.consensus.state.FinalizationProvider
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
-import maru.crypto.Crypto
+import maru.crypto.SecpCrypto
 import maru.database.BeaconChain
 import maru.database.P2PState
 import maru.extensions.fromHexToByteArray
@@ -114,7 +114,7 @@ class MaruFactory(
   private val validatorPrivateKeyWithPrefixString = marshalPrivateKey(validatorPrivateKeyWithPrefix).encodeHex()
   private val validatorNodeId = PeerId.fromPubKey(validatorPrivateKeyWithPrefix.publicKey())
   val qbftValidator =
-    Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(validatorPrivateKeyWithPrefix.bytes()))
+    SecpCrypto.privateKeyToValidator(SecpCrypto.privateKeyBytesWithoutPrefix(validatorPrivateKeyWithPrefix.bytes()))
   val validatorAddress = qbftValidator.address.encodeHex()
   val initialValidators = setOf(Validator(validatorAddress.fromHexToByteArray()))
 
