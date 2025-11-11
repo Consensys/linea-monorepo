@@ -82,9 +82,7 @@ import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.networking.p2p.network.config.GeneratingFilePrivateKeySource
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
-class MaruAppFactory {
-  private val log = LogManager.getLogger(this.javaClass)
-
+interface MaruAppFactoryCreator {
   fun create(
     config: MaruConfig,
     beaconGenesisConfig: ForksSchedule,
@@ -107,6 +105,34 @@ class MaruAppFactory {
       P2PState,
       () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
+  ): LongRunningCloseable
+}
+
+class MaruAppFactory : MaruAppFactoryCreator {
+  private val log = LogManager.getLogger(this.javaClass)
+
+  override fun create(
+    config: MaruConfig,
+    beaconGenesisConfig: ForksSchedule,
+    clock: Clock,
+    overridingP2PNetwork: P2PNetwork?,
+    overridingFinalizationProvider: FinalizationProvider?,
+    overridingLineaContractClient: LineaRollupSmartContractClientReadOnly?,
+    overridingApiServer: ApiServer?,
+    p2pNetworkFactory: (
+      ByteArray,
+      P2PConfig,
+      UInt,
+      SerDe<SealedBeaconBlock>,
+      MetricsFacade,
+      BesuMetricsSystem,
+      StatusManager,
+      BeaconChain,
+      ForkPeeringManager,
+      () -> Boolean,
+      P2PState,
+      () -> SyncStatusProvider,
+    ) -> P2PNetworkImpl,
   ): MaruApp {
     log.info("configs={}", config)
     log.info("beaconGenesisConfig={}", beaconGenesisConfig)
