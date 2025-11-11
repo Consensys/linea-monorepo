@@ -150,9 +150,9 @@ interface IYieldManager {
    * @notice Emitted when LST is withdrawn from a YieldProvider.
    * @param yieldProvider The yield provider address.
    * @param recipient Address that received LST.
-   * @param amountRequested Requested amount of LST to mint (denominated in ETH).
+   * @param amount Amount of LST minted (denominated in ETH).
    */
-  event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amountRequested);
+  event LSTMinted(address indexed yieldProvider, address indexed recipient, uint256 amount);
 
   /**
    * @notice Emitted when ossification is initiated for a YieldProvider instance.
