@@ -20,10 +20,10 @@ import (
 
 // leafOpenings represents the structure for leaf openings
 type leafOpenings struct {
-	prev [common.NbLimbU64][]field.Element
-	next [common.NbLimbU64][]field.Element
-	hKey [common.NbLimbU256][]field.Element
-	hVal [common.NbLimbU256][]field.Element
+	prev [common.NbElemU64][]field.Element
+	next [common.NbElemU64][]field.Element
+	hKey [common.NbElemPerHash][]field.Element
+	hVal [common.NbElemPerHash][]field.Element
 }
 
 // assignmentBuilder is used to build the assignment of the [Module] module
@@ -37,12 +37,12 @@ type assignmentBuilder struct {
 	// leaves stores the assignment of the column holding the leaves (so the
 	// hash of the leaf openings) for which we give the merkle proof. This corresponds to the
 	// [Accumulator.Cols.Leaves] column.
-	leaves [common.NbLimbU256][]field.Element
+	leaves [common.NbElemPerHash][]field.Element
 	// positions stores the positions of the leaves in the merkle tree for which we give the Merkle proof. This corresponds to the [Accumulator.Cols.Positions] column.
-	positions [common.NbLimbU64][]field.Element
+	positions [common.NbElemU64][]field.Element
 	// roots stores the roots of the merkle tree. This corresponds
 	// to the [Accumulator.Cols.Roots] column.
-	roots [common.NbLimbU256][]field.Element
+	roots [common.NbElemPerHash][]field.Element
 	// proofs stores the path and siblings of the merkle proof. Those siblings corresponds
 	// to the [Accumulator.Cols.Proofs] column.
 	proofs []smt.Proof
@@ -53,7 +53,7 @@ type assignmentBuilder struct {
 	isActive []field.Element
 	// accumulatorCounter counts the number of rows in the accumulator. It is used to check the
 	// sequentiality of leaves and roots in accumulator and the merkle module
-	accumulatorCounter [common.NbLimbU64][]field.Element
+	accumulatorCounter [common.NbElemU64][]field.Element
 	// isFirst is one at the first row of any operation. This corresponds to the [Accumulator.IsFirst] column
 	isFirst []field.Element
 	// isInsert is one when we have an INSERT operation. It is
@@ -72,46 +72,46 @@ type assignmentBuilder struct {
 	// zero otherwise. This corresponds to the [Accumulator.Cols.IsReadNonZero] column
 	isReadNonZero []field.Element
 	// hKey is the hash of the key of the trace. This corresponds to the [Accumulator.Column.HKey]
-	hKey [common.NbLimbU256][]field.Element
+	hKey [common.NbElemPerHash][]field.Element
 	// hKeyMinus is the hash of the key of the previous leaf. This corresponds to the [Accumulator.Column.HKeyMinus]
-	hKeyMinus [common.NbLimbU256][]field.Element
+	hKeyMinus [common.NbElemPerHash][]field.Element
 	// hKeyPlus is the hash of the key of the next leaf. This corresponds to the [Accumulator.Column.HKeyPlus]
-	hKeyPlus [common.NbLimbU256][]field.Element
+	hKeyPlus [common.NbElemPerHash][]field.Element
 	// Pointer check columns
 	// leafMinusIndex is the index of the minus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafMinusIndex]
-	leafMinusIndex [common.NbLimbU64][]field.Element
+	leafMinusIndex [common.NbElemU64][]field.Element
 	// leafMinusNext is the index of the Next leaf of the minus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafMinusNext]
-	leafMinusNext [common.NbLimbU64][]field.Element
+	leafMinusNext [common.NbElemU64][]field.Element
 	// leafMinusNext is the index of the plus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafPlusIndex]
-	leafPlusIndex [common.NbLimbU64][]field.Element
+	leafPlusIndex [common.NbElemU64][]field.Element
 	// leafPlusPrev is the index of the Previous leaf of the plus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafPlusPrev]
-	leafPlusPrev [common.NbLimbU64][]field.Element
+	leafPlusPrev [common.NbElemU64][]field.Element
 	// leafDeletedIndex is the index of the Deleted leaf for DELETE. This corresponds to the [Accumulator.Column.LeafDeletedIndex]
-	leafDeletedIndex [common.NbLimbU64][]field.Element
+	leafDeletedIndex [common.NbElemU64][]field.Element
 	// leafDeletedPrev is the index of the Previous leaf of the Deleted leaf for DELETE. This corresponds to the [Accumulator.Column.LeafDeletedPrev]
-	leafDeletedPrev [common.NbLimbU64][]field.Element
+	leafDeletedPrev [common.NbElemU64][]field.Element
 	// leafDeletedNext is the index of the Previous leaf of the Deleted leaf for DELETE. This corresponds to the [Accumulator.Column.LeafDeletedNext]
-	leafDeletedNext [common.NbLimbU64][]field.Element
+	leafDeletedNext [common.NbElemU64][]field.Element
 	// leafOpening is a tuple of four columns containing
 	// Prev, Next, HKey, HVal of a leaf. This corresponds to the [Accumulator.Column.LeafOpening]
 	leafOpening leafOpenings
 	// interm is a slice containing 3 intermediate hash states. This corresponds to the [Accumulator.Column.Interm]
-	interm [common.NbLimbU256][][]field.Element
+	interm [common.NbElemPerHash][][]field.Element
 	// leafHash contains sequential MiMC hashes of leafOpening. It matches with Leaves except when there is empty leaf. This corresponds to the [Accumulator.Column.LeafHashes]
-	leafHashes [common.NbLimbU256][]field.Element
+	leafHashes [common.NbElemPerHash][]field.Element
 	// isEmptyLeaf is one when Leaves contains empty leaf and does not match with LeafHash
 	isEmptyLeaf []field.Element
 	// nextFreeNode contains the nextFreeNode for each row of every operation
-	nextFreeNode [common.NbLimbU64][]field.Element
+	nextFreeNode [common.NbElemU64][]field.Element
 	// insertionPath is the path of a newly inserted leaf when INSERT happens,
 	// it is zero otherwise
-	insertionPath [common.NbLimbU64][]field.Element
+	insertionPath [common.NbElemU64][]field.Element
 	// isInsertRow3 is one for row 3 of INSERT operation
 	isInsertRow3 []field.Element
 	// intermTopRoot contains the intermediate MiMC state hash
-	intermTopRoot [common.NbLimbU256][]field.Element
+	intermTopRoot [common.NbElemPerHash][]field.Element
 	// topRoot contains the MiMC hash of SubTreeRoot and NextFreeNode
-	topRoot [common.NbLimbU256][]field.Element
+	topRoot [common.NbElemPerHash][]field.Element
 }
 
 // newAssignmentBuilder returns an empty builder
@@ -119,7 +119,7 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 	amb := assignmentBuilder{}
 	amb.Settings = s
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		amb.roots[i] = make([]field.Element, 0, amb.NumRows())
 		amb.leaves[i] = make([]field.Element, 0, amb.NumRows())
 		amb.hKey[i] = make([]field.Element, 0, amb.NumRows())
@@ -223,11 +223,11 @@ func (am *Module) Assign(
 	}
 
 	// Sanity check on the size
-	if len(builder.leaves) > am.MaxNumProofs {
+	if len(builder.leaves[0]) > am.MaxNumProofs {
 		exit.OnLimitOverflow(
 			am.MaxNumProofs,
-			len(builder.leaves),
-			fmt.Errorf("we have registered %v proofs which is more than the maximum number of proofs %v", len(builder.leaves), am.MaxNumProofs),
+			len(builder.leaves[0]),
+			fmt.Errorf("we have registered %v proofs which is more than the maximum number of proofs %v", len(builder.leaves[0]), am.MaxNumProofs),
 		)
 	}
 
@@ -254,7 +254,7 @@ func (am *Module) Assign(
 		run.AssignColumn(cols.LeafDeletedNext[i].GetColID(), smartvectors.RightZeroPadded(builder.leafDeletedNext[i], paddedSize))
 	}
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		run.AssignColumn(cols.Roots[i].GetColID(), smartvectors.RightZeroPadded(builder.roots[i], paddedSize))
 		run.AssignColumn(cols.Leaves[i].GetColID(), smartvectors.RightZeroPadded(builder.leaves[i], paddedSize))
 

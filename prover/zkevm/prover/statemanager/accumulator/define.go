@@ -105,10 +105,10 @@ const (
 
 // structure for leaf opening
 type LeafOpenings struct {
-	HKey [common.NbLimbU256]ifaces.Column
-	HVal [common.NbLimbU256]ifaces.Column
-	Prev [common.NbLimbU64]ifaces.Column
-	Next [common.NbLimbU64]ifaces.Column
+	HKey [common.NbElemPerHash]ifaces.Column
+	HVal [common.NbElemPerHash]ifaces.Column
+	Prev [common.NbElemU64]ifaces.Column
+	Next [common.NbElemU64]ifaces.Column
 }
 
 // Module module
@@ -118,16 +118,16 @@ type Module struct {
 	// compiled IOP
 	comp *wizard.CompiledIOP
 	Cols struct {
-		Leaves    [common.NbLimbU256]ifaces.Column
-		Roots     [common.NbLimbU256]ifaces.Column
-		Positions [common.NbLimbU64]ifaces.Column
+		Leaves    [common.NbElemPerHash]ifaces.Column
+		Roots     [common.NbElemPerHash]ifaces.Column
+		Positions [common.NbElemU64]ifaces.Column
 		Proofs    *merkle.FlatProof
 		// Column to verify reuse of Merkle proofs in INSERT, DELETE, and UPDATE operations
 		UseNextMerkleProof ifaces.Column
 		// Column denoting the active area of the accumulator module
 		IsActiveAccumulator ifaces.Column
 		// Columns to check sequentiality of the accumulator module with Merkle module
-		AccumulatorCounter [common.NbLimbU64]ifaces.Column
+		AccumulatorCounter [common.NbElemU64]ifaces.Column
 		// Column to verify the two equalities of intermediateRoot1 and intermediateRoot3, and empty
 		// leafs for INSERT and DELETE operation and one equality of root in IsReadZero operation
 		IsFirst ifaces.Column
@@ -144,11 +144,11 @@ type Module struct {
 
 		// Columns for the sandwitch check
 		// Columns storing the hash of the key of the trace
-		HKey [common.NbLimbU256]ifaces.Column
+		HKey [common.NbElemPerHash]ifaces.Column
 		// Columns storing the hash of the key of the previous leaf
-		HKeyMinus [common.NbLimbU256]ifaces.Column
+		HKeyMinus [common.NbElemPerHash]ifaces.Column
 		// Columns storing the hash of the key of the next leaf
-		HKeyPlus [common.NbLimbU256]ifaces.Column
+		HKeyPlus [common.NbElemPerHash]ifaces.Column
 		// HkeyHkeyMinusIsGreater contains boolean value indicating whether the HKey is greater than HKeyMinus
 		HkeyHkeyMinusIsGreater ifaces.Column
 		// HkeyPlusHkeyIsGreater contains boolean value indicating whether the HKeyPlus is greater than HKey
@@ -156,48 +156,48 @@ type Module struct {
 
 		// Columns for the pointer check
 		// Columns storing the index of the minus leaf
-		LeafMinusIndex [common.NbLimbU64]ifaces.Column
+		LeafMinusIndex [common.NbElemU64]ifaces.Column
 		// Columns storing the index of the next leaf of the minus leaf
-		LeafMinusNext [common.NbLimbU64]ifaces.Column
+		LeafMinusNext [common.NbElemU64]ifaces.Column
 		// Columns storing the index of the plus leaf
-		LeafPlusIndex [common.NbLimbU64]ifaces.Column
+		LeafPlusIndex [common.NbElemU64]ifaces.Column
 		// Columns storing the index of the previous leaf of the plus leaf
-		LeafPlusPrev [common.NbLimbU64]ifaces.Column
+		LeafPlusPrev [common.NbElemU64]ifaces.Column
 		// Columns storing the index of the deleted leaf
-		LeafDeletedIndex [common.NbLimbU64]ifaces.Column
+		LeafDeletedIndex [common.NbElemU64]ifaces.Column
 		// Columns storing the index of the previous leaf of the deleted leaf
-		LeafDeletedPrev [common.NbLimbU64]ifaces.Column
+		LeafDeletedPrev [common.NbElemU64]ifaces.Column
 		// Columns storing the index of the next leaf of the deleted leaf
-		LeafDeletedNext [common.NbLimbU64]ifaces.Column
+		LeafDeletedNext [common.NbElemU64]ifaces.Column
 
 		// Columns for leaf hashing check
 		// LeafOpening contains four columns corresponding to HKey, HVal, Prev, and Next
 		LeafOpenings LeafOpenings
 		// Interm contains the three intermediate states corresponding to the MiMC block computation divided into limbs
-		Interm [common.NbLimbU256][]ifaces.Column
+		Interm [common.NbElemPerHash][]ifaces.Column
 		// Zero contains the column with zero value, used in the MiMc query
 		Zero ifaces.Column
 		// LeafHash contains the leafHashes (the final MiMC block), equals with Leaves, except when it is empty leaf
-		LeafHashes [common.NbLimbU256]ifaces.Column
+		LeafHashes [common.NbElemPerHash]ifaces.Column
 		// IsEmptyLeaf is one when Leaves contains empty leaf and does not match with LeafHash
 		IsEmptyLeaf ifaces.Column
 
 		// Columns to check NextFreeNode consistency
 		// NextFreeNode stores the nextFreeNode for each row of every operation
-		NextFreeNode [common.NbLimbU64]ifaces.Column
+		NextFreeNode [common.NbElemU64]ifaces.Column
 		// NextFreeNodeIncremented stores a value that indicates how much NextFreeNode[i] is increased
 		// relative to the NextFreeNode[i-1]
-		NextFreeNodeIncremented [common.NbLimbU64]ifaces.Column
+		NextFreeNodeIncremented [common.NbElemU64]ifaces.Column
 		// InsertionPath stores the index of the newly inserted leaf by INSERT
-		InsertionPath [common.NbLimbU64]ifaces.Column
+		InsertionPath [common.NbElemU64]ifaces.Column
 		// IsInsertRow3 is one for row 3 of INSERT operation
 		IsInsertRow3 ifaces.Column
 
 		// Columns for hashing the top root
 		// IntermTopRoot contains the intermediate MiMC state hash
-		IntermTopRoot [common.NbLimbU256]ifaces.Column
+		IntermTopRoot [common.NbElemPerHash]ifaces.Column
 		// TopRoot contains the MiMC hash of Roots and NextFreeNode
-		TopRoot [common.NbLimbU256]ifaces.Column
+		TopRoot [common.NbElemPerHash]ifaces.Column
 	}
 
 	// MerkleProofVerification is the merkle tree verification wizard
@@ -229,51 +229,51 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	am.comp = comp
 
 	// Initializes the columns
-	for i := 0; i < common.NbLimbU256; i++ {
-		am.Cols.Leaves[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAVES_NAME, i), am.NumRows())
-		am.Cols.Roots[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_ROOTS_NAME, i), am.NumRows())
+	for i := 0; i < common.NbElemPerHash; i++ {
+		am.Cols.Leaves[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAVES_NAME, i), am.NumRows(), true)
+		am.Cols.Roots[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_ROOTS_NAME, i), am.NumRows(), true)
 
 		// columns for the sandwitch check
-		am.Cols.HKey[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_HKEY_NAME, i), am.NumRows())
-		am.Cols.HKeyMinus[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_HKEY_MINUS_NAME, i), am.NumRows())
-		am.Cols.HKeyPlus[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_HKEY_PLUS_NAME, i), am.NumRows())
+		am.Cols.HKey[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_HKEY_NAME, i), am.NumRows(), true)
+		am.Cols.HKeyMinus[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_HKEY_MINUS_NAME, i), am.NumRows(), true)
+		am.Cols.HKeyPlus[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_HKEY_PLUS_NAME, i), am.NumRows(), true)
 
 		// TopRoot hash check columns commitments
-		am.Cols.IntermTopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_TOP_ROOT_NAME, i), am.NumRows())
-		am.Cols.TopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_TOP_ROOT_NAME, i), am.NumRows())
+		am.Cols.IntermTopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM_TOP_ROOT_NAME, i), am.NumRows(), true)
+		am.Cols.TopRoot[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_TOP_ROOT_NAME, i), am.NumRows(), true)
 	}
 
 	for i := 0; i < len(am.Cols.Positions); i++ {
-		am.Cols.Positions[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_POSITIONS_NAME, i), am.NumRows())
-		am.Cols.NextFreeNode[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_NEXT_FREE_NODE_NAME, i), am.NumRows())
-		am.Cols.InsertionPath[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INSERTION_PATH_NAME, i), am.NumRows())
-		am.Cols.AccumulatorCounter[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_COUNTER_NAME, i), am.NumRows())
+		am.Cols.Positions[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_POSITIONS_NAME, i), am.NumRows(), true)
+		am.Cols.NextFreeNode[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_NEXT_FREE_NODE_NAME, i), am.NumRows(), true)
+		am.Cols.InsertionPath[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INSERTION_PATH_NAME, i), am.NumRows(), true)
+		am.Cols.AccumulatorCounter[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_COUNTER_NAME, i), am.NumRows(), true)
 
 		// columns for the pointer check
-		am.Cols.LeafMinusIndex[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_MINUS_INDEX_NAME, i), am.NumRows())
-		am.Cols.LeafMinusNext[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_MINUS_NEXT_NAME, i), am.NumRows())
-		am.Cols.LeafPlusIndex[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_PLUS_INDEX_NAME, i), am.NumRows())
-		am.Cols.LeafPlusPrev[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_PLUS_PREV_NAME, i), am.NumRows())
-		am.Cols.LeafDeletedIndex[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_DELETED_INDEX_NAME, i), am.NumRows())
-		am.Cols.LeafDeletedPrev[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_DELETED_PREV_NAME, i), am.NumRows())
-		am.Cols.LeafDeletedNext[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_DELETED_NEXT_NAME, i), am.NumRows())
+		am.Cols.LeafMinusIndex[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_MINUS_INDEX_NAME, i), am.NumRows(), true)
+		am.Cols.LeafMinusNext[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_MINUS_NEXT_NAME, i), am.NumRows(), true)
+		am.Cols.LeafPlusIndex[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_PLUS_INDEX_NAME, i), am.NumRows(), true)
+		am.Cols.LeafPlusPrev[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_PLUS_PREV_NAME, i), am.NumRows(), true)
+		am.Cols.LeafDeletedIndex[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_DELETED_INDEX_NAME, i), am.NumRows(), true)
+		am.Cols.LeafDeletedPrev[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_DELETED_PREV_NAME, i), am.NumRows(), true)
+		am.Cols.LeafDeletedNext[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_DELETED_NEXT_NAME, i), am.NumRows(), true)
 	}
 
 	am.Cols.Proofs = merkle.NewProof(comp, am.Round, ACCUMULATOR_PROOFS_NAME, am.MerkleTreeDepth, am.NumRows())
-	am.Cols.UseNextMerkleProof = comp.InsertCommit(am.Round, ACCUMULATOR_USE_NEXT_MERKLE_PROOF_NAME, am.NumRows())
-	am.Cols.IsActiveAccumulator = comp.InsertCommit(am.Round, ACCUMULATOR_IS_ACTIVE_NAME, am.NumRows())
-	am.Cols.IsFirst = comp.InsertCommit(am.Round, ACCUMULATOR_IS_FIRST_NAME, am.NumRows())
-	am.Cols.IsInsert = comp.InsertCommit(am.Round, ACCUMULATOR_IS_INSERT_NAME, am.NumRows())
-	am.Cols.IsDelete = comp.InsertCommit(am.Round, ACCUMULATOR_IS_DELETE_NAME, am.NumRows())
-	am.Cols.IsUpdate = comp.InsertCommit(am.Round, ACCUMULATOR_IS_UPDATE_NAME, am.NumRows())
-	am.Cols.IsReadZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_ZERO_NAME, am.NumRows())
-	am.Cols.IsReadNonZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_NON_ZERO_NAME, am.NumRows())
+	am.Cols.UseNextMerkleProof = comp.InsertCommit(am.Round, ACCUMULATOR_USE_NEXT_MERKLE_PROOF_NAME, am.NumRows(), true)
+	am.Cols.IsActiveAccumulator = comp.InsertCommit(am.Round, ACCUMULATOR_IS_ACTIVE_NAME, am.NumRows(), true)
+	am.Cols.IsFirst = comp.InsertCommit(am.Round, ACCUMULATOR_IS_FIRST_NAME, am.NumRows(), true)
+	am.Cols.IsInsert = comp.InsertCommit(am.Round, ACCUMULATOR_IS_INSERT_NAME, am.NumRows(), true)
+	am.Cols.IsDelete = comp.InsertCommit(am.Round, ACCUMULATOR_IS_DELETE_NAME, am.NumRows(), true)
+	am.Cols.IsUpdate = comp.InsertCommit(am.Round, ACCUMULATOR_IS_UPDATE_NAME, am.NumRows(), true)
+	am.Cols.IsReadZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_ZERO_NAME, am.NumRows(), true)
+	am.Cols.IsReadNonZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_NON_ZERO_NAME, am.NumRows(), true)
 
 	// Leaf hashing columns commitments
 	am.commitLeafHashingCols()
 
 	// NextFreeNode check columns commitments
-	am.Cols.IsInsertRow3 = comp.InsertCommit(am.Round, ACCUMULATOR_IS_INSERT_ROW3_NAME, am.NumRows())
+	am.Cols.IsInsertRow3 = comp.InsertCommit(am.Round, ACCUMULATOR_IS_INSERT_ROW3_NAME, am.NumRows(), true)
 
 	// Declare constraints
 
@@ -359,28 +359,28 @@ func (am *Module) commitLeafHashingCols() {
 	am.Cols.Zero = verifiercol.NewConstantCol(field.Zero(), am.NumRows(), "merkle-tree-accumulator")
 
 	for i := range am.Cols.LeafOpenings.Prev {
-		am.Cols.LeafOpenings.Prev[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_PREV, i), am.NumRows())
-		am.Cols.LeafOpenings.Next[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_NEXT, i), am.NumRows())
+		am.Cols.LeafOpenings.Prev[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_PREV, i), am.NumRows(), true)
+		am.Cols.LeafOpenings.Next[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_NEXT, i), am.NumRows(), true)
 	}
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		am.Cols.Interm[i] = make([]ifaces.Column, 3)
-		am.Cols.LeafOpenings.HKey[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_HKEY, i), am.NumRows())
-		am.Cols.LeafOpenings.HVal[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_HVAL, i), am.NumRows())
-		am.Cols.LeafHashes[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_HASHES_NAME, i), am.NumRows())
+		am.Cols.LeafOpenings.HKey[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_HKEY, i), am.NumRows(), true)
+		am.Cols.LeafOpenings.HVal[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_HVAL, i), am.NumRows(), true)
+		am.Cols.LeafHashes[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_HASHES_NAME, i), am.NumRows(), true)
 
 		for j := 0; j < len(am.Cols.Interm[i]); j++ {
-			am.Cols.Interm[i][j] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM[j], i), am.NumRows())
+			am.Cols.Interm[i][j] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INTERM[j], i), am.NumRows(), true)
 		}
 	}
 
-	am.Cols.IsEmptyLeaf = am.comp.InsertCommit(am.Round, ACCUMULATOR_IS_EMPTY_LEAF_NAME, am.NumRows())
+	am.Cols.IsEmptyLeaf = am.comp.InsertCommit(am.Round, ACCUMULATOR_IS_EMPTY_LEAF_NAME, am.NumRows(), true)
 }
 
 func (am *Module) checkInsert() {
 	cols := am.Cols
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		// (Root[i+1] - Root[i+2]) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i] = 0, The (i+1)th and (i+2)th roots are equal when there is an INSERT operation and the accumulator is active.
 		expr1 := symbolic.Sub(column.Shift(cols.Roots[i], 1), column.Shift(cols.Roots[i], 2))
 		expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsInsert, expr1)
@@ -408,7 +408,7 @@ func (am *Module) checkInsert() {
 func (am *Module) checkDelete() {
 	cols := am.Cols
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		// (Root[i+1] - Root[i+2]) * IsActiveAccumulator[i] * IsFirst[i] * IsDelete[i] = 0, The (i+1)th and (i+2)th roots are equal when there is a DELETE operation and the accumulator is active.
 		expr1 := symbolic.Sub(column.Shift(cols.Roots[i], 1), column.Shift(cols.Roots[i], 2))
 		expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsDelete, expr1)
@@ -430,7 +430,7 @@ func (am *Module) checkDelete() {
 func (am *Module) checkUpdate() {
 	cols := am.Cols
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		// HKey remains the same for an update operation, i.e,
 		// IsActiveAccumulator[i] * IsUpdate[i] * IsFirst[i] * (HKey[i] - HKey[i+1])
 		expr := symbolic.Mul(cols.IsActiveAccumulator,
@@ -444,7 +444,7 @@ func (am *Module) checkUpdate() {
 func (am *Module) checkReadZero() {
 	cols := am.Cols
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		// (Root[i] - Root[i+1]) * IsActiveAccumulator[i] * IsFirst[i] * IsReadZero[i] = 0, The ith and (i+1)th roots are equal when there is a READ-ZERO operation and the accumulator is active.
 		expr1 := symbolic.Sub(cols.Roots[i], column.Shift(cols.Roots[i], 1))
 		expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsReadZero, expr1)
@@ -542,7 +542,7 @@ func (am *Module) checkEmptyLeaf() {
 	emptyLeaf := verifiercol.NewConstantCol(emptyLeafField, am.NumRows(), "accumulator-empty-leaves")
 	cols := am.Cols
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		// (Leaf[i+2] - emptyLeaf) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i]
 		expr1 := symbolic.Sub(column.Shift(cols.Leaves[i], 2), emptyLeaf)
 		expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsInsert, expr1)
@@ -598,7 +598,7 @@ func (am *Module) checkSandwitch() {
 		),
 	)
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		// INSERT: The HKeyMinus in the leaf minus openings is the same as HKeyMinus column i.e.,
 		// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKeyMinus[i] - LeafOpenings.Hkey[i])
 		expr1 := symbolic.Mul(cols.IsActiveAccumulator,
@@ -681,9 +681,9 @@ func (am *Module) checkPointer() {
 func (am *Module) checkLeafHashes() {
 	cols := am.Cols
 
-	panic("TODO: change the MiMC queries and replace them by Poseidon. Also review the [common.NbLimbU256] loop")
+	panic("TODO: change the MiMC queries and replace them by Poseidon. Also review the [common.NbElemPerHash] loop")
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 
 		// TODO: fix MiMC query
 		am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV_%d", i), cols.LeafOpenings.Prev[0], cols.Zero, cols.Interm[i][0], nil)
@@ -805,7 +805,7 @@ func (am *Module) checkTopRootHash() {
 
 	//cols := am.Cols
 	//
-	//for i := 0; i < common.NbLimbU256; i++ {
+	//for i := 0; i < common.NbElemPerHash; i++ {
 	//	am.comp.InsertMiMC(am.Round, am.qname("MIMC_INTERM_TOP_ROOT_%d", i), cols.NextFreeNode, cols.Zero, cols.IntermTopRoot[i], nil)
 	//	am.comp.InsertMiMC(am.Round, am.qname("MIMC_TOP_ROOT_%d", i), cols.Roots, cols.IntermTopRoot[i], cols.TopRoot[i], nil)
 	//}
@@ -813,7 +813,7 @@ func (am *Module) checkTopRootHash() {
 
 func (am *Module) checkZeroInInactive() {
 	cols := am.Cols
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		am.colZeroAtInactive(cols.Roots[i], fmt.Sprintf("ROOTS_ZERO_IN_INACTIVE_%d", i))
 		am.colZeroAtInactive(cols.Leaves[i], fmt.Sprintf("LEAVES_ZERO_IN_INACTIVE_%d", i))
 
