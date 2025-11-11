@@ -30,6 +30,61 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
+// Interpolation Circuit for Testing
+type EncodeTestCircuit struct {
+	Values [8]zk.WrappedVariable
+	Result frontend.Variable
+}
+
+func (c *EncodeTestCircuit) Define(api frontend.API) error {
+	// Create constraints for encoding
+	result := EncodeWVsToFV(api, c.Values)
+	// Enforce the result variable matches the packed value
+	api.Println("eresult", result)
+	api.Println("cresult", c.Result)
+
+	api.AssertIsEqual(result, c.Result)
+	return nil
+}
+
+func TestEncode8To256Bit(t *testing.T) {
+	var intValues [8]field.Element
+	var values [8]zk.WrappedVariable
+
+	for i := 0; i < 8; i++ {
+		intValues[i].SetRandom()
+		values[i] = zk.ValueOf(intValues[i].String())
+	}
+
+	// Calculate expected result manually using big.Int (for validation)
+	expectedResult := Encode8KoalabearToBigInt(intValues)
+
+	// Create test instance
+	var circuit EncodeTestCircuit
+	circuit.Values = values
+	circuit.Result = expectedResult.String()
+
+	// Compile the circuit for BLS12-377
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+
+	// Assert compilation worked
+	assert.NoError(t, err)
+
+	// Create a witness with test values
+	var witness EncodeTestCircuit
+	witness.Values = values
+	witness.Result = expectedResult.String()
+
+	// Convert witness to frontend-compatible witness
+	fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	assert.NoError(t, err)
+
+	// Verify the circuit satisfies constraints with the witness
+	err = ccs.IsSolved(fullWitness)
+	assert.NoError(t, err)
+
+}
+
 // ------------------------------------------------------------
 // test computeLagrange
 

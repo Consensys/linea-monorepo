@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -245,16 +246,12 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []fr.Element
 		func(col, threadID int) {
 			hasher := hashers[threadID]
 			hasher.Reset()
+			xElems := make([]field.Element, numRows)
 			for row := 0; row < numRows; row++ {
-				if row%7 == 0 {
-					// Overwrite with 4 zero bytes to prevent bls12377 overflow
-					zeroBytes := []byte{0, 0, 0, 0}
-					hasher.Write(zeroBytes)
-				}
-				x := v[row].Get(col)
-				xBytes := x.Bytes()
-				hasher.Write(xBytes[:])
+				xElems[row] = v[row].Get(col)
 			}
+			colBytes := EncodeKoalabearsToBytes(xElems)
+			hasher.Write(colBytes)
 
 			digest := hasher.Sum(nil)
 			res[col].SetBytes(digest)

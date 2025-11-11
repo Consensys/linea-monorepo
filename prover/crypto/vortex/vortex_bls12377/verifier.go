@@ -202,16 +202,9 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 				hasher := v.BLS12_377_Params.LeafHashFunc()
 				hasher.Reset()
 
-				for row := 0; row < len(selectedSubCol); row++ {
-					if row%7 == 0 {
-						// Overwrite with 4 zero bytes to prevent bls12377 overflow
-						zeroBytes := []byte{0, 0, 0, 0}
-						hasher.Write(zeroBytes)
-					}
-					x := selectedSubCol[row]
-					xBytes := x.Bytes()
-					hasher.Write(xBytes[:])
-				}
+				colBytes := EncodeKoalabearsToBytes(selectedSubCol)
+				hasher.Write(colBytes)
+
 				leaf = types.AsBytes32(hasher.Sum(nil))
 			}
 

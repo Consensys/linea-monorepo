@@ -353,16 +353,8 @@ func GnarkVerifyCommon(
 			hasher.Reset()
 			// TODO @thomas fixme
 			// TODO@yao: how to write 1 zero.element and then 7 field.Element to hasher? ...
-			var hashinput []frontend.Variable
-			// var value frontend.Variable
-			// for k := range selectedSubCol {
-			// 	if k%7 != 0 || k == 0 {
-			// 		tmp := apiGen.Mul(selectedSubCol[k], zk.ValueOf(math.Pow(256, float64(6-(k%7)))))
-			// 		value = apiGen.Add(value, tmp)
-			// 	}
-			// 	hashinput = append(hashinput, value)
-			// 	value = 0
-			// }
+
+			hashinput := EncodeWVsToFVs(api, selectedSubCol)
 			hasher.Write(hashinput...)
 			digest := hasher.Sum()
 			selectedColSisDigests[i][j] = digest
