@@ -1337,18 +1337,14 @@ describe("YieldManager contract - ETH transfer operations", () => {
       await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);
     });
 
-    it("Should revert if lstPrincipalAmount + LST withdraw amount + lastReportedNegativeYield > userFunds for yield provider", async () => {
+    it("Should revert if LST withdraw amount + lastReportedNegativeYield > userFunds for yield provider", async () => {
       const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
       const l1MessageService = await mockLineaRollup.getAddress();
       const fundAmount = ONE_ETHER * 10n;
       await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, fundAmount);
       // Arrange - Setup lstPrincipalAmount
-      const withdrawAmount = ONE_ETHER;
+      const withdrawAmount = fundAmount;
       const negativeYield = 1n;
-      await yieldManager.setYieldProviderLstLiabilityPrincipal(
-        mockYieldProviderAddress,
-        fundAmount - withdrawAmount - negativeYield + 1n,
-      );
       await yieldManager.setYieldProviderLastReportedNegativeYield(mockYieldProviderAddress, negativeYield);
       // Arrange - set gas funds for L1MessageService to be signer
       await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(withdrawAmount)]);
