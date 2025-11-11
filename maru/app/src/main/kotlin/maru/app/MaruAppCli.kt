@@ -56,17 +56,22 @@ enum class Network(
   descriptionHeading = "%nDescription:%n%n",
   optionListHeading = "%nOptions:%n",
   footerHeading = "%n",
+  mixinStandardHelpOptions = true,
 )
 class MaruAppCli(
-  private val dryRun: Boolean = false,
+  private val maruAppFactory: MaruAppFactoryCreator = MaruAppFactory(),
 ) : Callable<Int> {
   private val log = LogManager.getLogger(this.javaClass)
 
   @Option(
     names = ["--config"],
-    paramLabel = "CONFIG.toml,CONFIG.overrides.toml",
-    description = ["Configuration files"],
+    paramLabel = "CONFIG.toml",
+    description = [
+      "Comma-separated list of configuration files or in multiple options" +
+        " e.g. \"--config=CONFIG.toml --config=CONFIG.overrides.toml\"",
+    ],
     arity = "1..*",
+    split = ",",
     required = true,
   )
   val configFiles: List<File>? = null
@@ -116,33 +121,32 @@ class MaruAppCli(
       log.info("Using the genesis file of the named network \"${genesisOptions!!.network!!.networkNameInKebab}\"")
     }
 
-    if (!dryRun) {
-      val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
-      val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisOptions!!.genesisFile!!)
-      val app =
-        MaruAppFactory()
-          .create(
-            config = parsedAppConfig.domainFriendly(),
-            beaconGenesisConfig = parsedBeaconGenesisConfig.domainFriendly(),
-          )
-      app.start()
+    val parsedAppConfig = MaruConfigLoader.loadAppConfigs(configFiles)
+    val parsedBeaconGenesisConfig = MaruConfigLoader.loadGenesisConfig(genesisOptions!!.genesisFile!!)
 
-      Runtime
-        .getRuntime()
-        .addShutdownHook(
-          Thread {
-            app.stop()
-            if (LogManager.getContext() is LoggerContext) {
-              // Disable log4j auto shutdown hook is not used otherwise
-              // Messages in App.stop won't appear in the logs
-              Configurator.shutdown(LogManager.getContext() as LoggerContext)
-            }
-          },
-        )
-    }
+    val app =
+      maruAppFactory.create(
+        config = parsedAppConfig.domainFriendly(),
+        beaconGenesisConfig = parsedBeaconGenesisConfig.domainFriendly(),
+      )
+    app.start()
+
+    Runtime
+      .getRuntime()
+      .addShutdownHook(
+        Thread {
+          app.stop()
+          app.close()
+          if (LogManager.getContext() is LoggerContext) {
+            // Disable log4j auto shutdown hook is not used otherwise
+            // Messages in App.stop won't appear in the logs
+            Configurator.shutdown(LogManager.getContext() as LoggerContext)
+          }
+        },
+      )
 
     return 0
   }
 
-  private fun validateFileCanRead(file: File): Boolean = dryRun || file.canRead()
+  private fun validateFileCanRead(file: File): Boolean = file.canRead()
 }
