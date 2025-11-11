@@ -273,10 +273,40 @@ describe("YieldManager contract - ETH transfer operations", () => {
       );
     });
 
-    it("Should successfully report non-0 yield, update state and emit the expected event", async () => {
+    it("Should successfully report positive yield, update state and emit the expected event", async () => {
       // ARRANGE
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const reportedYield = ONE_ETHER;
+      const outstandingNegativeYield = 0n;
+
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setReportYieldReturnVal_NewReportedYield(mockYieldProviderAddress, reportedYield);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .setReportYieldReturnVal_OutstandingNegativeYield(mockYieldProviderAddress, outstandingNegativeYield);
+
+      // ACT + ASSERT
+      await expect(
+        yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
+      )
+        .to.emit(yieldManager, "NativeYieldReported")
+        .withArgs(mockYieldProviderAddress, l2YieldRecipient.address, reportedYield, outstandingNegativeYield);
+
+      const providerData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
+      expect(providerData.userFunds).to.equal(reportedYield);
+      expect(providerData.yieldReportedCumulative).to.equal(reportedYield);
+      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(reportedYield);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(reportedYield);
+      expect(await yieldManager.getYieldProviderLastReportedNegativeYield(mockYieldProviderAddress)).to.equal(
+        outstandingNegativeYield,
+      );
+    });
+
+    it("Should successfully report negative yield, update state and emit the expected event", async () => {
+      // ARRANGE
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const reportedYield = 0n;
       const outstandingNegativeYield = ONE_ETHER * 2n;
 
       await yieldManager
@@ -298,6 +328,9 @@ describe("YieldManager contract - ETH transfer operations", () => {
       expect(providerData.yieldReportedCumulative).to.equal(reportedYield);
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(reportedYield);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(reportedYield);
+      expect(await yieldManager.getYieldProviderLastReportedNegativeYield(mockYieldProviderAddress)).to.equal(
+        outstandingNegativeYield,
+      );
     });
   });
 
@@ -1294,6 +1327,33 @@ describe("YieldManager contract - ETH transfer operations", () => {
       await mockLineaRollup.setWithdrawLSTAllowed(true);
 
       // Arrange Setup
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(l1Signer).withdrawLST(mockYieldProviderAddress, withdrawAmount, ethers.ZeroAddress),
+        "LSTWithdrawalExceedsYieldProviderFunds",
+      );
+
+      await ethers.provider.send("hardhat_stopImpersonatingAccount", [l1MessageService]);
+    });
+
+    it("Should revert if lstPrincipalAmount + LST withdraw amount + lastReportedNegativeYield > userFunds for yield provider", async () => {
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      const l1MessageService = await mockLineaRollup.getAddress();
+      const fundAmount = ONE_ETHER * 10n;
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, fundAmount);
+      // Arrange - Setup lstPrincipalAmount
+      const withdrawAmount = ONE_ETHER;
+      const negativeYield = 1n;
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(
+        mockYieldProviderAddress,
+        fundAmount - withdrawAmount - negativeYield + 1n,
+      );
+      await yieldManager.setYieldProviderLastReportedNegativeYield(mockYieldProviderAddress, negativeYield);
+      // Arrange - set gas funds for L1MessageService to be signer
+      await ethers.provider.send("hardhat_setBalance", [l1MessageService, ethers.toBeHex(withdrawAmount)]);
+      const l1Signer = await ethers.getImpersonatedSigner(l1MessageService);
+      await mockLineaRollup.setWithdrawLSTAllowed(true);
 
       await expectRevertWithCustomError(
         yieldManager,

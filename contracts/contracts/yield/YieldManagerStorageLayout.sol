@@ -57,6 +57,7 @@ abstract contract YieldManagerStorageLayout {
    * @param yieldReportedCumulative Cumulative positive yield (denominated in ETH) reported back to the YieldManager.
    *                                - Increases 1:1 with userFunds, as reported yield is distributed to users.
    * @param lstLiabilityPrincipal LST Liability Principal (denominated in ETH) as of the last yield report
+   * @param lastReportedNegativeYield Negative yield as of the last yield report.
    */
   struct YieldProviderStorage {
     // Slot 0
@@ -71,6 +72,7 @@ abstract contract YieldManagerStorageLayout {
     uint256 userFunds;
     uint256 yieldReportedCumulative;
     uint256 lstLiabilityPrincipal;
+    uint256 lastReportedNegativeYield;
   }
 
   /// @dev keccak256(abi.encode(uint256(keccak256("linea.storage.YieldManagerStorage")) - 1)) & ~bytes32(uint256(0xff))

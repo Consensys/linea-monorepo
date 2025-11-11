@@ -300,7 +300,8 @@ contract YieldManager is
       yieldProviderIndex: $$.yieldProviderIndex,
       userFunds: $$.userFunds,
       yieldReportedCumulative: $$.yieldReportedCumulative,
-      lstLiabilityPrincipal: $$.lstLiabilityPrincipal
+      lstLiabilityPrincipal: $$.lstLiabilityPrincipal,
+      lastReportedNegativeYield: $$.lastReportedNegativeYield
     });
   }
 
@@ -495,6 +496,7 @@ contract YieldManager is
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     $$.userFunds += newReportedYield;
     $$.yieldReportedCumulative += newReportedYield;
+    $$.lastReportedNegativeYield = outstandingNegativeYield;
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     $.userFundsInYieldProvidersTotal += newReportedYield;
     ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).reportNativeYield(newReportedYield, _l2YieldRecipient);
@@ -852,7 +854,7 @@ contract YieldManager is
       revert LSTWithdrawalNotAllowed();
     }
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if (_amount > $$.userFunds) {
+    if (_amount + $$.lastReportedNegativeYield > $$.userFunds) {
       revert LSTWithdrawalExceedsYieldProviderFunds();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
@@ -961,7 +963,8 @@ contract YieldManager is
       yieldProviderIndex: yieldProviderIndex,
       userFunds: 0,
       yieldReportedCumulative: 0,
-      lstLiabilityPrincipal: 0
+      lstLiabilityPrincipal: 0,
+      lastReportedNegativeYield: 0
     });
     emit YieldProviderAdded(
       _yieldProvider,
