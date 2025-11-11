@@ -39,7 +39,7 @@ func AllocateCircuitVariablesWithMerkleTree(
 	entryList []int,
 	roots []types.Bytes32) {
 
-	verifyCircuit.Proof.LinearCombination = make([]zk.WrappedVariable, proof.LinearCombination.Len())
+	verifyCircuit.Proof.LinearCombination = make([]gnarkfext.E4Gen, proof.LinearCombination.Len())
 
 	verifyCircuit.Proof.Columns = make([][][]zk.WrappedVariable, len(proof.Columns))
 	for i := 0; i < len(proof.Columns); i++ {
@@ -79,13 +79,13 @@ func AssignCicuitVariablesWithMerkleTree(
 	frLinComb := make([]fext.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSliceExt(frLinComb)
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		verifyCircuit.Proof.LinearCombination[i] = zk.ValueOf(frLinComb[i]) //write ext to zk.value
+		verifyCircuit.Proof.LinearCombination[i] = gnarkfext.NewE4Gen(frLinComb[i]) //write ext to zk.value
 	}
 
 	for i := 0; i < len(proof.Columns); i++ {
 		for j := 0; j < len(proof.Columns[i]); j++ {
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
-				verifyCircuit.Proof.Columns[i][j][k] = zk.ValueOf(proof.Columns[i][j][k])
+				verifyCircuit.Proof.Columns[i][j][k] = zk.ValueOf(proof.Columns[i][j][k].String())
 			}
 		}
 	}
@@ -171,9 +171,6 @@ func GnarkVerifyOpeningWithMerkleProof(
 
 			// Hash the SIS hash
 			var leaf = selectedColsHashes[i][j]
-
-			// TODO@yao: check if GnarkVerifyCommon compute the leaf, that is written by 7 field.Element to one frontend.Variable?
-			// maybe add a new variable type for bigfield leaf? check leaf = sum (7 field.Element ) relationship
 
 			// Check the Merkle-proof for the obtained leaf
 			smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)

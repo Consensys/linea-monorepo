@@ -2,6 +2,7 @@ package vortex
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"math/bits"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -122,6 +124,52 @@ func FFTInverse(api frontend.API, p []zk.WrappedVariable, genInv field.Element, 
 	return res, nil
 }
 
+// computes fft^-1(p) where the fft is done on <generator>, a set of size cardinality.
+// It is assumed that p is correctly sized.
+func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, cardinality uint64) ([]gnarkfext.E4Gen, error) {
+
+	var cardInverse field.Element
+	cardInverse.SetUint64(cardinality).Inverse(&cardInverse)
+
+	_, err := gnarkfext.NewExt4(api)
+	// if err != nil {
+	// 	return []gnarkfext.E4Gen{}, err
+	// }
+
+	// res of the fft inverse
+	// res, err := apiGen.NewHint(fftInverseHint(apiGen.Type()), len(p), p...)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// probabilistically check the result of the FFT
+	// multicommit.WithCommitment(
+	// 	api,
+	// 	func(api frontend.API, x zk.WrappedVariable) error {
+	// 		// evaluation canonical
+	// 		ec := gnarkEvalCanonical(api, res, x)
+
+	// 		// evaluation Lagrange
+	// 		var gen field.Element
+	// 		gen.Inverse(&genInv)
+	// 		lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
+	// 		var el zk.WrappedVariable
+	// 		el = 0
+	// 		for i := 0; i < len(p); i++ {
+	// 			tmp := api.Mul(p[i], lagranges[i])
+	// 			el = api.Add(el, tmp)
+	// 		}
+
+	// 		api.AssertIsEqual(ec, el)
+	// 		return nil
+	// 	},
+	// 	p...,
+	// )
+
+	// return res, nil
+
+	return []gnarkfext.E4Gen{}, err
+}
+
 // gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
 func gnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4Gen) gnarkfext.E4Gen {
 
@@ -166,6 +214,23 @@ func gnarkEvaluateLagrange(api frontend.API, p []zk.WrappedVariable, z gnarkfext
 
 	for i := uint64(0); i < cardinality; i++ {
 		tmp := ext4.MulByFp(&lagranges[i], p[i])
+		res = *ext4.Add(&res, tmp)
+	}
+
+	return res
+}
+
+func gnarkEvaluateLagrangeExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) gnarkfext.E4Gen {
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+	res := *ext4.Zero()
+	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
+
+	for i := uint64(0); i < cardinality; i++ {
+		tmp := ext4.Mul(&lagranges[i], &p[i])
 		res = *ext4.Add(&res, tmp)
 	}
 
@@ -252,6 +317,32 @@ func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear
 	return nil
 }
 
+func assertIsCodeWordExt(api frontend.API, p []gnarkfext.E4Gen, genInv koalabear.Element, cardinality, rate uint64) error {
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
+	if uint64(len(p)) != cardinality {
+		return ErrPNotOfSizeCardinality
+	}
+
+	// get the canonical form of p
+	pCanonical, err := FFTInverseExt(api, p, genInv, cardinality)
+	if err != nil {
+		return err
+	}
+
+	// check that is of degree < cardinality/rate
+	degree := (cardinality - (cardinality % rate)) / rate
+	for i := degree; i < cardinality; i++ {
+		zeroValue := gnarkfext.NewE4Gen(fext.Zero())
+		ext4.AssertIsEqual(&pCanonical[i], &zeroValue)
+	}
+
+	return nil
+}
+
 // Opening proof without Merkle proofs
 type GProofWoMerkle struct {
 
@@ -269,7 +360,7 @@ type GProofWoMerkle struct {
 	Rate uint64
 
 	// Linear combination of the rows of the polynomial P written as a square matrix
-	LinearCombination []zk.WrappedVariable
+	LinearCombination []gnarkfext.E4Gen
 }
 
 // Opening proof with Merkle proofs
@@ -299,14 +390,14 @@ func GnarkVerifyCommon(
 	entryList []frontend.Variable,
 ) ([][]frontend.Variable, error) {
 
-	// apiGen, err := zk.NewGenericApi(api)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 
 	// check the linear combination is a codeword
 	api.Compiler().Defer(func(api frontend.API) error {
-		return assertIsCodeWord(
+		return assertIsCodeWordExt(
 			api,
 			proof.LinearCombination,
 			proof.RsDomain.GeneratorInv,
@@ -317,22 +408,26 @@ func GnarkVerifyCommon(
 
 	// Check the consistency of Ys and proof.Linearcombination
 	yjoined := utils.Join(ys...)
-	alphaY := gnarkEvaluateLagrange(
+	alphaY := gnarkEvaluateLagrangeExt(
 		api,
 		proof.LinearCombination,
 		x,
 		proof.RsDomain.Generator,
 		proof.RsDomain.Cardinality)
 	alphaYPrime := gnarkEvalCanonicalExt(api, yjoined, randomCoin)
-	api.AssertIsEqual(alphaY, alphaYPrime)
+	ext4.AssertIsEqual(&alphaY, &alphaYPrime)
 
 	// Size of the hash of 1 column
 	numRounds := len(ys)
-
 	selectedColSisDigests := make([][]frontend.Variable, numRounds)
 	tbl := logderivlookup.New(api)
+
 	for i := range proof.LinearCombination {
+		fmt.Printf("ok12\n") // --- IGNORE ---
+
 		tbl.Insert(proof.LinearCombination[i])
+		fmt.Printf("ok13\n") // --- IGNORE ---
+
 	}
 	for j, selectedColID := range entryList {
 
@@ -356,19 +451,17 @@ func GnarkVerifyCommon(
 
 			hasher, _ := params.NoSisHasher(api)
 			hasher.Reset()
-			// TODO @thomas fixme
-			// TODO@yao: how to write 1 zero.element and then 7 field.Element to hasher? ...
-
 			hashinput := EncodeWVsToFVs(api, selectedSubCol)
 			hasher.Write(hashinput...)
 			digest := hasher.Sum()
 			selectedColSisDigests[i][j] = digest
 		}
+		fmt.Printf("ok2\n") // --- IGNORE ---
 
 		// Check the linear combination is consistent with the opened column
 		y := gnarkEvalCanonical(api, fullCol, randomCoin)
 		v := tbl.Lookup(selectedColID)[0]
-		api.AssertIsEqual(y, v)
+		ext4.AssertIsEqual(&y, &v)
 
 	}
 	return selectedColSisDigests, nil

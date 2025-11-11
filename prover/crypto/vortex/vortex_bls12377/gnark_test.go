@@ -3,7 +3,6 @@
 package vortex
 
 import (
-	"fmt"
 	"math/rand/v2"
 	"testing"
 
@@ -62,8 +61,6 @@ func TestEncodeCircuit(t *testing.T) {
 
 	hasher := smt_bls12377.Poseidon2()
 	hasher.Write(expectedResult.Bytes())
-
-	fmt.Printf("hasher.Sum(nil)=%v\n", hasher.Sum(nil))
 
 	// Create test instance
 	var circuit EncodeTestCircuit
@@ -131,8 +128,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 
 	s := 16
 	d := fft.NewDomain(uint64(s))
-	var zeta fext.Element
-	zeta = fext.PseudoRand(rng)
+	zeta := fext.PseudoRand(rng)
 
 	// prepare witness
 	var witness ComputeLagrangeCircuit
@@ -487,7 +483,7 @@ func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 
 	// compile the circuit
 	var circuit VerifyOpeningCircuitMerkleTree
-	circuit.Proof.LinearCombination = make([]zk.WrappedVariable, rsSize)
+	circuit.Proof.LinearCombination = make([]gnarkfext.E4Gen, rsSize)
 	circuit.Proof.Rate = uint64(blowUpFactor)
 	circuit.Proof.RsDomain = rsDomain
 	circuit.Params.HasherFunc = makePoseidon2Hasherfunc

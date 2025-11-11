@@ -74,7 +74,7 @@ func EncodeKoalabearsToBytes(elements []field.Element) []byte {
 			elements = elements[8:]
 		}
 		bytes := Encode8KoalabearToBigInt(buf).Bytes()
-		copy(bufBytes[32-len(bytes):], bytes)
+		copy(bufBytes[32-len(bytes):], bytes) // left pad with zeroes to 32 bytes
 		res = append(res, bufBytes[:]...)
 	}
 	return res
