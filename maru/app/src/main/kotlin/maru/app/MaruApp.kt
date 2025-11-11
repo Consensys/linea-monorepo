@@ -23,7 +23,7 @@ import maru.consensus.qbft.DifficultyAwareQbftFactory
 import maru.consensus.state.FinalizationProvider
 import maru.core.Protocol
 import maru.core.Validator
-import maru.crypto.Crypto
+import maru.crypto.SecpCrypto
 import maru.database.BeaconChain
 import maru.extensions.encodeHex
 import maru.finalization.LineaFinalizationProvider
@@ -65,13 +65,13 @@ class MaruApp(
 ) : LongRunningCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
-  private fun getPrivateKeyWithoutPrefix() = Crypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
+  private fun getPrivateKeyWithoutPrefix() = SecpCrypto.privateKeyBytesWithoutPrefix(privateKeyProvider())
 
   init {
     if (config.qbft == null) {
       log.info("Qbft options are not defined. nodeRole=follower")
     } else {
-      val localValidator = Crypto.privateKeyToValidator(getPrivateKeyWithoutPrefix())
+      val localValidator = SecpCrypto.privateKeyToValidator(getPrivateKeyWithoutPrefix())
       log.info("Qbft options are defined. nodeRole=validator with address={}", localValidator.address.encodeHex())
       // TODO: This may be not needed when we use dynamic validator set from a smart contract
       warnIfValidatorIsNotInTheGenesis(localValidator)

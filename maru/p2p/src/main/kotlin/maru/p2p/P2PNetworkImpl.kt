@@ -20,7 +20,7 @@ import kotlin.jvm.optionals.getOrNull
 import maru.config.P2PConfig
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
-import maru.crypto.Crypto.privateKeyBytesWithoutPrefix
+import maru.crypto.SecpCrypto.privateKeyBytesWithoutPrefix
 import maru.database.BeaconChain
 import maru.database.P2PState
 import maru.metrics.MaruMetricsCategory
