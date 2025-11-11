@@ -75,6 +75,40 @@ contract YieldManager is
     return _getYieldManagerStorage().targetWithdrawalReserveAmount;
   }
 
+  /// @dev Reverts if caller is not the L1MessageService.
+  modifier onlyL1MessageService() {
+    if (msg.sender != L1_MESSAGE_SERVICE) revert SenderNotL1MessageService();
+    _;
+  }
+
+  /// @dev Reverts if the withdrawal reserve is in deficit.
+  modifier onlyWhenWithdrawalReserveHealthy() {
+    if (isWithdrawalReserveBelowMinimum()) revert InsufficientWithdrawalReserve();
+    _;
+  }
+
+  /// @dev Reverts if the withdrawal reserve is not in deficit.
+  modifier onlyWhenWithdrawalReserveInDeficit() {
+    if (!isWithdrawalReserveBelowMinimum()) revert WithdrawalReserveNotInDeficit();
+    _;
+  }
+
+  /// @dev Reverts if the YieldProvider address is not known.
+  modifier onlyKnownYieldProvider(address _yieldProvider) {
+    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex == 0) {
+      revert UnknownYieldProvider();
+    }
+    _;
+  }
+
+  /// @dev Reverts if the L2YieldRecipient address is not known.
+  modifier onlyKnownL2YieldRecipient(address _l2YieldRecipient) {
+    if (!_getYieldManagerStorage().isL2YieldRecipientKnown[_l2YieldRecipient]) {
+      revert UnknownL2YieldRecipient();
+    }
+    _;
+  }
+
   constructor(address _l1MessageService) {
     ErrorUtils.revertIfZeroAddress(_l1MessageService);
     L1_MESSAGE_SERVICE = _l1MessageService;
@@ -89,8 +123,8 @@ contract YieldManager is
    * @param _initializationData Struct bundling pause/unpause roles, permissions, reserve targets, and default recipients.
    */
   function initialize(YieldManagerInitializationData calldata _initializationData) external initializer {
+    ErrorUtils.revertIfZeroAddress(_initializationData.defaultAdmin);
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
-    if (_initializationData.defaultAdmin == address(0)) revert ZeroAddressNotAllowed();
     _grantRole(DEFAULT_ADMIN_ROLE, _initializationData.defaultAdmin);
     __Permissions_init(_initializationData.roleAddresses);
 
@@ -113,20 +147,6 @@ contract YieldManager is
     $.yieldProviders.push(address(0));
 
     emit YieldManagerInitialized(_initializationData.initialL2YieldRecipients);
-  }
-
-  modifier onlyKnownYieldProvider(address _yieldProvider) {
-    if (_getYieldProviderStorage(_yieldProvider).yieldProviderIndex == 0) {
-      revert UnknownYieldProvider();
-    }
-    _;
-  }
-
-  modifier onlyKnownL2YieldRecipient(address _l2YieldRecipient) {
-    if (!_getYieldManagerStorage().isL2YieldRecipientKnown[_l2YieldRecipient]) {
-      revert UnknownL2YieldRecipient();
-    }
-    _;
   }
 
   /**
@@ -418,13 +438,7 @@ contract YieldManager is
    *    This does not violate the safety property of user principal protection, as the user has forfeited their principal.
    * @dev Reverts if, after transfer, the withdrawal reserve will be below the minimum threshold.
    */
-  function receiveFundsFromReserve() external payable {
-    if (msg.sender != L1_MESSAGE_SERVICE) {
-      revert SenderNotL1MessageService();
-    }
-    if (isWithdrawalReserveBelowMinimum()) {
-      revert InsufficientWithdrawalReserve();
-    }
+  function receiveFundsFromReserve() external payable onlyL1MessageService onlyWhenWithdrawalReserveHealthy {
     emit ReserveFundsReceived(msg.value);
   }
 
@@ -455,10 +469,8 @@ contract YieldManager is
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_STAKING)
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_STAKING_ROLE)
+    onlyWhenWithdrawalReserveHealthy
   {
-    if (isWithdrawalReserveBelowMinimum()) {
-      revert InsufficientWithdrawalReserve();
-    }
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount))
@@ -555,11 +567,9 @@ contract YieldManager is
     payable
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
+    onlyWhenWithdrawalReserveInDeficit
     returns (uint256 maxUnstakeAmount)
   {
-    if (!isWithdrawalReserveBelowMinimum()) {
-      revert WithdrawalReserveNotInDeficit();
-    }
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.unstakePermissionless, (_yieldProvider, _withdrawalParams, _withdrawalParamsProof))
@@ -763,10 +773,8 @@ contract YieldManager is
     external
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
+    onlyWhenWithdrawalReserveInDeficit
   {
-    if (!isWithdrawalReserveBelowMinimum()) {
-      revert WithdrawalReserveNotInDeficit();
-    }
     uint256 targetDeficit = getTargetReserveDeficit();
 
     // First see if we can fully settle from YieldManager
@@ -843,14 +851,11 @@ contract YieldManager is
    */
   function unpauseStaking(
     address _yieldProvider
-  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(STAKING_PAUSE_CONTROLLER_ROLE) {
+  ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(STAKING_PAUSE_CONTROLLER_ROLE) onlyWhenWithdrawalReserveHealthy {
     // Other checks for unstaking
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
     if (!$$.isStakingPaused) {
       revert StakingAlreadyUnpaused();
-    }
-    if (isWithdrawalReserveBelowMinimum()) {
-      revert InsufficientWithdrawalReserve();
     }
     if ($$.lstLiabilityPrincipal > 0) {
       revert UnpauseStakingForbiddenWithCurrentLSTLiability();
@@ -887,10 +892,8 @@ contract YieldManager is
     external
     whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_PERMISSIONLESS_ACTIONS)
     onlyKnownYieldProvider(_yieldProvider)
+    onlyL1MessageService
   {
-    if (msg.sender != L1_MESSAGE_SERVICE) {
-      revert SenderNotL1MessageService();
-    }
     if (!ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
     }
