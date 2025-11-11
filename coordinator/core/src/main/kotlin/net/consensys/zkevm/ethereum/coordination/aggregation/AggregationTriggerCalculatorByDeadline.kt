@@ -36,8 +36,19 @@ class AggregationTriggerCalculatorByDeadline(
   private var aggregationTriggerHandler = AggregationTriggerHandler.NOOP_HANDLER
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  private fun checkDeadlineTriggerCriteria(inFlightAggregation: InFlightAggregation): SafeFuture<Boolean> {
-    val deadlineReached = clock.now() > inFlightAggregation.aggregationStartTimeStamp.plus(config.aggregationDeadline)
+  private fun checkDeadlineTriggerCriteria(inFlightAggregation: InFlightAggregation?): SafeFuture<Boolean> {
+    val now = clock.now()
+    log.trace(
+      "checking deadline: inflightAggregation={} timeElapsed={} deadline={}",
+      inFlightAggregation,
+      inFlightAggregation?.aggregationStartTimeStamp?.let { now.minus(it) } ?: 0.seconds,
+      config.aggregationDeadline,
+    )
+    if (inFlightAggregation == null) {
+      return SafeFuture.completedFuture(false)
+    }
+
+    val deadlineReached = now > inFlightAggregation.aggregationStartTimeStamp.plus(config.aggregationDeadline)
 
     if (!deadlineReached) {
       return SafeFuture.completedFuture(false)
@@ -72,18 +83,7 @@ class AggregationTriggerCalculatorByDeadline(
 
   @Synchronized
   fun checkAggregation(): SafeFuture<Unit> {
-    val now = clock.now()
-    log.trace(
-      "Checking deadline: inflightAggregation={} timeElapsed={} deadline={}",
-      inFlightAggregation,
-      inFlightAggregation?.aggregationStartTimeStamp?.let { now.minus(it) } ?: 0.seconds,
-      config.aggregationDeadline,
-    )
-    if (inFlightAggregation == null) {
-      return SafeFuture.completedFuture(Unit)
-    }
-
-    return checkDeadlineTriggerCriteria(inFlightAggregation!!)
+    return checkDeadlineTriggerCriteria(inFlightAggregation)
       .thenApply { deadlineTigger ->
         // inFlightAggregation can be nulled while we were waiting for the latest safe block
         // trigger blob/proof limiting if criteria met
