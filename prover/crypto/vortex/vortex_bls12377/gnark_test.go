@@ -3,7 +3,6 @@
 package vortex
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -30,7 +29,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-// Interpolation Circuit for Testing
+// ------------------------------------------------------------
+// test EncodeWVsToFV and Encode8KoalabearToBigInt
 type EncodeTestCircuit struct {
 	Values [8]zk.WrappedVariable
 	Result frontend.Variable
@@ -39,15 +39,11 @@ type EncodeTestCircuit struct {
 func (c *EncodeTestCircuit) Define(api frontend.API) error {
 	// Create constraints for encoding
 	result := EncodeWVsToFV(api, c.Values)
-	// Enforce the result variable matches the packed value
-	api.Println("eresult", result)
-	api.Println("cresult", c.Result)
-
 	api.AssertIsEqual(result, c.Result)
 	return nil
 }
 
-func TestEncode8To256Bit(t *testing.T) {
+func TestEncode(t *testing.T) {
 	var intValues [8]field.Element
 	var values [8]zk.WrappedVariable
 
@@ -301,12 +297,10 @@ type EvaluateLagrangeCircuit struct {
 func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
 	res := gnarkEvaluateLagrange(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
-
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		return err
 	}
-
 	ext4.AssertIsEqual(&res, &circuit.Y)
 
 	return nil
@@ -327,9 +321,6 @@ func getEvaluateLagrangeCircuitWitness(size int) (*EvaluateLagrangeCircuit, *Eva
 		y.Mul(&y, &x)
 		fext.AddByBase(&y, &y, &pCan[size-1-i])
 	}
-
-	fmt.Printf("EvaluateLagrange at x=%s gives y=%s\n", x.String(), y.String())
-	fmt.Printf("p=%v\n", pCan)
 
 	d.FFT(pCan, fft.DIF)
 	fft.BitReverse(pCan)
@@ -358,26 +349,23 @@ func TestEvaluateLagrangeCircuit(t *testing.T) {
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
 
-		fmt.Printf("circuit=%v\n", circuit.P)
-
 		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
 		assert.NoError(t, err)
 		err = ccs.IsSolved(fullWitness)
 		assert.NoError(t, err)
 	}
 
-	// {
-	// 	circuit, witness := getEvaluateLagrangeCircuitWitness(size)
+	{
+		circuit, witness := getEvaluateLagrangeCircuitWitness(size)
 
-	// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
-	// 	assert.NoError(t, err)
-	// 	fmt.Printf("circuit=%v\n", circuit.P)
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
 
-	// 	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 
 }
 

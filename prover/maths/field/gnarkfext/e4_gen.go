@@ -130,12 +130,6 @@ func (ext4 *Ext4) Sub(e1, e2 *E4Gen) *E4Gen {
 		B1: *ext4.Ext2.Sub(&e1.B1, &e2.B1),
 	}
 }
-func (ext4 *Ext4) SubByBase(e1 *E4Gen, e2 zk.WrappedVariable) *E4Gen {
-	return &E4Gen{
-		B0: *ext4.Ext2.SubByBase(&e1.B0, e2),
-		B1: *ext4.Ext2.SubByBase(&e1.B1, e2),
-	}
-}
 
 // Mul e2 elmts, e = e1*e2
 func (ext4 *Ext4) Mul(e1, e2 *E4Gen, in ...*E4Gen) *E4Gen {
@@ -301,4 +295,15 @@ func (ext4 *Ext4) Exp(x *E4Gen, n *big.Int) *E4Gen {
 	}
 
 	return res
+}
+
+// TODO@yao: remove it after debugging and recover NativeApi --> nativeApi
+func (ext4 *Ext4) Println(a ...E4Gen) {
+	if ext4.apiGen.Type() == zk.Native {
+		for i := 0; i < len(a); i++ {
+			ext4.apiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.AsNative(), a[i].B0.A1.AsNative(), a[i].B1.A0.AsNative(), a[i].B1.A1.AsNative())
+		}
+	} else {
+		panic("not implemented for emulated")
+	}
 }

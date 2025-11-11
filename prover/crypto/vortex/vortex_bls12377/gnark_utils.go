@@ -161,9 +161,9 @@ func gnarkEvaluateLagrange(api frontend.API, p []zk.WrappedVariable, z gnarkfext
 	if err != nil {
 		panic(err)
 	}
-
 	res := *ext4.Zero()
 	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
+
 	for i := uint64(0); i < cardinality; i++ {
 		tmp := ext4.MulByFp(&lagranges[i], p[i])
 		res = *ext4.Add(&res, tmp)
@@ -191,6 +191,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 	for i := 0; i < tb; i++ {
 		res[0] = *ext4.Mul(&res[0], &res[0])
 	}
+
 	wOne := ext4.One()
 	res[0] = *ext4.Sub(&res[0], wOne)
 
@@ -207,16 +208,16 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
 	var accOmega field.Element
 	accOmega.SetOne()
-
 	wGen := zk.ValueOf(gen)
 	var wAccOmega zk.WrappedVariable
 	for i := uint64(1); i < cardinality; i++ {
 		res[i] = *ext4.MulByFp(&res[i-1], wGen)          // res[i] <- ω * res[i-1]
 		res[i] = *ext4.Mul(&res[i], &accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
 		accOmega.Mul(&accOmega, &gen)                    // accOmega <- accOmega * ω
-		wAccOmega = zk.ValueOf(accOmega)
-		accZetaMinusOmegai = *ext4.SubByBase(&z, wAccOmega) // accZetaMinusOmegai <- ζ-ωⁱ
-		res[i] = *ext4.Div(&res[i], &accZetaMinusOmegai)    // res[i]  <- res[i]/(ζ-ωⁱ)
+		wAccOmega = zk.ValueOf(accOmega.String())
+		wAccOmegaExt := gnarkfext.FromBase(wAccOmega)
+		accZetaMinusOmegai = *ext4.Sub(&z, &wAccOmegaExt) // accZetaMinusOmegai <- ζ-ωⁱ
+		res[i] = *ext4.Div(&res[i], &accZetaMinusOmegai)  // res[i]  <- res[i]/(ζ-ωⁱ)
 	}
 
 	return res
