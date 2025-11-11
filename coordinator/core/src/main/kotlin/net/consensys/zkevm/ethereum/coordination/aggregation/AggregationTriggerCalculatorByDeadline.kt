@@ -83,11 +83,12 @@ class AggregationTriggerCalculatorByDeadline(
 
   @Synchronized
   fun checkAggregation(): SafeFuture<Unit> {
-    return checkDeadlineTriggerCriteria(inFlightAggregation)
+    val inFlightAggregationBeforeCheck = this.inFlightAggregation
+    return checkDeadlineTriggerCriteria(inFlightAggregationBeforeCheck)
       .thenApply { deadlineTigger ->
-        // inFlightAggregation can be nulled while we were waiting for the latest safe block
+        // inFlightAggregation can be updated while we were waiting for the latest safe block
         // trigger blob/proof limiting if criteria met
-        if (deadlineTigger && inFlightAggregation != null) {
+        if (deadlineTigger && this.inFlightAggregation == inFlightAggregationBeforeCheck) {
           log.info("aggregation deadline reached at block={}", inFlightAggregation!!.blobsToAggregate.endBlockNumber)
           aggregationTriggerHandler.onAggregationTrigger(
             AggregationTrigger(
