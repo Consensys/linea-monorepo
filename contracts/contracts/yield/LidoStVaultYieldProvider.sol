@@ -219,9 +219,14 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
     if ($$.isOssified) return 0;
     IDashboard dashboard = IDashboard($$.primaryEntrypoint);
     address vault = $$.ossifiedEntrypoint;
+    // Reuse maths from Lido - https://github.com/lidofinance/core/blob/c2861200a41f56897acbad5563578881db11dfa9/contracts/0.8.25/vaults/VaultHub.sol#L951-L957
+    uint256 availableBalance = Math256.min(
+      IStakingVault(vault).availableBalance(),
+      dashboard.totalValue()
+    );
     uint256 rebalanceShares = Math256.min(
       dashboard.liabilityShares(),
-      STETH.getSharesByPooledEth(IStakingVault(vault).availableBalance())
+      STETH.getSharesByPooledEth(availableBalance)
     );
     if (rebalanceShares > 0) {
       // Cheaper lookup for before-after compare than availableBalance()
