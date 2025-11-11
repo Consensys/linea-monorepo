@@ -761,6 +761,95 @@ describe("YieldManager contract - ETH transfer operations", () => {
     });
   });
 
+  describe("safe withdraw from yield provider", () => {
+    it("Should revert when the GENERAL pause type is activated", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).safeWithdrawFromYieldProvider(mockYieldProviderAddress, 1n),
+        "IsPaused",
+        [GENERAL_PAUSE_TYPE],
+      );
+    });
+
+    it("Should revert when the NATIVE_YIELD_UNSTAKING pause type is activated", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+
+      await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).safeWithdrawFromYieldProvider(mockYieldProviderAddress, 1n),
+        "IsPaused",
+        [NATIVE_YIELD_UNSTAKING_PAUSE_TYPE],
+      );
+    });
+
+    it("Should revert when unstaking from an unknown YieldProvider", async () => {
+      const unknownYieldProvider = ethers.Wallet.createRandom().address;
+
+      await expectRevertWithCustomError(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).safeWithdrawFromYieldProvider(unknownYieldProvider, 1n),
+        "UnknownYieldProvider",
+      );
+    });
+
+    it("Should revert when the caller does not have YIELD_PROVIDER_UNSTAKER_ROLE role", async () => {
+      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
+      const unstakerRole = await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE();
+
+      await expect(
+        yieldManager.connect(nonAuthorizedAccount).safeWithdrawFromYieldProvider(mockYieldProviderAddress, 1n),
+      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, unstakerRole));
+    });
+
+    it("If _amount < withdrawableValue, should withdraw _amount", async () => {
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      const withdrawableAmount = ONE_ETHER * 2n;
+      const requestedAmount = ONE_ETHER;
+
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, withdrawableAmount);
+      await setWithdrawalReserveToTarget(yieldManager);
+      expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
+
+      await expect(
+        yieldManager
+          .connect(nativeYieldOperator)
+          .safeWithdrawFromYieldProvider(mockYieldProviderAddress, requestedAmount),
+      )
+        .to.emit(yieldManager, "YieldProviderWithdrawal")
+        .withArgs(mockYieldProviderAddress, requestedAmount, requestedAmount, 0n, 0n);
+
+      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(withdrawableAmount - requestedAmount);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(withdrawableAmount - requestedAmount);
+    });
+
+    it("If withdrawableValue < _amount , should withdraw withdrawableValue", async () => {
+      const { mockYieldProviderAddress, mockYieldProvider } = await addMockYieldProvider(yieldManager);
+      const withdrawableAmount = ONE_ETHER;
+      const requestedAmount = withdrawableAmount * 2n;
+
+      await fundYieldProviderForWithdrawal(yieldManager, mockYieldProvider, nativeYieldOperator, withdrawableAmount);
+      await setWithdrawalReserveToTarget(yieldManager);
+      expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
+
+      await expect(
+        yieldManager
+          .connect(nativeYieldOperator)
+          .safeWithdrawFromYieldProvider(mockYieldProviderAddress, requestedAmount),
+      )
+        .to.emit(yieldManager, "YieldProviderWithdrawal")
+        .withArgs(mockYieldProviderAddress, withdrawableAmount, withdrawableAmount, 0n, 0n);
+
+      expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(0n);
+      expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
+    });
+  });
+
   describe("adding to withdrawal reserve", () => {
     it("Should revert when the GENERAL pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);

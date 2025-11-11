@@ -600,6 +600,47 @@ contract YieldManager is
     onlyKnownYieldProvider(_yieldProvider)
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
+    _withdrawFromYieldProvider(_yieldProvider, _amount);
+  }
+
+  /**
+   * @notice Safely withdraws ETH from a YieldProvider, capped by the available withdrawable amount.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
+   * @dev This function behaves like {withdrawFromYieldProvider}, but ensures the requested `_amount`
+   *      does not exceed the provider’s currently withdrawable value, preventing reverts due to
+   *      over-withdrawal.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount The desired amount to withdraw (subject to capping by the withdrawable value).
+   */
+  function safeWithdrawFromYieldProvider(
+    address _yieldProvider,
+    uint256 _amount
+  )
+    external
+    whenTypeAndGeneralNotPaused(PauseType.NATIVE_YIELD_UNSTAKING)
+    onlyKnownYieldProvider(_yieldProvider)
+    onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
+  {
+    _withdrawFromYieldProvider(_yieldProvider, Math256.min(withdrawableValue(_yieldProvider), _amount));
+  }
+
+  /**
+   * @notice Withdraw ETH from a YieldProvider.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
+   * @dev This function proactively allocates withdrawn funds in the following priority:
+   *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
+   *      to restore the deficit.
+   *      2. If there is an outstanding LST liability, it will be paid.
+   *      3. YieldManager will keep the remainder.
+   * @param _yieldProvider The yield provider address.
+   * @param _amount Amount to withdraw.
+   */
+  function _withdrawFromYieldProvider(
+    address _yieldProvider,
+    uint256 _amount
+  )
+    internal
+  {
     uint256 targetDeficit = getTargetReserveDeficit();
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
     uint256 toReserve = Math256.min(_amount, targetDeficit);
