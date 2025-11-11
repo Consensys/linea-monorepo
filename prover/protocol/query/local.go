@@ -2,7 +2,6 @@ package query
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
@@ -40,21 +39,11 @@ func NewLocalConstraint(id ifaces.QueryID, expr *symbolic.Expression) LocalConst
 	domainSize := 0
 	foundAny := false
 
-	// check if we attempt to do local openings on verifier columns and panic if that is the case
-	metadatas := expr.BoardListVariableMetadata()
-	for _, metadataInterface := range metadatas {
-		if metadata, ok := metadataInterface.(ifaces.Column); ok {
-			_, isVerifierCol := metadata.(verifiercol.VerifierCol)
-			if isVerifierCol {
-				panic("Undefined behavior: attempted to create a local opening for a verifier column")
-			}
-		}
-	}
-
 	/*
 		Upon construct, checks that all the offsets are compatible with
 		the domain size and sizes
 	*/
+	metadatas := expr.BoardListVariableMetadata()
 	var firstColumn ifaces.Column
 	for _, metadataInterface := range metadatas {
 		if metadata, ok := metadataInterface.(ifaces.Column); ok {
