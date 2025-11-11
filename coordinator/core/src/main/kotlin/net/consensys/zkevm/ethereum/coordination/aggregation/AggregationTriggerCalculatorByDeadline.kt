@@ -85,7 +85,9 @@ class AggregationTriggerCalculatorByDeadline(
 
     return checkDeadlineTriggerCriteria(inFlightAggregation!!)
       .thenApply { deadlineTigger ->
-        if (deadlineTigger) {
+        // inFlightAggregation can be nulled while we were waiting for the latest safe block
+        // trigger blob/proof limiting if criteria met
+        if (deadlineTigger && inFlightAggregation != null) {
           log.info("aggregation deadline reached at block={}", inFlightAggregation!!.blobsToAggregate.endBlockNumber)
           aggregationTriggerHandler.onAggregationTrigger(
             AggregationTrigger(
