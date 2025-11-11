@@ -185,6 +185,24 @@ func setDefaultTracesLimit() {
 	viper.SetDefault("traces_limits.U24", 131072)
 	viper.SetDefault("traces_limits.U23", 131072)
 	viper.SetDefault("traces_limits.U20", 131072)
+	// XOAN module
+	viper.SetDefault("traces_limits.BIT_XOAN_U2", 131072)
+	viper.SetDefault("traces_limits.BIT_XOAN_U4", 131072)
+	viper.SetDefault("traces_limits.BIT_XOAN_U8", 131072)
+	viper.SetDefault("traces_limits.BIT_XOAN_U16", 131072)
+	viper.SetDefault("traces_limits.BIT_XOAN_U32", 131072)
+	viper.SetDefault("traces_limits.BIT_XOAN_U64", 131072)
+	viper.SetDefault("traces_limits.BIT_XOAN_U128", 131072)
+	viper.SetDefault("traces_limits.BIT_XOAN_U256", 131072)
+	// BYTE module
+	viper.SetDefault("traces_limits.BYTE_16", 131072)
+	viper.SetDefault("traces_limits.BYTE_32", 131072)
+	viper.SetDefault("traces_limits.BYTE_64", 131072)
+	viper.SetDefault("traces_limits.BYTE_128", 131072)
+	viper.SetDefault("traces_limits.BYTE_256", 131072)
+	// SIGNEXTEND module
+	viper.SetDefault("traces_limits.SIGNEXTEND", 131072)
+
 	viper.SetDefault("traces_limits.PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS", 0)
 	viper.SetDefault("traces_limits.PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS", 0)
 	viper.SetDefault("traces_limits.PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS", 0)
@@ -335,6 +353,23 @@ func setDefaultTracesLimit() {
 	viper.SetDefault("traces_limits_large.U24", 262144)
 	viper.SetDefault("traces_limits_large.U23", 262144)
 	viper.SetDefault("traces_limits_large.U20", 262144)
+	viper.SetDefault("traces_limits.BIT_XOAN_U128", 262144)
+	viper.SetDefault("traces_limits.BIT_XOAN_U16", 262144)
+	viper.SetDefault("traces_limits.BIT_XOAN_U2", 262144)
+	viper.SetDefault("traces_limits.BIT_XOAN_U256", 262144)
+	viper.SetDefault("traces_limits.BIT_XOAN_U32", 262144)
+	viper.SetDefault("traces_limits.BIT_XOAN_U4", 262144)
+	viper.SetDefault("traces_limits.BIT_XOAN_U64", 262144)
+	viper.SetDefault("traces_limits.BIT_XOAN_U8", 262144)
+	// Byte module
+	viper.SetDefault("traces_limits.BYTE_16", 262144)
+	viper.SetDefault("traces_limits.BYTE_32", 262144)
+	viper.SetDefault("traces_limits.BYTE_64", 262144)
+	viper.SetDefault("traces_limits.BYTE_128", 262144)
+	viper.SetDefault("traces_limits.BYTE_256", 262144)
+	// SIGNEXTEND module
+	viper.SetDefault("traces_limits.SIGNEXTEND", 262144)
+
 	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS", 0)
 	viper.SetDefault("traces_limits_large.PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS", 0)
 	viper.SetDefault("traces_limits_large.PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS", 0)

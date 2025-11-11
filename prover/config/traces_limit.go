@@ -125,6 +125,24 @@ type TracesLimits struct {
 	U24  int `mapstructure:"U24" validate:"power_of_2" corset:"u24"`
 	U23  int `mapstructure:"U23" validate:"power_of_2" corset:"u23"`
 	U20  int `mapstructure:"U20" validate:"power_of_2" corset:"u20"`
+
+	// bit XOAN modules
+	BIT_XOAN_U2   int `mapstructure:"BIT_XOAN_U2" validate:"power_of_2" corset:"bit_xoan_u2"`
+	BIT_XOAN_U4   int `mapstructure:"BIT_XOAN_U4" validate:"power_of_2" corset:"bit_xoan_u4"`
+	BIT_XOAN_U8   int `mapstructure:"BIT_XOAN_U8" validate:"power_of_2" corset:"bit_xoan_u8"`
+	BIT_XOAN_U16  int `mapstructure:"BIT_XOAN_U16" validate:"power_of_2" corset:"bit_xoan_u16"`
+	BIT_XOAN_U32  int `mapstructure:"BIT_XOAN_U32" validate:"power_of_2" corset:"bit_xoan_u32"`
+	BIT_XOAN_U64  int `mapstructure:"BIT_XOAN_U64" validate:"power_of_2" corset:"bit_xoan_u64"`
+	BIT_XOAN_U128 int `mapstructure:"BIT_XOAN_U128" validate:"power_of_2" corset:"bit_xoan_u128"`
+	BIT_XOAN_U256 int `mapstructure:"BIT_XOAN_U256" validate:"power_of_2" corset:"bit_xoan_u256"`
+	// BYTE module
+	BYTE_16  int `mapstructure:"BYTE_16" validate:"power_of_2" corset:"byte16"`
+	BYTE_32  int `mapstructure:"BYTE_32" validate:"power_of_2" corset:"byte32"`
+	BYTE_64  int `mapstructure:"BYTE_64" validate:"power_of_2" corset:"byte64"`
+	BYTE_128 int `mapstructure:"BYTE_128" validate:"power_of_2" corset:"byte128"`
+	BYTE_256 int `mapstructure:"BYTE_256" validate:"power_of_2" corset:"byte256"`
+	// SIGNEXTEND module
+	SIGNEXTEND int `mapstructure:"SIGNEXTEND" validate:"power_of_2" corset:"signextend"`
 	// reference tables
 	Binreftable int `mapstructure:"BIN_REFERENCE_TABLE" validate:"power_of_2" corset:"binreftable"`
 	Instdecoder int `mapstructure:"INSTRUCTION_DECODER" validate:"power_of_2" corset:"instdecoder"`
