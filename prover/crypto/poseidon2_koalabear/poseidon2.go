@@ -18,7 +18,7 @@ const BlockSize = 8
 // TODO @thomas fixme arbitrary max size of the buffer
 const maxSizeBuf = 1024
 
-// MDHasher implements a Poseidon2-based hasher that works with both field elements and bytes
+// MDHasher Merkle Damgard Hasher using Poseidon2 as compression function
 type MDHasher struct {
 	hash.StateStorer
 	maxValue types.Bytes32 // the maximal value obtainable with that hasher
