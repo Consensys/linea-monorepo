@@ -135,7 +135,6 @@ func runController(ctx context.Context, cfg *config.Config) {
 			return
 
 			// Processing a new job
-			// Processing a new job
 		case <-retryDelay(cfg.Controller.RetryDelays, numRetrySoFar):
 			// Prevent starting new jobs if shutdown started
 			if ctrlCtx.Err() != nil {
@@ -172,11 +171,6 @@ func runController(ctx context.Context, cfg *config.Config) {
 
 			// Reset retry counter and claim the job
 			numRetrySoFar = 0
-
-			// Important: Set the active job to the current job for safe requeue mechanism
-			activeJobMutex.Lock()
-			activeJob = job
-			activeJobMutex.Unlock()
 
 			// Claim active job for safe requeue mechanism
 			state.activeJob = job

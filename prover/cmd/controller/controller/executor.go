@@ -245,8 +245,6 @@ func (e *Executor) buildCmd(job *Job, large bool) (cmd string, err error) {
 // this is a local retry or not.
 func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	logrus.Infof("The executor is about to run the command: %s", cmdStr)
-func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
-	logrus.Infof("The executor is about to run the command: %s", cmdStr)
 
 	// Build exec.Command so we can set process group
 	cmd := exec.Command("sh", "-c", cmdStr)
@@ -258,23 +256,11 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	// Build exec.Command so we can set process group
-	cmd := exec.Command("sh", "-c", cmdStr)
 
-	// Setpgid sets the process group ID of the child to Pgid, or, if Pgid == 0, to the new child's process ID.
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	// Pipe the child process's stdin/stdout/stderr into the current process
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	pname := processName(job, cmdStr)
 	pname := processName(job, cmdStr)
 	metrics.CollectPreProcess(job.Def.Name, job.Start, job.End, false)
 
 	startTime := time.Now()
-	if err := cmd.Start(); err != nil {
 	if err := cmd.Start(); err != nil {
 		// Failing to start the process can happen for various different
 		// reasons. It can be that the commands contains invalid characters
@@ -282,10 +268,8 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 		// and remains to see which one can. Until then, they will need to
 		// be manually retried.
 		logrus.Errorf("unexpected: failed to start process %v: %v", pname, err)
-		logrus.Errorf("unexpected: failed to start process %v: %v", pname, err)
 		return Status{
 			ExitCode: CodeFatal,
-			What:     "could not start process",
 			What:     "could not start process",
 			Err:      err,
 		}
@@ -301,13 +285,7 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 
 		// Wait until the process finishes
 		_ = cmd.Wait()
-		// Wait until the process finishes
-		_ = cmd.Wait()
 		processingTime := time.Since(startTime)
-		exitcode, codeErr := unixExitCode(cmd.ProcessState)
-		if codeErr != nil {
-			logrus.Errorf("error getting unix exit code for %v: %v", pname, codeErr)
-			exitcode = CodeFatal
 		exitcode, codeErr := unixExitCode(cmd.ProcessState)
 		if codeErr != nil {
 			logrus.Errorf("error getting unix exit code for %v: %v", pname, codeErr)
@@ -317,12 +295,9 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 		logrus.Infof(
 			"The processing of file `%s` (process=%v) took %v seconds and returned exit code %v",
 			job.OriginalFile, pname, processingTime.Seconds(), exitcode,
-			"The processing of file `%s` (process=%v) took %v seconds and returned exit code %v",
-			job.OriginalFile, pname, processingTime.Seconds(), exitcode,
 		)
 
 		// Build the  response status
-		status := Status{ExitCode: exitcode}
 		status := Status{ExitCode: exitcode}
 		switch status.ExitCode {
 		case CodeSuccess:
@@ -344,7 +319,6 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 	}()
 
 	select {
-
 
 	case <-ctx.Done():
 
@@ -375,7 +349,6 @@ func runCmd(ctx context.Context, cmdStr string, job *Job, retry bool) Status {
 			ExitCode: CodeKilledByExtSig,
 			What:     "the process was requested to be killed by the controller (process may not have started)",
 		}
-
 
 	case status := <-done:
 		return status

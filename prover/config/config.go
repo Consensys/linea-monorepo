@@ -239,12 +239,6 @@ type Controller struct {
 	// List of exit codes for which the job will retry in large mode
 	RetryLocallyWithLargeCodes []int `mapstructure:"retry_locally_with_large_codes"`
 
-	// The number of seconds infra (AWS) waits before reclaiming a spot instance
-	SpotInstanceReclaimTime int `mapstructure:"spot_instance_reclaim_time_seconds"`
-
-	// The number of seconds the controller should wait before killing a worker after receiving a SIGTERM
-	TerminationGracePeriod int `mapstructure:"termination_grace_period_seconds"`
-
 	// defaults to true; the controller will not pick associated jobs if false.
 	EnableExecution         bool `mapstructure:"enable_execution"`
 	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`

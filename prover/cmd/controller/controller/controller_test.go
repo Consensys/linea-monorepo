@@ -171,11 +171,6 @@ func setupFsTestSpotInstance(t *testing.T) (cfg *config.Config) {
 			Prometheus:      config.Prometheus{Enabled: false},
 			RetryDelays:     []int{0, 1},
 			WorkerCmdTmpl:   template.Must(template.New("test-cmd").Parse("sleep 2")),
-			EnableExecution: true,
-			LocalID:         "test-prover-id",
-			Prometheus:      config.Prometheus{Enabled: false},
-			RetryDelays:     []int{0, 1},
-			WorkerCmdTmpl:   template.Must(template.New("test-cmd").Parse("sleep 2")),
 		},
 
 		Execution: config.Execution{
