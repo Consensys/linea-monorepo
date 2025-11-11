@@ -19,11 +19,11 @@ func EncodeWVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Vari
 
 	for i := 0; i < 8; i++ {
 		// Convert the 31 bits of the current WrappedVariable to frontend variables
-		limbBits := apiGen.ToBinary(values[i], 31)
+		limbBits := apiGen.ToBinary(values[7-i], 31)
 		copy(bits[31*i:], limbBits) // 8 leading padding bits come first
 	}
-	for i := 0; i < 8; i++ {
-		bits[248+i] = frontend.Variable(0) // Explicitly set last 8 bits to zero
+	for i := 248; i < 256; i++ {
+		bits[i] = frontend.Variable(0) // Explicitly set last 8 bits to zero (most significant bits)
 	}
 
 	return api.FromBinary(bits...)
@@ -50,14 +50,12 @@ func EncodeWVsToFVs(api frontend.API, values []zk.WrappedVariable) []frontend.Va
 
 func Encode8KoalabearToBigInt(elements [8]field.Element) *big.Int {
 	expectedResult := big.NewInt(0)
-	expectedResult.Lsh(expectedResult, 8)
 	for i := 0; i < 8; i++ {
-		part := big.NewInt(int64(elements[i].Bits()[0]))
+		part := big.NewInt(int64(elements[7-i].Bits()[0]))
 
 		shift := uint(31 * i)                   // Shift based on little-endian order
 		part.Lsh(part, shift)                   // Shift left by the appropriate position for little-endian
 		expectedResult.Or(expectedResult, part) // Bitwise OR to combine
-
 	}
 	return expectedResult
 }
@@ -66,6 +64,7 @@ func EncodeKoalabearsToBytes(elements []field.Element) []byte {
 	var res []byte
 	for len(elements) != 0 {
 		var buf [8]field.Element
+		var bufBytes [32]byte
 		// in this case we left pad by zeroes
 		if len(elements) < 8 {
 			copy(buf[8-len(elements):], elements[:])
@@ -74,8 +73,9 @@ func EncodeKoalabearsToBytes(elements []field.Element) []byte {
 			copy(buf[:], elements[:8])
 			elements = elements[8:]
 		}
-		res = append(res, Encode8KoalabearToBigInt(buf).Bytes()...)
+		bytes := Encode8KoalabearToBigInt(buf).Bytes()
+		copy(bufBytes[32-len(bytes):], bytes)
+		res = append(res, bufBytes[:]...)
 	}
-
 	return res
 }

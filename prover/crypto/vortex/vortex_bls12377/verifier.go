@@ -111,6 +111,7 @@ func VerifyOpening(v *VerifierInputs) error {
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -199,13 +200,12 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			} else {
 				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
 				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
-				hasher := v.BLS12_377_Params.LeafHashFunc()
+				hasher := smt_bls12377.Poseidon2()
 				hasher.Reset()
-
 				colBytes := EncodeKoalabearsToBytes(selectedSubCol)
-				hasher.Write(colBytes)
-
+				hasher.Write(colBytes[:])
 				leaf = types.AsBytes32(hasher.Sum(nil))
+
 			}
 
 			// Check the Merkle-proof for the obtained leaf

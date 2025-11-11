@@ -3,6 +3,8 @@
 package vortex
 
 import (
+	"fmt"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -30,6 +32,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
+var rng = rand.New(utils.NewRandSource(0))
+
 // ------------------------------------------------------------
 // test EncodeWVsToFV and Encode8KoalabearToBigInt
 type EncodeTestCircuit struct {
@@ -49,12 +53,17 @@ func TestEncodeCircuit(t *testing.T) {
 	var values [8]zk.WrappedVariable
 
 	for i := 0; i < 8; i++ {
-		intValues[i].SetRandom()
+		intValues[i] = field.PseudoRand(rng)
 		values[i] = zk.ValueOf(intValues[i].String())
 	}
 
 	// Calculate expected result manually using big.Int (for validation)
 	expectedResult := Encode8KoalabearToBigInt(intValues)
+
+	hasher := smt_bls12377.Poseidon2()
+	hasher.Write(expectedResult.Bytes())
+
+	fmt.Printf("hasher.Sum(nil)=%v\n", hasher.Sum(nil))
 
 	// Create test instance
 	var circuit EncodeTestCircuit
@@ -123,7 +132,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 	s := 16
 	d := fft.NewDomain(uint64(s))
 	var zeta fext.Element
-	zeta.SetRandom()
+	zeta = fext.PseudoRand(rng)
 
 	// prepare witness
 	var witness ComputeLagrangeCircuit
@@ -195,7 +204,7 @@ func TestFFTInverseCircuit(t *testing.T) {
 	// prepare witness
 	p := make([]field.Element, s)
 	for i := 0; i < s; i++ {
-		p[i].SetRandom()
+		p[i] = field.PseudoRand(rng)
 	}
 	r := make([]field.Element, s)
 	copy(r, p)
@@ -256,7 +265,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 	rate := 2
 	p := make([]field.Element, size)
 	for i := 0; i < (size / rate); i++ {
-		p[i].SetRandom()
+		p[i] = field.PseudoRand(rng)
 	}
 	d.FFT(p, fft.DIF)
 	fft.BitReverse(p)
@@ -317,12 +326,11 @@ func getEvaluateLagrangeCircuitWitness(size int) (*EvaluateLagrangeCircuit, *Eva
 
 	pCan := make([]field.Element, size)
 	for i := 0; i < size; i++ {
-		pCan[i].SetRandom()
+		pCan[i] = field.PseudoRand(rng)
 	}
 	d := fft.NewDomain(uint64(size))
 
-	var x fext.Element
-	x.SetRandom()
+	x := fext.PseudoRand(rng)
 	var y fext.Element
 	for i := 0; i < size; i++ {
 		y.Mul(&y, &x)
@@ -387,11 +395,9 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	entryList []int,
 	roots []types.Bytes32,
 ) {
-
 	x = fext.RandomElement()
 	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
-
 	blsParams := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, smt_bls12377.Poseidon2, smt_bls12377.Poseidon2)
 	koalabearParams := vortex.NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
 
@@ -432,7 +438,11 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	}
 
 	// Generate the proof
+	if proof == nil {
+		proof = &OpeningProof{}
+	}
 	proof.LinearCombination = koalabearParams.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
+
 	proof.Complete(entryList, committedMatrices, trees)
 
 	// Check the proof
@@ -447,6 +457,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 		EntryList:                entryList,
 		IsSISReplacedByPoseidon2: isSISReplacedByPoseidon2,
 	})
+
 	require.NoError(t, err)
 
 	return proof, randomCoin, x, yLists, entryList, roots
