@@ -822,7 +822,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
           .safeWithdrawFromYieldProvider(mockYieldProviderAddress, requestedAmount),
       )
         .to.emit(yieldManager, "YieldProviderWithdrawal")
-        .withArgs(mockYieldProviderAddress, requestedAmount, requestedAmount, 0n, 0n);
+        .withArgs(mockYieldProviderAddress, requestedAmount, 0);
 
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(withdrawableAmount - requestedAmount);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(withdrawableAmount - requestedAmount);
@@ -843,7 +843,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
           .safeWithdrawFromYieldProvider(mockYieldProviderAddress, requestedAmount),
       )
         .to.emit(yieldManager, "YieldProviderWithdrawal")
-        .withArgs(mockYieldProviderAddress, withdrawableAmount, withdrawableAmount, 0n, 0n);
+        .withArgs(mockYieldProviderAddress, withdrawableAmount, 0);
 
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
