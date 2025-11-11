@@ -237,18 +237,17 @@ func TestFFTInverseCircuit(t *testing.T) {
 // ------------------------------------------------------------
 // test AssertIsCodeWord
 
-// type AssertIsCodeWordCircuit struct {
-// 	rate uint64
-// 	d    *fft.Domain
-// 	P    []zk.WrappedVariable `gnark:",public"`
-// }
+type AssertIsCodeWordCircuit struct {
+	rate uint64
+	d    *fft.Domain
+	P    []zk.WrappedVariable `gnark:",public"`
+}
 
-// func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
-// 	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
+func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
+	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
 
-// }
+}
 
-/*
 func TestAssertIsCodeWord(t *testing.T) {
 
 	// generate witness
@@ -267,7 +266,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 	witness.rate = uint64(rate)
 	witness.d = d
 	for i := 0; i < size; i++ {
-		witness.P[i] = p[i].String()
+		witness.P[i] = zk.ValueOf(p[i].String())
 	}
 
 	// compile the circuit
@@ -291,7 +290,6 @@ func TestAssertIsCodeWord(t *testing.T) {
 	}
 
 }
-*/
 
 // ------------------------------------------------------------
 // test EvaluateLagrange: gnarkEvaluateLagrange

@@ -228,6 +228,10 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 // * genInv inverse of the generator of the subgroup of size cardinality
 // * rate of the RS code
 func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear.Element, cardinality, rate uint64) error {
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
 
 	if uint64(len(p)) != cardinality {
 		return ErrPNotOfSizeCardinality
@@ -242,7 +246,7 @@ func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear
 	// check that is of degree < cardinality/rate
 	degree := (cardinality - (cardinality % rate)) / rate
 	for i := degree; i < cardinality; i++ {
-		api.AssertIsEqual(pCanonical[i], 0)
+		apiGen.AssertIsEqual(pCanonical[i], zk.ValueOf(0))
 	}
 
 	return nil
