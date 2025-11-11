@@ -113,8 +113,9 @@ type LeafOpenings struct {
 
 // Module module
 type Module struct {
-	// The compiled IOP
+	// The state manager accumulator settings
 	Settings
+	// compiled IOP
 	comp *wizard.CompiledIOP
 	Cols struct {
 		Leaves    [common.NbLimbU256]ifaces.Column

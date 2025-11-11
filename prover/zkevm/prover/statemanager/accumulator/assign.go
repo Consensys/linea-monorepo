@@ -7,10 +7,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
-	"io"
-
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
