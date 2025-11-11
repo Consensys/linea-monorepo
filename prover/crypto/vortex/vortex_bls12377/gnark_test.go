@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/std/hash"
 	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
 	"github.com/stretchr/testify/assert"
@@ -78,6 +79,85 @@ func TestEncodeCircuit(t *testing.T) {
 	// Verify the circuit satisfies constraints with the witness
 	err = ccs.IsSolved(fullWitness)
 	assert.NoError(t, err)
+
+}
+
+// ------------------------------------------------------------
+// test computeLagrange: gnarkComputeLagrangeAtZ
+
+func evalPoly(p []field.Element, z fext.Element) fext.Element {
+	var res fext.Element
+	for i := len(p) - 1; i >= 0; i-- {
+		res.Mul(&res, &z)
+		fext.AddByBase(&res, &res, &p[i])
+	}
+	return res
+}
+
+type ComputeLagrangeCircuit struct {
+	Domain fft.Domain
+	Zeta   gnarkfext.E4Gen   `gnark:",public"` // random variable
+	Li     []gnarkfext.E4Gen // expected results
+}
+
+func (circuit *ComputeLagrangeCircuit) Define(api frontend.API) error {
+
+	n := circuit.Domain.Cardinality
+	gen := circuit.Domain.Generator
+	r := gnarkComputeLagrangeAtZ(api, circuit.Zeta, gen, n)
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < len(r); i++ {
+		ext4.AssertIsEqual(&r[i], &circuit.Li[i])
+	}
+
+	return nil
+}
+
+func TestComputeLagrangeCircuit(t *testing.T) {
+
+	s := 16
+	d := fft.NewDomain(uint64(s))
+	var zeta fext.Element
+	zeta.SetRandom()
+
+	// prepare witness
+	var witness ComputeLagrangeCircuit
+	witness.Zeta = gnarkfext.NewE4Gen(zeta)
+	witness.Li = make([]gnarkfext.E4Gen, s)
+	for i := 0; i < s; i++ {
+		buf := make([]field.Element, s)
+		buf[i].SetOne()
+		d.FFTInverse(buf, fft.DIF)
+		fft.BitReverse(buf)
+		li := evalPoly(buf, zeta)
+		witness.Li[i] = gnarkfext.NewE4Gen(li)
+	}
+
+	var circuit ComputeLagrangeCircuit
+	circuit.Domain = *d
+	circuit.Li = make([]gnarkfext.E4Gen, s)
+
+	// compile...
+	builder := scs.NewBuilder[constraint.U32]
+	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// solve the circuit
+	twitness, err := frontend.NewWitness(&witness, field.Modulus())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ccs.IsSolved(twitness)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 }
 
@@ -211,7 +291,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 */
 
 // ------------------------------------------------------------
-// EvaluateLagrange
+// test EvaluateLagrange: gnarkEvaluateLagrange
 
 type EvaluateLagrangeCircuit struct {
 	P []zk.WrappedVariable
