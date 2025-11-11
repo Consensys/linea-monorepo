@@ -139,7 +139,7 @@ abstract contract LineaRollupYieldExtension is LineaRollupBase, ILineaRollupYiel
     ClaimMessageWithProofParams calldata _params,
     address _yieldProvider
   ) external virtual nonReentrant {
-    if (_params.value < address(this).balance) {
+    if (_params.value <= address(this).balance) {
       revert LSTWithdrawalRequiresDeficit();
     }
     if (msg.sender != _params.to) {
