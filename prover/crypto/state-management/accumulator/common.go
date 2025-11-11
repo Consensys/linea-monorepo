@@ -3,6 +3,7 @@ package accumulator
 import (
 	"io"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
@@ -11,7 +12,7 @@ import (
 
 // Generic hashing for object satisfying the io.WriterTo interface
 func hash[T io.WriterTo](conf *smt_koalabear.Config, m T) Bytes32 {
-	hasher := conf.HashFunc()
+	hasher := poseidon2_koalabear.Poseidon2()
 	m.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
 	return AsBytes32(Bytes32)

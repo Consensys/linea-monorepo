@@ -168,8 +168,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 	var (
 		mTreeHashConfig = &smt_koalabear.Config{
-			HashFunc: v.Params.MerkleHashFunc,
-			Depth:    utils.Log2Ceil(v.Params.NumEncodedCols()),
+			Depth: utils.Log2Ceil(v.Params.NumEncodedCols()),
 		}
 	)
 

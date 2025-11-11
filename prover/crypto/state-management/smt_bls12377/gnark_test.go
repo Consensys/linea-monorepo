@@ -9,7 +9,6 @@ import (
 
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +16,7 @@ import (
 func getMerkleProof(t *testing.T) ([]Proof, []types.Bytes32, types.Bytes32) {
 
 	config := &Config{
-		HashFunc: hashtypes.Poseidon2,
+		HashFunc: Poseidon2,
 		Depth:    40,
 	}
 

@@ -1,4 +1,4 @@
-package hashtypes
+package smt_bls12377
 
 import (
 	"hash"

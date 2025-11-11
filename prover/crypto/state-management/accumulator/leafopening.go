@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
@@ -65,13 +66,13 @@ func Tail(config *smt_koalabear.Config) LeafOpening {
 		Prev: 0,
 		Next: 1, // Points to itself
 		HVal: Bytes32{},
-		HKey: config.HashFunc().MaxBytes32(),
+		HKey: poseidon2_koalabear.Poseidon2().MaxBytes32(),
 	}
 }
 
 // HeadOrTail returns true if the leaf opening is either head or tail
 func (leaf *LeafOpening) HeadOrTail(config *smt_koalabear.Config) bool {
-	return leaf.HKey == config.HashFunc().MaxBytes32() || leaf.HKey == Bytes32{}
+	return leaf.HKey == poseidon2_koalabear.Poseidon2().MaxBytes32() || leaf.HKey == Bytes32{}
 }
 
 // CheckAndLeaf check the internal consistency of the tuple and returns the hash

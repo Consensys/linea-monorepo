@@ -3,6 +3,7 @@ package accumulator
 import (
 	"io"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -78,7 +79,7 @@ func (s *ProverState[K, V]) ListAllKeys() []K {
 	var containedKeys []K
 	// We compute the two keys that are used as bounds, to be able to ignore them later
 	lowerBound := Bytes32{}
-	upperBound := s.Config().HashFunc().MaxBytes32()
+	upperBound := poseidon2_koalabear.Poseidon2().MaxBytes32()
 	for _, i := range s.Data.ListAllKeys() {
 		tuple := s.Data.MustGet(i)
 		if !(Bytes32Cmp(tuple.LeafOpening.HKey, lowerBound) == 0 || Bytes32Cmp(tuple.LeafOpening.HKey, upperBound) == 0) {
@@ -93,8 +94,8 @@ func (s *ProverState[K, V]) ListAllKeys() []K {
 func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 	// We do so with a linear scanning to simplify (since it is only for testing)
 	hkey := hash(s.Config(), k)
-	hminus, iminus := Bytes32{}, int64(0)                        // corresponds to head
-	hplus, iplus := s.Config().HashFunc().MaxBytes32(), int64(1) // corresponds to tail
+	hminus, iminus := Bytes32{}, int64(0)                                  // corresponds to head
+	hplus, iplus := poseidon2_koalabear.Poseidon2().MaxBytes32(), int64(1) // corresponds to tail
 
 	// Technically, we should be able to skip the two first entries
 	// The traversal of the data is in non-deterministic order
@@ -197,7 +198,8 @@ func (s *ProverState[K, V]) rmTuple(i int64) smt_koalabear.Proof {
 // TopRoot returns the top-root hash which includes `NextFreeNode` and the
 // `SubTreeRoot`
 func (s *ProverState[K, V]) TopRoot() Bytes32 {
-	hasher := s.Config().HashFunc()
+	hasher := poseidon2_koalabear.Poseidon2()
+
 	WriteInt64On32Bytes(hasher, s.NextFreeNode)
 	subTreeRoot := s.SubTreeRoot()
 	subTreeRoot.WriteTo(hasher)

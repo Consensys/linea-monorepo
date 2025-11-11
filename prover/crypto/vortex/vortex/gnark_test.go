@@ -3,6 +3,7 @@
 package vortex
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -16,7 +17,6 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -272,12 +272,16 @@ func getEvaluateLagrangeCircuitWitness(size int) (*EvaluateLagrangeCircuit, *Eva
 		fext.AddByBase(&y, &y, &pCan[size-1-i])
 	}
 
+	fmt.Printf("EvaluateLagrange at x=%s gives y=%s\n", x.String(), y.String())
+	fmt.Printf("p=%v\n", pCan)
+
 	d.FFT(pCan, fft.DIF)
 	fft.BitReverse(pCan)
 
 	var circuit, witness EvaluateLagrangeCircuit
 	circuit.P = make([]zk.WrappedVariable, size)
 	circuit.d = d
+
 	witness.P = make([]zk.WrappedVariable, size)
 	witness.X = gnarkfext.NewE4Gen(x)
 	witness.Y = gnarkfext.NewE4Gen(y)
@@ -297,10 +301,26 @@ func TestEvaluateLagrangeCircuit(t *testing.T) {
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 	assert.NoError(t, err)
 
-	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
-	assert.NoError(t, err)
-	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+		fmt.Printf("circuit=%v\n", circuit.P)
+
+		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
+
+	// {
+	// 	circuit, witness := getEvaluateLagrangeCircuitWitness(size)
+
+	// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+	// 	assert.NoError(t, err)
+	// 	fmt.Printf("circuit=%v\n", circuit.P)
+
+	// 	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+	// 	assert.NoError(t, err)
+	// 	err = ccs.IsSolved(fullWitness)
+	// 	assert.NoError(t, err)
+	// }
 
 }
 
@@ -320,7 +340,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
 
-	blsParams := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, hashtypes.Poseidon2, hashtypes.Poseidon2)
+	blsParams := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, smt_bls12377.Poseidon2, smt_bls12377.Poseidon2)
 	koalabearParams := vortex.NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)

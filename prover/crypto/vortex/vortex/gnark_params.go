@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	gutils "github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -36,10 +36,10 @@ type Params struct {
 	MaxNbRows int
 	// LeafHashFunc returns a `hash.Hash` which is used
 	// to compute the leaves of the Merkle tree.
-	LeafHashFunc func() hashtypes.Hasher
+	LeafHashFunc func() smt_bls12377.Hasher
 	// MerkleHashFunc returns a `hash.Hash` which is used
 	// to hash the nodes of the Merkle tree.
-	MerkleHashFunc func() hashtypes.Hasher
+	MerkleHashFunc func() smt_bls12377.Hasher
 
 	// Coset table of the small domain, bit reversed
 	CosetTableBitReverse fr.Vector
@@ -60,8 +60,8 @@ func NewParams(
 	nbColumns int,
 	maxNbRows int,
 	sisParams ringsis.Params,
-	merkleHashFunc func() hashtypes.Hasher,
-	leafHashFunc func() hashtypes.Hasher,
+	merkleHashFunc func() smt_bls12377.Hasher,
+	leafHashFunc func() smt_bls12377.Hasher,
 ) *Params {
 
 	if !utils.IsPowerOfTwo(nbColumns) {
