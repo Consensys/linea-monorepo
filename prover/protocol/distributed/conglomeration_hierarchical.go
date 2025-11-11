@@ -39,8 +39,8 @@ const (
 
 	// name of the public inputs
 	TargetNbSegmentPublicInputBase          = "TARGET_NB_SEGMENTS"
-	SegmentCountLPPPublicInputBase          = "GL_SEGMENT_COUNT"
-	SegmentCountGLPublicInputBase           = "LPP_SEGMENT_COUNT"
+	SegmentCountLPPPublicInputBase          = "LPP_SEGMENT_COUNT"
+	SegmentCountGLPublicInputBase           = "GL_SEGMENT_COUNT"
 	GeneralMultiSetPublicInputBase          = "GENERAL_MULTI_SET"
 	SharedRandomnessMultiSetPublicInputBase = "SHARED_RANDOMNESS_MULTI_SET"
 	VkMerkleProofBase                       = "VK_MERKLE_PROOF"

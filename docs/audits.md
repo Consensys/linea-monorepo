@@ -21,9 +21,26 @@
 **2022**
 * [Kudelski Security - October 2022 - gnark-crypto (contracted by Algorand Foundation)](https://github.com/Consensys/gnark/blob/53ce9b74e7ab372aa7358f1eac7fe3d689743f5f/audits/2022-10%20-%20Kudelski%20-%20gnark-crypto.pdf)
 
+## Linea Burn Mechanism Smart Contract Audits
+**Diligence**
+- Linea Burn Mechanism - [https://diligence.consensys.io/audits/2025/10/linea-burn-mechanism/](https://diligence.consensys.io/audits/2025/10/linea-burn-mechanism/)
+
+**OpenZeppelin**
+- Linea Burn Mechanism - [https://www.openzeppelin.com/news/linea-burn-mechanism-audit](https://www.openzeppelin.com/news/linea-burn-mechanism-audit)
+
+**Cyfrin**
+- Linea Burn Mechanism - [https://github.com/Cyfrin/cyfrin-audit-reports/blob/2e780ec0c4c8401ff97a7e0cd509ece52ab35cb3/reports/2025-11-03-cyfrin-linea-burn-v2.2.pdf](https://github.com/Cyfrin/cyfrin-audit-reports/blob/2e780ec0c4c8401ff97a7e0cd509ece52ab35cb3/reports/2025-11-03-cyfrin-linea-burn-v2.2.pdf)
 
 ---
+## Linea Tokens and Airdrop Smart Contract Audits
+**Diligence**
+- Linea Token and Airdrop Contracts: [https://diligence.consensys.io/audits/2025/07/linea-token-and-airdrop-contracts/](https://diligence.consensys.io/audits/2025/07/linea-token-and-airdrop-contracts/)
 
+**OpenZeppelin**
+- Linea TGE Audit: [https://blog.openzeppelin.com/linea-tge-audit](https://blog.openzeppelin.com/linea-tge-audit)
+
+**Cyfrin**
+- Linea Tokens Audit Report: [https://github.com/Cyfrin/cyfrin-audit-reports/blob/b9aace5911e3ff84488cb5199cfd28e7fe24d6aa/reports/2025-09-10-cyfrin-linea-tokens-v2.5.pdf](https://github.com/Cyfrin/cyfrin-audit-reports/blob/b9aace5911e3ff84488cb5199cfd28e7fe24d6aa/reports/2025-09-10-cyfrin-linea-tokens-v2.5.pdf)
 
 ## Linea Rollup, L2MessageService and TokenBridge Smart Contract Audits
 ### Fifth Audit Round (latest)

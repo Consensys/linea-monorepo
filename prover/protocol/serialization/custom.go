@@ -273,22 +273,24 @@ func marshalArithmetization(ser *Serializer, val reflect.Value) (any, *serdeErro
 }
 
 func unmarshalArithmetization(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
+	var errA error
+	//
 	if v_, ok := val.(PackedStructObject); ok {
 		val = []any(v_)
 	}
-
 	res, err := des.UnpackStructObject(val.([]any), TypeOfArithmetization)
 	if err != nil {
 		return reflect.Value{}, newSerdeErrorf("could not unmarshal arithmetization: %w", err)
 	}
-
 	arith := res.Interface().(arithmetization.Arithmetization)
-	schema, meta, errA := arithmetization.UnmarshalZkEVMBin(arith.ZkEVMBin, arith.Settings.OptimisationLevel)
+	// Parse binary file
+	arith.BinaryFile, arith.Metadata, errA = arithmetization.UnmarshalZkEVMBin(arith.ZkEVMBin)
 	if errA != nil {
 		return reflect.Value{}, newSerdeErrorf("could not unmarshal arithmetization: %w", err)
 	}
-	arith.Schema = schema
-	arith.Metadata = meta
+	// Compile binary file into an air.Schema
+	arith.AirSchema, arith.LimbMapping = arithmetization.CompileZkevmBin(arith.BinaryFile, arith.Settings.OptimisationLevel)
+	// Done
 	return reflect.ValueOf(arith), nil
 }
 
