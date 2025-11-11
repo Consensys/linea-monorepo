@@ -23,7 +23,7 @@ abstract contract YieldManagerStorageLayout {
    * @param targetWithdrawalReservePercentageBps Target withdrawal reserve expressed as basis points of total user funds.
    * @param minimumWithdrawalReserveAmount Minimum withdrawal reserve expressed as an absolute number.
    * @param targetWithdrawalReserveAmount Target withdrawal reserve expressed as an absolute number.
-   * @param userFundsInYieldProvidersTotal Total amount of user funds currently deployed across YieldProviders.
+   * @param userFundsInYieldProvidersTotal Funds owed to L1MessageService users which have been deposited across all YieldProviders.
    *                                        - Must increment and decrement 1:1 with YieldProviderStorage._userFunds.
    * @param pendingPermissionlessUnstake Pending ETH expected from permissionless beacon-chain withdrawal requests.
    *                                      - Greedily decremented on i.) Donations ii.) YieldProvider withdrawals.
@@ -52,14 +52,11 @@ abstract contract YieldManagerStorageLayout {
    * @param primaryEntrypoint Contract used for operations when not-ossified.
    * @param ossifiedEntrypoint Contract used for operations once ossification is finalized.
    * @param yieldProviderIndex Index for the YieldProvider.
-   * @param userFunds User funds currently in the YieldProvider.
-   *                  - Only decremented during withdraw operations.
-   *                  - Any other loss in YieldProvider funds is tracked as negative yield.
+   * @param userFunds Funds owed to L1MessageService users which have been deposited in the YieldProvider.
    *                  - Must increment and decrement 1:1 with _userFundsInYieldProvidersTotal.
    * @param yieldReportedCumulative Cumulative positive yield (denominated in ETH) reported back to the YieldManager.
    *                                - Increases 1:1 with userFunds, as reported yield is distributed to users.
    * @param lstLiabilityPrincipal LST Liability Principal (denominated in ETH) as of the last yield report
-   *                              - YieldProvider contract will mutate this field
    */
   struct YieldProviderStorage {
     // Slot 0
@@ -73,7 +70,6 @@ abstract contract YieldManagerStorageLayout {
     uint96 yieldProviderIndex;
     uint256 userFunds;
     uint256 yieldReportedCumulative;
-    // Exclusively mutated by YieldProvider, not YieldManager.
     uint256 lstLiabilityPrincipal;
   }
 

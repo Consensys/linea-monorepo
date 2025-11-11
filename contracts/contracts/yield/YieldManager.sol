@@ -443,7 +443,6 @@ contract YieldManager is
    * @notice Send ETH to the specified YieldProvider instance.
    * @dev YIELD_PROVIDER_STAKING_ROLE is required to execute.
    * @dev Reverts if the withdrawal reserve is below the minimum threshold.
-   * @dev ETH sent to the YieldProvider will be eagerly used to settle any outstanding LST liabilities.
    * @param _yieldProvider The target yield provider contract.
    * @param _amount        The amount of ETH to send.
    */
@@ -463,29 +462,9 @@ contract YieldManager is
       _yieldProvider,
       abi.encodeCall(IYieldProvider.fundYieldProvider, (_yieldProvider, _amount))
     );
-    // Do LST repayment
-    uint256 lstPrincipalRepayment = _payLSTPrincipal(_yieldProvider, _amount);
-    uint256 amountRemaining = _amount - lstPrincipalRepayment;
-    _getYieldManagerStorage().userFundsInYieldProvidersTotal += amountRemaining;
-    _getYieldProviderStorage(_yieldProvider).userFunds += amountRemaining;
-    emit YieldProviderFunded(_yieldProvider, _amount, lstPrincipalRepayment, amountRemaining);
-  }
-
-  /**
-   * @notice Helper function to pay outstanding LST liability principal.
-   * @param _yieldProvider The yield provider address.
-   * @param _availableFunds The amount of ETH available for LST liability principal.
-   * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
-   */
-  function _payLSTPrincipal(
-    address _yieldProvider,
-    uint256 _availableFunds
-  ) internal returns (uint256 lstPrincipalPaid) {
-    bytes memory data = _delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _availableFunds))
-    );
-    lstPrincipalPaid = abi.decode(data, (uint256));
+    _getYieldManagerStorage().userFundsInYieldProvidersTotal += _amount;
+    _getYieldProviderStorage(_yieldProvider).userFunds += _amount;
+    emit YieldProviderFunded(_yieldProvider, _amount);
   }
 
   /**
@@ -606,7 +585,6 @@ contract YieldManager is
    * @dev This function proactively allocates withdrawn funds in the following priority:
    *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
    *      to restore the deficit.
-   *      2. If there is an outstanding LST liability, it will be paid.
    *      3. YieldManager will keep the remainder.
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount to withdraw.
@@ -621,49 +599,14 @@ contract YieldManager is
     onlyRole(YIELD_PROVIDER_UNSTAKER_ROLE)
   {
     uint256 targetDeficit = getTargetReserveDeficit();
-    // Withdraw from Vault -> YieldManager
-    (
-      uint256 withdrawnFromProvider,
-      uint256 lstLiabilityPaid
-    ) = _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, targetDeficit);
-    uint256 toReserve = Math256.min(withdrawnFromProvider, targetDeficit);
+    _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
+    uint256 toReserve = Math256.min(_amount, targetDeficit);
     // Send funds to L1MessageService if targetDeficit
     if (toReserve > 0) {
       _fundReserve(toReserve);
     }
-    emit YieldProviderWithdrawal(_yieldProvider, _amount, withdrawnFromProvider, toReserve, lstLiabilityPaid);
-  }
-
-  /**
-   * @notice Helper function to perform a withdraw operation that proactively safeguards reserve funds.
-   * @dev This function proactively allocates withdrawn funds in the following priority:
-   *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
-   *      to restore the deficit.
-   *      2. If there is an outstanding LST liability, it will be paid.
-   *      3. YieldManager will keep the remainder.
-   * @dev If there is a remaining target threshold deficit after this operation, this function will pause staking for the
-   *      yield provider.
-   * @param _yieldProvider The yield provider address.
-   * @param _amount Amount to withdraw.
-   * @param _targetDeficit The amount of ETH required to meet the target reserve threshold, or zero if already satisfied.
-   * @return withdrawAmount Amount of ETH withdrawn from the YieldProvider, and landing on the YieldManager balance.
-   * @return lstPrincipalPaid Amount of ETH used to pay LST liability principal.
-   */
-  function _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
-    address _yieldProvider,
-    uint256 _amount,
-    uint256 _targetDeficit
-  ) internal returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
-    uint256 availableFundsForLSTLiabilityPayment = Math256.safeSub(_amount, _targetDeficit);
-    withdrawAmount = _amount;
-    if (availableFundsForLSTLiabilityPayment > 0) {
-      lstPrincipalPaid = _payLSTPrincipal(_yieldProvider, availableFundsForLSTLiabilityPayment);
-      withdrawAmount -= lstPrincipalPaid;
-      // Will remain in target deficit after withdrawal
-    } else {
-      _pauseStakingIfNotAlready(_yieldProvider);
-    }
-    _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawAmount);
+    if (targetDeficit > toReserve) _pauseStakingIfNotAlready(_yieldProvider);
+    emit YieldProviderWithdrawal(_yieldProvider, _amount, toReserve);
   }
 
   /**
@@ -679,9 +622,6 @@ contract YieldManager is
       _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawFromYieldProvider, (_yieldProvider, _amount))
     );
-    // Edge case here where withdrawableValue > userFunds.
-    // Cause some YieldProvider funds to become unwithdrawable temporarily.
-    // This is tolerated because it is temporary until the next reportYield() call, where we assume the YieldManager reports new surplus as yield.
     $$.userFunds -= _amount;
     _getYieldManagerStorage().userFundsInYieldProvidersTotal -= _amount;
     // Greedily reduce pendingPermissionlessUnstake with every withdrawal made from the yield provider.
@@ -690,9 +630,9 @@ contract YieldManager is
 
   function _decrementPendingPermissionlessUnstake(uint256 _amount) internal {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
-    uint256 pendingPermissionlessUnstake = $.pendingPermissionlessUnstake;
-    if (pendingPermissionlessUnstake == 0) return;
-    $.pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstake, _amount);
+    uint256 pendingPermissionlessUnstakeAmount = $.pendingPermissionlessUnstake;
+    if (pendingPermissionlessUnstakeAmount == 0) return;
+    $.pendingPermissionlessUnstake = Math256.safeSub(pendingPermissionlessUnstakeAmount, _amount);
   }
 
   /**
@@ -739,41 +679,31 @@ contract YieldManager is
 
   /**
    * @notice Helper function to rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev This function proactively allocates withdrawn funds in the following priority:
-   *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
-   *      to restore the deficit.
-   *      2. If there is no remaining target deficit and there is an outstanding LST liability, it will be paid.
-   *      3. The remainder will be sent to the withdrawal reserve.
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
    */
   function _addToWithdrawalReserve(address _yieldProvider, uint256 _amount) internal {
+    if (getTargetReserveDeficit() > _amount) _pauseStakingIfNotAlready(_yieldProvider);
     // First see if we can fully settle from YieldManager
     uint256 yieldManagerBalance = address(this).balance;
     if (yieldManagerBalance >= _amount) {
       _fundReserve(_amount);
-      emit WithdrawalReserveAugmented(_yieldProvider, _amount, _amount, _amount, 0, 0);
+      emit WithdrawalReserveAugmented(_yieldProvider, _amount, _amount, 0);
       return;
     }
 
     // Insufficient balance on YieldManager, must withdraw from YieldProvider
     uint256 withdrawRequestAmount = _amount - yieldManagerBalance;
-    (
-      uint256 withdrawAmount,
-      uint256 lstPrincipalPayment
-    ) = _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
-        _yieldProvider,
-        withdrawRequestAmount,
-        getTargetReserveDeficit()
-      );
-    _fundReserve(yieldManagerBalance + withdrawAmount);
+    _delegatecallWithdrawFromYieldProvider(_yieldProvider, withdrawRequestAmount);
+    
+    // Send to reserve
+    _fundReserve(_amount);
+
     emit WithdrawalReserveAugmented(
       _yieldProvider,
       _amount,
-      yieldManagerBalance + withdrawAmount,
       yieldManagerBalance,
-      withdrawAmount,
-      lstPrincipalPayment
+      withdrawRequestAmount
     );
   }
 
@@ -921,9 +851,8 @@ contract YieldManager is
     if (!ILineaRollupYieldExtension(L1_MESSAGE_SERVICE).isWithdrawLSTAllowed()) {
       revert LSTWithdrawalNotAllowed();
     }
-    // Enshrine assumption that LST withdrawals are an advance on user withdrawal of funds already on a YieldProvider.
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    if ($$.lstLiabilityPrincipal + _amount > $$.userFunds) {
+    if (_amount > $$.userFunds) {
       revert LSTWithdrawalExceedsYieldProviderFunds();
     }
     _pauseStakingIfNotAlready(_yieldProvider);
@@ -931,6 +860,10 @@ contract YieldManager is
       _yieldProvider,
       abi.encodeCall(IYieldProvider.withdrawLST, (_yieldProvider, _amount, _recipient))
     );
+    // If L1MessageService users withdraw LST, then the amount "owed to users" is decremented.
+    _getYieldManagerStorage().userFundsInYieldProvidersTotal -= _amount;
+    $$.userFunds -= _amount;
+    $$.lstLiabilityPrincipal += _amount;
     emit LSTMinted(_yieldProvider, _recipient, _amount);
   }
 
