@@ -164,7 +164,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       revert OperationNotSupportedDuringOssification(OperationType.FundYieldProvider);
     // If `fundYieldProvider` can only be used in non-ossified state, then it can only interact with Dashboard.
     _getDashboard($$).fund{ value: _amount }();
-    _payLSTPrincipal(_getYieldProviderStorage(_yieldProvider), _amount);
+    _payMaximumPossibleLSTLiability($$);
   }
 
   /**
@@ -256,32 +256,6 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
       return liabilityETH;
     } else {
       return _lstLiabilityPrincipalCached;
-    }
-  }
-
-  /**
-   * @notice Helper function to pay LST liability principal.
-   * @dev Calls _syncExternalLiabilitySettlement before computing the liability payment.
-   * @param $$ Storage pointer for the YieldProvider-scoped storage.
-   * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
-   * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
-   */
-  function _payLSTPrincipal(
-    YieldProviderStorage storage $$,
-    uint256 _availableFunds
-  ) internal returns (uint256 lstPrincipalPaid) {
-    uint256 lstLiabilityPrincipalCached = $$.lstLiabilityPrincipal;
-    if (lstLiabilityPrincipalCached == 0) return 0;
-    IDashboard dashboard = _getDashboard($$);
-    uint256 lstLiabilityPrincipalSynced = _syncExternalLiabilitySettlement(
-      $$,
-      dashboard.liabilityShares(),
-      lstLiabilityPrincipalCached
-    );
-    lstPrincipalPaid = Math256.min(lstLiabilityPrincipalSynced, _availableFunds);
-    if (lstPrincipalPaid > 0) {
-      dashboard.rebalanceVaultWithEther(lstPrincipalPaid);
-      $$.lstLiabilityPrincipal -= lstPrincipalPaid;
     }
   }
 

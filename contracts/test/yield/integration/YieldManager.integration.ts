@@ -17,6 +17,7 @@ import {
   setWithdrawalReserveToTarget,
   withdrawLST,
   setupMaxLSTLiabilityPaymentForWithdrawal,
+  setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
 } from "../helpers";
 import {
   TestYieldManager,
@@ -698,7 +699,15 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Fresh deposit of 10 ETH -> should clear all existing LST principal
       const secondFundAmount = ONE_ETHER * 10n;
       await lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(secondFundAmount);
+      await setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability(
+        withdrawLSTAmount,
+        yieldManager,
+        yieldProviderAddress,
+        mockSTETH,
+        mockDashboard,
+      );
       await yieldManager.connect(nativeYieldOperator).fundYieldProvider(yieldProviderAddress, secondFundAmount);
+
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
     });
 

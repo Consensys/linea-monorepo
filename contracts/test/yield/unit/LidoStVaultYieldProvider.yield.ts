@@ -30,7 +30,6 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
   let mockDashboard: MockDashboard;
   let mockStakingVault: MockStakingVault;
 
-  let yieldManagerAddress: string;
   let mockStakingVaultAddress: string;
   let yieldProviderAddress: string;
   let l2YieldRecipientAddress: string;
@@ -51,7 +50,6 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       mockLineaRollup,
     } = await loadFixture(deployAndAddSingleLidoStVaultYieldProvider));
 
-    yieldManagerAddress = await yieldManager.getAddress();
     mockStakingVaultAddress = await mockStakingVault.getAddress();
   });
 
@@ -296,144 +294,6 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
         liabilityPrincipalBefore - syncExternalLiabilitySettlementDifference,
       );
       expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - liabilityPaidETH);
-    });
-  });
-
-  describe("payLSTPrincipal", () => {
-    it("Should return 0 if ossification pending", async () => {
-      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      const lstPrincipalPaid = await yieldManager
-        .connect(securityCouncil)
-        .payLSTPrincipal.staticCall(yieldProviderAddress, ONE_ETHER);
-      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, ONE_ETHER);
-
-      expect(lstPrincipalPaid).eq(0);
-    });
-
-    it("Should return 0 if ossified", async () => {
-      await yieldManager.connect(securityCouncil).initiateOssification(yieldProviderAddress);
-      await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
-      const lstPrincipalPaid = await yieldManager
-        .connect(securityCouncil)
-        .payLSTPrincipal.staticCall(yieldProviderAddress, ONE_ETHER);
-      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, ONE_ETHER);
-
-      expect(lstPrincipalPaid).eq(0);
-    });
-
-    it("If no lst liability principal, be no-op", async () => {
-      // Arrange
-      const lstLiabilityBefore = 0n;
-      await yieldManager.connect(securityCouncil).setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, 0);
-
-      // Act
-      const lstLiabilityPaid = await yieldManager
-        .connect(securityCouncil)
-        .payLSTPrincipal.staticCall(yieldProviderAddress, ONE_ETHER);
-      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, ONE_ETHER);
-
-      // Arrange
-      expect(lstLiabilityPaid).eq(0);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldManagerAddress)).eq(lstLiabilityBefore);
-    });
-
-    it("If no available funds, be no-op", async () => {
-      // Arrange
-      const lstLiabilityBefore = ONE_ETHER;
-      await yieldManager
-        .connect(securityCouncil)
-        .setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, lstLiabilityBefore);
-      await mockSTETH.connect(securityCouncil).setPooledEthBySharesRoundUpReturn(lstLiabilityBefore);
-
-      // Act
-      const amountAvailable = ZERO_VALUE;
-      const lstLiabilityPaid = await yieldManager
-        .connect(securityCouncil)
-        .payLSTPrincipal.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, amountAvailable);
-
-      // Arrange
-      expect(lstLiabilityPaid).eq(0);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(lstLiabilityBefore);
-    });
-
-    it("If LIABILITY_PRINCIPAL >0 and AVAILABLE_FUNDS >0, rebalance with lower of the two (LIABILITY_PRINCIPAL lower)", async () => {
-      // Arrange
-      const lstLiabilityBefore = ONE_ETHER;
-      await yieldManager
-        .connect(securityCouncil)
-        .setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, lstLiabilityBefore);
-      await mockSTETH.connect(securityCouncil).setPooledEthBySharesRoundUpReturn(lstLiabilityBefore);
-
-      // Act
-      const amountAvailable = ONE_ETHER * 2n;
-      const lstLiabilityPaid = await yieldManager
-        .connect(securityCouncil)
-        .payLSTPrincipal.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, amountAvailable);
-
-      // Arrange
-      expect(lstLiabilityPaid).eq(ONE_ETHER);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(
-        lstLiabilityBefore - ONE_ETHER,
-      );
-    });
-
-    it("If LIABILITY_PRINCIPAL >0 and AVAILABLE_FUNDS >0, rebalance with lower of the two (AVAILABLE_FUNDS lower)", async () => {
-      // Arrange
-      const lstLiabilityBefore = ONE_ETHER * 2n;
-      await yieldManager
-        .connect(securityCouncil)
-        .setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, lstLiabilityBefore);
-      await mockSTETH.connect(securityCouncil).setPooledEthBySharesRoundUpReturn(lstLiabilityBefore);
-
-      // Act
-      const amountAvailable = ONE_ETHER;
-      const lstLiabilityPaid = await yieldManager
-        .connect(securityCouncil)
-        .payLSTPrincipal.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, amountAvailable);
-
-      // Arrange
-      expect(lstLiabilityPaid).eq(ONE_ETHER);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(
-        lstLiabilityBefore - ONE_ETHER,
-      );
-    });
-
-    it("If external liability settlement occurred, should succeed", async () => {
-      // Arrange - Set up userFunds + lstLiabilityPrincipal
-      const liabilityPrincipalBefore = ONE_ETHER * 2n;
-      await getWithdrawLSTCall(
-        mockLineaRollup,
-        yieldManager,
-        yieldProvider,
-        nativeYieldOperator,
-        liabilityPrincipalBefore,
-      );
-      // Arrange - set up liabilityShares < liabilityPrincipal
-      const ethValueOfLidoLiabilityShare = (ONE_ETHER * 3n) / 2n;
-      await mockSTETH.connect(securityCouncil).setPooledEthBySharesRoundUpReturn(ethValueOfLidoLiabilityShare);
-      // Arrange - Get before figures
-      const userFundsInYieldProvidersTotalBefore = await yieldManager.userFundsInYieldProvidersTotal();
-      const userFundsBefore = await yieldManager.userFunds(yieldProvider);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
-
-      // Act
-      const amountAvailable = ONE_ETHER;
-      const lstLiabilityPaid = await yieldManager
-        .connect(securityCouncil)
-        .payLSTPrincipal.staticCall(yieldProviderAddress, amountAvailable);
-      await yieldManager.connect(securityCouncil).payLSTPrincipal(yieldProviderAddress, amountAvailable);
-
-      // Arrange
-      expect(lstLiabilityPaid).eq(ONE_ETHER);
-      const expectedExternalLiabilitySettlement = liabilityPrincipalBefore - ethValueOfLidoLiabilityShare;
-      expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
-      expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
-        liabilityPrincipalBefore - expectedExternalLiabilitySettlement - lstLiabilityPaid,
-      );
     });
   });
 

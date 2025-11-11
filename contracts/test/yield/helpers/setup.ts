@@ -373,10 +373,6 @@ export const decrementMockDashboardTotalValue = async (mockDashboard: MockDashbo
   await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - amount);
 };
 
-export const setupLSTPrincipalDecrementInPayLSTPrincipal = async (amount: bigint, mockSTETH: MockSTETH) => {
-  await mockSTETH.setPooledEthBySharesRoundUpReturn(amount);
-};
-
 export const setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability = async (
   amount: bigint,
   yieldManager: TestYieldManager,

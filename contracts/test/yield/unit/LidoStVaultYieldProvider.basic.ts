@@ -10,7 +10,6 @@ import {
   incrementBalance,
   ossifyYieldProvider,
   setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
-  setupLSTPrincipalDecrementInPayLSTPrincipal,
   setWithdrawalReserveToMinimum,
 } from "../helpers";
 import {
@@ -294,14 +293,20 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         OperationType.FUND_YIELD_PROVIDER,
       ]);
     });
-    it("If not ossified, should fund the Dashboard and pay LST liability", async () => {
+    it("If not ossified, should fund the Dashboard and pay max LST liability", async () => {
       const beforeVaultBalance = await ethers.provider.getBalance(mockStakingVaultAddress);
       const fundAmount = ONE_ETHER;
 
       // Setup LST liability principal < fundAmount
       const lstLiabilityPrincipal = ONE_ETHER / 2n;
       await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, lstLiabilityPrincipal);
-      await setupLSTPrincipalDecrementInPayLSTPrincipal(lstLiabilityPrincipal, mockSTETH);
+      await setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability(
+        lstLiabilityPrincipal,
+        yieldManager,
+        yieldProviderAddress,
+        mockSTETH,
+        mockDashboard,
+      );
 
       // Do funding
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, fundAmount);
