@@ -159,6 +159,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    */
   function fundYieldProvider(address _yieldProvider, uint256 _amount) external onlyDelegateCall {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    if ($$.isStakingPaused) revert OperationNotSupportedDuringStakingPause(OperationType.FundYieldProvider);
     // Ossified -> Vault cannot generate yield -> Should fully withdraw
     if ($$.isOssificationInitiated || $$.isOssified)
       revert OperationNotSupportedDuringOssification(OperationType.FundYieldProvider);

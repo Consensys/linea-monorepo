@@ -28,6 +28,9 @@ interface IYieldProvider {
     uint256 oldLSTLiabilityPrincipal, 
     uint256 newLSTLiabilityPrincipal
   );
+  /// @notice Thrown when an operation is blocked due to staking pause.
+  /// @param operationType The operation that was attempted.
+  error OperationNotSupportedDuringStakingPause(OperationType operationType);
 
   /// @notice Thrown when an operation is blocked because ossification is either pending or complete.
   /// @param operationType The operation that was attempted.
