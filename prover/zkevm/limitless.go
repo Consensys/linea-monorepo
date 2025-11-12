@@ -245,9 +245,9 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 8192, Cluster: "MODEXP_256", Column: "MODEXP_IS_ACTIVE"},
 	{BaseSize: 512, Cluster: "MODEXP_256", Column: "MODEXP_256_BITS_IS_ACTIVE"},
 
-	// MODEXP 4096
+	// MODEXP 8192
 	//
-	{BaseSize: 128, Cluster: "MODEXP_4096", Column: "MODEXP_4096_BITS_PI"},
+	{BaseSize: 256, Cluster: "MODEXP_LARGE", Column: "MODEXP_LARGE_PI"},
 
 	// SHA2
 	//
