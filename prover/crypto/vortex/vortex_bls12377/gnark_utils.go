@@ -423,7 +423,7 @@ func GnarkVerifyCommon(
 	numRounds := len(ys)
 	selectedColSisDigests := make([][]frontend.Variable, numRounds)
 
-	for j, _ := range entryList {
+	for j, selectedColID := range entryList {
 
 		// Will carry the concatenation of the columns for the same entry j
 		fullCol := []zk.WrappedVariable{}
@@ -454,7 +454,7 @@ func GnarkVerifyCommon(
 
 		// Check the linear combination is consistent with the opened column
 		y := gnarkEvalCanonical(api, fullCol, randomCoin)
-		v := proof.LinearCombination[j]
+		v := proof.LinearCombination[selectedColID]
 		ext4.AssertIsEqual(&y, &v)
 
 	}
