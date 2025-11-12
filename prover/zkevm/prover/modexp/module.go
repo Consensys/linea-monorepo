@@ -48,13 +48,14 @@ type Module struct {
 	// positions of limbs corresponding to public inputs of (respectely) the
 	// small and the large circuit.
 	ToSmallCirc ifaces.Column
+	// GnarkCircuitConnector256Bits, GnarkCircuitConnectorLarge are the
 	// connection logic of the modexp circuit specialized for the small and
-	// large instances respectively
+	// large instances respectively.
+	//
+	// If the alignments are nil, then it means that the circuits are not
+	// initialized. It is useful for testing the glue assignment. To define the
+	// circuits, call [Module.WithCircuit].
 	GnarkCircuitConnector256Bits, GnarkCircuitConnectorLarge *plonk.Alignment
-	// HasCircuit indicates whether the circuit has been set in the module. In
-	// production, it will be always set to true. But for convenience we omit
-	// the circuit in some of the test as this is CPU intensive.
-	HasCircuit bool
 }
 
 // NewModuleZkEvm constructs an instance of the modexp module. It should be called
@@ -103,33 +104,38 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 // WithCircuits adds the Plonk-in-Wizard circuit verification to complete
 // the anti-chamber.
 func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *Module {
-
-	mod.HasCircuit = true
 	settings := mod.Input.Settings
 
-	mod.GnarkCircuitConnector256Bits = plonk.DefineAlignment(
-		comp,
-		&plonk.CircuitAlignmentInput{
-			Name:               "MODEXP_256_BITS",
-			DataToCircuit:      mod.Limbs,
-			DataToCircuitMask:  mod.ToSmallCirc,
-			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexp256, smallModexpSize),
-			NbCircuitInstances: utils.DivCeil(settings.MaxNbInstance256, settings.NbInstancesPerCircuitModexp256),
-			PlonkOptions:       options,
-		},
-	)
+	if settings.MaxNbInstance256 > 0 {
+		mod.GnarkCircuitConnector256Bits = plonk.DefineAlignment(
+			comp,
+			&plonk.CircuitAlignmentInput{
+				Name:               "MODEXP_256_BITS",
+				DataToCircuit:      mod.Limbs,
+				DataToCircuitMask:  mod.ToSmallCirc,
+				Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexp256, smallModexpSize),
+				NbCircuitInstances: utils.DivCeil(settings.MaxNbInstance256, settings.NbInstancesPerCircuitModexp256),
+				PlonkOptions:       options,
+			},
+		)
+	}
 
-	mod.GnarkCircuitConnectorLarge = plonk.DefineAlignment(
-		comp,
-		&plonk.CircuitAlignmentInput{
-			Name:               "MODEXP_LARGE",
-			DataToCircuit:      mod.Limbs,
-			DataToCircuitMask:  mod.IsLarge,
-			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexpLarge, largeModexpSize),
-			NbCircuitInstances: utils.DivCeil(settings.MaxNbInstanceLarge, settings.NbInstancesPerCircuitModexpLarge),
-			PlonkOptions:       options,
-		},
-	)
+	if settings.MaxNbInstanceLarge > 0 {
+		mod.GnarkCircuitConnectorLarge = plonk.DefineAlignment(
+			comp,
+			&plonk.CircuitAlignmentInput{
+				Name:               "MODEXP_LARGE",
+				DataToCircuit:      mod.Limbs,
+				DataToCircuitMask:  mod.IsLarge,
+				Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexpLarge, largeModexpSize),
+				NbCircuitInstances: utils.DivCeil(settings.MaxNbInstanceLarge, settings.NbInstancesPerCircuitModexpLarge),
+				PlonkOptions:       options,
+			},
+		)
+	}
+	if mod.GnarkCircuitConnector256Bits == nil && mod.GnarkCircuitConnectorLarge == nil {
+		utils.Panic("modexp module: circuit connection defined but no modexp limits defined")
+	}
 
 	return mod
 }

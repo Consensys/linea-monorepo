@@ -111,8 +111,10 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 
 	// It is possible to not declare the circuit (for testing purpose) in that
 	// case we skip the corresponding assignment part.
-	if mod.HasCircuit {
+	if mod.GnarkCircuitConnector256Bits != nil {
 		mod.GnarkCircuitConnector256Bits.Assign(run)
+	}
+	if mod.GnarkCircuitConnectorLarge != nil {
 		mod.GnarkCircuitConnectorLarge.Assign(run)
 	}
 }
