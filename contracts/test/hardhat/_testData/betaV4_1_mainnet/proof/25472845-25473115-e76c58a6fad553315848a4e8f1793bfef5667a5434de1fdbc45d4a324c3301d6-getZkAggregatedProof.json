@@ -18,5 +18,7 @@
     "l1RollingHashMessageNumber": 791859,
     "l2MerkleRoots": [],
     "l2MerkleTreesDepth": 5,
-    "l2MessagingBlocksOffsets": "0x"
+    "l2MessagingBlocksOffsets": "0x",
+    "parentAggregationLastL1RollingHashMessageNumber" : "791857",
+    "parentAggregationLastL1RollingHash": "0x6001597a8d10b6ea8046078ce19847c5dbe168ead056585376685011149790ea"
 }

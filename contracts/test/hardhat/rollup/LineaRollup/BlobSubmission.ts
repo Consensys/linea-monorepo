@@ -12,7 +12,6 @@ import betaV4_1_FinalizationData_Sepolia from "../../_testData/betaV4_1_sepolia/
 import betaV4_1_BlobData_Mainnet from "../../_testData/betaV4_1_mainnet/25472845-25473115-bcv0.0-ccv0.0-81da22585f32b849b1d3ec3dd1aa0c027b517112f3b3bcc4aad086d59967af30-getZkBlobCompressionProof.json";
 import betaV4_1_FinalizationData_Mainnet from "../../_testData/betaV4_1_mainnet/proof/25472845-25473115-e76c58a6fad553315848a4e8f1793bfef5667a5434de1fdbc45d4a324c3301d6-getZkAggregatedProof.json";
 
-
 import blobAggregatedProof1To155 from "../../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
@@ -734,7 +733,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   });
 
   describe("Prover Beta V4_1", () => {
-    it.only("Can submit blobs and finalize with Prover Beta V4_1 on Sepolia", async () => {
+    it("Can submit blobs and finalize with Prover Beta V4_1 on Sepolia", async () => {
       // *** ARRANGE ***
       // custom verifier deploy.
 
@@ -801,7 +800,8 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         },
       });
 
-      finalizationData.lastFinalizedL1RollingHash = betaV4_1_FinalizationData_Sepolia.parentAggregationLastL1RollingHash;
+      finalizationData.lastFinalizedL1RollingHash =
+        betaV4_1_FinalizationData_Sepolia.parentAggregationLastL1RollingHash;
       finalizationData.lastFinalizedL1RollingHashMessageNumber = BigInt(
         betaV4_1_FinalizationData_Sepolia.parentAggregationLastL1RollingHashMessageNumber,
       );
@@ -821,7 +821,11 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       // *** ACT ***
       const finalizeCompressedCall = betaV4_1_LineaRollup
         .connect(operator)
-        .finalizeBlocks(betaV4_1_FinalizationData_Sepolia.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+        .finalizeBlocks(
+          betaV4_1_FinalizationData_Sepolia.aggregatedProof,
+          TEST_PUBLIC_VERIFIER_INDEX,
+          finalizationData,
+        );
 
       // *** ASSERT ***
       const eventArgs = [
@@ -854,7 +858,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       );
     });
 
-    it.only("Can submit blobs and finalize with Prover Beta V4_1 on Mainnet", async () => {
+    it("Can submit blobs and finalize with Prover Beta V4_1 on Mainnet", async () => {
       // *** ARRANGE ***
       // custom verifier deploy.
 
@@ -921,7 +925,8 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         },
       });
 
-      finalizationData.lastFinalizedL1RollingHash = betaV4_1_FinalizationData_Mainnet.parentAggregationLastL1RollingHash;
+      finalizationData.lastFinalizedL1RollingHash =
+        betaV4_1_FinalizationData_Mainnet.parentAggregationLastL1RollingHash;
       finalizationData.lastFinalizedL1RollingHashMessageNumber = BigInt(
         betaV4_1_FinalizationData_Mainnet.parentAggregationLastL1RollingHashMessageNumber,
       );
@@ -941,13 +946,17 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       // *** ACT ***
       const finalizeCompressedCall = betaV4_1_LineaRollup
         .connect(operator)
-        .finalizeBlocks(betaV4_1_FinalizationData_Sepolia.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+        .finalizeBlocks(
+          betaV4_1_FinalizationData_Mainnet.aggregatedProof,
+          TEST_PUBLIC_VERIFIER_INDEX,
+          finalizationData,
+        );
 
       // *** ASSERT ***
       const eventArgs = [
-        BigInt(betaV4_1_FinalizationData_Sepolia.lastFinalizedBlockNumber) + 1n,
+        BigInt(betaV4_1_FinalizationData_Mainnet.lastFinalizedBlockNumber) + 1n,
         finalizationData.endBlockNumber,
-        betaV4_1_FinalizationData_Sepolia.finalShnarf,
+        betaV4_1_FinalizationData_Mainnet.finalShnarf,
         finalizationData.parentStateRootHash,
         finalBlobFile.finalStateRootHash,
       ];
