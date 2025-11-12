@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	gnarkVortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/std/hash"
 	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
 	"github.com/stretchr/testify/assert"
@@ -54,8 +53,7 @@ func (c *EncodeAndHashTestCircuit) Define(api frontend.API) error {
 	api.AssertIsEqual(digest, c.Result)
 	return nil
 }
-
-func TestEncodeAndHashCircuit(t *testing.T) {
+func gnarkEncodeAndHashCircuitWitness() (*EncodeAndHashTestCircuit, *EncodeAndHashTestCircuit) {
 	var intValues [8]field.Element
 	var values [8]zk.WrappedVariable
 
@@ -78,24 +76,39 @@ func TestEncodeAndHashCircuit(t *testing.T) {
 	circuit.Params.HasherFunc = makePoseidon2Hasherfunc
 	circuit.Params.NoSisHasher = makePoseidon2Hasherfunc
 
-	// Compile the circuit for BLS12-377
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
-
-	// Assert compilation worked
-	assert.NoError(t, err)
-
 	// Create a witness with test values
 	var witness EncodeAndHashTestCircuit
 	witness.Values = values
 	witness.Result = expectedResult.String()
 
-	// Convert witness to frontend-compatible witness
-	fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	assert.NoError(t, err)
+	return &circuit, &witness
 
-	// Verify the circuit satisfies constraints with the witness
-	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
+}
+func TestEncodeAndHashCircuit(t *testing.T) {
+
+	// {
+	// 	circuit, witness := gnarkEncodeAndHashCircuitWitness()
+
+	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+	// 	assert.NoError(t, err)
+
+	// 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+	// 	assert.NoError(t, err)
+	// 	err = ccs.IsSolved(fullWitness)
+	// 	assert.NoError(t, err)
+	// }
+
+	{
+		circuit, witness := gnarkEncodeAndHashCircuitWitness()
+
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 
 }
 
@@ -135,9 +148,7 @@ func (circuit *ComputeLagrangeCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func TestComputeLagrangeCircuit(t *testing.T) {
-
-	s := 16
+func gnarkComputeLagrangeCircuitWitness(s int) (*ComputeLagrangeCircuit, *ComputeLagrangeCircuit) {
 	d := fft.NewDomain(uint64(s))
 	zeta := fext.PseudoRand(rng)
 
@@ -158,21 +169,34 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 	circuit.Domain = *d
 	circuit.Li = make([]gnarkfext.E4Gen, s)
 
-	// compile...
-	builder := scs.NewBuilder[constraint.U32]
-	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
-	if err != nil {
-		t.Fatal(err)
-	}
+	return &circuit, &witness
+}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, field.Modulus())
-	if err != nil {
-		t.Fatal(err)
+func TestComputeLagrangeCircuit(t *testing.T) {
+
+	s := 16
+
+	{
+		circuit, witness := gnarkComputeLagrangeCircuitWitness(s)
+
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
 	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
+	{
+		circuit, witness := gnarkComputeLagrangeCircuitWitness(s)
+
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
 	}
 
 }
@@ -203,9 +227,7 @@ func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func TestFFTInverseCircuit(t *testing.T) {
-
-	s := 16
+func gnarkFFTInverseCircuitWitness(s int) (*FFTInverseCircuit, *FFTInverseCircuit) {
 	d := fft.NewDomain(uint64(s))
 
 	// prepare witness
@@ -230,22 +252,36 @@ func TestFFTInverseCircuit(t *testing.T) {
 	circuit.P = make([]zk.WrappedVariable, s)
 	circuit.R = make([]zk.WrappedVariable, s)
 	circuit.Domain = *d
+	return &circuit, &witness
 
-	// compile...
-	builder := scs.NewBuilder[constraint.U32]
-	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
-	if err != nil {
-		t.Fatal(err)
+}
+
+func TestFFTInverseCircuit(t *testing.T) {
+
+	s := 16
+
+	{
+		circuit, witness := gnarkFFTInverseCircuitWitness(s)
+
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
 	}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, field.Modulus())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
+	{
+		circuit, witness := gnarkFFTInverseCircuitWitness(s)
+
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
 	}
 
 }
@@ -263,11 +299,7 @@ func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
 	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
 
 }
-
-func TestAssertIsCodeWord(t *testing.T) {
-
-	// generate witness
-	size := 2048
+func gnarkAssertIsCodeWordCircuitWitness(size int) (*AssertIsCodeWordCircuit, *AssertIsCodeWordCircuit) {
 	d := fft.NewDomain(uint64(size))
 	rate := 2
 	p := make([]field.Element, size)
@@ -290,21 +322,37 @@ func TestAssertIsCodeWord(t *testing.T) {
 	circuit.P = make([]zk.WrappedVariable, size)
 	circuit.d = d
 	circuit.rate = uint64(rate)
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
-	if err != nil {
-		t.Fatal(err)
+	return &circuit, &witness
+}
+
+func TestAssertIsCodeWord(t *testing.T) {
+
+	// generate witness
+	size := 2048
+
+	{
+		circuit, witness := gnarkAssertIsCodeWordCircuitWitness(size)
+
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
 	}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
-	}
+	{
+		circuit, witness := gnarkAssertIsCodeWordCircuitWitness(size)
 
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 }
 
 // ------------------------------------------------------------
@@ -516,7 +564,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 
 	// Generate the proof
 	if proof == nil {
-		proof = &OpeningProof{}
+		proof = new(OpeningProof)
 	}
 	proof.LinearCombination = koalabearParams.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
 
@@ -540,7 +588,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	return proof, randomCoin, x, yLists, entryList, roots
 }
 
-func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
+func gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t *testing.T) (*VerifyOpeningCircuitMerkleTree, *VerifyOpeningCircuitMerkleTree) {
 
 	// generate witness
 	nCommitments := 4
@@ -571,20 +619,47 @@ func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 	circuit.Params.NoSisHasher = makePoseidon2Hasherfunc
 
 	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, roots)
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	if err != nil {
-		t.Fatal(err)
+	return &circuit, &witness
+}
+
+func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
+	{
+		circuit, witness := gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t)
+
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit, frontend.IgnoreUnconstrainedInputs())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// solve the circuit
+		twitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = ccs.IsSolved(twitness)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// {
+	// 	circuit, witness := gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t)
+
+	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+
+	// 	// solve the circuit
+	// 	twitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// 	err = ccs.IsSolved(twitness)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// }
 }
 func makePoseidon2Hasherfunc(api frontend.API) (hash.FieldHasher, error) {
 
