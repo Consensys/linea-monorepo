@@ -20,7 +20,7 @@ func TestConvertAndClean(t *testing.T) {
 	var (
 		size                   = 1024
 		stateCurr              [5][5][8]ifaces.Column
-		fromBaseX              *convertAndClean
+		fromBaseX              *BackToThetaOrOutput
 		isActive, isFirstBlock ifaces.Column
 		period                 = 4
 	)
@@ -40,7 +40,7 @@ func TestConvertAndClean(t *testing.T) {
 		isActive = comp.InsertCommit(0, ifaces.ColID("BC_IS_ACTIVE"), size)
 		isFirstBlock = comp.InsertCommit(0, ifaces.ColID("BC_IS_FIRST_BLOCK"), size)
 
-		fromBaseX = newConvertAndClean(b.CompiledIOP, stateCurr, isActive, isFirstBlock)
+		fromBaseX = newBackToThetaOrOutput(b.CompiledIOP, stateCurr, isActive, isFirstBlock)
 	}
 	prover := func(run *wizard.ProverRuntime) {
 		// assign values to input state

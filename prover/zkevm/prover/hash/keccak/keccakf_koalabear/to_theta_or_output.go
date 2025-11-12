@@ -28,13 +28,13 @@ type lookupTables struct {
 	colBase2     ifaces.Column // base 2
 }
 
-// convertAndClean module, responsible for converting the state from base dirty BaseChi to BaseTheta.
-type convertAndClean struct {
+// BackToThetaOrOutput module, responsible for converting the state from base dirty BaseChi to BaseTheta or to base 2 (output step).
+type BackToThetaOrOutput struct {
 	// state before applying the base conversion step, in base dirty BaseChi.
 	stateCurr state
 	// flag used to indicated where to use base theta conversion (continues permutation) or base 2 conversion (output step).
 	isFirstBlock ifaces.Column
-	isActive     ifaces.Column // it indicates the end of the last hash
+	isActive     ifaces.Column // it indicate active part of the module
 	// state after applying the base conversion step, in base clean BaseTheta.
 	StateNext state
 	// state in the middle of base conversion each lane is divided into two limbs of 4 bits each. This step is to reduce the size of the lookup table.
@@ -47,11 +47,11 @@ type convertAndClean struct {
 	lookupTable lookupTables
 }
 
-// newBaseConversion creates a new base conversion module, declares the columns and constraints and returns its pointer
-func newConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isActive, isFirstBlock ifaces.Column) *convertAndClean {
+// newBackToThetaOrOutput creates a new base conversion module, declares the columns and constraints and returns its pointer
+func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isActive, isFirstBlock ifaces.Column) *BackToThetaOrOutput {
 
 	var (
-		bc = &convertAndClean{
+		bc = &BackToThetaOrOutput{
 			stateCurr:    stateCurr,
 			isFirstBlock: isFirstBlock,
 			isActive:     isActive,
@@ -164,7 +164,7 @@ func newConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isActive
 }
 
 // assignBaseConversion assigns the values to the columns of base conversion step.
-func (bc *convertAndClean) Run(run *wizard.ProverRuntime) convertAndClean {
+func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) BackToThetaOrOutput {
 	// decompose each bytes of the lane into 4 bits (base 12)
 	var (
 		size                  = bc.stateCurr[0][0][0].Size()
@@ -253,7 +253,7 @@ func (bc *convertAndClean) Run(run *wizard.ProverRuntime) convertAndClean {
 			}
 		}
 	}
-	return convertAndClean{stateCurr: bc.stateCurr}
+	return BackToThetaOrOutput{stateCurr: bc.stateCurr}
 }
 
 func creatLookupTablesChiToTheta() (dirtyChi, cleanTheta, cleanBase2 smartvectors.SmartVector) {
