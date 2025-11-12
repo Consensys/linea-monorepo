@@ -33,8 +33,8 @@ func InitializeProverState[K, V io.WriterTo](conf *smt_koalabear.Config, locatio
 
 	// Insert the head and the tail in the tree
 	head, tail := Head(), Tail(conf)
-	tree.Update(0, types.Bytes32ToHash(head.Hash(conf)))
-	tree.Update(1, types.Bytes32ToHash(tail.Hash(conf)))
+	tree.Update(0, types.Bytes32ToOctuplet(head.Hash(conf)))
+	tree.Update(1, types.Bytes32ToOctuplet(tail.Hash(conf)))
 
 	data := collection.NewMapping[int64, KVOpeningTuple[K, V]]()
 	data.InsertNew(0, KVOpeningTuple[K, V]{LeafOpening: head})
@@ -174,7 +174,7 @@ func (s *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt
 
 	// Perform the update
 	s.Data.Update(i, tuple)
-	s.Tree.Update(int(i), types.Bytes32ToHash(leaf))
+	s.Tree.Update(int(i), types.Bytes32ToOctuplet(leaf))
 	newRoot := s.SubTreeRoot()
 
 	logrus.Tracef("upsert pos %v, leaf %x, root=%x -> %x", i, leaf, oldRoot, newRoot)
@@ -200,7 +200,7 @@ func (s *ProverState[K, V]) rmTuple(i int64) smt_koalabear.Proof {
 func (s *ProverState[K, V]) TopRoot() Bytes32 {
 	hasher := poseidon2_koalabear.Poseidon2()
 
-	WriteInt64On32Bytes(hasher, s.NextFreeNode)
+	WriteInt64On64Bytes(hasher, s.NextFreeNode)
 	subTreeRoot := s.SubTreeRoot()
 	subTreeRoot.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)

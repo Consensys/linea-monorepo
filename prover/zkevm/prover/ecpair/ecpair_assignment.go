@@ -41,39 +41,52 @@ func (ec *ECPair) Assign(run *wizard.ProverRuntime) {
 
 	// assign the public inputs for gnark membership check circuit
 	if ec.AlignedG2MembershipData != nil {
+		ec.flattenLimbsG2Membership.Run(run)
 		ec.AlignedG2MembershipData.Assign(run)
 	}
 	// assign the public inputs for gnark Miller loop circuit
 	if ec.AlignedMillerLoopCircuit != nil {
+		ec.flattenLimbsMillerLoop.Run(run)
 		ec.AlignedMillerLoopCircuit.Assign(run)
 	}
 	// assign the public inputs for gnark final exponentiation circuit
 	if ec.AlignedFinalExpCircuit != nil {
+		ec.flattenLimbsFinalExp.Run(run)
 		ec.AlignedFinalExpCircuit.Assign(run)
 	}
 }
 
 func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 	var (
+		srcLimbs [common.NbLimbU128][]field.Element
+
 		srcIsPairing = ec.ECPairSource.CsEcpairing.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcLimbs     = ec.ECPairSource.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcIsData    = ec.ECPairSource.IsEcPairingData.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcIsRes     = ec.ECPairSource.IsEcPairingResult.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcID        = ec.ECPairSource.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
-	if len(srcIsPairing) != len(srcLimbs) || len(srcIsPairing) != len(srcIsData) || len(srcIsPairing) != len(srcIsRes) {
+	if len(srcIsPairing) != len(srcIsData) || len(srcIsPairing) != len(srcIsRes) {
 		utils.Panic("ECPair: input length mismatch")
 	}
 
+	for k := range common.NbLimbU128 {
+		srcLimbs[k] = ec.ECPairSource.Limbs[k].GetColAssignment(run).IntoRegVecSaveAlloc()
+
+		if len(srcLimbs[k]) != len(srcIsPairing) {
+			utils.Panic("ECPair: LIMB_%d input length mismatch", k)
+		}
+	}
+
 	var (
-		inputResult [2]field.Element
-		pairingInG1 [][nbG1Limbs]field.Element
-		pairingInG2 [][nbG2Limbs]field.Element
+		inputResult [common.NbLimbU128]ResultLimbs
+		pairingInG1 [common.NbLimbU128][]G1Limbs
+		pairingInG2 [common.NbLimbU128][]G2Limbs
 	)
 
 	var (
+		dstLimb [common.NbLimbU128]*common.VectorBuilder
+
 		dstIsActive     = common.NewVectorBuilder(ec.UnalignedPairingData.IsActive)
-		dstLimb         = common.NewVectorBuilder(ec.UnalignedPairingData.Limb)
 		dstToMillerLoop = common.NewVectorBuilder(ec.UnalignedPairingData.ToMillerLoopCircuitMask)
 		dstToFinalExp   = common.NewVectorBuilder(ec.UnalignedPairingData.ToFinalExpCircuitMask)
 		dstIsPulling    = common.NewVectorBuilder(ec.UnalignedPairingData.IsPulling)
@@ -91,7 +104,11 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		dstIsResult     = common.NewVectorBuilder(ec.UnalignedPairingData.IsResultOfInstance)
 	)
 
-	for currPos := 0; currPos < len(srcLimbs); {
+	for k := range common.NbLimbU128 {
+		dstLimb[k] = common.NewVectorBuilder(ec.UnalignedPairingData.Limbs[k])
+	}
+
+	for currPos := 0; currPos < len(srcLimbs[0]); {
 		// we need to check if the current position is a pairing or not. If not,
 		// then skip it.
 		//
@@ -122,19 +139,32 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		}
 		nbActualTotalPairs := len(actualInputs)
 		// now, we have continous chunk of data that is for the pairing. Prepare it for processing.
-		pairingInG1 = make([][nbG1Limbs]field.Element, nbActualTotalPairs)
-		pairingInG2 = make([][nbG2Limbs]field.Element, nbActualTotalPairs)
+		for k := range common.NbLimbU128 {
+			pairingInG1[k] = make([]G1Limbs, nbActualTotalPairs)
+			pairingInG2[k] = make([]G2Limbs, nbActualTotalPairs)
+		}
+
 		for ii, i := range actualInputs {
 			for j := 0; j < nbG1Limbs; j++ {
-				pairingInG1[ii][j] = srcLimbs[currPos+i*(nbG1Limbs+nbG2Limbs)+j]
+				for k := range common.NbLimbU128 {
+					pairingInG1[k][ii][j] = srcLimbs[k][currPos+i*(nbG1Limbs+nbG2Limbs)+j]
+				}
 			}
 			for j := 0; j < nbG2Limbs; j++ {
-				pairingInG2[ii][j] = srcLimbs[currPos+i*(nbG1Limbs+nbG2Limbs)+nbG1Limbs+j]
+				for k := range common.NbLimbU128 {
+					pairingInG2[k][ii][j] = srcLimbs[k][currPos+i*(nbG1Limbs+nbG2Limbs)+nbG1Limbs+j]
+				}
 			}
 		}
-		inputResult[0] = srcLimbs[currPos+nbInputs*(nbG1Limbs+nbG2Limbs)]
-		inputResult[1] = srcLimbs[currPos+nbInputs*(nbG1Limbs+nbG2Limbs)+1]
+
+		for k := range common.NbLimbU128 {
+			inputResult[k][0] = srcLimbs[k][currPos+nbInputs*(nbG1Limbs+nbG2Limbs)]
+			inputResult[k][1] = srcLimbs[k][currPos+nbInputs*(nbG1Limbs+nbG2Limbs)+1]
+		}
 		limbs := processPairingData(pairingInG1, pairingInG2, inputResult)
+
+		limbsLen := len(limbs[0])
+
 		instanceId := srcID[currPos]
 		// processed data has the input limbs, but we have entered the intermediate Gt accumulator values
 
@@ -144,8 +174,11 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		// - the instance id
 		// - the index of the current limb
 		// - activeness of the submodule
-		for i := 0; i < len(limbs); i++ {
-			dstLimb.PushField(limbs[i])
+		for i := 0; i < limbsLen; i++ {
+			for k := range common.NbLimbU128 {
+				dstLimb[k].PushField(limbs[k][i])
+			}
+
 			if i == 0 {
 				dstIsFirstLine.PushOne()
 			} else {
@@ -295,8 +328,10 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		currPos += nbInputs*(nbG1Limbs+nbG2Limbs) + 2
 	}
 	// Finally, we pad and assign the assigned data.
+	for i := range common.NbLimbU128 {
+		dstLimb[i].PadAndAssign(run, field.Zero())
+	}
 	dstIsActive.PadAndAssign(run, field.Zero())
-	dstLimb.PadAndAssign(run, field.Zero())
 	dstPairId.PadAndAssign(run, field.Zero())
 	dstTotalPairs.PadAndAssign(run, field.Zero())
 	dstToMillerLoop.PadAndAssign(run, field.Zero())
@@ -314,18 +349,34 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 	dstIsResult.PadAndAssign(run, field.Zero())
 }
 
-func processPairingData(pairingInG1 [][nbG1Limbs]field.Element, pairingInG2 [][nbG2Limbs]field.Element, inputResult [2]field.Element) []field.Element {
-	var res []field.Element
+func processPairingData(
+	pairingInG1 [common.NbLimbU128][]G1Limbs,
+	pairingInG2 [common.NbLimbU128][]G2Limbs,
+	inputResult [common.NbLimbU128]ResultLimbs,
+) [common.NbLimbU128][]field.Element {
+	var res [common.NbLimbU128][]field.Element
 
 	var acc bn254.GT
 	acc.SetOne()
-	for i := 0; i < len(pairingInG1); i++ {
+
+	pairingLength := len(pairingInG1[0])
+	for i := 0; i < pairingLength; i++ {
 		accLimbs := convGtGnarkToWizard(acc)
-		res = append(res, accLimbs[:]...)
-		res = append(res, pairingInG1[i][:]...)
-		res = append(res, pairingInG2[i][:]...)
-		inG1 := convG1WizardToGnark(pairingInG1[i])
-		inG2 := convG2WizardToGnark(pairingInG2[i])
+
+		var toGnarkG1Limbs [common.NbLimbU128]G1Limbs
+		var toGnarkG2Limbs [common.NbLimbU128]G2Limbs
+
+		for j := range common.NbLimbU128 {
+			res[j] = append(res[j], accLimbs[j][:]...)
+			res[j] = append(res[j], pairingInG1[j][i][:]...)
+			res[j] = append(res[j], pairingInG2[j][i][:]...)
+
+			toGnarkG1Limbs[j] = pairingInG1[j][i]
+			toGnarkG2Limbs[j] = pairingInG2[j][i]
+		}
+
+		inG1 := convG1WizardToGnark(toGnarkG1Limbs)
+		inG2 := convG2WizardToGnark(toGnarkG2Limbs)
 
 		// Miller loop with and without line precomputations give different
 		// results. As in-circuit we're using the variant with precomputation
@@ -341,47 +392,76 @@ func processPairingData(pairingInG1 [][nbG1Limbs]field.Element, pairingInG2 [][n
 		}
 
 		acc.Mul(&acc, &mlres)
-		if i != len(pairingInG1)-1 {
+		if i != pairingLength-1 {
 			accLimbs = convGtGnarkToWizard(acc)
-			res = append(res, accLimbs[:]...)
+			for j := range common.NbLimbU128 {
+				res[j] = append(res[j], accLimbs[j][:]...)
+			}
 		}
 	}
-	res = append(res, inputResult[:]...)
+
+	for j := range common.NbLimbU128 {
+		res[j] = append(res[j], inputResult[j][:]...)
+	}
+
 	return res
 }
 
 func (ec *ECPair) assignMembershipData(run *wizard.ProverRuntime) {
 	var (
+		srcLimbs [common.NbLimbU128][]field.Element
+
 		srcIsG2       = ec.ECPairSource.CsG2Membership.GetColAssignment(run).IntoRegVecSaveAlloc()
-		srcLimbs      = ec.ECPairSource.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcSuccessBit = ec.ECPairSource.SuccessBit.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
-	if len(srcIsG2) != len(srcLimbs) || len(srcIsG2) != len(srcSuccessBit) {
+	if len(srcIsG2) != len(srcSuccessBit) {
 		utils.Panic("ECPair: input length mismatch")
 	}
+
+	for k := range common.NbLimbU128 {
+		srcLimbs[k] = ec.ECPairSource.Limbs[k].GetColAssignment(run).IntoRegVecSaveAlloc()
+
+		if len(srcLimbs[k]) != len(srcIsG2) {
+			utils.Panic("ECPair: LIMB_%d input length mismatch", k)
+		}
+	}
+
 	var (
-		dstLimb       = common.NewVectorBuilder(ec.UnalignedG2MembershipData.Limb)
+		dstLimb [common.NbLimbU128]*common.VectorBuilder
+
 		dstMask       = common.NewVectorBuilder(ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask)
 		dstIsPulling  = common.NewVectorBuilder(ec.UnalignedG2MembershipData.IsPulling)
 		dstIsComputed = common.NewVectorBuilder(ec.UnalignedG2MembershipData.IsComputed)
 		dstSuccessBit = common.NewVectorBuilder(ec.UnalignedG2MembershipData.SuccessBit)
 	)
 
-	for currPos := 0; currPos < len(srcLimbs); {
+	for k := range common.NbLimbU128 {
+		dstLimb[k] = common.NewVectorBuilder(ec.UnalignedG2MembershipData.Limbs[k])
+	}
+
+	for currPos := 0; currPos < len(srcLimbs[0]); {
 		if srcIsG2[currPos].IsZero() {
 			currPos++
 			continue
 		}
 		// push the G2 limbs
 		for i := 0; i < nbG2Limbs; i++ {
-			dstLimb.PushField(srcLimbs[currPos+i])
+			for k := range common.NbLimbU128 {
+				dstLimb[k].PushField(srcLimbs[k][currPos+i])
+			}
+
 			dstSuccessBit.PushField(srcSuccessBit[currPos])
 			dstMask.PushOne()
 			dstIsPulling.PushOne()
 			dstIsComputed.PushZero()
 		}
-		// push the expected success bit
-		dstLimb.PushField(srcSuccessBit[currPos])
+		// push the expected success bit to the last limb column,
+		// while the rest of the columns are zero.
+		for k := range common.NbLimbU128 - 1 {
+			dstLimb[k].PushZero()
+		}
+		dstLimb[common.NbLimbU128-1].PushField(srcSuccessBit[currPos])
+
 		dstSuccessBit.PushField(srcSuccessBit[currPos])
 		dstMask.PushOne()
 		dstIsPulling.PushZero()
@@ -390,7 +470,9 @@ func (ec *ECPair) assignMembershipData(run *wizard.ProverRuntime) {
 		currPos += nbG2Limbs
 	}
 
-	dstLimb.PadAndAssign(run, field.Zero())
+	for k := range common.NbLimbU128 {
+		dstLimb[k].PadAndAssign(run, field.Zero())
+	}
 	dstSuccessBit.PadAndAssign(run, field.Zero())
 	dstMask.PadAndAssign(run, field.Zero())
 	dstIsPulling.PadAndAssign(run, field.Zero())

@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -79,16 +80,16 @@ type storeCommitBuilder interface {
 func newExternalRangeChecker(addGateForRangeCheck bool) (frontend.NewBuilderU32, func() [][2]int) {
 	rcCols := make(chan [][2]int)
 	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder[constraint.U32], error) {
-			b, err := scs.NewBuilder[constraint.U32](field, config)
+			b, err := plonkbuilder.From(scs.NewBuilder[constraint.U32])(field, config)
 			if err != nil {
 				return nil, fmt.Errorf("could not create new native builder: %w", err)
 			}
-			scb, ok := b.(storeCommitBuilder)
+			scb, ok := b.(plonkbuilder.Builder)
 			if !ok {
 				return nil, fmt.Errorf("native builder doesn't implement committer or kvstore")
 			}
 			return &externalRangeChecker{
-				storeCommitBuilder:   scb,
+				Builder:              scb,
 				rcCols:               rcCols,
 				addGateForRangeCheck: addGateForRangeCheck,
 			}, nil
@@ -117,7 +118,7 @@ func (builder *externalRangeChecker) Check(v zk.WrappedVariable, bits int) {
 func (builder *externalRangeChecker) Compile() (constraint.ConstraintSystemU32, error) {
 	// GetWireGates may add gates if [addGateForRangeCheck] is true. Call it
 	// synchronously before calling compile on the circuit.
-	cols, err := builder.storeCommitBuilder.GetWireConstraints(builder.checked, builder.addGateForRangeCheck)
+	cols, err := builder.Builder.GetWireConstraints(builder.checked, builder.addGateForRangeCheck)
 	if err != nil {
 		return nil, fmt.Errorf("get wire gates: %w", err)
 	}
@@ -125,12 +126,12 @@ func (builder *externalRangeChecker) Compile() (constraint.ConstraintSystemU32, 
 	go func() {
 		builder.rcCols <- cols
 	}()
-	return builder.storeCommitBuilder.Compile()
+	return builder.Builder.Compile()
 }
 
 // Compiler returns the compiler of the underlying builder.
 func (builder *externalRangeChecker) Compiler() frontend.Compiler {
-	return builder.storeCommitBuilder.Compiler()
+	return builder.Builder.Compiler()
 }
 
 // addRangeCheckConstraints adds the wizard constraints implementing the range-checks

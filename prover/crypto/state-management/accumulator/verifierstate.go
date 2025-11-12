@@ -39,12 +39,12 @@ func (p *ProverState[K, V]) VerifierState() VerifierState[K, V] {
 // returns the new root
 func updateCheckRoot(conf *smt_koalabear.Config, proof smt_koalabear.Proof, root, old, new Bytes32) (newRoot Bytes32, err error) {
 
-	if ok := proof.Verify(conf, types.Bytes32ToHash(old), types.Bytes32ToHash(root)); !ok {
+	if ok := proof.Verify(conf, types.Bytes32ToOctuplet(old), types.Bytes32ToOctuplet(root)); !ok {
 		return Bytes32{}, errors.New("root update audit failed : could not authenticate the old")
 	}
 
 	// Note: all possible errors are already convered by `proof.Verify`
-	newRootOct, _ := proof.RecoverRoot(conf, types.Bytes32ToHash(new))
+	newRootOct, _ := proof.RecoverRoot(conf, types.Bytes32ToOctuplet(new))
 	logrus.Tracef("update check root %v leaf: %x->%x root: %x->%x\n", proof.Path, old, new, root, newRootOct)
 	return types.HashToBytes32(newRootOct), nil
 }
@@ -53,8 +53,7 @@ func updateCheckRoot(conf *smt_koalabear.Config, proof smt_koalabear.Proof, root
 // `SubTreeRoot`
 func (v *VerifierState[K, V]) TopRoot() Bytes32 {
 	hasher := poseidon2_koalabear.Poseidon2()
-
-	WriteInt64On32Bytes(hasher, v.NextFreeNode)
+	WriteInt64On64Bytes(hasher, v.NextFreeNode)
 	v.SubTreeRoot.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
 	return AsBytes32(Bytes32)
@@ -69,14 +68,14 @@ func deferCheckUpdateRoot(
 	root, old, new Bytes32,
 	appendTo []smt_koalabear.ProvedClaim,
 ) (appended []smt_koalabear.ProvedClaim, newRoot Bytes32) {
-	newRootOct, err := proof.RecoverRoot(conf, types.Bytes32ToHash(new))
+	newRootOct, err := proof.RecoverRoot(conf, types.Bytes32ToOctuplet(new))
 	if err != nil {
 		panic(err)
 	}
 	newRoot = types.HashToBytes32(newRootOct)
 	appended = append(appendTo,
-		smt_koalabear.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToHash(old), Root: types.Bytes32ToHash(root)},
-		smt_koalabear.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToHash(new), Root: types.Bytes32ToHash(newRoot)},
+		smt_koalabear.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToOctuplet(old), Root: types.Bytes32ToOctuplet(root)},
+		smt_koalabear.ProvedClaim{Proof: proof, Leaf: types.Bytes32ToOctuplet(new), Root: types.Bytes32ToOctuplet(newRoot)},
 	)
 
 	return appended, newRoot

@@ -89,13 +89,13 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 
 	// Test membership of leaf minus
 	leafMinus := hash(v.Config, &trace.OpeningMinus)
-	if !trace.ProofMinus.Verify(v.Config, types.Bytes32ToHash(leafMinus), types.Bytes32ToHash(trace.SubRoot)) {
+	if !trace.ProofMinus.Verify(v.Config, types.Bytes32ToOctuplet(leafMinus), types.Bytes32ToOctuplet(trace.SubRoot)) {
 		return fmt.Errorf("merkle proof verification failed : minus")
 	}
 
 	// Test membership of leaf plus
 	leafPlus := hash(v.Config, &trace.OpeningPlus)
-	if !trace.ProofPlus.Verify(v.Config, types.Bytes32ToHash(leafPlus), types.Bytes32ToHash(trace.SubRoot)) {
+	if !trace.ProofPlus.Verify(v.Config, types.Bytes32ToOctuplet(leafPlus), types.Bytes32ToOctuplet(trace.SubRoot)) {
 		return fmt.Errorf("merkle proof verification failed : plus")
 	}
 
@@ -119,8 +119,8 @@ func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
 	// Test membership of leaf plus
 	leafPlus := hash(config, &trace.OpeningPlus)
 
-	appendTo = append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.ProofMinus, Root: types.Bytes32ToHash(trace.SubRoot), Leaf: types.Bytes32ToHash(leafMinus)})
-	return append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.ProofPlus, Root: types.Bytes32ToHash(trace.SubRoot), Leaf: types.Bytes32ToHash(leafPlus)})
+	appendTo = append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.ProofMinus, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leafMinus)})
+	return append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.ProofPlus, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leafPlus)})
 }
 
 func (trace ReadZeroTrace[K, V]) HKey(cfg *smt_koalabear.Config) Bytes32 {

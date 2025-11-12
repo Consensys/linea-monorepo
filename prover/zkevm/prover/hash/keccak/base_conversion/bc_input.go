@@ -22,7 +22,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
@@ -232,10 +231,10 @@ func (b *BlockBaseConversion) assignIsFromFirstBlock(run *wizard.ProverRuntime) 
 func (b *BlockBaseConversion) assignSlicesLaneX(
 	run *wizard.ProverRuntime) {
 	var (
-		// isFirstBlock = b.IsFromFirstBlock.GetColAssignment(run).IntoRegVecSaveAlloc()
-		lane  = b.Inputs.Lane.GetColAssignment(run).IntoRegVecSaveAlloc()
-		laneX = common.NewVectorBuilder(b.LaneX)
-		limbX = make([]*common.VectorBuilder, 4)
+		isFirstBlock = b.IsFromFirstBlock.GetColAssignment(run).IntoRegVecSaveAlloc()
+		lane         = b.Inputs.Lane.GetColAssignment(run).IntoRegVecSaveAlloc()
+		laneX        = common.NewVectorBuilder(b.LaneX)
+		limbX        = make([]*common.VectorBuilder, 4)
 	)
 
 	for j := range limbX {
@@ -245,32 +244,29 @@ func (b *BlockBaseConversion) assignSlicesLaneX(
 	b.PA.Run(run)
 
 	// populate laneX
-	for range lane { // for j := range lane {
+	for j := range lane {
+		res := lane[j].Bytes()
+		bytes := make([]byte, 8)
+		copy(bytes, res[24:])
+		// to go from BE to LE; since keccak works with LE-BaseA and LE-BaseB
+		slices.Reverse(bytes)
 
-		utils.Panic("missing panic for koalabear")
+		if isFirstBlock[j].IsOne() {
+			laneX.PushField(bytesToBaseX(bytes, &keccakf.BaseAFr))
 
-		// res := lane[j].Bytes()
-		// bytes := make([]byte, 8)
-		// copy(bytes, res[24:])
-		// // to go from BE to LE; since keccak works with LE-BaseA and LE-BaseB
-		// slices.Reverse(bytes)
+			for k := range b.LimbsX {
+				a := bytes[k*2 : k*2+2]
+				limbX[k].PushField(bytesToBaseX(a, &keccakf.BaseAFr))
+			}
 
-		// if isFirstBlock[j].IsOne() {
-		// 	laneX.PushField(bytesToBaseX(bytes, &keccakf.BaseAFr))
+		} else {
+			laneX.PushField(bytesToBaseX(bytes, &keccakf.BaseBFr))
 
-		// 	for k := range b.LimbsX {
-		// 		a := bytes[k*2 : k*2+2]
-		// 		limbX[k].PushField(bytesToBaseX(a, &keccakf.BaseAFr))
-		// 	}
-
-		// } else {
-		// 	laneX.PushField(bytesToBaseX(bytes, &keccakf.BaseBFr))
-
-		// 	for k := range b.LimbsX {
-		// 		a := bytes[k*2 : k*2+2]
-		// 		limbX[k].PushField(bytesToBaseX(a, &keccakf.BaseBFr))
-		// 	}
-		// }
+			for k := range b.LimbsX {
+				a := bytes[k*2 : k*2+2]
+				limbX[k].PushField(bytesToBaseX(a, &keccakf.BaseBFr))
+			}
+		}
 	}
 
 	// assign the laneX

@@ -7,6 +7,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"fmt"
 )
 
 type pairingDataTestCase struct {
@@ -110,10 +112,13 @@ func testModule(t *testing.T, tc pairingDataTestCase, withPairingCircuit, withG2
 				CsG2Membership:    inpCt.GetCommit(build, "ECDATA_CS_G2_MEMBERSHIP"),
 				IsEcPairingData:   inpCt.GetCommit(build, "ECDATA_IS_DATA"),
 				IsEcPairingResult: inpCt.GetCommit(build, "ECDATA_IS_RES"),
-				Limb:              inpCt.GetCommit(build, "ECDATA_LIMB"),
 				SuccessBit:        inpCt.GetCommit(build, "ECDATA_SUCCESS_BIT"),
 				AccPairings:       inpCt.GetCommit(build, "ECDATA_ACC_PAIRINGS"),
 				TotalPairings:     inpCt.GetCommit(build, "ECDATA_TOTAL_PAIRINGS"),
+			}
+
+			for i := range common.NbLimbU128 {
+				inp.Limbs[i] = inpCt.GetCommit(build, fmt.Sprintf("ECDATA_LIMB_%d", i))
 			}
 
 			mod = newECPair(build.CompiledIOP, limits, inp)
@@ -133,7 +138,14 @@ func testModule(t *testing.T, tc pairingDataTestCase, withPairingCircuit, withG2
 				"ECDATA_CS_G2_MEMBERSHIP",
 				"ECDATA_IS_DATA",
 				"ECDATA_IS_RES",
-				"ECDATA_LIMB",
+				"ECDATA_LIMB_0",
+				"ECDATA_LIMB_1",
+				"ECDATA_LIMB_2",
+				"ECDATA_LIMB_3",
+				"ECDATA_LIMB_4",
+				"ECDATA_LIMB_5",
+				"ECDATA_LIMB_6",
+				"ECDATA_LIMB_7",
 				"ECDATA_SUCCESS_BIT",
 				"ECDATA_ACC_PAIRINGS",
 				"ECDATA_TOTAL_PAIRINGS",
@@ -158,7 +170,14 @@ func testModule(t *testing.T, tc pairingDataTestCase, withPairingCircuit, withG2
 					"ECPAIR_UNALIGNED_PAIRING_DATA_IS_FIRST_LINE_OF_CURR_ACC",
 					"ECPAIR_UNALIGNED_PAIRING_DATA_IS_ACCUMULATOR_CURR",
 					"ECPAIR_UNALIGNED_PAIRING_DATA_IS_RESULT",
-					"ECPAIR_UNALIGNED_PAIRING_DATA_LIMB",
+					"ECPAIR_UNALIGNED_PAIRING_DATA_LIMB_0",
+					"ECPAIR_UNALIGNED_PAIRING_DATA_LIMB_1",
+					"ECPAIR_UNALIGNED_PAIRING_DATA_LIMB_2",
+					"ECPAIR_UNALIGNED_PAIRING_DATA_LIMB_3",
+					"ECPAIR_UNALIGNED_PAIRING_DATA_LIMB_4",
+					"ECPAIR_UNALIGNED_PAIRING_DATA_LIMB_5",
+					"ECPAIR_UNALIGNED_PAIRING_DATA_LIMB_6",
+					"ECPAIR_UNALIGNED_PAIRING_DATA_LIMB_7",
 					"ECPAIR_UNALIGNED_PAIRING_DATA_TO_MILLER_LOOP_CIRCUIT",
 					"ECPAIR_UNALIGNED_PAIRING_DATA_TO_FINAL_EXP_CIRCUIT",
 				)
@@ -168,7 +187,14 @@ func testModule(t *testing.T, tc pairingDataTestCase, withPairingCircuit, withG2
 					"ECPAIR_IS_ACTIVE",
 					"ECPAIR_UNALIGNED_G2_DATA_IS_PULLING",
 					"ECPAIR_UNALIGNED_G2_DATA_IS_COMPUTED",
-					"ECPAIR_UNALIGNED_G2_DATA_LIMB",
+					"ECPAIR_UNALIGNED_G2_DATA_LIMB_0",
+					"ECPAIR_UNALIGNED_G2_DATA_LIMB_1",
+					"ECPAIR_UNALIGNED_G2_DATA_LIMB_2",
+					"ECPAIR_UNALIGNED_G2_DATA_LIMB_3",
+					"ECPAIR_UNALIGNED_G2_DATA_LIMB_4",
+					"ECPAIR_UNALIGNED_G2_DATA_LIMB_5",
+					"ECPAIR_UNALIGNED_G2_DATA_LIMB_6",
+					"ECPAIR_UNALIGNED_G2_DATA_LIMB_7",
 					"ECPAIR_UNALIGNED_G2_DATA_TO_G2_MEMBERSHIP_CIRCUIT",
 					"ECPAIR_UNALIGNED_G2_DATA_SUCCESS_BIT",
 				)

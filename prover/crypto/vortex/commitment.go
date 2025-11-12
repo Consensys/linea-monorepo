@@ -177,11 +177,10 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 			hasher := hashers[threadID]
 			hasher.Reset()
 
-			colElems := make([]field.Element, numRows)
 			for row := 0; row < numRows; row++ {
-				colElems[row] = v[row].Get(col)
+				hasher.WriteElements([]field.Element{v[row].Get(col)})
+
 			}
-			hasher.WriteElements(colElems)
 			res[col] = hasher.SumElement()
 		},
 	)

@@ -268,7 +268,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		}
 	}
 
-	seed := types.Bytes32ToHash(types.AsBytes32(run.FS.State()))
+	seed := types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State()))
 
 	/*
 		Then assigns the coins for the new round. As the round incrementation
@@ -501,7 +501,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() *poseidon2.Hasher {
+func (run *VerifierRuntime) Fs() *poseidon2_koalabear.Hasher {
 	return run.FS
 }
 

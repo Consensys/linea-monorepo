@@ -25,7 +25,7 @@ func makeTestCaseDecomposeBE() (
 		comp := build.CompiledIOP
 		inp := DecompositionInputs{
 			Name:          "TEST_DEC_BE",
-			Col:           comp.InsertCommit(0, ifaces.ColIDf("COL"), size, true),
+			Col:           comp.InsertCommit(0, ifaces.ColIDf("COL"), size),
 			NumLimbs:      4,
 			BytesPerLimbs: 2,
 		}

@@ -10,11 +10,11 @@ import (
 	globalCs "github.com/consensys/gnark/constraint"
 	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/constraint/solver"
-	fcs "github.com/consensys/gnark/frontend/cs"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -135,6 +135,17 @@ func (pa LROCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 	ctx := pa
 
+	// This action is already called at round+1 where the random coin should
+	// already be computed. The random coin is a field extension element. We
+	// decopose it into base field elements and assign them to the HcpEl
+	// columns, so that it would align gnark expectations as it only works with
+	// base field elements.
+	randCoin := run.GetRandomCoinFieldExt(ctx.Columns.Hcp.Name)
+	run.AssignColumn(ctx.Columns.HcpEl[0].GetColID(), smartvectors.NewConstant(randCoin.B0.A0, ctx.Columns.HcpEl[0].Size()))
+	run.AssignColumn(ctx.Columns.HcpEl[1].GetColID(), smartvectors.NewConstant(randCoin.B0.A1, ctx.Columns.HcpEl[1].Size()))
+	run.AssignColumn(ctx.Columns.HcpEl[2].GetColID(), smartvectors.NewConstant(randCoin.B1.A0, ctx.Columns.HcpEl[2].Size()))
+	run.AssignColumn(ctx.Columns.HcpEl[3].GetColID(), smartvectors.NewConstant(randCoin.B1.A1, ctx.Columns.HcpEl[3].Size()))
+
 	parallel.Execute(ctx.MaxNbInstances, func(start, stop int) {
 		for i := start; i < stop; i++ {
 
@@ -158,7 +169,7 @@ func (pa LROCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 			// Inject the coin which will be assigned to the randomness
 			solsync := solsync_.(solverSync)
-			solsync.randChan <- run.GetRandomCoinFieldExt(ctx.Columns.Hcp.Name) // TODO@yao: GetRandomCoinFieldExt?
+			solsync.randChan <- randCoin
 			close(solsync.randChan)
 
 			// And we block until the solver has completely finished
@@ -189,7 +200,7 @@ func (ctx *GenericPlonkProverAction) runGnarkPlonkProver(
 ) {
 
 	// This is the hint used to derive the BBS22 randomness
-	commitHintID := solver.GetHintID(fcs.Bsb22CommitmentComputePlaceholder)
+	commitHintID := solver.GetHintID(plonkbuilder.PlaceholderWideCommitHint)
 
 	// Solve the circuit
 	sol_, err := ctx.SPR.Solve(
@@ -267,7 +278,10 @@ func (ctx *GenericPlonkProverAction) solverCommitmentHint(
 		// Use a custom way of deriving the commitment from a random coin
 		// that is injected by the wizard runtime thereafter.
 		commitmentVal := <-randChan
-		commitmentVal.B0.A0.BigInt(outs[0]) //TODO@yao: check here commitmentVal field or fext element?
+		commitmentVal.B0.A0.BigInt(outs[0])
+		commitmentVal.B0.A1.BigInt(outs[1])
+		commitmentVal.B1.A0.BigInt(outs[2])
+		commitmentVal.B1.A1.BigInt(outs[3])
 		return nil
 	}
 }

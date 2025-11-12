@@ -160,20 +160,20 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x zk.
 		}
 		omegaN.Exp(omegaN, big.NewInt(int64(e)))
 		wOmegaN := zk.ValueOf(omegaN)
-		x = *apiGen.Mul(&x, &wOmegaN)
+		x = apiGen.Mul(x, wOmegaN)
 	}
 
 	denominator := gnarkutil.Exp(api, x, l)
 	wOne := zk.ValueOf(1)
 	wnField := zk.ValueOf(nField)
 	wlField := zk.ValueOf(lField)
-	denominator = *apiGen.Sub(&denominator, &wOne)
-	denominator = *apiGen.Mul(&denominator, &wnField)
+	denominator = apiGen.Sub(denominator, wOne)
+	denominator = apiGen.Mul(denominator, wnField)
 	numerator := gnarkutil.Exp(api, x, n)
-	numerator = *apiGen.Sub(&numerator, &wOne)
-	numerator = *apiGen.Mul(&numerator, &wlField)
+	numerator = apiGen.Sub(numerator, wOne)
+	numerator = apiGen.Mul(numerator, wlField)
 
-	return *apiGen.Div(&numerator, &denominator)
+	return apiGen.Div(numerator, denominator)
 }
 
 // Returns the result in gnark form. This returns a vector of constant

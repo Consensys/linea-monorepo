@@ -1,14 +1,17 @@
 package plonkinternal_test
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	plonk "github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
+	plonk "github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/assert"
@@ -432,6 +435,88 @@ func TestRangeCheckWithFixedNbRows(t *testing.T) {
 				1,
 				plonk.WithRangecheck(16, 1, false),
 				plonk.WithFixedNbRows(256),
+			)
+
+			pa = ctx.GetPlonkProverAction()
+		},
+		dummy.Compile,
+	)
+
+	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
+		pa.Run(run, []witness.Witness{assignment})
+	})
+	err := wizard.Verify(compiled, proof)
+	require.NoError(t, err)
+}
+
+// testRangeCheckWideCommitCircuit is a simple circuit that
+// range checks some public inputs and then commits to some
+// function of them using wide commitments.
+type testRangeCheckWideCommitCircuit struct {
+	A [10]frontend.Variable `gnark:",public"`
+}
+
+func (c *testRangeCheckWideCommitCircuit) Define(api frontend.API) error {
+	rangeChecker := api.(frontend.Rangechecker)
+
+	for i := range c.A {
+		api.AssertIsDifferent(0, c.A[i])
+	}
+
+	for i := range c.A {
+		rangeChecker.Check(c.A[i], 16)
+	}
+	cmter, ok := api.(frontend.WideCommitter)
+	if !ok {
+		return fmt.Errorf("not a wide committer")
+	}
+
+	toCommit := make([]frontend.Variable, len(c.A))
+	for i := range c.A {
+		toCommit[i] = api.Mul(c.A[i], c.A[i])
+	}
+	cmt, err := cmter.WideCommit(fext.ExtensionDegree, toCommit...)
+	if err != nil {
+		return err
+	}
+	for i := range cmt {
+		api.AssertIsDifferent(cmt[i], 0)
+	}
+	return nil
+}
+
+// TestRangeCheckerCompleteWithCommitment tests the correctness of the Plonk in
+// Wizard implementation in a case where we use the external range-checker along
+// with wide commitments. The variables are in range and the prover should
+// accept the provided witness.
+func TestRangeCheckerCompleteWithCommitment(t *testing.T) {
+
+	circuit := &testRangeCheckWideCommitCircuit{}
+
+	assignment := gnarkutil.AsWitnessPublic([]any{
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+		field.NewElement(1),
+	})
+
+	var pa plonk.PlonkInWizardProverAction
+
+	compiled := wizard.Compile(
+		func(build *wizard.Builder) {
+			ctx := plonk.PlonkCheck(
+				build.CompiledIOP,
+				"PLONK",
+				0,
+				circuit,
+				1,
+				plonk.WithRangecheck(16, 1, false),
 			)
 
 			pa = ctx.GetPlonkProverAction()

@@ -50,14 +50,15 @@ func AsWitnessPublicSmallField(v []zk.WrappedVariable) witness.Witness {
 
 	var (
 		wit, _  = witness.New(koalabear.Modulus())
-		witChan = make(chan any, len(v))
+		witChan = make(chan any)
 	)
 
-	for _, w := range v {
-		witChan <- w
-	}
-
-	close(witChan)
+	go func() {
+		for _, w := range v {
+			witChan <- w
+		}
+		close(witChan)
+	}()
 
 	if err := wit.Fill(len(v), 0, witChan); err != nil {
 		panic(err)

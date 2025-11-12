@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/std/math/bitslice"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/math/emulated/emparams"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -16,7 +17,7 @@ const (
 	// limbSize is the size (in bits) of a limb as in the public inputs of the
 	// circuit. This is a parameter linked to how the arithmetization encodes
 	// 256 bits integers.
-	limbSizeBits = 128
+	limbSizeBits = 16
 )
 
 // ModExpCircuit implements the [frontend.Circuit] interface and is responsible

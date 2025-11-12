@@ -18,8 +18,8 @@ import (
 type LeafOpening struct {
 	Prev int64   `json:"prevLeaf"`
 	Next int64   `json:"nextLeaf"`
-	HKey Bytes32 `json:"hkey"` //it is mimc hash of the adress
-	HVal Bytes32 `json:"hval"` // is it mimc of account
+	HKey Bytes32 `json:"hkey"` //it is poseidon2 hash of the adress
+	HVal Bytes32 `json:"hval"` // is it poseidon2 of account
 }
 
 // KVOpeningTuple is simple a tuple type of (key, value) adding the
@@ -33,13 +33,13 @@ type KVOpeningTuple[K, V io.WriterTo] struct {
 // WriteTo implements the [io.WriterTo] interface and is used to hash the leaf
 // opening into the leaves that we store in the tree.
 func (leaf *LeafOpening) WriteTo(w io.Writer) (int64, error) {
-	n0, _ := WriteInt64On32Bytes(w, leaf.Prev)
-	n1, _ := WriteInt64On32Bytes(w, leaf.Next)
-	n2, _ := leaf.HKey.WriteTo(w)
-	n3, _ := leaf.HVal.WriteTo(w)
+	n0, _ := WriteInt64On64Bytes(w, leaf.Prev) // n0 = 64 (bytes)
+	n1, _ := WriteInt64On64Bytes(w, leaf.Next) // n1 = 64 (bytes)
+	n2, _ := leaf.HKey.WriteTo(w)              // n2 = 32 (bytes)
+	n3, _ := leaf.HVal.WriteTo(w)              // n3 = 32 (bytes)
 	// Sanity-check the written size of the leaf opening
 	total := n0 + n1 + n2 + n3
-	if total != 128 {
+	if total != 192 {
 		utils.Panic("bad size")
 	}
 	return total, nil

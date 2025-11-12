@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
@@ -28,8 +29,8 @@ func makeTestCaseInfoModule(c []makeInfoTestCase) (
 		for i := range gdms {
 			createCol := common.CreateColFn(comp, "TESTING_INFO_ACCUMULATOR", c[i].Size, pragmas.RightPadded)
 			gdms[i] = generic.GenInfoModule{
-				HashHi:   createCol("Hash_Hi_%v", i),
-				HashLo:   createCol("Hash_Lo_%v", i),
+				HashHi:   []ifaces.Column{createCol("Hash_Hi_%v", i)},
+				HashLo:   []ifaces.Column{createCol("Hash_Lo_%v", i)},
 				IsHashLo: createCol("Is_Hash_Lo_%v", i),
 				IsHashHi: createCol("Is_Hash_Hi_%v", i),
 			}
@@ -95,8 +96,8 @@ var infoTestCases = []makeInfoTestCase{
 }
 
 func generateAndAssignGenInfoModule(run *wizard.ProverRuntime, gbm *generic.GenInfoModule, c makeInfoTestCase) {
-	hashHi := common.NewVectorBuilder(gbm.HashHi)
-	hashLo := common.NewVectorBuilder(gbm.HashLo)
+	hashHi := common.NewVectorBuilder(gbm.HashHi[0])
+	hashLo := common.NewVectorBuilder(gbm.HashLo[0])
 	isHashHi := common.NewVectorBuilder(gbm.IsHashHi)
 	isHashLo := common.NewVectorBuilder(gbm.IsHashLo)
 	for i := range c.HashHi {
