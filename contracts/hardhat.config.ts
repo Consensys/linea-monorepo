@@ -79,6 +79,30 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+    overrides: {
+      "contracts/yield/YieldManager.sol": {
+        version: "0.8.30",
+        settings: {
+          viaIR: useViaIR,
+          optimizer: {
+            enabled: true,
+            runs: 4000,
+          },
+          evmVersion: "prague",
+        },
+      },
+      "contracts/test-contracts/TestLineaRollup.sol": {
+        version: "0.8.30",
+        settings: {
+          viaIR: useViaIR,
+          optimizer: {
+            enabled: true,
+            runs: 1000,
+          },
+          evmVersion: "prague",
+        },
+      },
+    },
   },
   namedAccounts: {
     deployer: {
