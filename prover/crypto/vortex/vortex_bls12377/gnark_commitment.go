@@ -79,7 +79,7 @@ func AssignCicuitVariablesWithMerkleTree(
 	frLinComb := make([]fext.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSliceExt(frLinComb)
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		verifyCircuit.Proof.LinearCombination[i] = gnarkfext.NewE4Gen(frLinComb[i]) //write ext to zk.value
+		verifyCircuit.Proof.LinearCombination[i] = gnarkfext.NewE4Gen(frLinComb[i])
 	}
 
 	for i := 0; i < len(proof.Columns); i++ {
@@ -171,7 +171,6 @@ func GnarkVerifyOpeningWithMerkleProof(
 
 			// Hash the SIS hash
 			var leaf = selectedColsHashes[i][j]
-
 			// Check the Merkle-proof for the obtained leaf
 			smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
 
@@ -179,7 +178,6 @@ func GnarkVerifyOpeningWithMerkleProof(
 			api.AssertIsEqual(proof.MerkleProofs[i][j].Path, entry)
 		}
 	}
-
 	return nil
 }
 
