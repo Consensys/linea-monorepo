@@ -45,7 +45,7 @@ class VertxTimer(
     val callable = Callable {
       task.run()
     }
-    vertx.executeBlocking(callable).onComplete { result ->
+    vertx.executeBlocking(callable, false).onComplete { result ->
       if (result.cause() != null) {
         errorHandler(result.cause())
       }
@@ -65,7 +65,7 @@ class VertxTimer(
         val expectedNextInvocationTime = firstTime + period * invocationCounter.get()
         val now = Clock.System.now()
         val delay = expectedNextInvocationTime - now
-        if (delay.isNegative() || delay.inWholeMilliseconds == 0L) {
+        if (delay < 1.milliseconds) {
           1.milliseconds // Vertx requires a delay of at least 1 ms
         } else {
           delay
