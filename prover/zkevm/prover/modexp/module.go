@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	// bit-size bound for the operands in the small
+	// smallModexpSize is the bit-size bound for small modexp instances
 	smallModexpSize = 256
+	// largeModexpSize is the bit-size bound for large modexp instances
 	largeModexpSize = 8192
 	// limbSize is the size (in bits) of a limb as in the public inputs of the
 	// circuit. This is a parameter linked to how the arithmetization encodes
