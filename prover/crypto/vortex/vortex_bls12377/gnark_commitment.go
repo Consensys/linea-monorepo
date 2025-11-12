@@ -21,9 +21,9 @@ import (
 )
 
 // Final circuit - commitment using Merkle trees
-type VerifyOpeningCircuit struct {
-	Proof GProofWoMerkle `gnark:",public"`
-	// Roots      []frontend.Variable `gnark:",public"`
+type VerifyOpeningCircuitMerkleTree struct {
+	Proof      GProof              `gnark:",public"`
+	Roots      []frontend.Variable `gnark:",public"`
 	X          gnarkfext.E4Gen     `gnark:",public"`
 	RandomCoin gnarkfext.E4Gen     `gnark:",public"`
 	Ys         [][]gnarkfext.E4Gen `gnark:",public"`
@@ -32,8 +32,8 @@ type VerifyOpeningCircuit struct {
 }
 
 // allocate the variables for the verification circuit with Merkle trees
-func AllocateCircuitVariables(
-	verifyCircuit *VerifyOpeningCircuit,
+func AllocateCircuitVariablesWithMerkleTree(
+	verifyCircuit *VerifyOpeningCircuitMerkleTree,
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
@@ -64,11 +64,13 @@ func AllocateCircuitVariables(
 		verifyCircuit.Ys[i] = make([]gnarkfext.E4Gen, len(ys[i]))
 	}
 
+	verifyCircuit.Roots = make([]frontend.Variable, len(roots))
+
 }
 
 // AssignCicuitVariablesWithMerkleTree assign the variables for the verification circuit with Merkle trees
-func AssignCicuitVariables(
-	verifyCircuit *VerifyOpeningCircuit,
+func AssignCicuitVariablesWithMerkleTree(
+	verifyCircuit *VerifyOpeningCircuitMerkleTree,
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
@@ -116,7 +118,7 @@ func AssignCicuitVariables(
 
 }
 
-func (circuit *VerifyOpeningCircuit) Define(api frontend.API) error {
+func (circuit *VerifyOpeningCircuitMerkleTree) Define(api frontend.API) error {
 
 	// Generic checks
 	err := GnarkVerifyOpeningWithMerkleProof(
