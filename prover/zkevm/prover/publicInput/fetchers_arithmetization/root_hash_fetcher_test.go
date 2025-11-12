@@ -44,6 +44,7 @@ func TestRootHashFetcher(t *testing.T) {
 					stateLogs      = tCase.StateLogsGens(initState)
 					shomeiTraces   = mock.StateLogsToShomeiTraces(shomeiState, stateLogs)
 					finalRootBytes = shomeiState.AccountTrie.TopRoot()
+					limbSize       = 32 / len(fetcher.First) // 32 bytes in total, divided into 16 limbs
 					initRoot       field.Element
 					finalRoot      field.Element
 				)
@@ -51,12 +52,19 @@ func TestRootHashFetcher(t *testing.T) {
 				ss.Assign(run, shomeiTraces)
 				// assign the RootHashFetcher
 				AssignRootHashFetcher(run, fetcher, ss)
-				// compute two field elements that correspond to the Shomei initial and final root hash in the account tries
-				initRoot.SetBytes(initRootBytes[:])
-				finalRoot.SetBytes(finalRootBytes[:])
-				// check that the fetcher works properly
-				assert.Equal(t, initRoot, fetcher.First.GetColAssignmentAt(run, 0), "Initial root value is incorrect")
-				assert.Equal(t, finalRoot, fetcher.Last.GetColAssignmentAt(run, 0), "Final root value is incorrect")
+
+				for j := range initRoot {
+					start := j * limbSize
+					end := start + limbSize
+
+					// compute two field elements that correspond to the Shomei initial and final root hash in the account tries
+					initRoot.SetBytes(initRootBytes[start:end])
+					finalRoot.SetBytes(finalRootBytes[start:end])
+
+					// check that the fetcher works properly
+					assert.Equal(t, initRoot, fetcher.First[j].GetColAssignmentAt(run, 0), "Initial root value is incorrect")
+					assert.Equal(t, finalRoot, fetcher.Last[j].GetColAssignmentAt(run, 0), "Final root value is incorrect")
+				}
 			}
 
 			comp := wizard.Compile(define, dummy.Compile)

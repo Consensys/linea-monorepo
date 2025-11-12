@@ -68,21 +68,16 @@ func newLookUpTables(comp *wizard.CompiledIOP, maxNumKeccakf int) lookUpTables {
 
 	// tables for the RC columns
 	l.RC = dedicated.NewRepeatedPattern(
-		comp,
-		0,
-		valRCBase2Pattern(),
-		verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf), "keccak-rc-pattern"),
-	)
+		comp, 0, valRCBase2Pattern(),
+		verifiercol.NewConstantCol(
+			field.One(),
+			numRows(maxNumKeccakf),
+			"keccak-rc-pattern",
+		))
 
 	// tables to indicate when to use the output of the previous round as
 	// input for the next round.
-	l.DontUsePrevAIota = dedicated.CreateHeartBeat(
-		comp,
-		0,
-		keccak.NumRound,
-		0,
-		verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf), "keccak-dont-use-prev-a-iota-heart-beat"),
-	)
+	l.DontUsePrevAIota = dedicated.CreateHeartBeat(comp, 0, keccak.NumRound, 0, verifiercol.NewConstantCol(field.One(), numRows(maxNumKeccakf), "keccak-dont-use-prev-a-iota-heart-beat"))
 
 	return l
 }

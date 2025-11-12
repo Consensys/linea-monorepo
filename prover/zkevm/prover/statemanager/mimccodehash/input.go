@@ -5,24 +5,24 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 // The first four elements are to be populated from the ROM module,
 // the last element is to be computed by the IsZero query
 type RomInput struct {
-	CFI                             ifaces.Column
-	Acc                             ifaces.Column
+	CFI                             [common.NbLimbU32]ifaces.Column
+	Acc                             [common.NbLimbU128]ifaces.Column
 	NBytes                          ifaces.Column
 	Counter                         ifaces.Column
-	CodeSize                        ifaces.Column
+	CodeSize                        [common.NbLimbU32]ifaces.Column
 	CounterIsEqualToNBytesMinusOne  ifaces.Column
 	CptCounterEqualToNBytesMinusOne wizard.ProverAction
 }
 
 type RomLexInput struct {
-	CFIRomLex  ifaces.Column
-	CodeHashHi ifaces.Column
-	CodeHashLo ifaces.Column
+	CFIRomLex [common.NbLimbU32]ifaces.Column
+	CodeHash  [common.NbLimbU256]ifaces.Column
 }
 
 // complete constructs the IsZero columns "CounterIsEqualToNBytesMinusOne" and

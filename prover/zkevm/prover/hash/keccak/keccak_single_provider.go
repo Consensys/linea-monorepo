@@ -83,16 +83,22 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 	)
 
 	comp.InsertProjection("KECCAK_RES_HI",
-		query.ProjectionInput{ColumnA: []ifaces.Column{cKeccak.HashHi},
-			ColumnB: []ifaces.Column{inp.Provider.Info.HashHi},
+		query.ProjectionInput{
+			ColumnA: []ifaces.Column{cKeccak.HashHi},
+			ColumnB: inp.Provider.Info.HashHi,
 			FilterA: cKeccak.IsActive,
-			FilterB: inp.Provider.Info.IsHashHi})
+			FilterB: inp.Provider.Info.IsHashHi,
+		},
+	)
 
 	comp.InsertProjection("KECCAK_RES_LO",
-		query.ProjectionInput{ColumnA: []ifaces.Column{cKeccak.HashLo},
-			ColumnB: []ifaces.Column{inp.Provider.Info.HashLo},
+		query.ProjectionInput{
+			ColumnA: []ifaces.Column{cKeccak.HashLo},
+			ColumnB: inp.Provider.Info.HashLo,
 			FilterA: cKeccak.IsActive,
-			FilterB: inp.Provider.Info.IsHashLo})
+			FilterB: inp.Provider.Info.IsHashLo,
+		},
+	)
 
 	// set the module
 	m := &KeccakSingleProvider{

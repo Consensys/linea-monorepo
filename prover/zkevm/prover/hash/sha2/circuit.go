@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/uints"
 	"github.com/consensys/gnark/std/permutation/sha2"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // SHA2Circuit is the gnark circuit (compiled as Plonk) used to check the Sha2

@@ -47,7 +47,6 @@ func rhoTestingModule(
 						round,
 						deriveName("A_THETA_BASE2_SLICED", x, y, k),
 						numRows(maxNumKeccakf),
-						true,
 					)
 				}
 			}

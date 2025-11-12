@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/require"
@@ -44,16 +44,14 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	}
 
 	// commit to powers of a
-	//committer := api.(frontend.Committer)
-	//_, err := committer.Commit(powersOfA...)
-
-	// TODO @thomas fixme
-	// committer := api.(frontend.WideCommitter)
-	// width is the size of the output slice of WideCommit, this 4 could be later interpreted as a field extension
-	// _, err := committer.WideCommit(4, powersOfA...)
-	// if err != nil {
-	// 	return err
-	// }
+	committer := api.(frontend.WideCommitter)
+	committed, err := committer.WideCommit(4, powersOfA...)
+	if err != nil {
+		return err
+	}
+	for i := range committed {
+		api.AssertIsDifferent(committed[i], 0)
+	}
 
 	apiGen.AssertIsEqual(circuit.Y, a)
 	return nil

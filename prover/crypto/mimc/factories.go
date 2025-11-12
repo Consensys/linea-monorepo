@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -46,7 +47,7 @@ type ExternalHasher struct {
 // externalHasherBuilder is an implementation of the [frontend.Builder]
 // interface.
 type ExternalHasherBuilder struct {
-	storeCommitBuilder
+	plonkbuilder.Builder
 	// claimTriplets stores the tripled [oldState, block, newState]
 	claimTriplets [][3]zk.WrappedVariable
 	// rcCols is a channel used to pass back the position of the wires
@@ -170,16 +171,16 @@ func (h *ExternalHasher) compress(state, block zk.WrappedVariable) zk.WrappedVar
 func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilderU32, func() [][3][2]int) {
 	rcCols := make(chan [][3][2]int)
 	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder[constraint.U32], error) {
-			b, err := scs.NewBuilder[constraint.U32](field, config)
+			b, err := plonkbuilder.From(scs.NewBuilder[constraint.U32])(field, config)
 			if err != nil {
 				return nil, fmt.Errorf("could not create new native builder: %w", err)
 			}
-			scb, ok := b.(storeCommitBuilder)
+			scb, ok := b.(plonkbuilder.Builder)
 			if !ok {
 				return nil, fmt.Errorf("native builder doesn't implement committer or kvstore")
 			}
 			return &ExternalHasherBuilder{
-				storeCommitBuilder:  scb,
+				Builder:             scb,
 				rcCols:              rcCols,
 				addGateForHashCheck: addGateForHashCheck,
 			}, nil
@@ -209,7 +210,7 @@ func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystemU32,
 
 	// GetWireGates may add gates if [addGateForRangeCheck] is true. Call it
 	// synchronously before calling compile on the circuit.
-	cols, err := builder.storeCommitBuilder.GetWiresConstraintExact(allCheckedVariables, builder.addGateForHashCheck)
+	cols, err := builder.Builder.GetWiresConstraintExact(allCheckedVariables, builder.addGateForHashCheck)
 	if err != nil {
 		return nil, fmt.Errorf("get wire gates: %w", err)
 	}
@@ -229,12 +230,12 @@ func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystemU32,
 		builder.rcCols <- packedResult
 	}()
 
-	return builder.storeCommitBuilder.Compile()
+	return builder.Builder.Compile()
 }
 
 // Compiler returns the compiler of the underlying builder.
 func (builder *ExternalHasherBuilder) Compiler() frontend.Compiler {
-	return builder.storeCommitBuilder.Compiler()
+	return builder.Builder.Compiler()
 }
 
 // MimcHintfunc is a gnark hint that computes the MiMC compression function, it

@@ -1,32 +1,54 @@
 package mimccodehash
 
 import (
+	"fmt"
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 const (
 	// Column names
-	MIMC_CODE_HASH_IS_ACTIVE_NAME          ifaces.ColID = "MIMC_CODE_HASH_IS_ACTIVE"
-	MIMC_CODE_HASH_CFI_NAME                ifaces.ColID = "MIMC_CODE_HASH_CFI"
-	MIMC_CODE_HASH_LIMB_NAME               ifaces.ColID = "MIMC_CODE_HASH_LIMB"
-	MIMC_CODE_HASH_IS_NEW_HASH_NAME        ifaces.ColID = "MIMC_CODE_HASH_IS_NEW_HASH"
-	MIMC_CODE_HASH_IS_HASH_END_NAME        ifaces.ColID = "MIMC_CODE_HASH_IS_HASH_END"
-	MIMC_CODE_HASH_PREV_STATE_NAME         ifaces.ColID = "MIMC_CODE_HASH_PREV_STATE"
-	MIMC_CODE_HASH_NEW_STATE_NAME          ifaces.ColID = "MIMC_CODE_HASH_NEW_STATE"
-	MIMC_CODE_HASH_CODE_SIZE_NAME          ifaces.ColID = "MIMC_CODE_HASH_CODE_SIZE"
-	MIMC_CODE_HASH_KECCAK_CODEHASH_HI_NAME ifaces.ColID = "MIMC_CODE_HASH_KECCAK_CODEHASH_HI"
-	MIMC_CODE_HASH_KECCAK_CODEHASH_LO_NAME ifaces.ColID = "MIMC_CODE_HASH_KECCAK_CODEHASH_LO"
-	MIMC_CODE_HASH_IS_FOR_CONSISTENCY      ifaces.ColID = "MIMC_CODE_HASH_IS_NON_EMPTY_CODEHASH"
+	MIMC_CODE_HASH_IS_ACTIVE_NAME       ifaces.ColID = "MIMC_CODE_HASH_IS_ACTIVE"
+	MIMC_CODE_HASH_CFI_NAME             ifaces.ColID = "MIMC_CODE_HASH_CFI"
+	MIMC_CODE_HASH_LIMB_NAME            ifaces.ColID = "MIMC_CODE_HASH_LIMB"
+	MIMC_CODE_HASH_IS_NEW_HASH_NAME     ifaces.ColID = "MIMC_CODE_HASH_IS_NEW_HASH"
+	MIMC_CODE_HASH_IS_HASH_END_NAME     ifaces.ColID = "MIMC_CODE_HASH_IS_HASH_END"
+	MIMC_CODE_HASH_PREV_STATE_NAME      ifaces.ColID = "MIMC_CODE_HASH_PREV_STATE"
+	MIMC_CODE_HASH_NEW_STATE_NAME       ifaces.ColID = "MIMC_CODE_HASH_NEW_STATE"
+	MIMC_CODE_HASH_CODE_SIZE_NAME       ifaces.ColID = "MIMC_CODE_HASH_CODE_SIZE"
+	MIMC_CODE_HASH_KECCAK_CODEHASH_NAME ifaces.ColID = "MIMC_CODE_HASH_KECCAK_CODEHASH"
+	MIMC_CODE_HASH_IS_FOR_CONSISTENCY   ifaces.ColID = "MIMC_CODE_HASH_IS_NON_EMPTY_CODEHASH"
 )
 
+// initEmptyKeccak initialises emptyKeccak variable from emptyKeccakString.
+//
+// Returns a representation of empty keccak value in limbs with size defined
+// by common.LimbBytes.
+func initEmptyKeccak() (res [common.NbLimbU256]field.Element) {
+	var emptyKeccakBig big.Int
+	_, isErr := emptyKeccakBig.SetString(emptyKeccakString, 16)
+	if !isErr {
+		panic("empty keccak string is not correct")
+	}
+
+	emptyKeccakByteLimbs := common.SplitBytes(emptyKeccakBig.Bytes())
+	for i, limbByte := range emptyKeccakByteLimbs {
+		res[i] = *new(field.Element).SetBytes(limbByte)
+	}
+
+	return res
+}
+
 var (
-	emptyKeccakHi = field.NewFromString("0xc5d2460186f7233c927e7db2dcc703c0")
-	emptyKeccakLo = field.NewFromString("0xe500b653ca82273b7bfad8045d85a470")
+	emptyKeccakString = "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+	emptyKeccak       = initEmptyKeccak()
 )
 
 // Inputs stores the caller's parameters to NewMiMCCodeHash
@@ -43,18 +65,17 @@ type Module struct {
 	Inputs Inputs
 
 	// All the columns characterizing the module
-	IsActive   ifaces.Column
-	CFI        ifaces.Column
-	Limb       ifaces.Column
-	CodeHashHi ifaces.Column
-	CodeHashLo ifaces.Column
-	CodeSize   ifaces.Column
-	IsNewHash  ifaces.Column
-	IsHashEnd  ifaces.Column
-	PrevState  ifaces.Column
+	IsActive  ifaces.Column
+	CFI       [common.NbLimbU32]ifaces.Column
+	Limb      [common.NbLimbU128]ifaces.Column
+	CodeHash  [common.NbLimbU256]ifaces.Column
+	CodeSize  [common.NbLimbU32]ifaces.Column
+	IsNewHash ifaces.Column
+	IsHashEnd ifaces.Column
+	PrevState [common.NbLimbU256]ifaces.Column
 
 	// Contains the MiMC code hash when IsHashEnd is 1
-	NewState ifaces.Column
+	NewState [common.NbLimbU256]ifaces.Column
 
 	// inputModule stores the modules connected the present Module (e.g. Rom/RomLex)
 	// when they are not omitted.
@@ -64,46 +85,51 @@ type Module struct {
 	// codehash. This is used as an import filter for the consistency module with the
 	// state summary.
 	IsForConsistency ifaces.Column
-	IsEmptyKeccakHi  ifaces.Column
-	IsEmptyKeccakLo  ifaces.Column
+	IsEmptyKeccak    [common.NbLimbU256]ifaces.Column
 
-	CptIsEmptyKeccakHi wizard.ProverAction
-	CptIsEmptyKeccakLo wizard.ProverAction
+	CptIsEmptyKeccak [common.NbLimbU256]wizard.ProverAction
 }
 
 // NewModule registers and committing all the columns and queries in the mimc_code_hash module
 func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 
 	mh = Module{
-		Inputs:           inputs,
-		IsActive:         comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_ACTIVE_NAME, inputs.Size, true),
-		CFI:              comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_CFI_NAME, inputs.Size, true),
-		Limb:             comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_LIMB_NAME, inputs.Size, true),
-		CodeHashHi:       comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_KECCAK_CODEHASH_HI_NAME, inputs.Size, true),
-		CodeHashLo:       comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_KECCAK_CODEHASH_LO_NAME, inputs.Size, true),
-		CodeSize:         comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_CODE_SIZE_NAME, inputs.Size, true),
-		IsNewHash:        comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_NEW_HASH_NAME, inputs.Size, true),
-		IsHashEnd:        comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_HASH_END_NAME, inputs.Size, true),
-		PrevState:        comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_PREV_STATE_NAME, inputs.Size, true),
-		NewState:         comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_NEW_STATE_NAME, inputs.Size, true),
-		IsForConsistency: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_FOR_CONSISTENCY, inputs.Size, true),
+		Inputs:    inputs,
+		IsActive:  comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_ACTIVE_NAME, inputs.Size),
+		IsNewHash: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_NEW_HASH_NAME, inputs.Size),
+		IsHashEnd: comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_HASH_END_NAME, inputs.Size),
 	}
 
-	mh.IsEmptyKeccakHi, mh.CptIsEmptyKeccakHi = dedicated.IsZero(comp, sym.Sub(mh.CodeHashHi, emptyKeccakHi)).GetColumnAndProverAction()
-	mh.IsEmptyKeccakLo, mh.CptIsEmptyKeccakLo = dedicated.IsZero(comp, sym.Sub(mh.CodeHashLo, emptyKeccakLo)).GetColumnAndProverAction()
+	for i := range common.NbLimbU128 {
+		mh.Limb[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_LIMB_NAME, i), inputs.Size)
+	}
 
-	comp.InsertGlobal(
-		0,
-		"MIMC_CODE_HASH_CPT_IF_FOR_CONSISTENCY",
-		sym.Sub(
-			mh.IsForConsistency,
-			sym.Mul(
-				sym.Sub(1, mh.IsEmptyKeccakHi),
-				sym.Sub(1, mh.IsEmptyKeccakLo),
-				mh.IsHashEnd,
+	for i := range common.NbLimbU32 {
+		mh.CodeSize[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_CODE_SIZE_NAME, i), inputs.Size)
+		mh.CFI[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_CFI_NAME, i), inputs.Size)
+	}
+
+	mh.IsForConsistency = comp.InsertCommit(inputs.Round, MIMC_CODE_HASH_IS_FOR_CONSISTENCY, inputs.Size)
+
+	for i := range common.NbLimbU256 {
+		mh.CodeHash[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_KECCAK_CODEHASH_NAME, i), inputs.Size)
+		mh.IsEmptyKeccak[i], mh.CptIsEmptyKeccak[i] = dedicated.IsZero(comp, sym.Sub(mh.CodeHash[i], emptyKeccak[i])).GetColumnAndProverAction()
+
+		mh.PrevState[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_PREV_STATE_NAME, i), inputs.Size)
+		mh.NewState[i] = comp.InsertCommit(inputs.Round, ifaces.ColIDf("%s_%d", MIMC_CODE_HASH_NEW_STATE_NAME, i), inputs.Size)
+
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("MIMC_CODE_HASH_CPT_IF_FOR_CONSISTENCY_%d", i),
+			sym.Sub(
+				mh.IsForConsistency,
+				sym.Mul(
+					sym.Sub(1, mh.IsEmptyKeccak[i]),
+					mh.IsHashEnd,
+				),
 			),
-		),
-	)
+		)
+	}
 
 	mh.checkConsistency(comp)
 
@@ -128,34 +154,12 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 //	11. All columns are zero in the inactive area
 func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 
+	panic("TODO: add poseidon checks")
 	// NewState = MiMC(PrevState, Limb)
-	comp.InsertMiMC(mh.Inputs.Round, mh.qname("MiMC_CODE_HASH"), mh.Limb, mh.PrevState, mh.NewState, nil)
-
-	// If IsNewHash = 0, PrevState[i] = NewState[i-1] (in the active area), e.g.,
-	// IsActive[i] * (1 - IsNewHash[i]) * (PrevState[i] - NextState[i-1]) = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_CONSISTENCY_2"),
-		sym.Mul(mh.IsActive,
-			sym.Sub(1, mh.IsNewHash),
-			sym.Sub(mh.PrevState, ifaces.ColumnAsVariable(column.Shift(mh.NewState, -1)))))
-
-	// If IsNewHash = 1, PrevState = 0 (in the active area) e.g., IsActive[i] * IsNewHash[i] * PrevState[i] = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_ZERO_AT_BEGINNING"),
-		sym.Mul(mh.IsActive, mh.IsNewHash, mh.PrevState))
-
-	// If CFI incremented, IsNewHash = 1, e.g., IsActive[i] * (CFI[i] - CFI[i-1]) * (1 - IsNewHash[i]) = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("IS_NEW_HASH_CONSISTENCY_1"),
-		sym.Mul(mh.IsActive,
-			sym.Sub(mh.CFI, ifaces.ColumnAsVariable(column.Shift(mh.CFI, -1))),
-			sym.Sub(1, mh.IsNewHash)))
+	//comp.InsertMiMC(mh.inputs.Round, mh.qname("MiMC_CODE_HASH"), mh.Limb, mh.PrevState, mh.NewState, nil)
 
 	// Local constraint IsNewHash starts with 1
 	comp.InsertLocal(mh.Inputs.Round, mh.qname("IS_NEW_HASH_LOCAL"), sym.Sub(mh.IsNewHash, mh.IsActive))
-
-	// if CFI[i+1] - CFI[i] != 0, IsHashEnd[i] = 1, e.g., IsActive[i] * (CFI[i+1] - CFI[i]) * (1 - IsHashEnd[i]) = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("IS_HASH_END_CONSISTENCY_1"),
-		sym.Mul(mh.IsActive,
-			sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CFI, 1)), mh.CFI),
-			sym.Sub(1, mh.IsHashEnd)))
 
 	// Booleanity of IsNewHash, IsHashEnd (in the active area)
 	comp.InsertGlobal(mh.Inputs.Round, mh.qname("IS_NEW_HASH_BOOLEAN"),
@@ -178,40 +182,60 @@ func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 			sym.Mul(ifaces.ColumnAsVariable(column.Shift(mh.IsActive, -1)),
 				mh.IsActive)))
 
-	// In a particular CFI segment, CodeHashHi and CodeHashLo remain constant,
-	// e.g., IsActive[i] * (1 - IsEndHash[i]) * (CodeHashHi[i+1] - CodeHashHi[i]) = 0 and,
-	// IsActive[i] * (1 - IsEndHash[i]) * (CodeHashLo[i+1] - CodeHashLo[i]) = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("CODE_HASH_HI_SEGMENT_WISE_CONSTANT"),
-		sym.Mul(mh.IsActive,
-			sym.Sub(1, mh.IsHashEnd),
-			sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CodeHashHi, 1)), mh.CodeHashHi)))
+	for i := range common.NbLimbU256 {
+		// In a particular CFI segment, CodeHash limbs remain constant,
+		// e.g., IsActive[i] * (1 - IsEndHash[i]) * (CodeHash[i+1] - CodeHash[i]) = 0
+		comp.InsertGlobal(mh.Inputs.Round, mh.qname("CODE_HASH_HI_SEGMENT_WISE_CONSTANT_%d", i),
+			sym.Mul(mh.IsActive,
+				sym.Sub(1, mh.IsHashEnd),
+				sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CodeHash[i], 1)), mh.CodeHash[i])))
 
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("CODE_HASH_LO_SEGMENT_WISE_CONSTANT"),
-		sym.Mul(mh.IsActive,
-			sym.Sub(1, mh.IsHashEnd),
-			sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CodeHashLo, 1)), mh.CodeHashLo)))
+		// If IsNewHash = 0, PrevState[i] = NewState[i-1] (in the active area), e.g.,
+		// IsActive[i] * (1 - IsNewHash[i]) * (PrevState[i] - NextState[i-1]) = 0
+		comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_CONSISTENCY_2_%d", i),
+			sym.Mul(mh.IsActive,
+				sym.Sub(1, mh.IsNewHash),
+				sym.Sub(mh.PrevState[i], ifaces.ColumnAsVariable(column.Shift(mh.NewState[i], -1)))))
 
-	// In a particular CFI segment, CodeSize remains constant,
-	// e.g., IsActive[i] * (1 - IsEndHash[i]) * (CodeSize[i+1] - CodeSize[i]) = 0
-	comp.InsertGlobal(mh.Inputs.Round, mh.qname("CODE_SIZE_SEGMENT_WISE_CONSTANT"),
-		sym.Mul(mh.IsActive,
-			sym.Sub(1, mh.IsHashEnd),
-			sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CodeSize, 1)), mh.CodeSize)))
+		// If IsNewHash = 1, PrevState = 0 (in the active area) e.g., IsActive[i] * IsNewHash[i] * PrevState[i] = 0
+		comp.InsertGlobal(mh.Inputs.Round, mh.qname("PREV_STATE_ZERO_AT_BEGINNING_%d", i),
+			sym.Mul(mh.IsActive, mh.IsNewHash, mh.PrevState[i]))
+
+		// All columns of CodeHash are zero in the inactive area
+		mh.colZeroAtInactive(comp, mh.CodeHash[i], fmt.Sprintf("CODE_HASH_HI_ZERO_IN_INACTIVE_%d", i))
+		mh.colZeroAtInactive(comp, mh.PrevState[i], fmt.Sprintf("PREV_STATE_ZERO_IN_INACTIVE_%d", i))
+	}
+
+	for i := range common.NbLimbU128 {
+		mh.colZeroAtInactive(comp, mh.Limb[i], fmt.Sprintf("LIMB_ZERO_IN_INACTIVE_%d", i))
+	}
+
+	for i := range common.NbLimbU32 {
+		// if CFI[i+1] - CFI[i] != 0, IsHashEnd[i] = 1, e.g., IsActive[i] * (CFI[i+1] - CFI[i]) * (1 - IsHashEnd[i]) = 0
+		comp.InsertGlobal(mh.Inputs.Round, mh.qname("IS_HASH_END_CONSISTENCY_1_%d", i),
+			sym.Mul(mh.IsActive,
+				sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CFI[i], 1)), mh.CFI[i]),
+				sym.Sub(1, mh.IsHashEnd)))
+
+		// In a particular CFI segment, CodeSize remains constant,
+		// e.g., IsActive[i] * (1 - IsEndHash[i]) * (CodeSize[i+1] - CodeSize[i]) = 0
+		comp.InsertGlobal(mh.Inputs.Round, mh.qname("CODE_SIZE_SEGMENT_WISE_CONSTANT_%d", i),
+			sym.Mul(mh.IsActive,
+				sym.Sub(1, mh.IsHashEnd),
+				sym.Sub(ifaces.ColumnAsVariable(column.Shift(mh.CodeSize[i], 1)), mh.CodeSize[i])))
+
+		mh.colZeroAtInactive(comp, mh.CodeSize[i], fmt.Sprintf("CODE_SIZE_ZERO_IN_INACTIVE_%d", i))
+		mh.colZeroAtInactive(comp, mh.CFI[i], fmt.Sprintf("CFI_ZERO_IN_INACTIVE_%d", i))
+	}
 
 	// All columns are zero in the inactive area, except newState
-	mh.colZeroAtInactive(comp, mh.CFI, "CFI_ZERO_IN_INACTIVE")
-	mh.colZeroAtInactive(comp, mh.Limb, "LIMB_ZERO_IN_INACTIVE")
 	mh.colZeroAtInactive(comp, mh.IsNewHash, "IS_NEW_HASH_ZERO_IN_INACTIVE")
 	mh.colZeroAtInactive(comp, mh.IsHashEnd, "IS_HASH_END_ZERO_IN_INACTIVE")
-	mh.colZeroAtInactive(comp, mh.CodeHashHi, "CODE_HASH_HI_ZERO_IN_INACTIVE")
-	mh.colZeroAtInactive(comp, mh.CodeHashLo, "CODE_HASH_LO_ZERO_IN_INACTIVE")
-	mh.colZeroAtInactive(comp, mh.CodeSize, "CODE_SIZE_ZERO_IN_INACTIVE")
-	mh.colZeroAtInactive(comp, mh.PrevState, "PREV_STATE_ZERO_IN_INACTIVE")
 }
 
 // Function returning a query name
-func (mh *Module) qname(name string, args ...any) ifaces.QueryID {
-	return ifaces.QueryIDf("%v", mh.Inputs.Name) + "_" + ifaces.QueryIDf(name, args...)
+func (mh *Module) qname(name string) ifaces.QueryID {
+	return ifaces.QueryIDf("%s", mh.Inputs.Name) + "_" + ifaces.QueryID(name)
 }
 
 // Function inserting a query that col is zero when IsActive is zero

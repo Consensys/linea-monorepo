@@ -8,6 +8,7 @@ package keccak
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
@@ -122,14 +123,14 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteMod
 		Data: generic.GenDataModule{
 			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
 			Index:   comp.Columns.GetHandle("shakiradata.INDEX"),
-			Limb:    comp.Columns.GetHandle("shakiradata.LIMB"),
+			Limbs:   []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
 			NBytes:  comp.Columns.GetHandle("shakiradata.nBYTES"),
 			ToHash:  comp.Columns.GetHandle("shakiradata.IS_KECCAK_DATA"),
 		},
 		Info: generic.GenInfoModule{
 			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-			HashLo:  comp.Columns.GetHandle("shakiradata.LIMB"),
-			HashHi:  comp.Columns.GetHandle("shakiradata.LIMB"),
+			HashLo:  []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
+			HashHi:  []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
 			// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
 			// not work with the prover distribution as the column is used as
 			// a filter for a projection query.
@@ -148,14 +149,14 @@ func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModul
 		Data: generic.GenDataModule{
 			HashNum: comp.Columns.GetHandle("rlpaddr.STAMP"),
 			Index:   comp.Columns.GetHandle("rlpaddr.INDEX"),
-			Limb:    comp.Columns.GetHandle("rlpaddr.LIMB"),
+			Limbs:   []ifaces.Column{comp.Columns.GetHandle("rlpaddr.LIMB")},
 			NBytes:  comp.Columns.GetHandle("rlpaddr.nBYTES"),
 			ToHash:  comp.Columns.GetHandle("rlpaddr.LC"),
 		},
 		Info: generic.GenInfoModule{
 			HashNum:  comp.Columns.GetHandle("rlpaddr.STAMP"),
-			HashLo:   comp.Columns.GetHandle("rlpaddr.DEP_ADDR_LO"),
-			HashHi:   comp.Columns.GetHandle("rlpaddr.RAW_ADDR_HI"),
+			HashLo:   []ifaces.Column{comp.Columns.GetHandle("rlpaddr.DEP_ADDR_LO")},
+			HashHi:   []ifaces.Column{comp.Columns.GetHandle("rlpaddr.RAW_ADDR_HI")},
 			IsHashLo: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
 			IsHashHi: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
 		},

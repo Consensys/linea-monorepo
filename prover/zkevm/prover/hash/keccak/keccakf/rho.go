@@ -51,7 +51,6 @@ func (r *rho) declareColumns(comp *wizard.CompiledIOP, round, numKeccakf int) {
 				round,
 				deriveName("A_RHO", x, y),
 				colSize,
-				true,
 			)
 
 			// Commit to target slice decompose only if the LR[x, y] is not a
@@ -65,7 +64,6 @@ func (r *rho) declareColumns(comp *wizard.CompiledIOP, round, numKeccakf int) {
 					round,
 					deriveName("TARGET_SLICE_DECOMPOSE", x, y, s),
 					colSize,
-					true,
 				)
 			}
 		}

@@ -45,7 +45,6 @@ func DecomposeBE(comp *wizard.CompiledIOP, inp DecompositionInputs) *Decompositi
 			0,
 			ifaces.ColIDf("%v_%v_%v", inp.Name, "LIMB", i),
 			size,
-			true,
 		)
 	}
 
