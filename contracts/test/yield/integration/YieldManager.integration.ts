@@ -497,7 +497,10 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Arrange - withdraw vault funds
       await incrementBalance(await mockStakingVault.getAddress(), ONE_ETHER);
       await setWithdrawalReserveToTarget(yieldManager);
-      await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, ONE_ETHER * 2n);
+      await mockDashboard.setWithdrawableValueReturn(ONE_ETHER * 2n);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .safeWithdrawFromYieldProvider(yieldProviderAddress, ONE_ETHER * 2n);
       // Arrange - Remove yield provider
       await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, EMPTY_CALLDATA);
       // Arrange - Add new yield provider

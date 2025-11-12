@@ -565,7 +565,7 @@ interface IYieldManager {
   ) external payable returns (uint256 maxUnstakeAmount);
 
   /**
-   * @notice Withdraw ETH from a YieldProvider.
+   * @notice Safely withdraws ETH from a YieldProvider, capped by the available withdrawable amount.
    * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @dev This function proactively allocates withdrawn funds in the following priority:
    *      1. If the withdrawal reserve is below the target threshold, ETH is routed to the reserve
@@ -574,15 +574,18 @@ interface IYieldManager {
    * @param _yieldProvider The yield provider address.
    * @param _amount Amount to withdraw..
    */
-  function withdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
+  function safeWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external;
 
   /**
-   * @notice Rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
-   * @dev YIELD_PROVIDER_UNSTAKING_ROLE is required to execute.
+   * @notice Safely rebalance ETH from the YieldManager and specified yield provider, sending it to the L1MessageService.
+   * @dev Caps the rebalance amount to the provider's current withdrawable value.
+   *      This is to mitigate frontrunning that depletes the withdrawable value,
+   *      which would result in revert of the regular `addToWithdrawalReserve` function.
+   * @dev YIELD_PROVIDER_UNSTAKER_ROLE is required to execute.
    * @param _yieldProvider          Yield provider address.
    * @param _amount                 Amount to rebalance from the YieldManager and specified YieldProvider.
    */
-  function addToWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
+  function safeAddToWithdrawalReserve(address _yieldProvider, uint256 _amount) external;
 
   /**
    * @notice Permissionlessly top up the withdrawal reserve to the target threshold using available liquidity.

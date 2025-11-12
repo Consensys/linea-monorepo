@@ -344,13 +344,17 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("Should successfully withdraw when not ossifed", async () => {
       const withdrawAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
-      await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .safeWithdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
     });
     it("Should successfully withdraw when ossified", async () => {
       const withdrawAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
       await ossifyYieldProvider(yieldManager, yieldProviderAddress, securityCouncil);
-      await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .safeWithdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
     });
     it("If VaultHub is connected, should perform max possible LST liability", async () => {
       // Setup LST liability principal < fundAmount
@@ -369,7 +373,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       // Act
       const withdrawAmount = ONE_ETHER;
       await fundLidoStVaultYieldProvider(yieldManager, yieldProvider, nativeYieldOperator, withdrawAmount);
-      await yieldManager.connect(nativeYieldOperator).withdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
+      await yieldManager
+        .connect(nativeYieldOperator)
+        .safeWithdrawFromYieldProvider(yieldProviderAddress, withdrawAmount);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0);
     });
   });
