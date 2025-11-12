@@ -3,11 +3,14 @@
 package vortex
 
 import (
-	"fmt"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/std/hash"
 	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
 	"github.com/stretchr/testify/assert"
@@ -29,165 +32,237 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-// ------------------------------------------------------------
-// test computeLagrange
-
-// func evalPoly(p []field.Element, z field.Element) field.Element {
-// 	var res field.Element
-// 	for i := len(p) - 1; i >= 0; i-- {
-// 		res.Mul(&res, &z)
-// 		res.Add(&res, &p[i])
-// 	}
-// 	return res
-// }
-
-// type ComputeLagrangeCircuit struct {
-// 	Domain fft.Domain
-// 	Zeta   zk.WrappedVariable   `gnark:",public"` // random variable
-// 	Li     []zk.WrappedVariable // expected results
-// }
-
-// func (circuit *ComputeLagrangeCircuit) Define(api frontend.API) error {
-
-// 	n := circuit.Domain.Cardinality
-// 	gen := circuit.Domain.Generator
-// 	r := gnarkComputeLagrangeAtZ(api, circuit.Zeta, gen, n)
-
-// 	for i := 0; i < len(r); i++ {
-// 		api.AssertIsEqual(r[i], circuit.Li[i])
-// 	}
-
-// 	return nil
-// }
-
-// func TestComputeLagrangeCircuit(t *testing.T) {
-
-// 	s := 16
-// 	d := fft.NewDomain(uint64(s))
-// 	var zeta field.Element
-// 	zeta.SetRandom()
-
-// 	// prepare witness
-// 	var witness ComputeLagrangeCircuit
-// 	witness.Zeta = zk.ValueOf(zeta)
-// 	witness.Li = make([]zk.WrappedVariable, s)
-// 	for i := 0; i < s; i++ {
-// 		buf := make([]field.Element, s)
-// 		buf[i].SetOne()
-// 		d.FFTInverse(buf, fft.DIF)
-// 		fft.BitReverse(buf)
-// 		li := evalPoly(buf, zeta)
-// 		witness.Li[i] = zk.ValueOf(li)
-// 	}
-
-// 	var circuit ComputeLagrangeCircuit
-// 	circuit.Domain = *d
-// 	circuit.Li = make([]zk.WrappedVariable, s)
-
-// 	// compile...
-// 	builder := scs.NewBuilder[constraint.U32]
-// 	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	// solve the circuit
-// 	twitness, err := frontend.NewWitness(&witness, field.Modulus())
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	err = ccs.IsSolved(twitness)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// }
+var rng = rand.New(utils.NewRandSource(0))
 
 // ------------------------------------------------------------
-// test FFT inverse
+// test EncodeWVsToFV and Encode8KoalabearToBigInt
+type EncodeAndHashTestCircuit struct {
+	Values [8]zk.WrappedVariable
+	Result frontend.Variable
+	Params GParams
+}
 
-// type FFTInverseCircuit struct {
-// 	Domain fft.Domain
-// 	P      []zk.WrappedVariable
-// 	R      []zk.WrappedVariable
-// }
+func (c *EncodeAndHashTestCircuit) Define(api frontend.API) error {
+	// Create constraints for encoding
 
-// func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
+	hasher, _ := c.Params.NoSisHasher(api)
+	hasher.Reset()
+	hashinput := EncodeWVsToFVs(api, c.Values[:])
+	hasher.Write(hashinput...)
+	digest := hasher.Sum()
+	api.AssertIsEqual(digest, c.Result)
+	return nil
+}
 
-// 	f, err := FFTInverse(api, circuit.P, circuit.Domain.GeneratorInv, circuit.Domain.Cardinality)
-// 	if err != nil {
-// 		return err
-// 	}
+func TestEncodeAndHashCircuit(t *testing.T) {
+	var intValues [8]field.Element
+	var values [8]zk.WrappedVariable
 
-// 	for i := 0; i < len(f); i++ {
-// 		api.AssertIsEqual(circuit.R[i], f[i])
-// 	}
+	for i := 0; i < 8; i++ {
+		intValues[i] = field.PseudoRand(rng)
+		values[i] = zk.ValueOf(intValues[i].String())
+	}
 
-// 	return nil
-// }
+	// Calculate expected result manually using big.Int (for validation)
+	intBytes := EncodeKoalabearsToBytes(intValues[:])
+	hasher := smt_bls12377.Poseidon2()
+	hasher.Write(intBytes)
+	var expectedResult fr.Element
+	expectedResult.SetBytes(hasher.Sum(nil))
 
-// func TestFFTInverseCircuit(t *testing.T) {
+	// Create test instance
+	var circuit EncodeAndHashTestCircuit
+	circuit.Values = values
+	circuit.Result = expectedResult.String()
+	circuit.Params.HasherFunc = makePoseidon2Hasherfunc
+	circuit.Params.NoSisHasher = makePoseidon2Hasherfunc
 
-// 	s := 16
-// 	d := fft.NewDomain(uint64(s))
+	// Compile the circuit for BLS12-377
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
 
-// 	// prepare witness
-// 	p := make([]field.Element, s)
-// 	for i := 0; i < s; i++ {
-// 		p[i].SetRandom()
-// 	}
-// 	r := make([]field.Element, s)
-// 	copy(r, p)
-// 	d.FFTInverse(r, fft.DIF)
-// 	fft.BitReverse(r)
-// 	var witness FFTInverseCircuit
-// 	witness.P = make([]zk.WrappedVariable, s)
-// 	witness.R = make([]zk.WrappedVariable, s)
+	// Assert compilation worked
+	assert.NoError(t, err)
 
-// 	for i := 0; i < s; i++ {
-// 		witness.P[i] = p[i].String()
-// 		witness.R[i] = r[i].String()
-// 	}
+	// Create a witness with test values
+	var witness EncodeAndHashTestCircuit
+	witness.Values = values
+	witness.Result = expectedResult.String()
 
-// 	var circuit FFTInverseCircuit
-// 	circuit.P = make([]zk.WrappedVariable, s)
-// 	circuit.R = make([]zk.WrappedVariable, s)
-// 	circuit.Domain = *d
+	// Convert witness to frontend-compatible witness
+	fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	assert.NoError(t, err)
 
-// 	// compile...
-// 	builder := scs.NewBuilder[constraint.U32]
-// 	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	// Verify the circuit satisfies constraints with the witness
+	err = ccs.IsSolved(fullWitness)
+	assert.NoError(t, err)
 
-// 	// solve the circuit
-// 	twitness, err := frontend.NewWitness(&witness, field.Modulus())
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	err = ccs.IsSolved(twitness)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+}
 
-// }
+// ------------------------------------------------------------
+// test computeLagrange: gnarkComputeLagrangeAtZ
+
+func evalPoly(p []field.Element, z fext.Element) fext.Element {
+	var res fext.Element
+	for i := len(p) - 1; i >= 0; i-- {
+		res.Mul(&res, &z)
+		fext.AddByBase(&res, &res, &p[i])
+	}
+	return res
+}
+
+type ComputeLagrangeCircuit struct {
+	Domain fft.Domain
+	Zeta   gnarkfext.E4Gen   `gnark:",public"` // random variable
+	Li     []gnarkfext.E4Gen // expected results
+}
+
+func (circuit *ComputeLagrangeCircuit) Define(api frontend.API) error {
+
+	n := circuit.Domain.Cardinality
+	gen := circuit.Domain.Generator
+	r := gnarkComputeLagrangeAtZ(api, circuit.Zeta, gen, n)
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < len(r); i++ {
+		ext4.AssertIsEqual(&r[i], &circuit.Li[i])
+	}
+
+	return nil
+}
+
+func TestComputeLagrangeCircuit(t *testing.T) {
+
+	s := 16
+	d := fft.NewDomain(uint64(s))
+	zeta := fext.PseudoRand(rng)
+
+	// prepare witness
+	var witness ComputeLagrangeCircuit
+	witness.Zeta = gnarkfext.NewE4Gen(zeta)
+	witness.Li = make([]gnarkfext.E4Gen, s)
+	for i := 0; i < s; i++ {
+		buf := make([]field.Element, s)
+		buf[i].SetOne()
+		d.FFTInverse(buf, fft.DIF)
+		fft.BitReverse(buf)
+		li := evalPoly(buf, zeta)
+		witness.Li[i] = gnarkfext.NewE4Gen(li)
+	}
+
+	var circuit ComputeLagrangeCircuit
+	circuit.Domain = *d
+	circuit.Li = make([]gnarkfext.E4Gen, s)
+
+	// compile...
+	builder := scs.NewBuilder[constraint.U32]
+	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// solve the circuit
+	twitness, err := frontend.NewWitness(&witness, field.Modulus())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ccs.IsSolved(twitness)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+// ------------------------------------------------------------
+// test FFT inverse: FFTInverse
+
+type FFTInverseCircuit struct {
+	Domain fft.Domain
+	P      []zk.WrappedVariable
+	R      []zk.WrappedVariable
+}
+
+func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		return err
+	}
+	f, err := FFTInverse(api, circuit.P, circuit.Domain.GeneratorInv, circuit.Domain.Cardinality)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < len(f); i++ {
+		apiGen.AssertIsEqual(circuit.R[i], f[i])
+	}
+
+	return nil
+}
+
+func TestFFTInverseCircuit(t *testing.T) {
+
+	s := 16
+	d := fft.NewDomain(uint64(s))
+
+	// prepare witness
+	p := make([]field.Element, s)
+	for i := 0; i < s; i++ {
+		p[i] = field.PseudoRand(rng)
+	}
+	r := make([]field.Element, s)
+	copy(r, p)
+	d.FFTInverse(r, fft.DIF)
+	fft.BitReverse(r)
+	var witness FFTInverseCircuit
+	witness.P = make([]zk.WrappedVariable, s)
+	witness.R = make([]zk.WrappedVariable, s)
+
+	for i := 0; i < s; i++ {
+		witness.P[i] = zk.ValueOf(p[i].String())
+		witness.R[i] = zk.ValueOf(r[i].String())
+	}
+
+	var circuit FFTInverseCircuit
+	circuit.P = make([]zk.WrappedVariable, s)
+	circuit.R = make([]zk.WrappedVariable, s)
+	circuit.Domain = *d
+
+	// compile...
+	builder := scs.NewBuilder[constraint.U32]
+	ccs, err := frontend.CompileGeneric[constraint.U32](field.Modulus(), builder, &circuit)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// solve the circuit
+	twitness, err := frontend.NewWitness(&witness, field.Modulus())
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ccs.IsSolved(twitness)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
 
 // ------------------------------------------------------------
 // test AssertIsCodeWord
 
-// type AssertIsCodeWordCircuit struct {
-// 	rate uint64
-// 	d    *fft.Domain
-// 	P    []zk.WrappedVariable `gnark:",public"`
-// }
+type AssertIsCodeWordCircuit struct {
+	rate uint64
+	d    *fft.Domain
+	P    []zk.WrappedVariable `gnark:",public"`
+}
 
-// func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
-// 	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
+func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
+	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
 
-// }
+}
 
-/*
 func TestAssertIsCodeWord(t *testing.T) {
 
 	// generate witness
@@ -196,7 +271,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 	rate := 2
 	p := make([]field.Element, size)
 	for i := 0; i < (size / rate); i++ {
-		p[i].SetRandom()
+		p[i] = field.PseudoRand(rng)
 	}
 	d.FFT(p, fft.DIF)
 	fft.BitReverse(p)
@@ -206,7 +281,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 	witness.rate = uint64(rate)
 	witness.d = d
 	for i := 0; i < size; i++ {
-		witness.P[i] = p[i].String()
+		witness.P[i] = zk.ValueOf(p[i].String())
 	}
 
 	// compile the circuit
@@ -230,10 +305,9 @@ func TestAssertIsCodeWord(t *testing.T) {
 	}
 
 }
-*/
 
 // ------------------------------------------------------------
-// EvaluateLagrange
+// test EvaluateLagrange: gnarkEvaluateLagrange
 
 type EvaluateLagrangeCircuit struct {
 	P []zk.WrappedVariable
@@ -245,12 +319,10 @@ type EvaluateLagrangeCircuit struct {
 func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
 	res := gnarkEvaluateLagrange(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
-
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		return err
 	}
-
 	ext4.AssertIsEqual(&res, &circuit.Y)
 
 	return nil
@@ -260,20 +332,16 @@ func getEvaluateLagrangeCircuitWitness(size int) (*EvaluateLagrangeCircuit, *Eva
 
 	pCan := make([]field.Element, size)
 	for i := 0; i < size; i++ {
-		pCan[i].SetRandom()
+		pCan[i] = field.PseudoRand(rng)
 	}
 	d := fft.NewDomain(uint64(size))
 
-	var x fext.Element
-	x.SetRandom()
+	x := fext.PseudoRand(rng)
 	var y fext.Element
 	for i := 0; i < size; i++ {
 		y.Mul(&y, &x)
 		fext.AddByBase(&y, &y, &pCan[size-1-i])
 	}
-
-	fmt.Printf("EvaluateLagrange at x=%s gives y=%s\n", x.String(), y.String())
-	fmt.Printf("p=%v\n", pCan)
 
 	d.FFT(pCan, fft.DIF)
 	fft.BitReverse(pCan)
@@ -301,26 +369,23 @@ func TestEvaluateLagrangeCircuit(t *testing.T) {
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 	assert.NoError(t, err)
 
-		fmt.Printf("circuit=%v\n", circuit.P)
-
 		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
 		assert.NoError(t, err)
 		err = ccs.IsSolved(fullWitness)
 		assert.NoError(t, err)
 	}
 
-	// {
-	// 	circuit, witness := getEvaluateLagrangeCircuitWitness(size)
+	{
+		circuit, witness := getEvaluateLagrangeCircuitWitness(size)
 
-	// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
-	// 	assert.NoError(t, err)
-	// 	fmt.Printf("circuit=%v\n", circuit.P)
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
 
-	// 	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 
 }
 
@@ -335,11 +400,9 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	entryList []int,
 	roots []types.Bytes32,
 ) {
-
 	x = fext.RandomElement()
 	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
-
 	blsParams := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, smt_bls12377.Poseidon2, smt_bls12377.Poseidon2)
 	koalabearParams := vortex.NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
 
@@ -380,7 +443,11 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	}
 
 	// Generate the proof
+	if proof == nil {
+		proof = &OpeningProof{}
+	}
 	proof.LinearCombination = koalabearParams.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
+
 	proof.Complete(entryList, committedMatrices, trees)
 
 	// Check the proof
@@ -395,6 +462,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 		EntryList:                entryList,
 		IsSISReplacedByPoseidon2: isSISReplacedByPoseidon2,
 	})
+
 	require.NoError(t, err)
 
 	return proof, randomCoin, x, yLists, entryList, roots
@@ -424,7 +492,7 @@ func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 
 	// compile the circuit
 	var circuit VerifyOpeningCircuitMerkleTree
-	circuit.Proof.LinearCombination = make([]zk.WrappedVariable, rsSize)
+	circuit.Proof.LinearCombination = make([]gnarkfext.E4Gen, rsSize)
 	circuit.Proof.Rate = uint64(blowUpFactor)
 	circuit.Proof.RsDomain = rsDomain
 	circuit.Params.HasherFunc = makePoseidon2Hasherfunc

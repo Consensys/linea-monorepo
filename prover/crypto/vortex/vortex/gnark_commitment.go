@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -38,6 +39,24 @@ func AllocateCircuitVariables(
 	entryList []int,
 	roots []types.Bytes32) {
 
+	verifyCircuit.Proof.LinearCombination = make([]gnarkfext.E4Gen, proof.LinearCombination.Len())
+
+	verifyCircuit.Proof.Columns = make([][][]zk.WrappedVariable, len(proof.Columns))
+	for i := 0; i < len(proof.Columns); i++ {
+		verifyCircuit.Proof.Columns[i] = make([][]zk.WrappedVariable, len(proof.Columns[i]))
+		for j := 0; j < len(proof.Columns[i]); j++ {
+			verifyCircuit.Proof.Columns[i][j] = make([]zk.WrappedVariable, len(proof.Columns[i][j]))
+		}
+	}
+
+	verifyCircuit.Proof.MerkleProofs = make([][]smt_bls12377.GnarkProof, len(proof.MerkleProofs))
+	for i := 0; i < len(proof.MerkleProofs); i++ {
+		verifyCircuit.Proof.MerkleProofs[i] = make([]smt_bls12377.GnarkProof, len(proof.MerkleProofs[i]))
+		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
+			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]frontend.Variable, len(proof.MerkleProofs[i][j].Siblings))
+		}
+	}
+
 	verifyCircuit.EntryList = make([]frontend.Variable, len(entryList))
 
 	verifyCircuit.Ys = make([][]gnarkfext.E4Gen, len(ys))
@@ -58,13 +77,13 @@ func AssignCicuitVariables(
 	frLinComb := make([]fext.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSliceExt(frLinComb)
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		verifyCircuit.Proof.LinearCombination[i] = zk.ValueOf(frLinComb[i]) //write ext to zk.value
+		verifyCircuit.Proof.LinearCombination[i] = gnarkfext.NewE4Gen(frLinComb[i])
 	}
 
 	for i := 0; i < len(proof.Columns); i++ {
 		for j := 0; j < len(proof.Columns[i]); j++ {
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
-				verifyCircuit.Proof.Columns[i][j][k] = zk.ValueOf(proof.Columns[i][j][k])
+				verifyCircuit.Proof.Columns[i][j][k] = zk.ValueOf(proof.Columns[i][j][k].String())
 			}
 		}
 	}
@@ -151,9 +170,6 @@ func GnarkVerifyOpeningWithMerkleProof(
 			// Hash the SIS hash
 			var leaf = selectedColsHashes[i][j]
 
-			// TODO@yao: check if GnarkVerifyCommon compute the leaf, that is written by 7 field.Element to one frontend.Variable?
-			// maybe add a new variable type for bigfield leaf? check leaf = sum (7 field.Element ) relationship
-
 			// Check the Merkle-proof for the obtained leaf
 			smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
 
@@ -225,16 +241,12 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []fr.Element
 		func(col, threadID int) {
 			hasher := hashers[threadID]
 			hasher.Reset()
+			xElems := make([]field.Element, numRows)
 			for row := 0; row < numRows; row++ {
-				if row%7 == 0 {
-					// Overwrite with 4 zero bytes to prevent bls12377 overflow
-					zeroBytes := []byte{0, 0, 0, 0}
-					hasher.Write(zeroBytes)
-				}
-				x := v[row].Get(col)
-				xBytes := x.Bytes()
-				hasher.Write(xBytes[:])
+				xElems[row] = v[row].Get(col)
 			}
+			colBytes := EncodeKoalabearsToBytes(xElems)
+			hasher.Write(colBytes)
 
 			digest := hasher.Sum(nil)
 			res[col].SetBytes(digest)

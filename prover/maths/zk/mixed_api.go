@@ -64,33 +64,33 @@ func ValueOf(v any) WrappedVariable {
 }
 
 type GenericApi struct {
-	nativeApi   frontend.API
-	emulatedApi *emulated.Field[emulated.KoalaBear]
+	NativeApi   frontend.API
+	EmulatedApi *emulated.Field[emulated.KoalaBear]
 }
 
 func NewGenericApi(api frontend.API) (GenericApi, error) {
 	ff := api.Compiler().Field()
 	kf := koalabear.Modulus()
 	if ff.Cmp(kf) == 0 {
-		return GenericApi{nativeApi: api}, nil
+		return GenericApi{NativeApi: api}, nil
 	} else {
 		f, err := emulated.NewField[emulated.KoalaBear](api)
 		if err != nil {
 			return GenericApi{}, err
 		}
-		return GenericApi{nativeApi: api, emulatedApi: f}, nil
+		return GenericApi{NativeApi: api, EmulatedApi: f}, nil
 	}
 }
 
 func (g *GenericApi) Type() VType {
-	if g.emulatedApi == nil {
+	if g.EmulatedApi == nil {
 		return Native
 	}
 	return Emulated
 }
 
 func (g *GenericApi) GetFrontendVariable(v WrappedVariable) frontend.Variable {
-	if g.emulatedApi == nil {
+	if g.EmulatedApi == nil {
 		return v.V
 	}
 	return v.EV.Limbs[0]
@@ -98,104 +98,104 @@ func (g *GenericApi) GetFrontendVariable(v WrappedVariable) frontend.Variable {
 
 func (g *GenericApi) Mul(a, b WrappedVariable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.Mul(a.AsNative(), b.AsNative())}
+		return WrappedVariable{V: g.NativeApi.Mul(a.AsNative(), b.AsNative())}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.Mul(a.AsEmulated(), b.AsEmulated())}
+		return WrappedVariable{EVpointer: g.EmulatedApi.Mul(a.AsEmulated(), b.AsEmulated())}
 	}
 }
 
 func (g *GenericApi) MulConst(a WrappedVariable, b *big.Int) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.Mul(a.AsNative(), b)}
+		return WrappedVariable{V: g.NativeApi.Mul(a.AsNative(), b)}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.MulConst(a.AsEmulated(), b)}
+		return WrappedVariable{EVpointer: g.EmulatedApi.MulConst(a.AsEmulated(), b)}
 	}
 }
 
 func (g *GenericApi) Add(a, b WrappedVariable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.Add(a.AsNative(), b.AsNative())}
+		return WrappedVariable{V: g.NativeApi.Add(a.AsNative(), b.AsNative())}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.Add(a.AsEmulated(), b.AsEmulated())}
+		return WrappedVariable{EVpointer: g.EmulatedApi.Add(a.AsEmulated(), b.AsEmulated())}
 	}
 }
 
 func (g *GenericApi) Neg(a WrappedVariable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.Neg(a.AsNative())}
+		return WrappedVariable{V: g.NativeApi.Neg(a.AsNative())}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.Neg(a.AsEmulated())}
+		return WrappedVariable{EVpointer: g.EmulatedApi.Neg(a.AsEmulated())}
 	}
 }
 
 func (g *GenericApi) Sub(a, b WrappedVariable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.Sub(a.AsNative(), b.AsNative())}
+		return WrappedVariable{V: g.NativeApi.Sub(a.AsNative(), b.AsNative())}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.Sub(a.AsEmulated(), b.AsEmulated())}
+		return WrappedVariable{EVpointer: g.EmulatedApi.Sub(a.AsEmulated(), b.AsEmulated())}
 	}
 }
 
 func (g *GenericApi) Inverse(a WrappedVariable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.Inverse(a.AsNative())}
+		return WrappedVariable{V: g.NativeApi.Inverse(a.AsNative())}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.Inverse(a.AsEmulated())}
+		return WrappedVariable{EVpointer: g.EmulatedApi.Inverse(a.AsEmulated())}
 	}
 }
 
 func (g *GenericApi) Div(a, b WrappedVariable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.Div(a.AsNative(), b.AsNative())}
+		return WrappedVariable{V: g.NativeApi.Div(a.AsNative(), b.AsNative())}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.Div(a.AsEmulated(), b.AsEmulated())}
+		return WrappedVariable{EVpointer: g.EmulatedApi.Div(a.AsEmulated(), b.AsEmulated())}
 	}
 }
 
 func (g *GenericApi) ToBinary(a WrappedVariable, n ...int) []frontend.Variable {
 	if g.Type() == Native {
-		return g.nativeApi.ToBinary(a.AsNative(), n...)
+		return g.NativeApi.ToBinary(a.AsNative(), n...)
 	} else {
-		return g.emulatedApi.ToBits(a.AsEmulated())
+		return g.EmulatedApi.ToBits(a.AsEmulated())
 	}
 }
 
 func (g *GenericApi) FromBinary(b ...frontend.Variable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.FromBinary(b)}
+		return WrappedVariable{V: g.NativeApi.FromBinary(b)}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.FromBits(b)}
+		return WrappedVariable{EVpointer: g.EmulatedApi.FromBits(b)}
 	}
 }
 
 func (g *GenericApi) And(a, b frontend.Variable) frontend.Variable {
-	return g.nativeApi.And(a, b)
+	return g.NativeApi.And(a, b)
 }
 
 func (g *GenericApi) Xor(a, b frontend.Variable) frontend.Variable {
-	return g.nativeApi.Xor(a, b)
+	return g.NativeApi.Xor(a, b)
 }
 
 func (g *GenericApi) Or(a, b frontend.Variable) frontend.Variable {
-	return g.nativeApi.Or(a, b)
+	return g.NativeApi.Or(a, b)
 }
 
 // Select(b frontend.Variable, i1, i2 *T) *T
 func (g *GenericApi) Select(b frontend.Variable, i1, i2 WrappedVariable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.Select(b, i1.AsNative(), i2.AsNative())}
+		return WrappedVariable{V: g.NativeApi.Select(b, i1.AsNative(), i2.AsNative())}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.FromBits(b)}
+		return WrappedVariable{EVpointer: g.EmulatedApi.FromBits(b)}
 	}
 }
 
 func (g *GenericApi) Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 WrappedVariable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.nativeApi.Lookup2(
+		return WrappedVariable{V: g.NativeApi.Lookup2(
 			b0, b1,
 			i0.AsNative(), i1.AsNative(), i1.AsNative(), i3.AsNative())}
 	} else {
-		return WrappedVariable{EVpointer: g.emulatedApi.Lookup2(
+		return WrappedVariable{EVpointer: g.EmulatedApi.Lookup2(
 			b0, b1,
 			i0.AsEmulated(), i1.AsEmulated(), i1.AsEmulated(), i3.AsEmulated())}
 	}
@@ -203,33 +203,33 @@ func (g *GenericApi) Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 WrappedVar
 
 func (g *GenericApi) IsZero(i1 WrappedVariable) frontend.Variable {
 	if g.Type() == Native {
-		return g.nativeApi.IsZero(i1.AsNative())
+		return g.NativeApi.IsZero(i1.AsNative())
 	} else {
-		return g.emulatedApi.IsZero(i1.AsEmulated())
+		return g.EmulatedApi.IsZero(i1.AsEmulated())
 	}
 }
 
 func (g *GenericApi) AssertIsEqual(a, b WrappedVariable) {
 	if g.Type() == Native {
-		g.nativeApi.AssertIsEqual(a.AsNative(), b.AsNative())
+		g.NativeApi.AssertIsEqual(a.AsNative(), b.AsNative())
 	} else {
-		g.emulatedApi.AssertIsEqual(a.AsEmulated(), b.AsEmulated())
+		g.EmulatedApi.AssertIsEqual(a.AsEmulated(), b.AsEmulated())
 	}
 }
 
 func (g *GenericApi) AssertIsDifferent(a, b WrappedVariable) {
 	if g.Type() == Native {
-		g.nativeApi.AssertIsDifferent(a.AsNative(), b.AsNative())
+		g.NativeApi.AssertIsDifferent(a.AsNative(), b.AsNative())
 	} else {
-		g.emulatedApi.AssertIsDifferent(a.AsEmulated(), b.AsEmulated())
+		g.EmulatedApi.AssertIsDifferent(a.AsEmulated(), b.AsEmulated())
 	}
 }
 
 func (g *GenericApi) AssertIsLessOrEqual(a, b WrappedVariable) {
 	if g.Type() == Native {
-		g.nativeApi.AssertIsLessOrEqual(a.AsNative(), b.AsNative())
+		g.NativeApi.AssertIsLessOrEqual(a.AsNative(), b.AsNative())
 	} else {
-		g.emulatedApi.AssertIsLessOrEqual(a.AsEmulated(), b.AsEmulated())
+		g.EmulatedApi.AssertIsLessOrEqual(a.AsEmulated(), b.AsEmulated())
 	}
 }
 
@@ -239,7 +239,7 @@ func (g *GenericApi) NewHint(f solver.Hint, nbOutputs int, inputs ...WrappedVari
 		for i, r := range inputs {
 			_inputs[i] = r.AsNative()
 		}
-		_r, err := g.nativeApi.NewHint(f, nbOutputs, _inputs...)
+		_r, err := g.NativeApi.NewHint(f, nbOutputs, _inputs...)
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +253,7 @@ func (g *GenericApi) NewHint(f solver.Hint, nbOutputs int, inputs ...WrappedVari
 		for i, r := range inputs {
 			_inputs[i] = r.AsEmulated()
 		}
-		_r, err := g.emulatedApi.NewHint(f, nbOutputs, _inputs...)
+		_r, err := g.EmulatedApi.NewHint(f, nbOutputs, _inputs...)
 		if err != nil {
 			return nil, err
 		}
@@ -269,17 +269,17 @@ func (g *GenericApi) NewHint(f solver.Hint, nbOutputs int, inputs ...WrappedVari
 func (g *GenericApi) Println(a ...WrappedVariable) {
 	if g.Type() == Native {
 		for i := 0; i < len(a); i++ {
-			g.nativeApi.Println(a[i].AsNative())
+			g.NativeApi.Println(a[i].AsNative())
 		}
 	} else {
 		for i := 0; i < len(a); i++ {
 			if a[i].EVpointer == nil {
 				for j := 0; j < len(a[i].EV.Limbs); j++ {
-					g.nativeApi.Println(a[i].EV.Limbs[j])
+					g.NativeApi.Println(a[i].EV.Limbs[j])
 				}
 			} else {
 				for j := 0; j < len(a[i].EVpointer.Limbs); j++ {
-					g.nativeApi.Println(a[i].EVpointer.Limbs[j])
+					g.NativeApi.Println(a[i].EVpointer.Limbs[j])
 				}
 			}
 		}
