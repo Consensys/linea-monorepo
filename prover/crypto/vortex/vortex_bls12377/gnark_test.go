@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	gnarkVortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/std/hash"
 	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
@@ -366,6 +367,76 @@ func TestEvaluateLagrangeExtCircuit(t *testing.T) {
 
 	{
 		circuit, witness := getEvaluateLagrangeExtCircuitWitness(size)
+
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
+
+	{
+		circuit, witness := getEvaluateLagrangeExtCircuitWitness(size)
+
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
+
+}
+
+// ------------------------------------------------------------
+// test linear combination : gnarkEvalCanonical
+
+type LinearCombinationCircuit struct {
+	P          []zk.WrappedVariable
+	RandomCoin gnarkfext.E4Gen `gnark:",public"`
+	Y          gnarkfext.E4Gen
+}
+
+func (circuit *LinearCombinationCircuit) Define(api frontend.API) error {
+
+	res := gnarkEvalCanonical(api, circuit.P, circuit.RandomCoin)
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return err
+	}
+	ext4.AssertIsEqual(&res, &circuit.Y)
+
+	return nil
+}
+
+func gnarkEvalCanonicalCircuitWitness(size int) (*LinearCombinationCircuit, *LinearCombinationCircuit) {
+
+	pCan := make([]field.Element, size)
+	randomCoin := fext.PseudoRand(rng)
+	y := gnarkVortex.EvalBasePolyHorner(pCan, randomCoin)
+
+	var circuit, witness LinearCombinationCircuit
+	circuit.P = make([]zk.WrappedVariable, size)
+
+	witness.P = make([]zk.WrappedVariable, size)
+	witness.RandomCoin = gnarkfext.NewE4Gen(randomCoin)
+	witness.Y = gnarkfext.NewE4Gen(y)
+	for i := 0; i < size; i++ {
+		witness.P[i] = zk.ValueOf(pCan[i].String())
+	}
+
+	return &circuit, &witness
+}
+
+func TestLinearCombinationCircuit(t *testing.T) {
+
+	size := 64
+
+	{
+		circuit, witness := gnarkEvalCanonicalCircuitWitness(size)
 
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
