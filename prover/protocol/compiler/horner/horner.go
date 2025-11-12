@@ -396,13 +396,13 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		x := hornerQuery.Parts[i].X.GetFrontendVariable(api, run)
 
 		xN0 := gnarkutil.ExpVariableExponent(api, x, n0, 64)
-		tmp = *apiGen.Mul(&tmp, &xN0)
+		tmp = apiGen.Mul(tmp, xN0)
 
 		if hornerQuery.Parts[i].SignNegative {
-			tmp = *apiGen.Neg(&tmp)
+			tmp = apiGen.Neg(tmp)
 		}
 
-		res = *apiGen.Add(&res, &tmp)
+		res = apiGen.Add(res, tmp)
 	}
 
 	api.AssertIsEqual(res, hornerParams.FinalResult)

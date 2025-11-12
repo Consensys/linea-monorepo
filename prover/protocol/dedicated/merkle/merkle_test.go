@@ -4,8 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -24,7 +23,7 @@ const (
 // merkleTestBuilder is used to build the assignment of merkle proofs
 // and is implemented like a writer.
 type merkleTestBuilder struct {
-	proofs             []smt.Proof
+	proofs             []smt_koalabear.Proof
 	pos                []field.Element
 	roots              []field.Octuplet
 	leaves             []field.Octuplet
@@ -36,7 +35,7 @@ type merkleTestBuilder struct {
 // newMerkleTestBuilder returns an empty builder
 func newMerkleTestBuilder(numProofs int) *merkleTestBuilder {
 	return &merkleTestBuilder{
-		proofs:             make([]smt.Proof, 0, numProofs),
+		proofs:             make([]smt_koalabear.Proof, 0, numProofs),
 		pos:                make([]field.Element, 0, numProofs),
 		roots:              make([]field.Octuplet, 0, numProofs),
 		leaves:             make([]field.Octuplet, 0, numProofs),
@@ -58,7 +57,7 @@ func (b *merkleTestBuilder) assignProofs(numProofs, depth int, isReuse bool, reu
 		}
 		leaves[i] = x
 	}
-	tree := smt.BuildComplete(leaves, poseidon2.Poseidon2)
+	tree := smt_koalabear.BuildComplete(leaves)
 	root := tree.Root
 	if !isReuse {
 

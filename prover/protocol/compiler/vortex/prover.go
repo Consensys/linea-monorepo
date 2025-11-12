@@ -2,7 +2,7 @@ package vortex
 
 import (
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -64,7 +64,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 
 	var (
 		committedMatrix vortex.EncodedMatrix
-		tree            *smt.Tree
+		tree            *smt_koalabear.Tree
 		sisColHashes    []field.Element // column hashes generated from SisTransversalHash
 		noSisColHashes  []field.Element // column hashes generated from noSisTransversalHash, using LeafHashFunc
 	)
@@ -220,8 +220,8 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	var (
 		committedMatricesSIS   = []vortex.EncodedMatrix{}
 		committedMatricesNoSIS = []vortex.EncodedMatrix{}
-		treesSIS               = []*smt.Tree{}
-		treesNoSIS             = []*smt.Tree{}
+		treesSIS               = []*smt_koalabear.Tree{}
+		treesNoSIS             = []*smt_koalabear.Tree{}
 		// We need them to assign the opened sis and non sis columns
 		// to be used in the self-recursion compiler
 		sisProof    = vortex.OpeningProof{}
@@ -252,7 +252,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		run.State.Del(ctx.VortexProverStateName(round))
 
 		// Also fetches the trees from the prover state
-		tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt.Tree)
+		tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt_koalabear.Tree)
 
 		// conditionally stack the matrix and tree
 		// to SIS or no SIS matrices and trees
@@ -323,7 +323,7 @@ func (ctx *Ctx) getPols(run *wizard.ProverRuntime, round int) (pols []smartvecto
 }
 
 // pack a list of merkle-proofs in a vector as used in the merkle proof module
-func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) [8]smartvectors.SmartVector {
+func (ctx *Ctx) packMerkleProofs(proofs [][]smt_koalabear.Proof) [8]smartvectors.SmartVector {
 
 	depth := len(proofs[0][0].Siblings) // depth of the Merkle-tree
 	res := [8][]field.Element{}
@@ -388,7 +388,7 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) [8]smartvectors.SmartVect
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []int) (proofs [][]smt.Proof) {
+func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []int) (proofs [][]smt_koalabear.Proof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -397,14 +397,14 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 	}
 	numEntries := len(entryList)
 
-	proofs = make([][]smt.Proof, numComs)
+	proofs = make([][]smt_koalabear.Proof, numComs)
 	curr := 0 // tracks the position in sv that we are parsing.
 
 	for i := range proofs {
-		proofs[i] = make([]smt.Proof, numEntries)
+		proofs[i] = make([]smt_koalabear.Proof, numEntries)
 		for j := range proofs[i] {
 			// initialize the proof that we are parsing
-			proof := smt.Proof{
+			proof := smt_koalabear.Proof{
 				Path:     entryList[j],
 				Siblings: make([]field.Octuplet, depth),
 			}

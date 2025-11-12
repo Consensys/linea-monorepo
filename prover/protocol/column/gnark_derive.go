@@ -52,7 +52,7 @@ func GnarkDeriveEvaluationPoint(
 			}
 			omegaN := zk.ValueOf(generator)
 			omegaN = gnarkutil.Exp(api, omegaN, inner.Offset)
-			derivedX = *apiGen.Mul(&x, &omegaN)
+			derivedX = apiGen.Mul(x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
 		}
 		return GnarkDeriveEvaluationPoint(api, inner.Parent, newUpstream, cachedXs, derivedX)

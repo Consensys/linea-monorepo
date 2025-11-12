@@ -209,7 +209,7 @@ func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run iface
 		return zk.ValueOf(0), err
 	}
 	res := gnarkutil.Exp(api, x, 1-a.N)
-	res = *apiGen.Mul(&res, &y)
+	res = apiGen.Mul(res, y)
 	return res, nil
 }
 
@@ -264,7 +264,7 @@ func (a *XYPow1MinNAccessor) GetFrontendVariable(api frontend.API, run ifaces.Gn
 	if err != nil {
 		panic(err)
 	}
-	res = *apiGen.Mul(&res, &y)
+	res = apiGen.Mul(res, y)
 	return res
 }
 

@@ -492,7 +492,7 @@ func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRun
 	yActual := poly.EvaluateUnivariateGnarkMixed(api, dcollapse, rfold)
 
 	one := fext.One()
-	xN := gnarkutil.Exp(api, rfold, a.Degree)
+	xN := gnarkutil.ExpExt(api, rfold, a.Degree)
 	xNminus1 := api.Sub(xN, one)
 	xNplus1 := api.Add(xN, one)
 

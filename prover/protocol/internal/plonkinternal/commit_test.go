@@ -31,16 +31,16 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 		return err
 	}
 
-	x3 := apiGen.Mul(&circuit.X, &circuit.X)
-	x3 = apiGen.Mul(x3, &circuit.X)
+	x3 := apiGen.Mul(circuit.X, circuit.X)
+	x3 = apiGen.Mul(x3, circuit.X)
 	wFive := zk.ValueOf(5)
-	a := apiGen.Add(x3, &circuit.X)
-	a = apiGen.Add(a, &wFive)
+	a := apiGen.Add(x3, circuit.X)
+	a = apiGen.Add(a, wFive)
 
 	// compute powers of a:
 	powersOfA := []zk.WrappedVariable{zk.WrapFrontendVariable(a)}
 	for i := 1; i < 15; i++ {
-		powersOfA = append(powersOfA, *apiGen.Mul(&powersOfA[i-1], &powersOfA[i-1]))
+		powersOfA = append(powersOfA, apiGen.Mul(powersOfA[i-1], powersOfA[i-1]))
 	}
 
 	// commit to powers of a
@@ -55,7 +55,7 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	// 	return err
 	// }
 
-	apiGen.AssertIsEqual(&circuit.Y, a)
+	apiGen.AssertIsEqual(circuit.Y, a)
 	return nil
 }
 

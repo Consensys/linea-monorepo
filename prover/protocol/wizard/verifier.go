@@ -2,7 +2,7 @@ package wizard
 
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -53,7 +53,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() *poseidon2.Hasher
+	Fs() *poseidon2_koalabear.Hasher
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -93,7 +93,7 @@ type VerifierRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *poseidon2.Hasher
+	FS *poseidon2_koalabear.Hasher
 
 	// State stores arbitrary data that can be used by the verifier. This
 	// can be used to communicate values between verifier states.
@@ -168,7 +168,7 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
 		QueriesParams: proof.QueriesParams,
-		FS:            poseidon2.Poseidon2(),
+		FS:            poseidon2_koalabear.Poseidon2(),
 		State:         make(map[string]interface{}),
 	}
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -31,7 +31,7 @@ type InnerProductParams struct {
 }
 
 // Update the fiat-shamir state with inner-product params
-func (ipp InnerProductParams) UpdateFS(state *poseidon2.Hasher) {
+func (ipp InnerProductParams) UpdateFS(state *poseidon2_koalabear.Hasher) {
 	fiatshamir.UpdateVecExt(state, ipp.Ys)
 }
 
@@ -145,8 +145,8 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		for j := range wA {
 			// tmp := api.Mul(wA[j], wB[j])
 			// actualIP = api.Add(actualIP, tmp)
-			tmp := apiGen.Mul(&wA[j], &wB[j])
-			actualIP = *apiGen.Add(&actualIP, tmp)
+			tmp := apiGen.Mul(wA[j], wB[j])
+			actualIP = apiGen.Add(actualIP, tmp)
 		}
 
 		api.AssertIsEqual(expecteds.Ys[i], actualIP)

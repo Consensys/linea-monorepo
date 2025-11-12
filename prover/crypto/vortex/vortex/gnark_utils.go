@@ -6,11 +6,14 @@ import (
 	"math/big"
 	"math/bits"
 
+	gnarkbits "github.com/consensys/gnark/std/math/bits"
+
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
+	"github.com/consensys/gnark/std/math/cmp"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
@@ -202,22 +205,6 @@ func gnarkEvalCanonicalExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4
 	}
 	return res
 }
-func gnarkEvaluateLagrange(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) gnarkfext.E4Gen {
-
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-	res := *ext4.Zero()
-	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
-
-	for i := uint64(0); i < cardinality; i++ {
-		tmp := ext4.MulByFp(&lagranges[i], p[i])
-		res = *ext4.Add(&res, tmp)
-	}
-
-	return res
-}
 
 func gnarkEvaluateLagrangeExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) gnarkfext.E4Gen {
 
@@ -309,7 +296,6 @@ func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear
 
 	// check that is of degree < cardinality/rate
 	degree := (cardinality - (cardinality % rate)) / rate
-	fmt.Printf("degree: %d, cardinality: %d, rate: %d\n", degree, cardinality, len(pCanonical))
 
 	for i := degree; i < cardinality; i++ {
 		apiGen.AssertIsEqual(pCanonical[i], zk.ValueOf(0))
@@ -335,7 +321,6 @@ func assertIsCodeWordExt(api frontend.API, p []gnarkfext.E4Gen, genInv koalabear
 	}
 	// check that is of degree < cardinality/rate
 	degree := (cardinality - (cardinality % rate)) / rate
-	fmt.Printf("degree: %d, cardinality: %d, rate: %d\n", degree, cardinality, len(pCanonical))
 	for i := degree; i < cardinality; i++ {
 		zeroValue := gnarkfext.NewE4Gen(fext.Zero())
 		ext4.Println(pCanonical[i])
@@ -454,9 +439,99 @@ func GnarkVerifyCommon(
 
 		// Check the linear combination is consistent with the opened column
 		y := gnarkEvalCanonical(api, fullCol, randomCoin)
-		v := proof.LinearCombination[selectedColID]
+		v := Mux(api, selectedColID, proof.LinearCombination...)
 		ext4.AssertIsEqual(&y, &v)
 
 	}
 	return selectedColSisDigests, nil
+}
+
+// Mux is an n to 1 multiplexer: out = inputs[sel]. In other words, it selects
+// exactly one of its inputs based on sel. The index of inputs starts from zero.
+//
+// sel needs to be between 0 and n - 1 (inclusive), where n is the number of
+// inputs, otherwise the proof will fail.
+func Mux(api frontend.API, sel frontend.Variable, inputs ...gnarkfext.E4Gen) gnarkfext.E4Gen {
+	n := uint(len(inputs))
+	if n == 0 {
+		panic("invalid input length 0 for mux")
+	}
+	if n == 1 {
+		api.AssertIsEqual(sel, 0)
+		return inputs[0]
+	}
+	nbBits := bits.Len(n - 1)                                               // we use n-1 as sel is 0-indexed
+	selBits := gnarkbits.ToBinary(api, sel, gnarkbits.WithNbDigits(nbBits)) // binary decomposition ensures sel < 2^nbBits
+
+	// We use BinaryMux when len(inputs) is a power of 2.
+	if bits.OnesCount(n) == 1 {
+		return BinaryMux(api, selBits, inputs)
+	}
+
+	bcmp := cmp.NewBoundedComparator(api, big.NewInt((1<<nbBits)-1), false)
+	bcmp.AssertIsLessEq(sel, n-1)
+
+	// Otherwise, we split inputs into two sub-arrays, such that the first part's length is 2's power
+	return muxRecursive(api, selBits, inputs)
+}
+
+func muxRecursive(api frontend.API,
+	selBits []frontend.Variable, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+
+	nbBits := len(selBits)
+	leftCount := uint(1 << (nbBits - 1))
+	left := BinaryMux(api, selBits[:nbBits-1], inputs[:leftCount])
+
+	rightCount := uint(len(inputs)) - leftCount
+	nbRightBits := bits.Len(rightCount)
+
+	var right gnarkfext.E4Gen
+	if bits.OnesCount(rightCount) == 1 {
+		right = BinaryMux(api, selBits[:nbRightBits-1], inputs[leftCount:])
+	} else {
+		right = muxRecursive(api, selBits[:nbRightBits], inputs[leftCount:])
+	}
+
+	msb := selBits[nbBits-1]
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return gnarkfext.E4Gen{}
+	}
+
+	return *ext4.Select(zk.WrapFrontendVariable(msb), &right, &left)
+}
+func BinaryMux(api frontend.API, selBits []frontend.Variable, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+	if len(inputs) != 1<<len(selBits) {
+		panic(fmt.Sprintf("invalid input length for BinaryMux (%d != 2^%d)", len(inputs), len(selBits)))
+	}
+
+	for _, b := range selBits {
+		api.AssertIsBoolean(b)
+	}
+
+	return binaryMuxRecursive(api, selBits, inputs)
+}
+
+func binaryMuxRecursive(api frontend.API, selBits []frontend.Variable, inputs []gnarkfext.E4Gen) gnarkfext.E4Gen {
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return gnarkfext.E4Gen{}
+	}
+	// The number of defined R1CS constraints for an input of length n is always n - 1.
+	// n does not need to be a power of 2.
+	if len(selBits) == 0 {
+		return inputs[0]
+	}
+
+	nextSelBits := selBits[:len(selBits)-1]
+	msb := selBits[len(selBits)-1]
+	pivot := 1 << len(nextSelBits)
+	if pivot >= len(inputs) {
+		return binaryMuxRecursive(api, nextSelBits, inputs)
+	}
+
+	left := binaryMuxRecursive(api, nextSelBits, inputs[:pivot])
+	right := binaryMuxRecursive(api, nextSelBits, inputs[pivot:])
+	return *ext4.Add(&left, ext4.MulByFp(ext4.Sub(&right, &left), zk.WrapFrontendVariable(msb)))
 }

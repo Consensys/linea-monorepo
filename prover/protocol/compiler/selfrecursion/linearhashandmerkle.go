@@ -1,7 +1,7 @@
 package selfrecursion
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -521,7 +521,9 @@ func processPrecomputedRound(
 			lmp.SisHashToHash = poseidon2W.PrepareToHashWitness(lmp.SisHashToHash, sisHash, preimageDestStart)
 			copy(lmp.ConcatSisHashQ[destStart:destStart+lmp.SisHashSize], sisHash)
 
-			leaf := poseidon2.Poseidon2Sponge(sisHash)
+			hasher := poseidon2_koalabear.Poseidon2()
+			hasher.WriteElements(sisHash)
+			leaf := hasher.SumElement()
 			for j := 0; j < blockSize; j++ {
 				lmp.MerkleSisLeaves[j] = append(lmp.MerkleSisLeaves[j], leaf[j])
 				precompSisLeaves[j] = append(precompSisLeaves[j], leaf[j])
@@ -551,7 +553,9 @@ func processPrecomputedRound(
 			nonSisPreimage := a.Ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
 			// Also compute the leaf from the column
 			// to check sanity
-			leaf_ := poseidon2.Poseidon2Sponge(nonSisPreimage)
+			hasher := poseidon2_koalabear.Poseidon2()
+			hasher.WriteElements(nonSisPreimage)
+			leaf_ := hasher.SumElement()
 			// Sanity check
 			// The leaf computed from the precomputed column
 			if leaf != leaf_ {
@@ -651,7 +655,9 @@ func processRound(
 				tohashDestStart := sisRoundCount*lmp.NumOpenedCol*chunks + i*chunks
 				lmp.SisHashToHash = poseidon2W.PrepareToHashWitness(lmp.SisHashToHash, sisHash, tohashDestStart)
 
-				leaf := poseidon2.Poseidon2Sponge(sisHash)
+				hasher := poseidon2_koalabear.Poseidon2()
+				hasher.WriteElements(sisHash)
+				leaf := hasher.SumElement()
 
 				for j := 0; j < blockSize; j++ {
 					lmp.MerkleSisLeaves[j] = append(lmp.MerkleSisLeaves[j], leaf[j])
@@ -698,7 +704,10 @@ func processRound(
 				poseidon2Preimage := nonSisOpenedCols[nonSisRoundCount][i]
 				// Also compute the leaf from the column
 				// to check sanity
-				leaf_ := poseidon2.Poseidon2Sponge(poseidon2Preimage)
+
+				hasher := poseidon2_koalabear.Poseidon2()
+				hasher.WriteElements(poseidon2Preimage)
+				leaf_ := hasher.SumElement()
 
 				if leaf != leaf_ {
 					utils.Panic("Poseidon2 hash of the non SIS column %v does not match the leaf %v", leaf_, leaf)

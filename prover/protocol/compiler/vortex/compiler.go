@@ -5,9 +5,9 @@ import (
 	"math"
 
 	"github.com/consensys/linea-monorepo/prover/crypto"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -232,7 +232,7 @@ type Ctx struct {
 			// Committed matrix (rs encoded) of the precomputed columns
 			CommittedMatrix vortex.EncodedMatrix
 			// Tree in case of Merkle mode
-			Tree *smt.Tree
+			Tree *smt_koalabear.Tree
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
 		}
@@ -301,7 +301,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 				PrecomputedColums []ifaces.Column
 				MerkleRoot        [blockSize]ifaces.Column
 				CommittedMatrix   vortex.EncodedMatrix
-				Tree              *smt.Tree
+				Tree              *smt_koalabear.Tree
 				DhWithMerkle      []field.Element
 			}
 			Alpha               coin.Info
@@ -551,7 +551,7 @@ func (ctx *Ctx) generateVortexParams() {
 		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2.Poseidon2, poseidon2.Poseidon2)
+	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
 }
 
 // return the number of columns to open
@@ -902,7 +902,7 @@ func (ctx *Ctx) MerkleProofSize() int {
 func (ctx *Ctx) commitPrecomputeds() {
 	var (
 		committedMatrix vortex.EncodedMatrix
-		tree            *smt.Tree
+		tree            *smt_koalabear.Tree
 		colHashes       []field.Element
 	)
 	precomputeds := ctx.Items.Precomputeds.PrecomputedColums
