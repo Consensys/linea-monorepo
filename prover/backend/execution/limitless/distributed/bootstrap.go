@@ -116,6 +116,12 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 						return
 					}
 
+					if mtf, isMTF := err.(exit.MissingTraceFileError); isMTF {
+						// Terminal failure due to missing trace file.
+						logrus.Errorf("Missing trace file: %v", mtf.Error())
+						return
+					}
+
 					debug.PrintStack()
 				}
 			}()
@@ -178,6 +184,7 @@ func initBootstrap(cfg *config.Config, zkevmWitness *zkevm.Witness, metadata *Me
 	for i, witnessGL := range witnessGLs {
 		i := i
 		wg.Go(func() error {
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -256,5 +263,4 @@ func loadStaticProverAssetsFromDisk(cfg *config.Config, assets *zkevm.LimitlessZ
 	if err := assets.LoadDisc(cfg); err != nil || assets.DistWizard.Disc == nil {
 		utils.Panic("could not load disc: %v", err)
 	}
-
 }

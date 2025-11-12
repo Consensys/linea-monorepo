@@ -3,6 +3,7 @@ package arithmetization
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/consensys/go-corset/pkg/asm"
@@ -13,9 +14,9 @@ import (
 	"github.com/consensys/go-corset/pkg/schema"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/bls12_377"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/sirupsen/logrus"
 )
 
@@ -92,11 +93,19 @@ func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetiza
 func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	var (
 		errs []error
-		//
-		traceF = files.MustRead(traceFile)
-		// Parse trace file and extract raw column data.
-		rawTrace, metadata, errT = ReadLtTraces(traceF)
 	)
+
+	traceF, err := os.Open(traceFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			exit.OnMissingTraceFile(fmt.Errorf("trace file %s does not exist", traceFile))
+		} else {
+			panic(err)
+		}
+	}
+
+	// Parse trace file and extract raw column data.
+	rawTrace, metadata, errT := ReadLtTraces(traceF)
 
 	// Performs a compatibility check by comparing the constraints
 	// commit of zkevm.bin with the constraints commit of the trace file.
