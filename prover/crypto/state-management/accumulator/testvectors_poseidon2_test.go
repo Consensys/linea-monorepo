@@ -8,9 +8,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
@@ -205,9 +204,8 @@ func TestInsertAndDeleteRootHashPoseidon2(t *testing.T) {
 }
 
 func newTestAccumulatorPoseidon2() *accumulator.ProverState[types.EthAddress, types.Account] {
-	config := &smt.Config{
-		HashFunc: poseidon2.Poseidon2,
-		Depth:    40,
+	config := &smt_koalabear.Config{
+		Depth: 40,
 	}
 	return accumulator.InitializeProverState[types.EthAddress, types.Account](config, locationTesting)
 }
@@ -342,9 +340,8 @@ type DummyFullKey = types.FullBytes32
 type DummyFullVal = types.FullBytes32
 
 func newTestAccumulatorPoseidon2DummyFullVal() *accumulator.ProverState[DummyFullKey, DummyFullVal] {
-	config := &smt.Config{
-		HashFunc: poseidon2.Poseidon2,
-		Depth:    40,
+	config := &smt_koalabear.Config{
+		Depth: 40,
 	}
 	return accumulator.InitializeProverState[DummyFullKey, DummyFullVal](config, locationTesting)
 }

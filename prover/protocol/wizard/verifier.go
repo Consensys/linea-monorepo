@@ -501,7 +501,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() *poseidon2.Hasher {
+func (run *VerifierRuntime) Fs() *poseidon2_koalabear.Hasher {
 	return run.FS
 }
 

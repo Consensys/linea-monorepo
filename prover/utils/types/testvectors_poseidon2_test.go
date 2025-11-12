@@ -10,7 +10,7 @@ import (
 
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +27,7 @@ func TestVectorsFullBytes32(t *testing.T) {
 	assert.Equal(t, expectedEncode, encoded)
 
 	// Calculate the hash
-	hasher := poseidon2.Poseidon2()
+	hasher := poseidon2_koalabear.Poseidon2()
 	fullBytes32Val.WriteTo(hasher)
 	hash := hasher.Sum(nil)
 
@@ -90,7 +90,7 @@ func TestVectorsEthAddress(t *testing.T) {
 		assert.Equal(t, c.ExpectedEncode, encoded)
 
 		// Calculate the hash
-		hasher := poseidon2.Poseidon2()
+		hasher := poseidon2_koalabear.Poseidon2()
 		deserialized.Address.WriteTo(hasher)
 		hash := hasher.Sum(nil)
 
@@ -155,7 +155,7 @@ func TestVectorsAccount(t *testing.T) {
 		require.NoError(t, err)
 
 		// Calculate the hash
-		hasher := poseidon2.Poseidon2()
+		hasher := poseidon2_koalabear.Poseidon2()
 		c.Account.WriteTo(hasher)
 		hash := hasher.Sum(nil)
 

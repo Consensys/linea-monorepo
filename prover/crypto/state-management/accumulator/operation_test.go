@@ -30,7 +30,7 @@ func dumval(i int) DummyVal {
 	return DummyBytes32(i)
 }
 
-func newTestAccumulatorPoseidon2() *accumulator.ProverState[DummyKey, DummyVal] {
+func newTestAccumulatorPoseidon2DummyVal() *accumulator.ProverState[DummyKey, DummyVal] {
 	config := &smt_koalabear.Config{
 		Depth: 40,
 	}

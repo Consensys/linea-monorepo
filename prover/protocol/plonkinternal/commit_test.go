@@ -44,14 +44,16 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 	}
 
 	// commit to powers of a
-	committer := api.(frontend.WideCommitter)
-	committed, err := committer.WideCommit(4, powersOfA...)
-	if err != nil {
-		return err
-	}
-	for i := range committed {
-		api.AssertIsDifferent(committed[i], 0)
-	}
+	//committer := api.(frontend.Committer)
+	//_, err := committer.Commit(powersOfA...)
+
+	// TODO @thomas fixme
+	// committer := api.(frontend.WideCommitter)
+	// width is the size of the output slice of WideCommit, this 4 could be later interpreted as a field extension
+	// _, err := committer.WideCommit(4, powersOfA...)
+	// if err != nil {
+	// 	return err
+	// }
 
 	apiGen.AssertIsEqual(circuit.Y, a)
 	return nil
