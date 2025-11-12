@@ -1,15 +1,19 @@
 package keccakfkoalabear
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
 type (
@@ -18,31 +22,51 @@ type (
 	lane         = [8]ifaces.Column
 )
 
+type lookupTables struct {
+	colBaseChi   ifaces.Column // dirty BaseChi
+	colBaseTheta ifaces.Column // clean BaseTheta
+	colBase2     ifaces.Column // base 2
+}
+
 // convertAndClean module, responsible for converting the state from base dirty BaseChi to BaseTheta.
 type convertAndClean struct {
 	// state before applying the base conversion step, in base dirty BaseChi.
 	stateCurr state
+	// flag used to indicated where to use base theta conversion (continues permutation) or base 2 conversion (output step).
+	isFirstBlock ifaces.Column
+	isActive     ifaces.Column // it indicates the end of the last hash
 	// state after applying the base conversion step, in base clean BaseTheta.
 	StateNext state
-	// lookup tables to attest the correctness of base conversion. The first column is in BaseChi and the second in BaseTheta.
-	lookupTable [2]ifaces.Column
 	// state in the middle of base conversion each lane is divided into two limbs of 4 bits each. This step is to reduce the size of the lookup table.
 	stateInternalChi, stateInternalTheta stateIn4Bits
+	// it is 1 if the base conversion is to base 2
+	isBase2 ifaces.Column
+	// it is 1 if the base conversion is to base theta.
+	isBaseTheta ifaces.Column
+	// lookup tables for base conversion
+	lookupTable lookupTables
 }
 
 // newBaseConversion creates a new base conversion module, declares the columns and constraints and returns its pointer
-func newConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane) *convertAndClean {
+func newConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isActive, isFirstBlock ifaces.Column) *convertAndClean {
 
 	var (
 		bc = &convertAndClean{
-			stateCurr: stateCurr,
+			stateCurr:    stateCurr,
+			isFirstBlock: isFirstBlock,
+			isActive:     isActive,
 		}
 		size = stateCurr[0][0][0].Size()
 	)
 	// declare the lookup table columns
-	dirtyBaseChi, cleanBaseTheta := creatLookupTablesChiToTheta()
-	bc.lookupTable[0] = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_DIRTY_BASECHI"), dirtyBaseChi)
-	bc.lookupTable[1] = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASETHETA"), cleanBaseTheta)
+	dirtyBaseChi, cleanBaseTheta, cleanBase2 := creatLookupTablesChiToTheta()
+	bc.lookupTable.colBaseChi = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_DIRTY_BASECHI"), dirtyBaseChi)
+	bc.lookupTable.colBaseTheta = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASETHETA"), cleanBaseTheta)
+	bc.lookupTable.colBase2 = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_BASE2"), cleanBase2)
+
+	// declare the flags for base conversion
+	bc.isBase2 = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASE2"), size)
+	bc.isBaseTheta = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASETHETA"), size)
 
 	// declare the columns for the new and internal state
 	for x := 0; x < 5; x++ {
@@ -55,30 +79,86 @@ func newConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane) *convert
 
 				bc.stateInternalChi[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_CHI_%v_%v_%v", x, y, z), size)
 
-				bc.stateInternalTheta[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_THETA_%v_%v_%v", x, y, z), size)
+				bc.stateInternalTheta[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_THETA_OR_BASE2_%v_%v_%v", x, y, z), size)
 
 				// attest the relation between stateInternalChi and stateInternalTheta using the lookup table
-				comp.InsertInclusion(0,
+				comp.InsertInclusionConditionalOnIncluded(0,
 					ifaces.QueryIDf("BC_LOOKUP_INCLUSION_%v_%v_%v", x, y, z),
-					bc.lookupTable[:], []ifaces.Column{bc.stateInternalChi[x][y][z], bc.stateInternalTheta[x][y][z]})
+					[]ifaces.Column{bc.lookupTable.colBaseChi, bc.lookupTable.colBaseTheta},
+					[]ifaces.Column{bc.stateInternalChi[x][y][z], bc.stateInternalTheta[x][y][z]},
+					bc.isBaseTheta)
+
+				comp.InsertInclusionConditionalOnIncluded(0,
+					ifaces.QueryIDf("BC_LOOKUP_INCLUSION_BASE2_%v_%v_%v", x, y, z),
+					[]ifaces.Column{bc.lookupTable.colBaseChi, bc.lookupTable.colBase2},
+					[]ifaces.Column{bc.stateInternalChi[x][y][z], bc.stateInternalTheta[x][y][z]},
+					bc.isBase2)
 
 			}
 
 			for z := 0; z < 8; z++ {
 				// asset that stateCurr is decomposed correctly into two slices of stateInternalChi
-				exprChi := wizardutils.LinCombExpr(common.BaseChi4, []ifaces.Column{bc.stateInternalChi[x][y][2*z], bc.stateInternalChi[x][y][2*z+1]})
-				comp.InsertGlobal(0, ifaces.QueryIDf("BC_LINCOMB_CHI_%v_%v_%v", x, y, z),
-					sym.Sub(exprChi, bc.stateCurr[x][y][z]),
+				comp.InsertGlobal(0, ifaces.QueryIDf("BC_RECOMPOSE_CHI_%v_%v_%v", x, y, z),
+					sym.Sub(bc.stateCurr[x][y][z],
+						sym.Add(bc.stateInternalChi[x][y][2*z],
+							sym.Mul(bc.stateInternalChi[x][y][2*z+1], kcommon.BaseChi4),
+						),
+					),
 				)
 
-				// asset that stateNext is recomposed correctly from two slices of stateInternalTheta
-				exprTheta := wizardutils.LinCombExpr(common.BaseTheta4, []ifaces.Column{bc.stateInternalTheta[x][y][2*z], bc.stateInternalTheta[x][y][2*z+1]})
-				comp.InsertGlobal(0, ifaces.QueryIDf("BC_LINCOMB_THETA_%v_%v_%v", x, y, z),
-					sym.Sub(exprTheta, bc.StateNext[x][y][z]),
+				baseThetaOrOutPut := sym.Add(
+					sym.Mul(bc.isBaseTheta, kcommon.BaseTheta4),
+					sym.Mul(bc.isBase2, 16),
+				)
+
+				comp.InsertGlobal(0, ifaces.QueryIDf("BC_RECOMPOSE_THETA_%v_%v_%v", x, y, z),
+					sym.Sub(bc.StateNext[x][y][z],
+						sym.Add(bc.stateInternalTheta[x][y][2*z],
+							sym.Mul(bc.stateInternalTheta[x][y][2*z+1], baseThetaOrOutPut),
+						),
+					),
 				)
 			}
 		}
 	}
+
+	commonconstraints.MustBeMutuallyExclusiveBinaryFlags(comp,
+		bc.isActive,
+		[]ifaces.Column{bc.isBase2, bc.isBaseTheta},
+	)
+
+	// the previous row before a newHash or the last active row indicates the output step (base 2 conversion)
+	// if  isFirstBlock[i] ==0 && isFirstBlock[i+1] == 1 --> isBase2[i] == 1
+	// if isActive[i] == 1 and isActive[i+1] == 0 --> isBase2[i] == 1
+	// if isActive[last-row] == 1 --> isBase2[last-row] == 1
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryID("BC_ISBASE2_BEFORE_NEWHASH"),
+		sym.Mul(
+			sym.Sub(1, bc.isFirstBlock),
+			column.Shift(bc.isFirstBlock, 1),
+			sym.Sub(1, bc.isBase2),
+		),
+	)
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryID("BC_ISBASE2_AT_LASTACTIVE"),
+		sym.Mul(
+			bc.isActive,
+			sym.Sub(1, column.Shift(bc.isActive, 1)),
+			sym.Sub(1, bc.isBase2),
+		),
+	)
+
+	comp.InsertLocal(
+		0,
+		ifaces.QueryID("BC_ISBASE2_AT_END"),
+		sym.Mul(
+			column.Shift(bc.isActive, -1),
+			sym.Sub(1, bc.isBase2),
+		),
+	)
 
 	return bc
 }
@@ -87,20 +167,66 @@ func newConvertAndClean(comp *wizard.CompiledIOP, stateCurr [5][5]lane) *convert
 func (bc *convertAndClean) Run(run *wizard.ProverRuntime) convertAndClean {
 	// decompose each bytes of the lane into 4 bits (base 12)
 	var (
-		size = bc.stateCurr[0][0][0].Size()
+		size                  = bc.stateCurr[0][0][0].Size()
+		isBase2               = common.NewVectorBuilder(bc.isBase2)
+		isBaseT               = common.NewVectorBuilder(bc.isBaseTheta)
+		isActive              = run.GetColumn(bc.isActive.GetColID()).IntoRegVecSaveAlloc()
+		isFirstBlock          = run.GetColumn(bc.isFirstBlock.GetColID()).IntoRegVecSaveAlloc()
+		baseThetaOr2, temp    = make([]field.Element, size), make([]field.Element, size)
+		baseTheta4or16, temp4 = make([]field.Element, size), make([]field.Element, size)
 	)
+
+	// assign isBase2 and isBaseTheta
+	for i := 0; i < size; i++ {
+		if i+1 < size && isActive[i+1].IsOne() {
+			if isActive[i+1].IsZero() {
+				isBase2.PushOne()
+				isBaseT.PushZero()
+			}
+			if isFirstBlock[i].IsZero() && isFirstBlock[i+1].IsOne() {
+				isBase2.PushOne()
+				isBaseT.PushZero()
+			} else {
+				isBase2.PushZero()
+				isBaseT.PushOne()
+			}
+		} else {
+			if isActive[i].IsOne() {
+				isBase2.PushOne()
+				isBaseT.PushZero()
+			} else {
+				isBase2.PushZero()
+				isBaseT.PushZero()
+			}
+		}
+	}
+	isBase2.PadAndAssign(run)
+	isBaseT.PadAndAssign(run)
+
+	fmt.Printf("len isBase2 %d, size baseThetaOr2 %d, size bc.isBase2 Column %d \n", isBase2.Height(), len(baseThetaOr2), bc.isBase2.Size())
+	// compute baseThetaOr2 = isBaseTheta * BaseTheta + isBase2 * 2
+	vector.ScalarMul(baseThetaOr2, isBaseT.Slice(), kcommon.BaseThetaFr)
+	vector.ScalarMul(temp, isBase2.Slice(), kcommon.Base2Fr)
+	vector.Add(baseThetaOr2, baseThetaOr2, temp)
+
+	// compute baseTheta4or16 = isBaseTheta * BaseTheta4 + isBase2 * 16
+	vector.ScalarMul(baseTheta4or16, isBaseT.Slice(), kcommon.BaseTheta4Fr)
+	vector.ScalarMul(temp4, isBase2.Slice(), field.NewElement(16))
+	vector.Add(baseTheta4or16, baseTheta4or16, temp4)
+
+	// assign  the internal states
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
 				col := bc.stateCurr[x][y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
 
 				for i := range col {
-					if col[i].Uint64() >= common.BaseChi4*common.BaseChi4 {
+					if col[i].Uint64() >= kcommon.BaseChi4*kcommon.BaseChi4 {
 						panic("base conversion: input is out of range")
 					}
 				}
-				// q, r := vector.DivMod(col, BaseChi4Fr) // q = high limb, r = low limb
-				v := common.DecomposeCol(col, common.BaseChi4, 2)
+				// decompose in base BaseChi4 (2 chuncks)
+				v := kcommon.DecomposeCol(col, kcommon.BaseChi4, 2)
 				q := v[1] // high limb
 				r := v[0] // low limb
 
@@ -109,14 +235,18 @@ func (bc *convertAndClean) Run(run *wizard.ProverRuntime) convertAndClean {
 				// set the high limb (4 digits)
 				run.AssignColumn(bc.stateInternalChi[x][y][2*z+1].GetColID(), smartvectors.NewRegular(q))
 				// decompose in base BaseChi and convert to bits
-				lowLimb := common.RecomposeCols(common.DecomposeAndCleanCol(r, common.BaseChi, 4), &common.BaseThetaFr)
-				highLimb := common.RecomposeCols(common.DecomposeAndCleanCol(q, common.BaseChi, 4), &common.BaseThetaFr)
+				bitsR := kcommon.DecomposeAndCleanCol(r, kcommon.BaseChi, 4)
+				bitsQ := kcommon.DecomposeAndCleanCol(q, kcommon.BaseChi, 4)
+				// recompose in base BaseTheta if isBaseTheta == 1 and in base 2 if isBase2 == 1
+				lowLimb := kcommon.RecomposeCols(bitsR, baseThetaOr2)
+				highLimb := kcommon.RecomposeCols(bitsQ, baseThetaOr2)
 				// set stateInternalTheta
 				run.AssignColumn(bc.stateInternalTheta[x][y][2*z].GetColID(), smartvectors.NewRegular(lowLimb))
 				run.AssignColumn(bc.stateInternalTheta[x][y][2*z+1].GetColID(), smartvectors.NewRegular(highLimb))
+
 				// set StateNext (8 digits)
 				var recomposed = make([]field.Element, size)
-				vector.ScalarMul(recomposed, highLimb, common.BaseTheta4Fr)
+				vector.MulElementWise(recomposed, highLimb, baseTheta4or16)
 				vector.Add(recomposed, recomposed, lowLimb)
 
 				run.AssignColumn(bc.StateNext[x][y][z].GetColID(), smartvectors.NewRegular(recomposed))
@@ -126,25 +256,30 @@ func (bc *convertAndClean) Run(run *wizard.ProverRuntime) convertAndClean {
 	return convertAndClean{stateCurr: bc.stateCurr}
 }
 
-func creatLookupTablesChiToTheta() (dirtyChi, cleanTheta smartvectors.SmartVector) {
+func creatLookupTablesChiToTheta() (dirtyChi, cleanTheta, cleanBase2 smartvectors.SmartVector) {
 	var (
-		lookupDirtyBaseChi   []field.Element
-		lookupCleanBaseTheta []field.Element
-		cleanValueTheta      field.Element
-		targetSize           = utils.NextPowerOfTwo(common.BaseChi4)
+		lookupDirtyBaseChi               []field.Element
+		lookupCleanBaseTheta             []field.Element
+		lookupCleanBase2                 []field.Element
+		cleanValueTheta, cleanValueBase2 field.Element
+		targetSize                       = utils.NextPowerOfTwo(kcommon.BaseChi4)
 	)
 
 	// for each value in base dirty BaseChi (0 to 14640), compute its equivalent in base clean BaseTheta
-	for i := 0; i < common.BaseChi4; i++ {
+	for i := 0; i < kcommon.BaseChi4; i++ {
 		// decompose in base BaseChi (4 digits) and clean it
-		v := common.DecomposeAndCleanFr(field.NewElement(uint64(i)), common.BaseChi, 4)
+		v := kcommon.DecomposeAndCleanFr(field.NewElement(uint64(i)), kcommon.BaseChi, 4)
 		// recompose in base BaseTheta
-		cleanValueTheta = common.RecomposeRow(v, &common.BaseThetaFr)
+		cleanValueTheta = kcommon.RecomposeRow(v, &kcommon.BaseThetaFr)
+		// recompose in base 2.
+		cleanValueBase2 = kcommon.RecomposeRow(v, &kcommon.Base2Fr)
 
 		lookupDirtyBaseChi = append(lookupDirtyBaseChi, field.NewElement(uint64(i)))
 		lookupCleanBaseTheta = append(lookupCleanBaseTheta, cleanValueTheta)
+		lookupCleanBase2 = append(lookupCleanBase2, cleanValueBase2)
 	}
-	dirtyChi = smartvectors.RightPadded(lookupDirtyBaseChi, field.NewElement(common.BaseChi4-1), targetSize)
+	dirtyChi = smartvectors.RightPadded(lookupDirtyBaseChi, field.NewElement(kcommon.BaseChi4-1), targetSize)
 	cleanTheta = smartvectors.RightPadded(lookupCleanBaseTheta, cleanValueTheta, targetSize)
-	return dirtyChi, cleanTheta
+	cleanBase2 = smartvectors.RightPadded(lookupCleanBase2, cleanValueBase2, targetSize)
+	return dirtyChi, cleanTheta, cleanBase2
 }

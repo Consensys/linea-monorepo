@@ -29,7 +29,7 @@ func CleanBaseChi(in []field.Element) (out []field.Element) {
 }
 
 // it recompose the given columns of field elements n into the given base.
-func RecomposeCols(n [][]field.Element, base *field.Element) (res []field.Element) {
+func RecomposeCols(n [][]field.Element, base []field.Element) (res []field.Element) {
 
 	for j := range n[0] {
 
@@ -38,7 +38,7 @@ func RecomposeCols(n [][]field.Element, base *field.Element) (res []field.Elemen
 			t = append(t, n[i][j])
 		}
 
-		res = append(res, RecomposeRow(t, base))
+		res = append(res, RecomposeRow(t, &base[j]))
 	}
 	return res
 }
