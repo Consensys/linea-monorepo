@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/constraint"
@@ -35,19 +36,25 @@ var rng = rand.New(utils.NewRandSource(0))
 
 // ------------------------------------------------------------
 // test EncodeWVsToFV and Encode8KoalabearToBigInt
-type EncodeTestCircuit struct {
+type EncodeAndHashTestCircuit struct {
 	Values [8]zk.WrappedVariable
 	Result frontend.Variable
+	Params GParams
 }
 
-func (c *EncodeTestCircuit) Define(api frontend.API) error {
+func (c *EncodeAndHashTestCircuit) Define(api frontend.API) error {
 	// Create constraints for encoding
-	result := EncodeWVsToFV(api, c.Values)
-	api.AssertIsEqual(result, c.Result)
+
+	hasher, _ := c.Params.NoSisHasher(api)
+	hasher.Reset()
+	hashinput := EncodeWVsToFVs(api, c.Values[:])
+	hasher.Write(hashinput...)
+	digest := hasher.Sum()
+	api.AssertIsEqual(digest, c.Result)
 	return nil
 }
 
-func TestEncodeCircuit(t *testing.T) {
+func TestEncodeAndHashCircuit(t *testing.T) {
 	var intValues [8]field.Element
 	var values [8]zk.WrappedVariable
 
@@ -57,15 +64,18 @@ func TestEncodeCircuit(t *testing.T) {
 	}
 
 	// Calculate expected result manually using big.Int (for validation)
-	expectedResult := Encode8KoalabearToBigInt(intValues)
-
+	intBytes := EncodeKoalabearsToBytes(intValues[:])
 	hasher := smt_bls12377.Poseidon2()
-	hasher.Write(expectedResult.Bytes())
+	hasher.Write(intBytes)
+	var expectedResult fr.Element
+	expectedResult.SetBytes(hasher.Sum(nil))
 
 	// Create test instance
-	var circuit EncodeTestCircuit
+	var circuit EncodeAndHashTestCircuit
 	circuit.Values = values
 	circuit.Result = expectedResult.String()
+	circuit.Params.HasherFunc = makePoseidon2Hasherfunc
+	circuit.Params.NoSisHasher = makePoseidon2Hasherfunc
 
 	// Compile the circuit for BLS12-377
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
@@ -74,7 +84,7 @@ func TestEncodeCircuit(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create a witness with test values
-	var witness EncodeTestCircuit
+	var witness EncodeAndHashTestCircuit
 	witness.Values = values
 	witness.Result = expectedResult.String()
 

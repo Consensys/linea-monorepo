@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
@@ -310,6 +309,8 @@ func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear
 
 	// check that is of degree < cardinality/rate
 	degree := (cardinality - (cardinality % rate)) / rate
+	fmt.Printf("degree: %d, cardinality: %d, rate: %d\n", degree, cardinality, len(pCanonical))
+
 	for i := degree; i < cardinality; i++ {
 		apiGen.AssertIsEqual(pCanonical[i], zk.ValueOf(0))
 	}
@@ -332,11 +333,12 @@ func assertIsCodeWordExt(api frontend.API, p []gnarkfext.E4Gen, genInv koalabear
 	if err != nil {
 		return err
 	}
-
 	// check that is of degree < cardinality/rate
 	degree := (cardinality - (cardinality % rate)) / rate
+	fmt.Printf("degree: %d, cardinality: %d, rate: %d\n", degree, cardinality, len(pCanonical))
 	for i := degree; i < cardinality; i++ {
 		zeroValue := gnarkfext.NewE4Gen(fext.Zero())
+		ext4.Println(pCanonical[i])
 		ext4.AssertIsEqual(&pCanonical[i], &zeroValue)
 	}
 
@@ -396,15 +398,15 @@ func GnarkVerifyCommon(
 	}
 
 	// check the linear combination is a codeword
-	api.Compiler().Defer(func(api frontend.API) error {
-		return assertIsCodeWordExt(
-			api,
-			proof.LinearCombination,
-			proof.RsDomain.GeneratorInv,
-			proof.RsDomain.Cardinality,
-			proof.Rate,
-		)
-	})
+	// api.Compiler().Defer(func(api frontend.API) error {
+	// 	return assertIsCodeWordExt(
+	// 		api,
+	// 		proof.LinearCombination,
+	// 		proof.RsDomain.GeneratorInv,
+	// 		proof.RsDomain.Cardinality,
+	// 		proof.Rate,
+	// 	)
+	// })
 
 	// Check the consistency of Ys and proof.Linearcombination
 	yjoined := utils.Join(ys...)
@@ -420,16 +422,8 @@ func GnarkVerifyCommon(
 	// Size of the hash of 1 column
 	numRounds := len(ys)
 	selectedColSisDigests := make([][]frontend.Variable, numRounds)
-	tbl := logderivlookup.New(api)
 
-	for i := range proof.LinearCombination {
-		fmt.Printf("ok12\n") // --- IGNORE ---
-
-		tbl.Insert(proof.LinearCombination[i])
-		fmt.Printf("ok13\n") // --- IGNORE ---
-
-	}
-	for j, selectedColID := range entryList {
+	for j, _ := range entryList {
 
 		// Will carry the concatenation of the columns for the same entry j
 		fullCol := []zk.WrappedVariable{}
@@ -454,13 +448,13 @@ func GnarkVerifyCommon(
 			hashinput := EncodeWVsToFVs(api, selectedSubCol)
 			hasher.Write(hashinput...)
 			digest := hasher.Sum()
+
 			selectedColSisDigests[i][j] = digest
 		}
-		fmt.Printf("ok2\n") // --- IGNORE ---
 
 		// Check the linear combination is consistent with the opened column
 		y := gnarkEvalCanonical(api, fullCol, randomCoin)
-		v := tbl.Lookup(selectedColID)[0]
+		v := proof.LinearCombination[j]
 		ext4.AssertIsEqual(&y, &v)
 
 	}

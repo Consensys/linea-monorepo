@@ -79,7 +79,7 @@ func AssignCicuitVariablesWithMerkleTree(
 	frLinComb := make([]fext.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSliceExt(frLinComb)
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		verifyCircuit.Proof.LinearCombination[i] = gnarkfext.NewE4Gen(frLinComb[i]) //write ext to zk.value
+		verifyCircuit.Proof.LinearCombination[i] = gnarkfext.NewE4Gen(frLinComb[i])
 	}
 
 	for i := 0; i < len(proof.Columns); i++ {
