@@ -307,10 +307,10 @@ func TestAssertIsCodeWord(t *testing.T) {
 }
 
 // ------------------------------------------------------------
-// test EvaluateLagrange: gnarkEvaluateLagrange
+// test EvaluateLagrange: gnarkEvaluateLagrangeExt
 
 type EvaluateLagrangeCircuit struct {
-	P []zk.WrappedVariable
+	P []gnarkfext.E4Gen
 	X gnarkfext.E4Gen `gnark:",public"`
 	Y gnarkfext.E4Gen
 	d *fft.Domain
@@ -318,7 +318,7 @@ type EvaluateLagrangeCircuit struct {
 
 func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
-	res := gnarkEvaluateLagrange(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
+	res := gnarkEvaluateLagrangeExt(api, circuit.P, circuit.X, circuit.d.Generator, circuit.d.Cardinality)
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		return err
@@ -328,11 +328,11 @@ func (circuit *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func getEvaluateLagrangeCircuitWitness(size int) (*EvaluateLagrangeCircuit, *EvaluateLagrangeCircuit) {
+func getEvaluateLagrangeExtCircuitWitness(size int) (*EvaluateLagrangeCircuit, *EvaluateLagrangeCircuit) {
 
-	pCan := make([]field.Element, size)
+	pCan := make([]fext.Element, size)
 	for i := 0; i < size; i++ {
-		pCan[i] = field.PseudoRand(rng)
+		pCan[i] = fext.PseudoRand(rng)
 	}
 	d := fft.NewDomain(uint64(size))
 
@@ -340,32 +340,32 @@ func getEvaluateLagrangeCircuitWitness(size int) (*EvaluateLagrangeCircuit, *Eva
 	var y fext.Element
 	for i := 0; i < size; i++ {
 		y.Mul(&y, &x)
-		fext.AddByBase(&y, &y, &pCan[size-1-i])
+		y.Add(&y, &pCan[size-1-i])
 	}
 
-	d.FFT(pCan, fft.DIF)
+	d.FFTExt(pCan, fft.DIF)
 	fft.BitReverse(pCan)
 
 	var circuit, witness EvaluateLagrangeCircuit
-	circuit.P = make([]zk.WrappedVariable, size)
+	circuit.P = make([]gnarkfext.E4Gen, size)
 	circuit.d = d
 
-	witness.P = make([]zk.WrappedVariable, size)
+	witness.P = make([]gnarkfext.E4Gen, size)
 	witness.X = gnarkfext.NewE4Gen(x)
 	witness.Y = gnarkfext.NewE4Gen(y)
 	for i := 0; i < size; i++ {
-		witness.P[i] = zk.ValueOf(pCan[i].String())
+		witness.P[i] = gnarkfext.NewE4Gen(pCan[i])
 	}
 
 	return &circuit, &witness
 }
 
-func TestEvaluateLagrangeCircuit(t *testing.T) {
+func TestEvaluateLagrangeExtCircuit(t *testing.T) {
 
 	size := 64
 
 	{
-		circuit, witness := getEvaluateLagrangeCircuitWitness(size)
+		circuit, witness := getEvaluateLagrangeExtCircuitWitness(size)
 
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
@@ -377,7 +377,7 @@ func TestEvaluateLagrangeCircuit(t *testing.T) {
 	}
 
 	{
-		circuit, witness := getEvaluateLagrangeCircuitWitness(size)
+		circuit, witness := getEvaluateLagrangeExtCircuitWitness(size)
 
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)

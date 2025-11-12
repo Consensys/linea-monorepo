@@ -205,22 +205,6 @@ func gnarkEvalCanonicalExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4
 	}
 	return res
 }
-func gnarkEvaluateLagrange(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) gnarkfext.E4Gen {
-
-	ext4, err := gnarkfext.NewExt4(api)
-	if err != nil {
-		panic(err)
-	}
-	res := *ext4.Zero()
-	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
-
-	for i := uint64(0); i < cardinality; i++ {
-		tmp := ext4.MulByFp(&lagranges[i], p[i])
-		res = *ext4.Add(&res, tmp)
-	}
-
-	return res
-}
 
 func gnarkEvaluateLagrangeExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4Gen, gen field.Element, cardinality uint64) gnarkfext.E4Gen {
 
@@ -312,7 +296,6 @@ func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear
 
 	// check that is of degree < cardinality/rate
 	degree := (cardinality - (cardinality % rate)) / rate
-	fmt.Printf("degree: %d, cardinality: %d, rate: %d\n", degree, cardinality, len(pCanonical))
 
 	for i := degree; i < cardinality; i++ {
 		apiGen.AssertIsEqual(pCanonical[i], zk.ValueOf(0))
@@ -338,7 +321,6 @@ func assertIsCodeWordExt(api frontend.API, p []gnarkfext.E4Gen, genInv koalabear
 	}
 	// check that is of degree < cardinality/rate
 	degree := (cardinality - (cardinality % rate)) / rate
-	fmt.Printf("degree: %d, cardinality: %d, rate: %d\n", degree, cardinality, len(pCanonical))
 	for i := degree; i < cardinality; i++ {
 		zeroValue := gnarkfext.NewE4Gen(fext.Zero())
 		ext4.Println(pCanonical[i])
