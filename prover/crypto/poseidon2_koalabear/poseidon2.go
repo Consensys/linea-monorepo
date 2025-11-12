@@ -100,7 +100,7 @@ func (d MDHasher) MaxBytes32() types.Bytes32 {
 }
 
 // Constructor for Poseidon2MDHasher
-func Poseidon2() *MDHasher {
+func NewMDHasher() *MDHasher {
 	var maxVal field.Octuplet
 	for i := range maxVal {
 		maxVal[i] = field.NewFromString("-1")

@@ -47,7 +47,7 @@ func getGnarkMDHasherCircuitWitness() (*GnarkMDHasherCircuit, *GnarkMDHasherCirc
 	}
 
 	// sum
-	phasher := Poseidon2()
+	phasher := NewMDHasher()
 	phasher.WriteElements(vals)
 	res := phasher.SumElement()
 
