@@ -26,7 +26,7 @@ const (
 	nbLargeModexpLimbs = largeModexpSize / limbSizeBits
 	// modexpNumRows corresponds to the number of rows present in the MODEXP
 	// module to represent a single instance. Each instance has 4 operands
-	// dispatched in limbs of
+	// dispatched in limbs of [limbSizeBits] bits.
 	modexpNumRowsPerInstance = nbLargeModexpLimbs * 4
 )
 

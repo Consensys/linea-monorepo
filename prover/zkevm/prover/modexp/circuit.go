@@ -33,7 +33,7 @@ func (modLarge) Modulus() *big.Int {
 // The circuit is meant to be used in two variants:
 //   - 256 bits, where all the operands and the claimed result have a size
 //     smaller than 256 bits.
-//   - large, where the operands are bound to [nbLargeModExpBits] bits (currently 8192 bits).
+//   - large, where the operands are bound to [largeModexpSize] bits (currently 8192 bits).
 type ModExpCircuit struct {
 	Instances []modexpCircuitInstance `gnark:",public"`
 }
