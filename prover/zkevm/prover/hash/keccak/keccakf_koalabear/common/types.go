@@ -3,6 +3,7 @@ package common
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 const (
@@ -34,4 +35,10 @@ var (
 	BaseChiFr    = field.NewElement(BaseChi)
 	BaseThetaFr  = field.NewElement(BaseTheta)
 	BaseTheta4Fr = field.NewElement(BaseTheta4)
+	Base2Fr      = field.NewElement(2)
+
+	BaseChiExpr    = symbolic.NewConstant(BaseChiFr)
+	BaseChi4Expr   = symbolic.NewConstant(BaseChi4Fr)
+	Base16Expr     = symbolic.NewConstant(16)
+	BaseTheta4Expr = symbolic.NewConstant(BaseTheta4Fr)
 )
