@@ -9,7 +9,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -31,7 +31,7 @@ type LocalOpeningParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (lop LocalOpeningParams) UpdateFS(fs *poseidon2.Hasher) {
+func (lop LocalOpeningParams) UpdateFS(fs *poseidon2_koalabear.Hasher) {
 	if lop.IsBase {
 		fiatshamir.Update(fs, lop.BaseY)
 	} else {
@@ -112,7 +112,7 @@ func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 			panic(err)
 		}
 		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
-		apiGen.AssertIsEqual(&params.BaseY, &actualY)
+		apiGen.AssertIsEqual(params.BaseY, actualY)
 	} else {
 		e4Api, err := gnarkfext.NewExt4(api)
 		if err != nil {

@@ -444,14 +444,14 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		panic(err)
 	}
 
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
 
 	// shiftedR.MulByFp(api, r, mulGenInv)
 	wrappedMulGenInv := zk.ValueOf(mulGenInv)
-	shiftedR = *e4Api.MulByFp(&r, &wrappedMulGenInv)
+	shiftedR = *e4Api.MulByFp(&r, wrappedMulGenInv)
 
 	var invOmegaN field.Element
 	invOmegaN.Inverse(&omegaN)
@@ -460,13 +460,12 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		qYs[i] = params.ExtYs
 
 		// Check that the provided value for x is the right one
-		providedX := params.X
+		providedX := params.ExtX
 		var expectedX gnarkfext.E4Gen
 		expectedX = gnarkfext.NewE4GenFromBase(invOmegaN)
 		expectedX = gnarkutil.ExpExt(api, expectedX, i)
 		expectedX = *e4Api.Mul(&expectedX, &shiftedR)
-		// api.AssertIsEqual(providedX, expectedX)
-		apiGen.AssertIsEqual(&providedX, &expectedX.B0.A0) // TODO @thomas fixme (ext vs base)
+		ext4.AssertIsEqual(&providedX, &expectedX)
 	}
 
 	for i, ratio := range ctx.Ratios {
@@ -499,7 +498,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			var omegaInvPowK field.Element
 			omegaInvPowK.Exp(omegaRatioInv, big.NewInt(int64(k)))
 			wrappedOmegaInvPowK = zk.ValueOf(omegaInvPowK)
-			tmp := e4Api.MulByFp(&rPowM, &wrappedOmegaInvPowK)
+			tmp := e4Api.MulByFp(&rPowM, wrappedOmegaInvPowK)
 			tmp = e4Api.Sub(tmp, &wOne)
 			tmp = e4Api.Div(&ys[k], tmp)
 
@@ -510,7 +509,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		wrappedRatioInvField := zk.ValueOf(ratioInvField)
 		outerFactor := gnarkutil.ExpExt(api, shiftedR, n)
 		outerFactor = *e4Api.Sub(&outerFactor, &wOne)
-		outerFactor = *e4Api.MulByFp(&outerFactor, &wrappedRatioInvField)
+		outerFactor = *e4Api.MulByFp(&outerFactor, wrappedRatioInvField)
 		res = *e4Api.Mul(&res, &outerFactor)
 		recombinedYs[i] = res
 	}

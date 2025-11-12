@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -103,7 +103,7 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs *poseidon2.Hasher, seed field.Octuplet) interface{} {
+func (info *Info) Sample(fs *poseidon2_koalabear.Hasher, seed field.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
 		return fiatshamir.RandomManyIntegers(fs, info.Size, info.UpperBound)

@@ -5,8 +5,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
+	vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -63,7 +63,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// Collect the opened columns and split them "by-commitment-rounds"
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
-	x := vr.GetUnivariateParams(ctx.Query.QueryID).X
+	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
 	// function that will defer the hashing to gkr
 	factoryHasherFunc := func(_ frontend.API) (hash.FieldHasher, error) {
@@ -264,7 +264,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt.GnarkProof) {
+func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt_bls12377.GnarkProof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -274,13 +274,13 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]zk.WrappedVariable, entryList []
 
 	numEntries := len(entryList)
 
-	proofs = make([][]smt.GnarkProof, numComs)
+	proofs = make([][]smt_bls12377.GnarkProof, numComs)
 	curr := 0 // tracks the position in sv that we are parsing.
 	for i := range proofs {
-		proofs[i] = make([]smt.GnarkProof, numEntries)
+		proofs[i] = make([]smt_bls12377.GnarkProof, numEntries)
 		for j := range proofs[i] {
 			// initialize the proof that we are parsing
-			proof := smt.GnarkProof{
+			proof := smt_bls12377.GnarkProof{
 				Path:     entryList[j],
 				Siblings: make([]zk.WrappedVariable, depth),
 			}

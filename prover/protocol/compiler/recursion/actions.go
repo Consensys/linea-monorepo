@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -43,7 +43,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		pcs               = run.Spec.PcsCtxs.(*vortex.Ctx)
 		committedMatrices []vCom.EncodedMatrix
 		sisHashes         [][]field.Element
-		trees             []*smt.Tree
+		trees             []*smt_koalabear.Tree
 		mimcHashes        [][]field.Element
 		lastRound         = run.Spec.QueriesParams.Round(pcs.Query.QueryID)
 		pubs              = []field.Element{}
@@ -71,7 +71,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		}
 
 		if tree != nil {
-			trees = append(trees, tree.(*smt.Tree))
+			trees = append(trees, tree.(*smt_koalabear.Tree))
 		} else {
 			trees = append(trees, nil)
 		}

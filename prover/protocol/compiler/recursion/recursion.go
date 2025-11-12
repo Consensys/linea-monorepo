@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -89,7 +89,7 @@ type Witness struct {
 
 	// Trees are the list of the commitment merkle trees. They are needed
 	// by the prover of the self-recursion.
-	Trees []*smt.Tree
+	Trees []*smt_koalabear.Tree
 }
 
 // GetStoppingRound returns the number of rounds to pass to [wizard.RunProverUntil]

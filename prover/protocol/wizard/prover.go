@@ -15,7 +15,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -148,7 +148,7 @@ type ProverRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *poseidon2.Hasher
+	FS *poseidon2_koalabear.Hasher
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
@@ -273,7 +273,7 @@ func (run *ProverRuntime) NumRounds() int {
 func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
-	fs := poseidon2.Poseidon2()
+	fs := poseidon2_koalabear.Poseidon2()
 	fiatshamir.Update(fs, c.FiatShamirSetup[:]...)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
@@ -1090,7 +1090,7 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() *poseidon2.Hasher {
+func (run *ProverRuntime) Fs() *poseidon2_koalabear.Hasher {
 	return run.FS
 }
 

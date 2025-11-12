@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -137,7 +137,7 @@ func (p Poseidon2) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 			oldState[j] = oldStates[j][i]
 			newState[j] = newStates[j][i]
 		}
-		recomputed := poseidon2.GnarkBlockCompressionMekle(api, oldState, block)
+		recomputed := poseidon2_koalabear.GnarkBlockCompressionMekle(api, oldState, block)
 		api.AssertIsEqual(newState, recomputed)
 	}
 }

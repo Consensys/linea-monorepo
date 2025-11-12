@@ -58,7 +58,7 @@ func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	for _, zCtx := range v.Ctxs {
 		for _, opening := range zCtx.ZOpenings {
 			y := run.GetLocalPointEvalParams(opening.ID).BaseY
-			mustBeOne = *apiGen.Mul(&mustBeOne, &y)
+			mustBeOne = apiGen.Mul(mustBeOne, y)
 		}
 	}
 
@@ -142,11 +142,10 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 		tmp := zk.ValueOf(1)
 
 		for i := range col {
-			// tmp = api.Mul(tmp, col[i])
-			tmp = *apiGen.Mul(&tmp, &col[i])
+			tmp = apiGen.Mul(tmp, col[i])
 		}
 
-		y = *apiGen.Mul(&y, &tmp)
+		y = apiGen.Mul(y, tmp)
 	}
 
 	for _, e := range c.ExplicitDen {
@@ -155,13 +154,13 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 		tmp := zk.ValueOf(1)
 
 		for i := range col {
-			tmp = *apiGen.Mul(&tmp, &col[i])
+			tmp = apiGen.Mul(tmp, col[i])
 		}
 
-		d = *apiGen.Mul(&d, &tmp)
+		d = apiGen.Mul(d, tmp)
 	}
 
-	y = *apiGen.Div(&y, &d)
+	y = apiGen.Div(y, d)
 
 	api.AssertIsEqual(y, zk.ValueOf(1))
 }
@@ -231,7 +230,7 @@ func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	for k := range f.ZOpenings {
 		utils.Panic("this should be expected to be extension fields")
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).BaseY
-		zProd = *apiGen.Mul(&zProd, &temp)
+		zProd = apiGen.Mul(zProd, temp)
 	}
 
 	api.AssertIsEqual(zProd, claimedProd)

@@ -83,8 +83,8 @@ func (c *DummyAlignmentCircuit) Define(api frontend.API) error {
 	wOne := zk.ValueOf(1)
 	for i := range c.Instances {
 		for j := range c.Instances[i].Vars {
-			apiGen.AssertIsEqual(&c.Instances[i].Vars[j], &counter)
-			counter = *apiGen.Add(&counter, &wOne)
+			apiGen.AssertIsEqual(c.Instances[i].Vars[j], counter)
+			counter = apiGen.Add(counter, wOne)
 		}
 	}
 	return nil

@@ -1,7 +1,7 @@
 package merkle
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -52,7 +52,7 @@ func (p *FlatProof) WithStatus(comp *wizard.CompiledIOP, status column.Status) *
 // Assign assigns the proof columns to the [FlatProof] object from a list of
 // [merkletree.Proof] objects. The columns are zero-padded on the right.
 // Each leaf in the proof is converted to a [8]field.Element and then appended to assignment
-func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
+func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt_koalabear.Proof) {
 
 	var assignment [blockSize][][]field.Element
 
@@ -83,10 +83,10 @@ func (p *FlatProof) Assign(run *wizard.ProverRuntime, proofs []smt.Proof) {
 // The function also takes as additional input a smart-vector containing
 // the positions corresponding for each proofs.
 // Every [8]field.Element is converted back to a leaf in the Siblings
-func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []smt.Proof {
+func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []smt_koalabear.Proof {
 
 	var (
-		proofs = make([]smt.Proof, 0)
+		proofs = make([]smt_koalabear.Proof, 0)
 		// The assumption here is two-fold: first, this relies on the
 		// fact that we know all the columns are structured and padded the same
 		start, stop = smartvectors.CoWindowRange(p.Nodes[0][0].GetColAssignment(run))
@@ -94,7 +94,7 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 
 	for i := start; i <= stop; i++ {
 
-		newProof := smt.Proof{
+		newProof := smt_koalabear.Proof{
 			Path:     field.ToInt(pos.GetPtr(i)),
 			Siblings: make([]field.Octuplet, len(p.Nodes[0])),
 		}
@@ -116,16 +116,16 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 // UnpackGnark unpacks the proof into a list of [smt.GnarkProof] objects. The
 // function also takes a list of positions to use to fill the [Path] field
 // of the proof.
-func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []zk.WrappedVariable) []smt.GnarkProof {
+func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []zk.WrappedVariable) []smt_koalabear.GnarkProof {
 
 	var (
-		proofs   = make([]smt.GnarkProof, 0)
+		proofs   = make([]smt_koalabear.GnarkProof, 0)
 		nbProofs = len(entryList)
 	)
 
 	for i := 0; i < nbProofs; i++ {
 
-		newProof := smt.GnarkProof{
+		newProof := smt_koalabear.GnarkProof{
 			Path: entryList[i],
 
 			Siblings: make([]zk.WrappedVariable, len(p.Nodes)),
