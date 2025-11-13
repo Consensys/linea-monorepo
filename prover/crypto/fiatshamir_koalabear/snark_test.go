@@ -1,97 +1,62 @@
 package fiatshamir
 
 import (
+	"testing"
+
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/stretchr/testify/assert"
 )
 
-type SafeGuardUpdateCircuit struct {
+type FSCircuit struct {
 	A, B   frontend.Variable
 	R1, R2 poseidon2_koalabear.Octuplet
 }
 
-func (c *SafeGuardUpdateCircuit) Define(api frontend.API) error {
+func (c *FSCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
 	fs.Update(c.A)
 	a := fs.RandomField()
 	fs.Update(c.B)
 	b := fs.RandomField()
-	api.AssertIsDifferent(a, b)
+	for i := 0; i < 8; i++ {
+		api.AssertIsEqual(a[i], c.R1[i])
+		api.AssertIsEqual(b[i], c.R2[i])
+	}
 	return nil
 }
 
-func GetCircuitWitnessSafeGuardUpdateCircuit() (*SafeGuardUpdateCircuit, *SafeGuardUpdateCircuit) {
+func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 
 	h := poseidon2_koalabear.NewMDHasher()
-	var a, b, c koalabear.Element
+	var a, b koalabear.Element
 	a.SetRandom()
 	b.SetRandom()
 	Update(h, a)
-	c = Random
+	r1 := RandomField(h)
+	Update(h, b)
+	r2 := RandomField(h)
 
-	var circuit, witness SafeGuardUpdateCircuit
-	circuit.A = a.String()
-	circuit.B = b.String()
+	var circuit, witness FSCircuit
+	witness.A = a.String()
+	witness.B = b.String()
+	for i := 0; i < 8; i++ {
+		witness.R1[i] = r1[i].String()
+		witness.R2[i] = r2[i].String()
+	}
 	return &circuit, &witness
 }
 
-// func TestGnarkRandomVec(t *testing.T) {
+func TestFSCircuit(t *testing.T) {
 
-// 	for _, testCase := range randomIntVecTestCases {
-// 		testName := fmt.Sprintf("%v-integers-of-%v-bits", testCase.NumIntegers, testCase.IntegerBitSize)
-// 		t.Run(testName, func(t *testing.T) {
+	circuit, witness := GetCircuitWitnessFSCircuit()
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+	assert.NoError(t, err)
 
-// 			f := func(api frontend.API) error {
-
-// 				gnarkFs := NewGnarkFS(api, nil)
-// 				fs := NewMiMCFiatShamir()
-
-// 				fs.Update(field.NewElement(2))
-// 				gnarkFs.Update(field.NewElement(2))
-
-// 				a := fs.RandomManyIntegers(testCase.NumIntegers, 1<<testCase.IntegerBitSize)
-// 				aGnark := gnarkFs.RandomManyIntegers(testCase.NumIntegers, 1<<testCase.IntegerBitSize)
-
-// 				for i := range a {
-// 					api.AssertIsEqual(a[i], aGnark[i])
-// 				}
-
-// 				return nil
-// 			}
-
-// 			gnarkutil.AssertCircuitSolved(t, f)
-// 		})
-// 	}
-// }
-
-// func TestGnarkFiatShamirEmpty(t *testing.T) {
-
-// 	f := func(api frontend.API) error {
-// 		Y := NewMiMCFiatShamir().RandomFext()
-// 		fs := NewGnarkFS(api, nil)
-// 		y := fs.RandomField()
-// 		api.AssertIsEqual(Y, y)
-// 		return nil
-// 	}
-
-// 	gnarkutil.AssertCircuitSolved(t, f)
-// }
-
-// func TestGnarkUpdateVec(t *testing.T) {
-
-// 	f := func(api frontend.API) error {
-// 		fs := NewMiMCFiatShamir()
-// 		fs.UpdateVec(vector.ForTest(2, 2, 1, 2))
-// 		y1 := fs.RandomFext()
-
-// 		fs2 := NewGnarkFS(api, nil)
-// 		fs2.UpdateVec([]zk.WrappedVariable{2, 2, 1, 2})
-// 		y2 := fs2.RandomField()
-
-// 		api.AssertIsEqual(y1, y2)
-// 		return nil
-// 	}
-
-// 	gnarkutil.AssertCircuitSolved(t, f)
-// }
+	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+	assert.NoError(t, err)
+	err = ccs.IsSolved(fullWitness)
+	assert.NoError(t, err)
+}

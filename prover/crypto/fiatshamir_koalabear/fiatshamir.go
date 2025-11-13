@@ -10,25 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// State holds a Fiat-Shamir state. The Fiat-Shamir state can be updated by
-// providing field elements and can be consumed to generate either field
-// elements or sequences of small integers. The Fiat-Shamir instantiation relies
-// on the MiMC hash function and uses the following strategy for generating
-// random public coins:
-//
-//   - The messages are appended to the hasher as it is received by the Fiat-
-//     Shamir state, field element by field element
-//   - When requested by the caller, the State can generates a field element by
-//     hashing the transcript. Recall that we are using a SNARK-friendly hash
-//     function and that its output should be interpreted as a field element.
-//   - Everytime a field element has been generated, the hasher is updated by
-//     appending an artificial message: field.Element(0). This is to ensure
-//     that all generated field elements are independants.
-//
-// To be safely used, the Fiat-Shamir State should initialized by passing an
-// initial field element summarizing the protocol in its full-extent. This is
-// to prevent rogue protocol attack as in the Frozen Heart vulnerability.
-//
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 
 func Update(h *poseidon2_koalabear.MDHasher, vec ...field.Element) {
