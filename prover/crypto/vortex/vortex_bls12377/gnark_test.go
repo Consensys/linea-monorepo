@@ -11,13 +11,12 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	gnarkVortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/gnark/std/hash"
-	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
@@ -634,9 +633,9 @@ func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 	}
 
 }
-func makePoseidon2Hasherfunc(api frontend.API) (hash.FieldHasher, error) {
+func makePoseidon2Hasherfunc(api frontend.API) (poseidon2_bls12377.GnarkMDHasher, error) {
 
-	h, err := gposeidon2.NewMerkleDamgardHasher(api)
+	h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
 
 	return h, err
 }

@@ -12,9 +12,9 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/math/cmp"
 	"github.com/consensys/gnark/std/math/emulated"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -359,8 +359,8 @@ type GProof struct {
 // Gnark params
 type GParams struct {
 	Key         *ringsis.Key
-	HasherFunc  func(frontend.API) (hash.FieldHasher, error)
-	NoSisHasher func(frontend.API) (hash.FieldHasher, error)
+	HasherFunc  func(frontend.API) (poseidon2_bls12377.GnarkMDHasher, error)
+	NoSisHasher func(frontend.API) (poseidon2_bls12377.GnarkMDHasher, error)
 }
 
 func (p *GParams) HasNoSisHasher() bool {

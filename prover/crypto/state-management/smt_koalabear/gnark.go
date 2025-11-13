@@ -25,7 +25,7 @@ func GnarkRecoverRoot(
 	api frontend.API,
 	proof GnarkProof,
 	leaf poseidon2_koalabear.Octuplet,
-	h poseidon2_koalabear.MerkleDamgardHasher) poseidon2_koalabear.Octuplet {
+	h poseidon2_koalabear.GnarkMDHasher) poseidon2_koalabear.Octuplet {
 
 	current := leaf
 	nbBits := len(proof.Siblings)
@@ -47,7 +47,7 @@ func GnarkVerifyMerkleProof(
 	proof GnarkProof,
 	leaf poseidon2_koalabear.Octuplet,
 	root frontend.Variable,
-	h poseidon2_koalabear.MerkleDamgardHasher) {
+	h poseidon2_koalabear.GnarkMDHasher) {
 
 	r := GnarkRecoverRoot(api, proof, leaf, h)
 
