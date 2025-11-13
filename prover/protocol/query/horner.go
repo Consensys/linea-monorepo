@@ -276,7 +276,7 @@ func (h *Horner) Name() ifaces.QueryID {
 
 // UpdateFS implements the [ifaces.QueryParams] interface. It updates
 // FS with the parameters of the query.
-func (h HornerParams) UpdateFS(fs *poseidon2_koalabear.Hasher) {
+func (h HornerParams) UpdateFS(fs *poseidon2_koalabear.MDHasher) {
 
 	fiatshamir.UpdateExt(fs, h.FinalResult)
 

@@ -53,7 +53,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() *poseidon2_koalabear.Hasher
+	Fs() *poseidon2_koalabear.MDHasher
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -93,7 +93,7 @@ type VerifierRuntime struct {
 	// it to update the FS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	FS *poseidon2_koalabear.Hasher
+	FS *poseidon2_koalabear.MDHasher
 
 	// State stores arbitrary data that can be used by the verifier. This
 	// can be used to communicate values between verifier states.
@@ -168,7 +168,7 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages,
 		QueriesParams: proof.QueriesParams,
-		FS:            poseidon2_koalabear.Poseidon2(),
+		FS:            poseidon2_koalabear.NewMDHasher(),
 		State:         make(map[string]interface{}),
 	}
 
@@ -501,7 +501,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() *poseidon2_koalabear.Hasher {
+func (run *VerifierRuntime) Fs() *poseidon2_koalabear.MDHasher {
 	return run.FS
 }
 

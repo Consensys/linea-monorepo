@@ -116,11 +116,11 @@ func (g GrandProduct) Name() ifaces.QueryID {
 }
 
 // Updates a Fiat-Shamir state
-func (gp GrandProductParams) UpdateFS(fs *poseidon2_koalabear.Hasher) {
+func (gp GrandProductParams) UpdateFS(fs *poseidon2_koalabear.MDHasher) {
 	fiatshamir.Update(fs, gp.BaseY)
 }
 
-func (gp GrandProductParams) UpdateFSExt(fs *poseidon2_koalabear.Hasher) {
+func (gp GrandProductParams) UpdateFSExt(fs *poseidon2_koalabear.MDHasher) {
 	fiatshamir.UpdateExt(fs, gp.ExtY)
 }
 

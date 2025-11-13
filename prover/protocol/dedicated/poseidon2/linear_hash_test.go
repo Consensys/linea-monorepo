@@ -61,7 +61,7 @@ func TestLinearHash(t *testing.T) {
 				// and append the segment to th and the result
 				// to ex
 				segment := vector.Rand(colSize)
-				hasher := poseidon2_koalabear.Poseidon2()
+				hasher := poseidon2_koalabear.NewMDHasher()
 				hasher.WriteElements(segment)
 				y := hasher.SumElement()
 

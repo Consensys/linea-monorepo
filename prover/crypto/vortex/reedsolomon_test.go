@@ -20,7 +20,7 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
 	vec := smartvectors.Rand(1 << 10)
 	rsEncoded := params._rsEncodeBase(vec)
 
@@ -42,7 +42,7 @@ func TestReedSolomonConstant(t *testing.T) {
 
 	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
+	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
 	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
 	rsEncoded := params._rsEncodeBase(vec)
 

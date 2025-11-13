@@ -24,7 +24,7 @@ func TestLinearCombination(t *testing.T) {
 	x := fext.NewFromInt(478, 763, 890, 123)
 	randomCoin := fext.NewFromInt(1523, 6783, 32, 789)
 
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
@@ -51,8 +51,8 @@ func TestLinearCombination(t *testing.T) {
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
-	NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2),
+	NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher),
+	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher),
 }
 
 func TestProver(t *testing.T) {
@@ -273,7 +273,7 @@ func TestVerifierNegative(t *testing.T) {
 		}
 		params = []*Params{
 
-			NewParams(2, 8, 17, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2),
+			NewParams(2, 8, 17, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher),
 		}
 
 		statementMutatorCorpus = []struct {

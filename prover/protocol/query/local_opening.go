@@ -31,7 +31,7 @@ type LocalOpeningParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (lop LocalOpeningParams) UpdateFS(fs *poseidon2_koalabear.Hasher) {
+func (lop LocalOpeningParams) UpdateFS(fs *poseidon2_koalabear.MDHasher) {
 	if lop.IsBase {
 		fiatshamir.Update(fs, lop.BaseY)
 	} else {

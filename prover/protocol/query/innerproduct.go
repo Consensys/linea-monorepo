@@ -31,7 +31,7 @@ type InnerProductParams struct {
 }
 
 // Update the fiat-shamir state with inner-product params
-func (ipp InnerProductParams) UpdateFS(state *poseidon2_koalabear.Hasher) {
+func (ipp InnerProductParams) UpdateFS(state *poseidon2_koalabear.MDHasher) {
 	fiatshamir.UpdateVecExt(state, ipp.Ys)
 }
 

@@ -521,7 +521,7 @@ func processPrecomputedRound(
 			lmp.SisHashToHash = poseidon2W.PrepareToHashWitness(lmp.SisHashToHash, sisHash, preimageDestStart)
 			copy(lmp.ConcatSisHashQ[destStart:destStart+lmp.SisHashSize], sisHash)
 
-			hasher := poseidon2_koalabear.Poseidon2()
+			hasher := poseidon2_koalabear.NewMDHasher()
 			hasher.WriteElements(sisHash)
 			leaf := hasher.SumElement()
 			for j := 0; j < blockSize; j++ {
@@ -553,7 +553,7 @@ func processPrecomputedRound(
 			nonSisPreimage := a.Ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
 			// Also compute the leaf from the column
 			// to check sanity
-			hasher := poseidon2_koalabear.Poseidon2()
+			hasher := poseidon2_koalabear.NewMDHasher()
 			hasher.WriteElements(nonSisPreimage)
 			leaf_ := hasher.SumElement()
 			// Sanity check
@@ -655,7 +655,7 @@ func processRound(
 				tohashDestStart := sisRoundCount*lmp.NumOpenedCol*chunks + i*chunks
 				lmp.SisHashToHash = poseidon2W.PrepareToHashWitness(lmp.SisHashToHash, sisHash, tohashDestStart)
 
-				hasher := poseidon2_koalabear.Poseidon2()
+				hasher := poseidon2_koalabear.NewMDHasher()
 				hasher.WriteElements(sisHash)
 				leaf := hasher.SumElement()
 
@@ -705,7 +705,7 @@ func processRound(
 				// Also compute the leaf from the column
 				// to check sanity
 
-				hasher := poseidon2_koalabear.Poseidon2()
+				hasher := poseidon2_koalabear.NewMDHasher()
 				hasher.WriteElements(poseidon2Preimage)
 				leaf_ := hasher.SumElement()
 

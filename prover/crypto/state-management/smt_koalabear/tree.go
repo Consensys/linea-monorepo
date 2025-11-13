@@ -52,7 +52,7 @@ func EmptyLeaf() field.Octuplet {
 // taking H as the HashFunc of the config.
 func hashLR(config *Config, nodeL, nodeR field.Octuplet) field.Octuplet {
 	var d field.Octuplet
-	hasher := poseidon2_koalabear.Poseidon2()
+	hasher := poseidon2_koalabear.NewMDHasher()
 	hasher.WriteElements(nodeL[:])
 	hasher.WriteElements(nodeR[:])
 	d = hasher.SumElement()

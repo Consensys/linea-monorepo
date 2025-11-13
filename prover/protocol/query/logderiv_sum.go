@@ -51,7 +51,7 @@ type LogDerivSumParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (l LogDerivSumParams) UpdateFS(fs *poseidon2_koalabear.Hasher) {
+func (l LogDerivSumParams) UpdateFS(fs *poseidon2_koalabear.MDHasher) {
 	fiatshamir.UpdateGeneric(fs, l.Sum)
 }
 

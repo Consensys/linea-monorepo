@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -52,7 +53,7 @@ func updateCheckRoot(conf *smt_koalabear.Config, proof smt_koalabear.Proof, root
 // TopRoot returns the top-root hash which includes `NextFreeNode` and the
 // `SubTreeRoot`
 func (v *VerifierState[K, V]) TopRoot() Bytes32 {
-	hasher := poseidon2_koalabear.Poseidon2()
+	hasher := poseidon2_koalabear.NewMDHasher()
 	WriteInt64On64Bytes(hasher, v.NextFreeNode)
 	v.SubTreeRoot.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)

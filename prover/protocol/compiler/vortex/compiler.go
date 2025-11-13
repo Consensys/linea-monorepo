@@ -551,7 +551,7 @@ func (ctx *Ctx) generateVortexParams() {
 		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
+	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
 }
 
 // return the number of columns to open

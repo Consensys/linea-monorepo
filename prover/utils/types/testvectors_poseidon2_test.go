@@ -27,7 +27,7 @@ func TestVectorsFullBytes32(t *testing.T) {
 	assert.Equal(t, expectedEncode, encoded)
 
 	// Calculate the hash
-	hasher := poseidon2_koalabear.Poseidon2()
+	hasher := poseidon2_koalabear.NewMDHasher()
 	fullBytes32Val.WriteTo(hasher)
 	hash := hasher.Sum(nil)
 
@@ -90,7 +90,7 @@ func TestVectorsEthAddress(t *testing.T) {
 		assert.Equal(t, c.ExpectedEncode, encoded)
 
 		// Calculate the hash
-		hasher := poseidon2_koalabear.Poseidon2()
+		hasher := poseidon2_koalabear.NewMDHasher()
 		deserialized.Address.WriteTo(hasher)
 		hash := hasher.Sum(nil)
 
@@ -155,7 +155,7 @@ func TestVectorsAccount(t *testing.T) {
 		require.NoError(t, err)
 
 		// Calculate the hash
-		hasher := poseidon2_koalabear.Poseidon2()
+		hasher := poseidon2_koalabear.NewMDHasher()
 		c.Account.WriteTo(hasher)
 		hash := hasher.Sum(nil)
 
