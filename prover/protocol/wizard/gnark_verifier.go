@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -33,7 +33,7 @@ type GnarkRuntime interface {
 	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
-	Fs() *fiatshamir.GnarkFiatShamir
+	Fs() *fiatshamir.GnarkFS
 	GetHasherFactory() mimc.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
@@ -124,7 +124,7 @@ type VerifierCircuit struct {
 	// FS is the Fiat-Shamir state, mirroring [VerifierRuntime.FS]. The same
 	// cautionnary rules apply to it; e.g. don't use it externally when
 	// possible.
-	FS *fiatshamir.GnarkFiatShamir `gnark:"-"`
+	FS *fiatshamir.GnarkFS `gnark:"-"`
 
 	// Coins stores all the coins sampled by the verifier circuit. It is not
 	// part of the witness since the coins are constructed from the assigned
@@ -349,7 +349,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
-	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
+	c.FS = fiatshamir.NewGnarkFS(api)
 	c.FS.Update(c.Spec.FiatShamirSetup)
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
@@ -824,12 +824,12 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) zk.Wrapp
 }
 
 // Fs returns the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFiatShamir {
+func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFS {
 	return c.FS
 }
 
 // SetFs sets the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) SetFs(fs *fiatshamir.GnarkFiatShamir) {
+func (c *VerifierCircuit) SetFs(fs *fiatshamir.GnarkFS) {
 	c.FS = fs
 }
 

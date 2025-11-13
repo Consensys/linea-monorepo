@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/google/uuid"
 )
@@ -93,5 +93,5 @@ type QueryParams interface {
 // GnarkQueryParams mirrors exactly [QueryParams], but in a gnark circuit.
 type GnarkQueryParams interface {
 	// Update fiat-shamir with the query parameters in a circuit
-	UpdateFS(*fiatshamir.GnarkFiatShamir)
+	UpdateFS(*fiatshamir.GnarkFS)
 }

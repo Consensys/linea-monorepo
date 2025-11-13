@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -116,7 +116,7 @@ func (info *Info) Sample(fs *poseidon2_koalabear.MDHasher, seed field.Octuplet) 
 
 // SampleGnark samples a random coin in a gnark circuit. The seed can optionally be
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
-func (info *Info) SampleGnark(fs *fiatshamir.GnarkFiatShamir, seed zk.WrappedVariable) interface{} {
+func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed zk.WrappedVariable) interface{} {
 	switch info.Type {
 	case IntegerVec:
 		return fs.RandomManyIntegers(info.Size, info.UpperBound)

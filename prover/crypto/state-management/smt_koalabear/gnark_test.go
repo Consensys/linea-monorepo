@@ -60,7 +60,7 @@ type MerkleProofCircuit struct {
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 
-	h, err := poseidon2_koalabear.NewMerkleDamgardHasher(api)
+	h, err := poseidon2_koalabear.NewGnarkMDHasher(api)
 	if err != nil {
 		return err
 	}
