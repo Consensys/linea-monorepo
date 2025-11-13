@@ -94,8 +94,8 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.Wrap
 	res := inputs[len(inputs)-1]
 
 	for i := len(inputs) - 2; i >= 1; i-- {
-		res = *apiGen.Mul(&res, &x)
-		res = *apiGen.Add(&res, &inputs[i])
+		res = apiGen.Mul(res, x)
+		res = apiGen.Add(res, inputs[i])
 	}
 
 	return res

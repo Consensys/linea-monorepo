@@ -274,14 +274,14 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 	// Amend the Vortex proof with the Merkle proofs and registers
 	// the Merkle proofs in the prover runtime
-	proof.Complete(entryList, committedMatrices, trees)
+	merkleProofs := proof.Complete(entryList, committedMatrices, trees)
 
 	selectedCols := proof.Columns
 
 	// Assign the opened columns
 	ctx.assignOpenedColumns(run, entryList, selectedCols, NonSelfRecursion)
 
-	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
+	packedMProofs := ctx.packMerkleProofs(merkleProofs)
 
 	for i := range ctx.Items.MerkleProofs {
 		run.AssignColumn(ctx.Items.MerkleProofs[i].GetColID(), packedMProofs[i])

@@ -559,11 +559,11 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 
 	// Check the proof
 	err := VerifyOpening(&VerifierInputs{
-		AlgebraicCheckInputs: AlgebraicCheckInputs{
+		AlgebraicCheckInputs: vortex.AlgebraicCheckInputs{
 			Koalabear_Params: *koalabearParams,
 			X:                x,
 			Ys:               yLists,
-			OpeningProof:     *proof,
+			OpeningProof:     vortex.OpeningProof(*proof),
 			RandomCoin:       randomCoin,
 			EntryList:        entryList,
 		},

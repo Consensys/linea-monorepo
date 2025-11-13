@@ -4,14 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	gnarkVortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -33,7 +27,7 @@ var (
 // In our settings, the caller is a function in a framework managing the random
 // coins as Vortex is used a sub-protocol of a larger protocol.
 type VerifierInputs struct {
-	AlgebraicCheckInputs
+	vortex.AlgebraicCheckInputs
 
 	// Merkle checks, it uses below parameters and EntryList from AlgebraicCheckInputs
 	BLS12_377_Params Params
@@ -49,21 +43,6 @@ type VerifierInputs struct {
 	// the default behavior is to use the SIS hash function along with the
 	// Poseidon2 hash function
 	IsSISReplacedByPoseidon2 []bool
-}
-
-type AlgebraicCheckInputs struct {
-	// Params are the public parameters
-	Koalabear_Params vortex.Params
-	// X is the univariate evaluation point
-	X fext.Element
-	// Ys are the alleged evaluation at point X
-	Ys [][]fext.Element
-	// OpeningProof contains the messages of the prover
-	OpeningProof OpeningProof
-	// RandomCoin is the random coin sampled by the verifier to be used to
-	// construct the linear combination of the columns.
-	RandomCoin fext.Element
-	EntryList  []int
 }
 
 // VerifyOpening verifies a Vortex opening proof, see [VerifierInputs] for
@@ -112,65 +91,16 @@ func VerifyOpening(v *VerifierInputs) error {
 		return err
 	}
 
-	if err := v.AlgebraicCheckInputs.checkColLinCombination(numCommitments); err != nil {
+	if err := v.AlgebraicCheckInputs.CheckColLinCombination(numCommitments); err != nil {
 		return err
 	}
 
-	if err := v.AlgebraicCheckInputs.checkStatement(); err != nil {
+	if err := v.AlgebraicCheckInputs.CheckStatement(); err != nil {
 		return err
 	}
 
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// checkColLinCombination checks that the inner-product of the opened column
-// (concatenated together) matches the requested positions of the
-// RowLinearCombination.
-func (v *AlgebraicCheckInputs) checkColLinCombination(numCommitments int) (err error) {
-
-	linearCombination := v.OpeningProof.LinearCombination
-	for j, selectedColID := range v.EntryList {
-		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []field.Element{}
-
-		for i := range numCommitments {
-			// Entries of the selected columns #j contained in the commitment #i.
-			selectedSubCol := v.OpeningProof.Columns[i][j]
-			fullCol = append(fullCol, selectedSubCol...)
-		}
-
-		// Check the linear combination is consistent with the opened column
-		y := gnarkVortex.EvalBasePolyHorner(fullCol, v.RandomCoin)
-
-		if selectedColID > linearCombination.Len() {
-			return fmt.Errorf("entry overflows the size of the linear combination")
-		}
-
-		if y != linearCombination.GetExt(selectedColID) {
-			other := linearCombination.GetExt(selectedColID)
-			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
-		}
-	}
-
-	return nil
-}
-
-// checkStatement checks that the row linear combination is consistent
-// with the statement. The function returns an error if the check fails.
-func (v *AlgebraicCheckInputs) checkStatement() (err error) {
-	smartvectors_mixed.IsBase(v.OpeningProof.LinearCombination)
-
-	// Check the consistency of Ys and proof.Linear combination
-	Yjoined := utils.Join(v.Ys...)
-	alphaY := smartvectors.EvaluateFextPolyLagrange(v.OpeningProof.LinearCombination, v.X)
-	alphaYPrime := gnarkVortex.EvalFextPolyHorner(Yjoined, v.RandomCoin)
-
-	if alphaY != alphaYPrime {
-		return fmt.Errorf("RowLincomb and Y are inconsistent")
 	}
 
 	return nil
