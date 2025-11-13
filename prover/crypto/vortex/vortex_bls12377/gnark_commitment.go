@@ -22,12 +22,12 @@ import (
 
 // Final circuit - commitment using Merkle trees
 type VerifyOpeningCircuitMerkleTree struct {
-	Proof      GProof              `gnark:",public"`
-	Roots      []frontend.Variable `gnark:",public"`
-	X          gnarkfext.E4Gen     `gnark:",public"`
-	RandomCoin gnarkfext.E4Gen     `gnark:",public"`
-	Ys         [][]gnarkfext.E4Gen `gnark:",public"`
-	EntryList  []frontend.Variable `gnark:",public"`
+	Proof      GProof               `gnark:",public"`
+	Roots      []frontend.Variable  `gnark:",public"`
+	X          gnarkfext.E4Gen      `gnark:",public"`
+	RandomCoin gnarkfext.E4Gen      `gnark:",public"`
+	Ys         [][]gnarkfext.E4Gen  `gnark:",public"`
+	EntryList  []zk.WrappedVariable `gnark:",public"`
 	Params     GParams
 }
 
@@ -57,7 +57,7 @@ func AllocateCircuitVariablesWithMerkleTree(
 		}
 	}
 
-	verifyCircuit.EntryList = make([]frontend.Variable, len(entryList))
+	verifyCircuit.EntryList = make([]zk.WrappedVariable, len(entryList))
 
 	verifyCircuit.Ys = make([][]gnarkfext.E4Gen, len(ys))
 	for i := 0; i < len(ys); i++ {
@@ -102,7 +102,7 @@ func AssignCicuitVariablesWithMerkleTree(
 	}
 
 	for i := 0; i < len(entryList); i++ {
-		verifyCircuit.EntryList[i] = entryList[i]
+		verifyCircuit.EntryList[i] = zk.ValueOf(entryList[i])
 	}
 
 	for i := 0; i < len(ys); i++ {
@@ -142,7 +142,7 @@ func GnarkVerifyOpeningWithMerkleProof(
 	x gnarkfext.E4Gen,
 	ys [][]gnarkfext.E4Gen,
 	randomCoin gnarkfext.E4Gen,
-	entryList []frontend.Variable,
+	entryList []zk.WrappedVariable,
 ) error {
 
 	if !params.HasNoSisHasher() {
@@ -176,7 +176,7 @@ func GnarkVerifyOpeningWithMerkleProof(
 			smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
 
 			// And check that the Merkle proof is related to the correct entry
-			api.AssertIsEqual(proof.MerkleProofs[i][j].Path, entry)
+			api.AssertIsEqual(proof.MerkleProofs[i][j].Path, entry.V)
 		}
 	}
 
