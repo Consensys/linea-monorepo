@@ -20,9 +20,9 @@ type piChiIota struct {
 	// The two following columns are used for the base conversion from B to A.
 	// The decomposition of aIotaBaseB in slices of 4 bits
 	// it is exported since it build up the hash output.
-	AIotaBaseBSliced [5][5][NumSlice]ifaces.Column
+	AIotaBaseBSliced [5][5][numSlice]ifaces.Column
 	// The decompositio of aIotaBaseA in slices of 4 bits
-	AIotaBaseASliced [5][5][NumSlice]ifaces.Column
+	AIotaBaseASliced [5][5][numSlice]ifaces.Column
 }
 
 // Run the chi part of the wizard
@@ -56,7 +56,7 @@ func (c *piChiIota) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccak
 			)
 
 			// declares the subslices in base B and base A
-			for k := 0; k < NumSlice; k++ {
+			for k := 0; k < numSlice; k++ {
 				// base B
 				c.AIotaBaseBSliced[x][y][k] = comp.InsertCommit(
 					round,
@@ -141,7 +141,7 @@ func (c *piChiIota) csBaseBToBaseA(comp *wizard.CompiledIOP, round int, l lookUp
 			comp.InsertGlobal(round, name, expr)
 
 			// Enforces the correctness of the base conversion slice by slice
-			for k := 0; k < NumSlice; k++ {
+			for k := 0; k < numSlice; k++ {
 				name := ifaces.QueryIDf("AIOTA_BASE_CONVERSION_%v_%v_%v", x, y, k)
 				comp.InsertInclusion(
 					round,
@@ -187,7 +187,7 @@ func (c *piChiIota) assign(
 	base1Clean := lookups.BaseAClean.GetColAssignment(run)
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
-			for k := 0; k < NumSlice; k++ {
+			for k := 0; k < numSlice; k++ {
 				aPiOut[x][y] = aRho[x][y].GetColAssignment(run).
 					SubVector(0, effNumRows).
 					IntoRegVecSaveAlloc()
@@ -212,12 +212,12 @@ func (c *piChiIota) assign(
 
 	// Allocate the columns that are assigned during this prover phase.
 	aIotaBaseB := [5][5][]field.Element{}
-	aIotaBaseASliced := [5][5][NumSlice][]field.Element{}
-	aIotaBaseBSliced := [5][5][NumSlice][]field.Element{}
+	aIotaBaseASliced := [5][5][numSlice][]field.Element{}
+	aIotaBaseBSliced := [5][5][numSlice][]field.Element{}
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			aIotaBaseB[x][y] = make([]field.Element, effNumRows)
-			for k := 0; k < NumSlice; k++ {
+			for k := 0; k < numSlice; k++ {
 				aIotaBaseASliced[x][y][k] = make([]field.Element, effNumRows)
 				aIotaBaseBSliced[x][y][k] = make([]field.Element, effNumRows)
 			}
@@ -264,7 +264,7 @@ func (c *piChiIota) assign(
 
 				// Slice aIota
 				aIotaB2Slices := DecomposeFrInSlice(aIota, BaseB)
-				for k := 0; k < NumSlice; k++ {
+				for k := 0; k < numSlice; k++ {
 					// Save the result in base 2
 					copy(
 						aIotaBaseBSliced[x][y][k][start:stop],
@@ -302,7 +302,7 @@ func (c *piChiIota) assign(
 				c.AIotaBaseB[x][y].GetColID(),
 				smartvectors.RightZeroPadded(aIotaBaseB[x][y], colSize),
 			)
-			for k := 0; k < NumSlice; k++ {
+			for k := 0; k < numSlice; k++ {
 				run.AssignColumn(
 					c.AIotaBaseBSliced[x][y][k].GetColID(),
 					smartvectors.RightZeroPadded(aIotaBaseBSliced[x][y][k], colSize),

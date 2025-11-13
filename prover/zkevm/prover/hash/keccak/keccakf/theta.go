@@ -28,9 +28,9 @@ type theta struct {
 	AThetaBaseA    [5][5]ifaces.Column
 	AThetaBaseAMsb [5][5]ifaces.Column
 	// slices of ATheta in (Dirty) BaseA, each slice holds 4 bits
-	AThetaSlicedBaseA [5][5][NumSlice]ifaces.Column
+	AThetaSlicedBaseA [5][5][numSlice]ifaces.Column
 	// slices of ATheta in (clean) BaseB, each slice holds 4 bits
-	AThetaSlicedBaseB [5][5][NumSlice]ifaces.Column
+	AThetaSlicedBaseB [5][5][numSlice]ifaces.Column
 }
 
 // Constructs a new theta object and registers the colums into the context
@@ -71,7 +71,7 @@ func (t *theta) declareColumn(comp *wizard.CompiledIOP, round, numKeccakf int) {
 				round, deriveName("A_THETA_BASE1_MBS", x, y), colSize,
 			)
 			//
-			for k := 0; k < NumSlice; k++ {
+			for k := 0; k < numSlice; k++ {
 				//
 				t.AThetaSlicedBaseA[x][y][k] = comp.InsertCommit(
 					round, deriveName("A_THETA_BASE1_SLICED", x, y, k), colSize,
@@ -162,7 +162,7 @@ func (t *theta) csAThetaFromBaseAToBaseB(
 
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
-			for s := 0; s < NumSlice; s++ {
+			for s := 0; s < numSlice; s++ {
 				comp.InsertInclusion(
 					round,
 					ifaces.QueryIDf("A_THETA_BASE1_TO_BASE2_%v_%v_%v", x, y, s),
@@ -211,12 +211,12 @@ func (t *theta) assign(
 	// intermediate values as they are locally allocated in chunks in the
 	// threads.
 	var aThetaBaseA, aThetaBaseAMsb [5][5][]field.Element
-	var aThetaBaseASliced, aThetaBaseBSliced [5][5][NumSlice][]field.Element
+	var aThetaBaseASliced, aThetaBaseBSliced [5][5][numSlice][]field.Element
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			aThetaBaseA[x][y] = make([]field.Element, effNumRows)
 			aThetaBaseAMsb[x][y] = make([]field.Element, effNumRows)
-			for k := 0; k < NumSlice; k++ {
+			for k := 0; k < numSlice; k++ {
 				aThetaBaseASliced[x][y][k] = make([]field.Element, effNumRows)
 				aThetaBaseBSliced[x][y][k] = make([]field.Element, effNumRows)
 			}
@@ -277,14 +277,14 @@ func (t *theta) assign(
 
 				// Slices aTheta in base A, set it back to 64 bits along
 				// the way.
-				for k := 0; k < NumSlice+1; k++ {
+				for k := 0; k < numSlice+1; k++ {
 					switch {
 					// Complete the first limb with the MSB.
 					case k == 0:
 						vector.Add(
 							aThetaBaseASliced[x][y][k][start:stop],
 							slices[k],
-							slices[NumSlice],
+							slices[numSlice],
 						)
 
 						// Also lookup the corresponding value for the
@@ -296,7 +296,7 @@ func (t *theta) assign(
 							aThetaBaseBSliced[x][y][k][r] = baseBTable[pos]
 						}
 					// Copy the slice as is, in the result
-					case k > 0 && k < NumSlice:
+					case k > 0 && k < numSlice:
 						copy(aThetaBaseASliced[x][y][k][start:stop], slices[k])
 
 						// Also lookup the corresponding value for the
@@ -306,7 +306,7 @@ func (t *theta) assign(
 							aThetaBaseBSliced[x][y][k][r] = baseBTable[pos]
 						}
 					// It's the MSB
-					case k == NumSlice:
+					case k == numSlice:
 						copy(aThetaBaseAMsb[x][y][start:stop], slices[k])
 					}
 				}
@@ -330,7 +330,7 @@ func (t *theta) assign(
 				smartvectors.RightZeroPadded(aThetaBaseAMsb[x][y], colSize),
 			)
 
-			for k := 0; k < NumSlice; k++ {
+			for k := 0; k < numSlice; k++ {
 
 				// aThetaBaseASliced
 				topad := aThetaBaseASliced[x][y][k]

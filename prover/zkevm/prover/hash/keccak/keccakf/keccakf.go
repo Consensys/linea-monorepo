@@ -32,8 +32,8 @@ const (
 	// need 16 of them to represent an entire u64. The reason for this choice of
 	// 4 and 16 is that it allows us to limit the size of the corresponding
 	// lookup tables.
-	NumSlice      = 16
-	numChunkBaseX = nBitsKeccakLane / NumSlice
+	numSlice      = 16
+	numChunkBaseX = nBitsKeccakLane / numSlice
 	// The integer version of baseX ^ 4. Usefull for limb decomposition/recompo-
 	// sition.
 	BaseAPow4 = BaseA * BaseA * BaseA * BaseA

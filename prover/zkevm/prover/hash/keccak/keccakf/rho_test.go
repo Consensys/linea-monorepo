@@ -42,7 +42,7 @@ func rhoTestingModule(
 		// Initializes the input columns
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
-				for k := 0; k < NumSlice; k++ {
+				for k := 0; k < numSlice; k++ {
 					mod.Theta.AThetaSlicedBaseB[x][y][k] = comp.InsertCommit(
 						round,
 						deriveName("A_THETA_BASE2_SLICED", x, y, k),
@@ -75,7 +75,7 @@ func rhoTestingModule(
 			}
 
 			// Initializes the input columns
-			aTheta := [5][5][NumSlice][]field.Element{}
+			aTheta := [5][5][numSlice][]field.Element{}
 			for permId := 0; permId < numKeccakf; permId++ {
 				state := traces.KeccakFInps[permId]
 
@@ -91,8 +91,8 @@ func rhoTestingModule(
 							zF := U64ToBaseX(z, &BaseBFr)
 
 							// Slice decomposition
-							slice := DecomposeFr(zF, BaseBPow4, NumSlice)
-							for k := 0; k < NumSlice; k++ {
+							slice := DecomposeFr(zF, BaseBPow4, numSlice)
+							for k := 0; k < numSlice; k++ {
 								// If the column is not already assigned, then
 								// allocate it with the proper length.
 								if aTheta[x][y][k] == nil {
@@ -118,7 +118,7 @@ func rhoTestingModule(
 
 			for x := 0; x < 5; x++ {
 				for y := 0; y < 5; y++ {
-					for k := 0; k < NumSlice; k++ {
+					for k := 0; k < numSlice; k++ {
 						run.AssignColumn(
 							mod.Theta.AThetaSlicedBaseB[x][y][k].GetColID(),
 							smartvectors.RightZeroPadded(

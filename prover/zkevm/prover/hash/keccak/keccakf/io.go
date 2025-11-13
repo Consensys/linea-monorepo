@@ -304,7 +304,7 @@ func (io *InputOutput) assignHashOutPut(run *wizard.ProverRuntime, isBlockActive
 	// populate HashOutputSlicesBaseB
 	isHashOutputWit := isHashOutput.Slice()
 	for j := range io.HashOutputSlicesBaseB {
-		hashSlices[j] = make([]*common.VectorBuilder, NumSlice)
+		hashSlices[j] = make([]*common.VectorBuilder, numSlice)
 		for k := range io.HashOutputSlicesBaseB[0] {
 			hashSlices[j][k] = common.NewVectorBuilder(io.HashOutputSlicesBaseB[j][k])
 

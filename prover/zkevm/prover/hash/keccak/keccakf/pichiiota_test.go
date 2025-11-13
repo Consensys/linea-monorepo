@@ -192,8 +192,8 @@ func TestPiChiIota(t *testing.T) {
 				for x := 0; x < 5; x++ {
 					for y := 0; y < 5; y++ {
 						// Extract the slices
-						slice := [NumSlice]field.Element{}
-						for k := 0; k < NumSlice; k++ {
+						slice := [numSlice]field.Element{}
+						for k := 0; k < numSlice; k++ {
 							colid := mod.PiChiIota.AIotaBaseASliced[x][y][k].GetColID()
 							slice[k] = run.GetColumnAt(colid, pos)
 						}
