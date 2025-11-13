@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRho(t *testing.T) {
+func TestTheta(t *testing.T) {
 
 	const numCases int = 30
 	maxKeccaf := 10
@@ -27,7 +27,7 @@ func TestRho(t *testing.T) {
 	var run *wizard.ProverRuntime
 
 	// Parametrizes the wizard and the input generator.
-	builder, prover, mod := rhoTestingModule(maxKeccaf)
+	builder, prover, mod := thetaTestingModule(maxKeccaf)
 
 	comp := wizard.Compile(builder, dummy.Compile)
 
@@ -48,8 +48,6 @@ func TestRho(t *testing.T) {
 			// transformation.
 			state := traces.KeccakFInps[permId]
 			state.Theta()
-			state.Rho()
-			expected := state.Pi()
 
 			// Reconstruct the same state from the assignment of the prover
 			reconstructed := keccak.State{}
@@ -58,7 +56,7 @@ func TestRho(t *testing.T) {
 				for y := 0; y < 5; y++ {
 					for z := 0; z < 64; z++ {
 						// Recompose the slice into a complete base 2 representation
-						recomposed[z] = mod.RhoPi.stateNext[x][y][z].GetColAssignmentAt(run,
+						recomposed[z] = mod.theta.stateNext[x][y][z].GetColAssignmentAt(run,
 							permId*keccak.NumRound)
 
 					}
@@ -66,7 +64,7 @@ func TestRho(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, expected, reconstructed,
+			assert.Equal(t, state, reconstructed,
 				"could not reconstruct the state. permutation %v", permId)
 
 			// Exiting on the first failed case to not spam the test logs
@@ -78,7 +76,7 @@ func TestRho(t *testing.T) {
 }
 
 // a module definition method specifically for testing the rho submodule
-func rhoTestingModule(
+func thetaTestingModule(
 	// parameters for the wizard
 	maxNumKeccakf int,
 ) (
@@ -95,7 +93,7 @@ func rhoTestingModule(
 	var (
 		mod       = &Module{}
 		size      = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * 24))
-		stateCurr = [5][5][64]ifaces.Column{} // input to the rho module
+		stateCurr = state{} // input to the theta module base 4
 	)
 
 	/*
@@ -107,13 +105,13 @@ func rhoTestingModule(
 		// Initializes the input current state
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
-				for z := 0; z < 64; z++ {
-					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("RHO_STATE_CURR_%v_%v_%v", x, y, z), size)
+				for z := 0; z < 8; z++ {
+					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("THETA_STATE_CURR_%v_%v_%v", x, y, z), size)
 				}
 			}
 		}
 
-		mod.RhoPi = newRho(comp, maxNumKeccakf, stateCurr)
+		mod.theta = newTheta(comp, maxNumKeccakf, stateCurr)
 	}
 
 	prover := func(
@@ -136,20 +134,16 @@ func rhoTestingModule(
 			}
 
 			// Initializes the input columns
-			stateCurrWit := [5][5][64][]field.Element{}
+			stateCurrWit := [5][5][8][]field.Element{}
 			for permId := 0; permId < numKeccakf; permId++ {
 				state := traces.KeccakFInps[permId]
 
 				for rnd := 0; rnd < keccak.NumRound; rnd++ {
-					// Pre-permute using the theta transformation before running
-					// the rho permutation.
-					state.Theta()
-
 					// Convert the state in sliced from in base 2
 					for x := 0; x < 5; x++ {
 						for y := 0; y < 5; y++ {
-							a := BitsLE(state[x][y])
-							for k := 0; k < 64; k++ {
+							a := stateBase4(state[x][y])
+							for k := 0; k < 8; k++ {
 								// If the column is not already assigned, then
 								// allocate it with the proper length.
 								if stateCurrWit[x][y][k] == nil {
@@ -164,18 +158,12 @@ func rhoTestingModule(
 							}
 						}
 					}
-
-					// Then finalize the permutation normally
-					state.Rho()
-					b := state.Pi()
-					state.Chi(&b)
-					state.Iota(rnd)
 				}
 			}
 
 			for x := 0; x < 5; x++ {
 				for y := 0; y < 5; y++ {
-					for k := 0; k < 64; k++ {
+					for k := 0; k < 8; k++ {
 						run.AssignColumn(
 							stateCurr[x][y][k].GetColID(),
 							smartvectors.RightZeroPadded(
@@ -187,70 +175,24 @@ func rhoTestingModule(
 				}
 			}
 
-			// Then assigns all the columns of the rho module
-			mod.RhoPi.assignRoh(run, stateCurr)
+			// Then assign all the columns of the theta module
+			mod.theta.assignTheta(run, stateCurr)
 		}
 	}
 
 	return builder, prover, mod
 }
 
-func BitsLE(x uint64) [64]uint8 {
-	var bits [64]uint8
-	for i := 0; i < 64; i++ {
-		bits[i] = uint8((x >> i) & 1)
-	}
-	return bits
-}
-
-// Input provider for the tests. Return traces corresponding to random hashes
-func genKeccakfTrace(rnd *rand.Rand, maxNumKeccakf int) keccak.PermTraces {
-
-	res := keccak.PermTraces{}
-	// The number of effective permutation is a random fraction of the
-	// max number of keccakf.
-	effNumKeccak := rnd.Int() % maxNumKeccakf
-	for effNumKeccak == 0 {
-		effNumKeccak = rnd.Int() % maxNumKeccakf
-	}
-
-	for len(res.Blocks) < effNumKeccak {
-		// Each hash is for a random string taking at most 3 permutations
-		streamLen := rnd.IntN(3*keccak.Rate-1) + 1
-		stream := make([]byte, streamLen)
-		utils.ReadPseudoRand(rnd, stream)
-
-		for i := 0; i < effNumKeccak; i++ {
-			keccak.Hash(stream, &res)
+// in convert uint64 to base 4 representation stored in 8 uint32
+func stateBase4(in uint64) [8]uint32 {
+	var res [8]uint32
+	for i := 0; i < 8; i++ {
+		var v uint32
+		for k := 0; k < 8; k++ {
+			bit := (in >> (8*i + k)) & 1
+			v += uint32(bit) << (2 * k) // multiply by 4^k = 2^(2k)
 		}
-	}
-
-	// And trim a posteriori the excess permutation so that we have exactly
-	// effNumKeccak. This will not be very realistic for the last permutation
-	// since this will ignore the padding. Fortunately, the padding is out
-	// of scope for this module. So, this should not matter in practice.
-	res.Blocks = res.Blocks[:effNumKeccak]
-	res.IsNewHash = res.IsNewHash[:effNumKeccak]
-	res.KeccakFInps = res.KeccakFInps[:effNumKeccak]
-	res.KeccakFOuts = res.KeccakFOuts[:effNumKeccak]
-
-	return res
-
-}
-
-// reconstructU64 reconstructs a uint64 from 64 field elements.
-// Each element of x is treated as a single bit: the function reads
-// the least-significant bit of each field.Element (limb.Uint64() & 1)
-// and places it into the corresponding bit position of the result.
-// Bits are assembled in little-endian order: x[0] becomes bit 0 (LSB),
-// x[63] becomes bit 63 (MSB). If elements contain values other than 0 or 1,
-// only their LSB is used.
-func reconstructU64(x [64]field.Element) uint64 {
-
-	var res uint64
-	for i, limb := range x {
-		bit := (limb.Uint64()) & 1
-		res |= bit << i
+		res[i] = v
 	}
 	return res
 }
