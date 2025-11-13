@@ -202,6 +202,13 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     return abi.decode(data, (uint256));
   }
 
+  function syncLSTLiabilityPrincipal(address _yieldProvider) external {
+    _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.syncLSTLiabilityPrincipal, (_yieldProvider))
+    );
+  }
+
   function payObligations(address _yieldProvider) external returns (uint256) {
     bytes memory data = _delegatecallYieldProvider(
       _yieldProvider,
