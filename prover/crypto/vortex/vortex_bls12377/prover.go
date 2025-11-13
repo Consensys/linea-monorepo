@@ -5,9 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // OpeningProof represents an opening proof for a Vortex commitment. The proof
@@ -22,44 +20,6 @@ type OpeningProof struct {
 
 	// Linear combination of the Reed-Solomon encoded polynomials to open.
 	LinearCombination smartvectors.SmartVector
-
-	// MerkleProofs store a list of [smt.Proof] (Merkle proofs) allegedly
-	// attesting the membership of the columns in the commitment tree.
-	//
-	// MerkleProofs[i][j] corresponds to the Merkle proof attesting the j-th
-	// column of the i-th commitment root hash.
-	MerkleProofs [][]smt_bls12377.Proof
-}
-
-// InitOpeningFromAlreadyEncodedLC initiates the construction of a Vortex proof
-// by returning the encoding of the linear combinations of the committed
-// row-vectors contained in committedSV by the successive powers of randomCoin.
-//
-// The returned proof is partially assigned and must be completed using
-// [WithEntryList] to conclude the opening protocol.
-func (params *Params) InitOpeningFromAlreadyEncodedLC(rsCommittedSV vortex.EncodedMatrix, randomCoin fext.Element) *OpeningProof {
-
-	if len(rsCommittedSV) == 0 {
-		utils.Panic("attempted to open an empty witness")
-	}
-
-	// Compute the linear combination
-	linComb := make([]fext.Element, params.NumEncodedCols())
-
-	parallel.Execute(len(linComb), func(start, stop int) {
-		subTask := make([]smartvectors.SmartVector, 0, len(rsCommittedSV))
-		for i := range rsCommittedSV {
-			subTask = append(subTask, rsCommittedSV[i].SubVector(start, stop))
-		}
-
-		// Collect the result in the larger slice at the end
-		subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
-		subResult.WriteInSliceExt(linComb[start:stop])
-	})
-
-	return &OpeningProof{
-		LinearCombination: smartvectors.NewRegularExt(linComb),
-	}
 }
 
 // Complete completes the proof adding the columns pointed by entryList
@@ -68,7 +28,7 @@ func (proof *OpeningProof) Complete(
 	entryList []int,
 	committedMatrices []vortex.EncodedMatrix,
 	trees []*smt_bls12377.Tree,
-) {
+) [][]smt_bls12377.Proof {
 
 	if len(entryList) == 0 {
 		utils.Panic("empty entry list")
@@ -105,6 +65,7 @@ func (proof *OpeningProof) Complete(
 		}
 	}
 
-	proof.MerkleProofs = proofs
 	proof.Columns = selectedColumns
+
+	return proofs
 }

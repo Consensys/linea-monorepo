@@ -122,16 +122,19 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 		packedMProofs[i] = run.GetColumn(ctx.MerkleProofName(i))
 	}
 
-	proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
+	merkleProofs := ctx.unpackMerkleProofs(packedMProofs, entryList)
 
 	return vortex.VerifyOpening(&vortex.VerifierInputs{
-		Params:                   *ctx.VortexParams,
+		AlgebraicCheckInputs: vortex.AlgebraicCheckInputs{
+			Koalabear_Params: *ctx.VortexParams,
+			X:                x,
+			Ys:               ctx.getYs(run),
+			OpeningProof:     *proof,
+			RandomCoin:       randomCoin,
+			EntryList:        entryList,
+		},
 		MerkleRoots:              roots,
-		X:                        x,
-		Ys:                       ctx.getYs(run),
-		OpeningProof:             *proof,
-		RandomCoin:               randomCoin,
-		EntryList:                entryList,
+		MerkleProofs:             merkleProofs,
 		IsSISReplacedByPoseidon2: IsSISReplacedByPoseidon2,
 	})
 }

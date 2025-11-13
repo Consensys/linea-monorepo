@@ -242,18 +242,21 @@ func TestProver(t *testing.T) {
 				// Generate the proof
 				proof := &OpeningProof{}
 				proof.LinearCombination = params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
-				proof.Complete(entryList[:testCase.NumOpenedColumns], committedMatrices, trees)
+				merkleProofs := proof.Complete(entryList[:testCase.NumOpenedColumns], committedMatrices, trees)
 
 				// Check the proof
 				err := VerifyOpening(
 					&VerifierInputs{
-						Params:                   *params,
+						AlgebraicCheckInputs: AlgebraicCheckInputs{
+							Koalabear_Params: *params,
+							X:                x,
+							Ys:               yLists,
+							OpeningProof:     *proof,
+							RandomCoin:       randomCoin,
+							EntryList:        entryList[:testCase.NumOpenedColumns],
+						},
 						MerkleRoots:              roots,
-						X:                        x,
-						Ys:                       yLists,
-						OpeningProof:             *proof,
-						RandomCoin:               randomCoin,
-						EntryList:                entryList[:testCase.NumOpenedColumns],
+						MerkleProofs:             merkleProofs,
 						IsSISReplacedByPoseidon2: isSisReplacedByPoseidon2,
 					})
 
@@ -422,9 +425,9 @@ func TestVerifierNegative(t *testing.T) {
 			{
 				Explainer: "Swap two Merkle proofs",
 				Func: func(v *VerifierInputs) bool {
-					mps := v.OpeningProof.MerkleProofs
+					mps := v.MerkleProofs
 					mps[0][0], mps[0][1] = mps[0][1], mps[0][0]
-					v.OpeningProof.MerkleProofs = mps
+					v.MerkleProofs = mps
 					return true
 				},
 			},
@@ -438,7 +441,7 @@ func TestVerifierNegative(t *testing.T) {
 			{
 				Explainer: "Mess with a Merkle proof path",
 				Func: func(v *VerifierInputs) bool {
-					mps := v.OpeningProof.MerkleProofs
+					mps := v.MerkleProofs
 					mps[0][0].Path = 5
 					return true
 				},
@@ -492,16 +495,19 @@ func TestVerifierNegative(t *testing.T) {
 			// Generate the proof
 			proof := &OpeningProof{}
 			proof.LinearCombination = params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
-			proof.Complete(entryList, committedMatrices, trees)
+			merkleProofs := proof.Complete(entryList, committedMatrices, trees)
 
 			return &VerifierInputs{
-				Params:       *params,
+				AlgebraicCheckInputs: AlgebraicCheckInputs{
+					Koalabear_Params: *params,
+					X:                x,
+					Ys:               yLists,
+					OpeningProof:     *proof,
+					RandomCoin:       randomCoin,
+					EntryList:        entryList,
+				},
 				MerkleRoots:  roots,
-				X:            x,
-				Ys:           yLists,
-				OpeningProof: *proof,
-				RandomCoin:   randomCoin,
-				EntryList:    entryList,
+				MerkleProofs: merkleProofs,
 			}
 		}
 	)

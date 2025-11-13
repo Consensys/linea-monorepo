@@ -4,14 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	gnarkVortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -33,22 +27,18 @@ var (
 // In our settings, the caller is a function in a framework managing the random
 // coins as Vortex is used a sub-protocol of a larger protocol.
 type VerifierInputs struct {
-	// Params are the public parameters
-	Koalabear_Params vortex.Params
+	vortex.AlgebraicCheckInputs
+
+	// Merkle checks, it uses below parameters and EntryList from AlgebraicCheckInputs
 	BLS12_377_Params Params
+	// MerkleProofs store a list of [smt.Proof] (Merkle proofs) allegedly
+	// attesting the membership of the columns in the commitment tree.
+	//
+	// MerkleProofs[i][j] corresponds to the Merkle proof attesting the j-th
+	// column of the i-th commitment root hash.
+	MerkleProofs [][]smt_bls12377.Proof
 	// MerkleRoots are the commitment to verify the opening for
 	MerkleRoots []types.Bytes32
-	// X is the univariate evaluation point
-	X fext.Element
-	// Ys are the alleged evaluation at point X
-	Ys [][]fext.Element
-	// OpeningProof contains the messages of the prover
-	OpeningProof OpeningProof
-	// RandomCoin is the random coin sampled by the verifier to be used to
-	// construct the linear combination of the columns.
-	RandomCoin fext.Element
-	// EntryList is the random coin representing the columns to open.
-	EntryList []int
 	// Flag indicating if the SIS hash is replaced for the particular round
 	// the default behavior is to use the SIS hash function along with the
 	// Poseidon2 hash function
@@ -64,8 +54,9 @@ func VerifyOpening(v *VerifierInputs) error {
 
 	var (
 		numCommitments = len(v.MerkleRoots)
-		numEntries     = len(v.EntryList)
+		numEntries     = len(v.AlgebraicCheckInputs.EntryList)
 		proof          = v.OpeningProof
+		merkleProofs   = v.MerkleProofs
 	)
 
 	if numCommitments == 0 {
@@ -74,7 +65,7 @@ func VerifyOpening(v *VerifierInputs) error {
 
 	if len(v.Ys) != numCommitments ||
 		len(proof.Columns) != numCommitments ||
-		len(proof.MerkleProofs) != numCommitments ||
+		len(merkleProofs) != numCommitments ||
 		proof.LinearCombination.Len() != v.Koalabear_Params.NumEncodedCols() {
 		return ErrInvalidVerifierInputs
 	}
@@ -82,13 +73,13 @@ func VerifyOpening(v *VerifierInputs) error {
 	for i := range v.MerkleRoots {
 
 		if len(proof.Columns[i]) != numEntries ||
-			len(proof.MerkleProofs[i]) != numEntries ||
+			len(merkleProofs[i]) != numEntries ||
 			len(v.Ys[i]) == 0 ||
 			len(v.Ys[i]) > v.Koalabear_Params.MaxNbRows {
 			return ErrInvalidVerifierInputs
 		}
 
-		for j := range v.EntryList {
+		for j := range v.AlgebraicCheckInputs.EntryList {
 			if len(proof.Columns[i][j]) != len(v.Ys[i]) ||
 				len(proof.Columns) == 0 {
 				return ErrInvalidVerifierInputs
@@ -100,67 +91,16 @@ func VerifyOpening(v *VerifierInputs) error {
 		return err
 	}
 
-	if err := v.checkColLinCombination(); err != nil {
+	if err := v.AlgebraicCheckInputs.CheckColLinCombination(numCommitments); err != nil {
 		return err
 	}
 
-	if err := v.checkStatement(); err != nil {
+	if err := v.AlgebraicCheckInputs.CheckStatement(); err != nil {
 		return err
 	}
 
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// checkColLinCombination checks that the inner-product of the opened column
-// (concatenated together) matches the requested positions of the
-// RowLinearCombination.
-func (v *VerifierInputs) checkColLinCombination() (err error) {
-
-	linearCombination := v.OpeningProof.LinearCombination
-
-	for j, selectedColID := range v.EntryList {
-		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []field.Element{}
-
-		for i := range v.MerkleRoots {
-			// Entries of the selected columns #j contained in the commitment #i.
-			selectedSubCol := v.OpeningProof.Columns[i][j]
-			fullCol = append(fullCol, selectedSubCol...)
-		}
-
-		// Check the linear combination is consistent with the opened column
-		y := gnarkVortex.EvalBasePolyHorner(fullCol, v.RandomCoin)
-
-		if selectedColID > linearCombination.Len() {
-			return fmt.Errorf("entry overflows the size of the linear combination")
-		}
-
-		if y != linearCombination.GetExt(selectedColID) {
-			other := linearCombination.GetExt(selectedColID)
-			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
-		}
-	}
-
-	return nil
-}
-
-// checkStatement checks that the row linear combination is consistent
-// with the statement. The function returns an error if the check fails.
-func (v *VerifierInputs) checkStatement() (err error) {
-
-	smartvectors_mixed.IsBase(v.OpeningProof.LinearCombination)
-
-	// Check the consistency of Ys and proof.Linear combination
-	Yjoined := utils.Join(v.Ys...)
-	alphaY := smartvectors.EvaluateFextPolyLagrange(v.OpeningProof.LinearCombination, v.X)
-	alphaYPrime := gnarkVortex.EvalFextPolyHorner(Yjoined, v.RandomCoin)
-
-	if alphaY != alphaYPrime {
-		return fmt.Errorf("RowLincomb and Y are inconsistent")
 	}
 
 	return nil
@@ -184,15 +124,15 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 	}
 
 	for i := 0; i < len(v.MerkleRoots); i++ {
-		for j := 0; j < len(v.EntryList); j++ {
+		for j := 0; j < len(v.AlgebraicCheckInputs.EntryList); j++ {
 
 			var (
 				// Selected columns #j contained in the commitment #i.
 				selectedSubCol = v.OpeningProof.Columns[i][j]
 				leaf           types.Bytes32
-				entry          = v.EntryList[j]
+				entry          = v.AlgebraicCheckInputs.EntryList[j]
 				root           = v.MerkleRoots[i]
-				mProof         = v.OpeningProof.MerkleProofs[i][j]
+				mProof         = v.MerkleProofs[i][j]
 			)
 
 			if !v.IsSISReplacedByPoseidon2[i] {

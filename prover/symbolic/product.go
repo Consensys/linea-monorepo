@@ -162,7 +162,7 @@ func (prod Product) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.
 
 	for i, input := range inputs {
 		term := gnarkutil.Exp(api, input, prod.Exponents[i])
-		res = *apiGen.Mul(&res, &term)
+		res = apiGen.Mul(res, term)
 	}
 
 	return res

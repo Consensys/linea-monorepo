@@ -37,7 +37,9 @@ func AllocateCircuitVariablesWithMerkleTree(
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32) {
+	roots []types.Bytes32,
+	merkleProofs [][]smt_bls12377.Proof,
+) {
 
 	verifyCircuit.Proof.LinearCombination = make([]gnarkfext.E4Gen, proof.LinearCombination.Len())
 
@@ -49,11 +51,11 @@ func AllocateCircuitVariablesWithMerkleTree(
 		}
 	}
 
-	verifyCircuit.Proof.MerkleProofs = make([][]smt_bls12377.GnarkProof, len(proof.MerkleProofs))
-	for i := 0; i < len(proof.MerkleProofs); i++ {
-		verifyCircuit.Proof.MerkleProofs[i] = make([]smt_bls12377.GnarkProof, len(proof.MerkleProofs[i]))
-		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]frontend.Variable, len(proof.MerkleProofs[i][j].Siblings))
+	verifyCircuit.Proof.MerkleProofs = make([][]smt_bls12377.GnarkProof, len(merkleProofs))
+	for i := 0; i < len(merkleProofs); i++ {
+		verifyCircuit.Proof.MerkleProofs[i] = make([]smt_bls12377.GnarkProof, len(merkleProofs[i]))
+		for j := 0; j < len(merkleProofs[i]); j++ {
+			verifyCircuit.Proof.MerkleProofs[i][j].Siblings = make([]frontend.Variable, len(merkleProofs[i][j].Siblings))
 		}
 	}
 
@@ -74,7 +76,9 @@ func AssignCicuitVariablesWithMerkleTree(
 	proof OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
-	roots []types.Bytes32) {
+	roots []types.Bytes32,
+	merkleProofs [][]smt_bls12377.Proof,
+) {
 
 	frLinComb := make([]fext.Element, proof.LinearCombination.Len())
 	proof.LinearCombination.WriteInSliceExt(frLinComb)
@@ -91,11 +95,11 @@ func AssignCicuitVariablesWithMerkleTree(
 	}
 
 	var buf fr.Element
-	for i := 0; i < len(proof.MerkleProofs); i++ {
-		for j := 0; j < len(proof.MerkleProofs[i]); j++ {
-			verifyCircuit.Proof.MerkleProofs[i][j].Path = proof.MerkleProofs[i][j].Path
-			for k := 0; k < len(proof.MerkleProofs[i][j].Siblings); k++ {
-				buf.SetBytes(proof.MerkleProofs[i][j].Siblings[k][:])
+	for i := 0; i < len(merkleProofs); i++ {
+		for j := 0; j < len(merkleProofs[i]); j++ {
+			verifyCircuit.Proof.MerkleProofs[i][j].Path = merkleProofs[i][j].Path
+			for k := 0; k < len(merkleProofs[i][j].Siblings); k++ {
+				buf.SetBytes(merkleProofs[i][j].Siblings[k][:])
 				verifyCircuit.Proof.MerkleProofs[i][j].Siblings[k] = buf.String()
 			}
 		}
