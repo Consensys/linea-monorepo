@@ -72,12 +72,12 @@ func setDefaultPaths() {
 
 func setDefaultExecLimitlessParams() {
 	viper.SetDefault("exec_limitless.preload_assets", true)
-	viper.SetDefault("exec_limitless.shared_failure_dir", "/tmp/exec-limitless/failure")
-	viper.SetDefault("exec_limitless.metadata_dir", "/tmp/exec-limitless/metadata")
-	viper.SetDefault("exec_limitless.witness_dir", "/tmp/exec-limitless/witness")
-	viper.SetDefault("exec_limitless.subproofs_dir", "/tmp/exec-limitless/subproofs")
-	viper.SetDefault("exec_limitless.shared_rnd_dir", "/tmp/exec-limitless/commit")
-	viper.SetDefault("exec_limitless.timeout_seconds", 4800)
+	viper.SetDefault("exec_limitless.shared_failure_dir", "/shared/tmp/exec-limitless/failure")
+	viper.SetDefault("exec_limitless.metadata_dir", "/shared/tmp/exec-limitless/metadata")
+	viper.SetDefault("exec_limitless.witness_dir", "/shared/tmp/exec-limitless/witness")
+	viper.SetDefault("exec_limitless.subproofs_dir", "/shared/tmp/exec-limitless/subproofs")
+	viper.SetDefault("exec_limitless.shared_rnd_dir", "/shared/tmp/exec-limitless/commit")
+	viper.SetDefault("exec_limitless.timeout_seconds", 5400)
 }
 
 func setDefaultDebugFlags() {
