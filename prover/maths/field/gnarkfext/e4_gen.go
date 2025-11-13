@@ -3,7 +3,9 @@ package gnarkfext
 import (
 	"math/big"
 
+	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
@@ -234,7 +236,7 @@ func (ext4 *Ext4) Select(b zk.WrappedVariable, r1, r2 *E4Gen) *E4Gen {
 // Inverse Element elmts
 func (ext4 *Ext4) Inverse(e1 *E4Gen) *E4Gen {
 
-	invE4 := inverseE4Hint(ext4.apiGen.Type())
+	invE4 := inverseE4Hint(ext4.ApiGen.Type())
 
 	res, err := ext4.mixedAPI.NewHint(invE4, 4, e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1)
 	if err != nil {
@@ -253,7 +255,7 @@ func (ext4 *Ext4) Inverse(e1 *E4Gen) *E4Gen {
 // Div Element elmts
 func (ext4 *Ext4) Div(e1, e2 *E4Gen) *E4Gen {
 
-	divE4 := divE4Hint(ext4.apiGen.Type())
+	divE4 := divE4Hint(ext4.ApiGen.Type())
 
 	res, err := ext4.mixedAPI.NewHint(
 		divE4, 4,
@@ -299,11 +301,57 @@ func (ext4 *Ext4) Exp(x *E4Gen, n *big.Int) *E4Gen {
 
 // TODO@yao: remove it after debugging and recover NativeApi --> nativeApi
 func (ext4 *Ext4) Println(a ...E4Gen) {
-	if ext4.apiGen.Type() == zk.Native {
+	if ext4.ApiGen.Type() == zk.Native {
 		for i := 0; i < len(a); i++ {
-			ext4.apiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.AsNative(), a[i].B0.A1.AsNative(), a[i].B1.A0.AsNative(), a[i].B1.A1.AsNative())
+			ext4.ApiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.AsNative(), a[i].B0.A1.AsNative(), a[i].B1.A0.AsNative(), a[i].B1.A1.AsNative())
 		}
 	} else {
 		panic("not implemented for emulated")
+	}
+}
+
+func (ext4 *Ext4) NewHint(f solver.Hint, nbOutputs int, inputs ...E4Gen) ([]E4Gen, error) {
+
+	if ext4.ApiGen.Type() == zk.Native {
+		_inputs := make([]frontend.Variable, 4*len(inputs))
+		for i, r := range inputs {
+			_inputs[4*i] = r.B0.A0.AsNative()
+			_inputs[4*i+1] = r.B0.A1.AsNative()
+			_inputs[4*i+2] = r.B1.A0.AsNative()
+			_inputs[4*i+3] = r.B1.A1.AsNative()
+		}
+		_r, err := ext4.ApiGen.NativeApi.NewHint(f, 4*nbOutputs, _inputs...)
+
+		if err != nil {
+			return nil, err
+		}
+		res := make([]E4Gen, nbOutputs)
+		for i := range res {
+			res[i] = E4Gen{
+				B0: E2Gen{A0: zk.WrappedVariable{V: _r[4*i]}, A1: zk.WrappedVariable{V: _r[4*i+1]}},
+				B1: E2Gen{A0: zk.WrappedVariable{V: _r[4*i+2]}, A1: zk.WrappedVariable{V: _r[4*i+3]}},
+			}
+		}
+		return res, nil
+	} else {
+		_inputs := make([]*emulated.Element[emulated.KoalaBear], 4*len(inputs))
+		for i, r := range inputs {
+			_inputs[4*i] = r.B0.A0.AsEmulated()
+			_inputs[4*i+1] = r.B0.A1.AsEmulated()
+			_inputs[4*i+2] = r.B1.A0.AsEmulated()
+			_inputs[4*i+3] = r.B1.A1.AsEmulated()
+		}
+		_r, err := ext4.ApiGen.EmulatedApi.NewHint(f, 4*nbOutputs, _inputs...)
+		if err != nil {
+			return nil, err
+		}
+		res := make([]E4Gen, nbOutputs)
+		for i := range res {
+			res[i] = E4Gen{
+				B0: E2Gen{A0: zk.WrappedVariable{EVpointer: _r[4*i]}, A1: zk.WrappedVariable{EVpointer: _r[4*i+1]}},
+				B1: E2Gen{A0: zk.WrappedVariable{EVpointer: _r[4*i+2]}, A1: zk.WrappedVariable{EVpointer: _r[4*i+3]}},
+			}
+		}
+		return res, nil
 	}
 }

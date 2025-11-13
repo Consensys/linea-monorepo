@@ -48,19 +48,32 @@ func fftInverseEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error 
 // fftInverse hint for the inverse FFT on koalabear
 func fftInverseNative(_ *big.Int, inputs []*big.Int, results []*big.Int) error {
 
-	// TODO store this somewhere (global variable or something, shouldn't regenerate it at each call)
-	d := fft.NewDomain(uint64(len(inputs)), fft.WithoutPrecompute())
-
-	v := make([]field.Element, len(inputs))
-	for i := 0; i < len(inputs); i++ {
-		v[i].SetBigInt(inputs[i])
+	if len(inputs)%4 != 0 || len(results) != len(inputs) {
+		return fmt.Errorf("inputs length must be a multiple of 4 and results length must match inputs length")
 	}
-	d.FFTInverse(v, fft.DIF)
+	// TODO store this somewhere (global variable or something, shouldn't regenerate it at each call)
+	d := fft.NewDomain(uint64(len(inputs)/4), fft.WithoutPrecompute())
+
+	v := make([]fext.Element, len(inputs)/4)
+	for i := 0; i < len(inputs)/4; i++ {
+		v[i].B0.A0.SetBigInt(inputs[4*i])
+		v[i].B0.A1.SetBigInt(inputs[4*i+1])
+		v[i].B1.A0.SetBigInt(inputs[4*i+2])
+		v[i].B1.A1.SetBigInt(inputs[4*i+3])
+	}
+	d.FFTInverseExt(v, fft.DIF)
 	fft.BitReverse(v)
 
-	for i := 0; i < len(results); i++ {
-		results[i] = big.NewInt(0)
-		v[i].BigInt(results[i])
+	for i := 0; i < len(results)/4; i++ {
+		results[4*i] = big.NewInt(0)
+		results[4*i+1] = big.NewInt(0)
+		results[4*i+2] = big.NewInt(0)
+		results[4*i+3] = big.NewInt(0)
+
+		v[i].B0.A0.BigInt(results[4*i])
+		v[i].B0.A1.BigInt(results[4*i+1])
+		v[i].B1.A0.BigInt(results[4*i+2])
+		v[i].B1.A1.BigInt(results[4*i+3])
 	}
 
 	return nil
@@ -84,56 +97,22 @@ func fromPtr(src []*zk.WrappedVariable) []zk.WrappedVariable {
 
 // computes fft^-1(p) where the fft is done on <generator>, a set of size cardinality.
 // It is assumed that p is correctly sized.
-func FFTInverse(api frontend.API, p []zk.WrappedVariable, genInv field.Element, cardinality uint64) ([]zk.WrappedVariable, error) {
-
-	var cardInverse field.Element
-	cardInverse.SetUint64(cardinality).Inverse(&cardInverse)
-
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		return []zk.WrappedVariable{}, err
-	}
-
-	// res of the fft inverse
-	res, err := apiGen.NewHint(fftInverseHint(apiGen.Type()), len(p), p...)
-	if err != nil {
-		return nil, err
-	}
-	// probabilistically check the result of the FFT
-	// multicommit.WithCommitment(
-	// 	api,
-	// 	func(api frontend.API, x zk.WrappedVariable) error {
-	// 		// evaluation canonical
-	// 		ec := gnarkEvalCanonical(api, res, x)
-
-	// 		// evaluation Lagrange
-	// 		var gen field.Element
-	// 		gen.Inverse(&genInv)
-	// 		lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
-	// 		var el zk.WrappedVariable
-	// 		el = 0
-	// 		for i := 0; i < len(p); i++ {
-	// 			tmp := api.Mul(p[i], lagranges[i])
-	// 			el = api.Add(el, tmp)
-	// 		}
-
-	// 		api.AssertIsEqual(ec, el)
-	// 		return nil
-	// 	},
-	// 	p...,
-	// )
-
-	return res, nil
-}
-
-// computes fft^-1(p) where the fft is done on <generator>, a set of size cardinality.
-// It is assumed that p is correctly sized.
 func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, cardinality uint64) ([]gnarkfext.E4Gen, error) {
 
 	var cardInverse field.Element
 	cardInverse.SetUint64(cardinality).Inverse(&cardInverse)
 
-	_, err := gnarkfext.NewExt4(api)
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return []gnarkfext.E4Gen{}, err
+	}
+
+	res, err := ext4.NewHint(fftInverseHint(ext4.ApiGen.Type()), len(p), p...)
+
+	if err != nil {
+		return nil, err
+	}
+
 	// if err != nil {
 	// 	return []gnarkfext.E4Gen{}, err
 	// }
@@ -167,9 +146,8 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 	// 	p...,
 	// )
 
-	// return res, nil
+	return res, nil
 
-	return []gnarkfext.E4Gen{}, err
 }
 
 // gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
@@ -274,36 +252,6 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 	return res
 }
 
-// Checks that p is a polynomial of degree < cardinality/rate
-// * p polynomial of size cardinality
-// * genInv inverse of the generator of the subgroup of size cardinality
-// * rate of the RS code
-func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear.Element, cardinality, rate uint64) error {
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
-
-	if uint64(len(p)) != cardinality {
-		return ErrPNotOfSizeCardinality
-	}
-
-	// get the canonical form of p
-	pCanonical, err := FFTInverse(api, p, genInv, cardinality)
-	if err != nil {
-		return err
-	}
-
-	// check that is of degree < cardinality/rate
-	degree := (cardinality - (cardinality % rate)) / rate
-
-	for i := degree; i < cardinality; i++ {
-		apiGen.AssertIsEqual(pCanonical[i], zk.ValueOf(0))
-	}
-
-	return nil
-}
-
 func assertIsCodeWordExt(api frontend.API, p []gnarkfext.E4Gen, genInv koalabear.Element, cardinality, rate uint64) error {
 	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
@@ -319,11 +267,11 @@ func assertIsCodeWordExt(api frontend.API, p []gnarkfext.E4Gen, genInv koalabear
 	if err != nil {
 		return err
 	}
+
 	// check that is of degree < cardinality/rate
 	degree := (cardinality - (cardinality % rate)) / rate
 	for i := degree; i < cardinality; i++ {
 		zeroValue := gnarkfext.NewE4Gen(fext.Zero())
-		ext4.Println(pCanonical[i])
 		ext4.AssertIsEqual(&pCanonical[i], &zeroValue)
 	}
 
