@@ -9,7 +9,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	common_coalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
+	common_koalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
 const (
@@ -22,11 +22,11 @@ const (
 // theta module, responsible for updating the state in the theta step of keccakf
 type theta struct {
 	// state before applying the theta step, in base clean 4.
-	stateCurr common_coalabear.State
+	stateCurr common_koalabear.State
 	// state after applying the theta step, in base clean 4.
-	stateInternalDirty, stateInternalClean common_coalabear.State
+	stateInternalDirty, stateInternalClean common_koalabear.State
 	// state after applying the theta step, in bits.
-	stateNext common_coalabear.StateInBits
+	stateNext common_koalabear.StateInBits
 	// Intermediate columns, after each 3 additions
 	cMiddleDirty, cFinalDirty, cMiddleClean, cFinalClean, ccDirty, ccCleaned [5][8]ifaces.Column
 	// msb of cFinal used for the rotation and computing cc.
@@ -57,8 +57,8 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 	// size of the columns to declare
 	colSize := numRowsKeccakSmallField(numKeccakf)
 	// declare the new state
-	theta.stateInternalClean = common_coalabear.State{}
-	theta.stateNext = common_coalabear.StateInBits{}
+	theta.stateInternalClean = common_koalabear.State{}
+	theta.stateNext = common_koalabear.StateInBits{}
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
