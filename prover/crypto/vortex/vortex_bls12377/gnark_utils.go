@@ -133,16 +133,13 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 	var cardInverse field.Element
 	cardInverse.SetUint64(cardinality).Inverse(&cardInverse)
 
-	_, err := gnarkfext.NewExt4(api)
-	// if err != nil {
-	// 	return []gnarkfext.E4Gen{}, err
-	// }
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return []gnarkfext.E4Gen{}, err
+	}
 
-	// res of the fft inverse
-	// res, err := apiGen.NewHint(fftInverseHint(apiGen.Type()), len(p), p...)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	res := ext4.FFTInverseExt(fftInverseHint(ext4.ApiGen.Type()), p)
+
 	// probabilistically check the result of the FFT
 	// multicommit.WithCommitment(
 	// 	api,
@@ -169,7 +166,7 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 
 	// return res, nil
 
-	return []gnarkfext.E4Gen{}, err
+	return res, err
 }
 
 // gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
@@ -383,15 +380,15 @@ func GnarkVerifyCommon(
 	}
 
 	// check the linear combination is a codeword
-	// api.Compiler().Defer(func(api frontend.API) error {
-	// 	return assertIsCodeWordExt(
-	// 		api,
-	// 		proof.LinearCombination,
-	// 		proof.RsDomain.GeneratorInv,
-	// 		proof.RsDomain.Cardinality,
-	// 		proof.Rate,
-	// 	)
-	// })
+	api.Compiler().Defer(func(api frontend.API) error {
+		return assertIsCodeWordExt(
+			api,
+			proof.LinearCombination,
+			proof.RsDomain.GeneratorInv,
+			proof.RsDomain.Cardinality,
+			proof.Rate,
+		)
+	})
 
 	// Check the consistency of Ys and proof.Linearcombination
 	yjoined := utils.Join(ys...)

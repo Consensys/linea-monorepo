@@ -3,6 +3,7 @@ package gnarkfext
 import (
 	"math/big"
 
+	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -231,10 +232,31 @@ func (ext4 *Ext4) Select(b zk.WrappedVariable, r1, r2 *E4Gen) *E4Gen {
 	}
 }
 
+func (ext4 *Ext4) FFTInverseExt(f solver.Hint, p []E4Gen) []E4Gen {
+
+	pExt := make([]zk.WrappedVariable, 4*len(p))
+	for i := 0; i < len(p); i++ {
+		pExt[4*i] = p[i].B0.A0
+		pExt[4*i+1] = p[i].B0.A1
+		pExt[4*i+2] = p[i].B1.A0
+		pExt[4*i+3] = p[i].B1.A1
+	}
+	res, err := ext4.mixedAPI.NewHint(f, 4*len(p), pExt...)
+	if err != nil {
+		panic(err)
+	}
+
+	resExt := make([]E4Gen, len(p))
+	for i := 0; i < len(resExt); i++ {
+		resExt[i] = *ext4.assign(res[4*i : 4*i+4])
+	}
+	return resExt
+}
+
 // Inverse Element elmts
 func (ext4 *Ext4) Inverse(e1 *E4Gen) *E4Gen {
 
-	invE4 := inverseE4Hint(ext4.apiGen.Type())
+	invE4 := inverseE4Hint(ext4.ApiGen.Type())
 
 	res, err := ext4.mixedAPI.NewHint(invE4, 4, e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1)
 	if err != nil {
@@ -253,7 +275,7 @@ func (ext4 *Ext4) Inverse(e1 *E4Gen) *E4Gen {
 // Div Element elmts
 func (ext4 *Ext4) Div(e1, e2 *E4Gen) *E4Gen {
 
-	divE4 := divE4Hint(ext4.apiGen.Type())
+	divE4 := divE4Hint(ext4.ApiGen.Type())
 
 	res, err := ext4.mixedAPI.NewHint(
 		divE4, 4,
@@ -299,9 +321,9 @@ func (ext4 *Ext4) Exp(x *E4Gen, n *big.Int) *E4Gen {
 
 // TODO@yao: remove it after debugging and recover NativeApi --> nativeApi
 func (ext4 *Ext4) Println(a ...E4Gen) {
-	if ext4.apiGen.Type() == zk.Native {
+	if ext4.ApiGen.Type() == zk.Native {
 		for i := 0; i < len(a); i++ {
-			ext4.apiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.AsNative(), a[i].B0.A1.AsNative(), a[i].B1.A0.AsNative(), a[i].B1.A1.AsNative())
+			ext4.ApiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.AsNative(), a[i].B0.A1.AsNative(), a[i].B1.A0.AsNative(), a[i].B1.A1.AsNative())
 		}
 	} else {
 		panic("not implemented for emulated")
