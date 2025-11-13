@@ -113,31 +113,27 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 		return nil, err
 	}
 
-	// if err != nil {
-	// 	return []gnarkfext.E4Gen{}, err
-	// }
-
-	// res of the fft inverse
-	// res, err := apiGen.NewHint(fftInverseHint(apiGen.Type()), len(p), p...)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	// probabilistically check the result of the FFT
+
+	//TODO@yao, how to fix this test with gnarkfext.E4Gen?
 	// multicommit.WithCommitment(
 	// 	api,
-	// 	func(api frontend.API, x zk.WrappedVariable) error {
+	// 	func(api frontend.API, x gnarkfext.E4Gen) error {
+
+	// 		ext4, _ := gnarkfext.NewExt4(api)
+
 	// 		// evaluation canonical
-	// 		ec := gnarkEvalCanonical(api, res, x)
+	// 		ec := gnarkEvalCanonicalExt(api, res, x)
 
 	// 		// evaluation Lagrange
 	// 		var gen field.Element
 	// 		gen.Inverse(&genInv)
 	// 		lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
-	// 		var el zk.WrappedVariable
-	// 		el = 0
+	// 		var el gnarkfext.E4Gen
+	// 		el = gnarkfext.E4Gen{}
 	// 		for i := 0; i < len(p); i++ {
-	// 			tmp := api.Mul(p[i], lagranges[i])
-	// 			el = api.Add(el, tmp)
+	// 			tmp := ext4.Mul(&p[i], &lagranges[i])
+	// 			el = *ext4.Add(&el, tmp)
 	// 		}
 
 	// 		api.AssertIsEqual(ec, el)
