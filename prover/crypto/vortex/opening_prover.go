@@ -22,13 +22,6 @@ type OpeningProof struct {
 
 	// Linear combination of the Reed-Solomon encoded polynomials to open.
 	LinearCombination smartvectors.SmartVector
-
-	// MerkleProofs store a list of [smt.Proof] (Merkle proofs) allegedly
-	// attesting the membership of the columns in the commitment tree.
-	//
-	// MerkleProofs[i][j] corresponds to the Merkle proof attesting the j-th
-	// column of the i-th commitment root hash.
-	MerkleProofs [][]smt_koalabear.Proof
 }
 
 // Open initiates the construction of a Vortex proof by returning the
@@ -129,7 +122,7 @@ func (proof *OpeningProof) Complete(
 	entryList []int,
 	committedMatrices []EncodedMatrix,
 	trees []*smt_koalabear.Tree,
-) {
+) [][]smt_koalabear.Proof {
 
 	if len(entryList) == 0 {
 		utils.Panic("empty entry list")
@@ -166,6 +159,7 @@ func (proof *OpeningProof) Complete(
 		}
 	}
 
-	proof.MerkleProofs = proofs
 	proof.Columns = selectedColumns
+	return proofs
+
 }

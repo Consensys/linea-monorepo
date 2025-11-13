@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -31,7 +31,7 @@ type LocalOpeningParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (lop LocalOpeningParams) UpdateFS(fs *poseidon2_koalabear.Hasher) {
+func (lop LocalOpeningParams) UpdateFS(fs *poseidon2_koalabear.MDHasher) {
 	if lop.IsBase {
 		fiatshamir.Update(fs, lop.BaseY)
 	} else {

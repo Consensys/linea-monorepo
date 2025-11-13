@@ -30,10 +30,27 @@ var (
 // In our settings, the caller is a function in a framework managing the random
 // coins as Vortex is used a sub-protocol of a larger protocol.
 type VerifierInputs struct {
-	// Params are the public parameters
-	Params Params
+	AlgebraicCheckInputs
+
 	// MerkleRoots are the commitment to verify the opening for
 	MerkleRoots []field.Octuplet
+
+	// MerkleProofs store a list of [smt.Proof] (Merkle proofs) allegedly
+	// attesting the membership of the columns in the commitment tree.
+	//
+	// MerkleProofs[i][j] corresponds to the Merkle proof attesting the j-th
+	// column of the i-th commitment root hash.
+	MerkleProofs [][]smt_koalabear.Proof
+
+	// Flag indicating if the SIS hash is replaced for the particular round
+	// the default behavior is to use the SIS hash function along with the
+	// Poseidon2 hash function
+	IsSISReplacedByPoseidon2 []bool
+}
+
+type AlgebraicCheckInputs struct {
+	// Params are the public parameters
+	Koalabear_Params Params
 	// X is the univariate evaluation point
 	X fext.Element
 	// Ys are the alleged evaluation at point X
@@ -45,10 +62,6 @@ type VerifierInputs struct {
 	RandomCoin fext.Element
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
-	// Flag indicating if the SIS hash is replaced for the particular round
-	// the default behavior is to use the SIS hash function along with the
-	// Poseidon2 hash function
-	IsSISReplacedByPoseidon2 []bool
 }
 
 // VerifyOpening verifies a Vortex opening proof, see [VerifierInputs] for
@@ -62,6 +75,7 @@ func VerifyOpening(v *VerifierInputs) error {
 		numCommitments = len(v.MerkleRoots)
 		numEntries     = len(v.EntryList)
 		proof          = v.OpeningProof
+		merkleProofs   = v.MerkleProofs
 	)
 
 	if numCommitments == 0 {
@@ -70,17 +84,17 @@ func VerifyOpening(v *VerifierInputs) error {
 
 	if len(v.Ys) != numCommitments ||
 		len(proof.Columns) != numCommitments ||
-		len(proof.MerkleProofs) != numCommitments ||
-		proof.LinearCombination.Len() != v.Params.NumEncodedCols() {
+		len(merkleProofs) != numCommitments ||
+		proof.LinearCombination.Len() != v.Koalabear_Params.NumEncodedCols() {
 		return ErrInvalidVerifierInputs
 	}
 
 	for i := range v.MerkleRoots {
 
 		if len(proof.Columns[i]) != numEntries ||
-			len(proof.MerkleProofs[i]) != numEntries ||
+			len(merkleProofs[i]) != numEntries ||
 			len(v.Ys[i]) == 0 ||
-			len(v.Ys[i]) > v.Params.MaxNbRows {
+			len(v.Ys[i]) > v.Koalabear_Params.MaxNbRows {
 			return ErrInvalidVerifierInputs
 		}
 
@@ -92,15 +106,15 @@ func VerifyOpening(v *VerifierInputs) error {
 		}
 	}
 
-	if err := v.Params.IsCodewordExt(v.OpeningProof.LinearCombination); err != nil {
+	if err := v.Koalabear_Params.IsCodewordExt(v.OpeningProof.LinearCombination); err != nil {
 		return err
 	}
 
-	if err := v.checkColLinCombination(); err != nil {
+	if err := v.AlgebraicCheckInputs.CheckColLinCombination(numCommitments); err != nil {
 		return err
 	}
 
-	if err := v.checkStatement(); err != nil {
+	if err := v.AlgebraicCheckInputs.CheckStatement(); err != nil {
 		return err
 	}
 
@@ -113,15 +127,18 @@ func VerifyOpening(v *VerifierInputs) error {
 // checkColLinCombination checks that the inner-product of the opened column
 // (concatenated together) matches the requested positions of the
 // RowLinearCombination.
-func (v *VerifierInputs) checkColLinCombination() (err error) {
+
+// CheckColLinCombination checks that the inner-product of the opened column
+// (concatenated together) matches the requested positions of the
+// RowLinearCombination.
+func (v *AlgebraicCheckInputs) CheckColLinCombination(numCommitments int) (err error) {
 
 	linearCombination := v.OpeningProof.LinearCombination
-
 	for j, selectedColID := range v.EntryList {
 		// Will carry the concatenation of the columns for the same entry j
 		fullCol := []field.Element{}
 
-		for i := range v.MerkleRoots {
+		for i := range numCommitments {
 			// Entries of the selected columns #j contained in the commitment #i.
 			selectedSubCol := v.OpeningProof.Columns[i][j]
 			fullCol = append(fullCol, selectedSubCol...)
@@ -143,10 +160,9 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 	return nil
 }
 
-// checkStatement checks that the row linear combination is consistent
+// CheckStatement checks that the row linear combination is consistent
 // with the statement. The function returns an error if the check fails.
-func (v *VerifierInputs) checkStatement() (err error) {
-
+func (v *AlgebraicCheckInputs) CheckStatement() (err error) {
 	smartvectors_mixed.IsBase(v.OpeningProof.LinearCombination)
 
 	// Check the consistency of Ys and proof.Linear combination
@@ -168,7 +184,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 	var (
 		mTreeHashConfig = &smt_koalabear.Config{
-			Depth: utils.Log2Ceil(v.Params.NumEncodedCols()),
+			Depth: utils.Log2Ceil(v.Koalabear_Params.NumEncodedCols()),
 		}
 	)
 
@@ -186,16 +202,16 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 				leaf           field.Octuplet
 				entry          = v.EntryList[j]
 				root           = v.MerkleRoots[i]
-				mProof         = v.OpeningProof.MerkleProofs[i][j]
+				mProof         = v.MerkleProofs[i][j]
 			)
 
 			if !v.IsSISReplacedByPoseidon2[i] {
 				var (
 					// SIS hash of the current sub-column
-					sisHash = v.Params.Key.Hash(selectedSubCol)
+					sisHash = v.Koalabear_Params.Key.Hash(selectedSubCol)
 					// hasher used to hash the SIS hash (and thus not a hasher
 					// based on SIS)
-					hasher = v.Params.LeafHashFunc()
+					hasher = v.Koalabear_Params.LeafHashFunc()
 				)
 				hasher.Reset()
 				hasher.WriteElements(sisHash)
@@ -203,7 +219,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			} else {
 				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
 				// (to be used for in place of SIS hash) are the same i.e. the Poseidon2 hash function
-				hasher := v.Params.LeafHashFunc()
+				hasher := v.Koalabear_Params.LeafHashFunc()
 				hasher.Reset()
 				hasher.WriteElements(selectedSubCol)
 				leaf = hasher.SumElement()

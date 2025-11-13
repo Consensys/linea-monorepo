@@ -35,7 +35,7 @@ import (
 var rng = rand.New(utils.NewRandSource(0))
 
 // ------------------------------------------------------------
-// test EncodeWVsToFV and Encode8KoalabearToBigInt
+// test Encode and Hash
 type EncodeAndHashTestCircuit struct {
 	Values [8]zk.WrappedVariable
 	Result frontend.Variable
@@ -85,18 +85,6 @@ func gnarkEncodeAndHashCircuitWitness() (*EncodeAndHashTestCircuit, *EncodeAndHa
 
 }
 func TestEncodeAndHashCircuit(t *testing.T) {
-
-	// {
-	// 	circuit, witness := gnarkEncodeAndHashCircuitWitness()
-
-	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	// 	assert.NoError(t, err)
-
-	// 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
 
 	{
 		circuit, witness := gnarkEncodeAndHashCircuitWitness()
@@ -519,12 +507,13 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	yLists [][]fext.Element,
 	entryList []int,
 	roots []types.Bytes32,
+	merkleProofs [][]smt_bls12377.Proof,
 ) {
 	x = fext.RandomElement()
 	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
 	blsParams := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, smt_bls12377.Poseidon2, smt_bls12377.Poseidon2)
-	koalabearParams := vortex.NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
+	koalabearParams := vortex.NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
 	yLists = make([][]fext.Element, nCommitments)
@@ -563,29 +552,30 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	}
 
 	// Generate the proof
-	if proof == nil {
-		proof = new(OpeningProof)
-	}
+	proof = &OpeningProof{}
 	proof.LinearCombination = koalabearParams.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
 
-	proof.Complete(entryList, committedMatrices, trees)
+	merkleProofs = proof.Complete(entryList, committedMatrices, trees)
 
 	// Check the proof
 	err := VerifyOpening(&VerifierInputs{
-		Koalabear_Params:         *koalabearParams,
+		AlgebraicCheckInputs: vortex.AlgebraicCheckInputs{
+			Koalabear_Params: *koalabearParams,
+			X:                x,
+			Ys:               yLists,
+			OpeningProof:     vortex.OpeningProof(*proof),
+			RandomCoin:       randomCoin,
+			EntryList:        entryList,
+		},
 		BLS12_377_Params:         *blsParams,
+		MerkleProofs:             merkleProofs,
 		MerkleRoots:              roots,
-		X:                        x,
-		Ys:                       yLists,
-		OpeningProof:             *proof,
-		RandomCoin:               randomCoin,
-		EntryList:                entryList,
 		IsSISReplacedByPoseidon2: isSISReplacedByPoseidon2,
 	})
 
 	require.NoError(t, err)
 
-	return proof, randomCoin, x, yLists, entryList, roots
+	return proof, randomCoin, x, yLists, entryList, roots, merkleProofs
 }
 
 func gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t *testing.T) (*VerifyOpeningCircuitMerkleTree, *VerifyOpeningCircuitMerkleTree) {
@@ -595,7 +585,7 @@ func gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t *testing.T) (*VerifyOpe
 	nPolys := 15
 	polySize := 1 << 10
 	blowUpFactor := 2
-	proof, randomCoin, x, ys, entryList, roots := getProofVortexNCommitmentsWithMerkleNoSis(t, nCommitments, nPolys, polySize, blowUpFactor)
+	proof, randomCoin, x, ys, entryList, roots, merkleProofs := getProofVortexNCommitmentsWithMerkleNoSis(t, nCommitments, nPolys, polySize, blowUpFactor)
 
 	rsSize := blowUpFactor * polySize
 	rsDomainSize := uint64(rsSize)
@@ -603,8 +593,8 @@ func gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t *testing.T) (*VerifyOpe
 	var witness VerifyOpeningCircuitMerkleTree
 	witness.Proof.RsDomain = rsDomain
 	witness.Proof.Rate = uint64(blowUpFactor)
-	AllocateCircuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots)
-	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots)
+	AllocateCircuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots, merkleProofs)
+	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots, merkleProofs)
 	witness.RandomCoin = gnarkfext.NewE4Gen(randomCoin)
 	witness.X = gnarkfext.NewE4Gen(x)
 	witness.Params.HasherFunc = makePoseidon2Hasherfunc
@@ -618,7 +608,7 @@ func gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t *testing.T) (*VerifyOpe
 	circuit.Params.HasherFunc = makePoseidon2Hasherfunc
 	circuit.Params.NoSisHasher = makePoseidon2Hasherfunc
 
-	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, roots)
+	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, roots, merkleProofs)
 
 	return &circuit, &witness
 }
@@ -642,24 +632,7 @@ func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// {
-	// 	circuit, witness := gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t)
 
-	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-
-	// 	// solve the circuit
-	// 	twitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	err = ccs.IsSolved(twitness)
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// }
 }
 func makePoseidon2Hasherfunc(api frontend.API) (hash.FieldHasher, error) {
 

@@ -166,7 +166,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octu
 
 	res := make([]field.Octuplet, numCols)
 
-	hashers := make([]*poseidon2_koalabear.Hasher, runtime.GOMAXPROCS(0))
+	hashers := make([]*poseidon2_koalabear.MDHasher, runtime.GOMAXPROCS(0))
 
 	parallel.ExecuteThreadAware(
 		numCols,

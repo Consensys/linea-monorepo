@@ -12,7 +12,7 @@ import (
 
 // Generic hashing for object satisfying the io.WriterTo interface
 func hash[T io.WriterTo](conf *smt_koalabear.Config, m T) Bytes32 {
-	hasher := poseidon2_koalabear.Poseidon2()
+	hasher := poseidon2_koalabear.NewMDHasher()
 	m.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
 	return AsBytes32(Bytes32)

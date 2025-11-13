@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -116,11 +116,11 @@ func (g GrandProduct) Name() ifaces.QueryID {
 }
 
 // Updates a Fiat-Shamir state
-func (gp GrandProductParams) UpdateFS(fs *poseidon2_koalabear.Hasher) {
+func (gp GrandProductParams) UpdateFS(fs *poseidon2_koalabear.MDHasher) {
 	fiatshamir.Update(fs, gp.BaseY)
 }
 
-func (gp GrandProductParams) UpdateFSExt(fs *poseidon2_koalabear.Hasher) {
+func (gp GrandProductParams) UpdateFSExt(fs *poseidon2_koalabear.MDHasher) {
 	fiatshamir.UpdateExt(fs, gp.ExtY)
 }
 

@@ -141,8 +141,8 @@ func (lc LinComb) GnarkEval(api frontend.API, inputs []zk.WrappedVariable) zk.Wr
 
 	for i, input := range inputs {
 		coeff := zk.ValueOf(lc.Coeffs[i])
-		tmp := apiGen.Mul(&coeff, &input)
-		res = *apiGen.Add(&res, tmp)
+		tmp := apiGen.Mul(coeff, input)
+		res = apiGen.Add(res, tmp)
 	}
 
 	return res

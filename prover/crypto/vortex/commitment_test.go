@@ -24,7 +24,7 @@ func TestLinearCombination(t *testing.T) {
 	x := fext.NewFromInt(478, 763, 890, 123)
 	randomCoin := fext.NewFromInt(1523, 6783, 32, 789)
 
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2)
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
@@ -51,8 +51,8 @@ func TestLinearCombination(t *testing.T) {
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
-	NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2),
+	NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher),
+	NewParams(4, 1<<3, 32, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher),
 }
 
 func TestProver(t *testing.T) {
@@ -242,18 +242,21 @@ func TestProver(t *testing.T) {
 				// Generate the proof
 				proof := &OpeningProof{}
 				proof.LinearCombination = params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
-				proof.Complete(entryList[:testCase.NumOpenedColumns], committedMatrices, trees)
+				merkleProofs := proof.Complete(entryList[:testCase.NumOpenedColumns], committedMatrices, trees)
 
 				// Check the proof
 				err := VerifyOpening(
 					&VerifierInputs{
-						Params:                   *params,
+						AlgebraicCheckInputs: AlgebraicCheckInputs{
+							Koalabear_Params: *params,
+							X:                x,
+							Ys:               yLists,
+							OpeningProof:     *proof,
+							RandomCoin:       randomCoin,
+							EntryList:        entryList[:testCase.NumOpenedColumns],
+						},
 						MerkleRoots:              roots,
-						X:                        x,
-						Ys:                       yLists,
-						OpeningProof:             *proof,
-						RandomCoin:               randomCoin,
-						EntryList:                entryList[:testCase.NumOpenedColumns],
+						MerkleProofs:             merkleProofs,
 						IsSISReplacedByPoseidon2: isSisReplacedByPoseidon2,
 					})
 
@@ -273,7 +276,7 @@ func TestVerifierNegative(t *testing.T) {
 		}
 		params = []*Params{
 
-			NewParams(2, 8, 17, ringsis.StdParams, poseidon2_koalabear.Poseidon2, poseidon2_koalabear.Poseidon2),
+			NewParams(2, 8, 17, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher),
 		}
 
 		statementMutatorCorpus = []struct {
@@ -422,9 +425,9 @@ func TestVerifierNegative(t *testing.T) {
 			{
 				Explainer: "Swap two Merkle proofs",
 				Func: func(v *VerifierInputs) bool {
-					mps := v.OpeningProof.MerkleProofs
+					mps := v.MerkleProofs
 					mps[0][0], mps[0][1] = mps[0][1], mps[0][0]
-					v.OpeningProof.MerkleProofs = mps
+					v.MerkleProofs = mps
 					return true
 				},
 			},
@@ -438,7 +441,7 @@ func TestVerifierNegative(t *testing.T) {
 			{
 				Explainer: "Mess with a Merkle proof path",
 				Func: func(v *VerifierInputs) bool {
-					mps := v.OpeningProof.MerkleProofs
+					mps := v.MerkleProofs
 					mps[0][0].Path = 5
 					return true
 				},
@@ -492,16 +495,19 @@ func TestVerifierNegative(t *testing.T) {
 			// Generate the proof
 			proof := &OpeningProof{}
 			proof.LinearCombination = params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
-			proof.Complete(entryList, committedMatrices, trees)
+			merkleProofs := proof.Complete(entryList, committedMatrices, trees)
 
 			return &VerifierInputs{
-				Params:       *params,
+				AlgebraicCheckInputs: AlgebraicCheckInputs{
+					Koalabear_Params: *params,
+					X:                x,
+					Ys:               yLists,
+					OpeningProof:     *proof,
+					RandomCoin:       randomCoin,
+					EntryList:        entryList,
+				},
 				MerkleRoots:  roots,
-				X:            x,
-				Ys:           yLists,
-				OpeningProof: *proof,
-				RandomCoin:   randomCoin,
-				EntryList:    entryList,
+				MerkleProofs: merkleProofs,
 			}
 		}
 	)

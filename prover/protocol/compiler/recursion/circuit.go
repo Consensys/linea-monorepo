@@ -2,7 +2,7 @@ package recursion
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -78,7 +78,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	if !r.withoutGkr {
 		temp := gkrmimc.NewHasherFactory(api)
 		w.HasherFactory = temp
-		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
+		w.FS = fiatshamir.NewGnarkFS(api)
 	}
 
 	if r.withExternalHasher {

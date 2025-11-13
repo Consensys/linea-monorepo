@@ -1,7 +1,7 @@
 package query
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
@@ -134,37 +134,37 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	fs.UpdateExt(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	fs.Update(p.BaseY)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	fs.Update(p.Sum)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	fs.Update(p.Prod)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	fs.Update(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present field extension parameters
-func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFS) {
 	fs.UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
+func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 	fs.Update(p.FinalResult)
 
 	for _, part := range p.Parts {
