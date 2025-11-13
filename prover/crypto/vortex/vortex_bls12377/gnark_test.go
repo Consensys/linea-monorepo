@@ -507,6 +507,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	yLists [][]fext.Element,
 	entryList []int,
 	roots []types.Bytes32,
+	merkleProofs [][]smt_bls12377.Proof,
 ) {
 	x = fext.RandomElement()
 	randomCoin = fext.RandomElement()
@@ -554,25 +555,27 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	proof = &OpeningProof{}
 	proof.LinearCombination = koalabearParams.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
 
-	merkleProofs := proof.Complete(entryList, committedMatrices, trees)
+	merkleProofs = proof.Complete(entryList, committedMatrices, trees)
 
-	proof.MerkleProofs = merkleProofs
 	// Check the proof
 	err := VerifyOpening(&VerifierInputs{
-		Koalabear_Params:         *koalabearParams,
+		AlgebraicCheckInputs: AlgebraicCheckInputs{
+			Koalabear_Params: *koalabearParams,
+			X:                x,
+			Ys:               yLists,
+			OpeningProof:     *proof,
+			RandomCoin:       randomCoin,
+			EntryList:        entryList,
+		},
 		BLS12_377_Params:         *blsParams,
+		MerkleProofs:             merkleProofs,
 		MerkleRoots:              roots,
-		X:                        x,
-		Ys:                       yLists,
-		OpeningProof:             *proof,
-		RandomCoin:               randomCoin,
-		EntryList:                entryList,
 		IsSISReplacedByPoseidon2: isSISReplacedByPoseidon2,
 	})
 
 	require.NoError(t, err)
 
-	return proof, randomCoin, x, yLists, entryList, roots
+	return proof, randomCoin, x, yLists, entryList, roots, merkleProofs
 }
 
 func gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t *testing.T) (*VerifyOpeningCircuitMerkleTree, *VerifyOpeningCircuitMerkleTree) {
@@ -582,7 +585,7 @@ func gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t *testing.T) (*VerifyOpe
 	nPolys := 15
 	polySize := 1 << 10
 	blowUpFactor := 2
-	proof, randomCoin, x, ys, entryList, roots := getProofVortexNCommitmentsWithMerkleNoSis(t, nCommitments, nPolys, polySize, blowUpFactor)
+	proof, randomCoin, x, ys, entryList, roots, merkleProofs := getProofVortexNCommitmentsWithMerkleNoSis(t, nCommitments, nPolys, polySize, blowUpFactor)
 
 	rsSize := blowUpFactor * polySize
 	rsDomainSize := uint64(rsSize)
@@ -590,8 +593,8 @@ func gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t *testing.T) (*VerifyOpe
 	var witness VerifyOpeningCircuitMerkleTree
 	witness.Proof.RsDomain = rsDomain
 	witness.Proof.Rate = uint64(blowUpFactor)
-	AllocateCircuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots)
-	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots)
+	AllocateCircuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots, merkleProofs)
+	AssignCicuitVariablesWithMerkleTree(&witness, *proof, ys, entryList, roots, merkleProofs)
 	witness.RandomCoin = gnarkfext.NewE4Gen(randomCoin)
 	witness.X = gnarkfext.NewE4Gen(x)
 	witness.Params.HasherFunc = makePoseidon2Hasherfunc
@@ -605,7 +608,7 @@ func gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t *testing.T) (*VerifyOpe
 	circuit.Params.HasherFunc = makePoseidon2Hasherfunc
 	circuit.Params.NoSisHasher = makePoseidon2Hasherfunc
 
-	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, roots)
+	AllocateCircuitVariablesWithMerkleTree(&circuit, *proof, ys, entryList, roots, merkleProofs)
 
 	return &circuit, &witness
 }
