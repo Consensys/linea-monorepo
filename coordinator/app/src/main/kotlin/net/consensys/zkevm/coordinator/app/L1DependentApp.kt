@@ -19,6 +19,7 @@ import linea.web3j.Web3jBlobExtended
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.createWeb3jHttpService
 import linea.web3j.ethapi.createEthApiClient
+import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
@@ -672,14 +673,19 @@ class L1DependentApp(
   }
 
   override fun start(): CompletableFuture<Unit> {
-    return l1FinalizationMonitor.start()
-      .thenCompose { l1FinalizationHandlerForShomeiRpc.start() }
-      .thenCompose { blobSubmissionCoordinator.start() }
-      .thenCompose { aggregationFinalizationCoordinator.start() }
-      .thenCompose { messageAnchoringApp.start() }
-      .thenCompose { conflationApp.start() }
-      .thenCompose { l2NetworkGasPricingService?.start() ?: SafeFuture.completedFuture(Unit) }
-      .thenCompose { l1FeeHistoryCachingService.start() }
+    //return l1FinalizationMonitor.start()
+    //  .thenCompose { l1FinalizationHandlerForShomeiRpc.start() }
+    //  .thenCompose { blobSubmissionCoordinator.start() }
+    //  .thenCompose { aggregationFinalizationCoordinator.start() }
+    //  .thenCompose { messageAnchoringApp.start() }
+    //  .thenCompose { conflationApp.start() }
+    //  .thenCompose { l2NetworkGasPricingService?.start() ?: SafeFuture.completedFuture(Unit) }
+    //  .thenCompose { l1FeeHistoryCachingService.start() }
+    //  .thenPeek {
+    //    log.info("L1App started")
+    //  }
+
+    return conflationApp.start().toSafeFuture()
       .thenPeek {
         log.info("L1App started")
       }
@@ -688,13 +694,13 @@ class L1DependentApp(
   override fun stop(): CompletableFuture<Unit> {
     return SafeFuture.allOf(
       conflationApp.stop(),
-      l1FinalizationMonitor.stop(),
-      l1FinalizationHandlerForShomeiRpc.stop(),
-      blobSubmissionCoordinator.stop(),
-      aggregationFinalizationCoordinator.stop(),
-      messageAnchoringApp.stop(),
-      l2NetworkGasPricingService?.stop() ?: SafeFuture.completedFuture(Unit),
-      l1FeeHistoryCachingService.stop(),
+      //l1FinalizationMonitor.stop(),
+      //l1FinalizationHandlerForShomeiRpc.stop(),
+      //blobSubmissionCoordinator.stop(),
+      //aggregationFinalizationCoordinator.stop(),
+      //messageAnchoringApp.stop(),
+      //l2NetworkGasPricingService?.stop() ?: SafeFuture.completedFuture(Unit),
+      //l1FeeHistoryCachingService.stop(),
     )
       .thenApply { log.info("L1App Stopped") }
   }
