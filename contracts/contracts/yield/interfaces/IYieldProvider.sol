@@ -128,6 +128,12 @@ interface IYieldProvider {
   function unpauseStaking(address _yieldProvider) external;
 
   /**
+   * @notice Synchronizes the cached LST liability principal with the latest vendor state.
+   * @param _yieldProvider The yield provider address.
+   */
+  function syncLSTLiabilityPrincipal(address _yieldProvider) external;
+
+  /**
    * @notice Withdraws liquid staking tokens (LST) to a recipient.
    * @dev Implementations must `lstLiabilityPrincipal` state for the yield provider.
    * @param _yieldProvider The yield provider address.

@@ -420,6 +420,19 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
   }
 
   /**
+   * @notice Synchronizes the cached LST liability principal with the latest vendor state.
+   * @param _yieldProvider The yield provider address.
+   */
+  function syncLSTLiabilityPrincipal(address _yieldProvider) external onlyDelegateCall {
+    YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
+    _syncExternalLiabilitySettlement(
+      $$,
+      _getDashboard($$).liabilityShares(),
+      $$.lstLiabilityPrincipal
+    );
+  }
+
+  /**
    * @notice Withdraws liquid staking tokens (LST) to a recipient.
    * @dev Implementations must `lstLiabilityPrincipal` state for the yield provider.
    * @dev Caller emits minting event.

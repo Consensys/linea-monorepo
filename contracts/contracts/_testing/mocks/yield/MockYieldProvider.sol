@@ -14,6 +14,8 @@ contract MockYieldProvider is IYieldProvider, MockYieldProviderStorageLayout {
     return withdrawableValueReturnVal(_yieldProvider);
   }
 
+  function syncLSTLiabilityPrincipal(address _yieldProvider) external {}
+
   error FundMockWithdrawTargetFailed();
 
   // Route to MockWithdrawTarget

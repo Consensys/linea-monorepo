@@ -411,6 +411,15 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager.connect(securityCouncil).unpauseStaking(yieldProviderAddress);
       await expectRevertWithCustomError(yieldProvider, call, "UnpauseStakingForbiddenWhenOssified");
     });
+    it("Should successfully sync LST liability", async () => {
+      await yieldManager.connect(nativeYieldOperator).pauseStaking(yieldProviderAddress);
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, 1n);
+      await expect(yieldManager.connect(nativeYieldOperator).unpauseStaking(yieldProviderAddress)).to.be.reverted;
+      // Will sync to this if below current lstLiabilityPrincipal.
+      await mockSTETH.setPooledEthBySharesRoundUpReturn(0n);
+      // If it didn't sync lstLiabilityPrincipal to 0, the below will revert.
+      yieldManager.connect(nativeYieldOperator).unpauseStaking(yieldProviderAddress);
+    });
   });
 
   describe("withdraw LST", () => {

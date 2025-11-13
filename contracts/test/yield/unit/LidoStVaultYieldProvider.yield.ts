@@ -133,6 +133,51 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
     });
   });
 
+  describe("syncLSTLiabilityPrincipal", () => {
+    it("Should revert if not invoked via delegatecall", async () => {
+      await expect(yieldProvider.syncLSTLiabilityPrincipal(yieldProviderAddress)).to.be.revertedWithCustomError(
+        yieldProvider,
+        "ContextIsNotYieldManager",
+      );
+    });
+    it("If ETH value of Lido liabilityShares >= YieldManager liabilityPrincipal, no-op", async () => {
+      // Arrange
+      const liabilityPrincipalBefore = ONE_ETHER;
+      await yieldManager
+        .connect(securityCouncil)
+        .setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, liabilityPrincipalBefore);
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProvider, liabilityPrincipalBefore);
+      const liabilityShares = ONE_ETHER;
+      const ethValueOfLiabilityShares = ONE_ETHER * 2n;
+      await mockDashboard.connect(securityCouncil).setLiabilitySharesReturn(liabilityShares);
+      await mockSTETH.connect(securityCouncil).setPooledEthBySharesRoundUpReturn(ethValueOfLiabilityShares);
+
+      // Act
+      await yieldManager.connect(securityCouncil).syncLSTLiabilityPrincipal(yieldProviderAddress);
+
+      // Assert
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
+    });
+    it("If ETH value of Lido liabilityShares < YieldManager liabilityPrincipal, will decrement liabilityPrincipal to sync", async () => {
+      // Arrange
+      const liabilityPrincipalBefore = ONE_ETHER * 2n;
+      await yieldManager
+        .connect(securityCouncil)
+        .setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, liabilityPrincipalBefore);
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProvider, liabilityPrincipalBefore);
+      const liabilityShares = ONE_ETHER;
+      const ethValueOfLiabilityShares = ONE_ETHER / 2n;
+      await mockDashboard.connect(securityCouncil).setLiabilitySharesReturn(liabilityShares);
+      await mockSTETH.connect(securityCouncil).setPooledEthBySharesRoundUpReturn(ethValueOfLiabilityShares);
+
+      // Act
+      await yieldManager.connect(securityCouncil).syncLSTLiabilityPrincipal(yieldProviderAddress);
+
+      // Assert
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(ethValueOfLiabilityShares);
+    });
+  });
+
   describe("payMaximumPossibleLSTLiability", () => {
     it("If ossified, should be a no-op", async () => {
       // Arrange - setup lst liability
