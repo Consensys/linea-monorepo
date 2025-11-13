@@ -25,8 +25,8 @@ const (
 	NbLimbU256 = 16
 	// NbElemPerHash represents the number of field elements per Posseidon hash.
 	NbElemPerHash = 8
-	// NbElemU64 represents the number of field elements per 64-bit integers.
-	NbElemU64 = 16
+	// NbElemForHasingU64 represents the number of field elements per 64-bit integers.
+	NbElemForHasingU64 = 16
 )
 
 // FlattenColumn flattens multiple limb columns and an accompanying mask into single columns,
