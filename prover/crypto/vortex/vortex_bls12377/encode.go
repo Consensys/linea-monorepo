@@ -9,7 +9,7 @@ import (
 )
 
 // Function to encode 8 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
-func EncodeWVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Variable {
+func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Variable {
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		panic(err)
@@ -42,7 +42,7 @@ func EncodeWVsToFVs(api frontend.API, values []zk.WrappedVariable) []frontend.Va
 			copy(buf[:], values[:8])
 			values = values[8:]
 		}
-		res = append(res, EncodeWVsToFV(api, buf))
+		res = append(res, Encode8WVsToFV(api, buf))
 	}
 
 	return res
