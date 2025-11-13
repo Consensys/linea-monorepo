@@ -9,6 +9,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	common_coalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
 const (
@@ -21,11 +22,11 @@ const (
 // theta module, responsible for updating the state in the theta step of keccakf
 type theta struct {
 	// state before applying the theta step, in base clean 4.
-	stateCurr state
+	stateCurr common_coalabear.State
 	// state after applying the theta step, in base clean 4.
-	stateInternalDirty, stateInternalClean state
+	stateInternalDirty, stateInternalClean common_coalabear.State
 	// state after applying the theta step, in bits.
-	stateNext stateInBits
+	stateNext common_coalabear.StateInBits
 	// Intermediate columns, after each 3 additions
 	cMiddleDirty, cFinalDirty, cMiddleClean, cFinalClean, ccDirty, ccCleaned [5][8]ifaces.Column
 	// msb of cFinal used for the rotation and computing cc.
@@ -56,8 +57,8 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 	// size of the columns to declare
 	colSize := numRowsKeccakSmallField(numKeccakf)
 	// declare the new state
-	theta.stateInternalClean = state{}
-	theta.stateNext = stateInBits{}
+	theta.stateInternalClean = common_coalabear.State{}
+	theta.stateNext = common_coalabear.StateInBits{}
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
@@ -175,6 +176,7 @@ func (theta *theta) computationStepConstraints(comp *wizard.CompiledIOP) {
 		}
 	}
 	// constraint on the stateCurr, stateInternalDirty, cfClean, ccCleaned
+	// stateInternalDirty[x][y][z] = stateCurr[x][y][z] + cFinalClean[(x-1)%5][z] + ccCleaned[(x+1)%5][z]
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {

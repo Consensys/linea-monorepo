@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	common_coalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
 // decompose decomposes the non-negative integer r into digits (limbs) in the given base.
@@ -70,7 +71,7 @@ func decompose(r uint64, base int, numLimbs int, useFullLength bool) (res []uint
 // permutation function. The result is padded to the next power of 2 in order to
 // satisfy the requirements of the Wizard to have only powers of 2.
 func numRowsKeccakSmallField(numKeccakf int) int {
-	return utils.NextPowerOfTwo(numKeccakf * numRounds)
+	return utils.NextPowerOfTwo(numKeccakf * common_coalabear.NumRounds)
 }
 
 // deriveNameKeccakFSmallField derive column names
