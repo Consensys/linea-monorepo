@@ -35,7 +35,7 @@ import (
 var rng = rand.New(utils.NewRandSource(0))
 
 // ------------------------------------------------------------
-// test EncodeWVsToFV and Encode8KoalabearToBigInt
+// test Encode and Hash
 type EncodeAndHashTestCircuit struct {
 	Values [8]zk.WrappedVariable
 	Result frontend.Variable
@@ -85,18 +85,6 @@ func gnarkEncodeAndHashCircuitWitness() (*EncodeAndHashTestCircuit, *EncodeAndHa
 
 }
 func TestEncodeAndHashCircuit(t *testing.T) {
-
-	// {
-	// 	circuit, witness := gnarkEncodeAndHashCircuitWitness()
-
-	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	// 	assert.NoError(t, err)
-
-	// 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
 
 	{
 		circuit, witness := gnarkEncodeAndHashCircuitWitness()
@@ -563,9 +551,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	}
 
 	// Generate the proof
-	if proof == nil {
-		proof = new(OpeningProof)
-	}
+	proof = &OpeningProof{}
 	proof.LinearCombination = koalabearParams.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
 
 	proof.Complete(entryList, committedMatrices, trees)
@@ -642,24 +628,7 @@ func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// {
-	// 	circuit, witness := gnarkVerifyOpeningCircuitMerkleTreeCircuitWitness(t)
 
-	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-
-	// 	// solve the circuit
-	// 	twitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	err = ccs.IsSolved(twitness)
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// }
 }
 func makePoseidon2Hasherfunc(api frontend.API) (hash.FieldHasher, error) {
 

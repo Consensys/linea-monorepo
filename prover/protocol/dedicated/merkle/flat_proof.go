@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -113,36 +112,35 @@ func (p *FlatProof) Unpack(run ifaces.Runtime, pos smartvectors.SmartVector) []s
 	return proofs
 }
 
-// UnpackGnark unpacks the proof into a list of [smt.GnarkProof] objects. The
-// function also takes a list of positions to use to fill the [Path] field
-// of the proof.
-func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []zk.WrappedVariable) []smt_koalabear.GnarkProof {
+// // UnpackGnark unpacks the proof into a list of [smt.GnarkProof] objects. The
+// // function also takes a list of positions to use to fill the [Path] field
+// // of the proof.
+// func (p *FlatProof) UnpackGnark(run ifaces.GnarkRuntime, entryList []frontend.Variable) []smt_bls12377.GnarkProof {
 
-	var (
-		proofs   = make([]smt_koalabear.GnarkProof, 0)
-		nbProofs = len(entryList)
-	)
+// 	var (
+// 		proofs   = make([]smt_bls12377.GnarkProof, 0)
+// 		nbProofs = len(entryList)
+// 	)
 
-	for i := 0; i < nbProofs; i++ {
+// 	for i := 0; i < nbProofs; i++ {
 
-		newProof := smt_koalabear.GnarkProof{
-			Path: entryList[i],
+// 		newProof := smt_bls12377.GnarkProof{
+// 			Path:     entryList[i],
+// 			Siblings: make([]frontend.Variable, len(p.Nodes)),
+// 		}
 
-			Siblings: make([]zk.WrappedVariable, len(p.Nodes)),
-		}
+// 		for j := range p.Nodes[0] {
+// 			var node [blockSize]zk.WrappedVariable
 
-		for j := range p.Nodes[0] {
-			var node [blockSize]zk.WrappedVariable
+// 			for k := 0; k < blockSize; k++ {
+// 				node[k] = p.Nodes[k][j].GetColAssignmentGnarkAt(run, i)
+// 			}
+// 			// TODO @thomas fixme
+// 			// newProof.Siblings[j] = vortex.Encode8WVsToFV(api, node)
+// 		}
 
-			for k := 0; k < blockSize; k++ {
-				node[k] = p.Nodes[k][j].GetColAssignmentGnarkAt(run, i)
-			}
-			// TODO @thomas fixme
-			// newProof.Siblings[j] = node
-		}
+// 		proofs = append(proofs, newProof)
+// 	}
 
-		proofs = append(proofs, newProof)
-	}
-
-	return proofs
-}
+// 	return proofs
+// }

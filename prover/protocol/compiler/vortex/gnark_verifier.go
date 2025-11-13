@@ -4,10 +4,11 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
+	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -29,14 +30,17 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	}
 
 	// In non-Merkle mode, this is left as empty
-	roots := []zk.WrappedVariable{}
+	roots := []frontend.Variable{}
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
+		preRoots := [blockSize]zk.WrappedVariable{}
+
 		for i := 0; i < blockSize; i++ {
 			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
-			roots = append(roots, precompRootSv[0])
+			preRoots[i] = precompRootSv[0]
 		}
+		roots = append(roots, vortex.Encode8WVsToFV(api, preRoots))
 	}
 
 	// Collect all the commitments : rounds by rounds
@@ -44,10 +48,14 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue // skip the dry rounds
 		}
+		preRoots := [blockSize]zk.WrappedVariable{}
+
 		for i := 0; i < blockSize; i++ {
 			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i)) // len 1 smart vector
-			roots = append(roots, rootSv[0])
+			preRoots[i] = rootSv[0]
 		}
+		roots = append(roots, vortex.Encode8WVsToFV(api, preRoots))
+
 	}
 
 	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -56,7 +64,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	proof := vortex.GProof{}
 	proof.Rate = uint64(ctx.BlowUpFactor)
 	proof.RsDomain = fft.NewDomain(uint64(ctx.NumEncodedCols()), fft.WithCache())
-	proof.LinearCombination = vr.GetColumn(ctx.LinCombName())
+	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
 
 	// Collect the random entry List and the random coin
 	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
@@ -72,8 +80,8 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			h := vr.GetHasherFactory().NewHasher()
 			return h, nil
 		}
-		h, err := mimc.NewMiMC(api)
-		return &h, err
+		h, err := gposeidon2.NewMerkleDamgardHasher(api)
+		return h, err
 	}
 
 	packedMProofs := [8][]zk.WrappedVariable{}
@@ -81,7 +89,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
 	}
 
-	proof.MerkleProofs = ctx.unpackMerkleProofsGnark(packedMProofs, entryList)
+	proof.MerkleProofs = ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
 
 	// pass the parameters for a merkle-mode sis verification
 	params := vortex.GParams{}
@@ -103,16 +111,16 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]zk.WrappedVariable) {
+func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]gnarkfext.E4Gen) {
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.
-	ysMap := make(map[ifaces.ColID]zk.WrappedVariable, len(params.Ys))
+	ysMap := make(map[ifaces.ColID]gnarkfext.E4Gen, len(params.Ys))
 	for i := range query.Pols {
-		ysMap[query.Pols[i].GetColID()] = params.Ys[i]
+		ysMap[query.Pols[i].GetColID()] = params.ExtYs[i]
 	}
 
 	// Also add the shadow evaluations into ysMap. Since the shadow columns
@@ -125,10 +133,10 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]zk.Wr
 	})
 
 	for _, shadowID := range shadowIDs {
-		ysMap[shadowID] = zk.ValueOf(0)
+		ysMap[shadowID] = gnarkfext.E4Gen{}
 	}
 
-	ys = [][]zk.WrappedVariable{}
+	ys = [][]gnarkfext.E4Gen{}
 
 	// add ys for precomputed when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
@@ -136,13 +144,13 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]zk.Wr
 		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
 			names[i] = poly.GetColID()
 		}
-		ysPrecomputed := make([]zk.WrappedVariable, len(names))
+		ysPrecomputed := make([]gnarkfext.E4Gen, len(names))
 		for i, name := range names {
 			y, yFound := ysMap[name]
 			if !yFound {
 				utils.Panic("was not found: %v", name)
 			}
-			if y.IsEmpty() {
+			if y.B0.A0.IsEmpty() {
 				utils.Panic("found Y but it was nil: %v", name)
 			}
 			ysPrecomputed[i] = y
@@ -156,14 +164,14 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]zk.Wr
 			continue // skip the dry rounds
 		}
 		names := ctx.CommitmentsByRounds.MustGet(round)
-		ysRounds := make([]zk.WrappedVariable, len(names))
+		ysRounds := make([]gnarkfext.E4Gen, len(names))
 		for i, name := range names {
 			y, yFound := ysMap[name]
 			if !yFound {
 				utils.Panic("was not found: %v", name)
 			}
 
-			if y.IsEmpty() {
+			if y.B0.A0.IsEmpty() {
 				utils.Panic("found Y but it was nil: %v", name)
 			}
 
@@ -264,7 +272,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt_bls12377.GnarkProof) {
+func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [8][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt_bls12377.GnarkProof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -282,7 +290,7 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]zk.WrappedVariable, entryList []
 			// initialize the proof that we are parsing
 			proof := smt_bls12377.GnarkProof{
 				Path:     entryList[j],
-				Siblings: make([]zk.WrappedVariable, depth),
+				Siblings: make([]frontend.Variable, depth),
 			}
 
 			// parse the siblings accounting for the fact that we
@@ -291,10 +299,11 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv [8][]zk.WrappedVariable, entryList []
 
 				utils.Panic("gnark SMT does not currently support hashes that are arrays of field elements")
 
-				// this will fail because we are setting a []zk.WrappedVariable
-				// to a zk.WrappedVariable (??)
-				// @thomas fixme
-				proof.Siblings[depth-k-1] = sv[curr]
+				var v [blockSize]zk.WrappedVariable
+				for coord := 0; coord < blockSize; coord++ {
+					v[coord] = sv[coord][curr]
+				}
+				proof.Siblings[depth-k-1] = vortex.Encode8WVsToFV(api, v)
 				curr++
 			}
 

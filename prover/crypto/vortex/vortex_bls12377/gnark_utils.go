@@ -374,7 +374,7 @@ func GnarkVerifyCommon(
 	x gnarkfext.E4Gen,
 	ys [][]gnarkfext.E4Gen,
 	randomCoin gnarkfext.E4Gen,
-	entryList []frontend.Variable,
+	entryList []zk.WrappedVariable,
 ) ([][]frontend.Variable, error) {
 
 	ext4, err := gnarkfext.NewExt4(api)
@@ -439,7 +439,7 @@ func GnarkVerifyCommon(
 
 		// Check the linear combination is consistent with the opened column
 		y := gnarkEvalCanonical(api, fullCol, randomCoin)
-		v := Mux(api, selectedColID, proof.LinearCombination...)
+		v := Mux(api, selectedColID.V, proof.LinearCombination...)
 		ext4.AssertIsEqual(&y, &v)
 
 	}
