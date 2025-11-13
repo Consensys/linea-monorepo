@@ -30,10 +30,31 @@ type MDHasher struct {
 	buffer []field.Element
 }
 
+// Constructor for Poseidon2MDHasher
+func NewMDHasher() *MDHasher {
+	var maxVal field.Octuplet
+	for i := range maxVal {
+		maxVal[i] = field.NewFromString("-1")
+	}
+	return &MDHasher{
+		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
+		maxValue:    types.HashToBytes32(maxVal),
+		state:       field.Octuplet{},
+		buffer:      make([]field.Element, 0),
+	}
+}
+
 // Reset clears the buffer, and reset state to iv
 func (d *MDHasher) Reset() {
 	d.buffer = d.buffer[:0]
 	d.state = field.Octuplet{}
+}
+
+// SetStateOctuplet modifies the state (??)
+func (d *MDHasher) SetStateOctuplet(state field.Octuplet) {
+	for i := 0; i < 8; i++ {
+		d.state[i].Set(&state[i])
+	}
 }
 
 // WriteElements adds a slice of field elements to the running hash.
@@ -97,20 +118,6 @@ func (d *MDHasher) Sum(msg []byte) []byte {
 }
 func (d MDHasher) MaxBytes32() types.Bytes32 {
 	return d.maxValue
-}
-
-// Constructor for Poseidon2MDHasher
-func NewMDHasher() *MDHasher {
-	var maxVal field.Octuplet
-	for i := range maxVal {
-		maxVal[i] = field.NewFromString("-1")
-	}
-	return &MDHasher{
-		StateStorer: gnarkposeidon2.NewMerkleDamgardHasher(),
-		maxValue:    types.HashToBytes32(maxVal),
-		state:       field.Octuplet{},
-		buffer:      make([]field.Element, 0),
-	}
 }
 
 // GnarkBlockCompression applies the MiMC permutation to a given block within

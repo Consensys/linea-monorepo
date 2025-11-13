@@ -1,13 +1,13 @@
 package poseidon2_bls12377
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/poseidon2"
-	"github.com/consensys/gnark-crypto/hash"
-	"github.com/consensys/gnark/frontend"
+	"errors"
+	"sync"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/hash"
+
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -22,40 +22,77 @@ type MDHasher struct {
 	maxValue types.Bytes32 // the maximal value obtainable with that hasher
 
 	// Sponge construction state
-	state [2]fr.Element
+	state fr.Element
 
 	// data to hash
 	buffer []fr.Element
+}
 
-	permutation poseidon2.Permutation
+var (
+	ErrInvalidSizebuffer = errors.New("the size of the input should match the size of the hash buffer")
+	compressor           poseidon2.Permutation
+	once                 sync.Once
+)
+
+func init() {
+	once.Do(func() {
+		// default parameters
+		compressor = *poseidon2.NewPermutation(2, 6, 26)
+	})
+}
+
+// Constructor for Poseidon2MDHasher
+func NewMDHasher() *MDHasher {
+	// var maxVal fr.Element
+	// maxVal.SetOne().Neg(&maxVal)
+	return &MDHasher{
+		StateStorer: poseidon2.NewMerkleDamgardHasher(),
+		state:       fr.Element{},
+		buffer:      make([]fr.Element, 0),
+	}
 }
 
 // Reset clears the buffer, and reset state to iv
 func (d *MDHasher) Reset() {
 	d.buffer = d.buffer[:0]
-	d.state[0].SetZero()
-	d.state[1].SetZero()
+	d.state = fr.Element{}
+}
+
+// SetStateFrElement modifies the state (??)
+func (d *MDHasher) SetStateFrElement(state fr.Element) {
+	d.state.Set(&state)
 }
 
 // WriteElements adds a slice of field elements to the running hash.
-func (d *MDHasher) writeElements(elmts []fr.Element) {
+func (d *MDHasher) WriteElements(elmts []fr.Element) {
 	quo := (len(d.buffer) + len(elmts)) / maxSizeBuf
 	rem := (len(d.buffer) + len(elmts)) % maxSizeBuf
 	off := len(d.buffer)
 	for i := 0; i < quo; i++ {
 		d.buffer = append(d.buffer, elmts[:maxSizeBuf-off]...)
-		_ = d.sumElement()
+		_ = d.SumElement()
 		d.buffer = d.buffer[:0] // flush the buffer once maxSizeBuf is reached
 		off = len(d.buffer)
 	}
 	d.buffer = append(d.buffer, elmts[:rem-off]...)
 }
 
-// WriteElements adds a slice of field elements to the running hash.
-func (d *MDHasher) WriteElements(elmts []field.Element) {
-	// convert koalabear to bls12377
-	_elmts := ToBls12377(elmts)
-	d.writeElements(_elmts)
+func compress(left, right fr.Element) fr.Element {
+	var x [2]fr.Element
+	x[0].Set(&left)
+	x[1].Set(&right)
+	res := x[1] // save right to feed forward later
+	compressor.Permutation(x[:])
+	res.Add(&res, &x[1])
+	return res
+}
+
+func (d *MDHasher) SumElement() fr.Element {
+	for i := 0; i < len(d.buffer); i++ {
+		d.state = compress(d.state, d.buffer[i])
+	}
+	d.buffer = d.buffer[:0]
+	return d.state
 }
 
 // // WriteElements adds a slice of field elements to the running hash.
@@ -66,12 +103,12 @@ func (d *MDHasher) WriteElements(elmts []field.Element) {
 // 	if len(p)%elemByteSize != 0 {
 // 		return 0, fmt.Errorf("input length is not a multiple of 4 byte size")
 // 	}
-// 	elems := make([]field.Element, 0, len(p)/elemByteSize)
+// 	elems := make([]fr.Element, 0, len(p)/elemByteSize)
 
 // 	for start := 0; start < len(p); start += elemByteSize {
 // 		chunk := p[start : start+elemByteSize]
 
-// 		var elem field.Element
+// 		var elem fr.Element
 // 		elem.SetBytes(chunk)
 // 		elems = append(elems, elem)
 
@@ -79,37 +116,6 @@ func (d *MDHasher) WriteElements(elmts []field.Element) {
 // 	d.WriteElements(elems)
 // 	return len(p), nil
 // }
-
-// sumElement follows MD scheme:
-// b = [state || buf]
-// permutation(b)
-// b = [new_state || *** ], return new_state
-func (d *MDHasher) sumElement() fr.Element {
-	for len(d.buffer) != 0 {
-		var buf [BlockSize]fr.Element
-		// in this case we left pad by zeroes
-		if len(d.buffer) < BlockSize {
-			copy(buf[BlockSize-len(d.buffer):], d.buffer)
-			d.buffer = d.buffer[:0]
-		} else {
-			copy(buf[:], d.buffer)
-			d.buffer = d.buffer[BlockSize:]
-		}
-		// TODO @thomas fixme handle err
-		copy(d.state[BlockSize:], buf[:])
-		err := d.permutation.Permutation(d.state[:])
-		if err != nil {
-			panic(err)
-		}
-	}
-	return d.state[0]
-}
-
-func (d *MDHasher) SumElement() field.Octuplet {
-	t := d.sumElement()
-	r := ToKoalabear([]fr.Element{t})
-	return r[0]
-}
 
 // // Sum computes the poseidon2 hash of msg
 // func (d *MDHasher) Sum(msg []byte) []byte {
@@ -122,56 +128,8 @@ func (d *MDHasher) SumElement() field.Octuplet {
 // 	return d.maxValue
 // }
 
-// Constructor for Poseidon2MDHasher
-func NewMDHasher() *MDHasher {
-	// default parameters
-	// see https://github.com/Consensys/gnark-crypto/blob/master/ecc/bls12-377/fr/poseidon2/poseidon2.go
-	permutation := poseidon2.NewPermutation(2, 6, 26)
-	return &MDHasher{
-		StateStorer: poseidon2.NewMerkleDamgardHasher(),
-		permutation: *permutation,
-	}
-}
-
 // GnarkBlockCompression applies the MiMC permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
-func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]zk.WrappedVariable) (newState [BlockSize]zk.WrappedVariable) {
-	panic("unimplemented")
-}
-
-// example:
-// v = [a, b, c, d, e, f, g, h, i]
-// returns
-// [ (a<<31+b)<<192 + (c<<31+d)<<128 + (e<<31+f)<<64 + (g<<31+h), (i<<31)<<192]
-func ToBls12377(v []field.Element) []fr.Element {
-	offset := 0
-	res := make([]fr.Element, (len(v)+7)/8)
-	for i := 0; i < len(v); i += 8 {
-		for j := 0; j < 8 || i+j < len(v); j++ {
-			if j%2 == 0 {
-				offset = 0
-			} else {
-				offset = 31
-			}
-			res[i/8][j] += uint64(v[i+j][0]) << offset
-		}
-	}
-	return res
-}
-
-// example:
-// v = [a]
-// returns
-// [a & mask, (a & mask<<31)>>31, ...]
-// where mask = 1<<31-1
-func ToKoalabear(v []fr.Element) []field.Octuplet {
-	mask := uint32((1 << 31) - 1)
-	res := make([]field.Octuplet, 8*len(v))
-	for i := 0; i < len(v); i++ {
-		for j := 0; j < 4; j++ {
-			res[i][2*j][0] = uint32(v[i][j]) & mask
-			res[i][2*j+1][0] = (uint32(v[i][j]) & (mask << 31)) >> 31
-		}
-	}
-	return res
-}
+// func GnarkBlockCompressionMekle(api frontend.API, oldState, block [BlockSize]zk.WrappedVariable) (newState [BlockSize]zk.WrappedVariable) {
+// 	panic("unimplemented")
+// }
