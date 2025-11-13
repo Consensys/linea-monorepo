@@ -102,6 +102,17 @@ const config: HardhatUserConfig = {
           evmVersion: "prague",
         },
       },
+      "contracts/LineaRollup.sol": {
+        version: "0.8.30",
+        settings: {
+          viaIR: useViaIR,
+          optimizer: {
+            enabled: true,
+            runs: 9000,
+          },
+          evmVersion: "prague",
+        },
+      },
     },
   },
   namedAccounts: {

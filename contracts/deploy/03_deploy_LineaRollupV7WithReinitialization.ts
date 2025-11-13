@@ -20,6 +20,7 @@ import {
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
   const yieldManager = getRequiredEnvVar("YIELD_MANAGER");
+  const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
 
   const newRoles = [
     SET_YIELD_MANAGER_ROLE,
@@ -37,8 +38,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments } = hre;
   const contractName = "LineaRollup";
   const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
-
-  const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
 
   const factory = await ethers.getContractFactory(contractName);
 
