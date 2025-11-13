@@ -879,6 +879,11 @@ contract YieldManager is
     if (isWithdrawalReserveBelowMinimum()) {
       revert InsufficientWithdrawalReserve();
     }
+    // Synchronize lstLiabilityPrincipal before using it for a check.
+    _delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.syncLSTLiabilityPrincipal, (_yieldProvider))
+    );
     if ($$.lstLiabilityPrincipal > 0) {
       revert UnpauseStakingForbiddenWithCurrentLSTLiability();
     }

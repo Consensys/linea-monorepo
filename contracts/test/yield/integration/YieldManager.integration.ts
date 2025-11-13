@@ -141,6 +141,18 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
     });
   });
 
+  describe("Unpause staking", () => {
+    it("Should successfully sync LST liability", async () => {
+      await yieldManager.connect(nativeYieldOperator).pauseStaking(yieldProviderAddress);
+      await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, 1n);
+      await expect(yieldManager.connect(nativeYieldOperator).unpauseStaking(yieldProviderAddress)).to.be.reverted;
+      // Will sync to this if below current lstLiabilityPrincipal.
+      await mockSTETH.setPooledEthBySharesRoundUpReturn(0n);
+      // If it didn't sync lstLiabilityPrincipal to 0, the below will revert.
+      yieldManager.connect(nativeYieldOperator).unpauseStaking(yieldProviderAddress);
+    });
+  });
+
   describe("Withdraw LST", () => {
     it("Should allow LST withdrawal when in deficit", async () => {
       // Arrange - setup user funds
