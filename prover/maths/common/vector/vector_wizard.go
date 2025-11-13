@@ -263,3 +263,16 @@ func Zero(size int) []field.Element {
 	}
 	return slice
 }
+
+// it return a vector of length 'size' where it is one on the given period and zero elsewhere.
+func PeriodicOne(period int, size int) []field.Element {
+	slice := make([]field.Element, size)
+	for i := range slice {
+		if i%period == 0 {
+			slice[i].SetOne()
+		} else {
+			slice[i].SetZero()
+		}
+	}
+	return slice
+}
