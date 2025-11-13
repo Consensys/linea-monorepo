@@ -36,7 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const nativeYieldAutomationServiceAddress = getRequiredEnvVar("NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS");
   const vaultHub = getRequiredEnvVar("VAULT_HUB");
   const vaultFactory = getRequiredEnvVar("VAULT_FACTORY");
-  const steth = getRequiredEnvVar("STEH");
+  const steth = getRequiredEnvVar("STETH");
   const initialMinimumWithdrawalReservePercentageBps = parseInt(
     getEnvVarOrDefault("MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS", 4000),
   );
@@ -107,11 +107,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
    *                ValidatorContainerProofVerifier                   *
    ********************************************************************/
   const provider = ethers.provider;
-  const verifier = await deployFromFactory("ValidatorContainerProofVerifier", provider, [
+  const verifier = await deployFromFactory(
+    "ValidatorContainerProofVerifier",
+    provider,
     gIFirstValidatorPrev,
     gIFirstValidatorCurr,
     pivotSlot,
-  ]);
+  );
   await LogContractDeployment("ValidatorContainerProofVerifier", verifier);
   const verifierAddress = await verifier.getAddress();
   await tryVerifyContract(verifierAddress);
@@ -119,14 +121,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   /********************************************************************
    *                LidoStVaultYieldProviderFactory                   *
    ********************************************************************/
-  const factory = await deployFromFactory("LidoStVaultYieldProviderFactory", provider, [
+  const factory = await deployFromFactory(
+    "LidoStVaultYieldProviderFactory",
+    provider,
     lineaRollupAddress,
     yieldManagerAddress,
     vaultHub,
     vaultFactory,
     steth,
     verifier,
-  ]);
+  );
   await LogContractDeployment("LidoStVaultYieldProviderFactory", factory);
   const factoryAddress = await factory.getAddress();
   await tryVerifyContract(factoryAddress);

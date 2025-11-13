@@ -56,6 +56,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         roleAddresses,
         pauseTypeRoles,
         unpauseTypeRoles,
+        initialYieldManager: DEAD_ADDRESS,
         fallbackOperator: DEAD_ADDRESS,
         defaultAdmin: lineaRollupSecurityCouncil,
       },

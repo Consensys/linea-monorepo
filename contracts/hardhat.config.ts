@@ -145,6 +145,10 @@ const config: HardhatUserConfig = {
       accounts: [process.env.L2_PRIVATE_KEY || EMPTY_HASH],
       allowUnlimitedContractSize: true,
     },
+    hoodi: {
+      accounts: [process.env.CUSTOM_PRIVATE_KEY || EMPTY_HASH],
+      url: process.env.CUSTOM_BLOCKCHAIN_URL ? process.env.CUSTOM_BLOCKCHAIN_URL : "",
+    },
   },
   gasReporter: {
     enabled: !!process.env.REPORT_GAS,
@@ -153,12 +157,7 @@ const config: HardhatUserConfig = {
     timeout: 20000,
   },
   etherscan: {
-    apiKey: {
-      mainnet: process.env.ETHERSCAN_API_KEY ?? "",
-      sepolia: process.env.ETHERSCAN_API_KEY ?? "",
-      linea_sepolia: process.env.LINEASCAN_API_KEY ?? "",
-      linea_mainnet: process.env.LINEASCAN_API_KEY ?? "",
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY ?? "",
     customChains: [
       {
         network: "linea_sepolia",
@@ -174,6 +173,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.lineascan.build/api",
           browserURL: "https://lineascan.build/",
+        },
+      },
+      {
+        network: "hoodi",
+        chainId: 560048,
+        urls: {
+          apiURL: `https://api.etherscan.io/v2/api?chainid=560048`,
+          browserURL: "https://hoodi.etherscan.io/",
         },
       },
     ],
