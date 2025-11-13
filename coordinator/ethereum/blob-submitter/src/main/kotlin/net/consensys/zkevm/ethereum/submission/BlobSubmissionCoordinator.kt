@@ -2,11 +2,12 @@ package net.consensys.zkevm.ethereum.submission
 
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
-import linea.PeriodicPollingService
 import linea.domain.filterOutWithEndBlockNumberBefore
 import linea.domain.toBlockIntervals
 import linea.domain.toBlockIntervalsString
 import linea.kotlin.trimToMinutePrecision
+import linea.timer.TimerSchedule
+import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncFilter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord
@@ -32,11 +33,12 @@ class BlobSubmissionCoordinator(
   private val blobSubmissionFilter: AsyncFilter<BlobRecord>,
   private val blobsGrouperForSubmission: BlobsGrouperForSubmission,
   private val log: Logger = LogManager.getLogger(BlobSubmissionCoordinator::class.java),
-) : PeriodicPollingService(
+) : VertxPeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
   log = log,
   name = "BlobSubmissionCoordinator",
+  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   class Config(
     val pollingInterval: Duration,

@@ -1,10 +1,11 @@
 package net.consensys.zkevm.ethereum.finalization
 
 import io.vertx.core.Vertx
-import linea.PeriodicPollingService
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.domain.BlockParameter
 import linea.kotlin.toBigInteger
+import linea.timer.TimerSchedule
+import linea.timer.VertxPeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
@@ -22,11 +23,12 @@ class FinalizationMonitorImpl(
   private val l2Client: Web3j,
   private val vertx: Vertx,
   private val log: Logger = LogManager.getLogger(FinalizationMonitor::class.java),
-) : FinalizationMonitor, PeriodicPollingService(
+) : FinalizationMonitor, VertxPeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
   log = log,
   name = "FinalizationMonitor",
+  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   data class Config(
     val pollingInterval: Duration = 500.milliseconds,

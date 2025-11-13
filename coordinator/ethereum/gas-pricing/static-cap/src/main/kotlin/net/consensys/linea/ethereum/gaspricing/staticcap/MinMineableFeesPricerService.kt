@@ -1,9 +1,10 @@
 package net.consensys.linea.ethereum.gaspricing.staticcap
 
 import io.vertx.core.Vertx
-import linea.PeriodicPollingService
 import linea.kotlin.toGWei
 import linea.kotlin.toIntervalString
+import linea.timer.TimerSchedule
+import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
 import net.consensys.linea.ethereum.gaspricing.GasPriceUpdater
@@ -19,11 +20,12 @@ class MinMineableFeesPricerService(
   private val feesCalculator: FeesCalculator,
   private val gasPriceUpdater: GasPriceUpdater,
   private val log: Logger = LogManager.getLogger(MinMineableFeesPricerService::class.java),
-) : PeriodicPollingService(
+) : VertxPeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
   log = log,
   name = "MinMineableFeesPricerService",
+  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   private var lastPriceUpdate = 0uL
 

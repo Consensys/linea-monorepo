@@ -1,19 +1,18 @@
-package linea
+package linea.timer
 
 import io.vertx.core.Vertx
-import linea.timer.TimerSchedule
-import linea.timer.VertxTimerFactory
 import org.apache.logging.log4j.Logger
 import kotlin.time.Duration.Companion.milliseconds
 
-abstract class PeriodicPollingService(
+abstract class VertxPeriodicPollingService(
   private val vertx: Vertx,
   private val pollingIntervalMs: Long,
   private val log: Logger,
   private val name: String,
-) : GenericPeriodicPollingService(
+  timerSchedule: TimerSchedule,
+) : PeriodicPollingService(
   timerFactory = VertxTimerFactory(vertx),
-  timerSchedule = TimerSchedule.FIXED_DELAY,
+  timerSchedule = timerSchedule,
   pollingInterval = pollingIntervalMs.milliseconds,
   log = log,
   name = name,

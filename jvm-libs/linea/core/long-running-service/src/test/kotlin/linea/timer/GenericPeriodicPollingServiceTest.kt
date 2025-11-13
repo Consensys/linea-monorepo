@@ -1,14 +1,9 @@
-package linea
+package linea.timer
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import linea.timer.JvmTimerFactory
-import linea.timer.Timer
-import linea.timer.TimerFactory
-import linea.timer.TimerSchedule
-import linea.timer.VertxTimerFactory
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -397,7 +392,7 @@ class PollingService(
   timerFactory: TimerFactory,
   timerSchedule: TimerSchedule,
   val mockAction: (_: Unit) -> SafeFuture<Unit> = { SafeFuture.completedFuture(Unit) },
-) : GenericPeriodicPollingService(
+) : PeriodicPollingService(
   timerFactory = timerFactory,
   pollingInterval = pollingInterval,
   log = log,

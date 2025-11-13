@@ -1,13 +1,11 @@
-package linea
+package linea.timer
 
-import linea.timer.Timer
-import linea.timer.TimerFactory
-import linea.timer.TimerSchedule
+import linea.LongRunningService
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration
 
-abstract class GenericPeriodicPollingService(
+abstract class PeriodicPollingService(
   private val timerFactory: TimerFactory,
   private val timerSchedule: TimerSchedule,
   private val pollingInterval: Duration,
