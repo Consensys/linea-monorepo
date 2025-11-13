@@ -68,7 +68,7 @@ func (proof *OpeningProof) Complete(
 	entryList []int,
 	committedMatrices []vortex.EncodedMatrix,
 	trees []*smt_bls12377.Tree,
-) {
+) [][]smt_bls12377.Proof {
 
 	if len(entryList) == 0 {
 		utils.Panic("empty entry list")
@@ -105,6 +105,7 @@ func (proof *OpeningProof) Complete(
 		}
 	}
 
-	proof.MerkleProofs = proofs
 	proof.Columns = selectedColumns
+
+	return proofs
 }

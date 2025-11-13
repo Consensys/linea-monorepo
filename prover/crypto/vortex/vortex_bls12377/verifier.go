@@ -35,9 +35,6 @@ var (
 type VerifierInputs struct {
 	// Params are the public parameters
 	Koalabear_Params vortex.Params
-	BLS12_377_Params Params
-	// MerkleRoots are the commitment to verify the opening for
-	MerkleRoots []types.Bytes32
 	// X is the univariate evaluation point
 	X fext.Element
 	// Ys are the alleged evaluation at point X
@@ -47,6 +44,11 @@ type VerifierInputs struct {
 	// RandomCoin is the random coin sampled by the verifier to be used to
 	// construct the linear combination of the columns.
 	RandomCoin fext.Element
+
+	// Merkle checks
+	BLS12_377_Params Params
+	// MerkleRoots are the commitment to verify the opening for
+	MerkleRoots []types.Bytes32
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
 	// Flag indicating if the SIS hash is replaced for the particular round

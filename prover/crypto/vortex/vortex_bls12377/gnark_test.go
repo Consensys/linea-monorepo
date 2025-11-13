@@ -554,8 +554,9 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	proof = &OpeningProof{}
 	proof.LinearCombination = koalabearParams.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
 
-	proof.Complete(entryList, committedMatrices, trees)
+	merkleProofs := proof.Complete(entryList, committedMatrices, trees)
 
+	proof.MerkleProofs = merkleProofs
 	// Check the proof
 	err := VerifyOpening(&VerifierInputs{
 		Koalabear_Params:         *koalabearParams,

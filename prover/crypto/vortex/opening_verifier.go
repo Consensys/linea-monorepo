@@ -32,8 +32,6 @@ var (
 type VerifierInputs struct {
 	// Params are the public parameters
 	Params Params
-	// MerkleRoots are the commitment to verify the opening for
-	MerkleRoots []field.Octuplet
 	// X is the univariate evaluation point
 	X fext.Element
 	// Ys are the alleged evaluation at point X
@@ -43,6 +41,9 @@ type VerifierInputs struct {
 	// RandomCoin is the random coin sampled by the verifier to be used to
 	// construct the linear combination of the columns.
 	RandomCoin fext.Element
+
+	// MerkleRoots are the commitment to verify the opening for
+	MerkleRoots []field.Octuplet
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
 	// Flag indicating if the SIS hash is replaced for the particular round
