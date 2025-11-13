@@ -280,34 +280,34 @@ func TestFFTInverseCircuit(t *testing.T) {
 type AssertIsCodeWordCircuit struct {
 	rate uint64
 	d    *fft.Domain
-	P    []zk.WrappedVariable `gnark:",public"`
+	P    []gnarkfext.E4Gen `gnark:",public"`
 }
 
 func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
-	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
+	return assertIsCodeWordExt(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
 
 }
 func gnarkAssertIsCodeWordCircuitWitness(size int) (*AssertIsCodeWordCircuit, *AssertIsCodeWordCircuit) {
 	d := fft.NewDomain(uint64(size))
 	rate := 2
-	p := make([]field.Element, size)
+	p := make([]fext.Element, size)
 	for i := 0; i < (size / rate); i++ {
-		p[i] = field.PseudoRand(rng)
+		p[i] = fext.PseudoRand(rng)
 	}
-	d.FFT(p, fft.DIF)
+	d.FFTExt(p, fft.DIF)
 	fft.BitReverse(p)
 
 	var witness AssertIsCodeWordCircuit
-	witness.P = make([]zk.WrappedVariable, size)
+	witness.P = make([]gnarkfext.E4Gen, size)
 	witness.rate = uint64(rate)
 	witness.d = d
 	for i := 0; i < size; i++ {
-		witness.P[i] = zk.ValueOf(p[i].String())
+		witness.P[i] = gnarkfext.NewE4Gen(p[i])
 	}
 
 	// compile the circuit
 	var circuit AssertIsCodeWordCircuit
-	circuit.P = make([]zk.WrappedVariable, size)
+	circuit.P = make([]gnarkfext.E4Gen, size)
 	circuit.d = d
 	circuit.rate = uint64(rate)
 	return &circuit, &witness

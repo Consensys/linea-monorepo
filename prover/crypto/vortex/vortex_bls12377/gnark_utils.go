@@ -138,8 +138,10 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 		return []gnarkfext.E4Gen{}, err
 	}
 
-	res := ext4.FFTInverseExt(fftInverseHint(ext4.ApiGen.Type()), p)
-
+	res, err := ext4.NewHint(fftInverseHint(ext4.ApiGen.Type()), len(p), p...)
+	if err != nil {
+		return nil, err
+	}
 	// probabilistically check the result of the FFT
 	// multicommit.WithCommitment(
 	// 	api,
@@ -271,35 +273,35 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 	return res
 }
 
-// Checks that p is a polynomial of degree < cardinality/rate
-// * p polynomial of size cardinality
-// * genInv inverse of the generator of the subgroup of size cardinality
-// * rate of the RS code
-func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear.Element, cardinality, rate uint64) error {
-	apiGen, err := zk.NewGenericApi(api)
-	if err != nil {
-		panic(err)
-	}
+// // Checks that p is a polynomial of degree < cardinality/rate
+// // * p polynomial of size cardinality
+// // * genInv inverse of the generator of the subgroup of size cardinality
+// // * rate of the RS code
+// func assertIsCodeWord(api frontend.API, p []zk.WrappedVariable, genInv koalabear.Element, cardinality, rate uint64) error {
+// 	apiGen, err := zk.NewGenericApi(api)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	if uint64(len(p)) != cardinality {
-		return ErrPNotOfSizeCardinality
-	}
+// 	if uint64(len(p)) != cardinality {
+// 		return ErrPNotOfSizeCardinality
+// 	}
 
-	// get the canonical form of p
-	pCanonical, err := FFTInverse(api, p, genInv, cardinality)
-	if err != nil {
-		return err
-	}
+// 	// get the canonical form of p
+// 	pCanonical, err := FFTInverse(api, p, genInv, cardinality)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// check that is of degree < cardinality/rate
-	degree := (cardinality - (cardinality % rate)) / rate
+// 	// check that is of degree < cardinality/rate
+// 	degree := (cardinality - (cardinality % rate)) / rate
 
-	for i := degree; i < cardinality; i++ {
-		apiGen.AssertIsEqual(pCanonical[i], zk.ValueOf(0))
-	}
+// 	for i := degree; i < cardinality; i++ {
+// 		apiGen.AssertIsEqual(pCanonical[i], zk.ValueOf(0))
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func assertIsCodeWordExt(api frontend.API, p []gnarkfext.E4Gen, genInv koalabear.Element, cardinality, rate uint64) error {
 	ext4, err := gnarkfext.NewExt4(api)
@@ -313,14 +315,16 @@ func assertIsCodeWordExt(api frontend.API, p []gnarkfext.E4Gen, genInv koalabear
 
 	// get the canonical form of p
 	pCanonical, err := FFTInverseExt(api, p, genInv, cardinality)
+
 	if err != nil {
 		return err
 	}
 	// check that is of degree < cardinality/rate
 	degree := (cardinality - (cardinality % rate)) / rate
+	zero := fext.Element{}
+	zeroValue := gnarkfext.NewE4Gen(zero)
+
 	for i := degree; i < cardinality; i++ {
-		zeroValue := gnarkfext.NewE4Gen(fext.Zero())
-		ext4.Println(pCanonical[i])
 		ext4.AssertIsEqual(&pCanonical[i], &zeroValue)
 	}
 

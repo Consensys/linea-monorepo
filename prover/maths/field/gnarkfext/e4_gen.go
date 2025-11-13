@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
@@ -232,25 +233,48 @@ func (ext4 *Ext4) Select(b zk.WrappedVariable, r1, r2 *E4Gen) *E4Gen {
 	}
 }
 
-func (ext4 *Ext4) FFTInverseExt(f solver.Hint, p []E4Gen) []E4Gen {
-
-	pExt := make([]zk.WrappedVariable, 4*len(p))
-	for i := 0; i < len(p); i++ {
-		pExt[4*i] = p[i].B0.A0
-		pExt[4*i+1] = p[i].B0.A1
-		pExt[4*i+2] = p[i].B1.A0
-		pExt[4*i+3] = p[i].B1.A1
+func (ext4 *Ext4) NewHint(f solver.Hint, nbOutputs int, inputs ...E4Gen) ([]E4Gen, error) {
+	if ext4.ApiGen.Type() == zk.Native {
+		_inputs := make([]frontend.Variable, 4*len(inputs))
+		for i, r := range inputs {
+			_inputs[4*i] = r.B0.A0.AsNative()
+			_inputs[4*i+1] = r.B0.A1.AsNative()
+			_inputs[4*i+2] = r.B1.A0.AsNative()
+			_inputs[4*i+3] = r.B1.A1.AsNative()
+		}
+		_r, err := ext4.ApiGen.NativeApi.NewHint(f, 4*nbOutputs, _inputs...)
+		if err != nil {
+			return nil, err
+		}
+		res := make([]E4Gen, nbOutputs)
+		for i := range res {
+			res[i] = E4Gen{
+				B0: E2Gen{A0: zk.WrappedVariable{V: _r[4*i]}, A1: zk.WrappedVariable{V: _r[4*i+1]}},
+				B1: E2Gen{A0: zk.WrappedVariable{V: _r[4*i+2]}, A1: zk.WrappedVariable{V: _r[4*i+3]}},
+			}
+		}
+		return res, nil
+	} else {
+		_inputs := make([]*emulated.Element[emulated.KoalaBear], 4*len(inputs))
+		for i, r := range inputs {
+			_inputs[4*i] = r.B0.A0.AsEmulated()
+			_inputs[4*i+1] = r.B0.A1.AsEmulated()
+			_inputs[4*i+2] = r.B1.A0.AsEmulated()
+			_inputs[4*i+3] = r.B1.A1.AsEmulated()
+		}
+		_r, err := ext4.ApiGen.EmulatedApi.NewHint(f, 4*nbOutputs, _inputs...)
+		if err != nil {
+			return nil, err
+		}
+		res := make([]E4Gen, nbOutputs)
+		for i := range res {
+			res[i] = E4Gen{
+				B0: E2Gen{A0: zk.WrappedVariable{EVpointer: _r[4*i]}, A1: zk.WrappedVariable{EVpointer: _r[4*i+1]}},
+				B1: E2Gen{A0: zk.WrappedVariable{EVpointer: _r[4*i+2]}, A1: zk.WrappedVariable{EVpointer: _r[4*i+3]}},
+			}
+		}
+		return res, nil
 	}
-	res, err := ext4.mixedAPI.NewHint(f, 4*len(p), pExt...)
-	if err != nil {
-		panic(err)
-	}
-
-	resExt := make([]E4Gen, len(p))
-	for i := 0; i < len(resExt); i++ {
-		resExt[i] = *ext4.assign(res[4*i : 4*i+4])
-	}
-	return resExt
 }
 
 // Inverse Element elmts
