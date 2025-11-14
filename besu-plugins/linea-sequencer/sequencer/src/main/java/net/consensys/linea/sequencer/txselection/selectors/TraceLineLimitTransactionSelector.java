@@ -12,6 +12,7 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_INVALID_COUNT;
+import static net.consensys.linea.zktracer.Fork.fromMainnetHardforkIdToTracerFork;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTION_CANCELLED;
 
@@ -28,7 +29,6 @@ import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
@@ -242,22 +242,16 @@ public class TraceLineLimitTransactionSelector
         final LineaL1L2BridgeSharedConfiguration bridgeConfiguration,
         final BlockchainService blockchainService) {
 
-      final var forkId =
-          blockchainService.getNextBlockHardforkId(
-              blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond());
+      final HardforkId.MainnetHardforkId forkId =
+          (HardforkId.MainnetHardforkId)
+              blockchainService.getNextBlockHardforkId(
+                  blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond());
 
       this.delegate =
           tracerConfiguration.isLimitless()
               ? new ZkCounter(bridgeConfiguration)
               : new ZkTracer(
-                  switch (forkId) {
-                    case HardforkId.MainnetHardforkId.LONDON -> Fork.LONDON;
-                    case HardforkId.MainnetHardforkId.PARIS -> Fork.PARIS;
-                    case HardforkId.MainnetHardforkId.SHANGHAI -> Fork.SHANGHAI;
-                    case HardforkId.MainnetHardforkId.CANCUN -> Fork.CANCUN;
-                    case HardforkId.MainnetHardforkId.PRAGUE -> Fork.PRAGUE;
-                    default -> throw new RuntimeException("Unknown fork id " + forkId);
-                  },
+                  fromMainnetHardforkIdToTracerFork(forkId),
                   bridgeConfiguration,
                   blockchainService.getChainId().get());
     }
