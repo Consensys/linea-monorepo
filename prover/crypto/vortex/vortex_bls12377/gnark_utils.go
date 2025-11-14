@@ -7,7 +7,6 @@ import (
 	"math/bits"
 
 	gnarkbits "github.com/consensys/gnark/std/math/bits"
-	"github.com/consensys/gnark/std/multicommit"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -115,50 +114,24 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 	}
 
 	// probabilistically check the result of the FFT
+	//TODO@yao, how to fix this test with 	multicommit.WithCommitment
 
-	//TODO@yao, how to fix this test with gnarkfext.E4Gen?
-	extensionDegree := 4
-	pExt := make([]frontend.Variable, len(p)*extensionDegree)
+	x := fext.RandomElement()
+
+	xGen4 := gnarkfext.NewE4Gen(x)
+	ec := gnarkEvalCanonicalExt(api, res, xGen4)
+
+	// evaluation Lagrange
+	var gen field.Element
+	gen.Inverse(&genInv)
+	lagranges := gnarkComputeLagrangeAtZ(api, xGen4, gen, cardinality)
+	el := gnarkfext.E4Gen{}
 	for i := 0; i < len(p); i++ {
-		pExt[extensionDegree*i] = p[i].B0.A0.V
-		pExt[extensionDegree*i+1] = p[i].B0.A1.V
-		pExt[extensionDegree*i+2] = p[i].B1.A0.V
-		pExt[extensionDegree*i+3] = p[i].B1.A1.V
+		tmp := ext4.Mul(&p[i], &lagranges[i])
+		el = *ext4.Add(&el, tmp)
 	}
-	multicommit.WithCommitment(
-		api,
-		func(api frontend.API, x frontend.Variable) error {
-			fmt.Printf("encode\n")
-			EncodeFVTo8WVs(api, x)
-			fmt.Printf("encode after\n")
 
-			// xGen4 := gnarkfext.E4Gen{}
-			// xGen4.B0.A0 = xOct[0]
-			// xGen4.B0.A1 = xOct[1]
-			// xGen4.B1.A0 = xOct[2]
-			// xGen4.B1.A1 = xOct[3]
-
-			// ext4, _ := gnarkfext.NewExt4(api)
-
-			// // evaluation canonical
-			// ec := gnarkEvalCanonicalExt(api, res, xGen4)
-
-			// // evaluation Lagrange
-			// var gen field.Element
-			// gen.Inverse(&genInv)
-			// lagranges := gnarkComputeLagrangeAtZ(api, xGen4, gen, cardinality)
-			// var el gnarkfext.E4Gen
-			// el = gnarkfext.E4Gen{}
-			// for i := 0; i < len(p); i++ {
-			// 	tmp := ext4.Mul(&p[i], &lagranges[i])
-			// 	el = *ext4.Add(&el, tmp)
-			// }
-
-			// ext4.AssertIsEqual(&ec, &el)
-			return nil
-		},
-		pExt...,
-	)
+	ext4.AssertIsEqual(&ec, &el)
 
 	return res, nil
 
