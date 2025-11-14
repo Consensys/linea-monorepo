@@ -23,7 +23,7 @@ func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Var
 		copy(bits[31*i:], limbBits) // 8 leading padding bits come first
 	}
 	for i := 248; i < 256; i++ {
-		bits[i] = frontend.Variable(0) // Explicitly set last 8 bits to zero (most significant bits)
+		bits[i] = 0 // Explicitly set last 8 bits to zero (most significant bits)
 	}
 
 	return api.FromBinary(bits...)

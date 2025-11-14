@@ -62,7 +62,6 @@ func gnarkEncodeAndHashCircuitWitness() (*EncodeAndHashTestCircuit, *EncodeAndHa
 		values[i] = zk.ValueOf(intValues[i].String())
 	}
 
-	// Calculate expected result manually using big.Int (for validation)
 	intBytes := EncodeKoalabearsToBytes(intValues[:])
 	hasher := smt_bls12377.Poseidon2()
 	hasher.Write(intBytes)
@@ -451,6 +450,9 @@ func (circuit *LinearCombinationCircuit) Define(api frontend.API) error {
 func gnarkEvalCanonicalCircuitWitness(size int) (*LinearCombinationCircuit, *LinearCombinationCircuit) {
 
 	pCan := make([]field.Element, size)
+	for i := 0; i < size; i++ {
+		pCan[i] = field.PseudoRand(rng)
+	}
 	randomCoin := fext.PseudoRand(rng)
 	y := gnarkVortex.EvalBasePolyHorner(pCan, randomCoin)
 

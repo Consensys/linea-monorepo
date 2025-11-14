@@ -306,7 +306,36 @@ func (ext4 *Ext4) Println(a ...E4Gen) {
 			ext4.ApiGen.NativeApi.Println("%v+%v*u+(%v+%v*u)*v", a[i].B0.A0.AsNative(), a[i].B0.A1.AsNative(), a[i].B1.A0.AsNative(), a[i].B1.A1.AsNative())
 		}
 	} else {
-		panic("not implemented for emulated")
+
+		for i := 0; i < len(a); i++ {
+			if a[i].B0.A0.EVpointer == nil {
+				for j := 0; j < len(a[i].B0.A0.EV.Limbs); j++ {
+					ext4.ApiGen.NativeApi.Println(a[i].B0.A0.EV.Limbs[j])
+				}
+				for j := 0; j < len(a[i].B0.A1.EV.Limbs); j++ {
+					ext4.ApiGen.NativeApi.Println(a[i].B0.A1.EV.Limbs[j])
+				}
+				for j := 0; j < len(a[i].B1.A0.EV.Limbs); j++ {
+					ext4.ApiGen.NativeApi.Println(a[i].B1.A0.EV.Limbs[j])
+				}
+				for j := 0; j < len(a[i].B1.A1.EV.Limbs); j++ {
+					ext4.ApiGen.NativeApi.Println(a[i].B1.A1.EV.Limbs[j])
+				}
+			} else {
+				for j := 0; j < len(a[i].B0.A0.EVpointer.Limbs); j++ {
+					ext4.ApiGen.NativeApi.Println(a[i].B0.A0.EVpointer.Limbs[j])
+				}
+				for j := 0; j < len(a[i].B0.A1.EVpointer.Limbs); j++ {
+					ext4.ApiGen.NativeApi.Println(a[i].B0.A1.EVpointer.Limbs[j])
+				}
+				for j := 0; j < len(a[i].B1.A0.EVpointer.Limbs); j++ {
+					ext4.ApiGen.NativeApi.Println(a[i].B1.A0.EVpointer.Limbs[j])
+				}
+				for j := 0; j < len(a[i].B1.A1.EVpointer.Limbs); j++ {
+					ext4.ApiGen.NativeApi.Println(a[i].B1.A1.EVpointer.Limbs[j])
+				}
+			}
+		}
 	}
 }
 
