@@ -109,6 +109,10 @@ contract YieldManager is
     _;
   }
 
+  /**
+   * @notice Constructs the YieldManager contract.
+   * @param _l1MessageService The Linea L1MessageService address, also the withdrawal reserve holding contract.
+   */
   constructor(address _l1MessageService) {
     ErrorUtils.revertIfZeroAddress(_l1MessageService);
     L1_MESSAGE_SERVICE = _l1MessageService;
@@ -389,7 +393,7 @@ contract YieldManager is
    * @notice Helper function to delegatecall YieldProvider adaptor instances.
    * @param _yieldProvider The yield provider address.
    * @param _callData Calldata to send with YieldProvider delegatecall.
-   * @param _yieldProvider Return data from YieldProvider delegatecall.
+   * @return Return data from YieldProvider delegatecall.
    */
   function _delegatecallYieldProvider(address _yieldProvider, bytes memory _callData) internal returns (bytes memory) {
     (bool success, bytes memory returnData) = _yieldProvider.delegatecall(_callData);
@@ -667,6 +671,10 @@ contract YieldManager is
     _decrementPendingPermissionlessUnstake(_amount);
   }
 
+  /**
+   * @notice Helper function to decrement the pending permissionless unstake amount.
+   * @param _amount Amount to decrement from pending permissionless unstake.
+   */
   function _decrementPendingPermissionlessUnstake(uint256 _amount) internal {
     YieldManagerStorage storage $ = _getYieldManagerStorage();
     uint256 pendingPermissionlessUnstakeAmount = $.pendingPermissionlessUnstake;

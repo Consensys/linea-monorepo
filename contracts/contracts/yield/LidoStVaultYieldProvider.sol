@@ -540,6 +540,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
 
   /**
    * @notice Performs vendor-specific exit logic.
+   * @param _yieldProvider The yield provider address.
    * @param _vendorExitData Vendor-specific exit data.
    */
   function exitVendorContracts(address _yieldProvider, bytes memory _vendorExitData) external onlyDelegateCall {
