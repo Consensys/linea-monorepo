@@ -12,7 +12,7 @@ import (
 const HashSizeBytes = 32 // keccak256
 
 var (
-	NbChunksHash = HashSizeBytes // @TODO : change to chuncks of two bytes.
+	NbChunksHash = HashSizeBytes // @TODO : change to chunks of two bytes.
 )
 
 type KeccakFOutputs struct {

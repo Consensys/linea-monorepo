@@ -130,7 +130,7 @@ func (m *Module) Assign(run *wizard.ProverRuntime, traces keccak.PermTraces) {
 
 	m.assignState(run, traces)                   // assign the initial state
 	m.theta.assignTheta(run, m.initialState)     // assign the theta module with the state
-	m.RhoPi.assignRoh(run, m.theta.stateNext)    // assign the rho pi module with the state after theta
+	m.RhoPi.assignRho(run, m.theta.stateNext)    // assign the rho pi module with the state after theta
 	m.ChiIota.assignChi(run, *m.RhoPi.stateNext) // assign the chi iota module with the state after rho pi
 	m.BackToThetaOrOutput.Run(run)               // assign the back to theta or output module with the state after chi iota
 	m.Outputs.Assign(run)                        // assign the output module to get the hash result

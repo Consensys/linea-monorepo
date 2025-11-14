@@ -62,7 +62,7 @@ func TestConvertAndClean(t *testing.T) {
 			}
 		}
 		run.AssignColumn(isActive.GetColID(), smartvectors.RightZeroPadded(
-			vector.Repeat(field.NewElement(1), size-2), size))
+			vector.Repeat(field.NewElement(1), size), size))
 
 		run.AssignColumn(isFirstBlock.GetColID(),
 			smartvectors.RightZeroPadded(vector.PeriodicOne(period, size-2), size))
