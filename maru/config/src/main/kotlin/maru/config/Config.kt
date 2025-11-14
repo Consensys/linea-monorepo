@@ -65,6 +65,8 @@ data class P2PConfig(
     val port: UInt = 9000u,
     val bootnodes: List<String> = emptyList(),
     val refreshInterval: Duration,
+    val searchInterval: Duration = 1.seconds,
+    val searchTimeout: Duration = 30.seconds,
     val advertisedIp: String? = null,
   ) {
     init {

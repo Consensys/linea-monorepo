@@ -41,9 +41,6 @@ import maru.p2p.PeerLookup
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.rlp.RLPSerializers
-import maru.syncing.CLSyncStatus
-import maru.syncing.ELSyncStatus
-import maru.syncing.SyncStatusProvider
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import maru.test.util.NetworkUtil.findFreePort
 import net.consensys.linea.metrics.Counter
@@ -82,29 +79,6 @@ class CLSyncServiceImplTest {
       "0x0802122100f3d2fffa99dc8906823866d96316492ebf7a8478713a89a58b7385af85b088a1"
         .fromHexToByteArray()
     private val backoffDelay = 1.seconds
-
-    private fun getSyncStatusProvider(): SyncStatusProvider =
-      object : SyncStatusProvider {
-        override fun getCLSyncStatus(): CLSyncStatus = CLSyncStatus.SYNCED
-
-        override fun getElSyncStatus(): ELSyncStatus = ELSyncStatus.SYNCED
-
-        override fun onClSyncStatusUpdate(handler: (newStatus: CLSyncStatus) -> Unit) {}
-
-        override fun onElSyncStatusUpdate(handler: (newStatus: ELSyncStatus) -> Unit) {}
-
-        override fun isBeaconChainSynced(): Boolean = true
-
-        override fun isELSynced(): Boolean = true
-
-        override fun onBeaconSyncComplete(handler: () -> Unit) {}
-
-        override fun onFullSyncComplete(handler: () -> Unit) {}
-
-        override fun getBeaconSyncDistance(): ULong = 0UL
-
-        override fun getCLSyncTarget(): ULong = 0UL
-      }
 
     fun createForkIdHashProvider(beaconChain: BeaconChain): ForkPeeringManager {
       val consensusConfig: ConsensusConfig =
@@ -437,7 +411,6 @@ class CLSyncServiceImplTest {
         forkIdHashManager = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
         p2PState = p2PState,
-        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
     return p2pNetworkImpl
   }

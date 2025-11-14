@@ -26,7 +26,6 @@ import maru.p2p.messages.BlockRetrievalStrategy
 import maru.p2p.messages.DefaultBlockRetrievalStrategy
 import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
-import maru.syncing.SyncStatusProvider
 import net.consensys.linea.metrics.MetricsFacade
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -185,7 +184,6 @@ class MaruPeerScoringTest {
           forkIdHashManager: ForkPeeringManager,
           isBlockImportEnabledProvider: () -> Boolean,
           p2pState: P2PState,
-          syncStatusProviderProvider: () -> SyncStatusProvider,
           ->
           MisbehavingP2PNetwork(
             privateKeyBytes = privateKeyBytes,
@@ -199,7 +197,6 @@ class MaruPeerScoringTest {
             forkIdHashManager = forkIdHashManager,
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,
-            syncStatusProviderProvider = syncStatusProviderProvider,
             blockRetrievalStrategy = blockRetrievalStrategy,
           ).p2pNetwork
         },

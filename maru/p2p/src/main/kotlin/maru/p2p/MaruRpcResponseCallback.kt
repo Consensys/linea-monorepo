@@ -65,7 +65,7 @@ class MaruRpcResponseCallback<TResponse : Message<*, *>>(
           ),
         ).finishWarn(log)
     } catch (e: StreamClosedException) {
-      log.debug(
+      log.trace(
         "Unable to send error message ({}) to peer, rpc stream already closed: {}",
         error,
         rpcStream,
