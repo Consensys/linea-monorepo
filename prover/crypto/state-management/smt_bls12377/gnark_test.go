@@ -9,15 +9,13 @@ import (
 
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
-func getMerkleProof(t *testing.T) ([]Proof, []types.Bytes32, types.Bytes32) {
+func getMerkleProof(t *testing.T) ([]Proof, []fr.Element, fr.Element) {
 
 	config := &Config{
-		HashFunc: Poseidon2,
-		Depth:    40,
+		Depth: 40,
 	}
 
 	tree := NewEmptyTree(config)
@@ -27,13 +25,11 @@ func getMerkleProof(t *testing.T) ([]Proof, []types.Bytes32, types.Bytes32) {
 	var tmp fr.Element
 	for i := 0; i < nbLeaves; i++ {
 		tmp.SetRandom()
-		s := tmp.Bytes()
-		buf := types.AsBytes32(s[:])
-		tree.Update(i, buf)
+		tree.Update(i, tmp)
 	}
 	nbProofs := 10
 	proofs := make([]Proof, nbProofs)
-	leafs := make([]types.Bytes32, nbProofs)
+	leafs := make([]fr.Element, nbProofs)
 	for pos := 0; pos < nbProofs; pos++ {
 
 		// Make a valid Bytes32
@@ -74,23 +70,15 @@ func TestMerkleProofGnark(t *testing.T) {
 	var witness MerkleProofCircuit
 	witness.Proofs = make([]GnarkProof, nbProofs)
 	witness.Leafs = make([]frontend.Variable, nbProofs)
-	var buf fr.Element
 	for i := 0; i < nbProofs; i++ {
 		witness.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
 		for j := 0; j < len(proofs[i].Siblings); j++ {
-			siblingBytes := proofs[i].Siblings[j]
-			buf.SetBytes(siblingBytes[:])
-			witness.Proofs[i].Siblings[j] = buf.String()
+			witness.Proofs[i].Siblings[j] = proofs[i].Siblings[j].String()
 		}
 		witness.Proofs[i].Path = proofs[i].Path
-		leafsBytes := leafs[i]
-		buf.SetBytes(leafsBytes[:])
-		witness.Leafs[i] = buf.String()
+		witness.Leafs[i] = leafs[i].String()
 	}
-	rootBytes := root
-
-	buf.SetBytes(rootBytes[:])
-	witness.Root = buf.String()
+	witness.Root = root.String()
 
 	// compile circuit
 	var circuit MerkleProofCircuit

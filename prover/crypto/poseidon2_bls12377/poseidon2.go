@@ -64,7 +64,7 @@ func (d *MDHasher) SetStateFrElement(state fr.Element) {
 }
 
 // WriteElements adds a slice of field elements to the running hash.
-func (d *MDHasher) WriteElements(elmts []fr.Element) {
+func (d *MDHasher) WriteElements(elmts ...fr.Element) {
 	quo := (len(d.buffer) + len(elmts)) / maxSizeBuf
 	rem := (len(d.buffer) + len(elmts)) % maxSizeBuf
 	off := len(d.buffer)

@@ -52,6 +52,7 @@ func (c *EncodeAndHashTestCircuit) Define(api frontend.API) error {
 	api.AssertIsEqual(digest, c.Result)
 	return nil
 }
+
 func gnarkEncodeAndHashCircuitWitness() (*EncodeAndHashTestCircuit, *EncodeAndHashTestCircuit) {
 	var intValues [8]field.Element
 	var values [8]zk.WrappedVariable

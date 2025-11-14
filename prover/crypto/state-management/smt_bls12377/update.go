@@ -1,12 +1,12 @@
 package smt_bls12377
 
 import (
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Update overwrites a leaf in the tree and updates the associated parent nodes.
-func (t *Tree) Update(pos int, newVal types.Bytes32) {
+func (t *Tree) Update(pos int, newVal fr.Element) {
 	depth := t.Config.Depth
 	current := newVal
 	idx := pos
@@ -23,7 +23,7 @@ func (t *Tree) Update(pos int, newVal types.Bytes32) {
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = outerHashLR(t.Config, left, right)
+		current = hashLR(left, right)
 		idx >>= 1
 	}
 
