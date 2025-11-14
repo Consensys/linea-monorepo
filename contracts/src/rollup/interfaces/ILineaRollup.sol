@@ -96,10 +96,13 @@ interface ILineaRollup {
    * @dev l1RollingHashMessageNumber is the calculated message number on L2 that is expected to match the existing L1 rolling hash.
    * This value will be used along with the stored last finalized L2 calculated message number in the public input.
    * @dev l2MerkleTreesDepth is the depth of all l2MerkleRoots.
+   * @dev lastFinalizedForcedTransactionNumber
+   * @dev finalForcedTransactionNumber
+   * @dev lastFinalizedForcedTransactionRollingHash
    * @dev l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockNumber.
    * @dev l2MessagingBlocksOffsets indicates by offset from currentL2BlockNumber which L2 blocks contain MessageSent events.
    */
-  struct FinalizationDataV3 {
+  struct FinalizationDataV4 {
     bytes32 parentStateRootHash;
     uint256 endBlockNumber;
     ShnarfData shnarfData;
@@ -110,6 +113,9 @@ interface ILineaRollup {
     uint256 lastFinalizedL1RollingHashMessageNumber;
     uint256 l1RollingHashMessageNumber;
     uint256 l2MerkleTreesDepth;
+    uint256 lastFinalizedForcedTransactionNumber;
+    uint256 finalForcedTransactionNumber;
+    bytes32 lastFinalizedForcedTransactionRollingHash;
     bytes32[] l2MerkleRoots;
     bytes l2MessagingBlocksOffsets;
   }
@@ -284,6 +290,11 @@ interface ILineaRollup {
   error OnlyNonFallbackOperator();
 
   /**
+   * @dev Thrown when the rollup is missing a forced transaction in the finalization block range.
+   */
+  error FinalizationDataMissingForcedTransaction(uint256 nextForcedTransactionNumber);
+
+  /**
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
@@ -302,9 +313,17 @@ interface ILineaRollup {
    * @dev Reverts if six months have not passed since the last finalization.
    * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
    * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
+   * @param _lastFinalizedForcedTransactionNumber Last finalized forced transaction number.
+   * @param _lastFinalizedForcedTransactionRollingHash Last finalized forced transaction rolling hash.
    * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
    */
-  function setFallbackOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external;
+  function setFallbackOperator(
+    uint256 _messageNumber,
+    bytes32 _rollingHash,
+    uint256 _lastFinalizedForcedTransactionNumber,
+    bytes32 _lastFinalizedForcedTransactionRollingHash,
+    uint256 _lastFinalizedTimestamp
+  ) external;
 
   /**
    * @notice Unsets the verifier contract address for a proof type.
@@ -350,6 +369,6 @@ interface ILineaRollup {
   function finalizeBlocks(
     bytes calldata _aggregatedProof,
     uint256 _proofType,
-    FinalizationDataV3 calldata _finalizationData
+    FinalizationDataV4 calldata _finalizationData
   ) external;
 }
