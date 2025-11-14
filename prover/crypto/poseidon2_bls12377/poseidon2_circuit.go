@@ -47,10 +47,6 @@ func (h *GnarkMDHasher) Write(data ...frontend.Variable) {
 	h.buffer = append(h.buffer, data...)
 }
 
-func (h *GnarkMDHasher) Write(data ...frontend.Variable) {
-	h.buffer = append(h.buffer, data...)
-}
-
 func (h *GnarkMDHasher) SetState(state frontend.Variable) {
 	h.state = state
 }
