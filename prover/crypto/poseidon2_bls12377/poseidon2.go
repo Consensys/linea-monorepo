@@ -8,6 +8,8 @@ import (
 	"github.com/consensys/gnark-crypto/hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -61,6 +63,12 @@ func (d *MDHasher) Reset() {
 // SetStateFrElement modifies the state (??)
 func (d *MDHasher) SetStateFrElement(state fr.Element) {
 	d.state.Set(&state)
+}
+
+// WriteElements adds a slice of field elements to the running hash.
+func (d *MDHasher) WriteKoalabearElements(elmts ...field.Element) {
+	_elmts := encoding.EncodeKoalabearsToFrElement(elmts)
+	d.WriteElements(_elmts...)
 }
 
 // WriteElements adds a slice of field elements to the running hash.
