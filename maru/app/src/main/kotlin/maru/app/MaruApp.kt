@@ -88,6 +88,17 @@ class MaruApp(
           .toLong()
       },
     )
+
+    if (config.p2p != null) {
+      metricsFacade.createGauge(
+        category = MaruMetricsCategory.P2P_NETWORK,
+        name = "peers.max",
+        description = "Max peers configuration",
+        measurementSupplier = {
+          config.p2p!!.maxPeers
+        },
+      )
+    }
   }
 
   private val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
