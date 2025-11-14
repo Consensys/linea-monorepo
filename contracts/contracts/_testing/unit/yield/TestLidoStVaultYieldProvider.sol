@@ -65,8 +65,8 @@ contract TestLidoStVaultYieldProvider is LidoStVaultYieldProvider {
     return _validateUnstakePermissionlessRequest(_yieldProvider, _pubkeys, _amounts, _withdrawalParamsProof);
   }
 
-  function payMaximumPossibleLSTLiability(address _yieldProvider) external returns (uint256) {
+  function payMaximumPossibleLSTLiability(address _yieldProvider) external {
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
-    return _payMaximumPossibleLSTLiability($$);
+    _payMaximumPossibleLSTLiability($$);
   }
 }

@@ -193,20 +193,18 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const userFundsBefore = await yieldManager.userFunds(yieldProvider);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
       // Arrange - setup ossified. Note with real Lido contracts 'progressPendingOssification' will not succeed with an LST liability
-      await yieldManager.connect(securityCouncil).initiateOssification(yieldProvider);
-      await yieldManager.connect(securityCouncil).progressPendingOssification(yieldProvider);
+      await yieldManager.setYieldProviderIsOssified(yieldProviderAddress, true);
+      await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
+      const vaultBalanceBefore = await getBalance(mockStakingVault);
       // Act
-      const liabilityPaidETH = await yieldManager
-        .connect(securityCouncil)
-        .payMaximumPossibleLSTLiability.staticCall(yieldProvider);
       await yieldManager.connect(securityCouncil).payMaximumPossibleLSTLiability(yieldProvider);
       // Assert
-      expect(liabilityPaidETH).eq(0);
+      expect(await getBalance(mockStakingVault)).eq(vaultBalanceBefore);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
       expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
     });
-    it("If no Lido liabilities, no-op", async () => {
+    it("If no Lido liabilities, should not rebalance but should sync external liability settlement", async () => {
       // Arrange - setup lst liability principal
       const liabilityPrincipalBefore = ONE_ETHER;
       await getWithdrawLSTCall(
@@ -219,21 +217,23 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const userFundsInYieldProvidersTotalBefore = await yieldManager.userFundsInYieldProvidersTotal();
       const userFundsBefore = await yieldManager.userFunds(yieldProvider);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
+      const vaultBalanceBefore = await getBalance(mockStakingVault);
       // Arrange - setup 0 Lido liability
       const liabilityShares = ZERO_VALUE;
+      await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
       await mockDashboard.connect(securityCouncil).setLiabilitySharesReturn(liabilityShares);
+      // Arrange - set sync
+      const syncedLiabilityShares = ONE_ETHER / 2n;
+      await mockSTETH.setPooledEthBySharesRoundUpReturn(syncedLiabilityShares);
       // Act
-      const liabilityPaidETH = await yieldManager
-        .connect(securityCouncil)
-        .payMaximumPossibleLSTLiability.staticCall(yieldProvider);
       await yieldManager.connect(securityCouncil).payMaximumPossibleLSTLiability(yieldProvider);
       // Assert
-      expect(liabilityPaidETH).eq(0);
+      expect(await getBalance(mockStakingVault)).eq(vaultBalanceBefore);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
       expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(syncedLiabilityShares);
     });
-    it("If no Vault balance, no-op", async () => {
+    it("If no Vault balance, should not rebalance but should sync external liability settlement", async () => {
       // Arrange - setup lst liability principal
       const liabilityPrincipalBefore = ONE_ETHER;
       await getWithdrawLSTCall(
@@ -246,21 +246,23 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       const userFundsInYieldProvidersTotalBefore = await yieldManager.userFundsInYieldProvidersTotal();
       const userFundsBefore = await yieldManager.userFunds(yieldProvider);
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
+      await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
+      const vaultBalanceBefore = await getBalance(mockStakingVault);
       // Arrange - setup Lido liability
       const liabilityShares = ONE_ETHER;
       await mockDashboard.connect(securityCouncil).setLiabilitySharesReturn(liabilityShares);
+      // Arrange - set sync
+      const syncedLiabilityShares = ONE_ETHER / 2n;
+      await mockSTETH.setPooledEthBySharesRoundUpReturn(syncedLiabilityShares);
       // Arrange - setup Vault balance (counted in shares)
       await mockSTETH.connect(securityCouncil).setSharesByPooledEthReturn(ZERO_VALUE);
       // Act
-      const liabilityPaidETH = await yieldManager
-        .connect(securityCouncil)
-        .payMaximumPossibleLSTLiability.staticCall(yieldProvider);
       await yieldManager.connect(securityCouncil).payMaximumPossibleLSTLiability(yieldProvider);
       // Assert
-      expect(liabilityPaidETH).eq(0);
+      expect(await getBalance(mockStakingVault)).eq(vaultBalanceBefore);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
       expect(await yieldManager.userFunds(yieldProvider)).eq(userFundsBefore);
-      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(liabilityPrincipalBefore);
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(syncedLiabilityShares);
     });
     it("If VAULT_BALANCE >0 and LIDO_LIABILITY_SHARE >0, rebalance with lower of the two (VAULT_BALANCE lower)", async () => {
       // Arrange - setup lst liability principal
@@ -289,13 +291,10 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
         .setPooledEthBySharesRoundUpReturn(ethValueOfLidoLiabilitySharesAfterRebalance);
 
       // Act
-      const liabilityPaidETH = await yieldManager
-        .connect(securityCouncil)
-        .payMaximumPossibleLSTLiability.staticCall(yieldProvider);
       await yieldManager.connect(securityCouncil).payMaximumPossibleLSTLiability(yieldProvider);
 
       // Assert
-      expect(liabilityPaidETH).eq(ONE_ETHER);
+      expect(await getBalance(mockStakingVault)).eq(vaultBalanceBefore - ONE_ETHER);
       const syncExternalLiabilitySettlementDifference =
         liabilityPrincipalBefore - ethValueOfLidoLiabilitySharesAfterRebalance;
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(
@@ -307,7 +306,6 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
         liabilityPrincipalBefore - syncExternalLiabilitySettlementDifference,
       );
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - liabilityPaidETH);
     });
     it("If VAULT_BALANCE >0 and LIDO_LIABILITY_SHARE >0, rebalance with lower of the two (LIDO_LIABILITY_SHARE lower)", async () => {
       // Arrange - setup lst liability principal
@@ -336,13 +334,9 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
         .setPooledEthBySharesRoundUpReturn(ethValueOfLidoLiabilitySharesAfterRebalance);
 
       // Act
-      const liabilityPaidETH = await yieldManager
-        .connect(securityCouncil)
-        .payMaximumPossibleLSTLiability.staticCall(yieldProvider);
       await yieldManager.connect(securityCouncil).payMaximumPossibleLSTLiability(yieldProvider);
 
       // Assert
-      expect(liabilityPaidETH).eq(liabilityShares);
       const syncExternalLiabilitySettlementDifference =
         liabilityPrincipalBefore - ethValueOfLidoLiabilitySharesAfterRebalance;
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(userFundsInYieldProvidersTotalBefore);
@@ -350,7 +344,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
       expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProvider)).eq(
         liabilityPrincipalBefore - syncExternalLiabilitySettlementDifference,
       );
-      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - liabilityPaidETH);
+      expect(await ethers.provider.getBalance(mockStakingVaultAddress)).eq(vaultBalanceBefore - liabilityShares);
     });
   });
 

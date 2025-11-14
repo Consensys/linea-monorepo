@@ -249,12 +249,11 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     return abi.decode(data, (uint256));
   }
 
-  function payMaximumPossibleLSTLiability(address _yieldProvider) external returns (uint256) {
-    bytes memory data = _delegatecallYieldProvider(
+  function payMaximumPossibleLSTLiability(address _yieldProvider) external {
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(TestLidoStVaultYieldProvider.payMaximumPossibleLSTLiability, (_yieldProvider))
     );
-    return abi.decode(data, (uint256));
   }
 
   function pauseStakingIfNotAlready(address _yieldProvider) external {
