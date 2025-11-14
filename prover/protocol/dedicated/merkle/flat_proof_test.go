@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -98,7 +99,7 @@ func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleT
 		run.AssignColumn(ifaces.ColIDf("ROOTS_%v", i), smartvectors.RightZeroPadded(data.roots[i], merkleTestNumRow))
 	}
 	for i := 0; i < limbPerU64; i++ {
-		logrus.Printf("Assigning POS_LIMB_%v: %v\n", i, data.pos[i])
+		logrus.Printf("Assigning POS_LIMB_%v: %v\n", i, vector.Prettify(data.pos[i]))
 		run.AssignColumn(ifaces.ColIDf("POS_LIMB_%v", i), smartvectors.RightZeroPadded(data.pos[i], merkleTestNumRow))
 	}
 	run.AssignColumn("ACTIVE", smartvectors.RightZeroPadded(data.isActive, merkleTestNumRow))
@@ -219,13 +220,13 @@ func (mt *merkleTestBuilder) pushRow(row merkleTestBuilderRow) {
 	mt.isActive = append(mt.isActive, field.One())
 }
 
-// uint64To16BitLimbs splits v into four 16-bit limbs (little-endian order):
-// limbs[0] = low 16 bits, limbs[3] = highest 16 bits.
+// uint64To16BitLimbs splits v into four 16-bit limbs (big-endian order):
+// limbs[3] = low 16 bits, limbs[0] = highest 16 bits.
 func uint64To16BitLimbs(v uint64) [4]uint64 {
 	var limbs [4]uint64
-	limbs[0] = uint64(v & 0xFFFF)
-	limbs[1] = uint64((v >> 16) & 0xFFFF)
-	limbs[2] = uint64((v >> 32) & 0xFFFF)
-	limbs[3] = uint64((v >> 48) & 0xFFFF)
+	limbs[3] = uint64(v & 0xFFFF)
+	limbs[2] = uint64((v >> 16) & 0xFFFF)
+	limbs[1] = uint64((v >> 32) & 0xFFFF)
+	limbs[0] = uint64((v >> 48) & 0xFFFF)
 	return limbs
 }
