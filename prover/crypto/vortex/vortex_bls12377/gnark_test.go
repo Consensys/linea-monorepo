@@ -247,17 +247,17 @@ func TestFFTInverseExtCircuit(t *testing.T) {
 
 	s := 16
 
-	// {
-	// 	circuit, witness := gnarkFFTInverseExtCircuitWitness(s)
+	{
+		circuit, witness := gnarkFFTInverseExtCircuitWitness(s)
 
-	// 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	// 	assert.NoError(t, err)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+		assert.NoError(t, err)
 
-	// 	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
+		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 
 	{
 		circuit, witness := gnarkFFTInverseExtCircuitWitness(s)

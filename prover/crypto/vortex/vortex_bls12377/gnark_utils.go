@@ -114,10 +114,8 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 	}
 
 	// probabilistically check the result of the FFT
-	//TODO@yao, how to fix this test with 	multicommit.WithCommitment
-
+	//TODO@yao: how to fix this test with 	multicommit.WithCommitment
 	x := fext.RandomElement()
-
 	xGen4 := gnarkfext.NewE4Gen(x)
 	ec := gnarkEvalCanonicalExt(api, res, xGen4)
 
@@ -125,13 +123,13 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 	var gen field.Element
 	gen.Inverse(&genInv)
 	lagranges := gnarkComputeLagrangeAtZ(api, xGen4, gen, cardinality)
-	el := gnarkfext.E4Gen{}
+	el := ext4.Zero()
 	for i := 0; i < len(p); i++ {
 		tmp := ext4.Mul(&p[i], &lagranges[i])
-		el = *ext4.Add(&el, tmp)
+		el = ext4.Add(el, tmp)
 	}
 
-	ext4.AssertIsEqual(&ec, &el)
+	ext4.AssertIsEqual(&ec, el)
 
 	return res, nil
 
