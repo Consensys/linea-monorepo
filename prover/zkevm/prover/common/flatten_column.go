@@ -23,6 +23,10 @@ const (
 	NbLimbU128 = 8
 	// NbLimbU256 represents the number of 16-bit limbs for a 256-bit integer.
 	NbLimbU256 = 16
+	// NbElemPerHash represents the number of field elements per Posseidon hash.
+	NbElemPerHash = 8
+	// NbElemForHasingU64 represents the number of field elements per 64-bit integers.
+	NbElemForHasingU64 = 16
 )
 
 // FlattenColumn flattens multiple limb columns and an accompanying mask into single columns,
@@ -83,7 +87,7 @@ func NewFlattenColumn(comp *wizard.CompiledIOP, nbLimbsCols int, limbs []ifaces.
 	}
 
 	res.initColumns(comp)
-	res.mask = comp.InsertCommit(0, res.MaskColID(), flattenSize)
+	res.mask = comp.InsertCommit(0, res.MaskColID(), flattenSize, true)
 
 	return res
 }
@@ -192,7 +196,7 @@ func (l *FlattenColumn) initColumns(comp *wizard.CompiledIOP) {
 		return
 	}
 
-	l.limbs = comp.InsertCommit(0, baseID, l.size)
+	l.limbs = comp.InsertCommit(0, baseID, l.size, true)
 	l.auxProjectionMask = comp.InsertPrecomputed(auxProjectionMaskID,
 		precomputeAuxProjectionMask(l.size, l.originalMask.Size(), l.nbLimbsCols))
 }

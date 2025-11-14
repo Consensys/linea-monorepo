@@ -47,6 +47,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column,
 			round,
 			ifaces.ColIDf("HASHING_%v_%v", ctxID, i),
 			numRows,
+			true,
 		)
 
 		comp.InsertMiMC(
