@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
@@ -193,7 +192,7 @@ func ValRCBase2Pattern() [common.NumSlices][]field.Element {
 		var out [common.NumSlices]uint64
 		for i := 0; i < common.NumSlices; i++ {
 			out[i] = (keccak.RC[j] >> (common.NumSlices * i)) & 0xFF // take each byte, LSB first
-			a := keccakf.U64ToBaseX(out[i], &common.BaseChiFr)
+			a := common.U64ToBaseX(out[i], &common.BaseChiFr)
 			res[i] = append(res[i], a)
 		}
 

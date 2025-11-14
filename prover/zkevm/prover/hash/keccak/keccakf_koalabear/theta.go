@@ -9,7 +9,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	common_koalabear "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
+	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
 const (
@@ -22,11 +22,11 @@ const (
 // theta module, responsible for updating the state in the theta step of keccakf
 type theta struct {
 	// state before applying the theta step, in base clean 4.
-	stateCurr common_koalabear.State
+	stateCurr kcommon.State
 	// state after applying the theta step, in base clean 4.
-	stateInternalDirty, stateInternalClean common_koalabear.State
+	stateInternalDirty, stateInternalClean kcommon.State
 	// state after applying the theta step, in bits.
-	stateNext common_koalabear.StateInBits
+	stateNext kcommon.StateInBits
 	// Intermediate columns, after each 3 additions
 	cMiddleDirty, cFinalDirty, cMiddleClean, cFinalClean, ccDirty, ccCleaned [5][8]ifaces.Column
 	// msb of cFinal used for the rotation and computing cc.
@@ -55,19 +55,19 @@ func newTheta(comp *wizard.CompiledIOP,
 // declareColumnsTheta declares the intermediate columns generated during theta step, including the new state.
 func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, keccakfSize int) {
 	// declare the new state
-	theta.stateInternalClean = common_koalabear.State{}
-	theta.stateNext = common_koalabear.StateInBits{}
+	theta.stateInternalClean = kcommon.State{}
+	theta.stateNext = kcommon.StateInBits{}
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
 				theta.stateInternalDirty[x][y][z] = comp.InsertCommit(
 					0,
-					deriveNameKeccakFSmallField("STATE_THETA_DIRTY_%v_%v_%v", x, y, z),
+					ifaces.ColIDf("STATE_THETA_DIRTY_%v_%v_%v", x, y, z),
 					keccakfSize,
 				)
 				theta.stateInternalClean[x][y][z] = comp.InsertCommit(
 					0,
-					deriveNameKeccakFSmallField("STATE_THETA_CLEAN_%v_%v_%v", x, y, z),
+					ifaces.ColIDf("STATE_THETA_CLEAN_%v_%v_%v", x, y, z),
 					keccakfSize,
 				)
 
@@ -75,7 +75,7 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, keccakfSize in
 				for i := 0; i < 8; i++ {
 					theta.stateNext[x][y][z*8+i] = comp.InsertCommit(
 						0,
-						deriveNameKeccakFSmallField("STATE_THETA_BIT_%v_%v_%v", x, y, z*8+i),
+						ifaces.ColIDf("STATE_THETA_BIT_%v_%v_%v", x, y, z*8+i),
 						keccakfSize,
 					)
 				}
@@ -93,37 +93,37 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, keccakfSize in
 		for z := 0; z < 8; z++ {
 			theta.cMiddleDirty[x][z] = comp.InsertCommit(
 				0,
-				deriveNameKeccakFSmallField("C_MIDDLE_%v_%v", x, z),
+				ifaces.ColIDf("C_MIDDLE_%v_%v", x, z),
 				keccakfSize,
 			)
 			theta.cFinalDirty[x][z] = comp.InsertCommit(
 				0,
-				deriveNameKeccakFSmallField("C_FINAL_%v_%v", x, z),
+				ifaces.ColIDf("C_FINAL_%v_%v", x, z),
 				keccakfSize,
 			)
 			theta.cMiddleClean[x][z] = comp.InsertCommit(
 				0,
-				deriveNameKeccakFSmallField("C_MIDDLE_CLEAN_%v_%v", x, z),
+				ifaces.ColIDf("C_MIDDLE_CLEAN_%v_%v", x, z),
 				keccakfSize,
 			)
 			theta.cFinalClean[x][z] = comp.InsertCommit(
 				0,
-				deriveNameKeccakFSmallField("C_FINAL_CLEAN_%v_%v", x, z),
+				ifaces.ColIDf("C_FINAL_CLEAN_%v_%v", x, z),
 				keccakfSize,
 			)
 			theta.ccDirty[x][z] = comp.InsertCommit(
 				0,
-				deriveNameKeccakFSmallField("CC_%v_%v", x, z),
+				ifaces.ColIDf("CC_%v_%v", x, z),
 				keccakfSize,
 			)
 			theta.ccCleaned[x][z] = comp.InsertCommit(
 				0,
-				deriveNameKeccakFSmallField("CC_CLEAN_%v_%v", x, z),
+				ifaces.ColIDf("CC_CLEAN_%v_%v", x, z),
 				keccakfSize,
 			)
 			theta.msb[x][z] = comp.InsertCommit(
 				0,
-				deriveNameKeccakFSmallField("THETA_MSB_%v_%v", x, z),
+				ifaces.ColIDf("THETA_MSB_%v_%v", x, z),
 				keccakfSize,
 			)
 		}
@@ -291,7 +291,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 			// clean the cm by decomposing each element into base thetaBase and recomposing
 			for i := 0; i < len(cmDirtyFr[x][z]); i++ {
 				v := cmDirtyFr[x][z][i].Uint64()
-				resc := clean(decompose(v, thetaBase, 8, true))
+				resc := clean(kcommon.Decompose(v, thetaBase, 8, true))
 
 				cleaned := 0
 				for k := len(resc) - 1; k >= 0; k-- {
@@ -315,7 +315,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 		for z := 0; z < 8; z++ {
 			for i := 0; i < len(cfDirtyFr[x][z]); i++ {
 				v := cfDirtyFr[x][z][i].Uint64()
-				resf := clean(decompose(v, thetaBase, 8, true))
+				resf := clean(kcommon.Decompose(v, thetaBase, 8, true))
 
 				msbFr[x][z][i] = field.NewElement(uint64(resf[len(resf)-1]))
 
@@ -343,7 +343,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 				a := int(cfCleanFr[x][z][i].Uint64())*thetaBase - int(msbFr[x][z][i].Uint64())*thetaBase8 + int(msbFr[x][prev][i].Uint64())
 				ccDirty[x][z].PushInt(a)
 				// clean a
-				res := clean(decompose(uint64(a), thetaBase, 8, true))
+				res := clean(kcommon.Decompose(uint64(a), thetaBase, 8, true))
 				cleanedA := 0
 				for k := len(res) - 1; k >= 0; k-- {
 					cleanedA = cleanedA*thetaBase + res[k]
@@ -382,7 +382,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 				// assign dirty and clean the state
 				for i := 0; i < len(col); i++ {
 					stateInternalDirty[x][y][z].PushField(col[i])
-					res := clean(decompose(col[i].Uint64(), thetaBase, 8, true))
+					res := clean(kcommon.Decompose(col[i].Uint64(), thetaBase, 8, true))
 					// recompse to get clean state
 					stateCleaned := 0
 					for i := len(res) - 1; i >= 0; i-- {
@@ -435,7 +435,7 @@ func createLookupTablesTheta() (dirtyBaseTheta, cleanBaseTheta smartvectors.Smar
 	// for each value in base dirty BaseTheta (0 to 65535), compute its equivalent in base clean BaseTheta
 	for i := 0; i < thetaBase8; i++ {
 		// decompose in base thetaBase (8 digits) and clean it
-		v := clean(decompose(uint64(i), thetaBase, 8, true))
+		v := clean(kcommon.Decompose(uint64(i), thetaBase, 8, true))
 		cleanValueTheta = 0
 		for k := len(v) - 1; k >= 0; k-- {
 			cleanValueTheta = cleanValueTheta*thetaBase + int(v[k])

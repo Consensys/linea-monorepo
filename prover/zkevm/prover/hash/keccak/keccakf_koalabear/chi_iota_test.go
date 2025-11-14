@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 	"github.com/stretchr/testify/assert"
 )
@@ -262,7 +261,7 @@ func cleanBaseBlock(block keccak.Block, base *field.Element) (res [common.NumLan
 		}
 		// convert each byte to clean base common.common.BaseChi
 		for j := 0; j < common.NumSlices; j++ {
-			res[i][j] = keccakf.U64ToBaseX(uint64(lanebytes[j]), base)
+			res[i][j] = common.U64ToBaseX(uint64(lanebytes[j]), base)
 		}
 	}
 	return res

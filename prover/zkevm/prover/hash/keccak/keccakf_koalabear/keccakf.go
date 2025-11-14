@@ -8,7 +8,6 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/iokeccakf"
 )
@@ -182,7 +181,7 @@ func (mod *Module) assignState(
 					}
 					// convert each byte to clean base common.common.BaseTheta
 					for j := 0; j < kcommon.NumSlices; j++ {
-						state[x][y][j].PushField(keccakf.U64ToBaseX(uint64(lanebytes[j]), &kcommon.BaseThetaFr))
+						state[x][y][j].PushField(kcommon.U64ToBaseX(uint64(lanebytes[j]), &kcommon.BaseThetaFr))
 					}
 				}
 			}
