@@ -420,14 +420,22 @@ contract YieldManager is
   function withdrawableValue(
     address _yieldProvider
   ) public onlyKnownYieldProvider(_yieldProvider) returns (uint256 withdrawableAmount) {
-    bytes memory data = _delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
-    );
-    uint256 fetchedWithdrawableAmount = abi.decode(data, (uint256));
     // We tolerate userFunds > withdrawableValue, as this means we have incurred negative yield. We assume it is a temporary situation that is fixed with incoming yield.
     // We don't tolerate the reverse, because it means existing funds on the YieldProvider are unavailable for withdrawal.
-    withdrawableAmount = Math256.min(fetchedWithdrawableAmount, _getYieldProviderStorage(_yieldProvider).userFunds);
+    withdrawableAmount = Math256.min(_withdrawableValue(_yieldProvider), _getYieldProviderStorage(_yieldProvider).userFunds);
+  }
+
+  /**
+   * @param _yieldProvider The yield provider address.
+   * @return withdrawableAmount Amount of ETH that can be instantly withdrawn from the YieldProvider.
+   */
+  function _withdrawableValue(
+    address _yieldProvider
+  ) internal returns (uint256 withdrawableAmount) {
+    return abi.decode(_delegatecallYieldProvider(
+      _yieldProvider,
+      abi.encodeCall(IYieldProvider.withdrawableValue, (_yieldProvider))
+    ), (uint256));
   }
 
   /**
@@ -995,7 +1003,11 @@ contract YieldManager is
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
     uint256 userFundsCached = _getYieldProviderStorage(_yieldProvider).userFunds;
     if (userFundsCached != 0) {
-      revert YieldProviderHasRemainingFunds(userFundsCached);
+      revert YieldProviderHasUserFunds(userFundsCached);
+    }
+    uint256 withdrawableValueCached = _withdrawableValue(_yieldProvider);
+    if (withdrawableValueCached != 0) {
+      revert YieldProviderHasWithdrawableValue(withdrawableValueCached);
     }
     _removeYieldProvider(_yieldProvider, _vendorExitData);
     emit YieldProviderRemoved(_yieldProvider, false);

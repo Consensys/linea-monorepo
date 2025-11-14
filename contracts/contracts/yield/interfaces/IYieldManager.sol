@@ -344,10 +344,16 @@ interface IYieldManager {
   error YieldProviderAlreadyAdded();
 
   /**
-   * @dev Thrown when removing a YieldProvider with remaining user funds.
-   * @param remainingUserFunds Remaining user funds.
+   * @dev Thrown when removing a YieldProvider with non-0 user funds.
+   * @param userFunds Remaining user funds.
    */
-  error YieldProviderHasRemainingFunds(uint256 remainingUserFunds);
+  error YieldProviderHasUserFunds(uint256 userFunds);
+
+  /**
+   * @dev Thrown when removing a YieldProvider with non-0 withdrawable value.
+   * @param withdrawableValue Remaining withdrawable value.
+   */
+  error YieldProviderHasWithdrawableValue(uint256 withdrawableValue);
 
   /**
    * @dev Thrown when removing a YieldProvider with remaining negative yield.
