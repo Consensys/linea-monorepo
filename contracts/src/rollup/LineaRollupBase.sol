@@ -219,7 +219,7 @@ abstract contract LineaRollupBase is
   function storeForcedTransaction(
     uint256 _forcedL2BlockNumber,
     bytes32 _forcedTransactionRollingHash
-  ) external onlyRole(FORCED_TRANSACTION_SENDER_ROLE) returns (uint256 forcedTransactionNumber) {
+  ) external virtual onlyRole(FORCED_TRANSACTION_SENDER_ROLE) returns (uint256 forcedTransactionNumber) {
     unchecked {
       forcedTransactionNumber = nextForcedTransactionNumber++;
 
