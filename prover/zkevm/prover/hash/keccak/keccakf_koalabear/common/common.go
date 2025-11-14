@@ -115,10 +115,9 @@ func DecomposeAndCleanCol(n []field.Element, base, nb int) [][]field.Element {
 
 	var (
 		res = make([][]field.Element, nb)
-		dec = make([]field.Element, nb)
 	)
 	for i := range n {
-		dec = DecomposeAndCleanFr(n[i], base, nb)
+		dec := DecomposeAndCleanFr(n[i], base, nb)
 		for j := range dec {
 			res[j] = append(res[j], dec[j])
 		}

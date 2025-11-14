@@ -76,7 +76,7 @@ func TestVectorBaseBToBaseA(t *testing.T) {
 
 func TestRC(t *testing.T) {
 
-	rc := ValRCBase2Pattern()
+	rc := valRCBase2Pattern()
 
 	for i := range rc {
 		expected := keccak.RC[i]
