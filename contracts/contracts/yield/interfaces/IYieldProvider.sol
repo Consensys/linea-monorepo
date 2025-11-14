@@ -54,6 +54,9 @@ interface IYieldProvider {
   /// @notice Raised when a function is called outside of a `delegatecall` from the YieldManager.
   error ContextIsNotYieldManager();
 
+  /// @notice Raised no vendor exit data is provided.
+  error NoVendorExitDataProvided();
+
   /**
    * @notice Returns the amount of ETH the provider can immediately remit back to the YieldManager.
    * @dev Called via `delegatecall` from the YieldManager.

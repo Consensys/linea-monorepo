@@ -603,9 +603,9 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldProvider.connect(securityCouncil).exitVendorContracts(yieldProviderAddress, EMPTY_CALLDATA);
       await expectRevertWithCustomError(yieldProvider, call, "ContextIsNotYieldManager");
     });
-    it("Should succeed with empty vendorExitData", async () => {
+    it("Should revert with empty vendorExitData", async () => {
       const call = yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, EMPTY_CALLDATA);
-      await expect(call).to.not.be.reverted;
+      await expectRevertWithCustomError(yieldProvider, call, "NoVendorExitDataProvided");
     });
     it("Should revert if newVaultAddress = 0", async () => {
       const call = yieldManager

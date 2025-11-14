@@ -18,6 +18,7 @@ import {
   withdrawLST,
   setupMaxLSTLiabilityPaymentForWithdrawal,
   setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
+  buildVendorExitData,
 } from "../helpers";
 import {
   TestYieldManager,
@@ -503,7 +504,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         .safeWithdrawFromYieldProvider(yieldProviderAddress, ONE_ETHER * 2n);
       await mockDashboard.setWithdrawableValueReturn(0n);
       // Arrange - Remove yield provider
-      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, EMPTY_CALLDATA);
+      await yieldManager.connect(securityCouncil).removeYieldProvider(yieldProviderAddress, buildVendorExitData());
       // Arrange - Add new yield provider
       const { yieldProviderAddress: yieldProvider2Address } = await deployAndAddAdditionalLidoStVaultYieldProvider(
         lidoStVaultYieldProviderFactory,

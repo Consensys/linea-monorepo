@@ -543,7 +543,7 @@ contract LidoStVaultYieldProvider is YieldProviderBase, IGenericErrors {
    * @param _vendorExitData Vendor-specific exit data.
    */
   function exitVendorContracts(address _yieldProvider, bytes memory _vendorExitData) external onlyDelegateCall {
-    if (_vendorExitData.length == 0) return;
+    if (_vendorExitData.length == 0) revert NoVendorExitDataProvided();
     address newVaultOwner = abi.decode(_vendorExitData, (address));
     ErrorUtils.revertIfZeroAddress(newVaultOwner);
     YieldProviderStorage storage $$ = _getYieldProviderStorage(_yieldProvider);
