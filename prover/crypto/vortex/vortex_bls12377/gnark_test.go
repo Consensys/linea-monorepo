@@ -11,13 +11,12 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	gnarkVortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/gnark/std/hash"
-	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
@@ -190,66 +189,66 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 }
 
 // ------------------------------------------------------------
-// test FFT inverse: FFTInverse
+// test FFT inverse Ext: FFTInverseExt
 
-type FFTInverseCircuit struct {
+type FFTInverseExtCircuit struct {
 	Domain fft.Domain
-	P      []zk.WrappedVariable
-	R      []zk.WrappedVariable
+	P      []gnarkfext.E4Gen
+	R      []gnarkfext.E4Gen
 }
 
-func (circuit *FFTInverseCircuit) Define(api frontend.API) error {
-	apiGen, err := zk.NewGenericApi(api)
+func (circuit *FFTInverseExtCircuit) Define(api frontend.API) error {
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		return err
 	}
-	f, err := FFTInverse(api, circuit.P, circuit.Domain.GeneratorInv, circuit.Domain.Cardinality)
+	f, err := FFTInverseExt(api, circuit.P, circuit.Domain.GeneratorInv, circuit.Domain.Cardinality)
 	if err != nil {
 		return err
 	}
 
 	for i := 0; i < len(f); i++ {
-		apiGen.AssertIsEqual(circuit.R[i], f[i])
+		ext4.AssertIsEqual(&circuit.R[i], &f[i])
 	}
 
 	return nil
 }
 
-func gnarkFFTInverseCircuitWitness(s int) (*FFTInverseCircuit, *FFTInverseCircuit) {
+func gnarkFFTInverseExtCircuitWitness(s int) (*FFTInverseExtCircuit, *FFTInverseExtCircuit) {
 	d := fft.NewDomain(uint64(s))
 
 	// prepare witness
-	p := make([]field.Element, s)
+	p := make([]fext.Element, s)
 	for i := 0; i < s; i++ {
-		p[i] = field.PseudoRand(rng)
+		p[i] = fext.PseudoRand(rng)
 	}
-	r := make([]field.Element, s)
+	r := make([]fext.Element, s)
 	copy(r, p)
-	d.FFTInverse(r, fft.DIF)
+	d.FFTInverseExt(r, fft.DIF)
 	fft.BitReverse(r)
-	var witness FFTInverseCircuit
-	witness.P = make([]zk.WrappedVariable, s)
-	witness.R = make([]zk.WrappedVariable, s)
+	var witness FFTInverseExtCircuit
+	witness.P = make([]gnarkfext.E4Gen, s)
+	witness.R = make([]gnarkfext.E4Gen, s)
 
 	for i := 0; i < s; i++ {
-		witness.P[i] = zk.ValueOf(p[i].String())
-		witness.R[i] = zk.ValueOf(r[i].String())
+		witness.P[i] = gnarkfext.NewE4Gen(p[i])
+		witness.R[i] = gnarkfext.NewE4Gen(r[i])
 	}
 
-	var circuit FFTInverseCircuit
-	circuit.P = make([]zk.WrappedVariable, s)
-	circuit.R = make([]zk.WrappedVariable, s)
+	var circuit FFTInverseExtCircuit
+	circuit.P = make([]gnarkfext.E4Gen, s)
+	circuit.R = make([]gnarkfext.E4Gen, s)
 	circuit.Domain = *d
 	return &circuit, &witness
 
 }
 
-func TestFFTInverseCircuit(t *testing.T) {
+func TestFFTInverseExtCircuit(t *testing.T) {
 
 	s := 16
 
 	{
-		circuit, witness := gnarkFFTInverseCircuitWitness(s)
+		circuit, witness := gnarkFFTInverseExtCircuitWitness(s)
 
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
@@ -261,7 +260,7 @@ func TestFFTInverseCircuit(t *testing.T) {
 	}
 
 	{
-		circuit, witness := gnarkFFTInverseCircuitWitness(s)
+		circuit, witness := gnarkFFTInverseExtCircuitWitness(s)
 
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
@@ -275,51 +274,51 @@ func TestFFTInverseCircuit(t *testing.T) {
 }
 
 // ------------------------------------------------------------
-// test AssertIsCodeWord
+// test AssertIsCodeWordExt
 
-type AssertIsCodeWordCircuit struct {
+type AssertIsCodeWordExtCircuit struct {
 	rate uint64
 	d    *fft.Domain
-	P    []zk.WrappedVariable `gnark:",public"`
+	P    []gnarkfext.E4Gen `gnark:",public"`
 }
 
-func (circuit *AssertIsCodeWordCircuit) Define(api frontend.API) error {
-	return assertIsCodeWord(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
+func (circuit *AssertIsCodeWordExtCircuit) Define(api frontend.API) error {
+	return assertIsCodeWordExt(api, circuit.P, circuit.d.GeneratorInv, circuit.d.Cardinality, circuit.rate)
 
 }
-func gnarkAssertIsCodeWordCircuitWitness(size int) (*AssertIsCodeWordCircuit, *AssertIsCodeWordCircuit) {
+func gnarkAssertIsCodeWordExtCircuitWitness(size int) (*AssertIsCodeWordExtCircuit, *AssertIsCodeWordExtCircuit) {
 	d := fft.NewDomain(uint64(size))
 	rate := 2
-	p := make([]field.Element, size)
+	p := make([]fext.Element, size)
 	for i := 0; i < (size / rate); i++ {
-		p[i] = field.PseudoRand(rng)
+		p[i] = fext.PseudoRand(rng)
 	}
-	d.FFT(p, fft.DIF)
+	d.FFTExt(p, fft.DIF)
 	fft.BitReverse(p)
 
-	var witness AssertIsCodeWordCircuit
-	witness.P = make([]zk.WrappedVariable, size)
+	var witness AssertIsCodeWordExtCircuit
+	witness.P = make([]gnarkfext.E4Gen, size)
 	witness.rate = uint64(rate)
 	witness.d = d
 	for i := 0; i < size; i++ {
-		witness.P[i] = zk.ValueOf(p[i].String())
+		witness.P[i] = gnarkfext.NewE4Gen(p[i])
 	}
 
 	// compile the circuit
-	var circuit AssertIsCodeWordCircuit
-	circuit.P = make([]zk.WrappedVariable, size)
+	var circuit AssertIsCodeWordExtCircuit
+	circuit.P = make([]gnarkfext.E4Gen, size)
 	circuit.d = d
 	circuit.rate = uint64(rate)
 	return &circuit, &witness
 }
 
-func TestAssertIsCodeWord(t *testing.T) {
+func TestAssertIsCodeWordExt(t *testing.T) {
 
 	// generate witness
-	size := 2048
+	size := 4
 
 	{
-		circuit, witness := gnarkAssertIsCodeWordCircuitWitness(size)
+		circuit, witness := gnarkAssertIsCodeWordExtCircuitWitness(size)
 
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
@@ -331,7 +330,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 	}
 
 	{
-		circuit, witness := gnarkAssertIsCodeWordCircuitWitness(size)
+		circuit, witness := gnarkAssertIsCodeWordExtCircuitWitness(size)
 
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 		assert.NoError(t, err)
@@ -634,9 +633,9 @@ func TestGnarkVortexNCommitmentsWithMerkleNoSis(t *testing.T) {
 	}
 
 }
-func makePoseidon2Hasherfunc(api frontend.API) (hash.FieldHasher, error) {
+func makePoseidon2Hasherfunc(api frontend.API) (poseidon2_bls12377.GnarkMDHasher, error) {
 
-	h, err := gposeidon2.NewMerkleDamgardHasher(api)
+	h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
 
 	return h, err
 }

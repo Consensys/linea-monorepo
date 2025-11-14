@@ -3,8 +3,7 @@ package vortex
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash"
-	gposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
@@ -74,13 +73,13 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
 	// function that will defer the hashing to gkr
-	factoryHasherFunc := func(_ frontend.API) (hash.FieldHasher, error) {
+	factoryHasherFunc := func(_ frontend.API) (poseidon2_bls12377.GnarkMDHasher, error) {
 		factory := vr.GetHasherFactory()
 		if factory != nil {
 			h := vr.GetHasherFactory().NewHasher()
 			return h, nil
 		}
-		h, err := gposeidon2.NewMerkleDamgardHasher(api)
+		h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
 		return h, err
 	}
 

@@ -2,7 +2,7 @@ package smt_bls12377
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 )
 
 // GnarkProof mirrors [Proof] in a gnark circuit.
@@ -18,7 +18,7 @@ func GnarkRecoverRoot(
 	api frontend.API,
 	proof GnarkProof,
 	leaf frontend.Variable,
-	h hash.FieldHasher) frontend.Variable {
+	h poseidon2_bls12377.GnarkMDHasher) frontend.Variable {
 
 	current := leaf
 	nbBits := len(proof.Siblings)
@@ -40,7 +40,7 @@ func GnarkVerifyMerkleProof(
 	proof GnarkProof,
 	leaf frontend.Variable,
 	root frontend.Variable,
-	h hash.FieldHasher) {
+	h poseidon2_bls12377.GnarkMDHasher) {
 
 	r := GnarkRecoverRoot(api, proof, leaf, h)
 
