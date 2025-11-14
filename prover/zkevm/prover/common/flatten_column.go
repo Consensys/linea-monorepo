@@ -87,7 +87,7 @@ func NewFlattenColumn(comp *wizard.CompiledIOP, nbLimbsCols int, limbs []ifaces.
 	}
 
 	res.initColumns(comp)
-	res.mask = comp.InsertCommit(0, res.MaskColID(), flattenSize)
+	res.mask = comp.InsertCommit(0, res.MaskColID(), flattenSize, true)
 
 	return res
 }
@@ -196,7 +196,7 @@ func (l *FlattenColumn) initColumns(comp *wizard.CompiledIOP) {
 		return
 	}
 
-	l.limbs = comp.InsertCommit(0, baseID, l.size)
+	l.limbs = comp.InsertCommit(0, baseID, l.size, true)
 	l.auxProjectionMask = comp.InsertPrecomputed(auxProjectionMaskID,
 		precomputeAuxProjectionMask(l.size, l.originalMask.Size(), l.nbLimbsCols))
 }
