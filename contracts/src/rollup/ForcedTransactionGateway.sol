@@ -160,7 +160,8 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
 
     uint256 expectedBlockNumber;
     unchecked {
-      /// @dev The computation uses 1s block time making block number and seconds interchangable.
+      /// @dev The computation uses 1s block time making block number and seconds interchangable,
+      ///      while the chain might currently differ at >1s, this gives additional inclusion time.
       expectedBlockNumber =
         currentFinalizedL2BlockNumber +
         block.timestamp -
