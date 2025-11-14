@@ -11,8 +11,13 @@ contract MockDashboard is IDashboard {
   uint256 private liabilitySharesReturn;
   uint256 private withdrawableValueReturn;
   uint256 private accruedFeeReturn;
+  uint256 private obligationsFeesToSettleReturn;
   bool isRebalanceVaultWithSharesWithdrawingFromVault;
   bool isDisburseFeeWithdrawingFromVault;
+
+  function setObligationsFeesToSettleReturn(uint256 _value) external {
+    obligationsFeesToSettleReturn = _value;
+  }
 
   function setRebalanceVaultWithSharesWithdrawingFromVault(bool _value) external {
     isRebalanceVaultWithSharesWithdrawingFromVault = _value;
@@ -129,5 +134,9 @@ contract MockDashboard is IDashboard {
 
   function transferVaultOwnership(address _newOwner) external {
     transferVaultOwnershipCallCount += 1;
+  }
+
+  function obligations() external view returns (uint256 sharesToBurn, uint256 feesToSettle) {
+    return (0, obligationsFeesToSettleReturn);
   }
 }

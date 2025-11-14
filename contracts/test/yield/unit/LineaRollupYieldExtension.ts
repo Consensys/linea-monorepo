@@ -387,7 +387,7 @@ describe("Linea Rollup Yield Extension", () => {
   });
 
   describe("Claiming message with proof and withdrawing LST", () => {
-    it("Should revert if L1MessageService has sufficient balance to fulfil withdrawal request amount", async () => {
+    it("Should revert if L1MessageService has more than sufficient balance to fulfil withdrawal request amount", async () => {
       const preFundAmount = ethers.parseEther("1");
       await lineaRollup.connect(securityCouncil).fund({ value: preFundAmount });
 
@@ -399,6 +399,30 @@ describe("Linea Rollup Yield Extension", () => {
         to: admin.address,
         fee: 0n,
         value: ethers.parseEther("0.5"),
+        feeRecipient: admin.address,
+        merkleRoot: ethers.ZeroHash,
+        data: EMPTY_CALLDATA,
+      };
+
+      const claimCall = lineaRollup.connect(admin).claimMessageWithProofAndWithdrawLST(params, operator.address);
+
+      await expectRevertWithCustomError(lineaRollup, claimCall, "LSTWithdrawalRequiresDeficit");
+
+      expect(await ethers.provider.getBalance(await lineaRollup.getAddress())).to.equal(preFundAmount);
+    });
+
+    it("Should revert if L1MessageService has the exact balance to fulfil withdrawal request amount", async () => {
+      const preFundAmount = ethers.parseEther("1");
+      await lineaRollup.connect(securityCouncil).fund({ value: preFundAmount });
+
+      const params = {
+        proof: [] as string[],
+        messageNumber: 0n,
+        leafIndex: 0,
+        from: admin.address,
+        to: admin.address,
+        fee: 0n,
+        value: preFundAmount,
         feeRecipient: admin.address,
         merkleRoot: ethers.ZeroHash,
         data: EMPTY_CALLDATA,

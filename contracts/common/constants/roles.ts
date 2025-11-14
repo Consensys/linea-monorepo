@@ -141,6 +141,48 @@ export const UNPAUSE_NATIVE_YIELD_REPORTING_ROLE = generateKeccak256(
   { encodePacked: true },
 );
 
+const LIDO_DASHBOARD_FUND_ROLE = generateKeccak256(["string"], ["vaults.Permissions.Fund"], { encodePacked: true });
+
+const LIDO_DASHBOARD_WITHDRAW_ROLE = generateKeccak256(["string"], ["vaults.Permissions.Withdraw"], {
+  encodePacked: true,
+});
+
+const LIDO_DASHBOARD_MINT_ROLE = generateKeccak256(["string"], ["vaults.Permissions.Mint"], { encodePacked: true });
+
+const LIDO_DASHBOARD_REBALANCE_ROLE = generateKeccak256(["string"], ["vaults.Permissions.Rebalance"], {
+  encodePacked: true,
+});
+
+const LIDO_DASHBOARD_PAUSE_BEACON_CHAIN_DEPOSITS_ROLE = generateKeccak256(
+  ["string"],
+  ["vaults.Permissions.PauseDeposits"],
+  { encodePacked: true },
+);
+
+const LIDO_DASHBOARD_RESUME_BEACON_CHAIN_DEPOSITS_ROLE = generateKeccak256(
+  ["string"],
+  ["vaults.Permissions.ResumeDeposits"],
+  { encodePacked: true },
+);
+
+const LIDO_DASHBOARD_REQUEST_VALIDATOR_EXIT_ROLE = generateKeccak256(
+  ["string"],
+  ["vaults.Permissions.RequestValidatorExit"],
+  { encodePacked: true },
+);
+
+const LIDO_DASHBOARD_TRIGGER_VALIDATOR_WITHDRAWAL_ROLE = generateKeccak256(
+  ["string"],
+  ["vaults.Permissions.TriggerValidatorWithdrawal"],
+  { encodePacked: true },
+);
+
+const LIDO_DASHBOARD_VOLUNTARY_DISCONNECT_ROLE = generateKeccak256(
+  ["string"],
+  ["vaults.Permissions.VoluntaryDisconnect"],
+  { encodePacked: true },
+);
+
 export const BASE_ROLES = [PAUSE_ALL_ROLE, UNPAUSE_ALL_ROLE];
 
 export const LINEA_ROLLUP_ROLES = [
@@ -215,4 +257,16 @@ export const YIELD_MANAGER_SECURITY_COUNCIL_ROLES = [
   UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE,
   PAUSE_NATIVE_YIELD_REPORTING_ROLE,
   UNPAUSE_NATIVE_YIELD_REPORTING_ROLE,
+];
+
+export const LIDO_DASHBOARD_OPERATIONAL_ROLES = [
+  LIDO_DASHBOARD_FUND_ROLE,
+  LIDO_DASHBOARD_WITHDRAW_ROLE,
+  LIDO_DASHBOARD_MINT_ROLE,
+  LIDO_DASHBOARD_REBALANCE_ROLE,
+  LIDO_DASHBOARD_PAUSE_BEACON_CHAIN_DEPOSITS_ROLE,
+  LIDO_DASHBOARD_RESUME_BEACON_CHAIN_DEPOSITS_ROLE,
+  LIDO_DASHBOARD_REQUEST_VALIDATOR_EXIT_ROLE,
+  LIDO_DASHBOARD_TRIGGER_VALIDATOR_WITHDRAWAL_ROLE,
+  LIDO_DASHBOARD_VOLUNTARY_DISCONNECT_ROLE,
 ];

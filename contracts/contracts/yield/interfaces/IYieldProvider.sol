@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.30;
 
-import { ProgressOssificationResult, YieldProviderRegistration } from "./YieldTypes.sol";
+import { YieldProviderVendor, ProgressOssificationResult, YieldProviderRegistration } from "./YieldTypes.sol";
 
 /**
  * @title Interface for a YieldProvider adaptor contract to handle vendor-specific interactions.
@@ -14,6 +14,23 @@ interface IYieldProvider {
     FundYieldProvider,
     ReportYield
   }
+
+  /**
+   * @notice Emitted when LST Liability Principal is synchronized with an external data source.
+   * @param yieldProviderVendor Specific type of YieldProvider adaptor.
+   * @param yieldProviderIndex Index of the YieldProvider.
+   * @param oldLSTLiabilityPrincipal Old value of lstLiabilityPrincipal.
+   * @param newLSTLiabilityPrincipal New value of lstLiabilityPrincipal.
+   */
+  event LSTLiabilityPrincipalSynced(
+    YieldProviderVendor indexed yieldProviderVendor, 
+    uint96 indexed yieldProviderIndex, 
+    uint256 oldLSTLiabilityPrincipal, 
+    uint256 newLSTLiabilityPrincipal
+  );
+  /// @notice Thrown when an operation is blocked due to staking pause.
+  /// @param operationType The operation that was attempted.
+  error OperationNotSupportedDuringStakingPause(OperationType operationType);
 
   /// @notice Thrown when an operation is blocked because ossification is either pending or complete.
   /// @param operationType The operation that was attempted.
@@ -36,6 +53,9 @@ interface IYieldProvider {
 
   /// @notice Raised when a function is called outside of a `delegatecall` from the YieldManager.
   error ContextIsNotYieldManager();
+
+  /// @notice Raised no vendor exit data is provided.
+  error NoVendorExitDataProvided();
 
   /**
    * @notice Returns the amount of ETH the provider can immediately remit back to the YieldManager.
@@ -64,18 +84,6 @@ interface IYieldProvider {
   function reportYield(
     address _yieldProvider
   ) external returns (uint256 newReportedYield, uint256 outstandingNegativeYield);
-
-  /**
-   * @notice Reduces the outstanding LST liability principal.
-   * @dev Called after the YieldManager has reserved `_availableFunds` for liability
-   *      settlement.
-   *      - Implementations should update `lstLiabilityPrincipal` in the YieldProvider storage
-   *      - Implementations should ensure lstPrincipalPaid <= _availableFunds
-   * @param _yieldProvider The yield provider address.
-   * @param _availableFunds The maximum amount of ETH that is available to pay LST liability principal.
-   * @return lstPrincipalPaid The actual ETH amount paid to reduce LST liability principal.
-   */
-  function payLSTPrincipal(address _yieldProvider, uint256 _availableFunds) external returns (uint256 lstPrincipalPaid);
 
   /**
    * @notice Requests beacon chain withdrawal via EIP-7002 withdrawal contract.
@@ -121,6 +129,12 @@ interface IYieldProvider {
    * @dev Whether to allow staking during ossification is a vendor-specific detail.
    */
   function unpauseStaking(address _yieldProvider) external;
+
+  /**
+   * @notice Synchronizes the cached LST liability principal with the latest vendor state.
+   * @param _yieldProvider The yield provider address.
+   */
+  function syncLSTLiabilityPrincipal(address _yieldProvider) external;
 
   /**
    * @notice Withdraws liquid staking tokens (LST) to a recipient.

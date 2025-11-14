@@ -159,6 +159,15 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     _getYieldProviderStorage(_yieldProvider).lstLiabilityPrincipal = _lstLiabilityPrincipal;
   }
 
+  function getYieldProviderLastReportedNegativeYield(address _yieldProvider) external view returns (uint256) {
+    return _getYieldProviderStorage(_yieldProvider).lastReportedNegativeYield;
+  }
+
+  function setYieldProviderLastReportedNegativeYield(address _yieldProvider, uint256 _val) external {
+    _getYieldProviderStorage(_yieldProvider).lastReportedNegativeYield = _val;
+  }
+
+
   function delegatecallWithdrawFromYieldProvider(address _yieldProvider, uint256 _amount) external {
     _delegatecallWithdrawFromYieldProvider(_yieldProvider, _amount);
   }
@@ -202,36 +211,11 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     return abi.decode(data, (uint256));
   }
 
-  function payObligations(address _yieldProvider) external returns (uint256) {
-    bytes memory data = _delegatecallYieldProvider(
+  function syncLSTLiabilityPrincipal(address _yieldProvider) external {
+    _delegatecallYieldProvider(
       _yieldProvider,
-      abi.encodeCall(TestLidoStVaultYieldProvider.payObligations, (_yieldProvider))
+      abi.encodeCall(IYieldProvider.syncLSTLiabilityPrincipal, (_yieldProvider))
     );
-    return abi.decode(data, (uint256));
-  }
-
-  function payNodeOperatorFees(address _yieldProvider, uint256 _availableYield) external returns (uint256) {
-    bytes memory data = _delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(TestLidoStVaultYieldProvider.payNodeOperatorFees, (_yieldProvider, _availableYield))
-    );
-    return abi.decode(data, (uint256));
-  }
-
-  function payLSTPrincipalExternal(address _yieldProvider, uint256 _availableFunds) external returns (uint256) {
-    bytes memory data = _delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(IYieldProvider.payLSTPrincipal, (_yieldProvider, _availableFunds))
-    );
-    return abi.decode(data, (uint256));
-  }
-
-  function payLSTPrincipalInternal(address _yieldProvider, uint256 _availableFunds) external returns (uint256) {
-    bytes memory data = _delegatecallYieldProvider(
-      _yieldProvider,
-      abi.encodeCall(TestLidoStVaultYieldProvider.payLSTPrincipalInternal, (_yieldProvider, _availableFunds))
-    );
-    return abi.decode(data, (uint256));
   }
 
   function unstakeHarness(
@@ -265,20 +249,11 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     return abi.decode(data, (uint256));
   }
 
-  function payMaximumPossibleLSTLiability(address _yieldProvider) external returns (uint256) {
-    bytes memory data = _delegatecallYieldProvider(
+  function payMaximumPossibleLSTLiability(address _yieldProvider) external {
+    _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(TestLidoStVaultYieldProvider.payMaximumPossibleLSTLiability, (_yieldProvider))
     );
-    return abi.decode(data, (uint256));
-  }
-
-  function withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(
-    address _yieldProvider,
-    uint256 _amount,
-    uint256 _targetDeficit
-  ) external returns (uint256 withdrawAmount, uint256 lstPrincipalPaid) {
-    return _withdrawWithTargetDeficitPriorityAndLSTLiabilityPrincipalReduction(_yieldProvider, _amount, _targetDeficit);
   }
 
   function pauseStakingIfNotAlready(address _yieldProvider) external {
@@ -315,5 +290,19 @@ contract TestYieldManager is YieldManager, MockYieldProviderStorageLayout {
     uint256 maxUnstakeAmountGwei,
     bytes pubkeys,
     uint64[] amounts
+  );
+
+  /**
+   * @notice Emitted when LST Liability Principal is synchronized with an external data source.
+   * @param yieldProviderVendor Specific type of YieldProvider adaptor.
+   * @param yieldProviderIndex Index of the YieldProvider.
+   * @param oldLSTLiabilityPrincipal Old value of lstLiabilityPrincipal.
+   * @param newLSTLiabilityPrincipal New value of lstLiabilityPrincipal.
+   */
+  event LSTLiabilityPrincipalSynced(
+    YieldProviderVendor indexed yieldProviderVendor, 
+    uint96 indexed yieldProviderIndex, 
+    uint256 oldLSTLiabilityPrincipal, 
+    uint256 newLSTLiabilityPrincipal
   );
 }
