@@ -9,6 +9,7 @@ import (
 
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,4 +103,36 @@ func TestMerkleProofGnark(t *testing.T) {
 		t.Fatal(err)
 	}
 
+}
+
+func getMerkleProofWithConversion(t *testing.T) ([]Proof, []field.Element, fr.Element) {
+
+	config := &Config{
+		Depth: 40,
+	}
+
+	tree := NewEmptyTree(config)
+
+	// populate the tree
+	nbLeaves := 10
+	var tmp fr.Element
+	for i := 0; i < nbLeaves; i++ {
+		tmp.SetRandom()
+		tree.Update(i, tmp)
+	}
+	nbProofs := 10
+	proofs := make([]Proof, nbProofs)
+	leafs := make([]fr.Element, nbProofs)
+	for pos := 0; pos < nbProofs; pos++ {
+
+		// Make a valid Bytes32
+		leafs[pos], _ = tree.GetLeaf(pos)
+		proofs[pos], _ = tree.Prove(pos)
+
+		// Directly verify the proof
+		valid := proofs[pos].Verify(config, leafs[pos], tree.Root)
+		require.Truef(t, valid, "pos #%v, proof #%v", pos, proofs[pos])
+	}
+
+	return proofs, leafs, tree.Root
 }
