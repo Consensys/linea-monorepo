@@ -113,7 +113,7 @@ func rhoTestingModule(
 			}
 		}
 
-		mod.RhoPi = newRho(comp, maxNumKeccakf, stateCurr)
+		mod.RhoPi = newRho(comp, stateCurr)
 	}
 
 	prover := func(

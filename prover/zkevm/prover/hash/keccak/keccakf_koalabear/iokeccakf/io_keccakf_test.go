@@ -1,4 +1,4 @@
-package iokeccakf_test
+package iokeccakf
 
 import (
 	"fmt"
@@ -12,15 +12,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/iokeccakf"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIoKeccakF(t *testing.T) {
 	var (
-		io                = &iokeccakf.IOKeccakF{}
+		io                = &KeccakFBlocks{}
 		numBlocks         = 4
-		numRowsPerBlock   = generic.KeccakUsecase.NbOfLanesPerBlock() * iokeccakf.NbOfRowsPerLane
+		numRowsPerBlock   = generic.KeccakUsecase.NbOfLanesPerBlock() * NbOfRowsPerLane
 		laneEffectiveSize = numRowsPerBlock * numBlocks
 		laneSize          = utils.NextPowerOfTwo(laneEffectiveSize)
 		keccakfSize       = utils.NextPowerOfTwo(numBlocks * keccak.NumRound)
@@ -34,7 +33,7 @@ func TestIoKeccakF(t *testing.T) {
 		isBeginningOfNewHash := build.CompiledIOP.InsertCommit(0, "IS_BEGINNING_OF_NEW_HASH", laneSize)
 		isLaneActive := build.CompiledIOP.InsertCommit(0, "IS_LANE_ACTIVE", laneSize)
 
-		io = iokeccakf.NewIOKeccakF(build.CompiledIOP, iokeccakf.IOKeccakFInputs{
+		io = NewKeccakFBlocks(build.CompiledIOP, KeccakFInputs{
 			Lane:                 lane,
 			IsBeginningOfNewHash: isBeginningOfNewHash,
 			IsLaneActive:         isLaneActive,
@@ -77,9 +76,9 @@ func TestIoKeccakF(t *testing.T) {
 
 		// verify output blocks here, see the example below
 		var expected uint64
-		for i := range io.Blocks() {
-			for j := 0; j < iokeccakf.NumSlices; j++ {
-				actualBlock := io.Blocks()[i][j].GetColAssignment(run).IntoRegVecSaveAlloc()
+		for i := range io.Blocks {
+			for j := 0; j < NumSlices; j++ {
+				actualBlock := io.Blocks[i][j].GetColAssignment(run).IntoRegVecSaveAlloc()
 				for row := 0; row < len(actualBlock); row++ {
 
 					switch {
