@@ -607,7 +607,7 @@ contract YieldManager is
    *      to restore the deficit.
    *      2. YieldManager will keep the remainder.
    * @param _yieldProvider The yield provider address.
-   * @param _amount Amount to withdraw..
+   * @param _amount Amount to withdraw.
    */
   function safeWithdrawFromYieldProvider(
     address _yieldProvider,
@@ -1009,8 +1009,7 @@ contract YieldManager is
     if (withdrawableValueCached != 0) {
       revert YieldProviderHasWithdrawableValue(withdrawableValueCached);
     }
-    _removeYieldProvider(_yieldProvider, _vendorExitData);
-    emit YieldProviderRemoved(_yieldProvider, false);
+    _removeYieldProvider(_yieldProvider, _vendorExitData, false);
   }
 
   /**
@@ -1023,11 +1022,16 @@ contract YieldManager is
     address _yieldProvider,
     bytes memory _vendorExitData
   ) external onlyKnownYieldProvider(_yieldProvider) onlyRole(SET_YIELD_PROVIDER_ROLE) {
-    _removeYieldProvider(_yieldProvider, _vendorExitData);
-    emit YieldProviderRemoved(_yieldProvider, true);
+    _removeYieldProvider(_yieldProvider, _vendorExitData, true);
   }
 
-  function _removeYieldProvider(address _yieldProvider, bytes memory _vendorExitData) internal {
+  /**
+   * @notice Internal helper function to remove a YieldProvider from the registry.
+   * @param _yieldProvider The yield provider address.
+   * @param _vendorExitData Vendor-specific exit data passed to the yield provider's exit function.
+   * @param _isEmergencyRemove Flag indicating whether this is an emergency removal.
+   */
+  function _removeYieldProvider(address _yieldProvider, bytes memory _vendorExitData, bool _isEmergencyRemove) internal {
     _delegatecallYieldProvider(
       _yieldProvider,
       abi.encodeCall(IYieldProvider.exitVendorContracts, (_yieldProvider, _vendorExitData))
@@ -1041,6 +1045,7 @@ contract YieldManager is
     $.yieldProviders.pop();
 
     delete $.yieldProviderStorage[_yieldProvider];
+    emit YieldProviderRemoved(_yieldProvider, _isEmergencyRemove);
   }
 
   /**
