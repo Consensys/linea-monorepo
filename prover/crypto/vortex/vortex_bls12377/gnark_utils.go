@@ -7,6 +7,7 @@ import (
 	"math/bits"
 
 	gnarkbits "github.com/consensys/gnark/std/math/bits"
+	"github.com/consensys/gnark/std/multicommit"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -116,31 +117,48 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 	// probabilistically check the result of the FFT
 
 	//TODO@yao, how to fix this test with gnarkfext.E4Gen?
-	// multicommit.WithCommitment(
-	// 	api,
-	// 	func(api frontend.API, x gnarkfext.E4Gen) error {
+	extensionDegree := 4
+	pExt := make([]frontend.Variable, len(p)*extensionDegree)
+	for i := 0; i < len(p); i++ {
+		pExt[extensionDegree*i] = p[i].B0.A0.V
+		pExt[extensionDegree*i+1] = p[i].B0.A1.V
+		pExt[extensionDegree*i+2] = p[i].B1.A0.V
+		pExt[extensionDegree*i+3] = p[i].B1.A1.V
+	}
+	multicommit.WithCommitment(
+		api,
+		func(api frontend.API, x frontend.Variable) error {
+			fmt.Printf("encode\n")
+			EncodeFVTo8WVs(api, x)
+			fmt.Printf("encode after\n")
 
-	// 		ext4, _ := gnarkfext.NewExt4(api)
+			// xGen4 := gnarkfext.E4Gen{}
+			// xGen4.B0.A0 = xOct[0]
+			// xGen4.B0.A1 = xOct[1]
+			// xGen4.B1.A0 = xOct[2]
+			// xGen4.B1.A1 = xOct[3]
 
-	// 		// evaluation canonical
-	// 		ec := gnarkEvalCanonicalExt(api, res, x)
+			// ext4, _ := gnarkfext.NewExt4(api)
 
-	// 		// evaluation Lagrange
-	// 		var gen field.Element
-	// 		gen.Inverse(&genInv)
-	// 		lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
-	// 		var el gnarkfext.E4Gen
-	// 		el = gnarkfext.E4Gen{}
-	// 		for i := 0; i < len(p); i++ {
-	// 			tmp := ext4.Mul(&p[i], &lagranges[i])
-	// 			el = *ext4.Add(&el, tmp)
-	// 		}
+			// // evaluation canonical
+			// ec := gnarkEvalCanonicalExt(api, res, xGen4)
 
-	// 		api.AssertIsEqual(ec, el)
-	// 		return nil
-	// 	},
-	// 	p...,
-	// )
+			// // evaluation Lagrange
+			// var gen field.Element
+			// gen.Inverse(&genInv)
+			// lagranges := gnarkComputeLagrangeAtZ(api, xGen4, gen, cardinality)
+			// var el gnarkfext.E4Gen
+			// el = gnarkfext.E4Gen{}
+			// for i := 0; i < len(p); i++ {
+			// 	tmp := ext4.Mul(&p[i], &lagranges[i])
+			// 	el = *ext4.Add(&el, tmp)
+			// }
+
+			// ext4.AssertIsEqual(&ec, &el)
+			return nil
+		},
+		pExt...,
+	)
 
 	return res, nil
 
