@@ -39,3 +39,13 @@ jobs:
       failed_module: ${{ inputs.failed_module || '' }}
       failed_constraint: ${{ inputs.failed_constraint || '' }}
       commit: ${{ inputs.commit || '' }}
+
+  blockchain-reference-tests-osaka:
+    uses: ./.github/workflows/reusable-blockchain-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: OSAKA
+      test_filter: ${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}
+      failed_module: ${{ inputs.failed_module || '' }}
+      failed_constraint: ${{ inputs.failed_constraint || '' }}
+      commit: ${{ inputs.commit || '' }}

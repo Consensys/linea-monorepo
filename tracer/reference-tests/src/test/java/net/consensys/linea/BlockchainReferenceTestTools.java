@@ -173,14 +173,7 @@ public class BlockchainReferenceTestTools {
      */
 
     // ignore tests that are failing in Besu too
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("RevertInCreateInInitCreate2_d0g0v0_*");
-      PARAMS.ignore("RevertInCreateInInit_d0g0v0_*");
-      PARAMS.ignore("create2collisionStorage_d0g0v0_*");
-      PARAMS.ignore("create2collisionStorage_d1g0v0_*");
-      PARAMS.ignore("create2collisionStorage_d2g0v0_*");
-      PARAMS.ignore("dynamicAccountOverwriteEmpty_d0g0v0_*");
-    } else {
+    if (isPostPrague(fork)) {
       // From ethereum/execution-spec-tests repo
       PARAMS.ignore(
           "RevertInCreateInInitCreate2Paris\\[fork_Prague-blockchain_test_from_state_test-\\]");
@@ -194,30 +187,8 @@ public class BlockchainReferenceTestTools {
           "dynamicAccountOverwriteEmpty_Paris\\[fork_Prague-blockchain_test_from_state_test-\\]");
     }
 
-    // ignore tests that are failing because there is an account with nonce 0 and
-    // non-empty code which can't happen in Linea since we are post LONDON
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("InitCollision_d0g0v0_*");
-      PARAMS.ignore("InitCollision_d1g0v0_*");
-      PARAMS.ignore("InitCollision_d2g0v0_*");
-      PARAMS.ignore("InitCollision_d3g0v0_*");
-      PARAMS.ignore("RevertInCreateInInitCreate2_d0g0v0_London\\[London\\]");
-      PARAMS.ignore("RevertInCreateInInit_d0g0v0_London\\[London\\]");
-    }
-
     // Arithmetization restriction: recipient address is a precompile.
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("modexpRandomInput_d0g0v0_*");
-      PARAMS.ignore("modexpRandomInput_d0g1v0_*");
-      PARAMS.ignore("modexpRandomInput_d1g0v0_*");
-      PARAMS.ignore("modexpRandomInput_d1g1v0_*");
-      PARAMS.ignore("modexpRandomInput_d2g0v0_*");
-      PARAMS.ignore("modexpRandomInput_d2g1v0_*");
-      PARAMS.ignore("randomStatetest642_d0g0v0_*");
-      PARAMS.ignore("randomStatetest644_d0g0v0_*");
-      PARAMS.ignore("randomStatetest645_d0g0v0_*");
-      PARAMS.ignore("randomStatetest645_d0g0v1_*");
-    } else {
+    if (isPostPrague(fork)) {
       // From the ethereum/execution-spec-tests repo
       PARAMS.ignore("modexpRandomInput\\[fork_Prague-blockchain_test_from_state_test-d0-g0\\]");
       PARAMS.ignore("modexpRandomInput\\[fork_Prague-blockchain_test_from_state_test-d0-g1\\]");
@@ -232,196 +203,14 @@ public class BlockchainReferenceTestTools {
     }
 
     // Consumes a huge amount of memory.
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("static_Call1MB1024Calldepth_d1g0v0_\\w+");
-      PARAMS.ignore("ShanghaiLove_.*");
-      PARAMS.ignore("/GeneralStateTests/VMTests/vmPerformance/");
-      PARAMS.ignore("Call50000");
-      PARAMS.ignore("static_LoopCallsDepthThenRevert3");
-      PARAMS.ignore("Return50000");
-    } else {
+    if (isPostPrague(fork)) {
       // From the ethereum/execution-spec-tests repo
       PARAMS.ignore(
           "stStaticCall/static_Return50000_2Filler.json::static_Return50000_2\\[fork_Prague-blockchain_test_from_state_test-\\]");
     }
 
-    // Absurd amount of gas, doesn't run in parallel.
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("randomStatetest94_\\w+");
-    }
-
     // Balance is more than 128 bits
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("CALLCODE_Bounds2_d0g0v0_*");
-      PARAMS.ignore("CALLCODE_Bounds2_d0g1v0_*");
-      PARAMS.ignore("CALLCODE_Bounds3_d0g0v0_*");
-      PARAMS.ignore("CALLCODE_Bounds3_d0g1v0_*");
-      PARAMS.ignore("CALLCODE_Bounds4_d0g0v0_*");
-      PARAMS.ignore("CALLCODE_Bounds4_d0g1v0_*");
-      PARAMS.ignore("CALLCODE_Bounds4_d0g2v0_*");
-      PARAMS.ignore("CALLCODE_Bounds_d0g0v0_*");
-      PARAMS.ignore("CALLCODE_Bounds_d0g1v0_*");
-      PARAMS.ignore("CALL_Bounds2_d0g0v0_*");
-      PARAMS.ignore("CALL_Bounds2_d0g1v0_*");
-      PARAMS.ignore("CALL_Bounds2a_d0g0v0_*");
-      PARAMS.ignore("CALL_Bounds2a_d0g1v0_*");
-      PARAMS.ignore("CALL_Bounds3_d0g0v0_*");
-      PARAMS.ignore("CALL_Bounds3_d0g1v0_*");
-      PARAMS.ignore("CALL_Bounds3_d0g2v0_*");
-      PARAMS.ignore("CALL_Bounds_d0g0v0_*");
-      PARAMS.ignore("CALL_Bounds_d0g1v0_*");
-      PARAMS.ignore("CREATE2_Bounds2_d0g0v0_*");
-      PARAMS.ignore("CREATE2_Bounds2_d0g1v0_*");
-      PARAMS.ignore("CREATE2_Bounds3_d0g0v0_*");
-      PARAMS.ignore("CREATE2_Bounds3_d0g1v0_*");
-      PARAMS.ignore("CREATE2_Bounds3_d0g2v0_*");
-      PARAMS.ignore("CREATE2_Bounds_d0g0v0_*");
-      PARAMS.ignore("CREATE2_Bounds_d0g1v0_*");
-      PARAMS.ignore("CREATE_Bounds2_d0g0v0_*");
-      PARAMS.ignore("CREATE_Bounds2_d0g1v0_*");
-      PARAMS.ignore("CREATE_Bounds3_d0g0v0_*");
-      PARAMS.ignore("CREATE_Bounds3_d0g1v0_*");
-      PARAMS.ignore("CREATE_Bounds3_d0g2v0_*");
-      PARAMS.ignore("CREATE_Bounds_d0g0v0_*");
-      PARAMS.ignore("CREATE_Bounds_d0g1v0_*");
-      PARAMS.ignore("Call1024PreCalls_d0g0v0_*");
-      PARAMS.ignore("Call1024PreCalls_d0g1v0_*");
-      PARAMS.ignore("Call1024PreCalls_d0g2v0_*");
-      PARAMS.ignore("Create2OnDepth1023_d0g0v0_*");
-      PARAMS.ignore("Create2OnDepth1024_d0g0v0_*");
-      PARAMS.ignore("Create2Recursive_d0g0v0_*");
-      PARAMS.ignore("Create2Recursive_d0g1v0_*");
-      PARAMS.ignore("Create2Recursive_d0g2v0_*");
-      PARAMS.ignore("DELEGATECALL_Bounds2_d0g0v0_*");
-      PARAMS.ignore("DELEGATECALL_Bounds2_d0g1v0_*");
-      PARAMS.ignore("DELEGATECALL_Bounds3_d0g0v0_*");
-      PARAMS.ignore("DELEGATECALL_Bounds3_d0g1v0_*");
-      PARAMS.ignore("DELEGATECALL_Bounds3_d0g2v0_*");
-      PARAMS.ignore("DELEGATECALL_Bounds_d0g0v0_*");
-      PARAMS.ignore("DELEGATECALL_Bounds_d0g1v0_*");
-      PARAMS.ignore("DelegateCallSpam_*");
-      PARAMS.ignore("HighGasLimit_d0g0v0_*");
-      PARAMS.ignore("MSTORE_Bounds2_d0g0v0_*");
-      PARAMS.ignore("MSTORE_Bounds2_d0g1v0_*");
-      PARAMS.ignore("MSTORE_Bounds2a_d0g0v0_*");
-      PARAMS.ignore("MSTORE_Bounds2a_d0g1v0_*");
-      PARAMS.ignore("MSTORE_Bounds_d0g0v0_*");
-      PARAMS.ignore("MSTORE_Bounds_d0g1v0_*");
-      PARAMS.ignore("OutOfGasContractCreation_d0g0v0_*");
-      PARAMS.ignore("OutOfGasContractCreation_d0g1v0_*");
-      PARAMS.ignore("OutOfGasContractCreation_d1g0v0_*");
-      PARAMS.ignore("OutOfGasContractCreation_d1g1v0_*");
-      PARAMS.ignore("OverflowGasRequire2_d0g0v0_*");
-      PARAMS.ignore("OverflowGasRequire_*");
-      PARAMS.ignore("RETURN_Bounds_d0g0v0_*");
-      PARAMS.ignore("RETURN_Bounds_d0g1v0_*");
-      PARAMS.ignore("RETURN_Bounds_d0g2v0_*");
-      PARAMS.ignore("StrangeContractCreation_*");
-      PARAMS.ignore("SuicideIssue_*");
-      PARAMS.ignore("static_CALL_Bounds2_d0g0v0_*");
-      PARAMS.ignore("static_CALL_Bounds2_d0g1v0_*");
-      PARAMS.ignore("static_CALL_Bounds2a_d0g0v0_*");
-      PARAMS.ignore("static_CALL_Bounds2a_d0g1v0_*");
-      PARAMS.ignore("static_CALL_Bounds3_d0g0v0_*");
-      PARAMS.ignore("static_CALL_Bounds3_d0g1v0_*");
-      PARAMS.ignore("static_CALL_Bounds_d0g0v0_*");
-      PARAMS.ignore("static_CALL_Bounds_d0g1v0_*");
-      PARAMS.ignore("static_Call1024PreCalls2_d0g0v0_*");
-      PARAMS.ignore("static_Call1024PreCalls2_d1g0v0_*");
-      PARAMS.ignore("static_Call1024PreCalls3_d0g0v0_*");
-      PARAMS.ignore("static_Call1024PreCalls3_d1g0v0_*");
-      PARAMS.ignore("static_Call1024PreCalls_d1g0v0_*");
-      PARAMS.ignore("static_RETURN_BoundsOOG_d0g0v0_*");
-      PARAMS.ignore("static_RETURN_BoundsOOG_d1g0v0_*");
-      PARAMS.ignore("static_RETURN_Bounds_d0g0v0_London\\[London\\]");
-      PARAMS.ignore("Cancun-enough_gas*");
-      PARAMS.ignore("Cancun-out_of_gas*");
-      PARAMS.ignore("Cancun-no_stack_overflow*");
-      PARAMS.ignore("Cancun-stack_overflow*");
-      PARAMS.ignore("Cancun-zero_inputs*");
-      PARAMS.ignore("Cancun-zero_length_out_of_bounds_destination*");
-      PARAMS.ignore("Cancun-single_byte_rewrite*");
-      PARAMS.ignore("Cancun-full_word_rewrite*");
-      PARAMS.ignore("Cancun-single_byte_forward_overwrite*");
-      PARAMS.ignore("Cancun-full_word_forward_overwrite*");
-      PARAMS.ignore("Cancun-mid_word_single_byte_rewrite*");
-      PARAMS.ignore("Cancun-mid_word_single_word_rewrite*");
-      PARAMS.ignore("Cancun-mid_word_multi_word_rewrite*");
-      PARAMS.ignore("Cancun-two_words_forward_overwrite*");
-      PARAMS.ignore("Cancun-two_words_backward_overwrite*");
-      PARAMS.ignore("Cancun-two_words_backward_overwrite_single_byte_offset*");
-      PARAMS.ignore("Cancun-single_byte_memory_extension*");
-      PARAMS.ignore("Cancun-single_word_memory_extension*");
-      PARAMS.ignore("Cancun-single_word_minus_one_byte_memory_extension*");
-      PARAMS.ignore("Cancun-single_word_plus_one_byte_memory_extension*");
-      PARAMS.ignore("Cancun-full_memory_rewrite*");
-      PARAMS.ignore("Cancun-full_memory_copy*");
-      PARAMS.ignore("Cancun-full_memory_copy_offset*");
-      PARAMS.ignore("Cancun-full_memory_clean*");
-      PARAMS.ignore("Cancun-empty_memory-length=0-src=0-dest=0*");
-      PARAMS.ignore("Cancun-empty_memory-length=0-src=0-dest=32*");
-      PARAMS.ignore("Cancun-empty_memory-length=0-src=32-dest=0*");
-      PARAMS.ignore("Cancun-empty_memory-length=0-src=32-dest=32*");
-      PARAMS.ignore("Cancun-empty_memory-length=1-src=0-dest=0*");
-      PARAMS.ignore("Cancun-empty_memory-length=1-src=0-dest=32*");
-      PARAMS.ignore("Cancun-empty_memory-length=1-src=32-dest=0*");
-      PARAMS.ignore("Cancun-empty_memory-length=1-src=32-dest=32*");
-      PARAMS.ignore("Cancun-call");
-      PARAMS.ignore("Cancun-staticcall_cant_call_tstore");
-      PARAMS.ignore("Cancun-staticcall_cant_call_tstore_with_stack_underflow");
-      PARAMS.ignore("Cancun-staticcalled_can_call_tstore");
-      PARAMS.ignore("Cancun-staticcalled_context_can_call_tload");
-      PARAMS.ignore("Cancun-callcode");
-      PARAMS.ignore("Cancun-delegatecall");
-      PARAMS.ignore("Cancun-call_with_revert");
-      PARAMS.ignore("Cancun-call_with_invalid");
-      PARAMS.ignore("Cancun-call_with_stack_underflow");
-      PARAMS.ignore("Cancun-call_with_tstore_stack_underflow");
-      PARAMS.ignore("Cancun-call_with_tstore_stack_underflow_2");
-      PARAMS.ignore("Cancun-call_with_tload_stack_underflow");
-      PARAMS.ignore("Cancun-call_with_out_of_gas");
-      PARAMS.ignore("Cancun-call_with_out_of_gas_2");
-      PARAMS.ignore("Cancun-callcode_with_revert");
-      PARAMS.ignore("Cancun-callcode_with_invalid");
-      PARAMS.ignore("Cancun-callcode_with_stack_underflow");
-      PARAMS.ignore("Cancun-callcode_with_tstore_stack_underflow");
-      PARAMS.ignore("Cancun-callcode_with_tstore_stack_underflow_2");
-      PARAMS.ignore("Cancun-callcode_with_tload_stack_underflow");
-      PARAMS.ignore("Cancun-callcode_with_out_of_gas");
-      PARAMS.ignore("Cancun-callcode_with_out_of_gas_2");
-      PARAMS.ignore("Cancun-delegatecall_with_revert");
-      PARAMS.ignore("Cancun-delegatecall_with_invalid");
-      PARAMS.ignore("Cancun-delegatecall_with_stack_underflow");
-      PARAMS.ignore("Cancun-delegatecall_with_tstore_stack_underflow");
-      PARAMS.ignore("Cancun-delegatecall_with_tstore_stack_underflow_2");
-      PARAMS.ignore("Cancun-delegatecall_with_tload_stack_underflow");
-      PARAMS.ignore("Cancun-delegatecall_with_out_of_gas");
-      PARAMS.ignore("Cancun-delegatecall_with_out_of_gas_2");
-      PARAMS.ignore("Cancun-tstore_in_reentrant_call");
-      PARAMS.ignore("Cancun-tload_after_reentrant_tstore");
-      PARAMS.ignore("Cancun-manipulate_in_reentrant_call");
-      PARAMS.ignore("Cancun-tstore_in_call_then_tload_return_in_staticcall");
-      PARAMS.ignore("Cancun-tstore_before_revert_has_no_effect");
-      PARAMS.ignore("Cancun-revert_undoes_all");
-      PARAMS.ignore("Cancun-revert_undoes_tstorage_after_successful_call");
-      PARAMS.ignore("Cancun-tstore_before_invalid_has_no_effect");
-      PARAMS.ignore("Cancun-revert_undoes_all");
-      PARAMS.ignore("Cancun-invalid_undoes_all");
-      PARAMS.ignore("Cancun-invalid_undoes_tstorage_after_successful_call");
-      PARAMS.ignore("Cancun-tload_after_selfdestruct_pre_existing_contract");
-      PARAMS.ignore("Cancun-tload_after_selfdestruct_new_contract");
-      PARAMS.ignore("Cancun-tload_after_inner_selfdestruct_pre_existing_contract");
-      PARAMS.ignore("Cancun-tload_after_inner_selfdestruct_new_contract");
-      PARAMS.ignore("Cancun-tstore_after_selfdestruct_pre_existing_contract");
-      PARAMS.ignore("Cancun-tstore_after_selfdestruct_new_contract");
-      PARAMS.ignore("Cancun-out_of_bounds_memory_extension*");
-      PARAMS.ignore("Cancun-opcode=CALL");
-      PARAMS.ignore("Cancun-opcode=DELEGATECALL");
-      PARAMS.ignore("Cancun-opcode=STATICCALL");
-      PARAMS.ignore("Cancun-opcode=CALLCODE");
-      PARAMS.ignore("Cancun-opcode=CREATE");
-      PARAMS.ignore("Cancun-opcode=CREATE2");
-    } else {
+    if (isPostPrague(fork)) {
       // From the ethereum/execution-spec-tests repo
       PARAMS.ignore(
           "stMemoryStressTest/CALLCODE_BoundsFiller.json::CALLCODE_Bounds\\[fork_Prague-blockchain_test_from_state_test--g0\\]");
@@ -588,22 +377,7 @@ public class BlockchainReferenceTestTools {
     }
 
     // Deployment transaction to an account with nonce / code
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g0v0_*");
-      PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g0v1_*");
-      PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g1v0_*");
-      PARAMS.ignore("TransactionCollisionToEmptyButCode_d0g1v1_*");
-      PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g0v0_*");
-      PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g0v1_*");
-      PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g1v0_*");
-      PARAMS.ignore("TransactionCollisionToEmptyButNonce_d0g1v1_*");
-      PARAMS.ignore("createJS_ExampleContract_d0g0v0_*");
-      PARAMS.ignore("initCollidingWithNonEmptyAccount_d0g0v0_*");
-      PARAMS.ignore("initCollidingWithNonEmptyAccount_d1g0v0_*");
-      PARAMS.ignore("initCollidingWithNonEmptyAccount_d2g0v0_*");
-      PARAMS.ignore("initCollidingWithNonEmptyAccount_d3g0v0_*");
-      PARAMS.ignore("initCollidingWithNonEmptyAccount_d4g0v0_*");
-    } else {
+    if (isPostPrague(fork)) {
       // From the ethereum/execution-spec-tests repo
       PARAMS.ignore(
           "TransactionCollisionToEmptyButCode\\[fork_Prague-blockchain_test_from_state_test--g0-v0\\]");
@@ -631,76 +405,6 @@ public class BlockchainReferenceTestTools {
           "initCollidingWithNonEmptyAccount\\[fork_Prague-blockchain_test_from_state_test-d3\\]");
       PARAMS.ignore(
           "initCollidingWithNonEmptyAccount\\[fork_Prague-blockchain_test_from_state_test-d4\\]");
-    }
-
-    // Deployment transaction to an account with zero nonce, empty code (and zero balance) but
-    // nonempty storage. Given [EIP-7610](https://github.com/ethereum/EIPs/pull/8161), no Besu
-    // execution takes place, which means that no TraceSection's are created beyond the
-    // {@link TxInitializationSection}. This triggers a NPE when tracing, as at some point
-    // {@link TraceSection#nextSection} is null in {@link TraceSection#computeContextNumberNew()}.
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("FailedCreateRevertsDeletion_d0g0v0_*");
-    }
-
-    // Ignore the following test as it is not supported in Linea.
-    // See [issue #1678](https://github.com/Consensys/linea-tracer/issues/1678)
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("suicideStorageCheck_*");
-    }
-
-    // Don't do time-consuming tests.
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("CALLBlake2f_MaxRounds.*");
-      PARAMS.ignore("loopMul_*");
-      PARAMS.ignore("randomStatetest177_d0g0v0_*");
-      PARAMS.ignore("15_tstoreCannotBeDosd_d0g0v0*");
-      PARAMS.ignore("21_tstoreCannotBeDosdOOO_d0g0v0*");
-      PARAMS.ignore("ContractCreationSpam_d0g0v0*");
-    }
-
-    // Inconclusive fork choice rule, since in merge CL should be choosing forks and setting the
-    // chain head. Perfectly valid test pre-merge.
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("UncleFromSideChain_(Cancun|Prague|Osaka|Bogota)");
-    }
-
-    // EOF tests are written against an older version of the spec.
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("/stEOF/");
-    }
-
-    // We ignore the following tests because they satisfy one of the following:
-    // - bbs > 512, bbs ≡ base byte size
-    // - ebs > 512, ebs ≡ exponent byte size
-    // - mbs > 512, mbs ≡ modulus byte size
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("modexp_d28g0v0_*");
-      PARAMS.ignore("modexp_d28g1v0_*");
-      PARAMS.ignore("modexp_d28g2v0_*");
-      PARAMS.ignore("modexp_d28g3v0_*");
-      PARAMS.ignore("modexp_d29g0v0_*");
-      PARAMS.ignore("modexp_d29g1v0_*");
-      PARAMS.ignore("modexp_d29g2v0_*");
-      PARAMS.ignore("modexp_d29g3v0_*");
-      PARAMS.ignore("modexp_d2g0v0_*");
-      PARAMS.ignore("modexp_d2g1v0_*");
-      PARAMS.ignore("modexp_d2g2v0_*");
-      PARAMS.ignore("modexp_d2g3v0_*");
-      PARAMS.ignore("modexp_d30g0v0_*");
-      PARAMS.ignore("modexp_d30g1v0_*");
-      PARAMS.ignore("modexp_d30g2v0_*");
-      PARAMS.ignore("modexp_d30g3v0_*");
-      PARAMS.ignore("modexp_d36g0v0_*");
-      PARAMS.ignore("modexp_d36g1v0_*");
-      PARAMS.ignore("modexp_d36g2v0_*");
-      PARAMS.ignore("modexp_d36g3v0_*");
-      PARAMS.ignore("modexp_d37g0v0_*");
-      PARAMS.ignore("modexp_d37g1v0_*");
-      PARAMS.ignore("modexp_d37g2v0_*");
-      PARAMS.ignore("modexp_d37g3v0_*");
-      PARAMS.ignore("idPrecomps_d4g0v0_*");
-      PARAMS.ignore("modexp_modsize0_returndatasize_d4g0v0_*");
-      PARAMS.ignore("randomStatetest650_d0g0v0_*");
     }
 
     // Prior to Osaka MODEXP had unsupported arguments in the arithmetization
@@ -752,153 +456,6 @@ public class BlockchainReferenceTestTools {
           "test_modexp_thresholds.py::test_modexp_variable_gas_cost\\[fork_.*-blockchain_test_from_state_test-Z[2347]\\]");
       PARAMS.ignore(
           "test_modexp_thresholds.py::test_modexp_variable_gas_cost\\[fork_.*-blockchain_test_from_state_test-Z1[2-5]\\]");
-    }
-
-    // unsupported behaviour: uncle blocks, re-orgs, forks, side chain (?)
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("ChainAtoChainBCallContractFormA_London\\[London\\]");
-      PARAMS.ignore("ChainAtoChainB_London\\[London\\]");
-      PARAMS.ignore("ChainAtoChainB_difficultyB_London\\[London\\]");
-      PARAMS.ignore("ChainAtoChainBtoChainA_London\\[London\\]");
-      PARAMS.ignore("ForkStressTest_London\\[London\\]");
-      PARAMS.ignore("newChainFrom4Block_London\\[London\\]");
-      PARAMS.ignore("newChainFrom5Block_London\\[London\\]");
-      PARAMS.ignore("newChainFrom6Block_London\\[London\\]");
-      PARAMS.ignore("sideChainWithMoreTransactions2_London\\[London\\]");
-      PARAMS.ignore("sideChainWithMoreTransactions_London\\[London\\]");
-      PARAMS.ignore(
-          "sideChainWithNewMaxDifficultyStartingFromBlock3AfterBlock4_London\\[London\\]");
-      PARAMS.ignore("uncleBlockAtBlock3AfterBlock3_London\\[London\\]");
-      PARAMS.ignore("uncleBlockAtBlock3afterBlock4_London\\[London\\]");
-    }
-
-    // not sure what these tests are doing, but they blow up BLOCK_DATA, which is the simplest
-    // module in existence
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("CallContractFromNotBestBlock_London\\[London\\]");
-      PARAMS.ignore("RPC_API_Test_London\\[London\\]");
-    }
-
-    // the following tests blow up due monetary creation pre PoS where the COINBASE would get paid 2
-    // Eth at the end of every block
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("correct_London\\[London\\]");
-      PARAMS.ignore("incorrectUncleTimestamp4_London\\[London\\]");
-      PARAMS.ignore("incorrectUncleTimestamp5_London\\[London\\]");
-      PARAMS.ignore("timestampTooHigh_London\\[London\\]");
-      PARAMS.ignore("timestampTooLow_London\\[London\\]");
-      PARAMS.ignore("futureUncleTimestamp3_London\\[London\\]");
-      PARAMS.ignore("wrongStateRoot_London\\[London\\]");
-      PARAMS.ignore("besuBaseFeeBug_London\\[London\\]");
-      PARAMS.ignore("burnVerifyLondon_London\\[London\\]");
-      PARAMS.ignore("highDemand_London\\[London\\]");
-      PARAMS.ignore("intrinsic_London\\[London\\]");
-      PARAMS.ignore("intrinsicTip_London\\[London\\]");
-      PARAMS.ignore("medDemand_London\\[London\\]");
-      PARAMS.ignore("tipsLondon_London\\[London\\]");
-      PARAMS.ignore("transType_London\\[London\\]");
-      PARAMS.ignore("highGasUsage_London\\[London\\]");
-      PARAMS.ignore("blockhashNonConstArg_London\\[London\\]");
-      PARAMS.ignore("blockhashTests_London\\[London\\]");
-      PARAMS.ignore("extcodehashEmptySuicide_London\\[London\\]");
-      PARAMS.ignore("logRevert_London\\[London\\]");
-      PARAMS.ignore("multimpleBalanceInstruction_London\\[London\\]"); // typo intended
-      PARAMS.ignore("refundReset_London\\[London\\]");
-      PARAMS.ignore("simpleSuicide_London\\[London\\]");
-      PARAMS.ignore("futureUncleTimestamp2_London\\[London\\]");
-      PARAMS.ignore("futureUncleTimestampDifficultyDrop_London\\[London\\]");
-      PARAMS.ignore("futureUncleTimestampDifficultyDrop2_London\\[London\\]");
-      PARAMS.ignore("futureUncleTimestampDifficultyDrop3_London\\[London\\]");
-      PARAMS.ignore("futureUncleTimestampDifficultyDrop4_London\\[London\\]");
-      PARAMS.ignore("uncleBloomNot0_2_London\\[London\\]");
-      PARAMS.ignore("uncleBloomNot0_London\\[London\\]");
-      PARAMS.ignore("oneUncle_London\\[London\\]");
-      PARAMS.ignore("oneUncleGeneration2_London\\[London\\]");
-      PARAMS.ignore("oneUncleGeneration3_London\\[London\\]");
-      PARAMS.ignore("oneUncleGeneration4_London\\[London\\]");
-      PARAMS.ignore("uncleBloomNot0_3_London\\[London\\]");
-      PARAMS.ignore("oneUncleGeneration5_London\\[London\\]");
-      PARAMS.ignore("oneUncleGeneration6_London\\[London\\]");
-      PARAMS.ignore("twoUncle_London\\[London\\]");
-      PARAMS.ignore("uncleHeaderAtBlock2_London\\[London\\]");
-      PARAMS.ignore("RecallSuicidedContract_London\\[London\\]");
-      PARAMS.ignore("RecallSuicidedContractInOneBlock_London\\[London\\]");
-      PARAMS.ignore("timeDiff12_London\\[London\\]");
-      PARAMS.ignore("timeDiff13_London\\[London\\]");
-      PARAMS.ignore("timeDiff14_London\\[London\\]");
-      PARAMS.ignore("wallet2outOf3txs_London\\[London\\]");
-      PARAMS.ignore("wallet2outOf3txs2_London\\[London\\]");
-      PARAMS.ignore("wallet2outOf3txsRevoke_London\\[London\\]");
-      PARAMS.ignore("wallet2outOf3txsRevokeAndConfirmAgain_London\\[London\\]");
-      PARAMS.ignore("walletReorganizeOwners_London\\[London\\]");
-    }
-
-    // Tests have a root hash mismatch
-    // They have been removed from legacy ethereum tests repo
-    if (!isPostPrague(fork)) {
-      // - all the other ecmul tests for point 1,3 factor 0 are run for Byzantium and
-      // Contantinople+Fix
-      // - in state tests, they run on the 3 forks above only
-      // - coinbase is in pre and not post and has no balance
-      PARAMS.ignore("ecmul_1-3_0_28000_80_d0g0v0_*");
-      PARAMS.ignore("ecmul_1-3_0_28000_80_d0g1v0_*");
-      PARAMS.ignore("ecmul_1-3_0_28000_80_d0g2v0_*");
-      PARAMS.ignore("ecmul_1-3_0_28000_80_d0g3v0_*");
-      // - all the other ecmul tests for point 0,3 factor
-      // 21888242871839275222246405745257275088548364400416034343698204186575808495616 have coinbase
-      // pre and post with balance
-      // - coinbase is in pre and not post and has no balance
-      PARAMS.ignore("ecmul_0-3_5616_28000_96_d0g0v0_*");
-      PARAMS.ignore("ecmul_0-3_5616_28000_96_d0g1v0_*");
-      PARAMS.ignore("ecmul_0-3_5616_28000_96_d0g2v0_*");
-      // - all the other ecadd tests for points (0,0) and (0,0) have coinbase pre and post with
-      // balance
-      // - coinbase is in pre and not post and has no balance
-      PARAMS.ignore("ecadd_0-0_0-0_21000_80_d0g0v0_*");
-      PARAMS.ignore("ecadd_0-0_0-0_21000_80_d0g1v0_*");
-      PARAMS.ignore("ecadd_0-0_0-0_21000_80_d0g2v0_*");
-      PARAMS.ignore("ecadd_0-0_0-0_21000_80_d0g3v0_*");
-      // - all the other ecadd tests for points (1,3) and (0,0) have coinbase pre and post with
-      // balance
-      // - coinbase is in pre and not post and has no balance
-      PARAMS.ignore("ecadd_1-3_0-0_25000_80_d0g0v0_*");
-      PARAMS.ignore("ecadd_1-3_0-0_25000_80_d0g1v0_*");
-      PARAMS.ignore("ecadd_1-3_0-0_25000_80_d0g2v0_*");
-      PARAMS.ignore("ecadd_1-3_0-0_25000_80_d0g3v0_*");
-    }
-
-    // System transactions Withdrawals are not supported
-    // Breaks hub.account-consistency---linking---conflation-level---balance as the transition
-    // for account 0x0000000000000000000000000000000000000200
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore(
-          "BlockchainTests/Pyspecs/shanghai/eip4895_withdrawals/balance_within_block.json");
-      PARAMS.ignore(
-          "BlockchainTests/Pyspecs/shanghai/eip4895_withdrawals/use_value_in_contract.json");
-      // for account EIP4788_BEACONROOT_ADDRESS
-      PARAMS.ignore("Cancun-block_count=10-buffer_wraparound");
-      PARAMS.ignore("Cancun-block_count=10-buffer_wraparound_overwrite");
-      PARAMS.ignore("Cancun-block_count=10-buffer_wraparound_overwrite_high_timestamp");
-      PARAMS.ignore("Cancun-block_count=10-buffer_wraparound_no_overwrite");
-      PARAMS.ignore("Cancun-block_count=10-buffer_wraparound_no_overwrite_2");
-    }
-
-    // Pending deployment number fix
-    // Issue #https://github.com/Consensys/linea-specification/issues/191
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("create2collisionwithSelfdestructSameBlock.json");
-    }
-
-    // Transaction Type not supported at the moment
-    if (!isPostPrague(fork)) {
-      PARAMS.ignore("opcodeBlobhBounds*");
-      PARAMS.ignore("opcodeBlobhashOutOfRange*");
-      PARAMS.ignore("blockWithAllTransactionTypes*");
-      PARAMS.ignore("Cancun-tx_type=3*");
-      PARAMS.ignore("blobhashListBounds3_d0g0v0_*");
-      PARAMS.ignore("blobhashListBounds4_d0g0v0_*");
-      PARAMS.ignore("blobhashListBounds5_d0g0v0_*");
-      PARAMS.ignore("blobhashListBounds6_d0g0v0_*");
     }
   }
 

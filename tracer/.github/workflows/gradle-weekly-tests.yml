@@ -18,11 +18,23 @@ jobs:
     with:
       zkevm_fork: PRAGUE
 
+  weekly-unit-tests-osaka:
+    uses: ./.github/workflows/reusable-weekly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: OSAKA
+
   weekly-prc-call-tests-prague:
     uses: ./.github/workflows/reusable-weekly-prc-tests.yml
     secrets: inherit
     with:
       zkevm_fork: PRAGUE
+
+  weekly-prc-call-tests-osaka:
+    uses: ./.github/workflows/reusable-weekly-prc-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: OSAKA
 
   weekly-replay-tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
@@ -58,4 +70,3 @@ jobs:
           payload: |
             name: "WeeklyReplay"
             status: "${{ job.status }}"
-      

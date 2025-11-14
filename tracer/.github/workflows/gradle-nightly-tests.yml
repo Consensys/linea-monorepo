@@ -19,6 +19,13 @@ jobs:
       zkevm_fork: PRAGUE
       tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
 
+  nightly-tests-osaka:
+    uses: ./.github/workflows/reusable-nightly-tests.yml
+    secrets: inherit
+    with:
+      zkevm_fork: OSAKA
+      tests-with-ssh: ${{ inputs.tests-with-ssh || false }}
+
   # ==================================================================
   # Replay Tests
   # ==================================================================
