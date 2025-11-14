@@ -383,7 +383,7 @@ func (theta *theta) assignTheta(run *wizard.ProverRuntime, stateCurr state) {
 				for i := 0; i < len(col); i++ {
 					stateInternalDirty[x][y][z].PushField(col[i])
 					res := clean(kcommon.Decompose(col[i].Uint64(), thetaBase, 8, true))
-					// recompse to get clean state
+					// recompose to get clean state
 					stateCleaned := 0
 					for i := len(res) - 1; i >= 0; i-- {
 						stateCleaned = stateCleaned*thetaBase + res[i]

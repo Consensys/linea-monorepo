@@ -188,7 +188,7 @@ func rhoTestingModule(
 			}
 
 			// Then assigns all the columns of the rho module
-			mod.RhoPi.assignRoh(run, stateCurr)
+			mod.RhoPi.assignRho(run, stateCurr)
 		}
 	}
 

@@ -127,7 +127,6 @@ func (b *ToBaseX) Run(run *wizard.ProverRuntime) {
 	var (
 		lane  = b.Inputs.Lane.GetColAssignment(run).IntoRegVecSaveAlloc()
 		laneX = make([]*common.VectorBuilder, len(b.LaneX))
-		bytes = make([]byte, MAXNBYTE)
 		base  int
 	)
 
@@ -139,7 +138,7 @@ func (b *ToBaseX) Run(run *wizard.ProverRuntime) {
 	// populate laneX
 	for j := range lane {
 		laneBytes := lane[j].Bytes() // big-endian bytes
-		bytes = laneBytes[len(laneBytes)-MAXNBYTE:]
+		bytes := laneBytes[len(laneBytes)-MAXNBYTE:]
 		slices.Reverse(bytes) // to have little-endian order
 
 		// get the base
@@ -230,7 +229,7 @@ func createLookupTablesBaseX(basex []int, nbSlices int) (uint16Col smartvectors.
 		v            = make([][][]field.Element, len(basex))
 		mask         = (1 << bitsPerSlice) - 1
 		uintMAXNBYTE = 1<<(8*MAXNBYTE) - 1
-		result       = make([]uint, nbSlices) // it holds the decomposition uint in chuncks of size bitsPerSlice
+		result       = make([]uint, nbSlices) // it holds the decomposition uint in chunks of size bitsPerSlice
 		basexFr      = make([]field.Element, len(basex))
 	)
 
@@ -254,7 +253,7 @@ func createLookupTablesBaseX(basex []int, nbSlices int) (uint16Col smartvectors.
 	}
 
 	for j := 0; j <= uintMAXNBYTE; j++ {
-		// decompse j into chunks of size bitsPerSlice
+		// decompose j into chunks of size bitsPerSlice
 		n := j
 		for i := 0; i < nbSlices; i++ {
 			result[i] = uint(n & mask) // extract lowest chunkBits bits

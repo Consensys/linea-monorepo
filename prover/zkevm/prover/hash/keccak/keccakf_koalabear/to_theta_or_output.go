@@ -57,7 +57,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 		size = stateCurr[0][0][0].Size()
 	)
 	// declare the lookup table columns
-	dirtyBaseChi, cleanBaseTheta, cleanBase2 := creatLookupTablesChiToTheta()
+	dirtyBaseChi, cleanBaseTheta, cleanBase2 := createLookupTablesChiToTheta()
 	bc.lookupTable.colBaseChi = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_DIRTY_BASECHI"), dirtyBaseChi)
 	bc.lookupTable.colBase2 = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_BASE2"), cleanBase2)
 	bc.lookupTable.colBaseTheta = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASE_THETA"), cleanBaseTheta)
@@ -95,7 +95,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 			}
 
 			for z := 0; z < 8; z++ {
-				// asset that stateCurr is decomposed correctly into two slices of stateInternalChi
+				// assert that stateCurr is decomposed correctly into two slices of stateInternalChi
 				comp.InsertGlobal(0, ifaces.QueryIDf("BC_RECOMPOSE_CHI_%v_%v_%v", x, y, z),
 					sym.Sub(bc.stateCurr[x][y][z],
 						sym.Add(bc.stateInternalChi[x][y][2*z],
@@ -153,7 +153,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 		ifaces.QueryID("BC_ISBASE2_AT_END"),
 		sym.Mul(
 			column.Shift(bc.isActive, -1),
-			sym.Sub(1, bc.isBase2),
+			sym.Sub(1, column.Shift(bc.isBase2, -1)),
 		),
 	)
 
@@ -176,10 +176,7 @@ func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) BackToThetaOrOutpu
 	// assign isBase2 and isBaseTheta
 	for i := 0; i < size; i++ {
 		if i+1 < size && isActive[i+1].IsOne() {
-			if isActive[i+1].IsZero() {
-				isBase2.PushOne()
-				isBaseT.PushZero()
-			}
+
 			if isFirstBlock[i].IsZero() && isFirstBlock[i+1].IsOne() {
 				isBase2.PushOne()
 				isBaseT.PushZero()
@@ -221,7 +218,7 @@ func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) BackToThetaOrOutpu
 						panic("base conversion: input is out of range")
 					}
 				}
-				// decompose in base BaseChi4 (2 chuncks)
+				// decompose in base BaseChi4 (2 chunks)
 				v := kcommon.DecomposeCol(col, kcommon.BaseChi4, 2)
 				q := v[1] // high limb
 				r := v[0] // low limb
@@ -252,7 +249,7 @@ func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) BackToThetaOrOutpu
 	return BackToThetaOrOutput{stateCurr: bc.stateCurr}
 }
 
-func creatLookupTablesChiToTheta() (dirtyChi, cleanTheta, cleanBase2 smartvectors.SmartVector) {
+func createLookupTablesChiToTheta() (dirtyChi, cleanTheta, cleanBase2 smartvectors.SmartVector) {
 	var (
 		lookupDirtyBaseChi               []field.Element
 		lookupCleanBaseTheta             []field.Element

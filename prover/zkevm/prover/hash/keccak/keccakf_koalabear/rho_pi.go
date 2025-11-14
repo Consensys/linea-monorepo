@@ -36,6 +36,6 @@ func newRho(comp *wizard.CompiledIOP, stateCurr common.StateInBits) *rhoPi {
 }
 
 // assignRho assigns the values to the columns of rho step.
-func (rho *rhoPi) assignRoh(run *wizard.ProverRuntime, stateCurr common.StateInBits) {
-	// it does noting as it is just rotation and shuffleing of columns and does not creat any new columns.
+func (rho *rhoPi) assignRho(run *wizard.ProverRuntime, stateCurr common.StateInBits) {
+	// it does nothing as it is just rotation and shuffling of columns and does not create any new columns.
 }
