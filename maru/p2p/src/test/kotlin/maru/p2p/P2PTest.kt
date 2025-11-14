@@ -35,10 +35,6 @@ import maru.p2p.testutils.NetworkUtil.findFreePort
 import maru.p2p.testutils.NetworkUtil.findFreePorts
 import maru.p2p.topics.BesuMessageDataSerDe
 import maru.serialization.rlp.RLPSerializers
-import maru.syncing.CLSyncStatus
-import maru.syncing.ELSyncStatus
-import maru.syncing.FakeSyncStatusProvider
-import maru.syncing.SyncStatusProvider
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
@@ -58,13 +54,11 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcException
 import tech.pegasys.teku.networking.eth2.rpc.core.RpcResponseStatus
 import tech.pegasys.teku.networking.p2p.libp2p.LibP2PNodeId
 import tech.pegasys.teku.networking.p2p.libp2p.MultiaddrPeerAddress
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
-import tech.pegasys.teku.networking.p2p.peer.NodeId
 import maru.p2p.ext.DataGenerators as P2P2DataGenerators
 
 @Execution(ExecutionMode.SAME_THREAD)
@@ -99,14 +93,6 @@ class P2PTest {
     private val key3 = "080212204437acb8e84bc346f7640f239da84abe99bc6f97b7855f204e34688d2977fd57".fromHex()
     private val p2PState = InMemoryP2PState()
 
-    private fun getSyncStatusProvider(): SyncStatusProvider =
-      FakeSyncStatusProvider(
-        clStatus = CLSyncStatus.SYNCED,
-        elStatus = ELSyncStatus.SYNCED,
-        beaconSyncDistanceValue = 10UL,
-        clSyncTarget = 100UL,
-      )
-
     private val beaconChain: InMemoryBeaconChain = InMemoryBeaconChain.fromGenesis()
     private val forkIdHashManager: ForkPeeringManager =
       createForkIdHashManager(
@@ -114,32 +100,6 @@ class P2PTest {
         beaconChain = beaconChain,
       )
     private val statusManager: StatusManager = StatusManager(beaconChain, forkIdHashManager)
-    private val rpcMethods = createRpcMethods()
-
-    fun createRpcMethods(): RpcMethods {
-      val rpcProtocolIdGenerator = LineaRpcProtocolIdGenerator(chainId)
-      lateinit var maruPeerManager: MaruPeerManager
-      val rpcMethods =
-        RpcMethods(
-          statusManager = statusManager,
-          lineaRpcProtocolIdGenerator = rpcProtocolIdGenerator,
-          peerLookup = { maruPeerManager },
-          beaconChain = beaconChain,
-        )
-      MaruReputationManager(
-        metricsSystem = NoOpMetricsSystem(),
-        timeProvider = SystemTimeProvider(),
-        isStaticPeer = { _: NodeId -> true },
-        reputationConfig = P2PConfig.Reputation(),
-      )
-      DefaultMaruPeerFactory(
-        rpcMethods = rpcMethods,
-        statusManager = statusManager,
-        p2pConfig = P2PConfig(ipAddress = IPV4, port = findFreePort()),
-      )
-
-      return rpcMethods
-    }
 
     private fun createP2PNetwork(
       privateKey: ByteArray,
@@ -173,7 +133,6 @@ class P2PTest {
         forkIdHashManager = forkIdHashManager,
         isBlockImportEnabledProvider = { true },
         p2PState = p2PState,
-        syncStatusProviderProvider = { getSyncStatusProvider() },
       )
   }
 
@@ -428,15 +387,8 @@ class P2PTest {
     val peer1 =
       p2pNetworkImpl2.getPeerLookup().getPeer(nodeId = LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_1)))
         ?: throw IllegalStateException("Peer with ID $PEER_ID_NODE_1 not found in p2pNetworkImpl2")
-    val maruPeer1 =
-      DefaultMaruPeer(
-        delegatePeer = peer1,
-        rpcMethods = rpcMethods,
-        statusManager = statusManager,
-        p2pConfig = P2PConfig(ipAddress = IPV4, port = p2pNetworkImpl1.port),
-      )
 
-    val responseFuture = maruPeer1.sendStatus()
+    val responseFuture = peer1.sendStatus()
 
     assertThatNoException().isThrownBy { responseFuture.get(500L, TimeUnit.MILLISECONDS) }
     assertThat(peer1.getStatus()).isEqualTo(expectedStatus)

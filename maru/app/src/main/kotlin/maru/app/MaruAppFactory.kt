@@ -68,7 +68,6 @@ import maru.syncing.HighestHeadTargetSelector
 import maru.syncing.MostFrequentHeadTargetSelector
 import maru.syncing.PeerChainTracker
 import maru.syncing.SyncController
-import maru.syncing.SyncStatusProvider
 import maru.syncing.SyncTargetSelector
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory
 import net.consensys.linea.metrics.MetricsFacade
@@ -103,7 +102,6 @@ interface MaruAppFactoryCreator {
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): LongRunningCloseable
 }
@@ -131,7 +129,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
-      () -> SyncStatusProvider,
     ) -> P2PNetworkImpl,
   ): MaruApp {
     log.info("configs={}", config)
@@ -219,7 +216,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
           }
         },
         p2PState = kvDatabase,
-        syncStatusProviderProvider = { syncControllerImpl!! },
         clock = clock,
         p2pNetworkFactory = p2pNetworkFactory,
       )
@@ -386,7 +382,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
       besuMetricsSystem: BesuMetricsSystem,
       clock: Clock,
       p2PState: P2PState,
-      syncStatusProviderProvider: () -> SyncStatusProvider,
       p2pNetworkFactory: (
         ByteArray,
         P2PConfig,
@@ -399,7 +394,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
         ForkPeeringManager,
         () -> Boolean,
         P2PState,
-        () -> SyncStatusProvider,
       ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     ): P2PNetwork {
       if (p2pConfig == null) {
@@ -433,7 +427,6 @@ class MaruAppFactory : MaruAppFactoryCreator {
         forkIdHashManager,
         isBlockImportEnabledProvider,
         p2PState,
-        syncStatusProviderProvider,
       )
     }
 

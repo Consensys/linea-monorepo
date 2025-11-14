@@ -15,10 +15,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import maru.config.P2PConfig
 import maru.p2p.discovery.MaruDiscoveryService
-import maru.syncing.SyncStatusProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.networking.p2p.network.P2PNetwork
 import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.DisconnectReason
@@ -27,10 +25,9 @@ import tech.pegasys.teku.networking.p2p.peer.Peer
 
 class MaruPeerManager(
   private val maruPeerFactory: MaruPeerFactory,
-  p2pConfig: P2PConfig,
+  private val p2pConfig: P2PConfig,
   private val reputationManager: MaruReputationManager,
   private val isStaticPeer: (NodeId) -> Boolean,
-  private val syncStatusProviderProvider: () -> SyncStatusProvider,
 ) : PeerHandler,
   PeerLookup {
   private val log: Logger = LogManager.getLogger(this.javaClass)
@@ -43,8 +40,6 @@ class MaruPeerManager(
   private val peers: ConcurrentHashMap<NodeId, MaruPeer> = ConcurrentHashMap()
 
   private var scheduler: ScheduledExecutorService? = null
-  private lateinit var p2pNetwork: P2PNetwork<Peer>
-  private lateinit var syncStatusProvider: SyncStatusProvider
 
   val peerCount: Int
     get() = connectedPeers().size
@@ -61,8 +56,6 @@ class MaruPeerManager(
       return
     }
     this.discoveryService = discoveryService
-    this.p2pNetwork = p2pNetwork
-    this.syncStatusProvider = syncStatusProviderProvider()
     scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().factory())
     scheduler!!.scheduleAtFixedRate({
       logConnectedPeers()
@@ -75,32 +68,26 @@ class MaruPeerManager(
           reputationManager = reputationManager,
           maxPeers = maxPeers,
           getPeerCount = { peerCount },
+          discoveryConfig = p2pConfig.discovery!!,
         )
       discoveryTask!!.start()
     }
   }
 
-  fun stop(): SafeFuture<Unit> {
+  fun stop() {
     if (!started.compareAndSet(true, false)) {
       log.warn("Trying to stop stopped MaruPeerManager")
-      return SafeFuture.completedFuture(Unit)
+      return
     }
     discoveryTask?.stop()
     discoveryTask = null
     scheduler!!.shutdown()
     scheduler = null
-    return SafeFuture.completedFuture(Unit)
+    peers.values.forEach { it.disconnectCleanly(DisconnectReason.SHUTTING_DOWN) }
   }
 
   private fun logConnectedPeers() {
-    connectedPeers().keys.toList().also { peers ->
-      log.info(
-        "currently connected peers: peerCount={} peers={}",
-        peers.size,
-        peers,
-      )
-    }
-
+    log.info("Currently connected peers={}", connectedPeers().keys.toList())
     if (log.isDebugEnabled) {
       discoveryService?.getKnownPeers()?.forEach { peer ->
         log.debug("discovered peer={}", peer)
@@ -121,7 +108,7 @@ class MaruPeerManager(
       log.debug("Connected to peer={}, static=$isAStaticPeer", peer.id)
     } else { // not static and not allowed to connect -> disconnect
       peer.disconnectCleanly(DisconnectReason.RATE_LIMITING)
-      log.debug("Peer={} is not allowed to connect yet", peer.id)
+      log.trace("Peer={} is not allowed to connect yet", peer.id)
     }
   }
 
