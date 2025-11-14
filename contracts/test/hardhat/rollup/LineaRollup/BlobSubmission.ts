@@ -904,11 +904,14 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
 
       // Setup LineaRollup state so that its references to past state, mirror the references in the finalization proof
       await betaV4_1_LineaRollup.setLastFinalizedShnarf(betaV4_1_FinalizationData_Sepolia.parentAggregationFinalShnarf);
-      await betaV4_1_LineaRollup.setLastFinalizedStateV6(
+      await betaV4_1_LineaRollup.setLastFinalizedState(
         betaV4_1_FinalizationData_Sepolia.parentAggregationLastL1RollingHashMessageNumber,
         betaV4_1_FinalizationData_Sepolia.parentAggregationLastL1RollingHash,
+        0n,
+        HASH_ZERO,
         betaV4_1_FinalizationData_Sepolia.parentAggregationLastBlockTimestamp,
       );
+
       await betaV4_1_LineaRollup.setRollingHash(
         betaV4_1_FinalizationData_Sepolia.l1RollingHashMessageNumber,
         betaV4_1_FinalizationData_Sepolia.l1RollingHash,
@@ -944,10 +947,12 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
       expect(lastFinalizedState).to.equal(
         generateKeccak256(
-          ["uint256", "bytes32", "uint256"],
+          ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
           [
             finalizationData.l1RollingHashMessageNumber,
             finalizationData.l1RollingHash,
+            0n,
+            HASH_ZERO,
             finalizationData.finalTimestamp,
           ],
         ),
@@ -1032,6 +1037,8 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       await betaV4_1_LineaRollup.setLastFinalizedState(
         betaV4_1_FinalizationData_Mainnet.parentAggregationLastL1RollingHashMessageNumber,
         betaV4_1_FinalizationData_Mainnet.parentAggregationLastL1RollingHash,
+        0n,
+        HASH_ZERO,
         betaV4_1_FinalizationData_Mainnet.parentAggregationLastBlockTimestamp,
       );
       await betaV4_1_LineaRollup.setRollingHash(

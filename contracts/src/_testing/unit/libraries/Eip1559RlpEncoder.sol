@@ -7,7 +7,7 @@
  */
 pragma solidity ^0.8.30;
 
-import { RlpEncoder } from "./RlpEncoder.sol";
+import { RlpEncoder } from "../../../libraries/RlpEncoder.sol";
 
 /**
  * @title Library for RLP Encoding a type 2 EIP-1559 transactions.

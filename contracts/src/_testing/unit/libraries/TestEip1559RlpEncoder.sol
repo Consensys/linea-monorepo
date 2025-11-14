@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { Eip1559RlpEncoder } from "../../../libraries/Eip1559RlpEncoder.sol";
+import { Eip1559RlpEncoder } from "./Eip1559RlpEncoder.sol";
 
 contract TestEip1559RlpEncoder {
   uint256 chainId;

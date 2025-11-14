@@ -45,25 +45,11 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     uint256 _maxGasLimit,
     uint256 _maxInputLengthBuffer
   ) {
-    if (_lineaRollup == address(0)) {
-      revert IGenericErrors.ZeroAddressNotAllowed();
-    }
-
-    if (_destinationChainId == 0) {
-      revert IGenericErrors.ZeroValueNotAllowed();
-    }
-
-    if (_l2BlockBuffer == 0) {
-      revert IGenericErrors.ZeroValueNotAllowed();
-    }
-
-    if (_maxGasLimit == 0) {
-      revert IGenericErrors.ZeroValueNotAllowed();
-    }
-
-    if (_maxInputLengthBuffer == 0) {
-      revert IGenericErrors.ZeroValueNotAllowed();
-    }
+    require(_lineaRollup != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    require(_destinationChainId != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_l2BlockBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_maxGasLimit != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_maxInputLengthBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
 
     LINEA_ROLLUP = IAcceptForcedTransactions(_lineaRollup);
     DESTINATION_CHAIN_ID = _destinationChainId;
@@ -128,7 +114,6 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     ) {
       /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
       /// @dev Note: if this clause fails after first finalization post upgrade, the 5 fields are actually what is expected in the lastFinalizedState.
-
       require(
         currentFinalizedState ==
           FinalizedStateHashing._computeLastFinalizedState(
