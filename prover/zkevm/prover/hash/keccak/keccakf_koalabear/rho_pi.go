@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 )
 
-// rho module, responsible for updating the state in the rho step of keccakf
-type rho struct {
+// rhoPi module, responsible for updating the state in the rhoPi step of keccakf
+type rhoPi struct {
 	// state before applying the rho step
 	stateCurr common.StateInBits
 	// state after bit rotation, in bits
@@ -15,9 +15,9 @@ type rho struct {
 }
 
 // newRho creates a new rho module, declares the columns and constraints and returns its pointer
-func newRho(comp *wizard.CompiledIOP, numKeccakf int, stateCurr common.StateInBits) *rho {
+func newRho(comp *wizard.CompiledIOP, stateCurr common.StateInBits) *rhoPi {
 
-	rho := &rho{
+	rho := &rhoPi{
 		stateCurr: stateCurr,
 		stateNext: &common.StateInBits{},
 	}
@@ -36,6 +36,6 @@ func newRho(comp *wizard.CompiledIOP, numKeccakf int, stateCurr common.StateInBi
 }
 
 // assignRho assigns the values to the columns of rho step.
-func (rho *rho) assignRoh(run *wizard.ProverRuntime, stateCurr common.StateInBits) {
+func (rho *rhoPi) assignRoh(run *wizard.ProverRuntime, stateCurr common.StateInBits) {
 	// it does noting as it is just rotation and shuffleing of columns and does not creat any new columns.
 }

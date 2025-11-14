@@ -102,7 +102,7 @@ func chiTestingModule(
 	// function
 	var (
 		mod          = &Module{}
-		size         = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * 24))
+		size         = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * common.NumRounds))
 		stateCurr    = common.StateInBits{} // input to the rho module
 		blocks       = [common.NumLanesInBlock][common.NumSlices]ifaces.Column{}
 		isBlockOther ifaces.Column
@@ -132,7 +132,7 @@ func chiTestingModule(
 			stateCurr:    stateCurr,
 			blocks:       blocks,
 			isBlockOther: isBlockOther,
-			numKeccakf:   maxNumKeccakf,
+			keccakfSize:  size,
 		})
 	}
 
@@ -162,10 +162,10 @@ func chiTestingModule(
 			blockNext := [common.NumLanesInBlock][common.NumSlices]field.Element{}
 			for permId := 0; permId < numKeccakf; permId++ {
 				state := traces.KeccakFInps[permId]
-				block := cleanBaseBlock(traces.Blocks[permId])
+				block := cleanBaseBlock(traces.Blocks[permId], &common.BaseChiFr)
 
 				if permId+1 < numKeccakf {
-					blockNext = cleanBaseBlock(traces.Blocks[permId+1])
+					blockNext = cleanBaseBlock(traces.Blocks[permId+1], &common.BaseChiFr)
 				}
 
 				for rnd := 0; rnd < keccak.NumRound; rnd++ {
@@ -253,8 +253,7 @@ func chiTestingModule(
 	return builder, prover, mod
 }
 
-func cleanBaseBlock(block keccak.Block) (res [common.NumLanesInBlock][common.NumSlices]field.Element) {
-	eleven := field.NewElement(common.BaseChi)
+func cleanBaseBlock(block keccak.Block, base *field.Element) (res [common.NumLanesInBlock][common.NumSlices]field.Element) {
 	// extract the byte of each lane, in little endian
 	for i := 0; i < common.NumLanesInBlock; i++ {
 		lanebytes := [common.NumSlices]uint8{}
@@ -263,7 +262,7 @@ func cleanBaseBlock(block keccak.Block) (res [common.NumLanesInBlock][common.Num
 		}
 		// convert each byte to clean base common.common.BaseChi
 		for j := 0; j < common.NumSlices; j++ {
-			res[i][j] = keccakf.U64ToBaseX(uint64(lanebytes[j]), &eleven)
+			res[i][j] = keccakf.U64ToBaseX(uint64(lanebytes[j]), base)
 		}
 	}
 	return res

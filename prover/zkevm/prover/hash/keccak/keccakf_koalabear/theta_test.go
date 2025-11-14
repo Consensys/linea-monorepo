@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -92,7 +93,7 @@ func thetaTestingModule(
 	// function
 	var (
 		mod       = &Module{}
-		size      = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * 24))
+		size      = int(utils.NextPowerOfTwo(uint64(maxNumKeccakf) * common.NumRounds))
 		stateCurr = state{} // input to the theta module base 4
 	)
 
@@ -111,7 +112,7 @@ func thetaTestingModule(
 			}
 		}
 
-		mod.theta = newTheta(comp, maxNumKeccakf, stateCurr)
+		mod.theta = newTheta(comp, size, stateCurr)
 	}
 
 	prover := func(

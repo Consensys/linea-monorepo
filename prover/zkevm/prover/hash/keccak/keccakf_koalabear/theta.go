@@ -37,13 +37,13 @@ type theta struct {
 
 // newTheta creates a new theta module, declares the columns and constraints and returns its pointer
 func newTheta(comp *wizard.CompiledIOP,
-	numKeccakf int,
+	keccakfSize int,
 	stateCurr state) *theta {
 	theta := &theta{}
 	theta.stateCurr = stateCurr
 
 	// declare the new state and intermediate columns
-	theta.declareColumnsTheta(comp, numKeccakf)
+	theta.declareColumnsTheta(comp, keccakfSize)
 
 	// declare the constraints
 	theta.computationStepConstraints(comp)
@@ -53,9 +53,7 @@ func newTheta(comp *wizard.CompiledIOP,
 }
 
 // declareColumnsTheta declares the intermediate columns generated during theta step, including the new state.
-func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int) {
-	// size of the columns to declare
-	colSize := numRowsKeccakSmallField(numKeccakf)
+func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, keccakfSize int) {
 	// declare the new state
 	theta.stateInternalClean = common_koalabear.State{}
 	theta.stateNext = common_koalabear.StateInBits{}
@@ -65,12 +63,12 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 				theta.stateInternalDirty[x][y][z] = comp.InsertCommit(
 					0,
 					deriveNameKeccakFSmallField("STATE_THETA_DIRTY_%v_%v_%v", x, y, z),
-					colSize,
+					keccakfSize,
 				)
 				theta.stateInternalClean[x][y][z] = comp.InsertCommit(
 					0,
 					deriveNameKeccakFSmallField("STATE_THETA_CLEAN_%v_%v_%v", x, y, z),
-					colSize,
+					keccakfSize,
 				)
 
 				// declare the new state in bits
@@ -78,7 +76,7 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 					theta.stateNext[x][y][z*8+i] = comp.InsertCommit(
 						0,
 						deriveNameKeccakFSmallField("STATE_THETA_BIT_%v_%v_%v", x, y, z*8+i),
-						colSize,
+						keccakfSize,
 					)
 				}
 			}
@@ -96,37 +94,37 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, numKeccakf int
 			theta.cMiddleDirty[x][z] = comp.InsertCommit(
 				0,
 				deriveNameKeccakFSmallField("C_MIDDLE_%v_%v", x, z),
-				colSize,
+				keccakfSize,
 			)
 			theta.cFinalDirty[x][z] = comp.InsertCommit(
 				0,
 				deriveNameKeccakFSmallField("C_FINAL_%v_%v", x, z),
-				colSize,
+				keccakfSize,
 			)
 			theta.cMiddleClean[x][z] = comp.InsertCommit(
 				0,
 				deriveNameKeccakFSmallField("C_MIDDLE_CLEAN_%v_%v", x, z),
-				colSize,
+				keccakfSize,
 			)
 			theta.cFinalClean[x][z] = comp.InsertCommit(
 				0,
 				deriveNameKeccakFSmallField("C_FINAL_CLEAN_%v_%v", x, z),
-				colSize,
+				keccakfSize,
 			)
 			theta.ccDirty[x][z] = comp.InsertCommit(
 				0,
 				deriveNameKeccakFSmallField("CC_%v_%v", x, z),
-				colSize,
+				keccakfSize,
 			)
 			theta.ccCleaned[x][z] = comp.InsertCommit(
 				0,
 				deriveNameKeccakFSmallField("CC_CLEAN_%v_%v", x, z),
-				colSize,
+				keccakfSize,
 			)
 			theta.msb[x][z] = comp.InsertCommit(
 				0,
 				deriveNameKeccakFSmallField("THETA_MSB_%v_%v", x, z),
-				colSize,
+				keccakfSize,
 			)
 		}
 	}

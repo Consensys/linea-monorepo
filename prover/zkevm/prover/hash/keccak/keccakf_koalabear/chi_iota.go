@@ -18,7 +18,7 @@ import (
 
 type block [common.NumLanesInBlock][common.NumSlices]ifaces.Column
 
-type chi struct {
+type chiIota struct {
 	Inputs *chiInputs
 	// internal state  recomposing each [common.NumSlices] bits into a base clean BaseChi.
 	// it is a placeholder for the linear combination expressions, to facilitate the assignment.
@@ -42,7 +42,7 @@ type chiInputs struct {
 	// flag for blocks other than the first one
 	isBlockOther ifaces.Column
 	// max number of keccakf permutations that module can support
-	numKeccakf int
+	keccakfSize int
 }
 
 // newChi define the chi step of the keccak-f permutation.
@@ -51,17 +51,17 @@ type chiInputs struct {
 // A[x][y] = A[x][y] + ( (not A[x+1][y]) and A[x+2][y] )  and
 // A[0,0] = A[0,0] + RC and then A[x][y] = A[x][y] + block[x+5*y] for all message blocks except the first one.
 // the blocks are added to the end of the current Iota step to avoid creating extra columns and facilitating the theta step.
-func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
+func newChi(comp *wizard.CompiledIOP, in chiInputs) *chiIota {
 
-	chi := &chi{
+	chi := &chiIota{
 		stateInternal: [5][5][common.NumSlices]*sym.Expression{},
 		Inputs:        &in,
 		StateNext:     [5][5][common.NumSlices]ifaces.Column{},
 	}
 
 	var (
-		stateNext [5][5][common.NumSlices]*sym.Expression
-		size      = numRows(in.numKeccakf)
+		stateNext   [5][5][common.NumSlices]*sym.Expression
+		keccakfSize = in.keccakfSize
 	)
 
 	for x := 0; x < 5; x++ {
@@ -70,7 +70,7 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
 				// set the internal state column to the result of the linear combination
 				chi.stateInternal[x][y][z] = wizardutils.LinCombExpr(common.BaseChi, in.stateCurr[x][y][z*common.NumSlices:z*common.NumSlices+common.NumSlices])
 				// define the state next columns
-				chi.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_NEXT_%v_%v_%v", x, y, z), size)
+				chi.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_NEXT_%v_%v_%v", x, y, z), keccakfSize)
 			}
 		}
 	}
@@ -82,7 +82,7 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
 			comp,
 			0,
 			rcCols[i],
-			verifiercol.NewConstantCol(field.One(), size, "keccak-rc-pattern"),
+			verifiercol.NewConstantCol(field.One(), keccakfSize, "keccak-rc-pattern"),
 		)
 	}
 
@@ -122,7 +122,7 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chi {
 }
 
 // assignChi assigns the values to the columns of chi step.
-func (chi *chi) assignChi(run *wizard.ProverRuntime, stateCurr common.StateInBits) {
+func (chi *chiIota) assignChi(run *wizard.ProverRuntime, stateCurr common.StateInBits) {
 	var (
 		u, v          []field.Element
 		stateInternal [5][5][common.NumSlices][]field.Element

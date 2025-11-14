@@ -1,8 +1,6 @@
 package keccakfkoalabear
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -61,8 +59,8 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 	// declare the lookup table columns
 	dirtyBaseChi, cleanBaseTheta, cleanBase2 := creatLookupTablesChiToTheta()
 	bc.lookupTable.colBaseChi = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_DIRTY_BASECHI"), dirtyBaseChi)
-	bc.lookupTable.colBaseTheta = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASETHETA"), cleanBaseTheta)
 	bc.lookupTable.colBase2 = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_BASE2"), cleanBase2)
+	bc.lookupTable.colBaseTheta = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASE_THETA"), cleanBaseTheta)
 
 	// declare the flags for base conversion
 	bc.isBase2 = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASE2"), size)
@@ -84,8 +82,8 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 				// attest the relation between stateInternalChi and stateInternalTheta using the lookup table
 				comp.InsertInclusionConditionalOnIncluded(0,
 					ifaces.QueryIDf("BC_LOOKUP_INCLUSION_%v_%v_%v", x, y, z),
-					[]ifaces.Column{bc.lookupTable.colBaseChi, bc.lookupTable.colBaseTheta},
-					[]ifaces.Column{bc.stateInternalChi[x][y][z], bc.stateInternalTheta[x][y][z]},
+					[]ifaces.Column{bc.lookupTable.colBaseTheta, bc.lookupTable.colBaseChi},
+					[]ifaces.Column{bc.stateInternalTheta[x][y][z], bc.stateInternalChi[x][y][z]},
 					bc.isBaseTheta)
 
 				comp.InsertInclusionConditionalOnIncluded(0,
@@ -121,7 +119,6 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 			}
 		}
 	}
-
 	commonconstraints.MustBeMutuallyExclusiveBinaryFlags(comp,
 		bc.isActive,
 		[]ifaces.Column{bc.isBase2, bc.isBaseTheta},
@@ -203,7 +200,6 @@ func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) BackToThetaOrOutpu
 	isBase2.PadAndAssign(run)
 	isBaseT.PadAndAssign(run)
 
-	fmt.Printf("len isBase2 %d, size baseThetaOr2 %d, size bc.isBase2 Column %d \n", isBase2.Height(), len(baseThetaOr2), bc.isBase2.Size())
 	// compute baseThetaOr2 = isBaseTheta * BaseTheta + isBase2 * 2
 	vector.ScalarMul(baseThetaOr2, isBaseT.Slice(), kcommon.BaseThetaFr)
 	vector.ScalarMul(temp, isBase2.Slice(), kcommon.Base2Fr)
