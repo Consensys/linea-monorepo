@@ -204,11 +204,10 @@ public abstract class Hub implements Module {
 
   // stateless modules
   private final Wcp wcp = new Wcp();
-
   private final Add add = new Add();
   private final Bin bin = new Bin();
   private final Blockhash blockhash;
-  private final Euc euc = new Euc(wcp);
+  private final Euc euc = new Euc();
   private final Ext ext = new Ext();
   private final Gas gas = new Gas();
   private final Mul mul = new Mul();

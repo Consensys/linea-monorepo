@@ -29,7 +29,6 @@ import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.ModuleName;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -38,7 +37,6 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 public class Euc implements OperationSetModule<EucOperation> {
-  private final Wcp wcp;
 
   @Getter
   private final ModuleOperationStackedSet<EucOperation> operations =
@@ -102,13 +100,8 @@ public class Euc implements OperationSetModule<EucOperation> {
     final Bytes quotient = bigIntegerToBytes(dividendBI.divide(divisorBI));
     final Bytes remainder = bigIntegerToBytes(dividendBI.remainder(divisorBI));
 
-    final EucOperation operation = new EucOperation(dividend, divisor, quotient, remainder);
-
-    final boolean isNew = operations.add(operation);
-    if (isNew) {
-      wcp.callLT(operation.remainder(), operation.divisor());
-    }
-
-    return operation;
+    final EucOperation op = new EucOperation(dividend, divisor, quotient, remainder);
+    operations.add(op);
+    return op;
   }
 }

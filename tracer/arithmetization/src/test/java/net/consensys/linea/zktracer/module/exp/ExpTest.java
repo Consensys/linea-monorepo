@@ -69,6 +69,22 @@ public class ExpTest extends TracerTestBase {
   }
 
   @Test
+  void testExpLogDuplicate(TestInfo testInfo) {
+    BytecodeRunner bytecodeRunner =
+        BytecodeRunner.of(
+            BytecodeCompiler.newProgram(chainConfig)
+                .push(256)
+                .push(256)
+                .op(OpCode.EXP)
+                .op(OpCode.POP)
+                .push(256)
+                .push(256)
+                .op(OpCode.EXP)
+                .op(OpCode.POP));
+    bytecodeRunner.run(chainConfig, testInfo);
+  }
+
+  @Test
   void testModexpLogSingleCase(TestInfo testInfo) {
     BytecodeCompiler program =
         BytecodeCompiler.newProgram(chainConfig)

@@ -51,9 +51,9 @@ public class Gas implements OperationSetModule<GasOperation>, PostOpcodeDefer {
     return GAS;
   }
 
-  public void call(GasParameters gasParameters, Hub hub, CommonFragmentValues commonValues) {
+  public void call(Hub hub, CommonFragmentValues commonValues) {
     this.commonValues = commonValues;
-    this.gasParameters = gasParameters;
+    gasParameters = new GasParameters();
     hub.defers().scheduleForPostExecution(this);
   }
 

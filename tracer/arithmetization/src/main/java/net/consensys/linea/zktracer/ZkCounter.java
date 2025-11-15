@@ -153,7 +153,7 @@ public class ZkCounter implements LineCountingTracer {
       new CountingOnlyModule(BLOCK_HASH, trace.blockhash().spillage());
   final BlsData blsdata;
   final EcData ecdata;
-  final Euc euc;
+  final Euc euc = new Euc();
   final Exp exp = new Exp();
   final Ext ext = new Ext();
   final CountingOnlyModule gas = new CountingOnlyModule(GAS, trace.gas().spillage());
@@ -327,7 +327,6 @@ public class ZkCounter implements LineCountingTracer {
   }
 
   public ZkCounter(LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
-    euc = new Euc(wcp);
     keccak = new Keccak(ecRecoverEffectiveCall, blockTransactions);
     ecdata =
         new EcData(

@@ -38,8 +38,8 @@ public class EucOperation extends ModuleOperation {
     final Bytes divisorTrim = divisor.trimLeadingZeros();
     final Bytes quotientTrim = quotient.trimLeadingZeros();
 
-    this.dividend = dividend;
-    this.divisor = divisorTrim;
+    this.dividend = dividend.trimLeadingZeros();
+    this.divisor = divisorTrim.trimLeadingZeros();
     this.quotient = quotientTrim;
     this.remainder = remainder;
   }
@@ -54,10 +54,10 @@ public class EucOperation extends ModuleOperation {
     final Bytes ceil = this.ceiling();
 
     trace
-        .dividend(this.dividend)
-        .divisor(this.divisor)
-        .quotient(this.quotient)
-        .remainder(this.remainder)
+        .dividend(dividend)
+        .divisor(divisor)
+        .quotient(quotient)
+        .remainder(remainder)
         .ceil(ceil)
         .validateRow();
   }
