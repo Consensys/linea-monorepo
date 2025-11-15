@@ -42,6 +42,7 @@ func fftInverseHint(t zk.VType) solver.Hint {
 }
 
 func fftInverseEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
+	//TODO @thomas: how to implement the emulated version
 	return emulated.UnwrapHint(inputs, output, fftInverseNative)
 }
 
@@ -114,7 +115,7 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 	}
 
 	// probabilistically check the result of the FFT
-	//TODO@yao: how to fix this test with 	multicommit.WithCommitment
+	// TODO @thomas TODO@yao: how to fix this test with 	multicommit.WithCommitment
 	x := fext.RandomElement()
 	xGen4 := gnarkfext.NewE4Gen(x)
 	ec := gnarkEvalCanonicalExt(api, res, xGen4)
@@ -316,15 +317,15 @@ func GnarkVerifyCommon(
 	}
 
 	// check the linear combination is a codeword
-	// api.Compiler().Defer(func(api frontend.API) error {
-	// 	return assertIsCodeWordExt(
-	// 		api,
-	// 		proof.LinearCombination,
-	// 		proof.RsDomain.GeneratorInv,
-	// 		proof.RsDomain.Cardinality,
-	// 		proof.Rate,
-	// 	)
-	// })
+	api.Compiler().Defer(func(api frontend.API) error {
+		return assertIsCodeWordExt(
+			api,
+			proof.LinearCombination,
+			proof.RsDomain.GeneratorInv,
+			proof.RsDomain.Cardinality,
+			proof.Rate,
+		)
+	})
 
 	// Check the consistency of Ys and proof.Linearcombination
 	yjoined := utils.Join(ys...)
