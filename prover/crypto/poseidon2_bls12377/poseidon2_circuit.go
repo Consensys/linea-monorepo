@@ -3,6 +3,8 @@ package poseidon2_bls12377
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/permutation/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // GnarkMDHasher Merkle Damgard implementation using poseidon2 as compression function with width 16
@@ -14,7 +16,7 @@ import (
 // The hashing process goes as follow:
 // newState := compress(old state, buf) where buf is an octuplet, left padded with zeroes if needed
 type GnarkMDHasher struct {
-	// api frontend.API
+	api frontend.API
 
 	// Sponge construction state
 	state frontend.Variable
@@ -29,6 +31,7 @@ type GnarkMDHasher struct {
 func NewGnarkMDHasher(api frontend.API) (GnarkMDHasher, error) {
 	var res GnarkMDHasher
 	res.state = 0
+	res.api = api
 	var err error
 
 	// default parameters
@@ -43,8 +46,14 @@ func (h *GnarkMDHasher) Reset() {
 	h.buffer = h.buffer[:0]
 	h.state = 0
 }
+
 func (h *GnarkMDHasher) Write(data ...frontend.Variable) {
 	h.buffer = append(h.buffer, data...)
+}
+
+func (h *GnarkMDHasher) WriteWVs(data ...zk.WrappedVariable) {
+	_data := encoding.EncodeWVsToFVs(h.api, data)
+	h.buffer = append(h.buffer, _data...)
 }
 
 func (h *GnarkMDHasher) SetState(state frontend.Variable) {
