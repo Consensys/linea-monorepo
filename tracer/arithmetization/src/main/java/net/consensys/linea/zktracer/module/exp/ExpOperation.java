@@ -18,8 +18,7 @@ package net.consensys.linea.zktracer.module.exp;
 import static com.google.common.base.Preconditions.*;
 import static com.google.common.math.BigIntegerMath.log2;
 import static java.lang.Math.min;
-import static net.consensys.linea.zktracer.Trace.EXP_INST_EXPLOG;
-import static net.consensys.linea.zktracer.Trace.EXP_INST_MODEXPLOG;
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
@@ -62,8 +61,8 @@ public class ExpOperation extends ModuleOperation {
             "MODEXP call data unexpectedly short");
         final EWord rawLead = modexpMetadata.rawLeadingWord();
         final int cdsCutoff =
-            Math.min(modexpMetadata.callData().size() - BASE_MIN_OFFSET - bbsInt, 32);
-        final int ebsCutoff = Math.min(ebsInt, 32);
+            Math.min(modexpMetadata.callData().size() - BASE_MIN_OFFSET - bbsInt, WORD_SIZE);
+        final int ebsCutoff = Math.min(ebsInt, WORD_SIZE);
         final BigInteger leadLog =
             BigInteger.valueOf(LeadLogTrimLead.fromArgs(rawLead, cdsCutoff, ebsCutoff).leadLog());
         // Fill expCall

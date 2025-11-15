@@ -62,8 +62,8 @@ public class StpCall implements TraceSubFragment {
   private final OpCodeData opCodeData;
 
   public StpCall(Hub hub, MessageFrame frame, long memoryExpansionGas) {
-    this.opCode = hub.opCode();
-    this.opCodeData = hub.opCodeData();
+    opCodeData = hub.opCodeData();
+    opCode = opCodeData.mnemonic();
 
     checkArgument(
         opCodeData.isCall() || opCodeData.isCreate(),
@@ -74,21 +74,20 @@ public class StpCall implements TraceSubFragment {
     this.gasActual = frame.getRemainingGas();
 
     if (this.opCodeData.isCall()) {
-      this.stpCallForCalls(hub);
+      this.stpCallForCalls(hub, frame, opCode);
     } else {
       this.stpCallForCreates(frame);
     }
   }
 
-  private void stpCallForCalls(Hub hub) {
-    final MessageFrame frame = hub.messageFrame();
+  private void stpCallForCalls(Hub hub, MessageFrame frame, OpCode opCode) {
 
     final Address to = Words.toAddress(frame.getStackItem(1));
     final Account toAccount = frame.getWorldUpdater().get(to);
     this.gas = EWord.of(frame.getStackItem(0));
     this.value = opCodeData.callHasValueArgument() ? EWord.of(frame.getStackItem(2)) : ZERO;
     this.exists =
-        switch (hub.opCode()) {
+        switch (opCode) {
           case CALL -> toAccount != null && !toAccount.isEmpty();
           case CALLCODE, DELEGATECALL, STATICCALL -> false;
           default -> throw new IllegalArgumentException(
