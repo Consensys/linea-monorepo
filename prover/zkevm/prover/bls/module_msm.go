@@ -213,7 +213,7 @@ func (d *unalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
 		ColumnsA: [][]ifaces.Column{{d.blsMsmDataSource.Limb}},
 		ColumnsB: columnsB,
 	}
-	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_DATA", NAME_UNALIGNED_MSM), prj)
+	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_DATA", NAME_UNALIGNED_MSM, d.group.String()), prj)
 }
 
 func (d *unalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
@@ -231,14 +231,14 @@ func (d *unalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
 		ColumnsA: [][]ifaces.Column{{d.blsMsmDataSource.Limb}},
 		ColumnsB: columnsB,
 	}
-	comp.InsertProjection(ifaces.QueryIDf("%s_PROJECTION_RESULT", NAME_UNALIGNED_MSM), prj)
+	comp.InsertProjection(ifaces.QueryIDf("%s_%s_PROJECTION_RESULT", NAME_UNALIGNED_MSM, d.group.String()), prj)
 }
 
 func (d *unalignedMsmData) csAccumulatorInit(comp *wizard.CompiledIOP) {
 	// ensures that the first line accumulator is zero
 	nbL := nbLimbs(d.group)
 	for i := range nbL {
-		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_ACCUMULATOR_INIT_%d", NAME_UNALIGNED_MSM, i), sym.Mul(d.CurrentAccumulator[i], d.IsFirstLine))
+		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_ACCUMULATOR_INIT_%d", NAME_UNALIGNED_MSM, d.group.String(), i), sym.Mul(d.CurrentAccumulator[i], d.IsFirstLine))
 	}
 }
 
@@ -248,7 +248,7 @@ func (d *unalignedMsmData) csAccumulatorConsistency(comp *wizard.CompiledIOP) {
 	// (checked in [unalignedMsmData.csAccumulatorInit])
 	nbL := nbLimbs(d.group)
 	for i := range nbL {
-		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_ACCUMULATOR_CONSISTENCY_%d", NAME_UNALIGNED_MSM, i),
+		comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_ACCUMULATOR_CONSISTENCY_%d", NAME_UNALIGNED_MSM, d.group.String(), i),
 			sym.Mul(
 				d.IsActive,
 				sym.Sub(1, d.IsFirstLine),
