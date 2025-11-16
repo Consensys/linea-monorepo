@@ -187,8 +187,8 @@ func newUnalignedMsmData(comp *wizard.CompiledIOP, g group, src *blsMsmDataSourc
 
 func (d *unalignedMsmData) csInputMasks(comp *wizard.CompiledIOP) {
 	// we need to compute the IS_DATA && CS_MUL column which is used for projection
-	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_IS_DATA_AND_CS_MUL", NAME_UNALIGNED_MSM), sym.Sub(d.IsDataAndCsMul, sym.Mul(d.IsData, d.CsMul)))
-	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_IS_RESULT_AND_CS_MUL", NAME_UNALIGNED_MSM), sym.Sub(d.IsResultAndCsMul, sym.Mul(d.IsRes, d.CsMul)))
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_IS_DATA_AND_CS_MUL", NAME_UNALIGNED_MSM, d.group.String()), sym.Sub(d.IsDataAndCsMul, sym.Mul(d.IsData, d.CsMul)))
+	comp.InsertGlobal(ROUND_NR, ifaces.QueryIDf("%s_%s_IS_RESULT_AND_CS_MUL", NAME_UNALIGNED_MSM, d.group.String()), sym.Sub(d.IsResultAndCsMul, sym.Mul(d.IsRes, d.CsMul)))
 }
 
 func (d *unalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
