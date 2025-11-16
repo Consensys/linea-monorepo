@@ -25,7 +25,7 @@ type Key struct {
 	SisGnarkCrypto *sis.RSis
 	// Params provides the parameters of the ring-SIS instance (logTwoBound,
 	// degree etc)
-	*KeyGen
+	// *KeyGen
 
 	// twiddleCosets stores the list of twiddles that we use to implement the
 	// SIS parameters. The twiddleAreInternally are only used when dealing with
@@ -33,31 +33,48 @@ type Key struct {
 	// to the specially unrolled [sis.FFT64] function. They are thus optionally
 	// constructed when [GenerateKey] is called.
 	twiddleCosets []field.Element `serde:"omit"`
+
+	MaxNumFieldToHash int
 }
 
-type KeyGen struct {
-	*Params
-	MaxNumFieldToHash int
+func (k Key) LogTwoBound() int {
+	return k.SisGnarkCrypto.LogTwoBound
+}
+
+func (k Key) modulusDegree() int {
+	return k.SisGnarkCrypto.Degree
+}
+
+func (k Key) OutputSize() int {
+	return k.SisGnarkCrypto.Degree
+}
+
+func (k Key) NumLimbs() int {
+	return utils.DivCeil(field.Bytes*8, k.SisGnarkCrypto.LogTwoBound)
+}
+
+func (k Key) maxNumLimbsHashable() int {
+	return k.modulusDegree() * len(k.SisGnarkCrypto.A)
 }
 
 // GenerateKey generates a ring-SIS key from a set of a [Params] and a max
 // number of elements to hash
-func GenerateKey(params Params, maxNumFieldToHash int) *Key {
+func GenerateKey(logTwoDegree, logTwoBound int, maxNumFieldToHash int) *Key {
 
 	// Sanity-check : if the logTwoBound is larger or equal than 64 it can
 	// create overflows as we cast the small-norm limbs into
-	if params.LogTwoBound >= 64 {
+	if logTwoBound >= 64 {
 		utils.Panic("Log two bound cannot be larger than 64")
 	}
 
-	rsis, err := sis.NewRSis(RING_SIS_SEED, params.LogTwoDegree, params.LogTwoBound, maxNumFieldToHash)
+	rsis, err := sis.NewRSis(RING_SIS_SEED, logTwoDegree, logTwoBound, maxNumFieldToHash)
+	// TODO @thomas fixme handle error
 	if err != nil {
 		panic(err)
 	}
 
 	res := &Key{
 		SisGnarkCrypto: rsis,
-		KeyGen:         &KeyGen{&params, maxNumFieldToHash},
 		twiddleCosets:  nil,
 	}
 	return res
@@ -85,7 +102,7 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 // vector, casted as field elements in Montgommery form.
 func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 
-	vr := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound/8)
+	vr := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound()/8)
 	m := make([]field.Element, len(vReg)*s.NumLimbs())
 	var ok bool
 	for i := 0; i < len(m); i++ {
@@ -116,9 +133,9 @@ func (s Key) HashModXnMinus1(limbs []fext.Element) []fext.Element {
 	// reader to `inputReader[1:]`.
 	inputReader := limbs
 
-	if len(limbs) > s.maxNumLimbsHashable() {
-		utils.Panic("Wrong size : %v > %v", len(limbs), s.maxNumLimbsHashable())
-	}
+	// if len(limbs) > s.maxNumLimbsHashable() {
+	// 	utils.Panic("Wrong size : %v > %v", len(limbs), s.maxNumLimbsHashable())
+	// }
 
 	nbPolyUsed := utils.DivCeil(len(limbs), s.modulusDegree())
 
