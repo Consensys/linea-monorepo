@@ -58,7 +58,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 		// is running over a local copy of `i` which is not incremented every
 		// time the loop goes to the next iteration.
 		go func(i int) {
-
 			// In case the subtask panics, we recover so that we can repanic in
 			// the main goroutine. Simplifying the process of tracing back the
 			// error and allowing to test the panics.
@@ -84,7 +83,6 @@ func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 		// is running over a local copy of `i` which is not incremented every
 		// time the loop goes to the next iteration.
 		go func(i int) {
-
 			// In case the subtask panics, we recover so that we can repanic in
 			// the main goroutine. Simplifying the process of tracing back the
 			// error and allowing to test the panics.
@@ -213,6 +211,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 		for frag := range a.T {
 			tCollapsed[frag] = wizardutils.RandLinCombColAssignment(run, collapsingRandomness, a.T[frag])
+			fragmentUnionSize += tCollapsed[frag].Len()
 		}
 
 		for i := range a.S {
@@ -231,7 +230,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		//
 		// It is used to let us know where an entry of S appears in T. The stored
 		// 2-uple of integers indicate [fragment, row]
-		mapM = make(map[field.Element][2]int, fragmentUnionSize)
+		mapM = make(map[field.Element][2]uint32, fragmentUnionSize)
 	)
 
 	// This loops initializes mapM so that it tracks to the positions of the
@@ -260,7 +259,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 
 		for k := max(0, start); k < min(size, end); k++ {
 			v := tCollapsed[frag].Get(k)
-			mapM[v] = [2]int{frag, k}
+			mapM[v] = [2]uint32{uint32(frag), uint32(k)}
 		}
 	}
 

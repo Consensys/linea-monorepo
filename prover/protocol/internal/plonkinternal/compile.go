@@ -17,6 +17,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/arena"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -120,8 +122,8 @@ func (ctx *compilationCtx) commitGateColumns() {
 
 		// First Round, for the committed value and the PI
 		for i := 0; i < ctx.MaxNbInstances; i++ {
-			if tinyPISize(ctx.Plonk.SPR) > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
+			if ctx.tinyPISize() > 0 {
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), ctx.tinyPISize())
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
@@ -142,8 +144,8 @@ func (ctx *compilationCtx) commitGateColumns() {
 	} else {
 		// Else no additional selector, and just commit to LRO + PI at the same Round
 		for i := 0; i < ctx.MaxNbInstances; i++ {
-			if tinyPISize(ctx.Plonk.SPR) > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
+			if ctx.tinyPISize() > 0 {
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), ctx.tinyPISize())
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow, "")
@@ -192,18 +194,19 @@ func (ctx *compilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) 
 
 // extractPermutationColumns computes and tracks the values for ctx.Columns.S
 func (ctx *compilationCtx) extractPermutationColumns() {
-	for i := range ctx.Columns.S {
-		// Directly use the ints from the trace instead of the fresh Plonk ones
-		si := ctx.Plonk.trace.S[i*ctx.DomainSize() : (i+1)*ctx.DomainSize()]
-		sField := make([]field.Element, len(si))
-		for j := range sField {
-			sField[j].SetInt64(si[j])
+	varena := arena.NewVectorArena[field.Element](ctx.DomainSize() * len(ctx.Columns.S))
+	parallel.Execute(len(ctx.Columns.S), func(start, end int) {
+		for i := start; i < end; i++ {
+			si := ctx.Plonk.trace.S[i*ctx.DomainSize() : (i+1)*ctx.DomainSize()]
+			sField := arena.Get[field.Element](varena, ctx.DomainSize())
+			for j := range sField {
+				sField[j].SetInt64(si[j])
+			}
+			// Track it, no need to register it since the compiler
+			// will do it on its own.
+			ctx.Columns.S[i] = smartvectors.NewRegular(sField)
 		}
-
-		// Track it, no need to register it since the compiler
-		// will do it on its own.
-		ctx.Columns.S[i] = smartvectors.NewRegular(sField)
-	}
+	})
 }
 
 // add gate constraint

@@ -100,7 +100,7 @@ func init() {
 	RegisterImplementation(verifiercol.ConstCol{})
 	RegisterImplementation(verifiercol.FromYs{})
 	RegisterImplementation(verifiercol.FromAccessors{})
-	RegisterImplementation(verifiercol.ExpandedVerifCol{})
+	RegisterImplementation(verifiercol.ExpandedProofOrVerifyingKeyColWithZero{})
 	RegisterImplementation(verifiercol.RepeatedAccessor{})
 
 	// Queries
@@ -172,6 +172,8 @@ func init() {
 	RegisterImplementation(bigrange.BigRangeProverAction{})
 	RegisterImplementation(ded.AssignPIPProverAction{})
 	RegisterImplementation(keccak.ShakiraProverAction{})
+	RegisterImplementation(vortex.ColumnAssignmentProverAction{})
+	RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
 
 	// Smartvectors
 	RegisterImplementation(smartvectors.Regular{})

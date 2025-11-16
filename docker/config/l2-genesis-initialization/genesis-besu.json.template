@@ -12,9 +12,10 @@
     "istanbulBlock": 0,
     "berlinBlock": 0,
     "londonBlock": 0,
-    "terminalTotalDifficulty": 8,
+    "terminalTotalDifficulty": %TTD%,
     "shanghaiTime": %SHANGHAI_TIME%,
     "cancunTime": %CANCUN_TIME%,
+    "pragueTime": %PRAGUE_TIME%,
     "depositContractAddress": "0x3a69eD7FA6f6CA1dB2649327c4A2E666130823bE",
     "withdrawalRequestContractAddress": "0x3a69eD7FA6f6CA1dB2649327c4A2E666130823bE",
     "consolidationRequestContractAddress": "0x9AFC00F4CEaadb97A3822FCA2225FaD78839FBde",
@@ -166,7 +167,7 @@
     "bae3c3fcd73ccf7755ec8a10664f218ad6bbc775": {
       "@WARNING": "FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE",
       "privateKey": "0xb35972d9380d1be620a2c61da77f68f127ef248ec55e1bc6033d20a7e13ef3fa",
-      "comment": "account 17, can be used as end user",
+      "comment": "Bridge UI polling account",
       "balance": "900000000000000000000017"
     },
     "54d450f4d728da50f1271a1700b42657940324aa": {
