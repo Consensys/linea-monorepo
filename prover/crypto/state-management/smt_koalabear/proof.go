@@ -23,7 +23,7 @@ type Proof struct {
 // Prove returns a Merkle proof  of membership of the leaf at position `pos` and
 // an error if the position is out of bounds.
 func (t *Tree) Prove(pos int) (Proof, error) {
-	depth := t.Config.Depth
+	depth := t.Depth
 	siblings := make([]field.Octuplet, depth)
 	idx := pos
 
@@ -62,31 +62,17 @@ func (t *Tree) MustProve(pos int) Proof {
 }
 
 // RecoverRoot returns the root recovered from the Merkle proof.
-func (p *Proof) RecoverRoot(conf *Config, leaf field.Octuplet) (field.Octuplet, error) {
+func RecoverRoot(p *Proof, leaf field.Octuplet) (field.Octuplet, error) {
 
-	if p.Path > 1<<conf.Depth {
-		return field.Octuplet{}, fmt.Errorf("invalid proof: path is %v larger than the number of leaves in the tree %v", p.Path, 1<<len(p.Siblings))
-	}
-
-	if p.Path < 0 {
-		return field.Octuplet{}, fmt.Errorf("invalid proof: path is negative %v", p.Path)
-	}
-
-	if len(p.Siblings) != conf.Depth {
-		return field.Octuplet{}, fmt.Errorf("the proof contains %v siblings but the tree has a depth of %v", len(p.Siblings), conf.Depth)
-	}
-
-	var (
-		current = leaf
-		idx     = p.Path
-	)
+	current := leaf
+	idx := p.Path
 
 	for _, sibling := range p.Siblings {
 		left, right := current, sibling
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = hashLR(conf, left, right)
+		current = hashLR(left, right)
 		idx >>= 1
 	}
 
@@ -100,8 +86,8 @@ func (p *Proof) RecoverRoot(conf *Config, leaf field.Octuplet) (field.Octuplet, 
 }
 
 // Verify the Merkle-proof against a hash and a root
-func (p *Proof) Verify(conf *Config, leaf, root field.Octuplet) bool {
-	actual, err := p.RecoverRoot(conf, leaf)
+func Verify(p *Proof, leaf, root field.Octuplet) bool {
+	actual, err := RecoverRoot(p, leaf)
 	if err != nil {
 		fmt.Printf("mtree verify: %v\n", err.Error())
 		return false

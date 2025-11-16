@@ -10,17 +10,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// Config specifies the parameters of the tree (choice of hash function, depth).
-type Config struct {
-
-	// Depth depth of the tree
-	Depth int
-}
-
 // Tree represents a binary sparse Merkle-tree (SMT).
 type Tree struct {
+	Depth int
+
 	// Config of the hash function
-	Config *Config
+	// Config *Config
 	// Root stores the root of the tree
 	Root fr.Element
 	// OccupiedLeaves continuously list of the occupied leaves. For the toy
@@ -59,10 +54,10 @@ func hashLR(nodeL, nodeR fr.Element) fr.Element {
 	return d
 }
 
-// NewEmptyTree creates and returns an empty tree with the provided config.
-func NewEmptyTree(conf *Config) *Tree {
+// NewEmptyTree creates and returns an empty tree
+func NewEmptyTree(depth int) *Tree {
 	// Computes the empty nodes
-	emptyNodes := make([]fr.Element, conf.Depth-1)
+	emptyNodes := make([]fr.Element, depth-1)
 	prevNode := EmptyLeaf()
 
 	for i := range emptyNodes {
@@ -75,10 +70,10 @@ func NewEmptyTree(conf *Config) *Tree {
 	root := hashLR(prevNode, prevNode)
 
 	return &Tree{
-		Config:         conf,
+		Depth:          depth,
 		Root:           root,
 		OccupiedLeaves: make([]fr.Element, 0),
-		OccupiedNodes:  make([][]fr.Element, conf.Depth-1),
+		OccupiedNodes:  make([][]fr.Element, depth-1),
 		EmptyNodes:     emptyNodes,
 	}
 }
@@ -86,7 +81,7 @@ func NewEmptyTree(conf *Config) *Tree {
 // GetLeaf returns a leaf by position or an error if the leaf is out of bounds.
 func (t *Tree) GetLeaf(pos int) (fr.Element, error) {
 	// Check that the accessed node is within the bounds of the SMT
-	maxPos := 1 << t.Config.Depth
+	maxPos := 1 << t.Depth
 	if pos >= maxPos {
 		return fr.Element{}, fmt.Errorf("out of bound: %v", pos)
 	}
@@ -119,7 +114,7 @@ func (t *Tree) MustGetLeaf(pos int) fr.Element {
 // (for config.Depth == 40)
 func (t *Tree) getNode(level, posInLevel int) fr.Element {
 	switch {
-	case level == t.Config.Depth:
+	case level == t.Depth:
 		// The only logical posInLevels value is zero in this case
 		if posInLevel > 0 {
 			utils.Panic("there is only one root but posInLevel was %v", posInLevel)
@@ -130,9 +125,9 @@ func (t *Tree) getNode(level, posInLevel int) fr.Element {
 			utils.Panic("sanity-check failed : the root is zero.")
 		}
 		return t.Root
-	case level >= 1 && level <= t.Config.Depth-1:
+	case level >= 1 && level <= t.Depth-1:
 		// Check that the accessed node is within the bounds of the SMT
-		maxPos := 1 << (t.Config.Depth - level)
+		maxPos := 1 << (t.Depth - level)
 		if posInLevel >= maxPos {
 			utils.Panic("nodeID is out of bound")
 		}
@@ -166,7 +161,7 @@ func (t *Tree) getNode(level, posInLevel int) fr.Element {
 // (for config.Depth == 40)
 func (t *Tree) updateNode(level, posInLevel int, newVal fr.Element) {
 	switch {
-	case level == t.Config.Depth:
+	case level == t.Depth:
 		// The only logical posInLevels value is zero in this case
 		if posInLevel > 0 {
 			utils.Panic("there is only one root but posInLevel was %v", posInLevel)
@@ -177,9 +172,9 @@ func (t *Tree) updateNode(level, posInLevel int, newVal fr.Element) {
 			utils.Panic("sanity-check failed : the root is zero.")
 		}
 		t.Root = newVal
-	case level >= 1 && level < t.Config.Depth:
+	case level >= 1 && level < t.Depth:
 		// Check that the accessed node is within the bounds of the SMT
-		maxPos := 1 << (t.Config.Depth - level)
+		maxPos := 1 << (t.Depth - level)
 		if posInLevel >= maxPos {
 			utils.Panic("node is out of bound level %v (maxPos %v), pos=%v", level, maxPos, posInLevel)
 		}
@@ -191,7 +186,7 @@ func (t *Tree) updateNode(level, posInLevel int, newVal fr.Element) {
 		t.OccupiedNodes[level-1][posInLevel] = newVal
 	case level == 0:
 		// Check that the accessed node is within the bounds of the SMT
-		maxPos := 1 << t.Config.Depth
+		maxPos := 1 << t.Depth
 		if posInLevel >= maxPos {
 			utils.Panic("nodeID is out of bound")
 		}
@@ -217,17 +212,17 @@ func (t *Tree) updateNode(level, posInLevel int, newVal fr.Element) {
 func (t *Tree) reserveLevel(level, newSize int) {
 
 	// Edge-case, level out of bound
-	if level > t.Config.Depth {
+	if level > t.Depth {
 		utils.Panic("level out of bound %v", level)
 	}
 
 	// Edge : case root level
-	if level == t.Config.Depth {
+	if level == t.Depth {
 		utils.Panic("tried extending the root level %v", newSize)
 	}
 
 	// Will work for both the leaves and the intermediate nodes
-	if newSize > 1<<(t.Config.Depth-level) {
+	if newSize > 1<<(t.Depth-level) {
 		utils.Panic("overextending the tree %v, %v", level, newSize)
 	}
 
@@ -260,11 +255,8 @@ func (t *Tree) reserveLevel(level, newSize int) {
 	t.OccupiedNodes[level-1] = append(t.OccupiedNodes[level-1], padding...)
 }
 
-// BuildComplete builds from scratch a complete Merkle-tree. Requires that the
-// input leaves are powers of 2. The depth of the tree is deduced from the list.
-//
-// It panics if the number of leaves is a non-power of 2.
-// The hash function is by default poseidon2 over koalabear.
+// BuildComplete builds a Merkle-tree. Requires that the
+// input leaves are powers of 2.
 func BuildComplete(leaves []fr.Element) *Tree {
 
 	numLeaves := len(leaves)
@@ -274,8 +266,7 @@ func BuildComplete(leaves []fr.Element) *Tree {
 	}
 
 	depth := utils.Log2Ceil(numLeaves)
-	config := &Config{Depth: depth}
-	tree := NewEmptyTree(config)
+	tree := NewEmptyTree(depth)
 	tree.OccupiedLeaves = leaves
 	currLevels := leaves
 

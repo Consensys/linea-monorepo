@@ -22,11 +22,8 @@ func randomOctuplet() field.Octuplet {
 
 func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 
-	config := &Config{
-		Depth: 40,
-	}
-
-	tree := NewEmptyTree(config)
+	depth := 40
+	tree := NewEmptyTree(depth)
 
 	// populate the tree
 	nbLeaves := 10
@@ -45,7 +42,7 @@ func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 		proofs[pos], _ = tree.Prove(pos)
 
 		// Directly verify the proof
-		valid := proofs[pos].Verify(config, leafs[pos], tree.Root)
+		valid := Verify(&proofs[pos], leafs[pos], tree.Root)
 		require.Truef(t, valid, "pos #%v, proof #%v", pos, proofs[pos])
 	}
 

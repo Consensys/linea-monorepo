@@ -11,11 +11,8 @@ import (
 // all the leaves are zero.
 func TestTreeInitialization(t *testing.T) {
 
-	config := &Config{
-		Depth: 40,
-	}
-
-	tree := NewEmptyTree(config)
+	depth := 40
+	tree := NewEmptyTree(depth)
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -25,11 +22,9 @@ func TestTreeInitialization(t *testing.T) {
 }
 
 func TestTreeUpdateLeaf(t *testing.T) {
-	config := &Config{
-		Depth: 40,
-	}
 
-	tree := NewEmptyTree(config)
+	depth := 40
+	tree := NewEmptyTree(depth)
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -43,11 +38,9 @@ func TestTreeUpdateLeaf(t *testing.T) {
 	}
 }
 func TestMerkleProofNative(t *testing.T) {
-	config := &Config{
-		Depth: 40,
-	}
 
-	tree := NewEmptyTree(config)
+	depth := 40
+	tree := NewEmptyTree(depth)
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -55,17 +48,15 @@ func TestMerkleProofNative(t *testing.T) {
 		proof, _ := tree.Prove(pos)
 
 		// Directly verify the proof
-		valid := proof.Verify(config, oldLeaf, tree.Root)
+		valid := Verify(&proof, oldLeaf, tree.Root)
 		require.Truef(t, valid, "pos #%v, proof #%v", pos, proof)
 	}
 }
 
 func TestMerkleProofWithUpdate(t *testing.T) {
-	config := &Config{
-		Depth: 40,
-	}
 
-	tree := NewEmptyTree(config)
+	depth := 40
+	tree := NewEmptyTree(depth)
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -81,20 +72,18 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 
 		// After updating the old proof should still be valid
 		// (because we only changed the current leaf)
-		valid := proof.Verify(config, newLeaf, tree.Root)
+		valid := Verify(&proof, newLeaf, tree.Root)
 		require.Truef(t, valid, "pos #%v", pos)
 	}
 }
 
 func TestBuildFromScratch(t *testing.T) {
 
-	config := &Config{
-		Depth: 8,
-	}
+	depth := 8
 
 	// Generate random field elements and cast them into field.Octuplet
 	// every 8 field elements forms a leaf
-	leavesFr := make([]field.Element, 8*(1<<config.Depth))
+	leavesFr := make([]field.Element, 8*(1<<depth))
 	for i := 0; i < len(leavesFr); i++ {
 		leavesFr[i] = field.RandomElement()
 	}
@@ -112,7 +101,7 @@ func TestBuildFromScratch(t *testing.T) {
 	// Test-Merkle tests the merkle proof point by point
 	for i := range leaves {
 		proof, _ := tree.Prove(i)
-		ok := proof.Verify(config, leaves[i], tree.Root)
+		ok := Verify(&proof, leaves[i], tree.Root)
 
 		if !ok {
 			t.Fatalf("failed to verify pos %v", i)
@@ -120,7 +109,7 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// Build the same tree by adding the leaves one by one
-	oneByoneTree := NewEmptyTree(config)
+	oneByoneTree := NewEmptyTree(depth)
 	for i := range leaves {
 		oneByoneTree.Update(i, leaves[i])
 	}

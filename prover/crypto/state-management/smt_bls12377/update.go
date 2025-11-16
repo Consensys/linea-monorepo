@@ -7,15 +7,14 @@ import (
 
 // Update overwrites a leaf in the tree and updates the associated parent nodes.
 func (t *Tree) Update(pos int, newVal fr.Element) {
-	depth := t.Config.Depth
 	current := newVal
 	idx := pos
 
-	if pos >= 1<<depth {
+	if pos >= 1<<t.Depth {
 		utils.Panic("out of bound %v", pos)
 	}
 
-	for level := 0; level < t.Config.Depth; level++ {
+	for level := 0; level < t.Depth; level++ {
 		// store the newly computed node
 		t.updateNode(level, idx, current)
 		sibling := t.getNode(level, idx^1) // xor 1, switch the last bits

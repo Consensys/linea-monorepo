@@ -20,11 +20,8 @@ import (
 // Test where the leaves are bls12377 elmts
 func getMerkleProof(t *testing.T) ([]Proof, []fr.Element, fr.Element) {
 
-	config := &Config{
-		Depth: 40,
-	}
-
-	tree := NewEmptyTree(config)
+	depth := 40
+	tree := NewEmptyTree(depth)
 
 	// populate the tree
 	nbLeaves := 10
@@ -43,7 +40,7 @@ func getMerkleProof(t *testing.T) ([]Proof, []fr.Element, fr.Element) {
 		proofs[pos], _ = tree.Prove(pos)
 
 		// Directly verify the proof
-		valid := proofs[pos].Verify(config, leafs[pos], tree.Root)
+		valid := Verify(&proofs[pos], leafs[pos], tree.Root)
 		require.Truef(t, valid, "pos #%v, proof #%v", pos, proofs[pos])
 	}
 
@@ -114,11 +111,8 @@ func TestMerkleProofGnark(t *testing.T) {
 // Test where the leaves are koalabear octuplet
 func getMerkleProofWithEncoding(t *testing.T) ([]Proof, []field.Octuplet, []fr.Element, fr.Element) {
 
-	config := &Config{
-		Depth: 40,
-	}
-
-	tree := NewEmptyTree(config)
+	depth := 40
+	tree := NewEmptyTree(depth)
 
 	// populate the tree
 	nbLeaves := 10
@@ -137,7 +131,7 @@ func getMerkleProofWithEncoding(t *testing.T) ([]Proof, []field.Octuplet, []fr.E
 	for pos := 0; pos < nbProofs; pos++ {
 		leavesFrElmt[pos], _ = tree.GetLeaf(pos)
 		proofs[pos], _ = tree.Prove(pos)
-		valid := proofs[pos].Verify(config, leavesFrElmt[pos], tree.Root)
+		valid := Verify(&proofs[pos], leavesFrElmt[pos], tree.Root)
 		require.Truef(t, valid, "pos #%v, proof #%v", pos, proofs[pos])
 	}
 
