@@ -20,9 +20,9 @@ const (
 // Key encapsulates the public parameters of an instance of the ring-SIS hash
 // instance.
 type Key struct {
-	// GnarkInternal stores the SIS key itself and some precomputed domain
+	// SisGnarkCrypto stores the SIS key itself and some precomputed domain
 	// twiddles.
-	GnarkInternal *sis.RSis
+	SisGnarkCrypto *sis.RSis
 	// Params provides the parameters of the ring-SIS instance (logTwoBound,
 	// degree etc)
 	*KeyGen
@@ -56,9 +56,9 @@ func GenerateKey(params Params, maxNumFieldToHash int) *Key {
 	}
 
 	res := &Key{
-		GnarkInternal: rsis,
-		KeyGen:        &KeyGen{&params, maxNumFieldToHash},
-		twiddleCosets: nil,
+		SisGnarkCrypto: rsis,
+		KeyGen:         &KeyGen{&params, maxNumFieldToHash},
+		twiddleCosets:  nil,
 	}
 	return res
 }
@@ -70,8 +70,8 @@ func GenerateKey(params Params, maxNumFieldToHash int) *Key {
 // It is equivalent to calling r.Write(element.Marshal()); outBytes = r.Sum(nil);
 func (s *Key) Hash(v []field.Element) []field.Element {
 
-	result := make([]field.Element, s.GnarkInternal.Degree)
-	err := s.GnarkInternal.Hash(v, result)
+	result := make([]field.Element, s.SisGnarkCrypto.Degree)
+	err := s.SisGnarkCrypto.Hash(v, result)
 
 	if err != nil {
 		panic(err)
@@ -133,13 +133,13 @@ func (s Key) HashModXnMinus1(limbs []fext.Element) []fext.Element {
 		r <- FFTInv(r)
 	*/
 
-	domain := s.GnarkInternal.Domain
+	domain := s.SisGnarkCrypto.Domain
 	k := make([]fext.Element, s.modulusDegree())
 	a := make([]field.Element, s.modulusDegree())
 	r := make([]fext.Element, s.OutputSize())
 
 	for i := 0; i < nbPolyUsed; i++ {
-		copy(a, s.GnarkInternal.A[i])
+		copy(a, s.SisGnarkCrypto.A[i])
 		copy(k, inputReader)
 
 		// consume the "reader"
@@ -190,9 +190,9 @@ func (s Key) HashModXnMinus1(limbs []fext.Element) []fext.Element {
 // See [Key.Hash] for more details.
 func (s *Key) FlattenedKey() []field.Element {
 	res := make([]field.Element, 0, s.maxNumLimbsHashable())
-	for i := range s.GnarkInternal.A {
-		for j := range s.GnarkInternal.A[i] {
-			t := s.GnarkInternal.A[i][j]
+	for i := range s.SisGnarkCrypto.A {
+		for j := range s.SisGnarkCrypto.A[i] {
+			t := s.SisGnarkCrypto.A[i][j]
 			t = field.MulRInv(t)
 			res = append(res, t)
 		}
@@ -269,7 +269,7 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector, res []field.Element)
 				}
 			}
 			for j := range transposed {
-				s.GnarkInternal.Hash(transposed[j], res[(col+j)*sisKeySize:(col+j)*sisKeySize+sisKeySize])
+				s.SisGnarkCrypto.Hash(transposed[j], res[(col+j)*sisKeySize:(col+j)*sisKeySize+sisKeySize])
 			}
 		}
 	})

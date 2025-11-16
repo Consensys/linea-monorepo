@@ -56,7 +56,7 @@ func (key *Key) MaxNumFieldHashable() int {
 // be hashed together in a single hash. This coincides with the total size of
 // the SIS key counting the field elements composing it.
 func (key *Key) maxNumLimbsHashable() int {
-	return key.modulusDegree() * len(key.GnarkInternal.A)
+	return key.modulusDegree() * len(key.SisGnarkCrypto.A)
 }
 
 // NumFieldPerPoly returns the number of field elements that can be hashed with

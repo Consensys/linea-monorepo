@@ -75,7 +75,7 @@ func TestHashModXnMinusOne(t *testing.T) {
 			flattenedKey   = key.FlattenedKey() // accounts for the Montgommery skip
 		)
 
-		for i := range key.GnarkInternal.A {
+		for i := range key.SisGnarkCrypto.A {
 			ai := flattenedKey[i*key.OutputSize() : (i+1)*key.OutputSize()]
 			si := make([]fext.Element, key.OutputSize())
 			copy(si, limbs[i*key.OutputSize():])
@@ -179,7 +179,7 @@ func TestHashLimbsFromSlice(t *testing.T) {
 				keyVec       = key.FlattenedKey()
 				limbs        = key.LimbSplit(inputs)
 				expectedHash = key.hashFromLimbs(limbs)
-				hashToTest   = hashLimbsWithSlice(keyVec, limbs, key.GnarkInternal.Domain, key.OutputSize())
+				hashToTest   = hashLimbsWithSlice(keyVec, limbs, key.SisGnarkCrypto.Domain, key.OutputSize())
 			)
 
 			require.Equal(t, vector.Prettify(expectedHash), vector.Prettify(hashToTest))
@@ -238,8 +238,8 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 
 	nbPolyUsed := utils.DivCeil(len(limbs), key.OutputSize())
 
-	if nbPolyUsed > len(key.GnarkInternal.Ag) {
-		utils.Panic("Too many inputs max is %v but has %v", len(key.GnarkInternal.Ag)*key.OutputSize(), len(limbs))
+	if nbPolyUsed > len(key.SisGnarkCrypto.Ag) {
+		utils.Panic("Too many inputs max is %v but has %v", len(key.SisGnarkCrypto.Ag)*key.OutputSize(), len(limbs))
 	}
 
 	var (
@@ -263,10 +263,10 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 			k[i].SetZero()
 		}
 
-		key.GnarkInternal.Domain.FFT(k, fft.DIF, fft.OnCoset(), fft.WithNbTasks(1))
+		key.SisGnarkCrypto.Domain.FFT(k, fft.DIF, fft.OnCoset(), fft.WithNbTasks(1))
 		var tmp field.Element
 		for j := range res {
-			tmp.Mul(&k[j], &key.GnarkInternal.Ag[i][j])
+			tmp.Mul(&k[j], &key.SisGnarkCrypto.Ag[i][j])
 			res[j].Add(&res[j], &tmp)
 		}
 	}
@@ -278,6 +278,6 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 		res[j] = field.MulRInv(res[j])
 	}
 
-	key.GnarkInternal.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
+	key.SisGnarkCrypto.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
 	return res
 }
