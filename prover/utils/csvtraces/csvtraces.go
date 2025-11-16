@@ -213,7 +213,7 @@ func (c *CsvTrace) Assign(run *wizard.ProverRuntime, names ...string) {
 		if v, ok := c.mapped[k]; ok {
 			colLength := run.Spec.Columns.GetSize(ifaces.ColID(k))
 			if colLength < length {
-				utils.Panic("column %s has size %d, but trace has %d rows", k, colLength, c.nbRows)
+				utils.Panic("column %s has size %d, but trace has %d (padded to %d) rows", k, colLength, c.nbRows, length)
 			}
 			sv := smartvectors.RightZeroPadded(v, colLength)
 			run.AssignColumn(ifaces.ColID(k), sv)
