@@ -35,12 +35,10 @@ public class EucOperation extends ModuleOperation {
     if (divisor.isZero()) {
       throw new IllegalArgumentException("EUC module doesn't accept 0 for divisor");
     }
-    final Bytes divisorTrim = divisor.trimLeadingZeros();
-    final Bytes quotientTrim = quotient.trimLeadingZeros();
 
     this.dividend = dividend.trimLeadingZeros();
-    this.divisor = divisorTrim.trimLeadingZeros();
-    this.quotient = quotientTrim;
+    this.divisor = divisor.trimLeadingZeros();
+    this.quotient = quotient.trimLeadingZeros();
     this.remainder = remainder;
   }
 
