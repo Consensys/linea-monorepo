@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -161,7 +160,6 @@ func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []fronte
 	multicommit.WithCommitment(
 		api,
 		func(api frontend.API, initialChallenge frontend.Variable) error {
-			logrus.Infof("defining the constraints of the GKR verifier")
 
 			// "MIMC" means that we are using MiMC hashes to compute the FS challenges
 			// this part is responsible for verifying the GKR proof.
@@ -169,8 +167,6 @@ func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []fronte
 			if err != nil {
 				panic(err)
 			}
-
-			logrus.Infof("defining the constraints of the GKR verifier : done")
 
 			// Export the last gkr layer as an array of frontend variable
 			d := solution.Export(D)
