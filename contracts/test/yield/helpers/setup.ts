@@ -133,6 +133,7 @@ export const setupLineaRollupMessageMerkleTree = async (
   to: string,
   value: bigint,
   data: string,
+  securityCouncil: SignerWithAddress,
 ): Promise<ClaimMessageWithProofParams> => {
   const messageNumber = await lineaRollup.nextMessageNumber();
   const expectedBytes = await encodeSendMessage(from, to, 0n, value, messageNumber, data);
@@ -141,7 +142,7 @@ export const setupLineaRollupMessageMerkleTree = async (
   const proof = Array.from({ length: 32 }, () => randomBytes32());
   const leafIndex = 0n;
   const root = await lineaRollup.generateMerkleRoot(messageHash, proof, leafIndex);
-  await lineaRollup.addL2MerkleRoots([root], proof.length);
+  await lineaRollup.connect(securityCouncil).addL2MerkleRoots([root], proof.length);
 
   const claimParams: ClaimMessageWithProofParams = {
     proof,
@@ -327,6 +328,7 @@ export const withdrawLST = async (
   nonAuthorizedAccount: SignerWithAddress,
   yieldProviderAddress: string,
   amount: bigint,
+  securityCouncil: SignerWithAddress,
 ) => {
   const recipientAddress = await nonAuthorizedAccount.getAddress();
   const claimParams = await setupLineaRollupMessageMerkleTree(
@@ -335,6 +337,7 @@ export const withdrawLST = async (
     recipientAddress,
     amount,
     EMPTY_CALLDATA,
+    securityCouncil,
   );
   await lineaRollup
     .connect(nonAuthorizedAccount)

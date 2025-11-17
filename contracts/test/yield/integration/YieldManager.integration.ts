@@ -133,6 +133,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         yieldManagerAddress,
         transferAmount,
         calldata,
+        securityCouncil,
       );
 
       // Act
@@ -159,6 +160,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         recipientAddress,
         withdrawAmount,
         EMPTY_CALLDATA,
+        securityCouncil,
       );
       // Arrange - Get before figures
       const lstPrincipalBefore = await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
@@ -194,6 +196,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         yieldManagerAddress,
         withdrawAmount,
         calldata,
+        securityCouncil,
       );
 
       // Act
@@ -215,6 +218,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         recipientAddress,
         withdrawAmount,
         EMPTY_CALLDATA,
+        securityCouncil,
       );
 
       // Act
@@ -238,6 +242,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         recipientAddress,
         withdrawAmount,
         EMPTY_CALLDATA,
+        securityCouncil,
       );
 
       // Act - Execute with different sender than _to
@@ -258,6 +263,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         recipientAddress,
         rateLimit + 1n,
         EMPTY_CALLDATA,
+        securityCouncil,
       );
       const call = lineaRollup
         .connect(nonAuthorizedAccount)
@@ -275,6 +281,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         recipientAddress,
         rateLimit,
         EMPTY_CALLDATA,
+        securityCouncil,
       );
       await lineaRollup.connect(nonAuthorizedAccount).claimMessageWithProof(claimParams);
       // Next claim message with LST withdrawal
@@ -284,6 +291,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         recipientAddress,
         1n,
         EMPTY_CALLDATA,
+        securityCouncil,
       );
       const call = lineaRollup
         .connect(nonAuthorizedAccount)
@@ -640,6 +648,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         recipientAddress,
         withdrawLSTAmount,
         EMPTY_CALLDATA,
+        securityCouncil,
       );
       await lineaRollup
         .connect(nonAuthorizedAccount)
@@ -653,6 +662,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         recipientAddress,
         1n,
         EMPTY_CALLDATA,
+        securityCouncil,
       );
       const secondWithdrawLSTCall = lineaRollup
         .connect(nonAuthorizedAccount)
@@ -886,7 +896,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Create LST withdrawal - 5 ETH. Should cause staking pause.
       await setBalance(l1MessageServiceAddress, (await lineaRollup.limitInWei()) - 1n);
       const lstWithdrawalAmount = await lineaRollup.limitInWei();
-      await withdrawLST(lineaRollup, nonAuthorizedAccount, yieldProviderAddress, lstWithdrawalAmount);
+      await withdrawLST(lineaRollup, nonAuthorizedAccount, yieldProviderAddress, lstWithdrawalAmount, securityCouncil);
       expect(await yieldManager.isStakingPaused(yieldProviderAddress)).eq(true);
 
       // Do permissionless rebalance with LST paydown

@@ -496,7 +496,9 @@ describe("Linea Rollup Yield Extension", () => {
     });
 
     it("Should claim successfully with correct MessageClaimed event emitted", async () => {
-      await lineaRollup.addL2MerkleRoots([VALID_MERKLE_PROOF.merkleRoot], VALID_MERKLE_PROOF.proof.length);
+      await lineaRollup
+        .connect(securityCouncil)
+        .addL2MerkleRoots([VALID_MERKLE_PROOF.merkleRoot], VALID_MERKLE_PROOF.proof.length);
 
       const expectedBytes = await encodeSendMessage(
         admin.address,
