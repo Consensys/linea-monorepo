@@ -318,17 +318,13 @@ func GnarkVerifyCommon(
 		panic(err)
 	}
 
-	//TODO@yao: check inputs, compare to iscodewordExt test
-	// check the linear combination is a codeword
-	// api.Compiler().Defer(func(api frontend.API) error {
-	// 	return assertIsCodeWordExt(
-	// 		api,
-	// 		proof.LinearCombination,
-	// 		proof.RsDomain.GeneratorInv,
-	// 		proof.RsDomain.Cardinality,
-	// 		proof.Rate,
-	// 	)
-	// })
+	assertIsCodeWordExt(
+		api,
+		proof.LinearCombination,
+		proof.RsDomain.GeneratorInv,
+		proof.RsDomain.Cardinality,
+		proof.Rate,
+	)
 
 	// Check the consistency of Ys and proof.Linearcombination
 	yjoined := utils.Join(ys...)
