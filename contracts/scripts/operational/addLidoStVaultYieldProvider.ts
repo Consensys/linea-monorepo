@@ -58,11 +58,6 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     let yieldManager = getTaskCliOrEnvValue(taskArgs, "yieldManager", "YIELD_MANAGER");
     const nodeOperator = getTaskCliOrEnvValue(taskArgs, "nodeOperator", "NODE_OPERATOR");
     const securityCouncil = getTaskCliOrEnvValue(taskArgs, "securityCouncil", "SECURITY_COUNCIL");
-    const automationServiceAddress = getTaskCliOrEnvValue(
-      taskArgs,
-      "automationServiceAddress",
-      "AUTOMATION_SERVICE_ADDRESS",
-    );
     const nodeOperatorFeeRaw = getTaskCliOrEnvValue(taskArgs, "nodeOperatorFee", "NODE_OPERATOR_FEE");
     const confirmExpiryRaw = getTaskCliOrEnvValue(taskArgs, "confirmExpiry", "CONFIRM_EXPIRY");
 
@@ -78,7 +73,6 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     const missing: string[] = [];
     if (!nodeOperator) missing.push("nodeOperator / NODE_OPERATOR");
     if (!securityCouncil) missing.push("securityCouncil / SECURITY_COUNCIL");
-    if (!automationServiceAddress) missing.push("automationServiceAddress / AUTOMATION_SERVICE_ADDRESS");
     if (missing.length) {
       throw new Error(`Missing required params/envs: ${missing.join(", ")}`);
     }
@@ -94,7 +88,6 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     console.log("  yieldManager:", yieldManager);
     console.log("  nodeOperator:", nodeOperator);
     console.log("  securityCouncil:", securityCouncil);
-    console.log("  automationServiceAddress:", automationServiceAddress);
     console.log("  nodeOperatorFee:", nodeOperatorFee.toString());
     console.log("  confirmExpiry:", confirmExpiry.toString());
 
@@ -117,7 +110,7 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
       nodeOperatorManager: securityCouncil,
       nodeOperatorFeeBP: nodeOperatorFee,
       confirmExpiry,
-      roleAssignments: generateRoleAssignments(LIDO_DASHBOARD_OPERATIONAL_ROLES, automationServiceAddress!, []),
+      roleAssignments: generateRoleAssignments(LIDO_DASHBOARD_OPERATIONAL_ROLES, yieldManager, []),
     });
     const addYieldProviderTx = await yieldManagerContract.addYieldProvider(yieldProvider, yieldProviderInitData);
     await addYieldProviderTx.wait();
