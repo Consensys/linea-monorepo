@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/gnark/std/math/cmp"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -42,6 +43,7 @@ func fftInverseHint(t zk.VType) solver.Hint {
 }
 
 func fftInverseEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
+	//TODO @thomas: how to implement the emulated version
 	return emulated.UnwrapHint(inputs, output, fftInverseNative)
 }
 
@@ -114,15 +116,27 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 	}
 
 	// probabilistically check the result of the FFT
-	//TODO@yao: how to fix this test with 	multicommit.WithCommitment
-	x := fext.RandomElement()
-	xGen4 := gnarkfext.NewE4Gen(x)
-	ec := gnarkEvalCanonicalExt(api, res, xGen4)
+	// TODO @thomas TODO@yao: how to fix this test with 	multicommit.WithCommitment
+	h, err := poseidon2_koalabear.NewGnarkMDHasher(api)
+	if err != nil {
+		return []gnarkfext.E4Gen{}, err
+	}
+	// write elmts
+	for i := 0; i < len(p); i++ {
+		h.Write(p[i].B0.A0, p[i].B0.A1, p[i].B1.A0, p[i].B1.A1)
+	}
+	var x gnarkfext.E4Gen
+	xOct := h.Sum()
+	x.B0.A0 = zk.WrapFrontendVariable(xOct[0])
+	x.B0.A1 = zk.WrapFrontendVariable(xOct[1])
+	x.B1.A0 = zk.WrapFrontendVariable(xOct[2])
+	x.B1.A1 = zk.WrapFrontendVariable(xOct[3])
+	ec := gnarkEvalCanonicalExt(api, res, x)
 
 	// evaluation Lagrange
 	var gen field.Element
 	gen.Inverse(&genInv)
-	lagranges := gnarkComputeLagrangeAtZ(api, xGen4, gen, cardinality)
+	lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
 	el := ext4.Zero()
 	for i := 0; i < len(p); i++ {
 		tmp := ext4.Mul(&p[i], &lagranges[i])
@@ -315,6 +329,7 @@ func GnarkVerifyCommon(
 		panic(err)
 	}
 
+	//TODO@yao: check inputs, compare to iscodewordExt test
 	// check the linear combination is a codeword
 	// api.Compiler().Defer(func(api frontend.API) error {
 	// 	return assertIsCodeWordExt(
