@@ -48,7 +48,7 @@ type HornerParamsPartGnark struct {
 type GnarkHornerParams struct {
 	// Final result is the result of summing the Horner parts for every
 	// queries.
-	FinalResult zk.WrappedVariable
+	FinalResult gnarkfext.E4Gen
 	// Parts are the parameters of the Horner parts
 	Parts []HornerParamsPartGnark
 }
@@ -128,7 +128,7 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 	}
 
 	return GnarkHornerParams{
-		FinalResult: zk.ValueOf(p.FinalResult),
+		FinalResult: gnarkfext.NewE4Gen(p.FinalResult),
 		Parts:       parts,
 	}
 }

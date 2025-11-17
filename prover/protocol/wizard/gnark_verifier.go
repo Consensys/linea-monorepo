@@ -416,6 +416,10 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 
 	seed := c.FS.State()
 
+	zkSeed := zk.Octuplet{}
+	for i := 0; i < 8; i++ {
+		zkSeed[i] = zk.WrapFrontendVariable(seed[i])
+	}
 	// Then assigns the coins for the new round.
 	toCompute := c.Spec.Coins.AllKeysAt(currRound)
 	for _, coinName := range toCompute {
@@ -424,7 +428,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		}
 
 		cn := c.Spec.Coins.Data(coinName)
-		value := cn.SampleGnark(c.FS, seed)
+		value := cn.SampleGnark(c.FS, zkSeed)
 		c.Coins.InsertNew(coinName, value)
 	}
 }
@@ -656,7 +660,7 @@ func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) gnarkfext.E
 	}
 
 	retrievedCol, _ := c.GetColumnBase(name)
-	return gnarkfext.NewFromBase(retrievedCol[pos])
+	return gnarkfext.FromBase(retrievedCol[pos])
 }
 
 // GetParams returns a query parameters as a generic interface
@@ -807,8 +811,8 @@ func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.Horner
 	c.HornerIDs.InsertNew(qName, len(c.HornerParams))
 	parts := make([]query.HornerParamsPartGnark, len(params.Parts))
 	for i := range params.Parts {
-		parts[i].N0 = params.Parts[i].N0
-		parts[i].N1 = params.Parts[i].N1
+		parts[i].N0 = zk.ValueOf(params.Parts[i].N0)
+		parts[i].N1 = zk.ValueOf(params.Parts[i].N1)
 	}
 	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{
 		FinalResult: params.FinalResult,

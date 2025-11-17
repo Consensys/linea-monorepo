@@ -122,7 +122,8 @@ func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed zk.Octuplet) interfac
 		return fs.RandomManyIntegers(info.Size, info.UpperBound)
 
 	case FieldExt:
-		return fs.RandomFext(seed)
+		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
+		return fs.RandomFieldExt()
 
 	}
 	panic("Unreachable")
