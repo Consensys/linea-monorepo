@@ -10,6 +10,8 @@ import { DBOptions } from "./config/types";
 import { MessageEntity } from "./entities/Message.entity";
 import { AddCompressedTxSizeColumn1718026260629 } from "./migrations/1718026260629-AddCompressedTxSizeColumn";
 import { AddSponsorshipMetrics1745569276097 } from "./migrations/1745569276097-AddSponsorshipMetrics";
+import { AddClaimTxBroadcastedDateColumn1763390856686 } from "./migrations/1763390856686-AddClaimTxBroadcastedDateColumn";
+
 export class DB {
   public static create(config: DBOptions): DataSource {
     return new DataSource({
@@ -25,6 +27,7 @@ export class DB {
         AddUniqueConstraint1709901138056,
         AddCompressedTxSizeColumn1718026260629,
         AddSponsorshipMetrics1745569276097,
+        AddClaimTxBroadcastedDateColumn1763390856686,
       ],
       migrationsTableName: "migrations",
       logging: ["error"],
