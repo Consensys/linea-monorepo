@@ -18,7 +18,8 @@ on:
         required: true
         type: string
       push_image:
-        required: false
+        # required: false
+        required: true
         type: boolean
         default: false
     secrets:
