@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/gnark/std/math/cmp"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -117,26 +116,16 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 
 	// probabilistically check the result of the FFT
 	// TODO @thomas TODO@yao: how to fix this test with 	multicommit.WithCommitment
-	h, err := poseidon2_koalabear.NewGnarkMDHasher(api)
-	if err != nil {
-		return []gnarkfext.E4Gen{}, err
-	}
-	// write elmts
-	for i := 0; i < len(p); i++ {
-		h.Write(p[i].B0.A0, p[i].B0.A1, p[i].B1.A0, p[i].B1.A1)
-	}
-	var x gnarkfext.E4Gen
-	xOct := h.Sum()
-	x.B0.A0 = zk.WrapFrontendVariable(xOct[0])
-	x.B0.A1 = zk.WrapFrontendVariable(xOct[1])
-	x.B1.A0 = zk.WrapFrontendVariable(xOct[2])
-	x.B1.A1 = zk.WrapFrontendVariable(xOct[3])
-	ec := gnarkEvalCanonicalExt(api, res, x)
+
+	// TODO@yao: Is it possible to compute a random point x by hashing polynomial p?? the NewGnarkMDHasher only functional for koalabear, gnarkEvalCanonicalExt will panic as well
+	x := fext.RandomElement()
+	xGen4 := gnarkfext.NewE4Gen(x)
+	ec := gnarkEvalCanonicalExt(api, res, xGen4)
 
 	// evaluation Lagrange
 	var gen field.Element
 	gen.Inverse(&genInv)
-	lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
+	lagranges := gnarkComputeLagrangeAtZ(api, xGen4, gen, cardinality)
 	el := ext4.Zero()
 	for i := 0; i < len(p); i++ {
 		tmp := ext4.Mul(&p[i], &lagranges[i])
