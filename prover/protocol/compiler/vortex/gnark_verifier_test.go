@@ -3,8 +3,20 @@
 package vortex_test
 
 import (
+	"testing"
+
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/stretchr/testify/require"
 )
 
 /*
@@ -31,8 +43,6 @@ func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTest
 		C: *wizard.AssignVerifierCircuit(comp, proof, 0),
 	}
 }
-
-/*TODO@yao
 
 func TestVortexGnarkVerifier(t *testing.T) {
 
@@ -84,16 +94,16 @@ func TestVortexGnarkVerifier(t *testing.T) {
 				// assigned in the define phase
 				if i < numPrecomputeds && round == 0 {
 					p := pr.Spec.Precomputed.MustGet(row.GetColID())
-					ys[round*nPols+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+					ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 					continue
 				}
 				p := smartvectors.Rand(polSize)
-				ys[round*nPols+i] = smartvectors.EvaluateLagrangeMixed(p, x)
+				ys[round*nPols+i] = smartvectors.EvaluateBasePolyLagrange(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
 		}
 
-		pr.AssignUnivariate("EVAL", x, ys...)
+		pr.AssignUnivariateExt("EVAL", x, ys...)
 	}
 
 	compiled := wizard.Compile(
@@ -116,12 +126,15 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 	// Compile the circuit
-	scs, err := frontend.Compile(
-		ecc.BLS12_377.ScalarField(),
-		scs.NewBuilder,
+	// scs, err := frontend.Compile(
+	// 	ecc.BLS12_377.ScalarField(),
+	// 	scs.NewBuilder,
+	// 	&circ,
+	// 	frontend.IgnoreUnconstrainedInputs(),
+	// )
+	scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder,
 		&circ,
-		frontend.IgnoreUnconstrainedInputs(),
-	)
+		frontend.IgnoreUnconstrainedInputs())
 
 	if err != nil {
 		// When the error string is too large `require.NoError` does not print
@@ -132,6 +145,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 
 	// Checks that the proof makes a satifying assignment
 	assignment := assignTestCircuit(compiled, proof)
+
 	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
@@ -145,4 +159,3 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 }
-*/

@@ -350,7 +350,9 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// It will instead use a standard MiMC hasher that does not use
 	// GKR instead.
 	c.FS = fiatshamir.NewGnarkFS(api)
-	c.FS.Update(c.Spec.FiatShamirSetup)
+	for i := 0; i < 8; i++ {
+		c.FS.Update(c.Spec.FiatShamirSetup[i].String())
+	}
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
 
