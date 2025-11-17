@@ -5,6 +5,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
+import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
@@ -18,7 +19,8 @@ abstract contract LineaRollupBase is
   ZkEvmV2,
   L1MessageService,
   PermissionsManager,
-  ILineaRollup
+  ILineaRollup,
+  IProvideShnarf
 {
   using EfficientLeftRightKeccak for *;
 
@@ -76,7 +78,7 @@ abstract contract LineaRollupBase is
    * @dev NB: THIS IS THE ONLY MAPPING BEING USED FOR DATA SUBMISSION TRACKING.
    * @dev NB: This was shnarfFinalBlockNumbers and is replaced to indicate only that a shnarf exists with a value of 1.
    */
-  mapping(bytes32 shnarf => uint256 exists) public blobShnarfExists;
+  mapping(bytes32 shnarf => uint256 exists) internal _blobShnarfExists;
 
   /// @notice Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
@@ -136,7 +138,7 @@ abstract contract LineaRollupBase is
       EMPTY_HASH
     );
 
-    blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
+    _blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
     currentFinalizedShnarf = genesisShnarf;
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
   }
@@ -212,163 +214,6 @@ abstract contract LineaRollupBase is
     emit VerifierAddressChanged(address(0), _proofType, msg.sender, verifiers[_proofType]);
 
     delete verifiers[_proofType];
-  }
-
-  /**
-   * @notice Submit one or more EIP-4844 blobs.
-   * @dev OPERATOR_ROLE is required to execute.
-   * @dev This should be a blob carrying transaction.
-   * @param _blobSubmissions The data for blob submission including proofs and required polynomials.
-   * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
-   * @param _finalBlobShnarf The expected final shnarf post computation of all the blob shnarfs.
-   */
-  function submitBlobs(
-    BlobSubmission[] calldata _blobSubmissions,
-    bytes32 _parentShnarf,
-    bytes32 _finalBlobShnarf
-  ) external virtual whenTypeAndGeneralNotPaused(PauseType.BLOB_SUBMISSION) onlyRole(OPERATOR_ROLE) {
-    _submitBlobs(_blobSubmissions, _parentShnarf, _finalBlobShnarf);
-  }
-
-  /**
-   * @notice Submit one or more EIP-4844 blobs.
-   * @param _blobSubmissions The data for blob submission including proofs and required polynomials.
-   * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
-   * @param _finalBlobShnarf The expected final shnarf post computation of all the blob shnarfs.
-   */
-  function _submitBlobs(
-    BlobSubmission[] calldata _blobSubmissions,
-    bytes32 _parentShnarf,
-    bytes32 _finalBlobShnarf
-  ) internal virtual {
-    if (_blobSubmissions.length == 0) {
-      revert BlobSubmissionDataIsMissing();
-    }
-
-    if (blobhash(_blobSubmissions.length) != EMPTY_HASH) {
-      revert BlobSubmissionDataEmpty(_blobSubmissions.length);
-    }
-
-    if (blobShnarfExists[_parentShnarf] == 0) {
-      revert ParentBlobNotSubmitted(_parentShnarf);
-    }
-
-    /**
-     * @dev validate we haven't submitted the last shnarf. There is a final check at the end of the function verifying,
-     * that _finalBlobShnarf was computed correctly.
-     * Note: As only the last shnarf is stored, we don't need to validate shnarfs,
-     * computed for any previous blobs in the submission (if multiple are submitted).
-     */
-    if (blobShnarfExists[_finalBlobShnarf] != 0) {
-      revert DataAlreadySubmitted(_finalBlobShnarf);
-    }
-
-    bytes32 currentDataEvaluationPoint;
-    bytes32 currentDataHash;
-
-    /// @dev Assigning in memory saves a lot of gas vs. calldata reading.
-    BlobSubmission memory blobSubmission;
-
-    bytes32 computedShnarf = _parentShnarf;
-
-    for (uint256 i; i < _blobSubmissions.length; i++) {
-      blobSubmission = _blobSubmissions[i];
-
-      currentDataHash = blobhash(i);
-
-      if (currentDataHash == EMPTY_HASH) {
-        revert EmptyBlobDataAtIndex(i);
-      }
-
-      bytes32 snarkHash = blobSubmission.snarkHash;
-
-      currentDataEvaluationPoint = EfficientLeftRightKeccak._efficientKeccak(snarkHash, currentDataHash);
-
-      _verifyPointEvaluation(
-        currentDataHash,
-        uint256(currentDataEvaluationPoint),
-        blobSubmission.dataEvaluationClaim,
-        blobSubmission.kzgCommitment,
-        blobSubmission.kzgProof
-      );
-
-      computedShnarf = _computeShnarf(
-        computedShnarf,
-        snarkHash,
-        blobSubmission.finalStateRootHash,
-        currentDataEvaluationPoint,
-        bytes32(blobSubmission.dataEvaluationClaim)
-      );
-    }
-
-    if (_finalBlobShnarf != computedShnarf) {
-      revert FinalShnarfWrong(_finalBlobShnarf, computedShnarf);
-    }
-
-    /// @dev use the last shnarf as the submission to store as technically it becomes the next parent shnarf.
-    blobShnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
-
-    emit DataSubmittedV3(_parentShnarf, computedShnarf, blobSubmission.finalStateRootHash);
-  }
-
-  /**
-   * @notice Submit blobs using compressed data via calldata.
-   * @dev OPERATOR_ROLE is required to execute.
-   * @param _submission The supporting data for compressed data submission including compressed data.
-   * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
-   * @param _expectedShnarf The expected shnarf post computation of all the submission.
-   */
-  function submitDataAsCalldata(
-    CompressedCalldataSubmission calldata _submission,
-    bytes32 _parentShnarf,
-    bytes32 _expectedShnarf
-  ) external virtual whenTypeAndGeneralNotPaused(PauseType.CALLDATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
-    _submitDataAsCalldata(_submission, _parentShnarf, _expectedShnarf);
-  }
-
-  /**
-   * @notice Submit blobs using compressed data via calldata.
-   * @dev OPERATOR_ROLE is required to execute.
-   * @param _submission The supporting data for compressed data submission including compressed data.
-   * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
-   * @param _expectedShnarf The expected shnarf post computation of all the submission.
-   */
-  function _submitDataAsCalldata(
-    CompressedCalldataSubmission calldata _submission,
-    bytes32 _parentShnarf,
-    bytes32 _expectedShnarf
-  ) internal virtual {
-    if (_submission.compressedData.length == 0) {
-      revert EmptySubmissionData();
-    }
-
-    if (blobShnarfExists[_expectedShnarf] != 0) {
-      revert DataAlreadySubmitted(_expectedShnarf);
-    }
-
-    if (blobShnarfExists[_parentShnarf] == 0) {
-      revert ParentBlobNotSubmitted(_parentShnarf);
-    }
-
-    bytes32 currentDataHash = keccak256(_submission.compressedData);
-
-    bytes32 dataEvaluationPoint = EfficientLeftRightKeccak._efficientKeccak(_submission.snarkHash, currentDataHash);
-
-    bytes32 computedShnarf = _computeShnarf(
-      _parentShnarf,
-      _submission.snarkHash,
-      _submission.finalStateRootHash,
-      dataEvaluationPoint,
-      _calculateY(_submission.compressedData, dataEvaluationPoint)
-    );
-
-    if (_expectedShnarf != computedShnarf) {
-      revert FinalShnarfWrong(_expectedShnarf, computedShnarf);
-    }
-
-    blobShnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
-
-    emit DataSubmittedV3(_parentShnarf, computedShnarf, _submission.finalStateRootHash);
   }
 
   /**
@@ -544,7 +389,7 @@ abstract contract LineaRollupBase is
       _finalizationData.shnarfData.dataEvaluationClaim
     );
 
-    if (blobShnarfExists[finalShnarf] == 0) {
+    if (IProvideShnarf(address(this)).blobShnarfExists(finalShnarf) == 0) {
       revert FinalBlobNotSubmitted(finalShnarf);
     }
 
@@ -588,44 +433,6 @@ abstract contract LineaRollupBase is
       }
       if (rollingHashes[_rollingHashMessageNumber] != _rollingHash) {
         revert L1RollingHashDoesNotExistOnL1(_rollingHashMessageNumber, _rollingHash);
-      }
-    }
-  }
-
-  /**
-   * @notice Internal function to calculate Y for public input generation.
-   * @param _data Compressed data from submission data.
-   * @param _dataEvaluationPoint The data evaluation point.
-   * @dev Each chunk of 32 bytes must start with a 0 byte.
-   * @dev The dataEvaluationPoint value is modulo-ed down during the computation and scalar field checking is not needed.
-   * @dev There is a hard constraint in the circuit to enforce the polynomial degree limit (4096), which will also be enforced with EIP-4844.
-   * @return compressedDataComputedY The Y calculated value using the Horner method.
-   */
-  function _calculateY(
-    bytes calldata _data,
-    bytes32 _dataEvaluationPoint
-  ) internal pure returns (bytes32 compressedDataComputedY) {
-    if (_data.length % 0x20 != 0) {
-      revert BytesLengthNotMultipleOf32();
-    }
-
-    bytes4 errorSelector = ILineaRollup.FirstByteIsNotZero.selector;
-    assembly {
-      for {
-        let i := _data.length
-      } gt(i, 0) {} {
-        i := sub(i, 0x20)
-        let chunk := calldataload(add(_data.offset, i))
-        if iszero(iszero(and(chunk, 0xFF00000000000000000000000000000000000000000000000000000000000000))) {
-          let ptr := mload(0x40)
-          mstore(ptr, errorSelector)
-          revert(ptr, 0x4)
-        }
-        compressedDataComputedY := addmod(
-          mulmod(compressedDataComputedY, _dataEvaluationPoint, BLS_CURVE_MODULUS),
-          chunk,
-          BLS_CURVE_MODULUS
-        )
       }
     }
   }

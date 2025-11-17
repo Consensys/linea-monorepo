@@ -39,18 +39,6 @@ interface ILineaRollup {
   }
 
   /**
-   * @notice Supporting data for compressed calldata submission including compressed data.
-   * @dev finalStateRootHash is used to set state root at the end of the data.
-   * @dev snarkHash is the computed hash for compressed data (using a SNARK-friendly hash function) that aggregates per data submission to be used in public input.
-   * @dev compressedData is the compressed transaction data. It contains ordered data for each L2 block - l2Timestamps, the encoded transaction data.
-   */
-  struct CompressedCalldataSubmission {
-    bytes32 finalStateRootHash;
-    bytes32 snarkHash;
-    bytes compressedData;
-  }
-
-  /**
    * @notice Shnarf data for validating a shnarf.
    * @dev parentShnarf is the parent computed shnarf.
    * @dev snarkHash is the computed hash for compressed data (using a SNARK-friendly hash function) that aggregates per data submission to be used in public input.
@@ -64,21 +52,6 @@ interface ILineaRollup {
     bytes32 finalStateRootHash;
     bytes32 dataEvaluationPoint;
     bytes32 dataEvaluationClaim;
-  }
-
-  /**
-   * @notice Data structure for compressed blob data submission.
-   * @dev submissionData The supporting data for blob data submission excluding the compressed data.
-   * @dev dataEvaluationClaim The data evaluation claim.
-   * @dev kzgCommitment The blob KZG commitment.
-   * @dev kzgProof The blob KZG point proof.
-   */
-  struct BlobSubmission {
-    uint256 dataEvaluationClaim;
-    bytes kzgCommitment;
-    bytes kzgProof;
-    bytes32 finalStateRootHash;
-    bytes32 snarkHash;
   }
 
   /**
@@ -253,12 +226,6 @@ interface ILineaRollup {
   error MissingRollingHashForMessageNumber(uint256 messageNumber);
 
   /**
-   * @dev Thrown when the first byte is not zero.
-   * @dev This is used explicitly with the four bytes in assembly 0x729eebce.
-   */
-  error FirstByteIsNotZero();
-
-  /**
    * @dev Thrown when bytes length is not a multiple of 32.
    */
   error BytesLengthNotMultipleOf32();
@@ -312,33 +279,6 @@ interface ILineaRollup {
    * @param _proofType The proof type being set/updated.
    */
   function unsetVerifierAddress(uint256 _proofType) external;
-
-  /**
-   * @notice Submit one or more EIP-4844 blobs.
-   * @dev OPERATOR_ROLE is required to execute.
-   * @dev This should be a blob carrying transaction.
-   * @param _blobSubmissions The data for blob submission including proofs and required polynomials.
-   * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
-   * @param _finalBlobShnarf The expected final shnarf post computation of all the blob shnarfs.
-   */
-  function submitBlobs(
-    BlobSubmission[] calldata _blobSubmissions,
-    bytes32 _parentShnarf,
-    bytes32 _finalBlobShnarf
-  ) external;
-
-  /**
-   * @notice Submit blobs using compressed data via calldata.
-   * @dev OPERATOR_ROLE is required to execute.
-   * @param _submission The supporting data for compressed data submission including compressed data.
-   * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
-   * @param _expectedShnarf The expected shnarf post computation of all the submission.
-   */
-  function submitDataAsCalldata(
-    CompressedCalldataSubmission calldata _submission,
-    bytes32 _parentShnarf,
-    bytes32 _expectedShnarf
-  ) external;
 
   /**
    * @notice Finalize compressed blocks with proof.

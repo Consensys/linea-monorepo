@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { BlobSupportingLineaRollup } from "./BlobSupportingLineaRollup.sol";
-import { CompressedCalldataSupportingLineaRollup } from "./CompressedCalldataSupportingLineaRollup.sol";
+import { LineaRollupBase } from "../../../rollup/LineaRollupBase.sol";
+import { IProvideShnarf } from "../../../rollup/interfaces/IProvideShnarf.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is BlobSupportingLineaRollup, CompressedCalldataSupportingLineaRollup {
+contract NonBlobRollup is LineaRollupBase {
+  IProvideShnarf public shnarfProvider;
+
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -23,5 +26,9 @@ contract LineaRollup is BlobSupportingLineaRollup, CompressedCalldataSupportingL
    */
   function initialize(InitializationData calldata _initializationData) external initializer {
     __LineaRollup_init(_initializationData);
+  }
+
+  function blobShnarfExists(bytes32 _shnarf) public view returns (uint256 shnarfExists) {
+    shnarfExists = shnarfProvider.blobShnarfExists(_shnarf);
   }
 }
