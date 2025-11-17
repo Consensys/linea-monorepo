@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -131,6 +132,10 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 	y := run.GetGrandProductParams(c.Query.ID).Prod
 	d := zk.ValueOf(1)
 
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		panic(err)
@@ -145,7 +150,7 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 			tmp = apiGen.Mul(tmp, col[i])
 		}
 
-		y = apiGen.Mul(y, tmp)
+		y = *ext4.MulByFp(&y, tmp)
 	}
 
 	for _, e := range c.ExplicitDen {
@@ -160,7 +165,7 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 		d = apiGen.Mul(d, tmp)
 	}
 
-	y = apiGen.Div(y, d)
+	y = *ext4.DivByBase(&y, d)
 
 	api.AssertIsEqual(y, zk.ValueOf(1))
 }

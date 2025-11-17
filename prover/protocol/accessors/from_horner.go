@@ -48,7 +48,7 @@ func (l *FromHornerAccessorFinalValue) GetValExt(run ifaces.Runtime) fext.Elemen
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromHornerAccessorFinalValue) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
+func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	params := circ.GetParams(l.Q.ID).(query.GnarkHornerParams)
 	return params.FinalResult
 }
@@ -75,7 +75,7 @@ func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(api frontend.API,
 	panic("implement me")
 }
 
-func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
+func (l *FromHornerAccessorFinalValue) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) zk.WrappedVariable {
 	//TODO implement me
 	panic("implement me")
 }
