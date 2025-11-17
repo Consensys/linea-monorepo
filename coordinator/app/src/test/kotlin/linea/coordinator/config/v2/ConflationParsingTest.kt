@@ -30,12 +30,14 @@ class ConflationParsingTest {
       batches-limit = 1
 
       [conflation.proof-aggregation]
-      proofs-limit = 3
+      proofs-limit = 4
+      blobs-limit = 2
       deadline = "PT1M"
       coordinator-polling-interval = "PT2S"
       deadline-check-interval = "PT8S"
       target-end-blocks = [10, 20, 30_000]
       timestamp-based-hard-forks = ["2024-01-15T12:00:00Z", "2024-06-01T16:00:00Z", 1758083127]
+      wait-for-no-l2-activity-to-trigger-aggregation = true,
     """.trimIndent()
     val config = ConflationToml(
       disabled = true,
@@ -53,7 +55,8 @@ class ConflationParsingTest {
         batchesLimit = 1u,
       ),
       proofAggregation = ConflationToml.ProofAggregationToml(
-        proofsLimit = 3u,
+        proofsLimit = 4u,
+        blobsLimit = 2u,
         deadline = 60.seconds,
         coordinatorPollingInterval = 2.seconds,
         deadlineCheckInterval = 8.seconds,
@@ -63,6 +66,7 @@ class ConflationParsingTest {
           Instant.parse("2024-06-01T16:00:00Z"),
           Instant.ofEpochMilli(1758083127L),
         ),
+        waitForNoL2ActivityToTriggerAggregation = true,
       ),
     )
 
