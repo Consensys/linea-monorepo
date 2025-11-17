@@ -202,11 +202,22 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    */
   private async updateReceiptStatus(message: Message, receipt: TransactionReceipt): Promise<void> {
     let processingTimeInSeconds: number | undefined;
-    if (this.config.direction === Direction.L1_TO_L2 && message.claimTxCreationDate) {
+    let broadcastTimeInSeconds: number | undefined;
+    let inclusionTimeInSeconds: number | undefined;
+
+    if (this.config.direction === Direction.L1_TO_L2 && message.claimTxCreationDate && message.claimTxBroadcastedDate) {
+      broadcastTimeInSeconds =
+        (message.claimTxBroadcastedDate.getTime() - message.claimTxCreationDate.getTime()) / 1_000;
+
+      this.transactionMetricsUpdater.addTransactionBroadcastTime(broadcastTimeInSeconds);
+
       const block = await this.provider.getBlock(receipt.blockNumber);
       if (block) {
         processingTimeInSeconds = block.timestamp - message.claimTxCreationDate.getTime() / 1_000;
+        inclusionTimeInSeconds = block.timestamp - message.claimTxBroadcastedDate.getTime() / 1_000;
+
         this.transactionMetricsUpdater.addTransactionProcessingTime(processingTimeInSeconds);
+        this.transactionMetricsUpdater.addTransactionInclusionTime(inclusionTimeInSeconds);
       }
     }
 
@@ -234,7 +245,11 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         "Message claim transaction has been REVERTED: messageHash=%s transactionHash=%s",
         message.messageHash,
         receipt.hash,
-        { ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}) },
+        {
+          ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
+          ...(broadcastTimeInSeconds ? { broadcastTimeInSeconds } : {}),
+          ...(inclusionTimeInSeconds ? { inclusionTimeInSeconds } : {}),
+        },
       );
       return;
     }
@@ -256,7 +271,11 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       "Message has been SUCCESSFULLY claimed: messageHash=%s transactionHash=%s",
       message.messageHash,
       receipt.hash,
-      { ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}) },
+      {
+        ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
+        ...(broadcastTimeInSeconds ? { broadcastTimeInSeconds } : {}),
+        ...(inclusionTimeInSeconds ? { inclusionTimeInSeconds } : {}),
+      },
     );
   }
 }

@@ -291,12 +291,14 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
 
       const claimTxCreationDate = new Date();
       const tx = await claimTxFn();
+      const claimTxBroadcastedDate = new Date();
 
       await entityManager.update(
         MessageEntity,
         { messageHash: message.messageHash, direction: message.direction },
         {
           claimTxCreationDate,
+          claimTxBroadcastedDate,
           claimTxGasLimit: parseInt(tx.gasLimit.toString()),
           claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
           claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
