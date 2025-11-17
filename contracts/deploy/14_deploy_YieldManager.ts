@@ -20,7 +20,6 @@ import {
 } from "../common/constants";
 import { YieldManagerInitializationData } from "contracts/test/yield/helpers";
 import { YieldManager } from "contracts/typechain-types";
-import { MaxUint256 } from "ethers";
 import { GI_FIRST_VALIDATOR_CURR, GI_FIRST_VALIDATOR_PREV, PIVOT_SLOT } from "contracts/test/common/constants";
 
 // Deploys YieldManager, ValidatorContainerProofVerifier and LidoStVaultYieldProviderFactory
@@ -43,12 +42,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const initialTargetWithdrawalReservePercentageBps = parseInt(
     getEnvVarOrDefault("TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS", 5000),
   );
-  const initialMinimumWithdrawalReserveAmount = BigInt(
-    getEnvVarOrDefault("MINIMUM_WITHDRAWAL_RESERVE_AMOUNT", MaxUint256),
-  );
-  const initialTargetWithdrawalReserveAmount = BigInt(
-    getEnvVarOrDefault("TARGET_WITHDRAWAL_RESERVE_AMOUNT", MaxUint256),
-  );
+  const initialMinimumWithdrawalReserveAmount = BigInt(getEnvVarOrDefault("MINIMUM_WITHDRAWAL_RESERVE_AMOUNT", 0));
+  const initialTargetWithdrawalReserveAmount = BigInt(getEnvVarOrDefault("TARGET_WITHDRAWAL_RESERVE_AMOUNT", 0));
   const gIFirstValidatorPrev = getEnvVarOrDefault("GI_FIRST_VALIDATOR_PREV", GI_FIRST_VALIDATOR_PREV);
   const gIFirstValidatorCurr = getEnvVarOrDefault("GI_FIRST_VALIDATOR_CURR", GI_FIRST_VALIDATOR_CURR);
   const pivotSlot = getEnvVarOrDefault("PIVOT_SLOT", PIVOT_SLOT);
