@@ -46,10 +46,10 @@ func (fs *GnarkFS) Update(vec ...frontend.Variable) {
 }
 func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.E4Gen) {
 	for i := 0; i < len(vec); i++ {
-		fs.hasher.Write(vec[i].B0.A0)
-		fs.hasher.Write(vec[i].B0.A1)
-		fs.hasher.Write(vec[i].B1.A0)
-		fs.hasher.Write(vec[i].B1.A1)
+		fs.hasher.Write(vec[i].B0.A0.AsNative())
+		fs.hasher.Write(vec[i].B0.A1.AsNative())
+		fs.hasher.Write(vec[i].B1.A0.AsNative())
+		fs.hasher.Write(vec[i].B1.A1.AsNative())
 	}
 }
 

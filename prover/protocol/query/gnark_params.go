@@ -140,17 +140,17 @@ func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	fs.Update(p.BaseY)
+	fs.Update(p.BaseY.AsNative())
 }
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	fs.Update(p.Sum)
+	fs.UpdateExt(p.Sum)
 }
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	fs.Update(p.Prod)
+	fs.UpdateExt(p.Prod)
 }
 
 // Update the fiat-shamir state with the the present parameters
@@ -167,9 +167,9 @@ func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	fs.Update(p.FinalResult)
+	fs.UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		fs.Update(part.N0, part.N1)
+		fs.Update(part.N0.AsNative(), part.N1.AsNative())
 	}
 }
