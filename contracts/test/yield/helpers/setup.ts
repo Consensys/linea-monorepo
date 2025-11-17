@@ -10,6 +10,8 @@ import {
   TestLineaRollup,
   TestYieldManager,
   YieldManager,
+  MockSTETH,
+  MockVaultHub,
 } from "contracts/typechain-types";
 import { ethers } from "hardhat";
 import {
@@ -131,6 +133,7 @@ export const setupLineaRollupMessageMerkleTree = async (
   to: string,
   value: bigint,
   data: string,
+  securityCouncil: SignerWithAddress,
 ): Promise<ClaimMessageWithProofParams> => {
   const messageNumber = await lineaRollup.nextMessageNumber();
   const expectedBytes = await encodeSendMessage(from, to, 0n, value, messageNumber, data);
@@ -139,7 +142,7 @@ export const setupLineaRollupMessageMerkleTree = async (
   const proof = Array.from({ length: 32 }, () => randomBytes32());
   const leafIndex = 0n;
   const root = await lineaRollup.generateMerkleRoot(messageHash, proof, leafIndex);
-  await lineaRollup.addL2MerkleRoots([root], proof.length);
+  await lineaRollup.connect(securityCouncil).addL2MerkleRoots([root], proof.length);
 
   const claimParams: ClaimMessageWithProofParams = {
     proof,
@@ -163,35 +166,67 @@ export const setupLineaRollupMessageMerkleTree = async (
 export const incurPositiveYield = async (
   yieldManager: TestYieldManager,
   mockDashboard: MockDashboard,
+  mockVaultHub: MockVaultHub,
+  mockSTETH: MockSTETH,
   nativeYieldOperator: SignerWithAddress,
   mockStakingVaultAddress: string,
   yieldProviderAddress: string,
   l2YieldRecipient: SignerWithAddress,
   positiveYield: bigint,
-  lstPrincipalPaid: bigint = 0n,
+  lstLiabilityPrincipal = 0n,
+  lidoProtocolFee = 0n,
+  nodeOperatorFee = 0n,
 ) => {
-  await incrementBalance(mockStakingVaultAddress, positiveYield);
   const userFunds = await yieldManager.userFunds(yieldProviderAddress);
   const mockDashboardTotalValuePrev = await mockDashboard.totalValue();
   const prevNegativeYield = mockDashboardTotalValuePrev < userFunds ? userFunds - mockDashboardTotalValuePrev : 0n;
+  await incrementBalance(mockStakingVaultAddress, positiveYield);
   await incrementMockDashboardTotalValue(mockDashboard, positiveYield);
   const yieldProviderYieldReportedCumulativePrev =
     await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress);
+
+  // Setup obligations and their withdrawals from StakingVault
+  await mockDashboard.setAccruedFeeReturn(nodeOperatorFee);
+  await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
+  await mockDashboard.setObligationsFeesToSettleReturn(lidoProtocolFee);
+  await mockVaultHub.setSettleVaultObligationAmount(lidoProtocolFee);
+  await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
+  await mockSTETH.setPooledEthBySharesRoundUpReturn(lstLiabilityPrincipal);
+  await mockSTETH.setSharesByPooledEthReturn(lstLiabilityPrincipal);
+  await mockDashboard.setLiabilitySharesReturn(lstLiabilityPrincipal);
+  await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
 
   // Act
   const [newReportedYield, outstandingNegativeYield] = await yieldManager
     .connect(nativeYieldOperator)
     .reportYield.staticCall(yieldProviderAddress, l2YieldRecipient);
-  expect(newReportedYield).eq(positiveYield - lstPrincipalPaid - prevNegativeYield);
+
+  expect(newReportedYield).eq(
+    positiveYield - lstLiabilityPrincipal - lidoProtocolFee - nodeOperatorFee - prevNegativeYield,
+  );
   expect(outstandingNegativeYield).eq(0);
   await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
-  if (lstPrincipalPaid > 0n) {
-    await decrementMockDashboardTotalValue(mockDashboard, lstPrincipalPaid);
-  }
-  // Obligations paid
+
+  // Cleanup obligation setup
+  await mockDashboard.setAccruedFeeReturn(0n);
+  await mockDashboard.setObligationsFeesToSettleReturn(0n);
+  await mockVaultHub.setSettleVaultObligationAmount(0n);
+  await mockSTETH.setPooledEthBySharesRoundUpReturn(0n);
+  await mockSTETH.setSharesByPooledEthReturn(0n);
+  await mockDashboard.setLiabilitySharesReturn(0n);
+  await decrementMockDashboardTotalValue(mockDashboard, lstLiabilityPrincipal);
+  await decrementMockDashboardTotalValue(mockDashboard, lidoProtocolFee);
+  await decrementMockDashboardTotalValue(mockDashboard, nodeOperatorFee);
+
+  // Asserts
   expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds + newReportedYield);
   expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(
-    yieldProviderYieldReportedCumulativePrev + positiveYield - lstPrincipalPaid - prevNegativeYield,
+    yieldProviderYieldReportedCumulativePrev +
+      positiveYield -
+      lstLiabilityPrincipal -
+      lidoProtocolFee -
+      nodeOperatorFee -
+      prevNegativeYield,
   );
   expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(await yieldManager.userFunds(yieldProviderAddress));
 };
@@ -199,25 +234,55 @@ export const incurPositiveYield = async (
 export const incurNegativeYield = async (
   yieldManager: TestYieldManager,
   mockDashboard: MockDashboard,
+  mockVaultHub: MockVaultHub,
+  mockSTETH: MockSTETH,
   nativeYieldOperator: SignerWithAddress,
   mockStakingVaultAddress: string,
   yieldProviderAddress: string,
   l2YieldRecipient: SignerWithAddress,
   negativeYield: bigint,
+  lstLiabilityPrincipal = 0n,
+  lidoProtocolFee = 0n,
+  nodeOperatorFee = 0n,
 ) => {
   await decrementBalance(mockStakingVaultAddress, negativeYield);
   await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - negativeYield);
   const userFunds = await yieldManager.userFunds(yieldProviderAddress);
   const yieldProviderYieldReportedCumulativePrev =
     await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress);
-  {
-    const [newReportedYield, outstandingNegativeYield] = await yieldManager
-      .connect(nativeYieldOperator)
-      .reportYield.staticCall(yieldProviderAddress, l2YieldRecipient);
-    expect(newReportedYield).eq(0);
-    expect(outstandingNegativeYield).eq(negativeYield);
-  }
+
+  // Setup obligations and their withdrawals from StakingVault
+  await mockDashboard.setAccruedFeeReturn(nodeOperatorFee);
+  await mockDashboard.setIsDisburseFeeWithdrawingFromVault(true);
+  await mockDashboard.setObligationsFeesToSettleReturn(lidoProtocolFee);
+  await mockVaultHub.setSettleVaultObligationAmount(lidoProtocolFee);
+  await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
+  await mockSTETH.setPooledEthBySharesRoundUpReturn(lstLiabilityPrincipal);
+  await mockSTETH.setSharesByPooledEthReturn(lstLiabilityPrincipal);
+  await mockDashboard.setLiabilitySharesReturn(lstLiabilityPrincipal);
+  await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
+
+  // Act
+  const [newReportedYield, outstandingNegativeYield] = await yieldManager
+    .connect(nativeYieldOperator)
+    .reportYield.staticCall(yieldProviderAddress, l2YieldRecipient);
+
+  expect(newReportedYield).eq(0n);
+  expect(outstandingNegativeYield).eq(negativeYield);
   await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
+
+  // Cleanup obligation setup
+  await mockDashboard.setAccruedFeeReturn(0n);
+  await mockDashboard.setObligationsFeesToSettleReturn(0n);
+  await mockVaultHub.setSettleVaultObligationAmount(0n);
+  await mockSTETH.setPooledEthBySharesRoundUpReturn(0n);
+  await mockSTETH.setSharesByPooledEthReturn(0n);
+  await mockDashboard.setLiabilitySharesReturn(0n);
+  await decrementMockDashboardTotalValue(mockDashboard, lstLiabilityPrincipal);
+  await decrementMockDashboardTotalValue(mockDashboard, lidoProtocolFee);
+  await decrementMockDashboardTotalValue(mockDashboard, nodeOperatorFee);
+
+  // Asserts
   expect(await yieldManager.userFunds(yieldProviderAddress)).eq(userFunds);
   expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(await yieldManager.userFunds(yieldProviderAddress));
   expect(await yieldManager.getYieldProviderYieldReportedCumulative(yieldProviderAddress)).eq(
@@ -225,11 +290,45 @@ export const incurNegativeYield = async (
   );
 };
 
+export const setupMaxLSTLiabilityPaymentForWithdrawal = async (
+  yieldManager: TestYieldManager,
+  mockDashboard: MockDashboard,
+  mockVaultHub: MockVaultHub,
+  mockSTETH: MockSTETH,
+  yieldProviderAddress: string,
+  lstLiabilityPrincipal: bigint,
+) => {
+  await mockVaultHub.setIsVaultConnectedReturn(true);
+  await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
+  // Set liability principal decrement
+  await mockSTETH.setPooledEthBySharesRoundUpReturn(
+    (await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)) - lstLiabilityPrincipal,
+  );
+  // Set rebalance amount
+  await mockSTETH.setSharesByPooledEthReturn(lstLiabilityPrincipal);
+  await mockDashboard.setLiabilitySharesReturn(lstLiabilityPrincipal);
+  await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
+};
+
+export const cleanupMaxLSTLiabilityPayment = async (
+  mockDashboard: MockDashboard,
+  mockVaultHub: MockVaultHub,
+  mockSTETH: MockSTETH,
+) => {
+  // Setup obligations and their withdrawals from StakingVault
+  await mockVaultHub.setIsSettleLidoFeesWithdrawingFromVault(true);
+  await mockSTETH.setPooledEthBySharesRoundUpReturn(0n);
+  await mockSTETH.setSharesByPooledEthReturn(0n);
+  await mockDashboard.setLiabilitySharesReturn(0n);
+  await mockDashboard.setRebalanceVaultWithSharesWithdrawingFromVault(true);
+};
+
 export const withdrawLST = async (
   lineaRollup: TestLineaRollup,
   nonAuthorizedAccount: SignerWithAddress,
   yieldProviderAddress: string,
   amount: bigint,
+  securityCouncil: SignerWithAddress,
 ) => {
   const recipientAddress = await nonAuthorizedAccount.getAddress();
   const claimParams = await setupLineaRollupMessageMerkleTree(
@@ -238,6 +337,7 @@ export const withdrawLST = async (
     recipientAddress,
     amount,
     EMPTY_CALLDATA,
+    securityCouncil,
   );
   await lineaRollup
     .connect(nonAuthorizedAccount)
@@ -274,4 +374,20 @@ export const incrementMockDashboardTotalValue = async (mockDashboard: MockDashbo
 
 export const decrementMockDashboardTotalValue = async (mockDashboard: MockDashboard, amount: bigint) => {
   await mockDashboard.setTotalValueReturn((await mockDashboard.totalValue()) - amount);
+};
+
+export const setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability = async (
+  amount: bigint,
+  yieldManager: TestYieldManager,
+  yieldProviderAddress: string,
+  mockSTETH: MockSTETH,
+  mockDashboard: MockDashboard,
+) => {
+  // Setup rebalanceShares > 0
+  await mockDashboard.setLiabilitySharesReturn(1);
+  await mockSTETH.setSharesByPooledEthReturn(1);
+  // Setup _syncExternalLiabilitySettlement to deduct amount
+  await mockSTETH.setPooledEthBySharesRoundUpReturn(
+    (await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)) - amount,
+  );
 };
