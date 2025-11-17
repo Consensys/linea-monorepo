@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
 // TODO@yao: check if mimc is still needed? or should we update U32 to U64
@@ -53,10 +52,10 @@ func BlockCompression(oldState, block field.Element) (newState field.Element) {
 
 // GnarkBlockCompression applies the MiMC permutation to a given block within
 // a gnark circuit and mirrors exactly [BlockCompression].
-func GnarkBlockCompression(api frontend.API, oldState, block zk.WrappedVariable) (newState zk.WrappedVariable) {
+func GnarkBlockCompression(api frontend.API, oldState, block frontend.Variable) (newState frontend.Variable) {
 
 	res := block
-	var tmp zk.WrappedVariable
+	var tmp frontend.Variable
 
 	// s <- (s + old + c)^17
 	for _, c := range Constants {

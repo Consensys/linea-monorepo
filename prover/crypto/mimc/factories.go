@@ -10,8 +10,8 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	ghash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -21,7 +21,7 @@ import (
 // protocol as in [gkrmimc.HasherFactory] or may trigger specific behaviors
 // of Plonk in Wizard.
 type HasherFactory interface {
-	NewHasher() ghash.StateStorer
+	NewHasher() poseidon2_bls12377.GnarkMDHasher
 }
 
 // BasicHasherFactory is a simple implementation of HasherFactory that returns
@@ -40,8 +40,8 @@ type ExternalHasherFactory struct {
 // that tags the variables happening in a MiMC hasher claim.
 type ExternalHasher struct {
 	api   frontend.API
-	data  []zk.WrappedVariable
-	state zk.WrappedVariable
+	data  []frontend.Variable
+	state frontend.Variable
 }
 
 // externalHasherBuilder is an implementation of the [frontend.Builder]
@@ -49,7 +49,7 @@ type ExternalHasher struct {
 type ExternalHasherBuilder struct {
 	plonkbuilder.Builder
 	// claimTriplets stores the tripled [oldState, block, newState]
-	claimTriplets [][3]zk.WrappedVariable
+	claimTriplets [][3]frontend.Variable
 	// rcCols is a channel used to pass back the position of the wires
 	// corresponding to the claims.
 	rcCols chan [][3][2]int
@@ -61,17 +61,7 @@ type ExternalHasherBuilder struct {
 // externalHashBuilderIFace is an interface implemented by [externalHasherBuilder]
 // and potential struct wrappers.
 type externalHashBuilderIFace interface {
-	CheckHashExternally(oldState, block, newState zk.WrappedVariable)
-}
-
-// storeCommitBuilder implements [frontend.Builder], [frontend.Committer] and
-// other methods useful to define a custom external hasher.
-type storeCommitBuilder interface {
-	frontend.Builder[constraint.U32]
-	frontend.Committer
-	SetKeyValue(key, value any)
-	GetKeyValue(key any) (value any)
-	GetWiresConstraintExact(wires []zk.WrappedVariable, addMissing bool) ([][2]int, error)
+	CheckHashExternally(oldState, block, newState frontend.Variable)
 }
 
 // NewHasher returns the standard MiMC hasher as in [NewMiMC].
@@ -82,16 +72,16 @@ func (f *BasicHasherFactory) NewHasher() ghash.StateStorer {
 
 // NewHasher returns an external MiMC hasher.
 func (f *ExternalHasherFactory) NewHasher() ghash.StateStorer {
-	return &ExternalHasher{api: f.Api, state: zk.WrappedVariable(0)}
+	return &ExternalHasher{api: f.Api, state: frontend.Variable(0)}
 }
 
 // Writes fields elements into the hasher; implements [hash.FieldHasher]
-func (h *ExternalHasher) Write(data ...zk.WrappedVariable) {
-	// sanity-check : it is a common bug that we may be []zk.WrappedVariable
-	// as a zk.WrappedVariable
+func (h *ExternalHasher) Write(data ...frontend.Variable) {
+	// sanity-check : it is a common bug that we may be []frontend.Variable
+	// as a frontend.Variable
 	for i := range data {
-		if _, ok := data[i].([]zk.WrappedVariable); ok {
-			utils.Panic("bug in define, got a []zk.WrappedVariable")
+		if _, ok := data[i].([]frontend.Variable); ok {
+			utils.Panic("bug in define, got a []frontend.Variable")
 		}
 	}
 	h.data = append(h.data, data...)
@@ -106,7 +96,7 @@ func (h *ExternalHasher) Reset() {
 // Sum returns the hash of what was appended to the hasher so far. Calling it
 // multiple time without updating returns the same result. This function
 // implements [hash.FieldHasher] interface.
-func (h *ExternalHasher) Sum() zk.WrappedVariable {
+func (h *ExternalHasher) Sum() frontend.Variable {
 	// 1 - Call the compression function in a loop
 	curr := h.state
 	for _, stream := range h.data {
@@ -121,7 +111,7 @@ func (h *ExternalHasher) Sum() zk.WrappedVariable {
 // SetState manually sets the state of the hasher to the provided value. In the
 // case of MiMC only a single frontend variable is expected to represent the
 // state.
-func (h *ExternalHasher) SetState(newState []zk.WrappedVariable) error {
+func (h *ExternalHasher) SetState(newState []frontend.Variable) error {
 
 	if len(h.data) > 0 {
 		return errors.New("the hasher is not in an initial state")
@@ -137,15 +127,15 @@ func (h *ExternalHasher) SetState(newState []zk.WrappedVariable) error {
 
 // State returns the inner-state of the hasher. In the context of MiMC only a
 // single field element is returned.
-func (h *ExternalHasher) State() []zk.WrappedVariable {
+func (h *ExternalHasher) State() []frontend.Variable {
 	_ = h.Sum() // to flush the hasher
-	return []zk.WrappedVariable{h.state}
+	return []frontend.Variable{h.state}
 }
 
-// compress calls returns a zk.WrappedVariable holding the result of applying
+// compress calls returns a frontend.Variable holding the result of applying
 // the compression function of MiMC over state and block. The alleged returned
 // result is pushed on the stack of all the claims to verify.
-func (h *ExternalHasher) compress(state, block zk.WrappedVariable) zk.WrappedVariable {
+func (h *ExternalHasher) compress(state, block frontend.Variable) frontend.Variable {
 
 	newState, err := h.api.Compiler().NewHint(MimcHintfunc, 1, state, block)
 	if err != nil {
@@ -190,8 +180,8 @@ func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilderU32,
 }
 
 // CheckHashExternally tags a MiMC hasher claim in the circuit
-func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState zk.WrappedVariable) {
-	f.claimTriplets = append(f.claimTriplets, [3]zk.WrappedVariable{oldState, block, newState})
+func (f *ExternalHasherBuilder) CheckHashExternally(oldState, block, newState frontend.Variable) {
+	f.claimTriplets = append(f.claimTriplets, [3]frontend.Variable{oldState, block, newState})
 }
 
 // Compile processes range checked variables and then calls Compile method of
@@ -201,7 +191,7 @@ func (builder *ExternalHasherBuilder) Compile() (constraint.ConstraintSystemU32,
 	// As [GetWireConstraints] requires a list of variables and can only be
 	// called once, we have to pack all the claims in a single slice and unpack
 	// the result.
-	allCheckedVariables := make([]zk.WrappedVariable, 3*len(builder.claimTriplets))
+	allCheckedVariables := make([]frontend.Variable, 3*len(builder.claimTriplets))
 	for i := range builder.claimTriplets {
 		allCheckedVariables[3*i] = builder.claimTriplets[i][0]
 		allCheckedVariables[3*i+1] = builder.claimTriplets[i][1]

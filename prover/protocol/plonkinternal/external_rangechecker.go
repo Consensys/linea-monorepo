@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
@@ -41,20 +40,10 @@ var _ frontend.Rangechecker = &externalRangeChecker{}
 // these variables using a custom gate which allows later to map these variables
 // into Wizard column which can be range checked.
 type externalRangeChecker struct {
-	storeCommitBuilder
-	checked              []zk.WrappedVariable
+	plonkbuilder.Builder
+	checked              []frontend.Variable
 	rcCols               chan [][2]int
 	addGateForRangeCheck bool
-}
-
-// storeCommitBuilder implements [frontend.Builder], [frontend.Committer] and
-// [kvstore.Store].
-type storeCommitBuilder interface {
-	frontend.Builder[constraint.U32]
-	frontend.Committer
-	SetKeyValue(key, value any)
-	GetKeyValue(key any) (value any)
-	GetWireConstraints(wires []zk.WrappedVariable, addMissing bool) ([][2]int, error)
 }
 
 // newExternalRangeChecker takes compiled IOP and returns [frontend.NewBuilder].
@@ -99,7 +88,7 @@ func newExternalRangeChecker(addGateForRangeCheck bool) (frontend.NewBuilderU32,
 }
 
 // Check implements [frontend.RangeChecker]
-func (builder *externalRangeChecker) Check(v zk.WrappedVariable, bits int) {
+func (builder *externalRangeChecker) Check(v frontend.Variable, bits int) {
 
 	// This applies specifically for the Sha2 circuit which generates range-
 	// checks for constants integers. When that happens, we skip the range-check:
@@ -267,7 +256,7 @@ func (ctx *GenericPlonkProverAction) assignRangeChecked(run *wizard.ProverRuntim
 
 // Returns true if v is a constant in bound, panics if it is a constant but not
 // in bound. Return false if not a constant.
-func checkIfConst(v zk.WrappedVariable, bits int) (isConst bool) {
+func checkIfConst(v frontend.Variable, bits int) (isConst bool) {
 
 	switch vv := v.(type) {
 	default:
