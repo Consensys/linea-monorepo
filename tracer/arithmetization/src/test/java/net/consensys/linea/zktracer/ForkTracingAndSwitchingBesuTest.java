@@ -67,7 +67,7 @@ public class ForkTracingAndSwitchingBesuTest extends TracerTestBase {
           .push(32) // offset to trigger mem expansion
           .push(0) // dest offset
           .op(OpCode.MCOPY);
-      case OSAKA -> compiler.push("0x07acaa").op(OpCode.CLZ);
+      case OSAKA -> compiler.push(Bytes.fromHexString("0x07acaa")).op(OpCode.CLZ);
       default -> throw new IllegalArgumentException("Unsupported fork: " + fork);
     }
 

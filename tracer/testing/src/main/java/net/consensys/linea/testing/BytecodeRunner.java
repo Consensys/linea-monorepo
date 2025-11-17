@@ -46,7 +46,7 @@ import org.junit.jupiter.api.TestInfo;
  */
 @Accessors(fluent = true)
 public final class BytecodeRunner {
-  public static final long DEFAULT_GAS_LIMIT =
+  public static final long MAX_GAS_LIMIT =
       EIP_7825_TRANSACTION_GAS_LIMIT_CAP; // = 0x1000000 max tx gas limit since EIP-7825 (OSAKA)
   private final Bytes byteCode;
   @Getter ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2;
@@ -71,19 +71,13 @@ public final class BytecodeRunner {
   // Default run method
   public void run(ChainConfig chainConfig, TestInfo testInfo) {
     this.run(
-        Wei.fromEth(1),
-        DEFAULT_GAS_LIMIT,
-        List.of(),
-        Bytes.EMPTY,
-        List.of(),
-        chainConfig,
-        testInfo);
+        Wei.fromEth(1), MAX_GAS_LIMIT, List.of(), Bytes.EMPTY, List.of(), chainConfig, testInfo);
   }
 
   // Ad-hoc senderBalance
   public void run(Wei senderBalance, ChainConfig chainConfig, TestInfo testInfo) {
     this.run(
-        senderBalance, DEFAULT_GAS_LIMIT, List.of(), Bytes.EMPTY, List.of(), chainConfig, testInfo);
+        senderBalance, MAX_GAS_LIMIT, List.of(), Bytes.EMPTY, List.of(), chainConfig, testInfo);
   }
 
   // Ad-hoc gasLimit
@@ -100,7 +94,7 @@ public final class BytecodeRunner {
   public void run(List<ToyAccount> additionalAccounts, ChainConfig chainConfig, TestInfo testInfo) {
     this.run(
         Wei.fromEth(1),
-        DEFAULT_GAS_LIMIT,
+        MAX_GAS_LIMIT,
         additionalAccounts,
         Bytes.EMPTY,
         List.of(),
@@ -137,14 +131,13 @@ public final class BytecodeRunner {
 
   public void run(
       Bytes payload, List<AccessListEntry> accessList, ChainConfig chainConfig, TestInfo testInfo) {
-    this.run(
-        Wei.fromEth(1), DEFAULT_GAS_LIMIT, List.of(), payload, accessList, chainConfig, testInfo);
+    this.run(Wei.fromEth(1), MAX_GAS_LIMIT, List.of(), payload, accessList, chainConfig, testInfo);
   }
 
   public void runWithImposedSenderRecipientAddressCollision(
       Bytes payload, List<AccessListEntry> accessList, ChainConfig chainConfig, TestInfo testInfo) {
     this.runWithImposedSenderRecipientAddressCollision(
-        Wei.fromEth(1), DEFAULT_GAS_LIMIT, List.of(), payload, accessList, chainConfig, testInfo);
+        Wei.fromEth(1), MAX_GAS_LIMIT, List.of(), payload, accessList, chainConfig, testInfo);
   }
 
   public void run(
@@ -219,7 +212,7 @@ public final class BytecodeRunner {
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(senderBalance).nonce(5).address(senderAddress).build();
 
-    final Long selectedGasLimit = Optional.of(gasLimit).orElse(DEFAULT_GAS_LIMIT);
+    final Long selectedGasLimit = Optional.of(gasLimit).orElse(MAX_GAS_LIMIT);
 
     final ToyAccount receiverAccount =
         imposeSenderRecipientCollision
@@ -282,7 +275,7 @@ public final class BytecodeRunner {
     final Transaction tx =
         ToyTransaction.builder()
             .payload(byteCode)
-            .gasLimit(DEFAULT_GAS_LIMIT)
+            .gasLimit(MAX_GAS_LIMIT)
             .sender(senderAccount)
             .value(Wei.of(272)) // 256 + 16, easier for debugging
             .keyPair(keyPair)

@@ -18,8 +18,7 @@ package net.consensys.linea.testing;
 import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.reporting.TracerTestBase.chainConfig;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
-import static net.consensys.linea.zktracer.Fork.LONDON;
-import static net.consensys.linea.zktracer.Fork.isPostCancun;
+import static net.consensys.linea.zktracer.Fork.*;
 import static net.consensys.linea.zktracer.Trace.LINEA_BASE_FEE;
 import static net.consensys.linea.zktracer.module.ModuleName.*;
 
@@ -54,16 +53,14 @@ public class ToyExecutionEnvironmentV2 {
   public static final Address DEFAULT_COINBASE_ADDRESS =
       Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   public static final long DEFAULT_BLOCK_NUMBER = 6678980;
-
   public static final long DEFAULT_TIME_STAMP = 1347310;
   public static final Hash DEFAULT_HASH =
       Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
-
   public static final Bytes32 DEFAULT_BEACON_ROOT = Bytes32.fromHexStringLenient("cc".repeat(32));
+  public static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
 
   @Builder.Default private final List<ToyAccount> accounts = Collections.emptyList();
   @Builder.Default private final Address coinbase = DEFAULT_COINBASE_ADDRESS;
-  @Builder.Default public static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
   @Builder.Default private final Boolean runWithBesuNode = false;
   @Builder.Default private String customBesuNodeGenesis = null;
   @Builder.Default private Boolean oneTxPerBlockOnBesuNode = false;
@@ -122,7 +119,7 @@ public class ToyExecutionEnvironmentV2 {
           zkTracerValidator,
           testInfo);
 
-      if (isPostCancun(tracer.getHub().fork)) {
+      if (isPostOsaka(tracer.getHub().fork)) {
         // This is to check that the light counter is really counting more than the full tracer
         final ZkTracer tracer = this.tracer;
 

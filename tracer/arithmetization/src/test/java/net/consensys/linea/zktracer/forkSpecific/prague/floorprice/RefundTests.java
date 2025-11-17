@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.forkSpecific.prague.floorprice;
 
-import static net.consensys.linea.testing.BytecodeRunner.DEFAULT_GAS_LIMIT;
+import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
 import static net.consensys.linea.zktracer.Fork.isPostPrague;
 
 import java.util.ArrayList;
@@ -85,7 +85,7 @@ public class RefundTests extends TracerTestBase {
     final Transaction deploymentTransaction =
         ToyTransaction.builder()
             .payload(initCode)
-            .gasLimit(DEFAULT_GAS_LIMIT)
+            .gasLimit(MAX_GAS_LIMIT)
             .sender(senderAccount)
             .value(Wei.of(272)) // 256 + 16, easier for debugging
             .keyPair(keyPair)
@@ -99,7 +99,7 @@ public class RefundTests extends TracerTestBase {
     final Transaction callTransaction =
         ToyTransaction.builder()
             .payload(callData)
-            .gasLimit(DEFAULT_GAS_LIMIT)
+            .gasLimit(MAX_GAS_LIMIT)
             .sender(senderAccount)
             .toAddress(deploymentAddress)
             .value(Wei.ZERO)
