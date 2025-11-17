@@ -1,12 +1,15 @@
 package smt_koalabear
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
+
+var ErrInvalidProof = errors.New("can't verify Merkle proof")
 
 // ProvedClaim is the composition of a proof with the claim it proves.
 type ProvedClaim struct {
@@ -86,13 +89,17 @@ func RecoverRoot(p *Proof, leaf field.Octuplet) (field.Octuplet, error) {
 }
 
 // Verify the Merkle-proof against a hash and a root
-func Verify(p *Proof, leaf, root field.Octuplet) bool {
+func Verify(p *Proof, leaf, root field.Octuplet) error {
 	actual, err := RecoverRoot(p, leaf)
 	if err != nil {
-		fmt.Printf("mtree verify: %v\n", err.Error())
-		return false
+		return err
 	}
-	return actual == root
+	for i := 0; i < 8; i++ {
+		if !actual[i].Equal(&root[i]) {
+			return ErrInvalidProof
+		}
+	}
+	return nil
 }
 
 // String pretty-prints a proof

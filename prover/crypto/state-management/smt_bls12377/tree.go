@@ -78,6 +78,10 @@ func NewEmptyTree(depth int) *Tree {
 	}
 }
 
+func (t *Tree) GetRoot() fr.Element {
+	return t.Root
+}
+
 // GetLeaf returns a leaf by position or an error if the leaf is out of bounds.
 func (t *Tree) GetLeaf(pos int) (fr.Element, error) {
 	// Check that the accessed node is within the bounds of the SMT

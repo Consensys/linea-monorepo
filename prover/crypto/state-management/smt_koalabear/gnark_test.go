@@ -3,13 +3,12 @@ package smt_koalabear
 import (
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/stretchr/testify/require"
 )
 
 func randomOctuplet() field.Octuplet {
@@ -42,8 +41,10 @@ func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 		proofs[pos], _ = tree.Prove(pos)
 
 		// Directly verify the proof
-		valid := Verify(&proofs[pos], leafs[pos], tree.Root)
-		require.Truef(t, valid, "pos #%v, proof #%v", pos, proofs[pos])
+		err := Verify(&proofs[pos], leafs[pos], tree.Root)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	return proofs, leafs, tree.Root
@@ -76,6 +77,7 @@ func TestMerkleProofGnark(t *testing.T) {
 	witness.Proofs = make([]GnarkProof, nbProofs)
 	witness.Leafs = make([]poseidon2_koalabear.Octuplet, nbProofs)
 	for i := 0; i < nbProofs; i++ {
+		witness.Proofs[i].Path = proofs[i].Path
 		witness.Proofs[i].Siblings = make([]poseidon2_koalabear.Octuplet, len(proofs[i].Siblings))
 		for j := 0; j < len(proofs[i].Siblings); j++ {
 			for k := 0; k < 8; k++ {
@@ -98,13 +100,13 @@ func TestMerkleProofGnark(t *testing.T) {
 	for i := 0; i < nbProofs; i++ {
 		circuit.Proofs[i].Siblings = make([]poseidon2_koalabear.Octuplet, len(proofs[i].Siblings))
 	}
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	twitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
 	if err != nil {
 		t.Fatal(err)
 	}
