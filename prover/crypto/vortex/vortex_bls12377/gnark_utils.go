@@ -43,7 +43,6 @@ func fftInverseHint(t zk.VType) solver.Hint {
 }
 
 func fftInverseEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
-	//TODO @thomas: how to implement the emulated version
 	return emulated.UnwrapHint(inputs, output, fftInverseNative)
 }
 
