@@ -21,6 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
   const yieldManager = getRequiredEnvVar("YIELD_MANAGER");
   const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
+  const automationServiceAddress = getRequiredEnvVar("AUTOMATION_SERVICE_ADDRESS");
 
   const newRoles = [
     SET_YIELD_MANAGER_ROLE,
@@ -29,7 +30,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     UNPAUSE_NATIVE_YIELD_STAKING_ROLE,
   ];
 
-  const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
+  const newRoleAddresses = [
+    ...generateRoleAssignments(newRoles, securityCouncilAddress, []),
+    {
+      role: YIELD_PROVIDER_STAKING_ROLE,
+      addressWithRole: automationServiceAddress,
+    },
+  ];
   console.log("New role addresses", newRoleAddresses);
 
   const newPauseRoles = [{ pauseType: NATIVE_YIELD_STAKING_PAUSE_TYPE, role: PAUSE_NATIVE_YIELD_STAKING_ROLE }];
