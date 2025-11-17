@@ -8,6 +8,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
 
+// Function to encode a 256-bit frontend.Variable into 8 zk.WrappedVariable objects, each representing 30-bit limbs.
+func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVariable {
+	var res [8]zk.WrappedVariable
+	bits := api.ToBinary(value, 256)
+
+	for i := 0; i < 8; i++ {
+		limbBits := append(bits[32*i:32*i+30], frontend.Variable(0), frontend.Variable(0))
+		res[i] = zk.WrapFrontendVariable(api.FromBinary(limbBits...))
+	}
+
+	return res
+}
+
 // Function to encode 8 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
 func Encode8WVsToFV(api frontend.API, values [8]zk.WrappedVariable) frontend.Variable {
 	apiGen, err := zk.NewGenericApi(api)

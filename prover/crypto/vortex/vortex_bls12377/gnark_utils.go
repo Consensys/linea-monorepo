@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/gnark/std/math/cmp"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -117,9 +118,13 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 	// probabilistically check the result of the FFT
 	// TODO @thomas TODO@yao: how to fix this test with 	multicommit.WithCommitment
 
-	// TODO@yao: Is it possible to compute a random point x by hashing polynomial p?? the NewGnarkMDHasher only functional for koalabear, gnarkEvalCanonicalExt will panic as well
-	x := fext.RandomElement()
-	xGen4 := gnarkfext.NewE4Gen(x)
+	// Generate randomness for probabilistic verification
+	xGen4, err := computeRandomness(api, p)
+
+	if err != nil {
+		return []gnarkfext.E4Gen{}, err
+	}
+
 	ec := gnarkEvalCanonicalExt(api, res, xGen4)
 
 	// evaluation Lagrange
@@ -136,6 +141,57 @@ func FFTInverseExt(api frontend.API, p []gnarkfext.E4Gen, genInv field.Element, 
 
 	return res, nil
 
+}
+
+// Computes randomness used for probabilistic verification.
+// Generates xGen4 by hashing `p` using Poseidon hashers (different implementations for native vs emulated fields).
+func computeRandomness(api frontend.API, p []gnarkfext.E4Gen) (gnarkfext.E4Gen, error) {
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return gnarkfext.E4Gen{}, err
+	}
+
+	xGen4 := gnarkfext.E4Gen{}
+
+	if ext4.ApiGen.Type() == zk.Native {
+		h, err := poseidon2_koalabear.NewGnarkMDHasher(api)
+		if err != nil {
+			return gnarkfext.E4Gen{}, err
+		}
+
+		for i := range p {
+			h.Write(p[i].B0.A0.AsNative())
+			h.Write(p[i].B0.A1.AsNative())
+			h.Write(p[i].B1.A0.AsNative())
+			h.Write(p[i].B1.A1.AsNative())
+		}
+		xOct := h.Sum()
+
+		xGen4.B0.A0 = zk.WrapFrontendVariable(xOct[0])
+		xGen4.B0.A1 = zk.WrapFrontendVariable(xOct[1])
+		xGen4.B1.A0 = zk.WrapFrontendVariable(xOct[2])
+		xGen4.B1.A1 = zk.WrapFrontendVariable(xOct[3])
+	} else {
+		h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
+		if err != nil {
+			return gnarkfext.E4Gen{}, err
+		}
+
+		for i := range p {
+			h.Write(p[i].B0.A0.AsNative())
+			h.Write(p[i].B0.A1.AsNative())
+			h.Write(p[i].B1.A0.AsNative())
+			h.Write(p[i].B1.A1.AsNative())
+		}
+		xOct := EncodeFVTo8WVs(api, h.Sum())
+
+		xGen4.B0.A0 = xOct[0]
+		xGen4.B0.A1 = xOct[1]
+		xGen4.B1.A0 = xOct[2]
+		xGen4.B1.A1 = xOct[3]
+	}
+	return xGen4, nil
 }
 
 // gnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
