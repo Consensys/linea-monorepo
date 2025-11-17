@@ -801,7 +801,7 @@ func (c *VerifierCircuit) AssignLogDerivativeSum(qName ifaces.QueryID, params qu
 func (c *VerifierCircuit) AssignGrandProduct(qName ifaces.QueryID, params query.GrandProductParams) {
 	// Note that nil is the default value for zk.WrappedVariable
 	c.GrandProductIDs.InsertNew(qName, len(c.GrandProductParams))
-	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: params.ExtY})
+	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: gnarkfext.NewE4Gen(params.ExtY)})
 }
 
 // AssignHorner assigns the parameters of a [query.Horner] into the witness
@@ -815,7 +815,7 @@ func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.Horner
 		parts[i].N1 = zk.ValueOf(params.Parts[i].N1)
 	}
 	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{
-		FinalResult: params.FinalResult,
+		FinalResult: gnarkfext.NewE4Gen(params.FinalResult),
 		Parts:       parts,
 	})
 }
