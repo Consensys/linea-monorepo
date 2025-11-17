@@ -98,13 +98,17 @@ task("addLidoStVaultYieldProvider", "Creates and configures a new LidoStVaultYie
     console.log("  nodeOperatorFee:", nodeOperatorFee.toString());
     console.log("  confirmExpiry:", confirmExpiry.toString());
 
-    // --- Create LidoStVaultYieldProvider factory ---
+    // --- Create LidoStVaultYieldProvider factory (permissionless) ---
     const factory = await ethers.getContractAt("LidoStVaultYieldProviderFactory", yieldProviderFactory, signer);
     const yieldProvider = await factory.createLidoStVaultYieldProvider.staticCall();
     const createYieldProviderTx = await factory.createLidoStVaultYieldProvider();
     await createYieldProviderTx.wait();
     console.log("Created LidoStVaultYieldProvider at ", yieldProvider);
 
+    // TODO - Refactor below to get calldata for Safe
+    // TODO - LineaRollup.transferFundsForNativeYield(1_ether)
+
+    // TODO - Refactor below to get calldata for Safe
     // --- Add YieldProvider ---
     const yieldManagerContract = await ethers.getContractAt("YieldManager", yieldManager, signer);
     const yieldProviderInitData = buildVendorInitializationData({
