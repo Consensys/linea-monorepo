@@ -916,21 +916,8 @@ describe("YieldManager contract - basic operations", () => {
       await expectRevertWithCustomError(
         yieldManager,
         yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
-        "YieldProviderHasUserFunds",
+        "YieldProviderHasRemainingFunds",
         [userFunds],
-      );
-    });
-
-    it("Should revert when the yield provider has remaining withdrawable value", async () => {
-      const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-
-      await yieldManager.setWithdrawableValueReturnVal(mockYieldProviderAddress, 1n);
-
-      await expectRevertWithCustomError(
-        yieldManager,
-        yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
-        "YieldProviderHasWithdrawableValue",
-        [1n],
       );
     });
 
