@@ -271,7 +271,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 				continue
 			}
 
-			x := assign.Commitments[j].(field.Element)
+			x := assign.Commitments[j].AsNative().(field.Element)
 			run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
 		}
 

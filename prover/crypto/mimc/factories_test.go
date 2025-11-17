@@ -7,7 +7,7 @@ import (
 // externalMiMCFactoryTestLinear is used to test the external MiMC factory
 // and is a gnark circuit implementing a linear hash.
 type externalMimcFactoryTestLinear struct {
-	Inp [16]zk.WrappedVariable
+	Inp [16]frontend.Variable
 }
 
 // Define implements the gnark frontend.Circuit interface.
@@ -39,7 +39,7 @@ func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
 // 		circuit            = &externalMimcFactoryTestLinear{}
 // 		builder, hshGetter = NewExternalHasherBuilder(true)
 // 		blsField           = ecc.BLS12_377.ScalarField()
-// 		assignment         = &externalMimcFactoryTestLinear{Inp: [16]zk.WrappedVariable{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
+// 		assignment         = &externalMimcFactoryTestLinear{Inp: [16]frontend.Variable{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}
 // 	)
 
 // 	solver.RegisterHint(MimcHintfunc)

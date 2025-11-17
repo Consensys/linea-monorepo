@@ -7,7 +7,6 @@ import (
 
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -493,17 +492,17 @@ func TestRangeCheckerCompleteWithCommitment(t *testing.T) {
 
 	circuit := &testRangeCheckWideCommitCircuit{}
 
-	assignment := gnarkutil.AsWitnessPublic([]any{
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
-		field.NewElement(1),
+	assignment := gnarkutil.AsWitnessPublic([]zk.WrappedVariable{
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
+		zk.ValueOf(1),
 	})
 
 	var pa plonk.PlonkInWizardProverAction

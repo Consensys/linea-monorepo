@@ -7,24 +7,28 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/stretchr/testify/assert"
 )
 
 type FSCircuit struct {
 	A, B   frontend.Variable
-	R1, R2 poseidon2_koalabear.Octuplet
+	R1, R2 gnarkfext.E4Gen
 }
 
 func (c *FSCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
 	fs.Update(c.A)
-	a := fs.RandomField()
+	a := fs.RandomFieldExt()
 	fs.Update(c.B)
-	b := fs.RandomField()
-	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(a[i], c.R1[i])
-		api.AssertIsEqual(b[i], c.R2[i])
+	b := fs.RandomFieldExt()
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		return err
 	}
+
+	ext4.AssertIsEqual(&a, &c.R1)
+	ext4.AssertIsEqual(&b, &c.R2)
 	return nil
 }
 
@@ -35,17 +39,17 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 	a.SetRandom()
 	b.SetRandom()
 	Update(h, a)
-	r1 := RandomField(h)
+	r1 := RandomFext(h)
 	Update(h, b)
-	r2 := RandomField(h)
+	r2 := RandomFext(h)
 
 	var circuit, witness FSCircuit
 	witness.A = a.String()
 	witness.B = b.String()
-	for i := 0; i < 8; i++ {
-		witness.R1[i] = r1[i].String()
-		witness.R2[i] = r2[i].String()
-	}
+
+	witness.R1 = gnarkfext.NewE4Gen(r1)
+	witness.R2 = gnarkfext.NewE4Gen(r2)
+
 	return &circuit, &witness
 }
 

@@ -27,12 +27,12 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 // A gnark circuit version of LogDerivSumParams
 type GnarkLogDerivSumParams struct {
-	Sum zk.WrappedVariable
+	Sum gnarkfext.E4Gen
 }
 
 // A gnark circuit version of GrandProductParams
 type GnarkGrandProductParams struct {
-	Prod zk.WrappedVariable
+	Prod gnarkfext.E4Gen
 }
 
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
@@ -48,7 +48,7 @@ type HornerParamsPartGnark struct {
 type GnarkHornerParams struct {
 	// Final result is the result of summing the Horner parts for every
 	// queries.
-	FinalResult zk.WrappedVariable
+	FinalResult gnarkfext.E4Gen
 	// Parts are the parameters of the Horner parts
 	Parts []HornerParamsPartGnark
 }
@@ -56,7 +56,7 @@ type GnarkHornerParams struct {
 func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 	// return GnarkLogDerivSumParams{Sum: p.Sum}
 	tmp := p.Sum.GetExt()
-	return GnarkLogDerivSumParams{Sum: zk.ValueOf(tmp)} // TODO @thomas fixme (ext vs base)
+	return GnarkLogDerivSumParams{Sum: gnarkfext.NewE4Gen(tmp)} // TODO @thomas fixme (ext vs base)
 }
 
 // A gnark circuit version of InnerProductParams
@@ -128,7 +128,7 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 	}
 
 	return GnarkHornerParams{
-		FinalResult: zk.ValueOf(p.FinalResult),
+		FinalResult: gnarkfext.NewE4Gen(p.FinalResult),
 		Parts:       parts,
 	}
 }
@@ -155,7 +155,9 @@ func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	fs.Update(p.Ys...)
+	for _, y := range p.Ys {
+		fs.Update(y.AsNative())
+	}
 }
 
 // Update the fiat-shamir state with the the present field extension parameters

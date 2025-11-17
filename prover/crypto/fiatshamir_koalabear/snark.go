@@ -7,6 +7,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -42,6 +44,14 @@ func (fs *GnarkFS) State() poseidon2_koalabear.Octuplet {
 func (fs *GnarkFS) Update(vec ...frontend.Variable) {
 	fs.hasher.Write(vec...)
 }
+func (fs *GnarkFS) UpdateExt(vec ...gnarkfext.E4Gen) {
+	for i := 0; i < len(vec); i++ {
+		fs.hasher.Write(vec[i].B0.A0)
+		fs.hasher.Write(vec[i].B0.A1)
+		fs.hasher.Write(vec[i].B1.A0)
+		fs.hasher.Write(vec[i].B1.A1)
+	}
+}
 
 // UpdateVec updates the Fiat-Shamir state with a matrix of field element.
 func (fs *GnarkFS) UpdateVec(mat ...[]frontend.Variable) {
@@ -51,9 +61,16 @@ func (fs *GnarkFS) UpdateVec(mat ...[]frontend.Variable) {
 }
 
 // RandomField returns a single valued fiat-shamir hash
-func (fs *GnarkFS) RandomField() poseidon2_koalabear.Octuplet {
+func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 	defer fs.safeguardUpdate()
-	return fs.hasher.Sum()
+
+	s := fs.hasher.Sum()
+	var res gnarkfext.E4Gen
+	res.B0.A0 = zk.WrapFrontendVariable(s[0])
+	res.B0.A1 = zk.WrapFrontendVariable(s[1])
+	res.B1.A0 = zk.WrapFrontendVariable(s[2])
+	res.B1.A1 = zk.WrapFrontendVariable(s[3])
+	return res
 }
 
 // RandomManyIntegers returns a vector of variable that will contain small integers

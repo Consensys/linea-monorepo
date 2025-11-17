@@ -116,10 +116,14 @@ func (info *Info) Sample(fs *poseidon2_koalabear.MDHasher, seed field.Octuplet) 
 
 // SampleGnark samples a random coin in a gnark circuit. The seed can optionally be
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
-func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed zk.WrappedVariable) interface{} {
+func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed zk.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
 		return fs.RandomManyIntegers(info.Size, info.UpperBound)
+
+	case FieldExt:
+		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
+		return fs.RandomFieldExt()
 
 	}
 	panic("Unreachable")
