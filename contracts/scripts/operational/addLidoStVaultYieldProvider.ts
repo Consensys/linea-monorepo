@@ -1,8 +1,8 @@
 import { task } from "hardhat/config";
 import { getTaskCliOrEnvValue } from "../../common/helpers/environmentHelper";
-import { generateRoleAssignments } from "contracts/common/helpers";
-import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "contracts/common/constants";
-import { buildVendorInitializationData } from "contracts/test/yield/helpers";
+import { generateRoleAssignments } from "../../common/helpers/roles";
+import { buildVendorInitializationData } from "../../common/helpers/buildVendorInitializationData";
+import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../common/constants";
 
 /*
   *******************************************************************************************
@@ -11,6 +11,7 @@ import { buildVendorInitializationData } from "contracts/test/yield/helpers";
   1) Prerequisite - 14_deploy_YieldManager.ts script run
   2) Run this task with the right params or env vars.
   3) Signer must have SET_YIELD_PROVIDER_ROLE role for YieldManager
+  4) At least 1 ether balance (CONNECT_DEPOSIT) on the YieldManager
 
   -------------------------------------------------------------------------------------------
   Example (Hoodi):

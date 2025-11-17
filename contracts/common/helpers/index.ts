@@ -9,3 +9,4 @@ export * from "./readAddress";
 export * from "./storeAddress";
 export * from "./verifyContract";
 export * from "./general";
+export * from "./buildVendorInitializationData";
