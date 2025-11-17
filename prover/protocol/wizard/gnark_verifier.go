@@ -385,7 +385,12 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 
 			msgContent := c.GetColumn(msg)
-			c.FS.UpdateVec(msgContent)
+			msgContentFVs := make([]frontend.Variable, len(msgContent))
+
+			for i := range msgContent {
+				msgContentFVs[i] = msgContent[i].AsNative()
+			}
+			c.FS.UpdateVec(msgContentFVs)
 		}
 
 		/*
@@ -419,7 +424,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		}
 
 		cn := c.Spec.Coins.Data(coinName)
-		value := cn.SampleGnark(c.FS, seed[0])
+		value := cn.SampleGnark(c.FS, seed)
 		c.Coins.InsertNew(coinName, value)
 	}
 }

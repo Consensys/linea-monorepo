@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -71,8 +72,10 @@ type Hasher struct {
 // and will provide the same results for the same usage.
 //
 // However, the hasher should not be used in deferred gnark circuit execution.
-func (f *HasherFactory) NewHasher() hash.StateStorer {
-	return &Hasher{factory: f, state: frontend.Variable(0)}
+func (f *HasherFactory) NewHasher() poseidon2_bls12377.GnarkMDHasher {
+	h, _ := poseidon2_bls12377.NewGnarkMDHasher(f.api)
+
+	return h
 }
 
 // Writes fields elements into the hasher; implements [hash.FieldHasher]
