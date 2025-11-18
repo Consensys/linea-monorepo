@@ -1,6 +1,7 @@
 package gkrmimc
 
 import (
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/gkrapi/gkr"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
@@ -13,7 +14,7 @@ import (
 // This struct is meant to be used to represent the GKR gate within a gnark
 // circuit and is used for the verifier part of GKR.
 type RoundGate struct {
-	Ark zk.WrappedVariable
+	Ark frontend.Variable
 }
 
 // NewRoundGateGnark creates a new RoundGate using the provided round constant
@@ -23,7 +24,7 @@ func NewRoundGateGnark(ark field.Element) *RoundGate {
 	}
 }
 
-func (m RoundGate) Evaluate(api gkr.GateAPI, input ...zk.WrappedVariable) zk.WrappedVariable {
+func (m RoundGate) Evaluate(api gkr.GateAPI, input ...frontend.Variable) frontend.Variable {
 
 	if len(input) != 2 {
 		panic("mimc has fan-in 2")

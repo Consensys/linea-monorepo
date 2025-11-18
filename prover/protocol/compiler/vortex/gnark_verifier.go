@@ -76,7 +76,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	factoryHasherFunc := func(_ frontend.API) (poseidon2_bls12377.GnarkMDHasher, error) {
 		factory := vr.GetHasherFactory()
 		if factory != nil {
-			h := vr.GetHasherFactory().NewHasher()
+			h := vr.GetHasherFactory().NewHasher() //TODO@yao: here the hasher facroty should be able to create poseidon2_bls12377.GnarkMDHasher to be consistent with the hasher
 			return h, nil
 		}
 		h, err := poseidon2_bls12377.NewGnarkMDHasher(api)

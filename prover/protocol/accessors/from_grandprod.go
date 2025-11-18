@@ -48,7 +48,7 @@ func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c i
 	panic("implement me")
 }
 
-func (l *FromGrandProductAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
+func (l *FromGrandProductAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) zk.WrappedVariable {
 	//TODO implement me
 	panic("implement me")
 }
@@ -76,7 +76,7 @@ func (l *FromGrandProductAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromGrandProductAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
+func (l *FromGrandProductAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.E4Gen {
 	params := circ.GetParams(l.Q.ID).(query.GnarkGrandProductParams)
 	return params.Prod
 }
