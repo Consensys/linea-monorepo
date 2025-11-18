@@ -7,7 +7,6 @@ import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
-
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -22,6 +21,13 @@ abstract contract LineaRollupBase is
   ILineaRollup,
   IProvideShnarf
 {
+  /**
+   * @dev Storage slot with the admin of the contract.
+   * This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
+   * validated in the constructor.
+   */
+  bytes32 internal constant PROXY_ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+
   using EfficientLeftRightKeccak for *;
 
   /// @notice The role required to set/add  proof verifiers by type.
@@ -87,6 +93,8 @@ abstract contract LineaRollupBase is
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
   address public fallbackOperator;
 
+  IProvideShnarf internal _shnarfProvider;
+
   /// @dev Keep 50 free storage slots for inheriting contracts.
   uint256[50] private __gap_LineaRollup;
 
@@ -138,9 +146,23 @@ abstract contract LineaRollupBase is
       EMPTY_HASH
     );
 
+    // TODO - this is redundant for external shnarf providers, so is a waste of 20k gas for those chains.
+    // Compute genesisShnarf outside and pass it in for usage, and then init can set
+    //
     _blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
+
     currentFinalizedShnarf = genesisShnarf;
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
+
+    address shnarfProviderAddress = _initializationData.shnarfProvider;
+
+    if (shnarfProviderAddress == address(0)) {
+      shnarfProviderAddress = address(this);
+    }
+
+    _shnarfProvider = IProvideShnarf(shnarfProviderAddress);
+
+    emit LineaRollupInitialized(_initializationData);
   }
 
   /**
@@ -346,7 +368,7 @@ abstract contract LineaRollupBase is
       _finalizationData.shnarfData.dataEvaluationClaim
     );
 
-    if (IProvideShnarf(address(this)).blobShnarfExists(finalShnarf) == 0) {
+    if (_shnarfProvider.blobShnarfExists(finalShnarf) == 0) {
       revert FinalBlobNotSubmitted(finalShnarf);
     }
 

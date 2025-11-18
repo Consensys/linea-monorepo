@@ -41,6 +41,7 @@ import {
   TEST_PUBLIC_VERIFIER_INDEX,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   BLOB_SUBMISSION_PAUSE_TYPE,
+  ADDRESS_ZERO,
 } from "../../common/constants";
 import { deployUpgradableFromFactory } from "../../common/deployment";
 import {
@@ -757,6 +758,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
+        shnarfProvider: ADDRESS_ZERO,
       };
 
       const betaV4_1_LineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
@@ -882,6 +884,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
+        shnarfProvider: ADDRESS_ZERO,
       };
 
       const betaV4_1_LineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [initializationData], {

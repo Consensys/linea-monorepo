@@ -23,6 +23,7 @@ interface ILineaRollup {
    * @param unpauseTypeRoles The list of unpause types to associate with roles.
    * @param fallbackOperator The account to be given OPERATOR_ROLE on when the time since last finalization lapses.
    * @param defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
+   * @param shnarfProvider The address of the shnarf providing contract. Default is address(this).
    */
   struct InitializationData {
     bytes32 initialStateRootHash;
@@ -36,6 +37,7 @@ interface ILineaRollup {
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
     address fallbackOperator;
     address defaultAdmin;
+    address shnarfProvider;
   }
 
   /**
@@ -140,6 +142,8 @@ interface ILineaRollup {
     bytes32 parentStateRootHash,
     bytes32 finalStateRootHash
   );
+
+  event LineaRollupInitialized(InitializationData InitializationData);
 
   /**
    * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.

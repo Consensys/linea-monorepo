@@ -10,8 +10,6 @@ import { IProvideShnarf } from "../../../rollup/interfaces/IProvideShnarf.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract ExternalShnarfStorageRollup is LineaRollupBase {
-  IProvideShnarf public shnarfProvider;
-
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -35,7 +33,7 @@ contract ExternalShnarfStorageRollup is LineaRollupBase {
    * @return shnarfExists The shnarf's existence value.
    */
   function blobShnarfExists(bytes32 _shnarf) public view returns (uint256 shnarfExists) {
-    shnarfExists = shnarfProvider.blobShnarfExists(_shnarf);
+    shnarfExists = _shnarfProvider.blobShnarfExists(_shnarf);
   }
 
   /**

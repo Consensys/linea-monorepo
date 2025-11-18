@@ -7,6 +7,7 @@ import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from
 import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
 import { getAccountsFixture, getRoleAddressesFixture } from "./";
 import {
+  ADDRESS_ZERO,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   FALLBACK_OPERATOR_ADDRESS,
   INITIAL_WITHDRAW_LIMIT,
@@ -73,6 +74,7 @@ export async function deployLineaRollupFixture() {
     unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
     fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
     defaultAdmin: securityCouncil.address,
+    shnarfProvider: ADDRESS_ZERO,
   };
 
   const lineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [initializationData], {

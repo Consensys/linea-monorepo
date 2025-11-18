@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import { Eip4844BlobAcceptor } from "./Eip4844BlobAcceptor.sol";
 import { CalldataBlobAcceptor } from "./CalldataBlobAcceptor.sol";
+import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
@@ -23,5 +24,18 @@ contract LineaRollup is Eip4844BlobAcceptor, CalldataBlobAcceptor {
    */
   function initialize(InitializationData calldata _initializationData) external initializer {
     __LineaRollup_init(_initializationData);
+  }
+
+  /**
+   * @notice Reinitializes LineaRollup and sets the _shnarfProvider to itself.
+   */
+  function reinitializeSettingShnarfProvider() external reinitializer(8) {
+    address proxyAdmin;
+    assembly {
+      proxyAdmin := sload(PROXY_ADMIN_SLOT)
+    }
+    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
+
+    _shnarfProvider = IProvideShnarf(address(this));
   }
 }
