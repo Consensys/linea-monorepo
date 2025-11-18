@@ -3,6 +3,7 @@ package polynomials
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/utils"
@@ -159,25 +160,25 @@ func TestLagrangeEvaluation(t *testing.T) {
 		err = ccs.IsSolved(fullWitness)
 		assert.NoError(t, err)
 	}
-	// {
-	// 	var circuit, witness LagrangeEvaluationCircuit
-	// 	circuit.Poly = make([]gnarkfext.E4Gen, size)
-	// 	circuit.Domain = d
-	// 	witness.Poly = make([]gnarkfext.E4Gen, size)
-	// 	for i := 0; i < size; i++ {
-	// 		witness.Poly[i] = gnarkfext.NewE4Gen(poly[i])
-	// 		witness.X = gnarkfext.NewE4Gen(x)
-	// 		witness.Y = gnarkfext.NewE4Gen(y)
-	// 	}
+	{
+		var circuit, witness LagrangeEvaluationCircuit
+		circuit.Poly = make([]gnarkfext.E4Gen, size)
+		circuit.Domain = d
+		witness.Poly = make([]gnarkfext.E4Gen, size)
+		for i := 0; i < size; i++ {
+			witness.Poly[i] = gnarkfext.NewE4Gen(poly[i])
+			witness.X = gnarkfext.NewE4Gen(x)
+			witness.Y = gnarkfext.NewE4Gen(y)
+		}
 
-	// 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
-	// 	assert.NoError(t, err)
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+		assert.NoError(t, err)
 
-	// 	fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	// 	assert.NoError(t, err)
-	// 	err = ccs.IsSolved(fullWitness)
-	// 	assert.NoError(t, err)
-	// }
+		fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
 }
 
 type LagrangeAtZCircuit struct {
@@ -192,14 +193,12 @@ func (c *LagrangeAtZCircuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	apiGen.Println(c.Li[1].B0.A0)
-	apiGen.Println(li[1].B0.A0)
-	// for i := 0; i < len(li); i++ {
-	// 	apiGen.AssertIsEqual(li[i].B0.A0, c.Li[i].B0.A0)
-	// 	apiGen.AssertIsEqual(li[i].B0.A1, c.Li[i].B0.A1)
-	// 	apiGen.AssertIsEqual(li[i].B1.A0, c.Li[i].B1.A0)
-	// 	apiGen.AssertIsEqual(li[i].B1.A1, c.Li[i].B1.A1)
-	// }
+	for i := 0; i < len(li); i++ {
+		apiGen.AssertIsEqual(li[i].B0.A0, c.Li[i].B0.A0)
+		apiGen.AssertIsEqual(li[i].B0.A1, c.Li[i].B0.A1)
+		apiGen.AssertIsEqual(li[i].B1.A0, c.Li[i].B1.A0)
+		apiGen.AssertIsEqual(li[i].B1.A1, c.Li[i].B1.A1)
+	}
 	return nil
 }
 
@@ -230,6 +229,24 @@ func TestGnarkComputeLagrangeAtZ(t *testing.T) {
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+		assert.NoError(t, err)
+		err = ccs.IsSolved(fullWitness)
+		assert.NoError(t, err)
+	}
+
+	{
+		var circuit, witness LagrangeAtZCircuit
+		circuit.Li = make([]gnarkfext.E4Gen, size)
+		circuit.d = d
+		witness.Li = make([]gnarkfext.E4Gen, size)
+		for i := 0; i < size; i++ {
+			witness.Li[i] = gnarkfext.NewE4Gen(li[i])
+		}
+		witness.X = gnarkfext.NewE4Gen(x)
+		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+		assert.NoError(t, err)
+
+		fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
 		assert.NoError(t, err)
 		err = ccs.IsSolved(fullWitness)
 		assert.NoError(t, err)
