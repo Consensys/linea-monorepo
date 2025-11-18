@@ -84,7 +84,7 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 
 		randElement := randLimbs(rng, numBytesInt)
 		limbBytes := randElement.Bytes()
-		dividedLimbs := SplitBytes(limbBytes[16:], 16/len(gdm.Limbs))
+		dividedLimbs := SplitBytes(limbBytes[:], 16/len(gdm.Limbs))
 
 		for j, limb := range dividedLimbs {
 			var l field.Element
