@@ -2,6 +2,7 @@ package importpad
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
@@ -128,7 +129,7 @@ func (ipad *Importation) newSha2Padder(comp *wizard.CompiledIOP) padder {
 		// The number of columns needed to store the AccInsertedBits (64 bits in total).
 		accInsertedBitsNbLimbs = utils.DivCeil(sha2LengthFieldSizeBits, maxLimbsSizeBits)
 		pad                    = &Sha2Padder{
-			NbBits: comp.InsertCommit(0, ifaces.ColIDf("%v_SHA2_NB_BITS", ipad.Inputs.Name), numRows),
+			NbBits: comp.InsertCommit(0, ifaces.ColIDf("%v_SHA2_NB_BITS", ipad.Inputs.Name), numRows, true),
 			AccInsertedBits: byte32cmp.LimbColumns{
 				Limbs:       make([]ifaces.Column, accInsertedBitsNbLimbs),
 				LimbBitSize: maxLimbsSizeBits,
@@ -141,6 +142,7 @@ func (ipad *Importation) newSha2Padder(comp *wizard.CompiledIOP) padder {
 		pad.AccInsertedBits.Limbs[i] = comp.InsertCommit(0,
 			ifaces.ColIDf("%v_SHA2_ACC_INSERTED_BITS_%d", ipad.Inputs.Name, i),
 			numRows,
+			true,
 		)
 	}
 
@@ -248,7 +250,7 @@ func (ipad *Importation) newSha2Padder(comp *wizard.CompiledIOP) padder {
 		Result:        pad.AccInsertedBits,
 		Mask:          sym.Mul(isInserted, isInsertedPrev), // All inserted rows, except the first one
 		NoBoundCancel: true,
-	}, true)
+	})
 
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%v_SHA2_FIRST_PADDING_VALUE", ipad.Inputs.Name),
