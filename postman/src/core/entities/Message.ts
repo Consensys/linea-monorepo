@@ -15,7 +15,6 @@ export type MessageProps = {
   direction: Direction;
   status: MessageStatus;
   claimTxCreationDate?: Date;
-  claimTxBroadcastedDate?: Date;
   claimTxGasLimit?: number;
   claimTxMaxFeePerGas?: bigint;
   claimTxMaxPriorityFeePerGas?: bigint;
@@ -67,7 +66,6 @@ export class Message {
   public direction: Direction;
   public status: MessageStatus;
   public claimTxCreationDate?: Date;
-  public claimTxBroadcastedDate?: Date;
   public claimTxGasLimit?: number;
   public claimTxMaxFeePerGas?: bigint;
   public claimTxMaxPriorityFeePerGas?: bigint;
@@ -95,7 +93,6 @@ export class Message {
     this.direction = props.direction;
     this.status = props.status;
     this.claimTxCreationDate = props.claimTxCreationDate;
-    this.claimTxBroadcastedDate = props.claimTxBroadcastedDate;
     this.claimTxGasLimit = props.claimTxGasLimit;
     this.claimTxMaxFeePerGas = props.claimTxMaxFeePerGas;
     this.claimTxMaxPriorityFeePerGas = props.claimTxMaxPriorityFeePerGas;
@@ -117,7 +114,6 @@ export class Message {
   public edit(newMessage: Partial<EditableMessageProps>) {
     if (newMessage.status) this.status = newMessage.status;
     if (newMessage.claimTxCreationDate) this.claimTxCreationDate = newMessage.claimTxCreationDate;
-    if (newMessage.claimTxBroadcastedDate) this.claimTxBroadcastedDate = newMessage.claimTxBroadcastedDate;
     if (newMessage.claimTxGasLimit) this.claimTxGasLimit = newMessage.claimTxGasLimit;
     if (newMessage.claimTxMaxFeePerGas) this.claimTxMaxFeePerGas = newMessage.claimTxMaxFeePerGas;
     if (newMessage.claimTxMaxPriorityFeePerGas)
@@ -141,7 +137,7 @@ export class Message {
       this.messageHash
     }, contractAddress=${this.contractAddress}, sentBlockNumber=${this.sentBlockNumber}, direction=${
       this.direction
-    }, status=${this.status}, claimTxCreationDate=${this.claimTxCreationDate?.toISOString()}, claimTxBroadcastedDate=${this.claimTxBroadcastedDate?.toISOString()}, claimTxGasLimit=${
+    }, status=${this.status}, claimTxCreationDate=${this.claimTxCreationDate?.toISOString()}, claimTxGasLimit=${
       this.claimTxGasLimit
     }, claimTxMaxFeePerGas=${this.claimTxMaxFeePerGas}, claimTxMaxPriorityFeePerGas=${
       this.claimTxMaxPriorityFeePerGas

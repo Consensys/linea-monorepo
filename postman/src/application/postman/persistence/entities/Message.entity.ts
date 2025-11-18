@@ -57,10 +57,6 @@ export class MessageEntity {
   claimTxCreationDate?: Date;
 
   @Column({ nullable: true })
-  @IsDate()
-  claimTxBroadcastedDate?: Date;
-
-  @Column({ nullable: true })
   claimTxGasLimit?: number;
 
   @Column({ nullable: true, type: "bigint" })

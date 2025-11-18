@@ -91,7 +91,8 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
 
       const receipt = await this.provider.getTransactionReceipt(firstPendingMessage.claimTxHash);
       if (receipt) {
-        await this.updateReceiptStatus(firstPendingMessage, receipt);
+        const receiptReceivedAt = new Date();
+        await this.updateReceiptStatus(firstPendingMessage, receipt, receiptReceivedAt);
       } else {
         if (!this.isMessageExceededSubmissionTimeout(firstPendingMessage)) return;
         this.logger.warn("Retrying to claim message: messageHash=%s", firstPendingMessage.messageHash);
@@ -200,24 +201,31 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    * @param {Message} message - The message object to update.
    * @param {TransactionReceipt} receipt - The receipt of the claim transaction.
    */
-  private async updateReceiptStatus(message: Message, receipt: TransactionReceipt): Promise<void> {
+  private async updateReceiptStatus(
+    message: Message,
+    receipt: TransactionReceipt,
+    receiptReceivedAt?: Date,
+  ): Promise<void> {
     let processingTimeInSeconds: number | undefined;
-    let broadcastTimeInSeconds: number | undefined;
-    let inclusionTimeInSeconds: number | undefined;
+    let lineaInfuraLatencyInSeconds: number | undefined;
 
-    if (this.config.direction === Direction.L1_TO_L2 && message.claimTxCreationDate && message.claimTxBroadcastedDate) {
-      broadcastTimeInSeconds =
-        (message.claimTxBroadcastedDate.getTime() - message.claimTxCreationDate.getTime()) / 1_000;
-
-      this.transactionMetricsUpdater.addTransactionBroadcastTime(broadcastTimeInSeconds);
-
+    if (this.config.direction === Direction.L1_TO_L2 && message.claimTxCreationDate && receiptReceivedAt) {
       const block = await this.provider.getBlock(receipt.blockNumber);
       if (block) {
         processingTimeInSeconds = block.timestamp - message.claimTxCreationDate.getTime() / 1_000;
-        inclusionTimeInSeconds = block.timestamp - message.claimTxBroadcastedDate.getTime() / 1_000;
+        lineaInfuraLatencyInSeconds = (receiptReceivedAt.getTime() - message.claimTxCreationDate.getTime()) / 1_000;
 
+        this.transactionMetricsUpdater.incrementTransactionProcessedTotal(this.config.direction);
         this.transactionMetricsUpdater.addTransactionProcessingTime(processingTimeInSeconds);
-        this.transactionMetricsUpdater.addTransactionInclusionTime(inclusionTimeInSeconds);
+        this.transactionMetricsUpdater.incrementTransactionProcessingTimeSum(
+          this.config.direction,
+          processingTimeInSeconds,
+        );
+        this.transactionMetricsUpdater.addTransactionLineaInfuraLatencyTime(lineaInfuraLatencyInSeconds);
+        this.transactionMetricsUpdater.incrementTransactionLineaInfuraLatencyTimeSum(
+          this.config.direction,
+          lineaInfuraLatencyInSeconds,
+        );
       }
     }
 
@@ -247,8 +255,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         receipt.hash,
         {
           ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
-          ...(broadcastTimeInSeconds ? { broadcastTimeInSeconds } : {}),
-          ...(inclusionTimeInSeconds ? { inclusionTimeInSeconds } : {}),
+          ...(lineaInfuraLatencyInSeconds ? { lineaInfuraLatencyInSeconds } : {}),
         },
       );
       return;
@@ -273,8 +280,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       receipt.hash,
       {
         ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
-        ...(broadcastTimeInSeconds ? { broadcastTimeInSeconds } : {}),
-        ...(inclusionTimeInSeconds ? { inclusionTimeInSeconds } : {}),
+        ...(lineaInfuraLatencyInSeconds ? { lineaInfuraLatencyInSeconds } : {}),
       },
     );
   }

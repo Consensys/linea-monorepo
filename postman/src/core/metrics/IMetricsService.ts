@@ -20,9 +20,13 @@ export enum LineaPostmanMetrics {
   SponsorshipFeesWei = "linea_postman_sponsorship_fees_wei_total", // Represent up to ~9_007_199 GWEI
   SponsorshipFeesGwei = "linea_postman_sponsorship_fees_gwei_total", // Represent up to ~9_007_199 ETH
 
+  TransactionProcessedTotal = "linea_postman_l2_transaction_tx_processed_time_total",
+
   TransactionProcessingTime = "linea_postman_l2_transaction_tx_processing_time",
-  TransactionBroadcastTime = "linea_postman_l2_transaction_tx_broadcast_time",
-  TransactionInclusionTime = "linea_postman_l2_transaction_tx_inclusion_time",
+  TransactionProcessingTimeSum = "linea_postman_l2_transaction_tx_processing_time_sum",
+
+  TransactionLineaInfuraLatencyTime = "linea_postman_l2_transaction_tx_linea_infura_latency_time",
+  TransactionLineaInfuraLatencyTimeSum = "linea_postman_l2_transaction_tx_linea_infura_latency_time_sum",
 }
 
 export interface IMetricsService {

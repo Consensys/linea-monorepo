@@ -9,15 +9,27 @@ export class TransactionMetricsUpdater implements ITransactionMetricsUpdater {
     );
 
     this.metricsService.createHistogram(
-      LineaPostmanMetrics.TransactionBroadcastTime,
+      LineaPostmanMetrics.TransactionLineaInfuraLatencyTime,
       [0.1, 0.5, 1, 2, 3, 5, 7, 10],
-      "Time taken to broadcast a transaction",
+      "Time taken to receive the transaction receipt from Infura",
     );
 
-    this.metricsService.createHistogram(
-      LineaPostmanMetrics.TransactionInclusionTime,
-      [0.1, 0.5, 1, 2, 3, 5, 7, 10, 15, 20, 30, 45, 60],
-      "Time taken for a transaction to be included in a block",
+    this.metricsService.createCounter(
+      LineaPostmanMetrics.TransactionProcessedTotal,
+      "Number of transactions that have been processed",
+      ["direction"],
+    );
+
+    this.metricsService.createCounter(
+      LineaPostmanMetrics.TransactionLineaInfuraLatencyTimeSum,
+      "Total number of seconds taken to receive the transaction receipt from Infura",
+      ["direction"],
+    );
+
+    this.metricsService.createCounter(
+      LineaPostmanMetrics.TransactionProcessingTimeSum,
+      "Total number of seconds taken between transaction creation and receipt timestamp",
+      ["direction"],
     );
   }
 
@@ -28,17 +40,33 @@ export class TransactionMetricsUpdater implements ITransactionMetricsUpdater {
     );
   }
 
-  public addTransactionBroadcastTime(transactionBroadcastTimeInSeconds: number): void {
+  public addTransactionLineaInfuraLatencyTime(transactionLineaInfuraLatencyInSeconds: number): void {
     return this.metricsService.addValueToHistogram(
-      LineaPostmanMetrics.TransactionBroadcastTime,
-      transactionBroadcastTimeInSeconds,
+      LineaPostmanMetrics.TransactionLineaInfuraLatencyTime,
+      transactionLineaInfuraLatencyInSeconds,
     );
   }
 
-  public addTransactionInclusionTime(transactionInclusionTimeInSeconds: number): void {
-    return this.metricsService.addValueToHistogram(
-      LineaPostmanMetrics.TransactionInclusionTime,
-      transactionInclusionTimeInSeconds,
+  public incrementTransactionProcessedTotal(direction: string): void {
+    this.metricsService.incrementCounter(LineaPostmanMetrics.TransactionProcessedTotal, { direction }, 1);
+  }
+
+  public incrementTransactionProcessingTimeSum(direction: string, transactionProcessingTimeInSeconds: number): void {
+    this.metricsService.incrementCounter(
+      LineaPostmanMetrics.TransactionProcessingTimeSum,
+      { direction },
+      transactionProcessingTimeInSeconds,
+    );
+  }
+
+  public incrementTransactionLineaInfuraLatencyTimeSum(
+    direction: string,
+    transactionLineaInfuraLatencyInSeconds: number,
+  ): void {
+    this.metricsService.incrementCounter(
+      LineaPostmanMetrics.TransactionLineaInfuraLatencyTimeSum,
+      { direction },
+      transactionLineaInfuraLatencyInSeconds,
     );
   }
 }
