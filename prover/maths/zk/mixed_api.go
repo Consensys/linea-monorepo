@@ -289,7 +289,7 @@ func (g *GenericApi) Println(a ...WrappedVariable) {
 	}
 }
 
-func (g *GenericApi) Mux(api frontend.API, sel frontend.Variable, inputs ...WrappedVariable) WrappedVariable {
+func (g *GenericApi) Mux(sel frontend.Variable, inputs ...WrappedVariable) WrappedVariable {
 	if g.Type() == Native {
 		_inputs := make([]frontend.Variable, len(inputs))
 		for i := 0; i < len(_inputs); i++ {
