@@ -1,11 +1,14 @@
 package smt_bls12377
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+var ErrInvalidProof = errors.New("can't verify Merkle proof")
 
 // ProvedClaim is the composition of a proof with the claim it proves.
 type ProvedClaim struct {
@@ -85,13 +88,15 @@ func RecoverRoot(p *Proof, leaf fr.Element) (fr.Element, error) {
 }
 
 // Verify the Merkle-proof against a hash and a root
-func Verify(p *Proof, leaf, root fr.Element) bool {
+func Verify(p *Proof, leaf, root fr.Element) error {
 	actual, err := RecoverRoot(p, leaf)
 	if err != nil {
-		fmt.Printf("mtree verify: %v\n", err.Error())
-		return false
+		return err
 	}
-	return actual == root
+	if !actual.Equal(&root) {
+		return ErrInvalidProof
+	}
+	return nil
 }
 
 // String pretty-prints a proof

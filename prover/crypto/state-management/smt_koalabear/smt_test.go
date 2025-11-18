@@ -48,8 +48,10 @@ func TestMerkleProofNative(t *testing.T) {
 		proof, _ := tree.Prove(pos)
 
 		// Directly verify the proof
-		valid := Verify(&proof, oldLeaf, tree.Root)
-		require.Truef(t, valid, "pos #%v, proof #%v", pos, proof)
+		err := Verify(&proof, oldLeaf, tree.Root)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -70,10 +72,10 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 		}
 		tree.Update(pos, newLeaf)
 
-		// After updating the old proof should still be valid
-		// (because we only changed the current leaf)
-		valid := Verify(&proof, newLeaf, tree.Root)
-		require.Truef(t, valid, "pos #%v", pos)
+		err := Verify(&proof, newLeaf, tree.Root)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -101,10 +103,9 @@ func TestBuildFromScratch(t *testing.T) {
 	// Test-Merkle tests the merkle proof point by point
 	for i := range leaves {
 		proof, _ := tree.Prove(i)
-		ok := Verify(&proof, leaves[i], tree.Root)
-
-		if !ok {
-			t.Fatalf("failed to verify pos %v", i)
+		err := Verify(&proof, leaves[i], tree.Root)
+		if err != nil {
+			t.Fatal(err)
 		}
 	}
 

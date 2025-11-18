@@ -1,10 +1,8 @@
-package vortex
+package reedsolomon
 
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/require"
@@ -14,12 +12,11 @@ import (
 func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
 
 	polySize := 1 << 10
-	_nPolys := 15
 	_blowUpFactor := 2
 
 	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
+	params := NewRsParams(_blowUpFactor, polySize)
 	vec := smartvectors.RandExt(1 << 10)
 	rsEncoded := params.rsEncodeExt(vec)
 
@@ -36,12 +33,11 @@ func TestReedSolomonExtDoesNotChangeEvaluation(t *testing.T) {
 func TestReedSolomonExtConstant(t *testing.T) {
 
 	polySize := 1 << 10
-	_nPolys := 15
 	_blowUpFactor := 2
 
 	x := fext.RandomElement()
 
-	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
+	params := NewRsParams(_blowUpFactor, polySize)
 	vec := smartvectors.NewConstantExt(fext.RandomElement(), polySize)
 	rsEncoded := params.rsEncodeExt(vec)
 

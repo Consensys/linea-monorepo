@@ -10,10 +10,8 @@ import (
 
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
-	"github.com/stretchr/testify/require"
 )
 
 // ------------------------------------------------------------------------------
@@ -40,8 +38,10 @@ func getMerkleProof(t *testing.T) ([]Proof, []fr.Element, fr.Element) {
 		proofs[pos], _ = tree.Prove(pos)
 
 		// Directly verify the proof
-		valid := Verify(&proofs[pos], leafs[pos], tree.Root)
-		require.Truef(t, valid, "pos #%v, proof #%v", pos, proofs[pos])
+		err := Verify(&proofs[pos], leafs[pos], tree.Root)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	return proofs, leafs, tree.Root
@@ -55,12 +55,8 @@ type MerkleProofCircuit struct {
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 
-	h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
-	if err != nil {
-		return err
-	}
 	for i := 0; i < len(circuit.Proofs); i++ {
-		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root, h)
+		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root)
 	}
 	return nil
 }
@@ -131,8 +127,10 @@ func getMerkleProofWithEncoding(t *testing.T) ([]Proof, []field.Octuplet, []fr.E
 	for pos := 0; pos < nbProofs; pos++ {
 		leavesFrElmt[pos], _ = tree.GetLeaf(pos)
 		proofs[pos], _ = tree.Prove(pos)
-		valid := Verify(&proofs[pos], leavesFrElmt[pos], tree.Root)
-		require.Truef(t, valid, "pos #%v, proof #%v", pos, proofs[pos])
+		err := Verify(&proofs[pos], leavesFrElmt[pos], tree.Root)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	return proofs, leavesOctuplet, leavesFrElmt, tree.Root
@@ -147,11 +145,6 @@ type MerkleProofCircuitWithEncoding struct {
 
 func (circuit *MerkleProofCircuitWithEncoding) Define(api frontend.API) error {
 
-	h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
-	if err != nil {
-		return err
-	}
-
 	// check that the encoding is ok
 	for i := 0; i < len(circuit.LeavesFrElmt); i++ {
 		encodedLeaf := encoding.EncodeWVsToFVs(api, circuit.Leavesoctuplet[i][:])
@@ -163,7 +156,7 @@ func (circuit *MerkleProofCircuitWithEncoding) Define(api frontend.API) error {
 
 	// verify the merkle proofs
 	for i := 0; i < len(circuit.Proofs); i++ {
-		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.LeavesFrElmt[i], circuit.Root, h)
+		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.LeavesFrElmt[i], circuit.Root)
 	}
 	return nil
 }
