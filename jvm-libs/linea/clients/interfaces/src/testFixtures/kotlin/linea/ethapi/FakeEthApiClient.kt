@@ -212,7 +212,7 @@ class FakeEthApiClient(
     TODO("Not yet implemented")
   }
 
-  override fun ethEstimateGas(transaction: TransactionForEthCall): SafeFuture<BigInteger> {
+  override fun ethEstimateGas(transaction: TransactionForEthCall): SafeFuture<ULong> {
     TODO("Not yet implemented")
   }
 

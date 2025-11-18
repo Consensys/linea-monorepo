@@ -148,9 +148,9 @@ class Web3jEthApiClient(
 
   override fun ethEstimateGas(
     transaction: TransactionForEthCall,
-  ): SafeFuture<BigInteger> {
+  ): SafeFuture<ULong> {
     return web3jClient
       .ethEstimateGas(transaction.toWeb3j())
-      .requestAsync { resp -> resp.amountUsed }
+      .requestAsync { resp -> resp.amountUsed.toULong() }
   }
 }

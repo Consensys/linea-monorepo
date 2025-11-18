@@ -77,7 +77,7 @@ interface EthApiClient : EthLogsClient {
     stateOverride: StateOverride? = null,
   ): SafeFuture<ByteArray>
 
-  fun ethEstimateGas(transaction: TransactionForEthCall): SafeFuture<BigInteger>
+  fun ethEstimateGas(transaction: TransactionForEthCall): SafeFuture<ULong>
 }
 
 data class StateOverride(
