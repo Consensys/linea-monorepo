@@ -153,9 +153,22 @@ class Web3jEthApiClientWithRetries(
     blockParameter: BlockParameter,
     stateOverride: StateOverride?,
   ): SafeFuture<ByteArray> {
-    // FIXME: stop retry when revert reason is returned as JSON RPC error
-    return retry(stopRetriesPredicateForTag(blockParameter)) {
+    val predicate = stopRetriesPredicateForTag(blockParameter).or(stopOnExecutionRevertedPredicate)
+    return retry(predicate) {
       ethApiClient.ethCall(transaction, blockParameter, stateOverride)
+    }
+  }
+
+  val stopOnExecutionRevertedPredicate: Predicate<Throwable> = Predicate { th ->
+
+    if (th.cause is linea.error.JsonRpcErrorResponseException) {
+      val rpcError = th.cause as linea.error.JsonRpcErrorResponseException
+      // -32000 = "execution reverted", no point in retrying
+      rpcError.rpcErrorCode == -32000 ||
+        rpcError.rpcErrorMessage.contains("reverted", ignoreCase = true) ||
+        rpcError.rpcErrorData.toString().contains("reverted", ignoreCase = true)
+    } else {
+      false
     }
   }
 
