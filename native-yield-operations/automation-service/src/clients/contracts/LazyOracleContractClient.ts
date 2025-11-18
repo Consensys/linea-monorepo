@@ -72,12 +72,12 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
    * @returns {Promise<LazyOracleReportData>} The latest report data containing timestamp, refSlot, treeRoot, and reportCid.
    */
   async latestReportData(): Promise<LazyOracleReportData> {
-    const resp = await this.contract.read.latestReportData();
+    const [timestamp, refSlot, treeRoot, reportCid] = await this.contract.read.latestReportData();
     const returnVal = {
-      timestamp: resp[0],
-      refSlot: resp[1],
-      treeRoot: resp[2],
-      reportCid: resp[3],
+      timestamp,
+      refSlot,
+      treeRoot,
+      reportCid,
     };
     this.logger.debug("latestReportData", { returnVal });
     return returnVal;
