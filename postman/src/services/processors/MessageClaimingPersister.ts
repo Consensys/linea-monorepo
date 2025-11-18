@@ -109,12 +109,13 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
           firstPendingMessage.messageHash,
         );
         if (!retryTransactionReceipt) return;
+        const receiptReceivedAt = new Date();
         this.logger.warn(
           "Retried claim message transaction succeed: messageHash=%s transactionHash=%s",
           firstPendingMessage.messageHash,
           retryTransactionReceipt.hash,
         );
-        await this.updateReceiptStatus(firstPendingMessage, retryTransactionReceipt);
+        await this.updateReceiptStatus(firstPendingMessage, retryTransactionReceipt, receiptReceivedAt);
       }
     } catch (e) {
       const error = ErrorParser.parseErrorWithMitigation(e);
@@ -204,12 +205,12 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
   private async updateReceiptStatus(
     message: Message,
     receipt: TransactionReceipt,
-    receiptReceivedAt?: Date,
+    receiptReceivedAt: Date,
   ): Promise<void> {
     let processingTimeInSeconds: number | undefined;
     let lineaInfuraLatencyInSeconds: number | undefined;
 
-    if (this.config.direction === Direction.L1_TO_L2 && message.claimTxCreationDate && receiptReceivedAt) {
+    if (this.config.direction === Direction.L1_TO_L2 && message.claimTxCreationDate) {
       const block = await this.provider.getBlock(receipt.blockNumber);
       if (block) {
         processingTimeInSeconds = block.timestamp - message.claimTxCreationDate.getTime() / 1_000;
