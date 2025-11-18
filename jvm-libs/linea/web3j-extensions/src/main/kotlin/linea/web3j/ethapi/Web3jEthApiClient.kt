@@ -105,13 +105,13 @@ class Web3jEthApiClient(
     .ethGetTransactionCount(address.encodeHex(), blockParameter.toWeb3j())
     .requestAsync { it.transactionCount.toULong() }
 
-  override fun ethGetBlockByNumberFullTxs(blockParameter: BlockParameter): SafeFuture<Block?> {
+  override fun ethFindBlockByNumberFullTxs(blockParameter: BlockParameter): SafeFuture<Block?> {
     return web3jClient
       .ethGetBlockByNumber(blockParameter.toWeb3j(), true)
       .requestAsync { resp -> resp.block?.toDomain() }
   }
 
-  override fun ethGetBlockByNumberTxHashes(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
+  override fun ethFindBlockByNumberTxHashes(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
     return web3jClient
       .ethGetBlockByNumber(blockParameter.toWeb3j(), false)
       .requestAsync { resp -> resp.block?.let(::mapToDomainWithTxHashes) }

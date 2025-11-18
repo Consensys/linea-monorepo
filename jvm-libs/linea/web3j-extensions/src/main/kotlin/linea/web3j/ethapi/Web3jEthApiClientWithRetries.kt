@@ -124,15 +124,15 @@ class Web3jEthApiClientWithRetries(
     }
   }
 
-  override fun ethGetBlockByNumberFullTxs(blockParameter: BlockParameter): SafeFuture<Block?> {
+  override fun ethFindBlockByNumberFullTxs(blockParameter: BlockParameter): SafeFuture<Block?> {
     return retry(stopRetriesPredicateForTag(blockParameter)) {
-      ethApiClient.ethGetBlockByNumberFullTxs(blockParameter)
+      ethApiClient.ethFindBlockByNumberFullTxs(blockParameter)
     }
   }
 
-  override fun ethGetBlockByNumberTxHashes(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
+  override fun ethFindBlockByNumberTxHashes(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
     return retry(stopRetriesPredicateForTag(blockParameter)) {
-      ethApiClient.ethGetBlockByNumberTxHashes(blockParameter)
+      ethApiClient.ethFindBlockByNumberTxHashes(blockParameter)
     }
   }
 
@@ -161,7 +161,7 @@ class Web3jEthApiClientWithRetries(
 
   override fun ethEstimateGas(
     transaction: TransactionForEthCall,
-  ): SafeFuture<BigInteger> {
+  ): SafeFuture<ULong> {
     return retry { ethApiClient.ethEstimateGas(transaction) }
   }
 }

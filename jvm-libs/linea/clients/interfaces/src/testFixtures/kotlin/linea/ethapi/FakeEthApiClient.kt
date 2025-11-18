@@ -175,7 +175,7 @@ class FakeEthApiClient(
     TODO("Not yet implemented")
   }
 
-  override fun ethGetBlockByNumberFullTxs(blockParameter: BlockParameter): SafeFuture<Block?> {
+  override fun ethFindBlockByNumberFullTxs(blockParameter: BlockParameter): SafeFuture<Block?> {
     val blockNumber = blockParameterToBlockNumber(blockParameter)
     if (isAfterHead(blockNumber)) {
       return SafeFuture.completedFuture(null)
@@ -188,8 +188,8 @@ class FakeEthApiClient(
     return SafeFuture.completedFuture(block)
   }
 
-  override fun ethGetBlockByNumberTxHashes(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
-    return findBlockByNumber(blockParameter).thenApply { block -> block?.toBlockWithRandomTxHashes() }
+  override fun ethFindBlockByNumberTxHashes(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
+    return this.ethFindBlockByNumberFullTxs(blockParameter).thenApply { block -> block?.toBlockWithRandomTxHashes() }
   }
 
   override fun ethGetTransactionByHash(transactionHash: ByteArray): SafeFuture<Transaction?> {
