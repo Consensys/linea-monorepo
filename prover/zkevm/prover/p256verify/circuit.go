@@ -52,12 +52,12 @@ func (c baseElementWizard) ToElement(api frontend.API, fp *emulated.Field[basefi
 }
 
 type p256VerifyInstance struct {
-	H        scalarElementWizard `gnark:",public"`
-	R        scalarElementWizard `gnark:",public"`
-	S        scalarElementWizard `gnark:",public"`
-	Qx       baseElementWizard   `gnark:",public"`
-	Qy       baseElementWizard   `gnark:",public"`
-	Expected [nbResLimbs]frontend.Variable
+	H        scalarElementWizard           `gnark:",public"`
+	R        scalarElementWizard           `gnark:",public"`
+	S        scalarElementWizard           `gnark:",public"`
+	Qx       baseElementWizard             `gnark:",public"`
+	Qy       baseElementWizard             `gnark:",public"`
+	Expected [nbResLimbs]frontend.Variable `gnark:",public"`
 }
 
 type multiP256VerifyInstanceCircuit struct {
