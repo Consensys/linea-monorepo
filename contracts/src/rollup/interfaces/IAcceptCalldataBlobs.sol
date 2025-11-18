@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import { IAcceptBlobData } from "./IAcceptBlobData.sol";
 
 /**
- * @title IAcceptCalldataBlobs interface for structs and errors.
+ * @title IAcceptCalldataBlobs interface for functions, structs and errors.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity ^0.8.30;
 
 import { IAcceptEip4844Blobs } from "./interfaces/IAcceptEip4844Blobs.sol";
-import { ProvideLocalShnarf } from "./ProvideLocalShnarf.sol";
+import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 
 /**
@@ -10,7 +10,7 @@ import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract Eip4844BlobAcceptor is ProvideLocalShnarf, IAcceptEip4844Blobs {
+abstract contract Eip4844BlobAcceptor is LocalShnarfProvider, IAcceptEip4844Blobs {
   /**
    * @notice Submit one or more EIP-4844 blobs.
    * @dev OPERATOR_ROLE is required to execute.

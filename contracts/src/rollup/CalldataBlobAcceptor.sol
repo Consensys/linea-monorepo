@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity ^0.8.30;
 
 import { IAcceptCalldataBlobs } from "./interfaces/IAcceptCalldataBlobs.sol";
-import { ProvideLocalShnarf } from "./ProvideLocalShnarf.sol";
+import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 
 /**
@@ -10,7 +10,7 @@ import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract CalldataBlobAcceptor is ProvideLocalShnarf, IAcceptCalldataBlobs {
+abstract contract CalldataBlobAcceptor is LocalShnarfProvider, IAcceptCalldataBlobs {
   /**
    * @notice Submit blobs using compressed data via calldata.
    * @dev OPERATOR_ROLE is required to execute.

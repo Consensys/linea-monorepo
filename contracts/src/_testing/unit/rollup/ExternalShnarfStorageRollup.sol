@@ -9,7 +9,7 @@ import { IProvideShnarf } from "../../../rollup/interfaces/IProvideShnarf.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract NonBlobRollup is LineaRollupBase {
+contract ExternalShnarfStorageRollup is LineaRollupBase {
   IProvideShnarf public shnarfProvider;
 
   /// @custom:oz-upgrades-unsafe-allow constructor
@@ -28,35 +28,21 @@ contract NonBlobRollup is LineaRollupBase {
     __LineaRollup_init(_initializationData);
   }
 
+  /**
+   * @notice Returns if the shnarf exists.
+   * @dev Value > 0 means that it exists. Default is 1.
+   * @param _shnarf The shnarf being checked for existence.
+   * @return shnarfExists The shnarf's existence value.
+   */
   function blobShnarfExists(bytes32 _shnarf) public view returns (uint256 shnarfExists) {
     shnarfExists = shnarfProvider.blobShnarfExists(_shnarf);
   }
 
-  // ADD OTHER CODE HERE
-}
-
-contract SwiftRollup is LineaRollupBase {
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor() {
-    _disableInitializers();
-  }
-
   /**
-   * @notice Initializes LineaRollup and underlying service dependencies - used for new networks only.
-   * @dev DEFAULT_ADMIN_ROLE is set for the security council.
-   * @dev OPERATOR_ROLE is set for operators.
-   * @dev Note: This is used for new testnets and local/CI testing, and will not replace existing proxy based contracts.
-   * @param _initializationData The initial data used for proof verification.
+   * @notice Returns the ABI version and not the reinitialize version.
+   * @return contractVersion The contract ABI version.
    */
-  function initialize(InitializationData calldata _initializationData) external initializer {
-    __LineaRollup_init(_initializationData);
-  }
-
-  function blobShnarfExists(bytes32 _shnarf) public view returns (uint256 shnarfExists) {
-    shnarfExists = _blobShnarfExists[_shnarf];
-  }
-
-  function submitShnarf(bytes32 _shnarf) external {
-    _blobShnarfExists[_shnarf] = 1;
+  function CONTRACT_VERSION() external view virtual override returns (string memory contractVersion) {
+    contractVersion = "1.0";
   }
 }

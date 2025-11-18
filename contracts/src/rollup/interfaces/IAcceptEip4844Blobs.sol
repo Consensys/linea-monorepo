@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 import { IAcceptBlobData } from "./IAcceptBlobData.sol";
 
 /**
- * @title IAcceptEip4844Blobs interface for current functions, structs, and errors.
+ * @title IAcceptEip4844Blobs interface for functions, structs, and errors.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */

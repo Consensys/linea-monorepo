@@ -8,9 +8,9 @@ pragma solidity ^0.8.30;
  */
 interface IAcceptBlobData {
   /**
-   * @dev Thrown when the current data was already submitted.
+   * @dev Thrown when the current shnarf was already submitted.
    */
-  error DataAlreadySubmitted(bytes32 currentDataHash);
+  error DataAlreadySubmitted(bytes32 shnarf);
 
   /**
    * @dev Thrown when a shnarf does not exist for a parent blob.
