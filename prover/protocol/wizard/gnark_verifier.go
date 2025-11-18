@@ -388,11 +388,13 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 
 			msgContent := c.GetColumn(msg)
 			msgContentFVs := make([]frontend.Variable, len(msgContent))
-
 			for i := range msgContent {
 				msgContentFVs[i] = msgContent[i].AsNative()
 			}
 			c.FS.UpdateVec(msgContentFVs)
+
+			msgContentExt := c.GetColumnExt(msg) //TODO@yao: check if this is correct
+			c.FS.UpdateExt(msgContentExt...)
 		}
 
 		/*
