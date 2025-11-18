@@ -21,7 +21,7 @@ type EvalCanonicalCircuit struct {
 
 func (c *EvalCanonicalCircuit) Define(api frontend.API) error {
 
-	y := gnarkEvalCanonical(api, c.Poly, c.X)
+	y := GnarkEvalCanonical(api, c.Poly, c.X)
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
 		apiGen.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
