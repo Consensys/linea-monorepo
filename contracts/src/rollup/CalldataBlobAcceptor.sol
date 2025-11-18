@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { ICompressedCalldataSupportingLineaRollup } from "./interfaces/ICompressedCalldataSupportingLineaRollup.sol";
+import { IAcceptCalldataBlobs } from "./interfaces/IAcceptCalldataBlobs.sol";
 import { ProvideLocalShnarf } from "./ProvideLocalShnarf.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 
@@ -10,10 +10,7 @@ import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract CompressedCalldataSupportingLineaRollup is
-  ProvideLocalShnarf,
-  ICompressedCalldataSupportingLineaRollup
-{
+abstract contract CalldataBlobAcceptor is ProvideLocalShnarf, IAcceptCalldataBlobs {
   /**
    * @notice Submit blobs using compressed data via calldata.
    * @dev OPERATOR_ROLE is required to execute.
@@ -91,7 +88,7 @@ abstract contract CompressedCalldataSupportingLineaRollup is
       revert BytesLengthNotMultipleOf32();
     }
 
-    bytes4 errorSelector = ICompressedCalldataSupportingLineaRollup.FirstByteIsNotZero.selector;
+    bytes4 errorSelector = IAcceptCalldataBlobs.FirstByteIsNotZero.selector;
     assembly {
       for {
         let i := _data.length

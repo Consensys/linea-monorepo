@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { IBlobSupportingLineaRollup } from "./interfaces/IBlobSupportingLineaRollup.sol";
+import { IAcceptEip4844Blobs } from "./interfaces/IAcceptEip4844Blobs.sol";
 import { ProvideLocalShnarf } from "./ProvideLocalShnarf.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 
@@ -10,7 +10,7 @@ import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract BlobSupportingLineaRollup is ProvideLocalShnarf, IBlobSupportingLineaRollup {
+abstract contract Eip4844BlobAcceptor is ProvideLocalShnarf, IAcceptEip4844Blobs {
   /**
    * @notice Submit one or more EIP-4844 blobs.
    * @dev OPERATOR_ROLE is required to execute.
@@ -106,5 +106,48 @@ abstract contract BlobSupportingLineaRollup is ProvideLocalShnarf, IBlobSupporti
     _blobShnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
 
     emit DataSubmittedV3(_parentShnarf, computedShnarf, blobSubmission.finalStateRootHash);
+  }
+
+  /**
+   * @notice Performs point evaluation for the compressed blob.
+   * @dev _dataEvaluationPoint is modular reduced to be lower than the BLS_CURVE_MODULUS for precompile checks.
+   * @param _currentDataHash The current blob versioned hash.
+   * @param _dataEvaluationPoint The data evaluation point.
+   * @param _dataEvaluationClaim The data evaluation claim.
+   * @param _kzgCommitment The blob KZG commitment.
+   * @param _kzgProof The blob KZG point proof.
+   */
+  function _verifyPointEvaluation(
+    bytes32 _currentDataHash,
+    uint256 _dataEvaluationPoint,
+    uint256 _dataEvaluationClaim,
+    bytes memory _kzgCommitment,
+    bytes memory _kzgProof
+  ) internal view {
+    assembly {
+      _dataEvaluationPoint := mod(_dataEvaluationPoint, BLS_CURVE_MODULUS)
+    }
+
+    (bool success, bytes memory returnData) = POINT_EVALUATION_PRECOMPILE_ADDRESS.staticcall(
+      abi.encodePacked(_currentDataHash, _dataEvaluationPoint, _dataEvaluationClaim, _kzgCommitment, _kzgProof)
+    );
+
+    if (!success) {
+      revert PointEvaluationFailed();
+    }
+
+    if (returnData.length != POINT_EVALUATION_RETURN_DATA_LENGTH) {
+      revert PrecompileReturnDataLengthWrong(POINT_EVALUATION_RETURN_DATA_LENGTH, returnData.length);
+    }
+
+    uint256 fieldElements;
+    uint256 blsCurveModulus;
+    assembly {
+      fieldElements := mload(add(returnData, 0x20))
+      blsCurveModulus := mload(add(returnData, POINT_EVALUATION_RETURN_DATA_LENGTH))
+    }
+    if (fieldElements != POINT_EVALUATION_FIELD_ELEMENTS_LENGTH || blsCurveModulus != BLS_CURVE_MODULUS) {
+      revert PointEvaluationResponseInvalid(fieldElements, blsCurveModulus);
+    }
   }
 }

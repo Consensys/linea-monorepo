@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { BlobSupportingLineaRollup } from "../../../rollup/BlobSupportingLineaRollup.sol";
+import { Eip4844BlobAcceptor } from "../../../rollup/Eip4844BlobAcceptor.sol";
 import { L1MessageService } from "../../../messaging/l1/L1MessageService.sol";
 import { IMessageService } from "../../../messaging/interfaces/IMessageService.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
-contract InheritingRollup is BlobSupportingLineaRollup {
+contract InheritingRollup is Eip4844BlobAcceptor {
   error DirectETHSendingDisallowed();
   error FeeSendingDisallowed();
   error OnlyAllowedSendersToRemoteReceiver();

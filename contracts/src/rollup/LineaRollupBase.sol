@@ -265,49 +265,6 @@ abstract contract LineaRollupBase is
   }
 
   /**
-   * @notice Performs point evaluation for the compressed blob.
-   * @dev _dataEvaluationPoint is modular reduced to be lower than the BLS_CURVE_MODULUS for precompile checks.
-   * @param _currentDataHash The current blob versioned hash.
-   * @param _dataEvaluationPoint The data evaluation point.
-   * @param _dataEvaluationClaim The data evaluation claim.
-   * @param _kzgCommitment The blob KZG commitment.
-   * @param _kzgProof The blob KZG point proof.
-   */
-  function _verifyPointEvaluation(
-    bytes32 _currentDataHash,
-    uint256 _dataEvaluationPoint,
-    uint256 _dataEvaluationClaim,
-    bytes memory _kzgCommitment,
-    bytes memory _kzgProof
-  ) internal view {
-    assembly {
-      _dataEvaluationPoint := mod(_dataEvaluationPoint, BLS_CURVE_MODULUS)
-    }
-
-    (bool success, bytes memory returnData) = POINT_EVALUATION_PRECOMPILE_ADDRESS.staticcall(
-      abi.encodePacked(_currentDataHash, _dataEvaluationPoint, _dataEvaluationClaim, _kzgCommitment, _kzgProof)
-    );
-
-    if (!success) {
-      revert PointEvaluationFailed();
-    }
-
-    if (returnData.length != POINT_EVALUATION_RETURN_DATA_LENGTH) {
-      revert PrecompileReturnDataLengthWrong(POINT_EVALUATION_RETURN_DATA_LENGTH, returnData.length);
-    }
-
-    uint256 fieldElements;
-    uint256 blsCurveModulus;
-    assembly {
-      fieldElements := mload(add(returnData, 0x20))
-      blsCurveModulus := mload(add(returnData, POINT_EVALUATION_RETURN_DATA_LENGTH))
-    }
-    if (fieldElements != POINT_EVALUATION_FIELD_ELEMENTS_LENGTH || blsCurveModulus != BLS_CURVE_MODULUS) {
-      revert PointEvaluationResponseInvalid(fieldElements, blsCurveModulus);
-    }
-  }
-
-  /**
    * @notice Finalize compressed blocks with proof.
    * @dev OPERATOR_ROLE is required to execute.
    * @param _aggregatedProof The aggregated proof.

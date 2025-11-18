@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
-interface ICompressedCalldataSupportingLineaRollup {
-  /**
-   * @dev Thrown when the first byte is not zero.
-   * @dev This is used explicitly with the four bytes in assembly 0x729eebce.
-   */
-  error FirstByteIsNotZero();
+pragma solidity ^0.8.30;
 
+import { IAcceptBlobData } from "./IAcceptBlobData.sol";
+
+/**
+ * @title IAcceptCalldataBlobs interface for structs and errors.
+ * @author Consensys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
+interface IAcceptCalldataBlobs is IAcceptBlobData {
   /**
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.
@@ -18,6 +20,17 @@ interface ICompressedCalldataSupportingLineaRollup {
     bytes32 snarkHash;
     bytes compressedData;
   }
+
+  /**
+   * @dev Thrown when the first byte is not zero.
+   * @dev This is used explicitly with the four bytes in assembly 0x729eebce.
+   */
+  error FirstByteIsNotZero();
+
+  /**
+   * @dev Thrown when submissionData is empty.
+   */
+  error EmptySubmissionData();
 
   /**
    * @notice Submit blobs using compressed data via calldata.

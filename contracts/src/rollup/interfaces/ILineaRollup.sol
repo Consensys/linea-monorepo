@@ -126,15 +126,6 @@ interface ILineaRollup {
   );
 
   /**
-   * @notice Emitted when compressed data is being submitted and verified succesfully on L1.
-   * @dev The block range is indexed and parent shnarf included for state reconstruction simplicity.
-   * @param parentShnarf The parent shnarf for the data being submitted.
-   * @param shnarf The indexed shnarf for the data being submitted.
-   * @param finalStateRootHash The L2 state root hash that the current blob submission ends on. NB: The last blob in the collection.
-   */
-  event DataSubmittedV3(bytes32 parentShnarf, bytes32 indexed shnarf, bytes32 finalStateRootHash);
-
-  /**
    * @notice Emitted when L2 blocks have been finalized on L1.
    * @param startBlockNumber The indexed L2 block number indicating which block the finalization the data starts from.
    * @param endBlockNumber The indexed L2 block number indicating which block the finalization the data ends on.
@@ -154,46 +145,6 @@ interface ILineaRollup {
    * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.
    */
   error LastFinalizationTimeNotLapsed();
-
-  /**
-   * @dev Thrown when the point evaluation precompile's call return data field(s) are wrong.
-   */
-  error PointEvaluationResponseInvalid(uint256 fieldElements, uint256 blsCurveModulus);
-
-  /**
-   * @dev Thrown when the point evaluation precompile's call return data length is wrong.
-   */
-  error PrecompileReturnDataLengthWrong(uint256 expected, uint256 actual);
-
-  /**
-   * @dev Thrown when the point evaluation precompile call returns false.
-   */
-  error PointEvaluationFailed();
-
-  /**
-   * @dev Thrown when the blobhash at an index equals to the zero hash.
-   */
-  error EmptyBlobDataAtIndex(uint256 index);
-
-  /**
-   * @dev Thrown when the data for multiple blobs submission has length zero.
-   */
-  error BlobSubmissionDataIsMissing();
-
-  /**
-   * @dev Thrown when a blob has been submitted but there is no data for it.
-   */
-  error BlobSubmissionDataEmpty(uint256 emptyBlobIndex);
-
-  /**
-   * @dev Thrown when the current data was already submitted.
-   */
-  error DataAlreadySubmitted(bytes32 currentDataHash);
-
-  /**
-   * @dev Thrown when submissionData is empty.
-   */
-  error EmptySubmissionData();
 
   /**
    * @dev Thrown when finalizationData.l1RollingHash does not exist on L1 (Feedback loop).
@@ -229,16 +180,6 @@ interface ILineaRollup {
    * @dev Thrown when bytes length is not a multiple of 32.
    */
   error BytesLengthNotMultipleOf32();
-
-  /**
-   * @dev Thrown when the computed shnarf does not match what is expected.
-   */
-  error FinalShnarfWrong(bytes32 expected, bytes32 value);
-
-  /**
-   * @dev Thrown when a shnarf does not exist for a parent blob.
-   */
-  error ParentBlobNotSubmitted(bytes32 shnarf);
 
   /**
    * @dev Thrown when a shnarf does not exist for the final blob being finalized.
