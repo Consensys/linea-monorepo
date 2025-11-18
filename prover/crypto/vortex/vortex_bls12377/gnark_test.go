@@ -34,6 +34,21 @@ import (
 var rng = rand.New(utils.NewRandSource(0))
 
 // ------------------------------------------------------------
+// test Encode and decode: BLS <--> Koalabear
+func TestEncodeAndDecode(t *testing.T) {
+	// test EncodeBLS12377ToKoalabear and DecodeKoalabearToBLS12377
+
+	var elements fr.Element
+	elements.SetRandom()
+	bytes := elements.Bytes()
+	elementsKoalaBear := EncodeBLS12377ToKoalabear(bytes)
+	decodedElements := DecodeKoalabearToBLS12377(elementsKoalaBear)
+
+	assert.Equal(t, types.AsBytes32(bytes[:]), decodedElements)
+
+}
+
+// ------------------------------------------------------------
 // test Encode and Hash
 type EncodeAndHashTestCircuit struct {
 	Values [8]zk.WrappedVariable

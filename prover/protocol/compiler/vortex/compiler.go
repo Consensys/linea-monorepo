@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 
+	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+
 	"github.com/consensys/linea-monorepo/prover/crypto"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -240,6 +242,10 @@ type Ctx struct {
 			Tree *smt_koalabear.Tree
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
+
+			GnarkMerkleRoot   [11]ifaces.Column
+			GnarkTree         *smt_bls12377.Tree
+			GnarkDhWithMerkle []bls12377.Element
 		}
 		// Alpha is a random combination linear coin
 		Alpha coin.Info
@@ -308,6 +314,10 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 				CommittedMatrix   vortex.EncodedMatrix
 				Tree              *smt_koalabear.Tree
 				DhWithMerkle      []field.Element
+
+				GnarkMerkleRoot   [11]ifaces.Column
+				GnarkTree         *smt_bls12377.Tree
+				GnarkDhWithMerkle []bls12377.Element
 			}
 			Alpha               coin.Info
 			Ualpha              ifaces.Column
@@ -912,8 +922,6 @@ func (ctx *Ctx) MerkleProofSize() int {
 func (ctx *Ctx) commitPrecomputeds(isGnark bool) {
 	var (
 		committedMatrix vortex.EncodedMatrix
-		tree            *smt_koalabear.Tree
-		colHashes       []field.Element
 	)
 	precomputeds := ctx.Items.Precomputeds.PrecomputedColums
 	numPrecomputeds := len(precomputeds)
@@ -937,39 +945,55 @@ func (ctx *Ctx) commitPrecomputeds(isGnark bool) {
 
 	// Increase the number of committed rows
 	ctx.CommittedRowsCount += numPrecomputeds
-
-	// Committing to the precomputed columns with SIS or without SIS.
-	if ctx.IsSISAppliedToPrecomputed() {
-		// We increase the number of committed rows for SIS rounds
-		// in this case
-		ctx.CommittedRowsCountSIS += numPrecomputeds
-		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
-	} else {
-		if !isGnark {
-			var (
-				tree      *smt_koalabear.Tree
-				colHashes []field.Element
-			)
-			committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+	if !isGnark {
+		var (
+			tree      *smt_koalabear.Tree
+			colHashes []field.Element
+		)
+		// Committing to the precomputed columns with SIS or without SIS.
+		if ctx.IsSISAppliedToPrecomputed() {
+			// We increase the number of committed rows for SIS rounds
+			// in this case
+			ctx.CommittedRowsCountSIS += numPrecomputeds
+			committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
 		} else {
-			committedMatrix = ctx.VortexParams.EncodeRows(pols)
-			//TODO@yao
-			tree, colHashes = ctx.GnarkVortexParams.CommitMerkleWithoutSIS(pols)
+			committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+		}
+
+		ctx.Items.Precomputeds.DhWithMerkle = colHashes
+		ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
+		ctx.Items.Precomputeds.Tree = tree
+
+		// And assign the 1-sized column to contain the root
+		for i := 0; i < blockSize; i++ {
+			ctx.Items.Precomputeds.MerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(
+				ctx.PrecomputedMerkleRootName(i),
+				smartvectors.NewConstant(tree.Root[i], 1),
+				true,
+			)
+		}
+	} else {
+		var (
+			tree      *smt_bls12377.Tree
+			colHashes []bls12377.Element
+		)
+		committedMatrix = ctx.VortexParams.EncodeRows(pols)
+		tree, colHashes = ctx.GnarkVortexParams.CommitMerkleWithoutSIS(pols)
+
+		ctx.Items.Precomputeds.GnarkDhWithMerkle = colHashes
+		ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
+		ctx.Items.Precomputeds.GnarkTree = tree
+
+		roots := vortex_bls12377.EncodeBLS12377ToKoalabear(tree.Root)
+		//TODO@yao: map back to oct
+		// And assign the 1-sized column to contain the root
+		for i := 0; i < 11; i++ {
+
+			ctx.Items.Precomputeds.GnarkMerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(ctx.PrecomputedGnarkMerkleRootName(i), smartvectors.NewConstant(roots[i], 1), true)
 		}
 
 	}
-	ctx.Items.Precomputeds.DhWithMerkle = colHashes
-	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
-	ctx.Items.Precomputeds.Tree = tree
 
-	// And assign the 1-sized column to contain the root
-	for i := 0; i < blockSize; i++ {
-		ctx.Items.Precomputeds.MerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(
-			ctx.PrecomputedMerkleRootName(i),
-			smartvectors.NewConstant(tree.Root[i], 1),
-			true,
-		)
-	}
 }
 
 // GetPrecomputedSelectedCol returns the selected column

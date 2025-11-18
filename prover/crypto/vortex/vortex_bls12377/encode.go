@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Function to encode a 256-bit frontend.Variable into 8 zk.WrappedVariable objects, each representing 30-bit limbs.
@@ -89,6 +90,36 @@ func EncodeKoalabearsToBytes(elements []field.Element) []byte {
 		bytes := Encode8KoalabearToBigInt(buf).Bytes()
 		copy(bufBytes[32-len(bytes):], bytes) // left pad with zeroes to 32 bytes
 		res = append(res, bufBytes[:]...)
+	}
+	return res
+}
+
+// BLS to Koalabear encoding
+func EncodeBLS12377ToKoalabear(elements types.Bytes32) [11]field.Element {
+
+	var res [11]field.Element
+	for i := 0; i < 11; i++ {
+		var bytes [4]byte
+		if i != 10 {
+			copy(bytes[1:], elements[i*3:(i+1)*3])
+		} else {
+			copy(bytes[2:], elements[30:32])
+		}
+		res[i].SetBytes(bytes[:])
+	}
+	return res
+}
+
+func DecodeKoalabearToBLS12377(elements [11]field.Element) types.Bytes32 {
+	var res types.Bytes32
+	for i := 0; i < 11; i++ {
+		if i != 10 {
+			bytes := elements[i].Bytes()
+			copy(res[i*3:(i+1)*3], bytes[1:])
+		} else {
+			bytes := elements[i].Bytes()
+			copy(res[30:32], bytes[2:])
+		}
 	}
 	return res
 }
