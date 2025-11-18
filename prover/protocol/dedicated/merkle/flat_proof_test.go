@@ -7,12 +7,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -99,7 +97,6 @@ func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleT
 		run.AssignColumn(ifaces.ColIDf("ROOTS_%v", i), smartvectors.RightZeroPadded(data.roots[i], merkleTestNumRow))
 	}
 	for i := 0; i < limbPerU64; i++ {
-		logrus.Printf("Assigning POS_LIMB_%v: %v\n", i, vector.Prettify(data.pos[i]))
 		run.AssignColumn(ifaces.ColIDf("POS_LIMB_%v", i), smartvectors.RightZeroPadded(data.pos[i], merkleTestNumRow))
 	}
 	run.AssignColumn("ACTIVE", smartvectors.RightZeroPadded(data.isActive, merkleTestNumRow))
@@ -107,20 +104,20 @@ func (ctx *merkleTestRunnerFlat) Assign(run *wizard.ProverRuntime, data *merkleT
 	ctx.ctx.Proof.Assign(run, data.proofs)
 	ctx.ctx.Run(run)
 
-	// for i := 0; i < merkleTestNumRow; i++ {
-	// 	for l := 0; l < merkleTestDepth; l++ {
+	for i := 0; i < merkleTestNumRow; i++ {
+		for l := 0; l < merkleTestDepth; l++ {
 
-	// 		var left, right, node [blockSize]field.Element
+			var left, right, node [blockSize]field.Element
 
-	// 		// for k := 0; k < blockSize; k++ {
-	// 		// 	left[k] = ctx.ctx.Lefts[l][k].Result.GetColAssignmentAt(run, i)
-	// 		// 	right[k] = ctx.ctx.Rights[l][k].Result.GetColAssignmentAt(run, i)
-	// 		// 	node[k] = ctx.ctx.Nodes[l].Result()[k].GetColAssignmentAt(run, i)
-	// 		// 	fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left[k].Text(16), right[k].Text(16), node[k].Text(16))
-	// 		// }
+			for k := 0; k < blockSize; k++ {
+				left[k] = ctx.ctx.Lefts[l][k].Result.GetColAssignmentAt(run, i)
+				right[k] = ctx.ctx.Rights[l][k].Result.GetColAssignmentAt(run, i)
+				node[k] = ctx.ctx.Nodes[l].Result()[k].GetColAssignmentAt(run, i)
+				fmt.Printf("proof=%v level=%v left=%v right=%v node=%v\n", i, l, left[k].Text(16), right[k].Text(16), node[k].Text(16))
+			}
 
-	// 	}
-	// }
+		}
+	}
 }
 
 // merkleTestCaseInstance represents either a read or a write operation to add to
@@ -159,7 +156,7 @@ func newMerkleTestBuilder(depth int) *merkleTestBuilder {
 		tree: *smt.BuildComplete(make([]field.Octuplet, 1<<depth), poseidon2.Poseidon2),
 	}
 }
-	
+
 func (mt *merkleTestBuilder) AddRead(pos int) {
 
 	var (

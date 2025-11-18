@@ -39,7 +39,7 @@ type assignmentBuilder struct {
 	// [Accumulator.Cols.Leaves] column.
 	leaves [common.NbElemPerHash][]field.Element
 	// positions stores the positions of the leaves in the merkle tree for which we give the Merkle proof. This corresponds to the [Accumulator.Cols.Positions] column.
-	positions [common.NbElemForHasingU64][]field.Element
+	positions [common.NbLimbU64][]field.Element
 	// roots stores the roots of the merkle tree. This corresponds
 	// to the [Accumulator.Cols.Roots] column.
 	roots [common.NbElemPerHash][]field.Element
@@ -53,7 +53,7 @@ type assignmentBuilder struct {
 	isActive []field.Element
 	// accumulatorCounter counts the number of rows in the accumulator. It is used to check the
 	// sequentiality of leaves and roots in accumulator and the merkle module
-	accumulatorCounter [common.NbElemForHasingU64][]field.Element
+	accumulatorCounter [common.NbLimbU64][]field.Element
 	// isFirst is one at the first row of any operation. This corresponds to the [Accumulator.IsFirst] column
 	isFirst []field.Element
 	// isInsert is one when we have an INSERT operation. It is
@@ -79,19 +79,19 @@ type assignmentBuilder struct {
 	hKeyPlus [common.NbElemPerHash][]field.Element
 	// Pointer check columns
 	// leafMinusIndex is the index of the minus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafMinusIndex]
-	leafMinusIndex [common.NbElemForHasingU64][]field.Element
+	leafMinusIndex [common.NbLimbU64][]field.Element
 	// leafMinusNext is the index of the Next leaf of the minus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafMinusNext]
-	leafMinusNext [common.NbElemForHasingU64][]field.Element
+	leafMinusNext [common.NbLimbU64][]field.Element
 	// leafMinusNext is the index of the plus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafPlusIndex]
-	leafPlusIndex [common.NbElemForHasingU64][]field.Element
+	leafPlusIndex [common.NbLimbU64][]field.Element
 	// leafPlusPrev is the index of the Previous leaf of the plus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafPlusPrev]
-	leafPlusPrev [common.NbElemForHasingU64][]field.Element
+	leafPlusPrev [common.NbLimbU64][]field.Element
 	// leafDeletedIndex is the index of the Deleted leaf for DELETE. This corresponds to the [Accumulator.Column.LeafDeletedIndex]
-	leafDeletedIndex [common.NbElemForHasingU64][]field.Element
+	leafDeletedIndex [common.NbLimbU64][]field.Element
 	// leafDeletedPrev is the index of the Previous leaf of the Deleted leaf for DELETE. This corresponds to the [Accumulator.Column.LeafDeletedPrev]
-	leafDeletedPrev [common.NbElemForHasingU64][]field.Element
+	leafDeletedPrev [common.NbLimbU64][]field.Element
 	// leafDeletedNext is the index of the Previous leaf of the Deleted leaf for DELETE. This corresponds to the [Accumulator.Column.LeafDeletedNext]
-	leafDeletedNext [common.NbElemForHasingU64][]field.Element
+	leafDeletedNext [common.NbLimbU64][]field.Element
 	// leafOpening is a tuple of four columns containing
 	// Prev, Next, HKey, HVal of a leaf. This corresponds to the [Accumulator.Column.LeafOpening]
 	leafOpening leafOpenings
@@ -102,10 +102,10 @@ type assignmentBuilder struct {
 	// isEmptyLeaf is one when Leaves contains empty leaf and does not match with LeafHash
 	isEmptyLeaf []field.Element
 	// nextFreeNode contains the nextFreeNode for each row of every operation
-	nextFreeNode [common.NbElemForHasingU64][]field.Element
+	nextFreeNode [common.NbLimbU64][]field.Element
 	// insertionPath is the path of a newly inserted leaf when INSERT happens,
 	// it is zero otherwise
-	insertionPath [common.NbElemForHasingU64][]field.Element
+	insertionPath [common.NbLimbU64][]field.Element
 	// isInsertRow3 is one for row 3 of INSERT operation
 	isInsertRow3 []field.Element
 	// intermTopRoot contains the intermediate MiMC state hash
@@ -141,6 +141,9 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 		amb.leafDeletedIndex[i] = make([]field.Element, 0, amb.NumRows())
 		amb.leafDeletedPrev[i] = make([]field.Element, 0, amb.NumRows())
 		amb.leafDeletedNext[i] = make([]field.Element, 0, amb.NumRows())
+	}
+
+	for i := 0; i < len(amb.leafOpening.prev); i++ {
 		amb.leafOpening.prev[i] = make([]field.Element, 0, amb.NumRows())
 		amb.leafOpening.next[i] = make([]field.Element, 0, amb.NumRows())
 	}
@@ -368,7 +371,7 @@ func (a *assignmentBuilder) pushRow(
 	isPointerEnabled bool,
 	isEmptyLeaf bool,
 ) {
-	// Populates leaves, leafHashes, and isEmptyLeaf from leafOpening by MiMc block compression
+	// Populates leaves, leafHashes, and isEmptyLeaf from leafOpening by Posseidon2 block compression
 	a.computeLeaf(leafOpening, isEmptyLeaf)
 	var rootFr field.Element
 	if err := rootFr.SetBytesCanonical(root[:]); err != nil {
