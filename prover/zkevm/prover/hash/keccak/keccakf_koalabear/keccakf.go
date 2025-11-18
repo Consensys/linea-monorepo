@@ -51,7 +51,7 @@ func NewModule(comp *wizard.CompiledIOP, in KeccakfInputs) *Module {
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < kcommon.NumSlices; z++ {
-				initialState[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("INITIAL_STATE_%v_%v_%v", x, y, z), in.KeccakfSize)
+				initialState[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("INITIAL_STATE_%v_%v_%v", x, y, z), in.KeccakfSize, true)
 			}
 		}
 	}

@@ -97,7 +97,7 @@ func (vb *VectorBuilder) PushBytes32(b32 types.Bytes32) {
 	vb.PushField(f)
 }
 
-// PushBytes32 pushes a [types.Bytes32] as a single value onto `vb`. It panics
+// PushBytes pushes a []byte as a single value onto `vb`. It panics
 // if the value overflows a field element.
 func (vb *VectorBuilder) PushBytes(b32 []byte) {
 	var f field.Element

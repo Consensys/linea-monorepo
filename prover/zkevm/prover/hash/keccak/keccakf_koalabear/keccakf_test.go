@@ -65,16 +65,16 @@ func keccakfTestingModule(
 		comp := b.CompiledIOP
 		for m := 0; m < kcommon.NumLanesInBlock; m++ {
 			for z := 0; z < kcommon.NumSlices; z++ {
-				blocks[m][z] = comp.InsertCommit(0, ifaces.ColIDf("BLOCK_%v_%v", m, z), size)
+				blocks[m][z] = comp.InsertCommit(0, ifaces.ColIDf("BLOCK_%v_%v", m, z), size, true)
 			}
 		}
 
 		mod = NewModule(b.CompiledIOP, KeccakfInputs{
 			Blocks:       blocks,
-			IsBlock:      comp.InsertCommit(0, "IS_BLOCK", size),
-			IsFirstBlock: comp.InsertCommit(0, "IS_FIRST_BLOCK", size),
-			IsBlockBaseB: comp.InsertCommit(0, "IS_BLOCK_BASEB", size),
-			IsActive:     comp.InsertCommit(0, "IS_ACTIVE", size),
+			IsBlock:      comp.InsertCommit(0, "IS_BLOCK", size, true),
+			IsFirstBlock: comp.InsertCommit(0, "IS_FIRST_BLOCK", size, true),
+			IsBlockBaseB: comp.InsertCommit(0, "IS_BLOCK_BASEB", size, true),
+			IsActive:     comp.InsertCommit(0, "IS_ACTIVE", size, true),
 			KeccakfSize:  size,
 		})
 	}

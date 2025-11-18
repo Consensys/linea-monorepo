@@ -30,7 +30,7 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 	var (
 		output = &KeccakFOutputs{
 			Hash:    make([]ifaces.Column, NbChunksHash),
-			hashNum: comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_HASH_NUM"), isBase2.Size()),
+			hashNum: comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_HASH_NUM"), isBase2.Size(), true),
 		}
 	)
 

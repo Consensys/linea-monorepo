@@ -63,8 +63,8 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 	bc.lookupTable.colBaseTheta = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASE_THETA"), cleanBaseTheta)
 
 	// declare the flags for base conversion
-	bc.isBase2 = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASE2"), size)
-	bc.isBaseTheta = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASETHETA"), size)
+	bc.isBase2 = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASE2"), size, true)
+	bc.isBaseTheta = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASETHETA"), size, true)
 
 	// declare the columns for the new and internal state
 	for x := 0; x < 5; x++ {
@@ -72,12 +72,12 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 			for z := 0; z < 16; z++ {
 
 				if z < 8 {
-					bc.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_NEXT_%v_%v_%v", x, y, z), size)
+					bc.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_NEXT_%v_%v_%v", x, y, z), size, true)
 				}
 
-				bc.stateInternalChi[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_CHI_%v_%v_%v", x, y, z), size)
+				bc.stateInternalChi[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_CHI_%v_%v_%v", x, y, z), size, true)
 
-				bc.stateInternalTheta[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_THETA_OR_BASE2_%v_%v_%v", x, y, z), size)
+				bc.stateInternalTheta[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_THETA_OR_BASE2_%v_%v_%v", x, y, z), size, true)
 
 				// attest the relation between stateInternalChi and stateInternalTheta using the lookup table
 				comp.InsertInclusionConditionalOnIncluded(0,

@@ -29,9 +29,9 @@ func TestIoKeccakF(t *testing.T) {
 	define := func(build *wizard.Builder) {
 
 		//declare input columns here
-		lane := build.CompiledIOP.InsertCommit(0, "LANE", laneSize)
-		isBeginningOfNewHash := build.CompiledIOP.InsertCommit(0, "IS_BEGINNING_OF_NEW_HASH", laneSize)
-		isLaneActive := build.CompiledIOP.InsertCommit(0, "IS_LANE_ACTIVE", laneSize)
+		lane := build.CompiledIOP.InsertCommit(0, "LANE", laneSize, true)
+		isBeginningOfNewHash := build.CompiledIOP.InsertCommit(0, "IS_BEGINNING_OF_NEW_HASH", laneSize, true)
+		isLaneActive := build.CompiledIOP.InsertCommit(0, "IS_LANE_ACTIVE", laneSize, true)
 
 		io = NewKeccakFBlocks(build.CompiledIOP, KeccakFInputs{
 			Lane:                 lane,

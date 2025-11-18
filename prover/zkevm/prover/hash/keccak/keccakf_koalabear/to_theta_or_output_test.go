@@ -31,14 +31,14 @@ func TestConvertAndClean(t *testing.T) {
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 8; z++ {
-					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_CURR_%v_%v_%v", x, y, z), size)
+					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_CURR_%v_%v_%v", x, y, z), size, true)
 
 				}
 			}
 		}
 
-		isActive = comp.InsertCommit(0, ifaces.ColID("BC_IS_ACTIVE"), size)
-		isFirstBlock = comp.InsertCommit(0, ifaces.ColID("BC_IS_FIRST_BLOCK"), size)
+		isActive = comp.InsertCommit(0, ifaces.ColID("BC_IS_ACTIVE"), size, true)
+		isFirstBlock = comp.InsertCommit(0, ifaces.ColID("BC_IS_FIRST_BLOCK"), size, true)
 
 		fromBaseX = newBackToThetaOrOutput(b.CompiledIOP, stateCurr, isActive, isFirstBlock)
 	}

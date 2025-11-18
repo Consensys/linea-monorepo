@@ -64,11 +64,13 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, keccakfSize in
 					0,
 					ifaces.ColIDf("STATE_THETA_DIRTY_%v_%v_%v", x, y, z),
 					keccakfSize,
+					true,
 				)
 				theta.stateInternalClean[x][y][z] = comp.InsertCommit(
 					0,
 					ifaces.ColIDf("STATE_THETA_CLEAN_%v_%v_%v", x, y, z),
 					keccakfSize,
+					true,
 				)
 
 				// declare the new state in bits
@@ -77,6 +79,7 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, keccakfSize in
 						0,
 						ifaces.ColIDf("STATE_THETA_BIT_%v_%v_%v", x, y, z*8+i),
 						keccakfSize,
+						true,
 					)
 				}
 			}
@@ -95,36 +98,43 @@ func (theta *theta) declareColumnsTheta(comp *wizard.CompiledIOP, keccakfSize in
 				0,
 				ifaces.ColIDf("C_MIDDLE_%v_%v", x, z),
 				keccakfSize,
+				true,
 			)
 			theta.cFinalDirty[x][z] = comp.InsertCommit(
 				0,
 				ifaces.ColIDf("C_FINAL_%v_%v", x, z),
 				keccakfSize,
+				true,
 			)
 			theta.cMiddleClean[x][z] = comp.InsertCommit(
 				0,
 				ifaces.ColIDf("C_MIDDLE_CLEAN_%v_%v", x, z),
 				keccakfSize,
+				true,
 			)
 			theta.cFinalClean[x][z] = comp.InsertCommit(
 				0,
 				ifaces.ColIDf("C_FINAL_CLEAN_%v_%v", x, z),
 				keccakfSize,
+				true,
 			)
 			theta.ccDirty[x][z] = comp.InsertCommit(
 				0,
 				ifaces.ColIDf("CC_%v_%v", x, z),
 				keccakfSize,
+				true,
 			)
 			theta.ccCleaned[x][z] = comp.InsertCommit(
 				0,
 				ifaces.ColIDf("CC_CLEAN_%v_%v", x, z),
 				keccakfSize,
+				true,
 			)
 			theta.msb[x][z] = comp.InsertCommit(
 				0,
 				ifaces.ColIDf("THETA_MSB_%v_%v", x, z),
 				keccakfSize,
+				true,
 			)
 		}
 	}

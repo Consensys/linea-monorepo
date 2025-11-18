@@ -57,12 +57,12 @@ func NewKeccakFBlocks(comp *wizard.CompiledIOP, inputs KeccakFInputs) *KeccakFBl
 		}
 	)
 
-	io.isFromFirstBlock = comp.InsertCommit(0, ifaces.ColIDf("IsFromFirstBlock"), laneSize)
-	io.isFromBlockBaseB = comp.InsertCommit(0, ifaces.ColIDf("IsFromBlockBaseB"), laneSize)
-	io.IsBlock = comp.InsertCommit(0, ifaces.ColIDf("IsBlock"), inputs.KeccakfSize)
-	io.IsFirstBlock = comp.InsertCommit(0, ifaces.ColIDf("IsFirstBlock"), inputs.KeccakfSize)
-	io.IsBlockBaseB = comp.InsertCommit(0, ifaces.ColIDf("IsBlockBaseB"), inputs.KeccakfSize)
-	io.IsActive = comp.InsertCommit(0, ifaces.ColIDf("IsActive"), inputs.KeccakfSize)
+	io.isFromFirstBlock = comp.InsertCommit(0, ifaces.ColIDf("IsFromFirstBlock"), laneSize, true)
+	io.isFromBlockBaseB = comp.InsertCommit(0, ifaces.ColIDf("IsFromBlockBaseB"), laneSize, true)
+	io.IsBlock = comp.InsertCommit(0, ifaces.ColIDf("IsBlock"), inputs.KeccakfSize, true)
+	io.IsFirstBlock = comp.InsertCommit(0, ifaces.ColIDf("IsFirstBlock"), inputs.KeccakfSize, true)
+	io.IsBlockBaseB = comp.InsertCommit(0, ifaces.ColIDf("IsBlockBaseB"), inputs.KeccakfSize, true)
+	io.IsActive = comp.InsertCommit(0, ifaces.ColIDf("IsActive"), inputs.KeccakfSize, true)
 	colRound := comp.InsertPrecomputed(ifaces.ColIDf("KeccakFRound"),
 		smartvectors.NewRegular(vector.PeriodicOne(keccak.NumRound, inputs.KeccakfSize)))
 
@@ -71,7 +71,7 @@ func NewKeccakFBlocks(comp *wizard.CompiledIOP, inputs KeccakFInputs) *KeccakFBl
 		for j := 0; j < NumSlices; j++ {
 			io.Blocks[i][j] = comp.InsertCommit(0,
 				ifaces.ColIDf("KeccakFBlock_%d_%d", i, j),
-				inputs.KeccakfSize)
+				inputs.KeccakfSize, true)
 		}
 	}
 

@@ -108,7 +108,7 @@ func rhoTestingModule(
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 64; z++ {
-					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("RHO_STATE_CURR_%v_%v_%v", x, y, z), size)
+					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("RHO_STATE_CURR_%v_%v_%v", x, y, z), size, true)
 				}
 			}
 		}

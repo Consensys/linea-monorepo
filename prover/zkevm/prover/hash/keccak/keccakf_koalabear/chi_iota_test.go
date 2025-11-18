@@ -117,15 +117,15 @@ func chiTestingModule(
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 64; z++ {
-					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_CURR_%v_%v_%v", x, y, z), size)
+					stateCurr[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_CURR_%v_%v_%v", x, y, z), size, true)
 					if z < common.NumSlices && (5*y)+x < common.NumLanesInBlock {
-						blocks[(5*y)+x][z] = comp.InsertCommit(0, ifaces.ColIDf("MESSAGE_BLOCK_%v_%v", (5*y)+x, z), size)
+						blocks[(5*y)+x][z] = comp.InsertCommit(0, ifaces.ColIDf("MESSAGE_BLOCK_%v_%v", (5*y)+x, z), size, true)
 					}
 				}
 			}
 		}
 
-		isBlockOther = comp.InsertCommit(0, "IS_BLOCK_OTHER", size)
+		isBlockOther = comp.InsertCommit(0, "IS_BLOCK_OTHER", size, true)
 
 		mod.ChiIota = newChi(comp, chiInputs{
 			stateCurr:    stateCurr,

@@ -69,7 +69,7 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chiIota {
 				// set the internal state column to the result of the linear combination
 				chi.stateInternal[x][y][z] = wizardutils.LinCombExpr(common.BaseChi, in.stateCurr[x][y][z*common.NumSlices:z*common.NumSlices+common.NumSlices])
 				// define the state next columns
-				chi.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_NEXT_%v_%v_%v", x, y, z), keccakfSize)
+				chi.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_NEXT_%v_%v_%v", x, y, z), keccakfSize, true)
 			}
 		}
 	}
