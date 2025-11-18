@@ -163,6 +163,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       const tx = await this.messageServiceContract.retryTransactionWithHigherFee(transactionHash);
 
       this.messageBeingRetry.message?.edit({
+        claimTxCreationDate: new Date(),
         claimTxGasLimit: parseInt(tx.gasLimit.toString()),
         claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
         claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
