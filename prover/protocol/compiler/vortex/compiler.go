@@ -78,7 +78,7 @@ func Compile(blowUpFactor int, isGnark bool, options ...VortexOp) func(*wizard.C
 		}
 
 		// create the compilation context
-		ctx := newCtx(comp, univQ, blowUpFactor, options...)
+		ctx := newCtx(comp, univQ, blowUpFactor, isGnark, options...)
 		// if there is only a single-round, then this should be 1
 		lastRound := comp.NumRounds() - 1
 
@@ -97,10 +97,10 @@ func Compile(blowUpFactor int, isGnark bool, options ...VortexOp) func(*wizard.C
 			})
 		}
 
-		ctx.generateVortexParams(isGnark)
+		ctx.generateVortexParams()
 		// Commit to precomputed columnsù
 		if ctx.IsNonEmptyPrecomputed() {
-			ctx.commitPrecomputeds(isGnark)
+			ctx.commitPrecomputeds()
 		}
 		ctx.registerOpeningProof(lastRound)
 
@@ -122,7 +122,7 @@ func Compile(blowUpFactor int, isGnark bool, options ...VortexOp) func(*wizard.C
 		})
 
 		if ctx.AddMerkleRootToPublicInputsOpt.Enabled {
-
+			fmt.Printf("okok, Adding merkle roots to public inputs\n")
 			for _, round := range ctx.AddMerkleRootToPublicInputsOpt.Round {
 				var (
 					name = fmt.Sprintf("%v_%v", ctx.AddMerkleRootToPublicInputsOpt.Name, round)
@@ -141,7 +141,7 @@ func Compile(blowUpFactor int, isGnark bool, options ...VortexOp) func(*wizard.C
 		}
 
 		if ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Enabled {
-
+			//todo@yao: remove this note, here is not called
 			var (
 				merkleRootColumn   = ctx.Items.Precomputeds.MerkleRoot
 				merkleRootSV       [blockSize]smartvectors.SmartVector
@@ -172,6 +172,10 @@ func Compile(blowUpFactor int, isGnark bool, options ...VortexOp) func(*wizard.C
 type Ctx struct {
 	// The underlying compiled IOP protocol
 	Comp *wizard.CompiledIOP
+
+	// IsGnark indicates whether inner circuit or outercircuit is being compiled
+	IsGnark bool
+
 	// snapshot the self-recursion count immediately
 	// when the context is created
 	SelfRecursionCount int
@@ -265,6 +269,9 @@ type Ctx struct {
 		// The Merkle roots are represented by a size 1 column
 		// in the wizard.
 		MerkleRoots [][blockSize]ifaces.Column
+
+		GnarkMerkleProofs [vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
+		GnarkMerkleRoots  [][vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
 	}
 
 	// IsSelfrecursed is a flag that tells the verifier Vortex to perform a
@@ -297,9 +304,10 @@ type Ctx struct {
 }
 
 // Construct a new compilation context
-func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor int, options ...VortexOp) *Ctx {
+func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor int, isGnark bool, options ...VortexOp) *Ctx {
 	ctx := &Ctx{
 		Comp:                         comp,
+		IsGnark:                      isGnark,
 		SelfRecursionCount:           comp.SelfRecursionCount,
 		Query:                        univQ,
 		PolynomialsTouchedByTheQuery: map[ifaces.ColID]struct{}{},
@@ -315,7 +323,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 				Tree              *smt_koalabear.Tree
 				DhWithMerkle      []field.Element
 
-				GnarkMerkleRoot   [11]ifaces.Column
+				GnarkMerkleRoot   [vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
 				GnarkTree         *smt_bls12377.Tree
 				GnarkDhWithMerkle []bls12377.Element
 			}
@@ -327,6 +335,9 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			OpenedNonSISColumns []ifaces.Column
 			MerkleProofs        [blockSize]ifaces.Column
 			MerkleRoots         [][blockSize]ifaces.Column
+
+			GnarkMerkleProofs [vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
+			GnarkMerkleRoots  [][vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
 		}{},
 		// Declare the by rounds/sis rounds/non-sis rounds commitments
 		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
@@ -341,9 +352,13 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	for _, op := range options {
 		op(ctx)
 	}
-
+	fmt.Printf("okok, Vortex compiler options applied\n")
 	// Preallocate all the merkle roots for all rounds
-	ctx.Items.MerkleRoots = make([][blockSize]ifaces.Column, comp.NumRounds())
+	if ctx.IsGnark {
+		ctx.Items.GnarkMerkleRoots = make([][vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column, comp.NumRounds())
+	} else {
+		ctx.Items.MerkleRoots = make([][blockSize]ifaces.Column, comp.NumRounds())
+	}
 
 	// Declare the RoundStatus slice
 	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
@@ -486,14 +501,27 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	// Instead, we send Merkle roots that are symbolized with 1-sized
 	// columns.
-	for i := 0; i < blockSize; i++ {
-		ctx.Items.MerkleRoots[round][i] = ctx.Comp.InsertProof(
-			round,
-			ifaces.ColID(ctx.MerkleRootName(round, i)),
-			len(field.Element{}),
-			true,
-		)
+	if ctx.IsGnark {
+
+		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
+			ctx.Items.GnarkMerkleRoots[round][i] = ctx.Comp.InsertProof(
+				round,
+				ifaces.ColID(ctx.MerkleRootName(round, i)),
+				len(field.Element{}),
+				true,
+			)
+		}
+	} else {
+		for i := 0; i < blockSize; i++ {
+			ctx.Items.MerkleRoots[round][i] = ctx.Comp.InsertProof(
+				round,
+				ifaces.ColID(ctx.MerkleRootName(round, i)),
+				len(field.Element{}),
+				true,
+			)
+		}
 	}
+
 }
 
 // asserts that the compiled IOP has only a single query and that this query
@@ -549,7 +577,7 @@ func (ctx *Ctx) assertPolynomialHaveSameLength(coms []ifaces.ColID) {
 }
 
 // generates the sis params. first check if we have any value to commit to
-func (ctx *Ctx) generateVortexParams(isGnark bool) {
+func (ctx *Ctx) generateVortexParams() {
 
 	totalCommitted := ctx.CommittedRowsCount + len(ctx.Items.Precomputeds.PrecomputedColums)
 
@@ -566,7 +594,7 @@ func (ctx *Ctx) generateVortexParams(isGnark bool) {
 		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	if isGnark {
+	if ctx.IsGnark {
 		ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
 		ctx.GnarkVortexParams = vortex_bls12377.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, smt_bls12377.Poseidon2, smt_bls12377.Poseidon2)
 	} else {
@@ -672,13 +700,25 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	// column that will contain the Merkle proofs altogether. But
 	// first, we need to evaluate its size. The proof size needs to
 	// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
-	for i := range ctx.Items.MerkleProofs {
-		ctx.Items.MerkleProofs[i] = ctx.Comp.InsertProof(
-			lastRound+2,
-			ifaces.ColID(ctx.MerkleProofName(i)),
-			ctx.MerkleProofSize(),
-			true,
-		)
+
+	if ctx.IsGnark {
+		for i := range ctx.Items.GnarkMerkleProofs {
+			ctx.Items.GnarkMerkleProofs[i] = ctx.Comp.InsertProof(
+				lastRound+2,
+				ifaces.ColID(ctx.MerkleProofName(i)),
+				ctx.MerkleProofSize(),
+				true,
+			)
+		}
+	} else {
+		for i := range ctx.Items.MerkleProofs {
+			ctx.Items.MerkleProofs[i] = ctx.Comp.InsertProof(
+				lastRound+2,
+				ifaces.ColID(ctx.MerkleProofName(i)),
+				ctx.MerkleProofSize(),
+				true,
+			)
+		}
 	}
 
 }
@@ -919,7 +959,7 @@ func (ctx *Ctx) MerkleProofSize() int {
 }
 
 // Commit to the precomputed columns
-func (ctx *Ctx) commitPrecomputeds(isGnark bool) {
+func (ctx *Ctx) commitPrecomputeds() {
 	var (
 		committedMatrix vortex.EncodedMatrix
 	)
@@ -945,7 +985,7 @@ func (ctx *Ctx) commitPrecomputeds(isGnark bool) {
 
 	// Increase the number of committed rows
 	ctx.CommittedRowsCount += numPrecomputeds
-	if !isGnark {
+	if !ctx.IsGnark {
 		var (
 			tree      *smt_koalabear.Tree
 			colHashes []field.Element
@@ -978,17 +1018,16 @@ func (ctx *Ctx) commitPrecomputeds(isGnark bool) {
 			colHashes []bls12377.Element
 		)
 		committedMatrix = ctx.VortexParams.EncodeRows(pols)
-		tree, colHashes = ctx.GnarkVortexParams.CommitMerkleWithoutSIS(pols)
+		tree, colHashes = ctx.GnarkVortexParams.CommitMerkleWithoutSIS(committedMatrix)
 
 		ctx.Items.Precomputeds.GnarkDhWithMerkle = colHashes
 		ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
 		ctx.Items.Precomputeds.GnarkTree = tree
 
 		roots := vortex_bls12377.EncodeBLS12377ToKoalabear(tree.Root)
-		//TODO@yao: map back to oct
+		//TODO@yao: map back to koalabear field elements
 		// And assign the 1-sized column to contain the root
-		for i := 0; i < 11; i++ {
-
+		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			ctx.Items.Precomputeds.GnarkMerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(ctx.PrecomputedGnarkMerkleRootName(i), smartvectors.NewConstant(roots[i], 1), true)
 		}
 

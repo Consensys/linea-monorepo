@@ -198,7 +198,6 @@ func GnarkVerifyOpeningWithMerkleProof(
 // We apply Poseidon2 hashing on the columns to compute leaves.
 // Should be used when the number of rows to commit is less than the [ApplySISThreshold]
 func (p *GnarkParams) CommitMerkleWithoutSIS(encodedMatrix vortex.EncodedMatrix) (tree *smt_bls12377.Tree, colHashes []fr.Element) {
-
 	timeTree := profiling.TimeIt(func() {
 		// colHashes stores the Poseidon2 hashes
 		// of the columns.

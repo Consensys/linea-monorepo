@@ -95,12 +95,14 @@ func EncodeKoalabearsToBytes(elements []field.Element) []byte {
 }
 
 // BLS to Koalabear encoding
-func EncodeBLS12377ToKoalabear(elements types.Bytes32) [11]field.Element {
+const GnarkKoalabearNumElements = 11
 
-	var res [11]field.Element
-	for i := 0; i < 11; i++ {
+func EncodeBLS12377ToKoalabear(elements types.Bytes32) [GnarkKoalabearNumElements]field.Element {
+
+	var res [GnarkKoalabearNumElements]field.Element
+	for i := 0; i < GnarkKoalabearNumElements; i++ {
 		var bytes [4]byte
-		if i != 10 {
+		if i != GnarkKoalabearNumElements-1 {
 			copy(bytes[1:], elements[i*3:(i+1)*3])
 		} else {
 			copy(bytes[2:], elements[30:32])
@@ -110,10 +112,10 @@ func EncodeBLS12377ToKoalabear(elements types.Bytes32) [11]field.Element {
 	return res
 }
 
-func DecodeKoalabearToBLS12377(elements [11]field.Element) types.Bytes32 {
+func DecodeKoalabearToBLS12377(elements [GnarkKoalabearNumElements]field.Element) types.Bytes32 {
 	var res types.Bytes32
-	for i := 0; i < 11; i++ {
-		if i != 10 {
+	for i := 0; i < GnarkKoalabearNumElements; i++ {
+		if i != GnarkKoalabearNumElements-1 {
 			bytes := elements[i].Bytes()
 			copy(res[i*3:(i+1)*3], bytes[1:])
 		} else {
