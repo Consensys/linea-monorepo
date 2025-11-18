@@ -33,3 +33,20 @@ func GnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4
 	}
 	return *res
 }
+
+// GnarkEvalCanonicalExt evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
+func GnarkEvalCanonicalExt(api frontend.API, p []gnarkfext.E4Gen, z gnarkfext.E4Gen) gnarkfext.E4Gen {
+
+	ext4, err := gnarkfext.NewExt4(api)
+	if err != nil {
+		panic(err)
+	}
+
+	res := ext4.Zero()
+	s := len(p)
+	for i := 0; i < len(p); i++ {
+		res = ext4.Mul(res, &z)
+		res = ext4.Add(res, &p[s-1-i])
+	}
+	return *res
+}

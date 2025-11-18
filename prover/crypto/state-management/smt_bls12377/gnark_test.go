@@ -10,7 +10,6 @@ import (
 
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
@@ -56,12 +55,8 @@ type MerkleProofCircuit struct {
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 
-	h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
-	if err != nil {
-		return err
-	}
 	for i := 0; i < len(circuit.Proofs); i++ {
-		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root, h)
+		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root)
 	}
 	return nil
 }
@@ -150,11 +145,6 @@ type MerkleProofCircuitWithEncoding struct {
 
 func (circuit *MerkleProofCircuitWithEncoding) Define(api frontend.API) error {
 
-	h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
-	if err != nil {
-		return err
-	}
-
 	// check that the encoding is ok
 	for i := 0; i < len(circuit.LeavesFrElmt); i++ {
 		encodedLeaf := encoding.EncodeWVsToFVs(api, circuit.Leavesoctuplet[i][:])
@@ -166,7 +156,7 @@ func (circuit *MerkleProofCircuitWithEncoding) Define(api frontend.API) error {
 
 	// verify the merkle proofs
 	for i := 0; i < len(circuit.Proofs); i++ {
-		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.LeavesFrElmt[i], circuit.Root, h)
+		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.LeavesFrElmt[i], circuit.Root)
 	}
 	return nil
 }

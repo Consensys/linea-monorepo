@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-func Encode8KoalabearToFrElement(elements [8]field.Element) fr.Element {
+func EncodeKoalabearOctupletToFrElement(elements [8]field.Element) fr.Element {
 	var res fr.Element
 	var bres, part big.Int
 	for i := 0; i < 8; i++ {
@@ -32,7 +32,7 @@ func EncodeKoalabearsToFrElement(elements []field.Element) []fr.Element {
 			copy(buf[:], elements[:8])
 			elements = elements[8:]
 		}
-		res = append(res, Encode8KoalabearToFrElement(buf))
+		res = append(res, EncodeKoalabearOctupletToFrElement(buf))
 	}
 	return res
 }

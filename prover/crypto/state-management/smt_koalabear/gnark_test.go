@@ -58,12 +58,8 @@ type MerkleProofCircuit struct {
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 
-	h, err := poseidon2_koalabear.NewGnarkMDHasher(api)
-	if err != nil {
-		return err
-	}
 	for i := 0; i < len(circuit.Proofs); i++ {
-		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root, h)
+		GnarkVerifyMerkleProof(api, circuit.Proofs[i], circuit.Leafs[i], circuit.Root)
 	}
 	return nil
 }

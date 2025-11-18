@@ -74,8 +74,9 @@ func GenerateKey(logTwoDegree, logTwoBound int, maxNumFieldToHash int) *Key {
 	}
 
 	res := &Key{
-		SisGnarkCrypto: rsis,
-		twiddleCosets:  nil,
+		MaxNumFieldToHash: maxNumFieldToHash,
+		SisGnarkCrypto:    rsis,
+		twiddleCosets:     nil,
 	}
 	return res
 }

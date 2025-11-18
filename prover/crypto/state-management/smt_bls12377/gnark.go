@@ -17,8 +17,12 @@ type GnarkProof struct {
 func GnarkRecoverRoot(
 	api frontend.API,
 	proof GnarkProof,
-	leaf frontend.Variable,
-	h poseidon2_bls12377.GnarkMDHasher) frontend.Variable {
+	leaf frontend.Variable) (frontend.Variable, error) {
+
+	h, err := poseidon2_bls12377.NewGnarkMDHasher(api)
+	if err != nil {
+		return nil, err
+	}
 
 	current := leaf
 	nbBits := len(proof.Siblings)
@@ -31,7 +35,7 @@ func GnarkRecoverRoot(
 		current = h.Sum()
 	}
 
-	return current
+	return current, nil
 }
 
 // GnarkVerifyMerkleProof asserts the validity of a [GnarkProof] against a root.
@@ -39,10 +43,13 @@ func GnarkVerifyMerkleProof(
 	api frontend.API,
 	proof GnarkProof,
 	leaf frontend.Variable,
-	root frontend.Variable,
-	h poseidon2_bls12377.GnarkMDHasher) {
+	root frontend.Variable) error {
 
-	r := GnarkRecoverRoot(api, proof, leaf, h)
+	r, err := GnarkRecoverRoot(api, proof, leaf)
+	if err != nil {
+		return err
+	}
 
 	api.AssertIsEqual(root, r)
+	return nil
 }

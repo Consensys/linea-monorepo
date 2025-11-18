@@ -44,6 +44,12 @@ func (h *GnarkMDHasher) Write(data ...frontend.Variable) {
 	h.buffer = append(h.buffer, data...)
 }
 
+func (h *GnarkMDHasher) WriteOctuplet(data ...Octuplet) {
+	for i := 0; i < len(data); i++ {
+		h.buffer = append(h.buffer, data[i][:]...)
+	}
+}
+
 func (h *GnarkMDHasher) SetState(state Octuplet) {
 	copy(h.state[:], state[:])
 }
