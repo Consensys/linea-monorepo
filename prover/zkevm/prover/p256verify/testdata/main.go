@@ -79,11 +79,11 @@ func main() {
 			logger.Error("mismatch between arithmetization and test case", "id", tc.Name, "arithmetization", isValid, "testcase", tcVerified)
 			return
 		}
-		toCircuit := "1"
 		if err != nil {
-			// the mocked arithmetization indicates the input does not go to the circuit
-			toCircuit = "0"
+			logger.Debug("skipping test case as not going to circuit")
+			continue
 		}
+		toCircuit := "1"
 		hLimbs := splitBigToLimbs(h)
 		rLimbs := splitBigToLimbs(r)
 		sLimbs := splitBigToLimbs(s)
