@@ -9,10 +9,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// Params collects the public parameters of the commitment scheme. The object
+// GnarkParams collects the public parameters of the commitment scheme. The object
 // should not be constructed directly (use [NewParamsSis] or [NewParamsNoSis])
 // instead nor be modified after having been constructed.
-type Params struct {
+type GnarkParams struct {
 	// Key stores the public parameters of the ring-SIS instance in use to
 	// hash the columns.
 	Key *ringsis.Key
@@ -34,12 +34,12 @@ type Params struct {
 	// polynomial p is appended whose size if not 0 mod MaxNbRows, it is padded
 	// as p' so that len(p')=0 mod MaxNbRows.
 	MaxNbRows int
-	// LeafHashFunc returns a `hash.Hash` which is used
+	// GnarkLeafHashFunc returns a `hash.Hash` which is used
 	// to compute the leaves of the Merkle tree.
-	LeafHashFunc func() smt_bls12377.Hasher
-	// MerkleHashFunc returns a `hash.Hash` which is used
+	GnarkLeafHashFunc func() smt_bls12377.Hasher
+	// GnarkMerkleHashFunc returns a `hash.Hash` which is used
 	// to hash the nodes of the Merkle tree.
-	MerkleHashFunc func() smt_bls12377.Hasher
+	GnarkMerkleHashFunc func() smt_bls12377.Hasher
 
 	// Coset table of the small domain, bit reversed
 	CosetTableBitReverse fr.Vector
@@ -62,7 +62,7 @@ func NewParams(
 	sisParams ringsis.Params,
 	merkleHashFunc func() smt_bls12377.Hasher,
 	leafHashFunc func() smt_bls12377.Hasher,
-) *Params {
+) *GnarkParams {
 
 	if !utils.IsPowerOfTwo(nbColumns) {
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
@@ -85,17 +85,17 @@ func NewParams(
 		panic(err)
 	}
 
-	res := &Params{
+	res := &GnarkParams{
 		Domains: [2]*fft.Domain{
 			fft.NewDomain(uint64(nbColumns), fft.WithShift(shift)),
 			fft.NewDomain(uint64(blowUpFactor*nbColumns), fft.WithCache()),
 		},
-		NbColumns:      nbColumns,
-		MaxNbRows:      maxNbRows,
-		BlowUpFactor:   blowUpFactor,
-		Key:            ringsis.GenerateKey(sisParams, maxNbRows),
-		LeafHashFunc:   leafHashFunc,
-		MerkleHashFunc: merkleHashFunc,
+		NbColumns:           nbColumns,
+		MaxNbRows:           maxNbRows,
+		BlowUpFactor:        blowUpFactor,
+		Key:                 ringsis.GenerateKey(sisParams, maxNbRows),
+		GnarkLeafHashFunc:   leafHashFunc,
+		GnarkMerkleHashFunc: merkleHashFunc,
 	}
 	smallDomain := res.Domains[0]
 	cosetTable, err := smallDomain.CosetTable()
@@ -113,6 +113,6 @@ func NewParams(
 
 // NumEncodedCols returns the number of columns in the encoded matrix,
 // equivalently this is the size of the codeword-rows.
-func (p *Params) NumEncodedCols() int {
+func (p *GnarkParams) NumEncodedCols() int {
 	return utils.NextPowerOfTwo(p.NbColumns) * p.BlowUpFactor
 }

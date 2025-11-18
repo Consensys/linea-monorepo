@@ -30,7 +30,7 @@ type VerifierInputs struct {
 	vortex.AlgebraicCheckInputs
 
 	// Merkle checks, it uses below parameters and EntryList from AlgebraicCheckInputs
-	BLS12_377_Params Params
+	BLS12_377_Params GnarkParams
 	// MerkleProofs store a list of [smt.Proof] (Merkle proofs) allegedly
 	// attesting the membership of the columns in the commitment tree.
 	//
@@ -113,7 +113,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 	var (
 		mTreeHashConfig = &smt_bls12377.Config{
-			HashFunc: v.BLS12_377_Params.MerkleHashFunc,
+			HashFunc: v.BLS12_377_Params.GnarkMerkleHashFunc,
 			Depth:    utils.Log2Ceil(v.BLS12_377_Params.NumEncodedCols()),
 		}
 	)

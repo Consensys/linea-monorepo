@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
-	vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
+	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -33,13 +33,17 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
+		//TODO@yao: check if this is correct, roots should be frontend.Variable
+		// precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
+		// roots = append(roots, precompRootSv[0])
+
 		preRoots := [blockSize]zk.WrappedVariable{}
 
 		for i := 0; i < blockSize; i++ {
 			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
 			preRoots[i] = precompRootSv[0]
 		}
-		roots = append(roots, vortex.Encode8WVsToFV(api, preRoots))
+		roots = append(roots, vortex_bls12377.Encode8WVsToFV(api, preRoots))
 	}
 
 	// Collect all the commitments : rounds by rounds
@@ -50,17 +54,17 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		preRoots := [blockSize]zk.WrappedVariable{}
 
 		for i := 0; i < blockSize; i++ {
-			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i)) // len 1 smart vector
+			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
 			preRoots[i] = rootSv[0]
 		}
-		roots = append(roots, vortex.Encode8WVsToFV(api, preRoots))
+		roots = append(roots, vortex_bls12377.Encode8WVsToFV(api, preRoots))
 
 	}
 
 	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
-	proof := vortex.GProof{}
+	proof := vortex_bls12377.GProof{}
 	proof.Rate = uint64(ctx.BlowUpFactor)
 	proof.RsDomain = fft.NewDomain(uint64(ctx.NumEncodedCols()), fft.WithCache())
 	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
@@ -91,12 +95,12 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	proof.MerkleProofs = ctx.unpackMerkleProofsGnark(api, packedMProofs, entryList)
 
 	// pass the parameters for a merkle-mode sis verification
-	params := vortex.GParams{}
+	params := vortex_bls12377.GParams{}
 	params.HasherFunc = factoryHasherFunc
 	params.NoSisHasher = factoryHasherFunc
 	params.Key = ctx.VortexParams.Key
 
-	vortex.GnarkVerifyOpeningWithMerkleProof(
+	vortex_bls12377.GnarkVerifyOpeningWithMerkleProof(
 		api,
 		params,
 		roots,
@@ -302,7 +306,7 @@ func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [8][]zk.WrappedVari
 				for coord := 0; coord < blockSize; coord++ {
 					v[coord] = sv[coord][curr]
 				}
-				proof.Siblings[depth-k-1] = vortex.Encode8WVsToFV(api, v)
+				proof.Siblings[depth-k-1] = vortex_bls12377.Encode8WVsToFV(api, v)
 				curr++
 			}
 

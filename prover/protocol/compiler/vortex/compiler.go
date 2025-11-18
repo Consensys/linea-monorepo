@@ -7,8 +7,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -51,7 +53,7 @@ There are the following requirements:
   - FOR ALL ROUNDS, all the polynomials must have the same size
   - The inbound wizard-IOP must be a single-point polynomial-IOP
 */
-func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
+func Compile(blowUpFactor int, isGnark bool, options ...VortexOp) func(*wizard.CompiledIOP) {
 
 	logrus.Trace("started vortex compiler")
 	defer logrus.Trace("finished vortex compiler")
@@ -93,10 +95,10 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 			})
 		}
 
-		ctx.generateVortexParams()
+		ctx.generateVortexParams(isGnark)
 		// Commit to precomputed columnsù
 		if ctx.IsNonEmptyPrecomputed() {
-			ctx.commitPrecomputeds()
+			ctx.commitPrecomputeds(isGnark)
 		}
 		ctx.registerOpeningProof(lastRound)
 
@@ -204,6 +206,9 @@ type Ctx struct {
 	MaxCommittedRoundNonSIS int
 	// The vortex parameters
 	VortexParams *vortex.Params
+
+	GnarkVortexParams *vortex_bls12377.GnarkParams
+
 	// The SIS hashing parameters
 	SisParams *ringsis.Params
 	// Optional parameter
@@ -534,7 +539,7 @@ func (ctx *Ctx) assertPolynomialHaveSameLength(coms []ifaces.ColID) {
 }
 
 // generates the sis params. first check if we have any value to commit to
-func (ctx *Ctx) generateVortexParams() {
+func (ctx *Ctx) generateVortexParams(isGnark bool) {
 
 	totalCommitted := ctx.CommittedRowsCount + len(ctx.Items.Precomputeds.PrecomputedColums)
 
@@ -551,15 +556,20 @@ func (ctx *Ctx) generateVortexParams() {
 		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
+	if isGnark {
+		ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
+		ctx.GnarkVortexParams = vortex_bls12377.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, smt_bls12377.Poseidon2, smt_bls12377.Poseidon2)
+	} else {
+		ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
+	}
 }
 
 // return the number of columns to open
 func (ctx *Ctx) NbColsToOpen() int {
 
 	// opportunistic sanity-check : params should be set by now
-	if ctx.VortexParams == nil {
-		utils.Panic("VortexParams was not set")
+	if ctx.VortexParams == nil && ctx.GnarkVortexParams == nil {
+		utils.Panic("VortexParams and GnarkVortexParams were not set")
 	}
 
 	// If the context was created with the relevant option,
@@ -899,7 +909,7 @@ func (ctx *Ctx) MerkleProofSize() int {
 }
 
 // Commit to the precomputed columns
-func (ctx *Ctx) commitPrecomputeds() {
+func (ctx *Ctx) commitPrecomputeds(isGnark bool) {
 	var (
 		committedMatrix vortex.EncodedMatrix
 		tree            *smt_koalabear.Tree
@@ -935,7 +945,18 @@ func (ctx *Ctx) commitPrecomputeds() {
 		ctx.CommittedRowsCountSIS += numPrecomputeds
 		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
 	} else {
-		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+		if !isGnark {
+			var (
+				tree      *smt_koalabear.Tree
+				colHashes []field.Element
+			)
+			committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+		} else {
+			committedMatrix = ctx.VortexParams.EncodeRows(pols)
+			//TODO@yao
+			tree, colHashes = ctx.GnarkVortexParams.CommitMerkleWithoutSIS(pols)
+		}
+
 	}
 	ctx.Items.Precomputeds.DhWithMerkle = colHashes
 	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix

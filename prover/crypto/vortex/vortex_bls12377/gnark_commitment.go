@@ -197,7 +197,7 @@ func GnarkVerifyOpeningWithMerkleProof(
 //
 // We apply Poseidon2 hashing on the columns to compute leaves.
 // Should be used when the number of rows to commit is less than the [ApplySISThreshold]
-func (p *Params) CommitMerkleWithoutSIS(encodedMatrix vortex.EncodedMatrix) (tree *smt_bls12377.Tree, colHashes []fr.Element) {
+func (p *GnarkParams) CommitMerkleWithoutSIS(encodedMatrix vortex.EncodedMatrix) (tree *smt_bls12377.Tree, colHashes []fr.Element) {
 
 	timeTree := profiling.TimeIt(func() {
 		// colHashes stores the Poseidon2 hashes
@@ -210,7 +210,7 @@ func (p *Params) CommitMerkleWithoutSIS(encodedMatrix vortex.EncodedMatrix) (tre
 
 		tree = smt_bls12377.BuildComplete(
 			leaves,
-			p.MerkleHashFunc,
+			p.GnarkMerkleHashFunc,
 		)
 	})
 
@@ -223,7 +223,7 @@ func (p *Params) CommitMerkleWithoutSIS(encodedMatrix vortex.EncodedMatrix) (tre
 }
 
 // Uses the no-sis hash function to hash the columns
-func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
+func (p *GnarkParams) noSisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
 
 	// Assert that all smart-vectors have the same numCols
 	numCols := v[0].Len()
@@ -242,7 +242,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []fr.Element
 	parallel.ExecuteThreadAware(
 		numCols,
 		func(threadID int) {
-			hashers[threadID] = p.LeafHashFunc()
+			hashers[threadID] = p.GnarkLeafHashFunc()
 		},
 		func(col, threadID int) {
 			hasher := hashers[threadID]
