@@ -28,8 +28,8 @@ fun TransactionForEthCall.toWeb3j(): org.web3j.protocol.core.methods.request.Tra
     /* chainId = */
     null,
     /* maxPriorityFeePerGas = */
-    this.maxFeePerGas?.toBigInteger(),
-    /* maxFeePerGas = */
     this.maxPriorityFeePerGas?.toBigInteger(),
+    /* maxFeePerGas = */
+    this.maxFeePerGas?.toBigInteger(),
   )
 }
