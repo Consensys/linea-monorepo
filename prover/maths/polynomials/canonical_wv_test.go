@@ -24,22 +24,14 @@ func (c *EvalCanonicalCircuit) Define(api frontend.API) error {
 	y := GnarkEvalCanonical(api, c.Poly, c.X)
 	apiGen, err := zk.NewGenericApi(api)
 	if err != nil {
-		apiGen.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
-		apiGen.AssertIsEqual(c.Y.B0.A1, y.B0.A1)
-		apiGen.AssertIsEqual(c.Y.B1.A0, y.B1.A0)
-		apiGen.AssertIsEqual(c.Y.B1.A1, y.B1.A1)
+		return err
 	}
+	apiGen.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
+	apiGen.AssertIsEqual(c.Y.B0.A1, y.B0.A1)
+	apiGen.AssertIsEqual(c.Y.B1.A0, y.B1.A0)
+	apiGen.AssertIsEqual(c.Y.B1.A1, y.B1.A1)
 
 	return nil
-}
-
-func eval(poly []fext.Element, x fext.Element) fext.Element {
-	var res fext.Element
-	for i := 0; i < len(poly); i++ {
-		res.Mul(&res, &x)
-		res.Add(&res, &poly[i])
-	}
-	return res
 }
 
 func TestGnarkEvalCanonical(t *testing.T) {

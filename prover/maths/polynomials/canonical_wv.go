@@ -2,9 +2,20 @@ package polynomials
 
 import (
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 )
+
+func eval(poly []fext.Element, x fext.Element) fext.Element {
+	var res fext.Element
+	s := len(poly)
+	for i := 0; i < len(poly); i++ {
+		res.Mul(&res, &x)
+		res.Add(&res, &poly[s-1-i])
+	}
+	return res
+}
 
 // GnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
 func GnarkEvalCanonical(api frontend.API, p []zk.WrappedVariable, z gnarkfext.E4Gen) gnarkfext.E4Gen {
