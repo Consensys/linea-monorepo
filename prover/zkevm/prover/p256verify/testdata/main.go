@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	outputFile  = "p256verify_inputs.csv"
+	outputFile = "p256verify_inputs.csv"
+	// get from https://eips.ethereum.org/assets/eip-7951/test-vectors.json
 	testvectors = "test-vectors.json"
 )
 
