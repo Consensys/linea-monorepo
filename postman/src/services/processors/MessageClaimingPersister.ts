@@ -8,7 +8,7 @@ import {
   JsonRpcProvider,
   ErrorDescription,
 } from "ethers";
-import { Direction, OnChainMessageStatus } from "@consensys/linea-sdk";
+import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { BaseError } from "../../core/errors";
 import { MessageStatus } from "../../core/enums";
 import { ILogger } from "../../core/utils/logging/ILogger";
@@ -211,19 +211,22 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
     let processingTimeInSeconds: number | undefined;
     let lineaInfuraLatencyInSeconds: number | undefined;
 
-    if (this.config.direction === Direction.L1_TO_L2 && message.claimTxCreationDate) {
+    if (message.claimTxCreationDate) {
       const block = await this.provider.getBlock(receipt.blockNumber);
       if (block) {
         processingTimeInSeconds = block.timestamp - message.claimTxCreationDate.getTime() / 1_000;
         lineaInfuraLatencyInSeconds = (receiptReceivedAt.getTime() - message.claimTxCreationDate.getTime()) / 1_000;
 
         this.transactionMetricsUpdater.incrementTransactionProcessedTotal(this.config.direction);
-        this.transactionMetricsUpdater.addTransactionProcessingTime(processingTimeInSeconds);
+        this.transactionMetricsUpdater.addTransactionProcessingTime(this.config.direction, processingTimeInSeconds);
         this.transactionMetricsUpdater.incrementTransactionProcessingTimeSum(
           this.config.direction,
           processingTimeInSeconds,
         );
-        this.transactionMetricsUpdater.addTransactionLineaInfuraLatencyTime(lineaInfuraLatencyInSeconds);
+        this.transactionMetricsUpdater.addTransactionLineaInfuraLatencyTime(
+          this.config.direction,
+          lineaInfuraLatencyInSeconds,
+        );
         this.transactionMetricsUpdater.incrementTransactionLineaInfuraLatencyTimeSum(
           this.config.direction,
           lineaInfuraLatencyInSeconds,

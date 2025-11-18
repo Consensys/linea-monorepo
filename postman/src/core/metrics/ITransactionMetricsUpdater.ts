@@ -1,6 +1,6 @@
 export interface ITransactionMetricsUpdater {
-  addTransactionProcessingTime(transactionProcessingTimeInSeconds: number): void;
-  addTransactionLineaInfuraLatencyTime(transactionBroadcastTimeInSeconds: number): void;
+  addTransactionProcessingTime(direction: string, transactionProcessingTimeInSeconds: number): void;
+  addTransactionLineaInfuraLatencyTime(direction: string, transactionBroadcastTimeInSeconds: number): void;
   incrementTransactionProcessedTotal(direction: string): void;
   incrementTransactionProcessingTimeSum(direction: string, transactionProcessingTimeInSeconds: number): void;
   incrementTransactionLineaInfuraLatencyTimeSum(

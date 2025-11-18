@@ -6,12 +6,14 @@ export class TransactionMetricsUpdater implements ITransactionMetricsUpdater {
       LineaPostmanMetrics.TransactionProcessingTime,
       [0.1, 0.5, 1, 2, 3, 5, 7, 10],
       "Time taken to process a transaction",
+      ["direction"],
     );
 
     this.metricsService.createHistogram(
       LineaPostmanMetrics.TransactionLineaInfuraLatencyTime,
       [0.1, 0.5, 1, 2, 3, 5, 7, 10],
       "Time taken to receive the transaction receipt from Infura",
+      ["direction"],
     );
 
     this.metricsService.createCounter(
@@ -33,17 +35,19 @@ export class TransactionMetricsUpdater implements ITransactionMetricsUpdater {
     );
   }
 
-  public addTransactionProcessingTime(transactionProcessingTimeInSeconds: number): void {
+  public addTransactionProcessingTime(direction: string, transactionProcessingTimeInSeconds: number): void {
     return this.metricsService.addValueToHistogram(
       LineaPostmanMetrics.TransactionProcessingTime,
       transactionProcessingTimeInSeconds,
+      { direction },
     );
   }
 
-  public addTransactionLineaInfuraLatencyTime(transactionLineaInfuraLatencyInSeconds: number): void {
+  public addTransactionLineaInfuraLatencyTime(direction: string, transactionLineaInfuraLatencyInSeconds: number): void {
     return this.metricsService.addValueToHistogram(
       LineaPostmanMetrics.TransactionLineaInfuraLatencyTime,
       transactionLineaInfuraLatencyInSeconds,
+      { direction },
     );
   }
 
