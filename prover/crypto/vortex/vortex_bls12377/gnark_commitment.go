@@ -34,7 +34,7 @@ type VerifyOpeningCircuitMerkleTree struct {
 // allocate the variables for the verification circuit with Merkle trees
 func AllocateCircuitVariablesWithMerkleTree(
 	verifyCircuit *VerifyOpeningCircuitMerkleTree,
-	proof OpeningProof,
+	proof vortex.OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
 	roots []types.Bytes32,
@@ -73,7 +73,7 @@ func AllocateCircuitVariablesWithMerkleTree(
 // AssignCicuitVariablesWithMerkleTree assign the variables for the verification circuit with Merkle trees
 func AssignCicuitVariablesWithMerkleTree(
 	verifyCircuit *VerifyOpeningCircuitMerkleTree,
-	proof OpeningProof,
+	proof vortex.OpeningProof,
 	ys [][]fext.Element,
 	entryList []int,
 	roots []types.Bytes32,

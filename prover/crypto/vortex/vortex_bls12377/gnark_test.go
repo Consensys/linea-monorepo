@@ -517,7 +517,7 @@ func TestLinearCombinationCircuit(t *testing.T) {
 // N Commitments with Merkle opening
 
 func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPolys, polySize, blowUpFactor int) (
-	proof *OpeningProof,
+	proof *vortex.OpeningProof,
 	randomCoin fext.Element,
 	x fext.Element,
 	yLists [][]fext.Element,
@@ -568,10 +568,10 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	}
 
 	// Generate the proof
-	proof = &OpeningProof{}
+	proof = &vortex.OpeningProof{}
 	proof.LinearCombination = koalabearParams.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
 
-	merkleProofs = proof.Complete(entryList, committedMatrices, trees)
+	merkleProofs = proof.GnarkComplete(entryList, committedMatrices, trees)
 
 	// Check the proof
 	err := VerifyOpening(&VerifierInputs{
