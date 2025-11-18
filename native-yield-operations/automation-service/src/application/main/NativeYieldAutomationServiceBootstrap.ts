@@ -20,7 +20,6 @@ import {
   BeaconNodeApiClient,
   OAuth2TokenClient,
 } from "@consensys/linea-shared-utils";
-import {} from "@consensys/linea-shared-utils";
 import { Chain, PublicClient, TransactionReceipt } from "viem";
 import { YieldManagerContractClient } from "../../clients/contracts/YieldManagerContractClient.js";
 import { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
@@ -248,14 +247,6 @@ export class NativeYieldAutomationServiceBootstrap {
       config.timing.contractReadRetryTimeMs,
     );
   }
-
-  /**
-   * Connects services to external dependencies.
-   * Currently a no-op but reserved for future connection logic.
-   *
-   * @returns {Promise<void>} A promise that resolves when services are connected.
-   */
-  public async connectServices(): Promise<void> {}
 
   /**
    * Starts all services.

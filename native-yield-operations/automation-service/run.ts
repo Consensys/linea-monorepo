@@ -9,7 +9,6 @@ async function main() {
   const application = new NativeYieldAutomationServiceBootstrap({
     ...options,
   });
-  await application.connectServices();
   application.startAllServices();
 }
 
