@@ -18,7 +18,6 @@ const createLoggerMock = (): ILogger => ({
   error: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
-  warnOrError: jest.fn(),
 });
 
 const createMetricsUpdaterMock = () => {

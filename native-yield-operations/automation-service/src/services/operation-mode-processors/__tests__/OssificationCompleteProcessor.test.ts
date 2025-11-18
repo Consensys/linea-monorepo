@@ -44,7 +44,6 @@ describe("OssificationCompleteProcessor", () => {
       error: jest.fn(),
       warn: jest.fn(),
       debug: jest.fn(),
-      warnOrError: jest.fn(),
     } as unknown as jest.Mocked<ILogger>;
     metricsUpdater = {
       incrementOperationModeTrigger: jest.fn(),

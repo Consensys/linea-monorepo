@@ -32,7 +32,6 @@ describe("OAuth2TokenClient", () => {
       error: jest.fn(),
       warn: jest.fn(),
       debug: jest.fn(),
-      warnOrError: jest.fn(),
     };
     retryService = {
       retry: jest.fn(async (fn) => fn()),

@@ -50,7 +50,6 @@ describe("LidoAccountingReportClient", () => {
       error: jest.fn(),
       warn: jest.fn(),
       debug: jest.fn(),
-      warnOrError: jest.fn(),
     }) as unknown as jest.Mocked<ILogger>;
 
   const createRetryServiceMock = (): jest.Mocked<IRetryService> => {

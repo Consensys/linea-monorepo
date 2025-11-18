@@ -22,7 +22,6 @@ describe("BeaconNodeApiClient", () => {
       error: jest.fn(),
       warn: jest.fn(),
       debug: jest.fn(),
-      warnOrError: jest.fn(),
     };
     retryService = mock<IRetryService>();
     retryService.retry.mockImplementation(async (fn) => fn());

@@ -5,5 +5,4 @@ export interface ILogger {
   error(message: any, ...params: any[]): void;
   warn(message: any, ...params: any[]): void;
   debug(message: any, ...params: any[]): void;
-  warnOrError(message: any, ...params: any[]): void;
 }

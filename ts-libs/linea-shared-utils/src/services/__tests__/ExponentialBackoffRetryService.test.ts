@@ -15,7 +15,6 @@ const createLogger = (): jest.Mocked<ILogger> =>
     error: jest.fn(),
     warn: jest.fn(),
     debug: jest.fn(),
-    warnOrError: jest.fn(),
   }) as unknown as jest.Mocked<ILogger>;
 
 describe("ExponentialBackoffRetryService", () => {

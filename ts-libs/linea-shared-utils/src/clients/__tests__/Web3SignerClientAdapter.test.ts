@@ -59,7 +59,6 @@ const createLogger = (): jest.Mocked<ILogger> =>
     warn: jest.fn(),
     error: jest.fn(),
     debug: jest.fn(),
-    warnOrError: jest.fn(),
   }) as jest.Mocked<ILogger>;
 
 describe("Web3SignerClientAdapter", () => {

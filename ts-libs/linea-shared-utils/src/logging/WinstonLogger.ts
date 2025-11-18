@@ -104,33 +104,4 @@ export class WinstonLogger implements ILogger {
   public debug(message: any, ...params: any[]): void {
     this.logger.debug(message, ...params);
   }
-
-  /**
-   * Decides whether to log a message as a `warning` or an `error` based on its content and severity.
-   *
-   * This method is particularly useful for handling errors that may not always require immediate attention or could be retried successfully.
-   *
-   * @param {any} message - The primary log message or error object.
-   * @param {...any[]} params - Additional parameters or metadata to log alongside the message.
-   */
-  public warnOrError(message: any, ...params: any[]): void {
-    if (this.shouldLogErrorAsWarning(message)) {
-      this.warn(message, ...params);
-    } else {
-      this.error(message, ...params);
-    }
-  }
-
-  /**
-   * Hook that determines whether a given payload should be logged as a warning instead of an error.
-   *
-   * Packages extending the base logger can override this method to provide domain-specific logic.
-   *
-   * @param {unknown} _error - The value provided to `warnOrError`.
-   * @returns {boolean} `true` to downgrade the entry to `warn`, `false` otherwise.
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected shouldLogErrorAsWarning(_error: unknown): boolean {
-    return false;
-  }
 }

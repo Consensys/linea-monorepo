@@ -9,7 +9,6 @@ const buildLogger = () => {
     error: jest.fn(),
     warn: warnMock,
     debug: jest.fn(),
-    warnOrError: jest.fn(),
   };
   return { logger, warnMock };
 };
