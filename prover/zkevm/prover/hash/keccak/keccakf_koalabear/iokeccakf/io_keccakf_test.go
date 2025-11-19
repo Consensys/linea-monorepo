@@ -33,12 +33,12 @@ func TestIoKeccakF(t *testing.T) {
 		isBeginningOfNewHash := build.CompiledIOP.InsertCommit(0, "IS_BEGINNING_OF_NEW_HASH", laneSize, true)
 		isLaneActive := build.CompiledIOP.InsertCommit(0, "IS_LANE_ACTIVE", laneSize, true)
 
-		io = NewKeccakFBlocks(build.CompiledIOP, KeccakFInputs{
+		io = NewKeccakFBlocks(build.CompiledIOP, LaneInfo{
 			Lane:                 lane,
 			IsBeginningOfNewHash: isBeginningOfNewHash,
 			IsLaneActive:         isLaneActive,
-			KeccakfSize:          keccakfSize,
-		})
+		},
+			keccakfSize)
 	}
 
 	prover := func(run *wizard.ProverRuntime) {

@@ -1,6 +1,8 @@
 package keccakfkoalabear
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -36,8 +38,6 @@ type Module struct {
 	ChiIota *chiIota
 	// module to prepare the state to go  back to theta or output the hash result.
 	BackToThetaOrOutput *BackToThetaOrOutput
-	// hash outputs module, responsible for extracting the hash result from the final state.
-	Outputs *iokeccakf.KeccakFOutputs
 }
 
 // NewModule creates a new keccakf module, declares the columns and constraints and returns its pointer
@@ -70,9 +70,10 @@ func NewModule(comp *wizard.CompiledIOP, in KeccakfInputs) *Module {
 					)
 				}
 			} else {
+				fmt.Printf("expect state zero at x=%v,y=%v, m= %v\n", x, y, m)
 				for z := 0; z < kcommon.NumSlices; z++ {
 					//  the remaining columns of the state are set to zero
-					comp.InsertGlobal(0, ifaces.QueryIDf("STATE_IS_SET_TO_ZERO_%v,%v_%v", x, y, z),
+					comp.InsertGlobal(0, ifaces.QueryIDf("STATE_IS_SET_TO_ZERO_%v_%v_%v", x, y, z),
 						sym.Mul(in.IsFirstBlock, initialState[x][y][z]),
 					)
 				}
@@ -111,9 +112,6 @@ func NewModule(comp *wizard.CompiledIOP, in KeccakfInputs) *Module {
 		}
 	}
 
-	// get the hash results from the output of the module.
-	hashOutput := iokeccakf.NewOutputKeccakF(comp, finalState, thetaOrOutput.isBase2)
-
 	return &Module{
 		Inputs:              in,
 		initialState:        initialState,
@@ -121,7 +119,6 @@ func NewModule(comp *wizard.CompiledIOP, in KeccakfInputs) *Module {
 		RhoPi:               rhoPi,
 		ChiIota:             chiIota,
 		BackToThetaOrOutput: thetaOrOutput,
-		Outputs:             hashOutput,
 	}
 }
 
@@ -132,14 +129,13 @@ func (m *Module) Assign(run *wizard.ProverRuntime, traces keccak.PermTraces) {
 	m.theta.assignTheta(run, m.initialState)     // assign the theta module with the state
 	m.RhoPi.assignRho(run, m.theta.stateNext)    // assign the rho pi module with the state after theta
 	m.ChiIota.assignChi(run, *m.RhoPi.stateNext) // assign the chi iota module with the state after rho pi
-	m.BackToThetaOrOutput.Run(run)               // assign the back to theta or output module with the state after chi iota
-	m.Outputs.Assign(run)                        // assign the output module to get the hash result
+	m.BackToThetaOrOutput.Run(run)               // assign the
 }
 
 // Returns the number of rows required to prove `numKeccakf` calls to the
 // permutation function. The result is padded to the next power of 2 in order to
 // satisfy the requirements of the Wizard to have only powers of 2.
-func numRows(numKeccakf int) int {
+func NumRows(numKeccakf int) int {
 	return utils.NextPowerOfTwo(numKeccakf * kcommon.NumRounds)
 }
 

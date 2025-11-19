@@ -55,7 +55,7 @@ func keccakfTestingModule(
 
 	var (
 		mod    = &Module{}
-		size   = numRows(maxNumKeccakf)
+		size   = NumRows(maxNumKeccakf)
 		blocks = make([][kcommon.NumSlices]ifaces.Column, kcommon.NumLanesInBlock)
 	)
 
