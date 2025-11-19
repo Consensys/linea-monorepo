@@ -45,8 +45,8 @@ func EmptyLeaf() field.Octuplet {
 func hashLR(nodeL, nodeR field.Octuplet) field.Octuplet {
 	var d field.Octuplet
 	hasher := poseidon2_koalabear.NewMDHasher()
-	hasher.WriteElements(nodeL[:])
-	hasher.WriteElements(nodeR[:])
+	hasher.WriteElements(nodeL[:]...)
+	hasher.WriteElements(nodeR[:]...)
 	d = hasher.SumElement()
 	return d
 }

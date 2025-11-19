@@ -1,9 +1,8 @@
-package vortex_bls12377
+package vortex_koalabear
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -11,15 +10,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// When SIS: hash_columns = poseidon2_bls12377(SIS(col))
-// When no SIS: hash_columns = poseidon2_bls12377(encode_bls12377(col))
+// When SIS: hash_columns = poseidon2_koalabear(SIS(col))
+// When no SIS: hash_columns = poseidon2_koalabear(encode_bls12377(col))
 
 // EncodedMatrix represents the witness of a Vortex matrix commitment, it is
 // represented as an array of rows.
 type EncodedMatrix = []smartvectors.SmartVector
 
 // Commitment represents the root of a Merkle tree
-type Commitment = fr.Element
+type Commitment = field.Octuplet
 
 // Params Embeds vortex.Params to define local methods
 type Params struct {
@@ -40,8 +39,8 @@ func NewParams(rate, nbColumns, maxNbRows, logTwoDegree, logTwoBound int) Params
 
 // CommitMerkleWithSIS
 //
-// let h: koala* -> frElement
-// 				a,b,.. -> poseidon2_bls12377(SIS(a,b,...)
+// let h: koala* -> field.Octuplet
+// 				a,b,.. -> poseidon2_koalabear(SIS(a,b,...)
 
 // commits to ps by hashing the columns like this:
 // [v11 v12 .... v1n ]
@@ -53,7 +52,7 @@ func NewParams(rate, nbColumns, maxNbRows, logTwoDegree, logTwoBound int) Params
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_bls12377.Tree) {
+func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_koalabear.Tree) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.
@@ -66,7 +65,7 @@ func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (En
 
 	colHashes := p.sisTransversalHash(encodedMatrix)
 
-	tree := smt_bls12377.BuildComplete(
+	tree := smt_koalabear.BuildComplete(
 		colHashes,
 	)
 
@@ -75,25 +74,25 @@ func (p *Params) CommitMerkleWithSIS(polysMatrix []smartvectors.SmartVector) (En
 	return encodedMatrix, commitment, tree
 }
 
-func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
+func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) []field.Octuplet {
 
 	// sisHashes = [ [a, b ...], ... ] where [a, b, ...] is the sis hash of a column, a, b etc are on koalabear
-	// let h = poseidon2_bls377
+	// let h = poseidon2_koalabear
 	// compute [ h([a, b ...]), .. ]
 	sisHashes := make([]field.Element, p.RsParams.NbEncodedColumns()*p.Key.OutputSize())
 	sisHashes = p.Key.TransversalHash(v, sisHashes)
 	chunkSize := p.Key.OutputSize()
 	numCols := p.RsParams.NbEncodedColumns()
-	leaves := make([]fr.Element, numCols)
+	leaves := make([]field.Octuplet, numCols)
 
 	parallel.Execute(numCols, func(start, stop int) {
 
-		hasher := poseidon2_bls12377.NewMDHasher()
+		hasher := poseidon2_koalabear.NewMDHasher()
 
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 			hasher.Reset()
-			hasher.WriteKoalabearElements(sisHashes[startChunk : startChunk+chunkSize]...)
+			hasher.WriteElements(sisHashes[startChunk : startChunk+chunkSize]...)
 			leaves[chunkID] = hasher.SumElement()
 		}
 	})
@@ -102,8 +101,8 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
 
 // CommitMerkleWithoutSIS
 //
-// let h: koala* -> frElement
-// 				a,b,.. -> poseidon2_bls12377(a,b,...)
+// let h: koala* -> field.Octuplet
+// 				a,b,.. -> poseidon2_koalabear(a,b,...)
 
 // commits to ps by hashing the columns like this:
 // [v11 v12 .... v1n ]
@@ -115,7 +114,7 @@ func (p *Params) sisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
 //
 // [h() .. ....   h()] := v
 // Compute MT of v
-func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_bls12377.Tree) {
+func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) (EncodedMatrix, Commitment, *smt_koalabear.Tree) {
 
 	if len(polysMatrix) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(polysMatrix), p.MaxNbRows)
@@ -127,7 +126,7 @@ func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) 
 
 	colHashes := p.noSisTransversalHash(encodedMatrix)
 
-	tree := smt_bls12377.BuildComplete(
+	tree := smt_koalabear.BuildComplete(
 		colHashes,
 	)
 
@@ -137,7 +136,7 @@ func (p *Params) CommitMerkleWithoutSIS(polysMatrix []smartvectors.SmartVector) 
 
 // Uses the no-sis hash function to hash the columns. It uses the leafHasher
 // function to hash the columns.
-func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []fr.Element {
+func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Octuplet {
 
 	// Assert that all smart-vectors have the same numCols
 	nbCols := v[0].Len()
@@ -149,15 +148,15 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []fr.Element
 	}
 
 	nbRows := len(v)
-	res := make([]fr.Element, nbCols)
+	res := make([]field.Octuplet, nbCols)
 	parallel.Execute(nbCols, func(start, end int) {
 		curCol := make([]field.Element, nbRows)
-		h := poseidon2_bls12377.NewMDHasher()
+		h := poseidon2_koalabear.NewMDHasher()
 		for i := start; i < end; i++ {
 			for j := 0; j < nbRows; j++ {
 				curCol[j] = v[j].Get(i)
 			}
-			h.WriteKoalabearElements(curCol...)
+			h.WriteElements(curCol...)
 			res[i] = h.SumElement()
 			h.Reset()
 		}
