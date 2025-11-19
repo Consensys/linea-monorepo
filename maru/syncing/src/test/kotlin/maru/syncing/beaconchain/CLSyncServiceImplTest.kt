@@ -14,6 +14,8 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
+import linea.timer.JvmTimerFactory
+import linea.timer.TimerFactory
 import maru.config.P2PConfig
 import maru.consensus.ChainFork
 import maru.consensus.ClFork
@@ -137,8 +139,22 @@ class CLSyncServiceImplTest {
 
     sourceNodePort = findFreePort()
     targetNodePort = findFreePort()
-    targetP2pNetwork = createNetwork(targetBeaconChain, targetNodeKey, targetNodePort, InMemoryP2PState())
-    sourceP2pNetwork = createNetwork(sourceBeaconChain, sourceNodeKey, sourceNodePort, InMemoryP2PState())
+    targetP2pNetwork =
+      createNetwork(
+        targetBeaconChain,
+        targetNodeKey,
+        targetNodePort,
+        InMemoryP2PState(),
+        JvmTimerFactory(),
+      )
+    sourceP2pNetwork =
+      createNetwork(
+        sourceBeaconChain,
+        sourceNodeKey,
+        sourceNodePort,
+        InMemoryP2PState(),
+        JvmTimerFactory(),
+      )
 
     createBlocks(
       beaconChain = sourceBeaconChain,
@@ -390,6 +406,7 @@ class CLSyncServiceImplTest {
     key: ByteArray,
     port: UInt,
     p2PState: P2PState,
+    timerFactory: TimerFactory,
   ): P2PNetworkImpl {
     val forkIdHashProvider = createForkIdHashProvider(beaconChain)
     val statusManager = StatusManager(beaconChain, forkIdHashProvider)
@@ -411,6 +428,7 @@ class CLSyncServiceImplTest {
         forkIdHashManager = forkIdHashProvider,
         isBlockImportEnabledProvider = { true },
         p2PState = p2PState,
+        timerFactory = timerFactory,
       )
     return p2pNetworkImpl
   }

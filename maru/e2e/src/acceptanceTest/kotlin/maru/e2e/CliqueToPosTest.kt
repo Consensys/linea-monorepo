@@ -134,7 +134,7 @@ class CliqueToPosTest {
     @JvmStatic
     fun afterAll() {
       if (::maruSequencer.isInitialized) {
-        maruSequencer.stop()
+        maruSequencer.stop().get()
         maruSequencer.close()
       }
       qbftCluster.after()

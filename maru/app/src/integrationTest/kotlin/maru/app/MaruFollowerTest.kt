@@ -59,7 +59,7 @@ class MaruFollowerTest {
         syncingConfig = syncingConfig,
       )
     validatorStack.setMaruApp(validatorMaruApp)
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     // Get the validator's p2p port after it's started
     val validatorP2pPort = validatorStack.p2pPort
@@ -75,7 +75,7 @@ class MaruFollowerTest {
         enablePayloadValidation = payloadValidationEnabled,
       )
     followerStack.setMaruApp(followerMaruApp)
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     log.info("Nodes are peered")
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
@@ -109,8 +109,8 @@ class MaruFollowerTest {
 
   @AfterEach
   fun tearDown() {
-    followerStack.maruApp.stop()
-    validatorStack.maruApp.stop()
+    followerStack.maruApp.stop().get()
+    validatorStack.maruApp.stop().get()
     followerStack.maruApp.close()
     validatorStack.maruApp.close()
     cluster.close()
@@ -170,7 +170,7 @@ class MaruFollowerTest {
     // This is here mainly to wait until block propagation is complete
     checkValidatorAndFollowerBlocks(blocksToProduce)
 
-    followerStack.maruApp.stop()
+    followerStack.maruApp.stop().get()
     followerStack.maruApp.close()
     followerStack.setMaruApp(
       maruFactory.buildTestMaruFollowerWithP2pPeering(
@@ -180,7 +180,7 @@ class MaruFollowerTest {
         validatorPortForStaticPeering = validatorStack.p2pPort,
       ),
     )
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
     validatorStack.maruApp.awaitTillMaruHasPeers(1u)
@@ -217,7 +217,7 @@ class MaruFollowerTest {
     // This is here mainly to wait until block propagation is complete
     checkValidatorAndFollowerBlocks(blocksToProduce)
 
-    validatorStack.maruApp.stop()
+    validatorStack.maruApp.stop().get()
     validatorStack.maruApp.close()
     validatorStack.setMaruApp(
       maruFactory.buildTestMaruValidatorWithP2pPeering(
@@ -227,7 +227,7 @@ class MaruFollowerTest {
         p2pPort = validatorP2pPort,
       ),
     )
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     repeat(blocksToProduce) {
       transactionsHelper.run {
@@ -282,7 +282,7 @@ class MaruFollowerTest {
   fun `Maru follower is able to complete initial syncing`(syncingConfig: SyncingConfig) {
     setupMaruHelper(syncingConfig)
 
-    followerStack.maruApp.stop()
+    followerStack.maruApp.stop().get()
     followerStack.maruApp.close()
 
     val residueBlocks = 3 // residue of modulo peerChainHeightGranularity i.e. 10
@@ -311,7 +311,7 @@ class MaruFollowerTest {
         syncingConfig = syncingConfig,
       ),
     )
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->
@@ -346,7 +346,7 @@ class MaruFollowerTest {
     // This is here mainly to wait until block propagation is complete
     checkValidatorAndFollowerBlocks(blocksToProduceWithoutResidue)
 
-    followerStack.maruApp.stop()
+    followerStack.maruApp.stop().get()
     followerStack.maruApp.close()
 
     repeat(blocksToProduceWithoutResidue + residueBlocks) {
@@ -369,7 +369,7 @@ class MaruFollowerTest {
         syncingConfig = syncingConfig,
       ),
     )
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     when (syncingConfig.syncTargetSelection) {
       is SyncingConfig.SyncTargetSelection.Highest ->

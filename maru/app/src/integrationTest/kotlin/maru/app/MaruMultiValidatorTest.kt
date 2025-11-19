@@ -71,8 +71,8 @@ class MaruMultiValidatorTest {
 
   @AfterEach
   fun tearDown() {
-    validator2Stack.maruApp.stop()
-    validator1Stack.maruApp.stop()
+    validator2Stack.maruApp.stop().get()
+    validator1Stack.maruApp.stop().get()
     validator2Stack.maruApp.close()
     validator1Stack.maruApp.close()
     cluster.close()
@@ -97,7 +97,7 @@ class MaruMultiValidatorTest {
         initialValidators = initialValidators,
       )
     validator1Stack.setMaruApp(validator1MaruApp)
-    validator1Stack.maruApp.start()
+    validator1Stack.maruApp.start().get()
     // Get validator 1 p2p port and node ID after it's started
     val validator1P2pPort = validator1Stack.p2pPort
     val validator1NodeId = validator1Stack.maruApp.p2pNetwork.nodeId
@@ -115,7 +115,7 @@ class MaruMultiValidatorTest {
         initialValidators = initialValidators,
       )
     validator2Stack.setMaruApp(validator2MaruApp)
-    validator2Stack.maruApp.start()
+    validator2Stack.maruApp.start().get()
 
     validator2Stack.maruApp.awaitTillMaruHasPeers(1u)
     validator1Stack.maruApp.awaitTillMaruHasPeers(1u)

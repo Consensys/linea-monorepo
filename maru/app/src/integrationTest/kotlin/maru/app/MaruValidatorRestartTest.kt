@@ -55,9 +55,9 @@ class MaruValidatorRestartTest {
 
   @AfterEach
   fun tearDown() {
-    followerStack.maruApp.stop()
+    followerStack.maruApp.stop().get()
     followerStack.maruApp.close()
-    validatorStack.maruApp.stop()
+    validatorStack.maruApp.stop().get()
     validatorStack.maruApp.close()
     cluster.close()
   }
@@ -75,7 +75,7 @@ class MaruValidatorRestartTest {
         discoveryPort = freePorts[1],
       )
     followerStack.setMaruApp(followerMaruApp)
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     val followerENR =
       followerStack.maruApp.p2pNetwork.localNodeRecord
@@ -91,7 +91,7 @@ class MaruValidatorRestartTest {
         bootnode = followerENR,
       )
     validatorStack.setMaruApp(validatorMaruApp)
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     log.info(
       "Follower: ${followerStack.maruApp.p2pNetwork.nodeId}, validator: ${validatorStack.maruApp.p2pNetwork.nodeId}",
@@ -114,7 +114,7 @@ class MaruValidatorRestartTest {
     validatorStack.besuNode.assertMinedBlocks(blocksToProduce)
     followerStack.besuNode.assertMinedBlocks(blocksToProduce)
 
-    validatorStack.maruApp.stop()
+    validatorStack.maruApp.stop().get()
     validatorStack.maruApp.close()
 
     await
@@ -132,7 +132,7 @@ class MaruValidatorRestartTest {
         bootnode = followerENR,
       )
     validatorStack.setMaruApp(newValidatorMaruApp)
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     log.info("Restarted validator: ${newValidatorMaruApp.p2pNetwork.nodeId}")
 

@@ -8,6 +8,7 @@
  */
 package maru.syncing
 
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
@@ -17,7 +18,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import testutils.maru.TestablePeriodicTimer
+import testutils.maru.TestablePeriodicTimerFactory
 
 class PeerChainTrackerTest {
   // Dummy implementation of PeersHeadBlockProvider for testing
@@ -55,7 +56,7 @@ class PeerChainTrackerTest {
   private lateinit var syncTargetUpdateHandler: TestBeaconSyncTargetUpdateHandler
   private lateinit var targetChainHeadCalculator: TestSyncTargetSelector
   private lateinit var config: PeerChainTracker.Config
-  private lateinit var timer: TestablePeriodicTimer
+  private lateinit var timerFactory: TestablePeriodicTimerFactory
   private lateinit var peerChainTracker: PeerChainTracker
   private val beaconChain: BeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(7uL))
 
@@ -64,7 +65,7 @@ class PeerChainTrackerTest {
     peersHeadsProvider = TestPeersHeadBlockProvider()
     syncTargetUpdateHandler = TestBeaconSyncTargetUpdateHandler()
     targetChainHeadCalculator = TestSyncTargetSelector()
-    timer = TestablePeriodicTimer()
+    timerFactory = TestablePeriodicTimerFactory()
 
     config =
       PeerChainTracker.Config(
@@ -78,7 +79,7 @@ class PeerChainTrackerTest {
         syncTargetUpdateHandler,
         targetChainHeadCalculator,
         config,
-        timerFactory = { _, _ -> timer },
+        timerFactory = timerFactory,
         beaconChain = beaconChain,
       )
   }
@@ -93,22 +94,25 @@ class PeerChainTrackerTest {
     // Act
     peerChainTracker.start()
 
+    val timer = timerFactory.getTimer("peer-chain-tracker")!!
     // Assert
-    assertThat(timer.scheduledTask).isNotNull
-    assertThat(timer.delay).isEqualTo(0L)
-    assertThat(timer.period).isEqualTo(1000L)
+    assertThat(timer.task).isNotNull
+    assertThat(timer.startCount).isEqualTo(1)
+    assertThat(timer.initialDelay).isEqualTo(Duration.ZERO)
+    assertThat(timer.period).isEqualTo(1.seconds)
   }
 
   @Test
   fun `stop should cancel timer`() {
     // Arrange
     peerChainTracker.start()
+    val timer = timerFactory.getTimer("peer-chain-tracker")!!
 
     // Act
     peerChainTracker.stop()
 
     // Assert
-    assertThat(timer.scheduledTask).isNull()
+    assertThat(timer.stopCount).isEqualTo(1)
   }
 
   @Test
@@ -123,6 +127,8 @@ class PeerChainTrackerTest {
 
     // Act - First update
     peerChainTracker.start()
+    val timer = timerFactory.getTimer("peer-chain-tracker")!!
+
     timer.runNextTask()
 
     // Wait for first update and reset for next test
@@ -172,6 +178,8 @@ class PeerChainTrackerTest {
 
     // Act - First update
     peerChainTracker.start()
+    val timer = timerFactory.getTimer("peer-chain-tracker")!!
+
     timer.runNextTask()
 
     // Wait for first update and reset for next test
@@ -205,6 +213,8 @@ class PeerChainTrackerTest {
 
     // Act - First update
     peerChainTracker.start()
+    val timer = timerFactory.getTimer("peer-chain-tracker")!!
+
     timer.runNextTask()
 
     // Wait for first update and reset for next test
@@ -240,6 +250,8 @@ class PeerChainTrackerTest {
 
     // Act - First update
     peerChainTracker.start()
+    val timer = timerFactory.getTimer("peer-chain-tracker")!!
+
     timer.runNextTask()
 
     // Wait for first update and reset for next test
@@ -271,6 +283,8 @@ class PeerChainTrackerTest {
 
     // Act
     peerChainTracker.start()
+    val timer = timerFactory.getTimer("peer-chain-tracker")!!
+
     timer.runNextTask()
 
     // Assert - When there are no peers it should just set the sync target to 0

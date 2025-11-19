@@ -180,7 +180,8 @@ dependencyManagement {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
     }
 
-    def lineaPackagesVersion = System.getenv("LINEA_LIBS_VERSION") ?: "0.0.1-v20250623134044"
+    def lineaPackagesVersion = System.getenv("LINEA_LIBS_VERSION") ?: "0.0.1-v20251114145306"
+
 
     dependency "build.linea.internal:metrics:$lineaPackagesVersion"
     dependency "build.linea.internal:micrometer:$lineaPackagesVersion"
@@ -196,5 +197,6 @@ dependencyManagement {
     dependency "build.linea.internal:file-system:$lineaPackagesVersion"
     dependency "build.linea.internal:linea-contract-clients$lineaPackagesVersion:test-fixtures"
     dependency "build.linea.internal:logging:$lineaPackagesVersion"
+    dependency "build.linea.internal:long-running-service:$lineaPackagesVersion"
   }
 }

@@ -40,6 +40,7 @@ dependencies {
   implementation(project(":jvm-libs:mappers"))
 
   implementation "build.linea.internal:futures"
+  implementation "build.linea.internal:long-running-service"
 
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"

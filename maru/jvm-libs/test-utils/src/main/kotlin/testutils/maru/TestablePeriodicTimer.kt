@@ -8,33 +8,58 @@
  */
 package testutils.maru
 
-import java.util.Timer
-import java.util.TimerTask
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration
+import linea.timer.Timer
+import linea.timer.TimerFactory
+import linea.timer.TimerSchedule
 
 // Test implementation that allows controlling the timer execution. Supports only scheduleAtFixedRate
-class TestablePeriodicTimer : Timer("test-timer", true) {
-  var scheduledTask: TimerTask? = null
-  var delay: Long? = null
-  var period: Long? = null
+class TestablePeriodicTimer(
+  override val name: String,
+  override val initialDelay: Duration,
+  override val period: Duration,
+  override val task: Runnable,
+) : Timer {
+  override val errorHandler: (Throwable) -> Unit = { }
+  override val timerSchedule: TimerSchedule = TimerSchedule.FIXED_RATE
 
-  override fun scheduleAtFixedRate(
-    task: TimerTask,
-    delay: Long,
-    period: Long,
-  ) {
-    scheduledTask = task
-    this.delay = delay
-    this.period = period
+  private val startCounter = AtomicInteger(0)
+  public val startCount: Int
+    get() = startCounter.get()
+
+  private val stopCounter = AtomicInteger(0)
+  public val stopCount: Int
+    get() = stopCounter.get()
+
+  override fun start() {
+    startCounter.incrementAndGet()
   }
 
   fun runNextTask() {
-    scheduledTask?.run()
+    task.run()
   }
 
-  override fun cancel() {
-    super.cancel()
-    scheduledTask = null
-    delay = null
-    period = null
+  override fun stop() {
+    stopCounter.incrementAndGet()
   }
+}
+
+class TestablePeriodicTimerFactory : TimerFactory {
+  val createdTimers = mutableMapOf<String, TestablePeriodicTimer>()
+
+  override fun createTimer(
+    name: String,
+    initialDelay: Duration,
+    period: Duration,
+    timerSchedule: TimerSchedule,
+    errorHandler: (Throwable) -> Unit,
+    task: Runnable,
+  ): Timer {
+    val timer = TestablePeriodicTimer(name, initialDelay, period, task)
+    createdTimers[name] = timer
+    return timer
+  }
+
+  fun getTimer(name: String): TestablePeriodicTimer? = createdTimers[name]
 }

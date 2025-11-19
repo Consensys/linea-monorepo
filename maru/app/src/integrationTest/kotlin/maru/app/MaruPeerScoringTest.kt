@@ -16,6 +16,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import linea.domain.BlockParameter
 import linea.ethapi.EthApiClient
+import linea.timer.JvmTimerFactory
+import linea.timer.TimerFactory
 import linea.web3j.ethapi.createEthApiClient
 import maru.config.P2PConfig
 import maru.core.SealedBeaconBlock
@@ -56,15 +58,16 @@ class MaruPeerScoringTest {
   private val maruFactory = MaruFactory()
   private lateinit var validatorEthApiClient: EthApiClient
   private lateinit var followerEthApiClient: EthApiClient
+  private val timerFactory = JvmTimerFactory()
 
   @AfterEach
   fun tearDown() {
     if (::followerStack.isInitialized) {
-      followerStack.maruApp.stop()
+      followerStack.maruApp.stop().get()
       followerStack.maruApp.close()
     }
     if (::validatorStack.isInitialized) {
-      validatorStack.maruApp.stop()
+      validatorStack.maruApp.stop().get()
       validatorStack.maruApp.close()
     }
     if (::besuCluster.isInitialized) {
@@ -74,7 +77,7 @@ class MaruPeerScoringTest {
 
   @Test
   fun `node gets in sync with default block retrieval strategy`() {
-    setUpNodes(blockRetrievalStrategy = DefaultBlockRetrievalStrategy())
+    setUpNodes(blockRetrievalStrategy = DefaultBlockRetrievalStrategy(), timerFactory = timerFactory)
 
     await
       .atMost(20.seconds.toJavaDuration())
@@ -94,6 +97,7 @@ class MaruPeerScoringTest {
         blockRetrievalStrategy = FourEmptyResponsesStrategy(),
         banPeriod = 10.seconds,
         followerCooldownPeriod = 10.minutes,
+        timerFactory = timerFactory,
       )
 
     // In setUpNodes we have made sure that the validator and the follower have 1 peer
@@ -126,6 +130,7 @@ class MaruPeerScoringTest {
         blockRangeRequestTimeout = timeout,
         blockRetrievalStrategy = TimeOutResponsesStrategy(delay = delay),
         validatorCooldownPeriod = 20.seconds,
+        timerFactory = timerFactory,
       )
     sleep((timeout - 1.seconds).inWholeMilliseconds)
     assertThat(maruNodeSetup.followerMaruApp.p2pNetwork.peerCount).isEqualTo(1)
@@ -146,6 +151,7 @@ class MaruPeerScoringTest {
     validatorCooldownPeriod: Duration = 10.seconds,
     followerCooldownPeriod: Duration = 10.seconds,
     blockRangeRequestTimeout: Duration = 5.seconds,
+    timerFactory: TimerFactory,
   ): MaruNodeSetup {
     transactionsHelper = BesuTransactionsHelper()
     besuCluster =
@@ -184,6 +190,7 @@ class MaruPeerScoringTest {
           forkIdHashManager: ForkPeeringManager,
           isBlockImportEnabledProvider: () -> Boolean,
           p2pState: P2PState,
+          timerFactory: TimerFactory,
           ->
           MisbehavingP2PNetwork(
             privateKeyBytes = privateKeyBytes,
@@ -198,12 +205,13 @@ class MaruPeerScoringTest {
             isBlockImportEnabledProvider = isBlockImportEnabledProvider,
             p2pState = p2pState,
             blockRetrievalStrategy = blockRetrievalStrategy,
+            timerFactory = timerFactory,
           ).p2pNetwork
         },
       )
 
     validatorStack.setMaruApp(validatorMaruApp)
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     val bootnodeEnr =
       validatorStack.maruApp.p2pNetwork.localNodeRecord
@@ -257,7 +265,7 @@ class MaruPeerScoringTest {
         ).isGreaterThanOrEqualTo(10UL)
       }
 
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     followerEthApiClient =
       createEthApiClient(

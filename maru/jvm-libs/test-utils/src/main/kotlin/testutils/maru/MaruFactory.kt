@@ -16,12 +16,14 @@ import io.libp2p.core.crypto.unmarshalPrivateKey
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
+import linea.timer.TimerFactory
 import maru.api.ApiServer
 import maru.app.MaruApp
 import maru.app.MaruAppFactory
@@ -58,6 +60,7 @@ import maru.p2p.P2PNetworkImpl
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.SerDe
+import maru.services.NoOpLongRunningService
 import net.consensys.linea.metrics.MetricsFacade
 import org.hyperledger.besu.plugin.services.MetricsSystem as BesuMetricsSystem
 
@@ -346,6 +349,7 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
+      TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     startApiServer: Boolean = false,
   ): MaruApp =
@@ -367,9 +371,9 @@ class MaruFactory(
           null
         } else {
           object : ApiServer {
-            override fun start() {}
+            override fun start(): CompletableFuture<Unit> = NoOpLongRunningService.start()
 
-            override fun stop() {}
+            override fun stop(): CompletableFuture<Unit> = NoOpLongRunningService.stop()
 
             override fun port(): Int = 0
           }
@@ -456,6 +460,7 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
+      TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     apiPort: UInt = 0u,
     startApiServer: Boolean = false,
@@ -527,6 +532,7 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
+      TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =
@@ -594,6 +600,7 @@ class MaruFactory(
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
+      TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): MaruApp {
     val p2pConfig =

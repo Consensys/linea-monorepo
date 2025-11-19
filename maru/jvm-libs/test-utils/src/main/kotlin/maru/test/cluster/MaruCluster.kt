@@ -268,7 +268,7 @@ class MaruCluster(
         forkSchedule = genesisFactory.maruForkSchedule(),
       )
 
-    maruApp.start()
+    maruApp.start().get()
 
     val clusterNode =
       ClusterNode(
@@ -285,7 +285,7 @@ class MaruCluster(
   fun stop() {
     this.runningState = RunningState.STOPPING
     nodes.forEach {
-      it.maru.stop()
+      it.maru.stop().get()
       it.maru.close()
       it.elNode?.stop()
     }

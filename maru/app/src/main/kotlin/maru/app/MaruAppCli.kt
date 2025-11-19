@@ -129,13 +129,12 @@ class MaruAppCli(
         config = parsedAppConfig.domainFriendly(),
         beaconGenesisConfig = parsedBeaconGenesisConfig.domainFriendly(),
       )
-    app.start()
 
     Runtime
       .getRuntime()
       .addShutdownHook(
         Thread {
-          app.stop()
+          app.stop().get()
           app.close()
           if (LogManager.getContext() is LoggerContext) {
             // Disable log4j auto shutdown hook is not used otherwise
@@ -145,6 +144,7 @@ class MaruAppCli(
         },
       )
 
+    app.start().get()
     return 0
   }
 

@@ -9,6 +9,7 @@
 package maru.api
 
 import io.javalin.Javalin
+import java.util.concurrent.CompletableFuture
 import maru.VersionProvider
 import maru.api.beacon.GetBlock
 import maru.api.beacon.GetBlockHeader
@@ -38,7 +39,7 @@ class ApiServerImpl(
 
   var app: Javalin? = null
 
-  override fun start() {
+  override fun start(): CompletableFuture<Unit> {
     if (app != null) {
       app!!.start(config.port.toInt())
     } else {
@@ -69,11 +70,13 @@ class ApiServerImpl(
           .get(GetStateValidators.ROUTE, GetStateValidators(chainDataProvider))
           .start(config.port.toInt())
     }
+    return CompletableFuture.completedFuture(Unit)
   }
 
-  override fun stop() {
+  override fun stop(): CompletableFuture<Unit> {
     app?.stop()
     app = null
+    return CompletableFuture.completedFuture(Unit)
   }
 
   override fun port(): Int = app!!.port()

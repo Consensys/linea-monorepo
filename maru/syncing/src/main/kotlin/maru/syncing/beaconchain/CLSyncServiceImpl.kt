@@ -9,6 +9,7 @@
 package maru.syncing.beaconchain
 
 import java.util.concurrent.CancellationException
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -127,15 +128,17 @@ class CLSyncServiceImpl(
     syncCompleteHanders.addSyncSubscriber(handler)
   }
 
-  override fun start() {
+  override fun start(): CompletableFuture<Unit> {
     if (!started.compareAndSet(false, true)) {
       log.warn("Sync service is already started")
     }
+    return CompletableFuture.completedFuture(Unit)
   }
 
-  override fun stop() {
+  override fun stop(): CompletableFuture<Unit> {
     if (started.compareAndSet(true, false)) {
       beaconChainPipeline.get()?.pipeline?.abort()
     }
+    return CompletableFuture.completedFuture(Unit)
   }
 }

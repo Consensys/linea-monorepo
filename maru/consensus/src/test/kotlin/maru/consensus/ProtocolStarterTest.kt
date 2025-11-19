@@ -13,6 +13,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.time.Duration.Companion.seconds
+import linea.timer.TimerFactory
 import maru.core.Protocol
 import maru.subscription.InOrderFanoutSubscriptionManager
 import maru.subscription.SubscriptionNotifier
@@ -21,7 +22,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
-import testutils.maru.TestablePeriodicTimer
+import testutils.maru.TestablePeriodicTimerFactory
 
 class ProtocolStarterTest {
   private class StubProtocol : Protocol {
@@ -165,7 +166,6 @@ class ProtocolStarterTest {
 
   @Test
   fun `ProtocolStarter switches protocols during periodic polling`() {
-    val timer = TestablePeriodicTimer()
     val forksSchedule =
       ForksSchedule(
         chainId,
@@ -173,15 +173,18 @@ class ProtocolStarterTest {
       )
 
     var currentTimeMillis = 8000L // Next block at ~13 seconds (before fork at 15)
+    val timerFactory = TestablePeriodicTimerFactory()
+
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
         clockMilliseconds = currentTimeMillis,
-        timer = timer,
+        timerFactory = timerFactory,
         forkTransitionNotifier = forkTransitionNotifier,
       ) { currentTimeMillis }
 
     protocolStarter.start()
+    val timer = timerFactory.getTimer("ProtocolStarterPoller")!!
 
     // Initially should be on first protocol since next block is before fork transition
     assertActiveProtocol1(protocolStarter)
@@ -199,7 +202,6 @@ class ProtocolStarterTest {
 
   @Test
   fun `ProtocolStarter does not switch if next block still uses same protocol`() {
-    val timer = TestablePeriodicTimer()
     val forksSchedule =
       ForksSchedule(
         chainId,
@@ -207,16 +209,17 @@ class ProtocolStarterTest {
       )
 
     var currentTimeMillis = 8000L // Next block at ~13 seconds (before fork at 15)
+    val timerFactory = TestablePeriodicTimerFactory()
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
         clockMilliseconds = currentTimeMillis,
-        timer = timer,
+        timerFactory = timerFactory,
         forkTransitionNotifier = forkTransitionNotifier,
       ) { currentTimeMillis }
 
     protocolStarter.start()
-
+    val timer = timerFactory.getTimer("ProtocolStarterPoller")!!
     assertActiveProtocol1(protocolStarter)
 
     currentTimeMillis = 9000L // Next block at ~14 seconds (still before fork at 15)
@@ -229,7 +232,6 @@ class ProtocolStarterTest {
 
   @Test
   fun `ProtocolStarter switches when next block will be produced by new protocol at startup`() {
-    val timer = TestablePeriodicTimer()
     val forksSchedule =
       ForksSchedule(
         chainId,
@@ -237,15 +239,17 @@ class ProtocolStarterTest {
       )
 
     var currentTimeMillis = 11000L // With 5-second block time, next block at ~16 seconds (after fork at 15)
+    val timerFactory = TestablePeriodicTimerFactory()
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
         clockMilliseconds = currentTimeMillis,
-        timer = timer,
+        timerFactory = timerFactory,
         forkTransitionNotifier = forkTransitionNotifier,
       ) { currentTimeMillis }
 
     protocolStarter.start()
+    val timer = timerFactory.getTimer("ProtocolStarterPoller")!!
 
     assertActiveProtocol2(protocolStarter)
 
@@ -259,7 +263,6 @@ class ProtocolStarterTest {
 
   @Test
   fun `ProtocolStarter close method closes active protocol and stops timer`() {
-    val timer = TestablePeriodicTimer()
     val forksSchedule =
       ForksSchedule(
         chainId,
@@ -269,7 +272,6 @@ class ProtocolStarterTest {
       createProtocolStarter(
         forksSchedule = forksSchedule,
         clockMilliseconds = 5000, // Before fork transition, should start with protocol1
-        timer = timer,
         forkTransitionNotifier = forkTransitionNotifier,
       )
 
@@ -298,7 +300,7 @@ class ProtocolStarterTest {
   private fun createProtocolStarter(
     forksSchedule: ForksSchedule,
     clockMilliseconds: Long,
-    timer: TestablePeriodicTimer = TestablePeriodicTimer(),
+    timerFactory: TimerFactory = TestablePeriodicTimerFactory(),
     forkTransitionNotifier: SubscriptionNotifier<ForkSpec>,
     timeProvider: (() -> Long)? = null,
   ): ProtocolStarter {
@@ -326,7 +328,7 @@ class ProtocolStarterTest {
       syncStatusProvider = mockSyncStatusProvider,
       forkTransitionCheckInterval = 1.seconds,
       clock = clock,
-      timerFactory = { _, _ -> timer },
+      timerFactory = timerFactory,
       forkTransitionNotifier = forkTransitionNotifier,
     )
   }

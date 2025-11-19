@@ -70,12 +70,12 @@ class MaruQbftValidatorTest {
           overridingP2PNetwork = spyingP2pNetwork,
         )
       }
-    networkParticipantStack.maruApp.start()
+    networkParticipantStack.maruApp.start().get()
   }
 
   @AfterEach
   fun tearDown() {
-    networkParticipantStack.maruApp.stop()
+    networkParticipantStack.maruApp.stop().get()
     networkParticipantStack.maruApp.close()
     cluster.close()
   }
@@ -222,9 +222,9 @@ class MaruQbftValidatorTest {
         )
       }
     }
-    networkParticipantStack.maruApp.stop()
+    networkParticipantStack.maruApp.stop().get()
     Thread.sleep(3000)
-    networkParticipantStack.maruApp.start()
+    networkParticipantStack.maruApp.start().get()
     repeat(blocksToProduce) {
       transactionsHelper.run {
         networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
@@ -251,7 +251,7 @@ class MaruQbftValidatorTest {
         )
       }
     }
-    networkParticipantStack.maruApp.stop()
+    networkParticipantStack.maruApp.stop().get()
     networkParticipantStack.maruApp.close()
 
     Thread.sleep(3000)
@@ -263,7 +263,7 @@ class MaruQbftValidatorTest {
       )
     // The difference from the previous test is that BeaconChain is instantiated with the Maru instance and it's not
     // affected by start and stop
-    networkParticipantStack.maruApp.start()
+    networkParticipantStack.maruApp.start().get()
     repeat(blocksToProduce) {
       transactionsHelper.run {
         networkParticipantStack.besuNode.sendTransactionAndAssertExecution(

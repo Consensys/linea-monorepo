@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrElse
 import kotlin.jvm.optionals.getOrNull
+import linea.timer.TimerFactory
 import maru.config.P2PConfig
 import maru.consensus.ForkSpec
 import maru.core.SealedBeaconBlock
@@ -33,6 +34,7 @@ import maru.p2p.topics.QbftMessageSerDe
 import maru.p2p.topics.TopicHandlerWithInOrderDelivering
 import maru.serialization.SerDe
 import maru.serialization.rlp.MaruCompressorRLPSerDe
+import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import org.apache.logging.log4j.LogManager
@@ -65,6 +67,7 @@ class P2PNetworkImpl(
   private val forkIdHashManager: ForkPeeringManager,
   isBlockImportEnabledProvider: () -> Boolean,
   private val p2PState: P2PState,
+  private val timerFactory: TimerFactory,
   // for testing:
   private val rpcMethodsFactory: (
     StatusManager,
@@ -216,6 +219,7 @@ class P2PNetworkImpl(
                 ),
               forkIdHashManager = forkIdHashManager,
               p2PState = p2PState,
+              timerFactory = timerFactory,
             )
           }
         discoveryService?.start()
@@ -248,8 +252,13 @@ class P2PNetworkImpl(
   override fun stop(): SafeFuture<Unit> {
     log.info("Stopping={}", this::class.simpleName)
     maruPeerManager.stop()
-    discoveryService?.stop()
-    return p2pNetwork.stop().thenApply {}
+    return discoveryService?.stop()?.toSafeFuture().let { discoveryServiceStopFuture ->
+      if (discoveryServiceStopFuture != null) {
+        discoveryServiceStopFuture.thenCompose { p2pNetwork.stop() }.thenApply { }
+      } else {
+        p2pNetwork.stop().thenApply { }
+      }
+    }
   }
 
   override fun close() {

@@ -17,6 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import linea.kotlin.decodeHex
 import linea.kotlin.toULong
+import linea.timer.JvmTimerFactory
 import maru.config.P2PConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
@@ -112,6 +113,7 @@ class MaruDiscoveryServiceTest {
         p2pConfig = p2pConfig,
         forkIdHashManager = forkIdHashProvider,
         p2PState = p2PState,
+        timerFactory = JvmTimerFactory(),
       )
   }
 
@@ -148,7 +150,7 @@ class MaruDiscoveryServiceTest {
         .toULong(),
     ).isEqualTo(sequenceNumberAfterInitialization + 2uL)
 
-    service.stop()
+    service.stop().get()
   }
 
   @Test
@@ -178,6 +180,7 @@ class MaruDiscoveryServiceTest {
           ),
         forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
+        timerFactory = JvmTimerFactory(),
       )
 
     val discoveryService2 =
@@ -196,6 +199,7 @@ class MaruDiscoveryServiceTest {
           ),
         forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
+        timerFactory = JvmTimerFactory(),
       )
 
     val discoveryService3 =
@@ -214,6 +218,7 @@ class MaruDiscoveryServiceTest {
           ),
         forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
+        timerFactory = JvmTimerFactory(),
       )
 
     try {
@@ -242,9 +247,9 @@ class MaruDiscoveryServiceTest {
           foundPeersContains(foundPeers, bootnode, discoveryService2)
         }
     } finally {
-      bootnode.stop()
-      discoveryService2.stop()
-      discoveryService3.stop()
+      bootnode.stop().get()
+      discoveryService2.stop().get()
+      discoveryService3.stop().get()
     }
   }
 
@@ -308,6 +313,7 @@ class MaruDiscoveryServiceTest {
         p2pConfig = p2pConfig,
         forkIdHashManager = forkIdHashProvider,
         p2PState = InMemoryP2PState(),
+        timerFactory = JvmTimerFactory(),
       )
 
     val localNodeRecord = discoveryService.getLocalNodeRecord()

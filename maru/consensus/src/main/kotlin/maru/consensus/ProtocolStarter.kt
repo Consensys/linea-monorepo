@@ -9,12 +9,11 @@
 package maru.consensus
 
 import java.time.Clock
-import java.util.Timer
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import linea.timer.Timer
+import linea.timer.TimerFactory
 import maru.core.Protocol
 import maru.subscription.SubscriptionNotifier
 import maru.syncing.CLSyncStatus
@@ -28,12 +27,7 @@ class ProtocolStarter(
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val forkTransitionCheckInterval: Duration,
   private val clock: Clock = Clock.systemUTC(),
-  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
-    Timer(
-      "$name-${UUID.randomUUID()}",
-      isDaemon,
-    )
-  },
+  private val timerFactory: TimerFactory,
   private val forkTransitionNotifier: SubscriptionNotifier<ForkSpec>,
 ) : Protocol {
   companion object {
@@ -44,12 +38,7 @@ class ProtocolStarter(
       syncStatusProvider: SyncStatusProvider,
       forkTransitionCheckInterval: Duration = 1.seconds,
       clock: Clock = Clock.systemUTC(),
-      timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
-        Timer(
-          "$name-${UUID.randomUUID()}",
-          isDaemon,
-        )
-      },
+      timerFactory: TimerFactory,
       forkTransitionNotifier: SubscriptionNotifier<ForkSpec>,
     ): ProtocolStarter {
       val protocolStarter =
@@ -88,7 +77,16 @@ class ProtocolStarter(
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   internal val currentProtocolWithForkReference: AtomicReference<ProtocolWithFork> = AtomicReference()
-  private var poller: Timer? = null
+
+  private var poller: Timer =
+    timerFactory.createTimer(
+      name = "ProtocolStarterPoller",
+      initialDelay = forkTransitionCheckInterval,
+      period = forkTransitionCheckInterval,
+      timerSchedule = linea.timer.TimerSchedule.FIXED_RATE,
+      errorHandler = {},
+      task = Runnable { pollTask() },
+    )
 
   private fun pollTask() {
     try {
@@ -142,30 +140,15 @@ class ProtocolStarter(
 
   override fun start() {
     synchronized(this) {
-      if (poller != null) {
-        return
-      }
-
       checkAndHandleForkTransition()
-
+      poller.start()
       log.debug("Starting fork transition polling with interval {}", forkTransitionCheckInterval)
-      poller = timerFactory("ProtocolStarterPoller", true)
-      poller!!.scheduleAtFixedRate(
-        timerTask { pollTask() },
-        forkTransitionCheckInterval.inWholeMilliseconds,
-        forkTransitionCheckInterval.inWholeMilliseconds,
-      )
     }
   }
 
   override fun pause() {
     synchronized(this) {
-      if (poller == null) {
-        return
-      }
-
-      poller?.cancel()
-      poller = null
+      poller.stop()
       currentProtocolWithForkReference.get()?.protocol?.pause()
       log.debug("Stopped fork transition polling")
     }

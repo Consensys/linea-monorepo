@@ -22,6 +22,9 @@ import kotlin.io.path.exists
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.kotlin.encodeHex
+import linea.timer.JvmTimerFactory
+import linea.timer.TimerFactory
+import linea.timer.VertxTimerFactory
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import maru.api.ApiServer
@@ -102,6 +105,7 @@ interface MaruAppFactoryCreator {
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
+      TimerFactory,
     ) -> P2PNetworkImpl = ::P2PNetworkImpl,
   ): LongRunningCloseable
 }
@@ -129,6 +133,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
       ForkPeeringManager,
       () -> Boolean,
       P2PState,
+      TimerFactory,
     ) -> P2PNetworkImpl,
   ): MaruApp {
     log.info("configs={}", config)
@@ -149,6 +154,12 @@ class MaruAppFactory : MaruAppFactoryCreator {
         jvmMetricsEnabled = config.observability.jvmMetricsEnabled,
         prometheusMetricsEnabled = config.observability.prometheusMetricsEnabled,
       )
+    val timerFactory =
+      if (config.useVertxTimers) {
+        VertxTimerFactory(vertx)
+      } else {
+        JvmTimerFactory()
+      }
     val metricsFacade =
       MicrometerMetricsFacade(
         registry = getMetricsRegistry(),
@@ -217,12 +228,13 @@ class MaruAppFactory : MaruAppFactoryCreator {
         },
         p2PState = kvDatabase,
         clock = clock,
+        timerFactory = timerFactory,
         p2pNetworkFactory = p2pNetworkFactory,
       )
     val peersHeadBlockProvider = P2PPeersHeadBlockProvider(p2pNetwork.getPeerLookup())
     val finalizationProvider =
       overridingFinalizationProvider
-        ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx)
+        ?: setupFinalizationProvider(config, overridingLineaContractClient, vertx, timerFactory)
     syncControllerImpl =
       if (config.p2p != null) {
         val followerELNodeEngineApiWeb3JClients: Map<String, Web3JClient> =
@@ -254,6 +266,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
               eLValidatorBlockImportHandler = validatorImportHandler,
               followerELBLockImportHandler = elSyncBlockImportHandlers,
               onStatusChange = onStatusChange,
+              timerFactory = timerFactory,
             )
           } else {
             NoOpLongRunningService
@@ -280,6 +293,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
               useUnconditionalRandomDownloadPeer = config.syncing.download.useUnconditionalRandomDownloadPeer,
             ),
           allowEmptyBlocks = config.allowEmptyBlocks,
+          timerFactory = timerFactory,
         )
       } else {
         AlwaysSyncedController(kvDatabase)
@@ -321,6 +335,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
       apiServer = apiServer,
       syncControllerManager = syncControllerImpl,
       syncStatusProvider = syncControllerImpl,
+      timerFactory = timerFactory,
     )
   }
 
@@ -339,6 +354,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
       config: MaruConfig,
       overridingLineaContractClient: LineaRollupSmartContractClientReadOnly?,
       vertx: Vertx,
+      timerFactory: TimerFactory,
     ): FinalizationProvider =
       config.linea
         ?.let { lineaConfig ->
@@ -368,6 +384,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
               ),
             pollingUpdateInterval = lineaConfig.l1PollingInterval,
             l1HighestBlock = lineaConfig.l1HighestBlockTag,
+            timerFactory = timerFactory,
           )
         } ?: InstantFinalizationProvider
 
@@ -382,6 +399,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
       besuMetricsSystem: BesuMetricsSystem,
       clock: Clock,
       p2PState: P2PState,
+      timerFactory: TimerFactory,
       p2pNetworkFactory: (
         ByteArray,
         P2PConfig,
@@ -394,6 +412,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
         ForkPeeringManager,
         () -> Boolean,
         P2PState,
+        TimerFactory,
       ) -> P2PNetworkImpl = ::P2PNetworkImpl,
     ): P2PNetwork {
       if (p2pConfig == null) {
@@ -427,6 +446,7 @@ class MaruAppFactory : MaruAppFactoryCreator {
         forkIdHashManager,
         isBlockImportEnabledProvider,
         p2PState,
+        timerFactory,
       )
     }
 

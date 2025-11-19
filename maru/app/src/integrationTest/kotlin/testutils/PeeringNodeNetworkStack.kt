@@ -39,7 +39,7 @@ class PeeringNodeNetworkStack(
   }
 
   fun stop() {
-    _maruApp.stop()
+    _maruApp.stop().get()
     besuNode.stop()
   }
 

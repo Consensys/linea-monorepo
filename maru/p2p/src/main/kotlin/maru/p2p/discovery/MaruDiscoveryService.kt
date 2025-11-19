@@ -9,14 +9,15 @@
 package maru.p2p.discovery
 
 import java.util.Optional
-import java.util.Timer
-import java.util.TimerTask
-import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.concurrent.timerTask
+import kotlin.time.Duration
 import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
+import linea.timer.Timer
+import linea.timer.TimerFactory
+import linea.timer.TimerSchedule
 import maru.config.P2PConfig
 import maru.database.P2PState
 import maru.p2p.fork.ForkPeeringManager
@@ -40,7 +41,7 @@ class MaruDiscoveryService(
   privateKeyBytes: ByteArray,
   private val p2pConfig: P2PConfig,
   private val forkIdHashManager: ForkPeeringManager,
-  private val timerFactory: (String, Boolean) -> Timer = { namePrefix, isDaemon -> createTimer(namePrefix, isDaemon) },
+  private val timerFactory: TimerFactory,
   private val p2PState: P2PState,
 ) : LongRunningService {
   init {
@@ -58,15 +59,6 @@ class MaruDiscoveryService(
   companion object {
     private val log = LogManager.getLogger(MaruDiscoveryService::class.java)
     const val FORK_ID_HASH_FIELD_NAME = "mfidh"
-
-    fun createTimer(
-      namePrefix: String,
-      isDaemon: Boolean,
-    ): Timer =
-      Timer(
-        "$namePrefix-${UUID.randomUUID()}",
-        isDaemon,
-      )
 
     internal fun isValidNodeRecord(
       forkIdHashManager: ForkPeeringManager,
@@ -147,41 +139,35 @@ class MaruDiscoveryService(
 
   fun getLocalNodeRecord(): NodeRecord = discoverySystem.localNodeRecord
 
-  override fun start() {
+  override fun start(): CompletableFuture<Unit> {
     if (!isStarted.compareAndSet(false, true)) {
       log.warn("MaruDiscoveryService has already been started!")
-      return
+      return SafeFuture.completedFuture(Unit)
     }
-    discoverySystem
+    return discoverySystem
       .start()
       .thenRun {
-        poller = timerFactory("boot-node-refresher", true)
-        poller!!.scheduleAtFixedRate(
-          /* task = */ pingBootnodesTask(),
-          /* delay = */ 0,
-          /* period = */ p2pConfig.discovery!!.refreshInterval.inWholeMilliseconds,
-        )
-      }.get()
-    return
+        poller =
+          timerFactory.createTimer(
+            name = "boot-node-refresher",
+            initialDelay = Duration.ZERO,
+            period = p2pConfig.discovery!!.refreshInterval,
+            timerSchedule = TimerSchedule.FIXED_RATE,
+            errorHandler = { e -> log.warn("Failed to ping bootnodes", e) },
+            task = Runnable { pingBootnodes() },
+          )
+        poller!!.start()
+      }.thenApply {}
   }
 
-  private fun pingBootnodesTask(): TimerTask {
-    var task: TimerTask? = null
-    try {
-      task = timerTask { pingBootnodes() }
-    } catch (e: Exception) {
-      log.warn("Failed to ping bootnodes", e)
-    }
-    return task!!
-  }
-
-  override fun stop() {
+  override fun stop(): CompletableFuture<Unit> {
     if (!isStarted.compareAndSet(true, false)) {
       log.warn("Calling stop on MaruDiscoveryService that has not been started!")
-      return
+      return SafeFuture.completedFuture(Unit)
     }
-    poller?.cancel()
+    poller?.stop()
     discoverySystem.stop()
+    return SafeFuture.completedFuture(Unit)
   }
 
   fun updateForkIdHash(forkIdHash: ByteArray) {
