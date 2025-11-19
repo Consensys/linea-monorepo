@@ -1,4 +1,4 @@
-import { Address, decodeEventLog, TransactionReceipt } from "viem";
+import { Address, parseEventLogs, TransactionReceipt } from "viem";
 import { DashboardABI } from "../../core/abis/Dashboard.js";
 
 // Functions that would be in a DashboardClient if we had one
@@ -16,26 +16,12 @@ import { DashboardABI } from "../../core/abis/Dashboard.js";
  * @returns {bigint} The fee amount from the FeeDisbursed event, or 0n if the event is not found.
  */
 export function getNodeOperatorFeesPaidFromTxReceipt(txReceipt: TransactionReceipt, dashboardAddress: Address): bigint {
-  for (const log of txReceipt.logs) {
-    // Only decode logs emitted by this contract
-    if (log.address.toLowerCase() !== dashboardAddress.toLowerCase()) continue;
+  const logs = parseEventLogs({
+    abi: DashboardABI,
+    eventName: "FeeDisbursed",
+    logs: txReceipt.logs,
+  });
 
-    try {
-      const decoded = decodeEventLog({
-        abi: DashboardABI,
-        data: log.data,
-        topics: log.topics,
-      });
-
-      if (decoded.eventName === "FeeDisbursed") {
-        const { fee } = decoded.args;
-        return fee as bigint;
-      }
-    } catch {
-      // skip unrelated logs (from the same contract or different ABIs)
-    }
-  }
-
-  // If event not found
-  return 0n;
+  const fee = logs.find((log) => log.address.toLowerCase() === dashboardAddress.toLowerCase())?.args.fee as bigint;
+  return fee ?? 0n;
 }
