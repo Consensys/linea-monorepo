@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { Eip4844BlobAcceptor } from "./Eip4844BlobAcceptor.sol";
-import { CalldataBlobAcceptor } from "./CalldataBlobAcceptor.sol";
-import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
+import { Eip4844BlobAcceptor } from "../../../rollup/Eip4844BlobAcceptor.sol";
+import { CalldataBlobAcceptor } from "../../../rollup/CalldataBlobAcceptor.sol";
+import { IProvideShnarf } from "../../../rollup/interfaces/IProvideShnarf.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
