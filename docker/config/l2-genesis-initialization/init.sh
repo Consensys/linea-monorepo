@@ -16,9 +16,5 @@ echo "Prague Timestamp: $prague_timestamp"
 sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-maru.json
 sed -i "s/%PRAGUE_TIME%/$prague_timestamp/g" genesis-besu.json
 
-CREATE_EMPTY_BLOCKS="${CREATE_EMPTY_BLOCKS:-false}"
-sed -i "s/%CREATE_EMPTY_BLOCKS%/$CREATE_EMPTY_BLOCKS/g" genesis-besu.json
-
 prague_timestamp_ms=$((prague_timestamp * 1000))
-sed -i'' "s/^\(target-end-blocks[ ]*=[ ]*\).*/\1[$((ttd / 2))]/" coordinator-config-v2-hardforks.toml
 sed -i'' "s/^\(timestamp-based-hard-forks[ ]*=[ ]*\).*/\1[${prague_timestamp_ms}]/" coordinator-config-v2-hardforks.toml
