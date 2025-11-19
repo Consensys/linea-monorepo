@@ -209,9 +209,10 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         this.logger.debug(`sendSignedTransaction succeeded`, { receipt });
         return receipt;
       } catch (error) {
-        if (error instanceof BaseError && this._shouldRetryViemSendRawTranasctionError(error)) {
-          this.logger.error("sendSignedTransaction failed and will not be retried", { error });
-          throw error;
+        if (error instanceof BaseError && !this._shouldRetryViemSendRawTranasctionError(error)) {
+          const decodedError = error.walk();
+          this.logger.error("sendSignedTransaction failed and will not be retried", { decodedError });
+          throw decodedError;
         }
         if (attempt >= this.sendTransactionsMaxRetries) {
           this.logger.error(
@@ -225,7 +226,6 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
           `sendSignedTransaction retry attempt failed attempt=${attempt} sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
           { error },
         );
-
         lastError = error;
         // Compound gas for next retry
         gasMultiplierBps = (gasMultiplierBps * (MAX_BPS + this.gasRetryBumpBps)) / MAX_BPS;
