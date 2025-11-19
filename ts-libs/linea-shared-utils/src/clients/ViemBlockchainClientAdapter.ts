@@ -14,6 +14,7 @@ import {
   withTimeout,
   TimeoutError,
   BaseError,
+  RpcRequestError,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
@@ -210,14 +211,15 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         this.logger.debug(`sendSignedTransaction succeeded`, { receipt });
         return receipt;
       } catch (error) {
-        // We don't want to retry for ContractFunctionRevertedError
-        if (error instanceof ContractFunctionRevertedError) {
-          this.logger.error("❌ sendSignedTransaction contract call reverted:", {
-            shortMessage: error.shortMessage,
-          });
-          this.logger.error("Reason:", { reason: error.data?.errorName || error.message });
-          throw error;
-        }
+        // We don't want to retry for Solidity revert, "-32015" -> VM execution error - https://www.quicknode.com/docs/ethereum/error-references
+          if (error instanceof RpcRequestError && error.code === -32015) {
+            this.logger.error('Transaction execution failed:', {
+              code: error.code,
+              message: error.message,
+              data: error.data,
+            });
+            throw error;
+          }
         if (attempt >= this.sendTransactionsMaxRetries) {
           this.logger.error(
             `sendSignedTransaction retry attempts exhausted sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
