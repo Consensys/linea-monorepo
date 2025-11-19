@@ -136,7 +136,7 @@ jobs:
     with:
       status: 'failure'
       failed_jobs: |
-        ${{ needs.changes.outputs['all-tools'] == 'true' && '- changes' || '' }}
+        ${{ needs.changes.result == 'failure' && '- changes' || '' }}
         ${{ needs.store_image_name_and_tags.result == 'failure' && '- store_image_name_and_tags' || '' }}
         ${{ needs.all-tools-tag-only.result == 'failure' && '- all-tools-tag-only' || '' }}
         ${{ needs.build-and-publish.result == 'failure' && '- build-and-publish' || '' }}
