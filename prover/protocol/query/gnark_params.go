@@ -19,7 +19,7 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 	exty := gnarkfext.NewE4Gen(p.ExtY)
 	return GnarkLocalOpeningParams{
-		BaseY:  zk.ValueOf(p.BaseY),
+		BaseY:  zk.ValueOf(p.BaseY.String()),
 		ExtY:   exty,
 		IsBase: p.IsBase,
 	}
@@ -94,7 +94,7 @@ func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
 	if p.IsBase {
 		return GnarkUnivariateEvalParams{
 			Ys:    vector.IntoGnarkAssignment(p.Ys),
-			X:     zk.ValueOf(p.X),
+			X:     zk.ValueOf(p.X.String()),
 			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
 			ExtX:  gnarkfext.NewE4Gen(p.ExtX),
 		}

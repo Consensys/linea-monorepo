@@ -450,7 +450,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	}
 
 	// shiftedR.MulByFp(api, r, mulGenInv)
-	wrappedMulGenInv := zk.ValueOf(mulGenInv)
+	wrappedMulGenInv := zk.ValueOf(mulGenInv.String())
 	shiftedR = *e4Api.MulByFp(&r, wrappedMulGenInv)
 
 	var invOmegaN field.Element
@@ -462,7 +462,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		// Check that the provided value for x is the right one
 		providedX := params.ExtX
 		var expectedX gnarkfext.E4Gen
-		expectedX = gnarkfext.NewE4GenFromBase(invOmegaN)
+		expectedX = gnarkfext.NewE4GenFromBase(invOmegaN.String())
 		expectedX = gnarkutil.ExpExt(api, expectedX, i)
 		expectedX = *e4Api.Mul(&expectedX, &shiftedR)
 		ext4.AssertIsEqual(&providedX, &expectedX)
@@ -497,7 +497,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
 			var omegaInvPowK field.Element
 			omegaInvPowK.Exp(omegaRatioInv, big.NewInt(int64(k)))
-			wrappedOmegaInvPowK = zk.ValueOf(omegaInvPowK)
+			wrappedOmegaInvPowK = zk.ValueOf(omegaInvPowK.String())
 			tmp := e4Api.MulByFp(&rPowM, wrappedOmegaInvPowK)
 			tmp = e4Api.Sub(tmp, &wOne)
 			tmp = e4Api.Div(&ys[k], tmp)
@@ -506,7 +506,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 			res = *e4Api.Mul(&res, tmp)
 		}
 
-		wrappedRatioInvField := zk.ValueOf(ratioInvField)
+		wrappedRatioInvField := zk.ValueOf(ratioInvField.String())
 		outerFactor := gnarkutil.ExpExt(api, shiftedR, n)
 		outerFactor = *e4Api.Sub(&outerFactor, &wOne)
 		outerFactor = *e4Api.MulByFp(&outerFactor, wrappedRatioInvField)

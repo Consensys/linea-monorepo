@@ -22,6 +22,7 @@ func NewE4Gen(v fext.Element) E4Gen {
 	}
 }
 
+// TODO @yao: check if all calls to NewE4GenFromBase are correct
 func NewE4GenFromBase(v any) E4Gen {
 	var res E4Gen
 	res.B0.A0 = zk.ValueOf(v)

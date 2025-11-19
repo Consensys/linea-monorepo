@@ -247,7 +247,7 @@ type Ctx struct {
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
 
-			GnarkMerkleRoot   [11]ifaces.Column
+			GnarkMerkleRoot   [vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column
 			GnarkTree         *smt_bls12377.Tree
 			GnarkDhWithMerkle []bls12377.Element
 		}
@@ -297,9 +297,10 @@ type Ctx struct {
 	// from the precomputed table and is moved to the compilation context. This
 	// value will then be assigned to the column at round zero.
 	AddPrecomputedMerkleRootToPublicInputsOpt struct {
-		Enabled          bool
-		Name             string
-		PrecomputedValue [blockSize]field.Element
+		Enabled               bool
+		Name                  string
+		PrecomputedValue      [blockSize]field.Element
+		PrecomputedGnarkValue [vortex_bls12377.GnarkKoalabearNumElements]field.Element
 	}
 }
 

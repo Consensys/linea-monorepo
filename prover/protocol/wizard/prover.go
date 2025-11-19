@@ -764,7 +764,6 @@ func (run *ProverRuntime) goNextRound() {
 			fsHooks[i].Run(run)
 		}
 	}
-
 	seed := types.Bytes32ToOctuplet(types.AsBytes32(run.FS.State()))
 
 	// Then assigns the coins for the new round. As the round

@@ -2,6 +2,7 @@ package vortex
 
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
@@ -62,9 +63,10 @@ func AddMerkleRootToPublicInputs(name string, round []int) VortexOp {
 func AddPrecomputedMerkleRootToPublicInputs(name string) VortexOp {
 	return func(ctx *Ctx) {
 		ctx.AddPrecomputedMerkleRootToPublicInputsOpt = struct {
-			Enabled          bool
-			Name             string
-			PrecomputedValue [blockSize]field.Element
+			Enabled               bool
+			Name                  string
+			PrecomputedValue      [blockSize]field.Element
+			PrecomputedGnarkValue [vortex_bls12377.GnarkKoalabearNumElements]field.Element
 		}{Enabled: true, Name: name}
 	}
 }

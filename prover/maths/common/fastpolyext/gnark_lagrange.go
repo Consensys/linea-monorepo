@@ -34,7 +34,7 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext
 	dens := make([]gnarkfext.E4Gen, size)
 
 	omega.Inverse(&omega)
-	wInvOmega := gnarkfext.NewE4GenFromBase(omega)
+	wInvOmega := gnarkfext.NewE4GenFromBase(omega.String())
 	dens[0] = x
 	for i := 1; i < size; i++ {
 		dens[i] = *e4Api.Mul(&dens[i-1], &wInvOmega)
@@ -57,7 +57,7 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.E4Gen, x gnarkfext
 	tmp = *e4Api.Sub(&tmp, &wOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
-	wInvSize := zk.ValueOf(invSize)
+	wInvSize := zk.ValueOf(invSize.String())
 	tmp = *e4Api.MulByFp(&tmp, wInvSize)
 	res = *e4Api.Mul(&res, &tmp)
 
@@ -199,7 +199,7 @@ func powerVectorOfOmegaInv(n int) []zk.WrappedVariable {
 	w.Inverse(&w)
 
 	for i := 0; i < n; i++ {
-		res[i] = zk.ValueOf(resField)
+		res[i] = zk.ValueOf(resField.String())
 		resField.Mul(&resField, &w)
 	}
 

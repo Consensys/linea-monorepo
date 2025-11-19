@@ -62,7 +62,7 @@ func (x X) GnarkEvalNoCoset(size int) []zk.WrappedVariable {
 	res := make([]zk.WrappedVariable, res_.Len())
 	for i := range res {
 		tmp := res_.Get(i)
-		res[i] = zk.ValueOf(tmp)
+		res[i] = zk.ValueOf(tmp.String())
 	}
 	return res
 }

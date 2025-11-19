@@ -598,7 +598,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable
 		res := make([]zk.WrappedVariable, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = zk.ValueOf(val[i])
+			res[i] = zk.ValueOf(val[i].String())
 		}
 		return res, nil
 	}

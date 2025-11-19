@@ -208,7 +208,7 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 				inputs[i] = m.GetFrontendVariable(api, run)
 			case variables.PeriodicSample:
 				tmp := m.EvalAtOnDomain(k)
-				inputs[i] = zk.ValueOf(tmp)
+				inputs[i] = zk.ValueOf(tmp.String())
 			case variables.X:
 				// there is no theoritical problem with this but there are
 				// no cases known where this happens so we just don't

@@ -159,14 +159,14 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x zk.
 			e = -e
 		}
 		omegaN.Exp(omegaN, big.NewInt(int64(e)))
-		wOmegaN := zk.ValueOf(omegaN)
+		wOmegaN := zk.ValueOf(omegaN.String())
 		x = apiGen.Mul(x, wOmegaN)
 	}
 
 	denominator := gnarkutil.Exp(api, x, l)
 	wOne := zk.ValueOf(1)
-	wnField := zk.ValueOf(nField)
-	wlField := zk.ValueOf(lField)
+	wnField := zk.ValueOf(nField.String())
+	wlField := zk.ValueOf(lField.String())
 	denominator = apiGen.Sub(denominator, wOne)
 	denominator = apiGen.Mul(denominator, wnField)
 	numerator := gnarkutil.Exp(api, x, n)
@@ -182,7 +182,8 @@ func (t PeriodicSample) GnarkEvalNoCoset(size int) []zk.WrappedVariable {
 	res_ := t.EvalCoset(size, 0, 1, false)
 	res := make([]zk.WrappedVariable, res_.Len())
 	for i := range res {
-		res[i] = zk.ValueOf(res_.Get(i))
+		val := res_.Get(i)
+		res[i] = zk.ValueOf(val.String())
 	}
 	return res
 }

@@ -94,7 +94,7 @@ func (cc ConstCol) GetColAssignmentAtExt(_ ifaces.Runtime, _ int) fext.Element {
 func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []zk.WrappedVariable {
 	res := make([]zk.WrappedVariable, cc.Size_)
 	for i := range res {
-		res[i] = zk.ValueOf(cc.Base)
+		res[i] = zk.ValueOf(cc.Base.String())
 	}
 	return res
 }
@@ -103,7 +103,7 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.Wrap
 	if cc.IsBaseFlag {
 		res := make([]zk.WrappedVariable, cc.Size_)
 		for i := range res {
-			res[i] = zk.ValueOf(cc.Base)
+			res[i] = zk.ValueOf(cc.Base.String())
 		}
 		return res, nil
 	} else {
@@ -128,7 +128,7 @@ func (cc ConstCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
 	if cc.IsBaseFlag {
-		return zk.ValueOf(cc.Base)
+		return zk.ValueOf(cc.Base.String())
 	} else {
 		panic("requested a base element from a verifier col over field extensions")
 	}
@@ -137,7 +137,7 @@ func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
 	if cc.IsBaseFlag {
-		return zk.ValueOf(cc.Base), nil
+		return zk.ValueOf(cc.Base.String()), nil
 	} else {
 		return zk.ValueOf(0), fmt.Errorf("requested a base element from a verifier col over field extensions")
 	}

@@ -554,7 +554,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []zk.WrappedVariabl
 		switch op := b.Nodes[0][i].Operator.(type) {
 		case Constant:
 			tmp := op.Val.GetExt()
-			intermediateRes[0][i] = zk.ValueOf(tmp) // @thomas ext or base ?
+			intermediateRes[0][i] = zk.ValueOf(tmp.B0.A0.String()) // @thomas ext or base ?
 		case Variable:
 			intermediateRes[0][i] = inputs[inputCursor]
 			inputCursor++

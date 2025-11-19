@@ -280,7 +280,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z gnarkfext.E4Gen, gen field.Elem
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
 	var accOmega field.Element
 	accOmega.SetOne()
-	wGen := zk.ValueOf(gen)
+	wGen := zk.ValueOf(gen.String())
 	var wAccOmega zk.WrappedVariable
 	for i := uint64(1); i < cardinality; i++ {
 		res[i] = *ext4.MulByFp(&res[i-1], wGen)          // res[i] <- ω * res[i-1]

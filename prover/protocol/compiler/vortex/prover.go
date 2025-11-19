@@ -47,7 +47,7 @@ func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
 		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			run.AssignColumn(
 				r.Items.Precomputeds.MerkleRoot[i].GetColID(),
-				smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue[i], 1),
+				smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedGnarkValue[i], 1),
 			)
 		}
 	} else {
