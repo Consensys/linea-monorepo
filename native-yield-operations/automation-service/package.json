@@ -15,8 +15,7 @@
     "build": "tsc -p tsconfig.build.json",
     "build:runSdk": "tsc ./scripts/runSdk.ts",
     "test": "npx jest --bail --detectOpenHandles --forceExit",
-    "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix",
-    "migration:create": "npx ts-node -P ./tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create ./src/application/postman/persistence/migrations/${MIGRATION_NAME}"
+    "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix"
   },
   "dependencies": {
     "@apollo/client": "4.0.7",
