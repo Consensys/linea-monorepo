@@ -640,4 +640,711 @@ describe("ViemBlockchainClientAdapter", () => {
     expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
     expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
   });
+
+  it("retries on unknown RPC error code (default case - line 346)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    // Use an RPC error code that's NOT in the explicit retry or non-retry lists
+    // This should hit line 346 (default retry behavior)
+    const unknownRpcError = Object.assign(new BaseError("Unknown RPC error"), { code: 9999 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 9n, maxPriorityFeePerGas: 1n })
+      .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw unknownRpcError;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(publicClientMock.estimateFeesPerGas).toHaveBeenCalledTimes(2);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
+      { error: unknownRpcError },
+    );
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry on capability error code 5700 (lower boundary)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const capabilityError = Object.assign(new BaseError("Capability error"), { code: 5700 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw capabilityError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(capabilityError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on capability error code 5760 (upper boundary)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const capabilityError = Object.assign(new BaseError("Capability error"), { code: 5760 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw capabilityError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(capabilityError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries on RPC error code 5699 (just below capability range)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const error = Object.assign(new BaseError("RPC error"), { code: 5699 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 9n, maxPriorityFeePerGas: 1n })
+      .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw error;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
+      { error },
+    );
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries on RPC error code 5761 (just above capability range)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const error = Object.assign(new BaseError("RPC error"), { code: 5761 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 9n, maxPriorityFeePerGas: 1n })
+      .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw error;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
+      { error },
+    );
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries on HTTP status code 408 (Request Timeout)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const httpError = Object.assign(new BaseError("HTTP error"), { status: 408 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 9n, maxPriorityFeePerGas: 1n })
+      .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw httpError;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
+      { error: httpError },
+    );
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries on HTTP status code 429 (Too Many Requests)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const httpError = Object.assign(new BaseError("HTTP error"), { status: 429 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 9n, maxPriorityFeePerGas: 1n })
+      .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw httpError;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
+      { error: httpError },
+    );
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries on HTTP status code 502 (Bad Gateway)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const httpError = Object.assign(new BaseError("HTTP error"), { status: 502 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 9n, maxPriorityFeePerGas: 1n })
+      .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw httpError;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
+      { error: httpError },
+    );
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries on HTTP status code 503 (Service Unavailable)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const httpError = Object.assign(new BaseError("HTTP error"), { status: 503 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 9n, maxPriorityFeePerGas: 1n })
+      .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw httpError;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
+      { error: httpError },
+    );
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries on HTTP status code 504 (Gateway Timeout)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const httpError = Object.assign(new BaseError("HTTP error"), { status: 504 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas
+      .mockResolvedValueOnce({ maxFeePerGas: 9n, maxPriorityFeePerGas: 1n })
+      .mockResolvedValueOnce({ maxFeePerGas: 10n, maxPriorityFeePerGas: 1n });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout
+      .mockImplementationOnce(async (fn: any, _opts?: any) => {
+        await fn({ signal: null });
+        throw httpError;
+      })
+      .mockImplementationOnce(async (fn: any, _opts?: any) => fn({ signal: null }));
+
+    const receipt = await adapter.sendSignedTransaction(contractAddress, calldata, 0n);
+
+    expect(receipt).toEqual({ transactionHash: "0xHASH", status: "success" });
+    expect(logger.warn).toHaveBeenCalledWith(
+      "sendSignedTransaction retry attempt failed attempt=1 sendTransactionsMaxRetries=2",
+      { error: httpError },
+    );
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(2);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry on ParseRpcError (-32700)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const parseError = Object.assign(new BaseError("Parse error"), { code: -32700 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw parseError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(parseError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on InvalidRequestRpcError (-32600)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const invalidRequestError = Object.assign(new BaseError("Invalid request"), { code: -32600 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw invalidRequestError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(invalidRequestError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on MethodNotFoundRpcError (-32601)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const methodNotFoundError = Object.assign(new BaseError("Method not found"), { code: -32601 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw methodNotFoundError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(methodNotFoundError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on InvalidParamsRpcError (-32602)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const invalidParamsError = Object.assign(new BaseError("Invalid params"), { code: -32602 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw invalidParamsError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(invalidParamsError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on InvalidInputRpcError (-32000)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const invalidInputError = Object.assign(new BaseError("Invalid input"), { code: -32000 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw invalidInputError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(invalidInputError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on ResourceNotFoundRpcError (-32001)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const resourceNotFoundError = Object.assign(new BaseError("Resource not found"), { code: -32001 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw resourceNotFoundError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(resourceNotFoundError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on TransactionRejectedRpcError (-32003)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const transactionRejectedError = Object.assign(new BaseError("Transaction rejected"), { code: -32003 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw transactionRejectedError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(transactionRejectedError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on MethodNotSupportedRpcError (-32004)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const methodNotSupportedError = Object.assign(new BaseError("Method not supported"), { code: -32004 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw methodNotSupportedError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(methodNotSupportedError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on JsonRpcVersionUnsupportedError (-32006)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const jsonRpcVersionError = Object.assign(new BaseError("JSON-RPC version unsupported"), { code: -32006 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw jsonRpcVersionError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(jsonRpcVersionError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on UserRejectedRequestError (4001)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const userRejectedError = Object.assign(new BaseError("User rejected request"), { code: 4001 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw userRejectedError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(userRejectedError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on UserRejectedRequestError CAIP-25 (5000)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const userRejectedError = Object.assign(new BaseError("User rejected request"), { code: 5000 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw userRejectedError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(userRejectedError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on UnauthorizedProviderError (4100)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const unauthorizedError = Object.assign(new BaseError("Unauthorized provider"), { code: 4100 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw unauthorizedError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(unauthorizedError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on UnsupportedProviderMethodError (4200)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const unsupportedMethodError = Object.assign(new BaseError("Unsupported provider method"), { code: 4200 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw unsupportedMethodError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(unsupportedMethodError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry on SwitchChainError (4902)", async () => {
+    adapter = new ViemBlockchainClientAdapter(logger, rpcUrl, chain, contractSignerClient, 2, 1_000n, 300_000);
+
+    const switchChainError = Object.assign(new BaseError("Switch chain error"), { code: 4902 });
+
+    publicClientMock.getTransactionCount.mockResolvedValue(1);
+    publicClientMock.estimateGas.mockResolvedValue(100n);
+    publicClientMock.getChainId.mockResolvedValue(chain.id);
+    publicClientMock.estimateFeesPerGas.mockResolvedValue({
+      maxFeePerGas: 9n,
+      maxPriorityFeePerGas: 1n,
+    });
+    contractSignerClient.sign.mockResolvedValue("0xSIGNATURE");
+
+    mockedWithTimeout.mockReset();
+    mockedWithTimeout.mockImplementationOnce(async (fn: any, _opts?: any) => {
+      await fn({ signal: null });
+      throw switchChainError;
+    });
+
+    await expect(adapter.sendSignedTransaction(contractAddress, calldata, 0n)).rejects.toBe(switchChainError);
+    expect(logger.error).toHaveBeenCalledWith("sendSignedTransaction failed and will not be retried", {
+      decodedError: expect.any(Error),
+    });
+    expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
+    expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
+  });
 });
