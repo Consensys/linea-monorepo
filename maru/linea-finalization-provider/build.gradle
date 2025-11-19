@@ -25,4 +25,5 @@ dependencies {
     exclude group: "build.linea", module: "besu-libs"
   }
   api("build.linea.internal:interfaces")
+  implementation("build.linea.internal:long-running-service")
 }

@@ -50,7 +50,7 @@ class MaruValidatorTest {
         syncingConfig = syncingConfig,
       )
     validatorStack.setMaruApp(validatorMaruApp)
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     // Get the validator's p2p port after it's started
     val validatorP2pPort = validatorStack.p2pPort
@@ -65,7 +65,7 @@ class MaruValidatorTest {
         syncingConfig = syncingConfig,
       )
     followerStack.setMaruApp(followerMaruApp)
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     log.info("Nodes are peered")
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
@@ -100,8 +100,8 @@ class MaruValidatorTest {
 
   @AfterEach
   fun tearDown() {
-    followerStack.maruApp.stop()
-    validatorStack.maruApp.stop()
+    followerStack.maruApp.stop().get()
+    validatorStack.maruApp.stop().get()
     followerStack.maruApp.close()
     validatorStack.maruApp.close()
     cluster.close()

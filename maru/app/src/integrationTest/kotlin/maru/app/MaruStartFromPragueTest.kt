@@ -57,7 +57,7 @@ class MaruStartFromPragueTest {
   @AfterEach
   fun tearDown() {
     cluster.close()
-    maruNode.stop()
+    maruNode.stop().get()
     maruNode.close()
   }
 
@@ -73,7 +73,7 @@ class MaruStartFromPragueTest {
         dataDir = tmpDir.toPath(),
         allowEmptyBlocks = true,
       )
-    maruNode.start()
+    maruNode.start().get()
 
     await
       .atMost(10.seconds.toJavaDuration())
@@ -95,7 +95,7 @@ class MaruStartFromPragueTest {
         dataDir = tmpDir.toPath(),
         allowEmptyBlocks = false,
       )
-    maruNode.start()
+    maruNode.start().get()
     val totalBlocksToProduce = 5
     repeat(totalBlocksToProduce) {
       transactionsHelper.run {

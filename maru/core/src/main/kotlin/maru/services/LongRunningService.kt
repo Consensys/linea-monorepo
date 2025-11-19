@@ -7,15 +7,14 @@
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
 package maru.services
+import java.util.concurrent.CompletableFuture
+import tech.pegasys.teku.infrastructure.async.SafeFuture
+import linea.LongRunningService as LineaLongRunningService
 
-interface LongRunningService {
-  fun start()
-
-  fun stop()
-}
+typealias LongRunningService = LineaLongRunningService
 
 object NoOpLongRunningService : LongRunningService {
-  override fun start() {}
+  override fun start(): CompletableFuture<Unit> = SafeFuture.completedFuture(Unit)
 
-  override fun stop() {}
+  override fun stop(): CompletableFuture<Unit> = SafeFuture.completedFuture(Unit)
 }

@@ -57,7 +57,7 @@ class MaruManyFollowerElsTest {
    * Starts the Maru follower that was already instantiated in setUp().
    */
   private fun startMaruFollower() {
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     // Wait for nodes to peer
     log.info("Waiting for Maru nodes to peer")
@@ -107,7 +107,7 @@ class MaruManyFollowerElsTest {
         dataDir = validatorStack.tmpDir,
       )
     validatorStack.setMaruApp(validatorMaruApp)
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
     val followerMaruApp =
       maruFactory.buildTestMaruFollowerWithP2pPeering(
         ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
@@ -122,8 +122,8 @@ class MaruManyFollowerElsTest {
 
   @AfterEach
   fun tearDown() {
-    followerStack.maruApp.stop()
-    validatorStack.maruApp.stop()
+    followerStack.maruApp.stop().get()
+    validatorStack.maruApp.stop().get()
     followerStack.maruApp.close()
     validatorStack.maruApp.close()
     cluster.close()

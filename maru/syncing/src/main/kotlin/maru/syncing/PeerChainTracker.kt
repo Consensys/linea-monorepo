@@ -9,14 +9,15 @@
 package maru.syncing
 
 import java.util.Timer
-import java.util.UUID
-import kotlin.concurrent.timerTask
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
+import linea.timer.PeriodicPollingService
+import linea.timer.TimerFactory
+import linea.timer.TimerSchedule
 import maru.database.BeaconChain
 import maru.p2p.PeersHeadBlockProvider
-import maru.services.LongRunningService
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
  * polls periodically peers chain head
@@ -31,16 +32,16 @@ class PeerChainTracker(
   private val beaconSyncTargetUpdateHandler: BeaconSyncTargetUpdateHandler,
   private val targetChainHeadCalculator: SyncTargetSelector,
   private val config: Config,
-  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
-    Timer(
-      "$name-${UUID.randomUUID()}",
-      isDaemon,
-    )
-  },
+  private val timerFactory: TimerFactory,
   private val beaconChain: BeaconChain,
-) : LongRunningService {
-  private val log = LogManager.getLogger(this.javaClass)
-
+  private val log: Logger = LogManager.getLogger(PeerChainTracker::class.java),
+) : PeriodicPollingService(
+    name = "peer-chain-tracker",
+    timerFactory = timerFactory,
+    timerSchedule = TimerSchedule.FIXED_RATE,
+    pollingInterval = config.pollingUpdateInterval,
+    log = log,
+  ) {
   data class Config(
     val pollingUpdateInterval: Duration,
   )
@@ -54,7 +55,7 @@ class PeerChainTracker(
   /**
    * Updates the peer view and triggers sync target updates if needed
    */
-  private fun updatePeerView() {
+  override fun action(): SafeFuture<Unit> {
     log.trace("Updating peer view")
 
     val peersHeads = peersHeadsProvider.getPeersHeads().values.toList()
@@ -73,39 +74,11 @@ class PeerChainTracker(
       log.debug("Notified about the new syncTarget={}", newSyncTarget)
       lastNotifiedTarget = newSyncTarget
     }
+    return SafeFuture.completedFuture(Unit)
   }
 
-  override fun start() {
-    synchronized(this) {
-      if (isRunning) {
-        return // Already running, don't start again
-      }
-
-      // Always create a new timer when starting
-      poller = timerFactory("peer-chain-tracker", true)
-
-      poller!!.scheduleAtFixedRate(
-        /* task = */ timerTask { updatePeerView() },
-        /* delay = */ 0.seconds.inWholeMilliseconds,
-        /* period = */ config.pollingUpdateInterval.inWholeMilliseconds,
-      )
-
-      log.info("PeerChainTracker is started")
-      isRunning = true
-    }
-  }
-
-  override fun stop() {
-    synchronized(this) {
-      if (!isRunning) {
-        return // Already stopped, don't stop again
-      }
-
-      poller?.cancel()
-      poller = null
-      isRunning = false
+  override fun stop(): SafeFuture<Unit> =
+    super.stop().thenApply {
       lastNotifiedTarget = null
-      log.info("PeerChainTracker is stopped")
     }
-  }
 }

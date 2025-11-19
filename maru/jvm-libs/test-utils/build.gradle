@@ -11,6 +11,8 @@ dependencies {
   implementation(project(":config"))
   implementation(project(":jvm-libs:extensions"))
   implementation "build.linea.internal:kotlin"
+  implementation "build.linea.internal:long-running-service"
+
 
   api "org.hyperledger.besu.internal:besu-acceptance-tests-dsl"
   implementation("org.hyperledger.besu.internal:besu-ethereum-core")

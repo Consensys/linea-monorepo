@@ -8,23 +8,23 @@
  */
 package maru.finalization
 
-import java.lang.Exception
 import java.util.Timer
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.concurrent.timerTask
 import kotlin.time.Duration
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.domain.BlockData
 import linea.domain.BlockParameter
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.ethapi.EthApiClient
+import linea.timer.PeriodicPollingService
+import linea.timer.TimerFactory
+import linea.timer.TimerSchedule
 import maru.consensus.state.FinalizationProvider
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.extensions.encodeHex
-import maru.services.LongRunningService
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class LineaFinalizationProvider(
@@ -32,14 +32,16 @@ class LineaFinalizationProvider(
   private val l2EthApi: EthApiClient,
   private val pollingUpdateInterval: Duration,
   private val l1HighestBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
-  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
-    Timer(
-      "$name-${UUID.randomUUID()}",
-      isDaemon,
-    )
-  },
-) : FinalizationProvider,
-  LongRunningService {
+  private val timerFactory: TimerFactory,
+  private val log: Logger = LogManager.getLogger(LineaFinalizationProvider::class.java),
+) : PeriodicPollingService(
+    name = "l1-finalization-poller",
+    timerFactory = timerFactory,
+    timerSchedule = TimerSchedule.FIXED_RATE,
+    pollingInterval = pollingUpdateInterval,
+    log = log,
+  ),
+  FinalizationProvider {
   private data class BlockHeader(
     val blockNumber: ULong,
     val hash: ByteArray,
@@ -63,7 +65,6 @@ class LineaFinalizationProvider(
     }
   }
 
-  private val log = LogManager.getLogger(this.javaClass)
   private val lastFinalizedBlock: AtomicReference<BlockHeader>
 
   init {
@@ -87,40 +88,15 @@ class LineaFinalizationProvider(
 
   private var poller: Timer? = null
 
-  override fun start() {
-    synchronized(this) {
-      if (poller != null) {
-        return
-      }
-      log.debug("Starting LineaFinalizationProvider with polling interval: {}", pollingUpdateInterval)
-      poller = timerFactory("l1-finalization-poller", true)
-      poller!!.scheduleAtFixedRate(
-        timerTask {
-          try {
-            update()
-          } catch (e: Exception) {
-            log.warn("LineaFinalizationProvider poll task exception", e)
-          }
-        },
-        0,
-        pollingUpdateInterval.inWholeMilliseconds,
-      )
-    }
+  override fun start(): SafeFuture<Unit> {
+    log.debug("Starting LineaFinalizationProvider with polling interval: {}", pollingUpdateInterval)
+    return super.start()
   }
 
-  override fun stop() {
-    synchronized(this) {
-      if (poller == null) {
-        return
-      }
-      poller?.cancel()
-      poller = null
+  override fun action(): SafeFuture<Unit> =
+    getFinalizationUpdate().thenApply { finalization ->
+      lastFinalizedBlock.set(finalization)
     }
-  }
-
-  fun update() {
-    lastFinalizedBlock.set(getFinalizationUpdate().get())
-  }
 
   private fun getFinalizationUpdate(): SafeFuture<BlockHeader> =
     lineaContract

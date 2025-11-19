@@ -8,11 +8,13 @@
  */
 package maru.syncing
 
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import linea.kotlin.minusCoercingUnderflow
+import linea.timer.TimerFactory
 import maru.consensus.ValidatorProvider
 import maru.database.BeaconChain
 import maru.p2p.PeerLookup
@@ -204,6 +206,7 @@ class BeaconSyncControllerImpl(
       desyncTolerance: ULong,
       pipelineConfig: BeaconChainDownloadPipelineFactory.Config,
       allowEmptyBlocks: Boolean = true,
+      timerFactory: TimerFactory,
     ): SyncController {
       val clSyncService =
         CLSyncServiceImpl(
@@ -233,6 +236,7 @@ class BeaconSyncControllerImpl(
           targetChainHeadCalculator = targetChainHeadCalculator,
           config = peerChainTrackerConfig,
           beaconChain = beaconChain,
+          timerFactory = timerFactory,
         )
 
       return SyncControllerManager(
@@ -258,21 +262,29 @@ class SyncControllerManager(
   SyncStatusProvider by syncStatusController {
   private val log = LogManager.getLogger(this.javaClass)
 
-  override fun start() {
+  override fun start(): CompletableFuture<Unit> {
     log.debug("Starting {}", this::class.simpleName)
-    clSyncService.start()
-    elSyncService.start()
-    peerChainTracker.start()
+    return clSyncService
+      .start()
+      .thenCompose {
+        elSyncService.start()
+      }.thenCompose {
+        peerChainTracker.start()
+      }
   }
 
-  override fun stop() {
-    clSyncService.stop()
-    elSyncService.stop()
-    peerChainTracker.stop()
-    // Setting to default status so that SYNCING -> SYNCED will actually trigger the callbacks
-    syncStatusController.updateClSyncStatus(CLSyncStatus.SYNCING)
-    syncStatusController.updateElSyncStatus(ELSyncStatus.SYNCING)
-  }
+  override fun stop(): CompletableFuture<Unit> =
+    clSyncService
+      .stop()
+      .thenCompose {
+        elSyncService.stop()
+      }.thenCompose {
+        peerChainTracker.stop()
+      }.thenApply {
+        // Setting to default status so that SYNCING -> SYNCED will actually trigger the callbacks
+        syncStatusController.updateClSyncStatus(CLSyncStatus.SYNCING)
+        syncStatusController.updateElSyncStatus(ELSyncStatus.SYNCING)
+      }
 }
 
 class AlwaysSyncedController(
@@ -309,15 +321,15 @@ class AlwaysSyncedController(
 
   override fun getBeaconSyncDistance(): ULong = 0UL
 
-  override fun start() {
+  override fun start(): CompletableFuture<Unit> {
     elSyncHandlers.notifySubscribers(getElSyncStatus())
     clSyncHandlers.notifySubscribers(getCLSyncStatus())
     fullSyncCompleteHandlers.notifySubscribers(Unit)
     beaconSyncCompleteHandlers.notifySubscribers(Unit)
+    return CompletableFuture.completedFuture(Unit)
   }
 
   override fun getCLSyncTarget(): ULong = beaconChain.getLatestBeaconState().beaconBlockHeader.number
 
-  override fun stop() {
-  }
+  override fun stop(): CompletableFuture<Unit> = CompletableFuture.completedFuture(Unit)
 }

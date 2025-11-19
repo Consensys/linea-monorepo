@@ -59,7 +59,7 @@ class MaruFollowerNegativeTest {
           overridingP2PNetwork = spyingP2PNetwork,
         )
       }
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     val validatorGenesis =
       validatorStack.besuNode
@@ -84,7 +84,7 @@ class MaruFollowerNegativeTest {
           p2pNetwork = followerP2PNetwork,
         )
       }
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     val followerGenesis =
       followerStack.besuNode

@@ -277,6 +277,7 @@ data class MaruConfig(
   val api: ApiConfig,
   val syncing: SyncingConfig,
   val forkTransition: ForkTransition,
+  val useVertxTimers: Boolean = false,
 ) {
   init {
     if (qbft != null) {

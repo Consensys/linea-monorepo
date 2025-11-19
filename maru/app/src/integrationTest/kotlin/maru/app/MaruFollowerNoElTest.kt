@@ -73,7 +73,7 @@ class MaruFollowerNoElTest {
       }
 
     // Start all Besu nodes together for proper peering
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     // Discover actual validator API port
     validatorApiPort = validatorStack.maruApp.apiPort()
@@ -93,7 +93,7 @@ class MaruFollowerNoElTest {
         startApiServer = true,
       )
 
-    maruFollower.start()
+    maruFollower.start().get()
 
     // Discover actual follower API port
     followerApiPort = maruFollower.apiPort()
@@ -105,8 +105,8 @@ class MaruFollowerNoElTest {
 
   @AfterEach
   fun tearDown() {
-    maruFollower.stop()
-    validatorStack.maruApp.stop()
+    maruFollower.stop().get()
+    validatorStack.maruApp.stop().get()
     validatorStack.maruApp.close()
     cluster.close()
   }

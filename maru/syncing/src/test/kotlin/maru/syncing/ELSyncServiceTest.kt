@@ -20,7 +20,7 @@ import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import testutils.maru.TestablePeriodicTimer
+import testutils.maru.TestablePeriodicTimerFactory
 
 @OptIn(ExperimentalAtomicApi::class)
 class ELSyncServiceTest {
@@ -35,7 +35,6 @@ class ELSyncServiceTest {
       onStatusChangeCount.incrementAndFetch()
     }
     val config = ELSyncService.Config(pollingInterval = 1.seconds)
-    val timer = TestablePeriodicTimer()
     val beaconChain =
       DataGenerators.genesisState(0uL, emptySet()).let {
         InMemoryBeaconChain(initialBeaconState = it.first, initialBeaconBlock = it.second)
@@ -47,6 +46,7 @@ class ELSyncServiceTest {
         SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
       }
 
+    val timerFactory = TestablePeriodicTimerFactory()
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
@@ -54,10 +54,12 @@ class ELSyncServiceTest {
         followerELBLockImportHandler = blockImportHandler,
         onStatusChange = onStatusChange,
         config = config,
-        timerFactory = { _, _ -> timer },
+        timerFactory = timerFactory,
       )
 
     elSyncService.start()
+    val timer = timerFactory.getTimer("ELSyncPoller")!!
+
     assertThat(elSyncStatus).isNull()
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)
@@ -77,7 +79,6 @@ class ELSyncServiceTest {
       onStatusChangeCount.incrementAndFetch()
     }
     val config = ELSyncService.Config(pollingInterval = 1.seconds)
-    val timer = TestablePeriodicTimer()
     val beaconChain =
       DataGenerators.genesisState(0uL, emptySet()).let {
         InMemoryBeaconChain(initialBeaconState = it.first, initialBeaconBlock = it.second)
@@ -93,6 +94,7 @@ class ELSyncServiceTest {
       NewBlockHandler<ForkChoiceUpdatedResult> {
         SafeFuture.completedFuture(forkChoiceResultToReturn)
       }
+    val timerFactory = TestablePeriodicTimerFactory()
     val elSyncService =
       ELSyncService(
         beaconChain = beaconChain,
@@ -100,10 +102,11 @@ class ELSyncServiceTest {
         followerELBLockImportHandler = blockImportHandler,
         onStatusChange = onStatusChange,
         config = config,
-        timerFactory = { _, _ -> timer },
+        timerFactory = timerFactory,
       )
-
     elSyncService.start()
+    val timer = timerFactory.getTimer("ELSyncPoller")!!
+
     assertThat(elSyncStatus).isNull()
     timer.runNextTask()
     assertThat(elSyncStatus).isEqualTo(ELSyncStatus.SYNCED)

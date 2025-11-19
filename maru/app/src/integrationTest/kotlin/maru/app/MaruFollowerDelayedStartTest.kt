@@ -45,9 +45,9 @@ class MaruFollowerDelayedStartTest {
 
   @AfterEach
   fun tearDown() {
-    followerStack.maruApp.stop()
+    followerStack.maruApp.stop().get()
     followerStack.maruApp.close()
-    validatorStack.maruApp.stop()
+    validatorStack.maruApp.stop().get()
     validatorStack.maruApp.close()
     cluster.close()
   }
@@ -64,7 +64,7 @@ class MaruFollowerDelayedStartTest {
         dataDir = validatorStack.tmpDir,
       )
     validatorStack.setMaruApp(validatorMaruApp)
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     val blocksToProduce = 5
     repeat(blocksToProduce) {
@@ -93,7 +93,7 @@ class MaruFollowerDelayedStartTest {
         validatorPortForStaticPeering = validatorStack.p2pPort,
       )
     followerStack.setMaruApp(followerMaruApp)
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     followerStack.besuNode.assertMinedBlocks(blocksToProduce)
 

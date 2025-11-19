@@ -10,6 +10,8 @@ package maru.app
 
 import io.vertx.core.Vertx
 import java.time.Clock
+import java.util.concurrent.CompletableFuture
+import linea.timer.TimerFactory
 import maru.api.ApiServer
 import maru.config.MaruConfig
 import maru.consensus.DifficultyAwareQbftConfig
@@ -62,6 +64,7 @@ class MaruApp(
   private val apiServer: ApiServer,
   private val syncStatusProvider: SyncStatusProvider,
   private val syncControllerManager: LongRunningService,
+  private val timerFactory: TimerFactory,
 ) : LongRunningCloseable {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
@@ -125,15 +128,16 @@ class MaruApp(
       clock = clock,
       beaconChain = beaconChain,
       privateKeyWithoutPrefix = getPrivateKeyWithoutPrefix(),
+      timerFactory = timerFactory,
     )
 
-  override fun start() {
+  override fun start(): CompletableFuture<Unit> {
     if (finalizationProvider is LineaFinalizationProvider) {
-      start("Finalization Provider", finalizationProvider::start)
+      start("Finalization Provider", { finalizationProvider.start().get() })
     }
     start("P2P Network") { p2pNetwork.start().get() }
-    start("Sync Service", syncControllerManager::start)
-    start("Beacon Api", apiServer::start)
+    start("Sync Service", { syncControllerManager.start().get() })
+    start("Beacon Api", { apiServer.start().get() })
     // observability shall be the last to start because of liveness/readiness probe
     start("Observability Server") {
       ObservabilityServer(
@@ -141,22 +145,24 @@ class MaruApp(
       ).let { vertx.deployVerticle(it).get() }
     }
     log.info("Maru is up")
+    return CompletableFuture.completedFuture(Unit)
   }
 
-  override fun stop() {
-    stop("Sync service", syncControllerManager::stop)
+  override fun stop(): CompletableFuture<Unit> {
+    stop("Sync service", { syncControllerManager.stop().get() })
     stop("P2P Network") { p2pNetwork.stop().get() }
     if (finalizationProvider is LineaFinalizationProvider) {
-      stop("Finalization Provider", finalizationProvider::stop)
+      stop("Finalization Provider", { finalizationProvider.stop().get() })
     }
-    stop("Beacon API", apiServer::stop)
-    stop("Protocol", protocolStarter::pause)
+    stop("Beacon API", { apiServer.stop().get() })
+    stop("Protocol", { protocolStarter.pause() })
     stop("vertx verticles") {
       vertx.deploymentIDs().forEach {
         vertx.undeploy(it).get()
       }
     }
     log.info("Maru is down")
+    return CompletableFuture.completedFuture(Unit)
   }
 
   override fun close() {
@@ -197,6 +203,7 @@ class MaruApp(
     clock: Clock,
     beaconChain: BeaconChain,
     privateKeyWithoutPrefix: ByteArray,
+    timerFactory: TimerFactory,
   ): Protocol {
     val qbftFactory =
       if (config.qbft != null) {
@@ -249,6 +256,7 @@ class MaruApp(
         forkTransitionCheckInterval = config.forkTransition.protocolTransitionPollingInterval,
         forkTransitionNotifier = forkTransitionSubscriptionManager,
         clock = clock,
+        timerFactory = timerFactory,
       )
 
     return protocolStarter

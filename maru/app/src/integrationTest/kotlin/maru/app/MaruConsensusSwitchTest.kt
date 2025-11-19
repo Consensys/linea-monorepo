@@ -67,8 +67,8 @@ class MaruConsensusSwitchTest {
 
   @AfterEach
   fun tearDown() {
-    followerMaruNode.stop()
-    validatorMaruNode.stop()
+    followerMaruNode.stop().get()
+    validatorMaruNode.stop().get()
     followerMaruNode.close()
     validatorMaruNode.close()
     cluster.close()
@@ -145,7 +145,7 @@ class MaruConsensusSwitchTest {
         engineApiRpc = validatorEngineRpcUrl,
         dataDir = validatorMaruTmpDir.toPath(),
       )
-    validatorMaruNode.start()
+    validatorMaruNode.start().get()
 
     val followerEthereumJsonRpcBaseUrl = followerBesuNode.jsonRpcBaseUrl().get()
     val followerEngineRpcUrl = followerBesuNode.engineRpcUrl().get()
@@ -157,7 +157,7 @@ class MaruConsensusSwitchTest {
         dataDir = followerMaruTmpDir.toPath(),
         validatorPortForStaticPeering = validatorMaruNode.p2pPort(),
       )
-    followerMaruNode.start()
+    followerMaruNode.start().get()
 
     followerMaruNode.awaitTillMaruHasPeers(1u)
     validatorMaruNode.awaitTillMaruHasPeers(1u)

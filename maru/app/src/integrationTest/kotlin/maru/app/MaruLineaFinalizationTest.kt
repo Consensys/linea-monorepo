@@ -71,7 +71,7 @@ class MaruLineaFinalizationTest {
         overridingLineaContractClient = fakeLineaContract,
       )
     validatorStack.setMaruApp(validatorMaruApp)
-    validatorStack.maruApp.start()
+    validatorStack.maruApp.start().get()
 
     val validatorP2pPort = validatorStack.p2pPort
 
@@ -84,7 +84,7 @@ class MaruLineaFinalizationTest {
         overridingLineaContractClient = fakeLineaContract,
       )
     followerStack.setMaruApp(followerMaruApp)
-    followerStack.maruApp.start()
+    followerStack.maruApp.start().get()
 
     followerStack.maruApp.awaitTillMaruHasPeers(1u)
     validatorStack.maruApp.awaitTillMaruHasPeers(1u)
@@ -125,8 +125,8 @@ class MaruLineaFinalizationTest {
 
   @AfterEach
   fun tearDown() {
-    followerStack.maruApp.stop()
-    validatorStack.maruApp.stop()
+    followerStack.maruApp.stop().get()
+    validatorStack.maruApp.stop().get()
     followerStack.maruApp.close()
     validatorStack.maruApp.close()
     cluster.close()

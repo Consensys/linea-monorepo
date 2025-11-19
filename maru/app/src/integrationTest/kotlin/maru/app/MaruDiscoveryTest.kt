@@ -43,7 +43,7 @@ class MaruDiscoveryTest {
   fun tearDown() {
     maruApps.forEach { app ->
       try {
-        app.stop()
+        app.stop().get()
         app.close()
       } catch (e: Exception) {
         log.warn("Error stopping Maru app", e)
@@ -134,7 +134,7 @@ class MaruDiscoveryTest {
 
     bootnodeStack.setMaruApp(bootnodeMaruApp)
     maruApps.add(bootnodeMaruApp)
-    bootnodeMaruApp.start()
+    bootnodeMaruApp.start().get()
 
     // Get bootnode ENR for other nodes to use
     val bootnodeEnr = bootnodeMaruApp.p2pNetwork.localNodeRecord?.asEnr()
@@ -171,7 +171,7 @@ class MaruDiscoveryTest {
 
       stack.setMaruApp(followerMaruApp)
       maruApps.add(followerMaruApp)
-      followerMaruApp.start()
+      followerMaruApp.start().get()
     }
 
     log.info("All $numberOfNodes Maru nodes started")

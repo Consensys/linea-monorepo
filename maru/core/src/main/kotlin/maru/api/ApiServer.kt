@@ -8,10 +8,8 @@
  */
 package maru.api
 
-interface ApiServer {
-  fun start()
+import maru.services.LongRunningService
 
-  fun stop()
-
+interface ApiServer : LongRunningService {
   fun port(): Int
 }
