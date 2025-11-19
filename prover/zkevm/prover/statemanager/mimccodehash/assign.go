@@ -219,7 +219,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 	}
 
 	// Assign the columns of the mimc code hash module
-	pragmas.MarkRightPadded(mh.IsActive)
+	pragmas.MarkRightPadded(run.Spec.Columns.GetHandle(mh.IsActive.GetColID()))
 	run.AssignColumn(mh.IsActive.GetColID(), smartvectors.RightZeroPadded(builder.isActive, mh.Inputs.Size))
 	run.AssignColumn(mh.CFI.GetColID(), smartvectors.RightZeroPadded(builder.cfi, mh.Inputs.Size))
 	run.AssignColumn(mh.Limb.GetColID(), smartvectors.RightZeroPadded(builder.limb, mh.Inputs.Size))
