@@ -5,13 +5,13 @@ jest.mock("viem", () => {
   const actual = jest.requireActual("viem");
   return {
     ...actual,
-    decodeEventLog: jest.fn(),
+    parseEventLogs: jest.fn(),
   };
 });
 
-import { decodeEventLog } from "viem";
+import { parseEventLogs } from "viem";
 
-const mockedDecodeEventLog = decodeEventLog as jest.MockedFunction<typeof decodeEventLog>;
+const mockedParseEventLogs = parseEventLogs as jest.MockedFunction<typeof parseEventLogs>;
 
 let getNodeOperatorFeesPaidFromTxReceipt: typeof import("../getNodeOperatorFeesPaidFromTxReceipt.js").getNodeOperatorFeesPaidFromTxReceipt;
 
@@ -40,18 +40,21 @@ describe("getNodeOperatorFeesPaidFromTxReceipt", () => {
       },
     ]);
 
-    mockedDecodeEventLog.mockReturnValueOnce({
-      eventName: "FeeDisbursed",
-      args: { fee: 123n },
-    } as any);
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "FeeDisbursed",
+        args: { fee: 123n },
+        address: dashboardAddress,
+      } as any,
+    ]);
 
     const fee = getNodeOperatorFeesPaidFromTxReceipt(receipt, dashboardAddress);
 
     expect(fee).toBe(123n);
-    expect(mockedDecodeEventLog).toHaveBeenCalledWith({
+    expect(mockedParseEventLogs).toHaveBeenCalledWith({
       abi: DashboardABI,
-      data: "0xfee",
-      topics: ["0x01"],
+      eventName: "FeeDisbursed",
+      logs: receipt.logs,
     });
   });
 
@@ -64,14 +67,12 @@ describe("getNodeOperatorFeesPaidFromTxReceipt", () => {
       },
     ]);
 
-    mockedDecodeEventLog.mockImplementation(() => {
-      throw new Error("bad log");
-    });
+    mockedParseEventLogs.mockReturnValueOnce([]);
 
     const fee = getNodeOperatorFeesPaidFromTxReceipt(receipt, dashboardAddress);
 
     expect(fee).toBe(0n);
-    expect(mockedDecodeEventLog).toHaveBeenCalledTimes(1);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 
   it("ignores logs from other contracts or events and returns zero", () => {
@@ -88,14 +89,17 @@ describe("getNodeOperatorFeesPaidFromTxReceipt", () => {
       },
     ]);
 
-    mockedDecodeEventLog.mockReturnValueOnce({
-      eventName: "OtherEvent",
-      args: {},
-    } as any);
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "FeeDisbursed",
+        args: { fee: 456n },
+        address: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      } as any,
+    ]);
 
     const fee = getNodeOperatorFeesPaidFromTxReceipt(receipt, dashboardAddress);
 
     expect(fee).toBe(0n);
-    expect(mockedDecodeEventLog).toHaveBeenCalledTimes(1);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 });
