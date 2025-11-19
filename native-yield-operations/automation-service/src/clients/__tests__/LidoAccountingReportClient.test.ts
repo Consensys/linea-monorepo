@@ -3,7 +3,7 @@ import type { ILogger, IRetryService } from "@consensys/linea-shared-utils";
 import type { ILazyOracle, UpdateVaultDataParams } from "../../core/clients/contracts/ILazyOracle.js";
 import type { Address, Hex, TransactionReceipt } from "viem";
 import { LidoAccountingReportClient } from "../LidoAccountingReportClient.js";
-import { BaseError, ContractFunctionRevertedError } from "viem";
+import { BaseError, ContractFunctionRevertedError, ContractFunctionExecutionError } from "viem";
 
 jest.mock("@lidofinance/lsv-cli/dist/utils/report/report-proof.js", () => ({
   getReportProofByVault: jest.fn(),
@@ -134,35 +134,71 @@ describe("LidoAccountingReportClient", () => {
   it("logs revert-specific errors when simulation reverts", async () => {
     await client.getLatestSubmitVaultReportParams(vault);
     logger.error.mockClear();
-    const revertedError = Object.assign(new Error("reverted"), {
-      shortMessage: "short",
-      data: { errorName: "MockRevert" },
+    
+    const revertCause = Object.assign(new Error("MockRevert"), {
+      reason: "MockRevert",
     }) as ContractFunctionRevertedError;
-    Object.setPrototypeOf(revertedError, ContractFunctionRevertedError.prototype);
-    lazyOracle.simulateUpdateVaultData.mockRejectedValue(revertedError);
+    Object.setPrototypeOf(revertCause, ContractFunctionRevertedError.prototype);
+    
+    const executionError = Object.assign(new Error("execution reverted"), {
+      shortMessage: "short",
+      name: "ContractFunctionExecutionError",
+      functionName: "updateVaultData",
+      contractAddress: "0xcontract" as Address,
+      sender: "0xsender" as Address,
+      cause: revertCause,
+    }) as ContractFunctionExecutionError;
+    Object.setPrototypeOf(executionError, ContractFunctionExecutionError.prototype);
+    
+    lazyOracle.simulateUpdateVaultData.mockRejectedValue(executionError);
 
     const success = await client.isSimulateSubmitLatestVaultReportSuccessful(vault);
 
     expect(success).toBe(false);
     expect(logger.error).toHaveBeenNthCalledWith(1, "Failed isSimulateSubmitLatestVaultReportSuccessful");
-    expect(logger.error).toHaveBeenNthCalledWith(2, "❌ Reverted:", { shortMessage: "short" });
-    expect(logger.error).toHaveBeenNthCalledWith(3, "Reason:", { reason: "MockRevert" });
+    expect(logger.error).toHaveBeenNthCalledWith(2, "Contract simulation failed", {
+      error_type: "ContractFunctionExecutionError",
+      function: "updateVaultData",
+      contract: "0xcontract",
+      sender: "0xsender",
+      revert_reason: "MockRevert",
+      message: "short",
+    });
   });
 
   it("falls back to the revert error message when errorName is missing", async () => {
     await client.getLatestSubmitVaultReportParams(vault);
     logger.error.mockClear();
-    const revertedError = Object.assign(new Error("fallback message"), {
-      shortMessage: "short",
-      data: {},
+    
+    const revertCause = Object.assign(new Error("fallback message"), {
+      reason: undefined,
     }) as ContractFunctionRevertedError;
-    Object.setPrototypeOf(revertedError, ContractFunctionRevertedError.prototype);
-    lazyOracle.simulateUpdateVaultData.mockRejectedValue(revertedError);
+    Object.setPrototypeOf(revertCause, ContractFunctionRevertedError.prototype);
+    
+    const executionError = Object.assign(new Error("execution reverted"), {
+      shortMessage: "short",
+      name: "ContractFunctionExecutionError",
+      functionName: "updateVaultData",
+      contractAddress: "0xcontract" as Address,
+      sender: "0xsender" as Address,
+      cause: revertCause,
+    }) as ContractFunctionExecutionError;
+    Object.setPrototypeOf(executionError, ContractFunctionExecutionError.prototype);
+    
+    lazyOracle.simulateUpdateVaultData.mockRejectedValue(executionError);
 
     const success = await client.isSimulateSubmitLatestVaultReportSuccessful(vault);
 
     expect(success).toBe(false);
-    expect(logger.error).toHaveBeenNthCalledWith(3, "Reason:", { reason: "fallback message" });
+    expect(logger.error).toHaveBeenNthCalledWith(1, "Failed isSimulateSubmitLatestVaultReportSuccessful");
+    expect(logger.error).toHaveBeenNthCalledWith(2, "Contract simulation failed", {
+      error_type: "ContractFunctionExecutionError",
+      function: "updateVaultData",
+      contract: "0xcontract",
+      sender: "0xsender",
+      revert_reason: undefined,
+      message: "short",
+    });
   });
 
   it("logs base errors when simulation throws a BaseError", async () => {
