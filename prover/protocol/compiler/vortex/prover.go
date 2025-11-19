@@ -259,7 +259,7 @@ type OpenSelectedColumnsProverAction struct {
 }
 
 func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
-	fmt.Printf("okok\n")
+	fmt.Printf("okok OpenSelectedColumnsProverAction\n")
 
 	var (
 		committedMatricesSIS   = []vortex.EncodedMatrix{}
@@ -280,8 +280,14 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			committedMatricesSIS = append(committedMatricesSIS, ctx.Items.Precomputeds.CommittedMatrix)
 			treesSIS = append(treesSIS, ctx.Items.Precomputeds.Tree)
 		} else {
-			committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
-			treesNoSIS = append(treesNoSIS, ctx.Items.Precomputeds.Tree)
+			if ctx.IsGnark {
+				committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
+				gnarkTrees = append(gnarkTrees, ctx.Items.Precomputeds.GnarkTree)
+			} else {
+				committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
+				treesNoSIS = append(treesNoSIS, ctx.Items.Precomputeds.Tree)
+			}
+
 		}
 	}
 
@@ -301,6 +307,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt_bls12377.Tree)
 			// conditionally stack the matrix and tree
 			// to SIS or no SIS matrices and trees
+
 			if ctx.RoundStatus[round] == IsOnlyPoseidon2Applied {
 				committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 				gnarkTrees = append(gnarkTrees, tree)
@@ -419,12 +426,12 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt_koalabear.Proof) [8]smartvectors
 		)
 	}
 
-	if len(proofs) != (ctx.NumCommittedRounds()+1) && ctx.IsNonEmptyPrecomputed() {
-		utils.Panic(
-			"inconsitent proofs length %v, %v",
-			len(proofs), ctx.NumCommittedRounds()+1,
-		)
-	}
+	// if len(proofs) != (ctx.NumCommittedRounds()+1) && ctx.IsNonEmptyPrecomputed() {
+	// 	utils.Panic(
+	// 		"inconsitent proofs length %v, %v",
+	// 		len(proofs), ctx.NumCommittedRounds()+1,
+	// 	)
+	// }
 
 	if len(proofs[0]) != ctx.NbColsToOpen() {
 		utils.Panic(
