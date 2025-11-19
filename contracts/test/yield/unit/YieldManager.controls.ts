@@ -389,6 +389,8 @@ describe("YieldManager contract - control operations", () => {
 
       await expect(yieldManager.connect(securityCouncil).initiateOssification(mockYieldProviderAddress))
         .to.emit(yieldManager, "YieldProviderOssificationInitiated")
+        .withArgs(mockYieldProviderAddress)
+        .to.emit(yieldManager, "YieldProviderStakingPaused")
         .withArgs(mockYieldProviderAddress);
 
       expect(await yieldManager.isOssificationInitiated(mockYieldProviderAddress)).to.be.true;
