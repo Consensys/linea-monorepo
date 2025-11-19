@@ -13,14 +13,14 @@ services:
       - ../config/coordinator/coordinator-config-v2.toml:/coordinator/coordinator-config-v2.toml:ro
 
   maru:
-    image: consensys/maru:${MARU_TAG:-a479db1}
+    image: consensys/maru:${MARU_TAG:-3305fe0}
     hostname: maru
     container_name: maru
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
         condition: service_healthy
-    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--maru-genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
+    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
       - ./config/maru/sequencer.config.toml:/opt/consensys/maru/configs/config.toml:ro
