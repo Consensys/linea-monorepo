@@ -20,6 +20,9 @@ import java.util.Comparator;
 public class WcpOperationComparator implements Comparator<WcpOperation> {
   @Override
   public int compare(WcpOperation op1, WcpOperation op2) {
+    // NOTE: this does not include wcpInst because operations are stored in different sets based on
+    // their instruction.
+
     // First sort by Arg1
     final int arg1Comp = op1.arg1().compareTo(op2.arg1());
     if (arg1Comp != 0) {
