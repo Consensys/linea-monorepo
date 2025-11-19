@@ -290,8 +290,11 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
    * Determines whether a viem sendRawTransaction error should be retried.
    * In general we retry server-side errors, and exclude client-side errors from retries.
    *
-   * @param {RequestErrorType} error - The error to evaluate for retry eligibility.
-   * @returns {Promise<boolean>} True if the error should be retried, false otherwise.
+   * Uses error.walk() to traverse the error chain and find errors with specific properties
+   * (code, status) or error types. This is more robust than checking only the root error.
+   *
+   * @param {BaseError} error - The error to evaluate for retry eligibility.
+   * @returns {boolean} True if the error should be retried, false otherwise.
    */
   private _shouldRetryViemSendRawTranasctionError(error: BaseError): boolean {
     // We don't want to retry our own timeout
@@ -300,9 +303,10 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       return false;
     }
 
-    // Check RPC error codes first (if error has a numeric code property)
-    if (typeof (error as any).code === "number") {
-      const code = (error as any).code;
+    // Check RPC error codes using walk() to find error with code property in the error chain
+    const errorWithCode = error.walk((err) => typeof (err as { code?: unknown }).code === "number");
+    if (errorWithCode) {
+      const code = (errorWithCode as unknown as { code: number }).code;
 
       // Explicitly retry these RPC error codes
       // -32603 InternalRpcError
@@ -342,9 +346,10 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       return true;
     }
 
-    // Check HTTP status codes (for HttpRequestError)
-    if (typeof (error as any).status === "number") {
-      const status = (error as any).status;
+    // Check HTTP status codes using walk() to find error with status property in the error chain
+    const errorWithStatus = error.walk((err) => typeof (err as { status?: unknown }).status === "number");
+    if (errorWithStatus) {
+      const status = (errorWithStatus as unknown as { status: number }).status;
       // Retry on these HTTP status codes
       if ([408, 429, 500, 502, 503, 504].includes(status)) {
         return true;
@@ -353,11 +358,11 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       return false;
     }
 
-    // Check specific error type instances
+    // Check specific error types using walk() to find errors by name in the error chain
     // Retry WebSocketRequestError and UnknownRpcError
     if (
-      (error instanceof BaseError && error.name === "WebSocketRequestError") ||
-      (error instanceof BaseError && error.name === "UnknownRpcError")
+      error.walk((err) => (err as { name?: string }).name === "WebSocketRequestError") ||
+      error.walk((err) => (err as { name?: string }).name === "UnknownRpcError")
     ) {
       return true;
     }
