@@ -5,16 +5,12 @@ import { Eip4844BlobAcceptor } from "./Eip4844BlobAcceptor.sol";
 import { CalldataBlobAcceptor } from "./CalldataBlobAcceptor.sol";
 import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
 
-import { ClaimMessageByHashOnly } from "../messaging/l1/v1/ClaimMessageByHashOnly.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { LineaRollupBase } from "./LineaRollupBase.sol";
-
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is Eip4844BlobAcceptor, CalldataBlobAcceptor, ClaimMessageByHashOnly {
+contract LineaRollupWithoutOldClaiming is Eip4844BlobAcceptor, CalldataBlobAcceptor {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -52,18 +48,5 @@ contract LineaRollup is Eip4844BlobAcceptor, CalldataBlobAcceptor, ClaimMessageB
     require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
 
     _shnarfProvider = IProvideShnarf(address(this));
-  }
-
-  /**
-   * @notice Revokes `role` from the calling account.
-   * @dev Fallback operator cannot renounce role. Reverts with OnlyNonFallbackOperator.
-   * @param _role The role to renounce.
-   * @param _account The account to renounce - can only be the _msgSender().
-   */
-  function renounceRole(
-    bytes32 _role,
-    address _account
-  ) public virtual override(AccessControlUpgradeable, LineaRollupBase) {
-    super.renounceRole(_role, _account);
   }
 }

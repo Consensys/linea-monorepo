@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.30;
 
+import { ClaimMessageByHashOnly } from "../../../messaging/l1/v1/ClaimMessageByHashOnly.sol";
 import { L1MessageService } from "../../../messaging/l1/L1MessageService.sol";
 import { TestSetPauseTypeRoles } from "../security/TestSetPauseTypeRoles.sol";
 
-contract TestL1MessageService is L1MessageService, TestSetPauseTypeRoles {
+contract TestL1MessageService is L1MessageService, ClaimMessageByHashOnly, TestSetPauseTypeRoles {
   /**
    * @dev Thrown when the message has already been received.
    */

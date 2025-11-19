@@ -166,7 +166,7 @@ abstract contract LineaRollupBase is
    * @param _role The role to renounce.
    * @param _account The account to renounce - can only be the _msgSender().
    */
-  function renounceRole(bytes32 _role, address _account) public override {
+  function renounceRole(bytes32 _role, address _account) public virtual override {
     if (_account == fallbackOperator) {
       revert OnlyNonFallbackOperator();
     }
