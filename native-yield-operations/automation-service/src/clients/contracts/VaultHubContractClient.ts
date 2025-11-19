@@ -1,5 +1,5 @@
 import { IBlockchainClient } from "@consensys/linea-shared-utils";
-import { Address, decodeEventLog, getContract, GetContractReturnType, PublicClient, TransactionReceipt } from "viem";
+import { Address, getContract, GetContractReturnType, parseEventLogs, PublicClient, TransactionReceipt } from "viem";
 import { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 import { VaultHubABI } from "../../core/abis/VaultHub.js";
 
@@ -54,28 +54,14 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
    * @returns {bigint} The etherWithdrawn amount from the VaultRebalanced event, or 0n if the event is not found.
    */
   getLiabilityPaymentFromTxReceipt(txReceipt: TransactionReceipt): bigint {
-    for (const log of txReceipt.logs) {
-      // Only decode logs emitted by this contract
-      if (log.address.toLowerCase() !== this.contractAddress.toLowerCase()) continue;
+    const logs = parseEventLogs({
+      abi: this.contract.abi,
+      eventName: "VaultRebalanced",
+      logs: txReceipt.logs,
+    });
 
-      try {
-        const decoded = decodeEventLog({
-          abi: this.contract.abi,
-          data: log.data,
-          topics: log.topics,
-        });
-
-        if (decoded.eventName === "VaultRebalanced") {
-          const { etherWithdrawn } = decoded.args;
-          return etherWithdrawn as bigint;
-        }
-      } catch {
-        // skip unrelated logs (from the same contract or different ABIs)
-      }
-    }
-
-    // If event not found
-    return 0n;
+    const etherWithdrawn = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.etherWithdrawn as bigint;
+    return etherWithdrawn ?? 0n;
   }
 
   /**
@@ -87,27 +73,13 @@ export class VaultHubContractClient implements IVaultHub<TransactionReceipt> {
    * @returns {bigint} The transferred amount from the LidoFeesSettled event, or 0n if the event is not found.
    */
   getLidoFeePaymentFromTxReceipt(txReceipt: TransactionReceipt): bigint {
-    for (const log of txReceipt.logs) {
-      // Only decode logs emitted by this contract
-      if (log.address.toLowerCase() !== this.contractAddress.toLowerCase()) continue;
+    const logs = parseEventLogs({
+      abi: this.contract.abi,
+      eventName: "LidoFeesSettled",
+      logs: txReceipt.logs,
+    });
 
-      try {
-        const decoded = decodeEventLog({
-          abi: this.contract.abi,
-          data: log.data,
-          topics: log.topics,
-        });
-
-        if (decoded.eventName === "LidoFeesSettled") {
-          const { transferred } = decoded.args;
-          return transferred as bigint;
-        }
-      } catch {
-        // skip unrelated logs (from the same contract or different ABIs)
-      }
-    }
-
-    // If event not found
-    return 0n;
+    const transferred = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase())?.args.transferred as bigint;
+    return transferred ?? 0n;
   }
 }

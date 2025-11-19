@@ -1,12 +1,12 @@
 import { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import {
   Address,
-  decodeEventLog,
   encodeAbiParameters,
   encodeFunctionData,
   getContract,
   GetContractReturnType,
   Hex,
+  parseEventLogs,
   PublicClient,
   TransactionReceipt,
 } from "viem";
@@ -540,28 +540,17 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {WithdrawalEvent | undefined} The withdrawal event containing reserveIncrementAmount and yieldProvider, or undefined if not found.
    */
   getWithdrawalEventFromTxReceipt(txReceipt: TransactionReceipt): WithdrawalEvent | undefined {
-    for (const log of txReceipt.logs) {
-      // Only decode logs emitted by this contract
-      if (log.address.toLowerCase() !== this.contractAddress.toLowerCase()) continue;
+    const logs = parseEventLogs({
+      abi: this.contract.abi,
+      eventName: "WithdrawalReserveAugmented",
+      logs: txReceipt.logs,
+    });
 
-      try {
-        const decoded = decodeEventLog({
-          abi: this.contract.abi,
-          data: log.data,
-          topics: log.topics,
-        });
+    const event = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase());
+    if (!event) return undefined;
 
-        if (decoded.eventName === "WithdrawalReserveAugmented") {
-          const { reserveIncrementAmount, yieldProvider } = decoded.args;
-          return { reserveIncrementAmount, yieldProvider };
-        }
-      } catch {
-        // skip unrelated logs (from the same contract or different ABIs)
-      }
-    }
-
-    // If event not found
-    return undefined;
+    const { reserveIncrementAmount, yieldProvider } = event.args;
+    return { reserveIncrementAmount, yieldProvider };
   }
 
   /**
@@ -573,28 +562,20 @@ export class YieldManagerContractClient implements IYieldManager<TransactionRece
    * @returns {YieldReport | undefined} The yield report containing yieldAmount, outstandingNegativeYield, and yieldProvider, or undefined if not found.
    */
   getYieldReportFromTxReceipt(txReceipt: TransactionReceipt): YieldReport | undefined {
-    for (const log of txReceipt.logs) {
-      // Only decode logs emitted by this contract
-      if (log.address.toLowerCase() !== this.contractAddress.toLowerCase()) continue;
-      try {
-        const decoded = decodeEventLog({
-          abi: this.contract.abi,
-          data: log.data,
-          topics: log.topics,
-        });
-        if (decoded.eventName === "NativeYieldReported") {
-          const { yieldAmount, outstandingNegativeYield, yieldProvider } = decoded.args;
-          return {
-            yieldAmount,
-            outstandingNegativeYield,
-            yieldProvider,
-          };
-        }
-      } catch {
-        // skip unrelated logs (from the same contract or different ABIs)
-      }
-    }
-    // If event not found
-    return undefined;
+    const logs = parseEventLogs({
+      abi: this.contract.abi,
+      eventName: "NativeYieldReported",
+      logs: txReceipt.logs,
+    });
+
+    const event = logs.find((log) => log.address.toLowerCase() === this.contractAddress.toLowerCase());
+    if (!event) return undefined;
+
+    const { yieldAmount, outstandingNegativeYield, yieldProvider } = event.args;
+    return {
+      yieldAmount,
+      outstandingNegativeYield,
+      yieldProvider,
+    };
   }
 }

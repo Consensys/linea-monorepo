@@ -8,14 +8,14 @@ jest.mock("viem", () => {
   return {
     ...actual,
     getContract: jest.fn(),
-    decodeEventLog: jest.fn(),
+    parseEventLogs: jest.fn(),
   };
 });
 
-import { getContract, decodeEventLog } from "viem";
+import { getContract, parseEventLogs } from "viem";
 
 const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
-const mockedDecodeEventLog = decodeEventLog as jest.MockedFunction<typeof decodeEventLog>;
+const mockedParseEventLogs = parseEventLogs as jest.MockedFunction<typeof parseEventLogs>;
 
 let VaultHubContractClient: typeof import("../VaultHubContractClient.js").VaultHubContractClient;
 
@@ -72,23 +72,21 @@ describe("VaultHubContractClient", () => {
       },
     ]);
 
-    mockedDecodeEventLog.mockImplementation(({ data }) => {
-      if (data === "0xdata") {
-        return {
-          eventName: "VaultRebalanced",
-          args: { etherWithdrawn: 123n },
-        } as any;
-      }
-      return { eventName: "Other", args: {} } as any;
-    });
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "VaultRebalanced",
+        args: { etherWithdrawn: 123n },
+        address: contractAddress,
+      } as any,
+    ]);
 
     const amount = client.getLiabilityPaymentFromTxReceipt(receipt);
 
     expect(amount).toBe(123n);
-    expect(mockedDecodeEventLog).toHaveBeenCalledWith({
+    expect(mockedParseEventLogs).toHaveBeenCalledWith({
       abi: viemContractStub.abi,
-      data: "0xdata",
-      topics: ["0xtopic"],
+      eventName: "VaultRebalanced",
+      logs: receipt.logs,
     });
   });
 
@@ -102,14 +100,12 @@ describe("VaultHubContractClient", () => {
       },
     ]);
 
-    mockedDecodeEventLog.mockImplementation(() => {
-      throw new Error("bad log");
-    });
+    mockedParseEventLogs.mockReturnValueOnce([]);
 
     const amount = client.getLiabilityPaymentFromTxReceipt(receipt);
 
     expect(amount).toBe(0n);
-    expect(mockedDecodeEventLog).toHaveBeenCalledTimes(1);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 
   it("returns lido fee payment when LidoFeesSettled event is present", () => {
@@ -122,18 +118,21 @@ describe("VaultHubContractClient", () => {
       },
     ]);
 
-    mockedDecodeEventLog.mockReturnValueOnce({
-      eventName: "LidoFeesSettled",
-      args: { transferred: 456n },
-    } as any);
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "LidoFeesSettled",
+        args: { transferred: 456n },
+        address: contractAddress,
+      } as any,
+    ]);
 
     const amount = client.getLidoFeePaymentFromTxReceipt(receipt);
 
     expect(amount).toBe(456n);
-    expect(mockedDecodeEventLog).toHaveBeenCalledWith({
+    expect(mockedParseEventLogs).toHaveBeenCalledWith({
       abi: viemContractStub.abi,
-      data: "0xfeed",
-      topics: ["0x01"],
+      eventName: "LidoFeesSettled",
+      logs: receipt.logs,
     });
   });
 
@@ -152,14 +151,17 @@ describe("VaultHubContractClient", () => {
       },
     ]);
 
-    mockedDecodeEventLog.mockReturnValueOnce({
-      eventName: "OtherEvent",
-      args: {},
-    } as any);
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "LidoFeesSettled",
+        args: { transferred: 456n },
+        address: "0x2222222222222222222222222222222222222222",
+      } as any,
+    ]);
 
     const amount = client.getLidoFeePaymentFromTxReceipt(receipt);
 
     expect(amount).toBe(0n);
-    expect(mockedDecodeEventLog).toHaveBeenCalledTimes(1);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 });

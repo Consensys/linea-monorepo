@@ -13,16 +13,16 @@ jest.mock("viem", () => {
     ...actual,
     getContract: jest.fn(),
     encodeFunctionData: jest.fn(),
-    decodeEventLog: jest.fn(),
+    parseEventLogs: jest.fn(),
     encodeAbiParameters: jest.fn(),
   };
 });
 
-import { getContract, encodeFunctionData, decodeEventLog, encodeAbiParameters } from "viem";
+import { getContract, encodeFunctionData, parseEventLogs, encodeAbiParameters } from "viem";
 
 const mockedGetContract = getContract as jest.MockedFunction<typeof getContract>;
 const mockedEncodeFunctionData = encodeFunctionData as jest.MockedFunction<typeof encodeFunctionData>;
-const mockedDecodeEventLog = decodeEventLog as jest.MockedFunction<typeof decodeEventLog>;
+const mockedParseEventLogs = parseEventLogs as jest.MockedFunction<typeof parseEventLogs>;
 const mockedEncodeAbiParameters = encodeAbiParameters as jest.MockedFunction<typeof encodeAbiParameters>;
 
 let YieldManagerContractClient: typeof import("../YieldManagerContractClient.js").YieldManagerContractClient;
@@ -469,69 +469,78 @@ describe("YieldManagerContractClient", () => {
   it("extracts withdrawal events from receipts emitted by the contract", () => {
     const client = createClient();
     const log = { address: contractAddress, data: "0xdata", topics: ["0x01"] };
-    mockedDecodeEventLog.mockReturnValueOnce({
-      eventName: "WithdrawalReserveAugmented",
-      args: { reserveIncrementAmount: 10n, yieldProvider },
-    } as any);
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "WithdrawalReserveAugmented",
+        args: { reserveIncrementAmount: 10n, yieldProvider },
+        address: contractAddress,
+      } as any,
+    ]);
 
     const event = client.getWithdrawalEventFromTxReceipt(buildReceipt([log]));
 
     expect(event).toEqual({ reserveIncrementAmount: 10n, yieldProvider });
-    expect(mockedDecodeEventLog).toHaveBeenCalledWith({
+    expect(mockedParseEventLogs).toHaveBeenCalledWith({
       abi: contractStub.abi,
-      data: log.data,
-      topics: log.topics,
+      eventName: "WithdrawalReserveAugmented",
+      logs: [log],
     });
   });
 
   it("returns undefined when withdrawal events are absent or decoding fails", () => {
     const client = createClient();
-    mockedDecodeEventLog.mockImplementation(() => {
-      throw new Error("decode error");
-    });
+    mockedParseEventLogs.mockReturnValueOnce([]);
 
     const event = client.getWithdrawalEventFromTxReceipt(
       buildReceipt([{ address: contractAddress.toUpperCase(), data: "0x", topics: [] }]),
     );
 
     expect(event).toBeUndefined();
-    expect(mockedDecodeEventLog).toHaveBeenCalledTimes(1);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 
   it("ignores withdrawal events from other contracts", () => {
     const client = createClient();
     const foreignLog = { address: "0x1234567890123456789012345678901234567890", data: "0x", topics: [] };
 
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "WithdrawalReserveAugmented",
+        args: { reserveIncrementAmount: 10n, yieldProvider },
+        address: "0x1234567890123456789012345678901234567890",
+      } as any,
+    ]);
+
     const event = client.getWithdrawalEventFromTxReceipt(buildReceipt([foreignLog]));
 
     expect(event).toBeUndefined();
-    expect(mockedDecodeEventLog).not.toHaveBeenCalled();
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 
   it("extracts yield reports from receipts emitted by the contract", () => {
     const client = createClient();
     const log = { address: contractAddress, data: "0xfeed", topics: ["0x1111"] };
-    mockedDecodeEventLog.mockReturnValueOnce({
-      eventName: "NativeYieldReported",
-      args: { yieldAmount: 12n, outstandingNegativeYield: 5n, yieldProvider },
-    } as any);
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "NativeYieldReported",
+        args: { yieldAmount: 12n, outstandingNegativeYield: 5n, yieldProvider },
+        address: contractAddress,
+      } as any,
+    ]);
 
     const report = client.getYieldReportFromTxReceipt(buildReceipt([log]));
 
     expect(report).toEqual({ yieldAmount: 12n, outstandingNegativeYield: 5n, yieldProvider });
-    expect(mockedDecodeEventLog).toHaveBeenCalledWith({
+    expect(mockedParseEventLogs).toHaveBeenCalledWith({
       abi: contractStub.abi,
-      data: log.data,
-      topics: log.topics,
+      eventName: "NativeYieldReported",
+      logs: [log],
     });
   });
 
   it("returns undefined when yield report events are absent", () => {
     const client = createClient();
-    mockedDecodeEventLog.mockReturnValueOnce({
-      eventName: "SomethingElse",
-      args: {},
-    } as any);
+    mockedParseEventLogs.mockReturnValueOnce([]);
 
     const report = client.getYieldReportFromTxReceipt(
       buildReceipt([{ address: contractAddress, data: "0x0", topics: [] }]),
@@ -544,9 +553,17 @@ describe("YieldManagerContractClient", () => {
     const client = createClient();
     const foreignLog = { address: "0x1234567890123456789012345678901234567890", data: "0x", topics: [] };
 
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "NativeYieldReported",
+        args: { yieldAmount: 12n, outstandingNegativeYield: 5n, yieldProvider },
+        address: "0x1234567890123456789012345678901234567890",
+      } as any,
+    ]);
+
     const report = client.getYieldReportFromTxReceipt(buildReceipt([foreignLog]));
 
     expect(report).toBeUndefined();
-    expect(mockedDecodeEventLog).not.toHaveBeenCalled();
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
   });
 });
