@@ -33,20 +33,23 @@ configurations.configureEach {
   exclude module: 'log4j-slf4j2-impl'
 }
 
-tasks.register("downloadExecutionSpecFixtures", Download)
-        {
+tasks.register("downloadExecutionSpecFixtures", Download) {
   src "https://github.com/ethereum/execution-spec-tests/releases/download/v5.3.0/fixtures_develop.tar.gz"
   dest "./build/fixtures_develop.tar.gz"
   overwrite false
 }
 
-
-tasks.register("generateExecutionSpecBlockchainTests", RefTestGenerationTask) {
-  dependsOn "downloadExecutionSpecFixtures"
-  copy {
+tasks.register("copyExecutionSpecFixtures", Copy) {
+    dependsOn "downloadExecutionSpecFixtures"
+    //
     from tarTree("./build/fixtures_develop.tar.gz")
     into "./build/execution-spec-tests"
-  }
+}
+
+
+tasks.register("generateExecutionSpecBlockchainTests", RefTestGenerationTask) {
+    dependsOn "copyExecutionSpecFixtures"
+  // Configure task
   refTestTemplateFilePath = "src/test/resources/templates/BlockchainReferenceTest.java.template"
   refTests = "./build/execution-spec-tests/fixtures/blockchain_tests"
   refTestsSrcPath = "./build/execution-spec-tests/"
