@@ -289,7 +289,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 		FiatShamirHistory:  make([][2][]field.Element, c.NumRounds()),
 		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
-
+	fmt.Printf("okok1 \n")
 	stateBytes := fs.State()
 	var state koalabear.Element
 	state.SetBytes(stateBytes)

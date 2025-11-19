@@ -127,12 +127,6 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 	// Compile the circuit
-	// scs, err := frontend.Compile(
-	// 	ecc.BLS12_377.ScalarField(),
-	// 	scs.NewBuilder,
-	// 	&circ,
-	// 	frontend.IgnoreUnconstrainedInputs(),
-	// )
 	scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder,
 		&circ,
 		frontend.IgnoreUnconstrainedInputs())

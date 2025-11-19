@@ -187,7 +187,7 @@ func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.E4Gen {
 	} else {
 		for i := range res {
 			elem := sv.GetExt(i)
-			res[i] = gnarkfext.NewE4GenFromBase(elem)
+			res[i] = gnarkfext.NewE4Gen(elem)
 		}
 	}
 	return res

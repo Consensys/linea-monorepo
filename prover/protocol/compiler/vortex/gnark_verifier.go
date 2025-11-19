@@ -37,13 +37,13 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		// precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
 		// roots = append(roots, precompRootSv[0])
 
-		preRoots := [blockSize]zk.WrappedVariable{}
+		preRoots := [vortex_bls12377.GnarkKoalabearNumElements]zk.WrappedVariable{}
 
-		for i := 0; i < blockSize; i++ {
+		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
 			preRoots[i] = precompRootSv[0]
 		}
-		roots = append(roots, vortex_bls12377.Encode8WVsToFV(api, preRoots))
+		roots = append(roots, vortex_bls12377.Encode11WVsToFV(api, preRoots))
 	}
 
 	// Collect all the commitments : rounds by rounds
@@ -52,13 +52,13 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			continue // skip the dry rounds
 		}
 		//TODO@yao: check if this is correct, roots should be frontend.Variable, change all blockSize to vortex_bls12377.GnarkKoalabearNumElements
-		preRoots := [blockSize]zk.WrappedVariable{}
+		preRoots := [vortex_bls12377.GnarkKoalabearNumElements]zk.WrappedVariable{}
 
-		for i := 0; i < blockSize; i++ {
+		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
 			preRoots[i] = rootSv[0]
 		}
-		roots = append(roots, vortex_bls12377.Encode8WVsToFV(api, preRoots))
+		roots = append(roots, vortex_bls12377.Encode11WVsToFV(api, preRoots))
 
 	}
 
@@ -293,7 +293,7 @@ func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [vortex_bls12377.Gn
 		for j := range proofs[i] {
 			// initialize the proof that we are parsing
 			proof := smt_bls12377.GnarkProof{
-				Path:     entryList[j],
+				Path:     entryList[j].AsNative(),
 				Siblings: make([]frontend.Variable, depth),
 			}
 

@@ -291,10 +291,9 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 		logrus.Tracef("VERIFIER CIRCUIT : registering column %v (as %v) in circuit (#%v)", colName, status.String(), i)
 		msgDataIFace := proof.Messages.MustGet(colName)
 		msgData := msgDataIFace
-
 		// Perform the conversion to zk.WrappedVariable, element by element
 		if _, err := msgData.GetBase(0); err == nil {
-			// the assignment consists of base elements
+			// the assignment consists of base elements//TODO@yao:  can't set fr.Element from type koalabear.Element
 			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
 			res.ColumnsIDs.InsertNew(colName, len(res.Columns))
 			res.Columns = append(res.Columns, assignedMsg)
@@ -306,7 +305,6 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 		}
 
 	}
-
 	// Assigns the query parameters. Note that the iteration order is
 	// made deterministic to match the iteration order of the
 	for _, qName := range comp.QueriesParams.AllKeys() {
