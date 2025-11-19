@@ -185,6 +185,7 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		z.BlsG2Map.Assign(run)
 		z.BlsPairingCheck.Assign(run)
 		z.PointEval.Assign(run)
+		z.P256Verify.Assign(run)
 		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList)
 	}
 }
