@@ -40,7 +40,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		preRoots := [blockSize]zk.WrappedVariable{}
 
 		for i := 0; i < blockSize; i++ {
-			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
+			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
 			preRoots[i] = precompRootSv[0]
 		}
 		roots = append(roots, vortex_bls12377.Encode8WVsToFV(api, preRoots))
@@ -88,7 +88,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		return h, err
 	}
 
-	packedMProofs := [8][]zk.WrappedVariable{}
+	packedMProofs := [vortex_bls12377.GnarkKoalabearNumElements][]zk.WrappedVariable{}
 	for i := range packedMProofs {
 		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
 	}
@@ -276,7 +276,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [8][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt_bls12377.GnarkProof) {
+func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [vortex_bls12377.GnarkKoalabearNumElements][]zk.WrappedVariable, entryList []zk.WrappedVariable) (proofs [][]smt_bls12377.GnarkProof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -301,13 +301,11 @@ func (ctx *Ctx) unpackMerkleProofsGnark(api frontend.API, sv [8][]zk.WrappedVari
 			// are inversing the order.
 			for k := range proof.Siblings {
 
-				utils.Panic("gnark SMT does not currently support hashes that are arrays of field elements")
-
-				var v [blockSize]zk.WrappedVariable
-				for coord := 0; coord < blockSize; coord++ {
+				var v [vortex_bls12377.GnarkKoalabearNumElements]zk.WrappedVariable
+				for coord := 0; coord < vortex_bls12377.GnarkKoalabearNumElements; coord++ {
 					v[coord] = sv[coord][curr]
 				}
-				proof.Siblings[depth-k-1] = vortex_bls12377.Encode8WVsToFV(api, v)
+				proof.Siblings[depth-k-1] = vortex_bls12377.Encode11WVsToFV(api, v)
 				curr++
 			}
 

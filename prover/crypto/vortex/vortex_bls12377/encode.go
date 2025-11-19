@@ -125,3 +125,24 @@ func DecodeKoalabearToBLS12377(elements [GnarkKoalabearNumElements]field.Element
 	}
 	return res
 }
+
+// Function to encode 11 31-bit zk.WrappedVariable into a single 256-bit frontend.Variable
+func Encode11WVsToFV(api frontend.API, values [GnarkKoalabearNumElements]zk.WrappedVariable) frontend.Variable {
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+
+	bits := make([]frontend.Variable, 256)
+
+	for i := 0; i < GnarkKoalabearNumElements-1; i++ {
+		// Convert the 31 bits of the current WrappedVariable to frontend variables
+		limbBits := apiGen.ToBinary(values[GnarkKoalabearNumElements-1-i], 24)
+		copy(bits[24*i:], limbBits) // 8 leading padding bits come first
+	}
+
+	limbBits := apiGen.ToBinary(values[0], 16)
+	copy(bits[240:], limbBits) // 8 leading padding bits come first
+
+	return api.FromBinary(bits...)
+}

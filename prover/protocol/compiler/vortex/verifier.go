@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -11,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // ExplicitPolynomialEval is a [wizard.VerifierAction] that evaluates the
@@ -31,6 +33,17 @@ func (a *ExplicitPolynomialEval) Run(run wizard.Runtime) error {
 
 func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
+	fmt.Printf("okok VortexVerifierAction Run\n")
+
+	if ctx.IsGnark {
+		return ctx.runGnark(run)
+	} else {
+		return ctx.runNonGnark(run)
+	}
+}
+
+func (ctx *VortexVerifierAction) runNonGnark(run wizard.Runtime) error {
+
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
 	// not need to do anything
@@ -45,6 +58,7 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 		// precomputed. Otherwise, it is the first root of the no SIS roots.
 		noSisRoots = []field.Octuplet{}
 		sisRoots   = []field.Octuplet{}
+
 		// Slice of true value of length equal to the number of no SIS round
 		// + 1 (if SIS is not applied to precomputed)
 		flagForNoSISRounds = []bool{}
@@ -55,6 +69,7 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
+
 		var precompRootF field.Octuplet
 		for i := 0; i < blockSize; i++ {
 			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
@@ -68,6 +83,7 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 			noSisRoots = append(noSisRoots, precompRootF)
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
 		}
+
 	}
 
 	// Collect all the roots: rounds by rounds
@@ -137,6 +153,108 @@ func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 		MerkleProofs:             merkleProofs,
 		IsSISReplacedByPoseidon2: IsSISReplacedByPoseidon2,
 	})
+}
+
+func (ctx *VortexVerifierAction) runGnark(run wizard.Runtime) error {
+
+	fmt.Printf("okok VortexVerifierAction Run\n")
+
+	// The skip verification flag may be on, if the current vortex
+	// context get self-recursed. In this case, the verifier does
+	// not need to do anything
+	if ctx.IsSelfrecursed {
+		return nil
+	}
+
+	var (
+		gnarkNoSisRoots = []types.Bytes32{}
+
+		// Slice of true value of length equal to the number of no SIS round
+		// + 1 (if SIS is not applied to precomputed)
+		flagForNoSISRounds = []bool{}
+		// Slice of false value of length equal to the number of SIS round
+		// + 1 (if SIS is applied to precomputed)
+		flagForSISRounds = []bool{}
+	)
+
+	// Append the precomputed roots and the corresponding flag
+	if ctx.IsNonEmptyPrecomputed() {
+
+		var precompRootF [vortex_bls12377.GnarkKoalabearNumElements]field.Element
+		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
+			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.GnarkMerkleRoot[i].GetColID())
+			precompRootF[i] = precompRootSv.IntoRegVecSaveAlloc()[0]
+		}
+
+		gnarkNoSisRoots = append(gnarkNoSisRoots, vortex_bls12377.DecodeKoalabearToBLS12377(precompRootF))
+		flagForNoSISRounds = append(flagForNoSISRounds, true)
+
+	}
+
+	// Collect all the roots: rounds by rounds
+	// and append them to the sis or no sis roots
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+
+		// If the round is empty (i.e. the wizard does not have any committed
+		// columns associated to this round), then the rootSv and rootF will not
+		// be defined so this case cannot be handled as a "switch-case" as in
+		// the "if" clause below.
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
+
+		var precompRootF [vortex_bls12377.GnarkKoalabearNumElements]field.Element
+		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
+			rootSv := run.GetColumn(ctx.Items.GnarkMerkleRoots[round][i].GetColID())
+			precompRootF[i] = rootSv.IntoRegVecSaveAlloc()[0]
+		}
+
+		switch ctx.RoundStatus[round] {
+		case IsOnlyPoseidon2Applied:
+			gnarkNoSisRoots = append(gnarkNoSisRoots, vortex_bls12377.DecodeKoalabearToBLS12377(precompRootF))
+			flagForNoSISRounds = append(flagForNoSISRounds, true)
+		default:
+			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
+		}
+	}
+
+	// assign the roots and the IsSISReplacedByPoseidon2 flags
+	IsSISReplacedByPoseidon2 := append(flagForNoSISRounds, flagForSISRounds...)
+
+	proof := &vortex.OpeningProof{}
+	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
+
+	// Collect the linear combination
+	proof.LinearCombination = run.GetColumn(ctx.LinCombName())
+
+	// Collect the random entry List and the random coin
+	entryList := run.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
+
+	// Collect the opened columns and split them "by-commitment-rounds"
+	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
+	x := run.GetUnivariateParams(ctx.Query.QueryID).ExtX
+
+	packedMProofs := [vortex_bls12377.GnarkKoalabearNumElements]smartvectors.SmartVector{}
+	for i := range packedMProofs {
+		packedMProofs[i] = run.GetColumn(ctx.MerkleProofName(i))
+	}
+
+	merkleProofs := ctx.unpackGnarkMerkleProofs(packedMProofs, entryList)
+	return vortex_bls12377.VerifyOpening(&vortex_bls12377.VerifierInputs{
+		AlgebraicCheckInputs: vortex.AlgebraicCheckInputs{
+			Koalabear_Params: *ctx.VortexParams,
+			X:                x,
+			Ys:               ctx.getYs(run),
+			OpeningProof:     *proof,
+			RandomCoin:       randomCoin,
+			EntryList:        entryList,
+		},
+		BLS12_377_Params:         *ctx.GnarkVortexParams,
+		MerkleRoots:              gnarkNoSisRoots,
+		MerkleProofs:             merkleProofs,
+		IsSISReplacedByPoseidon2: IsSISReplacedByPoseidon2,
+	})
+
 }
 
 // returns the number of committed rows for the given round. This takes

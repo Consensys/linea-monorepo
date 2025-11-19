@@ -570,6 +570,45 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 	return proofs
 }
 
+// unpack a list of merkle proofs from a vector as in
+func (ctx *Ctx) unpackGnarkMerkleProofs(sv [vortex_bls12377.GnarkKoalabearNumElements]smartvectors.SmartVector, entryList []int) (proofs [][]smt_bls12377.Proof) {
+
+	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
+	numComs := ctx.NumCommittedRounds()
+	if ctx.IsNonEmptyPrecomputed() {
+		numComs = ctx.NumCommittedRounds() + 1 // Need to consider the precomputed commitments
+	}
+	numEntries := len(entryList)
+
+	proofs = make([][]smt_bls12377.Proof, numComs)
+	curr := 0 // tracks the position in sv that we are parsing.
+
+	for i := range proofs {
+		proofs[i] = make([]smt_bls12377.Proof, numEntries)
+		for j := range proofs[i] {
+			// initialize the proof that we are parsing
+			proof := smt_bls12377.Proof{
+				Path:     entryList[j],
+				Siblings: make([]types.Bytes32, depth),
+			}
+
+			// parse the siblings accounting for the fact that we
+			// are inversing the order.
+			for k := range proof.Siblings {
+				var v [vortex_bls12377.GnarkKoalabearNumElements]field.Element
+				for coord := 0; coord < len(v); coord++ {
+					v[coord] = sv[coord].Get(curr)
+				}
+				proof.Siblings[depth-k-1] = vortex_bls12377.DecodeKoalabearToBLS12377(v)
+				curr++
+			}
+
+			proofs[i][j] = proof
+		}
+	}
+	return proofs
+}
+
 // assignOpenedColumns assign the opened columns for
 // both normal and self-recursion compilers
 func (ctx *Ctx) assignOpenedColumns(

@@ -74,7 +74,7 @@ func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 }
 
 // RandomManyIntegers returns a vector of variable that will contain small integers
-func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
+func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []zk.WrappedVariable {
 
 	// Even `1` would be wierd, there would be only one acceptable coin value.
 	if upperBound < 1 {
@@ -86,7 +86,7 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 	}
 
 	if num == 0 {
-		return []frontend.Variable{}
+		return []zk.WrappedVariable{}
 	}
 
 	defer fs.safeguardUpdate()
@@ -98,14 +98,14 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 		// the division is rounded-down)
 		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
 		// res stores the function result
-		res = make([]frontend.Variable, 0, num)
+		res = make([]zk.WrappedVariable, 0, num)
 		// challCount stores the number of generated small integers
 		challCount = 0
 	)
 
 	for {
 		digest := fs.hasher.Sum()
-		digestBits := fs.api.ToBinary(digest)
+		digestBits := fs.api.ToBinary(digest[0])
 
 		for i := 0; i < maxNumChallsPerDigest; i++ {
 			// Stopping condition, we computed enough challenges
@@ -117,7 +117,7 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 			// a new challenge to be returned.
 			newChall := fs.api.FromBinary(digestBits[:challsBitSize]...)
 			digestBits = digestBits[challsBitSize:]
-			res = append(res, newChall)
+			res = append(res, zk.WrapFrontendVariable(newChall))
 			challCount++
 		}
 

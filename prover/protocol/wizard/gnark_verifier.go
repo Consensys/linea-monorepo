@@ -393,8 +393,8 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 			c.FS.UpdateVec(msgContentFVs)
 
-			msgContentExt := c.GetColumnExt(msg) //TODO@yao: check if this is correct
-			c.FS.UpdateExt(msgContentExt...)
+			// msgContentExt := c.GetColumnExt(msg) //TODO@yao: check if this is correct
+			// c.FS.UpdateExt(msgContentExt...)
 		}
 
 		/*
@@ -483,8 +483,8 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.E4Gen 
 
 	// intermediary use case, should be removed when all coins become field extensions
 	if infos.Type == coin.FieldExt {
-		res := c.Coins.MustGet(name).(zk.WrappedVariable)
-		return gnarkfext.NewE4GenFromBase(res)
+		res := c.Coins.MustGet(name).(gnarkfext.E4Gen)
+		return res
 	}
 
 	if infos.Type != coin.FieldExt {
@@ -565,26 +565,25 @@ func (c *VerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHorner
 // mirrors the function [VerifierRuntime.GetColumn]
 func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []zk.WrappedVariable {
 
-	// case where the column is part of the verification key
-	if c.Spec.Columns.Status(name) == column.VerifyingKey {
-		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		res := make([]zk.WrappedVariable, len(val))
-		// Return the column as an array of constants
-		for i := range val {
-			res[i] = zk.ValueOf(val[i])
+	if c.Spec.Columns.GetHandle(name).IsBase() {
+		res, err := c.GetColumnBase(name)
+		if err != nil {
+			utils.Panic("requested base element from underlying field extension")
+		}
+		return res
+	} else {
+		resExt := c.GetColumnExt(name)
+		res := make([]zk.WrappedVariable, len(resExt)*4)
+
+		for i := 0; i < len(resExt); i++ {
+			res[4*i] = resExt[i].B0.A0
+			res[4*i+1] = resExt[i].B0.A1
+			res[4*i+2] = resExt[i].B1.A0
+			res[4*i+3] = resExt[i].B1.A1
 		}
 		return res
 	}
 
-	msgID := c.ColumnsIDs.MustGet(name)
-	wrappedMsg := c.Columns[msgID]
-
-	size := c.Spec.Columns.GetSize(name)
-	if len(wrappedMsg) != size {
-		utils.Panic("bad dimension %v, spec expected %v", len(wrappedMsg), size)
-	}
-
-	return wrappedMsg
 }
 
 func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]zk.WrappedVariable, error) {
