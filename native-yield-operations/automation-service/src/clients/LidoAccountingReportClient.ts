@@ -1,4 +1,10 @@
-import { Address, TransactionReceipt, BaseError, ContractFunctionRevertedError, ContractFunctionExecutionError } from "viem";
+import {
+  Address,
+  TransactionReceipt,
+  BaseError,
+  ContractFunctionRevertedError,
+  ContractFunctionExecutionError,
+} from "viem";
 import { ILidoAccountingReportClient } from "../core/clients/ILidoAccountingReportClient.js";
 import { ILazyOracle, UpdateVaultDataParams } from "../core/clients/contracts/ILazyOracle.js";
 import { getReportProofByVault } from "@lidofinance/lsv-cli/dist/utils/report/report-proof.js";
@@ -82,16 +88,14 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
     } catch (err) {
       this.logger.error("Failed isSimulateSubmitLatestVaultReportSuccessful");
       if (err instanceof ContractFunctionExecutionError) {
-        this.logger.error('Contract simulation failed', {
+        this.logger.error("Contract simulation failed", {
           error_type: err.name,
           function: err.functionName,
           contract: err.contractAddress,
           sender: err.sender,
-          revert_reason: err.cause instanceof ContractFunctionRevertedError 
-            ? err.cause.reason 
-            : undefined,
+          revert_reason: err.cause instanceof ContractFunctionRevertedError ? err.cause.reason : undefined,
           message: err.shortMessage,
-    });
+        });
       } else if (err instanceof BaseError) {
         const decodedError = err.walk();
         this.logger.error("⚠️ Error:", { decodedError });

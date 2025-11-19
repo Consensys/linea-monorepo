@@ -10,11 +10,9 @@ import {
   serializeTransaction,
   parseSignature,
   Chain,
-  ContractFunctionRevertedError,
   withTimeout,
   TimeoutError,
   BaseError,
-  RpcRequestError,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 import { IContractSignerClient } from "../core/client/IContractSignerClient";
@@ -211,27 +209,16 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         this.logger.debug(`sendSignedTransaction succeeded`, { receipt });
         return receipt;
       } catch (error) {
-        // We don't want to retry for Solidity revert, "-32015" -> VM execution error - https://www.quicknode.com/docs/ethereum/error-references
-          if (error instanceof RpcRequestError && error.code === -32015) {
-            this.logger.error('Transaction execution failed:', {
-              code: error.code,
-              message: error.message,
-              data: error.data,
-            });
-            throw error;
-          }
+        if (error instanceof BaseError && this._shouldRetryViemSendRawTranasctionError(error)) {
+          this.logger.error("sendSignedTransaction failed and will not be retried", { error });
+          throw error;
+        }
         if (attempt >= this.sendTransactionsMaxRetries) {
           this.logger.error(
             `sendSignedTransaction retry attempts exhausted sendTransactionsMaxRetries=${this.sendTransactionsMaxRetries}`,
             { error },
           );
           throw error;
-        }
-        const isTimeout =
-          error instanceof TimeoutError || (error instanceof BaseError && error.name === "TimeoutError");
-        if (!isTimeout) {
-          this.logger.error(`sendSignedTransaction error`, { error });
-          throw error; // not a timeout → bail
         }
 
         this.logger.warn(
@@ -297,5 +284,85 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     const txHash = await sendRawTransaction(this.blockchainClient, { serializedTransaction });
     const receipt = await waitForTransactionReceipt(this.blockchainClient, { hash: txHash });
     return receipt;
+  }
+
+  /**
+   * Determines whether a viem sendRawTransaction error should be retried.
+   * In general we retry server-side errors, and exclude client-side errors from retries.
+   *
+   * @param {RequestErrorType} error - The error to evaluate for retry eligibility.
+   * @returns {Promise<boolean>} True if the error should be retried, false otherwise.
+   */
+  private _shouldRetryViemSendRawTranasctionError(error: BaseError): boolean {
+    // We don't want to retry our own timeout
+    // But Viem internal retry should be ok - TODO test for conflict here
+    if (error instanceof TimeoutError) {
+      return false;
+    }
+
+    // Check RPC error codes first (if error has a numeric code property)
+    if (typeof (error as any).code === "number") {
+      const code = (error as any).code;
+
+      // Explicitly retry these RPC error codes
+      // -32603 InternalRpcError
+      // -32005 LimitExceededRpcError
+      // -32002 ResourceUnavailableRpcError
+      // -1 Unknown error
+      // 4900 ProviderDisconnectedError
+      // 4901 ChainDisconnectedError
+      if (code === -32603 || code === -32005 || code === -32002 || code === -1 || code === 4900 || code === 4901) {
+        return true;
+      }
+
+      // Explicitly do NOT retry these RPC error codes
+      if (
+        code === -32700 || // ParseRpcError
+        code === -32600 || // InvalidRequestRpcError
+        code === -32601 || // MethodNotFoundRpcError
+        code === -32602 || // InvalidParamsRpcError
+        code === -32000 || // InvalidInputRpcError
+        code === -32001 || // ResourceNotFoundRpcError
+        code === -32003 || // TransactionRejectedRpcError
+        code === -32004 || // MethodNotSupportedRpcError
+        code === -32006 || // JsonRpcVersionUnsupportedError
+        code === -32015 || // VM execution error (Solidity revert)
+        code === 4001 || // UserRejectedRequestError
+        code === 5000 || // UserRejectedRequestError (CAIP-25)
+        code === 4100 || // UnauthorizedProviderError
+        code === 4200 || // UnsupportedProviderMethodError
+        code === 4902 || // SwitchChainError
+        (code >= 5700 && code <= 5760) // Various capability errors (5700-5760)
+      ) {
+        return false;
+      }
+
+      // For errors with codes not in explicit retry/non-retry lists above, default to retry
+      // This follows the guide's default behavior: retry unknown errors
+      return true;
+    }
+
+    // Check HTTP status codes (for HttpRequestError)
+    if (typeof (error as any).status === "number") {
+      const status = (error as any).status;
+      // Retry on these HTTP status codes
+      if ([408, 429, 500, 502, 503, 504].includes(status)) {
+        return true;
+      }
+      // Do not retry on other HTTP status codes
+      return false;
+    }
+
+    // Check specific error type instances
+    // Retry WebSocketRequestError and UnknownRpcError
+    if (
+      (error instanceof BaseError && error.name === "WebSocketRequestError") ||
+      (error instanceof BaseError && error.name === "UnknownRpcError")
+    ) {
+      return true;
+    }
+
+    // Default behavior - retry unknown errors
+    return true;
   }
 }
