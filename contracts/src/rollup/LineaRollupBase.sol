@@ -105,7 +105,15 @@ abstract contract LineaRollupBase is
     _disableInitializers();
   }
 
-  function __LineaRollup_init(InitializationData calldata _initializationData) internal virtual {
+  /**
+   * @notice Initializes LineaRollup and underlying service dependencies - used for new networks only.
+   * @param _initializationData The initial data used for contract initialization.
+   * @param _genesisShnarf The initial computed genesis shnarf.
+   */
+  function __LineaRollup_init(
+    InitializationData calldata _initializationData,
+    bytes32 _genesisShnarf
+  ) internal virtual {
     if (_initializationData.defaultVerifier == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -138,20 +146,7 @@ abstract contract LineaRollupBase is
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
-    bytes32 genesisShnarf = _computeShnarf(
-      EMPTY_HASH,
-      EMPTY_HASH,
-      _initializationData.initialStateRootHash,
-      EMPTY_HASH,
-      EMPTY_HASH
-    );
-
-    // TODO - this is redundant for external shnarf providers, so is a waste of 20k gas for those chains.
-    // Compute genesisShnarf outside and pass it in for usage, and then init can set
-    //
-    _blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
-
-    currentFinalizedShnarf = genesisShnarf;
+    currentFinalizedShnarf = _genesisShnarf;
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
 
     address shnarfProviderAddress = _initializationData.shnarfProvider;

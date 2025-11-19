@@ -23,7 +23,17 @@ contract LocalShnarfStorageAltDaRollup is LocalShnarfProvider, ShnarfDataAccepto
    * @param _initializationData The initial data used for proof verification.
    */
   function initialize(InitializationData calldata _initializationData) external initializer {
-    __LineaRollup_init(_initializationData);
+    bytes32 genesisShnarf = _computeShnarf(
+      EMPTY_HASH,
+      EMPTY_HASH,
+      _initializationData.initialStateRootHash,
+      EMPTY_HASH,
+      EMPTY_HASH
+    );
+
+    _blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
+
+    __LineaRollup_init(_initializationData, genesisShnarf);
   }
 
   /**

@@ -23,7 +23,10 @@ contract ExternalShnarfStorageRollup is LineaRollupBase {
    * @param _initializationData The initial data used for proof verification.
    */
   function initialize(InitializationData calldata _initializationData) external initializer {
-    __LineaRollup_init(_initializationData);
+    __LineaRollup_init(
+      _initializationData,
+      _computeShnarf(EMPTY_HASH, EMPTY_HASH, _initializationData.initialStateRootHash, EMPTY_HASH, EMPTY_HASH)
+    );
   }
 
   /**

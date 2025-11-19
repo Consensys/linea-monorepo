@@ -20,10 +20,20 @@ contract LineaRollup is Eip4844BlobAcceptor, CalldataBlobAcceptor {
    * @dev DEFAULT_ADMIN_ROLE is set for the security council.
    * @dev OPERATOR_ROLE is set for operators.
    * @dev Note: This is used for new testnets and local/CI testing, and will not replace existing proxy based contracts.
-   * @param _initializationData The initial data used for proof verification.
+   * @param _initializationData The initial data used for contract initialization.
    */
   function initialize(InitializationData calldata _initializationData) external initializer {
-    __LineaRollup_init(_initializationData);
+    bytes32 genesisShnarf = _computeShnarf(
+      EMPTY_HASH,
+      EMPTY_HASH,
+      _initializationData.initialStateRootHash,
+      EMPTY_HASH,
+      EMPTY_HASH
+    );
+
+    _blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
+
+    __LineaRollup_init(_initializationData, genesisShnarf);
   }
 
   /**
