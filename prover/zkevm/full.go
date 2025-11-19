@@ -23,6 +23,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 )
@@ -249,6 +250,9 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 			NbC2MembershipInputInstances:     NbInputPerInstanceBLSC2Membership,
 			NbPointEvalInputInstances:        NbInputPerInstanceBLSPointEval,
 			NbPointEvalFailureInputInstances: NbInputPerInstanceBLSPointEvalFailure,
+		},
+		P256Verify: p256verify.Limits{
+			NbInputInstances: NbInputPerInstanceP256Verify,
 		},
 	}
 
