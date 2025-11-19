@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
@@ -36,6 +37,23 @@ const (
 	NbInputPerInstanceModexp256        = 10
 	NbInputPerInstanceModexpLarge      = 1
 	NbInputPerInstanceEcdsa            = 4
+
+	NbInputPerInstanceBLSG1Add            = 16
+	NbInputPerInstanceBLSG2Add            = 16
+	NbInputPerInstanceBLSG1Msm            = 8
+	NbInputPerInstanceBLSG2Msm            = 6
+	NbInputPerInstanceBLSMillerLoop       = 4
+	NbInputPerInstanceBLSFinalExp         = 4
+	NbInputPerInstanceBLSG1Membership     = 8
+	NbInputPerInstanceBLSG2Membership     = 6
+	NbInputPerInstanceBLSG1Map            = 16
+	NbInputPerInstanceBLSG2Map            = 5
+	NbInputPerInstanceBLSC1Membership     = 16
+	NbInputPerInstanceBLSC2Membership     = 16
+	NbInputPerInstanceBLSPointEval        = 2
+	NbInputPerInstanceBLSPointEvalFailure = 2
+
+	NbInputPerInstanceP256Verify = 6
 )
 
 var (
@@ -215,6 +233,22 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 		Sha2: sha2.Settings{
 			MaxNumSha2F:                    tl.PrecompileSha2Blocks,
 			NbInstancesPerCircuitSha2Block: NbInputPerInstanceSha2Block,
+		},
+		Bls: bls.Limits{
+			NbG1AddInputInstances:            NbInputPerInstanceBLSG1Add,
+			NbG2AddInputInstances:            NbInputPerInstanceBLSG2Add,
+			NbG1MulInputInstances:            NbInputPerInstanceBLSG1Msm,
+			NbG2MulInputInstances:            NbInputPerInstanceBLSG2Msm,
+			NbMillerLoopInputInstances:       NbInputPerInstanceBLSMillerLoop,
+			NbFinalExpInputInstances:         NbInputPerInstanceBLSFinalExp,
+			NbG1MembershipInputInstances:     NbInputPerInstanceBLSG1Membership,
+			NbG2MembershipInputInstances:     NbInputPerInstanceBLSG2Membership,
+			NbG1MapToInputInstances:          NbInputPerInstanceBLSG1Map,
+			NbG2MapToInputInstances:          NbInputPerInstanceBLSG2Map,
+			NbC1MembershipInputInstances:     NbInputPerInstanceBLSC1Membership,
+			NbC2MembershipInputInstances:     NbInputPerInstanceBLSC2Membership,
+			NbPointEvalInputInstances:        NbInputPerInstanceBLSPointEval,
+			NbPointEvalFailureInputInstances: NbInputPerInstanceBLSPointEvalFailure,
 		},
 	}
 
