@@ -119,8 +119,6 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-      maru:
-        condition: service_healthy
     ports:
       - "9045:8545"
       - "9046:8546"
@@ -202,8 +200,6 @@ services:
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
-        condition: service_healthy
-      maru:
         condition: service_healthy
     ports:
       - "8745:8545"
@@ -384,8 +380,6 @@ services:
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
       sequencer:
-        condition: service_healthy
-      maru:
         condition: service_healthy
     privileged: true
     restart: always
