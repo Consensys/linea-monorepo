@@ -72,8 +72,8 @@ func (p *ProverState[K, V]) InsertAndProve(key K, val V) (trace InsertionTrace[K
 		LeafOpening: LeafOpening{
 			Prev: int64(iMinus),
 			Next: int64(iPlus),
-			HKey: hash(p.Config(), key),
-			HVal: hash(p.Config(), val),
+			HKey: hash(key),
+			HVal: hash(val),
 		},
 	}
 	trace.ProofNew = p.upsertTuple(iInserted, insertedTuple)
@@ -123,7 +123,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 	}
 
 	// Also checks that the their hkey are lower/larger than the inserted one
-	hkey := hash(v.Config, trace.Key)
+	hkey := hash(trace.Key)
 	if Bytes32Cmp(hkey, trace.OldOpenMinus.HKey) < 1 || Bytes32Cmp(hkey, trace.OldOpenPlus.HKey) > -1 {
 		return fmt.Errorf(
 			"sandwich is incorrect expected %x < %x < %x",
@@ -134,10 +134,10 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 	currentRoot := trace.OldSubRoot
 
 	// Audit the update of the "minus"
-	oldLeafMinus := trace.OldOpenMinus.Hash(v.Config)
-	newLeafMinus := trace.OldOpenMinus.CopyWithNext(v.NextFreeNode).Hash(v.Config)
+	oldLeafMinus := trace.OldOpenMinus.Hash()
+	newLeafMinus := trace.OldOpenMinus.CopyWithNext(v.NextFreeNode).Hash()
 
-	currentRoot, err := updateCheckRoot(v.Config, trace.ProofMinus, currentRoot, oldLeafMinus, newLeafMinus)
+	currentRoot, err := updateCheckRoot(trace.ProofMinus, currentRoot, oldLeafMinus, newLeafMinus)
 	if err != nil {
 		return fmt.Errorf("audit of the update of oldLeafMinus failed %v", err)
 	}
@@ -147,19 +147,19 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 		Prev: int64(trace.ProofMinus.Path),
 		Next: int64(trace.ProofPlus.Path),
 		HKey: hkey,
-		HVal: hash(v.Config, trace.Val),
-	}.Hash(v.Config)
+		HVal: hash(trace.Val),
+	}.Hash()
 
-	currentRoot, err = updateCheckRoot(v.Config, trace.ProofNew, currentRoot, types.HashToBytes32(smt_koalabear.EmptyLeaf()), newLeaf)
+	currentRoot, err = updateCheckRoot(trace.ProofNew, currentRoot, types.HashToBytes32(smt_koalabear.EmptyLeaf()), newLeaf)
 	if err != nil {
 		return fmt.Errorf("audit of the update of the middle leaf failed %v", err)
 	}
 
 	// Audit the update of the "plus"
-	oldLeafPlus := trace.OldOpenPlus.Hash(v.Config)
-	newLeafPlus := trace.OldOpenPlus.CopyWithPrev(iInserted).Hash(v.Config)
+	oldLeafPlus := trace.OldOpenPlus.Hash()
+	newLeafPlus := trace.OldOpenPlus.CopyWithPrev(iInserted).Hash()
 
-	currentRoot, err = updateCheckRoot(v.Config, trace.ProofPlus, currentRoot, oldLeafPlus, newLeafPlus)
+	currentRoot, err = updateCheckRoot(trace.ProofPlus, currentRoot, oldLeafPlus, newLeafPlus)
 	if err != nil {
 		return fmt.Errorf("audit of the update of oldLeafPlus failed %v", err)
 	}
@@ -181,43 +181,42 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 
 // DeferMerkleChecks implements [Trace]
 func (trace InsertionTrace[K, V]) DeferMerkleChecks(
-	config *smt_koalabear.Config,
 	appendTo []smt_koalabear.ProvedClaim,
 ) []smt_koalabear.ProvedClaim {
 
 	iInserted := int64(trace.ProofNew.Path)
 
 	// Also checks that the their hkey are lower/larger than the inserted one
-	hkey := hash(config, trace.Key)
+	hkey := hash(trace.Key)
 
 	currentRoot := trace.OldSubRoot
 
 	// Audit the update of the "minus"
-	oldLeafMinus := trace.OldOpenMinus.Hash(config)
-	newLeafMinus := trace.OldOpenMinus.CopyWithNext(int64(trace.ProofNew.Path)).Hash(config)
+	oldLeafMinus := trace.OldOpenMinus.Hash()
+	newLeafMinus := trace.OldOpenMinus.CopyWithNext(int64(trace.ProofNew.Path)).Hash()
 
-	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofMinus, currentRoot, oldLeafMinus, newLeafMinus, appendTo)
+	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofMinus, currentRoot, oldLeafMinus, newLeafMinus, appendTo)
 
 	// Audit the update of the inserted new leaf
 	newLeaf := LeafOpening{
 		Prev: int64(trace.ProofMinus.Path),
 		Next: int64(trace.ProofPlus.Path),
 		HKey: hkey,
-		HVal: hash(config, trace.Val),
-	}.Hash(config)
+		HVal: hash(trace.Val),
+	}.Hash()
 
-	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofNew, currentRoot, types.HashToBytes32(smt_koalabear.EmptyLeaf()), newLeaf, appendTo)
+	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofNew, currentRoot, types.HashToBytes32(smt_koalabear.EmptyLeaf()), newLeaf, appendTo)
 
 	// Audit the update of the "plus"
-	oldLeafPlus := trace.OldOpenPlus.Hash(config)
-	newLeafPlus := trace.OldOpenPlus.CopyWithPrev(iInserted).Hash(config)
+	oldLeafPlus := trace.OldOpenPlus.Hash()
+	newLeafPlus := trace.OldOpenPlus.CopyWithPrev(iInserted).Hash()
 
-	appendTo, _ = deferCheckUpdateRoot(config, trace.ProofPlus, currentRoot, oldLeafPlus, newLeafPlus, appendTo)
+	appendTo, _ = deferCheckUpdateRoot(trace.ProofPlus, currentRoot, oldLeafPlus, newLeafPlus, appendTo)
 	return appendTo
 }
 
-func (trace InsertionTrace[K, V]) HKey(cfg *smt_koalabear.Config) Bytes32 {
-	return hash(cfg, trace.Key)
+func (trace InsertionTrace[K, V]) HKey() Bytes32 {
+	return hash(trace.Key)
 }
 
 func (trace InsertionTrace[K, V]) RWInt() int {

@@ -52,8 +52,12 @@ func hashLR(nodeL, nodeR field.Octuplet) field.Octuplet {
 }
 
 // NewEmptyTree creates and returns an empty tree with the provided config.
-func NewEmptyTree(depth int) *Tree {
-	// Computes the empty nodes
+func NewEmptyTree(depths ...int) *Tree {
+	// Default depth is 40 if no input is provided
+	depth := 40
+	if len(depths) > 0 && depths[0] > 0 {
+		depth = depths[0]
+	} // Computes the empty nodes
 	emptyNodes := make([]field.Octuplet, depth-1)
 	prevNode := EmptyLeaf()
 

@@ -31,10 +31,8 @@ func dumval(i int) DummyVal {
 }
 
 func newTestAccumulatorPoseidon2DummyVal() *accumulator.ProverState[DummyKey, DummyVal] {
-	config := &smt_koalabear.Config{
-		Depth: 40,
-	}
-	return accumulator.InitializeProverState[DummyKey, DummyVal](config, locationTesting)
+
+	return accumulator.InitializeProverState[DummyKey, DummyVal](locationTesting)
 }
 
 func TestInitialization(t *testing.T) {
@@ -49,19 +47,19 @@ func TestInitialization(t *testing.T) {
 	// The roots are consistent
 	assert.Equal(t, acc.SubTreeRoot(), ver.SubTreeRoot, "inconsistent roots")
 
-	headHash := accumulator.Head().Hash(acc.Config())
-	tailHash := accumulator.Tail(acc.Config()).Hash(acc.Config())
+	headHash := accumulator.Head().Hash() // Updated to remove acc.Config()
+	tailHash := accumulator.Tail().Hash() // Updated to remove acc.Config()
 
 	// First leaf is head
-	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(0)), accumulator.Head().Hash(acc.Config()))
-	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(1)), accumulator.Tail(acc.Config()).Hash(acc.Config()))
+	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(0)), accumulator.Head().Hash())
+	assert.Equal(t, types.HashToBytes32(acc.Tree.MustGetLeaf(1)), accumulator.Tail().Hash())
 
 	// Can we prover membership of the leaf
 	proofHead := acc.Tree.MustProve(0)
-	proofHead.Verify(acc.Config(), types.Bytes32ToOctuplet(headHash), types.Bytes32ToOctuplet(acc.SubTreeRoot()))
+	smt_koalabear.Verify(&proofHead, types.Bytes32ToOctuplet(headHash), types.Bytes32ToOctuplet(acc.SubTreeRoot()))
 
 	proofTail := acc.Tree.MustProve(1)
-	proofTail.Verify(acc.Config(), types.Bytes32ToOctuplet(tailHash), types.Bytes32ToOctuplet(acc.SubTreeRoot()))
+	smt_koalabear.Verify(&proofTail, types.Bytes32ToOctuplet(tailHash), types.Bytes32ToOctuplet(acc.SubTreeRoot()))
 }
 
 func TestInsertion(t *testing.T) {

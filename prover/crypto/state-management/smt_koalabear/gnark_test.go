@@ -21,8 +21,7 @@ func randomOctuplet() field.Octuplet {
 
 func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 
-	depth := 40
-	tree := NewEmptyTree(depth)
+	tree := NewEmptyTree()
 
 	// populate the tree
 	nbLeaves := 10

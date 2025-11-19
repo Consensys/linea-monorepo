@@ -40,7 +40,7 @@ func (p *ProverState[K, V]) ReadNonZeroAndProve(key K) ReadNonZeroTrace[K, V] {
 
 	tuple := p.Data.MustGet(i)
 
-	if hash(p.Config(), key) != hash(p.Config(), tuple.Key) {
+	if hash(key) != hash(tuple.Key) {
 		utils.Panic("sanity-check : the key mismatched")
 	}
 
@@ -74,12 +74,12 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 		LeafOpening: trace.LeafOpening,
 	}
 
-	leaf, err := tuple.CheckAndLeaf(v.Config)
+	leaf, err := tuple.CheckAndLeaf()
 	if err != nil {
 		return errors.WithMessage(err, "read non zero verifier failed")
 	}
 
-	if !trace.Proof.Verify(v.Config, types.Bytes32ToOctuplet(leaf), types.Bytes32ToOctuplet(trace.SubRoot)) {
+	if smt_koalabear.Verify(&trace.Proof, types.Bytes32ToOctuplet(leaf), types.Bytes32ToOctuplet(trace.SubRoot)) != nil {
 		return fmt.Errorf("merkle proof verification failed")
 	}
 
@@ -93,7 +93,6 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 
 // DeferMerkleChecks implements [Trace]
 func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
-	config *smt_koalabear.Config,
 	appendTo []smt_koalabear.ProvedClaim,
 ) []smt_koalabear.ProvedClaim {
 	tuple := KVOpeningTuple[K, V]{
@@ -102,13 +101,13 @@ func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
 		LeafOpening: trace.LeafOpening,
 	}
 
-	leaf, _ := tuple.CheckAndLeaf(config)
+	leaf, _ := tuple.CheckAndLeaf()
 	appendTo = append(appendTo, smt_koalabear.ProvedClaim{Proof: trace.Proof, Root: types.Bytes32ToOctuplet(trace.SubRoot), Leaf: types.Bytes32ToOctuplet(leaf)})
 	return appendTo
 }
 
-func (trace ReadNonZeroTrace[K, V]) HKey(cfg *smt_koalabear.Config) Bytes32 {
-	return hash(cfg, trace.Key)
+func (trace ReadNonZeroTrace[K, V]) HKey() Bytes32 {
+	return hash(trace.Key)
 }
 
 func (trace ReadNonZeroTrace[K, V]) RWInt() int {

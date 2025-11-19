@@ -99,7 +99,7 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 	}
 
 	// Check that the deleted value is consistent with the leaf opening
-	hVal := hash(v.Config, trace.DeletedValue)
+	hVal := hash(trace.DeletedValue)
 	if hVal != trace.DeletedOpen.HVal {
 		return fmt.Errorf("the deleted value does not match the hVal of the opening")
 	}
@@ -125,31 +125,31 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 	}
 
 	// Check that the deleted entry corresponds to the key we wish to remove
-	if !trace.DeletedOpen.MatchKey(v.Config, trace.Key) {
+	if !trace.DeletedOpen.MatchKey(trace.Key) {
 		return fmt.Errorf("deleting the wrong leaf : does not match our key : trace.Key %v - hkey %v", trace.Key, trace.DeletedOpen.HKey)
 	}
 
 	currentRoot := trace.OldSubRoot
 
 	// Audit the update of the "minus"
-	oldLeafMinus := trace.OldOpenMinus.Hash(v.Config)
-	newLeafMinus := trace.OldOpenMinus.CopyWithNext(iPlus).Hash(v.Config)
-	currentRoot, err := updateCheckRoot(v.Config, trace.ProofMinus, currentRoot, oldLeafMinus, newLeafMinus)
+	oldLeafMinus := trace.OldOpenMinus.Hash()
+	newLeafMinus := trace.OldOpenMinus.CopyWithNext(iPlus).Hash()
+	currentRoot, err := updateCheckRoot(trace.ProofMinus, currentRoot, oldLeafMinus, newLeafMinus)
 	if err != nil {
 		return fmt.Errorf("audit of the update of old leaf minus failed %v", err)
 	}
 
 	// Audit the update of the deleted leaf
-	deletedLeaf := hash(v.Config, &trace.DeletedOpen)
-	currentRoot, err = updateCheckRoot(v.Config, trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt_koalabear.EmptyLeaf()))
+	deletedLeaf := hash(&trace.DeletedOpen)
+	currentRoot, err = updateCheckRoot(trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt_koalabear.EmptyLeaf()))
 	if err != nil {
 		return fmt.Errorf("audit of the update of the middle leaf failed %v", err)
 	}
 
 	// Audit the update of the "plus"
-	oldLeafPlus := trace.OldOpenPlus.Hash(v.Config)
-	newLeafPlus := trace.OldOpenPlus.CopyWithPrev(iMinus).Hash(v.Config)
-	currentRoot, err = updateCheckRoot(v.Config, trace.ProofPlus, currentRoot, oldLeafPlus, newLeafPlus)
+	oldLeafPlus := trace.OldOpenPlus.Hash()
+	newLeafPlus := trace.OldOpenPlus.CopyWithPrev(iMinus).Hash()
+	currentRoot, err = updateCheckRoot(trace.ProofPlus, currentRoot, oldLeafPlus, newLeafPlus)
 	if err != nil {
 		return fmt.Errorf("audit of the update of old leaf plus failed %v", err)
 	}
@@ -171,7 +171,6 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 
 // DeferMerkleChecks implements [Trace]
 func (trace DeletionTrace[K, V]) DeferMerkleChecks(
-	config *smt_koalabear.Config,
 	appendTo []smt_koalabear.ProvedClaim,
 ) []smt_koalabear.ProvedClaim {
 	currentRoot := trace.OldSubRoot
@@ -179,23 +178,23 @@ func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 	iPlus := int64(trace.ProofPlus.Path)
 
 	// Audit the update of the "minus"
-	oldLeafMinus := trace.OldOpenMinus.Hash(config)
-	newLeafMinus := trace.OldOpenMinus.CopyWithNext(iPlus).Hash(config)
-	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofMinus, currentRoot, oldLeafMinus, newLeafMinus, appendTo)
+	oldLeafMinus := trace.OldOpenMinus.Hash()
+	newLeafMinus := trace.OldOpenMinus.CopyWithNext(iPlus).Hash()
+	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofMinus, currentRoot, oldLeafMinus, newLeafMinus, appendTo)
 
 	// the proof verification for the deleted leaf
-	deletedLeaf := hash(config, &trace.DeletedOpen)
-	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt_koalabear.EmptyLeaf()), appendTo)
+	deletedLeaf := hash(&trace.DeletedOpen)
+	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofDeleted, currentRoot, deletedLeaf, types.HashToBytes32(smt_koalabear.EmptyLeaf()), appendTo)
 
 	// Audit the update of the "plus"
-	oldLeafPlus := trace.OldOpenPlus.Hash(config)
-	newLeafPlus := trace.OldOpenPlus.CopyWithPrev(iMinus).Hash(config)
-	appendTo, _ = deferCheckUpdateRoot(config, trace.ProofPlus, currentRoot, oldLeafPlus, newLeafPlus, appendTo)
+	oldLeafPlus := trace.OldOpenPlus.Hash()
+	newLeafPlus := trace.OldOpenPlus.CopyWithPrev(iMinus).Hash()
+	appendTo, _ = deferCheckUpdateRoot(trace.ProofPlus, currentRoot, oldLeafPlus, newLeafPlus, appendTo)
 
 	return appendTo
 }
 
-func (trace DeletionTrace[K, V]) HKey(_ *smt_koalabear.Config) Bytes32 {
+func (trace DeletionTrace[K, V]) HKey() Bytes32 {
 	return trace.DeletedOpen.HKey
 }
 

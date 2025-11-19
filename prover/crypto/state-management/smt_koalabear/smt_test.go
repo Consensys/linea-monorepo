@@ -11,8 +11,7 @@ import (
 // all the leaves are zero.
 func TestTreeInitialization(t *testing.T) {
 
-	depth := 40
-	tree := NewEmptyTree(depth)
+	tree := NewEmptyTree()
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -23,8 +22,7 @@ func TestTreeInitialization(t *testing.T) {
 
 func TestTreeUpdateLeaf(t *testing.T) {
 
-	depth := 40
-	tree := NewEmptyTree(depth)
+	tree := NewEmptyTree()
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -39,8 +37,7 @@ func TestTreeUpdateLeaf(t *testing.T) {
 }
 func TestMerkleProofNative(t *testing.T) {
 
-	depth := 40
-	tree := NewEmptyTree(depth)
+	tree := NewEmptyTree()
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -57,8 +54,7 @@ func TestMerkleProofNative(t *testing.T) {
 
 func TestMerkleProofWithUpdate(t *testing.T) {
 
-	depth := 40
-	tree := NewEmptyTree(depth)
+	tree := NewEmptyTree()
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
@@ -110,7 +106,7 @@ func TestBuildFromScratch(t *testing.T) {
 	}
 
 	// Build the same tree by adding the leaves one by one
-	oneByoneTree := NewEmptyTree(depth)
+	oneByoneTree := NewEmptyTree()
 	for i := range leaves {
 		oneByoneTree.Update(i, leaves[i])
 	}

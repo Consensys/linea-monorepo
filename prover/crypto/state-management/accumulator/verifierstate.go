@@ -21,8 +21,6 @@ type VerifierState[K, V io.WriterTo] struct {
 	NextFreeNode int64
 	// Internal tree
 	SubTreeRoot Bytes32
-	// Config contains the parameters of the tree
-	Config *smt_koalabear.Config
 }
 
 // VerifierState create a verifier state from a prover state. The returned
@@ -32,20 +30,19 @@ func (p *ProverState[K, V]) VerifierState() VerifierState[K, V] {
 		Location:     p.Location,
 		NextFreeNode: p.NextFreeNode,
 		SubTreeRoot:  types.HashToBytes32(p.Tree.Root),
-		Config:       p.Tree.Config,
 	}
 }
 
 // updateCheckRoot audit an atomic update of the merkle tree (e.g. one leaf) and
 // returns the new root
-func updateCheckRoot(conf *smt_koalabear.Config, proof smt_koalabear.Proof, root, old, new Bytes32) (newRoot Bytes32, err error) {
+func updateCheckRoot(proof smt_koalabear.Proof, root, old, new Bytes32) (newRoot Bytes32, err error) {
 
-	if ok := proof.Verify(conf, types.Bytes32ToOctuplet(old), types.Bytes32ToOctuplet(root)); !ok {
+	if ok := smt_koalabear.Verify(&proof, types.Bytes32ToOctuplet(old), types.Bytes32ToOctuplet(root)); ok != nil {
 		return Bytes32{}, errors.New("root update audit failed : could not authenticate the old")
 	}
 
 	// Note: all possible errors are already convered by `proof.Verify`
-	newRootOct, _ := proof.RecoverRoot(conf, types.Bytes32ToOctuplet(new))
+	newRootOct, _ := smt_koalabear.RecoverRoot(&proof, types.Bytes32ToOctuplet(new))
 	logrus.Tracef("update check root %v leaf: %x->%x root: %x->%x\n", proof.Path, old, new, root, newRootOct)
 	return types.HashToBytes32(newRootOct), nil
 }
@@ -64,12 +61,11 @@ func (v *VerifierState[K, V]) TopRoot() Bytes32 {
 // audited when checking the updates of a leaf in the tree. The function panics
 // if the proof malformed.
 func deferCheckUpdateRoot(
-	conf *smt_koalabear.Config,
 	proof smt_koalabear.Proof,
 	root, old, new Bytes32,
 	appendTo []smt_koalabear.ProvedClaim,
 ) (appended []smt_koalabear.ProvedClaim, newRoot Bytes32) {
-	newRootOct, err := proof.RecoverRoot(conf, types.Bytes32ToOctuplet(new))
+	newRootOct, err := smt_koalabear.RecoverRoot(&proof, types.Bytes32ToOctuplet(new))
 	if err != nil {
 		panic(err)
 	}

@@ -28,13 +28,13 @@ type ProverState[K, V io.WriterTo] struct {
 }
 
 // InitializeProverState returns an initialized empty accumulator state
-func InitializeProverState[K, V io.WriterTo](conf *smt_koalabear.Config, location string) *ProverState[K, V] {
-	tree := smt_koalabear.NewEmptyTree(conf)
+func InitializeProverState[K, V io.WriterTo](location string) *ProverState[K, V] {
+	tree := smt_koalabear.NewEmptyTree()
 
 	// Insert the head and the tail in the tree
-	head, tail := Head(), Tail(conf)
-	tree.Update(0, types.Bytes32ToOctuplet(head.Hash(conf)))
-	tree.Update(1, types.Bytes32ToOctuplet(tail.Hash(conf)))
+	head, tail := Head(), Tail()
+	tree.Update(0, types.Bytes32ToOctuplet(head.Hash()))
+	tree.Update(1, types.Bytes32ToOctuplet(tail.Hash()))
 
 	data := collection.NewMapping[int64, KVOpeningTuple[K, V]]()
 	data.InsertNew(0, KVOpeningTuple[K, V]{LeafOpening: head})
@@ -48,11 +48,6 @@ func InitializeProverState[K, V io.WriterTo](conf *smt_koalabear.Config, locatio
 	}
 }
 
-// Config returns the configuration of the accumulator.
-func (s *ProverState[K, V]) Config() *smt_koalabear.Config {
-	return s.Tree.Config
-}
-
 // SubTreeRoot returns the root of the tree
 func (s *ProverState[K, V]) SubTreeRoot() Bytes32 {
 	return types.HashToBytes32(s.Tree.Root)
@@ -63,7 +58,7 @@ func (s *ProverState[K, V]) SubTreeRoot() Bytes32 {
 // tree.
 func (s *ProverState[K, V]) FindKey(k K) (int64, bool) {
 	// We do so with a linear scan to simplify (since it is only for testing)
-	hkey := hash(s.Config(), k)
+	hkey := hash(k)
 	for _, i := range s.Data.ListAllKeys() {
 		leafOpening := s.Data.MustGet(i).LeafOpening
 		if hkey == leafOpening.HKey {
@@ -93,7 +88,7 @@ func (s *ProverState[K, V]) ListAllKeys() []K {
 // It assumes that "k" is not stored in the tree.
 func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 	// We do so with a linear scanning to simplify (since it is only for testing)
-	hkey := hash(s.Config(), k)
+	hkey := hash(k)
 	hminus, iminus := Bytes32{}, int64(0)                                    // corresponds to head
 	hplus, iplus := poseidon2_koalabear.NewMDHasher().MaxBytes32(), int64(1) // corresponds to tail
 
@@ -131,14 +126,14 @@ func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 // upsertTuple cleanly upsert a tuple in the accumulator, returns a Merkle proof
 func (s *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt_koalabear.Proof {
 
-	leaf, err := tuple.CheckAndLeaf(s.Config())
+	leaf, err := tuple.CheckAndLeaf()
 	if err != nil {
 		utils.Panic("illegal tuple : %v", err)
 	}
 
 	if old, found := s.Data.TryGet(i); found {
 		// consistency-check of the old tuple
-		_, err = old.CheckAndLeaf(s.Config())
+		_, err = old.CheckAndLeaf()
 		if err != nil {
 			utils.Panic("illegal old tuple : %v", err)
 		}
