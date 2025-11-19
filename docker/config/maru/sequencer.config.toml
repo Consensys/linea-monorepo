@@ -30,10 +30,10 @@ ban-period = "30 seconds"
 engine-api-endpoint = { endpoint = "http://sequencer:8550" }
 eth-api-endpoint = { endpoint = "http://sequencer:8545" }
 
-[follower-engine-apis]
-follower-besu = { endpoint = "http://l2-node-besu:8550" }
-follower-tracer = { endpoint = "http://traces-node:8550" }
-follower-shomei = { endpoint = "http://zkbesu-shomei:8550" }
+#[follower-engine-apis]
+#follower-besu = { endpoint = "http://l2-node-besu:8550" }
+#follower-tracer = { endpoint = "http://traces-node:8550" }
+#follower-shomei = { endpoint = "http://zkbesu-shomei:8550" }
 
 [observability]
 port = 9090
