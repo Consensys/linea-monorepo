@@ -10,27 +10,9 @@ export class TransactionMetricsUpdater implements ITransactionMetricsUpdater {
     );
 
     this.metricsService.createHistogram(
-      LineaPostmanMetrics.TransactionLineaInfuraLatencyTime,
+      LineaPostmanMetrics.TransactionInfuraConfirmationTime,
       [0.1, 0.5, 1, 2, 3, 5, 7, 10],
       "Time taken to receive the transaction receipt from Infura",
-      ["direction"],
-    );
-
-    this.metricsService.createCounter(
-      LineaPostmanMetrics.TransactionProcessedTotal,
-      "Number of transactions that have been processed",
-      ["direction"],
-    );
-
-    this.metricsService.createCounter(
-      LineaPostmanMetrics.TransactionLineaInfuraLatencyTimeSum,
-      "Total number of seconds taken to receive the transaction receipt from Infura",
-      ["direction"],
-    );
-
-    this.metricsService.createCounter(
-      LineaPostmanMetrics.TransactionProcessingTimeSum,
-      "Total number of seconds taken between transaction creation and receipt timestamp",
       ["direction"],
     );
   }
@@ -43,34 +25,14 @@ export class TransactionMetricsUpdater implements ITransactionMetricsUpdater {
     );
   }
 
-  public addTransactionLineaInfuraLatencyTime(direction: string, transactionLineaInfuraLatencyInSeconds: number): void {
-    return this.metricsService.addValueToHistogram(
-      LineaPostmanMetrics.TransactionLineaInfuraLatencyTime,
-      transactionLineaInfuraLatencyInSeconds,
-      { direction },
-    );
-  }
-
-  public incrementTransactionProcessedTotal(direction: string): void {
-    this.metricsService.incrementCounter(LineaPostmanMetrics.TransactionProcessedTotal, { direction }, 1);
-  }
-
-  public incrementTransactionProcessingTimeSum(direction: string, transactionProcessingTimeInSeconds: number): void {
-    this.metricsService.incrementCounter(
-      LineaPostmanMetrics.TransactionProcessingTimeSum,
-      { direction },
-      transactionProcessingTimeInSeconds,
-    );
-  }
-
-  public incrementTransactionLineaInfuraLatencyTimeSum(
+  public addTransactionInfuraConfirmationTime(
     direction: string,
-    transactionLineaInfuraLatencyInSeconds: number,
+    transactionInfuraConfirmationTimeInSeconds: number,
   ): void {
-    this.metricsService.incrementCounter(
-      LineaPostmanMetrics.TransactionLineaInfuraLatencyTimeSum,
+    return this.metricsService.addValueToHistogram(
+      LineaPostmanMetrics.TransactionInfuraConfirmationTime,
+      transactionInfuraConfirmationTimeInSeconds,
       { direction },
-      transactionLineaInfuraLatencyInSeconds,
     );
   }
 }

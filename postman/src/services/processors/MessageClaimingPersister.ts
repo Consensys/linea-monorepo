@@ -209,27 +209,18 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
     receiptReceivedAt: Date,
   ): Promise<void> {
     let processingTimeInSeconds: number | undefined;
-    let lineaInfuraLatencyInSeconds: number | undefined;
+    let infuraConfirmationTimeInSeconds: number | undefined;
 
     if (message.claimTxCreationDate) {
       const block = await this.provider.getBlock(receipt.blockNumber);
       if (block) {
         processingTimeInSeconds = block.timestamp - message.claimTxCreationDate.getTime() / 1_000;
-        lineaInfuraLatencyInSeconds = (receiptReceivedAt.getTime() - message.claimTxCreationDate.getTime()) / 1_000;
+        infuraConfirmationTimeInSeconds = (receiptReceivedAt.getTime() - message.claimTxCreationDate.getTime()) / 1_000;
 
-        this.transactionMetricsUpdater.incrementTransactionProcessedTotal(this.config.direction);
         this.transactionMetricsUpdater.addTransactionProcessingTime(this.config.direction, processingTimeInSeconds);
-        this.transactionMetricsUpdater.incrementTransactionProcessingTimeSum(
+        this.transactionMetricsUpdater.addTransactionInfuraConfirmationTime(
           this.config.direction,
-          processingTimeInSeconds,
-        );
-        this.transactionMetricsUpdater.addTransactionLineaInfuraLatencyTime(
-          this.config.direction,
-          lineaInfuraLatencyInSeconds,
-        );
-        this.transactionMetricsUpdater.incrementTransactionLineaInfuraLatencyTimeSum(
-          this.config.direction,
-          lineaInfuraLatencyInSeconds,
+          infuraConfirmationTimeInSeconds,
         );
       }
     }
@@ -260,7 +251,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
         receipt.hash,
         {
           ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
-          ...(lineaInfuraLatencyInSeconds ? { lineaInfuraLatencyInSeconds } : {}),
+          ...(infuraConfirmationTimeInSeconds ? { infuraConfirmationTimeInSeconds } : {}),
         },
       );
       return;
@@ -285,7 +276,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       receipt.hash,
       {
         ...(processingTimeInSeconds ? { processingTimeInSeconds } : {}),
-        ...(lineaInfuraLatencyInSeconds ? { lineaInfuraLatencyInSeconds } : {}),
+        ...(infuraConfirmationTimeInSeconds ? { infuraConfirmationTimeInSeconds } : {}),
       },
     );
   }
