@@ -55,7 +55,8 @@ func newP256Verify(_ *wizard.CompiledIOP, limits *Limits, src *p256VerifyDataSou
 }
 
 func (pv *P256Verify) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *P256Verify {
-	maxNbCircuits := pv.p256VerifyDataSource.CS.Size() / nbRows
+	nbRowsPerCircuit := nbRows * pv.Limits.NbInputInstances
+	maxNbCircuits := (pv.p256VerifyDataSource.CS.Size() + nbRowsPerCircuit - 1) / nbRowsPerCircuit
 
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_ALIGNMENT", NAME_P256_VERIFY),
