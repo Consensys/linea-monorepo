@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,19 +23,19 @@ func TestInitializationPoseidon2(t *testing.T) {
 	// The roots are consistent
 	assert.Equal(t, acc.SubTreeRoot(), ver.SubTreeRoot, "inconsistent roots")
 
-	headHash := accumulator.Head().Hash(acc.Config())
-	tailHash := accumulator.Tail(acc.Config()).Hash(acc.Config())
+	headHash := accumulator.Head().Hash()
+	tailHash := accumulator.Tail().Hash()
 
 	// First leaf is head
-	assert.Equal(t, acc.Tree.MustGetLeaf(0), accumulator.Head().Hash(acc.Config()).ToOctuplet())
-	assert.Equal(t, acc.Tree.MustGetLeaf(1), accumulator.Tail(acc.Config()).Hash(acc.Config()).ToOctuplet())
+	assert.Equal(t, acc.Tree.MustGetLeaf(0), accumulator.Head().Hash().ToOctuplet())
+	assert.Equal(t, acc.Tree.MustGetLeaf(1), accumulator.Tail().Hash().ToOctuplet())
 
 	// Can we prover membership of the leaf
 	proofHead := acc.Tree.MustProve(0)
-	proofHead.Verify(acc.Config(), headHash.ToOctuplet(), acc.SubTreeRoot().ToOctuplet())
+	smt_koalabear.Verify(&proofHead, headHash.ToOctuplet(), acc.SubTreeRoot().ToOctuplet())
 
 	proofTail := acc.Tree.MustProve(1)
-	proofTail.Verify(acc.Config(), tailHash.ToOctuplet(), acc.SubTreeRoot().ToOctuplet())
+	smt_koalabear.Verify(&proofTail, tailHash.ToOctuplet(), acc.SubTreeRoot().ToOctuplet())
 }
 
 func TestInsertionPoseidon2(t *testing.T) {
