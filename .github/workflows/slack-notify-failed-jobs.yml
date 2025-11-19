@@ -1,0 +1,110 @@
+name: Slack Notification
+
+on:
+  workflow_call:
+    inputs:
+      status:
+        description: "Overall CI result: success or failure"
+        required: true
+        type: string
+      failed_jobs:
+        description: "Newline-separated list of failed jobs"
+        required: false
+        type: string
+        default: ""
+      run_url:
+        description: "GitHub Actions run URL"
+        required: true
+        type: string
+      repo:
+        description: "Repository name"
+        required: true
+        type: string
+      pr_number:
+        description: "PR number if PR, empty otherwise"
+        required: false
+        type: string
+        default: ""
+      pr_url:
+        description: "PR URL if PR, fallback to commit URL"
+        required: true
+        type: string
+      commit_sha:
+        description: "Commit SHA"
+        required: true
+        type: string
+      commit_url:
+        description: "Commit URL"
+        required: true
+        type: string
+      author:
+        description: "Commit or PR author login"
+        required: true
+        type: string
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build Slack message
+        id: msg
+        run: |
+          if [ "${{ inputs.status }}" = "success" ]; then
+            echo "emoji=:white_check_mark:" >> $GITHUB_OUTPUT
+            echo "color=#2ECC71" >> $GITHUB_OUTPUT
+            echo "title=Build Succeeded" >> $GITHUB_OUTPUT
+          else
+            echo "emoji=:x:" >> $GITHUB_OUTPUT
+            echo "color=#E74C3C" >> $GITHUB_OUTPUT
+            echo "title=Build Failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack Notification
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            text: "${{ steps.msg.outputs.emoji }} GitHub CI for *${{ inputs.repo }}* — *${{ steps.msg.outputs.title }}*"
+            blocks:
+              - type: header
+                text:
+                  type: plain_text
+                  text: "${{ steps.msg.outputs.emoji }}  ${{ steps.msg.outputs.title }}"
+                  emoji: true
+
+              - type: section
+                fields:
+                  - type: mrkdwn
+                    text: "*Repository:*\n${{ inputs.repo }}"
+                  - type: mrkdwn
+                    text: "*Status:*\n${{ inputs.status }}"
+
+              - type: section
+                fields:
+                  - type: mrkdwn
+                    text: "*Author:*\n${{ inputs.author }}"
+                  - type: mrkdwn
+                    text: "*Commit:*\n<${{ inputs.commit_url }}|${{ inputs.commit_sha }}>"
+
+              - type: section
+                fields:
+                  - type: mrkdwn
+                    text: "*Run:* \n<${{ inputs.run_url }}|Open GitHub Run>"
+                  - type: mrkdwn
+                    text: "*Details:* \n<${{ inputs.pr_url }}|${{ inputs.pr_number != '' && format('PR #%s', inputs.pr_number) || 'Commit' }}>"
+
+              - type: section
+                text:
+                  type: mrkdwn
+                  text: |
+                    *Failed Jobs:*
+                    ${{ inputs.failed_jobs != '' && inputs.failed_jobs || 'None' }}
+
+              - type: context
+                elements:
+                  - type: mrkdwn
+                    text: "Triggered by *${{ inputs.author }}*"
+
