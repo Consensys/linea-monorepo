@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
@@ -311,10 +312,11 @@ func (am *Module) assignLeaf(
 	var (
 		cols            = am.Cols
 		paddedSize      = am.NumRows()
-		intermZeroLimbs = common.BlockCompression([]field.Element{field.Zero()}, []field.Element{field.Zero()})
-		intermOneLimbs  = common.BlockCompression(intermZeroLimbs, []field.Element{field.Zero()})
-		intermTwoLimbs  = common.BlockCompression(intermOneLimbs, []field.Element{field.Zero()})
-		leafLimbs       = common.BlockCompression(intermTwoLimbs, []field.Element{field.Zero()})
+		zeroBlock       field.Octuplet
+		intermZeroLimbs = vortex.CompressPoseidon2(zeroBlock, zeroBlock)
+		intermOneLimbs  = vortex.CompressPoseidon2(intermZeroLimbs, zeroBlock)
+		intermTwoLimbs  = vortex.CompressPoseidon2(intermOneLimbs, zeroBlock)
+		leafLimbs       = vortex.CompressPoseidon2(intermTwoLimbs, zeroBlock)
 	)
 
 	run.AssignColumn(cols.IsEmptyLeaf.GetColID(), smartvectors.RightZeroPadded(builder.isEmptyLeaf, paddedSize))
@@ -343,8 +345,9 @@ func (am *Module) assignTopRootCols(
 	paddedSize := am.NumRows()
 
 	// compute the padding values for intermTopRoot and topRoot
-	intermTopRootPadLimbs := common.BlockCompression([]field.Element{field.Zero()}, []field.Element{field.Zero()})
-	topRootPadLimbs := common.BlockCompression(intermTopRootPadLimbs, []field.Element{field.Zero()})
+	var zeroBlock field.Octuplet
+	intermTopRootPadLimbs := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
+	topRootPadLimbs := vortex.CompressPoseidon2(intermTopRootPadLimbs, zeroBlock)
 
 	for i := range cols.IntermTopRoot {
 		run.AssignColumn(cols.IntermTopRoot[i].GetColID(), smartvectors.RightPadded(builder.intermTopRoot[i], intermTopRootPadLimbs[i], paddedSize))
