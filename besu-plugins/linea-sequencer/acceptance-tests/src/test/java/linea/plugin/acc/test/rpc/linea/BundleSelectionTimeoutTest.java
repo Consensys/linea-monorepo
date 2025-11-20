@@ -84,7 +84,7 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
             new BundleParams(Arrays.copyOfRange(rawTxs, 1, 10), Integer.toHexString(2)));
     final var sendBundleRequestBig2 =
         new SendBundleRequest(
-            new BundleParams(Arrays.copyOfRange(rawTxs, 10, 21), Integer.toHexString(2)));
+            new BundleParams(Arrays.copyOfRange(rawTxs, 10, 20), Integer.toHexString(2)));
 
     final var sendBundleResponseSmall = sendBundleRequestSmall.execute(minerNode.nodeRequests());
     final var sendBundleResponseBig1 = sendBundleRequestBig1.execute(minerNode.nodeRequests());
