@@ -146,9 +146,9 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
                 final var currentBundleSelectionTime = now - bundleStartedAt;
 
                 if (maybeBadBundleRes.isPresent()) {
-                  final var failure = maybeBadBundleRes.get();
+                  final var notSelectedReason = maybeBadBundleRes.get();
 
-                  if (isSelectionInterrupted(failure)) {
+                  if (isSelectionInterrupted(notSelectedReason)) {
                     isSelectionInterrupted.set(true);
                     log.atDebug()
                         .setMessage(
@@ -163,7 +163,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
                         .setMessage(
                             "Failed bundle {}, reason {}, elapsed time: current bundle {}ms, cumulative {}ms")
                         .addArgument(bundle::bundleIdentifier)
-                        .addArgument(failure)
+                        .addArgument(notSelectedReason)
                         .addArgument(() -> nanosToMillis(currentBundleSelectionTime))
                         .addArgument(() -> nanosToMillis(cumulativeBundleSelectionTime))
                         .log();
@@ -209,16 +209,17 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
               .findFirst();
 
       if (badBundleRes.isPresent()) {
-        final var failure = badBundleRes.get();
+        final var notSelectedReason = badBundleRes.get();
 
-        if (isSelectionInterrupted(failure)) {
+        if (isSelectionInterrupted(notSelectedReason)) {
           isSelectionInterrupted.set(true);
           log.debug(
               "Bundle selection interrupted while processing liveness bundle {}, reason {}",
               livenessBundle.get(),
-              failure);
+              notSelectedReason);
         } else {
-          log.debug("Failed liveness bundle {}, reason {}", livenessBundle.get(), failure);
+          log.debug(
+              "Failed liveness bundle {}, reason {}", livenessBundle.get(), notSelectedReason);
         }
         livenessService.get().updateUptimeMetrics(false, headBlockTimestamp);
         rollback(bts);
