@@ -23,6 +23,7 @@ jobs:
     steps:
       - name: Compute context values
         id: ctx
+        shell: bash
         run: |
           echo "repo=${{ github.repository }}" >> $GITHUB_OUTPUT
 
@@ -133,8 +134,14 @@ jobs:
           #
           output=""
           for prefix in "${!GROUPS[@]}"; do
-            output+="  *${prefix^} Failed:*\n"
-            output+="$(printf '%b' "${GROUPS[$prefix]}" | sed 's/^/  /')\n"
+            output+="*${prefix^}:*\\n"
+
+            # Items (replace leading "- " with "• ")
+            output+=$(printf '%b' "${GROUPS[$prefix]}" \
+              | sed 's/^- /• /' \
+              | sed 's/^/ /') # optional indent
+
+            output+="\\n"
           done
 
           echo "grouped<<EOF" >> $GITHUB_OUTPUT
@@ -160,22 +167,20 @@ jobs:
               - type: section
                 fields:
                   - type: mrkdwn
-                    text: "*Repository:*\n${{ steps.ctx.outputs.repo }}"
+                    text: |
+                      *Repository:*
+                      ${{ steps.ctx.outputs.repo }}
                   - type: mrkdwn
-                    text: "*Author:*\n${{ steps.ctx.outputs.author }}"
+                    text: |
+                      *Author:*
+                      ${{ steps.ctx.outputs.author }}
 
               - type: section
                 fields:
                   - type: mrkdwn
-                    text: "*Commit:*\n<${{ steps.ctx.outputs.commit_url }}|${{ steps.ctx.outputs.commit_sha }}>"
-                  ${{ steps.ctx.outputs.pr_number != '' && format(
-                    '
-                  - type: mrkdwn
-                    text: "*Details:*\n<%s|PR #%s>"
-                    ',
-                    steps.ctx.outputs.pr_url,
-                    steps.ctx.outputs.pr_number
-                  ) || '' }}
+                    text: |
+                      *Commit:*
+                      <${{ steps.ctx.outputs.commit_url }}|${{ steps.ctx.outputs.commit_sha }}>
 
               - type: section
                 text:
