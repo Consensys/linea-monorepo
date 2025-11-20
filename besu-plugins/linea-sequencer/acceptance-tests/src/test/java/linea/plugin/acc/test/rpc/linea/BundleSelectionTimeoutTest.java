@@ -63,7 +63,7 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
     final var mulmodExecutor = deployMulmodExecutor();
 
     final var calls =
-        IntStream.rangeClosed(1, 11)
+        IntStream.rangeClosed(1, 20)
             .mapToObj(
                 nonce ->
                     mulmodOperation(
@@ -74,21 +74,20 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
                         BigInteger.valueOf(MAX_TX_GAS_LIMIT / 10)))
             .toArray(MulmodCall[]::new);
 
+    final var rawTxs = Arrays.stream(calls).map(MulmodCall::rawTx).toArray(String[]::new);
     final var sendBundleRequestSmall =
         new SendBundleRequest(
-            new BundleParams(new String[] {calls[0].rawTx()}, Integer.toHexString(2)));
-    final var sendBundleResponseSmall = sendBundleRequestSmall.execute(minerNode.nodeRequests());
-
-    final var rawTxs = Arrays.stream(calls).skip(1).map(MulmodCall::rawTx).toArray(String[]::new);
+            new BundleParams(Arrays.copyOfRange(rawTxs, 0, 1), Integer.toHexString(2)));
 
     final var sendBundleRequestBig1 =
         new SendBundleRequest(
-            new BundleParams(Arrays.copyOfRange(rawTxs, 0, 9), Integer.toHexString(2)));
-    final var sendBundleResponseBig1 = sendBundleRequestBig1.execute(minerNode.nodeRequests());
-
+            new BundleParams(Arrays.copyOfRange(rawTxs, 1, 10), Integer.toHexString(2)));
     final var sendBundleRequestBig2 =
         new SendBundleRequest(
-            new BundleParams(Arrays.copyOfRange(rawTxs, 0, 10), Integer.toHexString(2)));
+            new BundleParams(Arrays.copyOfRange(rawTxs, 10, 21), Integer.toHexString(2)));
+
+    final var sendBundleResponseSmall = sendBundleRequestSmall.execute(minerNode.nodeRequests());
+    final var sendBundleResponseBig1 = sendBundleRequestBig1.execute(minerNode.nodeRequests());
     final var sendBundleResponseBig2 = sendBundleRequestBig2.execute(minerNode.nodeRequests());
 
     final var transferTxHash =
