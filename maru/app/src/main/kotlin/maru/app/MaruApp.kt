@@ -133,11 +133,11 @@ class MaruApp(
 
   override fun start(): CompletableFuture<Unit> {
     if (finalizationProvider is LineaFinalizationProvider) {
-      start("Finalization Provider", { finalizationProvider.start().get() })
+      start("Finalization Provider") { finalizationProvider.start().get() }
     }
     start("P2P Network") { p2pNetwork.start().get() }
-    start("Sync Service", { syncControllerManager.start().get() })
-    start("Beacon Api", { apiServer.start().get() })
+    start("Sync Service") { syncControllerManager.start().get() }
+    start("Beacon Api") { apiServer.start().get() }
     // observability shall be the last to start because of liveness/readiness probe
     start("Observability Server") {
       ObservabilityServer(
@@ -149,13 +149,13 @@ class MaruApp(
   }
 
   override fun stop(): CompletableFuture<Unit> {
-    stop("Sync service", { syncControllerManager.stop().get() })
+    stop("Sync service") { syncControllerManager.stop().get() }
     stop("P2P Network") { p2pNetwork.stop().get() }
     if (finalizationProvider is LineaFinalizationProvider) {
-      stop("Finalization Provider", { finalizationProvider.stop().get() })
+      stop("Finalization Provider") { finalizationProvider.stop().get() }
     }
-    stop("Beacon API", { apiServer.stop().get() })
-    stop("Protocol", { protocolStarter.pause() })
+    stop("Beacon API") { apiServer.stop().get() }
+    stop("Protocol") { protocolStarter.pause() }
     stop("vertx verticles") {
       vertx.deploymentIDs().forEach {
         vertx.undeploy(it).get()
@@ -242,6 +242,7 @@ class MaruApp(
       DifficultyAwareQbftFactory(
         ethereumJsonRpcClient = l2EthWeb3j,
         postTtdProtocolFactory = qbftFactory,
+        timerFactory = timerFactory,
       )
     val protocolStarter =
       ProtocolStarter.create(

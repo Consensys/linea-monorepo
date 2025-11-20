@@ -9,10 +9,12 @@
 package maru.consensus.qbft
 
 import java.lang.Exception
-import java.util.Timer
-import java.util.UUID
-import kotlin.concurrent.timerTask
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import linea.timer.Timer
+import linea.timer.TimerFactory
+import linea.timer.VertxTimerFactory
 import maru.consensus.DifficultyAwareQbftConfig
 import maru.consensus.ForkSpec
 import maru.consensus.ProtocolFactory
@@ -25,6 +27,7 @@ import org.web3j.protocol.core.DefaultBlockParameter
 class DifficultyAwareQbftFactory(
   private val ethereumJsonRpcClient: Web3j?,
   private val postTtdProtocolFactory: ProtocolFactory,
+  private val timerFactory: TimerFactory,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): DifficultyAwareQbft {
     require(ethereumJsonRpcClient != null) {
@@ -34,6 +37,7 @@ class DifficultyAwareQbftFactory(
       ethereumJsonRpcClient = ethereumJsonRpcClient,
       postTtdProtocolFactory = postTtdProtocolFactory,
       forkSpec = forkSpec,
+      timerFactory = timerFactory,
     )
   }
 }
@@ -42,12 +46,7 @@ class DifficultyAwareQbft(
   private val ethereumJsonRpcClient: Web3j,
   private val postTtdProtocolFactory: ProtocolFactory,
   private val forkSpec: ForkSpec,
-  private val timerFactory: (String, Boolean) -> Timer = { name, isDaemon ->
-    Timer(
-      "$name-${UUID.randomUUID()}",
-      isDaemon,
-    )
-  },
+  private val timerFactory: TimerFactory,
 ) : Protocol {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
@@ -121,20 +120,16 @@ class DifficultyAwareQbft(
         return
       }
       log.debug("Starting DifficultyAwareQbft with pollingInterval={} seconds", forkSpec.blockTimeSeconds)
-      poller = timerFactory("DifficultyAwareQbft", true)
-      poller!!.scheduleAtFixedRate(
-        timerTask {
-          try {
-            pollTask()
-          } catch (e: Exception) {
-            log.warn("DifficultyAwareQbft poll task exception", e)
-          }
-        },
-        0,
-        forkSpec.blockTimeSeconds
-          .toInt()
-          .seconds.inWholeMilliseconds,
-      )
+      poller =
+        timerFactory.createTimer(
+          name = "DifficultyAwareQbft",
+          period = forkSpec.blockTimeSeconds.toInt().seconds,
+          initialDelay = if (timerFactory is VertxTimerFactory) 1.milliseconds else Duration.ZERO,
+          timerSchedule = linea.timer.TimerSchedule.FIXED_RATE,
+          errorHandler = { e -> log.warn("DifficultyAwareQbft poll task exception", e) },
+          task = Runnable { pollTask() },
+        )
+      poller?.start()
       postTtdProtocol?.start()
     }
   }
@@ -165,7 +160,7 @@ class DifficultyAwareQbft(
 
   private fun stopPoller() {
     log.debug("Stopping DifficultyAwareQbft poller")
-    poller?.cancel()
+    poller?.stop()
     poller = null
   }
 }

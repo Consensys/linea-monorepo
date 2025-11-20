@@ -8,7 +8,6 @@
  */
 package maru.syncing
 
-import java.util.Timer
 import kotlin.time.Duration
 import linea.timer.PeriodicPollingService
 import linea.timer.TimerFactory
@@ -48,9 +47,6 @@ class PeerChainTracker(
 
   private var lastNotifiedTarget: ULong? = null // 0 is an Ok magic number, since it represents Genesis
   private var isRunning = false
-
-  // Marked as volatile to ensure visibility across threads
-  private var poller: Timer? = null
 
   /**
    * Updates the peer view and triggers sync target updates if needed

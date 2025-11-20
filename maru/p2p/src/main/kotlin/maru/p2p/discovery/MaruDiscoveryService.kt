@@ -12,12 +12,14 @@ import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
 import linea.timer.Timer
 import linea.timer.TimerFactory
 import linea.timer.TimerSchedule
+import linea.timer.VertxTimerFactory
 import maru.config.P2PConfig
 import maru.database.P2PState
 import maru.p2p.fork.ForkPeeringManager
@@ -150,7 +152,7 @@ class MaruDiscoveryService(
         poller =
           timerFactory.createTimer(
             name = "boot-node-refresher",
-            initialDelay = Duration.ZERO,
+            initialDelay = if (timerFactory is VertxTimerFactory) 1.milliseconds else Duration.ZERO,
             period = p2pConfig.discovery!!.refreshInterval,
             timerSchedule = TimerSchedule.FIXED_RATE,
             errorHandler = { e -> log.warn("Failed to ping bootnodes", e) },
