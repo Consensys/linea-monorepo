@@ -218,7 +218,8 @@ public class EngineAPIService {
       case PARIS -> createEngineCall("engine_getPayloadV1", params);
       case SHANGHAI -> createEngineCall("engine_getPayloadV2", params);
       case CANCUN -> createEngineCall("engine_getPayloadV3", params);
-      case PRAGUE, OSAKA -> createEngineCall("engine_getPayloadV4", params);
+      case PRAGUE -> createEngineCall("engine_getPayloadV4", params);
+      case OSAKA -> createEngineCall("engine_getPayloadV5", params);
       default -> throw new IllegalArgumentException(
           "Unsupported fork for createGetPayloadRequest: " + fork);
     };
@@ -243,8 +244,7 @@ public class EngineAPIService {
       case PARIS -> createEngineCall("engine_newPayloadV1", params);
       case SHANGHAI -> createEngineCall("engine_newPayloadV2", params);
       case CANCUN -> createEngineCall("engine_newPayloadV3", params);
-      case PRAGUE -> createEngineCall("engine_newPayloadV4", params);
-      case OSAKA -> createEngineCall("engine_newPayloadV5", params);
+      case PRAGUE, OSAKA -> createEngineCall("engine_newPayloadV4", params);
       default -> throw new IllegalArgumentException(
           "Unsupported fork for createNewPayloadRequest: " + fork);
     };
