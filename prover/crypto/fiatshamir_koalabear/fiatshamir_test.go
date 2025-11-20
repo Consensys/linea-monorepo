@@ -94,6 +94,7 @@ func TestBatchUpdates(t *testing.T) {
 		fs := poseidon2_koalabear.NewMDHasher()
 		UpdateVec(fs, vector.ForTest(2, 2), vector.ForTest(1))
 		actualValue := RandomFext(fs)
+		fmt.Printf("actualValue: %v\n", actualValue.String())
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 

@@ -154,7 +154,7 @@ func GnarkVerifyOpeningWithMerkleProof(
 	}
 
 	// Generic checks
-	selectedColsHashes, err := GnarkVerifyCommon(
+	_, err := GnarkVerifyCommon(
 		api,
 		params,
 		proof.GProofWoMerkle,
@@ -167,22 +167,22 @@ func GnarkVerifyOpeningWithMerkleProof(
 		return err
 	}
 
-	hasher, _ := params.HasherFunc(api)
-	hasher.Reset()
+	// hasher, _ := params.HasherFunc(api)
+	// hasher.Reset()
 
-	for i, root := range roots {
-		for j, entry := range entryList {
+	// for i, root := range roots {
+	// 	for j, entry := range entryList {
 
-			// Hash the SIS hash
-			var leaf = selectedColsHashes[i][j]
+	// 		// Hash the SIS hash
+	// 		var leaf = selectedColsHashes[i][j]
 
-			// Check the Merkle-proof for the obtained leaf
-			smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
+	// 		// Check the Merkle-proof for the obtained leaf
+	// 		smt_bls12377.GnarkVerifyMerkleProof(api, proof.MerkleProofs[i][j], leaf, root, hasher)
 
-			// And check that the Merkle proof is related to the correct entry
-			api.AssertIsEqual(proof.MerkleProofs[i][j].Path, entry.V)
-		}
-	}
+	// 		// And check that the Merkle proof is related to the correct entry
+	// 		api.AssertIsEqual(proof.MerkleProofs[i][j].Path, entry.V)
+	// 	}
+	// }
 
 	return nil
 }

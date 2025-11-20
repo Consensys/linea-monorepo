@@ -1,6 +1,8 @@
 package vortex
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
@@ -16,11 +18,12 @@ import (
 )
 
 func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+	fmt.Printf("gnark vortex ExplicitPolynomialEval ...\n")
 	a.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
 }
 
 func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime) {
-
+	fmt.Printf("verifying VortexVerifierAction ...\n")
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
 	// not need to
@@ -33,10 +36,6 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
-		//TODO@yao: check if this is correct, roots should be frontend.Variable
-		// precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-		// roots = append(roots, precompRootSv[0])
-
 		preRoots := [vortex_bls12377.GnarkKoalabearNumElements]zk.WrappedVariable{}
 
 		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
@@ -101,6 +100,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	params.NoSisHasher = factoryHasherFunc
 	params.Key = ctx.VortexParams.Key
 
+	api.Println(roots...)
 	vortex_bls12377.GnarkVerifyOpeningWithMerkleProof(
 		api,
 		params,

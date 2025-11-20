@@ -69,6 +69,7 @@ func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+	fmt.Printf("verifying reed-solomon ...\n")
 	ext4, _ := gnarkfext.NewExt4(api)
 	y := a.CoeffCheck.GetFrontendVariableExt(api, wvc)
 	y_ := a.EvalCheck.GetFrontendVariableExt(api, wvc)

@@ -425,9 +425,10 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		if c.Spec.Coins.IsSkippedFromVerifierTranscript(coinName) {
 			continue
 		}
-
 		cn := c.Spec.Coins.Data(coinName)
+		fmt.Printf("Generating coin %v \n", coinName)
 		value := cn.SampleGnark(c.FS, zkSeed)
+
 		c.Coins.InsertNew(coinName, value)
 	}
 }

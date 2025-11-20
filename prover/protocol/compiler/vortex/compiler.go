@@ -1026,6 +1026,11 @@ func (ctx *Ctx) commitPrecomputeds() {
 		ctx.Items.Precomputeds.GnarkTree = tree
 
 		roots := vortex_bls12377.EncodeBLS12377ToKoalabear(tree.Root)
+
+		var root bls12377.Element
+		root.SetBytes(tree.Root[:])
+		fmt.Printf("Gnark precomputed Merkle root: %v\n", root.String())
+
 		// And assign the 1-sized column to contain the root
 		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			ctx.Items.Precomputeds.GnarkMerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(ctx.PrecomputedGnarkMerkleRootName(i), smartvectors.NewConstant(roots[i], 1), true)

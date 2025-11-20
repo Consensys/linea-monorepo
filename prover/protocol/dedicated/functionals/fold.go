@@ -50,6 +50,7 @@ func (a *FoldVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+	fmt.Printf("verifying dedicated folding ...\n")
 	ext4, _ := gnarkfext.NewExt4(api)
 
 	c := a.FoldedEvalAcc.GetFrontendVariableExt(api, wvc)

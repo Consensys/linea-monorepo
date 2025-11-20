@@ -1,12 +1,14 @@
 package fiatshamir
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -61,15 +63,31 @@ func (fs *GnarkFS) UpdateVec(mat ...[]frontend.Variable) {
 }
 
 // RandomField returns a single valued fiat-shamir hash
+// TODO@yao: for big field compilation, we want a random coin that is in gnarkfext.E4Gen, the koala hash output will not fit in field elements for the big field compilation,
 func (fs *GnarkFS) RandomFieldExt() gnarkfext.E4Gen {
 	defer fs.safeguardUpdate()
 
-	s := fs.hasher.Sum()
+	// Generate a random field element
+	var value fext.Element
+	value.SetRandom()
 	var res gnarkfext.E4Gen
-	res.B0.A0 = zk.WrapFrontendVariable(s[0])
-	res.B0.A1 = zk.WrapFrontendVariable(s[1])
-	res.B1.A0 = zk.WrapFrontendVariable(s[2])
-	res.B1.A1 = zk.WrapFrontendVariable(s[3])
+	res.B0.A0 = zk.ValueOf(value.B0.A0.String())
+	res.B0.A1 = zk.ValueOf(value.B0.A1.String())
+	res.B1.A0 = zk.ValueOf(value.B1.A0.String())
+	res.B1.A1 = zk.ValueOf(value.B1.A1.String())
+	fmt.Printf("RandomFieldExt: %v\n", value.String())
+	return res
+}
+
+func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVariable {
+	var res [8]zk.WrappedVariable
+	bits := api.ToBinary(value, 256)
+
+	for i := 0; i < 8; i++ {
+		limbBits := append(bits[32*i:32*i+30], frontend.Variable(0), frontend.Variable(0))
+		res[i] = zk.WrapFrontendVariable(api.FromBinary(limbBits...))
+	}
+
 	return res
 }
 

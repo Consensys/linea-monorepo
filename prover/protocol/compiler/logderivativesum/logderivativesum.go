@@ -134,7 +134,7 @@ func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 
 // RunGnark implements the [wizard.VerifierAction]
 func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
+	fmt.Printf("verifying log-derivative-sum ...\n")
 	e4Api, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)

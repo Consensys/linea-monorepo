@@ -175,7 +175,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 }
 
 func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
+	fmt.Printf("verifying recursion consistency check ...\n")
 	pis := cc.PIs
 
 	for i := range pis {
