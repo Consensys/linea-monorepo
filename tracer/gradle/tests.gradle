@@ -83,7 +83,7 @@ tasks.withType(Test).configureEach {
   // Configure BESU-related paths
   delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
-  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/prague")    
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/prague")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
   System.setProperty("besu.plugins.dir",
           System.getenv().getOrDefault("besu.plugins.dir",
@@ -97,7 +97,7 @@ tasks.withType(Test).configureEach {
   )
   systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
   systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
-  // 
+  //
   testlogger {
     // pick a theme - mocha, standard, plain, mocha-parallel, standard-parallel or plain-parallel
     theme 'plain-parallel'
@@ -154,7 +154,7 @@ tasks.withType(Test).configureEach {
 
 tasks.test.configure {
   // Following required as some unit tests run BESU checks
-  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
+  dependsOn("copyTracerPlugin", "downloadShomeiBesuPlugin")
   //
   useJUnitPlatform {
     excludeTags("nightly | replay | weekly")
@@ -212,7 +212,7 @@ tasks.register("prcCallTests", Test) {
 // =============================================================================
 
 tasks.register("besuNodeTests", Test) {
-  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
+  dependsOn("copyTracerPlugin", "downloadShomeiBesuPlugin")
   //
   forkEvery = 1
   maxParallelForks = 3
@@ -228,7 +228,7 @@ tasks.register("besuNodeTests", Test) {
 }
 
 tasks.register("besuNodeFastReplayTests", Test) {
-  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
+  dependsOn("copyTracerPlugin", "downloadShomeiBesuPlugin")
   //
   forkEvery = 1
   maxParallelForks = 3
@@ -310,7 +310,7 @@ tasks.register("copyTracerPlugin", Copy) {
   into "${System.getProperty("besu.plugins.dir")}"
 }
 
-tasks.register("downloadShoemiBesuPlugin", Download) {
+tasks.register("downloadShomeiBesuPlugin", Download) {
   src "${besuShomeiPluginBaseUrl}${besuShomeiPluginVersion}/besu-shomei-plugin-${besuShomeiPluginVersion}.jar"
   dest "${System.getProperty("besu.plugins.dir")}"
   overwrite false
