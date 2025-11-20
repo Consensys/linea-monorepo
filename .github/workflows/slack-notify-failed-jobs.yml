@@ -62,37 +62,76 @@ jobs:
         env:
           JOBS_JSON: "${{ steps.jobs.outputs.json }}"
         run: |
-          output=""
+          set -euo pipefail
 
-          # Extract failed jobs: name and URL
-          failed_jobs=$(jq -r '.jobs[] | select(.conclusion == "failure") | "\(.name) \(.html_url)"' <<< "$JOBS_JSON")
+          # Suffix words (case-insensitive)
+          suffixes=( test tests testing build ci e2e )
 
-          # No failures?
-          if [[ -z "$failed_jobs" ]]; then
+          # ASCII Unit Separator (safe in CI and macOS)
+          SEP=$'\x1f'
+
+          # Reset associative array
+          unset GROUPS
+          declare -A GROUPS
+
+          #
+          # Read job name + url pairs using process substitution
+          #
+          while IFS="$SEP" read -r name url; do
+
+            #
+            # --- PREFIX EXTRACTION ---
+            # Convert "-" → " ", split into array
+            #
+            tmp="${name//-/ }"
+            read -ra words <<< "$tmp"
+
+            # Strip all trailing suffix words (case-insensitive)
+            while [[ ${#words[@]} -gt 0 ]]; do
+              last="$(tr '[:upper:]' '[:lower:]' <<< "${words[-1]}")"
+              match=false
+              for s in "${suffixes[@]}"; do
+                if [[ "$last" == "$s" ]]; then
+                  unset 'words[-1]'
+                  match=true
+                  break
+                fi
+              done
+              [[ "$match" == false ]] && break
+            done
+
+            # Rebuild prefix or fall back to full name
+            if [[ ${#words[@]} -eq 0 ]]; then
+              prefix="$name"
+            else
+              prefix="${words[*]}"
+            fi
+
+            # Add job to its group
+            GROUPS["$prefix"]+="- <$url|$name>\n"
+
+          done < <(
+            jq -r --arg sep "$SEP" '
+              .jobs[]
+              | select(.conclusion == "failure")
+              | "\(.name)\($sep)\(.html_url)"
+            ' <<< "$JOBS_JSON"
+          )
+
+          #
+          # No failed jobs? Output "None"
+          #
+          if [[ ${#GROUPS[@]} -eq 0 ]]; then
             echo "grouped<<EOF" >> $GITHUB_OUTPUT
             echo "None" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          unset GROUPS
-          declare -A GROUPS
-
-          # Known suffixes (strip them from job names)
-          suffixes="-(tests?|test|testing|build|ci|e2e)$"
-
-          # Build groups dynamically
-          while read -r name url; do
-            # Remove trailing suffix to get prefix (smart-contracts-tests → smart-contracts)
-            prefix=$(sed -E "s/$suffixes//" <<< "$name")
-
-            # If trimming didn't change name, keep full
-            [[ -z "$prefix" ]] && prefix="$name"
-
-            GROUPS["$prefix"]+="- <$url|$name>\n"
-          done <<< "$failed_jobs"
-
-          # Build final Slack output
+          #
+          # Build Slack-formatted grouped output
+          #
+          output=""
           for prefix in "${!GROUPS[@]}"; do
             output+="*${prefix^} Failed:*\n${GROUPS[$prefix]}\n"
           done
@@ -127,8 +166,14 @@ jobs:
                 fields:
                   - type: mrkdwn
                     text: "*Commit:*\n<${{ steps.ctx.outputs.commit_url }}|${{ steps.ctx.outputs.commit_sha }}>"
+                  ${{ steps.ctx.outputs.pr_number != '' && format(
+                    '
                   - type: mrkdwn
-                    text: ${{ steps.ctx.outputs.pr_number != '' && format('*Details:*\n<%s|PR #%s>', steps.ctx.outputs.pr_url, steps.ctx.outputs.pr_number) || '' }}
+                    text: "*Details:*\n<%s|PR #%s>"
+                    ',
+                    steps.ctx.outputs.pr_url,
+                    steps.ctx.outputs.pr_number
+                  ) || '' }}
 
               - type: section
                 text:
