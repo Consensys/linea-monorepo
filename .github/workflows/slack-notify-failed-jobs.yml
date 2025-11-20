@@ -133,7 +133,8 @@ jobs:
           #
           output=""
           for prefix in "${!GROUPS[@]}"; do
-            output+="*${prefix^} Failed:*\n${GROUPS[$prefix]}\n"
+            output+="  *${prefix^} Failed:*\n"
+            output+="$(printf '%b' "${GROUPS[$prefix]}" | sed 's/^/  /')\n"
           done
 
           echo "grouped<<EOF" >> $GITHUB_OUTPUT
