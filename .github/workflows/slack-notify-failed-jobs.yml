@@ -37,7 +37,13 @@ jobs:
           echo "commit_sha=${{ github.event.pull_request.head.sha || github.sha }}" >> $GITHUB_OUTPUT
 
           # Commit URL
-          echo "commit_url=${{ github.event.head_commit.url || format('%s/%s/commit/%s', github.server_url, github.repository, github.sha) }}" >> $GITHUB_OUTPUT
+          if [[ -n "${{ github.event.head_commit.url }}" ]]; then
+            echo "commit_url=${{ github.event.head_commit.url }}" >> $GITHUB_OUTPUT
+          elif [[ -n "${{ github.event.pull_request.head.sha }}" ]]; then
+            echo "commit_url=${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "commit_url=${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
 
           # Author (PR author or commit author or github.actor)
           echo "author=${{ github.event.pull_request.user.login || github.event.head_commit.author.username || github.actor }}" >> $GITHUB_OUTPUT
@@ -57,92 +63,36 @@ jobs:
           cat jobs.json >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Group failed jobs dynamically
-        id: grouped_failed
+      - name: Extract failed jobs dynamically
+        id: failed_jobs
         shell: bash
         env:
           JOBS_JSON: "${{ steps.jobs.outputs.json }}"
         run: |
           set -euo pipefail
 
-          # Suffix words (case-insensitive)
-          suffixes=( test tests testing build ci e2e )
+          # Extract failed jobs
+          lines=$(printf "%s" "$JOBS_JSON" | jq -r '
+            .jobs[]
+            | select(.conclusion == "failure")
+            | "- \(.name): <\(.html_url)>"
+          ')
 
-          # ASCII Unit Separator (safe in CI and macOS)
-          SEP=$'\x1f'
-
-          # Reset associative array
-          unset GROUPS
-          declare -A GROUPS
-
-          #
-          # Read job name + url pairs using process substitution
-          #
-          while IFS="$SEP" read -r name url; do
-
-          #
-          # --- PREFIX EXTRACTION ---
-          # Convert "-" → " ", split into array
-          #
-          tmp="${name//-/ }"
-          read -ra words <<< "$tmp"
-
-          # Strip all trailing suffix words (case-insensitive)
-          while [[ ${#words[@]} -gt 0 ]]; do
-            last="$(tr '[:upper:]' '[:lower:]' <<< "${words[-1]}")"
-            match=false
-            for s in "${suffixes[@]}"; do
-              if [[ "$last" == "$s" ]]; then
-                unset 'words[-1]'
-                match=true
-                break
-              fi
-            done
-            [[ "$match" == false ]] && break
-          done
-
-          # Rebuild prefix or fall back to full name
-          if [[ ${#words[@]} -eq 0 ]]; then
-            prefix="$name"
-          else
-            prefix="${words[*]}"
-          fi
-
-          # Add job to its group
-          GROUPS["$prefix"]+="- <$url|$name>\n"
-
-          done < <(
-            jq -r --arg sep "$SEP" '
-              .jobs[]
-              | select(.conclusion == "failure")
-              | "\(.name)\($sep)\(.html_url)"
-            ' <<< "$JOBS_JSON"
-          )
-
-          #
-          # No failed jobs? Output "None"
-          #
-          if [[ ${#GROUPS[@]} -eq 0 ]]; then
-            echo "grouped<<EOF" >> $GITHUB_OUTPUT
+          # No failed jobs — output "None"
+          if [[ -z "$lines" ]]; then
+            echo "result<<EOF" >> $GITHUB_OUTPUT
             echo "None" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          #
-          # Build Slack-formatted grouped output
-          #
-          output=""
-          for prefix in "${!GROUPS[@]}"; do
-            output+="*${prefix^}:*\n${GROUPS[$prefix]}\n"
-          done
-
-          echo "grouped<<EOF" >> $GITHUB_OUTPUT
-          printf "%b" "$output" >> $GITHUB_OUTPUT
+          # Output failed job list
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          printf "%s\n" "$lines" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send Slack Notification
-        if: ${{ steps.grouped_failed.outputs.grouped != 'None' }}
+        if: ${{ steps.failed_jobs.outputs.result != 'None' }}
         uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a #v2.1.1
         with:
           method: chat.postMessage
@@ -172,4 +122,4 @@ jobs:
               - type: section
                 text:
                   type: mrkdwn
-                  text: "*Failed Job URLs:*\n${{ steps.grouped_failed.outputs.grouped }}"
+                  text: "*Failed Job URLs:*\n${{ steps.failed_jobs.outputs.result }}"
