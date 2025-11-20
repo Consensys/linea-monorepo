@@ -13,14 +13,14 @@ services:
       - ../config/coordinator/coordinator-config-v2.toml:/coordinator/coordinator-config-v2.toml:ro
 
   maru:
-    image: consensys/maru:${MARU_TAG:-a479db1}
+    image: consensys/maru:${MARU_TAG:-3305fe0}
     hostname: maru
     container_name: maru
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
         condition: service_healthy
-    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--maru-genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
+    command: [ 'java', '-Dlog4j2.configurationFile=configs/log4j.xml', '-jar', "maru.jar", '--genesis-file', '/initialization/genesis-maru.json', '--config', 'configs/config.toml']
 #    command: [ 'echo' , 'Forced exit to run in IntellIJ' ]
     volumes:
       - ./config/maru/sequencer.config.toml:/opt/consensys/maru/configs/config.toml:ro
@@ -39,7 +39,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc18-20251030110723-de8c2f3}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc23-20251119150711-b71a5d5}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       l2-genesis-initialization:
@@ -114,7 +114,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc18-20251030110723-de8c2f3}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc23-20251119150711-b71a5d5}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -155,7 +155,7 @@ services:
   l2-node-besu-follower:
     hostname: l2-node-besu-follower
     container_name: l2-node-besu-follower
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc18-20251030110723-de8c2f3}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc23-20251119150711-b71a5d5}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -196,7 +196,7 @@ services:
   traces-node:
     hostname: traces-node
     container_name: traces-node
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc18-20251030110723-de8c2f3}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc23-20251119150711-b71a5d5}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -274,7 +274,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-c1b5c1e}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-00022b7}
     profiles: [ "l2", "debug" ]
     depends_on:
       l2-genesis-initialization:
@@ -374,7 +374,7 @@ services:
       - l1network
 
   zkbesu-shomei:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc18-20251030110723-de8c2f3}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc23-20251119150711-b71a5d5}
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -591,7 +591,7 @@ services:
         ipv4_address: 10.10.10.205
 
   zkbesu-shomei-sr:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc18-20251030110723-de8c2f3}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.0-rc23-20251119150711-b71a5d5}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
     profiles: [ "staterecovery", "external-to-monorepo" ]
@@ -622,7 +622,6 @@ services:
       - -c
       - |
         (rm /opt/besu/plugins/linea-staterecovery-besu-plugin-v* || true) && \
-        (rm /opt/besu/plugins/linea-finalized-tag-updater* || true) && \
         ls -lh /opt/besu/plugins && \
         sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu-untuned && \
         /opt/besu/bin/besu-untuned \
