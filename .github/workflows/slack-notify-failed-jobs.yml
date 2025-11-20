@@ -80,36 +80,36 @@ jobs:
           #
           while IFS="$SEP" read -r name url; do
 
-            #
-            # --- PREFIX EXTRACTION ---
-            # Convert "-" → " ", split into array
-            #
-            tmp="${name//-/ }"
-            read -ra words <<< "$tmp"
+          #
+          # --- PREFIX EXTRACTION ---
+          # Convert "-" → " ", split into array
+          #
+          tmp="${name//-/ }"
+          read -ra words <<< "$tmp"
 
-            # Strip all trailing suffix words (case-insensitive)
-            while [[ ${#words[@]} -gt 0 ]]; do
-              last="$(tr '[:upper:]' '[:lower:]' <<< "${words[-1]}")"
-              match=false
-              for s in "${suffixes[@]}"; do
-                if [[ "$last" == "$s" ]]; then
-                  unset 'words[-1]'
-                  match=true
-                  break
-                fi
-              done
-              [[ "$match" == false ]] && break
+          # Strip all trailing suffix words (case-insensitive)
+          while [[ ${#words[@]} -gt 0 ]]; do
+            last="$(tr '[:upper:]' '[:lower:]' <<< "${words[-1]}")"
+            match=false
+            for s in "${suffixes[@]}"; do
+              if [[ "$last" == "$s" ]]; then
+                unset 'words[-1]'
+                match=true
+                break
+              fi
             done
+            [[ "$match" == false ]] && break
+          done
 
-            # Rebuild prefix or fall back to full name
-            if [[ ${#words[@]} -eq 0 ]]; then
-              prefix="$name"
-            else
-              prefix="${words[*]}"
-            fi
+          # Rebuild prefix or fall back to full name
+          if [[ ${#words[@]} -eq 0 ]]; then
+            prefix="$name"
+          else
+            prefix="${words[*]}"
+          fi
 
-            # Add job to its group
-            GROUPS["$prefix"]+="- <$url|$name>\n"
+          # Add job to its group
+          GROUPS["$prefix"]+="- <$url|$name>\n"
 
           done < <(
             jq -r --arg sep "$SEP" '
@@ -134,14 +134,7 @@ jobs:
           #
           output=""
           for prefix in "${!GROUPS[@]}"; do
-            output+="*${prefix^}:*\\n"
-
-            # Items (replace leading "- " with "• ")
-            output+=$(printf '%b' "${GROUPS[$prefix]}" \
-              | sed 's/^- /• /' \
-              | sed 's/^/ /') # optional indent
-
-            output+="\\n"
+            output+="*${prefix^}:*\n${GROUPS[$prefix]}\n"
           done
 
           echo "grouped<<EOF" >> $GITHUB_OUTPUT
@@ -185,6 +178,6 @@ jobs:
               - type: section
                 text:
                   type: mrkdwn
-                  text: |
+                  text: >
                     *Failed Job URLs:*
-                    ${{ steps.grouped_failed.outputs.grouped }}
+                    ${{ toJSON(steps.grouped_failed.outputs.grouped) }}
