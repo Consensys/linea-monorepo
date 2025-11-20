@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -27,11 +26,8 @@ type UnivariateEval struct {
 
 // Parameters for an univariate evaluation
 type UnivariateEvalParams struct {
-	X      field.Element
-	Ys     []field.Element
-	ExtX   fext.Element
-	ExtYs  []fext.Element
-	IsBase bool
+	ExtX  fext.Element
+	ExtYs []fext.Element
 }
 
 /*
@@ -65,19 +61,10 @@ func (r UnivariateEval) Name() ifaces.QueryID {
 	return r.QueryID
 }
 
-// Constructor for non-fixed point univariate evaluation query parameters
-func NewUnivariateEvalParams(x field.Element, ys ...field.Element) UnivariateEvalParams {
-	return UnivariateEvalParams{
-		X:      x,
-		Ys:     ys,
-		IsBase: true,
-	}
-}
 func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEvalParams {
 	return UnivariateEvalParams{
-		ExtX:   x,
-		ExtYs:  ys,
-		IsBase: false,
+		ExtX:  x,
+		ExtYs: ys,
 	}
 }
 
@@ -85,10 +72,6 @@ func NewUnivariateEvalParamsExt(x fext.Element, ys ...fext.Element) UnivariateEv
 // the verifer always computes the values of X upfront on his own. Therefore
 // there is no need to include them in the FS.
 func (p UnivariateEvalParams) UpdateFS(state *poseidon2_koalabear.MDHasher) {
-	fiatshamir.Update(state, p.Ys...)
-}
-
-func (p UnivariateEvalParams) UpdateFSExt(state *poseidon2_koalabear.MDHasher) {
 	fiatshamir.UpdateExt(state, p.ExtYs...)
 }
 

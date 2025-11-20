@@ -2,7 +2,6 @@ package query
 
 import (
 	fiatshamir "github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
@@ -91,26 +90,12 @@ func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 
 // Returns a gnark assignment for the present parameters
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
-	if p.IsBase {
-		return GnarkUnivariateEvalParams{
-			Ys:    vector.IntoGnarkAssignment(p.Ys),
-			X:     zk.ValueOf(p.X.String()),
-			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
-			ExtX:  gnarkfext.NewE4Gen(p.ExtX),
-		}
-	} else {
-		// extension query
-		Ys := make([]zk.WrappedVariable, len(p.Ys))
-		for i := range Ys {
-			Ys[i] = zk.ValueOf(0)
-		}
-		return GnarkUnivariateEvalParams{
-			Ys:    Ys,
-			X:     zk.ValueOf(0),
-			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
-			ExtX:  gnarkfext.NewE4Gen(p.ExtX),
-		}
+
+	return GnarkUnivariateEvalParams{
+		ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
+		ExtX:  gnarkfext.NewE4Gen(p.ExtX),
 	}
+
 }
 
 // GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions

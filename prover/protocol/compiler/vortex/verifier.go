@@ -273,7 +273,7 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]fext.Element) {
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.
-	ysMap := make(map[ifaces.ColID]fext.Element, len(params.Ys))
+	ysMap := make(map[ifaces.ColID]fext.Element, len(params.ExtYs))
 	for i := range query.Pols {
 		ysMap[query.Pols[i].GetColID()] = params.ExtYs[i]
 	}

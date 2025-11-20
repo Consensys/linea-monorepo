@@ -854,34 +854,6 @@ func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...fext.Ele
 	return param
 }
 
-// AssignUnivariate assigns the evaluation point and the evaluation result
-// and claimed values for a univariate evaluation bearing `name` as an ID.
-//
-// The function will panic if:
-//   - the wrong number of `ys` value is provided. It should match the length
-//     of `bs` that was provided when registering the query.
-//   - no query with the name `name` are found in the [CompiledIOP] object.
-//   - parameters for this query have already been assigned
-//   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element, ys ...field.Element) {
-
-	// Global prover locks for accessing the maps
-	run.lock.Lock()
-	defer run.lock.Unlock()
-
-	// Make sure, it is done at the right round
-	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
-
-	// Check the length of ys
-	q := run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
-	if len(q.Pols) != len(ys) {
-		utils.Panic("Query expected ys = %v but got %v", len(q.Pols), len(ys))
-	}
-	// Adds it to the assignments
-	params := query.NewUnivariateEvalParams(x, ys...)
-	run.QueriesParams.InsertNew(name, params)
-}
-
 func (run *ProverRuntime) AssignUnivariateExt(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
 
 	// Global prover locks for accessing the maps

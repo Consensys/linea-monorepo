@@ -133,7 +133,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 		}
 
 		if len(circYs) != 4*len(params.ExtYs) {
-			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
+			return fmt.Errorf("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))
 		}
 
 		for j := range params.ExtYs {
