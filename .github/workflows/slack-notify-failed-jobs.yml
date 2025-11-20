@@ -58,6 +58,7 @@ jobs:
 
       - name: Group failed jobs dynamically
         id: grouped_failed
+        shell: bash
         env:
           JOBS_JSON: "${{ steps.jobs.outputs.json }}"
         run: |
