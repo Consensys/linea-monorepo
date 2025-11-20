@@ -6,8 +6,8 @@ permissions:
 on:
   workflow_call:
     inputs:
-      status:
-        description: "Overall CI result: success or failure"
+      title:
+        description: "Notification title"
         required: true
         type: string
       failed_jobs:
@@ -50,19 +50,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Build Slack message
-        id: msg
+      - name: Fetch job list
+        id: jobs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ inputs.status }}" = "success" ]; then
-            echo "emoji=:white_check_mark:" >> $GITHUB_OUTPUT
-            echo "color=#2ECC71" >> $GITHUB_OUTPUT
-            echo "title=Build Succeeded" >> $GITHUB_OUTPUT
-          else
-            echo "emoji=:x:" >> $GITHUB_OUTPUT
-            echo "color=#E74C3C" >> $GITHUB_OUTPUT
-            echo "title=Build Failed" >> $GITHUB_OUTPUT
-          fi
+          curl -s \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ inputs.repo }}/actions/runs/${{ github.run_id }}/jobs \
+            > jobs.json
 
+          echo "json<<EOF" >> $GITHUB_OUTPUT
+          cat jobs.json >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Extract failed job URLs
+        id: build_urls
+        env:
+          FAILED_JOBS: "${{ inputs.failed_jobs }}"
+        run: |
+          echo "$FAILED_JOBS" | sed 's/^- //' | sed '/^$/d' > failed.txt
+
+          echo "urls<<EOF" >> $GITHUB_OUTPUT
+
+          while read -r job; do
+            url=$(jq -r --arg NAME "$job" '.jobs[] | select(.name==$NAME) | .html_url' <<< "${{ steps.jobs.outputs.json }}")
+            if [[ "$url" != "null" && -n "$url" ]]; then
+              echo "- <$url|$job>" >> $GITHUB_OUTPUT
+            else
+              echo "- $job (url not found)" >> $GITHUB_OUTPUT
+            fi
+          done < failed.txt
+
+          echo "EOF" >> $GITHUB_OUTPUT
+      
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a #v2.1.1
         with:
@@ -70,12 +92,12 @@ jobs:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload: |
             channel: ${{ secrets.SLACK_CHANNEL_ID }}
-            text: "${{ steps.msg.outputs.emoji }} GitHub CI for *${{ inputs.repo }}* — *${{ steps.msg.outputs.title }}*"
+            text: ":x: GitHub CI for *${{ inputs.repo }}* — *${{ inputs.title }}*"
             blocks:
               - type: header
                 text:
                   type: plain_text
-                  text: "${{ steps.msg.outputs.emoji }}  ${{ steps.msg.outputs.title }}"
+                  text: ":x: ${{ inputs.title }}"
                   emoji: true
 
               - type: section
@@ -105,9 +127,4 @@ jobs:
                   text: |
                     *Failed Jobs:*
                     ${{ inputs.failed_jobs != '' && inputs.failed_jobs || 'None' }}
-
-              - type: context
-                elements:
-                  - type: mrkdwn
-                    text: "Triggered by *${{ inputs.author }}*"
 

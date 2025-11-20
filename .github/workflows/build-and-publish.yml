@@ -110,13 +110,13 @@ jobs:
     if: ${{ failure() && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
-      status: 'failure'
+      title: 'Build and publish CI failed'
       failed_jobs: |
-        ${{ needs.coordinator.result == 'failure' && '- coordinator' || '' }}
-        ${{ needs.prover.result == 'failure' && '- prover' || '' }}
-        ${{ needs.postman.result == 'failure' && '- postman' || '' }}
-        ${{ needs.transaction_exclusion_api.result == 'failure' && '- transaction-exclusion-api' || '' }}
-        ${{ needs.linea_besu_package.result == 'failure' && '- linea_besu_package' || '' }}
+        ${{ needs.coordinator.result == 'failure' && '- coordinator-build' || '' }}
+        ${{ needs.prover.result == 'failure' && '- prover-build-and-publish' || '' }}
+        ${{ needs.postman.result == 'failure' && '- postman-build' || '' }}
+        ${{ needs.transaction_exclusion_api.result == 'failure' && '- transaction-exclusion-api-build-and-publish' || '' }}
+        ${{ needs.linea_besu_package.result == 'failure' && '- linea-besu-package-build-and-upload' || '' }}
       run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       repo: ${{ github.repository }}
       pr_number: ${{ github.event.pull_request.number || '' }}

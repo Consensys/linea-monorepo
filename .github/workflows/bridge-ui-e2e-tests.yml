@@ -1,4 +1,4 @@
-name: Bridge UI E2E Tests
+name: bridge-ui-e2e-tests
 
 permissions:
   contents: read
@@ -161,9 +161,9 @@ jobs:
     if: ${{ failure() && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
-      status: 'failure'
+      title: 'Bridge UI E2E Tests failed'
       failed_jobs: |
-        ${{ needs.run-e2e-tests.result == 'failure' && '- run-e2e-tests' || '' }}
+        - bridge-ui-e2e-tests
       run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       repo: ${{ github.repository }}
       pr_number: ${{ github.event.pull_request.number || '' }}

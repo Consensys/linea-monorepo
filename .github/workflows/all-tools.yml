@@ -1,4 +1,4 @@
-name: All tools CI
+name: all-tools
 
 permissions:
   contents: read
@@ -134,12 +134,9 @@ jobs:
     if: ${{ failure() && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
-      status: 'failure'
+      title: 'All tools CI failed'
       failed_jobs: |
-        ${{ needs.changes.result == 'failure' && '- changes' || '' }}
-        ${{ needs.store_image_name_and_tags.result == 'failure' && '- store_image_name_and_tags' || '' }}
-        ${{ needs.all-tools-tag-only.result == 'failure' && '- all-tools-tag-only' || '' }}
-        ${{ needs.build-and-publish.result == 'failure' && '- build-and-publish' || '' }}
+        - all-tools
       run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       repo: ${{ github.repository }}
       pr_number: ${{ github.event.pull_request.number || '' }}

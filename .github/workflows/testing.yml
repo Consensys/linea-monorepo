@@ -81,15 +81,15 @@ jobs:
     if: ${{ failure() && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
-      status: 'failure'
+      title: 'Testing CI Failed Jobs Notification'
       failed_jobs: |
-        ${{ needs.coordinator.result == 'failure' && '- coordinator' || '' }}
-        ${{ needs.prover.result == 'failure' && '- prover' || '' }}
-        ${{ needs.postman.result == 'failure' && '- postman' || '' }}
-        ${{ needs.transaction-exclusion-api.result == 'failure' && '- transaction-exclusion-api' || '' }}
-        ${{ needs.staterecovery.result == 'failure' && '- staterecovery' || '' }}
-        ${{ needs.smart-contracts.result == 'failure' && '- smart-contracts' || '' }}
-        ${{ needs.linea-sequencer.result == 'failure' && '- linea-sequencer' || '' }}
+        ${{ needs.coordinator.result == 'failure' && '- coordinator-testing' || '' }}
+        ${{ needs.prover.result == 'failure' && '- prover-testing' || '' }}
+        ${{ needs.postman.result == 'failure' && '- postman-testing' || '' }}
+        ${{ needs.transaction-exclusion-api.result == 'failure' && '- transaction-exclusion-api-testing' || '' }}
+        ${{ needs.staterecovery.result == 'failure' && '- staterecovery-testing' || '' }}
+        ${{ needs.smart-contracts.result == 'failure' && '- smart-contracts-testing' || '' }}
+        ${{ needs.linea-sequencer.result == 'failure' && '- linea-sequencer-plugin-testing' || '' }}
       run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       repo: ${{ github.repository }}
       pr_number: ${{ github.event.pull_request.number || '' }}
