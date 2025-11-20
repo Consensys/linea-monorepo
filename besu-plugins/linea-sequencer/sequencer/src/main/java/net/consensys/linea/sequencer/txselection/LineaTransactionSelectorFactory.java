@@ -216,9 +216,9 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
           log.debug(
               "Bundle selection interrupted while processing liveness bundle {}, reason {}",
               livenessBundle.get(),
-              badBundleRes);
+              failure);
         } else {
-          log.debug("Failed liveness bundle {}, reason {}", livenessBundle.get(), badBundleRes);
+          log.debug("Failed liveness bundle {}, reason {}", livenessBundle.get(), failure);
         }
         livenessService.get().updateUptimeMetrics(false, headBlockTimestamp);
         rollback(bts);
