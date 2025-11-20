@@ -11,6 +11,7 @@ package net.consensys.linea.sequencer.txselection;
 
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.PLUGIN_SELECTION_TIMEOUT;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.PLUGIN_SELECTION_TIMEOUT_INVALID_TX;
+import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTION_CANCELLED;
 
 import java.time.Instant;
 import java.util.Map;
@@ -245,6 +246,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
   private boolean isSelectionInterrupted(final TransactionSelectionResult selectionResult) {
     return selectionResult.equals(PLUGIN_SELECTION_TIMEOUT)
-        || selectionResult.equals(PLUGIN_SELECTION_TIMEOUT_INVALID_TX);
+        || selectionResult.equals(PLUGIN_SELECTION_TIMEOUT_INVALID_TX)
+        || selectionResult.equals(SELECTION_CANCELLED);
   }
 }
