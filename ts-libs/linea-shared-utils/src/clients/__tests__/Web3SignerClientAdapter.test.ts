@@ -172,4 +172,23 @@ describe("Web3SignerClientAdapter", () => {
 
     expect(address).toBe("0xD42E308FC964b71E18126dF469c21B0d7bcb86cC");
   });
+
+  it("derives the signer address from the configured public key without 0x prefix", () => {
+    const logger = createLogger();
+    const web3SignerPublicKeyWithoutPrefix: Hex =
+      "4a788ad6fa008beed58de6418369717d7492f37d173d70e2c26d9737e2c6eeae929452ef8602a19410844db3e200a0e73f5208fd76259a8766b73953fc3e7023" as Hex;
+    const adapter = new Web3SignerClientAdapter(
+      logger,
+      web3SignerUrl,
+      web3SignerPublicKeyWithoutPrefix,
+      keystorePath,
+      keystorePassphrase,
+      truststorePath,
+      truststorePassphrase,
+    );
+
+    const address = adapter.getAddress();
+
+    expect(address).toBe("0xD42E308FC964b71E18126dF469c21B0d7bcb86cC");
+  });
 });

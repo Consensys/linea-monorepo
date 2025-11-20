@@ -73,7 +73,10 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
     // However Web3Signer does not accept the 0x04 format identifier byte, and instead expects either:
     // - `<32-byte X> || <32-byte Y>` (no prefix)
     // - `0x<32-byte X> || <32-byte Y>` (with hex prefix)
-    const uncompressedPubkeyWithFormatByte = `0x04${this.web3SignerPublicKey.slice(2)}` as const;
+    const pubkeyWithoutPrefix = this.web3SignerPublicKey.startsWith("0x")
+      ? this.web3SignerPublicKey.slice(2)
+      : this.web3SignerPublicKey;
+    const uncompressedPubkeyWithFormatByte = `0x04${pubkeyWithoutPrefix}` as const;
     return publicKeyToAddress(uncompressedPubkeyWithFormatByte);
   }
 
