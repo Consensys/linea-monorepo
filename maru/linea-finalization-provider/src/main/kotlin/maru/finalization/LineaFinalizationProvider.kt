@@ -8,7 +8,6 @@
  */
 package maru.finalization
 
-import java.util.Timer
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
@@ -85,8 +84,6 @@ class LineaFinalizationProvider(
           )
       }
   }
-
-  private var poller: Timer? = null
 
   override fun start(): SafeFuture<Unit> {
     log.debug("Starting LineaFinalizationProvider with polling interval: {}", pollingUpdateInterval)
