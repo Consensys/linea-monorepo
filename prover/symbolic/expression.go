@@ -99,7 +99,7 @@ func (e *Expression) BoardListVariableMetadata() []Metadata {
 }
 
 // anchor pins down the Expression onto an ExpressionBoard.
-func (e *Expression) anchor(b *ExpressionBoard) nodeID {
+func (e *Expression) anchor(b *ExpressionBoard) NodeID {
 	// recursion base case: the node was already anchored
 	if id, ok := b.EsHashesToPos[e.ESHash]; ok {
 		return id
@@ -107,7 +107,7 @@ func (e *Expression) anchor(b *ExpressionBoard) nodeID {
 
 	// anchor recursively all the children
 	maxChildrenLevel := 0
-	childrenIDs := []nodeID{}
+	childrenIDs := []NodeID{}
 	for _, child := range e.Children {
 		childID := child.anchor(b)
 		maxChildrenLevel = utils.Max(maxChildrenLevel, childID.level())

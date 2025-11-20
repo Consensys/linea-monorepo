@@ -180,7 +180,7 @@ func newEvaluation(b *ExpressionBoard, chunkSize int, vArena *arena.VectorArena)
 	return eval
 }
 
-func getIndex(id nodeID, b *ExpressionBoard) uint32 {
+func getIndex(id NodeID, b *ExpressionBoard) uint32 {
 	// note: quite inefficient, but it's only during initialization
 	lvl := id.level()
 	pos := id.posInLevel()
