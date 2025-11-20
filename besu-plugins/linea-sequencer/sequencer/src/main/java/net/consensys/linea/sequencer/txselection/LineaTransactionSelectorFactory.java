@@ -136,7 +136,6 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
                 var maybeBadBundleRes =
                     bundle.pendingTransactions().stream()
-                        .takeWhile(unused -> !isSelectionInterrupted.get())
                         .map(bts::evaluatePendingTransaction)
                         .filter(evalRes -> !evalRes.selected())
                         .findFirst();
@@ -209,7 +208,17 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
               .findFirst();
 
       if (badBundleRes.isPresent()) {
-        log.debug("Failed liveness bundle {}, reason {}", livenessBundle.get(), badBundleRes);
+        final var failure = badBundleRes.get();
+
+        if (isSelectionInterrupted(failure)) {
+          isSelectionInterrupted.set(true);
+          log.debug(
+              "Bundle selection interrupted while processing liveness bundle {}, reason {}",
+              livenessBundle.get(),
+              badBundleRes);
+        } else {
+          log.debug("Failed liveness bundle {}, reason {}", livenessBundle.get(), badBundleRes);
+        }
         livenessService.get().updateUptimeMetrics(false, headBlockTimestamp);
         rollback(bts);
       } else {
