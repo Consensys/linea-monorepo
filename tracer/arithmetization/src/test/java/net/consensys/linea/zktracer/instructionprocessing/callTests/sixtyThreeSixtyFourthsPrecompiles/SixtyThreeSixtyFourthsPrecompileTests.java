@@ -16,8 +16,7 @@
 package net.consensys.linea.zktracer.instructionprocessing.callTests.sixtyThreeSixtyFourthsPrecompiles;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static net.consensys.linea.zktracer.Fork.isPostCancun;
-import static net.consensys.linea.zktracer.Fork.isPostPrague;
+import static net.consensys.linea.zktracer.Fork.*;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_BLAKE2F;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_BLS_G1_ADD;
@@ -49,7 +48,7 @@ import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getECADDC
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getMODEXPCost;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getPrecompileCost;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareBlake2F;
-import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareModexp;
+import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.writeInMemoryByteCodeOfCodeOwner;
 import static net.consensys.linea.zktracer.types.AddressUtils.isBlsPrecompile;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -60,6 +59,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
@@ -68,7 +68,9 @@ import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScena
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.evm.precompile.KZGPointEvalPrecompiledContract;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -88,7 +90,25 @@ import org.junit.jupiter.params.provider.MethodSource;
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * <b>Note.</b> {@link #preCallProgramGasMap} In case <b>summonTargetAddressIntoExistence ≡
+ * true</b>, an initial, value bearing CALL is made to the precompile, which summons it into
+ * existence. For <b>POINT_EVALUATION</b> and <b>BLS_XXX</b>. This initial call is done via {@link
+ * #successfullySummonIntoExistence}.
+ *
+ * <p>Note: there is no
+ *
+ * <ul>
+ *   <li>2nd call (for summonTargetAddressIntoExistence ≡ <b>true</b>) or
+ *   <li>1st call (for summonTargetAddressIntoExistence ≡ <b>false</b>)
+ * </ul>
+ *
+ * call made to the precompile, as pushCallArguments call data size cds ≡ 0 would make POINT_EVAL /
+ * BLS calls fail and consume 63/64-ths of the frame's gas IF A
+ */
+@ExtendWith(UnitTestWatcher.class)
 public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
+
   /*
   Cases to cover:
 
@@ -114,17 +134,38 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
   static final int ebs = 6;
   static final int mbs = 128;
   static final Bytes modexpInput = generateModexpInput(bbs, mbs, ebs);
-  static final int exponentLog = computeExponentLog(modexpInput, 96 + bbs + ebs + mbs, bbs, ebs);
-  static final Address codeOwnerAddress = Address.fromHexString("0xC0DE");
-  // codeOwnerAccount owns the bytecode that will be given as input to MODEXP through EXTCODECOPY
-  static final ToyAccount codeOwnerAccount =
+  static final Bytes pointEvaluationInput =
+      Bytes.fromHexString(
+          "010657f37554c781402a22917dee2f75def7ab966d7b770905398eba3c444014"
+              + "0000000000000000000000000000000000000000000000000000000000000000"
+              + "0000000000000000000000000000000000000000000000000000000000000000"
+              + "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+              + "c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+  static final int multiplier = (forkPredatesOsaka(fork)) ? 8 : 16;
+  static final int exponentLog =
+      computeExponentLog(modexpInput, multiplier, 96 + bbs + ebs + mbs, bbs, ebs);
+  static final Address modexpInputAsByteCodeOwnerAddress = Address.fromHexString("0xC0DE05");
+  static final Address pointEvaluationInputAsByteCodeOwnerAddress =
+      Address.fromHexString("0xC0DE0a");
+  // modexpInputAsByteCodeOwnerAccount owns the bytecode that will be given as input to MODEXP
+  // through EXTCODECOPY
+  static final ToyAccount modexpInputAsByteCodeOwnerAccount =
       ToyAccount.builder()
           .balance(Wei.of(0))
           .nonce(1)
-          .address(codeOwnerAddress)
+          .address(modexpInputAsByteCodeOwnerAddress)
           .code(modexpInput)
           .build();
-  static final List<ToyAccount> additionalAccounts = List.of(codeOwnerAccount);
+  static final ToyAccount pointEvaluationInputAsByteCodeOwnerAccount =
+      ToyAccount.builder()
+          .balance(Wei.of(0))
+          .nonce(1)
+          .address(pointEvaluationInputAsByteCodeOwnerAddress)
+          .code(pointEvaluationInput)
+          .build();
+
+  static final List<ToyAccount> additionalAccounts =
+      List.of(modexpInputAsByteCodeOwnerAccount, pointEvaluationInputAsByteCodeOwnerAccount);
 
   // Cost of preCallProgram in different scenarios:
   // (address, transfersValue) -> gasCost
@@ -152,29 +193,34 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
               .collect(
                   Collectors.toMap(
                       precompileFlag -> precompileFlag,
-                      precompileFlag ->
-                          new HashMap<>() {
-                            {
-                              put(
-                                  false,
-                                  BytecodeRunner.of(preCallProgram(precompileFlag, false, false, 0))
-                                      .runOnlyForGasCost(
-                                          precompileFlag == PRC_MODEXP
-                                              ? additionalAccounts
-                                              : List.of(),
-                                          chainConfig,
-                                          null));
-                              put(
-                                  true,
-                                  BytecodeRunner.of(preCallProgram(precompileFlag, false, true, 0))
-                                      .runOnlyForGasCost(
-                                          precompileFlag == PRC_MODEXP
-                                              ? additionalAccounts
-                                              : List.of(),
-                                          chainConfig,
-                                          null));
-                            }
-                          }));
+                      precompileFlag -> {
+                        if (precompileFlag == PRC_POINT_EVALUATION)
+                          KZGPointEvalPrecompiledContract.init();
+                        final long gasCostTargetPrecompileDoesExist =
+                            BytecodeRunner.of(preCallProgram(precompileFlag, false, true, 0))
+                                .runOnlyForGasCost(
+                                    (precompileFlag == PRC_MODEXP
+                                            || precompileFlag == PRC_POINT_EVALUATION)
+                                        ? additionalAccounts
+                                        : List.of(),
+                                    chainConfig,
+                                    null);
+                        final long gasCostTargetPrecompileDoesNotExist =
+                            BytecodeRunner.of(preCallProgram(precompileFlag, false, false, 0))
+                                .runOnlyForGasCost(
+                                    (precompileFlag == PRC_MODEXP
+                                            || precompileFlag == PRC_POINT_EVALUATION)
+                                        ? additionalAccounts
+                                        : List.of(),
+                                    chainConfig,
+                                    null);
+                        return new HashMap<>() {
+                          {
+                            put(false, gasCostTargetPrecompileDoesNotExist);
+                            put(true, gasCostTargetPrecompileDoesExist);
+                          }
+                        };
+                      }));
 
   // Note: transferValue = false and cds = 0 as we are interested only in the cost of the
   // corresponding PUSHes here
@@ -270,7 +316,9 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
     bytecodeRunner.run(
         gasLimit,
-        precompileFlag == PRC_MODEXP ? additionalAccounts : List.of(),
+        precompileFlag == PRC_MODEXP || precompileFlag == PRC_POINT_EVALUATION
+            ? additionalAccounts
+            : List.of(),
         chainConfig,
         testInfo);
 
@@ -339,17 +387,31 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
   static Bytes preCallProgram(
       PrecompileScenarioFragment.PrecompileFlag precompileFlag,
       boolean transfersValue,
-      boolean targetAddressExists,
+      boolean summonTargetAddressIntoExistence,
       int cds) {
     return BytecodeCompiler.newProgram(chainConfig)
         .immediate(expandMemoryTo2048Words())
+        // Filling memory for preliminary call to summon precompile into existence in the case of
+        // PRC_POINT_EVALUATION
         .immediate(
-            targetAddressExists ? successfullySummonIntoExistence(precompileFlag) : Bytes.EMPTY)
-        .immediate(
-            precompileFlag == PRC_MODEXP
-                ? prepareModexp(modexpInput, 0, codeOwnerAddress)
+            precompileFlag == PRC_POINT_EVALUATION
+                ? writeInMemoryByteCodeOfCodeOwner(pointEvaluationInputAsByteCodeOwnerAddress, 0)
                 : Bytes.EMPTY)
-        .immediate(precompileFlag == PRC_BLAKE2F ? prepareBlake2F(rLeadingByte, 2) : Bytes.EMPTY)
+        .immediate(
+            summonTargetAddressIntoExistence
+                ? successfullySummonIntoExistence(precompileFlag)
+                : Bytes.EMPTY)
+        // Filling memory for actual call happening in the test
+        .immediate(
+            switch (precompileFlag) {
+              case PRC_MODEXP -> writeInMemoryByteCodeOfCodeOwner(
+                  modexpInputAsByteCodeOwnerAddress, 0);
+              case PRC_BLAKE2F -> prepareBlake2F(rLeadingByte, 2);
+              case PRC_POINT_EVALUATION -> writeInMemoryByteCodeOfCodeOwner(
+                  pointEvaluationInputAsByteCodeOwnerAddress, 0);
+              default -> Bytes.EMPTY;
+            })
+        // TODO: we should be able to re-use the input of the first call if we do not overwrite it
         .immediate(pushCallArguments(INFINITE_GAS, precompileFlag, cds, transfersValue))
         .compile();
   }
@@ -367,16 +429,27 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
         .compile();
   }
 
+  /**
+   * {@link #successfullySummonIntoExistence} MUST be provided with a valid (in particular nonzero)
+   * call data size for <b>POINT_EVALUATION</b> and <b>BLS_XXX</b>. Otherwise, since the call is
+   * given {@link #INFINITE_GAS}, the failed <b>CALL</b> could consume 63/64-ths of the frame's gas.
+   * When used to compute the gas cost, this may end up being ~ 2B * (63/64) = 2B - 32M, which is
+   * incompatible with OSAKA max transaction gas limits.
+   *
+   * @param precompileFlag
+   * @return
+   */
   static Bytes successfullySummonIntoExistence(
       PrecompileScenarioFragment.PrecompileFlag precompileFlag) {
     return call(
         INFINITE_GAS,
         precompileFlag,
-        precompileFlag == PRC_BLAKE2F
-            ? PRECOMPILE_CALL_DATA_SIZE___BLAKE2F
-            : isBlsPrecompile(precompileFlag.getAddress())
-                ? getMeaningfulCallDataSize(precompileFlag)
-                : 0, // For BLAKE2F and BLS precompiles we need a meaningful cds for the call to
+        getMeaningfulCallDataSize(precompileFlag),
+        // precompileFlag == PRC_BLAKE2F
+        //     ? PRECOMPILE_CALL_DATA_SIZE___BLAKE2F
+        //     : isBlsPrecompile(precompileFlag.getAddress())
+        //         ? getMeaningfulCallDataSize(precompileFlag)
+        //         : 0, // For BLAKE2F and BLS precompiles we need a meaningful cds for the call to
         // succeed
         true);
   }
@@ -440,7 +513,8 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
     checkArgument(targetCalleeGas == 63 * k + l + stipend);
     final long gasUpfront = getUpfrontGasCost(transfersValue, targetAddressExists);
     final long gasPreCall = 64 * k + l + gasUpfront;
-    return preCallProgramGas + gasPreCall; // gasLimit
+    final long gasLimit = preCallProgramGas + gasPreCall;
+    return gasLimit; // gasLimit
   }
 
   /**

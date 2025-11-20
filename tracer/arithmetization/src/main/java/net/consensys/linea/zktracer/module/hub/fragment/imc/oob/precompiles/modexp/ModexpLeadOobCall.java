@@ -18,8 +18,8 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.mod
 import static net.consensys.linea.zktracer.Trace.OOB_INST_MODEXP_LEAD;
 import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_MODEXP_LEAD;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.EBS_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.BASE_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.EBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.*;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
@@ -32,7 +32,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
-import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.oob.OobExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -131,9 +131,9 @@ public class ModexpLeadOobCall extends OobCall {
     return trace
         .isModexpLead(true)
         .oobInst(OOB_INST_MODEXP_LEAD)
-        .data1(metadata.bbs().trimLeadingZeros())
+        .data1(metadata.normalizedBbs())
         .data2(cds.trimLeadingZeros())
-        .data3(metadata.ebs().trimLeadingZeros())
+        .data3(metadata.normalizedEbs())
         .data4(booleanToBytes(loadLead))
         .data6(Bytes.ofUnsignedInt(cdsCutoff))
         .data7(Bytes.ofUnsignedInt(ebsCutoff))
@@ -145,9 +145,9 @@ public class ModexpLeadOobCall extends OobCall {
     return trace
         .pMiscOobFlag(true)
         .pMiscOobInst(OOB_INST_MODEXP_LEAD)
-        .pMiscOobData1(metadata.bbs().trimLeadingZeros())
+        .pMiscOobData1(metadata.normalizedBbs())
         .pMiscOobData2(cds.trimLeadingZeros())
-        .pMiscOobData3(metadata.ebs().trimLeadingZeros())
+        .pMiscOobData3(metadata.normalizedEbs())
         .pMiscOobData4(booleanToBytes(loadLead))
         .pMiscOobData6(Bytes.ofUnsignedInt(cdsCutoff))
         .pMiscOobData7(Bytes.ofUnsignedInt(ebsCutoff))

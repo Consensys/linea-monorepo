@@ -16,16 +16,15 @@
 package net.consensys.linea.zktracer.module.hub.section.call;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.*;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.addressToPrecompileFlag;
 import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 import static net.consensys.linea.zktracer.types.AddressUtils.*;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
-import static org.hyperledger.besu.datatypes.Address.*;
 
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiFunction;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -48,6 +47,8 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.CallOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.XCallOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment;
+import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.LondonModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.OsakaModexpMetadata;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.*;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
@@ -89,27 +90,6 @@ public class CallSection extends TraceSection
         EndTransactionDefer {
 
   public static final short NB_ROWS_HUB_CALL = 11; // 2 stack + up to 9 for SMC failure will revert
-  // Note: in case of precompile call there could be more rows.
-  private static final Map<Address, BiFunction<Hub, CallSection, PrecompileSubsection>>
-      ADDRESS_TO_PRECOMPILE =
-          Map.ofEntries(
-              Map.entry(ECREC, EllipticCurvePrecompileSubsection::new),
-              Map.entry(SHA256, ShaTwoOrRipemdSubSection::new),
-              Map.entry(RIPEMD160, ShaTwoOrRipemdSubSection::new),
-              Map.entry(ID, IdentitySubsection::new),
-              Map.entry(MODEXP, ModexpSubsection::new),
-              Map.entry(ALTBN128_ADD, EllipticCurvePrecompileSubsection::new),
-              Map.entry(ALTBN128_MUL, EllipticCurvePrecompileSubsection::new),
-              Map.entry(ALTBN128_PAIRING, EllipticCurvePrecompileSubsection::new),
-              Map.entry(BLAKE2B_F_COMPRESSION, BlakeSubsection::new),
-              Map.entry(KZG_POINT_EVAL, EllipticCurvePrecompileSubsection::new),
-              Map.entry(BLS12_G1ADD, EllipticCurvePrecompileSubsection::new),
-              Map.entry(BLS12_G1MULTIEXP, EllipticCurvePrecompileSubsection::new),
-              Map.entry(BLS12_G2ADD, EllipticCurvePrecompileSubsection::new),
-              Map.entry(BLS12_G2MULTIEXP, EllipticCurvePrecompileSubsection::new),
-              Map.entry(BLS12_PAIRING, EllipticCurvePrecompileSubsection::new),
-              Map.entry(BLS12_MAP_FP_TO_G1, EllipticCurvePrecompileSubsection::new),
-              Map.entry(BLS12_MAP_FP2_TO_G2, EllipticCurvePrecompileSubsection::new));
 
   public Optional<Address> precompileAddress;
 
@@ -377,14 +357,44 @@ public class CallSection extends TraceSection
     hub.romLex().callRomLex(frame);
   }
 
+  private PrecompileSubsection getPrecompileSubsection(Hub hub) {
+    return switch (addressToPrecompileFlag(calleeFirst.address())) {
+      case PRC_ECRECOVER,
+          PRC_POINT_EVALUATION,
+          PRC_BLS_G1_ADD,
+          PRC_BLS_G1_MSM,
+          PRC_BLS_G2_ADD,
+          PRC_BLS_G2_MSM,
+          PRC_BLS_PAIRING_CHECK,
+          PRC_BLS_MAP_FP_TO_G1,
+          PRC_BLS_MAP_FP2_TO_G2,
+          PRC_ECADD,
+          PRC_ECMUL,
+          PRC_ECPAIRING -> new EllipticCurvePrecompileSubsection(hub, this);
+      case PRC_SHA2_256, PRC_RIPEMD_160 -> new ShaTwoOrRipemdSubSection(hub, this);
+      case PRC_IDENTITY -> new IdentitySubsection(hub, this);
+      case PRC_MODEXP -> {
+        if (forkPredatesOsaka(hub.fork)) {
+          yield new LondonModexpSubsection(
+              hub, this, new LondonModexpMetadata(this.getCallDataRange()));
+        } else {
+          yield new OsakaModexpSubsection(
+              hub, this, new OsakaModexpMetadata(this.getCallDataRange()));
+        }
+      }
+      case PRC_BLAKE2F -> new BlakeSubsection(hub, this);
+    };
+  }
+
   private void prcProcessing(Hub hub) {
-    precompileSubsection = ADDRESS_TO_PRECOMPILE.get(calleeFirst.address()).apply(hub, this);
+    precompileSubsection = getPrecompileSubsection(hub);
+
     hub.defers().scheduleForContextEntry(this);
     hub.defers().scheduleForContextReEntry(this, hub.currentFrame());
     // In case of arguments too large for MODEXP, transaction will be popped anyway, and resolving
     // some defers will create NPE
-    if (precompileSubsection instanceof ModexpSubsection
-        && ((ModexpSubsection) precompileSubsection).transactionWillBePopped) {
+    if (precompileSubsection instanceof LondonModexpSubsection
+        && ((LondonModexpSubsection) precompileSubsection).transactionWillBePopped) {
       hub.defers().unscheduleForContextReEntry(this, hub.currentFrame());
       hub.defers().unscheduleForPostTransaction(this);
       System.out.println(
@@ -394,11 +404,20 @@ public class CallSection extends TraceSection
               + "\n\tABS_TX_NUM = "
               + hub.txStack().currentAbsNumber()
               + "\n\tbase byte size = "
-              + ((ModexpSubsection) precompileSubsection).modexpMetaData.bbs().toDecimalString()
+              + ((LondonModexpSubsection) precompileSubsection)
+                  .modexpMetadata
+                  .bbs()
+                  .toDecimalString()
               + "\n\texp byte size = "
-              + ((ModexpSubsection) precompileSubsection).modexpMetaData.ebs().toDecimalString()
+              + ((LondonModexpSubsection) precompileSubsection)
+                  .modexpMetadata
+                  .ebs()
+                  .toDecimalString()
               + "\n\tmod byte size = "
-              + ((ModexpSubsection) precompileSubsection).modexpMetaData.mbs().toDecimalString()
+              + ((LondonModexpSubsection) precompileSubsection)
+                  .modexpMetadata
+                  .mbs()
+                  .toDecimalString()
               + "\nTransaction must be popped!");
     }
   }

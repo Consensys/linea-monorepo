@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
+import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.module.ModuleName.BLAKE_MODEXP_DATA;
 
 import java.util.List;
@@ -28,7 +29,6 @@ import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.ModuleName;
-import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 
@@ -52,21 +52,26 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
     return BLAKE_MODEXP_DATA;
   }
 
-  public void callModexp(final ModexpMetadata modexpMetaData, final int operationID) {
-    operations.add(new BlakeModexpDataOperation(modexpMetaData, operationID));
+  public void callModexp(BlakeModexpDataOperation modexpOperation) {
+
+    checkState(modexpOperation.isModexpOperation(), "Operation must be a MODEXP operation");
+    operations.add(modexpOperation);
+
     modexpEffectiveCall.updateTally(1);
-    modexpLargeCall.updateTally(modexpMetaData.largeModexp());
-    callWcpForIdCheck(operationID);
+    modexpLargeCall.updateTally(modexpOperation.modexpMetaData.get().largeModexp());
+    callWcpForIdCheck(modexpOperation.id());
   }
 
-  public void callBlake(final BlakeComponents blakeComponents, final int operationID) {
-    operations.add(new BlakeModexpDataOperation(blakeComponents, operationID));
+  public void callBlake(BlakeModexpDataOperation blakeOperation) {
+    checkState(blakeOperation.isBlakeOperation(), "Operation must be a BLAKE2f operation");
+    operations.add(blakeOperation);
+
     blakeEffectiveCall.updateTally(1);
-    blakeRounds.addPrecompileLimit(blakeComponents.r());
-    callWcpForIdCheck(operationID);
+    blakeRounds.addPrecompileLimit(blakeOperation.blake2fComponents.get().r());
+    callWcpForIdCheck(blakeOperation.id());
   }
 
-  private void callWcpForIdCheck(final int operationID) {
+  private void callWcpForIdCheck(final long operationID) {
     wcp.callLT(previousID, operationID);
     previousID = operationID;
   }

@@ -19,7 +19,7 @@ import static com.google.common.base.Preconditions.*;
 import static com.google.common.math.BigIntegerMath.log2;
 import static java.lang.Math.min;
 import static net.consensys.linea.zktracer.Trace.*;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.BASE_MIN_OFFSET;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
@@ -33,7 +33,7 @@ import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExplogExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ModexpLogExpCall;
-import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -115,16 +115,16 @@ public class ExpOperation extends ModuleOperation {
       final int minCutoff = min(cdsCutoff, ebsCutoff);
 
       BigInteger mask = new BigInteger("FF".repeat(minCutoff), 16);
-      if (minCutoff < 32) {
+      if (minCutoff < WORD_SIZE) {
         // 32 - minCutoff is the shift distance in bytes, but we need bits
-        mask = mask.shiftLeft(8 * (32 - minCutoff));
+        mask = mask.shiftLeft(8 * (WORD_SIZE - minCutoff));
       }
 
       // trim (keep only minCutoff bytes of rawLead)
       final BigInteger trim = rawLead.toUnsignedBigInteger().and(mask);
 
       // lead (keep only minCutoff bytes of rawLead and potentially pad to ebsCutoff with 0's)
-      final BigInteger lead = trim.shiftRight(8 * (32 - ebsCutoff));
+      final BigInteger lead = trim.shiftRight(8 * (WORD_SIZE - ebsCutoff));
 
       // lead_log (same as EYP)
       final int leadLog = lead.signum() == 0 ? 0 : log2(lead, RoundingMode.FLOOR);

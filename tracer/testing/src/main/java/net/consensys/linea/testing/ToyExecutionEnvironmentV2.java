@@ -17,6 +17,7 @@ package net.consensys.linea.testing;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.reporting.TracerTestBase.chainConfig;
+import static net.consensys.linea.reporting.TracerTestBase.fork;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.Fork.*;
 import static net.consensys.linea.zktracer.Trace.LINEA_BASE_FEE;
@@ -170,7 +171,7 @@ public class ToyExecutionEnvironmentV2 {
   }
 
   public void runForCounting() {
-    zkCounter = new ZkCounter(unitTestsChain.bridgeConfiguration);
+    zkCounter = new ZkCounter(unitTestsChain.bridgeConfiguration, fork);
 
     final ProtocolSpec protocolSpec =
         ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);

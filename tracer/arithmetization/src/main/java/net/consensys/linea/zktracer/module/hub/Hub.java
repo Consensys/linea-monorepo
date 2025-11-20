@@ -341,9 +341,12 @@ public abstract class Hub implements Module {
    * those module are traced (and could be count)
    */
   private final ShakiraData shakiraData;
+
+  @Getter
   private final BlakeModexpData blakeModexpData =
       new BlakeModexpData(
           wcp, modexpEffectiveCall, modexpLargeCall, blakeEffectiveCall, blakeRounds);
+
   public final EcData ecData =
       new EcData(
           wcp,
@@ -448,7 +451,7 @@ public abstract class Hub implements Module {
     rlpTxn = setRlpTxn(this);
     rlpAddr = new RlpAddr(this, trm, keccak);
     blockdata = setBlockData(this, wcp, euc, chain);
-    mmu = new Mmu(euc, wcp);
+    mmu = new Mmu(euc, wcp, fork);
     mmio = new Mmio(mmu);
     blockhash = new Blockhash(this, wcp, historicalBlockHashes);
 

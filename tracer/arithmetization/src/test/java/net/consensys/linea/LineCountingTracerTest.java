@@ -64,7 +64,7 @@ public class LineCountingTracerTest extends TracerTestBase {
     checkArgument(
         tracerToCount.size() == tracerToCount.stream().distinct().toList().size(),
         "Duplicate has been found");
-    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration);
+    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration, fork);
     final List<String> counterToCount =
         counter.getModulesToCount().stream().map(module -> module.moduleKey().toString()).toList();
     checkArgument(
@@ -74,7 +74,7 @@ public class LineCountingTracerTest extends TracerTestBase {
 
   @Test
   void sameModuleAcrossAllForkWithZkCounterAndTracer() {
-    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration);
+    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration, fork);
     final List<String> counterModules =
         counter.getModulesToCount().stream().map(module -> module.moduleKey().toString()).toList();
 
@@ -125,7 +125,7 @@ public class LineCountingTracerTest extends TracerTestBase {
           "Tracer: some block stuff has been removed in Module " + module);
     }
 
-    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration);
+    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration, fork);
     counter.traceStartConflation(1);
     counter.traceStartBlock(world, blockHeader, blockBody, DEFAULT_COINBASE_ADDRESS);
     final Map<String, Integer> sizeBeforeCounter = counter.getModulesLineCount();

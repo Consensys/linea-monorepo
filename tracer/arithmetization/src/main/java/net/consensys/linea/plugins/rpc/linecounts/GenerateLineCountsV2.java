@@ -126,7 +126,7 @@ public class GenerateLineCountsV2 {
     final Fork fork = getForkFromBesuBlockchainService(besuContext, blockNumber);
 
     return tracerSharedConfiguration.isLimitless()
-        ? new ZkCounter(l1L2BridgeSharedConfiguration)
+        ? new ZkCounter(l1L2BridgeSharedConfiguration, fork)
         : new ZkTracer(
             fork,
             l1L2BridgeSharedConfiguration,

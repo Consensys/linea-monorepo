@@ -213,8 +213,8 @@ public class PrecompileUtils extends TracerTestBase {
     return Bytes.concatenate(bbsPadded, ebsPadded, mbsPadded, bem);
   }
 
-  static void prepareModexp(
-      BytecodeCompiler program, Bytes modexpInput, int targetOffset, Address codeOwnerAddress) {
+  static void writeInMemoryByteCodeOfCodeOwner(
+      Address codeOwnerAddress, int targetOffset, BytecodeCompiler program) {
     // Copy to targetOffset the code of codeOwnerAccount
     program
         .push(codeOwnerAddress)
@@ -225,9 +225,11 @@ public class PrecompileUtils extends TracerTestBase {
         .op(OpCode.EXTCODECOPY);
   }
 
-  public static Bytes prepareModexp(Bytes modexpInput, int targetOffset, Address codeOwnerAddress) {
+  // TODO: this is mostly a duplicate of Tests.fullCodeCopyOf, modulo the target offset. Decide
+  // which one to keep.
+  public static Bytes writeInMemoryByteCodeOfCodeOwner(Address codeOwnerAddress, int targetOffset) {
     BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
-    prepareModexp(program, modexpInput, targetOffset, codeOwnerAddress);
+    writeInMemoryByteCodeOfCodeOwner(codeOwnerAddress, targetOffset, program);
     return program.compile();
   }
 
