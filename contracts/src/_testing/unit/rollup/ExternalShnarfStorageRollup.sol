@@ -36,7 +36,7 @@ contract ExternalShnarfStorageRollup is LineaRollupBase {
    * @return shnarfExists The shnarf's existence value.
    */
   function blobShnarfExists(bytes32 _shnarf) public view returns (uint256 shnarfExists) {
-    shnarfExists = _shnarfProvider.blobShnarfExists(_shnarf);
+    shnarfExists = shnarfProvider.blobShnarfExists(_shnarf);
   }
 
   /**

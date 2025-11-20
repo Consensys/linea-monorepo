@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import { L1MessageServiceV1 } from "./L1MessageServiceV1.sol";
-import { IClaimMessagesByHashOnly } from "../../interfaces/IClaimMessagesByHashOnly.sol";
+import { IClaimMessageV1 } from "../../interfaces/IClaimMessageV1.sol";
 import { MessageHashing } from "../../libraries/MessageHashing.sol";
 
 /**
@@ -10,7 +10,7 @@ import { MessageHashing } from "../../libraries/MessageHashing.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract ClaimMessageByHashOnly is L1MessageServiceV1, IClaimMessagesByHashOnly {
+abstract contract ClaimMessageV1 is L1MessageServiceV1, IClaimMessageV1 {
   using MessageHashing for *;
 
   /**

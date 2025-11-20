@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { ShnarfDataAcceptor } from "../../../rollup/ShnarfDataAcceptor.sol";
-import { LocalShnarfProvider } from "../../../rollup/LocalShnarfProvider.sol";
+import { ShnarfDataAcceptor } from "./ShnarfDataAcceptor.sol";
+import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
 
 /**
  * @title Contract to manage alt-DA cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LocalShnarfStorageAltDaRollup is LocalShnarfProvider, ShnarfDataAcceptor {
+contract Validium is LocalShnarfProvider, ShnarfDataAcceptor {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();

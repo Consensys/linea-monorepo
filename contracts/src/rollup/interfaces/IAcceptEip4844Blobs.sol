@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.30;
-import { IAcceptBlobData } from "./IAcceptBlobData.sol";
+import { IShnarfAcceptorBase } from "./IShnarfAcceptorBase.sol";
 
 /**
  * @title IAcceptEip4844Blobs interface for functions, structs, and errors.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface IAcceptEip4844Blobs is IAcceptBlobData {
+interface IAcceptEip4844Blobs is IShnarfAcceptorBase {
   /**
    * @notice Data structure for compressed blob data submission.
    * @dev submissionData The supporting data for blob data submission excluding the compressed data.

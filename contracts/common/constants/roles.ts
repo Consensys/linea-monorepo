@@ -23,6 +23,14 @@ export const PAUSE_BLOB_SUBMISSION_ROLE = generateKeccak256(["string"], ["PAUSE_
 export const UNPAUSE_BLOB_SUBMISSION_ROLE = generateKeccak256(["string"], ["UNPAUSE_BLOB_SUBMISSION_ROLE"], {
   encodePacked: true,
 });
+
+export const PAUSE_SHNARF_SUBMISSION_ROLE = generateKeccak256(["string"], ["PAUSE_SHNARF_SUBMISSION_ROLE"], {
+  encodePacked: true,
+});
+export const UNPAUSE_SHNARF_SUBMISSION_ROLE = generateKeccak256(["string"], ["UNPAUSE_SHNARF_SUBMISSION_ROLE"], {
+  encodePacked: true,
+});
+
 export const PAUSE_FINALIZATION_ROLE = generateKeccak256(["string"], ["PAUSE_FINALIZATION_ROLE"], {
   encodePacked: true,
 });
@@ -79,8 +87,25 @@ export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESS
 
 export const BASE_ROLES = [PAUSE_ALL_ROLE, UNPAUSE_ALL_ROLE];
 
+export const VALIDIUM_ROLES = [
+  ...BASE_ROLES,
+  PAUSE_SHNARF_SUBMISSION_ROLE,
+  UNPAUSE_SHNARF_SUBMISSION_ROLE,
+  VERIFIER_SETTER_ROLE,
+  VERIFIER_UNSETTER_ROLE,
+  RATE_LIMIT_SETTER_ROLE,
+  USED_RATE_LIMIT_RESETTER_ROLE,
+  PAUSE_L1_L2_ROLE,
+  PAUSE_L2_L1_ROLE,
+  UNPAUSE_L1_L2_ROLE,
+  UNPAUSE_L2_L1_ROLE,
+  PAUSE_FINALIZATION_ROLE,
+  UNPAUSE_FINALIZATION_ROLE,
+];
+
 export const LINEA_ROLLUP_ROLES = [
   ...BASE_ROLES,
+  ...VALIDIUM_ROLES,
   VERIFIER_SETTER_ROLE,
   VERIFIER_UNSETTER_ROLE,
   RATE_LIMIT_SETTER_ROLE,

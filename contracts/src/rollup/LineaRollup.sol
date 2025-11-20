@@ -2,10 +2,8 @@
 pragma solidity 0.8.30;
 
 import { Eip4844BlobAcceptor } from "./Eip4844BlobAcceptor.sol";
-import { CalldataBlobAcceptor } from "./CalldataBlobAcceptor.sol";
 import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
-
-import { ClaimMessageByHashOnly } from "../messaging/l1/v1/ClaimMessageByHashOnly.sol";
+import { ClaimMessageV1 } from "../messaging/l1/v1/ClaimMessageV1.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 
@@ -14,7 +12,7 @@ import { LineaRollupBase } from "./LineaRollupBase.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is Eip4844BlobAcceptor, CalldataBlobAcceptor, ClaimMessageByHashOnly {
+contract LineaRollup is Eip4844BlobAcceptor, ClaimMessageV1 {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -51,7 +49,7 @@ contract LineaRollup is Eip4844BlobAcceptor, CalldataBlobAcceptor, ClaimMessageB
     }
     require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
 
-    _shnarfProvider = IProvideShnarf(address(this));
+    shnarfProvider = IProvideShnarf(address(this));
   }
 
   /**

@@ -10,7 +10,7 @@ import { IProvideShnarf } from "../../../rollup/interfaces/IProvideShnarf.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollupWithoutOldClaiming is Eip4844BlobAcceptor, CalldataBlobAcceptor {
+contract LineaRollupClaimingV2 is Eip4844BlobAcceptor, CalldataBlobAcceptor {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -47,6 +47,6 @@ contract LineaRollupWithoutOldClaiming is Eip4844BlobAcceptor, CalldataBlobAccep
     }
     require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
 
-    _shnarfProvider = IProvideShnarf(address(this));
+    shnarfProvider = IProvideShnarf(address(this));
   }
 }

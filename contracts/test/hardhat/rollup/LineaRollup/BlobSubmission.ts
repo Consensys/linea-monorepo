@@ -130,13 +130,18 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     const operatorHDSigner = getWalletForIndex(2);
 
     const lineaRollupAddress = await lineaRollup.getAddress();
-    const { blobDataSubmission, compressedBlobs, finalShnarf } = generateBlobDataSubmission(0, 1);
+    const { blobDataSubmission, compressedBlobs } = generateBlobDataSubmission(0, 1);
     const nonExistingParentShnarf = generateRandomBytes(32);
+
+    const wrongExpectedShnarf = generateKeccak256(
+      ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
+      [HASH_ZERO, HASH_ZERO, blobDataSubmission[0].finalStateRootHash, HASH_ZERO, HASH_ZERO],
+    );
 
     const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
       blobDataSubmission,
       nonExistingParentShnarf,
-      finalShnarf,
+      wrongExpectedShnarf,
     ]);
 
     const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -162,7 +167,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     await expectRevertWithCustomError(
       lineaRollup,
       ethers.provider.broadcastTransaction(signedTx),
-      "ParentBlobNotSubmitted",
+      "ParentShnarfNotSubmitted",
       [nonExistingParentShnarf],
     );
   });
@@ -437,7 +442,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     await expectRevertWithCustomError(
       lineaRollup,
       ethers.provider.broadcastTransaction(signedTx2),
-      "DataAlreadySubmitted",
+      "ShnarfAlreadySubmitted",
       [finalShnarf],
     );
   });

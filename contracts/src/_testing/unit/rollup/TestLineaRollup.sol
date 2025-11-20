@@ -3,10 +3,11 @@ pragma solidity 0.8.30;
 
 import { LineaRollup } from "../../../rollup/LineaRollup.sol";
 import { LineaRollupBase } from "../../../rollup/LineaRollupBase.sol";
+import { CalldataBlobAcceptor } from "../../../rollup/CalldataBlobAcceptor.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
-contract TestLineaRollup is LineaRollup {
+contract TestLineaRollup is LineaRollup, CalldataBlobAcceptor {
   function setFallbackOperatorAddress(address _fallbackOperator) external {
     fallbackOperator = _fallbackOperator;
   }
@@ -45,5 +46,15 @@ contract TestLineaRollup is LineaRollup {
 
   function setLastFinalizedState(uint256 _messageNumber, bytes32 _rollingHash, uint256 _timestamp) external {
     currentFinalizedState = _computeLastFinalizedState(_messageNumber, _rollingHash, _timestamp);
+  }
+
+  /**
+   * @notice Revokes `role` from the calling account.
+   * @dev Fallback operator cannot renounce role. Reverts with OnlyNonFallbackOperator.
+   * @param _role The role to renounce.
+   * @param _account The account to renounce - can only be the _msgSender().
+   */
+  function renounceRole(bytes32 _role, address _account) public virtual override(LineaRollup, LineaRollupBase) {
+    super.renounceRole(_role, _account);
   }
 }

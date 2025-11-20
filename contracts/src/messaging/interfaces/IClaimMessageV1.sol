@@ -6,7 +6,7 @@ pragma solidity ^0.8.30;
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface IClaimMessagesByHashOnly {
+interface IClaimMessageV1 {
   /**
    * @notice Deliver a message to the destination chain.
    * @notice Is called by the Postman, dApp or end user.

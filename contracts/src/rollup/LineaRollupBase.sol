@@ -36,9 +36,6 @@ abstract contract LineaRollupBase is
   /// @notice The role required to set/remove  proof verifiers by type.
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
 
-  /// @dev Value indicating a shnarf exists.
-  uint256 internal constant SHNARF_EXISTS_DEFAULT_VALUE = 1;
-
   /// @dev The default hash value.
   bytes32 internal constant EMPTY_HASH = 0x0;
 
@@ -93,7 +90,9 @@ abstract contract LineaRollupBase is
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
   address public fallbackOperator;
 
-  IProvideShnarf internal _shnarfProvider;
+  /// @notice The address of the shnarf provider.
+  /// @dev Default is address(this).
+  IProvideShnarf public shnarfProvider;
 
   /// @dev Keep 50 free storage slots for inheriting contracts.
   uint256[50] private __gap_LineaRollup;
@@ -155,7 +154,7 @@ abstract contract LineaRollupBase is
       shnarfProviderAddress = address(this);
     }
 
-    _shnarfProvider = IProvideShnarf(shnarfProviderAddress);
+    shnarfProvider = IProvideShnarf(shnarfProviderAddress);
 
     emit LineaRollupInitialized(_initializationData);
   }
@@ -363,7 +362,7 @@ abstract contract LineaRollupBase is
       _finalizationData.shnarfData.dataEvaluationClaim
     );
 
-    if (_shnarfProvider.blobShnarfExists(finalShnarf) == 0) {
+    if (shnarfProvider.blobShnarfExists(finalShnarf) == 0) {
       revert FinalBlobNotSubmitted(finalShnarf);
     }
 

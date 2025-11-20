@@ -4,13 +4,13 @@ pragma solidity ^0.8.30;
 import { IAcceptEip4844Blobs } from "./interfaces/IAcceptEip4844Blobs.sol";
 import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
-
+import { ShnarfAcceptorBase } from "./ShnarfAcceptorBase.sol";
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract Eip4844BlobAcceptor is LocalShnarfProvider, IAcceptEip4844Blobs {
+abstract contract Eip4844BlobAcceptor is LocalShnarfProvider, ShnarfAcceptorBase, IAcceptEip4844Blobs {
   /**
    * @notice Submit one or more EIP-4844 blobs.
    * @dev OPERATOR_ROLE is required to execute.
@@ -44,20 +44,6 @@ abstract contract Eip4844BlobAcceptor is LocalShnarfProvider, IAcceptEip4844Blob
 
     if (blobhash(_blobSubmissions.length) != EMPTY_HASH) {
       revert BlobSubmissionDataEmpty(_blobSubmissions.length);
-    }
-
-    if (_blobShnarfExists[_parentShnarf] == 0) {
-      revert ParentBlobNotSubmitted(_parentShnarf);
-    }
-
-    /**
-     * @dev validate we haven't submitted the last shnarf. There is a final check at the end of the function verifying,
-     * that _finalBlobShnarf was computed correctly.
-     * Note: As only the last shnarf is stored, we don't need to validate shnarfs,
-     * computed for any previous blobs in the submission (if multiple are submitted).
-     */
-    if (_blobShnarfExists[_finalBlobShnarf] != 0) {
-      revert DataAlreadySubmitted(_finalBlobShnarf);
     }
 
     bytes32 currentDataEvaluationPoint;
@@ -98,14 +84,11 @@ abstract contract Eip4844BlobAcceptor is LocalShnarfProvider, IAcceptEip4844Blob
       );
     }
 
+    _acceptShnarfInfo(_parentShnarf, _finalBlobShnarf, blobSubmission.finalStateRootHash);
+
     if (_finalBlobShnarf != computedShnarf) {
       revert FinalShnarfWrong(_finalBlobShnarf, computedShnarf);
     }
-
-    /// @dev use the last shnarf as the submission to store as technically it becomes the next parent shnarf.
-    _blobShnarfExists[computedShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
-
-    emit DataSubmittedV3(_parentShnarf, computedShnarf, blobSubmission.finalStateRootHash);
   }
 
   /**

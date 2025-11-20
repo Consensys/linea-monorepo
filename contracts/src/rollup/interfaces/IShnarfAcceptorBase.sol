@@ -2,20 +2,20 @@
 pragma solidity ^0.8.30;
 
 /**
- * @title IAcceptBlobData interface for shared data accepting errors and events.
+ * @title IShnarfAcceptorBase interface for shared data accepting errors and events.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface IAcceptBlobData {
+interface IShnarfAcceptorBase {
   /**
    * @dev Thrown when the current shnarf was already submitted.
    */
-  error DataAlreadySubmitted(bytes32 shnarf);
+  error ShnarfAlreadySubmitted(bytes32 shnarf);
 
   /**
    * @dev Thrown when a shnarf does not exist for a parent blob.
    */
-  error ParentBlobNotSubmitted(bytes32 shnarf);
+  error ParentShnarfNotSubmitted(bytes32 shnarf);
 
   /**
    * @dev Thrown when the computed shnarf does not match what is expected.
