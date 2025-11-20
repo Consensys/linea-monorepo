@@ -10,10 +10,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/zk"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -136,9 +136,9 @@ func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) zk.Wrappe
 	return t.GnarkEvalNoCoset(t.T)[pos%t.T]
 }
 
-func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x zk.WrappedVariable) zk.WrappedVariable {
+func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x gnarkfext.E4Gen) gnarkfext.E4Gen {
 
-	apiGen, err := zk.NewGenericApi(api)
+	ext4, err := gnarkfext.NewExt4(api)
 	if err != nil {
 		panic(err)
 	}
@@ -160,20 +160,22 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x zk.
 		}
 		omegaN.Exp(omegaN, big.NewInt(int64(e)))
 		wOmegaN := zk.ValueOf(omegaN.String())
-		x = apiGen.Mul(x, wOmegaN)
+		x = *ext4.MulByFp(&x, wOmegaN)
 	}
+	//func (ext4 *Ext4) Exp(x *E4Gen, n *big.Int) *E4Gen {
 
-	denominator := gnarkutil.Exp(api, x, l)
+	denominator := ext4.Exp(&x, big.NewInt(int64(l)))
 	wOne := zk.ValueOf(1)
 	wnField := zk.ValueOf(nField.String())
 	wlField := zk.ValueOf(lField.String())
-	denominator = apiGen.Sub(denominator, wOne)
-	denominator = apiGen.Mul(denominator, wnField)
-	numerator := gnarkutil.Exp(api, x, n)
-	numerator = apiGen.Sub(numerator, wOne)
-	numerator = apiGen.Mul(numerator, wlField)
+	extEOne := gnarkfext.NewE4GenFromBase(wOne)
+	denominator = ext4.Sub(denominator, &extEOne)
+	denominator = ext4.MulByFp(denominator, wnField)
+	numerator := ext4.Exp(&x, big.NewInt(int64(n)))
+	numerator = ext4.Sub(numerator, &extEOne)
+	numerator = ext4.MulByFp(numerator, wlField)
 
-	return apiGen.Div(numerator, denominator)
+	return *ext4.Div(numerator, denominator)
 }
 
 // Returns the result in gnark form. This returns a vector of constant

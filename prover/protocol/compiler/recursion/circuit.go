@@ -93,10 +93,10 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
-	api.AssertIsEqual(r.X, polyParams.X)
+	api.AssertIsEqual(r.X, polyParams.ExtX)
 
-	for i := range polyParams.Ys {
-		api.AssertIsEqual(r.Ys[i], polyParams.Ys[i])
+	for i := range polyParams.ExtYs {
+		api.AssertIsEqual(r.Ys[i], polyParams.ExtYs[i])
 	}
 
 	for i := range r.Commitments {

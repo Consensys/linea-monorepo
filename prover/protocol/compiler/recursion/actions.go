@@ -193,8 +193,8 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		api.AssertIsEqual(circX[2], params.ExtX.B1.A0)
 		api.AssertIsEqual(circX[3], params.ExtX.B1.A1)
 
-		if len(circYs) != len(params.Ys) {
-			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.Ys))
+		if len(circYs) != len(params.ExtYs) {
+			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))
 		}
 
 		for j := range params.ExtYs {

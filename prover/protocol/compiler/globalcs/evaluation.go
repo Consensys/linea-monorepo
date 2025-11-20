@@ -194,11 +194,9 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 	// Collect the evaluation points
 	for j, handle := range univQuery.Pols {
 		var genericElem fext.GenericFieldElem
-		if params.IsBase {
-			genericElem = fext.NewESHashFromBase(params.Ys[j])
-		} else {
-			genericElem = fext.NewESHashFromExt(params.ExtYs[j])
-		}
+
+		genericElem = fext.NewESHashFromExt(params.ExtYs[j])
+
 		mapYs[handle.GetColID()] = genericElem
 	}
 
@@ -273,14 +271,14 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 	annulator = *e4Api.Sub(&annulator, &wOneExt)
 
 	// Get the parameters
-	api.AssertIsEqual(r, params.X) // check the evaluation is consistent with the other stuffs
+	api.AssertIsEqual(r, params.ExtX) // check the evaluation is consistent with the other stuffs
 
 	// Map all the evaluations and checks the evaluations points
-	mapYs := make(map[ifaces.ColID]zk.WrappedVariable)
+	mapYs := make(map[ifaces.ColID]gnarkfext.E4Gen)
 
 	// Collect the evaluation points
 	for j, handle := range univQuery.Pols {
-		mapYs[handle.GetColID()] = params.Ys[j]
+		mapYs[handle.GetColID()] = params.ExtYs[j]
 	}
 
 	for i, ratio := range ctx.Ratios {
@@ -288,7 +286,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 		board := ctx.AggregateExpressionsBoard[i]
 		metadatas := board.ListVariableMetadata()
 
-		evalInputs := make([]zk.WrappedVariable, len(metadatas))
+		evalInputs := make([]gnarkfext.E4Gen, len(metadatas))
 
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
@@ -299,22 +297,21 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 					utils.Panic("unsupported, coins are always over field extensions")
 				} else {
 					tmp := c.GetRandomCoinFieldExt(metadata.Name)
-					evalInputs[k] = tmp.B0.A0 // TODO @thomas fixme (ext vs base)
+					evalInputs[k] = tmp
 				}
 			case variables.X:
-				// evalInputs[k] = r
-				evalInputs[k] = r.B0.A0 // TODO @thomas fixme (ext vs base)
+				evalInputs[k] = r
 			case variables.PeriodicSample:
 				// evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
-				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r.B0.A0) // TODO @thomas fixme (ext vs base)
+				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r) // TODO @thomas fixme (ext vs base)
 			case ifaces.Accessor:
-				evalInputs[k] = metadata.GetFrontendVariable(api, c)
+				evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}
 		}
 
-		left := board.GnarkEval(api, evalInputs)
+		left := board.GnarkEvalExt(api, evalInputs)
 
 		// right : r^{n}-1 Q(r)
 		qr := quotientYs[i]

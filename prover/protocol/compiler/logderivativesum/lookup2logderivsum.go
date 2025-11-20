@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -210,8 +211,10 @@ func (c *CheckLogDerivativeSumMustBeZero) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckLogDerivativeSumMustBeZero) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	ext4, _ := gnarkfext.NewExt4(api)
+	zero := gnarkfext.E4Gen{}
 	y := run.GetLogDerivSumParams(c.Q.ID).Sum
-	api.AssertIsEqual(y, 0)
+	ext4.AssertIsEqual(&y, &zero)
 }
 
 func (c *CheckLogDerivativeSumMustBeZero) Skip() {

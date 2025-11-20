@@ -73,17 +73,13 @@ func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	X      zk.WrappedVariable
-	Ys     []zk.WrappedVariable
-	ExtX   gnarkfext.E4Gen
-	ExtYs  []gnarkfext.E4Gen
-	IsBase bool
+	ExtX  gnarkfext.E4Gen
+	ExtYs []gnarkfext.E4Gen
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
 	return GnarkUnivariateEvalParams{
-		Ys:    make([]zk.WrappedVariable, len(p.Pols)),
 		ExtYs: make([]gnarkfext.E4Gen, len(p.Pols)),
 	}
 }
@@ -144,13 +140,6 @@ func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	for _, y := range p.Ys {
-		fs.Update(y.AsNative())
-	}
-}
-
-// Update the fiat-shamir state with the the present field extension parameters
-func (p GnarkUnivariateEvalParams) UpdateFSExt(fs *fiatshamir.GnarkFS) {
 	fs.UpdateExt(p.ExtYs...)
 }
 

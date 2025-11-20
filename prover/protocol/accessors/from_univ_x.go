@@ -45,8 +45,8 @@ func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.G
 }
 
 func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.E4Gen {
-	//TODO implement me
-	panic("implement me")
+	params := c.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams)
+	return params.ExtX
 }
 
 // NewUnivariateX returns an [ifaces.Accessor] object symbolizing the evaluation
@@ -77,8 +77,8 @@ func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) field.Element {
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (u *FromUnivXAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) zk.WrappedVariable {
-	params := circ.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams)
-	return params.X
+	//TODO implement me
+	panic("implement me")
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

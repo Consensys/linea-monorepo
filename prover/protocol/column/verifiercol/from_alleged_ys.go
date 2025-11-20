@@ -50,8 +50,26 @@ func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]zk.Wrapp
 }
 
 func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.E4Gen {
-	//TODO implement me
-	panic("implement me")
+	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
+
+	// Map the alleged evaluations to their respective commitment names
+	yMap := map[ifaces.ColID]gnarkfext.E4Gen{}
+	for i, polName := range fys.Query.Pols {
+		yMap[polName.GetColID()] = queryParams.ExtYs[i]
+	}
+
+	// This will leave some of the columns to nil
+	res := make([]gnarkfext.E4Gen, len(fys.Ranges))
+	for i, name := range fys.Ranges {
+		if y, found := yMap[name]; found {
+			res[i] = y
+		} else {
+			// Set it to zero explicitly
+			res[i] = gnarkfext.E4Gen{}
+		}
+	}
+
+	return res
 }
 
 func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (zk.WrappedVariable, error) {
@@ -137,27 +155,8 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 
 // Returns the coin's value as a column assignment
 func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []zk.WrappedVariable {
-
-	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
-
-	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]zk.WrappedVariable{}
-	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.Ys[i]
-	}
-
-	// This will leave some of the columns to nil
-	res := make([]zk.WrappedVariable, len(fys.Ranges))
-	for i, name := range fys.Ranges {
-		if y, found := yMap[name]; found {
-			res[i] = y
-		} else {
-			// Set it to zero explicitly
-			res[i] = zk.ValueOf(0)
-		}
-	}
-
-	return res
+	// TODO implement me
+	panic("implement me")
 }
 
 // Returns a particular position of the coin value
@@ -167,7 +166,10 @@ func (fys FromYs) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element 
 
 // Returns a particular position of the coin value
 func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) zk.WrappedVariable {
-	return fys.GetColAssignmentGnark(run)[pos]
+
+	//TODO implement me
+	panic("implement me")
+	// return fys.GetColAssignmentGnark(run)[pos]
 }
 
 func (fys FromYs) IsComposite() bool {
