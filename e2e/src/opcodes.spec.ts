@@ -51,6 +51,9 @@ describe("Opcodes test suite", () => {
 
     const valueAfterExecution = await opcodeTester.rollingBlockDetailComputations();
 
+    logger.debug(`Value before execution: ${valueBeforeExecution}, value after execution: ${valueAfterExecution}`);
     expect(valueBeforeExecution).not.toEqual(valueAfterExecution);
+
+    logger.debug("All opcodes executed successfully");
   });
 });
