@@ -11,7 +11,8 @@ genesis-state-root-hash = "0x0bfa819643b4edd205c0dfcc31b7ddf75c7cecd49dbd674309b
 #   evaludationClaim="0x00...00", evaludationPoint="0x00...00")
 genesis-shnarf = "0xa59f7a85db6e25ba6b51667e3aa9405cba89dd89d991fcfb23663b7fba03ba25"
 [protocol.l1]
-contract-address = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+#contract-address = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+contract-address = "0x"
 block-time = "PT1S"
 [protocol.l2]
 contract-address = "0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
@@ -104,7 +105,7 @@ backoff-delay = "PT2S"
 failures-warning-threshold = 2
 
 [type2-state-proof-provider]
-disabled = false
+disabled = true
 endpoints = ["http://shomei-frontend:8888/"]
 l1-query-block-tag="LATEST"
 l1-polling-interval="PT1S"
@@ -117,8 +118,11 @@ failures-warning-threshold = 2
 l1-polling-interval = "PT1S"
 l1-query-block-tag="LATEST"
 
+[l1-submission]
+disabled = true
+
 [l1-submission.dynamic-gas-price-cap]
-disabled = false
+disabled = true
 [l1-submission.dynamic-gas-price-cap.gas-price-cap-calculation]
 adjustment-constant = 25
 blob-adjustment-constant = 25
@@ -145,7 +149,7 @@ fee-history-block-count = 10
 fee-history-reward-percentile = 15
 
 [l1-submission.blob]
-disabled = false
+disabled = true
 submission-delay = "PT1S"
 submission-tick-interval = "PT1S"
 max-submission-transactions-per-tick = 10
@@ -182,7 +186,7 @@ trust-store-path = "/tls-files/web3signer-truststore.p12"
 trust-store-password = "changeit"
 
 [l1-submission.aggregation]
-disabled = false
+disabled = true
 submission-delay = "PT1S"
 submission-tick-interval = "PT1S"
 max-submissions-per-tick = 10
@@ -215,7 +219,7 @@ trust-store-path = "/tls-files/web3signer-truststore.p12"
 trust-store-password = "changeit"
 
 [message-anchoring]
-disabled = false
+disabled = true
 l1-highest-block-tag="LATEST"
 l2-highest-block-tag="LATEST" # optional, default to LATEST it shall not be necessary as Linea has instant finality
 anchoring-tick-interval = "PT2S"
