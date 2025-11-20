@@ -182,6 +182,7 @@ func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 // understand how big is the witness of the circuit.
 func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 
+	counter := 0 //TODO@yao: remove it later, for debugging only
 	if numRound == 0 {
 		numRound = comp.NumRounds()
 	}
@@ -212,21 +213,26 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 		// Allocates the column in the circuit and indexes it
 		isBase := comp.Columns.GetHandle(colName).IsBase()
 		if isBase {
+			counter = counter + col.Size()
+			fmt.Printf("Allocating column %v of size %v\n", colName, col.Size())
+
 			// Allocates the column in the circuit and indexes it
 			res.AllocColumn(colName, col.Size())
 		} else {
+			// counter= counter +col.Size()*8
+			fmt.Printf("Allocating ext column %v of size %v\n", colName, col.Size())
 			// Allocates a column over field extensions
 			res.AllocColumnExt(colName, col.Size())
 		}
 	}
-
+	fmt.Printf("total public columns allocated in verifier circuit: %v\n", counter)
 	/*
 		Allocate the queries params also. Note that AllKeys does give a
 		deterministic order iteration and that's why we do not iterate
 		on the map directly.
 	*/
 	for _, qName := range comp.QueriesParams.AllKeys() {
-
+		fmt.Printf("Allocating query %v of type %T\n", qName, comp.QueriesParams.Data(qName))
 		// Note that we do not filter out the "already compiled" queries
 		// here.
 		qInfoIface := comp.QueriesParams.Data(qName)
@@ -258,6 +264,7 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 // circuit from a proof. The result of this function can be used to construct a
 // gnark assignment circuit involving the verification of Wizard proof.
 func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *VerifierCircuit {
+	counter := 0 //TODO@yao: remove it later, for debugging only
 
 	if numRound == 0 {
 		numRound = comp.NumRounds()
@@ -293,21 +300,26 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 		msgData := msgDataIFace
 		// Perform the conversion to zk.WrappedVariable, element by element
 		if _, err := msgData.GetBase(0); err == nil {
-			// the assignment consists of base elements//TODO@yao:  can't set fr.Element from type koalabear.Element
+			// the assignment consists of base elements
 			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
 			res.ColumnsIDs.InsertNew(colName, len(res.Columns))
+			counter = counter + len(assignedMsg)
+			// fmt.Printf("Assigning base column %v of size %v\n", colName, len(assignedMsg))
 			res.Columns = append(res.Columns, assignedMsg)
 		} else {
 			// the assignment consists of extension elements
 			assignedMsg := smartvectors.IntoGnarkAssignmentExt(msgData)
 			res.ColumnsExtIDs.InsertNew(colName, len(res.ColumnsExt))
+			fmt.Printf("Assigning ext column %v of size %v\n", colName, len(assignedMsg))
 			res.ColumnsExt = append(res.ColumnsExt, assignedMsg)
 		}
 
 	}
+	fmt.Printf("total public columns assigned in verifier circuit: %v\n", counter)
 	// Assigns the query parameters. Note that the iteration order is
 	// made deterministic to match the iteration order of the
 	for _, qName := range comp.QueriesParams.AllKeys() {
+		fmt.Printf("Assigning query %v of type %T\n", qName, comp.QueriesParams.Data(qName))
 
 		if comp.QueriesParams.Round(qName) >= res.NumRound {
 			continue
@@ -501,8 +513,8 @@ func (c *VerifierCircuit) GetUnivariateParams(name ifaces.QueryID) query.GnarkUn
 
 	// Sanity-checks
 	info := c.GetUnivariateEval(name)
-	if len(info.Pols) != len(params.Ys) {
-		utils.Panic("(for %v) inconsistent lengths %v %v", name, len(info.Pols), len(params.Ys))
+	if len(info.Pols) != len(params.ExtYs) {
+		utils.Panic("(for %v) inconsistent lengths %v %v", name, len(info.Pols), len(params.ExtYs))
 	}
 	return params
 }
@@ -723,6 +735,7 @@ func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.Smart
 func (c *VerifierCircuit) AllocUnivariateEval(qName ifaces.QueryID, qInfo query.UnivariateEval) {
 	// Note that nil is the default value for zk.WrappedVariable
 	c.UnivariateParamsIDs.InsertNew(qName, len(c.UnivariateParams))
+	fmt.Printf("Allocating univariate eval for len %v\n", len(c.UnivariateParams))
 	c.UnivariateParams = append(c.UnivariateParams, qInfo.GnarkAllocate())
 }
 
@@ -770,6 +783,8 @@ func (c *VerifierCircuit) AllocHorner(qName ifaces.QueryID, qInfo *query.Horner)
 func (c *VerifierCircuit) AssignUnivariateEval(qName ifaces.QueryID, params query.UnivariateEvalParams) {
 	// Note that nil is the default value for zk.WrappedVariable
 	c.UnivariateParamsIDs.InsertNew(qName, len(c.UnivariateParams))
+	fmt.Printf("Allocating univariate eval for len %v\n", len(c.UnivariateParams))
+
 	c.UnivariateParams = append(c.UnivariateParams, params.GnarkAssign())
 }
 
@@ -910,7 +925,7 @@ func (c *VerifierCircuit) Analyze() *VerifierCircuitAnalytic {
 
 	for i := range c.UnivariateParams {
 		res.NumUnivariate++
-		res.WeightUnivariate += len(c.UnivariateParams[i].Ys)
+		res.WeightUnivariate += len(c.UnivariateParams[i].ExtYs)
 	}
 
 	res.NumGrandProduct += len(c.GrandProductParams)
@@ -984,7 +999,7 @@ func (a *VerifierCircuitAnalytic) WithDetails(c *VerifierCircuit) *VerifierCircu
 				continue
 			}
 			value := c.UnivariateParams[id]
-			a.addDetail(fmt.Sprintf("[UnivariateEval] size-circuit=%v name=%v", len(value.Ys), queryName))
+			a.addDetail(fmt.Sprintf("[UnivariateEval] size-circuit=%v name=%v", len(value.ExtYs), queryName))
 		}
 	}
 

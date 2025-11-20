@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -117,10 +118,11 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.QueryID).(GnarkUnivariateEvalParams)
 
+	ext4, _ := gnarkfext.NewExt4(api)
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignmentGnark(run)
-		actualY := fastpoly.EvaluateLagrangeGnark(api, wit, params.X)
-		api.AssertIsEqual(actualY, params.Ys[k])
+		actualY := fastpoly.EvaluateLagrangeGnarkMixed(api, wit, params.ExtX)
+		ext4.AssertIsEqual(&actualY, &params.ExtYs[k])
 	}
 }
 

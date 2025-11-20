@@ -122,7 +122,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]gnark
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.
-	ysMap := make(map[ifaces.ColID]gnarkfext.E4Gen, len(params.Ys))
+	ysMap := make(map[ifaces.ColID]gnarkfext.E4Gen, len(params.ExtYs))
 	for i := range query.Pols {
 		ysMap[query.Pols[i].GetColID()] = params.ExtYs[i]
 	}
@@ -245,7 +245,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 	var (
 		params     = vr.GetUnivariateParams(ctx.Query.QueryID)
 		polys      = make([][]zk.WrappedVariable, 0)
-		expectedYs = make([]zk.WrappedVariable, 0)
+		expectedYs = make([]gnarkfext.E4Gen, 0)
 	)
 
 	for i, pol := range ctx.Query.Pols {
@@ -265,13 +265,14 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 		}
 
 		polys = append(polys, pol.GetColAssignmentGnark(vr))
-		expectedYs = append(expectedYs, params.Ys[i])
+		expectedYs = append(expectedYs, params.ExtYs[i])
 	}
 
 	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, params.ExtX)
 
-	for i := range polys {
-		api.AssertIsEqual(ys[i], expectedYs[i])
+	ext4, _ := gnarkfext.NewExt4(api)
+	for i := range expectedYs {
+		ext4.AssertIsEqual(&ys[i], &expectedYs[i])
 	}
 }
 

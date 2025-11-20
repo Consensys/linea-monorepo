@@ -277,7 +277,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 
 		// Assigns the poly query.
 		params := wit[i].Proof.QueriesParams.MustGet(assign.PolyQuery.QueryID).(query.UnivariateEvalParams)
-		run.AssignUnivariate(r.PcsCtx[i].Query.QueryID, params.X, params.Ys...)
+		run.AssignUnivariateExt(r.PcsCtx[i].Query.QueryID, params.ExtX, params.ExtYs...)
 
 		// Store the self-recursion artefacts for the vortex prover and the
 		// self-recursion prover.

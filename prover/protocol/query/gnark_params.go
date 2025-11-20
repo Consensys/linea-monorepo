@@ -100,8 +100,12 @@ func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
 		}
 	} else {
 		// extension query
+		Ys := make([]zk.WrappedVariable, len(p.Ys))
+		for i := range Ys {
+			Ys[i] = zk.ValueOf(0)
+		}
 		return GnarkUnivariateEvalParams{
-			Ys:    nil,
+			Ys:    Ys,
 			X:     zk.ValueOf(0),
 			ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
 			ExtX:  gnarkfext.NewE4Gen(p.ExtX),

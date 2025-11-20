@@ -3,6 +3,7 @@
 package vortex_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -124,6 +125,8 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	{
 		c := wizard.AllocateWizardCircuit(compiled, 0)
 		circ.C = *c
+		fmt.Printf("ana=%v\n", c.Analyze())
+
 	}
 
 	// Compile the circuit

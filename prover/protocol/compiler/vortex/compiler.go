@@ -122,7 +122,7 @@ func Compile(blowUpFactor int, isGnark bool, options ...VortexOp) func(*wizard.C
 		})
 
 		if ctx.AddMerkleRootToPublicInputsOpt.Enabled {
-			fmt.Printf("okok, Adding merkle roots to public inputs\n")
+			//TODO@yao: remove this note, here is not called
 			for _, round := range ctx.AddMerkleRootToPublicInputsOpt.Round {
 				var (
 					name = fmt.Sprintf("%v_%v", ctx.AddMerkleRootToPublicInputsOpt.Name, round)
@@ -1026,7 +1026,6 @@ func (ctx *Ctx) commitPrecomputeds() {
 		ctx.Items.Precomputeds.GnarkTree = tree
 
 		roots := vortex_bls12377.EncodeBLS12377ToKoalabear(tree.Root)
-		//TODO@yao: map back to koalabear field elements
 		// And assign the 1-sized column to contain the root
 		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			ctx.Items.Precomputeds.GnarkMerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(ctx.PrecomputedGnarkMerkleRootName(i), smartvectors.NewConstant(roots[i], 1), true)

@@ -188,7 +188,7 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 	// Check the evaluation point is consistent with r
 	if params.ExtX != r {
 		return fmt.Errorf("(verifier of global queries) : Evaluation point of %v is incorrect (%v, expected %v)",
-			ctx.WitnessEval.QueryID, params.X.String(), r.String())
+			ctx.WitnessEval.QueryID, params.ExtX.String(), r.String())
 	}
 
 	// Collect the evaluation points
