@@ -63,7 +63,7 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
     final var mulmodExecutor = deployMulmodExecutor();
 
     final var calls =
-        IntStream.rangeClosed(1, 20)
+        IntStream.rangeClosed(1, 11)
             .mapToObj(
                 nonce ->
                     mulmodOperation(
@@ -82,9 +82,11 @@ public class BundleSelectionTimeoutTest extends AbstractSendBundleTest {
     final var sendBundleRequestBig1 =
         new SendBundleRequest(
             new BundleParams(Arrays.copyOfRange(rawTxs, 1, 10), Integer.toHexString(2)));
+    // second bundle contains one tx only to be fast to execute,
+    // and ensure timeout occurs on the 2nd bundle and 3rd is not event considered
     final var sendBundleRequestBig2 =
         new SendBundleRequest(
-            new BundleParams(Arrays.copyOfRange(rawTxs, 10, 20), Integer.toHexString(2)));
+            new BundleParams(Arrays.copyOfRange(rawTxs, 1, 2), Integer.toHexString(2)));
 
     final var sendBundleResponseSmall = sendBundleRequestSmall.execute(minerNode.nodeRequests());
     final var sendBundleResponseBig1 = sendBundleRequestBig1.execute(minerNode.nodeRequests());
