@@ -1140,7 +1140,7 @@ func pushReadNonZeroRows[K, V io.WriterTo](
 
 // Generic hashing for object satisfying the io.WriterTo interface
 func hash[T io.WriterTo](m T) types.Bytes32 {
-	hasher := statemanager.MIMC_CONFIG.HashFunc()
+	hasher := statemanager.POSEIDON2_CONFIG.HashFunc()
 	m.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
 	return types.AsBytes32(Bytes32)
@@ -1156,7 +1156,7 @@ func computeRoot(leaf types.Bytes32, proof smt.Proof) types.Bytes32 {
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = hashLR(statemanager.MIMC_CONFIG, left, right)
+		current = hashLR(statemanager.POSEIDON2_CONFIG, left, right)
 		idx >>= 1
 	}
 

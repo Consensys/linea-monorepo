@@ -377,8 +377,8 @@ func checkStorageTraceOrder(traces []DecodedTrace) (err error) {
 			next     = traces[i+1].Underlying
 			currRW   = curr.RWInt()
 			nextRW   = next.RWInt()
-			currHKey = curr.HKey(MIMC_CONFIG)
-			nextHKey = next.HKey(MIMC_CONFIG)
+			currHKey = curr.HKey(POSEIDON2_CONFIG)
+			nextHKey = next.HKey(POSEIDON2_CONFIG)
 		)
 
 		if currRW > nextRW {

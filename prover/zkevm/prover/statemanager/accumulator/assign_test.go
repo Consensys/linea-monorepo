@@ -1,8 +1,9 @@
 package accumulator
 
 import (
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -66,7 +67,7 @@ func TestAssignInsert(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
 	traceInsert := acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 
 	pushInsertionRows(builder, traceInsert)
@@ -110,7 +111,7 @@ func TestAssignUpdate(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
 	acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	traceUpdate := acc.UpdateAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x20"))
 	pushUpdateRows(builder, traceUpdate)
@@ -148,7 +149,7 @@ func TestAssignDelete(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
 	acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	traceDelete := acc.DeleteAndProve(types.FullBytes32FromHex("0x32"))
 	pushDeletionRows(builder, traceDelete)
@@ -190,7 +191,7 @@ func TestAssignReadZero(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
 	traceReadZero := acc.ReadZeroAndProve(types.FullBytes32FromHex("0x32"))
 	pushReadZeroRows(builder, traceReadZero)
 
@@ -227,7 +228,7 @@ func TestAssignReadNonZero(t *testing.T) {
 
 	builder := newAssignmentBuilder(testSetting)
 
-	acc := statemanager.NewStorageTrie(statemanager.MIMC_CONFIG, types.EthAddress{})
+	acc := statemanager.NewStorageTrie(statemanager.POSEIDON2_CONFIG, types.EthAddress{})
 	acc.InsertAndProve(types.FullBytes32FromHex("0x32"), types.FullBytes32FromHex("0x12"))
 	traceReadNonZero := acc.ReadNonZeroAndProve(types.FullBytes32FromHex("0x32"))
 	pushReadNonZeroRows(builder, traceReadNonZero)
@@ -265,7 +266,7 @@ func assertCorrectMerkleProof(t *testing.T, builder *assignmentBuilder) {
 			rootBytes = append(rootBytes, rootsLimbBytes[30:]...)
 		}
 
-		assert.Equal(t, true, proof.Verify(statemanager.MIMC_CONFIG, types.AsBytes32(leaveBytes), types.AsBytes32(rootBytes)))
+		assert.Equal(t, true, proof.Verify(statemanager.POSEIDON2_CONFIG, types.AsBytes32(leaveBytes), types.AsBytes32(rootBytes)))
 	}
 }
 
