@@ -75,6 +75,7 @@ jobs:
             exit 0
           fi
 
+          unset GROUPS
           declare -A GROUPS
 
           # Known suffixes (strip them from job names)
