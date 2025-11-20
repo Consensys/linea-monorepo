@@ -15,13 +15,15 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
+import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.Trace.MMIO_INST_LIMB_VANISHES;
-import static net.consensys.linea.zktracer.Trace.Mmu.NB_MICRO_ROWS_TOT_MODEXP_ZERO;
 import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_MODEXP_ZERO;
+import static net.consensys.linea.zktracer.TraceLondon.Mmu.NB_MICRO_ROWS_TOT_MODEXP_ZERO;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
@@ -31,10 +33,12 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
 
 public class ModexpZero implements MmuInstruction {
+  private final Fork fork;
   private final List<MmuEucCallRecord> eucCallRecords;
   private final List<MmuWcpCallRecord> wcpCallRecords;
 
-  public ModexpZero() {
+  public ModexpZero(Fork fork) {
+    this.fork = fork;
     this.eucCallRecords = new ArrayList<>(NB_PP_ROWS_MODEXP_ZERO);
     this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_MODEXP_ZERO);
   }
@@ -52,7 +56,7 @@ public class ModexpZero implements MmuInstruction {
     mmuData.outAndBinValues(MmuOutAndBinValues.builder().build()); // all 0. Fun is at its peak.
 
     mmuData.totalLeftZeroesInitials(0);
-    mmuData.totalNonTrivialInitials(NB_MICRO_ROWS_TOT_MODEXP_ZERO);
+    mmuData.totalNonTrivialInitials(getNumberOfMicroInstructionRows());
     mmuData.totalRightZeroesInitials(0);
 
     return mmuData;
@@ -70,7 +74,7 @@ public class ModexpZero implements MmuInstruction {
             .exoId((int) hubToMmuValues.targetId())
             .build());
 
-    for (int i = 0; i < NB_MICRO_ROWS_TOT_MODEXP_ZERO; i++) {
+    for (int i = 0; i < getNumberOfMicroInstructionRows(); i++) {
       vanishingMicroInstruction(mmuData, i);
     }
 
@@ -83,5 +87,12 @@ public class ModexpZero implements MmuInstruction {
             .mmioInstruction(MMIO_INST_LIMB_VANISHES)
             .targetLimbOffset(i)
             .build());
+  }
+
+  private final int getNumberOfMicroInstructionRows() {
+
+    return forkPredatesOsaka(fork)
+        ? NB_MICRO_ROWS_TOT_MODEXP_ZERO
+        : 2 * NB_MICRO_ROWS_TOT_MODEXP_ZERO;
   }
 }

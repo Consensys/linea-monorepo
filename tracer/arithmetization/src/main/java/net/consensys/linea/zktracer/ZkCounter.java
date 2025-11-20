@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer;
 
 import static net.consensys.linea.zktracer.Fork.*;
-import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.Trace.BLOCKHASH_MAX_HISTORY;
 import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECPAIRING_DATA_MIN;
 import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_CALL;
@@ -24,8 +23,7 @@ import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_CREATE;
 import static net.consensys.linea.zktracer.module.ModuleName.*;
 import static net.consensys.linea.zktracer.module.ModuleName.GAS;
 import static net.consensys.linea.zktracer.module.add.AddOperation.NB_ROWS_ADD;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.NB_ROWS_BLAKEMODEPX_BLAKE;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.NB_ROWS_BLAKEMODEXP_MODEXP;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.*;
 import static net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData.NB_ROWS_BLOCK_DATA;
 import static net.consensys.linea.zktracer.module.blockhash.BlockhashOperation.NB_ROWS_BLOCKHASH;
 import static net.consensys.linea.zktracer.module.gas.GasOperation.NB_ROWS_GAS;
@@ -48,7 +46,7 @@ import static net.consensys.linea.zktracer.module.hub.section.call.CallSection.N
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.BlakeSubsection.NB_ROWS_HUB_PRC_BLAKE;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.EllipticCurvePrecompileSubsection.NB_ROWS_HUB_PRC_ELLIPTIC_CURVE;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.IdentitySubsection.NB_ROWS_HUB_PRC_IDENTITY;
-import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.ModexpSubsection.NB_ROWS_HUB_PRC_MODEXP;
+import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.LondonModexpSubsection.NB_ROWS_HUB_PRC_MODEXP;
 import static net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.ShaTwoOrRipemdSubSection.NB_ROWS_HUB_PRC_SHARIP;
 import static net.consensys.linea.zktracer.module.hub.section.copy.CallDataCopySection.NB_ROWS_HUB_CALL_DATA_COPY;
 import static net.consensys.linea.zktracer.module.hub.section.copy.CodeCopySection.NB_ROWS_HUB_CODE_COPY;
@@ -108,7 +106,9 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExplogExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ModexpLogExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
-import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.LondonModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.OsakaModexpMetadata;
 import net.consensys.linea.zktracer.module.limits.BlockTransactions;
 import net.consensys.linea.zktracer.module.limits.Keccak;
 import net.consensys.linea.zktracer.module.limits.L1BlockSize;
@@ -137,49 +137,43 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 @Slf4j
 public class ZkCounter implements LineCountingTracer {
 
-  public static final Fork FORK_TO_USE_FOR_ZK_COUNTER = OSAKA;
+  public final Fork fork;
 
-  private final OpCodes opCodes = OpCodes.load(FORK_TO_USE_FOR_ZK_COUNTER);
-  private static final Trace trace = getTraceFromFork(FORK_TO_USE_FOR_ZK_COUNTER);
+  private final OpCodes opCodes;
+  private final Trace trace;
 
   // traced modules
   final Add add = new Add();
   final Bin bin = new Bin();
-  final CountingOnlyModule blakemodexp =
-      new CountingOnlyModule(BLAKE_MODEXP_DATA, trace.blake2fmodexpdata().spillage());
-  final CountingOnlyModule blockData =
-      new CountingOnlyModule(BLOCK_DATA, trace.blockdata().spillage());
-  final CountingOnlyModule blockHash =
-      new CountingOnlyModule(BLOCK_HASH, trace.blockhash().spillage());
+  final CountingOnlyModule blakemodexp;
+  final CountingOnlyModule blockData;
+  final CountingOnlyModule blockHash;
   final BlsData blsdata;
   final EcData ecdata;
   final Euc euc = new Euc();
   final Exp exp = new Exp();
   final Ext ext = new Ext();
-  final CountingOnlyModule gas = new CountingOnlyModule(GAS, trace.gas().spillage());
-  final CountingOnlyModule hub = new CountingOnlyModule(HUB, trace.hub().spillage());
-  final CountingOnlyModule logData = new CountingOnlyModule(LOG_DATA, trace.logdata().spillage());
-  final CountingOnlyModule logInfo = new CountingOnlyModule(LOG_INFO, trace.loginfo().spillage());
-  final CountingOnlyModule mmio = new CountingOnlyModule(MMIO, trace.mmio().spillage());
-  final CountingOnlyModule mmu = new CountingOnlyModule(MMU, trace.mmu().spillage());
+  final CountingOnlyModule gas;
+  final CountingOnlyModule hub;
+  final CountingOnlyModule logData;
+  final CountingOnlyModule logInfo;
+  final CountingOnlyModule mmio;
+  final CountingOnlyModule mmu;
   final Mod mod = new Mod();
   final Mul mul = new Mul();
-  final CountingOnlyModule mxp = new CountingOnlyModule(MXP, trace.mxp().spillage());
-  final CountingOnlyModule oob = new CountingOnlyModule(OOB, trace.oob().spillage());
-  final CountingOnlyModule rlpAddr = new CountingOnlyModule(RLP_ADDR, trace.rlpaddr().spillage());
-  final CountingOnlyModule rlpTxn = new CountingOnlyModule(RLP_TXN, trace.rlptxn().spillage());
-  final CountingOnlyModule rlpTxnRcpt =
-      new CountingOnlyModule(RLP_TXN_RCPT, trace.rlptxrcpt().spillage());
-  final CountingOnlyModule rlpUtils =
-      new CountingOnlyModule(RLP_UTILS, trace.rlputils().spillage());
-  final CountingOnlyModule rom = new CountingOnlyModule(ROM, trace.rom().spillage());
-  final CountingOnlyModule romlex = new CountingOnlyModule(ROM_LEX, trace.romlex().spillage());
-  final CountingOnlyModule shakiradata =
-      new CountingOnlyModule(SHAKIRA_DATA, trace.shakiradata().spillage());
+  final CountingOnlyModule mxp;
+  final CountingOnlyModule oob;
+  final CountingOnlyModule rlpAddr;
+  final CountingOnlyModule rlpTxn;
+  final CountingOnlyModule rlpTxnRcpt;
+  final CountingOnlyModule rlpUtils;
+  final CountingOnlyModule rom;
+  final CountingOnlyModule romlex;
+  final CountingOnlyModule shakiradata;
   final Shf shf = new Shf();
   final IncrementingModule stp = new IncrementingModule(STP);
-  final CountingOnlyModule trm = new CountingOnlyModule(TRM, trace.trm().spillage());
-  final CountingOnlyModule txnData = new CountingOnlyModule(TXN_DATA, trace.txndata().spillage());
+  final CountingOnlyModule trm;
+  final CountingOnlyModule txnData;
   final Wcp wcp = new Wcp();
 
   // precompiles limits:
@@ -326,7 +320,31 @@ public class ZkCounter implements LineCountingTracer {
         l2l1Logs);
   }
 
-  public ZkCounter(LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
+  public ZkCounter(LineaL1L2BridgeSharedConfiguration bridgeConfiguration, Fork fork) {
+    this.fork = fork;
+    this.opCodes = OpCodes.load(fork);
+    this.trace = getTraceFromFork(fork);
+    this.blakemodexp =
+        new CountingOnlyModule(BLAKE_MODEXP_DATA, trace.blake2fmodexpdata().spillage());
+    this.blockData = new CountingOnlyModule(BLOCK_DATA, trace.blockdata().spillage());
+    this.blockHash = new CountingOnlyModule(BLOCK_HASH, trace.blockhash().spillage());
+    this.gas = new CountingOnlyModule(GAS, trace.gas().spillage());
+    this.hub = new CountingOnlyModule(HUB, trace.hub().spillage());
+    this.logData = new CountingOnlyModule(LOG_DATA, trace.logdata().spillage());
+    this.logInfo = new CountingOnlyModule(LOG_INFO, trace.loginfo().spillage());
+    this.mmio = new CountingOnlyModule(MMIO, trace.mmio().spillage());
+    this.mmu = new CountingOnlyModule(MMU, trace.mmu().spillage());
+    this.mxp = new CountingOnlyModule(MXP, trace.mxp().spillage());
+    this.oob = new CountingOnlyModule(OOB, trace.oob().spillage());
+    this.rlpAddr = new CountingOnlyModule(RLP_ADDR, trace.rlpaddr().spillage());
+    this.rlpTxn = new CountingOnlyModule(RLP_TXN, trace.rlptxn().spillage());
+    this.rlpTxnRcpt = new CountingOnlyModule(RLP_TXN_RCPT, trace.rlptxrcpt().spillage());
+    this.rlpUtils = new CountingOnlyModule(RLP_UTILS, trace.rlputils().spillage());
+    this.rom = new CountingOnlyModule(ROM, trace.rom().spillage());
+    this.romlex = new CountingOnlyModule(ROM_LEX, trace.romlex().spillage());
+    this.shakiradata = new CountingOnlyModule(SHAKIRA_DATA, trace.shakiradata().spillage());
+    this.trm = new CountingOnlyModule(TRM, trace.trm().spillage());
+    this.txnData = new CountingOnlyModule(TXN_DATA, trace.txndata().spillage());
     keccak = new Keccak(ecRecoverEffectiveCall, blockTransactions);
     ecdata =
         new EcData(
@@ -725,12 +743,15 @@ public class ZkCounter implements LineCountingTracer {
       case PRC_MODEXP -> {
         hub.updateTally(NB_ROWS_HUB_PRC_MODEXP);
         final MemoryRange memoryRange = new MemoryRange(0, 0, callData.size(), callData);
-        final ModexpMetadata modexpMetadata = new ModexpMetadata(memoryRange);
+        final ModexpMetadata modexpMetadata =
+            forkPredatesOsaka(fork)
+                ? new LondonModexpMetadata(memoryRange)
+                : new OsakaModexpMetadata(memoryRange);
         if (modexpMetadata.unprovableModexp()) {
           modexpEffectiveCall.detectEvent();
           return;
         }
-        blakemodexp.updateTally(NB_ROWS_BLAKEMODEXP_MODEXP);
+        blakemodexp.updateTally(modexpMetadata.getNumberOfRowsForModexp());
         modexpEffectiveCall.updateTally(prcSuccess);
         modexpLargeCall.updateTally(modexpMetadata.largeModexp());
         if (modexpMetadata.loadRawLeadingWord()) {
@@ -754,7 +775,7 @@ public class ZkCounter implements LineCountingTracer {
         blakeEffectiveCall.updateTally(true);
         hub.updateTally(NB_ROWS_HUB_PRC_BLAKE);
         oob.updateTally(oobLineCountForPrc(PRC_BLAKE2F));
-        blakemodexp.updateTally(NB_ROWS_BLAKEMODEPX_BLAKE);
+        blakemodexp.updateTally(numberOfRowsBlake());
         // TODO: still unchecked module for now: blakeRounds.updateTally();
       }
       case PRC_BLS_G1_ADD,

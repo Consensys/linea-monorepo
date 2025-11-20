@@ -15,14 +15,16 @@
 
 package net.consensys.linea.zktracer.precompiles;
 
+import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
+import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.oob.OobOperation.computeExponentLog;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.generateModexpInput;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getExpectedReturnAtCapacity;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getPrecompileCost;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareBlake2F;
-import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareModexp;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareSha256Ripemd160Id;
+import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.writeInMemoryByteCodeOfCodeOwner;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_ADD;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_MUL;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_PAIRING;
@@ -155,7 +157,8 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
       callDataSize = 96 + bbs + ebs + mbs;
 
       final Bytes modexpInput = generateModexpInput(bbs, mbs, ebs);
-      exponentLog = computeExponentLog(modexpInput, callDataSize, bbs, ebs);
+      final int multiplier = (forkPredatesOsaka(fork)) ? 8 : 16;
+      exponentLog = computeExponentLog(modexpInput, multiplier, callDataSize, bbs, ebs);
       // codeOwnerAccount owns the bytecode that will be given as input to MODEXP through
       // EXTCODECOPY
       final ToyAccount codeOwnerAccount =
@@ -167,7 +170,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
               .build();
       additionalAccounts = List.of(codeOwnerAccount);
 
-      prepareModexp(program, modexpInput, callDataOffset, codeOwnerAddress);
+      writeInMemoryByteCodeOfCodeOwner(codeOwnerAddress, callDataOffset, program);
     }
 
     // Set returnAtCapacity equal to the expected return size of the precompile call
@@ -212,8 +215,9 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
         .push(gas) // gas
         .op(OpCode.CALL);
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
+    final long forkAppropriateGasLimit = forkPredatesOsaka(fork) ? 61_000_000L : MAX_GAS_LIMIT;
     bytecodeRunner.run(
-        61_000_000L,
+        forkAppropriateGasLimit,
         precompileAddress == MODEXP ? additionalAccounts : List.of(),
         chainConfig,
         testInfo);

@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub;
 import java.util.Map;
 
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.*;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.txndata.osaka.OsakaTxnData;
 import org.hyperledger.besu.datatypes.Hash;

@@ -14,13 +14,15 @@
  */
 package net.consensys.linea.zktracer.precompiles;
 
+import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.keyPair;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.userAccount;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BBS_MIN_OFFSET;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.EBS_MIN_OFFSET;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.MBS_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.legalModexpComponentByteSize;
+import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.BASE_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.BBS_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.EBS_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.MBS_MIN_OFFSET;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -78,6 +80,9 @@ public class ModexpTests extends TracerTestBase {
 
   @Test
   void basicNonTrivialModexpTest(TestInfo testInfo) {
+
+    final int modexpComponentByteSize = legalModexpComponentByteSize(chainConfig.fork);
+
     final int base = 2;
     final int exp = 5;
     final int mod = 7;
@@ -101,7 +106,7 @@ public class ModexpTests extends TracerTestBase {
             .push(mod)
             .push(BASE_MIN_OFFSET + 2)
             .op(OpCode.MSTORE8)
-            .push(MODEXP_COMPONENT_BYTE_SIZE) // retLength
+            .push(modexpComponentByteSize) // retLength
             .push(0) // retOffset
             .push(BASE_MIN_OFFSET + 3) // argLength
             .push(0) // argOffset
@@ -120,6 +125,23 @@ public class ModexpTests extends TracerTestBase {
   }
 
   @Test
+  void testSingleUnpaddedModexp(TestInfo testInfo) {
+
+    String hexBase = "407CB5AD";
+    String hexExpn = "40BDB1ED";
+    String hexModl = "48AF8739";
+
+    BytecodeCompiler program =
+        preparingSingleBaseExponentAndModulusForModexp(hexBase, hexExpn, hexModl);
+
+    final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run(chainConfig, testInfo);
+
+    // check precompile limits line count
+    assertTrue(bytecodeRunner.getHub().modexpEffectiveCall().lineCount() > 0);
+  }
+
+  @Test
   void testUnpaddedModexp(TestInfo testInfo) {
 
     String hexBase = "407CB5AD";
@@ -134,6 +156,33 @@ public class ModexpTests extends TracerTestBase {
 
     // check precompile limits line count
     assertTrue(bytecodeRunner.getHub().modexpEffectiveCall().lineCount() > 0);
+  }
+
+  @Test
+  void testSinglePaddedModexp(TestInfo testInfo) {
+
+    String hexBase = "00407CB5AD";
+    String hexExpn = "40BDB1ED";
+    String hexModl = "000048AF8739";
+
+    BytecodeCompiler program =
+        preparingSingleBaseExponentAndModulusForModexp(hexBase, hexExpn, hexModl);
+
+    final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run(chainConfig, testInfo);
+
+    // check precompile limits line count
+    assertTrue(bytecodeRunner.getHub().modexpEffectiveCall().lineCount() > 0);
+  }
+
+  BytecodeCompiler preparingSingleBaseExponentAndModulusForModexp(
+      String hexBase, String hexExpn, String hexModl) {
+
+    BytecodeCompiler program = preparingBaseExponentAndModulusForModexp(hexBase, hexExpn, hexModl);
+
+    appendParametrizedModexpCall(program, 32, 32);
+
+    return program;
   }
 
   @Test
@@ -222,6 +271,17 @@ public class ModexpTests extends TracerTestBase {
     int expnOffset = 64 + bbs + ebs;
     int modlOffset = 64 + bbs + ebs + mbs;
     return BytecodeCompiler.newProgram(chainConfig)
+        // modulus, exponent and base values at correct offsets
+        .push(hexModl)
+        .push(modlOffset)
+        .op(OpCode.MSTORE) // this sets the modulus
+        .push(hexExpn)
+        .push(expnOffset)
+        .op(OpCode.MSTORE) // this sets the exponent
+        .push(hexBase)
+        .push(baseOffset)
+        .op(OpCode.MSTORE) // this sets the base
+        // bbs, ebs, mbs at correct offsets
         .push(byteSize(hexBase))
         .push("00")
         .op(OpCode.MSTORE) // this sets bbs = 4
@@ -231,16 +291,7 @@ public class ModexpTests extends TracerTestBase {
         .push(byteSize(hexModl))
         .push("40")
         .op(OpCode.MSTORE) // this sets mbs = 4
-        // to read call data 32 + 32 + 32 + 4 + 4 + 4 = 108 bytes are sufficient
-        .push(hexBase)
-        .push(baseOffset)
-        .op(OpCode.MSTORE) // this sets the base
-        .push(hexExpn)
-        .push(expnOffset)
-        .op(OpCode.MSTORE) // this sets the exponent
-        .push(hexModl)
-        .push(modlOffset)
-        .op(OpCode.MSTORE) // this sets the modulus
+    // to read call data 32 + 32 + 32 + 4 + 4 + 4 = 108 bytes are sufficient
     ;
   }
 
@@ -353,37 +404,51 @@ public class ModexpTests extends TracerTestBase {
   @Test
   // This test a modexp call with bbs > 512
   void unprovableModexp(TestInfo testInfo) {
+    final int bbs = 513;
+    final int ebs = 3;
+    final int mbs = 4;
+
+    // call data =
+    // 0x
+    // + 00 .. bbs
+    // + 00 .. ebs
+    // + 00 .. mbs
+    // + base (bbs many bytes)
+    // + exponent (ebs many bytes)
+    // + modulus (mbs many bytes)
+    // where base ≡ 0x 00 00 .. 00 00 ba 7e is 513 bytes long
     final Bytes bytecode =
         BytecodeCompiler.newProgram(chainConfig)
+            // MSTORE the modulus
+            .push(Bytes32.rightPad(Bytes.fromHexString("0x0d0d0d0d")))
+            .push(96 + bbs + ebs + mbs - WORD_SIZE)
+            .op(OpCode.MSTORE)
+            // MSTORE the exponent
+            .push(Bytes32.rightPad(Bytes.fromHexString("0xeeeeee")))
+            .push(96 + bbs + ebs - WORD_SIZE)
+            .op(OpCode.MSTORE)
+            // MSTORE the base = 0x00 .. 00 ba 7e (bbs many bytes)
+            .push(Bytes32.rightPad(Bytes.fromHexString("0xba7e")))
+            .push(96 + bbs - WORD_SIZE)
+            .op(OpCode.MSTORE)
             // bbs = 513
-            .push(Bytes32.leftPad(Bytes.minimalBytes(513)))
-            .push(0) // offset
+            .push(Bytes32.leftPad(Bytes.minimalBytes(bbs)))
+            .push(BBS_MIN_OFFSET) // offset
             .op(OpCode.MSTORE)
             // ebs = 3
-            .push(Bytes32.leftPad(Bytes.of(3)))
-            .push(32) // offset
+            .push(Bytes32.leftPad(Bytes.of(ebs)))
+            .push(EBS_MIN_OFFSET) // offset
             .op(OpCode.MSTORE)
             // mbs = 4
-            .push(Bytes32.leftPad(Bytes.of(4)))
-            .push(64) // offset
-            .op(OpCode.MSTORE)
-            // MSTORE part of b
-            .push(Bytes32.rightPad(Bytes.fromHexString("0xba7e")))
-            .push(96)
-            .op(OpCode.MSTORE)
-            // MSTORE of e
-            .push(Bytes32.rightPad(Bytes.fromHexString("0xeeeeee")))
-            .push(96 + 513)
-            .op(OpCode.MSTORE)
-            // MSTORE of m
-            .push(Bytes32.rightPad(Bytes.fromHexString("0x0d0d0d0d")))
-            .push(96 + 513 + 3)
+            .push(Bytes32.leftPad(Bytes.of(mbs)))
+            .push(MBS_MIN_OFFSET) // offset
             .op(OpCode.MSTORE)
             // Call Modexp
-            .push(0) // returnSize
-            .push(0) // returnOffset
-            .push(96 + 513 + 3 + 4) // cds = 96 + bbs => trigger a MMU Call where the sourceOffset =
-            // referenceSize
+            .push(mbs) // returnSize
+            .push(96 + bbs + ebs + mbs) // returnOffset
+            .push(
+                96 + bbs + ebs
+                    + mbs) // cds = 96 + bbs => trigger a MMU Call where the sourceOffset =
             .push(0) // cdo
             .push(0) // value
             .push(Address.MODEXP) // address
@@ -400,6 +465,10 @@ public class ModexpTests extends TracerTestBase {
         throw e;
       }
     }
-    assertEquals(Integer.MAX_VALUE, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
+    if (forkPredatesOsaka(fork)) {
+      assertEquals(Integer.MAX_VALUE, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
+    } else {
+      assertEquals(1, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
+    }
   }
 }

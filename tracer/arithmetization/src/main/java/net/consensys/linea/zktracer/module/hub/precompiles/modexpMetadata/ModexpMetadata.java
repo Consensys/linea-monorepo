@@ -13,11 +13,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.precompiles;
+package net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata;
 
+import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.module.Util.rightPaddedSlice;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.*;
 import static net.consensys.linea.zktracer.types.Conversions.safeLongToInt;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
@@ -26,6 +27,7 @@ import java.math.BigInteger;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.MemoryRange;
 import org.apache.tuweni.bytes.Bytes;
@@ -33,17 +35,39 @@ import org.hyperledger.besu.evm.internal.Words;
 
 @Getter
 @Accessors(fluent = true)
-public class ModexpMetadata {
+public abstract class ModexpMetadata {
   public static final int BBS_MIN_OFFSET = 0x00;
   public static final int EBS_MIN_OFFSET = 0x20;
   public static final int MBS_MIN_OFFSET = 0x40;
   public static final int BASE_MIN_OFFSET = 0x60;
-  public static BigInteger MODEXP_MAX_PROVABLE_INPUT_SIZE =
-      BigInteger.valueOf(MODEXP_COMPONENT_BYTE_SIZE);
   private static int MODEXP_LARGE_INPUT_BYTE_WIDTH = 32;
 
   private final MemoryRange callDataRange;
   @Setter private Bytes rawResult;
+
+  public short getNumberOfRowsForModexp() {
+    return (short) (4 * (getMaxInputSize() / LLARGE));
+  }
+
+  public abstract int getMaxInputSize();
+
+  public BigInteger getMaxInputSizeBigInteger() {
+    return BigInteger.valueOf(getMaxInputSize());
+  }
+
+  public abstract Bytes normalize(ModexpXbsCase modexpXbsCase);
+
+  public Bytes normalizedBbs() {
+    return normalize(MODEXP_XBS_CASE_BBS);
+  }
+
+  public Bytes normalizedEbs() {
+    return normalize(MODEXP_XBS_CASE_EBS);
+  }
+
+  public Bytes normalizedMbs() {
+    return normalize(MODEXP_XBS_CASE_MBS);
+  }
 
   public ModexpMetadata(MemoryRange callDataRange) {
     this.callDataRange = callDataRange;
@@ -103,6 +127,14 @@ public class ModexpMetadata {
 
   public EWord mbs() {
     return EWord.of(rawMbs().shiftRight(mbsShift()).shiftLeft(mbsShift()));
+  }
+
+  public EWord xbs(ModexpXbsCase modexpXbsCase) {
+    return switch (modexpXbsCase) {
+      case MODEXP_XBS_CASE_BBS -> bbs();
+      case MODEXP_XBS_CASE_EBS -> ebs();
+      case MODEXP_XBS_CASE_MBS -> mbs();
+    };
   }
 
   public int bbsInt() {
@@ -175,16 +207,22 @@ public class ModexpMetadata {
             WORD_SIZE));
   }
 
-  public boolean unprovableModexp() {
-    return bbs().toUnsignedBigInteger().compareTo(MODEXP_MAX_PROVABLE_INPUT_SIZE) > 0
-        || mbs().toUnsignedBigInteger().compareTo(MODEXP_MAX_PROVABLE_INPUT_SIZE) > 0
-        || ebs().toUnsignedBigInteger().compareTo(MODEXP_MAX_PROVABLE_INPUT_SIZE) > 0;
-  }
+  public abstract boolean unprovableModexp();
 
-  /** This is to detect large (ie > 32 bytes = 216 bit) modexp for the prover */
+  /** This is to detect large (ie > 32 bytes = 256 bit) modexp for the prover */
   public boolean largeModexp() {
     return bbsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH
         || ebsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH
         || mbsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH;
   }
+
+  public boolean tracedIsWithinBounds(ModexpXbsCase modexpXbsCase) {
+    return false;
+  }
+
+  public boolean tracedIsOutOfBounds(ModexpXbsCase modexpXbsCase) {
+    return false;
+  }
+
+  public abstract int getForkAppropriateLeadLogByteMultiplier();
 }

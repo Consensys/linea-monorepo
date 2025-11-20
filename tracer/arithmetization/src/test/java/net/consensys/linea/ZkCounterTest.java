@@ -19,8 +19,6 @@ import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfigurat
 import static net.consensys.linea.zktracer.Utils.call;
 import static net.consensys.linea.zktracer.Utils.delegateCall;
 import static net.consensys.linea.zktracer.module.ModuleName.*;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.*;
-import static org.hyperledger.besu.datatypes.Address.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
@@ -46,7 +44,7 @@ public class ZkCounterTest extends TracerTestBase {
 
   @Test
   void checkedAndUncheckedAreExclusive() {
-    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration);
+    final ZkCounter counter = new ZkCounter(chainConfig.bridgeConfiguration, fork);
     final List<Module> allModules = counter.getModulesToCount();
     final List<Module> checked = counter.checkedModules();
     final List<Module> unchecked = counter.uncheckedModules();

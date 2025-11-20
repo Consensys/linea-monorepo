@@ -15,7 +15,6 @@
 package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
 import static net.consensys.linea.zktracer.module.hub.Hub.newIdentifierFromStamp;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.*;
@@ -45,7 +44,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
-public class PrecompileSubsection
+public abstract class PrecompileSubsection
     implements ContextEntryDefer, ContextExitDefer, ContextReEntryDefer, PostRollbackDefer {
 
   public final CallSection callSection;
@@ -157,23 +156,24 @@ public class PrecompileSubsection
     }
 
     // successful PRC_CALL to MODEXP
-    final int mbs = ((ModexpSubsection) this).modexpMetaData.mbsInt();
+    final LondonModexpSubsection modexpSubsection = (LondonModexpSubsection) this;
+    final int mbs = modexpSubsection.getForkAppropriateModexpMetadata().mbsInt();
+    final int maxInputSize = modexpSubsection.getForkAppropriateModexpMetadata().getMaxInputSize();
     final Bytes returnData = frame.getReturnData();
     checkState(
-        0 <= mbs && mbs <= MODEXP_COMPONENT_BYTE_SIZE,
+        0 <= mbs && mbs <= maxInputSize,
         "MODEXP PrecompileSubsection: invalid mbs: %s not in range [0,%s]",
         mbs,
-        MODEXP_COMPONENT_BYTE_SIZE);
+        maxInputSize);
     checkState(
         returnData.size() == mbs,
         "MODEXP PrecompileSubsection: return data size %s does not agree with mbs %s",
         returnData.size(),
         mbs);
-    final Bytes leftPaddedReturnData = leftPadTo(returnData, MODEXP_COMPONENT_BYTE_SIZE);
+    final Bytes leftPaddedReturnData = leftPadTo(returnData, maxInputSize);
 
     returnDataRange =
-        new MemoryRange(
-            returnDataContextNumber(), MODEXP_COMPONENT_BYTE_SIZE - mbs, mbs, leftPaddedReturnData);
+        new MemoryRange(returnDataContextNumber(), maxInputSize - mbs, mbs, leftPaddedReturnData);
   }
 
   public int exoModuleOperationId() {

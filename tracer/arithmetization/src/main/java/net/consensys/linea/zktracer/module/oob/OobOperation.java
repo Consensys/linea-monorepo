@@ -17,8 +17,8 @@ package net.consensys.linea.zktracer.module.oob;
 
 import static com.google.common.math.BigIntegerMath.log2;
 import static java.lang.Math.min;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
-import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.EBS_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.BASE_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata.EBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.math.BigInteger;
@@ -31,7 +31,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
-import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
+import net.consensys.linea.zktracer.module.hub.precompiles.modexpMetadata.ModexpMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
@@ -58,10 +58,19 @@ public class OobOperation extends ModuleOperation {
   public static int computeExponentLog(ModexpMetadata metadata, int cds) {
     final int bbs = metadata.bbsInt();
     final int ebs = metadata.ebsInt();
-    return computeExponentLog(metadata.callData(), cds, bbs, ebs);
+    return computeExponentLog(metadata, cds, bbs, ebs);
   }
 
-  public static int computeExponentLog(Bytes callData, int cds, int bbs, int ebs) {
+  public static int computeExponentLog(ModexpMetadata modexpMetadata, int cds, int bbs, int ebs) {
+    return computeExponentLog(
+        modexpMetadata.callData(),
+        modexpMetadata.getForkAppropriateLeadLogByteMultiplier(),
+        cds,
+        bbs,
+        ebs);
+  }
+
+  public static int computeExponentLog(Bytes callData, int multiplier, int cds, int bbs, int ebs) {
     // pad callData to 96 + bbs + ebs
     final Bytes paddedCallData =
         cds < BASE_MIN_OFFSET + bbs + ebs
@@ -78,9 +87,9 @@ public class OobOperation extends ModuleOperation {
     } else if (ebs <= EBS_MIN_OFFSET && leadingBytesOfExponent.signum() != 0) {
       return log2(leadingBytesOfExponent, RoundingMode.FLOOR);
     } else if (ebs > EBS_MIN_OFFSET && leadingBytesOfExponent.signum() != 0) {
-      return 8 * (ebs - EBS_MIN_OFFSET) + log2(leadingBytesOfExponent, RoundingMode.FLOOR);
+      return multiplier * (ebs - EBS_MIN_OFFSET) + log2(leadingBytesOfExponent, RoundingMode.FLOOR);
     } else {
-      return 8 * (ebs - EBS_MIN_OFFSET);
+      return multiplier * (ebs - EBS_MIN_OFFSET);
     }
   }
 
