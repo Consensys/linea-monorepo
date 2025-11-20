@@ -159,7 +159,7 @@ jobs:
 
   notify:
     needs: [ run-e2e-tests ]
-    if: ${{ failure() && github.ref == 'refs/heads/main' }}
+    if: ${{ failure() }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
       title: 'Bridge UI E2E Tests workflow failed'
