@@ -15,37 +15,32 @@ on:
         description: "GitHub Actions Run ID"
         required: true
         type: string
-      repo:
-        description: "Repository name (owner/repo)"
-        required: true
-        type: string
-      pr_number:
-        description: "PR number if PR, empty otherwise"
-        required: false
-        type: string
-        default: ""
-      pr_url:
-        description: "PR URL if PR, fallback to commit URL"
-        required: true
-        type: string
-      commit_sha:
-        description: "Commit SHA"
-        required: true
-        type: string
-      commit_url:
-        description: "Commit URL"
-        required: true
-        type: string
-      author:
-        description: "Commit or PR author login"
-        required: true
-        type: string
 
 jobs:
   notify:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Compute context values
+        id: ctx
+        run: |
+          echo "repo=${{ github.repository }}" >> $GITHUB_OUTPUT
+
+          # PR number or empty
+          echo "pr_number=${{ github.event.pull_request.number || '' }}" >> $GITHUB_OUTPUT
+
+          # PR URL or commit URL fallback
+          echo "pr_url=${{ github.event.pull_request.html_url || github.event.head_commit.url }}" >> $GITHUB_OUTPUT
+
+          # Commit SHA (PR head SHA or push SHA)
+          echo "commit_sha=${{ github.event.pull_request.head.sha || github.sha }}" >> $GITHUB_OUTPUT
+
+          # Commit URL
+          echo "commit_url=${{ github.event.head_commit.url || format('%s/%s/commit/%s', github.server_url, github.repository, github.sha) }}" >> $GITHUB_OUTPUT
+
+          # Author (PR author or commit author or github.actor)
+          echo "author=${{ github.event.pull_request.user.login || github.event.head_commit.author.username || github.actor }}" >> $GITHUB_OUTPUT
+
       - name: Fetch job list
         id: jobs
         env:
@@ -54,7 +49,7 @@ jobs:
           curl -s \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ inputs.repo }}/actions/runs/${{ inputs.run_id }}/jobs \
+            https://api.github.com/repos/${{ steps.ctx.outputs.repo }}/actions/runs/${{ inputs.run_id }}/jobs \
             > jobs.json
 
           echo "json<<EOF" >> $GITHUB_OUTPUT
@@ -111,7 +106,7 @@ jobs:
           token: ${{ secrets.SLACK_GITHUB_ACTIONS_ALERTS_BOT_TOKEN }}
           payload: |
             channel: ${{ secrets.SLACK_ENGINEERING_ALERTS_CHANNEL_ID }}
-            text: ":x: GitHub CI for *${{ inputs.repo }}* — *${{ inputs.title }}*"
+            text: ":x: GitHub CI for *${{ steps.ctx.outputs.repo }}* — *${{ inputs.title }}*"
             blocks:
               - type: header
                 text:
@@ -122,16 +117,16 @@ jobs:
               - type: section
                 fields:
                   - type: mrkdwn
-                    text: "*Repository:*\n${{ inputs.repo }}"
+                    text: "*Repository:*\n${{ steps.ctx.outputs.repo }}"
                   - type: mrkdwn
-                    text: "*Author:*\n${{ inputs.author }}"
+                    text: "*Author:*\n${{ steps.ctx.outputs.author }}"
 
               - type: section
                 fields:
                   - type: mrkdwn
-                    text: "*Commit:*\n<${{ inputs.commit_url }}|${{ inputs.commit_sha }}>"
+                    text: "*Commit:*\n<${{ steps.ctx.outputs.commit_url }}|${{ steps.ctx.outputs.commit_sha }}>"
                   - type: mrkdwn
-                    text: "*Details:* \n<${{ inputs.pr_url }}|${{ inputs.pr_number != '' && format('PR #%s', inputs.pr_number) || 'Commit' }}>"
+                    text: ${{ steps.ctx.outputs.pr_number != '' && format('*Details:*\n<%s|PR #%s>', steps.ctx.outputs.pr_url, steps.ctx.outputs.pr_number) || '' }}
 
               - type: section
                 text:
