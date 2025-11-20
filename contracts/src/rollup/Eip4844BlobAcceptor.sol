@@ -4,13 +4,13 @@ pragma solidity ^0.8.30;
 import { IAcceptEip4844Blobs } from "./interfaces/IAcceptEip4844Blobs.sol";
 import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
-import { ShnarfAcceptorBase } from "./ShnarfAcceptorBase.sol";
+import { ShnarfDataAcceptorBase } from "./ShnarfDataAcceptorBase.sol";
 /**
- * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
+ * @title Contract to manage EIP-4844 blob submission.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract Eip4844BlobAcceptor is LocalShnarfProvider, ShnarfAcceptorBase, IAcceptEip4844Blobs {
+abstract contract Eip4844BlobAcceptor is LocalShnarfProvider, ShnarfDataAcceptorBase, IAcceptEip4844Blobs {
   /**
    * @notice Submit one or more EIP-4844 blobs.
    * @dev OPERATOR_ROLE is required to execute.
@@ -84,7 +84,7 @@ abstract contract Eip4844BlobAcceptor is LocalShnarfProvider, ShnarfAcceptorBase
       );
     }
 
-    _acceptShnarfInfo(_parentShnarf, _finalBlobShnarf, blobSubmission.finalStateRootHash);
+    _acceptShnarfData(_parentShnarf, _finalBlobShnarf, blobSubmission.finalStateRootHash);
 
     if (_finalBlobShnarf != computedShnarf) {
       revert FinalShnarfWrong(_finalBlobShnarf, computedShnarf);

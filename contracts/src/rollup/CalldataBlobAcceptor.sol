@@ -4,14 +4,14 @@ pragma solidity ^0.8.30;
 import { IAcceptCalldataBlobs } from "./interfaces/IAcceptCalldataBlobs.sol";
 import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
-import { ShnarfAcceptorBase } from "./ShnarfAcceptorBase.sol";
+import { ShnarfDataAcceptorBase } from "./ShnarfDataAcceptorBase.sol";
 
 /**
- * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
+ * @title Contract to manage compressed data blobs submitted as calldata.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-abstract contract CalldataBlobAcceptor is LocalShnarfProvider, ShnarfAcceptorBase, IAcceptCalldataBlobs {
+abstract contract CalldataBlobAcceptor is LocalShnarfProvider, ShnarfDataAcceptorBase, IAcceptCalldataBlobs {
   /**
    * @notice Submit blobs using compressed data via calldata.
    * @dev OPERATOR_ROLE is required to execute.
@@ -53,7 +53,7 @@ abstract contract CalldataBlobAcceptor is LocalShnarfProvider, ShnarfAcceptorBas
       _calculateY(_submission.compressedData, dataEvaluationPoint)
     );
 
-    _acceptShnarfInfo(_parentShnarf, _expectedShnarf, _submission.finalStateRootHash);
+    _acceptShnarfData(_parentShnarf, _expectedShnarf, _submission.finalStateRootHash);
 
     if (_expectedShnarf != computedShnarf) {
       revert FinalShnarfWrong(_expectedShnarf, computedShnarf);

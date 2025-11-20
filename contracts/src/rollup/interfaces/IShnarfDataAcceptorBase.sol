@@ -2,11 +2,11 @@
 pragma solidity ^0.8.30;
 
 /**
- * @title IShnarfAcceptorBase interface for shared data accepting errors and events.
+ * @title Interface for shared shnarf related data accepting functions, errors and events.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface IShnarfAcceptorBase {
+interface IShnarfDataAcceptorBase {
   /**
    * @dev Thrown when the current shnarf was already submitted.
    */

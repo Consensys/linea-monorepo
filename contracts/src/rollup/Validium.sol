@@ -5,7 +5,7 @@ import { ShnarfDataAcceptor } from "./ShnarfDataAcceptor.sol";
 import { LocalShnarfProvider } from "./LocalShnarfProvider.sol";
 
 /**
- * @title Contract to manage alt-DA cross-chain messaging on L1, L2 data submission, and rollup proof verification.
+ * @title Contract to manage Validium cross-chain messaging on L1 and proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */

@@ -4,6 +4,11 @@ pragma solidity ^0.8.30;
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
 
+/**
+ * @title Contract to manage shared functions for querying shnarf existence.
+ * @author ConsenSys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 abstract contract LocalShnarfProvider is IProvideShnarf, LineaRollupBase {
   /**
    * @notice Returns if the shnarf exists.

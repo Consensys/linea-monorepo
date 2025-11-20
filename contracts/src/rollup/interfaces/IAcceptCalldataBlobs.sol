@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.30;
 
-import { IShnarfAcceptorBase } from "./IShnarfAcceptorBase.sol";
+import { IShnarfDataAcceptorBase } from "./IShnarfDataAcceptorBase.sol";
 
 /**
- * @title IAcceptCalldataBlobs interface for functions, structs and errors.
+ * @title Interface for defining calldata blob submission functions, structs and errors.
  * @author Consensys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface IAcceptCalldataBlobs is IShnarfAcceptorBase {
+interface IAcceptCalldataBlobs is IShnarfDataAcceptorBase {
   /**
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.
