@@ -1,7 +1,8 @@
-name: Slack Notification
+name: slack-failed-jobs-notification
 
 permissions:
   contents: read
+  actions: read
 
 on:
   workflow_call:
@@ -10,17 +11,12 @@ on:
         description: "Notification title"
         required: true
         type: string
-      failed_jobs:
-        description: "Newline-separated list of failed jobs"
-        required: false
-        type: string
-        default: ""
-      run_url:
-        description: "GitHub Actions run URL"
+      run_id:
+        description: "GitHub Actions Run ID"
         required: true
         type: string
       repo:
-        description: "Repository name"
+        description: "Repository name (owner/repo)"
         required: true
         type: string
       pr_number:
@@ -58,40 +54,63 @@ jobs:
           curl -s \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ inputs.repo }}/actions/runs/${{ github.run_id }}/jobs \
+            https://api.github.com/repos/${{ inputs.repo }}/actions/runs/${{ inputs.run_id }}/jobs \
             > jobs.json
 
           echo "json<<EOF" >> $GITHUB_OUTPUT
           cat jobs.json >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      
-      - name: Extract failed job URLs
-        id: build_urls
+
+      - name: Group failed jobs dynamically
+        id: grouped_failed
         env:
-          FAILED_JOBS: "${{ inputs.failed_jobs }}"
+          JOBS_JSON: "${{ steps.jobs.outputs.json }}"
         run: |
-          echo "$FAILED_JOBS" | sed 's/^- //' | sed '/^$/d' > failed.txt
+          output=""
 
-          echo "urls<<EOF" >> $GITHUB_OUTPUT
+          # Extract failed jobs: name and URL
+          failed_jobs=$(jq -r '.jobs[] | select(.conclusion == "failure") | "\(.name) \(.html_url)"' <<< "$JOBS_JSON")
 
-          while read -r job; do
-            url=$(jq -r --arg NAME "$job" '.jobs[] | select(.name==$NAME) | .html_url' <<< "${{ steps.jobs.outputs.json }}")
-            if [[ "$url" != "null" && -n "$url" ]]; then
-              echo "- <$url|$job>" >> $GITHUB_OUTPUT
-            else
-              echo "- $job (url not found)" >> $GITHUB_OUTPUT
-            fi
-          done < failed.txt
+          # No failures?
+          if [[ -z "$failed_jobs" ]]; then
+            echo "grouped<<EOF" >> $GITHUB_OUTPUT
+            echo "None" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
+          declare -A GROUPS
+
+          # Known suffixes (strip them from job names)
+          suffixes="-(tests?|test|testing|build|ci|e2e)$"
+
+          # Build groups dynamically
+          while read -r name url; do
+            # Remove trailing suffix to get prefix (smart-contracts-tests → smart-contracts)
+            prefix=$(sed -E "s/$suffixes//" <<< "$name")
+
+            # If trimming didn't change name, keep full
+            [[ -z "$prefix" ]] && prefix="$name"
+
+            GROUPS["$prefix"]+="- <$url|$name>\n"
+          done <<< "$failed_jobs"
+
+          # Build final Slack output
+          for prefix in "${!GROUPS[@]}"; do
+            output+="*${prefix^} Failed:*\n${GROUPS[$prefix]}\n"
+          done
+
+          echo "grouped<<EOF" >> $GITHUB_OUTPUT
+          printf "%b" "$output" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      
+
       - name: Send Slack Notification
-        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a #v2.1.1
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          token: ${{ secrets.SLACK_GITHUB_ACTIONS_ALERTS_BOT_TOKEN }}
           payload: |
-            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            channel: ${{ secrets.SLACK_ENGINEERING_ALERTS_CHANNEL_ID }}
             text: ":x: GitHub CI for *${{ inputs.repo }}* — *${{ inputs.title }}*"
             blocks:
               - type: header
@@ -105,19 +124,12 @@ jobs:
                   - type: mrkdwn
                     text: "*Repository:*\n${{ inputs.repo }}"
                   - type: mrkdwn
-                    text: "*Status:*\n${{ inputs.status }}"
+                    text: "*Author:*\n${{ inputs.author }}"
 
               - type: section
                 fields:
-                  - type: mrkdwn
-                    text: "*Author:*\n${{ inputs.author }}"
                   - type: mrkdwn
                     text: "*Commit:*\n<${{ inputs.commit_url }}|${{ inputs.commit_sha }}>"
-
-              - type: section
-                fields:
-                  - type: mrkdwn
-                    text: "*Run:* \n<${{ inputs.run_url }}|Open GitHub Run>"
                   - type: mrkdwn
                     text: "*Details:* \n<${{ inputs.pr_url }}|${{ inputs.pr_number != '' && format('PR #%s', inputs.pr_number) || 'Commit' }}>"
 
@@ -125,6 +137,5 @@ jobs:
                 text:
                   type: mrkdwn
                   text: |
-                    *Failed Jobs:*
-                    ${{ inputs.failed_jobs != '' && inputs.failed_jobs || 'None' }}
-
+                    *Failed Job URLs:*
+                    ${{ steps.grouped_failed.outputs.grouped }}

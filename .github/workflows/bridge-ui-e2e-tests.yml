@@ -156,15 +156,14 @@ jobs:
           path: |
             bridge-ui/playwright-report-headful/
           if-no-files-found: error
+
   notify:
     needs: [ run-e2e-tests ]
     if: ${{ failure() && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
-      title: 'Bridge UI E2E Tests failed'
-      failed_jobs: |
-        - bridge-ui-e2e-tests
-      run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      title: 'Bridge UI E2E Tests workflow failed'
+      run_id: ${{ github.run_id }}
       repo: ${{ github.repository }}
       pr_number: ${{ github.event.pull_request.number || '' }}
       pr_url: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}

@@ -113,16 +113,14 @@ jobs:
         run: pnpm run -F bridge-ui build;
         env:
           NODE_OPTIONS: --max-old-space-size=8192 # Temporary fix for out of memory error
-  
+
   notify:
     needs: [ publish, test-build ]
     if: ${{ failure() && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
-      title: 'Bridge UI Build and Publish CI failed'
-      failed_jobs: |
-        - bridge-ui-build-and-publish
-      run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      title: 'Bridge UI Build and Publish workflow failed'
+      run_id: ${{ github.run_id }}
       repo: ${{ github.repository }}
       pr_number: ${{ github.event.pull_request.number || '' }}
       pr_url: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}

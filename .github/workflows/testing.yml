@@ -76,29 +76,6 @@ jobs:
     if: ${{ inputs.linea_sequencer_changed == 'true' }}
     secrets: inherit
 
-  notify:
-    needs: [ coordinator, prover, postman, transaction-exclusion-api, staterecovery, smart-contracts, linea-sequencer ]
-    if: ${{ failure() && github.ref == 'refs/heads/main' }}
-    uses: ./.github/workflows/slack-notify-failed-jobs.yml
-    with:
-      title: 'Testing CI Failed Jobs Notification'
-      failed_jobs: |
-        ${{ needs.coordinator.result == 'failure' && '- coordinator-testing' || '' }}
-        ${{ needs.prover.result == 'failure' && '- prover-testing' || '' }}
-        ${{ needs.postman.result == 'failure' && '- postman-testing' || '' }}
-        ${{ needs.transaction-exclusion-api.result == 'failure' && '- transaction-exclusion-api-testing' || '' }}
-        ${{ needs.staterecovery.result == 'failure' && '- staterecovery-testing' || '' }}
-        ${{ needs.smart-contracts.result == 'failure' && '- smart-contracts-testing' || '' }}
-        ${{ needs.linea-sequencer.result == 'failure' && '- linea-sequencer-plugin-testing' || '' }}
-      run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-      repo: ${{ github.repository }}
-      pr_number: ${{ github.event.pull_request.number || '' }}
-      pr_url: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}
-      commit_sha: ${{ github.event.head_commit.id }}
-      commit_url: ${{ github.event.head_commit.url }}
-      author: ${{ github.event.pull_request.user.login || github.event.head_commit.author.username }}
-    secrets: inherit
-
   # If all jobs are skipped, the workflow will still succeed.
   always_succeed:
     runs-on: ubuntu-24.04

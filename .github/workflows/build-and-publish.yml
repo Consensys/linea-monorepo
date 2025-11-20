@@ -104,24 +104,3 @@ jobs:
       release_tag_prefix: ''
       with_besu_fleet_plugin: false
     secrets: inherit
-  
-  notify:
-    needs: [ coordinator, prover, postman, transaction_exclusion_api, linea_besu_package ]
-    if: ${{ failure() && github.ref == 'refs/heads/main' }}
-    uses: ./.github/workflows/slack-notify-failed-jobs.yml
-    with:
-      title: 'Build and publish CI failed'
-      failed_jobs: |
-        ${{ needs.coordinator.result == 'failure' && '- coordinator-build' || '' }}
-        ${{ needs.prover.result == 'failure' && '- prover-build-and-publish' || '' }}
-        ${{ needs.postman.result == 'failure' && '- postman-build' || '' }}
-        ${{ needs.transaction_exclusion_api.result == 'failure' && '- transaction-exclusion-api-build-and-publish' || '' }}
-        ${{ needs.linea_besu_package.result == 'failure' && '- linea-besu-package-build-and-upload' || '' }}
-      run_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-      repo: ${{ github.repository }}
-      pr_number: ${{ github.event.pull_request.number || '' }}
-      pr_url: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}
-      commit_sha: ${{ github.event.head_commit.id }}
-      commit_url: ${{ github.event.head_commit.url }}
-      author: ${{ github.event.pull_request.user.login || github.event.head_commit.author.username }}
-    secrets: inherit
