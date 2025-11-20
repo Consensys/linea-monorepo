@@ -160,24 +160,16 @@ jobs:
               - type: section
                 fields:
                   - type: mrkdwn
-                    text: |
-                      *Repository:*
-                      ${{ steps.ctx.outputs.repo }}
+                    text: "*Repository:*\n${{ steps.ctx.outputs.repo }}"
                   - type: mrkdwn
-                    text: |
-                      *Author:*
-                      ${{ steps.ctx.outputs.author }}
+                    text: "*Author:*\n${{ steps.ctx.outputs.author }}"
 
               - type: section
                 fields:
                   - type: mrkdwn
-                    text: |
-                      *Commit:*
-                      <${{ steps.ctx.outputs.commit_url }}|${{ steps.ctx.outputs.commit_sha }}>
+                    text: "*Commit:*\n<${{ steps.ctx.outputs.commit_url }}|${{ steps.ctx.outputs.commit_sha }}>"
 
               - type: section
                 text:
                   type: mrkdwn
-                  text: >
-                    *Failed Job URLs:*
-                    ${{ toJSON(steps.grouped_failed.outputs.grouped) }}
+                  text: "*Failed Job URLs:*\n${{ steps.grouped_failed.outputs.grouped }}"
