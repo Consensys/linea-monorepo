@@ -113,6 +113,6 @@ export const configSchema = z
      */
     API_PORT: z.coerce.number().int().min(1024).max(49000),
   })
-  .strict();
+  .strip();
 
 export type FlattenedConfigSchema = z.infer<typeof configSchema>;
