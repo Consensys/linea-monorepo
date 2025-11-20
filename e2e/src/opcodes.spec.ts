@@ -7,17 +7,9 @@ const l2AccountManager = config.getL2AccountManager();
 describe("Opcodes test suite", () => {
   const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
 
-  it.concurrent("Should be able to estimate the opcode execution using linea_estimateGas endpoint", async () => {
+  it.concurrent("Should be able to estimate the opcode execution gas using linea_estimateGas endpoint", async () => {
     const account = await l2AccountManager.generateAccount();
-    const opcodeTester = config.getL2OpcodeTester(account);
-
-    if (!opcodeTester) {
-      if (config.isLocalL2Config(config.config.L2)) {
-        throw new Error("Opcode tester contract address must be defined for local L2 config");
-      }
-      logger.info("No opcode tester contract deployed, skipping test");
-      return;
-    }
+    const opcodeTester = config.getL2OpcodeTesterContract(account);
 
     const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await lineaEstimateGasClient.lineaEstimateGas(
       account.address,
@@ -35,15 +27,7 @@ describe("Opcodes test suite", () => {
 
   it.concurrent("Should be able to execute all opcodes", async () => {
     const account = await l2AccountManager.generateAccount();
-    const opcodeTester = config.getL2OpcodeTester(account);
-
-    if (!opcodeTester) {
-      if (config.isLocalL2Config(config.config.L2)) {
-        throw new Error("Opcode tester contract address must be defined for local L2 config");
-      }
-      logger.info("No opcode tester contract deployed, skipping test");
-      return;
-    }
+    const opcodeTester = config.getL2OpcodeTesterContract(account);
 
     const valueBeforeExecution = await opcodeTester.rollingBlockDetailComputations();
     const executeTx = await opcodeTester.executeAllOpcodes({ gasLimit: 5_000_000 });

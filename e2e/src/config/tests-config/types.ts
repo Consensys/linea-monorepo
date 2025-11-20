@@ -23,11 +23,11 @@ export type BaseL2Config = BaseConfig & {
   l2TokenAddress: string;
   l2SparseMerkleProofAddress: string;
   l2LineaSequencerUptimeFeedAddress: string;
+  opcodeTesterAddress: string;
   shomeiEndpoint?: URL;
   shomeiFrontendEndpoint?: URL;
   sequencerEndpoint?: URL;
   transactionExclusionEndpoint?: URL;
-  opcodeTesterAddress?: string;
 };
 
 export type LocalL2Config = BaseL2Config & {
@@ -36,7 +36,6 @@ export type LocalL2Config = BaseL2Config & {
   shomeiFrontendEndpoint: URL;
   sequencerEndpoint: URL;
   transactionExclusionEndpoint: URL;
-  opcodeTesterAddress: string;
 };
 
 export type DevL2Config = BaseL2Config;
