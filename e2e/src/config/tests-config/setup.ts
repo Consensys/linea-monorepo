@@ -11,6 +11,8 @@ import {
   LineaRollupV6__factory,
   LineaSequencerUptimeFeed,
   LineaSequencerUptimeFeed__factory,
+  OpcodeTester,
+  OpcodeTester__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
   SparseMerkleProof,
@@ -25,7 +27,7 @@ import {
 import { AccountManager } from "./accounts/account-manager";
 
 export default class TestSetup {
-  constructor(private readonly config: Config) {}
+  constructor(public readonly config: Config) {}
 
   public getL1Provider(): JsonRpcProvider {
     return new JsonRpcProvider(this.config.L1.rpcUrl.toString());
@@ -267,13 +269,30 @@ export default class TestSetup {
     return this.config.L1.dummyContractAddress;
   }
 
-  private isLocalL2Config(config: L2Config): config is LocalL2Config {
+  public getL2OpcodeTester(signer?: Wallet): OpcodeTester | undefined {
+    if (this.config.L2.opcodeTesterAddress) {
+      const opcodeTester: OpcodeTester = OpcodeTester__factory.connect(
+        this.config.L2.opcodeTesterAddress,
+        this.getL2Provider(),
+      );
+
+      if (signer) {
+        return opcodeTester.connect(signer);
+      }
+
+      return opcodeTester;
+    }
+    return undefined;
+  }
+
+  public isLocalL2Config(config: L2Config): config is LocalL2Config {
     return (
       (config as LocalL2Config).besuNodeRpcUrl !== undefined &&
       (config as LocalL2Config).sequencerEndpoint !== undefined &&
       (config as LocalL2Config).shomeiEndpoint !== undefined &&
       (config as LocalL2Config).shomeiFrontendEndpoint !== undefined &&
-      (config as LocalL2Config).transactionExclusionEndpoint !== undefined
+      (config as LocalL2Config).transactionExclusionEndpoint !== undefined &&
+      (config as LocalL2Config).opcodeTesterAddress !== undefined
     );
   }
 }

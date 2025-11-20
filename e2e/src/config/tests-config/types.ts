@@ -27,6 +27,7 @@ export type BaseL2Config = BaseConfig & {
   shomeiFrontendEndpoint?: URL;
   sequencerEndpoint?: URL;
   transactionExclusionEndpoint?: URL;
+  opcodeTesterAddress?: string;
 };
 
 export type LocalL2Config = BaseL2Config & {
@@ -35,6 +36,7 @@ export type LocalL2Config = BaseL2Config & {
   shomeiFrontendEndpoint: URL;
   sequencerEndpoint: URL;
   transactionExclusionEndpoint: URL;
+  opcodeTesterAddress: string;
 };
 
 export type DevL2Config = BaseL2Config;
