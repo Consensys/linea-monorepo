@@ -295,7 +295,7 @@ func (g *GenericApi) Mux(sel frontend.Variable, inputs ...WrappedVariable) Wrapp
 		for i := 0; i < len(_inputs); i++ {
 			_inputs[i] = inputs[i].AsNative()
 		}
-		res := selector.Mux(g.NativeApi, sel, _inputs)
+		res := selector.Mux(g.NativeApi, sel, _inputs...)
 		return WrappedVariable{V: res}
 	} else {
 		_inputs := make([]*emulated.Element[emulated.KoalaBear], len(inputs))

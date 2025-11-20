@@ -13,7 +13,7 @@ import (
 // https://blog.trailofbits.com/2022/04/18/the-frozen-heart-vulnerability-in-plonk/
 
 func Update(h *poseidon2_koalabear.MDHasher, vec ...field.Element) {
-	h.WriteElements(vec)
+	h.WriteElements(vec...)
 }
 
 func UpdateExt(h *poseidon2_koalabear.MDHasher, vec ...fext.Element) {
@@ -24,7 +24,7 @@ func UpdateExt(h *poseidon2_koalabear.MDHasher, vec ...fext.Element) {
 		pad[4*i+2].Set(&vec[i].B1.A0)
 		pad[4*i+3].Set(&vec[i].B1.A1)
 	}
-	h.WriteElements(pad)
+	h.WriteElements(pad...)
 }
 func UpdateGeneric(h *poseidon2_koalabear.MDHasher, vec ...fext.GenericFieldElem) {
 	if len(vec) == 0 {
