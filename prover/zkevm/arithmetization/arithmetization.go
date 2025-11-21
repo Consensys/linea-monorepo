@@ -93,7 +93,6 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	var (
 		errs []error
 
-		// traceF = files.MustRead(traceFile)
 		traceF = readTraceFile(traceFile)
 		// Parse trace file and extract raw column data.
 		rawTrace, metadata, errT = ReadLtTraces(traceF)
