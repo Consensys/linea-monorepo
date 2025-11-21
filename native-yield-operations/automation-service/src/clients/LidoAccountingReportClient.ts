@@ -1,10 +1,4 @@
-import {
-  Address,
-  TransactionReceipt,
-  BaseError,
-  ContractFunctionRevertedError,
-  ContractFunctionExecutionError,
-} from "viem";
+import { Address, TransactionReceipt } from "viem";
 import { ILidoAccountingReportClient } from "../core/clients/ILidoAccountingReportClient.js";
 import { ILazyOracle, UpdateVaultDataParams } from "../core/clients/contracts/ILazyOracle.js";
 import { getReportProofByVault } from "@lidofinance/lsv-cli/dist/utils/report/report-proof.js";

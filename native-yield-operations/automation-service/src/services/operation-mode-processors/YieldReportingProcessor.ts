@@ -170,7 +170,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     } else if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.STAKE) {
       await this._handleStakingRebalance(rebalanceRequirements.rebalanceAmount);
     } else {
-      await this._handleUnstakingRebalance(rebalanceRequirements.rebalanceAmount);
+      await this._handleUnstakingRebalance(rebalanceRequirements.rebalanceAmount, true);
     }
   }
 
@@ -223,10 +223,12 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * @returns {Promise<void>} A promise that resolves when unstaking rebalance is handled.
    */
   // Deficit
-  private async _handleUnstakingRebalance(rebalanceAmount: bigint): Promise<void> {
-    // Submit report first
-    this.logger.info("_handleUnstakingRebalance calling _handleSubmitLatestVaultReport");
-    await this._handleSubmitLatestVaultReport();
+  private async _handleUnstakingRebalance(rebalanceAmount: bigint, isYieldReported: boolean): Promise<void> {
+    if (isYieldReported) {
+      // Submit report first
+      this.logger.info("_handleUnstakingRebalance calling _handleSubmitLatestVaultReport");
+      await this._handleSubmitLatestVaultReport();
+    }
 
     this.logger.info(`_handleUnstakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
     // Then perform rebalance
