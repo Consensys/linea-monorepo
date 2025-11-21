@@ -71,24 +71,34 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Extract failed jobs
-          lines=$(printf "%s" "$JOBS_JSON" | jq -r '
-            .jobs[]
-            | select(.conclusion == "failure")
-            | "- \(.name): <\(.html_url)>"
+          items=$(printf "%s" "$JOBS_JSON" | jq -c '
+            [
+              .jobs[]
+              | select(.conclusion == "failure")
+              | {
+                  type: "rich_text_section",
+                  elements: [
+                    {
+                      type: "text",
+                      text: (.name + ": ")
+                    },
+                    {
+                      type: "link",
+                      url: .html_url,
+                      text: .html_url
+                    }
+                  ]
+                }
+            ]
           ')
 
-          # No failed jobs — output "None"
-          if [[ -z "$lines" ]]; then
-            echo "result<<EOF" >> $GITHUB_OUTPUT
-            echo "None" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+          if [[ "$items" == "[]" ]]; then
+            echo "result=None" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # Output failed job list
           echo "result<<EOF" >> $GITHUB_OUTPUT
-          printf "%s\n" "$lines" >> $GITHUB_OUTPUT
+          echo "$items" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send Slack Notification
@@ -107,19 +117,54 @@ jobs:
                   text: ":x: ${{ inputs.title }}"
                   emoji: true
 
-              - type: section
-                fields:
-                  - type: mrkdwn
-                    text: "*Repository:*\n${{ steps.ctx.outputs.repo }}"
-                  - type: mrkdwn
-                    text: "*Author:*\n${{ steps.ctx.outputs.author }}"
+              - type: rich_text
+                elements:
+                   - type: rich_text_section
+                    elements:
+                      - type: text
+                        text: "Repository:"
+                        style:
+                          bold: true
 
-              - type: section
-                fields:
-                  - type: mrkdwn
-                    text: "*Commit:*\n<${{ steps.ctx.outputs.commit_url }}|${{ steps.ctx.outputs.commit_sha }}>"
+                  - type: rich_text_section
+                    elements:
+                      - type: text
+                        text: "${{ steps.ctx.outputs.repo }}"
 
-              - type: section
-                text:
-                  type: mrkdwn
-                  text: "*Failed Job URLs:*\n${{ steps.failed_jobs.outputs.result }}"
+                  - type: rich_text_section
+                    elements:
+                      - type: text
+                        text: "Author:"
+                        style:
+                          bold: true
+
+                  - type: rich_text_section
+                    elements:
+                      - type: text
+                        text: "${{ steps.ctx.outputs.author }}"
+
+                  - type: rich_text_section
+                    elements:
+                      - type: text
+                        text: "Commit:"
+                        style:
+                          bold: true
+
+                  - type: rich_text_section
+                    elements:
+                      - type: link
+                        url: "${{ steps.ctx.outputs.commit_url }}"
+                        text: "${{ steps.ctx.outputs.commit_sha }}"
+
+                - type: rich_text
+                  elements:
+                    - type: rich_text_section
+                      elements:
+                        - type: text
+                          text: "Failed Job URLs:"
+                          style:
+                            bold: true
+
+                    - type: rich_text_list
+                      style: bullet
+                      elements: ${{ steps.failed_jobs.outputs.result }}
