@@ -330,6 +330,22 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.U24 *= by
 	tl.U23 *= by
 	tl.U20 *= by
+	// Start of new modules for Osaka
+	tl.BIT_XOAN_U2 *= by
+	tl.BIT_XOAN_U4 *= by
+	tl.BIT_XOAN_U8 *= by
+	tl.BIT_XOAN_U16 *= by
+	tl.BIT_XOAN_U32 *= by
+	tl.BIT_XOAN_U64 *= by
+	tl.BIT_XOAN_U128 *= by
+	tl.BIT_XOAN_U256 *= by
+	tl.BYTE_16 *= by
+	tl.BYTE_32 *= by
+	tl.BYTE_64 *= by
+	tl.BYTE_128 *= by
+	tl.BYTE_256 *= by
+	tl.SIGNEXTEND *= by
+	// End of new modules for Osaka
 	// beta v4.0
 	tl.PrecompileBlsPointEvaluationEffectiveCalls *= by
 	tl.PrecompilePointEvaluationFailureEffectiveCalls *= by
@@ -485,6 +501,23 @@ func GetTestTracesLimits() *TracesLimits {
 		U24:              131072,
 		U23:              131072,
 		U20:              131072,
+
+		// Start of new modules for Osaka
+		BIT_XOAN_U2:   131072,
+		BIT_XOAN_U4:   131072,
+		BIT_XOAN_U8:   131072,
+		BIT_XOAN_U16:  131072,
+		BIT_XOAN_U32:  131072,
+		BIT_XOAN_U64:  131072,
+		BIT_XOAN_U128: 131072,
+		BIT_XOAN_U256: 131072,
+		BYTE_16:       131072,
+		BYTE_32:       131072,
+		BYTE_64:       131072,
+		BYTE_128:      131072,
+		BYTE_256:      131072,
+		SIGNEXTEND:    131072,
+		// End of new modules for Osaka
 
 		// beta v4.0
 		PrecompileBlsPointEvaluationEffectiveCalls:     0,
