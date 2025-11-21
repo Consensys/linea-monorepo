@@ -1,6 +1,8 @@
 package accumulator
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -382,12 +384,12 @@ func (am *Module) checkInsert() {
 		// (Root[i+1] - Root[i+2]) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i] = 0, The (i+1)th and (i+2)th roots are equal when there is an INSERT operation and the accumulator is active.
 		expr1 := symbolic.Sub(column.Shift(cols.Roots[i], 1), column.Shift(cols.Roots[i], 2))
 		expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsInsert, expr1)
-		am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_INSERT_1_%d", i), expr1)
+		am.comp.InsertGlobal(am.Round, am.qnamef("ROOT_EQUALITY_INSERT_1_%d", i), expr1)
 
 		// (Root[i+3] - Root[i+4]) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i] = 0, The (i+3)th and (i+4)th roots are equal when there is an INSERT operation and the accumulator is active.
 		expr2 := symbolic.Sub(column.Shift(cols.Roots[i], 3), column.Shift(cols.Roots[i], 4))
 		expr2 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsInsert, expr2)
-		am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_INSERT_2_%d", i), expr2)
+		am.comp.InsertGlobal(am.Round, am.qnamef("ROOT_EQUALITY_INSERT_2_%d", i), expr2)
 	}
 
 	// Booleanity of IsFirst
@@ -410,12 +412,12 @@ func (am *Module) checkDelete() {
 		// (Root[i+1] - Root[i+2]) * IsActiveAccumulator[i] * IsFirst[i] * IsDelete[i] = 0, The (i+1)th and (i+2)th roots are equal when there is a DELETE operation and the accumulator is active.
 		expr1 := symbolic.Sub(column.Shift(cols.Roots[i], 1), column.Shift(cols.Roots[i], 2))
 		expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsDelete, expr1)
-		am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_DELETE_1_%d", i), expr1)
+		am.comp.InsertGlobal(am.Round, am.qnamef("ROOT_EQUALITY_DELETE_1_%d", i), expr1)
 
 		// (Root[i+3] - Root[i+4]) * IsActiveAccumulator[i] * IsFirst[i] * IsDelete[i] = 0, The (i+3)th and (i+4)th roots are equal when there is a DELETE operation and the accumulator is active.
 		expr2 := symbolic.Sub(column.Shift(cols.Roots[i], 3), column.Shift(cols.Roots[i], 4))
 		expr2 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsDelete, expr2)
-		am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_DELETE_2_%d", i), expr2)
+		am.comp.InsertGlobal(am.Round, am.qnamef("ROOT_EQUALITY_DELETE_2_%d", i), expr2)
 	}
 
 	// Booleanity of IsDelete
@@ -435,7 +437,7 @@ func (am *Module) checkUpdate() {
 			cols.IsUpdate,
 			cols.IsFirst,
 			symbolic.Sub(cols.HKey[i], column.Shift(cols.HKey[i], 1)))
-		am.comp.InsertGlobal(am.Round, am.qname("HKEY_EQUAL_FOR_UPDATE_%d", i), expr)
+		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_EQUAL_FOR_UPDATE_%d", i), expr)
 	}
 }
 
@@ -446,7 +448,7 @@ func (am *Module) checkReadZero() {
 		// (Root[i] - Root[i+1]) * IsActiveAccumulator[i] * IsFirst[i] * IsReadZero[i] = 0, The ith and (i+1)th roots are equal when there is a READ-ZERO operation and the accumulator is active.
 		expr1 := symbolic.Sub(cols.Roots[i], column.Shift(cols.Roots[i], 1))
 		expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsReadZero, expr1)
-		am.comp.InsertGlobal(am.Round, am.qname("ROOT_EQUALITY_READ_ZERO_%d", i), expr1)
+		am.comp.InsertGlobal(am.Round, am.qnamef("ROOT_EQUALITY_READ_ZERO_%d", i), expr1)
 	}
 
 	// Booleanity of IsReadZero
@@ -544,12 +546,12 @@ func (am *Module) checkEmptyLeaf() {
 		// (Leaf[i+2] - emptyLeaf) * IsActiveAccumulator[i] * IsFirst[i] * IsInsert[i]
 		expr1 := symbolic.Sub(column.Shift(cols.Leaves[i], 2), emptyLeaf)
 		expr1 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsInsert, expr1)
-		am.comp.InsertGlobal(am.Round, am.qname("EMPTY_LEAVES_FOR_INSERT_%d", i), expr1)
+		am.comp.InsertGlobal(am.Round, am.qnamef("EMPTY_LEAVES_FOR_INSERT_%d", i), expr1)
 
 		// (Leaf[i+3] - emptyLeaf) * IsActiveAccumulator[i] * IsFirst[i] * IsDelete[i]
 		expr2 := symbolic.Sub(column.Shift(cols.Leaves[i], 3), emptyLeaf)
 		expr2 = symbolic.Mul(cols.IsActiveAccumulator, cols.IsFirst, cols.IsDelete, expr2)
-		am.comp.InsertGlobal(am.Round, am.qname("EMPTY_LEAVES_FOR_DELETE_%d", i), expr2)
+		am.comp.InsertGlobal(am.Round, am.qnamef("EMPTY_LEAVES_FOR_DELETE_%d", i), expr2)
 	}
 }
 
@@ -603,7 +605,7 @@ func (am *Module) checkSandwitch() {
 			cols.IsInsert,
 			cols.IsFirst,
 			symbolic.Sub(cols.HKeyMinus[i], cols.LeafOpenings.HKey[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("HKEY_MINUS_CONSISTENCY_INSERT_%d", i), expr1)
+		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_MINUS_CONSISTENCY_INSERT_%d", i), expr1)
 
 		// INSERT: The HKey in the inserted leaf openings (in the fourth row) is the same as HKey column i.e.,
 		// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKey[i] - LeafOpenings.Hkey[i+3])
@@ -611,7 +613,7 @@ func (am *Module) checkSandwitch() {
 			cols.IsInsert,
 			cols.IsFirst,
 			symbolic.Sub(cols.HKey[i], column.Shift(cols.LeafOpenings.HKey[i], 3)))
-		am.comp.InsertGlobal(am.Round, am.qname("HKEY_CONSISTENCY_INSERT_%d", i), expr2)
+		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_CONSISTENCY_INSERT_%d", i), expr2)
 
 		// INSERT: The HKeyPlus in the plus leaf openings is the same as HKeyPlus column i.e.,
 		// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKeyPlus[i] - LeafOpenings.Hkey[i+4])
@@ -619,7 +621,7 @@ func (am *Module) checkSandwitch() {
 			cols.IsInsert,
 			cols.IsFirst,
 			symbolic.Sub(cols.HKeyPlus[i], column.Shift(cols.LeafOpenings.HKey[i], 4)))
-		am.comp.InsertGlobal(am.Round, am.qname("HKEY_PLUS_CONSISTENCY_INSERT_%d", i), expr3)
+		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_PLUS_CONSISTENCY_INSERT_%d", i), expr3)
 
 		// READ-ZERO: The HKeyMinus in the minus leaf openings is the same as HKeyMinus column i.e.,
 		// IsActiveAccumulator[i] * IsReadZero[i] * IsFirst[i] * (HKeyMinus[i] - LeafOpenings.Hkey[i])
@@ -627,7 +629,7 @@ func (am *Module) checkSandwitch() {
 			cols.IsReadZero,
 			cols.IsFirst,
 			symbolic.Sub(cols.HKeyMinus[i], cols.LeafOpenings.HKey[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("HKEY_MINUS_CONSISTENCY_READ_ZERO_%d", i), expr4)
+		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_MINUS_CONSISTENCY_READ_ZERO_%d", i), expr4)
 
 		// READ-ZERO: The HKeyPlus in the plus leaf openings is the same as HKeyPlus column i.e.,
 		// IsActiveAccumulator[i] * IsReadZero[i] * IsFirst[i] * (HKeyPlus[i] - LeafOpenings.Hkey[i+1])
@@ -635,7 +637,7 @@ func (am *Module) checkSandwitch() {
 			cols.IsReadZero,
 			cols.IsFirst,
 			symbolic.Sub(cols.HKeyPlus[i], column.Shift(cols.LeafOpenings.HKey[i], 1)))
-		am.comp.InsertGlobal(am.Round, am.qname("HKEY_PLUS_CONSISTENCY_READ_ZERO_%d", i), expr5)
+		am.comp.InsertGlobal(am.Round, am.qnamef("HKEY_PLUS_CONSISTENCY_READ_ZERO_%d", i), expr5)
 	}
 }
 
@@ -644,71 +646,68 @@ func (am *Module) checkPointer() {
 	for i := range cols.LeafPlusIndex {
 		// Check #1 for INSERT: IsFirst[i] * IsInsert[i] * (LeafMinusNext[i] - LeafPlusIndex[i])
 		expr1 := symbolic.Mul(cols.IsFirst, cols.IsInsert, symbolic.Sub(cols.LeafMinusNext[i], cols.LeafPlusIndex[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("INSERT_POINTER_1_%d", i), expr1)
+		am.comp.InsertGlobal(am.Round, am.qnamef("INSERT_POINTER_1_%d", i), expr1)
 
 		// Check #2 for INSERT: IsFirst[i] * IsInsert[i] *(LeafPlusPrev[i] - LeafMinusIndex[i])
 		expr2 := symbolic.Mul(cols.IsFirst, cols.IsInsert, symbolic.Sub(cols.LeafPlusPrev[i], cols.LeafMinusIndex[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("INSERT_POINTER_2_%d", i), expr2)
-
+		am.comp.InsertGlobal(am.Round, am.qnamef("INSERT_POINTER_2_%d", i), expr2)
 		// Check #1 for DELETE: IsFirst[i] * IsDelete[i] * (LeafMinusNext[i] - LeafDeletedIndex[i])
 		expr3 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafMinusNext[i], cols.LeafDeletedIndex[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_1_%d", i), expr3)
+		am.comp.InsertGlobal(am.Round, am.qnamef("DELETE_POINTER_1_%d", i), expr3)
 
 		// Check #2 for DELETE: IsFirst[i] * IsDelete[i] * (LeafDeletedPrev[i] - LeafMinusIndex[i])
 		expr4 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafDeletedPrev[i], cols.LeafMinusIndex[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_2_%d", i), expr4)
-
+		am.comp.InsertGlobal(am.Round, am.qnamef("DELETE_POINTER_2_%d", i), expr4)
 		// Check #3 for DELETE: IsFirst[i] * IsDelete[i] * (LeafDeletedNext[i] - LeafPlusIndex[i])
 		expr5 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafDeletedNext[i], cols.LeafPlusIndex[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_3_%d", i), expr5)
+		am.comp.InsertGlobal(am.Round, am.qnamef("DELETE_POINTER_3_%d", i), expr5)
 
 		// Check #4 for DELETE: IsFirst[i] * IsDelete[i] * (LeafPlusPrev[i] - LeafDeletedIndex[i])
 		expr6 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafPlusPrev[i], cols.LeafDeletedIndex[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_4_%d", i), expr6)
-
+		am.comp.InsertGlobal(am.Round, am.qnamef("DELETE_POINTER_4_%d", i), expr6)
 		// Check #1 for READ-ZERO: IsFirst[i] * IsReadZero[i] * (LeafMinusNext[i] - LeafPlusIndex[i])
 		expr7 := symbolic.Mul(cols.IsFirst, cols.IsReadZero, symbolic.Sub(cols.LeafMinusNext[i], cols.LeafPlusIndex[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("READ_ZERO_POINTER_1_%d", i), expr7)
+		am.comp.InsertGlobal(am.Round, am.qnamef("READ_ZERO_POINTER_1_%d", i), expr7)
 
 		// Check #2 for READ-ZERO: IsFirst[i] * IsReadZero[i] * (LeafPlusPrev[i] - LeafMinusIndex[i])
 		expr8 := symbolic.Mul(cols.IsFirst, cols.IsReadZero, symbolic.Sub(cols.LeafPlusPrev[i], cols.LeafMinusIndex[i]))
-		am.comp.InsertGlobal(am.Round, am.qname("READ_ZERO_POINTER_2_%d", i), expr8)
+		am.comp.InsertGlobal(am.Round, am.qnamef("READ_ZERO_POINTER_2_%d", i), expr8)
 	}
 }
 
 func (am *Module) checkLeafHashes() {
-	cols := am.Cols
+	//cols := am.Cols
 
 	panic("TODO: change the MiMC queries and replace them by Poseidon. Also review the [common.NbElemPerHash] loop")
 
-	for i := 0; i < common.NbElemPerHash; i++ {
+	// for i := 0; i < common.NbElemPerHash; i++ {
 
-		// TODO: fix MiMC query
-		am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV_%d", i), cols.LeafOpenings.Prev[0], cols.Zero, cols.Interm[i][0], nil)
-		am.comp.InsertMiMC(am.Round, am.qname("MIMC_NEXT_%d", i), cols.LeafOpenings.Next[0], cols.Interm[i][0], cols.Interm[i][1], nil)
+	// 	// TODO: fix MiMC query
+	// 	am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV_%d", i), cols.LeafOpenings.Prev[0], cols.Zero, cols.Interm[i][0], nil)
+	// 	am.comp.InsertMiMC(am.Round, am.qname("MIMC_NEXT_%d", i), cols.LeafOpenings.Next[0], cols.Interm[i][0], cols.Interm[i][1], nil)
 
-		// TODO: fix MiMC query
-		am.comp.InsertMiMC(am.Round, am.qname("MIMC_HKEY"), cols.LeafOpenings.HKey[0], cols.Interm[1][0], cols.Interm[2][0], nil)
-		am.comp.InsertMiMC(am.Round, am.qname("MIMC_HVAL_LEAF_%d", i), cols.LeafOpenings.HVal[0], cols.Interm[2][0], cols.LeafHashes[i], nil)
+	// 	// TODO: fix MiMC query
+	// 	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HKEY"), cols.LeafOpenings.HKey[0], cols.Interm[1][0], cols.Interm[2][0], nil)
+	// 	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HVAL_LEAF_%d", i), cols.LeafOpenings.HVal[0], cols.Interm[2][0], cols.LeafHashes[i], nil)
 
-		// Global: IsActive[i] * (1 - IsEmptyLeaf[i]) * (Leaves[i] - LeafHashes[i])
-		expr1 := symbolic.Sub(cols.Leaves[i], cols.LeafHashes[i])
-		expr2 := symbolic.Sub(symbolic.NewConstant(1), cols.IsEmptyLeaf)
-		expr3 := symbolic.Mul(cols.IsActiveAccumulator, expr1, expr2)
-		am.comp.InsertGlobal(am.Round, am.qname("LEAF_HASH_EQUALITY_%d", i), expr3)
-	}
-	// Booleaninty of IsEmptyLeaf: IsActive[i] * (IsEmptyLeaf^2[i] - IsEmptyLeaf[i])
-	expr4 := symbolic.Sub(symbolic.Square(cols.IsEmptyLeaf), cols.IsEmptyLeaf)
-	expr4 = symbolic.Mul(expr4, cols.IsActiveAccumulator)
-	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_BOOLEANITY"), expr4)
+	// 	// Global: IsActive[i] * (1 - IsEmptyLeaf[i]) * (Leaves[i] - LeafHashes[i])
+	// 	expr1 := symbolic.Sub(cols.Leaves[i], cols.LeafHashes[i])
+	// 	expr2 := symbolic.Sub(symbolic.NewConstant(1), cols.IsEmptyLeaf)
+	// 	expr3 := symbolic.Mul(cols.IsActiveAccumulator, expr1, expr2)
+	// 	am.comp.InsertGlobal(am.Round, am.qname("LEAF_HASH_EQUALITY_%d", i), expr3)
+	// }
+	// // Booleaninty of IsEmptyLeaf: IsActive[i] * (IsEmptyLeaf^2[i] - IsEmptyLeaf[i])
+	// expr4 := symbolic.Sub(symbolic.Square(cols.IsEmptyLeaf), cols.IsEmptyLeaf)
+	// expr4 = symbolic.Mul(expr4, cols.IsActiveAccumulator)
+	// am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_BOOLEANITY"), expr4)
 
-	// IsEmptyLeaf is set to true if and only if it is the third row for INSERT, or fourth row for DELETE
-	// i.e. IsActiveAccumulator[i] * (IsEmptyLeaf[i] - IsFirst[i-2] * IsInsert[i-2] - IsFirst[i-3] * IsDelete[i-3])
-	expr5 := symbolic.Mul(cols.IsActiveAccumulator,
-		symbolic.Sub(cols.IsEmptyLeaf,
-			symbolic.Mul(column.Shift(cols.IsFirst, -2), column.Shift(cols.IsInsert, -2)),
-			symbolic.Mul(column.Shift(cols.IsFirst, -3), column.Shift(cols.IsDelete, -3))))
-	am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_ONE_FOR_INSERT_THIRD_ROW_AND_DELETE_FOURTH_ROW"), expr5)
+	// // IsEmptyLeaf is set to true if and only if it is the third row for INSERT, or fourth row for DELETE
+	// // i.e. IsActiveAccumulator[i] * (IsEmptyLeaf[i] - IsFirst[i-2] * IsInsert[i-2] - IsFirst[i-3] * IsDelete[i-3])
+	// expr5 := symbolic.Mul(cols.IsActiveAccumulator,
+	// 	symbolic.Sub(cols.IsEmptyLeaf,
+	// 		symbolic.Mul(column.Shift(cols.IsFirst, -2), column.Shift(cols.IsInsert, -2)),
+	// 		symbolic.Mul(column.Shift(cols.IsFirst, -3), column.Shift(cols.IsDelete, -3))))
+	// am.comp.InsertGlobal(am.Round, am.qname("IS_EMPTY_LEAF_ONE_FOR_INSERT_THIRD_ROW_AND_DELETE_FOURTH_ROW"), expr5)
 }
 
 func (am *Module) checkNextFreeNode() {
@@ -749,7 +748,7 @@ func (am *Module) checkNextFreeNode() {
 	for i := 0; i < len(am.Cols.NextFreeNodeIncremented)-1; i++ {
 		am.comp.InsertGlobal(
 			am.Round,
-			am.qname("%v_RESULT_SUB_ONE_%d", ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME, i),
+			am.qnamef("%v_RESULT_SUB_ONE_%d", ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME, i),
 			symbolic.Mul(
 				am.Cols.IsActiveAccumulator,
 				symbolic.Sub(1, cols.IsFirst),
@@ -762,7 +761,7 @@ func (am *Module) checkNextFreeNode() {
 	// Last 1 limb (least significant) has to be 1
 	am.comp.InsertGlobal(
 		am.Round,
-		am.qname(
+		am.qnamef(
 			"%v_RESULT_SUB_ONE_%d",
 			ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME,
 			len(am.Cols.NextFreeNodeIncremented)-1,
@@ -778,7 +777,7 @@ func (am *Module) checkNextFreeNode() {
 	for i := 0; i < len(am.Cols.NextFreeNodeIncremented); i++ {
 		am.comp.InsertGlobal(
 			am.Round,
-			am.qname("%v_RESULT_%d", ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME, i),
+			am.qnamef("%v_RESULT_%d", ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME, i),
 			symbolic.Mul(
 				am.Cols.IsActiveAccumulator,
 				symbolic.Sub(1, cols.IsFirst),
@@ -856,9 +855,17 @@ func (am *Module) checkZeroInInactive() {
 	// Again skipping IntermTopRoot and TopRoot as they contain zero hashes
 }
 
-// Function returning a query name
-func (am *Module) qname(name string, args ...any) ifaces.QueryID {
-	return ifaces.QueryIDf("%v_%v", am.Name, am.comp.SelfRecursionCount) + "_" + ifaces.QueryIDf(name, args...)
+// Function returning a query name for already-formed names (no printf)
+func (am *Module) qname(name string) ifaces.QueryID {
+	return ifaces.QueryIDf("%v_%v_%s", am.Name, am.comp.SelfRecursionCount, name)
+}
+
+// Function returning a query name using printf-style formatting.
+// Use this when the first arg is a format literal.
+// nolint:printf
+func (am *Module) qnamef(format string, args ...any) ifaces.QueryID {
+	formatted := fmt.Sprintf(format, args...)
+	return ifaces.QueryIDf("%v_%v_%s", am.Name, am.comp.SelfRecursionCount, formatted)
 }
 
 // Function inserting a query that col is zero when IsActive is zero
