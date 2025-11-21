@@ -7,7 +7,7 @@ import { ILogger, IRetryService, bigintReplacer } from "@consensys/linea-shared-
 /**
  * Client for submitting Lido accounting reports to the LazyOracle contract.
  * Retrieves report data from IPFS, caches vault report parameters, and provides methods
- * for simulating and submitting vault accounting reports.
+ * for submitting vault accounting reports.
  */
 export class LidoAccountingReportClient implements ILidoAccountingReportClient {
   private vaultReportByAddress = new Map<Address, UpdateVaultDataParams>();

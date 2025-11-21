@@ -70,7 +70,6 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    *  1) Read current state:
    *     - Fetch latest Lido report params
    *     - Determine rebalance direction/amount (stake vs. unstake vs. no-op)
-   *     - Dry-run report submission to avoid reverting later
    *  2) Front-running / safety:
    *     - If we're in DEFICIT (need to UNSTAKE), pause staking up-front to
    *       prevent new deposits worsening the shortfall while we act
@@ -154,7 +153,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   /**
    * Handles rebalancing operations based on rebalance requirements.
    * Routes to appropriate handler based on rebalance direction:
-   * - NONE: No-op if report simulation fails, otherwise simple submit report
+   * - NONE: Simple submit report
    * - STAKE: Handles staking rebalance (surplus)
    * - UNSTAKE: Handles unstaking rebalance (deficit)
    *
@@ -217,9 +216,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
   /**
    * Handles unstaking rebalance operations when there is a reserve deficit.
-   * Submit report first, then perform rebalance.
+   * Submit report first (if yield hasn't been reported yet), then perform rebalance.
    *
    * @param {bigint} rebalanceAmount - The amount to rebalance in wei.
+   * @param {boolean} isYieldReported - Whether yield has already been reported in this cycle. If true, submits vault report before rebalancing.
    * @returns {Promise<void>} A promise that resolves when unstaking rebalance is handled.
    */
   // Deficit
@@ -247,7 +247,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    *      - If submitting the vault report fails, the execution will continue to report yield.
    *        A key assumption is that it is safe to submit multiple yield reports for the same vault report.
    * @dev We tolerate report submission errors because they should not block rebalances
-   * @returns {Promise<void>} A promise that resolves when the vault report and yield report are submitted (or early returns on failure).
+   * @returns {Promise<void>} A promise that resolves when both operations are attempted (regardless of success/failure).
    */
   private async _handleSubmitLatestVaultReport() {
     // First call: submit vault report

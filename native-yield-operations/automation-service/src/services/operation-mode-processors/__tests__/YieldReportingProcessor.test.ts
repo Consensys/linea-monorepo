@@ -94,7 +94,6 @@ describe("YieldReportingProcessor", () => {
 
     lidoReportClient = {
       getLatestSubmitVaultReportParams: jest.fn(),
-      isSimulateSubmitLatestVaultReportSuccessful: jest.fn(),
       submitLatestVaultReport: jest.fn(),
     } as unknown as jest.Mocked<ILidoAccountingReportClient>;
 
@@ -111,7 +110,6 @@ describe("YieldReportingProcessor", () => {
     });
     yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
     lidoReportClient.getLatestSubmitVaultReportParams.mockResolvedValue(submitParams);
-    lidoReportClient.isSimulateSubmitLatestVaultReportSuccessful.mockResolvedValue(true);
     lidoReportClient.submitLatestVaultReport.mockResolvedValue(undefined);
     yieldManager.reportYield.mockResolvedValue({ transactionHash: "0xyield" } as unknown as TransactionReceipt);
     yieldExtension.transferFundsForNativeYield.mockResolvedValue({
@@ -203,7 +201,7 @@ describe("YieldReportingProcessor", () => {
     const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(50).mockReturnValueOnce(200);
     const processor = createProcessor();
     const amendmentSpy = jest.spyOn(
-      processor as unknown as { _handleUnstakingRebalance(amount: bigint, success: boolean): Promise<void> },
+      processor as unknown as { _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void> },
       "_handleUnstakingRebalance",
     );
 
@@ -248,24 +246,7 @@ describe("YieldReportingProcessor", () => {
     expect(beaconClient.submitWithdrawalRequestsToFulfilAmount).not.toHaveBeenCalled();
   });
 
-  it("_handleRebalance handles no-op without submission when simulation fails", async () => {
-    const processor = createProcessor();
-    const submitSpy = jest.spyOn(
-      processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-      "_handleSubmitLatestVaultReport",
-    );
-
-    await (
-      processor as unknown as {
-        _handleRebalance(req: unknown, successful: boolean): Promise<void>;
-      }
-    )._handleRebalance({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n }, false);
-
-    expect(logger.info).toHaveBeenCalledWith("_handleRebalance - no-op");
-    expect(submitSpy).not.toHaveBeenCalled();
-  });
-
-  it("_handleRebalance submits report when no rebalance is needed but simulation succeeds", async () => {
+  it("_handleRebalance submits report when no rebalance is needed", async () => {
     const processor = createProcessor();
     const submitSpy = jest
       .spyOn(
@@ -276,9 +257,9 @@ describe("YieldReportingProcessor", () => {
 
     await (
       processor as unknown as {
-        _handleRebalance(req: unknown, successful: boolean): Promise<void>;
+        _handleRebalance(req: unknown): Promise<void>;
       }
-    )._handleRebalance({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n }, true);
+    )._handleRebalance({ rebalanceDirection: RebalanceDirection.NONE, rebalanceAmount: 0n });
 
     expect(submitSpy).toHaveBeenCalledTimes(1);
   });
@@ -287,34 +268,34 @@ describe("YieldReportingProcessor", () => {
     const processor = createProcessor();
     const stakingSpy = jest
       .spyOn(
-        processor as unknown as { _handleStakingRebalance(amount: bigint, success: boolean): Promise<void> },
+        processor as unknown as { _handleStakingRebalance(amount: bigint): Promise<void> },
         "_handleStakingRebalance",
       )
       .mockResolvedValue(undefined);
 
     await (
       processor as unknown as {
-        _handleRebalance(req: unknown, successful: boolean): Promise<void>;
+        _handleRebalance(req: unknown): Promise<void>;
       }
-    )._handleRebalance({ rebalanceDirection: RebalanceDirection.STAKE, rebalanceAmount: 42n }, true);
+    )._handleRebalance({ rebalanceDirection: RebalanceDirection.STAKE, rebalanceAmount: 42n });
 
-    expect(stakingSpy).toHaveBeenCalledWith(42n, true);
+    expect(stakingSpy).toHaveBeenCalledWith(42n);
   });
 
   it("_handleRebalance routes deficit directions to _handleUnstakingRebalance", async () => {
     const processor = createProcessor();
     const unstakeSpy = jest
       .spyOn(
-        processor as unknown as { _handleUnstakingRebalance(amount: bigint, success: boolean): Promise<void> },
+        processor as unknown as { _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void> },
         "_handleUnstakingRebalance",
       )
       .mockResolvedValue(undefined);
 
     await (
       processor as unknown as {
-        _handleRebalance(req: unknown, successful: boolean): Promise<void>;
+        _handleRebalance(req: unknown): Promise<void>;
       }
-    )._handleRebalance({ rebalanceDirection: RebalanceDirection.UNSTAKE, rebalanceAmount: 17n }, true);
+    )._handleRebalance({ rebalanceDirection: RebalanceDirection.UNSTAKE, rebalanceAmount: 17n });
 
     expect(unstakeSpy).toHaveBeenCalledWith(17n, true);
   });
@@ -330,9 +311,9 @@ describe("YieldReportingProcessor", () => {
 
     await (
       processor as unknown as {
-        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
+        _handleStakingRebalance(amount: bigint): Promise<void>;
       }
-    )._handleStakingRebalance(18n, true);
+    )._handleStakingRebalance(18n);
 
     expect(yieldExtension.transferFundsForNativeYield).toHaveBeenCalledWith(18n);
     expect(metricsUpdater.recordRebalance).toHaveBeenCalledWith(RebalanceDirection.STAKE, Number(18n));
@@ -357,9 +338,9 @@ describe("YieldReportingProcessor", () => {
 
     await (
       processor as unknown as {
-        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
+        _handleStakingRebalance(amount: bigint): Promise<void>;
       }
-    )._handleStakingRebalance(11n, true);
+    )._handleStakingRebalance(11n);
 
     expect(yieldExtension.transferFundsForNativeYield).toHaveBeenCalledWith(11n);
     expect(metricsUpdater.recordRebalance).toHaveBeenCalledWith(RebalanceDirection.STAKE, Number(11n));
@@ -374,35 +355,27 @@ describe("YieldReportingProcessor", () => {
     yieldExtension.transferFundsForNativeYield.mockRejectedValueOnce(new Error("transfer fail"));
 
     const processor = createProcessor();
+    const submitSpy = jest
+      .spyOn(
+        processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
+        "_handleSubmitLatestVaultReport",
+      )
+      .mockResolvedValue(undefined);
+
     await (
       processor as unknown as {
-        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
+        _handleStakingRebalance(amount: bigint): Promise<void>;
       }
-    )._handleStakingRebalance(9n, true);
+    )._handleStakingRebalance(9n);
 
     expect(metricsUpdater.recordRebalance).not.toHaveBeenCalled();
     expect(yieldManager.fundYieldProvider).not.toHaveBeenCalled();
     expect(metricsRecorder.recordTransferFundsMetrics).not.toHaveBeenCalled();
+    expect(submitSpy).toHaveBeenCalledTimes(1);
+    submitSpy.mockRestore();
   });
 
-  it("_handleStakingRebalance omits report submission when simulation fails", async () => {
-    const processor = createProcessor();
-    const submitSpy = jest.spyOn(
-      processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
-      "_handleSubmitLatestVaultReport",
-    );
-
-    await (
-      processor as unknown as {
-        _handleStakingRebalance(amount: bigint, successful: boolean): Promise<void>;
-      }
-    )._handleStakingRebalance(12n, false);
-
-    expect(submitSpy).not.toHaveBeenCalled();
-    expect(metricsUpdater.recordRebalance).toHaveBeenCalled();
-  });
-
-  it("_handleUnstakingRebalance submits report before withdrawing when simulation succeeds", async () => {
+  it("_handleUnstakingRebalance submits report before withdrawing when isYieldReported is true", async () => {
     const processor = createProcessor();
     const submitSpy = jest
       .spyOn(
@@ -413,7 +386,7 @@ describe("YieldReportingProcessor", () => {
 
     await (
       processor as unknown as {
-        _handleUnstakingRebalance(amount: bigint, successful: boolean): Promise<void>;
+        _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void>;
       }
     )._handleUnstakingRebalance(15n, true);
 
@@ -421,7 +394,7 @@ describe("YieldReportingProcessor", () => {
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledTimes(1);
   });
 
-  it("_handleUnstakingRebalance skips report submission when simulation fails", async () => {
+  it("_handleUnstakingRebalance skips report submission when isYieldReported is false", async () => {
     const processor = createProcessor();
     const submitSpy = jest.spyOn(
       processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
@@ -430,7 +403,7 @@ describe("YieldReportingProcessor", () => {
 
     await (
       processor as unknown as {
-        _handleUnstakingRebalance(amount: bigint, successful: boolean): Promise<void>;
+        _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void>;
       }
     )._handleUnstakingRebalance(7n, false);
 
@@ -445,7 +418,7 @@ describe("YieldReportingProcessor", () => {
 
     await (
       processor as unknown as {
-        _handleUnstakingRebalance(amount: bigint, successful: boolean): Promise<void>;
+        _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void>;
       }
     )._handleUnstakingRebalance(20n, false);
 
@@ -454,37 +427,40 @@ describe("YieldReportingProcessor", () => {
     expect(result.isErr()).toBe(true);
   });
 
-  it("_handleSubmitLatestVaultReport returns early when vault submission fails", async () => {
+  it("_handleSubmitLatestVaultReport continues to report yield when vault submission fails", async () => {
     lidoReportClient.submitLatestVaultReport.mockRejectedValueOnce(new Error("vault fail"));
 
     const processor = createProcessor();
     (processor as unknown as { vault: Address }).vault = vaultAddress;
 
-    const result = await (
+    await (
       processor as unknown as {
-        _handleSubmitLatestVaultReport(): Promise<unknown>;
+        _handleSubmitLatestVaultReport(): Promise<void>;
       }
     )._handleSubmitLatestVaultReport();
 
-    expect(result).toBeUndefined();
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
-    expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
+    expect(yieldManager.reportYield).toHaveBeenCalledWith(yieldProvider, l2Recipient);
+    expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
+      yieldProvider,
+      expect.objectContaining({ isOk: expect.any(Function) }),
+    );
   });
 
-  it("_handleSubmitLatestVaultReport stops when yield reporting fails", async () => {
+  it("_handleSubmitLatestVaultReport continues execution when yield reporting fails", async () => {
     yieldManager.reportYield.mockRejectedValueOnce(new Error("yield fail"));
 
     const processor = createProcessor();
     (processor as unknown as { vault: Address }).vault = vaultAddress;
 
-    const result = await (
+    await (
       processor as unknown as {
-        _handleSubmitLatestVaultReport(): Promise<unknown>;
+        _handleSubmitLatestVaultReport(): Promise<void>;
       }
     )._handleSubmitLatestVaultReport();
 
-    expect(result).toBeUndefined();
     expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
+    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
     expect(metricsRecorder.recordReportYieldMetrics).not.toHaveBeenCalled();
   });
 
@@ -499,10 +475,11 @@ describe("YieldReportingProcessor", () => {
     )._handleSubmitLatestVaultReport();
 
     expect(metricsUpdater.incrementLidoVaultAccountingReport).toHaveBeenCalledWith(vaultAddress);
+    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report succeeded");
     expect(metricsRecorder.recordReportYieldMetrics).toHaveBeenCalledWith(
       yieldProvider,
       expect.objectContaining({ isOk: expect.any(Function) }),
     );
-    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: vault report + yield report succeeded");
+    expect(logger.info).toHaveBeenCalledWith("_handleSubmitLatestVaultReport: yield report succeeded");
   });
 });

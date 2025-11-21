@@ -83,7 +83,6 @@ describe("OssificationPendingProcessor", () => {
 
     lidoReportClient = {
       getLatestSubmitVaultReportParams: jest.fn(),
-      isSimulateSubmitLatestVaultReportSuccessful: jest.fn(),
       submitLatestVaultReport: jest.fn(),
     } as unknown as jest.Mocked<ILidoAccountingReportClient>;
 
@@ -102,7 +101,16 @@ describe("OssificationPendingProcessor", () => {
       txHash: "0xhash" as `0x${string}`,
     });
     yieldManager.getLidoStakingVaultAddress.mockResolvedValue(vaultAddress);
-    lidoReportClient.isSimulateSubmitLatestVaultReportSuccessful.mockResolvedValue(true);
+    lidoReportClient.getLatestSubmitVaultReportParams.mockResolvedValue({
+      vault: vaultAddress,
+      totalValue: 0n,
+      cumulativeLidoFees: 0n,
+      liabilityShares: 0n,
+      maxLiabilityShares: 0n,
+      slashingReserve: 0n,
+      proof: [],
+    });
+    lidoReportClient.submitLatestVaultReport.mockResolvedValue(undefined);
     yieldManager.progressPendingOssification.mockResolvedValue({
       transactionHash: "0xhash",
     } as unknown as TransactionReceipt);
@@ -157,14 +165,15 @@ describe("OssificationPendingProcessor", () => {
     performanceSpy.mockRestore();
   });
 
-  it("skips submitting reports when simulation fails", async () => {
-    lidoReportClient.isSimulateSubmitLatestVaultReportSuccessful.mockResolvedValue(false);
+  it("always attempts to submit vault report regardless of outcome", async () => {
+    lidoReportClient.submitLatestVaultReport.mockRejectedValueOnce(new Error("submission failed"));
 
     const processor = createProcessor();
     await processor.process();
 
-    expect(lidoReportClient.submitLatestVaultReport).not.toHaveBeenCalled();
+    expect(lidoReportClient.submitLatestVaultReport).toHaveBeenCalledWith(vaultAddress);
     expect(metricsUpdater.incrementLidoVaultAccountingReport).not.toHaveBeenCalled();
+    expect(yieldManager.progressPendingOssification).toHaveBeenCalled();
   });
 
   it("returns early when progressPendingOssification fails", async () => {

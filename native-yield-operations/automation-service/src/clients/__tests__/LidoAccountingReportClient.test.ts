@@ -3,7 +3,6 @@ import type { ILogger, IRetryService } from "@consensys/linea-shared-utils";
 import type { ILazyOracle, UpdateVaultDataParams } from "../../core/clients/contracts/ILazyOracle.js";
 import type { Address, Hex, TransactionReceipt } from "viem";
 import { LidoAccountingReportClient } from "../LidoAccountingReportClient.js";
-import { BaseError, ContractFunctionRevertedError, ContractFunctionExecutionError } from "viem";
 
 jest.mock("@lidofinance/lsv-cli/dist/utils/report/report-proof.js", () => ({
   getReportProofByVault: jest.fn(),
@@ -63,7 +62,6 @@ describe("LidoAccountingReportClient", () => {
   const createLazyOracleMock = (): LazyOracleMock =>
     ({
       latestReportData: jest.fn(),
-      simulateUpdateVaultData: jest.fn(),
       updateVaultData: jest.fn(),
     }) as unknown as LazyOracleMock;
 
@@ -105,136 +103,6 @@ describe("LidoAccountingReportClient", () => {
     );
   });
 
-  it("reuses cached report params when simulating submit succeeds", async () => {
-    const params = await client.getLatestSubmitVaultReportParams(vault);
-    lazyOracle.latestReportData.mockClear();
-    retryMock.mockClear();
-    lazyOracle.simulateUpdateVaultData.mockResolvedValue(undefined);
-    logger.info.mockClear();
-
-    const success = await client.isSimulateSubmitLatestVaultReportSuccessful(vault);
-
-    expect(success).toBe(true);
-    expect(lazyOracle.simulateUpdateVaultData).toHaveBeenCalledWith(params);
-    expect(logger.info).toHaveBeenCalledWith("Successful isSimulateSubmitLatestVaultReportSuccessful");
-    expect(lazyOracle.latestReportData).not.toHaveBeenCalled();
-    expect(retryMock).not.toHaveBeenCalled();
-  });
-
-  it("fetches latest data before simulating when cache is empty", async () => {
-    lazyOracle.simulateUpdateVaultData.mockResolvedValue(undefined);
-
-    const success = await client.isSimulateSubmitLatestVaultReportSuccessful(vault);
-
-    expect(success).toBe(true);
-    expect(lazyOracle.latestReportData).toHaveBeenCalledTimes(1);
-    expect(mockedGetReportProofByVault).toHaveBeenCalledTimes(1);
-  });
-
-  it("logs revert-specific errors when simulation reverts", async () => {
-    await client.getLatestSubmitVaultReportParams(vault);
-    logger.error.mockClear();
-    
-    const revertCause = Object.assign(new Error("MockRevert"), {
-      reason: "MockRevert",
-    }) as ContractFunctionRevertedError;
-    Object.setPrototypeOf(revertCause, ContractFunctionRevertedError.prototype);
-    
-    const executionError = Object.assign(new Error("execution reverted"), {
-      shortMessage: "short",
-      name: "ContractFunctionExecutionError",
-      functionName: "updateVaultData",
-      contractAddress: "0xcontract" as Address,
-      sender: "0xsender" as Address,
-      cause: revertCause,
-    }) as ContractFunctionExecutionError;
-    Object.setPrototypeOf(executionError, ContractFunctionExecutionError.prototype);
-    
-    lazyOracle.simulateUpdateVaultData.mockRejectedValue(executionError);
-
-    const success = await client.isSimulateSubmitLatestVaultReportSuccessful(vault);
-
-    expect(success).toBe(false);
-    expect(logger.error).toHaveBeenNthCalledWith(1, "Failed isSimulateSubmitLatestVaultReportSuccessful");
-    expect(logger.error).toHaveBeenNthCalledWith(2, "Contract simulation failed", {
-      error_type: "ContractFunctionExecutionError",
-      function: "updateVaultData",
-      contract: "0xcontract",
-      sender: "0xsender",
-      revert_reason: "MockRevert",
-      message: "short",
-    });
-  });
-
-  it("falls back to the revert error message when errorName is missing", async () => {
-    await client.getLatestSubmitVaultReportParams(vault);
-    logger.error.mockClear();
-    
-    const revertCause = Object.assign(new Error("fallback message"), {
-      reason: undefined,
-    }) as ContractFunctionRevertedError;
-    Object.setPrototypeOf(revertCause, ContractFunctionRevertedError.prototype);
-    
-    const executionError = Object.assign(new Error("execution reverted"), {
-      shortMessage: "short",
-      name: "ContractFunctionExecutionError",
-      functionName: "updateVaultData",
-      contractAddress: "0xcontract" as Address,
-      sender: "0xsender" as Address,
-      cause: revertCause,
-    }) as ContractFunctionExecutionError;
-    Object.setPrototypeOf(executionError, ContractFunctionExecutionError.prototype);
-    
-    lazyOracle.simulateUpdateVaultData.mockRejectedValue(executionError);
-
-    const success = await client.isSimulateSubmitLatestVaultReportSuccessful(vault);
-
-    expect(success).toBe(false);
-    expect(logger.error).toHaveBeenNthCalledWith(1, "Failed isSimulateSubmitLatestVaultReportSuccessful");
-    expect(logger.error).toHaveBeenNthCalledWith(2, "Contract simulation failed", {
-      error_type: "ContractFunctionExecutionError",
-      function: "updateVaultData",
-      contract: "0xcontract",
-      sender: "0xsender",
-      revert_reason: undefined,
-      message: "short",
-    });
-  });
-
-  it("logs base errors when simulation throws a BaseError", async () => {
-    await client.getLatestSubmitVaultReportParams(vault);
-    logger.error.mockClear();
-    const baseError = Object.assign(new Error("base error"), { shortMessage: "baseShort" }) as BaseError;
-    Object.setPrototypeOf(baseError, BaseError.prototype);
-    lazyOracle.simulateUpdateVaultData.mockRejectedValue(baseError);
-
-    const success = await client.isSimulateSubmitLatestVaultReportSuccessful(vault);
-
-    expect(success).toBe(false);
-    expect(logger.error).toHaveBeenNthCalledWith(1, "Failed isSimulateSubmitLatestVaultReportSuccessful");
-    const [, secondCall] = logger.error.mock.calls;
-    expect(secondCall).toBeDefined();
-    expect(secondCall[0]).toBe("⚠️ Error:");
-    const metadata = secondCall[1] as Record<string, unknown>;
-    expect(metadata).toBeDefined();
-    expect(metadata).toHaveProperty("decodedError");
-    expect(metadata.decodedError).toBeInstanceOf(Error);
-    expect((metadata.decodedError as Error).message).toBe("base error");
-  });
-
-  it("logs unexpected errors when simulation throws an unknown error", async () => {
-    await client.getLatestSubmitVaultReportParams(vault);
-    logger.error.mockClear();
-    const unexpectedError = new Error("boom");
-    lazyOracle.simulateUpdateVaultData.mockRejectedValue(unexpectedError);
-
-    const success = await client.isSimulateSubmitLatestVaultReportSuccessful(vault);
-
-    expect(success).toBe(false);
-    expect(logger.error).toHaveBeenNthCalledWith(1, "Failed isSimulateSubmitLatestVaultReportSuccessful");
-    expect(logger.error).toHaveBeenNthCalledWith(2, "Unexpected error:", { error: unexpectedError });
-  });
-
   it("submits the latest vault report using cached params", async () => {
     const params = await client.getLatestSubmitVaultReportParams(vault);
     lazyOracle.latestReportData.mockClear();
@@ -244,5 +112,25 @@ describe("LidoAccountingReportClient", () => {
 
     expect(lazyOracle.updateVaultData).toHaveBeenCalledWith(params);
     expect(lazyOracle.latestReportData).not.toHaveBeenCalled();
+  });
+
+  it("submits the latest vault report fetching params when cache is empty", async () => {
+    lazyOracle.updateVaultData.mockResolvedValue(undefined as unknown as TransactionReceipt);
+
+    await client.submitLatestVaultReport(vault);
+
+    expect(lazyOracle.latestReportData).toHaveBeenCalledTimes(1);
+    expect(mockedGetReportProofByVault).toHaveBeenCalledTimes(1);
+    expect(lazyOracle.updateVaultData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vault,
+        totalValue: 1000n,
+        cumulativeLidoFees: 200n,
+        liabilityShares: 300n,
+        maxLiabilityShares: 400n,
+        slashingReserve: 500n,
+        proof: reportProof.proof,
+      }),
+    );
   });
 });

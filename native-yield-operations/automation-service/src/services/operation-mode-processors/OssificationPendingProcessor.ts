@@ -59,7 +59,7 @@ export class OssificationPendingProcessor implements IOperationModeProcessor {
   /**
    * Main processing loop:
    * 1. Max unstake - Submit maximum available withdrawal requests from beacon chain
-   * 2. Submit vault report if available - Fetch and submit latest vault report if simulation succeeds
+   * 2. Submit vault report - Fetch and submit latest vault report
    * 3. Process Pending Ossification - Progress pending ossification (stops if failed)
    * 4. Max withdraw if ossified - Perform max safe withdrawal if ossification completed
    *
