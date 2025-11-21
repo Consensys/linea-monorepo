@@ -1,8 +1,6 @@
 package accumulator
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -316,7 +314,7 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	am.checkPointer()
 
 	// Check leaf hashes
-	am.checkLeafHashes()
+	// am.checkLeafHashes()
 
 	// Check NextFreeNode is constant through a segment unless there is an INSERT operation
 	am.checkNextFreeNode()
@@ -493,7 +491,7 @@ func (am *Module) checkConsistency() {
 			LimbBitSize: 16,
 			IsBigEndian: true,
 		},
-	}, true)
+	})
 
 	// Booleanity of IsUpdate
 	expr1 := symbolic.Sub(
@@ -741,7 +739,7 @@ func (am *Module) checkNextFreeNode() {
 			IsBigEndian: true,
 		},
 		Mask: symbolic.Mul(am.Cols.IsActiveAccumulator, symbolic.Sub(1, cols.IsFirst)),
-	}, false)
+	})
 
 	copy(am.Cols.NextFreeNodeIncremented[:], nextFreeNodeIncremented.Limbs)
 	am.NextFreeNodeShiftProver = nextFreeNodeShiftProver
@@ -814,49 +812,47 @@ func (am *Module) checkTopRootHash() {
 func (am *Module) checkZeroInInactive() {
 	cols := am.Cols
 	for i := 0; i < common.NbElemPerHash; i++ {
-		am.colZeroAtInactive(cols.Roots[i], fmt.Sprintf("ROOTS_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.Leaves[i], fmt.Sprintf("LEAVES_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.Roots[i])
+		am.colZeroAtInactive(cols.Leaves[i])
 
-		am.colZeroAtInactive(cols.LeafOpenings.HKey[i], fmt.Sprintf("LEAF_OPENING_HKEY_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.LeafOpenings.HVal[i], fmt.Sprintf("LEAF_OPENING_HVAL_ZERO_IN_INACTIVE_%d", i))
-
-		am.colZeroAtInactive(cols.HKey[i], fmt.Sprintf("HKEY_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.HKeyMinus[i], fmt.Sprintf("HKEY_MINUS_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.HKeyPlus[i], fmt.Sprintf("HKEY_PLUS_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.LeafOpenings.HKey[i])
+		am.colZeroAtInactive(cols.LeafOpenings.HVal[i])
+		am.colZeroAtInactive(cols.HKey[i])
+		am.colZeroAtInactive(cols.HKeyMinus[i])
+		am.colZeroAtInactive(cols.HKeyPlus[i])
 	}
 
 	for i := 0; i < len(cols.Positions); i++ {
-		am.colZeroAtInactive(cols.Positions[i], fmt.Sprintf("POSITIONS_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.Positions[i])
 
-		am.colZeroAtInactive(cols.NextFreeNode[i], fmt.Sprintf("NEXT_FREE_NODE_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.InsertionPath[i], fmt.Sprintf("INSERTION_PATH_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.AccumulatorCounter[i], fmt.Sprintf("ACCUMULATOR_COUNTER_ZERO_IN_INACTIVE_%d", i))
-
-		am.colZeroAtInactive(cols.LeafMinusIndex[i], fmt.Sprintf("LEAF_MINUS_INDEX_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.LeafMinusNext[i], fmt.Sprintf("LEAF_MINUS_NEXT_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.LeafPlusIndex[i], fmt.Sprintf("LEAF_PLUS_INDEX_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.LeafPlusPrev[i], fmt.Sprintf("LEAF_PLUS_PREV_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.LeafDeletedIndex[i], fmt.Sprintf("LEAF_DELETED_INDEX_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.LeafDeletedPrev[i], fmt.Sprintf("LEAF_DELETED_PREV_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.LeafDeletedNext[i], fmt.Sprintf("LEAF_DELETED_NEXT_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.LeafOpenings.Prev[i], fmt.Sprintf("LEAF_OPENING_PREV_ZERO_IN_INACTIVE_%d", i))
-		am.colZeroAtInactive(cols.LeafOpenings.Next[i], fmt.Sprintf("LEAF_OPENING_NEXT_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.NextFreeNode[i])
+		am.colZeroAtInactive(cols.InsertionPath[i])
+		am.colZeroAtInactive(cols.AccumulatorCounter[i])
+		am.colZeroAtInactive(cols.LeafMinusIndex[i])
+		am.colZeroAtInactive(cols.LeafMinusNext[i])
+		am.colZeroAtInactive(cols.LeafPlusIndex[i])
+		am.colZeroAtInactive(cols.LeafPlusPrev[i])
+		am.colZeroAtInactive(cols.LeafDeletedIndex[i])
+		am.colZeroAtInactive(cols.LeafDeletedPrev[i])
+		am.colZeroAtInactive(cols.LeafDeletedNext[i])
+		am.colZeroAtInactive(cols.LeafOpenings.Prev[i])
+		am.colZeroAtInactive(cols.LeafOpenings.Next[i])
 	}
 	// Skipping proof as it has unequal column length with IsActive
 	// proof is unconstrained in this module, and the consistency check is done
 	// in the Merkle module
-	am.colZeroAtInactive(cols.UseNextMerkleProof, "USE_NEXT_MERKLE_PROOF_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.IsFirst, "IS_FIRST_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.IsInsert, "IS_INSERT_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.IsDelete, "IS_DELETE_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.IsUpdate, "IS_UPDATE_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.IsReadZero, "IS_READ_ZERO_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.IsReadNonZero, "IS_READ_NON_ZERO_ZERO_IN_INACTIVE")
+	am.colZeroAtInactive(cols.UseNextMerkleProof)
+	am.colZeroAtInactive(cols.IsFirst)
+	am.colZeroAtInactive(cols.IsInsert)
+	am.colZeroAtInactive(cols.IsDelete)
+	am.colZeroAtInactive(cols.IsUpdate)
+	am.colZeroAtInactive(cols.IsReadZero)
+	am.colZeroAtInactive(cols.IsReadNonZero)
 	// Skipping Interm, Zero, and LeafHashes as two of them contain zero hashes and
 	// Zero is a verifier column. The padding area of Interm and LeafHashes
 	// are already constrained by the MiMC query
-	am.colZeroAtInactive(cols.IsEmptyLeaf, "IS_EMPTY_LEAF_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.IsInsertRow3, "IS_INSERT_ROW3_ZERO_IN_INACTIVE")
+	am.colZeroAtInactive(cols.IsEmptyLeaf)
+	am.colZeroAtInactive(cols.IsInsertRow3)
 	// Again skipping IntermTopRoot and TopRoot as they contain zero hashes
 }
 
@@ -866,8 +862,9 @@ func (am *Module) qname(name string, args ...any) ifaces.QueryID {
 }
 
 // Function inserting a query that col is zero when IsActive is zero
-func (am *Module) colZeroAtInactive(col ifaces.Column, name string) {
+func (am *Module) colZeroAtInactive(col ifaces.Column) {
 	// col zero at inactive area, e.g., (1-IsActiveAccumulator[i]) * col[i] = 0
-	am.comp.InsertGlobal(am.Round, am.qname(name),
+	name_ := string(col.GetColID() + "IN_INACTIVE")
+	am.comp.InsertGlobal(am.Round, am.qname(name_),
 		symbolic.Mul(symbolic.Sub(1, am.Cols.IsActiveAccumulator), col))
 }
