@@ -119,7 +119,7 @@ jobs:
 
               - type: rich_text
                 elements:
-                   - type: rich_text_section
+                  - type: rich_text_section
                     elements:
                       - type: text
                         text: "Repository:"
@@ -156,15 +156,15 @@ jobs:
                         url: "${{ steps.ctx.outputs.commit_url }}"
                         text: "${{ steps.ctx.outputs.commit_sha }}"
 
-                - type: rich_text
-                  elements:
-                    - type: rich_text_section
-                      elements:
-                        - type: text
-                          text: "Failed Job URLs:"
-                          style:
-                            bold: true
+              - type: rich_text
+                elements:
+                  - type: rich_text_section
+                    elements:
+                      - type: text
+                        text: "Failed Job URLs:"
+                        style:
+                          bold: true
 
-                    - type: rich_text_list
-                      style: bullet
-                      elements: ${{ steps.failed_jobs.outputs.result }}
+                  - type: rich_text_list
+                    style: bullet
+                    elements: ${{ steps.failed_jobs.outputs.result }}
