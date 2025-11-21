@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 
 import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import { CallForwardingProxy, TestLineaRollup, TestValidium } from "contracts/typechain-types";
 import { getAccountsFixture, getRoleAddressesFixture } from "./";
 import {
   ADDRESS_ZERO,
@@ -53,6 +53,35 @@ export async function deployCallForwardingProxy(target: string): Promise<CallFor
   const callForwardingProxy = await callForwardingProxyFactory.deploy(target);
   await callForwardingProxy.waitForDeployment();
   return callForwardingProxy;
+}
+export async function deployValidiumFixture() {
+  const { securityCouncil } = await loadFixture(getAccountsFixture);
+  const roleAddresses = await loadFixture(getRoleAddressesFixture);
+
+  const verifier = await deployTestPlonkVerifierForDataAggregation();
+  const { parentStateRootHash } = firstCompressedDataContent;
+
+  const initializationData = {
+    initialStateRootHash: parentStateRootHash,
+    initialL2BlockNumber: 0,
+    genesisTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
+    defaultVerifier: verifier,
+    rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+    rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+    roleAddresses,
+    pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+    unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+    fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
+    defaultAdmin: securityCouncil.address,
+    shnarfProvider: ADDRESS_ZERO,
+  };
+
+  const validium = (await deployUpgradableFromFactory("TestValidium", [initializationData], {
+    initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+    unsafeAllow: ["constructor", "incorrect-initializer-order"],
+  })) as unknown as TestValidium;
+
+  return { verifier, validium };
 }
 
 export async function deployLineaRollupFixture() {

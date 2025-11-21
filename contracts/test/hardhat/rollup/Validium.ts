@@ -1,6 +1,5 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
-import * as kzg from "c-kzg";
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
@@ -9,11 +8,15 @@ import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.
 import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
 
-import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import {
+  VALIDIUM_PAUSE_TYPES_ROLES,
+  VALIDIUM_UNPAUSE_TYPES_ROLES,
+  SHNARF_SUBMISSION_PAUSE_TYPE,
+} from "contracts/common/constants";
+import { CallForwardingProxy, TestValidium } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
-  deployLineaRollupFixture,
+  deployValidiumFixture,
   expectSuccessfulFinalizeViaCallForwarder,
   getAccountsFixture,
   getRoleAddressesFixture,
@@ -23,7 +26,6 @@ import {
   ADDRESS_ZERO,
   FALLBACK_OPERATOR_ADDRESS,
   GENERAL_PAUSE_TYPE,
-  HASH_WITHOUT_ZERO_FIRST_BYTE,
   HASH_ZERO,
   INITIAL_MIGRATION_BLOCK,
   INITIAL_WITHDRAW_LIMIT,
@@ -34,16 +36,14 @@ import {
   GENESIS_L2_TIMESTAMP,
   EMPTY_CALLDATA,
   INITIALIZED_ALREADY_MESSAGE,
-  CALLDATA_SUBMISSION_PAUSE_TYPE,
   DEFAULT_ADMIN_ROLE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
-  LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+  VALIDIUM_INITIALIZE_SIGNATURE,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
   calculateRollingHash,
-  encodeData,
   generateRandomBytes,
   generateCallDataSubmission,
   expectEvent,
@@ -54,12 +54,9 @@ import {
   calculateLastFinalizedState,
   generateKeccak256,
 } from "../common/helpers";
-import { CalldataSubmissionData } from "../common/types";
 
-kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
-
-describe("Linea Rollup contract", () => {
-  let lineaRollup: TestLineaRollup;
+describe("Validium contract", () => {
+  let validium: TestValidium;
   let verifier: string;
   let callForwardingProxy: CallForwardingProxy;
 
@@ -71,8 +68,7 @@ describe("Linea Rollup contract", () => {
   let alternateShnarfProviderAddress: SignerWithAddress;
   let roleAddresses: { addressWithRole: string; role: string }[];
 
-  const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentStateRootHash } =
-    firstCompressedDataContent;
+  const { prevShnarf, expectedShnarf, parentStateRootHash } = firstCompressedDataContent;
   const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
 
   before(async () => {
@@ -82,19 +78,19 @@ describe("Linea Rollup contract", () => {
   });
 
   beforeEach(async () => {
-    ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    ({ verifier, validium } = await loadFixture(deployValidiumFixture));
   });
 
   describe("Fallback/Receive tests", () => {
     const sendEthToContract = async (data: string) => {
-      return admin.sendTransaction({ to: await lineaRollup.getAddress(), value: INITIAL_WITHDRAW_LIMIT, data });
+      return admin.sendTransaction({ to: await validium.getAddress(), value: INITIAL_WITHDRAW_LIMIT, data });
     };
 
-    it("Should fail to send eth to the lineaRollup contract through the fallback", async () => {
+    it("Should fail to send eth to the validium contract through the fallback", async () => {
       await expect(sendEthToContract(EMPTY_CALLDATA)).to.be.reverted;
     });
 
-    it("Should fail to send eth to the lineaRollup contract through the receive function", async () => {
+    it("Should fail to send eth to the validium contract through the receive function", async () => {
       await expect(sendEthToContract("0x1234")).to.be.reverted;
     });
   });
@@ -109,19 +105,19 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const deployCall = deployUpgradableFromFactory("src/rollup/LineaRollup.sol:LineaRollup", [initializationData], {
-        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+      const deployCall = deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
+        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor", "incorrect-initializer-order"],
       });
 
-      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
+      await expectRevertWithCustomError(validium, deployCall, "ZeroAddressNotAllowed");
     });
 
     it("Should revert if the fallback operator address is zero address", async () => {
@@ -133,19 +129,19 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         fallbackOperator: ADDRESS_ZERO,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
       const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
-        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor", "incorrect-initializer-order"],
       });
 
-      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
+      await expectRevertWithCustomError(validium, deployCall, "ZeroAddressNotAllowed");
     });
 
     it("Should revert if the default admin address is zero address", async () => {
@@ -157,19 +153,19 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: ADDRESS_ZERO,
         shnarfProvider: ADDRESS_ZERO,
       };
 
       const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
-        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor", "incorrect-initializer-order"],
       });
 
-      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
+      await expectRevertWithCustomError(validium, deployCall, "ZeroAddressNotAllowed");
     });
 
     it("Should revert if an operator address is zero address", async () => {
@@ -181,39 +177,39 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
       const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
-        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor", "incorrect-initializer-order"],
       });
 
-      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
+      await expectRevertWithCustomError(validium, deployCall, "ZeroAddressNotAllowed");
     });
 
     it("Should store verifier address in storage", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.verifiers(0)).to.be.equal(verifier);
+      ({ verifier, validium } = await loadFixture(deployValidiumFixture));
+      expect(await validium.verifiers(0)).to.be.equal(verifier);
     });
 
     it("Should assign the OPERATOR_ROLE to operator addresses", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.hasRole(OPERATOR_ROLE, operator.address)).to.be.true;
+      ({ verifier, validium } = await loadFixture(deployValidiumFixture));
+      expect(await validium.hasRole(OPERATOR_ROLE, operator.address)).to.be.true;
     });
 
     it("Should assign the VERIFIER_SETTER_ROLE to securityCouncil addresses", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.hasRole(VERIFIER_SETTER_ROLE, securityCouncil.address)).to.be.true;
+      ({ verifier, validium } = await loadFixture(deployValidiumFixture));
+      expect(await validium.hasRole(VERIFIER_SETTER_ROLE, securityCouncil.address)).to.be.true;
     });
 
     it("Should assign the VERIFIER_UNSETTER_ROLE to securityCouncil addresses", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.hasRole(VERIFIER_UNSETTER_ROLE, securityCouncil.address)).to.be.true;
+      ({ verifier, validium } = await loadFixture(deployValidiumFixture));
+      expect(await validium.hasRole(VERIFIER_UNSETTER_ROLE, securityCouncil.address)).to.be.true;
     });
 
     it("Should store the startingRootHash in storage for the first block number", async () => {
@@ -225,23 +221,19 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const lineaRollup = await deployUpgradableFromFactory(
-        "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
-      );
+      const validium = await deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
+        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
+        unsafeAllow: ["constructor", "incorrect-initializer-order"],
+      });
 
-      expect(await lineaRollup.stateRootHashes(INITIAL_MIGRATION_BLOCK)).to.be.equal(parentStateRootHash);
+      expect(await validium.stateRootHashes(INITIAL_MIGRATION_BLOCK)).to.be.equal(parentStateRootHash);
     });
 
     it("Should assign the VERIFIER_SETTER_ROLE to both SecurityCouncil and Operator", async () => {
@@ -253,24 +245,20 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const lineaRollup = await deployUpgradableFromFactory(
-        "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
-      );
+      const validium = await deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
+        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
+        unsafeAllow: ["constructor", "incorrect-initializer-order"],
+      });
 
-      expect(await lineaRollup.hasRole(VERIFIER_SETTER_ROLE, securityCouncil.address)).to.be.true;
-      expect(await lineaRollup.hasRole(VERIFIER_SETTER_ROLE, operator.address)).to.be.true;
+      expect(await validium.hasRole(VERIFIER_SETTER_ROLE, securityCouncil.address)).to.be.true;
+      expect(await validium.hasRole(VERIFIER_SETTER_ROLE, operator.address)).to.be.true;
     });
 
     it("Should assign the passed in shnarfProvider address", async () => {
@@ -282,40 +270,36 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: alternateShnarfProviderAddress.address,
       };
 
-      const lineaRollup = await deployUpgradableFromFactory(
-        "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
-      );
+      const validium = await deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
+        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
+        unsafeAllow: ["constructor", "incorrect-initializer-order"],
+      });
 
-      expect(await lineaRollup.shnarfProvider()).to.equal(alternateShnarfProviderAddress.address);
+      expect(await validium.shnarfProvider()).to.equal(alternateShnarfProviderAddress.address);
     });
 
-    it("Should have the lineaRollup address as the shnarfProvider", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      const lineaRollupAddress = await lineaRollup.getAddress();
+    it("Should have the validium address as the shnarfProvider", async () => {
+      ({ verifier, validium } = await loadFixture(deployValidiumFixture));
+      const lineaRollupAddress = await validium.getAddress();
 
-      expect(await lineaRollup.shnarfProvider()).to.equal(lineaRollupAddress);
+      expect(await validium.shnarfProvider()).to.equal(lineaRollupAddress);
     });
 
     it("Should have the correct contract version", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.0");
+      ({ verifier, validium } = await loadFixture(deployValidiumFixture));
+      expect(await validium.CONTRACT_VERSION()).to.equal("1.0");
     });
 
     it("Should revert if the initialize function is called a second time", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      const initializeCall = lineaRollup.initialize({
+      ({ verifier, validium } = await loadFixture(deployValidiumFixture));
+      const initializeCall = validium.initialize({
         initialStateRootHash: parentStateRootHash,
         initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
         genesisTimestamp: GENESIS_L2_TIMESTAMP,
@@ -323,8 +307,8 @@ describe("Linea Rollup contract", () => {
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
@@ -336,7 +320,7 @@ describe("Linea Rollup contract", () => {
 
   describe("Change verifier address", () => {
     it("Should revert if the caller has not the VERIFIER_SETTER_ROLE", async () => {
-      const setVerifierCall = lineaRollup.connect(nonAuthorizedAccount).setVerifierAddress(verifier, 2);
+      const setVerifierCall = validium.connect(nonAuthorizedAccount).setVerifierAddress(verifier, 2);
 
       await expectRevertWithReason(
         setVerifierCall,
@@ -345,69 +329,59 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should revert if the address being set is the zero address", async () => {
-      await lineaRollup.connect(securityCouncil).grantRole(VERIFIER_SETTER_ROLE, securityCouncil.address);
+      await validium.connect(securityCouncil).grantRole(VERIFIER_SETTER_ROLE, securityCouncil.address);
 
-      const setVerifierCall = lineaRollup.connect(securityCouncil).setVerifierAddress(ADDRESS_ZERO, 2);
-      await expectRevertWithCustomError(lineaRollup, setVerifierCall, "ZeroAddressNotAllowed");
+      const setVerifierCall = validium.connect(securityCouncil).setVerifierAddress(ADDRESS_ZERO, 2);
+      await expectRevertWithCustomError(validium, setVerifierCall, "ZeroAddressNotAllowed");
     });
 
     it("Should set the new verifier address", async () => {
-      await lineaRollup.connect(securityCouncil).grantRole(VERIFIER_SETTER_ROLE, securityCouncil.address);
+      await validium.connect(securityCouncil).grantRole(VERIFIER_SETTER_ROLE, securityCouncil.address);
 
-      await lineaRollup.connect(securityCouncil).setVerifierAddress(verifier, 2);
-      expect(await lineaRollup.verifiers(2)).to.be.equal(verifier);
+      await validium.connect(securityCouncil).setVerifierAddress(verifier, 2);
+      expect(await validium.verifiers(2)).to.be.equal(verifier);
     });
 
     it("Should remove verifier address in storage ", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      await lineaRollup.connect(securityCouncil).unsetVerifierAddress(0);
+      ({ verifier, validium } = await loadFixture(deployValidiumFixture));
+      await validium.connect(securityCouncil).unsetVerifierAddress(0);
 
-      expect(await lineaRollup.verifiers(0)).to.be.equal(ADDRESS_ZERO);
+      expect(await validium.verifiers(0)).to.be.equal(ADDRESS_ZERO);
     });
 
     it("Should revert when removing verifier address if the caller has not the VERIFIER_UNSETTER_ROLE ", async () => {
-      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+      ({ verifier, validium } = await loadFixture(deployValidiumFixture));
 
-      await expect(lineaRollup.connect(nonAuthorizedAccount).unsetVerifierAddress(0)).to.be.revertedWith(
+      await expect(validium.connect(nonAuthorizedAccount).unsetVerifierAddress(0)).to.be.revertedWith(
         buildAccessErrorMessage(nonAuthorizedAccount, VERIFIER_UNSETTER_ROLE),
       );
     });
 
     it("Should emit the correct event", async () => {
-      await lineaRollup.connect(securityCouncil).grantRole(VERIFIER_SETTER_ROLE, securityCouncil.address);
+      await validium.connect(securityCouncil).grantRole(VERIFIER_SETTER_ROLE, securityCouncil.address);
 
-      const oldVerifierAddress = await lineaRollup.verifiers(2);
+      const oldVerifierAddress = await validium.verifiers(2);
 
-      const setVerifierCall = lineaRollup.connect(securityCouncil).setVerifierAddress(verifier, 2);
+      const setVerifierCall = validium.connect(securityCouncil).setVerifierAddress(verifier, 2);
       let expectedArgs = [verifier, 2, securityCouncil.address, oldVerifierAddress];
 
-      await expectEvent(lineaRollup, setVerifierCall, "VerifierAddressChanged", expectedArgs);
+      await expectEvent(validium, setVerifierCall, "VerifierAddressChanged", expectedArgs);
 
-      await lineaRollup.connect(securityCouncil).unsetVerifierAddress(2);
+      await validium.connect(securityCouncil).unsetVerifierAddress(2);
 
-      const unsetVerifierCall = lineaRollup.connect(securityCouncil).unsetVerifierAddress(2);
+      const unsetVerifierCall = validium.connect(securityCouncil).unsetVerifierAddress(2);
       expectedArgs = [ADDRESS_ZERO, 2, securityCouncil.address, oldVerifierAddress];
 
-      await expectEvent(lineaRollup, unsetVerifierCall, "VerifierAddressChanged", expectedArgs);
+      await expectEvent(validium, unsetVerifierCall, "VerifierAddressChanged", expectedArgs);
     });
   });
 
   describe("Data submission tests", () => {
     beforeEach(async () => {
-      await lineaRollup.setLastFinalizedBlock(0);
+      await validium.setLastFinalizedBlock(0);
     });
 
     const [DATA_ONE] = generateCallDataSubmission(0, 1);
-
-    it("Fails when the compressed data is empty", async () => {
-      const [submissionData] = generateCallDataSubmission(0, 1);
-      submissionData.compressedData = EMPTY_CALLDATA;
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, secondExpectedShnarf, { gasLimit: 30_000_000 });
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "EmptySubmissionData");
-    });
 
     it("Should fail when the parent shnarf does not exist", async () => {
       const [submissionData] = generateCallDataSubmission(0, 1);
@@ -418,23 +392,25 @@ describe("Linea Rollup contract", () => {
         [HASH_ZERO, HASH_ZERO, submissionData.finalStateRootHash, HASH_ZERO, HASH_ZERO],
       );
 
-      const asyncCall = lineaRollup
+      const asyncCall = validium
         .connect(operator)
-        .submitDataAsCalldata(submissionData, nonExistingParentShnarf, wrongExpectedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(nonExistingParentShnarf, wrongExpectedShnarf, submissionData.finalStateRootHash, {
+          gasLimit: 30_000_000,
+        });
 
-      await expectRevertWithCustomError(lineaRollup, asyncCall, "ParentShnarfNotSubmitted", [nonExistingParentShnarf]);
+      await expectRevertWithCustomError(validium, asyncCall, "ParentShnarfNotSubmitted", [nonExistingParentShnarf]);
     });
 
     it("Should succesfully submit 1 compressed data chunk setting values", async () => {
       const [submissionData] = generateCallDataSubmission(0, 1);
 
       await expect(
-        lineaRollup
+        validium
           .connect(operator)
-          .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
+          .acceptShnarfData(prevShnarf, expectedShnarf, submissionData.finalStateRootHash, { gasLimit: 30_000_000 }),
       ).to.not.be.reverted;
 
-      const blobShnarfExists = await lineaRollup.blobShnarfExists(expectedShnarf);
+      const blobShnarfExists = await validium.blobShnarfExists(expectedShnarf);
       expect(blobShnarfExists).to.equal(1n);
     });
 
@@ -442,138 +418,119 @@ describe("Linea Rollup contract", () => {
       const [firstSubmissionData, secondSubmissionData] = generateCallDataSubmission(0, 2);
 
       await expect(
-        lineaRollup
+        validium
           .connect(operator)
-          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
+          .acceptShnarfData(prevShnarf, expectedShnarf, firstSubmissionData.finalStateRootHash, {
+            gasLimit: 30_000_000,
+          }),
       ).to.not.be.reverted;
 
       await expect(
-        lineaRollup.connect(operator).submitDataAsCalldata(secondSubmissionData, expectedShnarf, secondExpectedShnarf, {
-          gasLimit: 30_000_000,
-        }),
+        validium
+          .connect(operator)
+          .acceptShnarfData(expectedShnarf, secondExpectedShnarf, secondSubmissionData.finalStateRootHash, {
+            gasLimit: 30_000_000,
+          }),
       ).to.not.be.reverted;
 
-      const blobShnarfExists = await lineaRollup.blobShnarfExists(expectedShnarf);
+      let blobShnarfExists = await validium.blobShnarfExists(expectedShnarf);
+      expect(blobShnarfExists).to.equal(1n);
+      blobShnarfExists = await validium.blobShnarfExists(secondExpectedShnarf);
       expect(blobShnarfExists).to.equal(1n);
     });
 
     it("Should emit an event while submitting 1 compressed data chunk", async () => {
       const [submissionData] = generateCallDataSubmission(0, 1);
 
-      const submitDataCall = lineaRollup
+      const submitDataCall = validium
         .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
-      const eventArgs = [prevShnarf, expectedShnarf, submissionData.finalStateRootHash];
+        .acceptShnarfData(prevShnarf, secondExpectedShnarf, submissionData.finalStateRootHash, {
+          gasLimit: 30_000_000,
+        });
+      const eventArgs = [prevShnarf, secondExpectedShnarf, submissionData.finalStateRootHash];
 
-      await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV3", eventArgs);
+      await expectEvent(validium, submitDataCall, "DataSubmittedV3", eventArgs);
     });
 
-    it("Should fail if the final state root hash is empty", async () => {
-      const [submissionData] = generateCallDataSubmission(0, 1);
-
-      submissionData.finalStateRootHash = HASH_ZERO;
-
-      const submitDataCall = lineaRollup
+    it("Should fail if the final state root hash is HASH_ZERO", async () => {
+      const submitDataCall = validium
         .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, HASH_ZERO, { gasLimit: 30_000_000 });
 
       // TODO: Make the failure shnarf dynamic and computed
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
-        expectedShnarf,
-        "0xf53c28b2287f506b4df1b9de48cf3601392d54a73afe400a6f8f4ded2e0929ad",
-      ]);
+      await expectRevertWithCustomError(validium, submitDataCall, "FinalStateRootHashIsZeroHash", []);
     });
 
-    it("Should fail to submit where expected shnarf is wrong", async () => {
+    it("Should fail to submit where submitted shnarf is HASH_ZERO", async () => {
       const [firstSubmissionData, secondSubmissionData] = generateCallDataSubmission(0, 2);
 
       await expect(
-        lineaRollup
+        validium
           .connect(operator)
-          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
+          .acceptShnarfData(prevShnarf, expectedShnarf, firstSubmissionData.finalStateRootHash, {
+            gasLimit: 30_000_000,
+          }),
       ).to.not.be.reverted;
 
-      const wrongComputedShnarf = generateRandomBytes(32);
-
-      const submitDataCall = lineaRollup
+      const submitDataCall = validium
         .connect(operator)
-        .submitDataAsCalldata(secondSubmissionData, expectedShnarf, wrongComputedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(expectedShnarf, HASH_ZERO, secondSubmissionData.finalStateRootHash, { gasLimit: 30_000_000 });
 
-      const eventArgs = [wrongComputedShnarf, secondExpectedShnarf];
-
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", eventArgs);
+      await expectRevertWithCustomError(validium, submitDataCall, "ShnarfSubmissionIsZeroHash", []);
     });
 
     it("Should revert if the caller does not have the OPERATOR_ROLE", async () => {
-      const submitDataCall = lineaRollup
+      const submitDataCall = validium
         .connect(nonAuthorizedAccount)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
 
       await expectRevertWithReason(submitDataCall, buildAccessErrorMessage(nonAuthorizedAccount, OPERATOR_ROLE));
     });
 
     it("Should revert if GENERAL_PAUSE_TYPE is enabled", async () => {
-      await lineaRollup.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+      await validium.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      const submitDataCall = lineaRollup
+      const submitDataCall = validium
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
 
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+      await expectRevertWithCustomError(validium, submitDataCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
     });
 
-    it("Should revert if CALLDATA_SUBMISSION_PAUSE_TYPE is enabled", async () => {
-      await lineaRollup.connect(securityCouncil).pauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE);
+    it("Should revert if SHNARF_SUBMISSION_PAUSE_TYPE is enabled", async () => {
+      await validium.connect(securityCouncil).pauseByType(SHNARF_SUBMISSION_PAUSE_TYPE);
 
-      const submitDataCall = lineaRollup
+      const submitDataCall = validium
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
 
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [CALLDATA_SUBMISSION_PAUSE_TYPE]);
+      await expectRevertWithCustomError(validium, submitDataCall, "IsPaused", [SHNARF_SUBMISSION_PAUSE_TYPE]);
     });
 
     it("Should revert with ShnarfAlreadySubmitted when submitting same compressed data twice in 2 separate transactions", async () => {
-      await lineaRollup
+      await validium
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
 
-      const submitDataCall = lineaRollup
+      const submitDataCall = validium
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
 
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
+      await expectRevertWithCustomError(validium, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
     });
 
     it("Should revert with ShnarfAlreadySubmitted when submitting same data, differing block numbers", async () => {
-      await lineaRollup
+      await validium
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: 30_000_000 });
 
       const [dataOneCopy] = generateCallDataSubmission(0, 1);
-      dataOneCopy.endBlockNumber = 234253242n;
 
-      const submitDataCall = lineaRollup
+      const submitDataCall = validium
         .connect(operator)
-        .submitDataAsCalldata(dataOneCopy, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .acceptShnarfData(prevShnarf, expectedShnarf, dataOneCopy.finalStateRootHash, { gasLimit: 30_000_000 });
 
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
-    });
-
-    it("Should revert when snarkHash is zero hash", async () => {
-      const submissionData: CalldataSubmissionData = {
-        ...DATA_ONE,
-        snarkHash: HASH_ZERO,
-      };
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
-
-      // TODO: Make the failure shnarf dynamic and computed
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
-        expectedShnarf,
-        "0xa6b52564082728b51bb81a4fa92cfb4ec3af8de3f18b5d68ec27b89eead93293",
-      ]);
+      await expectRevertWithCustomError(validium, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
     });
   });
 
@@ -583,8 +540,8 @@ describe("Linea Rollup contract", () => {
       const l1RollingHash = generateRandomBytes(32);
 
       await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash),
+        validium,
+        validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash),
         "MissingMessageNumberForRollingHash",
         [l1RollingHash],
       );
@@ -595,8 +552,8 @@ describe("Linea Rollup contract", () => {
       const l1RollingHash = HASH_ZERO;
 
       await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash),
+        validium,
+        validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash),
         "MissingRollingHashForMessageNumber",
         [l1MessageNumber],
       );
@@ -607,8 +564,8 @@ describe("Linea Rollup contract", () => {
       const l1RollingHash = generateRandomBytes(32);
 
       await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash),
+        validium,
+        validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash),
         "L1RollingHashDoesNotExistOnL1",
         [l1MessageNumber, l1RollingHash],
       );
@@ -617,51 +574,18 @@ describe("Linea Rollup contract", () => {
     it("Should succeed if l1 message number == 0 and l1 rolling hash is empty", async () => {
       const l1MessageNumber = 0;
       const l1RollingHash = HASH_ZERO;
-      await expect(lineaRollup.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.be.reverted;
+      await expect(validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.be.reverted;
     });
 
     it("Should succeed if l1 message number != 0, l1 rolling hash is not empty and exists on L1", async () => {
       const l1MessageNumber = 1n;
       const messageHash = generateRandomBytes(32);
 
-      await lineaRollup.addRollingHash(l1MessageNumber, messageHash);
+      await validium.addRollingHash(l1MessageNumber, messageHash);
 
       const l1RollingHash = calculateRollingHash(HASH_ZERO, messageHash);
 
-      await expect(lineaRollup.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.be.reverted;
-    });
-  });
-
-  describe("Calculate Y value for Compressed Data", () => {
-    it("Should successfully calculate y", async () => {
-      const compressedDataBytes = ethers.decodeBase64(compressedData);
-
-      expect(await lineaRollup.calculateY(compressedDataBytes, expectedX, { gasLimit: 30_000_000 })).to.equal(
-        expectedY,
-      );
-    });
-
-    it("Should revert if first byte is no zero", async () => {
-      const compressedDataBytes = encodeData(
-        ["bytes32", "bytes32", "bytes32"],
-        [generateRandomBytes(32), HASH_WITHOUT_ZERO_FIRST_BYTE, generateRandomBytes(32)],
-      );
-
-      await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.calculateY(compressedDataBytes, expectedX, { gasLimit: 30_000_000 }),
-        "FirstByteIsNotZero",
-      );
-    });
-
-    it("Should revert if bytes length is not a multiple of 32", async () => {
-      const compressedDataBytes = generateRandomBytes(56);
-
-      await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.calculateY(compressedDataBytes, expectedX, { gasLimit: 30_000_000 }),
-        "BytesLengthNotMultipleOf32",
-      );
+      await expect(validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.be.reverted;
     });
   });
 
@@ -672,8 +596,8 @@ describe("Linea Rollup contract", () => {
       const initialBlock = await ethers.provider.getBlock("latest");
 
       await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
+        validium,
+        validium.setFallbackOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
         "LastFinalizationTimeNotLapsed",
       );
     });
@@ -683,8 +607,8 @@ describe("Linea Rollup contract", () => {
       const actualSentState = calculateLastFinalizedState(0n, HASH_ZERO, 123456789n);
 
       await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, 123456789n),
+        validium,
+        validium.setFallbackOperator(0n, HASH_ZERO, 123456789n),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -695,8 +619,8 @@ describe("Linea Rollup contract", () => {
       const actualSentState = calculateLastFinalizedState(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
       await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.setFallbackOperator(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        validium,
+        validium.setFallbackOperator(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -708,8 +632,8 @@ describe("Linea Rollup contract", () => {
       const actualSentState = calculateLastFinalizedState(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
       await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.setFallbackOperator(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        validium,
+        validium.setFallbackOperator(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -719,42 +643,42 @@ describe("Linea Rollup contract", () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
 
       await expectEvent(
-        lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        validium,
+        validium.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FallbackOperatorRoleGranted",
         [admin.address, FALLBACK_OPERATOR_ADDRESS],
       );
 
-      expect(await lineaRollup.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
+      expect(await validium.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
     });
 
     it("Should revert if trying to renounce role as fallback operator", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
 
       await expectEvent(
-        lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        validium,
+        validium.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FallbackOperatorRoleGranted",
         [admin.address, FALLBACK_OPERATOR_ADDRESS],
       );
 
-      expect(await lineaRollup.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
+      expect(await validium.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
 
-      const renounceCall = lineaRollup.renounceRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS);
+      const renounceCall = validium.renounceRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS);
 
-      expectRevertWithCustomError(lineaRollup, renounceCall, "OnlyNonFallbackOperator");
+      expectRevertWithCustomError(validium, renounceCall, "OnlyNonFallbackOperator");
     });
 
     it("Should renounce role if not fallback operator", async () => {
-      expect(await lineaRollup.hasRole(OPERATOR_ROLE, operator.address)).to.be.true;
+      expect(await validium.hasRole(OPERATOR_ROLE, operator.address)).to.be.true;
 
-      const renounceCall = lineaRollup.connect(operator).renounceRole(OPERATOR_ROLE, operator.address);
+      const renounceCall = validium.connect(operator).renounceRole(OPERATOR_ROLE, operator.address);
       const args = [OPERATOR_ROLE, operator.address, operator.address];
-      expectEvent(lineaRollup, renounceCall, "RoleRevoked", args);
+      expectEvent(validium, renounceCall, "RoleRevoked", args);
     });
 
     it("Should fail to accept ETH on the CallForwardingProxy receive function", async () => {
-      callForwardingProxy = await deployCallForwardingProxy(await lineaRollup.getAddress());
+      callForwardingProxy = await deployCallForwardingProxy(await validium.getAddress());
       const forwardingProxyAddress = await callForwardingProxy.getAddress();
 
       const tx = {
@@ -766,16 +690,16 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should be able to submit blobs and finalize via callforwarding proxy", async () => {
-      callForwardingProxy = await deployCallForwardingProxy(await lineaRollup.getAddress());
+      callForwardingProxy = await deployCallForwardingProxy(await validium.getAddress());
       const forwardingProxyAddress = await callForwardingProxy.getAddress();
 
-      expect(await lineaRollup.currentL2BlockNumber()).to.equal(0);
+      expect(await validium.currentL2BlockNumber()).to.equal(0);
 
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
       );
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+      const newLineaRollup = await upgrades.upgradeProxy(validium, newLineaRollupFactory, {
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
@@ -813,12 +737,14 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should be able to upgrade", async () => {
+      expect(await validium.currentL2BlockNumber()).to.equal(0);
+
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
       );
 
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+      const newLineaRollup = await upgrades.upgradeProxy(validium, newLineaRollupFactory, {
         call: { fn: "reinitializeSettingShnarfProvider", args: [] },
         kind: "transparent",
         unsafeAllowRenames: true,
@@ -827,43 +753,7 @@ describe("Linea Rollup contract", () => {
 
       await newLineaRollup.waitForDeployment();
 
-      expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
-    });
-
-    it("Should fail to upgrade twoce", async () => {
-      // Deploy new LineaRollup implementation
-      const newLineaRollupFactory = await ethers.getContractFactory(
-        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
-      );
-
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-        call: { fn: "reinitializeSettingShnarfProvider", args: [] },
-        kind: "transparent",
-        unsafeAllowRenames: true,
-        unsafeAllow: ["incorrect-initializer-order"],
-      });
-
-      await newLineaRollup.waitForDeployment();
-
-      expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
-
-      await expectRevertWithReason(
-        upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
-          call: { fn: "reinitializeSettingShnarfProvider", args: [] },
-          kind: "transparent",
-          unsafeAllowRenames: true,
-          unsafeAllow: ["incorrect-initializer-order"],
-        }),
-        "Initializable: contract is already initialized",
-      );
-    });
-
-    it("Should fail to upgrade if not proxy admin", async () => {
-      await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.connect(nonAuthorizedAccount).reinitializeSettingShnarfProvider(),
-        "CallerNotProxyAdmin",
-      );
+      expect(await newLineaRollup.shnarfProvider()).to.equal(await validium.getAddress());
     });
   });
 });
