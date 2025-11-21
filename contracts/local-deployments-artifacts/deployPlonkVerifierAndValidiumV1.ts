@@ -22,6 +22,7 @@ import {
   OPERATOR_ROLE,
 } from "../common/constants";
 import { get1559Fees } from "../scripts/utils";
+import { ADDRESS_ZERO } from "../common/constants/general";
 
 dotenv.config();
 
@@ -49,23 +50,23 @@ function findContractArtifacts(
 
 async function main() {
   const verifierName = getRequiredEnvVar("VERIFIER_CONTRACT_NAME");
-  const lineaRollupInitialStateRootHash = getRequiredEnvVar("LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH");
-  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER");
-  const lineaRollupSecurityCouncil = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
-  const lineaRollupOperators = getRequiredEnvVar("LINEA_ROLLUP_OPERATORS").split(",");
-  const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
-  const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
-  const lineaRollupGenesisTimestamp = getRequiredEnvVar("LINEA_ROLLUP_GENESIS_TIMESTAMP");
+  const validiumInitialStateRootHash = getRequiredEnvVar("VALIDIUM_INITIAL_STATE_ROOT_HASH");
+  const validiumInitialL2BlockNumber = getRequiredEnvVar("VALIDIUM_INITIAL_L2_BLOCK_NUMBER");
+  const validiumSecurityCouncil = getRequiredEnvVar("VALIDIUM_SECURITY_COUNCIL");
+  const validiumOperators = getRequiredEnvVar("VALIDIUM_OPERATORS").split(",");
+  const validiumRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
+  const validiumRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
+  const validiumGenesisTimestamp = getRequiredEnvVar("VALIDIUM_GENESIS_TIMESTAMP");
   const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
-  const lineaRollupName = "LineaRollupV6";
-  const lineaRollupImplementationName = "LineaRollupV6Implementation";
+  const validiumName = "Validium";
+  const validiumImplementationName = "Validium";
 
   const pauseTypeRoles = getEnvVarOrDefault("VALIDIUM_PAUSE_TYPES_ROLES", VALIDIUM_PAUSE_TYPES_ROLES);
   const unpauseTypeRoles = getEnvVarOrDefault("VALIDIUM_UNPAUSE_TYPES_ROLES", VALIDIUM_UNPAUSE_TYPES_ROLES);
-  const defaultRoleAddresses = generateRoleAssignments(VALIDIUM_ROLES, lineaRollupSecurityCouncil, [
-    { role: OPERATOR_ROLE, addresses: lineaRollupOperators },
+  const defaultRoleAddresses = generateRoleAssignments(VALIDIUM_ROLES, validiumSecurityCouncil, [
+    { role: OPERATOR_ROLE, addresses: validiumOperators },
   ]);
-  const roleAddresses = getEnvVarOrDefault("LINEA_ROLLUP_ROLE_ADDRESSES", defaultRoleAddresses);
+  const roleAddresses = getEnvVarOrDefault("VALIDIUM_ROLE_ADDRESSES", defaultRoleAddresses);
 
   const verifierArtifacts = findContractArtifacts(path.join(__dirname, "./dynamic-artifacts"), verifierName);
 
@@ -83,12 +84,12 @@ async function main() {
     walletNonce = parseInt(process.env.L1_NONCE);
   }
 
-  const [verifier, lineaRollupImplementation, proxyAdmin] = await Promise.all([
+  const [verifier, validiumImplementation, proxyAdmin] = await Promise.all([
     deployContractFromArtifacts(verifierName, verifierArtifacts.abi, verifierArtifacts.bytecode, wallet, {
       nonce: walletNonce,
       gasPrice,
     }),
-    deployContractFromArtifacts(lineaRollupImplementationName, ValidiumV1Abi, ValidiumV1Bytecode, wallet, {
+    deployContractFromArtifacts(validiumImplementationName, ValidiumV1Abi, ValidiumV1Bytecode, wallet, {
       nonce: walletNonce + 1,
       gasPrice,
     }),
@@ -100,30 +101,31 @@ async function main() {
 
   const proxyAdminAddress = await proxyAdmin.getAddress();
   const verifierAddress = await verifier.getAddress();
-  const lineaRollupImplementationAddress = await lineaRollupImplementation.getAddress();
+  const validiumImplementationAddress = await validiumImplementation.getAddress();
 
   const initializer = getInitializerData(ValidiumV1Abi, "initialize", [
     {
-      initialStateRootHash: lineaRollupInitialStateRootHash,
-      initialL2BlockNumber: lineaRollupInitialL2BlockNumber,
-      genesisTimestamp: lineaRollupGenesisTimestamp,
+      initialStateRootHash: validiumInitialStateRootHash,
+      initialL2BlockNumber: validiumInitialL2BlockNumber,
+      genesisTimestamp: validiumGenesisTimestamp,
       defaultVerifier: verifierAddress,
-      rateLimitPeriodInSeconds: lineaRollupRateLimitPeriodInSeconds,
-      rateLimitAmountInWei: lineaRollupRateLimitAmountInWei,
+      rateLimitPeriodInSeconds: validiumRateLimitPeriodInSeconds,
+      rateLimitAmountInWei: validiumRateLimitAmountInWei,
       roleAddresses,
       pauseTypeRoles,
       unpauseTypeRoles,
       fallbackOperator: multiCallAddress,
-      defaultAdmin: lineaRollupSecurityCouncil,
+      defaultAdmin: validiumSecurityCouncil,
+      shnarfProvider: ADDRESS_ZERO,
     },
   ]);
 
   await deployContractFromArtifacts(
-    lineaRollupName,
+    validiumName,
     TransparentUpgradeableProxyAbi,
     TransparentUpgradeableProxyBytecode,
     wallet,
-    lineaRollupImplementationAddress,
+    validiumImplementationAddress,
     proxyAdminAddress,
     initializer,
     { gasPrice },
