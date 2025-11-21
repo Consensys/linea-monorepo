@@ -4,6 +4,7 @@ import {
   encodeFunctionData,
   getContract,
   GetContractReturnType,
+  InvalidInputRpcError,
   PublicClient,
   TransactionReceipt,
   WatchContractEventReturnType,
@@ -194,6 +195,15 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
         resolvePromise(result);
       },
       onError: (error) => {
+        // This means a filter has expired and Viem will handle renewing it - https://github.com/wevm/viem/blob/003b231361f223487aa3e6a67a1e5258e8fe758b/src/actions/public/watchContractEvent.ts#L260-L265
+        // A filter is a RPC-provider managed subscription for blockchain change notifications - https://chainstack.readme.io/reference/ethereum-filters-rpc-methods
+        if (error instanceof InvalidInputRpcError) {
+          this.logger.warn("waitForVaultsReportDataUpdatedEvent: Filter expired, will be recreated by Viem framework", {
+            error,
+          });
+          return;
+        }
+
         // Tolerate errors, we don't want to interrupt L1MessageService<->YieldProvider rebalancing
         this.logger.error("waitForVaultsReportDataUpdatedEvent error", { error });
       },
