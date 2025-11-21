@@ -216,15 +216,15 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
 
   /**
    * Handles unstaking rebalance operations when there is a reserve deficit.
-   * Submit report first (if yield hasn't been reported yet), then perform rebalance.
+   * Submit report first (if yield should be reported), then perform rebalance.
    *
    * @param {bigint} rebalanceAmount - The amount to rebalance in wei.
-   * @param {boolean} isYieldReported - Whether yield has already been reported in this cycle. If true, submits vault report before rebalancing.
+   * @param {boolean} shouldReportYield - Whether to report yield before rebalancing. If true, submits vault report before rebalancing.
    * @returns {Promise<void>} A promise that resolves when unstaking rebalance is handled.
    */
   // Deficit
-  private async _handleUnstakingRebalance(rebalanceAmount: bigint, isYieldReported: boolean): Promise<void> {
-    if (isYieldReported) {
+  private async _handleUnstakingRebalance(rebalanceAmount: bigint, shouldReportYield: boolean): Promise<void> {
+    if (shouldReportYield) {
       // Submit report first
       this.logger.info("_handleUnstakingRebalance calling _handleSubmitLatestVaultReport");
       await this._handleSubmitLatestVaultReport();

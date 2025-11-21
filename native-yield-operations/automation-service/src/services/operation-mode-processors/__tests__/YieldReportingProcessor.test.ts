@@ -201,7 +201,7 @@ describe("YieldReportingProcessor", () => {
     const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(50).mockReturnValueOnce(200);
     const processor = createProcessor();
     const amendmentSpy = jest.spyOn(
-      processor as unknown as { _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void> },
+      processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
       "_handleUnstakingRebalance",
     );
 
@@ -286,7 +286,7 @@ describe("YieldReportingProcessor", () => {
     const processor = createProcessor();
     const unstakeSpy = jest
       .spyOn(
-        processor as unknown as { _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void> },
+        processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
         "_handleUnstakingRebalance",
       )
       .mockResolvedValue(undefined);
@@ -375,7 +375,7 @@ describe("YieldReportingProcessor", () => {
     submitSpy.mockRestore();
   });
 
-  it("_handleUnstakingRebalance submits report before withdrawing when isYieldReported is true", async () => {
+  it("_handleUnstakingRebalance submits report before withdrawing when shouldReportYield is true", async () => {
     const processor = createProcessor();
     const submitSpy = jest
       .spyOn(
@@ -386,7 +386,7 @@ describe("YieldReportingProcessor", () => {
 
     await (
       processor as unknown as {
-        _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void>;
+        _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void>;
       }
     )._handleUnstakingRebalance(15n, true);
 
@@ -394,7 +394,7 @@ describe("YieldReportingProcessor", () => {
     expect(metricsRecorder.recordSafeWithdrawalMetrics).toHaveBeenCalledTimes(1);
   });
 
-  it("_handleUnstakingRebalance skips report submission when isYieldReported is false", async () => {
+  it("_handleUnstakingRebalance skips report submission when shouldReportYield is false", async () => {
     const processor = createProcessor();
     const submitSpy = jest.spyOn(
       processor as unknown as { _handleSubmitLatestVaultReport(): Promise<unknown> },
@@ -403,7 +403,7 @@ describe("YieldReportingProcessor", () => {
 
     await (
       processor as unknown as {
-        _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void>;
+        _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void>;
       }
     )._handleUnstakingRebalance(7n, false);
 
@@ -418,7 +418,7 @@ describe("YieldReportingProcessor", () => {
 
     await (
       processor as unknown as {
-        _handleUnstakingRebalance(amount: bigint, isYieldReported: boolean): Promise<void>;
+        _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void>;
       }
     )._handleUnstakingRebalance(20n, false);
 
