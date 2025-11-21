@@ -6,8 +6,8 @@ import { publicKeyToAddress } from "viem/accounts";
 import forge from "node-forge";
 import { readFileSync } from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import { ILogger } from "../logging/ILogger";
+import { getModuleDir } from "../utils/file";
 
 /**
  * Adapter for Web3Signer service that provides contract signing functionality via remote API.
@@ -113,35 +113,6 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
   }
 
   /**
-   * Gets the directory path of the current module, compatible with both ES modules and CommonJS.
-   * Uses import.meta.url in ES modules and __dirname in CommonJS.
-   * tsup will transform this appropriately for each output format.
-   *
-   * @returns {string} The directory path of the current module.
-   */
-  private getModuleDir(): string {
-    // In CommonJS, __dirname is available (check first for CJS compatibility)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    if (typeof __dirname !== "undefined") {
-      return __dirname;
-    }
-    // In ES modules, use import.meta.url
-    // tsup will handle the transformation: ESM builds use import.meta.url, CJS builds use __dirname
-    // The check below will be evaluated at runtime in ESM builds
-    try {
-      // @ts-expect-error - import.meta.url is available in ESM but TypeScript complains for CJS
-      const moduleUrl = import.meta.url;
-      if (moduleUrl) {
-        return path.dirname(fileURLToPath(moduleUrl));
-      }
-    } catch {
-      // import.meta not available, fall through to process.cwd()
-    }
-    // Fallback to current working directory if neither is available
-    return process.cwd();
-  }
-
-  /**
    * Creates an HTTPS agent configured with client certificate authentication.
    * Loads the keystore (client certificate) and trusted store (CA certificate) from P12 files.
    *
@@ -157,7 +128,7 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
     trustedStorePath: string,
     trustedStorePassphrase: string,
   ): Agent {
-    const moduleDir = this.getModuleDir();
+    const moduleDir = getModuleDir();
     const trustedStoreFile = readFileSync(path.resolve(moduleDir, trustedStorePath), { encoding: "binary" });
     this.logger.debug("Loading trusted store certificate");
 
