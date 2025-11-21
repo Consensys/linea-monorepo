@@ -44,3 +44,22 @@ func EncodeWVsToFVs(api frontend.API, values []zk.WrappedVariable) []frontend.Va
 
 	return res
 }
+
+// Function to encode a 256-bit frontend.Variable into 8 zk.WrappedVariable objects, each representing 30-bit limbs.
+func EncodeFVTo8WVs(api frontend.API, value frontend.Variable) [8]zk.WrappedVariable {
+
+	var res [8]zk.WrappedVariable
+	bits := api.ToBinary(value, 256)
+
+	apiGen, err := zk.NewGenericApi(api)
+	if err != nil {
+		panic(err)
+	}
+
+	for i := 0; i < 8; i++ {
+		limbBits := append(bits[32*i:32*i+30], frontend.Variable(0), frontend.Variable(0))
+		res[i] = apiGen.FromBinary(limbBits...)
+	}
+
+	return res
+}

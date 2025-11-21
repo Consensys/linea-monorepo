@@ -165,9 +165,9 @@ func (g *GenericApi) ToBinary(a WrappedVariable, n ...int) []frontend.Variable {
 
 func (g *GenericApi) FromBinary(b ...frontend.Variable) WrappedVariable {
 	if g.Type() == Native {
-		return WrappedVariable{V: g.NativeApi.FromBinary(b)}
+		return WrappedVariable{V: g.NativeApi.FromBinary(b...)}
 	} else {
-		return WrappedVariable{EVpointer: g.EmulatedApi.FromBits(b)}
+		return WrappedVariable{EVpointer: g.EmulatedApi.FromBits(b...)}
 	}
 }
 

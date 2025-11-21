@@ -36,3 +36,14 @@ func EncodeKoalabearsToFrElement(elements []field.Element) []fr.Element {
 	}
 	return res
 }
+
+func EncodeFrElementToOctuplet(element fr.Element) field.Octuplet {
+	mask := uint64(1073741823)
+	bits := element.Bits()
+	var res field.Octuplet
+	for i := 0; i < 4; i++ {
+		res[2*i].SetUint64(bits[i] & mask)
+		res[2*i+1].SetUint64((bits[i] >> 32) & mask)
+	}
+	return res
+}
