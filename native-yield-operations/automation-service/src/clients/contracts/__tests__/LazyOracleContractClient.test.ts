@@ -132,31 +132,6 @@ describe("LazyOracleContractClient", () => {
     expect(logger.info).toHaveBeenCalledWith("updateVaultData succeeded, txHash=0xhash", { params });
   });
 
-  it("simulates updateVaultData against the viem contract", async () => {
-    const client = createClient();
-    const params = {
-      vault: "0x3333333333333333333333333333333333333333" as Address,
-      totalValue: 6n,
-      cumulativeLidoFees: 7n,
-      liabilityShares: 8n,
-      maxLiabilityShares: 9n,
-      slashingReserve: 10n,
-      proof: ["0x02", "0x03"] as Hex[],
-    };
-
-    await client.simulateUpdateVaultData(params);
-
-    expect(contractStub.simulate.updateVaultData).toHaveBeenCalledWith([
-      params.vault,
-      params.totalValue,
-      params.cumulativeLidoFees,
-      params.liabilityShares,
-      params.maxLiabilityShares,
-      params.slashingReserve,
-      params.proof,
-    ]);
-  });
-
   it("resolves with VaultReportResult when VaultsReportDataUpdated event arrives", async () => {
     const client = createClient();
     const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");

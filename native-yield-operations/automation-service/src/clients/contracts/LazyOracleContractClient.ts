@@ -105,27 +105,6 @@ export class LazyOracleContractClient implements ILazyOracle<TransactionReceipt>
   }
 
   /**
-   * Simulates updating vault data without sending a transaction.
-   * Useful for checking if a transaction would succeed before actually submitting it.
-   *
-   * @param {UpdateVaultDataParams} params - The vault data parameters to simulate.
-   * @returns {Promise<void>} A promise that resolves if simulation succeeds, or rejects if it would fail.
-   */
-  async simulateUpdateVaultData(params: UpdateVaultDataParams): Promise<void> {
-    const { vault, totalValue, cumulativeLidoFees, liabilityShares, maxLiabilityShares, slashingReserve, proof } =
-      params;
-    await this.contract.simulate.updateVaultData([
-      vault,
-      totalValue,
-      cumulativeLidoFees,
-      liabilityShares,
-      maxLiabilityShares,
-      slashingReserve,
-      proof,
-    ]);
-  }
-
-  /**
    * Waits for a VaultsReportDataUpdated event from the LazyOracle contract.
    * Creates placeholder Promise resolve fn. Creates Promise that we will return.
    * Sets placeholder resolve fn, to resolve fn here - decouples Promise creation from resolve fn creation.
