@@ -8,6 +8,16 @@ pragma solidity ^0.8.30;
  */
 interface IShnarfDataAcceptorBase {
   /**
+   * @dev Thrown when the shnarf being submitted is the zero hash.
+   */
+  error ShnarfSubmissionIsZeroHash();
+
+  /**
+   * @dev Thrown when the final state root hash being submitted is the zero hash.
+   */
+  error FinalStateRootHashIsZeroHash();
+
+  /**
    * @dev Thrown when the current shnarf was already submitted.
    */
   error ShnarfAlreadySubmitted(bytes32 shnarf);
