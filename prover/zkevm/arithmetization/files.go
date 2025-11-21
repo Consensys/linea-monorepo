@@ -141,7 +141,7 @@ func readTraceFile(path string) io.ReadCloser {
 		},
 	}
 
-	logrus.Infof("Streaming decompression of %q", path)
+	logrus.Infof("Streaming decompression of %s", path)
 	return rc
 }
 
