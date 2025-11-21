@@ -7,6 +7,11 @@ import forge from "node-forge";
 import { Web3SignerClientAdapter } from "../Web3SignerClientAdapter";
 import { ILogger } from "../../logging/ILogger";
 
+// Mock getModuleDir to avoid Jest parsing issues with import.meta.url in file.ts
+jest.mock("../../utils/file", () => ({
+  getModuleDir: jest.fn(() => process.cwd()),
+}));
+
 const agentInstance = { mock: "agent-instance" } as const;
 
 const getBagsMock = jest.fn();
