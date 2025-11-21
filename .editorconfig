@@ -1,38 +1,48 @@
-# top-most EditorConfig file
+#
+# Optimized EditorConfig for consistent formatting across various IDEs/Editors.
+#
+
+# Top-most EditorConfig file definition
 root = true
 
+# --- Global Settings (*) ---
 [*]
 charset = utf-8
 end_of_line = lf
 indent_style = space
 indent_size = 2
-max_line_length=120
+max_line_length = 120
 insert_final_newline = true
 trim_trailing_whitespace = true
 
+# --- Kotlin/KTS Specific Settings (Overrides Global) ---
 [*.{kt,kts}]
+# Use the default official Kotlin code style
 ij_kotlin_code_style_defaults = KOTLIN_OFFICIAL
 
+# Android Kotlin style guide recommends 100 characters for max line length.
+max_line_length = 100
+
+# Set star import count to maximum value to effectively disable wildcard imports.
 ij_kotlin_name_count_to_use_star_import = 2147483647
 ij_kotlin_name_count_to_use_star_import_for_members = 2147483647
+
+# Explicitly disable 'import-on-demand' for packages
 ij_kotlin_packages_to_use_import_on_demand = unset
+
+# IntelliJ-specific comment formatting: 
+# Ensure line comments (//) are not placed at the first column and have a space after the slashes.
 ij_any_line_comment_at_first_column = false
 ij_any_add_a_space_at_line_comment_start = true
 
+# --- Gradle Build Files Specific Settings ---
 [*.{gradle}]
 ij_any_line_comment_at_first_column = false
 ij_any_add_a_space_at_line_comment_start = true
 
+# --- Go Language Specific Settings (Overrides Global) ---
 [*.go]
+# Go standard tool 'gofmt' enforces tabs for indentation.
 indent_style = tab
-indent_size = tab
-
-# line bellow should be like "[*.{kt,kts}]" if your editor adds spaces, it will break...
-# https://github.com/pinterest/ktlint#intellij-idea-editorconfig-autoformat-issue
-# [*.{kt,kts}]
-# possible values: number (e.g. 2), "unset" (makes ktlint ignore indentation completely)
-# indent_size=2
-# insert_final_newline=true # true (recommended) / false
-# possible values: number (e.g. 120) (package name, imports & comments are ignored), "off"
-# it's automatically set to 100 on `ktlint --android ...` (per Android Kotlin Style Guide)
-# max_line_length=120
+# Typically, tab width is treated as 8 spaces in Go environments.
+indent_size = 8
