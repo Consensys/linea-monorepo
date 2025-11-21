@@ -99,8 +99,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   private async _process(): Promise<void> {
     // Fetch initial data
     this.vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
-    await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault);
-    const initialRebalanceRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
+    const [, initialRebalanceRequirements] = await Promise.all([
+      this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault),
+      this.yieldManagerContractClient.getRebalanceRequirements(),
+    ]);
     this.logger.info(
       `_process - Initial data fetch: initialRebalanceRequirements=${JSON.stringify(initialRebalanceRequirements, bigintReplacer, 2)}`,
     );
