@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-
-	"io"
-
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
@@ -24,10 +21,10 @@ import (
 
 // leafOpenings represents the structure for leaf openings
 type leafOpenings struct {
-	prev [common.NbLimbU64][]field.Element
-	next [common.NbLimbU64][]field.Element
-	hKey [common.NbLimbU256][]field.Element
-	hVal [common.NbLimbU256][]field.Element
+	prev [common.NbElemForHasingU64][]field.Element
+	next [common.NbElemForHasingU64][]field.Element
+	hKey [common.NbElemPerHash][]field.Element
+	hVal [common.NbElemPerHash][]field.Element
 }
 
 // assignmentBuilder is used to build the assignment of the [Module] module
@@ -41,12 +38,12 @@ type assignmentBuilder struct {
 	// leaves stores the assignment of the column holding the leaves (so the
 	// hash of the leaf openings) for which we give the merkle proof. This corresponds to the
 	// [Accumulator.Cols.Leaves] column.
-	leaves [common.NbLimbU256][]field.Element
+	leaves [common.NbElemPerHash][]field.Element
 	// positions stores the positions of the leaves in the merkle tree for which we give the Merkle proof. This corresponds to the [Accumulator.Cols.Positions] column.
 	positions [common.NbLimbU64][]field.Element
 	// roots stores the roots of the merkle tree. This corresponds
 	// to the [Accumulator.Cols.Roots] column.
-	roots [common.NbLimbU256][]field.Element
+	roots [common.NbElemPerHash][]field.Element
 	// proofs stores the path and siblings of the merkle proof. Those siblings corresponds
 	// to the [Accumulator.Cols.Proofs] column.
 	proofs []smt.Proof
@@ -76,11 +73,11 @@ type assignmentBuilder struct {
 	// zero otherwise. This corresponds to the [Accumulator.Cols.IsReadNonZero] column
 	isReadNonZero []field.Element
 	// hKey is the hash of the key of the trace. This corresponds to the [Accumulator.Column.HKey]
-	hKey [common.NbLimbU256][]field.Element
+	hKey [common.NbElemPerHash][]field.Element
 	// hKeyMinus is the hash of the key of the previous leaf. This corresponds to the [Accumulator.Column.HKeyMinus]
-	hKeyMinus [common.NbLimbU256][]field.Element
+	hKeyMinus [common.NbElemPerHash][]field.Element
 	// hKeyPlus is the hash of the key of the next leaf. This corresponds to the [Accumulator.Column.HKeyPlus]
-	hKeyPlus [common.NbLimbU256][]field.Element
+	hKeyPlus [common.NbElemPerHash][]field.Element
 	// Pointer check columns
 	// leafMinusIndex is the index of the minus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafMinusIndex]
 	leafMinusIndex [common.NbLimbU64][]field.Element
@@ -100,9 +97,9 @@ type assignmentBuilder struct {
 	// Prev, Next, HKey, HVal of a leaf. This corresponds to the [Accumulator.Column.LeafOpening]
 	leafOpening leafOpenings
 	// interm is a slice containing 3 intermediate hash states. This corresponds to the [Accumulator.Column.Interm]
-	interm [common.NbLimbU256][][]field.Element
+	interm [common.NbElemPerHash][][]field.Element
 	// leafHash contains sequential MiMC hashes of leafOpening. It matches with Leaves except when there is empty leaf. This corresponds to the [Accumulator.Column.LeafHashes]
-	leafHashes [common.NbLimbU256][]field.Element
+	leafHashes [common.NbElemPerHash][]field.Element
 	// isEmptyLeaf is one when Leaves contains empty leaf and does not match with LeafHash
 	isEmptyLeaf []field.Element
 	// nextFreeNode contains the nextFreeNode for each row of every operation
@@ -113,9 +110,9 @@ type assignmentBuilder struct {
 	// isInsertRow3 is one for row 3 of INSERT operation
 	isInsertRow3 []field.Element
 	// intermTopRoot contains the intermediate MiMC state hash
-	intermTopRoot [common.NbLimbU256][]field.Element
+	intermTopRoot [common.NbElemPerHash][]field.Element
 	// topRoot contains the MiMC hash of SubTreeRoot and NextFreeNode
-	topRoot [common.NbLimbU256][]field.Element
+	topRoot [common.NbElemPerHash][]field.Element
 }
 
 // newAssignmentBuilder returns an empty builder
@@ -123,7 +120,7 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 	amb := assignmentBuilder{}
 	amb.Settings = s
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		amb.roots[i] = make([]field.Element, 0, amb.NumRows())
 		amb.leaves[i] = make([]field.Element, 0, amb.NumRows())
 		amb.hKey[i] = make([]field.Element, 0, amb.NumRows())
@@ -145,6 +142,9 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 		amb.leafDeletedIndex[i] = make([]field.Element, 0, amb.NumRows())
 		amb.leafDeletedPrev[i] = make([]field.Element, 0, amb.NumRows())
 		amb.leafDeletedNext[i] = make([]field.Element, 0, amb.NumRows())
+	}
+
+	for i := 0; i < len(amb.leafOpening.prev); i++ {
 		amb.leafOpening.prev[i] = make([]field.Element, 0, amb.NumRows())
 		amb.leafOpening.next[i] = make([]field.Element, 0, amb.NumRows())
 	}
@@ -227,11 +227,11 @@ func (am *Module) Assign(
 	}
 
 	// Sanity check on the size
-	if len(builder.leaves) > am.MaxNumProofs {
+	if len(builder.leaves[0]) > am.MaxNumProofs {
 		exit.OnLimitOverflow(
 			am.MaxNumProofs,
-			len(builder.leaves),
-			fmt.Errorf("we have registered %v proofs which is more than the maximum number of proofs %v", len(builder.leaves), am.MaxNumProofs),
+			len(builder.leaves[0]),
+			fmt.Errorf("we have registered %v proofs which is more than the maximum number of proofs %v", len(builder.leaves[0]), am.MaxNumProofs),
 		)
 	}
 
@@ -258,7 +258,7 @@ func (am *Module) Assign(
 		run.AssignColumn(cols.LeafDeletedNext[i].GetColID(), smartvectors.RightZeroPadded(builder.leafDeletedNext[i], paddedSize))
 	}
 
-	for i := 0; i < common.NbLimbU256; i++ {
+	for i := 0; i < common.NbElemPerHash; i++ {
 		run.AssignColumn(cols.Roots[i].GetColID(), smartvectors.RightZeroPadded(builder.roots[i], paddedSize))
 		run.AssignColumn(cols.Leaves[i].GetColID(), smartvectors.RightZeroPadded(builder.leaves[i], paddedSize))
 
@@ -312,10 +312,11 @@ func (am *Module) assignLeaf(
 	var (
 		cols            = am.Cols
 		paddedSize      = am.NumRows()
-		intermZeroLimbs = common.BlockCompression([]field.Element{field.Zero()}, []field.Element{field.Zero()})
-		intermOneLimbs  = common.BlockCompression(intermZeroLimbs, []field.Element{field.Zero()})
-		intermTwoLimbs  = common.BlockCompression(intermOneLimbs, []field.Element{field.Zero()})
-		leafLimbs       = common.BlockCompression(intermTwoLimbs, []field.Element{field.Zero()})
+		zeroBlock       field.Octuplet
+		intermZeroLimbs = vortex.CompressPoseidon2(zeroBlock, zeroBlock)
+		intermOneLimbs  = vortex.CompressPoseidon2(intermZeroLimbs, zeroBlock)
+		intermTwoLimbs  = vortex.CompressPoseidon2(intermOneLimbs, zeroBlock)
+		leafLimbs       = vortex.CompressPoseidon2(intermTwoLimbs, zeroBlock)
 	)
 
 	run.AssignColumn(cols.IsEmptyLeaf.GetColID(), smartvectors.RightZeroPadded(builder.isEmptyLeaf, paddedSize))
@@ -344,8 +345,9 @@ func (am *Module) assignTopRootCols(
 	paddedSize := am.NumRows()
 
 	// compute the padding values for intermTopRoot and topRoot
-	intermTopRootPadLimbs := common.BlockCompression([]field.Element{field.Zero()}, []field.Element{field.Zero()})
-	topRootPadLimbs := common.BlockCompression(intermTopRootPadLimbs, []field.Element{field.Zero()})
+	var zeroBlock field.Octuplet
+	intermTopRootPadLimbs := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
+	topRootPadLimbs := vortex.CompressPoseidon2(intermTopRootPadLimbs, zeroBlock)
 
 	for i := range cols.IntermTopRoot {
 		run.AssignColumn(cols.IntermTopRoot[i].GetColID(), smartvectors.RightPadded(builder.intermTopRoot[i], intermTopRootPadLimbs[i], paddedSize))
@@ -372,7 +374,7 @@ func (a *assignmentBuilder) pushRow(
 	isPointerEnabled bool,
 	isEmptyLeaf bool,
 ) {
-	// Populates leaves, leafHashes, and isEmptyLeaf from leafOpening by MiMc block compression
+	// Populates leaves, leafHashes, and isEmptyLeaf from leafOpening by Posseidon2 block compression
 	a.computeLeaf(leafOpening, isEmptyLeaf)
 	var rootFr field.Element
 	if err := rootFr.SetBytesCanonical(root[:]); err != nil {
@@ -393,7 +395,7 @@ func (a *assignmentBuilder) pushRow(
 	}
 
 	insPathBytes := insPath.Bytes()
-	insPathLimbs := divideFieldBytesToFieldLimbs(insPathBytes[24:])
+	insPathLimbs := divideFieldBytesToFieldLimbs(insPathBytes[:])
 
 	a.isInsertRow3 = append(a.isInsertRow3, isInsRow3)
 
@@ -507,6 +509,7 @@ func (a *assignmentBuilder) pushRow(
 }
 
 func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isEmptyLeaf bool) {
+	var zeroBlock field.Octuplet
 	if !isEmptyLeaf {
 		prevFrBytes := uint64ToBytes(uint64(leafOpening.Prev))
 		prevFrLimbs := divideFieldBytesToFieldLimbs(prevFrBytes)
@@ -517,10 +520,10 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		hKeyFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HKey[:])
 		hValFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HVal[:])
 
-		intermZeroLimbs := common.BlockCompression([]field.Element{field.Zero()}, prevFrLimbs)
-		intermOneLimbs := common.BlockCompression(intermZeroLimbs, nextFrLimbs)
-		intermTwoLimbs := common.BlockCompression(intermOneLimbs, hKeyFrLimbs)
-		leafLimbs := common.BlockCompression(intermTwoLimbs, hValFrLimbs)
+		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, vortex.Hash(prevFrLimbs))
+		intermOneLimbs := vortex.CompressPoseidon2(intermZeroLimbs, vortex.Hash(nextFrLimbs))
+		intermTwoLimbs := vortex.CompressPoseidon2(intermOneLimbs, vortex.Hash(hKeyFrLimbs))
+		leafLimbs := vortex.CompressPoseidon2(intermTwoLimbs, vortex.Hash(hValFrLimbs))
 
 		for i := range prevFrLimbs {
 			a.leafOpening.prev[i] = append(a.leafOpening.prev[i], prevFrLimbs[i])
@@ -542,10 +545,10 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		isEmpty := field.Zero()
 		a.isEmptyLeaf = append(a.isEmptyLeaf, isEmpty)
 	} else {
-		intermZeroLimbs := common.BlockCompression([]field.Element{field.Zero()}, []field.Element{field.Zero()})
-		intermOneLimbs := common.BlockCompression(intermZeroLimbs, []field.Element{field.Zero()})
-		intermTwoLimbs := common.BlockCompression(intermOneLimbs, []field.Element{field.Zero()})
-		leafHashesLimbs := common.BlockCompression(intermTwoLimbs, []field.Element{field.Zero()})
+		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
+		intermOneLimbs := vortex.CompressPoseidon2(intermZeroLimbs, zeroBlock)
+		intermTwoLimbs := vortex.CompressPoseidon2(intermOneLimbs, zeroBlock)
+		leafHashesLimbs := vortex.CompressPoseidon2(intermTwoLimbs, zeroBlock)
 
 		for i := range a.leafOpening.prev {
 			a.leafOpening.prev[i] = append(a.leafOpening.prev[i], field.Zero())
@@ -553,11 +556,8 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		}
 
 		// We insert an empty leaf in the Leaves column in this case
-		emptyLeafBytes32 := types.Bytes32{}
-		leafLimbs := divideFieldBytesToFieldLimbs(emptyLeafBytes32[:])
-
 		for i := range a.leaves {
-			a.leaves[i] = append(a.leaves[i], leafLimbs[i])
+			a.leaves[i] = append(a.leaves[i], zeroBlock[i])
 			a.leafHashes[i] = append(a.leafHashes[i], leafHashesLimbs[i])
 
 			a.leafOpening.hKey[i] = append(a.leafOpening.hKey[i], field.Zero())
@@ -1138,7 +1138,7 @@ func pushReadNonZeroRows[K, V io.WriterTo](
 
 // Generic hashing for object satisfying the io.WriterTo interface
 func hash[T io.WriterTo](m T) types.Bytes32 {
-	hasher := statemanager.MIMC_CONFIG.HashFunc()
+	hasher := statemanager.POSEIDON2_CONFIG.HashFunc()
 	m.WriteTo(hasher)
 	Bytes32 := hasher.Sum(nil)
 	return types.AsBytes32(Bytes32)
@@ -1150,11 +1150,11 @@ func computeRoot(leaf types.Bytes32, proof smt.Proof) types.Bytes32 {
 	idx := proof.Path
 
 	for _, sibling := range proof.Siblings {
-		left, right := current, sibling
+		left, right := current, types.HashToBytes32(sibling)
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = hashLR(statemanager.MIMC_CONFIG, left, right)
+		current = hashLR(statemanager.POSEIDON2_CONFIG, left, right)
 		idx >>= 1
 	}
 
@@ -1178,17 +1178,17 @@ func hashLR(conf *smt.Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
 // divideFieldBytesToFieldLimbs divides a byte slice representing a field element into
 // a slice of `field.Element`s, where each `field.Element` represents a "limb"
 // of the original field element. This function assumes that each limb is
-// 2 bytes long and that these 2 bytes are placed at the 30th and 31st
-// (0-indexed) positions within a 32-byte array before being set as a
+// 4 bytes long and that these 2 bytes are placed at the 62nd and 63rd
+// (0-indexed) positions within a 64-byte array before being set as a
 // `field.Element` in canonical form.
 func divideFieldBytesToFieldLimbs(elementBytes []byte) []field.Element {
 	var res []field.Element
 	for _, limbBytes := range common.SplitBytes(elementBytes) {
 		var elementFr field.Element
 
-		var bytesPadded [32]byte
-		bytesPadded[30] = limbBytes[0]
-		bytesPadded[31] = limbBytes[1]
+		var bytesPadded [64]byte
+		bytesPadded[62] = limbBytes[0]
+		bytesPadded[63] = limbBytes[1]
 
 		if err := elementFr.SetBytesCanonical(bytesPadded[:]); err != nil {
 			panic(err)

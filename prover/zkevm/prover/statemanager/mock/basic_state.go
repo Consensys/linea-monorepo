@@ -50,7 +50,7 @@ func (s State) InsertEOA(a types.EthAddress, nonce int64, balance *big.Int) {
 	s[a] = &AccountState{
 		Nonce:          nonce,
 		Balance:        balance,
-		MimcCodeHash:   statemanager.EmptyCodeHash(statemanager.MIMC_CONFIG),
+		MimcCodeHash:   statemanager.EmptyCodeHash(statemanager.POSEIDON2_CONFIG),
 		KeccakCodeHash: types.AsFullBytes32(statemanager.LEGACY_KECCAK_EMPTY_CODEHASH),
 		CodeSize:       0,
 	}

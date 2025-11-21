@@ -24,7 +24,7 @@ type FlatProofVerificationInputs struct {
 	// Roots contains the Merkle roots
 	Roots [blockSize]ifaces.Column
 	// Position contains the positions of the alleged leaves
-	Position ifaces.Column
+	Position [limbPerU64]ifaces.Column
 	// Use for looking up and selecting only the the columns containing the
 	// root in the ComputeMod.
 	IsActive ifaces.Column
@@ -56,7 +56,7 @@ func CheckFlatMerkleProofs(comp *wizard.CompiledIOP, inputs FlatProofVerificatio
 
 	ctx := &FlatMerkleProofVerification{
 		FlatProofVerificationInputs: inputs,
-		PosBits:                     bits.BitDecompose(comp, inputs.Position, len(inputs.Proof.Nodes[0])),
+		PosBits:                     bits.BitDecompose(comp, inputs.Position[:], len(inputs.Proof.Nodes[0])),
 	}
 
 	prevNode := inputs.Leaf
@@ -148,8 +148,10 @@ func checkColumnsAllHaveSameSize(inp *FlatProofVerificationInputs) error {
 			return fmt.Errorf("all nodes must have the same size: root=%v leaf=%v", size, inp.Leaf[j].Size())
 		}
 	}
-	if inp.Position.Size() != size {
-		return fmt.Errorf("all nodes must have the same size: root=%v position=%v", size, inp.Position.Size())
+	for i := range inp.Position {
+		if inp.Position[i].Size() != size {
+			return fmt.Errorf("all nodes must have the same size: root=%v position=%v", size, inp.Position[i].Size())
+		}
 	}
 
 	if inp.IsActive.Size() != size {
