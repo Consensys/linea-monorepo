@@ -265,7 +265,7 @@ jobs:
   
   notify:
     needs: [ filter-commit-changes, check-and-tag-images, code-analysis, testing, get-has-changes-requiring-e2e-testing, manual-docker-build-and-e2e-tests, docker-build, run-e2e-tests ]
-    if: ${{ failure() }}
+    if: ${{ failure() && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
       title: 'Main workflow Failed'

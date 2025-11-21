@@ -15,7 +15,7 @@ describe("ErrorParser", () => {
     it("should return UNKNOWN_ERROR and shouldRetry = false when error is not instance of BaseError", () => {
       expect(ErrorParser.parseErrorWithMitigation(new Error("any reason"))).toStrictEqual({
         errorMessage: "any reason",
-        errorCode: "UNKNOWN_ERRO",
+        errorCode: "UNKNOWN_ERROR",
         mitigation: {
           shouldRetry: false,
         },

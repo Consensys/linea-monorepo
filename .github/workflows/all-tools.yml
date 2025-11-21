@@ -130,7 +130,7 @@ jobs:
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
   
   notify:
-    needs: [ changes, store_image_name_and_tags, all-tools-tag-only, build-and-publish ]
+    needs: [ changes, store_image_name_and_tags, check_image_tags_exist, all-tools-tag-only, build-and-publish ]
     if: ${{ failure() && github.ref == 'refs/heads/main' }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
