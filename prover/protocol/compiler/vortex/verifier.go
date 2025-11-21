@@ -33,7 +33,7 @@ func (a *ExplicitPolynomialEval) Run(run wizard.Runtime) error {
 
 func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
-	if ctx.IsGnark {
+	if ctx.IsBLS {
 		return ctx.runGnark(run)
 	} else {
 		return ctx.runNonGnark(run)

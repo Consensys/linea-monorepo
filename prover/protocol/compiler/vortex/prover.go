@@ -43,7 +43,7 @@ type ReassignPrecomputedRootAction struct {
 
 func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
 	fmt.Printf("okok, run ReassignPrecomputedRootAction\n")
-	if r.IsGnark {
+	if r.IsBLS {
 		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			run.AssignColumn(
 				r.Items.Precomputeds.MerkleRoot[i].GetColID(),
@@ -96,7 +96,7 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	// We commit to the polynomials with SIS hashing if the number of polynomials
 	// is greater than the [ApplyToSISThreshold].
 
-	if ctx.IsGnark {
+	if ctx.IsBLS {
 		var (
 			tree      *smt_bls12377.Tree
 			colHashes []bls12377.Element
@@ -282,7 +282,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			committedMatricesSIS = append(committedMatricesSIS, ctx.Items.Precomputeds.CommittedMatrix)
 			treesSIS = append(treesSIS, ctx.Items.Precomputeds.Tree)
 		} else {
-			if ctx.IsGnark {
+			if ctx.IsBLS {
 				committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
 				gnarkTrees = append(gnarkTrees, ctx.Items.Precomputeds.GnarkTree)
 			} else {
@@ -305,7 +305,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		run.State.Del(ctx.VortexProverStateName(round))
 
 		// Also fetches the trees from the prover state
-		if ctx.IsGnark {
+		if ctx.IsBLS {
 			tree := run.State.MustGet(ctx.MerkleTreeName(round)).(*smt_bls12377.Tree)
 			// conditionally stack the matrix and tree
 			// to SIS or no SIS matrices and trees
@@ -340,7 +340,7 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	// Amend the Vortex proof with the Merkle proofs and registers
 	// the Merkle proofs in the prover runtime
 
-	if ctx.IsGnark {
+	if ctx.IsBLS {
 		merkleProofs := proof.GnarkComplete(entryList, committedMatrices, gnarkTrees)
 
 		packedMProofs := ctx.packGnarkMerkleProofs(merkleProofs)

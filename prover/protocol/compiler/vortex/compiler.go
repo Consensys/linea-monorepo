@@ -173,8 +173,8 @@ type Ctx struct {
 	// The underlying compiled IOP protocol
 	Comp *wizard.CompiledIOP
 
-	// IsGnark indicates whether inner circuit or outercircuit is being compiled
-	IsGnark bool
+	// IsBLS indicates whether inner circuit or outercircuit is being compiled
+	IsBLS bool
 
 	// snapshot the self-recursion count immediately
 	// when the context is created
@@ -308,7 +308,7 @@ type Ctx struct {
 func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor int, isGnark bool, options ...VortexOp) *Ctx {
 	ctx := &Ctx{
 		Comp:                         comp,
-		IsGnark:                      isGnark,
+		IsBLS:                        isGnark,
 		SelfRecursionCount:           comp.SelfRecursionCount,
 		Query:                        univQ,
 		PolynomialsTouchedByTheQuery: map[ifaces.ColID]struct{}{},
@@ -355,7 +355,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	}
 	fmt.Printf("okok, Vortex compiler options applied\n")
 	// Preallocate all the merkle roots for all rounds
-	if ctx.IsGnark {
+	if ctx.IsBLS {
 		ctx.Items.GnarkMerkleRoots = make([][vortex_bls12377.GnarkKoalabearNumElements]ifaces.Column, comp.NumRounds())
 	} else {
 		ctx.Items.MerkleRoots = make([][blockSize]ifaces.Column, comp.NumRounds())
@@ -502,7 +502,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	// Instead, we send Merkle roots that are symbolized with 1-sized
 	// columns.
-	if ctx.IsGnark {
+	if ctx.IsBLS {
 
 		for i := 0; i < vortex_bls12377.GnarkKoalabearNumElements; i++ {
 			ctx.Items.GnarkMerkleRoots[round][i] = ctx.Comp.InsertProof(
@@ -595,7 +595,7 @@ func (ctx *Ctx) generateVortexParams() {
 		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	if ctx.IsGnark {
+	if ctx.IsBLS {
 		ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, poseidon2_koalabear.NewMDHasher, poseidon2_koalabear.NewMDHasher)
 		ctx.GnarkVortexParams = vortex_bls12377.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, smt_bls12377.Poseidon2, smt_bls12377.Poseidon2)
 	} else {
@@ -702,7 +702,7 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	// first, we need to evaluate its size. The proof size needs to
 	// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
 
-	if ctx.IsGnark {
+	if ctx.IsBLS {
 		for i := range ctx.Items.GnarkMerkleProofs {
 			ctx.Items.GnarkMerkleProofs[i] = ctx.Comp.InsertProof(
 				lastRound+2,
@@ -986,7 +986,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 
 	// Increase the number of committed rows
 	ctx.CommittedRowsCount += numPrecomputeds
-	if !ctx.IsGnark {
+	if !ctx.IsBLS {
 		var (
 			tree      *smt_koalabear.Tree
 			colHashes []field.Element
