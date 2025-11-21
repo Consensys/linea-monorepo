@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/consensys/go-corset/pkg/asm"
 	"github.com/consensys/go-corset/pkg/binfile"
@@ -105,6 +106,7 @@ func readTraceFile(path string) *os.File {
 	}
 
 	// Case 2: compressed file
+	startTime := time.Now()
 	f, err := os.Open(path)
 	if err != nil {
 		utils.Panic("unable to open gzipped trace file %q: %s", path, err.Error())
@@ -135,7 +137,7 @@ func readTraceFile(path string) *os.File {
 		utils.Panic("failed to rewind decompressed file: %s", err.Error())
 	}
 
-	logrus.Infof("Successfully decompressed trace file %q", path)
+	logrus.Infof("Successfully decompressed trace file:%q took %vs", path, time.Since(startTime).Seconds())
 	return tmpFile
 }
 
