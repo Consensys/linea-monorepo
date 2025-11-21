@@ -1,4 +1,4 @@
-name: slack-failed-jobs-notification
+name: slack-notify-failed-jobs
 
 permissions:
   contents: read
