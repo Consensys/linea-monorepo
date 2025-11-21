@@ -125,6 +125,23 @@ type TracesLimits struct {
 	U24  int `mapstructure:"U24" validate:"power_of_2" corset:"u24"`
 	U23  int `mapstructure:"U23" validate:"power_of_2" corset:"u23"`
 	U20  int `mapstructure:"U20" validate:"power_of_2" corset:"u20"`
+	// Start of new modules for Osaka
+	BIT_XOAN_U2   int `mapstructure:"BIT_XOAN_U2" validate:"power_of_2" corset:"bit_xoan_u2"`
+	BIT_XOAN_U4   int `mapstructure:"BIT_XOAN_U4" validate:"power_of_2" corset:"bit_xoan_u4"`
+	BIT_XOAN_U8   int `mapstructure:"BIT_XOAN_U8" validate:"power_of_2" corset:"bit_xoan_u8"`
+	BIT_XOAN_U16  int `mapstructure:"BIT_XOAN_U16" validate:"power_of_2" corset:"bit_xoan_u16"`
+	BIT_XOAN_U32  int `mapstructure:"BIT_XOAN_U32" validate:"power_of_2" corset:"bit_xoan_u32"`
+	BIT_XOAN_U64  int `mapstructure:"BIT_XOAN_U64" validate:"power_of_2" corset:"bit_xoan_u64"`
+	BIT_XOAN_U128 int `mapstructure:"BIT_XOAN_U128" validate:"power_of_2" corset:"bit_xoan_u128"`
+	BIT_XOAN_U256 int `mapstructure:"BIT_XOAN_U256" validate:"power_of_2" corset:"bit_xoan_u256"`
+	BYTE_16       int `mapstructure:"BYTE_16" validate:"power_of_2" corset:"byte16"`
+	BYTE_32       int `mapstructure:"BYTE_32" validate:"power_of_2" corset:"byte32"`
+	BYTE_64       int `mapstructure:"BYTE_64" validate:"power_of_2" corset:"byte64"`
+	BYTE_128      int `mapstructure:"BYTE_128" validate:"power_of_2" corset:"byte128"`
+	BYTE_256      int `mapstructure:"BYTE_256" validate:"power_of_2" corset:"byte256"`
+	SIGNEXTEND    int `mapstructure:"SIGNEXTEND" validate:"power_of_2" corset:"signextend"`
+	// End of new modules for Osaka
+
 	// reference tables
 	Binreftable int `mapstructure:"BIN_REFERENCE_TABLE" validate:"power_of_2" corset:"binreftable"`
 	Instdecoder int `mapstructure:"INSTRUCTION_DECODER" validate:"power_of_2" corset:"instdecoder"`
@@ -313,6 +330,22 @@ func (tl *TracesLimits) ScaleUp(by int) {
 	tl.U24 *= by
 	tl.U23 *= by
 	tl.U20 *= by
+	// Start of new modules for Osaka
+	tl.BIT_XOAN_U2 *= by
+	tl.BIT_XOAN_U4 *= by
+	tl.BIT_XOAN_U8 *= by
+	tl.BIT_XOAN_U16 *= by
+	tl.BIT_XOAN_U32 *= by
+	tl.BIT_XOAN_U64 *= by
+	tl.BIT_XOAN_U128 *= by
+	tl.BIT_XOAN_U256 *= by
+	tl.BYTE_16 *= by
+	tl.BYTE_32 *= by
+	tl.BYTE_64 *= by
+	tl.BYTE_128 *= by
+	tl.BYTE_256 *= by
+	tl.SIGNEXTEND *= by
+	// End of new modules for Osaka
 	// beta v4.0
 	tl.PrecompileBlsPointEvaluationEffectiveCalls *= by
 	tl.PrecompilePointEvaluationFailureEffectiveCalls *= by
@@ -468,6 +501,23 @@ func GetTestTracesLimits() *TracesLimits {
 		U24:              131072,
 		U23:              131072,
 		U20:              131072,
+
+		// Start of new modules for Osaka
+		BIT_XOAN_U2:   131072,
+		BIT_XOAN_U4:   131072,
+		BIT_XOAN_U8:   131072,
+		BIT_XOAN_U16:  131072,
+		BIT_XOAN_U32:  131072,
+		BIT_XOAN_U64:  131072,
+		BIT_XOAN_U128: 131072,
+		BIT_XOAN_U256: 131072,
+		BYTE_16:       131072,
+		BYTE_32:       131072,
+		BYTE_64:       131072,
+		BYTE_128:      131072,
+		BYTE_256:      131072,
+		SIGNEXTEND:    131072,
+		// End of new modules for Osaka
 
 		// beta v4.0
 		PrecompileBlsPointEvaluationEffectiveCalls:     0,
