@@ -830,7 +830,7 @@ describe("Linea Rollup contract", () => {
       expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
     });
 
-    it("Should fail to upgrade twoce", async () => {
+    it("Should fail to upgrade twice", async () => {
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
