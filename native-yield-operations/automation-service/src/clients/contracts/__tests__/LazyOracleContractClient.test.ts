@@ -1,6 +1,7 @@
 import { mock, MockProxy } from "jest-mock-extended";
 import type { ILogger, IBlockchainClient } from "@consensys/linea-shared-utils";
 import type { Address, Hex, PublicClient, TransactionReceipt } from "viem";
+import { InvalidInputRpcError } from "viem";
 import { LazyOracleABI } from "../../../core/abis/LazyOracle.js";
 import { OperationTrigger } from "../../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
@@ -212,6 +213,25 @@ describe("LazyOracleContractClient", () => {
     watchArgs.onError?.(failure);
 
     expect(logger.error).toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent error", { error: failure });
+
+    jest.advanceTimersByTime(eventWatchTimeoutMs);
+    await expect(promise).resolves.toEqual({ result: OperationTrigger.TIMEOUT });
+    expect(stopWatching).toHaveBeenCalledTimes(1);
+  });
+
+  it("warns and continues waiting when InvalidInputRpcError is emitted (filter expired)", async () => {
+    const client = createClient();
+    const promise = client.waitForVaultsReportDataUpdatedEvent();
+    const watchArgs = watchContractEvent.mock.calls[0][0];
+    const invalidInputError = new InvalidInputRpcError(new Error("Filter expired"));
+
+    watchArgs.onError?.(invalidInputError);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "waitForVaultsReportDataUpdatedEvent: Filter expired, will be recreated by Viem framework",
+      { error: invalidInputError },
+    );
+    expect(logger.error).not.toHaveBeenCalledWith("waitForVaultsReportDataUpdatedEvent error", expect.anything());
 
     jest.advanceTimersByTime(eventWatchTimeoutMs);
     await expect(promise).resolves.toEqual({ result: OperationTrigger.TIMEOUT });
