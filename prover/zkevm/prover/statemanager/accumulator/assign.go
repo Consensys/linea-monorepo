@@ -395,7 +395,7 @@ func (a *assignmentBuilder) pushRow(
 	}
 
 	insPathBytes := insPath.Bytes()
-	insPathLimbs := divideFieldBytesToFieldLimbs(insPathBytes[24:])
+	insPathLimbs := divideFieldBytesToFieldLimbs(insPathBytes[:])
 
 	a.isInsertRow3 = append(a.isInsertRow3, isInsRow3)
 
@@ -509,6 +509,7 @@ func (a *assignmentBuilder) pushRow(
 }
 
 func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isEmptyLeaf bool) {
+	var zeroBlock field.Octuplet
 	if !isEmptyLeaf {
 		prevFrBytes := uint64ToBytes(uint64(leafOpening.Prev))
 		prevFrLimbs := divideFieldBytesToFieldLimbs(prevFrBytes)
@@ -519,10 +520,10 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		hKeyFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HKey[:])
 		hValFrLimbs := divideFieldBytesToFieldLimbs(leafOpening.HVal[:])
 
-		intermZeroLimbs := common.BlockCompression([]field.Element{field.Zero()}, prevFrLimbs)
-		intermOneLimbs := common.BlockCompression(intermZeroLimbs, nextFrLimbs)
-		intermTwoLimbs := common.BlockCompression(intermOneLimbs, hKeyFrLimbs)
-		leafLimbs := common.BlockCompression(intermTwoLimbs, hValFrLimbs)
+		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, vortex.Hash(prevFrLimbs))
+		intermOneLimbs := vortex.CompressPoseidon2(intermZeroLimbs, vortex.Hash(nextFrLimbs))
+		intermTwoLimbs := vortex.CompressPoseidon2(intermOneLimbs, vortex.Hash(hKeyFrLimbs))
+		leafLimbs := vortex.CompressPoseidon2(intermTwoLimbs, vortex.Hash(hValFrLimbs))
 
 		for i := range prevFrLimbs {
 			a.leafOpening.prev[i] = append(a.leafOpening.prev[i], prevFrLimbs[i])
@@ -544,10 +545,10 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		isEmpty := field.Zero()
 		a.isEmptyLeaf = append(a.isEmptyLeaf, isEmpty)
 	} else {
-		intermZeroLimbs := common.BlockCompression([]field.Element{field.Zero()}, []field.Element{field.Zero()})
-		intermOneLimbs := common.BlockCompression(intermZeroLimbs, []field.Element{field.Zero()})
-		intermTwoLimbs := common.BlockCompression(intermOneLimbs, []field.Element{field.Zero()})
-		leafHashesLimbs := common.BlockCompression(intermTwoLimbs, []field.Element{field.Zero()})
+		intermZeroLimbs := vortex.CompressPoseidon2(zeroBlock, zeroBlock)
+		intermOneLimbs := vortex.CompressPoseidon2(intermZeroLimbs, zeroBlock)
+		intermTwoLimbs := vortex.CompressPoseidon2(intermOneLimbs, zeroBlock)
+		leafHashesLimbs := vortex.CompressPoseidon2(intermTwoLimbs, zeroBlock)
 
 		for i := range a.leafOpening.prev {
 			a.leafOpening.prev[i] = append(a.leafOpening.prev[i], field.Zero())
@@ -555,11 +556,8 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		}
 
 		// We insert an empty leaf in the Leaves column in this case
-		emptyLeafBytes32 := types.Bytes32{}
-		leafLimbs := divideFieldBytesToFieldLimbs(emptyLeafBytes32[:])
-
 		for i := range a.leaves {
-			a.leaves[i] = append(a.leaves[i], leafLimbs[i])
+			a.leaves[i] = append(a.leaves[i], zeroBlock[i])
 			a.leafHashes[i] = append(a.leafHashes[i], leafHashesLimbs[i])
 
 			a.leafOpening.hKey[i] = append(a.leafOpening.hKey[i], field.Zero())
@@ -1152,7 +1150,7 @@ func computeRoot(leaf types.Bytes32, proof smt.Proof) types.Bytes32 {
 	idx := proof.Path
 
 	for _, sibling := range proof.Siblings {
-		left, right := current, sibling
+		left, right := current, types.HashToBytes32(sibling)
 		if idx&1 == 1 {
 			left, right = right, left
 		}
@@ -1180,17 +1178,17 @@ func hashLR(conf *smt.Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
 // divideFieldBytesToFieldLimbs divides a byte slice representing a field element into
 // a slice of `field.Element`s, where each `field.Element` represents a "limb"
 // of the original field element. This function assumes that each limb is
-// 2 bytes long and that these 2 bytes are placed at the 30th and 31st
-// (0-indexed) positions within a 32-byte array before being set as a
+// 4 bytes long and that these 2 bytes are placed at the 62nd and 63rd
+// (0-indexed) positions within a 64-byte array before being set as a
 // `field.Element` in canonical form.
 func divideFieldBytesToFieldLimbs(elementBytes []byte) []field.Element {
 	var res []field.Element
 	for _, limbBytes := range common.SplitBytes(elementBytes) {
 		var elementFr field.Element
 
-		var bytesPadded [32]byte
-		bytesPadded[30] = limbBytes[0]
-		bytesPadded[31] = limbBytes[1]
+		var bytesPadded [64]byte
+		bytesPadded[62] = limbBytes[0]
+		bytesPadded[63] = limbBytes[1]
 
 		if err := elementFr.SetBytesCanonical(bytesPadded[:]); err != nil {
 			panic(err)
