@@ -55,8 +55,8 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 		createCol             = common.CreateColFn(comp, LANE+"_"+pckInp.Name, size, pragmas.RightPadded)
 		isFirstSliceOfNewHash = spaghetti.NewHashSp
 		decomposedLenSp       = spaghetti.DecLenSp
-		pa                    = dedicated.AccumulateUpToMax(comp, MAXNBYTE, decomposedLenSp, spaghetti.FilterSpaghetti)
 		spaghettiSize         = spaghetti.SpaghettiSize
+		pa                    = dedicated.AccumulateUpToMax(comp, MAXNBYTE, decomposedLenSp, spaghetti.FilterSpaghetti)
 	)
 
 	l := laneRepacking{

@@ -8,8 +8,6 @@ going from uint to BaseA/BaseB. Also, a base conversion over the hash result,
 going from BaseB to uint. */
 
 import (
-	"slices"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
@@ -137,10 +135,6 @@ func (b *ToBaseX) Run(run *wizard.ProverRuntime) {
 
 	// populate laneX
 	for j := range lane {
-		laneBytes := lane[j].Bytes() // big-endian bytes
-		bytes := laneBytes[len(laneBytes)-MAXNBYTE:]
-		slices.Reverse(bytes) // to have little-endian order
-
 		// get the base
 		for i := range b.Inputs.BaseX {
 			if isBaseX[i][j].IsOne() {
@@ -148,10 +142,11 @@ func (b *ToBaseX) Run(run *wizard.ProverRuntime) {
 				continue
 			}
 		}
+		// convert lane to baseX
+		a := decomposeAndConvertToBaseX(int(lane[j].Uint64()), base, len(b.LaneX), b.Inputs.NbBitsPerBaseX)
 
-		a := extractLittleEndianBaseX(bytes, b.Inputs.NbBitsPerBaseX, len(b.LaneX), base)
 		for k := range laneX {
-			laneX[k].PushInt(int(a[k]))
+			laneX[k].PushField(a[k])
 		}
 
 	}
@@ -192,7 +187,7 @@ func uintToBaseX(x uint, base field.Element, nbBits int) field.Element {
 // where each slice corresponds to a fixed-width segment of `bitsPerSlice` bits.
 //
 // For each integer j in [0, 2^(8*MAXNBYTE) - 1], the function decomposes j into
-// `nbSlices` chunks of size `bitsPerSlice`, least-significant slice first, then
+// `nbSlices` chunks of size `bitsPerSlice`, msb-order, then
 // encodes each chunk both in base `baseA` and in base `baseB` using `uintToBaseX`.
 //
 // Parameters:
@@ -209,17 +204,16 @@ func uintToBaseX(x uint, base field.Element, nbBits int) field.Element {
 //	Suppose MAXNBYTE = 2 and nbSlices = 2.
 //
 //	bitsPerSlice = (8 * 2) / 2 = 8
-//	mask = 0xFF
 //
 //	For integer j = 0x1234 (4660 decimal):
 //	    slices = [0x34, 0x12]
-//	    baseACol[0][4660] = uintToBaseX(0x34, baseA, 8)
-//	    baseACol[1][4660] = uintToBaseX(0x12, baseA, 8)
+//	    baseACol[1][4660] = uintToBaseX(0x34, baseA, 8)
+//	    baseACol[0][4660] = uintToBaseX(0x12, baseA, 8)
 //
 //	Thus each row j in the tables represents one full decomposition.
 //
 // Note:
-//   - The decomposition is little-endian with respect to bit order: slice 0 contains the least significant bits.
+//   - The decomposition is msb.
 //   - The total number of table entries grows as 2^(8*MAXNBYTE), which can be extremely large.
 //     This function is only feasible for small MAXNBYTE (e.g., 1 or 2).
 func createLookupTablesBaseX(basex []int, nbSlices int) (uint16Col smartvectors.SmartVector, basexCol [][]smartvectors.SmartVector) {
@@ -227,9 +221,7 @@ func createLookupTablesBaseX(basex []int, nbSlices int) (uint16Col smartvectors.
 		bitsPerSlice = MAXNBYTE * 8 / nbSlices
 		u            []field.Element
 		v            = make([][][]field.Element, len(basex))
-		mask         = (1 << bitsPerSlice) - 1
 		uintMAXNBYTE = 1<<(8*MAXNBYTE) - 1
-		result       = make([]uint, nbSlices) // it holds the decomposition uint in chunks of size bitsPerSlice
 		basexFr      = make([]field.Element, len(basex))
 	)
 
@@ -254,16 +246,12 @@ func createLookupTablesBaseX(basex []int, nbSlices int) (uint16Col smartvectors.
 
 	for j := 0; j <= uintMAXNBYTE; j++ {
 		// decompose j into chunks of size bitsPerSlice
-		n := j
-		for i := 0; i < nbSlices; i++ {
-			result[i] = uint(n & mask) // extract lowest chunkBits bits
-			n >>= bitsPerSlice         // shift n for next chunk
-		}
 
 		u = append(u, field.NewElement(uint64(j)))
 		for k := range basex {
+			a := decomposeAndConvertToBaseX(j, basex[k], nbSlices, bitsPerSlice)
 			for i := 0; i < nbSlices; i++ {
-				v[k][i] = append(v[k][i], uintToBaseX(result[i], basexFr[k], bitsPerSlice))
+				v[k][i] = append(v[k][i], a[i]) // append the i-th slice of j in base basex[k]
 
 			}
 		}
@@ -277,86 +265,30 @@ func createLookupTablesBaseX(basex []int, nbSlices int) (uint16Col smartvectors.
 	return smartvectors.NewRegular(u), basexCol
 }
 
-// extractLittleEndianBaseX extracts `nbSlices` integers from the bitstream `data`,
-// interpreting each chunk of `bitsPerChunk` bits as a number in the given `base`.
-//
-// Each chunk is read in *little-endian bit order.
-//
-// The function treats each bit as a binary digit (0 or 1), and accumulates its
-// contribution in the specified base. In other words, for each chunk:
-//
-//	val = Σ_{j=0}^{bitsPerChunk-1} (bit_j * base^j)
-//
-// where bit_j is the j-th bit (starting from the least significant bit in the stream).
-//
-// Parameters:
-//   - data:         the input byte slice containing the bitstream.
-//   - bitsPerChunk: the number of bits to read for each integer.
-//   - nbSlices:     how many integers to extract from the stream.
-//   - base:         the base used for recombination (e.g., 2 for binary, 3 for base-3 interpretation).
-//
-// Returns:
-//
-//	A slice of uint64 values, each representing one extracted integer.
-//
-// Example:
-//
-//	data := []byte{0b11001010, 0b00110101}  which is the byte slice for 0x35ca
-//	bitsPerChunk := 4
-//	nbSlices := 4
-//	base := uint64(3)
-//
-//	vals := extractLittleEndianBaseX(data, bitsPerChunk, nbSlices, base)
-//
-// Combined bitstream (LSB-first):
-//
-//	[0 1 0 1 0 0 1 1 1 0 1 0 1 1 0 0]
-//
-// Grouped into 4-bit chunks (little-endian within each group):
-//
-//	chunk 0 → [0 1 0 1]
-//	chunk 1 → [0 0 1 1]
-//	chunk 2 → [1 0 1 0]
-//	chunk 3 → [1 1 0 0]
-//
-// Interpretation in base 3 (each bit contributes bit_j * 3^j):
-//
-//	val[0] = 0*3^0 + 1*3^1 + 0*3^2 + 1*3^3 = 30
-//	val[1] = 0*3^0 + 0*3^1 + 1*3^2 + 1*3^3 = 36
-//	val[2] = 1*3^0 + 0*3^1 + 1*3^2 + 0*3^3 = 10
-//	val[3] = 1*3^0 + 1*3^1 + 0*3^2 + 0*3^3 = 4
-//
-// So the function returns:
-//
-//	[]uint64{30, 36, 10, 4}
-//
-// For base = 2, this behaves exactly like a normal binary little-endian extractor.
-func extractLittleEndianBaseX(data []byte, bitsPerChunk int, nbSlices int, base int) []int {
+// decomposeAndConvertToBaseX decomposes the non-negative integer n into nbSlices chunks of bitsPerSlice bits each,
+// and converts each chunk into its representation in base `basex`.
+// The decomposition is done in big-endian order, meaning the most significant chunk is processed first.
+func decomposeAndConvertToBaseX(n int, basex, nbSlices int, bitsPerSlice int) []field.Element {
+	var (
+		basexFr = field.NewElement(uint64(basex))
+		v       = make([]field.Element, nbSlices)
+	)
 
-	// fast path, used for the padded rows
-	if base == 0 {
-		return make([]int, nbSlices)
+	mask := (1 << bitsPerSlice) - 1
+	result := make([]uint, nbSlices)
+
+	// total bit length represented
+	totalBits := nbSlices * bitsPerSlice
+
+	// shift n so that the MSB chunk is aligned first
+	for i := 0; i < nbSlices; i++ {
+		shift := totalBits - bitsPerSlice*(i+1)
+		result[i] = uint((n >> shift) & mask) // extract MSB chunk
 	}
 
-	result := make([]int, 0, nbSlices)
-	var bitPos int // current bit offset in the stream
-	totalBits := len(data) * 8
-
-	for i := 0; i < nbSlices && bitPos+bitsPerChunk <= totalBits; i++ {
-		var val int
-		pow := 1
-
-		for j := 0; j < bitsPerChunk; j++ {
-			byteIndex := (bitPos + j) / 8
-			bitIndex := (bitPos + j) % 8
-			bit := (data[byteIndex] >> bitIndex) & 1 // little-endian bit order within each byte
-
-			// accumulate in base `base`, little-endian order
-			val += int(bit) * pow
-			pow *= base
-		}
-		result = append(result, val)
-		bitPos += bitsPerChunk
+	for i := 0; i < nbSlices; i++ {
+		v[i] = uintToBaseX(result[i], basexFr, bitsPerSlice)
 	}
-	return result
+
+	return v
 }

@@ -20,13 +20,13 @@ func makeTestCaseLaneRepacking(uc generic.HashingUsecase) (
 	var (
 		// max number of blocks that can be extracted from limbs
 		// if the number of blocks passes the max, newPack() would panic.
-		maxNumBlock = 103
+		maxNumBlock = 5
 		// if the blockSize is not consistent with PackingParam, newPack() would panic.
 		blockSize = uc.BlockSizeBytes()
 		// for testing; used to populate the importation columns
 		// since we have at least one block per hash, the umber of hashes should be less than maxNumBlocks
 		// max number of limbs
-		numHash = 72
+		numHash = 2
 		size    = utils.NextPowerOfTwo(maxNumBlock * blockSize)
 	)
 

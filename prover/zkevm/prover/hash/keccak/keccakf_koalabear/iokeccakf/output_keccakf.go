@@ -1,6 +1,11 @@
 package iokeccakf
 
 import (
+	"encoding/binary"
+
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -36,7 +41,7 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 
 	// extract the hash result from the state
 	j := 0
-	for x := 0; x < 3; x++ {
+	for x := 0; x < 4; x++ {
 		for z := 0; z < kcommon.NumSlices; z++ {
 			output.Hash[j] = stateCurr[x][0][z]
 			j++
@@ -65,7 +70,7 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 }
 
 // assignOutput assigns the values to the columns of output step.
-func (o *KeccakFOutputs) Assign(run *wizard.ProverRuntime) {
+func (o *KeccakFOutputs) Run(run *wizard.ProverRuntime) {
 	// assign hash num column
 	var (
 		hashNum = *common.NewVectorBuilder(o.hashNum)
@@ -81,4 +86,52 @@ func (o *KeccakFOutputs) Assign(run *wizard.ProverRuntime) {
 		}
 	}
 	hashNum.PadAndAssign(run)
+}
+
+// helper function to extract the hash Digests, ignoring the rows where isHash = 0
+func (o *KeccakFOutputs) ExtractHashResult(run *wizard.ProverRuntime) (hashes []keccak.Digest) {
+
+	var (
+		hashCol = make([][]field.Element, len(o.Hash))
+		size    = o.Hash[0].Size()
+		isHash  = o.IsHash.GetColAssignment(run).IntoRegVecSaveAlloc()
+	)
+
+	for i := range o.Hash {
+		hashCol[i] = make([]field.Element, size)
+		hashCol[i] = o.Hash[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+
+	// we just look at row%23 = 0 since the hash results are possibaly stored there.
+	k := 0
+	for row := 0; row < size; row = k*kcommon.NumRounds - 1 {
+
+		if isHash[row].IsOne() {
+			var a keccak.Digest
+			for j := range hashCol {
+				a[j] = LEBytes(&hashCol[j][row])[0] // take the least significant byte
+			}
+			hashes = append(hashes, a)
+		}
+		k++
+	}
+
+	return hashes
+}
+
+// helper func to convert 32 columns of one byte to  16 columns of 2 bytes
+func TwoByTwoCombination() {
+
+}
+
+func LittleEndianBytes(f field.Element) (res [field.Bytes]byte) {
+	f.Uint64()
+	binary.LittleEndian.PutUint64(res[:], f.Uint64())
+	return
+}
+
+// Bytes returns the value of z as a little-endian byte array
+func LEBytes(z *field.Element) (res [field.Bytes]byte) {
+	koalabear.LittleEndian.PutElement(&res, *z)
+	return
 }

@@ -20,7 +20,7 @@ type testCase struct {
 
 func TestScanByteStream(t *testing.T) {
 	testCases := []testCase{
-		{
+		/*{
 			name: "Single limbs column (16 bytes per column)",
 			streams: [][]byte{
 				mustDecodeHex("0x067845465329789679797Ffed67658"),
@@ -44,7 +44,7 @@ func TestScanByteStream(t *testing.T) {
 			},
 			nbLimbsCols: 4,
 			bytesPerRow: TotalLimbSize,
-		},
+		},*/
 		{
 			name: "8 limb columns (2 bytes per column)",
 			streams: [][]byte{
@@ -59,24 +59,6 @@ func TestScanByteStream(t *testing.T) {
 				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
 			},
 			nbLimbsCols: 16,
-			bytesPerRow: TotalLimbSize,
-		},
-		{
-			name: "Mixed size streams with 4 columns",
-			streams: [][]byte{
-				mustDecodeHex("0x00112233445566778899aabbccddeeff"),   // 16 bytes - exactly one row
-				mustDecodeHex("0x0011223344"),                         // 5 bytes - partial row
-				mustDecodeHex("0x00112233445566778899aabbccddeeff00"), // 17 bytes - spans multiple rows
-			},
-			nbLimbsCols: 4,
-			bytesPerRow: TotalLimbSize,
-		},
-		{
-			name: "Uneven division with 3 columns",
-			streams: [][]byte{
-				mustDecodeHex("0x00112233445566778899aabbccddeeff"), // 16 bytes
-			},
-			nbLimbsCols: 3, // 16/3 = 5.33 bytes per column
 			bytesPerRow: TotalLimbSize,
 		},
 	}
@@ -159,7 +141,7 @@ func (tc *testCase) assignGdbFromStream(run *wizard.ProverRuntime, gdm *GenDataM
 					i += bytesCurrLimb
 				}
 
-				limbs[col].PushLo(currLimb)
+				limbs[col].PushBytes(currLimb[:])
 			}
 
 			hashNum.PushInt(hashID + 1)

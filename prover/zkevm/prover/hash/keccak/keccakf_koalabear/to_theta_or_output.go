@@ -38,7 +38,7 @@ type BackToThetaOrOutput struct {
 	// state in the middle of base conversion each lane is divided into two limbs of 4 bits each. This step is to reduce the size of the lookup table.
 	stateInternalChi, stateInternalTheta stateIn4Bits
 	// it is 1 if the base conversion is to base 2
-	isBase2 ifaces.Column
+	IsBase2 ifaces.Column
 	// it is 1 if the base conversion is to base theta.
 	isBaseTheta ifaces.Column
 	// lookup tables for base conversion
@@ -63,7 +63,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 	bc.lookupTable.colBaseTheta = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASE_THETA"), cleanBaseTheta)
 
 	// declare the flags for base conversion
-	bc.isBase2 = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASE2"), size, true)
+	bc.IsBase2 = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASE2"), size, true)
 	bc.isBaseTheta = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASETHETA"), size, true)
 
 	// declare the columns for the new and internal state
@@ -90,7 +90,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 					ifaces.QueryIDf("BC_LOOKUP_INCLUSION_BASE2_%v_%v_%v", x, y, z),
 					[]ifaces.Column{bc.lookupTable.colBaseChi, bc.lookupTable.colBase2},
 					[]ifaces.Column{bc.stateInternalChi[x][y][z], bc.stateInternalTheta[x][y][z]},
-					bc.isBase2)
+					bc.IsBase2)
 
 			}
 
@@ -106,7 +106,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 
 				baseThetaOrOutPut := sym.Add(
 					sym.Mul(bc.isBaseTheta, kcommon.BaseTheta4),
-					sym.Mul(bc.isBase2, 16),
+					sym.Mul(bc.IsBase2, 16),
 				)
 
 				comp.InsertGlobal(0, ifaces.QueryIDf("BC_RECOMPOSE_THETA_%v_%v_%v", x, y, z),
@@ -121,7 +121,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 	}
 	commonconstraints.MustBeMutuallyExclusiveBinaryFlags(comp,
 		bc.isActive,
-		[]ifaces.Column{bc.isBase2, bc.isBaseTheta},
+		[]ifaces.Column{bc.IsBase2, bc.isBaseTheta},
 	)
 
 	// the previous row before a newHash or the last active row indicates the output step (base 2 conversion)
@@ -134,7 +134,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 		sym.Mul(
 			sym.Sub(1, bc.isFirstBlock),
 			column.Shift(bc.isFirstBlock, 1),
-			sym.Sub(1, bc.isBase2),
+			sym.Sub(1, bc.IsBase2),
 		),
 	)
 
@@ -144,7 +144,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 		sym.Mul(
 			bc.isActive,
 			sym.Sub(1, column.Shift(bc.isActive, 1)),
-			sym.Sub(1, bc.isBase2),
+			sym.Sub(1, bc.IsBase2),
 		),
 	)
 
@@ -153,7 +153,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 		ifaces.QueryID("BC_ISBASE2_AT_END"),
 		sym.Mul(
 			column.Shift(bc.isActive, -1),
-			sym.Sub(1, column.Shift(bc.isBase2, -1)),
+			sym.Sub(1, column.Shift(bc.IsBase2, -1)),
 		),
 	)
 
@@ -161,11 +161,11 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 }
 
 // assignBaseConversion assigns the values to the columns of base conversion step.
-func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) BackToThetaOrOutput {
+func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) {
 	// decompose each bytes of the lane into 4 bits (base 12)
 	var (
 		size                  = bc.stateCurr[0][0][0].Size()
-		isBase2               = common.NewVectorBuilder(bc.isBase2)
+		isBase2               = common.NewVectorBuilder(bc.IsBase2)
 		isBaseT               = common.NewVectorBuilder(bc.isBaseTheta)
 		isActive              = run.GetColumn(bc.isActive.GetColID()).IntoRegVecSaveAlloc()
 		isFirstBlock          = run.GetColumn(bc.isFirstBlock.GetColID()).IntoRegVecSaveAlloc()
@@ -176,7 +176,6 @@ func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) BackToThetaOrOutpu
 	// assign isBase2 and isBaseTheta
 	for i := 0; i < size; i++ {
 		if i+1 < size && isActive[i+1].IsOne() {
-
 			if isFirstBlock[i].IsZero() && isFirstBlock[i+1].IsOne() {
 				isBase2.PushOne()
 				isBaseT.PushZero()
@@ -246,7 +245,6 @@ func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) BackToThetaOrOutpu
 			}
 		}
 	}
-	return BackToThetaOrOutput{stateCurr: bc.stateCurr}
 }
 
 func createLookupTablesChiToTheta() (dirtyChi, cleanTheta, cleanBase2 smartvectors.SmartVector) {
