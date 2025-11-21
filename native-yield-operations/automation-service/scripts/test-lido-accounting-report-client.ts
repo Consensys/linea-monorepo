@@ -87,14 +87,6 @@ async function main() {
       slashingReserve: params.slashingReserve.toString(),
     });
 
-    if (process.env.SKIP_SIMULATION === "true") {
-      console.log("Skipping transaction simulation (SKIP_SIMULATION=true).");
-    } else {
-      console.log("Simulating updateVaultData call...");
-      const didSimulate = await lidoAccountingClient.isSimulateSubmitLatestVaultReportSuccessful(lidoVaultAddress);
-      console.log(`Simulation ${didSimulate ? "succeeded ✅" : "failed ❌"}.`);
-    }
-
     if (process.env.SUBMIT_LATEST_REPORT === "true") {
       console.log("Submitting latest vault report...");
       await lidoAccountingClient.submitLatestVaultReport(lidoVaultAddress);

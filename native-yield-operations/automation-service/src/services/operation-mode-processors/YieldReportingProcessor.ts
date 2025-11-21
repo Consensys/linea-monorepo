@@ -101,12 +101,9 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     // Fetch initial data
     this.vault = await this.yieldManagerContractClient.getLidoStakingVaultAddress(this.yieldProvider);
     await this.lidoAccountingReportClient.getLatestSubmitVaultReportParams(this.vault);
-    const [initialRebalanceRequirements, isSimulateSubmitLatestVaultReportSuccessful] = await Promise.all([
-      this.yieldManagerContractClient.getRebalanceRequirements(),
-      this.lidoAccountingReportClient.isSimulateSubmitLatestVaultReportSuccessful(this.vault),
-    ]);
+    const initialRebalanceRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
     this.logger.info(
-      `_process - Initial data fetch: initialRebalanceRequirements=${JSON.stringify(initialRebalanceRequirements, bigintReplacer, 2)} isSimulateSubmitLatestVaultReportSuccessful=${isSimulateSubmitLatestVaultReportSuccessful}`,
+      `_process - Initial data fetch: initialRebalanceRequirements=${JSON.stringify(initialRebalanceRequirements, bigintReplacer, 2)}`,
     );
 
     // If we begin in DEFICIT, freeze beacon chain deposits to prevent further exacerbation
@@ -119,7 +116,7 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     }
 
     // Do primary rebalance +/- report submission
-    await this._handleRebalance(initialRebalanceRequirements, isSimulateSubmitLatestVaultReportSuccessful);
+    await this._handleRebalance(initialRebalanceRequirements);
 
     const postReportRebalanceRequirements = await this.yieldManagerContractClient.getRebalanceRequirements();
     this.logger.info(
@@ -162,34 +159,18 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * - UNSTAKE: Handles unstaking rebalance (deficit)
    *
    * @param {RebalanceRequirement} rebalanceRequirements - The rebalance requirements containing direction and amount.
-   * @param {boolean} isSimulateSubmitLatestVaultReportSuccessful - Whether the vault report submission simulation was successful.
    * @returns {Promise<void>} A promise that resolves when rebalancing is handled.
    */
-  private async _handleRebalance(
-    rebalanceRequirements: RebalanceRequirement,
-    isSimulateSubmitLatestVaultReportSuccessful: boolean,
-  ): Promise<void> {
+  private async _handleRebalance(rebalanceRequirements: RebalanceRequirement): Promise<void> {
     if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.NONE) {
       // No-op
-      if (!isSimulateSubmitLatestVaultReportSuccessful) {
-        this.logger.info("_handleRebalance - no-op");
-        return;
-        // Simple submit report
-      } else {
-        this.logger.info("_handleRebalance - no rebalance pathway, calling _handleSubmitLatestVaultReport");
-        await this._handleSubmitLatestVaultReport();
-        return;
-      }
+      this.logger.info("_handleRebalance - no rebalance pathway, calling _handleSubmitLatestVaultReport");
+      await this._handleSubmitLatestVaultReport();
+      return;
     } else if (rebalanceRequirements.rebalanceDirection === RebalanceDirection.STAKE) {
-      await this._handleStakingRebalance(
-        rebalanceRequirements.rebalanceAmount,
-        isSimulateSubmitLatestVaultReportSuccessful,
-      );
+      await this._handleStakingRebalance(rebalanceRequirements.rebalanceAmount);
     } else {
-      await this._handleUnstakingRebalance(
-        rebalanceRequirements.rebalanceAmount,
-        isSimulateSubmitLatestVaultReportSuccessful,
-      );
+      await this._handleUnstakingRebalance(rebalanceRequirements.rebalanceAmount);
     }
   }
 
@@ -204,14 +185,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * - ii.) Only the initial rebalance will call this fn
    *
    * @param {bigint} rebalanceAmount - The amount to rebalance in wei.
-   * @param {boolean} isSimulateSubmitLatestVaultReportSuccessful - Whether the vault report submission simulation was successful.
    * @returns {Promise<void>} A promise that resolves when staking rebalance is handled.
    */
   // Surplus
-  private async _handleStakingRebalance(
-    rebalanceAmount: bigint,
-    isSimulateSubmitLatestVaultReportSuccessful: boolean,
-  ): Promise<void> {
+  private async _handleStakingRebalance(rebalanceAmount: bigint): Promise<void> {
     this.logger.info(`_handleStakingRebalance - reserve surplus, rebalanceAmount=${rebalanceAmount}`);
     // Rebalance first - tolerate failures because fresh vault report should not be blocked
     const transferFundsForNativeYieldResult = await attempt(
@@ -234,10 +211,8 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     }
 
     // Submit report last
-    if (isSimulateSubmitLatestVaultReportSuccessful) {
-      this.logger.info("_handleStakingRebalance calling _handleSubmitLatestVaultReport");
-      await this._handleSubmitLatestVaultReport();
-    }
+    this.logger.info("_handleStakingRebalance calling _handleSubmitLatestVaultReport");
+    await this._handleSubmitLatestVaultReport();
   }
 
   /**
@@ -245,19 +220,13 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
    * Submit report first, then perform rebalance.
    *
    * @param {bigint} rebalanceAmount - The amount to rebalance in wei.
-   * @param {boolean} isSimulateSubmitLatestVaultReportSuccessful - Whether the vault report submission simulation was successful.
    * @returns {Promise<void>} A promise that resolves when unstaking rebalance is handled.
    */
   // Deficit
-  private async _handleUnstakingRebalance(
-    rebalanceAmount: bigint,
-    isSimulateSubmitLatestVaultReportSuccessful: boolean,
-  ): Promise<void> {
+  private async _handleUnstakingRebalance(rebalanceAmount: bigint): Promise<void> {
     // Submit report first
-    if (isSimulateSubmitLatestVaultReportSuccessful) {
-      this.logger.info("_handleUnstakingRebalance calling _handleSubmitLatestVaultReport");
-      await this._handleSubmitLatestVaultReport();
-    }
+    this.logger.info("_handleUnstakingRebalance calling _handleSubmitLatestVaultReport");
+    await this._handleSubmitLatestVaultReport();
 
     this.logger.info(`_handleUnstakingRebalance - reserve deficit, rebalanceAmount=${rebalanceAmount}`);
     // Then perform rebalance
@@ -273,10 +242,8 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
   /**
    * @notice Submits the latest vault report and then reports yield to the yield manager.
    * @dev Uses `tryResult` to safely handle failures without throwing.
-   *      - If submitting the vault report fails, the function logs the error and exits early,
-   *        since reporting yield without a fresh vault report would be invalid.
-   *      - If yield reporting fails, the function logs the error but continues without rethrowing,
-   *        allowing the caller or scheduler to proceed without interruption.
+   *      - If submitting the vault report fails, the execution will continue to report yield.
+   *        A key assumption is that it is safe to submit multiple yield reports for the same vault report.
    * @dev We tolerate report submission errors because they should not block rebalances
    * @returns {Promise<void>} A promise that resolves when the vault report and yield report are submitted (or early returns on failure).
    */
@@ -285,12 +252,10 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     const vaultResult = await attempt(
       this.logger,
       () => this.lidoAccountingReportClient.submitLatestVaultReport(this.vault),
-      "_handleSubmitLatestVaultReport: submitLatestVaultReport failed; skipping yield report",
+      "_handleSubmitLatestVaultReport: submitLatestVaultReport failed",
     );
-    // Early return, no point reporting Linea yield without a new vault report beforehand
-    if (vaultResult.isErr()) {
-      return;
-    } else {
+    if (vaultResult.isOk()) {
+      this.logger.info("_handleSubmitLatestVaultReport: vault report succeeded");
       this.metricsUpdater.incrementLidoVaultAccountingReport(this.vault);
     }
 
@@ -298,16 +263,11 @@ export class YieldReportingProcessor implements IOperationModeProcessor {
     const yieldResult = await attempt(
       this.logger,
       () => this.yieldManagerContractClient.reportYield(this.yieldProvider, this.l2YieldRecipient),
-      "_handleSubmitLatestVaultReport - submitLatestVaultReport succeeded but reportYield failed",
+      "_handleSubmitLatestVaultReport - reportYield failed",
     );
-    if (yieldResult.isErr()) {
-      return;
-    } else {
+    if (yieldResult.isOk()) {
+      this.logger.info("_handleSubmitLatestVaultReport: yield report succeeded");
       await this.operationModeMetricsRecorder.recordReportYieldMetrics(this.yieldProvider, yieldResult);
     }
-
-    // Both calls succeeded
-    this.logger.info("_handleSubmitLatestVaultReport: vault report + yield report succeeded");
-    return;
   }
 }

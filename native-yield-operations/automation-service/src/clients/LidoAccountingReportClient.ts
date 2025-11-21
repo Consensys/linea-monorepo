@@ -70,43 +70,6 @@ export class LidoAccountingReportClient implements ILidoAccountingReportClient {
   }
 
   /**
-   * Simulates submitting the latest vault report to check if it would succeed.
-   * Uses latest known result of this.getLatestSubmitVaultReportParams().
-   * Return true if simulation succeeded, false otherwise.
-   * Handles and logs various error types including contract reverts and base errors.
-   *
-   * @param {Address} vault - The vault address to simulate submission for.
-   * @returns {Promise<boolean>} True if simulation succeeded, false otherwise.
-   */
-  async isSimulateSubmitLatestVaultReportSuccessful(vault: Address): Promise<boolean> {
-    const params = await this._getLatestSubmitVaultReportParams(vault);
-
-    try {
-      await this.lazyOracleContractClient.simulateUpdateVaultData(params);
-      this.logger.info("Successful isSimulateSubmitLatestVaultReportSuccessful");
-      return true;
-    } catch (err) {
-      this.logger.error("Failed isSimulateSubmitLatestVaultReportSuccessful");
-      if (err instanceof ContractFunctionExecutionError) {
-        this.logger.error("Contract simulation failed", {
-          error_type: err.name,
-          function: err.functionName,
-          contract: err.contractAddress,
-          sender: err.sender,
-          revert_reason: err.cause instanceof ContractFunctionRevertedError ? err.cause.reason : undefined,
-          message: err.shortMessage,
-        });
-      } else if (err instanceof BaseError) {
-        const decodedError = err.walk();
-        this.logger.error("⚠️ Error:", { decodedError });
-      } else {
-        this.logger.error("Unexpected error:", { error: err });
-      }
-      return false;
-    }
-  }
-
-  /**
    * Submits the latest vault report to the LazyOracle contract.
    * Uses latest known result of this.getLatestSubmitVaultReportParams().
    *
