@@ -312,6 +312,53 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "EXECUTION_DATA_MIMC_TAGS_SPAGHETTI"},
 	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "MIMC_HASHER_STATE"},
 	{BaseSize: 262144, Cluster: "TINY-STUFFS", Column: "BLOCK_EXECUTION_DATA_MIMC_AccNumLane"},
+
+	// Start of new discovery advices for Osaka
+	// ARITH-OPS
+	{BaseSize: 131072, Cluster: "ARITH-OPS", Column: "TABLE_bin.ARGUMENT_1'0,bin.ARGUMENT_1'1,bin.ARGUMENT_2'0,bin.ARGUMENT_2'1,bin.INST,bin.RES'0,bin.RES'1_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "bit_sar256_u1.lsw"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "bit_shr256_u1.lsw"},
+
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u2.ARG_1,bit_xoan_u2.ARG_2,bit_xoan_u2.INST,bit_xoan_u2.RES_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "bit_xoan_u2.c0"},
+
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u4.$ret,bit_xoan_u4.ARG_1,bit_xoan_u4.ARG_2,bit_xoan_u4.INST,bit_xoan_u4.RES_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u8.$ret,bit_xoan_u8.ARG_1,bit_xoan_u8.ARG_2,bit_xoan_u8.INST,bit_xoan_u8.RES_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u16.$ret,bit_xoan_u16.ARG_1,bit_xoan_u16.ARG_2,bit_xoan_u16.INST,bit_xoan_u16.RES_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u32.$ret,bit_xoan_u32.ARG_1,bit_xoan_u32.ARG_2,bit_xoan_u32.INST,bit_xoan_u32.RES_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u64.$ret,bit_xoan_u64.ARG_1,bit_xoan_u64.ARG_2,bit_xoan_u64.INST,bit_xoan_u64.RES_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u128.$ret,bit_xoan_u128.ARG_1,bit_xoan_u128.ARG_2,bit_xoan_u128.INST,bit_xoan_u128.RES_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_bit_xoan_u256.$ret,bit_xoan_u256.ARG_1'0,bit_xoan_u256.ARG_1'1,bit_xoan_u256.ARG_2'0,bit_xoan_u256.ARG_2'1,bit_xoan_u256.INST,bit_xoan_u256.RES'0,bit_xoan_u256.RES'1_0_LOGDERIVATIVE_M"},
+
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte16.n,byte16.res,byte16.word_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte32.n,byte32.res,byte32.word_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte64.n,byte64.res,byte64.word_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte128.n,byte128.res,byte128.word_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_byte256.n,byte256.res,byte256.word'0,byte256.word'1_0_LOGDERIVATIVE_M"},
+
+	{BaseSize: 32768, Cluster: "ARITH-OPS", Column: "TABLE_signextend.res'0,signextend.res'1,signextend.size,signextend.word'0,signextend.word'1_0_LOGDERIVATIVE_M"},
+
+	{BaseSize: 1048576, Cluster: "ARITH-OPS", Column: "TABLE_MIMC_STACKED_BLOCKS_0_7873,MIMC_STACKED_NEW_STATES_0_7874,MIMC_STACKED_OLD_STATES_0_7872_0_LOGDERIVATIVE_M"},
+
+	// HUB-KECCAK (EUCLIDEAN variants)
+	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_euc.CEIL,euc.DIVIDEND,euc.DIVISOR,euc.QUOTIENT,euc.REMAINDER_0_LOGDERIVATIVE_M"},
+	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_euc.CEIL,euc.DIVIDEND,euc.DIVISOR,euc.QUOTIENT_0_LOGDERIVATIVE_M"},
+	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_euc.DIVIDEND,euc.DIVISOR,euc.QUOTIENT,euc.REMAINDER_0_LOGDERIVATIVE_M"},
+	{BaseSize: 65536, Cluster: "HUB-KECCAK", Column: "TABLE_euc.DIVIDEND,euc.DIVISOR,euc.QUOTIENT_0_LOGDERIVATIVE_M"},
+
+	// STATIC (REPEATED_PATTERN tables)
+	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_3066_64_PATTERN,REPEATED_PATTERN_3066_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_5392_24_PATTERN,REPEATED_PATTERN_5392_24_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 128, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7337_128_PATTERN,REPEATED_PATTERN_7337_128_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 256, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7345_256_PATTERN,REPEATED_PATTERN_7345_256_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 512, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7353_512_PATTERN,REPEATED_PATTERN_7353_512_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 16, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7394_16_PATTERN,REPEATED_PATTERN_7394_16_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7402_64_PATTERN,REPEATED_PATTERN_7402_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7410_64_PATTERN,REPEATED_PATTERN_7410_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 32, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7541_20_PATTERN,REPEATED_PATTERN_7541_20_PATTERNPOS_0_LOGDERIVATIVE_M"},
+	{BaseSize: 64, Cluster: "STATIC", Column: "TABLE_REPEATED_PATTERN_7553_64_PATTERN,REPEATED_PATTERN_7553_64_PATTERNPOS_0_LOGDERIVATIVE_M"},
+
+	// End of new discovery advices for Osaka
 }
 
 // NewLimitlessZkEVM returns a new LimitlessZkEVM object.
