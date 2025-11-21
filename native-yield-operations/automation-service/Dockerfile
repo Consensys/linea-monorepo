@@ -36,6 +36,12 @@ ENV NODE_ENV=production
 
 WORKDIR /usr/src/app
 
+# Create ipfs-cache directory with proper permissions before switching to node user
+# The @lidofinance/lsv-cli library requires this directory for caching IPFS data
+RUN mkdir -p /usr/src/app/ipfs-cache && \
+    chown -R node:node /usr/src/app/ipfs-cache && \
+    chmod 755 /usr/src/app/ipfs-cache
+
 USER node
 
 COPY --from=builder /usr/src/app/prod/native-yield-operations/automation-service ./native-yield-operations/automation-service
