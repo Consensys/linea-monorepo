@@ -1,11 +1,15 @@
 package arithmetization
 
 import (
+	"compress/gzip"
 	_ "embed"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/consensys/go-corset/pkg/asm"
 	"github.com/consensys/go-corset/pkg/binfile"
@@ -16,6 +20,9 @@ import (
 	"github.com/consensys/go-corset/pkg/trace/lt"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/bls12_377"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // Embed the whole constraint system at compile time, so no
@@ -85,6 +92,51 @@ func CompileZkevmBin(binf *binfile.BinaryFile, optConfig *mir.OptimisationConfig
 	airSchema := mir.LowerToAir(mirSchema, *optConfig)
 	// This performs the corset compilation
 	return &airSchema, mapping
+}
+
+// readTraceFile loads either a plain .lt file or a compressed .lt.gz file.
+// If gzip-compressed, it transparently decompresses before returning the content.
+func readTraceFile(path string) *os.File {
+
+	// Case 1: normal file (no .gz extension)
+	if !strings.HasSuffix(path, ".gz") {
+		// Existing behavior
+		return files.MustRead(path)
+	}
+
+	// Case 2: compressed file
+	f, err := os.Open(path)
+	if err != nil {
+		utils.Panic("unable to open gzipped trace file %q: %s", path, err.Error())
+	}
+	defer f.Close()
+
+	gzr, err := gzip.NewReader(f)
+	if err != nil {
+		utils.Panic("unable to create gzip reader for %q: %s", path, err.Error())
+	}
+	defer gzr.Close()
+
+	// Create temp file to store decompressed output
+	tmpFile, err := os.CreateTemp("", filepath.Base(strings.TrimSuffix(path, ".gz"))+"-*")
+	if err != nil {
+		utils.Panic("unable to create temp file for decompressed traceFile: %s", err.Error())
+	}
+
+	// Stream decompress to temp file
+	if _, err := io.Copy(tmpFile, gzr); err != nil {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		utils.Panic("failed decompressing trace file %q: %s", path, err.Error())
+	}
+
+	// Rewind to beginning so callers read normally
+	if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
+		utils.Panic("failed to rewind decompressed file: %s", err.Error())
+	}
+
+	logrus.Infof("Successfully decompressed trace file %q", path)
+	return tmpFile
 }
 
 // ReadLtTraces reads a given LT trace file which contains (unexpanded) column
