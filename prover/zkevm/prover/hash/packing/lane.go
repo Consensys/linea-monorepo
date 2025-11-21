@@ -56,19 +56,9 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 		isFirstSliceOfNewHash = spaghetti.NewHashSp
 		decomposedLenSp       = spaghetti.DecLenSp
 		spaghettiSize         = spaghetti.SpaghettiSize
-		pa                    wizard.ProverAction
-		laneIsComplete        ifaces.Column
+		pa                    = dedicated.AccumulateUpToMax(comp, MAXNBYTE, decomposedLenSp, spaghetti.FilterSpaghetti)
 	)
 
-	if pckInp.PackingParam.LaneSizeBytes()%MAXNBYTE == 0 {
-		acc := dedicated.AccumulateUpToMax(comp, MAXNBYTE, decomposedLenSp, spaghetti.FilterSpaghetti)
-		pa = acc
-		laneIsComplete = acc.IsMax
-	} else {
-		accDoubly := dedicated.AccumulateUpToDoublyMax(comp, pckInp.PackingParam.LaneSizeBytes(), MAXNBYTE, decomposedLenSp, spaghetti.FilterSpaghetti)
-		pa = accDoubly
-		laneIsComplete = accDoubly.IsMax
-	}
 	l := laneRepacking{
 		Inputs: &laneRepackingInputs{
 			PckInp:    pckInp,
@@ -81,7 +71,7 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 		Coeff:                comp.InsertCommit(0, ifaces.ColID("Coefficient_"+pckInp.Name), spaghettiSize, true),
 
 		PAAccUpToMax:   pa,
-		IsLaneComplete: laneIsComplete,
+		IsLaneComplete: pa.IsMax,
 		Size:           size,
 		RowsPerLane:    rowsPerLane,
 	}

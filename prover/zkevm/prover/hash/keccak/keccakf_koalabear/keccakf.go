@@ -1,8 +1,6 @@
 package keccakfkoalabear
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -70,7 +68,6 @@ func NewModule(comp *wizard.CompiledIOP, in KeccakfInputs) *Module {
 					)
 				}
 			} else {
-				fmt.Printf("expect state zero at x=%v,y=%v, m= %v\n", x, y, m)
 				for z := 0; z < kcommon.NumSlices; z++ {
 					//  the remaining columns of the state are set to zero
 					comp.InsertGlobal(0, ifaces.QueryIDf("STATE_IS_SET_TO_ZERO_%v_%v_%v", x, y, z),

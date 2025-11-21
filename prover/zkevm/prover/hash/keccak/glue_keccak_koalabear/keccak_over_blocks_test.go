@@ -2,7 +2,7 @@ package keccak
 
 import (
 	"crypto/rand"
-	"fmt"
+
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
@@ -17,6 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const nbHashes = 10
+
 // makes Define and Prove function for testing [NewKeccakOverBlocks]
 func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 	define wizard.DefineFunc,
@@ -26,7 +28,7 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 		mod = &KeccakOverBlocks{
 			Outputs: &iokeccakf.KeccakFOutputs{},
 		}
-		maxNumKeccakF = 2
+		maxNumKeccakF = nbHashes*(nbHashes+1)/2 + nbHashes // first hash 2 blocks, second 3 blocks, ..., last 11 blocks.
 		nbRowsPerLane = generic.KeccakUsecase.LaneSizeBytes() / common.LimbBytes
 		laneSize      = utils.NextPowerOfTwo(maxNumKeccakF * generic.KeccakUsecase.NbOfLanesPerBlock() * nbRowsPerLane)
 		keccakfSize   = keccakfkoalabear.NumRows(maxNumKeccakF)
@@ -57,11 +59,8 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 
 		// check the hash result
 		permTrace := keccak.GenerateTrace(mod.Inputs.Provider)
-		fmt.Printf("expected hashes: %+v\n", permTrace.HashOutPut)
 		// extract hash result from the module
 		actualHashes := mod.Outputs.ExtractHashResult(run)
-		fmt.Printf("actual hashes: %+v\n", actualHashes)
-
 		if len(actualHashes) != len(permTrace.HashOutPut) {
 			t.Fatalf("expected %d hashes, got %d", len(permTrace.HashOutPut), len(actualHashes))
 		}
@@ -78,7 +77,7 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 func TestCustomizedKeccak(t *testing.T) {
 	var providers [][]byte
 	// generate 20 random slices of bytes
-	for i := 0; i < 1; i++ {
+	for i := 0; i < nbHashes; i++ {
 		length := (i + 1) * generic.KeccakUsecase.BlockSizeBytes()
 		// generate random bytes
 		slice := make([]byte, length)

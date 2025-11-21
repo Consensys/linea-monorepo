@@ -61,13 +61,11 @@ func NewKeccakOverBlocks(comp *wizard.CompiledIOP, inp KeccakOverBlockInputs) *K
 
 // It implements [wizard.ProverAction] for customizedKeccak.
 func (m *KeccakOverBlocks) Run(run *wizard.ProverRuntime) {
-	// assign the blocks from input
-	m.Blocks.Run(run)
-	// assign keccakF
 	// first, construct the traces for the accumulated Provider
 	permTrace := keccak.GenerateTrace(m.Inputs.Provider)
-	m.KeccakF.Assign(run, permTrace)
-	m.Outputs.Run(run)
+	m.Blocks.Run(run, permTrace)     // assign the blocks
+	m.KeccakF.Assign(run, permTrace) // assign keccakf module
+	m.Outputs.Run(run)               // assign the output module
 }
 
 // AssignLaneInfo a helper function that assigns the  LaneInfo from the stream.
