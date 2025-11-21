@@ -1,6 +1,7 @@
 package common
 
 import (
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -206,5 +207,21 @@ func U64ToBaseX(x uint64, base *field.Element) field.Element {
 		}
 	}
 
+	return res
+}
+
+// CleanBaseBlock takes as input a keccak block and converts each byte to clean base
+func CleanBaseBlock(block keccak.Block, base *field.Element) (res [NumLanesInBlock][NumSlices]field.Element) {
+	// extract the byte of each lane, in little endian
+	for i := 0; i < NumLanesInBlock; i++ {
+		lanebytes := [NumSlices]uint8{}
+		for j := 0; j < NumSlices; j++ {
+			lanebytes[j] = uint8((block[i] >> (NumSlices * j)) & 0xff)
+		}
+		// convert each byte to clean base
+		for j := 0; j < NumSlices; j++ {
+			res[i][j] = U64ToBaseX(uint64(lanebytes[j]), base)
+		}
+	}
 	return res
 }

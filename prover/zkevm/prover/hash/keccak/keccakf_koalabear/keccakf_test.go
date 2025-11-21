@@ -6,16 +6,12 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	kcommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/iokeccakf"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -86,9 +82,19 @@ func keccakfTestingModule(
 	) wizard.MainProverStep {
 		return func(run *wizard.ProverRuntime) {
 			// assign the input columns
+			var (
+				keccakfBlocks = iokeccakf.KeccakFBlocks{
+					Blocks:        mod.Inputs.Blocks,
+					IsBlockActive: mod.Inputs.IsActive,
+					IsBlock:       mod.Inputs.IsBlock,
+					IsFirstBlock:  mod.Inputs.IsFirstBlock,
+					IsBlockBaseB:  mod.Inputs.IsBlockBaseB,
+					KeccakfSize:   mod.Inputs.KeccakfSize,
+				}
+			)
 
-			mod.assignBlocks(run, traces)
-			mod.assignBlockFlags(run, traces)
+			keccakfBlocks.AssignBlocks(run, traces)
+			keccakfBlocks.AssignBlockFlags(run, traces)
 
 			// Assigns the module
 			mod.Assign(run, traces)
@@ -118,188 +124,4 @@ func keccakfTestingModule(
 	}
 
 	return define, prover
-}
-
-/*func BenchmarkDataTransferModule(b *testing.B) {
-	b.Skip()
-	maxNumKeccakF := []int{
-		1 << 13,
-		// 1 << 16,
-		// 1 << 18,
-		// 1 << 20,
-	}
-	once := &sync.Once{}
-
-	for _, numKeccakF := range maxNumKeccakF {
-
-		b.Run(fmt.Sprintf("%v-numKeccakF", numKeccakF), func(b *testing.B) {
-
-			define := func(build *wizard.Builder) {
-				comp := build.CompiledIOP
-				mod := &Module{}
-				*mod = NewModule(comp, 0, numKeccakF)
-			}
-
-			var (
-				compiled = wizard.Compile(
-					define,
-					specialqueries.RangeProof,
-					specialqueries.CompileFixedPermutations,
-					permutation.CompileViaGrandProduct,
-					logderivativesum.CompileLookups,
-					innerproduct.Compile(),
-				)
-				numCells = 0
-				numCols  = 0
-			)
-
-			for _, colID := range compiled.Columns.AllKeys() {
-				numCells += compiled.Columns.GetSize(colID)
-				numCols += 1
-			}
-
-			b.ReportMetric(float64(numCells), "#cells")
-			b.ReportMetric(float64(numCols), "#columns")
-
-			once.Do(func() {
-
-				for _, colID := range compiled.Columns.AllKeys() {
-					fmt.Printf("%v, %v\n", colID, compiled.Columns.GetSize(colID))
-				}
-
-			})
-
-		})
-
-	}
-}*/
-
-// it extracts two bytes chunks from a given u64 value.
-func TwoBytesFromU64(block uint64) (twoBytes []field.Element) {
-	twoBytes = make([]field.Element, 4)
-	for j := 0; j < 4; j++ {
-		twoBytes[j] = field.NewElement((block >> (4 * j)) & 0xff)
-	}
-	return twoBytes
-}
-
-// Assigns blocks using the keccak traces.
-func (mod *Module) assignBlocks(
-	run *wizard.ProverRuntime,
-	traces keccak.PermTraces,
-) {
-
-	var (
-		colSize      = mod.Inputs.KeccakfSize
-		numKeccakF   = len(traces.KeccakFInps)
-		unpaddedSize = numKeccakF * keccak.NumRound
-	)
-
-	run.AssignColumn(
-		mod.Inputs.IsActive.GetColID(),
-		smartvectors.RightZeroPadded(
-			vector.Repeat(field.One(), unpaddedSize),
-			colSize,
-		),
-	)
-
-	// Assign the block in BaseB.
-	blocksVal := [kcommon.NumLanesInBlock][kcommon.NumSlices][]field.Element{}
-
-	for m := range blocksVal {
-		for z := 0; z < kcommon.NumSlices; z++ {
-			blocksVal[m][z] = make([]field.Element, unpaddedSize)
-		}
-	}
-
-	parallel.Execute(numKeccakF, func(start, stop int) {
-
-		for nperm := start; nperm < stop; nperm++ {
-
-			currBlock := traces.Blocks[nperm]
-
-			for r := 0; r < keccak.NumRound; r++ {
-				// Current row that we are assigning
-				currRow := nperm*keccak.NumRound + r
-
-				// Retro-actively assign the block in BaseB if we are not on
-				// the first row. The condition over nperm is to ensure that we
-				// do not underflow although in practice isNewHash[0] will
-				// always be true because this is the first perm of the first
-				// hash by definition.
-				if r == 0 && nperm > 0 && !traces.IsNewHash[nperm] {
-					block := cleanBaseBlock(currBlock, &kcommon.BaseChiFr)
-					for m := 0; m < kcommon.NumLanesInBlock; m++ {
-						for z := 0; z < kcommon.NumSlices; z++ {
-							blocksVal[m][z][currRow-1] = block[m][z]
-						}
-					}
-				}
-				//assign the firstBlock in BaseA
-				if r == 0 && traces.IsNewHash[nperm] {
-					block := cleanBaseBlock(currBlock, &kcommon.BaseThetaFr)
-					for m := 0; m < kcommon.NumLanesInBlock; m++ {
-						for z := 0; z < kcommon.NumSlices; z++ {
-							blocksVal[m][z][currRow] = block[m][z]
-						}
-					}
-				}
-			}
-		}
-	})
-
-	for m := 0; m < kcommon.NumLanesInBlock; m++ {
-		for z := 0; z < kcommon.NumSlices; z++ {
-			run.AssignColumn(
-				mod.Inputs.Blocks[m][z].GetColID(),
-				smartvectors.RightZeroPadded(blocksVal[m][z], colSize),
-			)
-		}
-	}
-
-}
-
-// It assigns the columns specific to the submodule.
-func (mod *Module) assignBlockFlags(
-	run *wizard.ProverRuntime,
-	permTrace keccak.PermTraces,
-) {
-	var (
-		isFirstBlock = common.NewVectorBuilder(mod.Inputs.IsFirstBlock)
-		isBlockBaseB = common.NewVectorBuilder(mod.Inputs.IsBlockBaseB)
-		isBlock      = common.NewVectorBuilder(mod.Inputs.IsBlock)
-	)
-
-	zeroes := make([]field.Element, keccak.NumRound-1)
-	for i := range permTrace.IsNewHash {
-		if permTrace.IsNewHash[i] {
-			isFirstBlock.PushOne()
-			isFirstBlock.PushSliceF(zeroes)
-			// append 24 zeroes
-			isBlockBaseB.PushSliceF(zeroes)
-			isBlockBaseB.PushInt(0)
-			// populate IsBlock
-			isBlock.PushOne()
-			isBlock.PushSliceF(zeroes)
-
-		} else {
-			isFirstBlock.PushZero()
-			isFirstBlock.PushSliceF(zeroes)
-
-			isBlockBaseB.OverWriteInt(1)
-			// append 24 zeroes
-			isBlockBaseB.PushSliceF(zeroes)
-			isBlockBaseB.PushZero()
-
-			//populate IsBlock
-			isBlock.OverWriteInt(1)
-			isBlock.PushSliceF(zeroes)
-			isBlock.PushZero()
-		}
-	}
-
-	isBlock.PadAndAssign(run)
-	isFirstBlock.PadAndAssign(run)
-	isBlockBaseB.PadAndAssign(run)
-
 }

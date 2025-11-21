@@ -1,11 +1,10 @@
 package iokeccakf
 
 import (
-	"fmt"
+	"crypto/rand"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -15,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIoKeccakF(t *testing.T) {
+func TestKeccakFBlocks(t *testing.T) {
 	var (
 		io                = &KeccakFBlocks{}
 		numBlocks         = 4
@@ -23,7 +22,6 @@ func TestIoKeccakF(t *testing.T) {
 		laneEffectiveSize = numRowsPerBlock * numBlocks
 		laneSize          = utils.NextPowerOfTwo(laneEffectiveSize)
 		keccakfSize       = utils.NextPowerOfTwo(numBlocks * keccak.NumRound)
-		f                 field.Element
 	)
 
 	define := func(build *wizard.Builder) {
@@ -42,66 +40,23 @@ func TestIoKeccakF(t *testing.T) {
 	}
 
 	prover := func(run *wizard.ProverRuntime) {
-		var (
-			lane        = common.NewVectorBuilder(io.Inputs.Lane)
-			isBeginning = common.NewVectorBuilder(io.Inputs.IsBeginningOfNewHash)
-			zeros       = vector.Zero(numRowsPerBlock - 1)
-			isActive    = common.NewVectorBuilder(io.Inputs.IsLaneActive)
-		)
-		isBeginning.PushInt(1)
-		isBeginning.PushSliceF(zeros)
-		isBeginning.PushSliceF(zeros)
-		isBeginning.PushInt(0)
-		isBeginning.PushInt(1)
-		isBeginning.PushSliceF(zeros)
-		isBeginning.PushSliceF(zeros)
-		isBeginning.PushInt(0)
-
-		// assign values to input columns here
-		for row := 0; row < laneEffectiveSize; row++ {
-			if (row/4)%2 == 0 {
-				f = field.NewElement(0x35ca) // bytes = [0xca, 0x35]
-			} else {
-				f = field.NewElement(0x56ad) // bytes = [0xad, 0x56]
-			}
-			lane.PushField(f)
-			isActive.PushInt(1)
+		// note that we are assigning the columns with what are expected values, so that verifying the constraints is enough
+		// namely, we dont need to examine the assigned values from the module against the expected values.
+		var providers [][]byte
+		// generate 20 random slices of bytes
+		for i := 0; i < 1; i++ {
+			length := (i + 1) * generic.KeccakUsecase.BlockSizeBytes()
+			// generate random bytes
+			slice := make([]byte, length-8)
+			rand.Read(slice)
+			providers = append(providers, slice)
 		}
-		isBeginning.PadAndAssign(run, field.Zero())
-		lane.PadAndAssign(run, field.Zero())
-		isActive.PadAndAssign(run, field.Zero())
+
+		AssignLaneInfo(run, &io.Inputs, providers)
+		traces := keccak.GenerateTrace(providers)
 
 		// assign io module
-		io.Run(run)
-
-		// verify output blocks here, see the example below
-		var expected uint64
-		for i := range io.Blocks {
-			for j := 0; j < NumSlices; j++ {
-				actualBlock := io.Blocks[i][j].GetColAssignment(run).IntoRegVecSaveAlloc()
-				for row := 0; row < len(actualBlock); row++ {
-
-					switch {
-					case (row == 0 || row == 48) && i%2 == 0:
-						expected = []uint64{20548, 1297}[j%2]
-					case (row == 0 || row == 48) && i%2 == 1:
-						expected = []uint64{17489, 4372}[j%2]
-					case (row == 23 || row == 71) && i%2 == 0:
-						expected = []uint64{19649675, 1786334}[j%2]
-					case (row == 23 || row == 71) && i%2 == 1:
-						expected = []uint64{21260074, 175814}[j%2]
-					default:
-						expected = 0
-					}
-
-					assert.Equalf(t, fmt.Sprintf("%d", expected),
-						fmt.Sprintf("%d", actualBlock[row].Uint64()),
-						"invalid block value at block %d slice %d row %d ,value %d", i, j, row, actualBlock[row].Uint64())
-
-				}
-			}
-
-		}
+		io.Run(run, traces)
 
 	}
 
@@ -111,54 +66,41 @@ func TestIoKeccakF(t *testing.T) {
 
 }
 
-//  Example:
-//  input: 0x35ca
-//	inputBytes := []byte{0b11001010, 0b00110101}
-//	bitsPerChunk := 8
-//	nbSlices := 2
-//	base := uint64(3)
-//
-//	vals := extractLittleEndianBaseX(data, bitsPerChunk, nbSlices, base)
-//
-// Combined bitstream (LSB-first):
-//
-//	[0 1 0 1 0 0 1 1 1 0 1 0 1 1 0 0]
-//
-// Grouped into 4-bit chunks (little-endian within each group):
-//
-//	chunk 0 → [0 1 0 1 0 0 1 1]
-//	chunk 2 → [1 0 1 0  1 1 0 0]
-//
-//
-// Interpretation in base 3 (each bit contributes bit_j * 3^j):
-//
-//	laneX[i][j] = 0*4^0 + 1*4^1 + 0*4^2 + 1*4^3 + 0*4^4 + 0*4^5 + 1*4^6 + 1*4^7 = 20548
-//	laneX[i][j] = 1*4^0 + 0*4^1 + 1*4^2 + 0*4^3 + 1*4^4 + 1*4^5 + 0*4^6 + 0*4^7 = 1297
-//
-// So the the laneX is:
-//
-//	[]uint64{20548 , 1297 }
-//
-//
-// and in base 11:
-//  val0 = 0*11^0 + 1*11^1 + 0*11^2 + 1*11^3 + 0*11^4 + 0*11^5 + 1*11^6 + 1*11^7 = 21260074
-//	val1 = 1*11^0 + 0*11^1 + 1*11^2 + 0*11^3 + 1*11^4 + 1*11^5 + 0*11^6 + 0*11^7 = 175814
-//
-// So the lanex is:
-//	[]uint64{21260074, 175814}
-//
-// for 0x56ad → 0x56, 0xad → [0b01010110, 0b10101101]
-// we have  inputBytes := []byte{0b10101101, 0b01010110},
-// in base 4:
-// laneX = []uint64{17489, 4372}
-//
-// in base 11
-//	laneX = []uint64{19649675, 1786334}
+// / AssignLaneInfo a helper function that assigns the  LaneInfo from the stream.
+func AssignLaneInfo(run *wizard.ProverRuntime, l *LaneInfo, in [][]byte) {
+	var (
+		lanes                = common.NewVectorBuilder(l.Lane)
+		isBeginningOfNewHash = common.NewVectorBuilder(l.IsBeginningOfNewHash)
+		isLaneActive         = common.NewVectorBuilder(l.IsLaneActive)
+		numRowsPerBlock      = (generic.KeccakUsecase.LaneSizeBytes() / common.LimbBytes) * generic.KeccakUsecase.NbOfLanesPerBlock()
+	)
 
-//
-// we have 2 hashes, one start at row 0 and the other at row 136.
-// the first block is in base 4 and the second block is in base 11.
-//
-// block Columns:
-// the laneX columns are flattened such that the first numRowsPerBlock rows correspond to the first blocks and so on.
-// blocks are in positions 0, 23, 48, 71.
+	for i := range in {
+		// pad and turn into lanes
+		nbBlocks := 1 + len(in[i])/136
+		for j := 0; j < nbBlocks; j++ {
+			var block [136]byte
+			copy(block[:], in[i][j*136:])
+			if j == nbBlocks-1 {
+				block[len(in[i])-j*136] = 1 // dst
+				block[135] |= 0x80          // end marker
+			}
+			for k := 0; k < numRowsPerBlock; k++ {
+				if k == 0 && j == 0 {
+					isBeginningOfNewHash.PushInt(1)
+				} else {
+					isBeginningOfNewHash.PushInt(0)
+				}
+				isLaneActive.PushInt(1)
+				f := *new(field.Element).SetBytes(block[k*common.LimbBytes : k*common.LimbBytes+common.LimbBytes])
+				lanes.PushField(f)
+			}
+		}
+
+	}
+
+	// assign lane-info
+	lanes.PadAndAssign(run)
+	isBeginningOfNewHash.PadAndAssign(run)
+	isLaneActive.PadAndAssign(run)
+}

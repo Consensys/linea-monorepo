@@ -1,4 +1,4 @@
-package baseconversion_test
+package baseconversion
 
 import (
 	"fmt"
@@ -10,13 +10,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	baseconversion "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf_koalabear/base_conversion"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestKeccakFBlockPreparation(t *testing.T) {
 	var (
-		b    = &baseconversion.ToBaseX{}
+		b    = &ToBaseX{}
 		size = 8
 	)
 
@@ -26,7 +25,7 @@ func TestKeccakFBlockPreparation(t *testing.T) {
 			createCol = common.CreateColFn(comp, "BASE_CONVERSION_TEST", size, pragmas.RightPadded)
 		)
 
-		inp := baseconversion.ToBaseXInputs{
+		inp := ToBaseXInputs{
 			Lane:           createCol("LANE"),
 			IsLaneActive:   createCol("IS_ACTIVE"),
 			BaseX:          []int{3, 5, 7},
@@ -37,7 +36,7 @@ func TestKeccakFBlockPreparation(t *testing.T) {
 			inp.IsBaseX = append(inp.IsBaseX, createCol("IS_BASEX_%v", i))
 		}
 
-		b = baseconversion.NewToBaseX(comp, inp)
+		b = NewToBaseX(comp, inp)
 
 	}
 	prover := func(run *wizard.ProverRuntime) {
@@ -84,9 +83,10 @@ func TestKeccakFBlockPreparation(t *testing.T) {
 
 		b.Run(run)
 
-		expected0 := []uint64{30, 36, 10, 4} // see example in comment
-		expected1 := []uint64{130, 150, 26, 6}
-		expected3 := []uint64{350, 392, 50, 8}
+		// verify output blocks here, see the example below
+		expected0 := []uint64{4, 10, 36, 30}
+		expected1 := []uint64{6, 26, 150, 130}
+		expected3 := []uint64{8, 50, 392, 350}
 
 		laneX := make([][]field.Element, len(b.LaneX))
 		for i := range b.LaneX {
@@ -133,43 +133,30 @@ func TestKeccakFBlockPreparation(t *testing.T) {
 //	nbSlices := 4
 //	base := uint64(3)
 //
-//	vals := extractLittleEndianBaseX(data, bitsPerChunk, nbSlices, base)
-//
 // Combined bitstream (LSB-first):
 //
 //	[0 1 0 1 0 0 1 1 1 0 1 0 1 1 0 0]
 //
-// Grouped into 4-bit chunks (little-endian within each group):
+// Grouped into 4-bit chunks (msb first):
 //
-//	chunk 0 → [0 1 0 1]
-//	chunk 1 → [0 0 1 1]
-//	chunk 2 → [1 0 1 0]
-//	chunk 3 → [1 1 0 0]
+//	chunk 3 → [0 1 0 1]
+//	chunk 2 → [0 0 1 1]
+//	chunk 1 → [1 0 1 0]
+//	chunk 0 → [1 1 0 0]
 //
 // Interpretation in base 3 (each bit contributes bit_j * 3^j):
 //
-//	val[0] = 0*3^0 + 1*3^1 + 0*3^2 + 1*3^3 = 30
-//	val[1] = 0*3^0 + 0*3^1 + 1*3^2 + 1*3^3 = 36
-//	val[2] = 1*3^0 + 0*3^1 + 1*3^2 + 0*3^3 = 10
-//	val[3] = 1*3^0 + 1*3^1 + 0*3^2 + 0*3^3 = 4
+//	val[3] = 0*3^0 + 1*3^1 + 0*3^2 + 1*3^3 = 30
+//	val[2] = 0*3^0 + 0*3^1 + 1*3^2 + 1*3^3 = 36
+//	val[1] = 1*3^0 + 0*3^1 + 1*3^2 + 0*3^3 = 10
+//	val[0] = 1*3^0 + 1*3^1 + 0*3^2 + 0*3^3 = 4
 //
 // So the function returns:
-//
-//	[]uint64{30, 36, 10, 4}
+//	[]uint64{4,10,36,30}
 //
 // and in base 5:
-//	val[0] = 0*5^0 + 1*5^1 + 0*5^2 + 1*5^3 = 130
-//	val[1] = 0*5^0 + 0*5^1 + 1*5^2 + 1*5^3 = 150
-//	val[2] = 1*5^0 + 0*5^1 + 1*5^2 + 0*5^3 = 26
-//	val[3] = 1*5^0 + 1*5^1 + 0*5^2 + 0*5^3 = 6
-// So the function returns:
-//	[]uint64{130, 130, 26, 6}
+//  []uint64{6, 26, 130, 130}
 //
 // and in base 7:
-//	val[0] = 0*7^0 + 1*7^1 + 0*7^2 + 1*7^3 = 350
-//	val[1] = 0*7^0 + 0*7^1 + 1*7^2 + 1*7^3 = 392
-//	val[2] = 1*7^0 + 0*7^1 + 1*7^2 + 0*7^3 = 50
-//	val[3] = 1*7^0 + 1*7^1 + 0*7^2 + 0*7^3 = 8
-// So the function returns:
-//	[]uint64{350, 392, 50, 8}
+//  []uint64{8, 50, 392, 350}
 //

@@ -161,10 +161,10 @@ func chiTestingModule(
 			blockNext := [common.NumLanesInBlock][common.NumSlices]field.Element{}
 			for permId := 0; permId < numKeccakf; permId++ {
 				state := traces.KeccakFInps[permId]
-				block := cleanBaseBlock(traces.Blocks[permId], &common.BaseChiFr)
+				block := common.CleanBaseBlock(traces.Blocks[permId], &common.BaseChiFr)
 
 				if permId+1 < numKeccakf {
-					blockNext = cleanBaseBlock(traces.Blocks[permId+1], &common.BaseChiFr)
+					blockNext = common.CleanBaseBlock(traces.Blocks[permId+1], &common.BaseChiFr)
 				}
 
 				for rnd := 0; rnd < keccak.NumRound; rnd++ {
@@ -250,19 +250,4 @@ func chiTestingModule(
 	}
 
 	return builder, prover, mod
-}
-
-func cleanBaseBlock(block keccak.Block, base *field.Element) (res [common.NumLanesInBlock][common.NumSlices]field.Element) {
-	// extract the byte of each lane, in little endian
-	for i := 0; i < common.NumLanesInBlock; i++ {
-		lanebytes := [common.NumSlices]uint8{}
-		for j := 0; j < common.NumSlices; j++ {
-			lanebytes[j] = uint8((block[i] >> (common.NumSlices * j)) & 0xff)
-		}
-		// convert each byte to clean base common.common.BaseChi
-		for j := 0; j < common.NumSlices; j++ {
-			res[i][j] = common.U64ToBaseX(uint64(lanebytes[j]), base)
-		}
-	}
-	return res
 }
