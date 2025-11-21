@@ -116,42 +116,37 @@ jobs:
                   type: plain_text
                   text: ":x: ${{ inputs.title }}"
                   emoji: true
+              
+              - type: rich_text
+                elements:
+                  - type: rich_text_section
+                    elements:
+                      - type: text
+                        text: "Repository: "
+                        style:
+                          bold: true
+                      - type: text
+                        text: "${{ steps.ctx.outputs.repo }}"
+              
+              - type: rich_text
+                elements:
+                  - type: rich_text_section
+                    elements:
+                      - type: text
+                        text: "Author: "
+                        style:
+                          bold: true
+                      - type: text
+                        text: "${{ steps.ctx.outputs.author }}"
 
               - type: rich_text
                 elements:
                   - type: rich_text_section
                     elements:
                       - type: text
-                        text: "Repository:"
+                        text: "Commit: "
                         style:
                           bold: true
-
-                  - type: rich_text_section
-                    elements:
-                      - type: text
-                        text: "${{ steps.ctx.outputs.repo }}"
-
-                  - type: rich_text_section
-                    elements:
-                      - type: text
-                        text: "Author:"
-                        style:
-                          bold: true
-
-                  - type: rich_text_section
-                    elements:
-                      - type: text
-                        text: "${{ steps.ctx.outputs.author }}"
-
-                  - type: rich_text_section
-                    elements:
-                      - type: text
-                        text: "Commit:"
-                        style:
-                          bold: true
-
-                  - type: rich_text_section
-                    elements:
                       - type: link
                         url: "${{ steps.ctx.outputs.commit_url }}"
                         text: "${{ steps.ctx.outputs.commit_sha }}"
@@ -161,7 +156,7 @@ jobs:
                   - type: rich_text_section
                     elements:
                       - type: text
-                        text: "Failed Job URLs:"
+                        text: "Failed Job:"
                         style:
                           bold: true
 
