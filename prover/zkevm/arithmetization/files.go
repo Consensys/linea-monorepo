@@ -8,9 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/consensys/go-corset/pkg/asm"
 	"github.com/consensys/go-corset/pkg/binfile"
@@ -21,7 +19,6 @@ import (
 	"github.com/consensys/go-corset/pkg/trace/lt"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/go-corset/pkg/util/field/bls12_377"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -95,50 +92,57 @@ func CompileZkevmBin(binf *binfile.BinaryFile, optConfig *mir.OptimisationConfig
 	return &airSchema, mapping
 }
 
-// readTraceFile loads either a plain .lt file or a compressed .lt.gz file.
-// If gzip-compressed, it transparently decompresses before returning the content.
-func readTraceFile(path string) *os.File {
+type readCloserChain struct {
+	io.Reader
+	closers []io.Closer
+}
 
-	// Case 1: normal file (no .gz extension)
+func (r *readCloserChain) Close() error {
+	var firstErr error
+	for _, c := range r.closers {
+		if err := c.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+// readTraceFile returns a reader over the trace data.
+// If the file ends with .gz, it transparently decompresses it.
+// The caller (See ReadLtTraces below) MUST close the returned io.ReadCloser.
+func readTraceFile(path string) io.ReadCloser {
+	// Case 1: normal file
 	if !strings.HasSuffix(path, ".gz") {
-		// Existing behavior
-		return files.MustRead(path)
+		f, err := os.Open(path)
+		if err != nil {
+			utils.Panic("failed opening trace file %q: %s", path, err)
+		}
+		return f
 	}
 
-	// Case 2: compressed file
-	startTime := time.Now()
+	// Case 2: gzipped file
 	f, err := os.Open(path)
 	if err != nil {
-		utils.Panic("unable to open gzipped trace file %q: %s", path, err.Error())
+		utils.Panic("unable to open gzipped trace file %q: %s", path, err)
 	}
-	defer f.Close()
 
 	gzr, err := gzip.NewReader(f)
 	if err != nil {
-		utils.Panic("unable to create gzip reader for %q: %s", path, err.Error())
-	}
-	defer gzr.Close()
-
-	// Create temp file to store decompressed output
-	tmpFile, err := os.CreateTemp("", filepath.Base(strings.TrimSuffix(path, ".gz"))+"-*")
-	if err != nil {
-		utils.Panic("unable to create temp file for decompressed traceFile: %s", err.Error())
+		f.Close()
+		utils.Panic("failed to create gzip.Reader for %q: %s", path, err)
 	}
 
-	// Stream decompress to temp file
-	if _, err := io.Copy(tmpFile, gzr); err != nil {
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
-		utils.Panic("failed decompressing trace file %q: %s", path, err.Error())
+	// Wrap so closing the reader also closes the underlying file
+	rc := &readCloserChain{
+		Reader: gzr,
+		closers: []io.Closer{
+			gzr,
+			f,
+		},
 	}
 
-	// Rewind to beginning so callers read normally
-	if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
-		utils.Panic("failed to rewind decompressed file: %s", err.Error())
-	}
-
-	logrus.Infof("Successfully decompressed trace file:%q took %vs", path, time.Since(startTime).Seconds())
-	return tmpFile
+	logrus.Infof("Streaming decompression of %q", path)
+	return rc
 }
 
 // ReadLtTraces reads a given LT trace file which contains (unexpanded) column
