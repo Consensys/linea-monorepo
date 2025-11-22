@@ -13,44 +13,44 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.bls.fixedSizeFixedGasCost;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.postCancun.fixedSizeFixedGasCost;
 
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_G1_ADD;
-import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G1_ADD;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___G1_ADD;
-import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_BLS_G1_ADD;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_POINT_EVALUATION;
+import static net.consensys.linea.zktracer.Trace.OOB_INST_POINT_EVALUATION;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___POINT_EVALUATION;
+import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_POINT_EVALUATION;
 
 import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.Trace;
 
-public class BlsG1AddOobCall extends BlsFixedSizeFixedGasCostOobCall {
-  public BlsG1AddOobCall(BigInteger calleeGas) {
-    super(calleeGas, OOB_INST_BLS_G1_ADD);
+public class BlsPointEvaluationOobCall extends FixedSizeFixedGasCostOobCall {
+  public BlsPointEvaluationOobCall(BigInteger calleeGas) {
+    super(calleeGas, OOB_INST_POINT_EVALUATION);
   }
 
   @Override
   long precompileExpectedCds() {
-    return PRECOMPILE_CALL_DATA_SIZE___G1_ADD;
+    return PRECOMPILE_CALL_DATA_SIZE___POINT_EVALUATION;
   }
 
   @Override
   long precompileLongCost() {
-    return GAS_CONST_BLS_G1_ADD;
+    return GAS_CONST_POINT_EVALUATION;
   }
 
   @Override
   protected void traceOobInstructionInOob(Trace.Oob trace) {
-    trace.isBlsG1Add(true).oobInst(OOB_INST_BLS_G1_ADD);
+    trace.isPointEvaluation(true).oobInst(OOB_INST_POINT_EVALUATION);
   }
 
   @Override
   protected void traceOobInstructionInHub(Trace.Hub trace) {
-    trace.pMiscOobInst(OOB_INST_BLS_G1_ADD);
+    trace.pMiscOobInst(OOB_INST_POINT_EVALUATION);
   }
 
   @Override
   public int ctMax() {
-    return CT_MAX_BLS_G1_ADD;
+    return CT_MAX_POINT_EVALUATION;
   }
 }

@@ -13,44 +13,44 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.bls.fixedSizeFixedGasCost;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.postCancun.fixedSizeFixedGasCost;
 
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_MAP_FP_TO_G1;
-import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_MAP_FP_TO_G1;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___FP_TO_G1;
-import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_BLS_MAP_FP_TO_G1;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_MAP_FP2_TO_G2;
+import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_MAP_FP2_TO_G2;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___FP2_TO_G2;
+import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_BLS_MAP_FP2_TO_G2;
 
 import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.Trace;
 
-public class BlsMapFpToG1OobCall extends BlsFixedSizeFixedGasCostOobCall {
-  public BlsMapFpToG1OobCall(BigInteger calleeGas) {
-    super(calleeGas, OOB_INST_BLS_MAP_FP_TO_G1);
+public class BlsMapFp2ToG2OobCall extends FixedSizeFixedGasCostOobCall {
+  public BlsMapFp2ToG2OobCall(BigInteger calleeGas) {
+    super(calleeGas, OOB_INST_BLS_MAP_FP2_TO_G2);
   }
 
   @Override
   long precompileExpectedCds() {
-    return PRECOMPILE_CALL_DATA_SIZE___FP_TO_G1;
+    return PRECOMPILE_CALL_DATA_SIZE___FP2_TO_G2;
   }
 
   @Override
   long precompileLongCost() {
-    return GAS_CONST_BLS_MAP_FP_TO_G1;
+    return GAS_CONST_BLS_MAP_FP2_TO_G2;
   }
 
   @Override
   protected void traceOobInstructionInOob(Trace.Oob trace) {
-    trace.isBlsMapFpToG1(true).oobInst(OOB_INST_BLS_MAP_FP_TO_G1);
+    trace.isBlsMapFp2ToG2(true).oobInst(OOB_INST_BLS_MAP_FP2_TO_G2);
   }
 
   @Override
   protected void traceOobInstructionInHub(Trace.Hub trace) {
-    trace.pMiscOobInst(OOB_INST_BLS_MAP_FP_TO_G1);
+    trace.pMiscOobInst(OOB_INST_BLS_MAP_FP2_TO_G2);
   }
 
   @Override
   public int ctMax() {
-    return CT_MAX_BLS_MAP_FP_TO_G1;
+    return CT_MAX_BLS_MAP_FP2_TO_G2;
   }
 }

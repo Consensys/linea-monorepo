@@ -144,6 +144,10 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
     return this.exoIsBlsData(true).updateExoSum(EXO_SUM_WEIGHT_BLSDATA);
   }
 
+  final MmuCall setEllipticCurveModule(PrecompileScenarioFragment.PrecompileFlag flag) {
+    return flag.isEcdataPrecompile() ? setEcData() : setBlsData();
+  }
+
   public MmuCall(final Hub hub, final int instruction) {
     hub.defers().scheduleForEndTransaction(this);
     this.instruction = instruction;
@@ -574,7 +578,7 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
         .phase(PHASE_ECPAIRING_DATA);
   }
 
-  public static MmuCall callDataExtractionForBlsPrecompiles(
+  public static MmuCall callDataExtractionForPostCancunPrecompiles(
       Hub hub, EllipticCurvePrecompileSubsection subsection, boolean successBit) {
     final int precompileContextNumber = subsection.exoModuleOperationId();
     return new MmuCall(hub, MMU_INST_RAM_TO_EXO_WITH_PADDING) // Note: there will be no padding
@@ -587,19 +591,21 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
         .referenceSize(subsection.callDataSize())
         // constant
         .successBit(successBit)
-        .setBlsData()
-        .phase(subsection.flag().dataPhase());
+        .phase(subsection.flag().dataPhase())
+        .setEllipticCurveModule(subsection.flag());
   }
 
-  public static MmuCall fullReturnDataTransferForBlsPrecompiles(
+  public static MmuCall fullReturnDataTransferForPostCancunPrecompiles(
       final Hub hub, EllipticCurvePrecompileSubsection subsection, boolean successBit) {
-
     final int precompileContextNumber = subsection.exoModuleOperationId();
 
-    final long expectedReturnDataSize = BlsDataOperation.expectedReturnDataSize(subsection.flag());
+    final long expectedReturnDataSize =
+        subsection.flag() != PrecompileScenarioFragment.PrecompileFlag.PRC_P256_VERIFY
+            ? BlsDataOperation.expectedReturnDataSize(subsection.flag())
+            : PRECOMPILE_RETURN_DATA_SIZE___P256_VERIFY;
     checkState(
         subsection.returnDataRange.getRange().size() == expectedReturnDataSize,
-        "The return data size for BLS precompile does not match our expectation of it");
+        "The return data size for post-cancun precompile does not match our expectation of it");
 
     return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
         .sourceId(precompileContextNumber)
@@ -609,10 +615,10 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
         .size(expectedReturnDataSize)
         .phase(subsection.flag().resultPhase())
         .successBit(successBit)
-        .setBlsData();
+        .setEllipticCurveModule(subsection.flag());
   }
 
-  public static MmuCall partialCopyOfReturnDataForBlsPrecompiles(
+  public static MmuCall partialCopyOfReturnDataForPostCancunPrecompiles(
       final Hub hub, PrecompileSubsection subsection) {
     final int precompileContextNumber = subsection.exoModuleOperationId();
     final int returnDataSize = (int) subsection.returnDataRange.getRange().size();
@@ -624,7 +630,8 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
         .targetRamBytes(Optional.of(subsection.rawCallerMemory()))
         .size(returnDataSize)
         .referenceOffset(subsection.returnAtOffset())
-        .referenceSize(subsection.returnAtCapacity());
+        .referenceSize(subsection.returnAtCapacity())
+        .setEllipticCurveModule(subsection.flag());
   }
 
   /**

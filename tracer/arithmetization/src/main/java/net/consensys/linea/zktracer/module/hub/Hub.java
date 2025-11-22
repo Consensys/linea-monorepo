@@ -256,6 +256,8 @@ public abstract class Hub implements Module {
       new CountingOnlyModule(PRECOMPILE_ECPAIRING_MILLER_LOOPS);
   private final IncrementingModule ecPairingFinalExponentiations =
       new IncrementingModule(PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS);
+  private final IncrementingModule p256VerifyEffectiveCalls =
+      new IncrementingModule(PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS);
 
   //  related to Modexp
   private final IncrementAndDetectModule modexpEffectiveCall =
@@ -332,6 +334,7 @@ public abstract class Hub implements Module {
         blsC2MembershipCalls,
         blsG1MembershipCalls,
         blsG2MembershipCalls,
+        p256VerifyEffectiveCalls,
         l1BlockSize,
         l2L1Logs);
   }
@@ -356,7 +359,8 @@ public abstract class Hub implements Module {
           ecRecoverEffectiveCall,
           ecPairingG2MembershipCalls,
           ecPairingMillerLoops,
-          ecPairingFinalExponentiations);
+          ecPairingFinalExponentiations,
+          p256VerifyEffectiveCalls);
   final Module blsData = setBlsData(this);
 
   private final L1BlockSize l1BlockSize;

@@ -370,7 +370,8 @@ public class CallSection extends TraceSection
           PRC_BLS_MAP_FP2_TO_G2,
           PRC_ECADD,
           PRC_ECMUL,
-          PRC_ECPAIRING -> new EllipticCurvePrecompileSubsection(hub, this);
+          PRC_ECPAIRING,
+          PRC_P256_VERIFY -> new EllipticCurvePrecompileSubsection(hub, this);
       case PRC_SHA2_256, PRC_RIPEMD_160 -> new ShaTwoOrRipemdSubSection(hub, this);
       case PRC_IDENTITY -> new IdentitySubsection(hub, this);
       case PRC_MODEXP -> {

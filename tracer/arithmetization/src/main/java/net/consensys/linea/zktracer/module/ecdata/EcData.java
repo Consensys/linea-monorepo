@@ -51,6 +51,8 @@ public class EcData implements OperationListModule<EcDataOperation> {
   private final CountingOnlyModule ecPairingMillerLoops;
   private final IncrementingModule ecPairingFinalExponentiations;
 
+  private final IncrementingModule p256VerifyEffectiveCalls;
+
   @Getter private EcDataOperation ecDataOperation;
 
   @Override
@@ -143,6 +145,9 @@ public class EcData implements OperationListModule<EcDataOperation> {
         ecPairingFinalExponentiations.updateTally(
             ecDataOperation.circuitSelectorEcPairingCounter()
                 > 0); // See https://eprint.iacr.org/2008/490.pdf
+      }
+      case PRC_P256_VERIFY -> {
+        p256VerifyEffectiveCalls.updateTally(ecDataOperation.internalChecksPassed());
       }
       default -> throw new IllegalArgumentException("Operation not supported by EcData");
     }

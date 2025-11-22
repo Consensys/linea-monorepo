@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.bls.msm;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.postCancun.msm;
 
 import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G1_MSM;
 import static net.consensys.linea.zktracer.Trace.PRC_BLS_G1_MSM_MAX_DISCOUNT;
