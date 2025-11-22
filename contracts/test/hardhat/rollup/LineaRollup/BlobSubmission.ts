@@ -761,14 +761,13 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
       const hierarchical_conglomeration_LineaRollup = (await deployUpgradableFromFactory(
         "TestLineaRollup",
-        [initializationData],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -909,14 +908,13 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
       const hierarchical_conglomeration_LineaRollup = (await deployUpgradableFromFactory(
         "TestLineaRollup",
-        [initializationData],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],

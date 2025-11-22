@@ -13,6 +13,7 @@ import {
   INITIAL_WITHDRAW_LIMIT,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   ONE_DAY_IN_SECONDS,
+  VALIDIUM_INITIALIZE_SIGNATURE,
 } from "../../common/constants";
 import { deployUpgradableFromFactory } from "../../common/deployment";
 
@@ -71,13 +72,12 @@ export async function deployValidiumFixture() {
     roleAddresses,
     pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
     unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-    fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
     defaultAdmin: securityCouncil.address,
     shnarfProvider: ADDRESS_ZERO,
   };
 
   const validium = (await deployUpgradableFromFactory("TestValidium", [initializationData], {
-    initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+    initializer: VALIDIUM_INITIALIZE_SIGNATURE,
     unsafeAllow: ["constructor", "incorrect-initializer-order"],
   })) as unknown as TestValidium;
 
@@ -101,15 +101,18 @@ export async function deployLineaRollupFixture() {
     roleAddresses,
     pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
     unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-    fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
     defaultAdmin: securityCouncil.address,
     shnarfProvider: ADDRESS_ZERO,
   };
 
-  const lineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
-    initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-    unsafeAllow: ["constructor", "incorrect-initializer-order"],
-  })) as unknown as TestLineaRollup;
+  const lineaRollup = (await deployUpgradableFromFactory(
+    "TestLineaRollup",
+    [initializationData, FALLBACK_OPERATOR_ADDRESS],
+    {
+      initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+      unsafeAllow: ["constructor", "incorrect-initializer-order"],
+    },
+  )) as unknown as TestLineaRollup;
 
   return { verifier, lineaRollup };
 }

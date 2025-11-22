@@ -1,30 +1,19 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
 
-import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
 import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
-import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
 
 import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
   SHNARF_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
-import { CallForwardingProxy, TestValidium } from "contracts/typechain-types";
-import {
-  deployCallForwardingProxy,
-  deployValidiumFixture,
-  expectSuccessfulFinalizeViaCallForwarder,
-  getAccountsFixture,
-  getRoleAddressesFixture,
-  sendBlobTransactionViaCallForwarder,
-} from "./helpers";
+import { TestValidium } from "contracts/typechain-types";
+import { deployValidiumFixture, getAccountsFixture, getRoleAddressesFixture } from "./helpers";
 import {
   ADDRESS_ZERO,
-  FALLBACK_OPERATOR_ADDRESS,
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
   INITIAL_MIGRATION_BLOCK,
@@ -36,9 +25,6 @@ import {
   GENESIS_L2_TIMESTAMP,
   EMPTY_CALLDATA,
   INITIALIZED_ALREADY_MESSAGE,
-  DEFAULT_ADMIN_ROLE,
-  DEFAULT_LAST_FINALIZED_TIMESTAMP,
-  SIX_MONTHS_IN_SECONDS,
   VALIDIUM_INITIALIZE_SIGNATURE,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
@@ -50,15 +36,12 @@ import {
   buildAccessErrorMessage,
   expectRevertWithCustomError,
   expectRevertWithReason,
-  generateBlobParentShnarfData,
-  calculateLastFinalizedState,
   generateKeccak256,
 } from "../common/helpers";
 
 describe("Validium contract", () => {
   let validium: TestValidium;
   let verifier: string;
-  let callForwardingProxy: CallForwardingProxy;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
@@ -107,36 +90,11 @@ describe("Validium contract", () => {
         roleAddresses,
         pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
       const deployCall = deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
-        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
-        unsafeAllow: ["constructor", "incorrect-initializer-order"],
-      });
-
-      await expectRevertWithCustomError(validium, deployCall, "ZeroAddressNotAllowed");
-    });
-
-    it("Should revert if the fallback operator address is zero address", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [...roleAddresses.slice(1)],
-        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: ADDRESS_ZERO,
-        defaultAdmin: securityCouncil.address,
-        shnarfProvider: ADDRESS_ZERO,
-      };
-
-      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
         initializer: VALIDIUM_INITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor", "incorrect-initializer-order"],
       });
@@ -155,36 +113,11 @@ describe("Validium contract", () => {
         roleAddresses: [...roleAddresses.slice(1)],
         pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: ADDRESS_ZERO,
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
-        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
-        unsafeAllow: ["constructor", "incorrect-initializer-order"],
-      });
-
-      await expectRevertWithCustomError(validium, deployCall, "ZeroAddressNotAllowed");
-    });
-
-    it("Should revert if an operator address is zero address", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
-        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
-        defaultAdmin: securityCouncil.address,
-        shnarfProvider: ADDRESS_ZERO,
-      };
-
-      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
+      const deployCall = deployUpgradableFromFactory("TestValidium", [initializationData], {
         initializer: VALIDIUM_INITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor", "incorrect-initializer-order"],
       });
@@ -223,7 +156,6 @@ describe("Validium contract", () => {
         roleAddresses,
         pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
@@ -247,7 +179,6 @@ describe("Validium contract", () => {
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
         pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
@@ -272,7 +203,6 @@ describe("Validium contract", () => {
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
         pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: alternateShnarfProviderAddress.address,
       };
@@ -287,9 +217,9 @@ describe("Validium contract", () => {
 
     it("Should have the validium address as the shnarfProvider", async () => {
       ({ verifier, validium } = await loadFixture(deployValidiumFixture));
-      const lineaRollupAddress = await validium.getAddress();
+      const validiumAddress = await validium.getAddress();
 
-      expect(await validium.shnarfProvider()).to.equal(lineaRollupAddress);
+      expect(await validium.shnarfProvider()).to.equal(validiumAddress);
     });
 
     it("Should have the correct contract version", async () => {
@@ -309,7 +239,6 @@ describe("Validium contract", () => {
         roleAddresses,
         pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       });
@@ -586,174 +515,6 @@ describe("Validium contract", () => {
       const l1RollingHash = calculateRollingHash(HASH_ZERO, messageHash);
 
       await expect(validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.be.reverted;
-    });
-  });
-
-  describe("fallback operator Role", () => {
-    const expectedLastFinalizedState = calculateLastFinalizedState(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
-
-    it("Should revert if trying to set fallback operator role before six months have passed", async () => {
-      const initialBlock = await ethers.provider.getBlock("latest");
-
-      await expectRevertWithCustomError(
-        validium,
-        validium.setFallbackOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
-        "LastFinalizationTimeNotLapsed",
-      );
-    });
-
-    it("Should revert if the time has passed and the last finalized timestamp does not match", async () => {
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
-      const actualSentState = calculateLastFinalizedState(0n, HASH_ZERO, 123456789n);
-
-      await expectRevertWithCustomError(
-        validium,
-        validium.setFallbackOperator(0n, HASH_ZERO, 123456789n),
-        "FinalizationStateIncorrect",
-        [expectedLastFinalizedState, actualSentState],
-      );
-    });
-
-    it("Should revert if the time has passed and the last finalized L1 message number does not match", async () => {
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
-      const actualSentState = calculateLastFinalizedState(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
-
-      await expectRevertWithCustomError(
-        validium,
-        validium.setFallbackOperator(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
-        "FinalizationStateIncorrect",
-        [expectedLastFinalizedState, actualSentState],
-      );
-    });
-
-    it("Should revert if the time has passed and the last finalized L1 rolling hash does not match", async () => {
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
-      const random32Bytes = generateRandomBytes(32);
-      const actualSentState = calculateLastFinalizedState(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP);
-
-      await expectRevertWithCustomError(
-        validium,
-        validium.setFallbackOperator(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP),
-        "FinalizationStateIncorrect",
-        [expectedLastFinalizedState, actualSentState],
-      );
-    });
-
-    it("Should set the fallback operator role after six months have passed", async () => {
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
-
-      await expectEvent(
-        validium,
-        validium.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
-        "FallbackOperatorRoleGranted",
-        [admin.address, FALLBACK_OPERATOR_ADDRESS],
-      );
-
-      expect(await validium.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
-    });
-
-    it("Should revert if trying to renounce role as fallback operator", async () => {
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
-
-      await expectEvent(
-        validium,
-        validium.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
-        "FallbackOperatorRoleGranted",
-        [admin.address, FALLBACK_OPERATOR_ADDRESS],
-      );
-
-      expect(await validium.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
-
-      const renounceCall = validium.renounceRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS);
-
-      expectRevertWithCustomError(validium, renounceCall, "OnlyNonFallbackOperator");
-    });
-
-    it("Should renounce role if not fallback operator", async () => {
-      expect(await validium.hasRole(OPERATOR_ROLE, operator.address)).to.be.true;
-
-      const renounceCall = validium.connect(operator).renounceRole(OPERATOR_ROLE, operator.address);
-      const args = [OPERATOR_ROLE, operator.address, operator.address];
-      expectEvent(validium, renounceCall, "RoleRevoked", args);
-    });
-
-    it("Should fail to accept ETH on the CallForwardingProxy receive function", async () => {
-      callForwardingProxy = await deployCallForwardingProxy(await validium.getAddress());
-      const forwardingProxyAddress = await callForwardingProxy.getAddress();
-
-      const tx = {
-        to: forwardingProxyAddress,
-        value: ethers.parseEther("0.1"),
-      };
-
-      await expectRevertWithReason(admin.sendTransaction(tx), "ETH not accepted");
-    });
-
-    it("Should be able to submit blobs and finalize via callforwarding proxy", async () => {
-      callForwardingProxy = await deployCallForwardingProxy(await validium.getAddress());
-      const forwardingProxyAddress = await callForwardingProxy.getAddress();
-
-      expect(await validium.currentL2BlockNumber()).to.equal(0);
-
-      // Deploy new LineaRollup implementation
-      const newLineaRollupFactory = await ethers.getContractFactory(
-        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
-      );
-      const newLineaRollup = await upgrades.upgradeProxy(validium, newLineaRollupFactory, {
-        unsafeAllowRenames: true,
-        unsafeAllow: ["incorrect-initializer-order"],
-      });
-
-      const upgradedContract = await newLineaRollup.waitForDeployment();
-
-      await upgradedContract.setFallbackOperatorAddress(forwardingProxyAddress);
-
-      // Grants deployed callforwarding proxy as operator
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
-      await expectEvent(
-        upgradedContract,
-        upgradedContract.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
-        "FallbackOperatorRoleGranted",
-        [admin.address, forwardingProxyAddress],
-      );
-
-      // Submit 2 blobs
-      await sendBlobTransactionViaCallForwarder(upgradedContract, 0, 2, forwardingProxyAddress);
-      // Submit another 2 blobs
-      await sendBlobTransactionViaCallForwarder(upgradedContract, 2, 4, forwardingProxyAddress);
-
-      // Finalize 4 blobs
-      await expectSuccessfulFinalizeViaCallForwarder(
-        blobAggregatedProof1To155,
-        4,
-        fourthCompressedDataContent.finalStateRootHash,
-        generateBlobParentShnarfData,
-        false,
-        HASH_ZERO,
-        0n,
-        forwardingProxyAddress,
-        upgradedContract,
-      );
-    });
-
-    it("Should be able to upgrade", async () => {
-      expect(await validium.currentL2BlockNumber()).to.equal(0);
-
-      // Deploy new LineaRollup implementation
-      const newLineaRollupFactory = await ethers.getContractFactory(
-        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
-      );
-
-      const newLineaRollup = await upgrades.upgradeProxy(validium, newLineaRollupFactory, {
-        call: { fn: "reinitializeSettingShnarfProvider", args: [] },
-        kind: "transparent",
-        unsafeAllowRenames: true,
-        unsafeAllow: ["incorrect-initializer-order"],
-      });
-
-      await newLineaRollup.waitForDeployment();
-
-      expect(await newLineaRollup.shnarfProvider()).to.equal(await validium.getAddress());
     });
   });
 });

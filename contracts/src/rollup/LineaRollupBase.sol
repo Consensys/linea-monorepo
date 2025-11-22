@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
-import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
+import { ILineaRollupBase } from "./interfaces/ILineaRollupBase.sol";
 import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
@@ -18,7 +18,7 @@ abstract contract LineaRollupBase is
   ZkEvmV2,
   L1MessageService,
   PermissionsManager,
-  ILineaRollup,
+  ILineaRollupBase,
   IProvideShnarf
 {
   /**
@@ -110,7 +110,7 @@ abstract contract LineaRollupBase is
    * @param _genesisShnarf The initial computed genesis shnarf.
    */
   function __LineaRollup_init(
-    InitializationData calldata _initializationData,
+    BaseInitializationData calldata _initializationData,
     bytes32 _genesisShnarf
   ) internal virtual {
     if (_initializationData.defaultVerifier == address(0)) {
@@ -135,13 +135,6 @@ abstract contract LineaRollupBase is
 
     verifiers[0] = _initializationData.defaultVerifier;
 
-    if (_initializationData.fallbackOperator == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    fallbackOperator = _initializationData.fallbackOperator;
-    emit FallbackOperatorAddressSet(msg.sender, _initializationData.fallbackOperator);
-
     currentL2BlockNumber = _initializationData.initialL2BlockNumber;
     stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
@@ -156,21 +149,7 @@ abstract contract LineaRollupBase is
 
     shnarfProvider = IProvideShnarf(shnarfProviderAddress);
 
-    emit LineaRollupInitialized(_initializationData);
-  }
-
-  /**
-   * @notice Revokes `role` from the calling account.
-   * @dev Fallback operator cannot renounce role. Reverts with OnlyNonFallbackOperator.
-   * @param _role The role to renounce.
-   * @param _account The account to renounce - can only be the _msgSender().
-   */
-  function renounceRole(bytes32 _role, address _account) public virtual override {
-    if (_account == fallbackOperator) {
-      revert OnlyNonFallbackOperator();
-    }
-
-    super.renounceRole(_role, _account);
+    emit LineaRollupBaseInitialized(_initializationData);
   }
 
   /**
@@ -195,30 +174,6 @@ abstract contract LineaRollupBase is
     emit VerifierAddressChanged(_newVerifierAddress, _proofType, msg.sender, verifiers[_proofType]);
 
     verifiers[_proofType] = _newVerifierAddress;
-  }
-
-  /**
-   * @notice Sets the fallback operator role to the specified address if six months have passed since the last finalization.
-   * @dev Reverts if six months have not passed since the last finalization.
-   * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
-   * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
-   * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
-   */
-  function setFallbackOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external {
-    if (block.timestamp < _lastFinalizedTimestamp + SIX_MONTHS_IN_SECONDS) {
-      revert LastFinalizationTimeNotLapsed();
-    }
-    if (currentFinalizedState != _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)) {
-      revert FinalizationStateIncorrect(
-        currentFinalizedState,
-        _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)
-      );
-    }
-
-    address fallbackOperatorAddress = fallbackOperator;
-
-    _grantRole(OPERATOR_ROLE, fallbackOperatorAddress);
-    emit FallbackOperatorRoleGranted(msg.sender, fallbackOperatorAddress);
   }
 
   /**

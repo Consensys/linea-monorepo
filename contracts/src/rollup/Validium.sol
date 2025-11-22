@@ -22,7 +22,7 @@ contract Validium is LocalShnarfProvider, ShnarfDataAcceptor {
    * @dev Note: This is used for new testnets and local/CI testing, and will not replace existing proxy based contracts.
    * @param _initializationData The initial data used for proof verification.
    */
-  function initialize(InitializationData calldata _initializationData) external initializer {
+  function initialize(BaseInitializationData calldata _initializationData) external initializer {
     bytes32 genesisShnarf = _computeShnarf(
       EMPTY_HASH,
       EMPTY_HASH,

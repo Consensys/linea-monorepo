@@ -111,15 +111,18 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const deployCall = deployUpgradableFromFactory("src/rollup/LineaRollup.sol:LineaRollup", [initializationData], {
-        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-        unsafeAllow: ["constructor", "incorrect-initializer-order"],
-      });
+      const deployCall = deployUpgradableFromFactory(
+        "src/rollup/LineaRollup.sol:LineaRollup",
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        {
+          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+          unsafeAllow: ["constructor", "incorrect-initializer-order"],
+        },
+      );
 
       await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
     });
@@ -135,12 +138,11 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: ADDRESS_ZERO,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
+      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData, ADDRESS_ZERO], {
         initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
         unsafeAllow: ["constructor", "incorrect-initializer-order"],
       });
@@ -159,15 +161,18 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: ADDRESS_ZERO,
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
-        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-        unsafeAllow: ["constructor", "incorrect-initializer-order"],
-      });
+      const deployCall = deployUpgradableFromFactory(
+        "TestLineaRollup",
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        {
+          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+          unsafeAllow: ["constructor", "incorrect-initializer-order"],
+        },
+      );
 
       await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
     });
@@ -183,15 +188,18 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
-        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-        unsafeAllow: ["constructor", "incorrect-initializer-order"],
-      });
+      const deployCall = deployUpgradableFromFactory(
+        "TestLineaRollup",
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        {
+          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+          unsafeAllow: ["constructor", "incorrect-initializer-order"],
+        },
+      );
 
       await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
     });
@@ -227,14 +235,13 @@ describe("Linea Rollup contract", () => {
         roleAddresses,
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -255,14 +262,13 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -284,14 +290,13 @@ describe("Linea Rollup contract", () => {
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
         pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
         unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: alternateShnarfProviderAddress.address,
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -315,20 +320,22 @@ describe("Linea Rollup contract", () => {
 
     it("Should revert if the initialize function is called a second time", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      const initializeCall = lineaRollup.initialize({
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
-        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
-        defaultAdmin: securityCouncil.address,
-        shnarfProvider: ADDRESS_ZERO,
-      });
+      const initializeCall = lineaRollup.initialize(
+        {
+          initialStateRootHash: parentStateRootHash,
+          initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
+          genesisTimestamp: GENESIS_L2_TIMESTAMP,
+          defaultVerifier: verifier,
+          rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+          rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+          roleAddresses,
+          pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+          unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+          defaultAdmin: securityCouncil.address,
+          shnarfProvider: ADDRESS_ZERO,
+        },
+        FALLBACK_OPERATOR_ADDRESS,
+      );
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
     });
@@ -550,7 +557,6 @@ describe("Linea Rollup contract", () => {
         .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
 
       const [dataOneCopy] = generateCallDataSubmission(0, 1);
-      dataOneCopy.endBlockNumber = 234253242n;
 
       const submitDataCall = lineaRollup
         .connect(operator)
