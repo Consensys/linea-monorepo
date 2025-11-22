@@ -486,44 +486,6 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "caller",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "fallbackOperator",
-          "type": "address"
-        }
-      ],
-      "name": "FallbackOperatorAddressSet",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "caller",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "fallbackOperator",
-          "type": "address"
-        }
-      ],
-      "name": "FallbackOperatorRoleGranted",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
           "indexed": false,
           "internalType": "uint8",
           "name": "version",
@@ -684,11 +646,6 @@
             },
             {
               "internalType": "address",
-              "name": "fallbackOperator",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
               "name": "defaultAdmin",
               "type": "address"
             },
@@ -699,12 +656,12 @@
             }
           ],
           "indexed": false,
-          "internalType": "struct ILineaRollup.InitializationData",
+          "internalType": "struct ILineaRollupBase.BaseInitializationData",
           "name": "InitializationData",
           "type": "tuple"
         }
       ],
-      "name": "LineaRollupInitialized",
+      "name": "LineaRollupBaseInitialized",
       "type": "event"
     },
     {
@@ -1671,7 +1628,7 @@
                   "type": "bytes32"
                 }
               ],
-              "internalType": "struct ILineaRollup.ShnarfData",
+              "internalType": "struct ILineaRollupBase.ShnarfData",
               "name": "shnarfData",
               "type": "tuple"
             },
@@ -1721,7 +1678,7 @@
               "type": "bytes"
             }
           ],
-          "internalType": "struct ILineaRollup.FinalizationDataV3",
+          "internalType": "struct ILineaRollupBase.FinalizationDataV3",
           "name": "_finalizationData",
           "type": "tuple"
         }
@@ -1898,11 +1855,6 @@
             },
             {
               "internalType": "address",
-              "name": "fallbackOperator",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
               "name": "defaultAdmin",
               "type": "address"
             },
@@ -1912,7 +1864,7 @@
               "type": "address"
             }
           ],
-          "internalType": "struct ILineaRollup.InitializationData",
+          "internalType": "struct ILineaRollupBase.BaseInitializationData",
           "name": "_initializationData",
           "type": "tuple"
         }
@@ -2067,12 +2019,12 @@
       "inputs": [
         {
           "internalType": "bytes32",
-          "name": "_role",
+          "name": "role",
           "type": "bytes32"
         },
         {
           "internalType": "address",
-          "name": "_account",
+          "name": "account",
           "type": "address"
         }
       ],
@@ -2172,29 +2124,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_messageNumber",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "_rollingHash",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_lastFinalizedTimestamp",
-          "type": "uint256"
-        }
-      ],
-      "name": "setFallbackOperator",
-      "outputs": [],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
