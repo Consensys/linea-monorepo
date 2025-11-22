@@ -19,6 +19,7 @@ import static java.util.Map.entry;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_IDENTITY;
 import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_RIPEMD;
+import static net.consensys.linea.zktracer.TraceOsaka.Oob.CT_MAX_P256_VERIFY;
 import static net.consensys.linea.zktracer.TracePrague.Blsdata.CT_MAX_POINT_EVALUATION;
 import static net.consensys.linea.zktracer.TracePrague.Oob.*;
 import static net.consensys.linea.zktracer.TracePrague.Oob.CT_MAX_BLAKE2F_CDS;
@@ -86,7 +87,8 @@ public class PrecompileScenarioFragment implements TraceFragment {
     PRC_BLS_G2_MSM,
     PRC_BLS_PAIRING_CHECK,
     PRC_BLS_MAP_FP_TO_G1,
-    PRC_BLS_MAP_FP2_TO_G2;
+    PRC_BLS_MAP_FP2_TO_G2,
+    PRC_P256_VERIFY;
 
     public Address getAddress() {
       return ADDRESS_TO_FLAG_MAP.entrySet().stream()
@@ -115,7 +117,8 @@ public class PrecompileScenarioFragment implements TraceFragment {
             entry(Address.BLS12_G2MULTIEXP, PRC_BLS_G2_MSM),
             entry(Address.BLS12_PAIRING, PRC_BLS_PAIRING_CHECK),
             entry(Address.BLS12_MAP_FP_TO_G1, PRC_BLS_MAP_FP_TO_G1),
-            entry(Address.BLS12_MAP_FP2_TO_G2, PRC_BLS_MAP_FP2_TO_G2));
+            entry(Address.BLS12_MAP_FP2_TO_G2, PRC_BLS_MAP_FP2_TO_G2),
+            entry(Address.P256_VERIFY, PRC_P256_VERIFY));
 
     private static final Map<PrecompileFlag, Integer> DATA_PHASE_MAP =
         Map.ofEntries(
@@ -135,7 +138,8 @@ public class PrecompileScenarioFragment implements TraceFragment {
             Map.entry(PRC_BLS_G2_MSM, Trace.PHASE_BLS_G2_MSM_DATA),
             Map.entry(PRC_BLS_PAIRING_CHECK, Trace.PHASE_BLS_PAIRING_CHECK_DATA),
             Map.entry(PRC_BLS_MAP_FP_TO_G1, Trace.PHASE_BLS_MAP_FP_TO_G1_DATA),
-            Map.entry(PRC_BLS_MAP_FP2_TO_G2, Trace.PHASE_BLS_MAP_FP2_TO_G2_DATA));
+            Map.entry(PRC_BLS_MAP_FP2_TO_G2, Trace.PHASE_BLS_MAP_FP2_TO_G2_DATA),
+            Map.entry(PRC_P256_VERIFY, Trace.PHASE_P256_VERIFY_DATA));
 
     private static final Map<PrecompileFlag, Integer> RESULT_PHASE_MAP =
         Map.ofEntries(
@@ -155,7 +159,8 @@ public class PrecompileScenarioFragment implements TraceFragment {
             Map.entry(PRC_BLS_G2_MSM, Trace.PHASE_BLS_G2_MSM_RESULT),
             Map.entry(PRC_BLS_PAIRING_CHECK, Trace.PHASE_BLS_PAIRING_CHECK_RESULT),
             Map.entry(PRC_BLS_MAP_FP_TO_G1, Trace.PHASE_BLS_MAP_FP_TO_G1_RESULT),
-            Map.entry(PRC_BLS_MAP_FP2_TO_G2, Trace.PHASE_BLS_MAP_FP2_TO_G2_RESULT));
+            Map.entry(PRC_BLS_MAP_FP2_TO_G2, Trace.PHASE_BLS_MAP_FP2_TO_G2_RESULT),
+            Map.entry(PRC_P256_VERIFY, Trace.PHASE_P256_VERIFY_RESULT));
 
     public static PrecompileFlag addressToPrecompileFlag(Address precompileAddress) {
       if (!ADDRESS_TO_FLAG_MAP.containsKey(precompileAddress)) {
@@ -180,7 +185,7 @@ public class PrecompileScenarioFragment implements TraceFragment {
     }
 
     public boolean isEcdataPrecompile() {
-      return this.isAnyOf(PRC_ECRECOVER, PRC_ECADD, PRC_ECMUL, PRC_ECPAIRING);
+      return this.isAnyOf(PRC_ECRECOVER, PRC_ECADD, PRC_ECMUL, PRC_ECPAIRING, PRC_P256_VERIFY);
     }
 
     public boolean isBlsPrecompile() {
@@ -227,6 +232,7 @@ public class PrecompileScenarioFragment implements TraceFragment {
         case PRC_BLS_PAIRING_CHECK -> 1 + CT_MAX_BLS_PAIRING_CHECK;
         case PRC_BLS_MAP_FP_TO_G1 -> 1 + CT_MAX_BLS_MAP_FP_TO_G1;
         case PRC_BLS_MAP_FP2_TO_G2 -> 1 + CT_MAX_BLS_MAP_FP2_TO_G2;
+        case PRC_P256_VERIFY -> 1 + CT_MAX_P256_VERIFY;
         default -> throw new IllegalArgumentException("Precompile not supported:" + prc);
       };
     }
@@ -243,6 +249,7 @@ public class PrecompileScenarioFragment implements TraceFragment {
             && cds % PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_PAIRING_CHECK == 0;
         case PRC_BLS_MAP_FP_TO_G1 -> cds == PRECOMPILE_CALL_DATA_SIZE___FP_TO_G1;
         case PRC_BLS_MAP_FP2_TO_G2 -> cds == PRECOMPILE_CALL_DATA_SIZE___FP2_TO_G2;
+        case PRC_P256_VERIFY -> cds == PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY;
         default -> throw new IllegalArgumentException("not implemented for prc: " + prc);
       };
     }
@@ -319,6 +326,11 @@ public class PrecompileScenarioFragment implements TraceFragment {
           .pScenarioPrcBlsPairingCheck(flag == PRC_BLS_PAIRING_CHECK)
           .pScenarioPrcBlsMapFpToG1(flag == PRC_BLS_MAP_FP_TO_G1)
           .pScenarioPrcBlsMapFp2ToG2(flag == PRC_BLS_MAP_FP2_TO_G2);
+    }
+
+    // Osaka
+    if (flag == PRC_P256_VERIFY) {
+      trace.pScenarioPrcP256Verify(true);
     }
 
     return trace;

@@ -19,29 +19,17 @@ import static net.consensys.linea.testing.BytecodeRunner.MAX_GAS_LIMIT;
 import static net.consensys.linea.zktracer.Fork.forkPredatesOsaka;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.oob.OobOperation.computeExponentLog;
+import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
+import static net.consensys.linea.zktracer.opcode.OpCode.JUMPDEST;
+import static net.consensys.linea.zktracer.precompiles.LowGasStipendPrecompileCallTests.GasCase.COST;
+import static net.consensys.linea.zktracer.precompiles.LowGasStipendPrecompileCallTests.GasCase.COST_MINUS_ONE;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.generateModexpInput;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getExpectedReturnAtCapacity;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getPrecompileCost;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareBlake2F;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareSha256Ripemd160Id;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.writeInMemoryByteCodeOfCodeOwner;
-import static org.hyperledger.besu.datatypes.Address.ALTBN128_ADD;
-import static org.hyperledger.besu.datatypes.Address.ALTBN128_MUL;
-import static org.hyperledger.besu.datatypes.Address.ALTBN128_PAIRING;
-import static org.hyperledger.besu.datatypes.Address.BLAKE2B_F_COMPRESSION;
-import static org.hyperledger.besu.datatypes.Address.BLS12_G1ADD;
-import static org.hyperledger.besu.datatypes.Address.BLS12_G1MULTIEXP;
-import static org.hyperledger.besu.datatypes.Address.BLS12_G2ADD;
-import static org.hyperledger.besu.datatypes.Address.BLS12_G2MULTIEXP;
-import static org.hyperledger.besu.datatypes.Address.BLS12_MAP_FP2_TO_G2;
-import static org.hyperledger.besu.datatypes.Address.BLS12_MAP_FP_TO_G1;
-import static org.hyperledger.besu.datatypes.Address.BLS12_PAIRING;
-import static org.hyperledger.besu.datatypes.Address.ECREC;
-import static org.hyperledger.besu.datatypes.Address.ID;
-import static org.hyperledger.besu.datatypes.Address.KZG_POINT_EVAL;
-import static org.hyperledger.besu.datatypes.Address.MODEXP;
-import static org.hyperledger.besu.datatypes.Address.RIPEMD160;
-import static org.hyperledger.besu.datatypes.Address.SHA256;
+import static org.hyperledger.besu.datatypes.Address.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +40,6 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -118,6 +105,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
   @Tag("nightly")
   @ParameterizedTest
   @MethodSource("lowGasStipendPrecompileCallTestSource")
+  @MethodSource("lowGasStipendPrecompileCallP256TestSource")
   void lowGasStipendPrecompileCallTest(
       Address precompileAddress,
       ValueCase valueCase,
@@ -194,9 +182,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
     // and the case of BLS12_G2ADD as it has a fixed gas cost of 600 < 2300.
     // TODO: are there other cases to exclude?
     if (valueCase.isNonZeroCase()
-        && (gasCase == GasCase.COST_MINUS_ONE
-            || gasCase == GasCase.COST
-            || gasCase == GasCase.COST_PLUS_ONE)
+        && (gasCase == COST_MINUS_ONE || gasCase == COST || gasCase == GasCase.COST_PLUS_ONE)
         && !precompileAddress.equals(ALTBN128_ADD)
         && !precompileAddress.equals(BLS12_G1ADD)
         && !precompileAddress.equals(BLS12_G2ADD)
@@ -213,7 +199,12 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
         .push(value) // value
         .push(precompileAddress) // address
         .push(gas) // gas
-        .op(OpCode.CALL);
+        .op(CALL);
+
+    for (int i = 0; i < 32; i++) {
+      program.op(JUMPDEST);
+    }
+
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
     final long forkAppropriateGasLimit = forkPredatesOsaka(fork) ? 61_000_000L : MAX_GAS_LIMIT;
     bytecodeRunner.run(
@@ -221,6 +212,38 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
         precompileAddress == MODEXP ? additionalAccounts : List.of(),
         chainConfig,
         testInfo);
+  }
+
+  static Stream<Arguments> lowGasStipendPrecompileCallP256TestSource() {
+    List<Arguments> arguments = new ArrayList<>();
+    for (GasCase gasCase : GasCase.values()) {
+      for (ValueCase valueCase : ValueCase.values()) {
+        arguments.add(Arguments.of(P256_VERIFY, valueCase, gasCase, 0, false));
+        arguments.add(Arguments.of(P256_VERIFY, valueCase, gasCase, 1, false));
+        arguments.add(
+            Arguments.of(
+                P256_VERIFY,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY - 1,
+                false));
+        arguments.add(
+            Arguments.of(
+                P256_VERIFY, valueCase, gasCase, PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY, false));
+        arguments.add(
+            Arguments.of(
+                P256_VERIFY,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY + 1,
+                false));
+        arguments.add(Arguments.of(P256_VERIFY, valueCase, gasCase, Integer.MAX_VALUE, false));
+      }
+    }
+    arguments.clear();
+    arguments.add(Arguments.of(P256_VERIFY, ValueCase.ZERO, COST_MINUS_ONE, 160, false));
+    arguments.add(Arguments.of(BLS12_G1ADD, ValueCase.ZERO, COST, 13, false));
+    return arguments.stream();
   }
 
   static Stream<Arguments> lowGasStipendPrecompileCallTestSource() {
@@ -307,6 +330,26 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
                   numberOfUnits * PRECOMPILE_CALL_DATA_UNIT_SIZE___BLS_G2_MSM,
                   false));
         }
+        arguments.add(Arguments.of(P256_VERIFY, valueCase, gasCase, 0, false));
+        arguments.add(Arguments.of(P256_VERIFY, valueCase, gasCase, 1, false));
+        arguments.add(
+            Arguments.of(
+                P256_VERIFY,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY - 1,
+                false));
+        arguments.add(
+            Arguments.of(
+                P256_VERIFY, valueCase, gasCase, PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY, false));
+        arguments.add(
+            Arguments.of(
+                P256_VERIFY,
+                valueCase,
+                gasCase,
+                PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY + 1,
+                false));
+        arguments.add(Arguments.of(P256_VERIFY, valueCase, gasCase, Integer.MAX_VALUE, false));
       }
       // The NON_ZERO for MODEXP case will be treated in a separate test
       // callDataSize is defined internally

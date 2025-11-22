@@ -13,44 +13,44 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.bls.fixedSizeFixedGasCost;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.postCancun.fixedSizeFixedGasCost;
 
-import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_MAP_FP2_TO_G2;
-import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_MAP_FP2_TO_G2;
-import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___FP2_TO_G2;
-import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_BLS_MAP_FP2_TO_G2;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLS_G2_ADD;
+import static net.consensys.linea.zktracer.Trace.OOB_INST_BLS_G2_ADD;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___G2_ADD;
+import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_BLS_G2_ADD;
 
 import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.Trace;
 
-public class BlsMapFp2ToG2OobCall extends BlsFixedSizeFixedGasCostOobCall {
-  public BlsMapFp2ToG2OobCall(BigInteger calleeGas) {
-    super(calleeGas, OOB_INST_BLS_MAP_FP2_TO_G2);
+public class BlsG2AddOobCall extends FixedSizeFixedGasCostOobCall {
+  public BlsG2AddOobCall(BigInteger calleeGas) {
+    super(calleeGas, OOB_INST_BLS_G2_ADD);
   }
 
   @Override
   long precompileExpectedCds() {
-    return PRECOMPILE_CALL_DATA_SIZE___FP2_TO_G2;
+    return PRECOMPILE_CALL_DATA_SIZE___G2_ADD;
   }
 
   @Override
   long precompileLongCost() {
-    return GAS_CONST_BLS_MAP_FP2_TO_G2;
+    return GAS_CONST_BLS_G2_ADD;
   }
 
   @Override
   protected void traceOobInstructionInOob(Trace.Oob trace) {
-    trace.isBlsMapFp2ToG2(true).oobInst(OOB_INST_BLS_MAP_FP2_TO_G2);
+    trace.isBlsG2Add(true).oobInst(OOB_INST_BLS_G2_ADD);
   }
 
   @Override
   protected void traceOobInstructionInHub(Trace.Hub trace) {
-    trace.pMiscOobInst(OOB_INST_BLS_MAP_FP2_TO_G2);
+    trace.pMiscOobInst(OOB_INST_BLS_G2_ADD);
   }
 
   @Override
   public int ctMax() {
-    return CT_MAX_BLS_MAP_FP2_TO_G2;
+    return CT_MAX_BLS_G2_ADD;
   }
 }

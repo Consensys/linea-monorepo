@@ -32,6 +32,7 @@ import static net.consensys.linea.zktracer.module.hub.fragment.scenario.Precompi
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_IDENTITY;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_MODEXP;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_P256_VERIFY;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_POINT_EVALUATION;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_RIPEMD_160;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_SHA2_256;
@@ -189,7 +190,8 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
                   PRC_BLS_G2_MSM,
                   PRC_BLS_PAIRING_CHECK,
                   PRC_BLS_MAP_FP_TO_G1,
-                  PRC_BLS_MAP_FP2_TO_G2)
+                  PRC_BLS_MAP_FP2_TO_G2,
+                  PRC_P256_VERIFY)
               .collect(
                   Collectors.toMap(
                       precompileFlag -> precompileFlag,
@@ -348,7 +350,8 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
             PRC_BLS_G2_MSM,
             PRC_BLS_PAIRING_CHECK,
             PRC_BLS_MAP_FP_TO_G1,
-            PRC_BLS_MAP_FP2_TO_G2)) {
+            PRC_BLS_MAP_FP2_TO_G2,
+            PRC_P256_VERIFY)) {
       final int cds = getMeaningfulCallDataSize(precompileFlag);
       final long targetCalleeGas =
           precompileFlag == PRC_BLAKE2F
@@ -555,6 +558,7 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
         // only
       case PRC_BLS_MAP_FP_TO_G1 -> PRECOMPILE_CALL_DATA_SIZE___FP_TO_G1;
       case PRC_BLS_MAP_FP2_TO_G2 -> PRECOMPILE_CALL_DATA_SIZE___FP2_TO_G2;
+      case PRC_P256_VERIFY -> PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY; // Any size works
       default -> 0; // Remaining precompiles such as ECRECOVER, ECADD, ECMUL, ECPAIRING can be
         // called with cds = 0
     };

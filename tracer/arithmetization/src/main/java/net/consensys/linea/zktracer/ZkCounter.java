@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer;
 import static net.consensys.linea.zktracer.Fork.*;
 import static net.consensys.linea.zktracer.Trace.BLOCKHASH_MAX_HISTORY;
 import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECPAIRING_DATA_MIN;
+import static net.consensys.linea.zktracer.Trace.PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY;
 import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_CALL;
 import static net.consensys.linea.zktracer.TraceCancun.Oob.CT_MAX_CREATE;
 import static net.consensys.linea.zktracer.module.ModuleName.*;
@@ -190,6 +191,8 @@ public class ZkCounter implements LineCountingTracer {
       new CountingOnlyModule(PRECOMPILE_ECPAIRING_MILLER_LOOPS);
   private final IncrementingModule ecPairingFinalExponentiations =
       new IncrementingModule(PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS);
+  private final IncrementingModule p256VerifyEffectiveCalls =
+      new IncrementingModule(PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS);
 
   //  related to Modexp
   private final IncrementAndDetectModule modexpEffectiveCall =
@@ -316,6 +319,7 @@ public class ZkCounter implements LineCountingTracer {
         blsC2MembershipCalls,
         blsG1MembershipCalls,
         blsG2MembershipCalls,
+        p256VerifyEffectiveCalls,
         l1BlockSize,
         l2l1Logs);
   }
@@ -355,7 +359,8 @@ public class ZkCounter implements LineCountingTracer {
             ecRecoverEffectiveCall,
             ecPairingG2MembershipCalls,
             ecPairingMillerLoops,
-            ecPairingFinalExponentiations);
+            ecPairingFinalExponentiations,
+            p256VerifyEffectiveCalls);
     blsdata =
         new BlsData(
             wcp,
@@ -792,6 +797,14 @@ public class ZkCounter implements LineCountingTracer {
         hub.updateTally(NB_ROWS_HUB_PRC_ELLIPTIC_CURVE);
         oob.updateTally(oobLineCountForPrc(precompile));
         mod.updateTally(modLinesComingFromOobCall(precompile));
+      }
+      case PRC_P256_VERIFY -> {
+        // TODO: is this correct?
+        if (callDataSize == PRECOMPILE_CALL_DATA_SIZE___P256_VERIFY) {
+          ecdata.callEcData(0, precompile, frame.getInputData(), returnData);
+        }
+        hub.updateTally(NB_ROWS_HUB_PRC_ELLIPTIC_CURVE);
+        oob.updateTally(oobLineCountForPrc(precompile));
       }
       default -> throw new IllegalStateException("Unsupported precompile: " + precompile);
     }

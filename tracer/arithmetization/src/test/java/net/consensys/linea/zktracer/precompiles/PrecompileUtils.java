@@ -22,6 +22,7 @@ import static org.hyperledger.besu.datatypes.Address.*;
 
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag;
 import net.consensys.linea.zktracer.module.tables.bls.BlsRt;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -49,43 +50,29 @@ public class PrecompileUtils extends TracerTestBase {
    */
   public static int getPrecompileCost(
       Address precompileAddress, int cds, int bbs, int mbs, int exponentLog, int r) {
-    if (precompileAddress.equals(ECREC)) {
-      return getECRECCost();
-    } else if (precompileAddress.equals(SHA256)) {
-      return getSHA256Cost(cds);
-    } else if (precompileAddress.equals(RIPEMD160)) {
-      return getRIPEMD160Cost(cds);
-    } else if (precompileAddress.equals(ID)) {
-      return getIDCost(cds);
-    } else if (precompileAddress.equals(MODEXP)) {
-      return getMODEXPCost(bbs, mbs, exponentLog);
-    } else if (precompileAddress.equals(ALTBN128_ADD)) {
-      return getECADDCost();
-    } else if (precompileAddress.equals(ALTBN128_MUL)) {
-      return getECMULCost();
-    } else if (precompileAddress.equals(ALTBN128_PAIRING)) {
-      return getECPAIRINGCost(cds);
-    } else if (precompileAddress.equals(BLAKE2B_F_COMPRESSION)) {
-      return getBLAKE2FCost(r);
-    } else if (precompileAddress.equals(KZG_POINT_EVAL)) {
-      return getPointEvaluationCost();
-    } else if (precompileAddress.equals(BLS12_G1ADD)) {
-      return getBlsG1AddCost();
-    } else if (precompileAddress.equals(BLS12_G1MULTIEXP)) {
-      return getBlsG1MsmCost(cds);
-    } else if (precompileAddress.equals(BLS12_G2ADD)) {
-      return getBlsG2AddCost();
-    } else if (precompileAddress.equals(BLS12_G2MULTIEXP)) {
-      return getBlsG2MsmCost(cds);
-    } else if (precompileAddress.equals(BLS12_PAIRING)) {
-      return getBlsPairingCheckCost(cds);
-    } else if (precompileAddress.equals(BLS12_MAP_FP_TO_G1)) {
-      return getBlsMapFpToG1Cost();
-    } else if (precompileAddress.equals(BLS12_MAP_FP2_TO_G2)) {
-      return getBlsMapFp2ToG2Cost();
-    } else {
-      throw new IllegalArgumentException("Unknown precompile address");
-    }
+
+    final PrecompileFlag flag = PrecompileFlag.addressToPrecompileFlag(precompileAddress);
+
+    return switch (flag) {
+      case PRC_ECRECOVER -> getECRECCost();
+      case PRC_SHA2_256 -> getSHA256Cost(cds);
+      case PRC_RIPEMD_160 -> getRIPEMD160Cost(cds);
+      case PRC_IDENTITY -> getIDCost(cds);
+      case PRC_MODEXP -> getMODEXPCost(bbs, mbs, exponentLog);
+      case PRC_ECADD -> getECADDCost();
+      case PRC_ECMUL -> getECMULCost();
+      case PRC_ECPAIRING -> getECPAIRINGCost(cds);
+      case PRC_BLAKE2F -> getBLAKE2FCost(r);
+      case PRC_POINT_EVALUATION -> getPointEvaluationCost();
+      case PRC_BLS_G1_ADD -> getBlsG1AddCost();
+      case PRC_BLS_G1_MSM -> getBlsG1MsmCost(cds);
+      case PRC_BLS_G2_ADD -> getBlsG2AddCost();
+      case PRC_BLS_G2_MSM -> getBlsG2MsmCost(cds);
+      case PRC_BLS_PAIRING_CHECK -> getBlsPairingCheckCost(cds);
+      case PRC_BLS_MAP_FP_TO_G1 -> getBlsMapFpToG1Cost();
+      case PRC_BLS_MAP_FP2_TO_G2 -> getBlsMapFp2ToG2Cost();
+      case PRC_P256_VERIFY -> getP256VerifyCost();
+    };
   }
 
   public static int getPrecompileCost(Address precompileAddress, int cds) {
@@ -176,6 +163,10 @@ public class PrecompileUtils extends TracerTestBase {
     return GAS_CONST_BLS_MAP_FP2_TO_G2;
   }
 
+  public static int getP256VerifyCost() {
+    return GAS_CONST_P256_VERIFY;
+  }
+
   // Methods to prepare inputs for certain precompiles
 
   // BLAKE2F
@@ -243,37 +234,23 @@ public class PrecompileUtils extends TracerTestBase {
    * @return the computed return at capacity.
    */
   static int getExpectedReturnAtCapacity(Address precompileAddress, int callDataSize, int mbs) {
-    if (precompileAddress.equals(ECREC)
-        || precompileAddress.equals(SHA256)
-        || precompileAddress.equals(RIPEMD160)
-        || precompileAddress.equals(ALTBN128_PAIRING)) {
-      return WORD_SIZE;
-    } else if (precompileAddress.equals(ALTBN128_ADD)
-        || precompileAddress.equals(ALTBN128_MUL)
-        || precompileAddress.equals(BLAKE2B_F_COMPRESSION)) {
-      return 2 * WORD_SIZE;
-    } else if (precompileAddress.equals(MODEXP)) {
-      return mbs;
-    } else if (precompileAddress.equals(ID)) {
-      return callDataSize;
-    } else if (precompileAddress.equals(KZG_POINT_EVAL)) {
-      return PRECOMPILE_RETURN_DATA_SIZE___POINT_EVALUATION;
-    } else if (precompileAddress.equals(BLS12_G1ADD)) {
-      return PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_ADD;
-    } else if (precompileAddress.equals(BLS12_G1MULTIEXP)) {
-      return PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_MSM;
-    } else if (precompileAddress.equals(BLS12_G2ADD)) {
-      return PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_ADD;
-    } else if (precompileAddress.equals(BLS12_G2MULTIEXP)) {
-      return PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_MSM;
-    } else if (precompileAddress.equals(BLS12_PAIRING)) {
-      return PRECOMPILE_RETURN_DATA_SIZE___BLS_PAIRING_CHECK;
-    } else if (precompileAddress.equals(BLS12_MAP_FP_TO_G1)) {
-      return PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP_TO_G1;
-    } else if (precompileAddress.equals(BLS12_MAP_FP2_TO_G2)) {
-      return PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP2_TO_G2;
-    } else {
-      throw new IllegalArgumentException("Unknown precompile address");
-    }
+
+    final PrecompileFlag flag = PrecompileFlag.addressToPrecompileFlag(precompileAddress);
+
+    return switch (flag) {
+      case PRC_ECRECOVER, PRC_SHA2_256, PRC_RIPEMD_160, PRC_ECPAIRING -> WORD_SIZE;
+      case PRC_ECADD, PRC_ECMUL, PRC_BLAKE2F -> 2 * WORD_SIZE;
+      case PRC_MODEXP -> mbs;
+      case PRC_IDENTITY -> callDataSize;
+      case PRC_POINT_EVALUATION -> PRECOMPILE_RETURN_DATA_SIZE___POINT_EVALUATION;
+      case PRC_BLS_G1_ADD -> PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_ADD;
+      case PRC_BLS_G1_MSM -> PRECOMPILE_RETURN_DATA_SIZE___BLS_G1_MSM;
+      case PRC_BLS_G2_ADD -> PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_ADD;
+      case PRC_BLS_G2_MSM -> PRECOMPILE_RETURN_DATA_SIZE___BLS_G2_MSM;
+      case PRC_BLS_PAIRING_CHECK -> PRECOMPILE_RETURN_DATA_SIZE___BLS_PAIRING_CHECK;
+      case PRC_BLS_MAP_FP_TO_G1 -> PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP_TO_G1;
+      case PRC_BLS_MAP_FP2_TO_G2 -> PRECOMPILE_RETURN_DATA_SIZE___BLS_MAP_FP2_TO_G2;
+      case PRC_P256_VERIFY -> PRECOMPILE_RETURN_DATA_SIZE___P256_VERIFY;
+    };
   }
 }

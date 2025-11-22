@@ -87,11 +87,16 @@ public abstract class CommonPrecompileOobCall extends OobCall {
   }
 
   public boolean getExtractCallData() {
-    return hubSuccess && !cdsIsZero;
+    return hubSuccess && getCdxFilter() && !cdsIsZero;
   }
 
   public boolean getCallDataIsEmpty() {
-    return hubSuccess && cdsIsZero;
+    return hubSuccess && getCdxFilter() && cdsIsZero;
+  }
+
+  public boolean getCdxFilter() {
+    // This is override only in the case of P256_VERIFY
+    return true;
   }
 
   @Override

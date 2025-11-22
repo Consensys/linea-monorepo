@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.bls.fixedSizeFixedGasCost;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.postCancun.fixedSizeFixedGasCost;
 
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToEQ;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
@@ -28,8 +28,8 @@ import net.consensys.linea.zktracer.module.oob.OobExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 
-public abstract class BlsFixedSizeFixedGasCostOobCall extends CommonPrecompileOobCall {
-  protected BlsFixedSizeFixedGasCostOobCall(BigInteger calleeGas, int oobInst) {
+public abstract class FixedSizeFixedGasCostOobCall extends CommonPrecompileOobCall {
+  protected FixedSizeFixedGasCostOobCall(BigInteger calleeGas, int oobInst) {
     super(calleeGas, oobInst);
   }
 
@@ -54,7 +54,7 @@ public abstract class BlsFixedSizeFixedGasCostOobCall extends CommonPrecompileOo
     final boolean sufficientGas = !bytesToBoolean(insufficientGasCall.result());
 
     // Set hubSuccess
-    final boolean hubSuccess = validCds && sufficientGas;
+    final boolean hubSuccess = hubSuccess(sufficientGas, validCds);
     setHubSuccess(hubSuccess);
 
     // Set returnGas
@@ -65,5 +65,9 @@ public abstract class BlsFixedSizeFixedGasCostOobCall extends CommonPrecompileOo
                 .subtract(BigInteger.valueOf(precompileLongCost()))
             : BigInteger.ZERO;
     setReturnGas(returnGas);
+  }
+
+  boolean hubSuccess(boolean sufficientGas, boolean validCds) {
+    return sufficientGas && validCds;
   }
 }
