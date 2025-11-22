@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { Eip4844BlobAcceptor } from "./Eip4844BlobAcceptor.sol";
-import { IProvideShnarf } from "./interfaces/IProvideShnarf.sol";
-import { ClaimMessageV1 } from "../messaging/l1/v1/ClaimMessageV1.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { FallbackOperator } from "./FallbackOperator.sol";
+import { Eip4844BlobAcceptor } from "../../../rollup/Eip4844BlobAcceptor.sol";
+import { CalldataBlobAcceptor } from "../../../rollup/CalldataBlobAcceptor.sol";
+import { IProvideShnarf } from "../../../rollup/interfaces/IProvideShnarf.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is FallbackOperator, Eip4844BlobAcceptor, ClaimMessageV1 {
+contract LineaRollupClaimingV2 is Eip4844BlobAcceptor, CalldataBlobAcceptor {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -24,12 +22,8 @@ contract LineaRollup is FallbackOperator, Eip4844BlobAcceptor, ClaimMessageV1 {
    * @dev OPERATOR_ROLE is set for operators.
    * @dev Note: This is used for new testnets and local/CI testing, and will not replace existing proxy based contracts.
    * @param _initializationData The initial data used for contract initialization.
-   * @param _fallbackOperator The fallback operator address.
    */
-  function initialize(
-    BaseInitializationData calldata _initializationData,
-    address _fallbackOperator
-  ) external initializer {
+  function initialize(BaseInitializationData calldata _initializationData) external initializer {
     bytes32 genesisShnarf = _computeShnarf(
       EMPTY_HASH,
       EMPTY_HASH,
@@ -41,7 +35,6 @@ contract LineaRollup is FallbackOperator, Eip4844BlobAcceptor, ClaimMessageV1 {
     _blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
 
     __LineaRollup_init(_initializationData, genesisShnarf);
-    __FallbackOperator_init(_fallbackOperator);
   }
 
   /**
@@ -55,18 +48,5 @@ contract LineaRollup is FallbackOperator, Eip4844BlobAcceptor, ClaimMessageV1 {
     require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
 
     shnarfProvider = IProvideShnarf(address(this));
-  }
-
-  /**
-   * @notice Revokes `role` from the calling account.
-   * @dev Fallback operator cannot renounce role. Reverts with OnlyNonFallbackOperator.
-   * @param _role The role to renounce.
-   * @param _account The account to renounce - can only be the _msgSender().
-   */
-  function renounceRole(
-    bytes32 _role,
-    address _account
-  ) public virtual override(AccessControlUpgradeable, FallbackOperator) {
-    super.renounceRole(_role, _account);
   }
 }

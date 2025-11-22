@@ -32,4 +32,10 @@ abstract contract LineaRollupPauseManager is PauseManager {
 
   /// @notice This is used to unpause finalization submission.
   bytes32 public constant UNPAUSE_FINALIZATION_ROLE = keccak256("UNPAUSE_FINALIZATION_ROLE");
+
+  /// @notice This is used to pause shnarf submission.
+  bytes32 public constant PAUSE_SHNARF_SUBMISSION_ROLE = keccak256("PAUSE_SHNARF_SUBMISSION_ROLE");
+
+  /// @notice This is used to unpause shnarf submission.
+  bytes32 public constant UNPAUSE_SHNARF_SUBMISSION_ROLE = keccak256("UNPAUSE_SHNARF_SUBMISSION_ROLE");
 }
